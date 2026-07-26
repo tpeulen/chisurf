@@ -159,10 +159,10 @@ is available exactly, including the two boundary atoms — molecules that never
 switched, which are finite-probability events rather than density and which
 carry the entire static limit.
 
-Beyond two states there is no closed form, and ChiSurf uses the approach of
-Gopich and Szabo: keep the first two moments of the time-averaged observable —
-which *are* exact for any rate matrix — and match a shape to them. The variance
-carries the physics,
+Beyond two states there is no closed form. The two-colour models take the
+approach of Gopich and Szabo — keep the first two moments of the time-averaged
+observable, which *are* exact for any rate matrix, and match a shape to them.
+The variance carries the physics,
 
 $$
 \sigma^2_{\bar x}(T) = \frac{2}{T^2}\int_0^T (T-t)\,C(t)\,dt,
@@ -180,8 +180,18 @@ because well-separated states give a multi-modal distribution that a
 two-moment match cannot follow — but slow exchange means the states are
 *resolved*, and a static multi-species fit describes that case directly.
 
-Where the moment match is not enough, the occupation times are **sampled**
-instead. That sampling runs inside the photon simulator's kinetics rather than
+**Three colours do not use it.** A two-moment match is exact for a *scalar*
+observable, which is what a two-colour burst averages. A three-colour burst
+needs a whole probability vector, and building one from independently matched
+per-channel marginals imposes a dependence the moments say nothing about:
+pairing the channels by quantile makes them perfectly correlated, whereas they
+are physically *anti*-correlated — time spent in a high-FRET state raises one
+channel and lowers another. The two routes then agree on the mean vector to
+$10^{-4}$ and disagree on the likelihood by 5%, which is the joint being wrong
+rather than the marginals. So the three-colour model always **samples** the
+occupation times, which is exact in distribution for any rate matrix.
+
+That sampling runs inside the photon simulator's kinetics rather than
 in ChiSurf: the simulator records a *state trajectory* — every transition, with
 the time it happened — from which the fraction of each observation window spent
 in each state follows exactly. An event log matters here rather than a
@@ -191,6 +201,28 @@ observation window is one immobile, non-emitting molecule started from the
 equilibrium populations, so the windows are independent draws. The seed is
 fixed, so the fit objective stays deterministic and the optimiser is not
 chasing sampling scatter.
+
+## Fitting a scheme, and what a fitted rate is worth
+
+The exchange scheme is a matrix of ordinary fitting parameters, one state per
+distance population: $k_{ij}$ is the rate from state $i$ to state $j$ in Hz, and
+every off-diagonal entry can be freed, fixed or linked. The *topology* is
+therefore data rather than a mode — a linear chain is the fully connected scheme
+with the long-range rates fixed at zero, detailed balance is a link between two
+parameters, and leaving every rate at zero means "no scheme", which keeps the
+static mixture. Because the rates are absolute, $T_{\text{window}}$ must match
+how the data was segmented.
+
+**A fitted rate is an exchange timescale, not a rate measurement.** On bursts
+simulated from a known two-state scheme by an independent forward route, the
+profile likelihood along $k_{\text{tot}}$ peaks near 650–700 Hz for a truth of
+500 Hz. That offset is not sampling noise: it is unchanged from 600 to 8000
+sampled trajectories and across an eightfold range of occupancy resolution. It
+comes from the approximation made *outside* the sampling — each state is
+collapsed to its distance-averaged per-photon probability vector before the
+occupation-time mixing, so the intra-state distance spread contributes to the
+predicted width differently than it does to real bursts. Orders of magnitude and
+comparisons between conditions are sound; the absolute value is biased high.
 
 ## Reading a fit
 

@@ -73,6 +73,32 @@ model whose `chi2r` sits far from one, not just tcPDA. Until they are fixed,
 **quote the MCMC interval**: it samples `exp(-deviance/2)`, the actual posterior
 for this objective, and it reproduces the corrected likelihood-ratio interval.
 
+Fitting a kinetic scheme
+------------------------
+The exchange scheme is a group of ordinary fitting parameters
+(:class:`TcPdaKinetics`), one state per distance population, so a three-colour
+dynamic fit can *recover* a scheme rather than only be told one. All-zero means
+"no scheme", which is what keeps the static mixture and the two-state ``K_ex``
+route the defaults.
+
+**The rates come out systematically fast.** On bursts simulated from a known
+two-state scheme by an independent forward route (a fresh distance triple per
+state per burst, mixed by sampled occupation times, then split multinomially),
+the profile likelihood along ``k_tot`` peaks near 650–700 Hz for a truth of
+500 Hz. That offset is **not** sampling noise: it is unchanged from 600 to 8000
+trajectories and from an occupancy resolution of 24 to 192, over which the
+argmax moves by one grid step. Starting a fit 4x too fast does converge, and
+recovers one rate closely (198.9 against 200) while the other stays low.
+
+The offset is structural, in the approximation this route makes *outside* the
+sampling: each state is collapsed to its distance-averaged per-photon
+probability vector before the occupation-time mixing, so the intra-state
+distance spread contributes to the predicted width differently than it does to
+real bursts. Until that is treated properly, **read a fitted rate as an
+exchange timescale, not as a rate measurement** — the order of magnitude and
+the comparison between conditions are sound, the absolute value is biased.
+Tracked in ``okf/references/known-issues.md``.
+
 The displayed curve
 -------------------
 The three proximity-ratio histograms (``F_BG/N_blue``, ``F_BR/N_blue``,
@@ -99,6 +125,7 @@ from chisurf.core.fluorescence.pda3c import (
 )
 from chisurf.core.fluorescence.pda3c.likelihood import log_multinomial_pmf
 from chisurf.core.models.model import ModelCurve
+from chisurf.core.models.pda.rates import RateMatrixMixin, transitions_per_window
 
 #: Bin edges of each displayed proximity-ratio histogram.
 N_RATIO_BINS = 41
@@ -255,6 +282,48 @@ class TcPdaSpecies(FittingParameterGroup):
         return out
 
 
+class TcPdaKinetics(RateMatrixMixin, FittingParameterGroup):
+    """The exchange scheme between the species, as fitting parameters.
+
+    One state per distance population, and every off-diagonal ``k_ij`` (state
+    *i* to *j*, Hz) an ordinary fitting parameter — so a three-colour dynamic
+    fit can *recover* a kinetic scheme rather than only being told one. The
+    machinery is shared with the two-colour N-state model; see
+    :mod:`chisurf.core.models.pda.rates`.
+
+    Every rate starts at **zero**, and an all-zero scheme is what
+    :attr:`TcPdaModel.rate_matrix` reports as "no kinetics". That keeps the
+    static mixture, and the two-state ``K_ex`` route, exactly as they were for a
+    model nobody has entered rates into.
+    """
+
+    #: No kinetics until asked for -- see the class docstring.
+    default_rate = 0.0
+
+    def __init__(self, name: str = "tcpda_kinetics", n_states: int = 2, **kwargs):
+        """Initialize an all-zero scheme over ``n_states`` states."""
+        super().__init__(name=name, **kwargs)
+        self._rates: list = []
+        self._n_states = 0
+        self._rebuild_rates(n_states)
+
+    @property
+    def n_states(self) -> int:
+        """Number of exchanging states; tracks the model's species count."""
+        return self._n_states
+
+    @n_states.setter
+    def n_states(self, value: int) -> None:
+        """Resize the scheme, keeping the rates that survive."""
+        if max(2, int(value)) != self._n_states:
+            self._rebuild_rates(value)
+
+    @property
+    def any_rate(self) -> bool:
+        """True when at least one transition has a non-zero rate."""
+        return any(float(p.value) > 0.0 for p in self._rates)
+
+
 class TcPdaSetup(FittingParameterGroup):
     """Förster radii, spectral corrections and per-channel background.
 
@@ -399,10 +468,13 @@ class TcPdaModel(ModelCurve):
         #: states rather than a static mixture. Species three onward stay
         #: static, which is the convention the incumbent uses.
         self.dynamic = False
-        #: Optional (n_states, n_states) rate matrix in Hz, indexed
-        #: [target, source]. Set it to use the multistate Szabo-Gopich
-        #: route instead of the exact two-state occupation law.
-        self.rate_matrix = None
+        #: Exchange scheme over the species, as fitting parameters. All-zero
+        #: until rates are entered, which is what keeps the static mixture and
+        #: the two-state ``K_ex`` route the defaults; see
+        #: :attr:`rate_matrix` for how the route is chosen.
+        self.kinetics = TcPdaKinetics(
+            name="tcpda_kinetics", n_states=max(2, len(self.species)), fit=fit
+        )
         #: Trajectories drawn per evaluation by the multistate route. The
         #: sampling cost grows with transitions per window, so fast exchange
         #: is the expensive case -- but it is also where the time average
@@ -414,9 +486,108 @@ class TcPdaModel(ModelCurve):
         #: Occupancy grid the trajectories are collapsed onto, so the node
         #: count stays bounded however many trajectories are drawn.
         self.dynamic_resolution = 24
+        #: Hard ceiling on the number of likelihood nodes. The occupancy grid
+        #: bounds the node count only combinatorially — with many trajectories
+        #: and a fine grid, distinct nodes approach ``dynamic_samples``, and the
+        #: likelihood is evaluated on a (nodes x bursts) grid. 20 000
+        #: trajectories against 8 000 bursts is a multi-gigabyte allocation, so
+        #: this coarsens the grid until the node count fits and says that it did.
+        self.dynamic_max_nodes = 2000
         #: Seed for that sampling, so the objective stays deterministic.
         self.dynamic_seed = 1
         self._counts_cache = None
+
+    # -- kinetics --------------------------------------------------------
+
+    def find_parameters(self, *args, **kwargs):
+        """Match the exchange scheme to the species count, then discover.
+
+        The states of a three-colour dynamic fit *are* its distance
+        populations, so there is no second place to set how many there are —
+        adding a species adds a row and a column to the scheme, keeping the
+        rates already entered. Resizing here (rather than through a hook on the
+        species group, which the editor appends to directly) is what guarantees
+        the parameter vector the optimiser gets always covers the whole scheme.
+        """
+        target = max(2, len(self.species))
+        if target != self.kinetics.n_states:
+            self.kinetics.n_states = target
+        return super().find_parameters(*args, **kwargs)
+
+    def _sync_scheme_size(self) -> None:
+        """Rediscover parameters if the species count has outgrown the scheme."""
+        if max(2, len(self.species)) != self.kinetics.n_states:
+            self.find_parameters()
+
+    @property
+    def n_states(self) -> int:
+        """Number of exchanging states, i.e. the species count."""
+        self._sync_scheme_size()
+        return self.kinetics.n_states
+
+    @property
+    def state_names(self) -> list:
+        """Row/column labels of the rate-matrix grid."""
+        self._sync_scheme_size()
+        return self.kinetics.state_names
+
+    @property
+    def rate_values(self) -> list:
+        """Flat row-major ``n*n`` rates the editable grid binds to."""
+        self._sync_scheme_size()
+        return self.kinetics.rate_values
+
+    @rate_values.setter
+    def rate_values(self, values) -> None:
+        """Write the grid back onto the rate parameters."""
+        self.kinetics.rate_values = values
+
+    @property
+    def rate_matrix(self):
+        """The exchange scheme as an ``n x n`` ``K[target, source]`` matrix (Hz).
+
+        ``None`` when every rate is zero — which is how the model says it has
+        no kinetic scheme, and what keeps a model nobody has entered rates into
+        on the static (or two-state ``K_ex``) route. Assigning a matrix writes
+        it onto the rate *parameters*, resizing the scheme to match, so a
+        scripted scheme and one typed into the editor are the same object and
+        either can be fitted.
+        """
+        self._sync_scheme_size()
+        if not self.kinetics.any_rate:
+            return None
+        return self.kinetics.rate_matrix()
+
+    @rate_matrix.setter
+    def rate_matrix(self, matrix) -> None:
+        """Write a rate matrix (or ``None``, to clear it) onto the parameters."""
+        if matrix is None:
+            self.kinetics.set_rate_matrix(None)
+            return
+        size = np.shape(matrix)[0]
+        expected = max(2, len(self.species))
+        if size != expected:
+            raise ValueError(
+                f"a {size}-state scheme needs {size} species to exchange between, "
+                f"but the model has {len(self.species)}"
+            )
+        resized = size != self.kinetics.n_states
+        self.kinetics.set_rate_matrix(matrix)
+        if resized:
+            self.find_parameters()
+
+    def rates_by_name(self) -> dict:
+        """Return ``{"k<i>_<j>": parameter}`` for every off-diagonal rate.
+
+        The scripting handle for a scheme::
+
+            model.n_states = 3
+            rates = model.rates_by_name()
+            rates["k1_3"].value = 0.0        # no direct 1 <-> 3
+            rates["k3_1"].value = 0.0
+            rates["k1_2"].fixed = False      # fit the rest
+        """
+        return self.kinetics.rates_by_name()
 
     # -- data ------------------------------------------------------------
 
@@ -636,23 +807,36 @@ class TcPdaModel(ModelCurve):
             )
 
     def _multistate_log_likelihood(self, counts: BurstCounts, species, setup) -> np.ndarray:
-        """Per-burst log likelihood of N exchanging states (Szabo-Gopich).
+        """Per-burst log likelihood of N exchanging states, by sampling.
 
-        Beyond two states there is no closed occupation-time law, so this keeps
-        the exact first two moments of the time-averaged per-photon
-        probabilities and matches a shape to them — the approximation Gopich and
-        Szabo introduced for exactly this problem. Each channel is averaged
-        independently, which is what makes the cost linear in the channel count
-        rather than exponential in the state count.
+        Beyond two states there is no closed occupation-time law, so the
+        occupation times are **sampled** — exact in distribution for any rate
+        matrix. The moment-matching alternative the two-colour model uses is
+        deliberately not taken here; the reason is in the body, and it is about
+        the joint rather than the marginals.
+
+        Accuracy of a *fitted* rate is limited by the approximation this route
+        makes elsewhere, not by the sampling: see the module docstring.
         """
         from scipy.special import logsumexp
 
         from chisurf.core.fluorescence.pda3c import burst_log_likelihood
 
+        rates = np.asarray(self.rate_matrix, dtype=float)
+        if rates.shape[0] != len(species):
+            # Silently averaging over the wrong number of states would produce
+            # a finite, plausible, wrong likelihood -- and the mismatch is easy
+            # to reach, since the swapped-label correction doubles the species.
+            raise ValueError(
+                f"the exchange scheme has {rates.shape[0]} states but there are "
+                f"{len(species)} species to exchange between"
+                + (" (the swapped-label correction doubles them)"
+                   if getattr(self, "stochastic_labeling", False) else "")
+            )
+
         blue = np.stack([self._mean_channel_probabilities(s, setup)[0] for s in species])
         green = np.stack([self._mean_channel_probabilities(s, setup)[1] for s in species])
 
-        rates = np.asarray(self.rate_matrix, dtype=float)
         window = self.setup.window
 
         # Sample the occupation times directly. Exact in distribution for any
@@ -679,7 +863,7 @@ class TcPdaModel(ModelCurve):
         # fast exchange there is nothing left to sample: the time average has
         # collapsed onto the equilibrium occupancy. Short-circuit there -- it is
         # the exact answer in that limit, not an optimisation.
-        transitions = float(np.abs(rates).sum(axis=0).max()) * window
+        transitions = transitions_per_window(rates, window)
         if transitions > self.dynamic_max_transitions:
             fractions = equilibrium_populations(rates)[None, :]
             weights = np.array([1.0])
@@ -701,10 +885,24 @@ class TcPdaModel(ModelCurve):
         # meaningful loss: the map from occupancy to channel probability is
         # smooth, so trajectories that spent almost the same time in each state
         # are interchangeable.
-        quantised = np.round(fractions * self.dynamic_resolution)
-        _, index, multiplicity = np.unique(
-            quantised, axis=0, return_index=True, return_counts=True
-        )
+        resolution = max(1, int(self.dynamic_resolution))
+        ceiling = max(1, int(getattr(self, "dynamic_max_nodes", 2000)))
+        while True:
+            quantised = np.round(fractions * resolution)
+            _, index, multiplicity = np.unique(
+                quantised, axis=0, return_index=True, return_counts=True
+            )
+            if index.size <= ceiling or resolution <= 1:
+                break
+            # Coarsening is the honest lever: it merges trajectories that spent
+            # nearly the same time in each state, which the smooth
+            # occupancy-to-probability map makes interchangeable. Dropping nodes
+            # instead would silently reweight the occupation distribution.
+            resolution = max(1, resolution // 2)
+            cs.logging.warning(
+                f"tcPDA: {index.size} occupancy nodes exceed dynamic_max_nodes="
+                f"{ceiling}; coarsening the grid to {resolution}"
+            )
         fractions = fractions[index]
         weights = multiplicity / multiplicity.sum()
 

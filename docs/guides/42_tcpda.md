@@ -74,10 +74,11 @@ condition you have to assert:
   enough to change its burst sizes. It alters the likelihood normalisation, so
   $\chi^2_r$ is not comparable across the switch.
 
-**Exchange (dynamic)** — treats the first two species as interconverting
-states, species three onward static. `K_ex` is the mean number of transitions
-per observation window; zero is the static limit, so the dynamic model nests
-the static one exactly. Set a rate matrix to use more than two states.
+**Exchange (dynamic)** — treats the species as interconverting states. With no
+rates entered, the first two exchange at `K_ex`, the mean number of transitions
+per observation window, and species three onward stay static; zero is the static
+limit, so the dynamic model nests the static one exactly. Entering rates
+switches to the full scheme — see below.
 
 **Quadrature** — Gauss–Hermite nodes per distance axis. Five is ample; raise it
 only if a fit looks resolution-limited.
@@ -127,6 +128,52 @@ against a truth of 0.8. Generating with `correlation=0.0` and fitting the same
 way returns **+0.024**. Run that uncorrelated control whenever a correlation
 matters to your conclusion — a method that measures joint motion has to be
 shown not inventing it.
+
+## Fitting a kinetic scheme
+
+The exchange scheme is a matrix of ordinary fitting parameters, one state per
+distance population, so a scheme can be **recovered** and not only assumed.
+`k_ij` is the rate from state *i* to state *j* in Hz.
+
+```{figure} figures/tcpda_exchange.png
+:name: fig-tcpda-exchange
+:width: 90%
+
+The exchange panel with three species and a linear chain 1↔2↔3: `k13` and `k31`
+sit at zero, so there is no direct 1↔3 transition. The grid and the parameter
+table below it are the same objects — type in one, fix or free in the other.
+```
+
+Say which transitions the scheme has by zeroing the ones it does not:
+
+```python
+model.dynamic = True
+model.setup._window.value = 2e-3         # must match how the data was segmented
+
+rates = model.rates_by_name()            # {"k1_2": parameter, ...}
+for name in ("k1_3", "k3_1"):
+    rates[name].value = 0.0              # a linear chain 1-2-3
+for name in ("k1_2", "k2_1", "k2_3", "k3_2"):
+    rates[name].fixed = False            # fit the rest
+model.find_parameters()                  # <- populates the free-parameter list
+
+rates["k2_1"].link = rates["k1_2"]       # or impose detailed balance
+```
+
+The scheme resizes with the species: adding a population adds a row and a
+column and keeps the rates already entered. Leaving every rate at zero means
+"no scheme", and the model stays on the static mixture or the `K_ex` route.
+
+:::{admonition} A fitted rate is a timescale, not a measurement
+:class: warning
+On bursts simulated from a known two-state scheme by an independent forward
+route, the profile likelihood along $k_\text{tot}$ peaks near 650–700 Hz for a
+truth of 500 Hz — and that offset does not shrink with more sampling (unchanged
+from 600 to 8000 trajectories, and across an eightfold range of occupancy
+resolution). It comes from the model collapsing each state to its
+distance-averaged probability vector before the time averaging. Compare
+conditions and quote orders of magnitude; do not quote the absolute rate.
+:::
 
 ## Uncertainties
 

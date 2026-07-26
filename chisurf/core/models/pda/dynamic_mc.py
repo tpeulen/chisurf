@@ -61,21 +61,23 @@ from chisurf.core.models.pda.common import (
     resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
+from chisurf.core.models.pda.rates import RateMatrixMixin
 
 #: Starting distances when a state is added, cycled so a fresh scheme is spread
 #: over the FRET-sensitive range rather than stacked on one value.
 _DEFAULT_DISTANCES = (35.0, 50.0, 70.0, 45.0, 60.0, 80.0)
 
 
-class PdaDynamicNStates(FittingParameterGroup):
+class PdaDynamicNStates(RateMatrixMixin, FittingParameterGroup):
     """``n`` exchanging states (R, sigma) with a free ``n x n`` rate scheme (Hz).
 
     Every off-diagonal rate is an ordinary fitting parameter, so the scheme is
     whatever the rates say: fix ``k_13``/``k_31`` at zero for a linear chain,
     free everything for a fully connected one, link a pair to impose detailed
-    balance. Rates are held in **lists**, which is what makes them visible to
-    ``find_parameters`` — parameters stored in a dict or a tuple are silently
-    invisible to the optimiser, and this group used to keep them in a dict.
+    balance. The rate half of that lives in
+    :class:`~chisurf.core.models.pda.rates.RateMatrixMixin`, shared with the
+    three-colour model — including the reason the rates are held in a **list**
+    and not a dict.
     """
 
     def __init__(self, name: str = "pda_dynamic_n_states", n_states: int = 3, **kwargs):
@@ -119,7 +121,6 @@ class PdaDynamicNStates(FittingParameterGroup):
         target = max(2, int(value))
         if target == self._n_states:
             return
-        old_rates = {(i, j): p.value for (i, j), p in self.rate_items()}
 
         while len(self._R) > target:
             self._R.pop()
@@ -134,36 +135,7 @@ class PdaDynamicNStates(FittingParameterGroup):
                 value=6.0, name=f"s{index}", lb=0.5, ub=50.0, bounds_on=True,
                 label_text=f"s<sub>{index}</sub>"))
 
-        self._rates = []
-        for i in range(1, target + 1):
-            for j in range(1, target + 1):
-                if i == j:
-                    continue
-                self._rates.append(FittingParameter(
-                    value=float(old_rates.get((i, j), 100.0)),
-                    name=f"k{i}_{j}", lb=0.0, ub=1e9, bounds_on=True,
-                    fixed=True, label_text=f"k<sub>{i}{j}</sub>"))
-        self._n_states = target
-
-    def rate_items(self):
-        """Yield ``((i, j), parameter)`` for every off-diagonal rate, 1-based."""
-        pairs = [(i, j)
-                 for i in range(1, self._n_states + 1)
-                 for j in range(1, self._n_states + 1) if i != j]
-        return list(zip(pairs, self._rates))
-
-    def rates_by_name(self) -> dict:
-        """Return ``{"k<i>_<j>": parameter}`` for every off-diagonal rate.
-
-        The handle for scripting a scheme: free the rates it has, fix the ones
-        it does not, and link a pair to impose detailed balance::
-
-            rates = model.states.rates_by_name()
-            rates["k1_3"].value = 0.0        # no direct 1 <-> 3
-            rates["k3_1"].value = 0.0
-            rates["k1_2"].fixed = False      # fit the rest
-        """
-        return {p.name: p for p in self._rates}
+        self._rebuild_rates(target)
 
     # -- values -------------------------------------------------------------
 
@@ -176,44 +148,6 @@ class PdaDynamicNStates(FittingParameterGroup):
     def sigmas(self) -> np.ndarray:
         """Widths of the states."""
         return np.array([p.value for p in self._s])
-
-    def rate_matrix(self) -> np.ndarray:
-        """Return the ``n x n`` rate matrix ``K[target, source]`` (Hz)."""
-        n = self._n_states
-        K = np.zeros((n, n), dtype=float)
-        for (i, j), p in self.rate_items():
-            # k_ij is the rate i -> j, so target = j, source = i (0-based).
-            K[j - 1, i - 1] = max(0.0, float(p.value))
-        return K
-
-    @property
-    def rate_values(self) -> list:
-        """Return the flat row-major ``n*n`` rates, diagonal zeroed.
-
-        The view the editable rate-matrix grid binds to; the entries are the
-        fitting parameters themselves, so editing the grid moves the parameters
-        and their fixed/free state is still controlled from the table.
-        """
-        n = self._n_states
-        flat = [0.0] * (n * n)
-        for (i, j), p in self.rate_items():
-            flat[(i - 1) * n + (j - 1)] = float(p.value)
-        return flat
-
-    @rate_values.setter
-    def rate_values(self, values) -> None:
-        """Write a flat row-major ``n*n`` grid back onto the rate parameters."""
-        n = self._n_states
-        flat = list(values)
-        if len(flat) != n * n:
-            return
-        for (i, j), p in self.rate_items():
-            p.value = max(0.0, float(flat[(i - 1) * n + (j - 1)]))
-
-    @property
-    def state_names(self) -> list:
-        """Row/column labels for the rate-matrix grid."""
-        return [str(i) for i in range(1, self._n_states + 1)]
 
     @property
     def n_windows(self) -> int:

@@ -69,13 +69,36 @@
       "title": "Exchange (dynamic)",
       "collapsible": true,
       "collapsed": true,
-      "description": "Treat the first two species as two conformational states that interconvert during the burst, rather than a static mixture. Species three onward stay static. K_ex is the mean number of transitions per observation window: zero is the static limit, so the dynamic model nests the static one. With a rate matrix set, any number of states is handled by the Szabo-Gopich approximation: its first two moments are exact, and the matched shape agrees with exact sampling to ~1% once there is more than a transition or two per window. In the slow limit the distribution is multi-modal and the match cannot follow it — but slow exchange means the states are resolved, so a static multi-species fit is the right model there.",
+      "description": "Treat the species as conformational states that interconvert during the burst, rather than a static mixture. With no rates entered, the first two species exchange at K_ex, the mean number of transitions per observation window: zero is the static limit, so the dynamic model nests the static one, and species three onward stay static. Entering rates switches to the full scheme below, where any number of states is handled by sampling the occupation times — exact in distribution for any rate matrix. Fitted rates carry a systematic offset of some tens of percent that more sampling does not remove; read them as an exchange timescale rather than a rate measurement, and see the concept page.",
       "sections": [
         {
           "type": "toggle",
           "attr": "dynamic",
           "label": "Two exchanging states",
           "description": "Needs at least two species. Their amplitudes become the steady-state occupancies."
+        },
+        {
+          "type": "info",
+          "text": "Rate scheme k_ij (state i to j, Hz), one state per distance population. Every entry is a fitting parameter: zero the transitions the scheme does not have, free the ones it does, link a pair for detailed balance. All zero means no scheme. Rates are absolute — T_window must match how the data was segmented."
+        },
+        {
+          "type": "custom",
+          "key": "rate_matrix",
+          "target": "rate_values",
+          "options": {
+            "size_attr": "n_states",
+            "labels_attr": "state_names",
+            "minimum": 0.0,
+            "decimals": 2,
+            "diagonal": false,
+            "unit": "Hz",
+            "maximum": 1000000.0
+          }
+        },
+        {
+          "type": "parameter_group_table",
+          "target": "kinetics",
+          "collapsible": false
         }
       ]
     },

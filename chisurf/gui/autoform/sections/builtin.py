@@ -148,6 +148,15 @@ class CurveInputWidget(QtWidgets.QWidget):
         self._refresh_fwhm()
 
     def _own_fit_index(self) -> int:
+        """Return the index of this model's fit in ``chisurf.fits``, or ``-1``.
+
+        ``-1`` means the bound model's fit is not registered with the fit
+        machinery — a scripted or headless fit, or a tool with no fit at all.
+        This used to answer ``0``, which is not "unknown" but *another fit*:
+        against an empty list it raised, and against a populated one it would
+        have dispatched the edit at whichever fit happened to be first.
+        Fit-targeted dispatch is skipped for a negative index instead.
+        """
         try:
             fit = getattr(self._model, "fit", None)
             for i, fg in enumerate(cs.fits):
@@ -155,7 +164,7 @@ class CurveInputWidget(QtWidgets.QWidget):
                     return i
         except Exception:
             pass
-        return 0
+        return -1
 
     def _open_selector(self):
         from chisurf.gui.widgets.experiments import ExperimentalDataSelector
@@ -184,9 +193,9 @@ class CurveInputWidget(QtWidgets.QWidget):
         fit_index = self._own_fit_index()
         payload = {section.index_key: idx, section.name_key: name, "fit_index": int(fit_index)}
         try:
-            if section.select_action:
+            if section.select_action and fit_index >= 0:
                 cs.core.actions.dispatch(name=section.select_action, payload=payload)
-            cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(fit_index)})
+            _dispatch_fit_update(fit_index)
         except Exception as exc:
             logging.warning(f"CurveInputWidget: select dispatch failed: {exc}")
         self.name_edit.setText(name)
@@ -198,10 +207,11 @@ class CurveInputWidget(QtWidgets.QWidget):
             return
         fit_index = self._own_fit_index()
         try:
-            cs.core.actions.dispatch(
-                name=section.unload_action, payload={"fit_index": int(fit_index)}
-            )
-            cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(fit_index)})
+            if fit_index >= 0:
+                cs.core.actions.dispatch(
+                    name=section.unload_action, payload={"fit_index": int(fit_index)}
+                )
+            _dispatch_fit_update(fit_index)
         except Exception as exc:
             logging.warning(f"CurveInputWidget: unload dispatch failed: {exc}")
         self.name_edit.clear()
@@ -256,6 +266,18 @@ def _resolve_options_source(name: str, model=None):
     except Exception as exc:  # pragma: no cover - defensive
         logging.warning(f"ChoiceWidget: options_source {name!r} failed: {exc}")
         return []
+
+
+def _dispatch_fit_update(fit_index: int) -> None:
+    """Ask the fit machinery to recompute, unless the fit is unregistered.
+
+    A negative index comes from :meth:`_own_fit_index` and means the bound
+    model's fit is not in ``chisurf.fits`` — scripted, headless, or a tool with
+    no fit. Dispatching anyway would target fit 0, which is somebody else's.
+    """
+    if int(fit_index) < 0:
+        return
+    cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(fit_index)})
 
 
 class _BoundControlMixin:
@@ -345,6 +367,15 @@ class _BoundControlMixin:
             widget = widget.parentWidget()
 
     def _own_fit_index(self) -> int:
+        """Return the index of this model's fit in ``chisurf.fits``, or ``-1``.
+
+        ``-1`` means the bound model's fit is not registered with the fit
+        machinery — a scripted or headless fit, or a tool with no fit at all.
+        This used to answer ``0``, which is not "unknown" but *another fit*:
+        against an empty list it raised, and against a populated one it would
+        have dispatched the edit at whichever fit happened to be first.
+        Fit-targeted dispatch is skipped for a negative index instead.
+        """
         try:
             fit = getattr(self._model, "fit", None)
             for i, fg in enumerate(cs.fits):
@@ -352,7 +383,7 @@ class _BoundControlMixin:
                     return i
         except Exception:
             pass
-        return 0
+        return -1
 
     def _current_value(self):
         section = self._section
@@ -371,7 +402,7 @@ class _BoundControlMixin:
         section = self._section
         fit_index = self._own_fit_index()
         try:
-            if section.set_action:
+            if section.set_action and fit_index >= 0:
                 payload = dict(section.action_fixed)
                 payload[section.value_key] = value
                 payload["fit_index"] = int(fit_index)
@@ -395,10 +426,11 @@ class _BoundControlMixin:
                 # needing a reference to the form.
                 self._refresh_host_form()
             # Only nudge the fit machinery when the bound object actually belongs
-            # to a fit. Generic AutoForm consumers (settings/tool dialogs) have no
-            # ``fit`` and must not trigger a recompute.
+            # to a fit the machinery knows about. Generic AutoForm consumers
+            # (settings/tool dialogs) have no ``fit``, and a scripted fit has one
+            # that was never registered -- neither must trigger a recompute.
             if getattr(self._model, "fit", None) is not None:
-                cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(fit_index)})
+                _dispatch_fit_update(fit_index)
             self._maybe_rebuild_host()
         except Exception as exc:
             logging.warning(f"bound control commit failed ({section.label}): {exc}")
@@ -1188,8 +1220,16 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
             action = menu.addAction(f"{fit.name}: {group.name}")
             action.triggered.connect(lambda _checked=False, g=group: on_pick(g))
 
-    def _own_fit_index(self):
-        """Best-effort fit index of this section's model for dispatching."""
+    def _own_fit_index(self) -> int:
+        """Return the index of this model's fit in ``chisurf.fits``, or ``-1``.
+
+        ``-1`` means the bound model's fit is not registered with the fit
+        machinery — a scripted or headless fit, or a tool with no fit at all.
+        This used to answer ``0``, which is not "unknown" but *another fit*:
+        against an empty list it raised, and against a populated one it would
+        have dispatched the edit at whichever fit happened to be first.
+        Fit-targeted dispatch is skipped for a negative index instead.
+        """
         try:
             fit = getattr(self._model, "fit", None)
             for i, fg in enumerate(cs.fits):
@@ -1197,7 +1237,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
                     return i
         except Exception:
             pass
-        return 0
+        return -1
 
     def _read_values(self, target):
         """Copy parameter values from ``target`` into this group via dispatch."""
@@ -1217,7 +1257,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
                             "fit_index": int(fit_index),
                         },
                     )
-            cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(fit_index)})
+            _dispatch_fit_update(fit_index)
         except Exception as exc:
             logging.warning(f"Failed to read lifetime values: {exc}")
 
@@ -1228,9 +1268,7 @@ class LifetimeAmplitudeOptions(QtWidgets.QWidget):
             return
         try:
             group.link = target
-            cs.core.actions.dispatch(
-                name="fit.update", payload={"fit_index": int(self._own_fit_index())}
-            )
+            _dispatch_fit_update(self._own_fit_index())
         except Exception as exc:
             logging.warning(f"Failed to link lifetime group: {exc}")
 
@@ -2238,6 +2276,15 @@ class FitMixerWidget(QtWidgets.QWidget):
     # -- helpers ---------------------------------------------------------------
 
     def _own_fit_index(self) -> int:
+        """Return the index of this model's fit in ``chisurf.fits``, or ``-1``.
+
+        ``-1`` means the bound model's fit is not registered with the fit
+        machinery — a scripted or headless fit, or a tool with no fit at all.
+        This used to answer ``0``, which is not "unknown" but *another fit*:
+        against an empty list it raised, and against a populated one it would
+        have dispatched the edit at whichever fit happened to be first.
+        Fit-targeted dispatch is skipped for a negative index instead.
+        """
         try:
             import chisurf as cs
 
@@ -2247,13 +2294,15 @@ class FitMixerWidget(QtWidgets.QWidget):
                     return i
         except Exception:
             pass
-        return 0
+        return -1
 
     def _dispatch_update(self) -> None:
         try:
             import chisurf as cs
 
-            cs.core.actions.dispatch("fit.update", {"fit_index": int(self._own_fit_index())})
+            index = self._own_fit_index()
+            if index >= 0:
+                cs.core.actions.dispatch("fit.update", {"fit_index": int(index)})
         except Exception:
             pass
 

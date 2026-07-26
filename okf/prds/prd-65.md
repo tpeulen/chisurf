@@ -125,6 +125,44 @@ Together the two A/B files cover both halves: the transcription checks the
 kernel checks the *arithmetic* (which is where a shared transcription mistake
 would have hidden).
 
+**The exchange scheme became fitting parameters (2026-07-26).** The rate matrix
+was a plain array attribute on `TcPdaModel`, so three-colour dynamics could
+*use* an arbitrary scheme but never *recover* one. It is now `TcPdaKinetics`, a
+parameter group over the shared `RateMatrixMixin`
+(`chisurf/core/models/pda/rates.py`) that [PRD-50](prd-50.md)'s two-colour
+`PdaDynamicNStates` was refactored onto — one implementation, not two copies.
+One state per distance population, the scheme resizing with the species count
+(`find_parameters` is the seam, so the optimiser's vector always covers the
+whole scheme); every off-diagonal `k_ij` an ordinary fitting parameter, so
+topology is data — a linear chain is the fully connected scheme with `k13`/`k31`
+at zero. An **all-zero scheme reads as "no scheme"**, which is what keeps the
+static mixture and the two-state `K_ex` route the defaults for a model nobody
+has entered rates into. The view spec gained the `rate_matrix` grid plus the
+parameter table; `test/models/test_tcpda_rates.py` (16).
+
+Three things this uncovered:
+
+- **A mismatch between scheme size and species count now raises.** It used to
+  broadcast into a finite, plausible, wrong likelihood — and the swapped-label
+  correction doubles the species, so it was easy to reach.
+- **`transitions_per_window` was spelling-dependent.** The estimate summed
+  `|K|` down a column, which double-counts for a matrix carrying its generator
+  diagonal — the one part every other consumer discards. Two spellings of one
+  physical system measured 600 and 1200 transitions and could therefore take
+  different code paths, since `dynamic_max_transitions` decides between sampling
+  and the equilibrium short-circuit. Now taken from the generator's diagonal.
+- **A fitted rate is biased fast** by some tens of percent, structurally and not
+  from sampling. Filed in [known-issues](/references/known-issues.md) with the
+  measurement; the docstring, concept page and guide all say to read it as an
+  exchange timescale. The bias was unreachable while the matrix was a plain
+  attribute, which is why it surfaces only now.
+
+Also corrected: the method docstring and the editor panel both described the
+multistate route as Szabo–Gopich moment matching, which the body explicitly
+does *not* do (and says why — the moment match is exact for a scalar observable,
+and a three-colour burst needs a probability vector whose channels are
+physically anti-correlated). It samples.
+
 ## Three matrices, not a pile of scalars
 
 The physics is expressed as a composition of three linear maps in the

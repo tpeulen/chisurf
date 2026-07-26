@@ -351,10 +351,14 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   clipped any value wider than it: cells are now sized from the configured range
   and decimals. Found by rendering a 4-state scheme and reading the screenshot.
 
+  The shared half of this now lives in `chisurf/core/models/pda/rates.py`
+  (`RateMatrixMixin`), so the two- and three-colour models hold one
+  implementation of "a rate scheme whose entries are fitting parameters" rather
+  than two copies — see [PRD-65](prd-65.md) for the three-colour side.
+
 **Follow-ups (not yet done):**
-- tcPDA's rate matrix is a plain array attribute, not fitting parameters: three-
-  colour dynamics can *use* an arbitrary scheme but cannot fit one. The two-colour
-  `PdaDynamicNStates` group is the template if that is wanted.
+- ~~tcPDA's rate matrix is a plain array attribute, not fitting parameters.~~
+  Done — see [PRD-65](prd-65.md).
 - Three-color tcPDA — **split out into [PRD-65](prd-65.md)**; it shares neither
   the engine (`tttrlib.Pda` is two-channel by construction) nor the data object
   (burst table, not S1S2 matrix) nor the fit objective (burst likelihood, not a

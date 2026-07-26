@@ -2,6 +2,38 @@
 
 ## 2026-07-26
 
+* **Three-colour PDA can now fit a kinetic scheme, not only be told one.**
+  tcPDA's rate matrix was a plain array attribute on `TcPdaModel`, so an
+  arbitrary scheme could be *used* and never *recovered*. It is now
+  `TcPdaKinetics`, a parameter group over a new shared
+  `chisurf/core/models/pda/rates.py::RateMatrixMixin` that PRD-50's two-colour
+  `PdaDynamicNStates` was refactored onto — one implementation of "a rate scheme
+  whose entries are fitting parameters", not two copies. One state per distance
+  population, the scheme resizing with the species count through
+  `find_parameters` (so the optimiser's vector always covers the whole scheme);
+  every off-diagonal `k_ij` an ordinary fitting parameter, so topology is data —
+  a linear chain is the fully connected scheme with `k13`/`k31` at zero. An
+  **all-zero scheme reads as "no scheme"**, keeping the static mixture and the
+  two-state `K_ex` route the defaults for a model nobody entered rates into.
+  Editor gains the `rate_matrix` grid + parameter table (rendered headlessly and
+  read: a 3-state chain shows 80/120/90/300 with the diagonal disabled).
+  `test/models/test_tcpda_rates.py` (16). Three things it uncovered: a scheme
+  whose size disagrees with the species count used to broadcast into a plausible
+  wrong likelihood and now raises (the swapped-label correction doubles the
+  species, so it was easy to reach); `transitions_per_window` summed `|K|` down a
+  column, double-counting for a matrix carrying its generator diagonal, so two
+  spellings of one system measured 600 and 1200 transitions and could take
+  different code paths — now taken from the generator's diagonal; and a **fitted
+  rate is biased fast by tens of percent**, structurally rather than from
+  sampling (profile peak 650–700 Hz for a 500 Hz truth, unmoved from 600 to 8000
+  trajectories and across an 8× range of occupancy resolution), filed in
+  [references/known-issues.md](/references/known-issues.md) and flagged in the
+  docstring, concept page and guide as "read it as a timescale". Also corrected
+  the method docstring and panel text, which described the multistate route as
+  Szabo–Gopich moment matching when the body deliberately samples instead — and
+  says why. See [prds/prd-65.md](/prds/prd-65.md) and
+  [prds/prd-50.md](/prds/prd-50.md).
+
 * **The numbers ChiSurf publishes had no error bars at all.** A fit optimises
   amplitudes and lifetimes; nobody publishes those. What leaves the program is a
   **derived** quantity — `fret_efficiency`, `species_averaged_lifetime`,

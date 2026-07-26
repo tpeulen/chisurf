@@ -121,6 +121,44 @@ def _grab_pda_editor():
     _grab(editor, "pda_model_editor.png")
 
 
+def _grab_tcpda_exchange_panel():
+    """Grab the tcPDA exchange-scheme panel for the three-colour guide.
+
+    Driven into a realistic state — three species and a linear 1-2-3 chain — so
+    the grid shows a scheme built by *zeroing* the transitions it does not have,
+    which is the point the figure has to make.
+    """
+    import numpy as np
+    from qtpy.QtWidgets import QAbstractButton
+
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.tcpda import TcPdaModel
+    from chisurf.gui.autoform import AutoForm
+
+    data = Pda3cSimulatorReader(n_bursts=200, seed=3).read()[0]
+    model = fit_mod.Fit(model_class=TcPdaModel, data=data).model
+    model.species.append(r_gr=68.0, r_bg=62.0, r_br=80.0)
+    model.species.append(r_gr=78.0, r_bg=72.0, r_br=90.0)
+    model.dynamic = True
+    # A linear chain 1 <-> 2 <-> 3: k13 and k31 left at zero.
+    model.rate_matrix = np.array([[0.0, 120.0, 0.0],
+                                  [80.0, 0.0, 300.0],
+                                  [0.0, 90.0, 0.0]])
+    model.find_parameters()
+
+    editor = AutoForm(model)
+    # Open the exchange panel and fold the distance tables away, so the figure
+    # is the scheme rather than the rows above it.
+    for button in editor.findChildren(QAbstractButton):
+        if "Exchange" in button.text():
+            button.click()
+        elif button.isCheckable() and button.isChecked() and "Distance" in button.text():
+            button.click()
+    editor.resize(600, 620)
+    _grab(editor, "tcpda_exchange.png")
+
+
 def _grab_burst_browser():
     """Grab the Burst Browser (per-burst table + E/S histograms) on real .bur data."""
     import glob
@@ -507,6 +545,7 @@ def main():
         _grab_fcs_model_editor,
         _grab_tcspc_lifetime_editor,
         _grab_pda_editor,
+        _grab_tcpda_exchange_panel,
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,
