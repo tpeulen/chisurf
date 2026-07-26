@@ -351,6 +351,57 @@ longer than the run — flattens, and the flattening is visible long before any
 single number crosses a threshold. A final ESS on its own cannot show this,
 being one point on that curve with the shape discarded.
 
+## When "uncorrelated" does not mean "independent"
+
+The posterior graph shades each edge by how strongly two parameters constrain
+each other. For a Gaussian posterior the correlation coefficient answers that
+completely — mutual information is a monotone function of it,
+
+$$I \;=\; -\tfrac12 \ln\!\left(1 - r^2\right),$$
+
+so shading by $|r|$ and shading by $I$ produce the same picture. Away from
+Gaussian they do not, and the failure is not subtle. Two parameters lying on a
+**banana** — the ordinary shape when a lifetime trades against an amplitude near
+a bound — or on a ring have $r \approx 0$ while determining each other almost
+perfectly. Drawn from $|r|$ alone, no edge is drawn at all: the strongest
+coupling in the fit becomes the one thing the picture omits.
+
+Mutual information has no such blind spot, being zero **iff** two variables are
+independent whatever the shape. ChiSurf reports it on the scale of a correlation
+coefficient through the informational coefficient
+
+$$r_I \;=\; \sqrt{1 - e^{-2I}},$$
+
+which equals $|r|$ exactly for a Gaussian. That equality is the point: the two
+numbers are directly comparable, and the quantity worth looking at is where they
+**disagree**. A pair with $r = +0.02$ and $r_I = 0.97$ is one measurement wearing
+the disguise of two.
+
+Two things make the estimate a verdict rather than a number:
+
+- **A measured null.** The plug-in estimator is positively biased — independent
+  variables score above zero by roughly $(B-1)^2/2N$ nats, the same size as a
+  weak real dependence. Miller–Madow removes the leading term, and the remainder
+  is measured directly by permuting one variable, which destroys the dependence
+  while preserving both marginals. Nothing is called dependent until it clears
+  that null by several of its own standard deviations.
+- **Thinning to independent draws.** A permutation destroys the chain's
+  autocorrelation as well as its dependence, so on a sticky chain the null
+  describes a far more informative sample than the one in hand. Measured on
+  *independent* AR(1) columns, the uncorrected estimator called them dependent 7
+  times in 12 at an effective size near 100, and every time at 20 — reporting up
+  to $r_I = 0.51$ between variables sharing nothing. Thinning by the worse of the
+  two autocorrelation times removes the effect entirely, and is the principled
+  repair rather than a fudge: the mutual information of a posterior is a property
+  of the posterior, not of how correlated the sampler's steps happened to be.
+
+Two refusals matter as much as the measurement. A chain that $\hat R$ or the
+effective sample size **rejected** cannot support the claim, because an unmixed
+chain looks exactly like a curved posterior. And a parameter that barely moved is
+reported as *unmeasurable*, never as independent — rank binning is blind to how
+few distinct values a column holds, and a parameter pinned at a bound is one of
+the commonest cases, not an exotic one.
+
 ## The numbers you actually publish
 
 Nobody publishes an amplitude. What leaves ChiSurf is a **derived quantity** — a

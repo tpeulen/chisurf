@@ -222,6 +222,41 @@ exactly the identifiability claim a global fit is making.
 `components > 1` means the "global" fit is really several unrelated fits, and
 nothing is being shared.
 
+### The Dependence tab, and why it is not the correlation tab
+
+The posterior graph's second tab draws how strongly each pair of parameters
+constrains the other. Where the fit carries only a covariance that is `|r|`;
+where it carries draws it is mutual information, measured from them.
+
+Look for **warm-coloured edges**, labelled with both numbers:
+
+```
+  edge a-c  kind=dependence  w=0.97  'r=+0.02  I=0.97'
+  note: c and a constrain each other at 0.97 while their correlation is only
+        +0.02 — coupled along a curve, so a correlation matrix and every error
+        bar derived from one understate it
+```
+
+A correlation of `+0.02` is below any threshold you would set, so before this
+existed **no edge was drawn at all** between two parameters that determine each
+other almost completely. When you see one:
+
+- Do not quote those two as independently measured, whatever the correlation
+  matrix says.
+- Prefer `mcmc` or `profile` intervals for both — a covariance error bar is a
+  Gaussian statement about a posterior that demonstrably is not one.
+- Consider whether the pair should be linked or one of them fixed.
+
+Nothing is flagged for a Gaussian posterior, where `r_I` and `|r|` agree; a
+diagnostic that fired there would be worthless. Two cases report *unmeasurable*
+rather than guessing: a chain that failed its convergence checks (§4), and a
+parameter that barely moved.
+
+```python
+from chisurf.core.fitting import graphview as gv
+names, dep, nonlinear = gv.posterior_dependence(fit)   # None if no usable chain
+```
+
 ## 9. Reusing a chain under a different prior
 
 Sampling is the expensive part, and "what if I had assumed a tighter prior?" is
@@ -479,3 +514,5 @@ one-off script can ask about its own quantity without touching the model class.
       quote a `profile` or `mcmc` interval, not `±σ`.
 - [ ] Every derived quantity you publish quoted from `posterior draws`, not
       `linear propagation` — especially any efficiency or other ratio.
+- [ ] No warm edge on the **Dependence** tab left unexplained: a pair coupled
+      along a curve is not two independent measurements, whatever `|r|` says.

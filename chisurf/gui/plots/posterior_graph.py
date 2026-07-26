@@ -5,8 +5,12 @@ Qt-free and laid out already; this module is only paint. Three tabs, following
 the vocabulary probabilistic-graphical-model tools settled on:
 
 - **Structure** — parameters against the datasets that constrain them.
-- **Correlation** — parameters alone, edges weighted by ``|r|``. A pair at ±1 is
-  one measurement and a direction the data does not constrain.
+- **Dependence** — parameters alone, edges weighted by how much the pair
+  constrains itself. A pair at ±1 is one measurement and a direction the data
+  does not constrain. Weighted by ``|r|`` where only a covariance is available,
+  and by mutual information measured from the draws where there are draws --
+  the difference matters, because a pair lying on a curve has ``|r| ≈ 0`` and
+  is drawn warm rather than not at all.
 - **Junction tree** — the cliques an elimination order produces, and what they
   share.
 """
@@ -69,7 +73,7 @@ class PosteriorGraphPlot(Plot):
         self.layout.addWidget(self.tabs)
 
         self._views = []
-        for title in ("Structure", "Correlation", "Junction tree"):
+        for title in ("Structure", "Dependence", "Junction tree"):
             page = QtWidgets.QWidget()
             page_layout = QtWidgets.QVBoxLayout(page)
             page_layout.setContentsMargins(4, 4, 4, 4)
@@ -129,6 +133,7 @@ class PosteriorGraphPlot(Plot):
         # the y-range collapses a constant offset throws every label clean off
         # the node it names.
         label_drop = 0.055 * (y_hi - y_lo)
+        x_centre = 0.5 * (min(xs) + max(xs))
 
         # Edges first, so nodes sit on top of them rather than under.
         for edge in view.edges:
@@ -141,6 +146,14 @@ class PosteriorGraphPlot(Plot):
                 width = 1.0 + 5.0 * weight
                 shade = int(round(90 + 140 * weight))
                 colour = f"#{shade:02x}{shade // 2:02x}{shade:02x}"
+            elif edge.kind == "dependence":
+                # Coupled, but not along a straight line. Drawn warm rather than
+                # violet so it cannot be mistaken for an ordinary correlation:
+                # the two call for different responses, and the whole point of
+                # measuring it was that a correlation coefficient misses it.
+                width = 1.0 + 5.0 * weight
+                shade = int(round(110 + 120 * weight))
+                colour = f"#{shade:02x}{shade // 2:02x}3a"
             elif edge.kind == "separator":
                 width, colour = 2.0, "#7f9fbf"
             else:
@@ -161,11 +174,26 @@ class PosteriorGraphPlot(Plot):
                 # near their midpoints, so midpoint labels land on top of each
                 # other exactly where the picture is already busiest.
                 t = 0.36
+                # A centred label beside a *vertical* edge overlaps it however
+                # far it is pushed sideways, because half its own width comes
+                # straight back. Anchoring it on the side facing the line makes
+                # it grow away from the line instead, whatever it says.
+                if abs(nx_) > abs(ny_):
+                    # ...and it must grow *inwards*. A label pushed away from a
+                    # near-vertical edge at the edge of the frame runs straight
+                    # off it, so the side is chosen by where the room is.
+                    if 0.5 * (x0 + x1) > x_centre:
+                        nx_ = -abs(nx_)
+                    else:
+                        nx_ = abs(nx_)
+                    anchor = (0.0, 0.5) if nx_ > 0.0 else (1.0, 0.5)
+                else:
+                    anchor = (0.5, 0.5)
                 plot.text(
                     edge.label,
                     (x0 + t * dx + 0.4 * label_drop * nx_,
                      y0 + t * dy + label_drop * ny_),
-                    color="#b0b0b0", anchor=(0.5, 0.5),
+                    color="#b0b0b0", anchor=anchor,
                 )
 
         # Nodes, grouped by (symbol, colour) so each marker style is one call.

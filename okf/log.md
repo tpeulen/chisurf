@@ -2,6 +2,67 @@
 
 ## 2026-07-26
 
+* **The posterior graph shaded its edges by a number that is zero for the most
+  strongly coupled pairs there are.** Edge weight was `|r|`, which for a Gaussian
+  posterior *is* mutual information up to a monotone map — and for a banana or a
+  ring, the ordinary shape when a lifetime trades against an amplitude near a
+  bound, is `≈ 0` while the two parameters determine each other almost perfectly.
+  Below any sane threshold, so **no edge was drawn at all**: the strongest
+  coupling in the fit was the one thing the picture omitted. This is the
+  inconsistency the preceding non-Gaussian work had left behind — the marginals
+  were handled, the dependence between them was still assumed linear.
+
+  New `chisurf/core/fitting/dependence.py` measures mutual information from the
+  draws and reports it on the correlation scale as `r_I = sqrt(1 - exp(-2I))`,
+  which equals `|r|` exactly for a Gaussian. That equality is the design: the two
+  are directly comparable and the disagreement is the message. `correlation_view`
+  now weights by whichever found more, draws a pair `|r|` understates as its own
+  `dependence` edge kind (warm, labelled `r=+0.02  I=0.97`), and the tab is
+  renamed **Dependence**. Measured: `pearson +0.02 → r_I 0.97` on a parabola,
+  `0.00 → 0.89` on a ring, and — the calibration that matters — `r_I` within
+  0.007 of `|r|` for genuine Gaussians at ρ = 0.3…0.98, so nothing is flagged
+  there.
+
+  **Three bugs, each found by running it rather than reasoning about it.**
+  (1) *The permutation null was too tight on a real chain.* Permuting destroys
+  the autocorrelation along with the dependence, so the null described a far more
+  informative sample than the one in hand: on **independent** AR(1) columns the
+  estimator called them dependent 7/12 near an effective size of 100 and 12/12
+  near 20, reporting up to `r_I = 0.51` between variables sharing nothing.
+  Thinning by the worse of the two autocorrelation times fixes it completely
+  (0/12 false positives at every level tested) while still finding real
+  dependence at stride 44 — the principled repair, since the mutual information
+  of a posterior is a property of the posterior, not of the sampler's step
+  correlation. (2) *A stuck parameter paired with everything.* Rank binning is
+  blind to how few distinct values a column holds; a stable argsort hands
+  identical entries the ranks `0..n-1`, so a constant came out uniformly
+  distributed and scored 0.14 against an unrelated variable. A parameter pinned
+  at a bound is one of the commonest cases, not an exotic one. (3) *The name
+  alignment silently disabled the feature on every global fit* — the chain
+  carries the sampled model's plain names, the view the group's `fit:`-prefixed
+  ones, and requiring the lists to be equal meant the dependence was computed and
+  then discarded. Matched on the short name instead.
+
+  Two refusals carried over from the rest of the fitting layer: a chain that R̂ or
+  the effective sample size rejected cannot claim a curve (an unmixed chain looks
+  exactly like one), and an unmeasurable pair is `nan`, **never** `0` — the two
+  are opposite claims, and a stuck parameter is where "independent" is least
+  likely to be true.
+
+  **Two GUI defects only the screenshot showed**, both invisible to assertions: a
+  label beside a near-vertical edge overlapped the line however far it was pushed
+  sideways (a centred anchor brings half its own width straight back — it now
+  anchors on the side facing the line), and having fixed that it ran off the
+  frame (it now grows *inwards*, the side chosen by where the room is). A
+  `LAYOUT_MARGIN` added to `_rescale` on the way was **inert** — the front end
+  fits its frame to the node extent, so scaling every position by a constant is
+  invisible — and was removed rather than left to mislead; the docstring now says
+  why room for labels is the painter's business.
+
+  23 tests in `test/fitting/test_dependence.py`; concept and guide sections in
+  `docs/`. Related: this closes the gap named in the aGrUM comparison, where the
+  dependence view was the one place still assuming linearity.
+
 * **A rate matrix can now live behind a button.** The reusable AutoForm
   `rate_matrix` section gained `"popup": true`: the grid opens in its own window
   instead of sitting in the panel. An N×N grid costs N rows of vertical space
