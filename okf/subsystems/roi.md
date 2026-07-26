@@ -274,6 +274,23 @@ The angle conversion is the fiddly part: `orientation` follows scikit-image and
 is measured from the *row* axis, while `EllipseROI` rotates in `(x, y) =
 (column, row)`, so the rotation is `-(θ + π/2)`.
 
+### What deliberately stays outside the subsystem
+
+Not every selection is a region, and forcing the ones that are not would be a
+loss:
+
+* **1-D spans** — a fit range, a micro-time gate, an IRF window. About ten sites
+  drag a `chiplot` `Region` (a `LinearRegionItem`) mirrored into two spin boxes.
+  An interval is not a 2-D shape, and dressing it as one would give the user
+  handles in a direction that means nothing.
+* **Crop sizes** — the PSF tool's `roi_xy`/`roi_z` are how *large* a sub-volume
+  to cut around a picked bead, not *where*. They are numbers, and the region is
+  implied by the pick.
+* **The 2-D residual rectangle** — a fit-range control whose geometry is forced
+  symmetric about the image centre, so it is not free geometry at all. It
+  already converts through `RectangleROI.from_slices` / `to_indices`, which is
+  the part that belongs here.
+
 ### ndXplorer's selections are the same type
 
 `selections.py` converts ndXplorer's `DataSelection` hierarchy — a 1-D interval,

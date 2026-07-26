@@ -2,6 +2,40 @@
 
 ## 2026-07-26
 
+* **ndXplorer's gate files destroyed themselves, and its GUI now shares the
+  region type.** Committed in the ndXplorer repo (`1b1feb9`), which may import
+  ChiSurf. Two defects a user meets in the same click: `onSave_selection` dumped
+  `selection.__dict__` to JSON, so the moment a Gaussian or painted selection
+  was in the list it raised `TypeError: Object of type ndarray is not JSON
+  serializable` — **after** the destination file had been opened for writing,
+  which truncates it, so saving a mixed set destroyed the target and wrote
+  nothing. `onLoad_selection` then read `parameter_idx`/`lower`/`upper` off every
+  entry, so only rectangles could return; an ellipse or painted population was
+  dropped silently and the analysis afterwards ran over a different set of
+  points than the file described. Both go through a `RegionCollection` now,
+  which lets each shape serialise itself, and files from the old saver still
+  open.
+
+  `RegionDataSelection` makes a ChiSurf region usable as an ndXplorer gate, so
+  the two hierarchies stop being parallel implementations of one idea — and
+  ndXplorer gains **polygon** selections, which it could not express at all
+  (a population in a scatter is rarely an ellipse). The selection table grows a
+  `Region` row type that keeps the shape in the object and the handle in the
+  cell, as the painted-mask rows already did.
+
+  Found alongside: `test_histogram_selection.py` was module-level statements with
+  no test function, so it ran during *collection* and its failure surfaced as a
+  collection error rather than a failing test. It had been failing because it
+  passed `(n_parameters, n_points)` where a `DataSource` wants one column per
+  parameter — both orientations are real (`get_mask` answers parameter-major,
+  the frame is point-major) and the file now says so. 14 ndXplorer tests pass.
+
+  With this the sweep is complete: **every** place a user creates or edits a
+  region — CLSM, molecule MLE, phasor, colocalization, ndXplorer — shares one
+  type and one editor. What deliberately stays outside is now recorded in
+  [roi](/subsystems/roi.md): 1-D spans (an interval is not a 2-D shape), crop
+  *sizes*, and the residual rectangle whose geometry is forced symmetric.
+
 * **Used the PDA experiment like a user, and the analysis was the part that
   worked.** New use case
   [pda-distance-fit](/usecases/pda-distance-fit.md): burst tables from a finished
