@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **chimol: `smooth` and `protect`/`deprotect`.** `smooth` is transcribed from
+  `layer3/Executive.cpp::ExecutiveSmooth`, whose behaviour depends on four things
+  its own help text does not mention: the half-windows are `window / 2` in
+  **integer** arithmetic taken independently, so an even window spans an odd
+  number of states; `ends` is a **four-way** choice rather than a boolean (skip
+  one / skip none / skip a half-window / wrap the trajectory); the average divides
+  by the number of states actually **found**, not the window width — dividing by
+  the width pulls states near an end towards the origin, which reads as the
+  trajectory collapsing; and `cutoff` stops the window extending across a jump,
+  padding with the last good position so an atom crossing a periodic boundary is
+  not averaged with its own image.
+
+  Alongside the transcription tests, two properties that hold for *any* correct
+  running mean: a constant trajectory is unchanged, and a linear ramp is preserved
+  away from the ends. Both mutations tried — dividing by the window width, and
+  misreading the halves as asymmetric — are caught (5 and 1 failures), so the
+  tests are not decorative.
+
+  `protect` needed something to honour it, or the flag would be decoration, so it
+  is tested through `translate` and `rotate`: protected atoms move 0.000 Å while
+  the rest move exactly the requested distance. The transform seam moves every
+  array at once, which is right for an unprotected object and wrong the moment
+  `protect` is used; rather than teach it which arrays are atom-indexed and which
+  are derived, the protected rows are snapshotted, the transform runs, and the
+  rows are written back before the derived arrays rebuild. With nothing protected
+  the helper returns `None`, so the common path is untouched.
+
+  29 tests and a new guide section. Tier 2 now has `sort`, `mask`, `cealign`,
+  `matrix_copy`, `symexp`/`symmetry`, `ramp_new` and the cartoon variants left.
+
 * **Particles get a tool, not just a library.** The tracking core landed
   earlier today; this is the user-facing half. New `img_tracking` plugin
   (Qt-free `core.py`, AutoForm `tracking.view.json`, `img-tracking` CLI, two RPC

@@ -103,6 +103,15 @@ class _MolViewObjectState:
     ``bond_pairs`` because several consumers flatten that array to ask "which
     atoms have a bond", and an order column would read as an atom index.
     """
+    protected_mask: Optional[np.ndarray] = None
+    """Atoms held in place by ``protect``, as a boolean over all atoms.
+
+    PyMOL's ``protect`` shields atoms from the editing transforms, which is how
+    part of a structure is moved while the rest stays put. Stored as a mask
+    rather than a list of indices so it survives an atom-count change no worse
+    than the other per-atom arrays do -- and so the check at the transform seam
+    is one array operation rather than a membership test per atom.
+    """
     surface_visible: bool = False
     metaballs_visible: bool = False
     point_overlays: dict[str, dict] = field(default_factory=dict)

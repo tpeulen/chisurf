@@ -50,6 +50,33 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Trajectories and holding part of a structure still
+
+A window average over the coordinate states suppresses high-frequency vibration,
+so a movie shows the motion rather than the noise:
+
+```text
+smooth                       # 1 pass, 5-state window
+smooth all, 2, 9             # 2 passes, 9-state window
+smooth all, 1, 5, 1, 0, 3    # ...wrapping the trajectory (ends=3)
+```
+
+`ends` is a four-way choice, not a flag: `0` leaves one state at each end alone,
+`1` smooths right to the ends, `2` leaves a whole half-window, `3` treats the
+trajectory as cyclic. A `cutoff` keeps an atom that crosses a periodic boundary
+from being averaged with its own image.
+
+To move part of a structure and leave the rest:
+
+```text
+protect resi 1-40
+translate [10, 0, 0]         # only residues 41+ move
+deprotect all
+```
+
+`protect` shields atoms from `translate` and `rotate`, and the command reports how
+many it held so a silent no-op is not mistaken for a move.
+
 ### Adding hydrogens
 
 Crystal structures usually have none:

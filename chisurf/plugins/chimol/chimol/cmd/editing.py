@@ -516,6 +516,161 @@ class EditingMixin(BaseCmd):
                 viewer._secondary_structure = secondary
         viewer._update_view()
 
+    @command("protect")
+    def protect(self, selection: str = "all") -> None:
+        """Hold atoms still during transforms (PyMOL ``protect``).
+
+        ``protect`` then ``translate`` moves everything *except* the protected
+        atoms, which is how part of a structure is moved while the rest stays.
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to hold; everything by default.
+        """
+        self._set_protection(str(selection), protected=True)
+
+    @command("deprotect")
+    def deprotect(self, selection: str = "all") -> None:
+        """Release atoms held by ``protect`` (PyMOL ``deprotect``).
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to release; everything by default.
+        """
+        self._set_protection(str(selection), protected=False)
+
+    def _set_protection(self, selection: str, *, protected: bool) -> None:
+        verb = "protect" if protected else "deprotect"
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        try:
+            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection or "all"
+            )
+        except Exception as exc:
+            self._emit_error(f"{verb}: {exc}")
+            return
+
+        entry = viewer._objects.get(obj_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            self._emit_error(f"{verb}: {obj_name} carries no atoms")
+            return
+
+        mask = np.asarray(mask, dtype=bool)
+        current = entry.state.protected_mask
+        if current is None or np.asarray(current).shape[0] != len(atoms):
+            current = np.zeros(len(atoms), dtype=bool)
+        else:
+            current = np.asarray(current, dtype=bool).copy()
+        current[mask] = protected
+        entry.state.protected_mask = current
+        self._emit_message(
+            f"{verb}: {int(mask.sum())} atoms; "
+            f"{int(current.sum())} now protected in {obj_name}"
+        )
+
+    @command("smooth")
+    def smooth(
+        self,
+        selection: str = "all",
+        passes: str = "1",
+        window: str = "5",
+        first: str = "1",
+        last: str = "0",
+        ends: str = "0",
+        cutoff: str = "-1",
+    ) -> None:
+        """Window-average the coordinate states (PyMOL ``smooth``).
+
+        Suppresses high-frequency vibration in a trajectory so a movie shows the
+        motion rather than the noise.
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to smooth; the rest keep their coordinates.
+        passes : str, optional
+            How many times to apply the average. Each pass reads the previous
+            pass's output, so two passes differ from one wider window.
+        window : str, optional
+            Total window width, at least 2.
+        first, last : str, optional
+            State range, **1-based** as PyMOL's are; ``last=0`` means the end.
+        ends : str, optional
+            ``0`` leaves one state at each end alone, ``1`` smooths to the ends,
+            ``2`` leaves a half-window, ``3`` wraps the trajectory.
+        cutoff : str, optional
+            Maximum distance an atom may move between states before the window
+            stops extending; negative disables it.
+        """
+        from ..analysis.smoothing import smooth_frames
+
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        try:
+            n_passes = int(str(passes).strip() or 1)
+            n_window = int(str(window).strip() or 5)
+            n_first = int(str(first).strip() or 1)
+            n_last = int(str(last).strip() or 0)
+            n_ends = int(str(ends).strip() or 0)
+            n_cutoff = float(str(cutoff).strip() or -1)
+        except ValueError as exc:
+            self._emit_error(f"smooth: {exc}")
+            return
+
+        try:
+            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection or "all"
+            )
+        except Exception as exc:
+            self._emit_error(f"smooth: {exc}")
+            return
+
+        entry = viewer._objects.get(obj_id)
+        frames = getattr(getattr(entry, "state", None), "frames_raw", None)
+        if frames is None:
+            frames = getattr(getattr(entry, "state", None), "frames", None)
+        if frames is None:
+            self._emit_error(
+                f"smooth: {obj_name} has a single state; smoothing averages "
+                "over a trajectory"
+            )
+            return
+
+        # PyMOL's first/last are 1-based and 0 means "the end"; the analysis
+        # function works in 0-based indices like every other array here.
+        zero_first = max(0, n_first - 1)
+        zero_last = None if n_last <= 0 else n_last - 1
+        try:
+            smoothed = smooth_frames(
+                np.asarray(frames, dtype=float),
+                passes=n_passes,
+                window=n_window,
+                first=zero_first,
+                last=zero_last,
+                ends=n_ends,
+                cutoff=n_cutoff,
+                mask=np.asarray(mask, dtype=bool),
+            )
+        except ValueError as exc:
+            self._emit_error(f"smooth: {exc}")
+            return
+
+        try:
+            viewer.set_frames(smoothed, object_id=obj_id)
+        except Exception as exc:
+            self._emit_error(f"smooth: could not store the result: {exc}")
+            return
+        self._emit_message(
+            f"smooth: {smoothed.shape[0]} states, window {n_window}, "
+            f"{n_passes} pass{'es' if n_passes != 1 else ''} on {obj_name}"
+        )
+
     @command("h_add")
     def h_add(self, selection: str = "all") -> None:
         """Add missing hydrogens (PyMOL ``h_add [selection]``).

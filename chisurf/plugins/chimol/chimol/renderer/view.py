@@ -216,6 +216,7 @@ class MolView(QtWidgets.QWidget):
     _sticks_mask = _StateField("sticks_mask")
     _bond_pairs = _StateField("bond_pairs")
     _bond_edits = _StateField("bond_edits")
+    _protected_mask = _StateField("protected_mask")
     _surface_visible = _StateField("surface_visible")
     _metaballs_visible = _StateField("metaballs_visible")
     _point_overlays = _StateField("point_overlays")

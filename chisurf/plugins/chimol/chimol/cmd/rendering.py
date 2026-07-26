@@ -691,10 +691,14 @@ class RenderingMixin(BaseCmd):
         k = np.array([[0.0, -kz, ky], [kz, 0.0, -kx], [-ky, kx, 0.0]])
         rot = np.eye(3) + np.sin(a) * k + (1.0 - np.cos(a)) * (k @ k)
         object_id = self._resolve_object_id(viewer, str(sel) or None)
+        restore = self._hold_protected_atoms(viewer, object_id)
         try:
             viewer.apply_transform_to_object(rot, np.zeros(3), object_id=object_id)
         except Exception as exc:
             self._emit_error(f"rotate failed: {exc}")
+            return
+        if restore is not None:
+            self._emit_message(f"rotate: {restore()} protected atoms held")
 
     @command("translate")
     def translate(self, vector: str, sel: Selection = "") -> None:
@@ -716,10 +720,50 @@ class RenderingMixin(BaseCmd):
         # 10 A, which only shows up once the result is written to a file.
         vec = vec * float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
         object_id = self._resolve_object_id(viewer, str(sel) or None)
+        restore = self._hold_protected_atoms(viewer, object_id)
         try:
             viewer.apply_transform_to_object(np.eye(3), vec, object_id=object_id)
         except Exception as exc:
             self._emit_error(f"translate failed: {exc}")
+            return
+        if restore is not None:
+            self._emit_message(f"translate: {restore()} protected atoms held")
+
+    def _hold_protected_atoms(self, viewer, object_id):
+        """Return a restore callable that puts protected atoms back after a transform.
+
+        ``apply_transform_to_object`` moves every array at once, which is right
+        for an unprotected object and wrong the moment `protect` has been used.
+        Rather than teach the transform about protection -- it would have to know
+        which arrays are atom-indexed and which are derived -- the atoms are
+        snapshotted here and written back afterwards, and the derived arrays are
+        rebuilt from them. That keeps the knowledge of what is derived in the one
+        place that already has it.
+
+        Returns None when nothing is protected, so the common path is untouched.
+        """
+        entry = getattr(viewer, "_objects", {}).get(object_id)
+        state = getattr(entry, "state", None)
+        mask = getattr(state, "protected_mask", None)
+        atoms = getattr(state, "atoms", None)
+        if mask is None or atoms is None:
+            return None
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape[0] != len(atoms) or not mask.any():
+            return None
+        held = np.asarray(atoms["xyz"], dtype=float)[mask].copy()
+
+        def restore():
+            current = state.atoms
+            if current is None or len(current) != mask.shape[0]:
+                return 0
+            xyz = np.asarray(current["xyz"], dtype=float)
+            xyz[mask] = held
+            current["xyz"] = xyz
+            self._rebuild_after_coordinate_change(viewer, object_id)
+            return int(mask.sum())
+
+        return restore
 
     def _resolve_object_id(self, viewer, selection: str | None):
         """Resolve a selection/object name to an object id, or the active one."""

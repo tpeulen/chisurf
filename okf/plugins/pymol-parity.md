@@ -225,14 +225,53 @@ confusion is exactly what hid `resn`.
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
 `alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
-`group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`, `h_add`/`h_fill`.
+`group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`, `h_add`/`h_fill`, `smooth`,
+`protect`/`deprotect`.
 
-**Remaining:** `smooth`, `sort`, `protect`, `mask`,
+**Remaining:** `sort`, `mask`,
 `cealign`, `matrix_copy`,
 `symexp`/`symmetry`, `ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 `set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
 settings store and are deliberately not started.
+
+## `smooth` is four decisions, none of them in the help text
+
+Transcribed from `layer3/Executive.cpp::ExecutiveSmooth`. The command's own
+documentation describes a window average; the behaviour depends on four things it
+does not mention, and each changes the numbers:
+
+* the half-windows are `window / 2` in **integer** arithmetic, taken
+  independently as `backward` and `forward`, so an even window spans an odd
+  number of states — `window=4` averages five;
+* `ends` is a **four-way choice**, not a boolean: `0` skips one state at each
+  end, `1` skips none, `2` skips a whole half-window, `3` wraps the trajectory;
+* the average divides by the number of states actually **found**, not by the
+  window width. Dividing by the width pulls states near an unskipped end towards
+  the origin, which reads as the trajectory collapsing at its ends;
+* `cutoff` stops the window extending across a jump and pads with the last good
+  position, which is what keeps an atom that crosses a periodic boundary from
+  being averaged with its own image.
+
+Two mathematical properties are asserted alongside the transcription, because
+they hold for *any* correct running mean and catch what a transcription test
+cannot: a constant trajectory is unchanged, and a linear ramp is preserved away
+from the ends. Both mutations tried against the suite — dividing by the window
+width, and misreading the halves as asymmetric — are caught (5 and 1 failures).
+
+## `protect` needed something to honour it
+
+A flag nothing reads is decoration, so `protect`/`deprotect` are tested through
+`translate` and `rotate` rather than by reading the mask back: protected atoms
+move 0.000 Å while the rest move exactly the requested distance.
+
+The transform seam moves every array at once, which is right for an unprotected
+object and wrong as soon as `protect` has been used. Rather than teach
+`apply_transform_to_object` which of its arrays are atom-indexed and which are
+derived, the protected atoms are snapshotted, the transform runs, and their rows
+are written back before the derived arrays are rebuilt — keeping the knowledge of
+what is derived in the one place that already has it. With nothing protected the
+helper returns `None`, so the common path is untouched.
 
 ## Hydrogens need a template, and the reason is measurable
 
