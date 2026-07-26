@@ -2,6 +2,26 @@
 
 ## 2026-07-26
 
+* **Single-curve ConfoCor files are readable again (RF-047).** `openFCS`
+  dispatches to `openFCS_Single` for every `.fcs` file whose first line is not
+  `Carl Zeiss ConfoCor3` — ConfoCor2 and older AIM exports — and that function
+  sliced its line list with `list.__getslice__`, a method Python 3 removed. Both
+  the count-rate and the correlogram import therefore raised `AttributeError`
+  the moment they were reached: the branch has been dead since the Python 3 port
+  and nothing noticed, because all 15 committed ConfoCor samples carry the
+  multi-curve header. Replaced with ordinary slicing, the same idiom
+  `openFCS_Multiple` already uses. A section announced as `##NPOINTS = 0` left
+  `newtrace`/`corr` undefined and failed with `NameError` a few lines later;
+  they are now pre-set to `None` and an empty section raises `SyntaxError`
+  naming the missing section and the file — the type this function already uses
+  for an unknown `##DATA TYPE`, so both malformed-file conditions behave alike
+  for callers. Pinned by `test/fio/test_confocor_single_curve.py`, which writes
+  a minimal single-curve file (none can be committed from the sample set),
+  checks it value-for-value through `openFCS`, carries it end-to-end through
+  `read_zeiss_fcs`, and asserts both empty-section variants report the
+  malformed file; all four fail against `HEAD` with the `AttributeError`.
+  `test/fio` green (291 passed, 12 skipped).
+
 * **A failed parameter scan hands the borrowed parameter back (RF-113).** The
   scan in `fit_parameter_scan_start._run` walks the *live* model — it writes
   probe values into the user's parameter and re-evaluates — so it owes the

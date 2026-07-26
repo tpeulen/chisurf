@@ -762,11 +762,25 @@ another instance); the symbol names are given so they stay findable.
   `ruff check` + `ruff format` clean.
 
 ### RF-047
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (Python-2 method; every single-curve ConfoCor file fails to load)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/confocor3.py:360` and `:379` (`openFCS_Single`, `Alldata.__getslice__(i, i+length)`)
 - **Finding:** `list.__getslice__` was removed in Python 3 (`hasattr([], '__getslice__')` is `False` on the project interpreter), so both the trace and the correlation import raise `AttributeError` the moment they are reached. `openFCS` dispatches here for every `.fcs` file whose first line is not `Carl Zeiss ConfoCor3` — i.e. ConfoCor2 and older AIM single-curve exports. All 15 committed ConfoCor test files carry the multi-curve header, so the whole function is untested and has been dead since the Python 3 port. Replace with ordinary slicing (`Alldata[i:i+length]`, as `openFCS_Multiple` already uses at `:143` and `:173`). While there: `newtrace` (`:371`) and `corr` (`:387`) are assigned only inside `if length != 0`, so a zero-length section makes `:392`/`:396` raise `NameError`/`UnboundLocalError` instead of reporting a malformed file.
-- **Fix note:**
+- **Fix note:** Both `__getslice__` calls replaced with ordinary slicing, matching
+  `openFCS_Multiple`. `newtrace`/`corr` are pre-set to `None` and a section that
+  stayed empty now raises `SyntaxError` naming the missing section and the file
+  — the same exception type the function already uses for an unknown `##DATA
+  TYPE`, so the two malformed-file conditions behave alike for callers. The
+  docstring became NumPy-style while the function was open. Pinned by
+  `test/fio/test_confocor_single_curve.py`: a synthetic ConfoCor2/AIM
+  single-curve file (no committed sample has the single-curve header) is parsed,
+  checked value-for-value through `openFCS`, carried end-to-end through
+  `read_zeiss_fcs` (mean count rate 13 kHz, acquisition time 1.5 s, finite
+  weights), and both empty-section variants are asserted to report the malformed
+  file. Confirmed discriminating — all four fail on `HEAD` with the
+  `AttributeError`. `test/fio` green (291 passed, 12 skipped); `ruff check` on
+  `confocor3.py` reports three findings *fewer* than `HEAD` and none new, and the
+  new test file is `ruff check` + `ruff format` clean.
 
 ### RF-048
 - **Status:** OPEN

@@ -317,11 +317,28 @@ def openFCS_Multiple(path):
 
 
 def openFCS_Single(path):
-    """
-        Load data from Zeiss Confocor3 files containing only one curve.
+    """Load a Zeiss ConfoCor file that contains only a single curve.
 
-        This works with files from the Confocor2, Confocor3 (AIM) and
-        files created from the newer ZEN Software.
+    This works with files from the Confocor2, Confocor3 (AIM) and files
+    created from the newer ZEN Software.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        Path of the ``.fcs`` file.
+
+    Returns
+    -------
+    dict
+        Dictionary with the keys ``Correlation``, ``Trace``, ``Type`` and
+        ``Filename``, each holding a one-element list.
+
+    Raises
+    ------
+    SyntaxError
+        If the file announces an unknown data type, or if either the
+        correlogram or the count-rate section is absent or empty -- the
+        caller needs both to build a weighted curve.
     """
     filename = path.name
     with path.open("r", encoding="iso8859_15") as fd:
@@ -334,6 +351,11 @@ def openFCS_Single(path):
     # Indicates if trace or FCS curve should be imported in loop
     fcscurve = False
     tracecurve = False
+    # Section contents. A section announced with "##NPOINTS = 0" leaves its
+    # entry at None; that is reported as a malformed file after the loop
+    # instead of failing on an undefined name.
+    newtrace = None
+    corr = None
     while i <= len(Alldata)-1:
         if Alldata[i].partition("=")[0].strip() == "##DATA TYPE":
             # Find out what type of correlation curve we have.
@@ -357,7 +379,7 @@ def openFCS_Single(path):
                 # Trace starts 3 lines after this.
                 i = i + 3
                 if tracelength != 0:
-                    tracedata = Alldata.__getslice__(i, i+tracelength)
+                    tracedata = Alldata[i: i+tracelength]
                     # Jump foward in the index
                     i = i + tracelength
                     readtrace = csv.reader(tracedata, delimiter=',')
@@ -376,7 +398,7 @@ def openFCS_Single(path):
                 corrlength = int(Alldata[i].partition("=")[2].strip())
                 i = i + 2
                 if corrlength != 0:
-                    corrdata = Alldata.__getslice__(i, i+corrlength)
+                    corrdata = Alldata[i: i+corrlength]
                     # Jump foward
                     i = i + corrlength
                     readcorr = csv.reader(corrdata, delimiter=',')
@@ -386,6 +408,17 @@ def openFCS_Single(path):
                         corr.append((float(row[0]), float(row[1])-1))
                     corr = np.array(corr)
                 fcscurve = False
+
+    missing = [
+        name for name, data in (
+            ("FCS Correlogram", corr),
+            ("FCS Count Rates", newtrace)
+        ) if data is None
+    ]
+    if missing:
+        raise SyntaxError(
+            f"No {' and no '.join(missing)} data in single-curve file: {path}"
+        )
 
     # Check for correlation at lag-time zero, which lead to a bug (#64)
     # on mac OSx and potentially affects fitting.
