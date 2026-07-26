@@ -1693,3 +1693,77 @@ inspecting the PNG. RF-131..RF-137.
 - **Location:** `chisurf/gui/chiplot/canvas.py:833-835` (`ImageView.clear`, *"Clear the image and overlays."*), the same claim in `chisurf/gui/chiplot/backends/base.py:335-337`, implemented at `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:829-831` as a bare `self._iv.clear()`
 - **Finding:** `pg.ImageView.clear()` clears the image item only; items added to the view by `add_overlay` (`:849-857`) and `add_roi` (`:859-871`) are unaffected. Verified: after `set_image` + `add_overlay`, the view holds 4 added items; after `ImageView.clear()` it still holds 4 and the overlay handle's native item is still in `view.addedItems`. A caller following the docstring re-shows an image with the previous overlay still on top. Either track the items this canvas added and remove them in `clear()`, or correct both docstrings to say overlays and ROIs must be removed through their handles.
 - **Fix note:**
+
+## Review run — the plugin contract layer (2026-07-26)
+
+Slice: `chisurf/core/plugin/` (`manifest.py`, `registry.py`, `client.py`, ~1 000
+lines) — the manifest/discovery/entrypoint seam every plugin depends on, with
+**zero** findings on record and freshly changed by `7855cb4fc` (category-spelling
+validation). Reviewed together with the two consumers that must agree with it:
+`chisurf/core/cli.py` (the production `csc` registration path) and
+`chisurf/server/app.py:71-78` (discovery at server startup). Every finding below
+was reproduced in the `arm64` env against the real registry, the real manifests
+and — for RF-138 — the real `csc` command. RF-138..RF-146.
+
+### RF-138
+- **Status:** OPEN
+- **Severity:** S1 (a shipped CLI command is dead: `csc trace-browser` cannot start)
+- **Location:** `chisurf/plugins/tttr/trace_browser/manifest.json:29` (`"cli": "trace-browser=chisurf.plugins.tttr.trace_browser.cli:cli"`) resolving to `chisurf/plugins/tttr/trace_browser/cli/__init__.py`, which does not export `cli`, while the intended `chisurf/plugins/tttr/trace_browser/cli.py` ("Trace Browser CLI compatibility shim", re-exporting `cli.main:cli`) is permanently shadowed by the sibling `cli/` package
+- **Finding:** A regular package always wins over a same-named module in the same directory, so `import chisurf.plugins.tttr.trace_browser.cli` yields the package and the shim file is unreachable. Reproduced through the real production path: `python -m chisurf.core.cli trace-browser --help` → `Error: Failed to import plugin CLI 'Spectroscopy:Single-Molecule:Trace Browser:cli': module 'chisurf.plugins.tttr.trace_browser.cli' has no attribute 'cli'`. The failure only appears at invocation because `chisurf/core/cli.py` registers commands from the manifest without importing the plugin, so `csc --help` lists a command that always errors. The sibling plugins that got this right point their manifest at `cli.main:cli` (e.g. `tttr_microtime_shifter`) or re-export `cli` from `cli/__init__.py` (e.g. `tttr_time_windows`); do one of the two here and delete the unreachable shim. A static resolve of every in-tree manifest entrypoint (`entrypoints.gui/cli/services` → module file → attribute defined or imported) flags this as the only broken one, so it is a one-plugin fix.
+- **Fix note:**
+
+### RF-139
+- **Status:** OPEN
+- **Severity:** S2 (the manifest's declared command name is discarded, so in-process CLI registration collapses ~14 plugins onto one command called `cli`)
+- **Location:** `chisurf/core/plugin/registry.py:190-192` (`if hasattr(cli_obj, "name"): cmd_name = cli_obj.name` — overwriting the `cmd_part` parsed at `:184-186` — then `main_group.add_command(cli_obj, name=cmd_name)`) against `chisurf/core/cli.py:52-76` (`_parse_cli_entrypoint`, which treats the `alias=` prefix as authoritative)
+- **Finding:** `entrypoints.cli` has the form `alias=module:attr` and the alias *is* the public command name — that is what `csc` uses. `register_cli` parses it, then throws it away for the click object's own name, which for most plugins is derived from the decorated function and is simply `cli`. Verified with the real objects: `chisurf.plugins.pch.cli:cli` and `chisurf.plugins.fcs.flc_2d.cli:cli` are both named `cli`, and registering both manifests (`pch=…`, `flc-2d=…`) through `register_cli` leaves a single command — `sorted(main.commands) == ['cli']`, help text *"Run 2D-FLCS analysis tasks."* — i.e. the PCH CLI is silently replaced. A static scan of all 40 manifests with a CLI entrypoint finds exactly **2** whose click name matches the declared alias (`help`, `tttr-image-browser`); ≥14 resolve to the name `cli` and 8 to `main`. Use the manifest alias and fall back to `cli_obj.name` only when no alias was given, matching `_parse_cli_entrypoint`; and log a collision instead of overwriting.
+- **Fix note:**
+
+### RF-140
+- **Status:** OPEN
+- **Severity:** S2 (one malformed `manifest.json` anywhere on the search path aborts *all* plugin discovery, and with it server startup)
+- **Location:** `chisurf/core/plugin/manifest.py:229-234` (`load_manifest` catches only `json.JSONDecodeError, KeyError, TypeError`) reached from `chisurf/core/plugin/registry.py:88` (`manifest = load_manifest(manifest_path)`, not guarded) and `chisurf/server/app.py:74` (`self.plugin_registry.discover()` in `ChisurfServer.__init__`, not guarded)
+- **Finding:** `load_manifest` is documented to return `None` when a manifest "cannot be parsed", and `discover()` relies on that to fall back to legacy metadata. But a manifest whose top-level JSON is valid and *not an object* — a bare string or number — reaches `PluginManifest.from_dict`, where `data.get("entrypoints", {})` raises `AttributeError`, which is outside the caught tuple. Verified on a two-plugin temp tree (one good manifest, one containing `"just a string"`): `PluginRegistry().discover([tmp])` raises `AttributeError: 'str' object has no attribute 'get'` and the *good* plugin is never returned. Since `~/.chisurf/plugins` is a default search path, a user's hand-edited file takes down every plugin service on the server. Catch `AttributeError`/`ValueError` too (or reject a non-dict `data` up front, as `validate_manifest` already does at `:415-416`), and guard the per-directory work in `discover()` so one bad plugin cannot break the rest.
+- **Fix note:**
+
+### RF-141
+- **Status:** OPEN
+- **Severity:** S2 (the sanctioned local plugin transport accepts event subscriptions and delivers nothing — silently)
+- **Location:** `chisurf/core/plugin/client.py:126-155` (`InProcessClient.subscribe`/`unsubscribe`, which fill `self._subscriptions` / `self._pattern_subs`) against `chisurf/server/dispatcher.py:74-77` (the dispatcher holds the real `_event_bus`) and `chisurf/server/eventbus.py:63-140` (`InProcessEventBus`, which is what actually publishes)
+- **Finding:** `InProcessClient` is the local implementation of the `PluginClient` protocol — "the **only** way GUI code should communicate with the backend" (`client.py:9`). Its `subscribe` mints a token and stores the callback in registries that nothing ever publishes to; `_pattern_subs`/`_subscriptions` are referenced nowhere outside this file, and the class has no `publish`. Verified: with a dispatcher built on a real `InProcessEventBus`, `client.subscribe("burst_selection.jobs.progress", cb)` returns a token, the bus reports **0** subscribers, and `bus.publish(...)` delivers nothing. So every long-running plugin method that declares progress events in its manifest (`burst_selection.jobs.*`, `tttr_time_windows.jobs.*`, `maxent_decay.jobs.*`, `irf_estimator.jobs.*`) is unobservable in local mode, and a client written against the protocol looks subscribed. Delegate to `dispatcher._event_bus` (it already implements the same token/fnmatch contract) or raise `NotImplementedError`; the unused `import fnmatch` at `:135` and the docstring's "Uses fnmatch-style pattern matching" claim go with it.
+- **Fix note:**
+
+### RF-142
+- **Status:** OPEN
+- **Severity:** S2 (two plugins with the same `id` silently shadow each other, and the two consumers of discovery disagree about which exist)
+- **Location:** `chisurf/core/plugin/registry.py:90-92` (`manifests.append(manifest)` *and* `self._manifests[manifest.id] = manifest`) with `:121-123` (`all_manifests`) and `:143` / `:178` / `:216` (all registration loops iterate `self._manifests.values()`)
+- **Finding:** `discover()` deduplicates by *directory*, not by plugin id, so the returned list and the internal map diverge: the list contains every manifest found, the dict keeps only the last one written for a given id. Verified on a temp tree with two directories declaring `id: "same.id"`: `discover()` returns `[('same.id', 'Alpha'), ('same.id', 'Beta')]` while `reg._manifests` holds only `Beta` — no warning is logged. Because `~/.chisurf/plugins` is searched after the built-in tree, a user copy of a built-in plugin silently wins for services/CLI/GUI registration while still appearing twice to any caller that uses the returned list. Either make the override explicit (log it at `INFO` and keep the last), or reject the duplicate — but say so; today the behaviour is invisible either way.
+- **Fix note:**
+
+### RF-143
+- **Status:** OPEN
+- **Severity:** S3 (`validate_manifest` never runs on a manifest that loads, so user-plugin manifests are never validated at runtime)
+- **Location:** `chisurf/core/plugin/registry.py:93-108` (validation lives in the `else` branch, reached only when `load_manifest` returned `None`) against `chisurf/core/plugin/manifest.py:399-436` (`validate_manifest`)
+- **Finding:** `from_dict` performs no validation, so any manifest whose JSON parses and carries `id`/`version` loads successfully and skips the validator entirely — the only branch that calls it is the *unparseable* fallback. Verified: a manifest with `"categories": ["Structure", "structure"]` loads fine and discovery logs nothing, while `validate_manifest` on the same data returns `["duplicate category 'structure' (already listed as 'Structure')"]`. The category rule added in `7855cb4fc` is therefore enforced only by the in-tree guardrail test (`test/core/test_plugin_registry.py:343`), never for a plugin dropped into `~/.chisurf/plugins`, which is exactly the population that has not been reviewed. Validate on the success path too and log the errors at `WARNING` (loading can still proceed).
+- **Fix note:**
+
+### RF-144
+- **Status:** OPEN
+- **Severity:** S3 (a 90-line JSON Schema that nothing uses, drifted from the manifest it claims to describe, next to a docstring that says it is applied)
+- **Location:** `chisurf/core/plugin/manifest.py:237-324` (`_MANIFEST_SCHEMA`) and `:399-412` (`validate_manifest`, *"Validate manifest data against the standard schema"*)
+- **Finding:** `_MANIFEST_SCHEMA` is referenced nowhere in the tree (grep: one definition, zero uses) — `validate_manifest` hand-rolls a much smaller set of checks (`id`, `version`, `rpc_methods` names/summaries, categories, statefulness) and never consults it. Being dead, it has drifted: it has no `experimental` / `experimental_message` properties even though `from_dict` reads both (`:155-156`), so a reader who trusts the "standard schema" gets a stale contract. Either wire it up (which means taking on a `jsonschema` dependency — the tree has none today) or delete it and reword the docstring to describe what is actually checked.
+- **Fix note:**
+
+### RF-145
+- **Status:** OPEN
+- **Severity:** S3 (a per-plugin setting spelled `false` in `settings_chisurf.yaml` *enables* window-state persistence)
+- **Location:** `chisurf/core/plugin/registry.py:305-311` (`return bool(override)` for a `per_plugin` entry) against `:313-317` (the `mode` key, which does accept the strings `"false"` / `"disabled"`)
+- **Finding:** The `per_plugin` override is normalised only against the literal string `"plugin_default"`; everything else goes through `bool()`, and every non-empty string is truthy. Verified against a manifest whose default is enabled and an override map: `False → False`, `0 → False`, but `"false" → True`, `"no" → True`, `"off" → True`. The neighbouring `mode` key parses exactly these string spellings, so the two halves of the same setting disagree — and YAML users who quote the value get the opposite of what they asked for. (Second half, same seam: `mode` accepts `"disabled"`/`"force_disabled"`/`"false"` but not `"off"`/`"no"`, which silently fall through to the plugin default.) Parse both sides through one string→bool helper.
+- **Fix note:**
+
+### RF-146
+- **Status:** OPEN
+- **Severity:** S3 (eight "compatibility" shim modules that Python can never import, one of them promising an attribute its shadowing package does not provide)
+- **Location:** `chisurf/plugins/tttr/tttr_time_windows/cli.py` + `gui.py`, `chisurf/plugins/tttr/tttr_microtime_shifter/cli.py`, `chisurf/plugins/tttr/trace_browser/cli.py`, `chisurf/plugins/core/lightpath_simulator/cli.py`, `chisurf/plugins/core/globalview/gui.py`, `chisurf/plugins/burst/burst_selection/cli.py` + `gui.py` — each shadowed by a sibling package of the same name
+- **Finding:** All eight are single-import re-export shims ("Compatibility CLI entrypoint for …") sitting next to a regular package with the identical name, which always wins the import. Verified by importing each dotted path: every one resolves to the package's `__init__.py`, never to the `.py` file. Six are harmless because the package happens to re-export the same names, but two are not: `chisurf.plugins.tttr.trace_browser.cli` has no `cli` (the manifest depends on it — RF-138) and `chisurf.plugins.tttr.tttr_microtime_shifter.cli` has no `cli` either, so the compatibility path the shim advertises raises `ImportError` for any caller that uses it. Delete the dead files and, where the shim was the documented import path, re-export from the package `__init__.py` instead.
+- **Fix note:**
