@@ -103,6 +103,14 @@ class _MolViewObjectState:
     ``bond_pairs`` because several consumers flatten that array to ask "which
     atoms have a bond", and an order column would read as an atom index.
     """
+    symmetry: Optional[dict] = None
+    """Crystal cell, space group and operators, when set or read from the file.
+
+    ``{"cell": UnitCell, "space_group": str, "operators": [str, ...]}``. Kept on
+    the object rather than globally because two loaded structures can come from
+    different crystals, and a single global cell would silently expand one of them
+    with the other's lattice.
+    """
     masked_mask: Optional[np.ndarray] = None
     """Atoms made unpickable by ``mask``, as a boolean over all atoms.
 

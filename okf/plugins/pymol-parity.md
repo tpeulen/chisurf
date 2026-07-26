@@ -226,13 +226,47 @@ confusion is exactly what hid `resn`.
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
 `alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
 `group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`, `h_add`/`h_fill`, `smooth`,
-`protect`/`deprotect`, `sort`, `mask`/`unmask`.
+`protect`/`deprotect`, `sort`, `mask`/`unmask`,
+`symexp`/`get_symmetry`/`set_symmetry`.
 
-**Remaining:** `cealign`, `matrix_copy`,
-`symexp`/`symmetry`, `ramp_new`, `cartoon_putty`,
+**Remaining:** `cealign` (skipped by request), `matrix_copy`,
+`ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 `set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
 settings store and are deliberately not started.
+
+## Symmetry: hand-entered data, machine-checked
+
+`symexp`, `get_symmetry`, `set_symmetry`. The generation follows
+`ExecutiveSymExp`: transform in **fractional** space, shift the copy so it lands
+beside the original rather than an arbitrary number of cells away, convert back,
+and keep it only if some atom comes within the cutoff.
+
+**No space-group library is installed** — no `gemmi`, `spglib` or `cctbx` — so the
+operators come from three sources in order of trust: supplied explicitly or read
+from the file (exact, whatever the group), then a built-in table of the groups
+common in protein crystallography, then **nothing** — in which case the space
+group is named and the command declines. A mate built from guessed operators looks
+entirely plausible and would be believed, so declining is the honest answer.
+
+**The table is hand-entered, so it is verified mathematically rather than by
+inspection.** Each of the 27 groups must be closed under composition modulo
+lattice translations, every rotation must have determinant +1 (protein space
+groups are chiral, so a mirror or inversion is a typo), there must be exactly one
+identity, and no duplicates. Two realistic typos injected deliberately — a wrong
+fraction (`1/2` → `1/4` in P212121) and a flipped sign in P222 — fail 1 and 2
+tests respectively. That is what makes a data table trustworthy without a
+reference implementation to compare against.
+
+Two other checks worth keeping: a mate must be a **rigid** copy (symmetry is an
+isometry, so internal distances cannot change), and a pure lattice translation
+must offset the molecule by exactly one cell edge — which is the strongest test of
+the fractional-to-Cartesian transform.
+
+**Performance.** The first version rebuilt the neighbour tree per candidate: 107
+tree builds over every atom, and on HIV-RT's 17 784 atoms that dominated
+everything. Hoisting the tree and rejecting candidates by bounding box first
+brings the whole expansion to **0.26 s**.
 
 ## `sort`: the ordering was the easy half
 

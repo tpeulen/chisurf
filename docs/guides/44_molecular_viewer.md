@@ -77,6 +77,36 @@ deprotect all
 `protect` shields atoms from `translate` and `rotate`, and the command reports how
 many it held so a silent no-op is not mistaken for a move.
 
+### Crystal symmetry
+
+To tell a lattice contact from a biological interface, build the neighbouring
+copies in the crystal:
+
+```text
+get_symmetry                 # the cell, the space group, where the operators came from
+symexp mate, all, 5.0        # one object per mate within 5 A
+set_symmetry all, 78.8, 150.7, 280.9, 90, 90, 90, P 21 21 21
+```
+
+Each mate becomes its own object named after the operator and lattice translation
+that made it, so a contact can be traced back to its symmetry element. The
+original stays the active object — `symexp` adds context, it does not change what
+you are working on.
+
+:::{note}
+The cell comes from the file's `CRYST1` record. The operators come from the file
+if it carries them, otherwise from a built-in table of the space groups common in
+protein crystallography. **When neither has them, the space group is named and the
+command declines** rather than guessing: a mate built from wrong operators looks
+entirely plausible and would be believed. Supply them with `set_symmetry` in that
+case.
+
+The built-in table is hand-entered, so it is checked mathematically rather than by
+eye — every group must be closed under composition modulo lattice translations,
+every rotation must be a proper rotation, and there must be exactly one identity.
+A wrong fraction or a flipped sign breaks closure and fails the test.
+:::
+
 ### Tidying and shielding
 
 ```text

@@ -2,39 +2,42 @@
 
 ## 2026-07-26
 
-* **ndXplorer's gate files destroyed themselves, and its GUI now shares the
-  region type.** Committed in the ndXplorer repo (`1b1feb9`), which may import
-  ChiSurf. Two defects a user meets in the same click: `onSave_selection` dumped
-  `selection.__dict__` to JSON, so the moment a Gaussian or painted selection
-  was in the list it raised `TypeError: Object of type ndarray is not JSON
-  serializable` — **after** the destination file had been opened for writing,
-  which truncates it, so saving a mixed set destroyed the target and wrote
-  nothing. `onLoad_selection` then read `parameter_idx`/`lower`/`upper` off every
-  entry, so only rectangles could return; an ellipse or painted population was
-  dropped silently and the analysis afterwards ran over a different set of
-  points than the file described. Both go through a `RegionCollection` now,
-  which lets each shape serialise itself, and files from the old saver still
-  open.
+* **chimol: crystal symmetry — `symexp`, `get_symmetry`, `set_symmetry`.**
+  Generation follows `ExecutiveSymExp`: transform in fractional space, shift the
+  copy so it lands beside the original rather than an arbitrary number of cells
+  away, convert back, keep it if some atom comes within the cutoff.
 
-  `RegionDataSelection` makes a ChiSurf region usable as an ndXplorer gate, so
-  the two hierarchies stop being parallel implementations of one idea — and
-  ndXplorer gains **polygon** selections, which it could not express at all
-  (a population in a scatter is rarely an ellipse). The selection table grows a
-  `Region` row type that keeps the shape in the object and the handle in the
-  cell, as the painted-mask rows already did.
+  **No space-group library is installed** (no `gemmi`, `spglib`, `cctbx`), so
+  operators come from three sources in order of trust: supplied explicitly or read
+  from the file, then a built-in table of the groups common in protein
+  crystallography, then **nothing** — in which case the space group is named and
+  the command declines. A mate built from guessed operators looks entirely
+  plausible and would be believed.
 
-  Found alongside: `test_histogram_selection.py` was module-level statements with
-  no test function, so it ran during *collection* and its failure surfaced as a
-  collection error rather than a failing test. It had been failing because it
-  passed `(n_parameters, n_points)` where a `DataSource` wants one column per
-  parameter — both orientations are real (`get_mask` answers parameter-major,
-  the frame is point-major) and the file now says so. 14 ndXplorer tests pass.
+  **The table is hand-entered, so it is verified mathematically rather than by
+  inspection.** All 27 groups must be closed under composition modulo lattice
+  translations, every rotation must have determinant +1 (protein space groups are
+  chiral, so a mirror is a typo), exactly one identity, no duplicates. Two
+  realistic typos injected deliberately — a wrong fraction (`1/2`→`1/4` in
+  P212121) and a flipped sign in P222 — fail 1 and 2 tests. That is what makes a
+  data table trustworthy with no reference implementation to compare against.
 
-  With this the sweep is complete: **every** place a user creates or edits a
-  region — CLSM, molecule MLE, phasor, colocalization, ndXplorer — shares one
-  type and one editor. What deliberately stays outside is now recorded in
-  [roi](/subsystems/roi.md): 1-D spans (an interval is not a 2-D shape), crop
-  *sizes*, and the residual rectangle whose geometry is forced symmetric.
+  Two further checks: a mate must be a **rigid** copy (symmetry is an isometry, so
+  internal distances cannot change), and a pure lattice translation must offset
+  the molecule by exactly one cell edge — the strongest test of the
+  fractional-to-Cartesian transform.
+
+  Performance: the first version rebuilt the neighbour tree per candidate — 107
+  builds over every atom, which on HIV-RT's 17 784 atoms dominated everything.
+  Hoisting the tree and rejecting by bounding box first brings the expansion to
+  **0.26 s**.
+
+  Incidental: `1rtd.pdb` is the *only* fixture with a `CRYST1` record, which is
+  why the crystal tests use it and the command tests set a cell explicitly.
+
+  134 tests and a guide section. Tier 2 now has `matrix_copy`, `ramp_new`,
+  `ellipsoid`, `cell`, `slice` and the cartoon variants left; `cealign` is skipped
+  by request.
 
 * **Used the PDA experiment like a user, and the analysis was the part that
   worked.** New use case
