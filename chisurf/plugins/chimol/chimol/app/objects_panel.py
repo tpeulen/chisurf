@@ -294,6 +294,7 @@ class ObjectsDock(QtCore.QObject):
         )
         header_layout.addWidget(label)
         header_layout.addStretch(1)
+        self._header_layout = header_layout
         self._all_menus = _MenuHost(header, lambda: "all", self._run_entry)
         for key, _, _ in OBJECT_MENUS:
             header_layout.addWidget(self._all_menus.buttons[key])
@@ -309,9 +310,52 @@ class ObjectsDock(QtCore.QObject):
             # state for the existing handlers but must not draw a second box.
             "QListWidget::indicator { width: 0px; height: 0px; }"
             "QListWidget::item:selected { background: #202038; }"
+            # No item padding: the row widget is sized to the viewport so that
+            # its buttons line up with the  header's, and any inset here
+            # shifts that column out of true.
+            "QListWidget::item { padding: 0px; margin: 0px; }"
         )
+        # Rows are sized to the viewport, so they have to be re-sized when it
+        # changes -- otherwise widening the panel leaves the buttons where the
+        # old width put them.
+        self.object_list.viewport().installEventFilter(self)
         objects_layout.addWidget(self.object_list)
         layout.addWidget(objects_group)
+
+    def _row_width(self) -> int:
+        """Width a row should span: the list's viewport, less its margins."""
+        try:
+            return max(int(self.object_list.viewport().width()) - 4, 120)
+        except Exception:
+            return 320
+
+    def _sync_header_inset(self) -> None:
+        """Inset the header by whatever the list's scrollbar is taking.
+
+        The rows are sized to the *viewport*, which excludes a vertical
+        scrollbar; the header is an ordinary widget and spans the whole panel. So
+        the moment the list grows a scrollbar the two columns of buttons stop
+        lining up -- by exactly the scrollbar's width.
+        """
+        layout = getattr(self, "_header_layout", None)
+        if layout is None:
+            return
+        bar = self.object_list.verticalScrollBar()
+        inset = bar.width() if bar is not None and bar.isVisible() else 0
+        left, top, _, bottom = layout.getContentsMargins()
+        layout.setContentsMargins(left, top, 2 + int(inset), bottom)
+
+    def eventFilter(self, watched, event):  # noqa: N802 - Qt's spelling
+        """Re-stretch every row when the list is resized."""
+        if event.type() == QtCore.QEvent.Resize and watched is (
+            self.object_list.viewport()
+        ):
+            width = self._row_width()
+            for index in range(self.object_list.count()):
+                item = self.object_list.item(index)
+                item.setSizeHint(QtCore.QSize(width, item.sizeHint().height()))
+            self._sync_header_inset()
+        return super().eventFilter(watched, event)
 
     # ------------------------------------------------------------------ #
     # Wiring
@@ -398,12 +442,20 @@ class ObjectsDock(QtCore.QObject):
             self._select_object,
         )
         row.set_state(*self._state_of(object_id))
-        item.setSizeHint(row.sizeHint())
+        # Span the viewport, not the row's own content width. A row sized to its
+        # content leaves the layout's stretch nothing to expand into, so the
+        # A/S/H/L/C buttons sat immediately after each name -- at a different x on
+        # every row, and never lining up with the `all` header's, which is an
+        # ordinary widget and so always spanned the panel.
+        item.setSizeHint(
+            QtCore.QSize(self._row_width(), row.sizeHint().height())
+        )
         # The row widget shows the name; the item's own text would render
         # underneath it and show through.
         item.setText("")
         self.object_list.setItemWidget(item, row)
         self._rows[object_id] = row
+        self._sync_header_inset()
         return row
 
     def _state_of(self, object_id: str) -> tuple[int, int]:

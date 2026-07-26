@@ -2,6 +2,42 @@
 
 ## 2026-07-26
 
+* **Panel alignment: the object buttons never lined up, and the sequence dock was
+  laid out loosely.** Screenshotted the panels, looked, measured, fixed, re-grabbed.
+
+  - **The A/S/H/L/C buttons.** Each row was sized to its *content*
+    (`item.setSizeHint(row.sizeHint())`), so the layout's stretch had nothing to
+    expand into and the buttons sat immediately after each name — at a different x
+    on every row, and never near the `all` header's, which is an ordinary widget and
+    so always spanned the panel. Rows are now sized to the viewport and re-stretched
+    on resize, and the header reserves the list's scrollbar width so the two columns
+    agree whether or not the bar is showing.
+  - **The sequence scrollbar** spanned the label column as well as the sequence, so
+    its travel was out of step with the letters underneath it. Now indented to start
+    where the sequence starts.
+  - **The extra rows floated below a gap**: the last widget in the dock absorbed all
+    the spare height. Now the container hugs its contents and a trailing stretch
+    takes the slack.
+  - **An object with no sequence drew 170 identical dashes.** A ligand contributes
+    nothing to the alignment axis, and a full-width dashed row says that far less
+    clearly than saying it. It now says it. Rows that *do* contribute keep the
+    full-width padding, because that padding is what puts residue *i* of one object
+    above residue *i* of another.
+  - **Gaps were drawn with the coil palette** — the same as a real coil residue — so
+    on a row that is mostly gaps the few real residues vanished into an identical
+    band. Gaps are now a muted grey.
+
+  Eleven tests pin the geometry, since none of this is visible to an ordinary
+  assertion: every widget exists and every command runs while the panel still looks
+  wrong.
+
+  **Measured while answering "why not OpenGL":** the sequence bar allocates one
+  `QListWidgetItem` per residue *per row* — 340 items for a 165-residue protein,
+  1530 for eight rows, and 0.4–0.8 s per rebuild. That is the root cause of both the
+  sluggishness and the alignment being fought through layout negotiation rather than
+  arithmetic.
+
+
 * **Guarded imports fail quietly, so they are now checked.**
   `test/architecture/test_guarded_imports.py`. `try: import x / except: x =
   None` is how an optional dependency is handled and also how a *renamed*

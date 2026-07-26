@@ -132,7 +132,20 @@ class SequenceDock(QtCore.QObject):
         numbers_row_layout.addWidget(self.seq_numbers_label, 0, QtCore.Qt.AlignVCenter)
         numbers_row_layout.addWidget(self.seq_numbers_list, 1)
 
-        sequence_layout.addWidget(self.seq_scrollbar)
+        # The scrollbar scrolls the sequence, so it has to begin where the
+        # sequence begins. Spanning the label column as well made it look like a
+        # scrollbar for the whole dock and put its travel out of step with the
+        # letters underneath it.
+        scroll_row = QtWidgets.QWidget(parent)
+        scroll_row_layout = QtWidgets.QHBoxLayout(scroll_row)
+        scroll_row_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_row_layout.setSpacing(6)
+        self._scroll_spacer = QtWidgets.QWidget(scroll_row)
+        self._scroll_spacer.setFixedWidth(self.seq_label.width() or 120)
+        scroll_row_layout.addWidget(self._scroll_spacer, 0)
+        scroll_row_layout.addWidget(self.seq_scrollbar, 1)
+
+        sequence_layout.addWidget(scroll_row)
         sequence_layout.addWidget(numbers_row)
         sequence_layout.addWidget(seq_row)
 
@@ -140,7 +153,14 @@ class SequenceDock(QtCore.QObject):
         self.extra_seq_layout = QtWidgets.QVBoxLayout(self.extra_seq_container)
         self.extra_seq_layout.setContentsMargins(0, 0, 0, 0)
         self.extra_seq_layout.setSpacing(0)
+        self.extra_seq_layout.setAlignment(QtCore.Qt.AlignTop)
+        self.extra_seq_container.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum
+        )
         sequence_layout.addWidget(self.extra_seq_container)
+        # Without this the last widget absorbs the dock's spare height and the
+        # extra rows drift away from the sequence they belong under.
+        sequence_layout.addStretch(1)
 
         self._widget = sequence_widget
         sequence_widget.setSizePolicy(
@@ -177,6 +197,18 @@ class SequenceDock(QtCore.QObject):
         except Exception:
             color = QtGui.QColor.fromRgbF(*default)
         return color
+
+    @staticmethod
+    def gap_palette() -> tuple[QtGui.QColor, QtGui.QColor]:
+        """Colours for an alignment gap — deliberately quiet.
+
+        A gap used to be drawn with the *coil* palette, which is what a real
+        residue with no secondary structure gets. On a row that is mostly gaps
+        — a ligand aligned against a protein — the few real residues then
+        vanished into a solid band of identical cells. Muted grey keeps the
+        column positions readable while letting anything real stand out.
+        """
+        return QtGui.QColor(238, 238, 238), QtGui.QColor(170, 170, 170)
 
     @staticmethod
     def default_sequence_palette(ss_code: str) -> tuple[QtGui.QColor, QtGui.QColor]:

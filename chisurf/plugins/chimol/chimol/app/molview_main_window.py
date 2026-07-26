@@ -2249,6 +2249,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         except Exception:
             color_arr = None
 
+        real_cells = 0
         for idx in range(max_len):
             item = QtWidgets.QListWidgetItem()
             # Determine the underlying sequence index for this alignment
@@ -2299,9 +2300,13 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     res_no = seq_index + 1
                 tooltip = f"{res_no}: {res_name} ({aa_str}), SS={ss_str}"
                 text = aa_str
+                real_cells += 1
             else:
-                # Explicit gap on the alignment axis for this object.
-                bg, fg = SequenceDock.default_sequence_palette("C")
+                # Explicit gap on the alignment axis for this object. Drawn in a
+                # muted grey rather than the coil palette: a gap is not a residue,
+                # and on a row that is mostly gaps the few real ones were
+                # indistinguishable from the padding around them.
+                bg, fg = SequenceDock.gap_palette()
                 tooltip = tooltip_hint
                 seq_index = -1
                 text = "." if orig_seq_index == -2 else "-"
@@ -2319,6 +2324,17 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             item.setBackground(QtGui.QBrush(bg))
             item.setForeground(QtGui.QBrush(fg))
             items.append(item)
+
+        if not real_cells:
+            # Every cell is padding: this object contributes nothing to the
+            # alignment axis. A row of a hundred-odd identical dashes says that
+            # far less clearly than saying it, and reads as a broken row.
+            note = QtWidgets.QListWidgetItem(empty_text or "(no sequence)")
+            note.setTextAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft)
+            note.setFlags(QtCore.Qt.ItemIsEnabled)
+            note.setData(_SEQ_INDEX_ROLE, -1)
+            note.setForeground(QtGui.QBrush(QtGui.QColor(140, 140, 140)))
+            return [note]
 
         return items
 
