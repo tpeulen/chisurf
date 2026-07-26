@@ -2090,3 +2090,75 @@ Findings RF-169..RF-173.
 - **Location:** `chisurf/plugins/vv_vh_g_factor/core/calculations.py:194-210` (`calculate_g_factor_core`)
 - **Finding:** Tail matching is implemented as the **mean of the per-channel ratios** `VV[i]/VH[i]` and the reported *StdDev* is `np.std` of that same population. Both are wrong for photon-counting data: `E[A/B] > E[A]/E[B]` by Jensen's inequality, so the mean of ratios is biased upward exactly where tails are dim, and the population spread of per-channel ratios is not the uncertainty of G — it does not shrink as the matching region grows. Verified by simulation: two independent Poisson streams at 10 counts/channel over 4000 channels with a **true ratio of exactly 1.0** give mean-of-ratios `1.1172` (SD 0.585) against ratio-of-sums `0.9966`. Verified through the GUI on `test/data/tcspc/Jordi/H2O_8-0 ps_2048 ch.dat` with the panel's own default matching region (70–90 % of the record, channels 1433–1843, ≈ 12 counts/channel): the panel shows `G-Factor 1.7418`, `StdDev 1.3884`, where the ratio of summed counts over the same region is `1.3211` and the standard error of the mean is `0.0718`. A third bias comes from the validity filter at `:203` — `g_factors_uncorrected > 0` drops the 36 of 410 channels where `VV == 0`, i.e. exactly the low-ratio ones. The estimator should be `sum(VV)/sum(VH)` over the region with a Poisson-propagated error (and the same for the background-corrected branch at `:230+`, which shows the same pattern).
 - **Fix note:**
+
+### Review 2026-07-26 (12) — the action layer (`chisurf/core/actions/`)
+
+Slice: the action/dispatch layer, chosen because it mediates *every* state change
+in the app (`CLAUDE.md`: "State changes are mediated by `chisurf/core/actions/`")
+yet had a single finding on record. Files read in full: `_infra.py`
+(`ActionSpec`, `ActionRegistry`, `ActionDispatcher`), `_decorator.py`,
+`__init__.py`, and all five action modules (`dataset_`, `fit_`, `model_`,
+`parameter_`, `project_actions.py`), against the lazy accessors in
+`chisurf/__init__.py:256-264`, the scheduler installed in
+`chisurf/gui/__init__.py:54-77`, and the GUI dispatch sites in
+`chisurf/gui/autoform/sections/builtin.py`.
+
+What holds up: `canonical()` / `resolve_name()` really are collision-free for
+names with underscores inside a verb; `filter_payload` correctly drops surplus
+payload keys for handlers without `**kwargs`; the leading-edge half of the
+debounce behaves as its test asserts.
+
+Everything below was reproduced by running the real code in the `arm64` env; no
+source was changed. The debounce machinery is where it concentrates — its own
+tests (`test/macros/test_action_dispatcher.py`) cover the leading edge and exact
+duplicates only, never the trailing edge, the scheduler, the registry/dispatcher
+identity, or concurrency. Findings RF-174..RF-180.
+
+### RF-174
+- **Status:** OPEN
+- **Severity:** S1 (in the wrong import order every one of the 60 registered actions dispatches to nothing — `dispatch()` logs "unknown action" and returns `None`)
+- **Location:** `chisurf/__init__.py:256-264` (`__getattr__` branches for `action_dispatcher` / `action_registry`)
+- **Finding:** The lazy `action_dispatcher` branch calls `importlib.import_module("chisurf.core.actions._infra")`, which imports the **package** `chisurf.core.actions`, whose `__init__` imports the five action modules; every `@action` there does `getattr(cs, "action_registry")`, which re-enters `__getattr__` and builds *and caches* a dispatcher `D_inner` — the 60 actions register into `D_inner.registry`. The outer frame then resumes, builds its own `D_outer` and overwrites `globals()["action_dispatcher"]`, so the cached registry belongs to a dispatcher nobody dispatches through. Verified in a fresh interpreter: after `d = cs.action_dispatcher; r = cs.action_registry`, `r is cs.action_dispatcher.registry` is **False**, `len(cs.action_registry.list_actions()) == 60` while `len(cs.action_dispatcher.registry.list_actions()) == 0`, and `chisurf.core.actions.dispatch("fit.add.start", {})` returns `None` with `WARNING dispatch('fit.add.start'): unknown action`. This is not hypothetical: `import chisurf.gui; chisurf.gui.initialize_gui_executors()` alone reproduces it (`chisurf.gui` does not import `chisurf.core.actions`, and `chisurf/gui/__init__.py:58` touches `cs.action_dispatcher` first) — the path taken by the standalone `csg_*` plugin GUIs and by `run_on_gui_thread` (`chisurf/gui/__init__.py:136`) when it initializes executors from a worker thread. The full main-window import set happens to import `chisurf.macros` first, so the invariant holds there and the breakage stays latent. Fix: have `__getattr__` return an already-cached `globals()` entry instead of rebuilding (or derive the registry without re-entering), and pin the invariant `cs.action_registry is cs.action_dispatcher.registry` in a test that imports `chisurf.gui` first.
+- **Fix note:**
+
+### RF-175
+- **Status:** OPEN
+- **Severity:** S1 (in the GUI every debounced trailing-edge action is silently dropped, so the swallowed state change is lost rather than deferred)
+- **Location:** `chisurf/gui/__init__.py:66-73` (`qt_scheduler`) driven from `chisurf/core/actions/_infra.py:232-255` (`_schedule_trailing_edge`)
+- **Finding:** `_schedule_trailing_edge` runs `delayed_execute` on a `threading.Timer` thread, and that callback invokes the scheduler, whose whole body is `QtCore.QTimer.singleShot(0, lambda: func(**kwargs))`. A `QTimer` started on a plain Python thread has no event loop to fire it, so the callback **never runs** — and the `except` around it only catches a raised exception, which there is none, so the fallback direct call never triggers either. Verified with an offscreen `QApplication`: `singleShot(0, cb)` called from the main thread fires within one `processEvents` round, the identical call made from a `threading.Timer` thread has still not fired after 1.5 s of `processEvents`. End to end through the real dispatcher (`initialize_gui_executors()` then two `execute()` calls inside the window): the handler runs **once** — the debounced second call is swallowed at `:278` and its trailing edge is dropped. So in the GUI a debounced action (`parameter.value`, `parameter.fixed`, `parameter.bounds.*`, `fit.update`, `model.update`, `fit.mask_set`, `fit.range.set`) whose repeat lands inside the window loses that change permanently and silently. The scheduler must post to the GUI thread from any thread — `QMetaObject.invokeMethod` on a main-thread `QObject` with `Qt.QueuedConnection`, or the `_GuiExecutor` signal that already exists two functions above.
+- **Fix note:**
+
+### RF-176
+- **Status:** OPEN
+- **Severity:** S1 (a value written to one fit suppresses the same-named parameter write to a *different* fit)
+- **Location:** `chisurf/core/actions/parameter_actions.py:7,15,51,59` (`debounce_keys=("parameter_name",)`) with `chisurf/core/actions/_infra.py:192-196` (`_fingerprint`)
+- **Finding:** The debounce identity of `parameter.value` (and `parameter.fixed`, `parameter.bounds.set`, `parameter.bounds.on`) is `parameter_name` alone, but the handler's target is `fit_index` — which is *not* part of the identity, and `dispatch(name, payload)` (`_decorator.py:101`) never passes a `source_uid`, so the third fingerprint component is always empty. Two fits therefore share one debounce slot: verified with the real dispatcher, `parameter.value{tau1, 1.0, fit 0}` followed within 200 ms by `parameter.value{tau1, 9.0, fit 1}` applies only the fit-0 write immediately; the fit-1 write is deferred to a Timer thread — and with RF-175 in play, dropped. This is on a hot path: `builtin.py:1202-1220` (`_read_values`, the "read values from another fit" button) dispatches `parameter.value` in a loop over every parameter of the target group with an explicit `fit_index`, so pressing it on two fits in quick succession, or any linked/global update that touches the same parameter name in several fits, silently loses writes. `fit_index` belongs in `debounce_keys`.
+- **Fix note:**
+
+### RF-177
+- **Status:** OPEN
+- **Severity:** S2 (the debounce on `fit.range.set` cannot coalesce the drag it exists for, and its fingerprint cache grows without bound)
+- **Location:** `chisurf/core/actions/fit_actions.py:135` (`fit.range.set`, `debounce_ms=60`, no `debounce_keys`), same pattern at `:60`, `:113`, `:119`, `:127` and `chisurf/core/actions/model_actions.py:163`
+- **Finding:** With no `debounce_keys`, `_fingerprint` hashes the **whole** payload, so two calls only coalesce when every value is identical. For `fit.range.set` the payload *is* the changing quantity: dragging a range slider produces a different `(xmin, xmax)` at every step, so nothing is ever debounced. Verified: 200 successive `fit.range.set` calls with a moving `xmax`, all inside the 60 ms window, produce **200** handler calls and **200** history records; ten identical calls produce zero. The decorator documents `debounce_ms` as "coalesce repeated identical calls", which is what it does — but the actions were configured expecting drag coalescing. The same run leaves 200 entries in `ActionDispatcher._recent_fingerprints`, which has no eviction anywhere in `_infra.py`: every distinct payload of a debounced action is retained for the lifetime of the process, i.e. one entry per range the user ever dragged through. Give the range/update actions an identity that excludes the changing values (`("fit_index",)`) and expire fingerprints older than the window.
+- **Fix note:**
+
+### RF-178
+- **Status:** OPEN
+- **Severity:** S2 (two *different* fit masks collide on one fingerprint and the second is treated as a duplicate)
+- **Location:** `chisurf/core/actions/_infra.py:178-183` (`_safe_json`) with `chisurf/core/actions/fit_actions.py:127` (`fit.mask_set`, `debounce_ms=200`, payload key `mask`)
+- **Finding:** `_safe_json` calls `json.dumps(..., default=str)`; a NumPy mask is not JSON-serializable, so it falls through to `str(array)` — and NumPy *truncates* the repr of any array longer than 1000 elements. Verified: two 5000-element boolean masks differing in exactly one element both stringify to `"[False False False ... False False False]"`, so `_safe_json(a) == _safe_json(b)` is `True`. Since `fit.mask_set` is debounced with no `debounce_keys`, the two distinct masks share a fingerprint and the second one is swallowed as a repeat (and, per RF-175, its trailing edge is then dropped in the GUI). Any payload carrying a large array has the same problem. Either hash the array content (`ndarray.tobytes()`/`hashlib`) or exclude non-JSON payload values from the identity instead of silently mapping them onto a truncated repr.
+- **Fix note:**
+
+### RF-179
+- **Status:** OPEN
+- **Severity:** S2 (a concurrent call to the same action bypasses validation, debounce and history while still mutating state)
+- **Location:** `chisurf/core/actions/_decorator.py:71-89` (`wrapper._executing`), beside the correctly thread-local `is_dispatching` at `:8-13`
+- **Finding:** The re-entrancy guard is stored as an attribute **on the wrapper function**, i.e. shared by every thread, while the flag right above it (`_threading_local.is_dispatching`) is deliberately thread-local. So while thread A is inside `dispatch`, any call to the same action from thread B sees `_executing == True` and takes the `return func(*args, **kwargs)` shortcut: the body runs and mutates state, but the payload is never validated, the debounce never applies, and nothing is recorded in history. Verified: with one thread held inside a slow `test.slow` handler, a concurrent `slow("not-an-int")` **executed the body** with a payload the `{"x": int}` schema rejects, and only one history record exists for the two calls. Actions are dispatched from worker threads (fit runs, staged loading, the Timer thread of RF-175), so this is reachable. Make `_executing` thread-local like its neighbour.
+- **Fix note:**
+
+### RF-180
+- **Status:** OPEN
+- **Severity:** S3 (Qt imported from `chisurf/core/`; `project.load` silently does half its job headlessly, and core reaches into a plugin's GUI package)
+- **Location:** `chisurf/core/actions/project_actions.py:83-89` (`load_project`) and `:111` (`archive_project`)
+- **Finding:** `load_project` — a `chisurf.core` action — does `from qtpy import QtCore` and schedules the second half of the load with `QtCore.QTimer.singleShot(0, lambda: restore_gui_from_fits(fit_uids))`. In any Qt-free context (`csc`, `python -m chisurf.server`, a plugin backend) that import is the only Qt dependency in the whole `core/actions` package, and where Qt is importable but no event loop is running the timer never fires (same mechanism as RF-175): `load_project_data` has already mutated `cs.fits`, the restore step never runs, and the action returns `None` with nothing logged. The GUI-restore step belongs behind the existing GUI hop (`chisurf.gui.run_on_gui_thread`) or in a GUI-side listener, not in core. In the same file `archive_project` imports `chisurf.plugins.core.project_browser.gui.client` — core depending on a plugin's *GUI* module, against the plugin contract in `CLAUDE.md`. While here: `@action("project.save", schema={"project_name": str})` omits the handler's other required argument `target_path` (verified: `spec.schema` is `['project_name']`, `spec._handler_params` is `['project_name', 'target_path']`), so a dispatch without it fails with a bare `TypeError` from the handler instead of the `ValueError` the validation contract promises.
+- **Fix note:**
