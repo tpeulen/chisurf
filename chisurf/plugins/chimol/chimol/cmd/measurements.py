@@ -9,6 +9,43 @@ from .base import BaseCmd
 from .registry import command
 
 
+def _scene_transform(viewer, object_id, rotation, translation) -> np.ndarray:
+    """Express an Angstrom-space rigid transform in the renderer's scene units.
+
+    Scene coordinates are ``(xyz - raw_center) * scale``, so the atom-space map
+    ``x -> R x + t`` reads ``y -> R y + ((R - I) c + t) * scale`` on them.
+    Dropping the ``(R - I) c`` term rotates the picture about the molecule's own
+    centre while the fit rotated the atoms about the coordinate origin, which
+    leaves the two arrays tens of Angstrom apart on any rotation.
+
+    Parameters
+    ----------
+    viewer : object
+        The viewer holding the object.
+    object_id : str
+        Object the transform will be applied to.
+    rotation : (3, 3) ndarray
+        Rotation acting on Angstrom column vectors.
+    translation : (3,) ndarray
+        Translation in Angstrom, applied after the rotation.
+
+    Returns
+    -------
+    numpy.ndarray
+        The ``(3,)`` translation to pass to ``apply_transform_to_object``.
+    """
+    scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+    trans = np.asarray(translation, dtype=float).reshape(3)
+    centre = None
+    getter = getattr(viewer, "object_raw_center", None)
+    if callable(getter):
+        centre = getter(object_id)
+    if centre is None:
+        return trans * scale
+    centre = np.asarray(centre, dtype=float).reshape(3)
+    return (rotation @ centre - centre + trans) * scale
+
+
 class MeasurementMixin(BaseCmd):
     """Measurements, frames, and geometric helpers."""
 
@@ -535,11 +572,12 @@ class MeasurementMixin(BaseCmd):
             return
 
         # Those coordinates are the atom array's, in Angstrom, while
-        # `apply_transform_to_object` takes its translation in scene units.
-        scale = float(getattr(viewer, "_scale_factor", 1.0) or 1.0)
+        # `apply_transform_to_object` takes its transform in scene units.
         try:
             viewer.apply_transform_to_object(
-                rot.T, trans * scale, object_id=mobile_object
+                rot.T,
+                _scene_transform(viewer, mobile_object, rot.T, trans),
+                object_id=mobile_object,
             )
         except Exception as exc:
             self._emit_error(f"pair_fit: could not apply the transform: {exc}")

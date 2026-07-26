@@ -175,6 +175,97 @@ def test_a_rotation_reaches_the_atom_array(session):
     )
 
 
+def _sync_error(view, object_id=None) -> float:
+    """Largest per-atom break of ``(xyz - raw_center) * scale == all_atom_coords``.
+
+    That identity is how the renderer builds its arrays, so it is the definition
+    of the two copies describing one geometry. A centred distance comparison is
+    invariant to the pivot and cannot see a rotation about the wrong point.
+
+    Parameters
+    ----------
+    view : MolView
+        Viewer holding the object.
+    object_id : str, optional
+        Object to check; the active one by default.
+
+    Returns
+    -------
+    float
+        The maximum absolute deviation, in scene units.
+    """
+    state = view._objects[object_id].state if object_id else view._get_active_state()
+    xyz = np.asarray(state.atoms["xyz"], dtype=float)
+    centre = np.asarray(state.raw_center, dtype=float).reshape(3)
+    expected = (xyz - centre) * float(view._scale_factor)
+    return float(np.abs(expected - np.asarray(state.all_atom_coords, dtype=float)).max())
+
+
+def test_a_rotation_rotates_the_atom_array_about_the_same_pivot(session):
+    """The render arrays turn about the molecule's centre; the atom array must too.
+
+    Rotating the atom array about the PDB coordinate origin instead leaves the
+    two copies apart by ``(I - R) * raw_center`` — 53 Å on 148L, whose centre is
+    57 Å from the origin. It survived the first sync fix because a pure
+    translation, the only case the earlier tests covered, has ``R = I``.
+    """
+    cmd, view, _, _ = session
+    assert np.linalg.norm(np.asarray(view._raw_center, dtype=float)) > 10.0
+    assert _sync_error(view) < 1e-6, "the two arrays start out in sync"
+
+    cmd.do("translate [12, -4, 8]")
+    assert _sync_error(view) < 1e-4
+
+    cmd.do("rotate z, 90")
+    assert _sync_error(view) < 1e-4
+
+
+def test_two_objects_are_the_same_distance_apart_in_both_arrays(session):
+    """As drawn and as saved: a rotated copy must not sit somewhere else in Angstrom."""
+    cmd, view, _, _ = session
+    cmd.do("copy mob, ref")
+    ids = _ids(view)
+    cmd.do("rotate z, 90, mob")
+
+    scale = float(view._scale_factor)
+    in_atoms = np.linalg.norm(_xyz(view, ids["mob"]) - _xyz(view, ids["ref"]), axis=1).mean()
+    scene_mob = np.asarray(view._objects[ids["mob"]].state.all_atom_coords, dtype=float)
+    scene_ref = np.asarray(view._objects[ids["ref"]].state.all_atom_coords, dtype=float)
+    as_drawn = np.linalg.norm(scene_mob - scene_ref, axis=1).mean() / scale
+
+    assert in_atoms == pytest.approx(as_drawn, abs=1e-3)
+
+
+def test_pair_fit_leaves_both_arrays_in_sync(session):
+    """`pair_fit` fits raw Angstrom coordinates, so its transform needs converting.
+
+    The viewer takes a scene-space transform, and the two frames differ by the
+    pivot: handing it the Angstrom translation unchanged superposed the atom
+    arrays while the picture stayed rotated about a different point.
+    """
+    cmd, view, _, errors = session
+    cmd.do("copy mob, ref")
+    ids = _ids(view)
+    cmd.do("rotate z, 37, mob")
+
+    cmd.do("pair_fit mob and name CA, ref and name CA")
+    assert errors == []
+    assert _sync_error(view, ids["mob"]) < 1e-3
+    assert np.abs(_xyz(view, ids["mob"]) - _xyz(view, ids["ref"])).max() < 1e-3
+
+
+def test_align_leaves_both_arrays_in_sync(session):
+    """`align` fits the centred scene coordinates; the atom array has to follow."""
+    cmd, view, _, errors = session
+    cmd.do("copy mob, ref")
+    ids = _ids(view)
+    cmd.do("rotate z, 37, mob")
+
+    cmd.do("align mob, ref, cutoff=100")
+    assert errors == []
+    assert _sync_error(view, ids["mob"]) < 1e-3
+
+
 def test_a_transform_leaves_the_atom_array_readable(session):
     """Anything else in the record has to survive being moved."""
     cmd, view, _, _ = session

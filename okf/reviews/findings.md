@@ -1155,11 +1155,33 @@ scales its translation into scene units correctly; every name in
 Findings RF-078..RF-082.
 
 ### RF-078
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a rotation still leaves the two coordinate arrays describing different geometries)
 - **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:583-586` (`apply_transform_to_object`, the atom-array branch) against `:743-764` (`_transform_world_coords_to_scene`), with `chisurf/plugins/chimol/test/test_transform_sync.py:113-125`
 - **Finding:** Scene coordinates are `(atom_xyz - raw_center) * scale`, so a render-space transform `(R, t)` corresponds to `x' = R·(x - c) + c + t/s` in atom space. The new code applies `x' = R·x + t/s` — it rotates the atom array about the **PDB coordinate origin** while the render arrays rotate about the molecule's centre. The error is `(I - R)·c`, which vanishes only for a pure translation, and a pure translation is the only case the new tests cover. Verified on 148L (`raw_center = [8.30, 45.17, 34.63]`, ‖c‖ = 57.5 Å, `_scale_factor` = 10): the invariant `(atoms["xyz"] - raw_center) * scale == all_atom_coords` holds to **0.0 Å** at load and after `translate`, and breaks by **53.5 Å** after `rotate z, 90`. Across two objects it is worse — after `copy mob, ref` and `rotate z, 90, mob` the mean per-atom mob↔ref separation is **15.8 Å as drawn** (and as `save` writes it, since `save` unscales `all_atom_coords`) but **66.1 Å in the atom array** that `get_area`, `alter_state`, `pair_fit`/`_selection_coordinates` and every `within`/distance selection read. That is precisely the "one geometry, not two" defect the commit set out to remove, still live for rotations. `test_a_rotation_reaches_the_atom_array` misses it because it re-centres each side on its own mean before comparing distances, which is invariant to the pivot. Rotate the atom array about `state.raw_center`, and pin it with the invariant above rather than a centred-distance check.
-- **Fix note:**
+- **Fix note:** `apply_transform_to_object` now moves the atom array about the same
+  pivot the render arrays turn about: `x' = R (x - c) + c + t/s`, with `c` read
+  from `state.raw_center` through the new `MolView._transform_pivot`. The scene
+  arrays are untouched — the method's contract *is* scene units, and that is now
+  stated in a docstring on it instead of being inferred from the call sites.
+  Fixing the pivot exposed the other half of the same defect: `pair_fit` fits the
+  **raw Angstrom** coordinates (`_selection_coordinates`), so its Kabsch transform
+  was in atom space and reached the atom array correctly while the *picture*
+  rotated about a different point — its five tests only ever read the atom array,
+  which is why they were green. It now converts through `_scene_transform` in
+  `cmd/measurements.py` (`t_scene = ((R - I) c + t) s`), using a new public
+  `MolView.object_raw_center`. `align`/`super` fit the centred scene coordinates
+  (`get_residue_positions() / scale`), so their transform was already in the right
+  frame and is unchanged. Verified with the finding's own invariant: max
+  `(xyz - raw_center) * scale - all_atom_coords` after `rotate z, 90` on 148L is
+  **53.4697 Å** with the pivot dropped and **0.0000 Å** with it. Pinned by four
+  tests in `chisurf/plugins/chimol/test/test_transform_sync.py` —
+  `test_a_rotation_rotates_the_atom_array_about_the_same_pivot` (the invariant, at
+  load / after `translate` / after `rotate`),
+  `test_two_objects_are_the_same_distance_apart_in_both_arrays` (as drawn vs in
+  Angstrom), and `test_pair_fit_leaves_both_arrays_in_sync` /
+  `test_align_leaves_both_arrays_in_sync`. Full chimol suite green (1296 passed);
+  `ruff check`/`format` add no findings on the lines touched.
 
 ### RF-079
 - **Status:** FIXED

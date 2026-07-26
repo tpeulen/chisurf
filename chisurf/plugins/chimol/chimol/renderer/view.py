@@ -556,6 +556,56 @@ class MolView(QtWidgets.QWidget):
                 return np.zeros((0, 3), dtype=float)
             return arr[idx].copy()
 
+    @staticmethod
+    def _transform_pivot(state) -> np.ndarray | None:
+        """Return the atom-space point the render arrays rotate about.
+
+        The renderer stores ``(xyz - raw_center) * scale``, so every render-space
+        rotation happens about ``raw_center`` expressed in Angstrom.
+
+        Parameters
+        ----------
+        state : object
+            The per-object state whose ``raw_center`` is read.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The ``(3,)`` pivot, or ``None`` when the object carries no centering
+            metadata (then the render arrays are the raw coordinates and the
+            origin is the pivot).
+        """
+        raw_center = getattr(state, "raw_center", None)
+        if raw_center is None:
+            return None
+        try:
+            return np.asarray(raw_center, dtype=float).reshape(3)
+        except Exception:
+            return None
+
+    def object_raw_center(self, object_id: str | None = None) -> np.ndarray | None:
+        """Return the Angstrom point an object's scene coordinates are centred on.
+
+        Callers that compute a transform in Angstrom (``align``, ``pair_fit``)
+        need this to express it in the scene units
+        :meth:`apply_transform_to_object` takes.
+
+        Parameters
+        ----------
+        object_id : str, optional
+            Object to query; the active one by default.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The ``(3,)`` centre, or ``None`` for an unknown object or one
+            without centering metadata.
+        """
+        entry = self._objects.get(object_id or self._active_object_id)
+        if entry is None:
+            return None
+        return self._transform_pivot(entry.state)
+
     def apply_transform_to_object(
         self,
         rotation: np.ndarray,
@@ -563,6 +613,21 @@ class MolView(QtWidgets.QWidget):
         *,
         object_id: str | None = None,
     ) -> None:
+        """Move one object rigidly, in **scene** units.
+
+        The atom array follows in Angstrom, about the same pivot, so the two
+        copies keep describing one geometry. A caller holding an Angstrom-space
+        transform converts it with :meth:`object_raw_center` first.
+
+        Parameters
+        ----------
+        rotation : (3, 3) ndarray
+            Rotation applied to the scene coordinates.
+        translation : (3,) ndarray
+            Translation in scene units, applied after the rotation.
+        object_id : str, optional
+            Object to move; the active one by default.
+        """
         rot, trans = _coerce_rotation_translation(rotation, translation)
         target_id = object_id if object_id is not None else self._active_object_id
 
@@ -584,10 +649,19 @@ class MolView(QtWidgets.QWidget):
             # which is what happened before -- desynchronised the two, and
             # `align`, `get_area`, `alter_state` and the distance selections all
             # read the stale one.
+            #
+            # The scene arrays are `(xyz - raw_center) * scale`, so a scene
+            # transform (R, t) rotates the molecule about its *own centre*: in
+            # atom space it reads `x' = R (x - c) + c + t / s`. Rotating the atom
+            # array about the PDB origin instead leaves the two arrays describing
+            # geometries that differ by `(I - R) c` -- tens of Angstrom for any
+            # structure deposited away from the origin.
             scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
-            state.atoms = _apply_rigid_transform(
-                state.atoms, rot, trans / scale if scale else trans
-            )
+            atom_trans = trans / scale if scale else trans
+            pivot = self._transform_pivot(state)
+            if pivot is not None:
+                atom_trans = atom_trans + pivot - rot @ pivot
+            state.atoms = _apply_rigid_transform(state.atoms, rot, atom_trans)
 
             if state.coords is not None:
                 center, radius = _compute_center_radius(state.coords)

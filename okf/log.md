@@ -2,6 +2,21 @@
 
 ## 2026-07-26
 
+* **chimol: a rotation now turns both coordinate arrays about the same point
+  (RF-078).** The renderer keeps `(xyz - raw_center) * scale` beside the Angstrom
+  atom array, so a scene-space rotation pivots on the molecule's centre.
+  `apply_transform_to_object` rotated the atom array about the PDB coordinate
+  origin instead, leaving the two 53 Å apart on 148L after `rotate z, 90` — the
+  picture said one thing and `get_area`, `alter_state`, `save` and every `within`
+  selection said another. The pivot is now applied, and the method's scene-unit
+  contract is written down rather than inferred. The same fix exposed the mirror
+  image in `pair_fit`, which fits *raw* Angstrom coordinates and so was correct
+  about the atoms and wrong about the picture; it converts through
+  `_scene_transform` now. `align`/`super` fit the centred scene coordinates and
+  were already in the right frame. Pinned by the invariant itself — four tests in
+  `test_transform_sync.py` — rather than the centred-distance comparison that let
+  it through.
+
 * **chimol: the space-group operators now come from PyMOL's own table, not a hand
   table.** Yesterday's symmetry commit shipped 27 groups entered by hand, on the
   reasoning that no crystallography library is installed. That was the wrong trade
