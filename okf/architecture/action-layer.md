@@ -15,6 +15,13 @@ It is exposed lazily via `chisurf.__getattr__` as `chisurf.action_dispatcher`,
 `chisurf.action_execute`. Action names may be canonical internal names or
 dotted aliases, depending on the registered `ActionSpec`.
 
+There is exactly **one** dispatcher per process, and
+`chisurf.action_registry is chisurf.action_dispatcher.registry` always holds.
+Resolving either attribute imports `chisurf.core.actions`, whose `@action`
+decorators read `chisurf.action_registry` and so re-enter `chisurf.__getattr__`;
+the lazy branches therefore hand back the already-cached instance instead of
+building a second dispatcher whose registry would be empty.
+
 # Layout
 
 | File | Role |

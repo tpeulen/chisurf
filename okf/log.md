@@ -2,6 +2,20 @@
 
 ## 2026-07-26
 
+* **One dispatcher, one registry (RF-174).** Resolving `chisurf.action_dispatcher`
+  imports `chisurf.core.actions`, whose `@action` decorators read
+  `chisurf.action_registry` and re-enter `chisurf.__getattr__`; that nested frame
+  already built and cached a dispatcher, and the 60 actions registered into *its*
+  registry. The outer frame then built a second dispatcher and overwrote the cache,
+  so every `dispatch()` logged "unknown action" and returned `None` — latent in the
+  main window (which imports `chisurf.macros` first) but live for
+  `import chisurf.gui` alone, i.e. the standalone `csg_*` GUIs. Both lazy branches
+  now return the cached instance instead of rebuilding. Pinned by
+  `test/macros/test_action_lazy_binding.py` (three import orders in fresh
+  interpreters, plus the count-agreement check); see
+  [architecture/action-layer](/architecture/action-layer.md).
+
+
 * **Kinetic rates straight from photon colours: the Gopich-Szabo likelihood, and
   a second bug in the reference.** ChiSurf could detect sub-burst dynamics (BVA,
   2CDE) and fit them in *discrete* time (H2MM), but nothing in the tree computed

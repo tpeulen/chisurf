@@ -2137,11 +2137,23 @@ duplicates only, never the trailing edge, the scheduler, the registry/dispatcher
 identity, or concurrency. Findings RF-174..RF-180.
 
 ### RF-174
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (in the wrong import order every one of the 60 registered actions dispatches to nothing — `dispatch()` logs "unknown action" and returns `None`)
 - **Location:** `chisurf/__init__.py:256-264` (`__getattr__` branches for `action_dispatcher` / `action_registry`)
 - **Finding:** The lazy `action_dispatcher` branch calls `importlib.import_module("chisurf.core.actions._infra")`, which imports the **package** `chisurf.core.actions`, whose `__init__` imports the five action modules; every `@action` there does `getattr(cs, "action_registry")`, which re-enters `__getattr__` and builds *and caches* a dispatcher `D_inner` — the 60 actions register into `D_inner.registry`. The outer frame then resumes, builds its own `D_outer` and overwrites `globals()["action_dispatcher"]`, so the cached registry belongs to a dispatcher nobody dispatches through. Verified in a fresh interpreter: after `d = cs.action_dispatcher; r = cs.action_registry`, `r is cs.action_dispatcher.registry` is **False**, `len(cs.action_registry.list_actions()) == 60` while `len(cs.action_dispatcher.registry.list_actions()) == 0`, and `chisurf.core.actions.dispatch("fit.add.start", {})` returns `None` with `WARNING dispatch('fit.add.start'): unknown action`. This is not hypothetical: `import chisurf.gui; chisurf.gui.initialize_gui_executors()` alone reproduces it (`chisurf.gui` does not import `chisurf.core.actions`, and `chisurf/gui/__init__.py:58` touches `cs.action_dispatcher` first) — the path taken by the standalone `csg_*` plugin GUIs and by `run_on_gui_thread` (`chisurf/gui/__init__.py:136`) when it initializes executors from a worker thread. The full main-window import set happens to import `chisurf.macros` first, so the invariant holds there and the breakage stays latent. Fix: have `__getattr__` return an already-cached `globals()` entry instead of rebuilding (or derive the registry without re-entering), and pin the invariant `cs.action_registry is cs.action_dispatcher.registry` in a test that imports `chisurf.gui` first.
-- **Fix note:**
+- **Fix note:** Both lazy branches in `chisurf/__init__.py` now re-check
+  `globals()` after the import and hand back the instance the nested frame
+  cached, instead of building a second dispatcher (and a second, empty,
+  registry) over it. Verified in fresh interpreters for all three entry orders —
+  `cs.action_dispatcher` first, `cs.action_registry` first, and
+  `import chisurf.core.actions` first — plus `import chisurf.gui` first: all give
+  `cs.action_registry is cs.action_dispatcher.registry` with 60 actions on both
+  sides (was `False`, 60 vs 0). Pinned by the new
+  `test/macros/test_action_lazy_binding.py` (4 tests, each order in its own
+  subprocess, asserting the identity, that `fit.add.start` is registered on the
+  live registry, and that no order changes the action count); 3 of the 4 fail on
+  the pre-fix `chisurf/__init__.py`. `okf/architecture/action-layer.md` now states
+  the one-dispatcher invariant.
 
 ### RF-175
 - **Status:** OPEN

@@ -255,13 +255,26 @@ def __getattr__(name: str):
         return mod
     if name == "action_dispatcher":
         mod = importlib.import_module("chisurf.core.actions._infra")
-        value = mod.build_default_dispatcher(history_provider=lambda: getattr(sys.modules[__name__], "history", None))
-        globals()["action_dispatcher"] = value
+        # The import above pulls in the ``chisurf.core.actions`` package, whose
+        # ``@action`` decorators read ``cs.action_registry`` and therefore re-enter
+        # this function: that nested frame already built *and cached* a dispatcher,
+        # and the 60 actions registered into its registry. Building a second one
+        # here would overwrite it with an empty registry, so every dispatch would
+        # miss. Always hand back the cached instance if one appeared meanwhile.
+        value = globals().get("action_dispatcher")
+        if value is None:
+            value = mod.build_default_dispatcher(
+                history_provider=lambda: getattr(sys.modules[__name__], "history", None)
+            )
+            globals()["action_dispatcher"] = value
         return value
     if name == "action_registry":
         dispatcher = __getattr__("action_dispatcher")
-        value = getattr(dispatcher, "registry", None)
-        globals()["action_registry"] = value
+        # Same re-entrancy: resolving the dispatcher may have cached the registry.
+        value = globals().get("action_registry")
+        if value is None:
+            value = getattr(dispatcher, "registry", None)
+            globals()["action_registry"] = value
         return value
     if name == "action_catalog":
         mod = importlib.import_module("chisurf.core.actions._infra")
