@@ -1633,3 +1633,63 @@ returned *"fit not found"* while the wizard reported success. RF-126..RF-130.
 - **Location:** `chisurf/gui/widgets/models/tcspc/anisotropy.py:635-657` (`_compute_vv_bg_corrected_integral` / `_compute_vh_bg_corrected_integral` → `float('nan')` when the diagnostics are unavailable) reached via `:482-501` (`_extract_vv_vh_bg_corrected`, whose stacked branch requires `polarization_type in ('vv/vh', 'vvvh')`) against `chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py:418-419`, which sets `polarization_type` to `"vv"` and `"vh"`
 - **Finding:** The anisotropy model exposes `vv_bg_int` / `vh_bg_int` as `is_output=True` parameters (`VV_bg-corr` / `VH_bg-corr` in the panel, and rows in the fit's *Info* tab). In both wizard-built fits they read `nan` after a converged global fit — verified by dumping `model.parameters_all` on the VV fit after `chi2r = 4.6712`: `vv_bg_int = nan fixed=True`, `vh_bg_int = nan fixed=True`, while every other output (`r_ss_l = 0.2569`, `r_ss_i = 0.1820`) is finite. The wizard puts one polarisation per fit and sets `polarization_type` to `"vv"`/`"vh"`, so the stacked branch of `_extract_vv_vh_bg_corrected` is skipped and the fit-group branch does not find a usable VV/VH pair either. Either make the diagnostics work for the wizard's split-channel layout (the group branch already looks for local fits by `polarization_type`) or hide the two outputs when they cannot be computed — printing `nan` next to real numbers invites it into a table.
 - **Fix note:**
+
+## Review run — chiplot core (2026-07-26)
+
+Slice: the renderer-neutral plotting seam `chisurf/gui/chiplot/` (`canvas.py`,
+`style.py`, `handles.py`, `backends/base.py`, `backends/pyqtgraph_backend.py`) —
+~2 600 lines with no findings on record, freshly changed by
+`f06fa93a3` (link_x/link_y + text fill/border) and the target of the ~30-batch
+PRD-64 migration, so every defect here is inherited by every migrated plot.
+Every finding below was reproduced in the `arm64` env against pyqtgraph 0.14.0
+(offscreen Qt); RF-132 and RF-133 were additionally confirmed by rendering and
+inspecting the PNG. RF-131..RF-137.
+
+### RF-131
+- **Status:** OPEN
+- **Severity:** S2 (in a `Grid`, a click on one panel fires `clicked` on *every* panel, each with a coordinate mapped through its own unrelated viewbox)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:749-757` (`_PgCanvas.on_click`) and `:759-768` (`on_mouse_move`), reached from `chisurf/gui/chiplot/canvas.py:954` (`PanelPlot.__init__`) and `:70-71` (`Plot.__init__`)
+- **Finding:** Both handlers connect to `self._host.scene()`, and for a grid panel `_host` is the whole `GraphicsLayoutWidget` (`_PgGrid.add_panel:786-789` hands every panel the same widget), so the signal is scene-wide while the mapping (`vb.mapSceneToView`) is panel-local. Verified on a 2-panel grid: emitting a click at the centre of the *bottom* panel's `sceneBoundingRect` produced `[('p0', 4.50, -10.92), ('p1', 4.50, 448.03)]` — the top panel reported y = -10.9, outside its own view range (-0.83, 9.83), for a click it never received. The `on_mouse_move` guard `self._host.scene().sceneRect().contains(pos)` looks like a bounds check but is not one: `sceneRect` is the whole scene (measured 0,0,600×1135 for a 600×400 widget), so it is true for every position, including the axis margins outside any viewbox. Scope both to the panel — `self._pi.getViewBox().sceneBoundingRect().contains(pos)` before mapping — which also fixes the single-`Plot` case, where a click in the axis/title margin currently reports extrapolated data coordinates.
+- **Fix note:**
+
+### RF-132
+- **Status:** OPEN
+- **Severity:** S2 (`plot.line(x, y, symbol="o")` documents "draw a marker at each point" and draws nothing at all)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:499-502` (`add_curve`: `kw["symbolBrush"] = _brush(symbol_brush) if symbol_brush is not None else None`, same for `symbolPen`) against the contract in `chisurf/gui/chiplot/canvas.py:114-121`
+- **Finding:** `Plot.line` defaults `symbol_brush`/`symbol_pen` to `None`, and the backend forwards that `None` verbatim to pyqtgraph, which means *no fill* and *no outline* rather than "use the default". pyqtgraph's own defaults are `symbolBrush=(50, 50, 150)` and `symbolPen=(200, 200, 200)`. Verified: the resulting `ScatterPlotItem` carries `QBrush.style() == NoBrush` and `QPen.style() == NoPen`, and a rendered PNG shows the curve's markers completely absent next to a `pg.PlotDataItem` reference drawn with the same arguments (`/tmp/chiplot_symbol.png`). Note `Plot.scatter` is unaffected — it defaults `brush="w"`. Live call site: `chisurf/plugins/burst/burst_fcs_correlator/wizard.py:274` draws the correlation data as `line([], [], pen="w", symbol="o", symbol_size=4)`, i.e. the markers it asks for never appear. Fall back to a sensible default brush/pen when `symbol` is given and neither is specified (or omit the keys so pyqtgraph applies its own).
+- **Fix note:**
+
+### RF-133
+- **Status:** OPEN
+- **Severity:** S2 (a plot asked for a white background renders white inside the axes and black everywhere else — a visible regression against the pyqtgraph call site it replaced)
+- **Location:** `chisurf/gui/chiplot/canvas.py:68-69` (`Plot.__init__` routes `background` to `self._canvas.set_background`) and `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:683-686` (`set_background` → `vb.setBackgroundColor`), versus `:894-900` (`create_canvas`, which *does* have a widget-level `pw.setBackground` path that `Plot` can never reach because `background` is an explicit keyword and never lands in `backend_opts`)
+- **Finding:** `ViewBox.setBackgroundColor` paints only the plot rectangle; the axis strips, tick labels and title keep the process-wide pyqtgraph background, which ChiSurf sets to `k` (`chisurf/core/settings/settings_chisurf.yaml:120`). Verified by rendering `cp.Plot(background="w")` after `cp.configure(background="k")`: white data rectangle framed by black margins with grey text. The affected call site is `chisurf/plugins/fret_line/gui/tool.py:92`, whose pre-migration form was `pg.PlotWidget(parent=parent)` + `pw.setBackground("w")` — the whole widget white. Second half of the same defect: `background=None` is treated as "not given" (`if background is not None`), so the pyqtgraph idiom for a *transparent* panel is silently a no-op; `chisurf/gui/widgets/spectrum_view.py:121` and `chisurf/plugins/core/lightpath_simulator/gui/node_types.py:91` both pass it. Route the constructor's `background` (including an explicit `None`) into `create_canvas` so the widget is painted, and document that `set_background` on a live plot only reaches the viewbox.
+- **Fix note:**
+
+### RF-134
+- **Status:** OPEN
+- **Severity:** S2 (a colour spec the module docstring itself gives as an example silently produces near-black instead of red)
+- **Location:** `chisurf/gui/chiplot/style.py:136-143` (`to_color`: `is_float = all(isinstance(v, float) for v in vals) and all(v <= 1.0 for v in vals)`) against its own docstring at `:102-103` and the advertised example at `chisurf/gui/chiplot/canvas.py:12`
+- **Finding:** The docstring says 0–1 floats are "auto-detected: all values `<= 1` are treated as floats", but the code *additionally* requires every element to be a Python `float`, so any tuple mixing floats with integer literals falls into the 0–255 branch and is truncated by `int(v)`. Verified: `to_color((1.0, 0, 0))` — the exact spelling `canvas.py`'s module docstring offers as "pass `(1.0, 0, 0)`" — returns `Color(r=1, g=0, b=0)`, i.e. black; `to_color((0.5, 0.5, 1))` returns `Color(r=0, g=0, b=1)`, discarding both 0.5 channels. `(1.0, 0.0, 0.0)` is correctly red, so the failure depends only on how the caller happened to spell the zeros, and nothing raises. Either drop the `isinstance` requirement (match the documented rule, which is also what makes the docstring's `(1, 0, 0)`-style examples work) or reject mixed tuples explicitly; keep `to_color` and the two docstrings saying the same thing.
+- **Fix note:**
+
+### RF-135
+- **Status:** OPEN
+- **Severity:** S3 (the abstract backend contract no longer matches what the wrapper actually calls — a second backend written to `base.py` raises `TypeError` on the first text label)
+- **Location:** `chisurf/gui/chiplot/backends/base.py:139-149` (`Canvas.add_text`, no `fill`/`border`) against `chisurf/gui/chiplot/canvas.py:389-397` (`Plot.text` always passes `fill=`/`border=`, `None` or not) and `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:595` (which grew the two parameters in `f06fa93a3`)
+- **Finding:** The `fill`/`border` feature was added to the concrete pyqtgraph canvas and to the public `Plot.text`, but the abstract method it implements was not updated: `inspect.signature(base.Canvas.add_text)` is `(self, text, pos, *, color, anchor, draggable)` while the pyqtgraph implementation is `(..., draggable, fill=None, border=None)`. `base.py` is the document a second renderer is written against ("Swapping to a different renderer means writing a sibling module with the same classes"), so it is exactly the thing that must not drift. Add the two keyword parameters to the abstract signature and its docstring. Worth checking the neighbours in the same commit while there — `link_x`/`link_y` were added to `base.py` correctly, as defaulted no-ops.
+- **Fix note:**
+
+### RF-136
+- **Status:** OPEN
+- **Severity:** S3 (CSV export includes series the user removed from the plot, and the plot keeps them alive)
+- **Location:** `chisurf/gui/chiplot/canvas.py:419-427` (`Plot.remove`, which touches only the canvas) against `:147`/`:181` (`self._series.append(...)`) and `:485-497` (`export_csv` iterating `self._series`)
+- **Finding:** `line()`/`scatter()` register their handle in `self._series` for the CSV export action; `clear()` empties that list but `remove(handle)` does not. Verified: drawing curves `gone` and `kept`, calling `plot.remove(gone)`, then `export_csv` writes the header `gone x,gone y,kept x,kept y` — the removed curve is exported with full data. The handle also stays referenced by the `Plot`, so the pyqtgraph item is never collected. Drop the matching entry in `remove()` (identity match on the handle).
+- **Fix note:**
+
+### RF-137
+- **Status:** OPEN
+- **Severity:** S3 (a docstring promises overlays are cleared; they survive, so a stale overlay is drawn over the next image)
+- **Location:** `chisurf/gui/chiplot/canvas.py:833-835` (`ImageView.clear`, *"Clear the image and overlays."*), the same claim in `chisurf/gui/chiplot/backends/base.py:335-337`, implemented at `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:829-831` as a bare `self._iv.clear()`
+- **Finding:** `pg.ImageView.clear()` clears the image item only; items added to the view by `add_overlay` (`:849-857`) and `add_roi` (`:859-871`) are unaffected. Verified: after `set_image` + `add_overlay`, the view holds 4 added items; after `ImageView.clear()` it still holds 4 and the overlay handle's native item is still in `view.addedItems`. A caller following the docstring re-shows an image with the previous overlay still on top. Either track the items this canvas added and remove them in `clear()`, or correct both docstrings to say overlays and ROIs must be removed through their handles.
+- **Fix note:**
