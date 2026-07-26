@@ -1,32 +1,43 @@
-"""Dynamic three-state PDA model via Monte-Carlo (Gillespie) simulation.
+"""Dynamic **N-state** PDA model with a free transition-rate matrix (two colours).
 
-Port of PAM's arbitrary-state dynamic PDA
-(``functions/PDAFit/dynamic_sim/dyn_sim_arbitrary_states_gillespie.m``),
-restricted here to **three** exchanging conformational states with two-colour
-detection. Unlike the two-state model — whose occupation-time distribution has
-a closed form (see :mod:`chisurf.core.models.pda.dynamic`) — three or more
-states have no simple analytic form, so PAM (and this port) sample the
-continuous-time Markov trajectory.
+Counterpart of PAM's arbitrary-state dynamic PDA
+(``functions/PDAFit/dynamic_sim/dyn_sim_arbitrary_states_gillespie.m``). The
+two-state model (:mod:`chisurf.core.models.pda.dynamic`) has a closed-form
+occupation-time law; beyond two states there is none, so the time average is
+either moment-matched or sampled — see ``method`` below.
+
+Any number of states, any scheme
+--------------------------------
+The number of states is a settable ``n_states``, and **every** off-diagonal rate
+``k_ij`` is an ordinary fitting parameter. Nothing about the scheme is baked in:
+fix the rates you do not want (a linear chain is the cycle with ``k_13`` and
+``k_31`` at zero), free the ones you do, and link them to impose detailed balance
+or a symmetry. The rate matrix is ``K[target, source]`` in Hz, and since the
+model knows its dataset's observation time the rates are absolute rather than
+per-window.
 
 Method
 ------
 Each state ``i`` has a Gaussian inter-dye distance (``R_i`` ± ``s_i``) and hence
 a mean per-photon green probability ``pG_i`` (see
-:func:`chisurf.core.models.pda.common.green_probability_from_efficiency`). A
-rate matrix ``K`` (Hz) with ``K[target, source]`` = rate ``source -> target``
-governs the kinetics. For ``n_windows`` observation windows of length
-``sim_time`` we sample the trajectory and record the fraction of time spent in
-each state — via
-:func:`chisurf.core.fluorescence.kinetics.occupation_time_fractions`, which runs
-the photon simulator's kinetics rather than keeping a second Gillespie loop
-here. The time-averaged green probability of a window is
-``pG(f) = f1 pG1 + f2 pG2 + f3 pG3`` (equal-brightness assumption); the
-histogram of ``pG`` over all windows becomes the amplitude/probability spectrum
+:func:`chisurf.core.models.pda.common.green_probability_from_efficiency`). The
+time-averaged green probability of a window is ``pG(f) = sum_i f_i pG_i``
+(equal-brightness assumption) over the fraction ``f_i`` of the window spent in
+each state; the distribution of ``pG`` becomes the amplitude/probability spectrum
 handed to :class:`tttrlib.Pda`.
 
-The (rate-only) Monte-Carlo result is cached and reused across fit iterations
-that change only distances/corrections, so the simulation reruns only when the
-rate matrix, ``sim_time`` or ``n_windows`` change.
+The distribution of ``f`` comes from one of two routes, both valid for any ``N``:
+
+* ``"szabo-gopich"`` (default) matches a bounded shape to the exact first two
+  moments — deterministic, so the fit objective is smooth;
+* ``"monte-carlo"`` samples occupation times with
+  :func:`chisurf.core.fluorescence.kinetics.occupation_time_fractions`, which
+  runs the photon simulator's kinetics rather than a second Gillespie loop here.
+  Exact, at the cost of a stochastic objective; needed in the slow-exchange limit
+  where the distribution is multimodal and no two-moment match has three peaks.
+
+The sampled result is cached on the rate matrix, observation time and sample
+count, so it reruns only when the kinetics actually change.
 """
 
 from __future__ import annotations
@@ -51,57 +62,158 @@ from chisurf.core.models.pda.common import (
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
 
+#: Starting distances when a state is added, cycled so a fresh scheme is spread
+#: over the FRET-sensitive range rather than stacked on one value.
+_DEFAULT_DISTANCES = (35.0, 50.0, 70.0, 45.0, 60.0, 80.0)
 
-class PdaDynamicThreeStates(FittingParameterGroup):
-    """Three exchanging states (R, sigma) with a 3x3 rate scheme (Hz)."""
 
-    def __init__(self, name: str = "pda_dynamic3_states", **kwargs):
-        """Initialize the three-state parameter group."""
+class PdaDynamicNStates(FittingParameterGroup):
+    """``n`` exchanging states (R, sigma) with a free ``n x n`` rate scheme (Hz).
+
+    Every off-diagonal rate is an ordinary fitting parameter, so the scheme is
+    whatever the rates say: fix ``k_13``/``k_31`` at zero for a linear chain,
+    free everything for a fully connected one, link a pair to impose detailed
+    balance. Rates are held in **lists**, which is what makes them visible to
+    ``find_parameters`` — parameters stored in a dict or a tuple are silently
+    invisible to the optimiser, and this group used to keep them in a dict.
+    """
+
+    def __init__(self, name: str = "pda_dynamic_n_states", n_states: int = 3, **kwargs):
+        """Initialize the N-state parameter group.
+
+        Parameters
+        ----------
+        name : str
+            Group name.
+        n_states : int
+            Number of exchanging states; at least two.
+        **kwargs
+            Forwarded to the parent constructor.
+        """
         super().__init__(name=name, **kwargs)
-        self._R = []
-        self._s = []
-        defaults_R = (35.0, 50.0, 70.0)
-        for i, r0 in enumerate(defaults_R, start=1):
-            self._R.append(FittingParameter(
-                value=r0, name=f"R{i}", lb=1.0, ub=200.0, bounds_on=True,
-                label_text=f"R<sub>{i}</sub>"))
-            self._s.append(FittingParameter(
-                value=6.0, name=f"s{i}", lb=0.5, ub=50.0, bounds_on=True,
-                label_text=f"s<sub>{i}</sub>"))
-        # Six inter-state rates kIJ (I->J), Hz, fixed by default.
-        self._rates = {}
-        for i in (1, 2, 3):
-            for j in (1, 2, 3):
-                if i == j:
-                    continue
-                self._rates[(i, j)] = FittingParameter(
-                    value=100.0, name=f"k{i}{j}", lb=0.0, ub=1e9, bounds_on=True,
-                    fixed=True, label_text=f"k<sub>{i}{j}</sub>")
-        # Monte-Carlo controls (fixed, output-only spinners). The observation
-        # time is deliberately NOT one of them: it is a property of the data,
-        # and a spinner that disagrees with how the data was segmented silently
+        self._R: list = []
+        self._s: list = []
+        #: Off-diagonal rates, row-major over ``(i, j), i != j`` with 1-based
+        #: labels. A list, not a dict -- see the class docstring.
+        self._rates: list = []
+        self._n_states = 0
+        # Sample size of the Monte-Carlo route; the observation time is
+        # deliberately NOT a setting here -- it is a property of the data, and a
+        # spinner that disagrees with how the data was segmented silently
         # rescales every rate. The model reads it from the dataset instead.
         self._n_windows = FittingParameter(
             value=2000, name="n_windows", lb=100, ub=200000, bounds_on=True, fixed=True,
             label_text="N<sub>win</sub>")
+        self.n_states = int(n_states)
+
+    # -- size ---------------------------------------------------------------
+
+    @property
+    def n_states(self) -> int:
+        """Number of exchanging states."""
+        return self._n_states
+
+    @n_states.setter
+    def n_states(self, value: int) -> None:
+        """Resize the scheme, keeping the values of states and rates that survive."""
+        target = max(2, int(value))
+        if target == self._n_states:
+            return
+        old_rates = {(i, j): p.value for (i, j), p in self.rate_items()}
+
+        while len(self._R) > target:
+            self._R.pop()
+            self._s.pop()
+        while len(self._R) < target:
+            index = len(self._R) + 1
+            self._R.append(FittingParameter(
+                value=_DEFAULT_DISTANCES[(index - 1) % len(_DEFAULT_DISTANCES)],
+                name=f"R{index}", lb=1.0, ub=200.0, bounds_on=True,
+                label_text=f"R<sub>{index}</sub>"))
+            self._s.append(FittingParameter(
+                value=6.0, name=f"s{index}", lb=0.5, ub=50.0, bounds_on=True,
+                label_text=f"s<sub>{index}</sub>"))
+
+        self._rates = []
+        for i in range(1, target + 1):
+            for j in range(1, target + 1):
+                if i == j:
+                    continue
+                self._rates.append(FittingParameter(
+                    value=float(old_rates.get((i, j), 100.0)),
+                    name=f"k{i}_{j}", lb=0.0, ub=1e9, bounds_on=True,
+                    fixed=True, label_text=f"k<sub>{i}{j}</sub>"))
+        self._n_states = target
+
+    def rate_items(self):
+        """Yield ``((i, j), parameter)`` for every off-diagonal rate, 1-based."""
+        pairs = [(i, j)
+                 for i in range(1, self._n_states + 1)
+                 for j in range(1, self._n_states + 1) if i != j]
+        return list(zip(pairs, self._rates))
+
+    def rates_by_name(self) -> dict:
+        """Return ``{"k<i>_<j>": parameter}`` for every off-diagonal rate.
+
+        The handle for scripting a scheme: free the rates it has, fix the ones
+        it does not, and link a pair to impose detailed balance::
+
+            rates = model.states.rates_by_name()
+            rates["k1_3"].value = 0.0        # no direct 1 <-> 3
+            rates["k3_1"].value = 0.0
+            rates["k1_2"].fixed = False      # fit the rest
+        """
+        return {p.name: p for p in self._rates}
+
+    # -- values -------------------------------------------------------------
 
     @property
     def distances(self) -> np.ndarray:
-        """Mean distances of the three states."""
+        """Mean distances of the states."""
         return np.array([p.value for p in self._R])
 
     @property
     def sigmas(self) -> np.ndarray:
-        """Widths of the three states."""
+        """Widths of the states."""
         return np.array([p.value for p in self._s])
 
     def rate_matrix(self) -> np.ndarray:
-        """Return the 3x3 rate matrix ``K[target, source]`` (Hz)."""
-        K = np.zeros((3, 3), dtype=float)
-        for (i, j), p in self._rates.items():
-            # kIJ is rate I->J, so target=j, source=i (0-based indices).
+        """Return the ``n x n`` rate matrix ``K[target, source]`` (Hz)."""
+        n = self._n_states
+        K = np.zeros((n, n), dtype=float)
+        for (i, j), p in self.rate_items():
+            # k_ij is the rate i -> j, so target = j, source = i (0-based).
             K[j - 1, i - 1] = max(0.0, float(p.value))
         return K
+
+    @property
+    def rate_values(self) -> list:
+        """Return the flat row-major ``n*n`` rates, diagonal zeroed.
+
+        The view the editable rate-matrix grid binds to; the entries are the
+        fitting parameters themselves, so editing the grid moves the parameters
+        and their fixed/free state is still controlled from the table.
+        """
+        n = self._n_states
+        flat = [0.0] * (n * n)
+        for (i, j), p in self.rate_items():
+            flat[(i - 1) * n + (j - 1)] = float(p.value)
+        return flat
+
+    @rate_values.setter
+    def rate_values(self, values) -> None:
+        """Write a flat row-major ``n*n`` grid back onto the rate parameters."""
+        n = self._n_states
+        flat = list(values)
+        if len(flat) != n * n:
+            return
+        for (i, j), p in self.rate_items():
+            p.value = max(0.0, float(flat[(i - 1) * n + (j - 1)]))
+
+    @property
+    def state_names(self) -> list:
+        """Row/column labels for the rate-matrix grid."""
+        return [str(i) for i in range(1, self._n_states + 1)]
 
     @property
     def n_windows(self) -> int:
@@ -109,10 +221,10 @@ class PdaDynamicThreeStates(FittingParameterGroup):
         return int(round(float(self._n_windows.value)))
 
 
-class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
-    """Dynamic three-state (dual-color) PDA model via Monte-Carlo mixing."""
+class PdaDynamicNStateModel(PdaDiagnosticsMixin, ModelCurve):
+    """Dynamic N-state (dual-colour) PDA model with a free rate matrix."""
 
-    name = "PDA-dynamic-3-state (MC)"
+    name = "PDA-dynamic-N-state"
 
     #: Declarative AutoForm layout (PRD-38 model/view-spec split).
     view_spec_file = "dynamic_mc.view.json"
@@ -121,12 +233,12 @@ class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
         self,
         fit: cs.core.fitting.fit.Fit,
         nuisance: PdaFretNuisance | None = None,
-        states: PdaDynamicThreeStates | None = None,
+        states: PdaDynamicNStates | None = None,
         n_hist: int = 81,
         seed: int = 1,
         **kwargs,
     ):
-        """Initialize the dynamic three-state PDA model.
+        """Initialize the dynamic N-state PDA model.
 
         Parameters
         ----------
@@ -134,8 +246,8 @@ class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
             Fit holding the experimental PDA data.
         nuisance : PdaFretNuisance, optional
             Correction/nuisance parameter group.
-        states : PdaDynamicThreeStates, optional
-            Three-state distance / rate group.
+        states : PdaDynamicNStates, optional
+            Distance / rate group; defaults to three states.
         n_hist : int
             Number of bins for the pG histogram (probability spectrum size).
         seed : int
@@ -145,7 +257,9 @@ class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
         """
         super().__init__(fit, **kwargs)
         self.nuisance = nuisance or PdaFretNuisance(name="pda_fret_nuisance", fit=fit, **kwargs)
-        self.states = states or PdaDynamicThreeStates(name="pda_dynamic3_states", fit=fit, **kwargs)
+        self.states = states or PdaDynamicNStates(
+            name="pda_dynamic_n_states", fit=fit, **kwargs
+        )
         self.fret_parameters = chisurf.core.models.tcspc.fret.FRETParameters(
             enable_fret_efficiency=False
         )
@@ -175,6 +289,36 @@ class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
         # binned, and under which counting statistic (see PdaFitSettings).
         self.fit_settings = resolve_fit_settings(None, None)
         self.residual_mode = "1D"
+
+    # -- scheme size, delegated so the editor can bind to the model ---------
+
+    @property
+    def n_states(self) -> int:
+        """Number of exchanging states."""
+        return self.states.n_states
+
+    @n_states.setter
+    def n_states(self, value: int) -> None:
+        """Resize the scheme and re-discover the parameters it now has."""
+        self.states.n_states = value
+        self.states.find_parameters()
+        self.find_parameters()
+        self._mc_cache_key = None          # the rate matrix changed shape
+
+    @property
+    def state_names(self) -> list:
+        """Row/column labels for the rate-matrix grid."""
+        return self.states.state_names
+
+    @property
+    def rate_values(self) -> list:
+        """Flat row-major ``n*n`` rates, for the editable rate-matrix grid."""
+        return self.states.rate_values
+
+    @rate_values.setter
+    def rate_values(self, values) -> None:
+        """Write the grid back onto the rate parameters."""
+        self.states.rate_values = values
 
     @property
     def observation_time(self) -> float:
@@ -207,7 +351,7 @@ class PdaDynamicThreeStateModel(PdaDiagnosticsMixin, ModelCurve):
         return 0.5 if s <= 0.0 else float(np.sum((g / s) * pG))
 
     def update_model(self, verbose: bool | None = None, **kwargs):
-        """Build the three-state Monte-Carlo probability spectrum and update the curve."""
+        """Build the N-state probability spectrum and update the curve."""
         st = self.states
         r = chisurf.core.models.tcspc.fret.rda_axis
         R0 = self.fret_parameters.forster_radius

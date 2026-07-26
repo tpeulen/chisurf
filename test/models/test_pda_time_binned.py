@@ -319,3 +319,187 @@ def test_an_empty_stream_gives_an_empty_histogram_rather_than_raising(qapp):
         minimum_number_of_photons=1, maximum_number_of_photons=30)
     assert s1s2.shape == (31, 31) and s1s2.sum() == 0
     assert ps.size == 31 and first.size == 0
+
+
+# --- arbitrary N-state schemes --------------------------------------------------------
+
+
+def _n_state_fit(n_states=3):
+    """Return a dynamic N-state PDA fit on the synthetic dataset."""
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStateModel
+
+    fit = fit_mod.Fit(model_class=PdaDynamicNStateModel, data=_pda_data(2e-3))
+    fit.model.n_states = n_states
+    return fit, fit.model
+
+
+@pytest.mark.parametrize("n_states", [2, 3, 4, 5])
+def test_the_scheme_takes_any_number_of_states(qapp, n_states):
+    _, model = _n_state_fit(n_states)
+    assert model.states.rate_matrix().shape == (n_states, n_states)
+    assert model.states.distances.size == n_states
+    model.update()
+    y = np.asarray(model.y)
+    assert y.size and np.all(np.isfinite(y)) and float(np.sum(y)) > 0.0
+
+
+@pytest.mark.parametrize("n_states", [2, 3, 4])
+def test_every_off_diagonal_rate_is_a_discoverable_fitting_parameter(qapp, n_states):
+    """A rate the optimiser cannot see is a constant, whatever its fixed flag says.
+
+    Regression: the rates used to live in a dict, and ``find_objects`` recurses
+    into lists only -- so none of them were ever offered to the optimiser.
+    """
+    _, model = _n_state_fit(n_states)
+    model.find_parameters()
+    found = {p.name for p in model.parameters_all}
+    expected = {f"k{i}_{j}"
+                for i in range(1, n_states + 1)
+                for j in range(1, n_states + 1) if i != j}
+    assert expected <= found, sorted(expected - found)
+    assert len(expected) == n_states * (n_states - 1)
+
+
+def test_freeing_a_rate_offers_it_to_the_optimiser(qapp):
+    _, model = _n_state_fit(3)
+    model.find_parameters()
+    assert "k1_2" not in [p.name for p in model.parameters]   # fixed by default
+    dict(model.states.rates_by_name())["k1_2"].fixed = False
+    model.find_parameters()
+    assert "k1_2" in [p.name for p in model.parameters]
+
+
+def test_the_rate_matrix_places_each_rate_at_target_source(qapp):
+    """k_ij is i->j, and the matrix is indexed [target, source]."""
+    _, model = _n_state_fit(3)
+    rates = dict(model.states.rates_by_name())
+    for parameter in rates.values():
+        parameter.value = 0.0
+    rates["k1_2"].value = 250.0
+    rates["k3_1"].value = 40.0
+
+    K = model.states.rate_matrix()
+    assert K[1, 0] == pytest.approx(250.0)     # 1 -> 2
+    assert K[0, 2] == pytest.approx(40.0)      # 3 -> 1
+    assert K.sum() == pytest.approx(290.0)
+
+
+def test_a_linear_chain_is_just_a_cycle_with_two_rates_at_zero(qapp):
+    """Scheme topology is set by the rates, not by a separate model."""
+    from chisurf.core.fluorescence.kinetics import equilibrium_populations
+
+    _, model = _n_state_fit(3)
+    rates = dict(model.states.rates_by_name())
+    for name, value in (("k1_2", 100.0), ("k2_1", 100.0),
+                        ("k2_3", 50.0), ("k3_2", 200.0),
+                        ("k1_3", 0.0), ("k3_1", 0.0)):
+        rates[name].value = value
+
+    K = model.states.rate_matrix()
+    assert K[2, 0] == 0.0 and K[0, 2] == 0.0        # no direct 1 <-> 3
+    populations = equilibrium_populations(K)
+    assert populations.sum() == pytest.approx(1.0)
+    assert np.all(populations > 0)                   # the chain still connects all three
+    model.update()
+    assert np.all(np.isfinite(np.asarray(model.y)))
+
+
+def test_resizing_keeps_the_rates_that_survive(qapp):
+    _, model = _n_state_fit(3)
+    dict(model.states.rates_by_name())["k1_2"].value = 777.0
+
+    model.n_states = 4
+    assert dict(model.states.rates_by_name())["k1_2"].value == pytest.approx(777.0)
+    assert "k1_4" in dict(model.states.rates_by_name())
+
+    model.n_states = 2
+    surviving = dict(model.states.rates_by_name())
+    assert surviving["k1_2"].value == pytest.approx(777.0)
+    assert "k1_3" not in surviving
+    assert model.states.rate_matrix().shape == (2, 2)
+
+
+def test_the_grid_view_and_the_parameters_are_the_same_numbers(qapp):
+    """The editable matrix is a view on the parameters, not a second copy."""
+    _, model = _n_state_fit(3)
+    rates = dict(model.states.rates_by_name())
+    rates["k2_3"].value = 321.0
+    flat = model.rate_values
+    assert flat[(2 - 1) * 3 + (3 - 1)] == pytest.approx(321.0)
+    assert all(flat[i * 3 + i] == 0.0 for i in range(3))     # diagonal stays empty
+
+    grid = list(flat)
+    grid[(3 - 1) * 3 + (1 - 1)] = 654.0                      # edit k3_1 in the grid
+    model.rate_values = grid
+    assert rates["k3_1"].value == pytest.approx(654.0)
+
+
+def _two_state_pair(rate, method, window=2e-3):
+    """Return (N-state model at N=2, exact two-state model) for the same kinetics."""
+    import chisurf.core.fitting.fit as fit_mod
+    from chisurf.core.models.pda.dynamic import PdaDynamicTwoStateModel
+
+    _, n_model = _n_state_fit(2)
+    n_model.method = method
+    n_model.states._R[0].value, n_model.states._s[0].value = 40.0, 4.0
+    n_model.states._R[1].value, n_model.states._s[1].value = 62.0, 4.0
+    rates = n_model.states.rates_by_name()
+    rates["k1_2"].value = rate / 2.0        # symmetric: x1 = 0.5, k1 + k2 = rate
+    rates["k2_1"].value = rate / 2.0
+    n_model.update()
+
+    fit = fit_mod.Fit(model_class=PdaDynamicTwoStateModel, data=_pda_data(window))
+    two = fit.model
+    two.states._R1.value, two.states._s1.value = 40.0, 4.0
+    two.states._R2.value, two.states._s2.value = 62.0, 4.0
+    two.states._x1.value, two.states._kex.value = 0.5, rate
+    two.update()
+
+    a = np.asarray(n_model.y, dtype=float)
+    b = np.asarray(two.y, dtype=float)
+    return 0.5 * np.abs(a / a.sum() - b / b.sum()).sum()
+
+
+def test_the_sampled_n_state_route_reproduces_the_exact_two_state_law(qapp):
+    """At N=2 there is a closed-form answer, so the general route can be checked.
+
+    Every other validation of the N-state path is against sampling; this one is
+    against the exact occupation-time law of the two-state process.
+    """
+    for rate in (200.0, 800.0, 4e3, 2e4):
+        assert _two_state_pair(rate, "monte-carlo") < 0.03, rate
+
+
+def test_the_moment_match_fails_exactly_where_the_boundary_atoms_carry_the_mass(qapp):
+    """Why the default route has a slow-exchange limit, measured against the truth.
+
+    The Szabo-Gopich route matches a *density* to two moments, and the exact
+    occupation-time law is not a density: a molecule that never switched sits on
+    a point mass at f = 0 or f = 1. Those atoms hold 82% of the distribution at
+    K = 0.4 and nothing at K = 40, and the error tracks them:
+
+    ======  =============  ===========  ============
+    K       szabo-gopich   sampled      atom mass
+    ======  =============  ===========  ============
+    0.4     0.242          0.012        0.819
+    1.6     0.121          0.017        0.450
+    8       0.013          0.009        0.018
+    40      0.001          0.003        0.000
+    ======  =============  ===========  ============
+
+    So the guidance is not a rule of thumb: switch to ``monte-carlo`` when the
+    exchange is slow enough that molecules survive the window without switching.
+    """
+    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+
+    window = 2e-3
+    slow, fast = 200.0, 2e4
+    atoms_slow = two_state_occupation_quadrature(0.5, slow * window, 512)[1]
+    atoms_fast = two_state_occupation_quadrature(0.5, fast * window, 512)[1]
+    assert atoms_slow[0] + atoms_slow[-1] > 0.7        # nearly all mass is atoms
+    assert atoms_fast[0] + atoms_fast[-1] < 1e-6       # none is
+
+    assert _two_state_pair(slow, "szabo-gopich") > 0.1      # cannot follow them
+    assert _two_state_pair(slow, "monte-carlo") < 0.03      # sampling can
+    assert _two_state_pair(fast, "szabo-gopich") < 0.01     # nothing left to miss

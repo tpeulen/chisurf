@@ -80,12 +80,12 @@ PDA_MODELS = [
     "chisurf.core.models.pda.simple.PdaSimpleModel",
     "chisurf.core.models.pda.pdagauss.PdaGaussianDistanceModel",
     "chisurf.core.models.pda.dynamic.PdaDynamicTwoStateModel",
-    "chisurf.core.models.pda.dynamic_mc.PdaDynamicThreeStateModel",
+    "chisurf.core.models.pda.dynamic_mc.PdaDynamicNStateModel",
     "chisurf.core.models.pda.anisotropy.PdaAnisotropyModel",
 ]
 
 # Fixed-layout dynamic models have no add/remove component group.
-_FIXED_LAYOUT = ("PdaDynamicTwoStateModel", "PdaDynamicThreeStateModel")
+_FIXED_LAYOUT = ("PdaDynamicTwoStateModel", "PdaDynamicNStateModel")
 
 
 def _resolve(path):
@@ -313,7 +313,7 @@ def test_three_state_mc_gillespie_equilibrium():
 
 def test_three_state_mc_model_computes(qapp):
     """The 3-state MC PDA model builds a finite, positive histogram."""
-    model_class = _resolve("chisurf.core.models.pda.dynamic_mc.PdaDynamicThreeStateModel")
+    model_class = _resolve("chisurf.core.models.pda.dynamic_mc.PdaDynamicNStateModel")
     fit = _make_pda_fit(model_class)
     model = fit.model
     model.states._n_windows.value = 800  # keep the test fast

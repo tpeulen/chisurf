@@ -140,9 +140,9 @@ diagnostic:
 
 The intermediate case — a characteristic "bridge" of counts filling the valley
 between the two static peaks — is the fingerprint of dynamics on the burst
-timescale, and its shape yields the interconversion rates. ChiSurf provides
-two- and three-state dynamic models, and a polarization-resolved variant for
-anisotropy PDA.
+timescale, and its shape yields the interconversion rates. ChiSurf provides an
+exact two-state model, a general N-state model with a free rate matrix, and a
+polarization-resolved variant for anisotropy PDA.
 
 **One histogram measures $K$, not $k$.** Exchange enters only through
 $K = (k_1+k_2)T$, so a single dataset cannot separate a fast rate watched briefly
@@ -157,14 +157,30 @@ bins to have a known, constant duration, which is why the reader offers
 fixed-width segmentation alongside the burst search — under a burst search the
 durations vary with the local photon flux and $T$ is only a lower bound.
 
+**Any number of states, any scheme.** The dynamic N-state model carries a free
+$n \times n$ transition-rate matrix in which every off-diagonal $k_{ij}$ is an
+ordinary fitting parameter. Nothing about the connectivity is built in: a linear
+chain is the fully-connected scheme with $k_{13}$ and $k_{31}$ held at zero, and
+a pair of rates can be linked to impose detailed balance. Because the model reads
+the observation time from its dataset, the rates are absolute (Hz).
+
 **Two states have a closed form; more do not.** The two-state occupation-time
 distribution above is exact, boundary atoms included. Beyond two states the
-three-state model offers a choice. The default keeps the first two moments of
+N-state model offers a choice. The default keeps the first two moments of
 the time average — exact for any rate matrix — and matches a bounded shape to
 them (Gopich & Szabo); it is deterministic, which matters because a stochastic
 objective makes the optimiser chase sampling scatter. Where that is not enough,
 because slow exchange makes the distribution multi-modal and no two-parameter
 shape has three peaks, the occupation times can be **sampled** instead.
+
+The choice between them is not a matter of taste, and the boundary is
+measurable. The moment match fits a *density*, while the exact occupation-time
+law is not one: a molecule that never switched during the window sits on a point
+mass at $f = 0$ or $f = 1$. Checked at $N = 2$, where the exact law is available,
+the total-variation error of the moment match tracks the mass in those atoms —
+0.24 when they hold 82% of the distribution, 0.001 when they hold none — while
+the sampled route stays within 0.03 throughout. So: sample when the exchange is
+slow enough that molecules survive the window without switching.
 
 That sampling runs in the photon simulator's kinetics rather than in ChiSurf.
 The simulator records a *state trajectory* — every transition with the time it
@@ -256,7 +272,7 @@ the burst-size diagnostic above and, for dynamics, the characteristic valley
 
 - Guide: {doc}`/guides/11_pda`.
 - Models: `chisurf/core/models/pda/` — discrete (`simple.py`),
-  Gaussian-distance (`pdagauss.py`), dynamic two-/three-state (`dynamic.py`,
+  Gaussian-distance (`pdagauss.py`), dynamic two-state and N-state (`dynamic.py`,
   `dynamic_mc.py`), anisotropy (`anisotropy.py`), SAW-$\nu$ polymer
   (`saw_nu.py`); nuisance/background and correction factors in `nusiance.py`;
   the histogram engine is `tttrlib.Pda` (S1S2 matrix).

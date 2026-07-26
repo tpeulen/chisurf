@@ -121,13 +121,21 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self.table.setColumnCount(n)
         self.table.setHorizontalHeaderLabels(labels)
         self.table.setVerticalHeaderLabels(labels)
+        # Size a cell to the widest value it can hold rather than to a fixed
+        # number of pixels: a rate of 1e5 with three decimals does not fit in the
+        # same box as 0.5, and a silently clipped number in an editable grid is
+        # worse than a wide column.
+        widest = f"{max(abs(self._min), abs(self._max)):.{self._decimals}f}"
+        cell_width = QtWidgets.QApplication.fontMetrics().horizontalAdvance(
+            widest + "0"
+        ) + 34          # spin buttons + frame
         for i in range(n):
             for j in range(n):
                 spin = QtWidgets.QDoubleSpinBox()
                 spin.setRange(self._min, self._max)
                 spin.setDecimals(self._decimals)
                 spin.setKeyboardTracking(False)
-                spin.setMaximumWidth(78)
+                spin.setMinimumWidth(min(cell_width, 160))
                 idx = i * n + j
                 spin.setValue(flat[idx] if idx < len(flat) else 0.0)
                 if i == j and not self._diagonal:

@@ -1,5 +1,5 @@
 {
-  "_comment": "Editor layout for the dynamic three-state Monte-Carlo PDA model (PdaDynamicThreeStateModel). PRD-38 model/view-spec split: compute (Gillespie MC) stays in dynamic_mc.py; this JSON is user-editable.",
+  "_comment": "Editor layout for the dynamic N-state PDA model (PdaDynamicNStateModel). PRD-38 model/view-spec split: compute stays in dynamic_mc.py; this JSON is user-editable.",
   "sections": [
     {
       "type": "panel",
@@ -16,13 +16,37 @@
     },
     {
       "type": "panel",
-      "title": "Three-state kinetics (Monte-Carlo)",
+      "title": "N-state kinetics",
       "collapsible": true,
       "collapsed": false,
       "sections": [
         {
           "type": "info",
-          "text": "Three exchanging states with Gaussian distances (R, s) and a 3x3 rate scheme kIJ (state I to J, Hz). The observation time comes from the dataset \u2014 it is how the data was segmented, not a setting \u2014 so the rates are absolute and a global fit over several time-bin widths shares them. Set unused rates to 0 and free only the ones in your scheme. N_win is the sample size of the Monte-Carlo route; the default analytic route does not use it."
+          "text": "N exchanging states with Gaussian distances (R, s) and a free n\u00d7n rate scheme k_ij (state i to j, Hz). Nothing about the scheme is baked in: fix the rates you do not want (a linear chain is the cycle with k13 and k31 at zero), free the ones you do, link a pair to impose detailed balance. The observation time comes from the dataset \u2014 it is how the data was segmented, not a setting \u2014 so the rates are absolute and a global fit over several time-bin widths shares them."
+        },
+        {
+          "type": "value",
+          "attr": "n_states",
+          "label": "States",
+          "kind": "int",
+          "minimum": 2,
+          "maximum": 6,
+          "rebuild_on_change": true,
+          "description": "Number of exchanging states. Adding one keeps the rates already set; removing one drops its row and column."
+        },
+        {
+          "type": "custom",
+          "key": "rate_matrix",
+          "target": "rate_values",
+          "options": {
+            "size_attr": "n_states",
+            "labels_attr": "state_names",
+            "minimum": 0.0,
+            "decimals": 2,
+            "diagonal": false,
+            "unit": "Hz",
+            "maximum": 1000000.0
+          }
         },
         {
           "type": "parameter_group_table",

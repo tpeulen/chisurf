@@ -310,7 +310,51 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   untestable headlessly and would put Qt in the Qt-free model layer; a graph path
   defaulting to the plugin's last session gives the same one-click result.
 
+- **Arbitrary N-state schemes, and the rates are now actually fittable
+  (2026-07-26).** Asked whether PDA could fit an arbitrary transition-rate
+  matrix, the honest answer was no, and for a worse reason than a hardcoded state
+  count: `PdaDynamicThreeStates` kept its six rate parameters in a **dict**, and
+  `base.find_objects` recurses into lists only. None of them was ever discovered
+  by `find_parameters`, so no rate was ever offered to the optimiser regardless of
+  its `fixed` flag — the scheme was a set of constants that looked like
+  parameters. `PdaDynamicNStates` replaces it: rates live in a list, `n_states` is
+  settable (>= 2) and resizing preserves the rates that survive.
+  Every off-diagonal `k_ij` is an ordinary fitting parameter, so topology is data
+  rather than code — a linear chain is the fully-connected scheme with `k13`/`k31`
+  at zero, and a linked pair imposes detailed balance. `rates_by_name()` is the
+  scripting handle. The model gained delegating `n_states` / `rate_values` /
+  `state_names` so the general `rate_matrix` AutoForm section (its first real
+  consumer) renders an editable n×n grid with the diagonal disabled, above the
+  parameter table that controls which entries are free.
+  Renamed to `PdaDynamicNStateModel` ("PDA-dynamic-N-state"); registration, view
+  spec, tests and docs follow.
+  **Validated against the one case with an exact answer.** At N=2 the two-state
+  occupation law is closed-form, so the general path can be checked against truth
+  rather than against another approximation. Total variation, N-state route
+  against the exact law:
+
+  ======  =============  ==========  ===========
+  K       szabo-gopich   sampled     atom mass
+  ======  =============  ==========  ===========
+  0.4     0.242          0.012       0.819
+  1.6     0.121          0.017       0.450
+  8       0.013          0.009       0.018
+  40      0.001          0.003       0.000
+  ======  =============  ==========  ===========
+
+  The moment-match error tracks the **boundary-atom mass** almost exactly, which
+  is the mechanism: a beta density cannot represent the point masses at f=0 and
+  f=1 that a molecule which never switched sits on. So "use monte-carlo in slow
+  exchange" stops being a rule of thumb and becomes a measured criterion — sample
+  when molecules survive the window without switching.
+  Also fixed the general rate-matrix widget's hard 78 px cell cap, which silently
+  clipped any value wider than it: cells are now sized from the configured range
+  and decimals. Found by rendering a 4-state scheme and reading the screenshot.
+
 **Follow-ups (not yet done):**
+- tcPDA's rate matrix is a plain array attribute, not fitting parameters: three-
+  colour dynamics can *use* an arbitrary scheme but cannot fit one. The two-colour
+  `PdaDynamicNStates` group is the template if that is wanted.
 - Three-color tcPDA — **split out into [PRD-65](prd-65.md)**; it shares neither
   the engine (`tttrlib.Pda` is two-channel by construction) nor the data object
   (burst table, not S1S2 matrix) nor the fit objective (burst likelihood, not a

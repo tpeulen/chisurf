@@ -25,7 +25,7 @@ PDA_MODELS = [
     "chisurf.core.models.pda.simple.PdaSimpleModel",
     "chisurf.core.models.pda.pdagauss.PdaGaussianDistanceModel",
     "chisurf.core.models.pda.dynamic.PdaDynamicTwoStateModel",
-    "chisurf.core.models.pda.dynamic_mc.PdaDynamicThreeStateModel",
+    "chisurf.core.models.pda.dynamic_mc.PdaDynamicNStateModel",
     "chisurf.core.models.pda.anisotropy.PdaAnisotropyModel",
 ]
 

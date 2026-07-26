@@ -261,10 +261,10 @@ def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_n
     multi-species fit models directly.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.models.pda.dynamic_mc import PdaDynamicThreeStateModel
+    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStateModel
     from test.gui.test_pda_model_editor import _make_pda_data  # noqa: PLC0415
 
-    fit = fit_mod.Fit(model_class=PdaDynamicThreeStateModel, data=_make_pda_data())
+    fit = fit_mod.Fit(model_class=PdaDynamicNStateModel, data=_make_pda_data())
     model = fit.model
     assert model.method == "szabo-gopich"
     base = model.states.rate_matrix().copy()
@@ -293,10 +293,10 @@ def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_n
 def test_the_analytic_route_is_deterministic():
     """A stochastic objective makes an optimiser chase simulation noise."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.models.pda.dynamic_mc import PdaDynamicThreeStateModel
+    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStateModel
     from test.gui.test_pda_model_editor import _make_pda_data  # noqa: PLC0415
 
-    fit = fit_mod.Fit(model_class=PdaDynamicThreeStateModel, data=_make_pda_data())
+    fit = fit_mod.Fit(model_class=PdaDynamicNStateModel, data=_make_pda_data())
     model = fit.model
     model.update()
     first = np.array(model.y, copy=True)

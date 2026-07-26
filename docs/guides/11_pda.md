@@ -25,7 +25,7 @@ single broadened state from a genuine mixture or from dynamics.
 
 PDA is a first-class **experiment** with AutoForm-rendered models
 (`chisurf/core/models/pda/`): discrete distances, Gaussian distance
-distributions, dynamic two-/three-state models, an anisotropy model, and the
+distributions, dynamic two-state and N-state models, an anisotropy model, and the
 [SAW-ν polymer](03_polymer_distance_distributions.md) distance model. The
 histograms are computed by the `tttrlib.Pda` engine.
 
@@ -45,7 +45,7 @@ s1s2 = np.asarray(pda.get_S1S2_matrix()).reshape(61, 61)
 ## In ChiSurf
 
 PDA is a fit **experiment**: load a `.pda`-tagged burst dataset and choose a PDA
-model (single distance, Gaussian-distributed distance, or dynamic two/three-state).
+model (single distance, Gaussian-distributed distance, or dynamic two-/N-state).
 The model editor exposes the Förster parameters, the distance distribution, and
 the correction/nuisance terms:
 
@@ -59,6 +59,27 @@ list of Gaussian components (mean $R_{P}$, width $s_{P}$, fraction $x_{P}$);
 **Corrections / nuisance** carries background, leakage, direct excitation and
 $\gamma$. These map onto the forward model in {ref}`concept-pda`.
 ```
+
+## Fitting a kinetic scheme
+
+The dynamic N-state model exposes the whole transition-rate matrix. Set the
+number of states, then say which rates the scheme has by fixing the rest at zero:
+
+```python
+model.n_states = 4
+rates = model.states.rates_by_name()          # {"k1_2": parameter, ...}
+
+for name in ("k1_3", "k3_1", "k1_4", "k4_1", "k2_4", "k4_2"):
+    rates[name].value = 0.0                   # a linear chain 1-2-3-4
+for name in ("k1_2", "k2_1", "k2_3", "k3_2", "k3_4", "k4_3"):
+    rates[name].fixed = False                 # fit the rest
+
+rates["k2_1"].link = rates["k1_2"]            # or impose a symmetry
+```
+
+`k_ij` is the rate from state *i* to state *j*, in Hz. In the editor the same
+matrix is an editable grid with the diagonal disabled, above the parameter table
+that controls which entries are free.
 
 ## Diagnostics
 
