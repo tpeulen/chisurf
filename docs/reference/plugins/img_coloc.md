@@ -50,6 +50,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | A max | `gate_a_max` | float |  |  | Upper channel-A intensity of the gate rectangle. |
 | B min | `gate_b_min` | float |  |  | Lower channel-B intensity of the gate rectangle. |
 | B max | `gate_b_max` | float |  |  | Upper channel-B intensity of the gate rectangle. |
+| Gate regions | `gates` | region_list |  |  | Every gate on the intensity scatter in one list: the typed box, a painted population, an ellipse or polygon drawn on the plane. Tick to include, ~ for everything outside, and pick how they combine — a cloud AND a threshold, not one overriding the other. |
 
 ### Region of interest
 

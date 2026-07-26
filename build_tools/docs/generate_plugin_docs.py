@@ -33,9 +33,19 @@ OUT_DIR = REPO_ROOT / "docs" / "reference"
 
 # view.json section types that describe a user-editable parameter.
 PARAM_TYPES = {"value", "choice", "toggle", "toggle_row", "table"}
-#: Custom-section keys that *are* a bound parameter (their ``attr``/``label``/
-#: ``description`` live in ``options``), so they still get a documented row.
-CUSTOM_PARAM_KEYS = {"data_source", "setup_selector", "path_list"}
+#: Custom-section keys that *are* a user-editable control, so they get a
+#: documented row like any ``value``. Display-only custom sections (a plot, an
+#: image, an info box) are deliberately absent: they show a result, they are not
+#: something the user sets.
+#:
+#: A custom section binds through ``target``; only the two picker kinds put an
+#: ``attr`` in ``options``. Requiring the latter is why every ``path_list`` —
+#: the file list of eleven migrated plugins — documented nothing at all despite
+#: carrying a written ``description``.
+CUSTOM_PARAM_KEYS = {
+    "data_source", "setup_selector", "path_list", "region_list",
+    "rate_matrix", "scalar_table", "equation_editor",
+}
 
 # Curated fallback descriptions for common fit/model parameters that the
 # auto-generated parameter registry leaves blank. Kept here (not in the model
@@ -133,11 +143,23 @@ def _iter_view_params(section, panel: str = ""):
         if stype in PARAM_TYPES and section.get("attr"):
             yield panel, section
         elif stype == "custom" and section.get("key") in CUSTOM_PARAM_KEYS:
-            # A bound custom section (file/setup pickers): its attr, label and
-            # description sit in ``options``; flatten so it documents like a field.
-            options = section.get("options") or {}
-            if options.get("attr"):
-                yield panel, {"type": "custom", "kind": section.get("key", "custom"), **options}
+            # A bound custom section. The pickers carry attr/label/description in
+            # ``options``; every other kind binds through ``target`` and titles
+            # itself with ``title``. Flatten either shape so it documents like a
+            # field.
+            options = dict(section.get("options") or {})
+            attr = options.get("attr") or section.get("target")
+            if attr:
+                row = {
+                    "type": "custom",
+                    "kind": section.get("key", "custom"),
+                    **options,
+                    "attr": attr,
+                    "label": options.get("label") or section.get("title") or attr,
+                }
+                if section.get("description") and not options.get("description"):
+                    row["description"] = section["description"]
+                yield panel, row
         for value in section.values():
             yield from _iter_view_params(value, next_panel)
     elif isinstance(section, list):
