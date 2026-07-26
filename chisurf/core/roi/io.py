@@ -78,7 +78,16 @@ def load_rois(path: str) -> List[ROI]:
         If the file is not a ChiSurf ROI file.
     """
     data = json.loads(pathlib.Path(path).read_text())
-    if not isinstance(data, dict) or data.get("format") != FORMAT:
+    if not isinstance(data, dict):
+        raise ValueError(f"{path} is not a {FORMAT} file")
+    if "entries" in data:
+        # A file written by RegionCollection.save. Its regions must be readable
+        # by every consumer that takes a plain region file, or the shared editor
+        # would write something only the shared editor could open — the flags
+        # and the combining rule are dropped here, and kept by
+        # ``RegionCollection.load``.
+        return [roi_from_dict(e["roi"]) for e in data.get("entries", [])]
+    if data.get("format") != FORMAT:
         raise ValueError(f"{path} is not a {FORMAT} file")
     return [roi_from_dict(d) for d in data.get("rois", [])]
 

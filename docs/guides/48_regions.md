@@ -15,7 +15,7 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 | Tool | What a region does there |
 |---|---|
 | **Imaging → Lifetime → Molecule-wise MLE** | confines the molecule search; foreground and background come back as regions |
-| **Imaging → CLSM-Draw** | restricts a decay, a correlation or a lifetime map to part of the frame |
+| **Imaging → CLSM-Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
 | **Imaging → Colocalization** | gates the joint intensity histogram — bright pixels only, or a painted cloud |
 | **Imaging → Phasor-FLIM** | the phasor cursor *is* a region on the $(g,s)$ plane |
 | **Imaging → Drift Correction** | a structured patch gives a sharper correlation peak than a mostly-dark frame |
@@ -24,6 +24,53 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 They are the same object in all six. A rectangle drawn on a confocal image and a
 rectangle drawn on an $E$–$S$ histogram differ only in the axes handed to them at
 the moment they are used.
+
+## The region editor
+
+Wherever a tool shows a **Regions** panel, it is the same editor.
+
+```{figure} figures/regions_list.png
+:name: fig-regions-list
+:width: 100%
+
+The region list, here in the CLSM tool. One row per region: its name, what kind
+of shape it is, how big and how bright it is, and two tick boxes. The left tick
+includes a region in the selection; unticking keeps it without using it — which
+is how you see what a region was contributing. The **~** column uses everything
+*outside* that region instead. **Combine** says how the ticked ones reduce to the
+one selection the analysis uses, and the footer reports the result: `2 of 3 →
+500 px`.
+```
+
+Each column earns its place:
+
+* **Region** — double-click to rename. Names are unique; asking for one that is
+  taken gives `cell (2)` rather than two rows reading `cell`.
+* **Shape** — `rectangle`, `ellipse`, `polygon`, `mask` (painted or loaded) or
+  `threshold`. A composite of several regions reads `composite`.
+* **Measurement** — area and mean intensity, recomputed against the displayed
+  image. These are the two numbers that say whether a selection is worth
+  building a decay from; the full property set is in
+  {ref}`concept-region-properties`.
+* **~** — invert. Kept as a flag rather than baked into the geometry, so the
+  region is still there to edit after you toggle it.
+
+The toolbar: a name box and **+** keep whatever you are currently painting as a
+named region; **▭ ◯ ⬠** draw a new rectangle, ellipse or polygon; 🗑 and ⧉
+remove and duplicate; 📂 and 💾 load and save. Loading *adds* to the list rather
+than replacing it — a file is one more source of regions.
+
+```{figure} figures/regions_overlay.png
+:name: fig-regions-overlay
+:width: 100%
+
+The same three regions on the image. Drawn shapes get grab handles and write
+their new geometry straight back into the list; the selected one is drawn
+thicker, and a region that is switched off is greyed rather than hidden. A
+painted mask (the white patch) deliberately has **no** handle: there is no small
+set of grips that would edit it, and a bounding box that replaced the mask on
+the first drag would destroy what you painted.
+```
 
 ## The single-molecule imaging workflow
 
@@ -90,7 +137,7 @@ analysis mask with no conversion step.
 
 ```python
 from chisurf.core.roi import (
-    RectangleROI, PolygonROI, MaskROI, load_region, save_rois,
+    RectangleROI, PolygonROI, MaskROI, RegionCollection, load_region, save_rois,
     regionprops, regionprops_table, labels_to_rois, union_of,
 )
 
@@ -115,6 +162,30 @@ table = regionprops_table(
 # a measurement converts back into a selection
 rois = labels_to_rois(label_image)            # one region per label
 ```
+
+The list the editor shows is a `RegionCollection`, and it is the same object
+headless:
+
+```python
+regions = RegionCollection(combine="and", name="selection")
+regions.add(RectangleROI(14, 14, 74, 74, name="patch"))
+regions.add(nucleus, invert=True)             # everything outside it
+regions.set_enabled("patch", False)           # keep it, stop using it
+
+regions.combined()                            # one ROI, or None if nothing is on
+regions.to_mask(image.shape)                  # all-true when nothing is on
+regions.contains(points)                      # gate scattered data
+regions.excluded(points)                      # the same answer, inverted
+regions.properties(image.shape, image=image)  # measure every row
+
+regions.save("regions.json")                  # shapes, names, ticks and rule
+RegionCollection.load("regions.json")
+```
+
+`combined()` answers `None` when nothing is ticked — deliberately not an
+all-true region, so "no regions" and "every region switched off" stay
+distinguishable. `to_mask` and `contains` answer *everything* in that case,
+because an analysis handed an empty list should run on the whole frame.
 
 The property names, definitions and algorithms follow
 `skimage.measure.regionprops` exactly and are checked against it property by

@@ -298,3 +298,26 @@ def test_a_disabled_region_is_drawn_greyed_rather_than_hidden(canvas, host):
     pens = [h.native.pen.color().name() for h in overlay._handles]
     assert pens[0].lower() == PALETTE[0].lower()
     assert pens[1].lower() == DISABLED_PEN.lower()
+
+
+def test_selecting_a_region_does_not_change_its_colour(canvas, host):
+    """The palette must be indexed the same way when drawing and when selecting.
+
+    A painted mask contributes no handle, so indexing the *collection* rather
+    than the drawn handles gave a region one colour on refresh and another on
+    select — picking a row appeared to recolour it.
+    """
+    from chisurf.core.roi import MaskROI
+    from chisurf.gui.widgets.roi import RegionOverlay
+
+    # A region with no handle, placed first so the two indexings disagree.
+    host.regions.add(MaskROI(host.painted, name="brushed"))
+    host.regions.move("brushed", 0)
+
+    overlay = RegionOverlay(canvas, lambda: host.regions)
+    overlay.refresh()
+    before = [h.native.pen.color().name() for h in overlay._handles]
+
+    overlay.select("spot")
+    after = [h.native.pen.color().name() for h in overlay._handles]
+    assert before == after

@@ -22,6 +22,8 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.roi import RegionCollection
+
 from ..api.models import ClsmSetup
 from ..core import frc as frc_mod
 from ..core import imaging, setups
@@ -87,8 +89,8 @@ class ClsmViewModel:
         self._subset_1: np.ndarray | None = None
         self._subset_2: np.ndarray | None = None
         self.selection_mask: np.ndarray | None = None
-        #: Saved regions, by name (:class:`chisurf.core.roi.ROI` instances).
-        self.rois: dict[str, Any] = {}
+        #: Saved regions — the shared, ordered, named list every ROI GUI edits.
+        self.regions = RegionCollection(combine="or", name="selection")
         self.curves: list[dict[str, Any]] = []
         self.current_decay: dict[str, Any] | None = None
 
@@ -367,7 +369,7 @@ class ClsmViewModel:
             Area, centroid, shape and — when an image is displayed — the
             intensity statistics of the region; ``None`` if there is none.
         """
-        roi = self.rois.get(name) if name else self.selection_roi()
+        roi = self.regions.roi(name) if name else self.selection_roi()
         if roi is None or self.current_image is None:
             return None
         return roi.properties(self.current_image.shape, image=self.current_image)
@@ -384,32 +386,32 @@ class ClsmViewModel:
         -------
         str
             ``"<n> px, <mean> ph/px"`` — the two numbers that say whether a
-            selection is worth building a decay from. Empty when there is no
-            region.
+            selection is worth building a decay from. Empty when there is none.
         """
         props = self.region_properties(name)
         if props is None:
             return ""
         return f"{props.area} px, {props.intensity_mean:.1f} ph/px"
 
-    def roi_entries(self) -> list[dict[str, Any]]:
-        """Return the saved regions as ``{"name", "summary"}`` rows for the list."""
-        return [
-            {"name": name, "summary": self.region_summary(name)} for name in self.rois
-        ]
+    def add_roi(self, name: str) -> str:
+        """Save the current brushed selection as a named region.
 
-    def add_roi(self, name: str) -> None:
-        """Save the current selection as a named region."""
+        Returns
+        -------
+        str
+            The name it was stored under, which differs from *name* when that
+            was already taken.
+        """
         roi = self.selection_roi()
         if roi is None:
-            return
-        roi.name = name
-        self.rois[name] = roi
+            return ""
+        stored = self.regions.add(roi, name=name)
         self.notify("roi")
+        return stored
 
     def apply_roi(self, name: str) -> None:
         """Make a saved region the current selection and recompute the decay."""
-        roi = self.rois.get(name)
+        roi = self.regions.roi(name)
         if roi is not None and self.current_image is not None:
             self.selection_mask = roi.to_mask(
                 self.current_image.shape, image=self.current_image
@@ -417,64 +419,28 @@ class ClsmViewModel:
             self.recompute_decay()
             self.notify("selection")
 
+    def apply_regions(self) -> None:
+        """Make the *combined* region the current selection.
+
+        This is what the shared editor's tick boxes are for: several regions,
+        some inverted, reduced by the collection's rule to the one selection the
+        decay is built from. The old list could only apply one region at a time.
+        """
+        if self.current_image is None:
+            return
+        combined = self.regions.combined()
+        if combined is None:
+            return
+        self.selection_mask = combined.to_mask(
+            self.current_image.shape, image=self.current_image
+        ).astype(self.current_image.dtype)
+        self.recompute_decay()
+        self.notify("selection")
+
     def remove_roi(self, name: str) -> None:
         """Remove a saved region by name."""
-        self.rois.pop(name, None)
-        self.notify("roi")
-
-    def save_roi(self, name: str, filename: str) -> None:
-        """Write a saved region to a file.
-
-        ``.json`` keeps the region itself — geometry, name and all — and is the
-        format to prefer; ``.tif`` / ``.npy`` rasterise it to a mask image
-        instead, for tools that read nothing else.
-
-        Parameters
-        ----------
-        name : str
-            Name of the saved region.
-        filename : str
-            Destination path; the extension picks the format.
-        """
-        from chisurf.core.roi.io import save_label_image, save_rois
-
-        roi = self.rois.get(name)
-        if roi is None:
-            return
-        if str(filename).lower().endswith(".json"):
-            save_rois([roi], filename, metadata={"source": self.filename})
-        elif self.current_image is not None:
-            save_label_image([roi], self.current_image.shape, filename,
-                             image=self.current_image)
-
-    def load_roi(self, filename: str, name: str | None = None) -> None:
-        """Load one or more regions from a file.
-
-        Reads the native JSON format, a Cellpose segmentation, a label image or
-        a binary mask — the shared loader picks by the file itself, so a label
-        image arrives as one region per object rather than one merged blob.
-
-        Parameters
-        ----------
-        filename : str
-            Source path.
-        name : str, optional
-            Name for a single loaded region; defaults to the file stem (a file
-            holding several regions keeps their own names).
-        """
-        from chisurf.core.roi.io import load_regions
-
-        stem = pathlib.Path(filename).stem
-        loaded = load_regions(filename)
-        for i, roi in enumerate(loaded):
-            if len(loaded) == 1:
-                # An explicit name wins: it is what the caller asked this
-                # region to be called, whatever the file says.
-                key = name or roi.name or stem
-            else:
-                key = roi.name or f"{name or stem}_{i + 1}"
-            self.rois[key] = roi
-        self.notify("roi")
+        if self.regions.remove(name):
+            self.notify("roi")
 
     # ── plot sources (read by declarative PlotSection widgets) ─────────
     def decay_series(self) -> list[dict[str, Any]]:

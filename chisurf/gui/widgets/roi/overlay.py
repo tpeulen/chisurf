@@ -153,12 +153,16 @@ class RegionOverlay:
         if self._syncing:
             return
         self.clear()
-        for index, entry in enumerate(self.collection):
+        for entry in self.collection:
             spec = _handle_spec(entry.roi)
             if spec is None:
                 continue
-            pen = PALETTE[index % len(PALETTE)] if entry.enabled else DISABLED_PEN
-            handle = self._canvas.add_roi(pen=pen, **spec)
+            # Colour by position among the *drawn* handles, not among all
+            # regions: a painted mask contributes no handle, so indexing the
+            # collection would give a region one colour here and another in
+            # :meth:`select`, and picking a row would appear to recolour it.
+            handle = self._canvas.add_roi(pen=self._pen_for(entry, len(self._handles)),
+                                          **spec)
             handle.on_change(
                 lambda h=handle, n=entry.name: self._write_back(h, n), final=not self._live
             )
@@ -187,17 +191,19 @@ class RegionOverlay:
         if self._on_change is not None:
             self._on_change()
 
+    def _pen_for(self, entry: Any, index: int) -> str:
+        """Return the outline colour for the *index*-th drawn region."""
+        return PALETTE[index % len(PALETTE)] if entry.enabled else DISABLED_PEN
+
     def select(self, name: str) -> None:
         """Emphasise one region's outline, so the list and the picture agree."""
-        for handle, drawn in zip(self._handles, self._names):
+        for index, (handle, drawn) in enumerate(zip(self._handles, self._names)):
             entry = self.collection.get(drawn)
-            base = DISABLED_PEN if (entry is not None and not entry.enabled) else None
-            index = self._names.index(drawn)
-            colour = base or PALETTE[index % len(PALETTE)]
-            width = 3 if drawn == name else 1
+            if entry is None:
+                continue
             setter = getattr(handle, "set_pen", None)
             if callable(setter):
-                setter(colour, width=width)
+                setter(self._pen_for(entry, index), width=3 if drawn == name else 1)
 
 
 __all__ = ["RegionOverlay", "roi_from_handle", "PALETTE"]

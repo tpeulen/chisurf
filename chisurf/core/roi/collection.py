@@ -208,9 +208,11 @@ class RegionCollection:
 
         Parameters
         ----------
-        region : ROI or dict or numpy.ndarray
+        region : RegionEntry or ROI or dict or numpy.ndarray
             Anything :func:`~chisurf.core.roi.roi.as_roi` accepts, so a bare
-            mask or a serialised region can be added directly.
+            mask or a serialised region can be added directly. An entry from
+            another collection is taken with its flags, so collections can be
+            merged without unpacking them at every call site.
         name : str, optional
             Overrides the region's own name.
         **flags
@@ -222,6 +224,15 @@ class RegionCollection:
             The stored name, which differs from the requested one when that was
             already taken.
         """
+        if isinstance(region, RegionEntry):
+            entry = RegionEntry(
+                roi=region.roi,
+                enabled=flags.get("enabled", region.enabled),
+                invert=flags.get("invert", region.invert),
+            )
+            if name:
+                entry.name = str(name)
+            return self._append(entry)
         roi = as_roi(region)
         if roi is None:
             raise ValueError("cannot add an empty region")

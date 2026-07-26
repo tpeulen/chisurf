@@ -220,3 +220,38 @@ def test_an_entry_exposes_the_name_of_its_region():
     assert entry.name == "a"
     entry.name = "b"
     assert entry.roi.name == "b"
+
+
+def test_a_collection_file_is_readable_by_the_shared_region_loaders(tmp_path):
+    """The editor must not write a format only the editor can open.
+
+    Every tool that confines an analysis takes a region file through
+    ``load_regions``/``load_region``. A collection saved from the shared editor
+    has to arrive there as its regions — the flags and the combining rule are
+    what those loaders drop, not the geometry.
+    """
+    from chisurf.core.roi import load_region, load_regions
+
+    c = _collection("or")
+    c.set_enabled("right", False)
+    path = str(tmp_path / "regions.json")
+    c.save(path)
+
+    assert [r.name for r in load_regions(path)] == ["left", "right"]
+    # `load_region` unions them, disabled included: it reads regions, not state.
+    united = load_region(path)
+    assert united.contains(np.array([LEFT, RIGHT, MIDDLE])).tolist() == [True, True, False]
+
+
+def test_entries_can_be_moved_between_collections_with_their_flags():
+    """Merging two lists must not silently re-enable what was switched off."""
+    source = _collection("or")
+    source.set_enabled("right", False)
+    source.set_invert("left", True)
+
+    target = RegionCollection()
+    target.extend(source)
+
+    assert target.names == ["left", "right"]
+    assert target["right"].enabled is False
+    assert target["left"].invert is True

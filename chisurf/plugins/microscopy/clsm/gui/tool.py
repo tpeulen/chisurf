@@ -16,7 +16,6 @@ from qtpy import QtWidgets
 import chisurf as cs
 from chisurf.gui.autoform import AutoForm
 
-from . import sections  # noqa: F401  (side effect: register custom sections)
 from .view_model import ClsmViewModel
 
 log = cs.logging
@@ -39,7 +38,39 @@ class CLSMPixelSelect(QtWidgets.QWidget):
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
 
+        self.region_overlay = self._connect_regions()
         self.model.add_observer(self._on_model_event)
+
+    # ── the shared region editor and its overlay ───────────────────────
+    def _connect_regions(self):
+        """Draw the region list on the image and apply the combined region.
+
+        The list and the picture are two views of one
+        :class:`~chisurf.core.roi.RegionCollection`; this joins them and makes
+        an edit rebuild the decay. Both parts are found by type rather than
+        declared in the view spec, because a section does not know what other
+        sections exist.
+        """
+        from chisurf.gui.autoform.sections.builtin import ImageMapWidget
+        from chisurf.gui.widgets.roi import RegionEditor, RegionOverlay
+
+        editor = self.auto_form.findChild(RegionEditor)
+        image = self.auto_form.findChild(ImageMapWidget)
+        if editor is None or image is None:
+            log.debug("CLSM: no region editor/image to connect")
+            return None
+
+        overlay = RegionOverlay(image, lambda: self.model.regions,
+                                on_change=self._on_region_dragged)
+        editor.changed.connect(overlay.refresh)
+        editor.changed.connect(self.model.apply_regions)
+        editor.selectionChanged.connect(overlay.select)
+        overlay.refresh()
+        return overlay
+
+    def _on_region_dragged(self) -> None:
+        """A dragged shape changes the selection, so rebuild the decay."""
+        self.model.apply_regions()
 
     # ── model wiring ───────────────────────────────────────────────────
     def _on_model_event(self, event: str) -> None:

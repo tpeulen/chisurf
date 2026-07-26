@@ -274,40 +274,65 @@ def test_a_brushed_selection_is_a_region_and_can_be_measured():
 
 def test_saved_regions_round_trip_through_the_selection():
     vm = _painted_view_model()
-    vm.add_roi("cell")
-    assert list(vm.rois) == ["cell"]
-    assert vm.roi_entries() == [{"name": "cell", "summary": "24 px, 20.0 ph/px"}]
+    assert vm.add_roi("cell") == "cell"
+    assert vm.regions.names == ["cell"]
+    assert vm.region_summary("cell") == "24 px, 20.0 ph/px"
 
     vm.clear_selection()
     assert vm.selection_roi() is None
 
     vm.apply_roi("cell")
-    np.testing.assert_array_equal(vm.selection_mask > 0, vm.rois["cell"].to_mask((16, 16)))
+    np.testing.assert_array_equal(
+        vm.selection_mask > 0, vm.regions.roi("cell").to_mask((16, 16))
+    )
 
     vm.remove_roi("cell")
-    assert vm.rois == {}
+    assert vm.regions.names == []
+
+
+def test_several_regions_combine_into_one_selection():
+    """What the old one-region-at-a-time list could not do.
+
+    Two regions, one of them inverted, reduce by the collection's rule to the
+    selection the decay is built from — which is what the shared editor's tick
+    and ``~`` columns drive.
+    """
+    from chisurf.core.roi import RectangleROI
+
+    vm = _painted_view_model()
+    vm.regions.add(RectangleROI(0, 0, 16, 16, name="field"))
+    vm.regions.add(RectangleROI(6, 4, 10, 8, name="hole"), invert=True)
+    vm.regions.combine = "and"
+
+    vm.apply_regions()
+    mask = vm.selection_mask > 0
+    assert mask[2, 2] and not mask[5, 7]
+
+    # Switching the hole off widens the selection without deleting it.
+    vm.regions.set_enabled("hole", False)
+    vm.apply_regions()
+    assert (vm.selection_mask > 0)[5, 7]
+    assert "hole" in vm.regions
 
 
 def test_regions_survive_a_file_round_trip(tmp_path):
-    """JSON keeps the region itself; a mask image keeps only its pixels."""
+    """The collection keeps every region, its flags and the combining rule."""
+    from chisurf.core.roi import RectangleROI, RegionCollection
+
     vm = _painted_view_model()
     vm.add_roi("cell")
+    vm.regions.add(RectangleROI(0, 0, 4, 4, name="corner"), invert=True)
+    vm.regions.combine = "and"
 
-    as_json = tmp_path / "cell.json"
-    vm.save_roi("cell", str(as_json))
-    vm.remove_roi("cell")
-    vm.load_roi(str(as_json))
-    assert "cell" in vm.rois
-    np.testing.assert_array_equal(
-        vm.rois["cell"].to_mask((16, 16)), vm.selection_roi().to_mask((16, 16))
-    )
+    path = tmp_path / "regions.json"
+    vm.regions.save(str(path))
+    back = RegionCollection.load(str(path))
 
-    pytest.importorskip("tifffile")
-    as_mask = tmp_path / "cell.tif"
-    vm.save_roi("cell", str(as_mask))
-    vm.load_roi(str(as_mask), name="from_mask")
+    assert back.names == ["cell", "corner"]
+    assert back["corner"].invert is True
+    assert back.combine == "and"
     np.testing.assert_array_equal(
-        vm.rois["from_mask"].to_mask((16, 16)), vm.rois["cell"].to_mask((16, 16))
+        back.roi("cell").to_mask((16, 16)), vm.selection_roi().to_mask((16, 16))
     )
 
 

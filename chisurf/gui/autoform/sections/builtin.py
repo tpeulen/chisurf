@@ -2114,6 +2114,54 @@ class ImageMapWidget(QtWidgets.QWidget):
                 except Exception:  # pragma: no cover - CircleROI optional
                     self._roi_item = None
 
+    # ── surface for the shared region overlay ──────────────────────────
+    def add_roi(self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0),
+                pen="y", movable=True, rotatable=False, points=None):
+        """Add a draggable region shape, returning a chiplot ROI handle.
+
+        This is the whole surface
+        :class:`~chisurf.gui.widgets.roi.overlay.RegionOverlay` needs, so any
+        tool whose canvas is this section can show and edit a shared region
+        collection on it. Implemented here rather than in chiplot because this
+        widget owns the pyqtgraph image view; handing the raw view out would put
+        the coupling somewhere it could rot unnoticed.
+
+        Parameters
+        ----------
+        kind : str
+            ``"rect"``, ``"circle"``, ``"ellipse"`` or ``"polygon"``.
+        pos, size : tuple of float
+            Corner and extent in image coordinates.
+        pen : pen-like
+            Outline style.
+        movable : bool
+            Whether the user can drag/resize it.
+        rotatable : bool
+            Whether a rectangle may be rotated.
+        points : sequence of (float, float), optional
+            Vertices for ``kind="polygon"``.
+
+        Returns
+        -------
+        chisurf.gui.chiplot.handles.Roi
+
+        Raises
+        ------
+        RuntimeError
+            If there is no image view (pyqtgraph missing).
+        """
+        if self._image is None:
+            raise RuntimeError("no image view to draw a region on")
+        from chisurf.gui.chiplot import style as S
+        from chisurf.gui.chiplot.backends import pyqtgraph_backend as B
+
+        surface = B._PgImageView.__new__(B._PgImageView)
+        surface._iv = self._image
+        return surface.add_roi(
+            kind=kind, pos=tuple(pos), size=tuple(size), pen=S.to_pen(pen),
+            movable=movable, rotatable=rotatable, points=points,
+        )
+
     # ── refresh ────────────────────────────────────────────────────────
     # ── interactive rectangle gate ────────────────────────────────────
     def _setup_rect_roi(self, pg) -> None:

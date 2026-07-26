@@ -32,7 +32,9 @@ def test_a_region_saved_in_clsm_confines_a_pixel_mle_fit(tmp_path):
     clsm = _clsm_view_model_with_a_painted_region()
     clsm.add_roi("cell")
     path = tmp_path / "cell.json"
-    clsm.save_roi("cell", str(path))
+    # Saving is the shared region editor's job now, so the seam is the
+    # collection itself rather than a per-tool save method.
+    clsm.regions.save(str(path))
     assert path.exists()
 
     mle = PixelMleViewModel()
@@ -42,7 +44,7 @@ def test_a_region_saved_in_clsm_confines_a_pixel_mle_fit(tmp_path):
     # The same pixels, on the other side of the file.
     np.testing.assert_array_equal(
         mle.roi.to_mask((24, 24)),
-        clsm.rois["cell"].to_mask((24, 24)),
+        clsm.regions.roi("cell").to_mask((24, 24)),
     )
     assert mle.roi.to_mask((24, 24)).sum() == 6 * 8
 
@@ -55,7 +57,7 @@ def test_a_segmentation_arrives_as_objects_not_as_one_blob(tmp_path):
     downstream would then describe the whole field.
     """
     tifffile = pytest.importorskip("tifffile")
-    from chisurf.core.roi import regionprops
+    from chisurf.core.roi import RegionCollection, regionprops
     from chisurf.plugins.microscopy.clsm.gui.view_model import ClsmViewModel
 
     labels = np.zeros((24, 24), dtype=np.uint16)
@@ -67,15 +69,15 @@ def test_a_segmentation_arrives_as_objects_not_as_one_blob(tmp_path):
 
     vm = ClsmViewModel()
     vm.current_image = np.ones((24, 24)) * 5.0
-    vm.load_roi(str(path))
-    assert len(vm.rois) == 3
+    vm.regions.extend(RegionCollection.load(str(path)))
+    assert len(vm.regions) == 3
 
     # Each arrives with its own size, and measures the same as it does in the
     # label image it came from.
     measured = {p.label: p.area for p in regionprops(labels)}
     assert sorted(measured.values()) == [16, 16, 36]
-    for roi in vm.rois.values():
-        assert roi.to_mask((24, 24)).sum() in measured.values()
+    for entry in vm.regions:
+        assert entry.roi.to_mask((24, 24)).sum() in measured.values()
 
 
 def test_a_region_measured_in_one_tool_gates_another():

@@ -594,6 +594,61 @@ def _grab_chimol_viewer():
     print("wrote chimol_accessibility.png")
 
 
+def _grab_region_editor():
+    """The shared region GUI on the CLSM tool: the list and the shapes.
+
+    Real widgets, a synthetic confocal frame, and one region of every kind the
+    editor can hold — a painted mask, a drawn ellipse (inverted) and a
+    rectangle switched off — so the guide shows what the columns mean.
+    """
+    from chisurf.core.roi import EllipseROI, RectangleROI
+    from chisurf.gui.widgets.roi import RegionEditor
+    from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
+    from qtpy import QtWidgets
+
+    tool = CLSMPixelSelect()
+    model = tool.model
+
+    ny = nx = 128
+    yy, xx = np.mgrid[0:ny, 0:nx]
+
+    def blob(cy, cx, r, soft=6.0):
+        return 1 / (1 + np.exp((np.hypot(yy - cy, xx - cx) - r) / soft * 4))
+
+    frame = 900 * (blob(64, 64, 46) - blob(64, 64, 38)) + 500 * blob(58, 70, 18) + 25
+    model.current_image = np.random.default_rng(3).poisson(frame).astype(float)
+    model.selection_mask = np.zeros_like(model.current_image)
+    model.selection_mask[20:40, 20:45] = 1.0
+    model.notify("image")
+
+    model.add_roi("membrane ring")
+    model.regions.add(EllipseROI(70, 58, 18, 18, name="nucleus"), invert=True)
+    model.regions.add(RectangleROI(5, 100, 40, 122, name="empty patch"), enabled=False)
+    model.regions.combine = "and"
+
+    editor = tool.auto_form.findChild(RegionEditor)
+    editor.refresh()
+    tool.region_overlay.refresh()
+    editor.select("nucleus")
+    tool.region_overlay.select("nucleus")
+
+    def raise_tab(title):
+        for bar in tool.findChildren(QtWidgets.QTabBar):
+            for i in range(bar.count()):
+                if bar.tabText(i) == title:
+                    bar.setCurrentIndex(i)
+
+    tool.resize(1020, 780)
+    tool.show()
+    QApplication.instance().processEvents()
+    raise_tab("Image")
+    QApplication.instance().processEvents()
+    _grab(tool, "regions_overlay.png")
+    raise_tab("Regions")
+    QApplication.instance().processEvents()
+    _grab(tool, "regions_list.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -611,6 +666,7 @@ def main():
         _grab_burst_gs_tool,
         _grab_accurate_fret_tool,
         _grab_chimol_viewer,
+        _grab_region_editor,
     ):
         try:
             grab()
