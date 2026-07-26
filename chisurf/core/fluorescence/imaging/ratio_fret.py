@@ -282,8 +282,57 @@ def ratio_image(
         ratio = ratio / float(normalisation)
 
     if ratio_median and ratio_median > 1:
-        # Median-filter only the defined pixels; NaNs would otherwise spread.
-        filled = np.where(np.isfinite(ratio), ratio, np.nanmedian(ratio))
-        smoothed = median_filter(filled, size=int(ratio_median), mode="nearest")
-        ratio = np.where(np.isfinite(ratio), smoothed, np.nan)
+        ratio = masked_median_filter(ratio, int(ratio_median))
     return ratio
+
+
+def masked_median_filter(image: np.ndarray, size: int) -> np.ndarray:
+    """Median filter a map with holes, ignoring the undefined neighbours.
+
+    Filling the undefined pixels with a constant before an ordinary median
+    filter lets that constant vote in the window of every pixel within
+    ``size // 2`` of a hole, so a small region next to a large one is dragged
+    towards the fill value. Here the undefined neighbours are dropped from the
+    window instead: each defined pixel becomes the median of the *defined*
+    pixels inside its box, and every undefined pixel stays undefined.
+
+    The window geometry matches :func:`scipy.ndimage.median_filter` with
+    ``mode="nearest"`` — ``size // 2`` samples before the pixel and the rest
+    after it, with the image edge replicated outwards. An even number of
+    samples in the window averages the two middle values, where SciPy's rank
+    filter takes the upper one; the two agree for every odd *size*.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Two-dimensional map, NaN where it is not defined.
+    size : int
+        Edge length of the square window, in pixels.
+
+    Returns
+    -------
+    numpy.ndarray
+        The filtered map, NaN wherever *image* was NaN.
+    """
+    from numpy.lib.stride_tricks import sliding_window_view
+
+    defined = np.isfinite(image)
+    out = np.full(image.shape, np.nan, dtype=float)
+    if not defined.any():
+        return out
+
+    before = size // 2
+    padded = np.pad(image, ((before, size - 1 - before),) * 2, mode="edge")
+
+    # The window stack is size**2 times the map; walk it in row blocks so a
+    # multi-megapixel image does not need a gigabyte of neighbourhoods.
+    ny, nx = image.shape
+    rows = max(1, int(64e6 // (nx * size * size * 8)))
+    for start in range(0, ny, rows):
+        stop = min(start + rows, ny)
+        block = sliding_window_view(padded[start : stop + size - 1], (size, size))
+        selected = defined[start:stop]
+        # Every window kept here holds its own finite centre, so the median is
+        # never taken over an all-NaN slice.
+        out[start:stop][selected] = np.nanmedian(block[selected], axis=(1, 2))
+    return out

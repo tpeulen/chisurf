@@ -2,6 +2,21 @@
 
 ## 2026-07-26
 
+* **Ratio-FRET maps: a hole no longer votes on its neighbours (RF-036).** The
+  post-division median filter in `ratio_image` used to fill every undefined
+  pixel with the image-wide `np.nanmedian` and then run an ordinary
+  `median_filter`, so the injected constant sat in the window of every pixel
+  within `ratio_median // 2` of an ROI border, a `minimum_donor` exclusion or
+  the background — a small cell next to a large one reported the large one's
+  ratio. Replaced by `masked_median_filter`, which drops the undefined
+  neighbours from the window (edge-padded `sliding_window_view` +
+  `np.nanmedian` over the defined pixels only, walked in row blocks so a
+  multi-megapixel map does not materialise a gigabyte of neighbourhoods).
+  Identical to `scipy.ndimage.median_filter(…, mode="nearest")` on a
+  fully-defined map for odd sizes. Three tests in
+  `test/core/test_ratio_fret.py` pin it (the reported two-cell field, SciPy
+  parity, hole handling); 20 in the file and 819 in `test/core` green.
+
 * **chimol: bond editing, and a test fixture that could not exist.** `bond`,
   `unbond` and `get_bonds` transcribed from PyMOL's `editing.py`/`querying.py`.
   `bond` takes exactly one atom from each selection in the same object and

@@ -575,11 +575,27 @@ of scaling. The module is exported from `chisurf.core.fluorescence.imaging` but
 has no GUI/CLI caller yet, so these are cheap to fix now. Findings RF-036..RF-041.
 
 ### RF-036
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (wrong numbers on the default path: a pixel reports another region's ratio)
 - **Location:** `chisurf/core/fluorescence/imaging/ratio_fret.py:284-288` (`ratio_image`, the `ratio_median` block)
 - **Finding:** The comment claims "Median-filter only the defined pixels; NaNs would otherwise spread", but the code replaces every undefined pixel with the **global** `np.nanmedian(ratio)` and then runs an ordinary `median_filter` — so the injected constant votes in the median of its *defined* neighbours, and every pixel within `ratio_median // 2` of a hole (ROI border, `minimum_donor` exclusion, background) is pulled toward the image-wide median. Verified: a 40×40 field with a large cell at ratio 3.0 and a small 6×6 cell at ratio 1.0, background excluded by `minimum_donor`, defaults `ratio_median=5`: 12 of the small cell's 36 pixels come back as exactly **3.0** — the ratio of a cell 14 px away — and its mean rises from 1.0 to 1.667. `test_the_median_filter_erases_features_smaller_than_its_kernel` (`test/core/test_ratio_fret.py:133`) uses a fully-defined map, so nothing in the suite exercises the fill at all. Use a mask-aware median (e.g. `scipy.ndimage.generic_filter` with `np.nanmedian`, or filter a masked array) so undefined neighbours are excluded from the window rather than replaced by a constant.
-- **Fix note:**
+- **Fix note:** The constant fill is gone. `ratio_image` now calls a new
+  `masked_median_filter(image, size)` in the same module, which drops the
+  undefined neighbours from each window instead of substituting a value:
+  `sliding_window_view` over an edge-padded map, `np.nanmedian` over the
+  windows of the defined pixels only, walked in row blocks so a multi-megapixel
+  map does not materialise a gigabyte of neighbourhoods. Undefined pixels stay
+  NaN and never contribute, so the small cell in the reported scenario reads
+  1.0 throughout. The window geometry matches `scipy.ndimage.median_filter(…,
+  mode="nearest")` exactly for odd sizes (verified for 3/5/9 in the tests); an
+  even count in the window averages the two middle values where SciPy's rank
+  filter takes the upper one, which the docstring states. Pinned by three tests
+  in `test/core/test_ratio_fret.py`:
+  `test_an_undefined_neighbour_does_not_vote_in_the_median` (the reported
+  40×40 two-cell field), `test_the_masked_median_matches_scipy_where_nothing_is_undefined`
+  and `test_the_masked_median_ignores_holes_and_keeps_them`. Note this also
+  removes the `All-NaN slice encountered` warning half of RF-040; that
+  finding's shape-validation half is untouched and stays OPEN.
 
 ### RF-037
 - **Status:** OPEN

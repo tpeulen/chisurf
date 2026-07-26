@@ -211,3 +211,51 @@ def test_no_valid_frame_is_rejected():
     d = np.ones((3, 4, 4))
     with pytest.raises(ValueError, match="no valid frame"):
         ratio_image(d, d, frames=[7, 8])
+
+
+def test_an_undefined_neighbour_does_not_vote_in_the_median():
+    """A cell never reports the ratio of a cell it does not touch.
+
+    Undefined pixels are dropped from the filter window, not replaced by a
+    constant: filling them with the image-wide median would let a distant
+    bright region decide the ratio of every pixel near a hole.
+    """
+    d = np.zeros((3, 40, 40))
+    a = np.zeros((3, 40, 40))
+    d[:, 4:24, 4:24], a[:, 4:24, 4:24] = 100.0, 300.0     # a large cell at 3.0
+    d[:, 30:36, 30:36], a[:, 30:36, 30:36] = 100.0, 100.0  # a small one at 1.0
+
+    m = ratio_image(d, a, minimum_donor=1.0)
+    small = m[30:36, 30:36]
+    defined = small[np.isfinite(small)]
+    assert defined.size, "the small cell must survive the filtering"
+    np.testing.assert_allclose(defined, 1.0)
+    assert np.all(np.isnan(m[26:30, 26:30])), "background stays undefined"
+
+
+def test_the_masked_median_matches_scipy_where_nothing_is_undefined():
+    """With no holes the filter is the ordinary median filter."""
+    from scipy.ndimage import median_filter
+
+    from chisurf.core.fluorescence.imaging.ratio_fret import masked_median_filter
+
+    img = np.random.default_rng(7).normal(size=(23, 17))
+    for size in (3, 5, 9):
+        np.testing.assert_allclose(
+            masked_median_filter(img, size),
+            median_filter(img, size=size, mode="nearest"),
+        )
+
+
+def test_the_masked_median_ignores_holes_and_keeps_them():
+    """Each defined pixel is the median of its defined neighbours only."""
+    from chisurf.core.fluorescence.imaging.ratio_fret import masked_median_filter
+
+    img = np.full((5, 5), 1.0)
+    img[:, 3:] = np.nan
+    img[2, 2] = 100.0                 # a spike with only two defined neighbours
+    out = masked_median_filter(img, 3)
+
+    assert np.all(np.isnan(out[:, 3:])), "undefined pixels stay undefined"
+    assert out[2, 2] == pytest.approx(1.0), "the spike is outvoted by real data"
+    assert np.all(np.isnan(masked_median_filter(np.full((4, 4), np.nan), 3)))
