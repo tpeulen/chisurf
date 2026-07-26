@@ -80,6 +80,10 @@ The workflows a first pass should cover — expand as the tester discovers more:
   auto-fit the mixed decay into lifetime components, compute the per-species
   lifetime filters, unmix the mixture and export the filters for a filtered
   correlation. *(last driven 2026-07-26; RF-190..RF-192)*
+- [PCH molecular brightness](/usecases/pch-molecular-brightness.md) — what FCS
+  cannot answer: bin the photon stream into short counting intervals, build the
+  photon counting histogram P(k), and fit it for molecular brightness ε and mean
+  occupancy ⟨N⟩. *(last driven 2026-07-26; RF-208..RF-214)*
 - [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET

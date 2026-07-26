@@ -56,6 +56,36 @@
   **RF-192**, `_on_range_spin_changed` recomputes through the `_syncing_range`
   guard, so opening the panel runs the filter computation six times, nested two
   deep. No application source was changed.
+* **GUI walk of the PCH tool — molecular brightness (RF-208..RF-214).** Drove
+  **Spectroscopy → Single-Molecule → PCH** headlessly the way a user does — load
+  a TTTR file, set channels / bin time / micro-time gate, compute the photon
+  counting histogram, fit one and then two species, move the fit region, export,
+  open Help — on `test/data/clsm/Leica_SP5.ptu` (6.7 M photons) and
+  `Leica_SP8.ptu`. **Loading and computing are fast and correct** (1.5 M bins in
+  0.71 s, Σ P(k) = 1, 4.43 counts per 100 µs bin), and `csc pch analyze` runs end
+  to end. **The whole fitting half of the tool does not work.** `gui/tool.py`
+  never imports numpy, so every **🧪 Fit Model** click ends in a modal
+  `name 'np' is not defined` — the fit itself succeeds and writes ε = 0.672,
+  ⟨N⟩ = 2.658 back into the boxes, but no curve is ever drawn and the *Fit
+  Results* box stays empty (**RF-208**); the **Components** spin box raises
+  `TypeError: object of type 'int' has no len()` and never rebuilds the species
+  rows, so multi-species PCH — the plugin's stated purpose — is unreachable
+  (**RF-209**); `pch.fit` does not check the parameter lists against
+  `n_components` and returns `ok: True` with empty occupancies and a
+  delta-function `p_fit`, which **💾 Save Results** then exports under a success
+  dialog (**RF-210**); the fit minimises unweighted P(k) residuals while scoring
+  a Pearson χ² on counts, so χ²ᵣ = 1.1e18 is printed as a normal result in both
+  GUI and CLI, with a model mean of 1.12 counts/bin against a measured 4.43
+  (**RF-211**); the **ℹ Help** button is dead (`QDialogButtonBox` not imported,
+  **RF-212**); the README and in-app help document
+  `python -m chisurf pch analyze …`, which is not a subcommand and instead
+  launches the GUI and hangs (**RF-213**); and a channel selection matching no
+  photon dies on a raw numpy message while leaving the previous file's histogram
+  and status message on screen (**RF-214**). The plugin's own GUI test only
+  constructs the window, so none of this is reachable by it. Recorded as
+  [/usecases/pch-molecular-brightness.md](/usecases/pch-molecular-brightness.md);
+  seven defects filed in [/reviews/findings.md](/reviews/findings.md). No
+  application source was changed.
 * **RF-042 fix — every curve of a multi-run ALV file was the same interleaved
   array.** `openASC_old` allocated its per-curve accumulators as
   `[[]] * len(curvelist)`, aliasing one list into every slot, so the row loop

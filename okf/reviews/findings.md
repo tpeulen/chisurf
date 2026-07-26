@@ -2424,3 +2424,60 @@ Findings RF-202..RF-207.
 - **Location:** `chisurf/core/dataspec/__init__.py:710-711` (`_section_from_dict`)
 - **Finding:** The loader validates the section `type` strictly (`:707-709` raises `ValueError: unknown section type …`) and then drops every key the target dataclass does not declare: `kwargs = {k: v for k, v in d.items() if k in fields}`. A typo, a field placed on the wrong section type, or a key that a refactor renamed produces a section that builds cleanly and quietly does the default thing. Verified: `_section_from_dict({'type': 'value', 'label': 'x', 'attr': 'a', 'colapsed': True, 'hidden_when': {...}, 'typo_field': 5})` returns a `ValueSection` with all three extras discarded and no diagnostic — note `hidden_when` is a *real* field, just not on `ValueSection`, which is exactly the mistake an author would make after reading the `PanelSection` docstring. With ~100 shipped `.view.json` specs and a growing field vocabulary, this asymmetry (strict on `type`, silent on everything else) is the reason such a bug is only found by staring at the UI. Log a warning listing the unknown keys and the valid field names for that section type; keep dropping them so old specs still load.
 - **Fix note:**
+
+### Use-case walk 2026-07-26 — PCH molecular brightness (GUI tester)
+
+Found by driving the **Spectroscopy → Single-Molecule → PCH** tool headlessly the
+way a user does — load a TTTR file, compute the photon counting histogram, fit
+one and then two species, move the fit region, export, open Help — on
+`test/data/clsm/Leica_SP5.ptu` and `Leica_SP8.ptu`
+(see [the use case](/usecases/pch-molecular-brightness.md)). Findings RF-208..RF-214.
+
+### RF-208
+- **Status:** OPEN
+- **Severity:** S1 (every fit ends in a modal error box; the fitted curve is never drawn and the results box never fills)
+- **Location:** `chisurf/plugins/pch/gui/tool.py` — `np` used at `:478-484` (`_plot_fit`) and `:500-505` (`_update_results_text`), while the only `import numpy as np` is local to `_save_outputs` at `:534`; module imports at `:1-34`
+- **Finding:** The module imports `csv`, `logging`, `typing`, Qt and chiplot but never numpy, so the first statement of `_plot_fit` that builds a mask raises `NameError: name 'np' is not defined`. `_on_fit` (`:377`) calls `_plot_fit()` then `_update_results_text()` inside its `try`, and the `except` turns the `NameError` into `QMessageBox.critical(self, "Error", str(e))`. Verified by driving the real `QAction`: the backend fit **succeeded** (ε = 0.6722, ⟨N⟩ = 2.6581 were written back into the spin boxes at `:403-404`, which runs before the plotting) and the status bar's "Fit complete: χ²=…" line at `:408` is never reached — the user sees a dialog reading `name 'np' is not defined`, an unchanged histogram with no red model curve, and a permanently empty *Fit Results* box (screenshots `04_fit1.png`, `05_fit2.png`). `_update_results_text` is also the region-drag handler (`_on_region_changed`, `:441`), so step 8 of the workflow — re-scoring χ² over a new k range — is silently inert as well: dragging the region produced no text and no error, because that path has no `try`. Add `import numpy as np` at module level and drop the local import.
+- **Fix note:**
+
+### RF-209
+- **Status:** OPEN
+- **Severity:** S1 (the **Components** spin box does nothing, so multi-species PCH — the plugin's stated purpose — is unreachable from the GUI)
+- **Location:** `chisurf/plugins/pch/gui/tool.py:302` (`_update_species_inputs`), connected at `:246` (`self.spin_comp.valueChanged.connect(self._update_species_inputs)`)
+- **Finding:** The row-clearing loop reads `for _ in range(len(self.species_layout.count()), 0, -1):` — `QFormLayout.count()` already returns an `int`, so this raises `TypeError: object of type 'int' has no len()` on the first line of the handler. Qt swallows exceptions raised inside a slot, so nothing is shown: the ε/⟨N⟩ rows are never rebuilt and the panel keeps exactly the species rows created by `_init_species_inputs(1)` in the constructor while the spin box displays the new number. Verified: after `spin_comp.setValue(2)` the widget reported `len(self.eps_boxes) == 1` and `species_layout.rowCount() == 2` (one ε + one ⟨N⟩), with the box reading `2` on screen (`05_fit2.png`, `10_recovered.png`). The manifest, the README, the Help text and the plugin description all advertise multi-species fitting; it cannot be reached. Note the loop is also wrong once the `len()` is removed — it should clear `rowCount()` rows, not `count()` items (two items per row). Use `while self.species_layout.rowCount(): self.species_layout.removeRow(0)`.
+- **Fix note:**
+
+### RF-210
+- **Status:** OPEN
+- **Severity:** S1 (`pch.fit` returns `ok: True` with a degenerate model when the parameter lists disagree with `n_components`, and that garbage is what gets exported)
+- **Location:** `chisurf/plugins/pch/backend/services.py:130-165` (`_fit_handler`, `params_init = init_eps + init_Ns` at `:143`, the `p[:n_components]` / `p[n_components:]` split at `:146`), with the GUI writeback at `chisurf/plugins/pch/gui/tool.py:402-404`
+- **Finding:** The handler concatenates `initial_epsilons` and `initial_Ns` into one flat vector and then splits the optimiser's answer at `n_components`, without ever checking that either list has `n_components` entries. Given `n_components=2` with one ε and one ⟨N⟩ — exactly what the GUI sends while RF-209 keeps a single species row on screen — the split yields **two epsilons** (the ε *and* the ⟨N⟩) and an **empty** occupancy list, so `pch_mixture` convolves nothing, `p_fit` is `[1, 0, 0, …]` (a delta at k = 0), `fractions` is `[]` from `Ns_arr/Ns_arr.sum()` on an empty array, and the handler still returns `{"ok": True, …, "chi2": 581023.7}`. Verified directly against `_fit_handler` and through the GUI. The GUI then raises `IndexError: list index out of range` in the writeback loop — but only *after* `self._fit_result` has been assigned at `:400`, so the degenerate result is live: **💾 Save Results** wrote `pch_results.csv` with a `P_fit` column of `1.0, 0.0, 0.0, …`, a **0-byte** `pch_results.txt` and an npz whose `fit_results` array is empty, all under a "Results saved as: …" success dialog. Validate the lengths (pad or reject) and refuse `len(initial_Ns) != n_components` instead of returning `ok: True`; guard the export on a valid fit.
+- **Fix note:**
+
+### RF-211
+- **Status:** OPEN
+- **Severity:** S2 (the reported goodness of fit is meaningless — χ²ᵣ ≈ 1e18 is printed as a normal result — because the fit is unweighted while the score is Poissonian)
+- **Location:** `chisurf/plugins/pch/backend/services.py:145-148` (`resid` returns `pmod[mask] - pe[mask]`, no weights) versus `:156-160` (Pearson χ² on counts); mirrored in the GUI at `chisurf/plugins/pch/gui/tool.py:500-507` and printed by `chisurf/plugins/pch/cli/main.py`
+- **Finding:** `least_squares` minimises the plain difference of probabilities, so the fit is dominated by the first few k (P ≈ 0.4 at k = 0) and the whole shoulder of the histogram carries essentially zero weight, while the quality is then scored as a Pearson χ² on *counts* over 1.5 M bins. For a counting histogram the residual has to be weighted by the Poisson error (σ = √(N·P)); as written the two disagree by ~18 orders of magnitude. Verified on `Leica_SP5.ptu` (channels 0,2 / 100 µs, 126 k-values, 1 501 367 bins), 1 component from the shipped defaults: the fit converged to ε = 0.6722, ⟨N⟩ = 2.6581 and reported **χ²ᵣ = 1.1325e18** (dof 75). The fitted model's mean is 1.124 counts/bin against the data's **4.433**, and it predicts P ≈ 4e-18 at k = 32…40 where **4 574–5 657** bins were actually observed — the top five χ² contributions are all from that region. The GUI shows this in the status bar and `csc pch analyze` prints `red. χ² = 1132474425680562304.000` with no warning that the fit failed; a user reading the ε/⟨N⟩ that were written back into the boxes has nothing telling them the numbers are worthless. Weight the residual by the expected counts and flag an out-of-range χ²ᵣ (and consider reporting the model vs. measured mean counts/bin, which is already available).
+- **Fix note:**
+
+### RF-212
+- **Status:** OPEN
+- **Severity:** S2 (the toolbar **ℹ Help** button is dead — nothing opens, no message)
+- **Location:** `chisurf/plugins/pch/gui/tool.py:94` (`HelpDialog.__init__`) — `QDialogButtonBox` is not in the `from qtpy.QtWidgets import (...)` list at `:8-28`
+- **Finding:** `HelpDialog` builds its OK button with `QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)`, a name that was never imported, so constructing the dialog raises `NameError: name 'QDialogButtonBox' is not defined`. `_show_help` (`:526-528`) has no `try`, so in the running application Qt swallows the exception at the signal boundary and the button simply does nothing — the one place that documents the workflow and the CLI is unreachable. Verified by calling `win._show_help()` directly. Add `QDialogButtonBox` to the import list. (The dialog also renders the plugin's own click group help, which prints `Usage: cli [OPTIONS]` rather than the real command name — worth fixing in the same pass.)
+- **Fix note:**
+
+### RF-213
+- **Status:** OPEN
+- **Severity:** S3 (the documented headless invocation does not exist and hangs by launching the GUI instead)
+- **Location:** `chisurf/plugins/pch/README.md:41-42` and the Help text in `chisurf/plugins/pch/gui/tool.py:70-90`; real registration in `chisurf/core/cli.py` (manifest `entrypoints.cli` = `pch=chisurf.plugins.pch.cli:cli`)
+- **Finding:** Both the README ("### CLI") and the in-app help tell the user to run `python -m chisurf pch analyze data.ptu --components 2 --bin-time 50`. `python -m chisurf` is the **GUI** entry point and ignores the extra arguments: `python -m chisurf pch --help` started the application (offscreen) and never returned — killed after 300 s with an empty output file. The plugin CLI is registered on `csc`, and `csc pch analyze test/data/clsm/Leica_SP5.ptu --components 1 --bin-time 100` runs end to end and prints the fit. Fix the two documented lines (and `csc pch refit`, which the README calls `pch refit`); a user following the README gets a hung process with no error.
+- **Fix note:**
+
+### RF-214
+- **Status:** OPEN
+- **Severity:** S3 (an empty channel selection dies on a raw numpy message and leaves the previous file's result on screen)
+- **Location:** `chisurf/plugins/pch/backend/services.py:75` (`t_max = times.max()` on the masked array), surfaced by the `except` at `chisurf/plugins/pch/gui/tool.py:374-375`; the unused metadata is `routing_channels` from `_load_tttr_handler:38`
+- **Finding:** The *Channels* field is free text defaulting to `0,2`, and nothing validates it against the file. Loading `test/data/clsm/Leica_SP8.ptu` (routing channels **1** and 15) and pressing **Compute PCH** with the default selects zero photons, so `times` is empty and `times.max()` raises `ValueError: zero-size array to reduction operation maximum which has no identity`, which the GUI shows verbatim in a "Error" box. Two things make it worse than a bad message: the status bar still reads `Loaded: /…/Leica_SP8.ptu (3,104,829 photons)` (the failing `_on_compute` never updates it), and both plots still show the **previous** file's data — the screenshot after the failure (`09_wrongchannels.png`) is indistinguishable from a successful run on the wrong file. `pch.load_tttr` already returns the file's `routing_channels`, and the GUI discards them: `_on_load` (`:325-343`) uses only `n_photons`. Populate/validate the channel field from the loaded file, raise a named error for an empty selection ("no photons in channels 0, 2 — the file has 1, 15"), and clear the plots when a new file is loaded or a compute fails.
+- **Fix note:**
