@@ -2170,3 +2170,86 @@ identity, or concurrency. Findings RF-174..RF-180.
 - **Location:** `chisurf/core/actions/project_actions.py:83-89` (`load_project`) and `:111` (`archive_project`)
 - **Finding:** `load_project` — a `chisurf.core` action — does `from qtpy import QtCore` and schedules the second half of the load with `QtCore.QTimer.singleShot(0, lambda: restore_gui_from_fits(fit_uids))`. In any Qt-free context (`csc`, `python -m chisurf.server`, a plugin backend) that import is the only Qt dependency in the whole `core/actions` package, and where Qt is importable but no event loop is running the timer never fires (same mechanism as RF-175): `load_project_data` has already mutated `cs.fits`, the restore step never runs, and the action returns `None` with nothing logged. The GUI-restore step belongs behind the existing GUI hop (`chisurf.gui.run_on_gui_thread`) or in a GUI-side listener, not in core. In the same file `archive_project` imports `chisurf.plugins.core.project_browser.gui.client` — core depending on a plugin's *GUI* module, against the plugin contract in `CLAUDE.md`. While here: `@action("project.save", schema={"project_name": str})` omits the handler's other required argument `target_path` (verified: `spec.schema` is `['project_name']`, `spec._handler_params` is `['project_name', 'target_path']`), so a dispatch without it fails with a bare `TypeError` from the handler instead of the `ValueError` the validation contract promises.
 - **Fix note:**
+
+### Review 2026-07-26 (13) — the foundational data model (`base.py` / `curve.py` / `data.py`)
+
+Slice: `chisurf/core/base.py`, `chisurf/core/curve.py` and `chisurf/core/data.py`
+— the three files every dataset, curve, parameter and fit inherits from. Chosen
+because the layer carries the serialization contract for the whole app yet had
+only four findings on record (RF-086..RF-088), all from one commit.
+
+What holds up: the `_SETATTR_PROPERTY_CACHE` memoisation in `Base.__setattr__` is
+correct (properties do not change at runtime, and the sentinel really does
+distinguish "not looked up" from "not a property"); `__copy__`/`__deepcopy__`
+keep the documented UID identity; `Curve.__init__`'s float64 coercion does
+prevent the object-array trap its docstring describes; `DataGroup.name`'s setter
+and `DataCurve.data`'s stack/unstack round-trip cleanly.
+
+Everything below was reproduced by running the real classes in the `arm64` env
+(one finding end-to-end through the real DEER reader); no source was changed.
+The damage concentrates in `DataCurve.__init__` and in the `save`/`load` pair,
+neither of which has a test that exercises the argument combination that breaks.
+Findings RF-181..RF-189.
+
+### RF-181
+- **Status:** OPEN
+- **Severity:** S1 (every dataset produced by five readers reports its filename as the literal string `'None'`)
+- **Location:** `chisurf/core/data.py:199-222` (`DataCurve.__init__`, the `super().__init__(...)` call)
+- **Finding:** `filename` is a named parameter of `DataCurve.__init__`, so it is consumed there and is **not** in `**kwargs` — and the `super().__init__` call passes `x`, `y`, `copy_array`, `data_reader`, `experiment` and `**kwargs` but never `filename`. `chisurf.core.base.Data.__init__` therefore always sees its default `filename="None"`, and `os.path.normpath("None")` stores the four-character string. Verified end-to-end through a real reader: `DeerReader().read('test/data/deer/deer_trace.csv')` yields a curve with `name='deer_trace'` and `filename='None'`. The same constructor kwarg with no follow-up assignment is used by `chisurf/core/experiments/ics/__init__.py:496`, `deer/reader.py:170`, `pch/reader.py:369`, `pda/reader.py:231`/`:794` and `chisurf/core/fio/fluorescence/pqres.py:244`/`:325` — none of them re-assigns `.filename` afterwards. Only the TCSPC reader escapes, because it works around this by hand (`chisurf/core/fio/fluorescence/tcspc.py:397`, `:409`, `:426`: `data.filename = filename` right after construction). Downstream this is what the dataset-list tooltips show (`chisurf/gui/widgets/experiments/widgets.py:165`, `:181`, `:194`) and what `DataGroup.filename` reports. Forward `filename=filename` to `super().__init__` and drop the three hand-patches.
+- **Fix note:**
+
+### RF-182
+- **Status:** OPEN
+- **Severity:** S1 (constructing a curve from a file silently replaces the file's `ey` with ones — the weights every chi2 is computed from)
+- **Location:** `chisurf/core/data.py:227-243` (`DataCurve.__init__`, the `self.load(...)` call followed by the `ex`/`ey`/`mask` block)
+- **Finding:** `DataCurve.__init__` loads the file *first* (`:227-229`) and only *then* initialises the error and mask arrays from its own arguments (`:232-243`). Since `ex`/`ey`/`mask` default to `None`, the `isinstance(..., np.ndarray)` guards all fail and the freshly loaded columns are overwritten with `np.zeros_like(self.x)`, `np.ones_like(self.y)` and `np.ones_like(self.y)`. `x` and `y` survive only because nothing writes them afterwards. Verified on a 5-column CSV (`ex=0.1`, `ey=0.5`, `mask=0`): `DataCurve(filename=fn)` gives `ex=[0…0]`, `ey=[1…1]`, `mask=[1…1]`, while the identical file through `DataCurve().load(fn)` gives the correct `[0.1…]`, `[0.5…]`, `[0…]`. So the documented constructor form (`chisurf/core/models/tcspc/av_decay.py:23-26`, `chisurf/core/structure/av/__init__.py:758-759`) reads a 3-, 4- or 5-column file and throws its uncertainty columns away, leaving unit weights. Initialise `ex`/`ey`/`mask` before the load, or skip the defaults for arrays the load already set.
+- **Fix note:**
+
+### RF-183
+- **Status:** OPEN
+- **Severity:** S1 (`DataGroup.save()` raises `TypeError` — a data group cannot be saved at all)
+- **Location:** `chisurf/core/data.py:588-592` (`DataGroup.to_yaml`) against `chisurf/core/base.py:363-364` (`Base.save`)
+- **Finding:** `Base.save(file_type='yaml')` calls `self.to_yaml(skip_qt_widgets=skip_qt_widgets)`, but `DataGroup.to_yaml` overrides the base signature with `(remove_protected, convert_values_to_elementary)` only. Verified: `DataGroup([curve]).save(path)` raises `TypeError: DataGroup.to_yaml() got an unexpected keyword argument 'skip_qt_widgets'`, and `yaml` is the default `file_type`, so the plain `group.save(path)` call is the broken one. This is the same class of defect as RF-087 (`Controller.to_dict` / `View.to_dict`) but on `to_yaml`, so a guardrail written only for `to_dict` would not catch it. `DataGroup` is what every reader returns, and `DataCurveGroup` / `ExperimentDataGroup` / `ExperimentDataCurveGroup` all inherit the override. Add `skip_qt_widgets` and forward it to both `to_dict` calls.
+- **Fix note:**
+
+### RF-184
+- **Status:** OPEN
+- **Severity:** S2 (`convert_values_to_elementary=True` is silently ignored on the default path — the caller gets NumPy arrays and live objects back where the docstring promises floats, ints and lists)
+- **Location:** `chisurf/core/base.py:463-484` (`Base.to_dict`, the `return d` at `:478`)
+- **Finding:** With `remove_protected=False` (the default) and `copy_values=True` (also the default, and forced by `convert_values_to_elementary=True` at `:442-443`), `to_dict` returns from inside the `if copy_values:` block at `:478` — *before* the `if convert_values_to_elementary: return to_elementary(d)` at `:481-482`. The flag is therefore only honoured when `remove_protected=True`. Verified: `Base(arr=np.array([1.,2.])).to_dict(convert_values_to_elementary=True)['arr']` is still an `np.ndarray`. The documented contract at `:426-431` ("the values ... will be converted using the function `to_elementary`") is unmet, and callers that rely on it get a dict that `json.dumps`/`yaml.dump` cannot serialize — including `DataCurve.to_dict` and `ExperimentalData.to_dict`, both of which default to `remove_protected=False` and pass the flag straight down. Move the elementary conversion so both branches reach it (and, per RF-088, forward `remove_protected`/`skip_qt_widgets` when it does).
+- **Fix note:**
+
+### RF-185
+- **Status:** OPEN
+- **Severity:** S2 (the `pkl` route is write-only: `save` writes a file `load` cannot read, and what it writes has lost the object's state)
+- **Location:** `chisurf/core/base.py:357-373` (`Base.save`) against `:375-407` (`Base.load`) and `:686-692` (`Base.__getstate__`)
+- **Finding:** `save` advertises `supported_save_file_types = ["yaml", "json", "pkl"]` and writes pickles under `file_type="pkl"`, while `load` only recognises `"json"` and `"p"` and treats everything else — including `"pkl"` — as YAML. Verified: `b.save(fn, 'pkl')` writes 144 bytes, and `Base().load(fn, 'pkl')` raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0x80 in position 0`, because `from_yaml` opens the pickle in text mode. Even with the vocabulary aligned the file is close to empty: `Base.__getstate__` returns only `{'meta_data', 'name'}`, so `pickle.loads(pickle.dumps(Base(lol=1, parameter="ala")))` comes back with `__dict__` keys `['meta_data', 'name']` and no `lol`. That minimal state is deliberate for the `Parameter`/`Fit` hierarchy, which re-adds what it needs (`chisurf/core/fitting/fit.py:537`, `chisurf/core/fitting/parameter.py:202`, `:483`), but for a plain `Base` subclass it makes the pickle route lossy on top of unreadable. Either make `load` accept `"pkl"` (and open binary) and give `Base` a state-preserving `__getstate__`, or drop `"pkl"` from `supported_save_file_types`.
+- **Fix note:**
+
+### RF-186
+- **Status:** OPEN
+- **Severity:** S3 (an unsupported `file_type` writes nothing, raises nothing, and logs that it is saving)
+- **Location:** `chisurf/core/base.py:349-373` (`Base.save`, the unguarded `if file_type in self.supported_save_file_types:`)
+- **Finding:** `save` logs `"<name> of type <cls> is saving filename <fn> as file type <ft>"` at INFO *before* checking the type, then does nothing at all when the type is not one of `yaml`/`json`/`pkl` — no file, no exception, no warning. Verified: `Base(...).save('/tmp/…/t.txt', file_type='txt')` returns `None` and neither `t.txt` nor any other file exists afterwards, with the log line claiming the save happened. Any caller passing a format this class does not implement (`csv` is the obvious one — `Curve.save` and `DataCurve.save` handle it themselves *around* this call) believes it succeeded. Raise `ValueError` on an unknown type, or at minimum log a warning and move the INFO line after the guard.
+- **Fix note:**
+
+### RF-187
+- **Status:** OPEN
+- **Severity:** S2 (`Curve.load(fn)` with its own default `file_type` crashes, and its `except IndexError` handler is a verbatim copy of the code that raised)
+- **Location:** `chisurf/core/curve.py:209-238` (`Curve.load`, the `super().load(...)` at `:221-224` and the `try/except IndexError` at `:233-238`)
+- **Finding:** Two defects in one method. (1) `Curve.load` forwards *every* file type to `Base.load` before doing its own CSV parsing; `Base.load` routes anything that is not `json`/`p` to `from_yaml`, so a CSV is fed to `yaml.safe_load` and the result to `from_dict`. Verified: `Curve().load(fn)` on a two-column CSV raises `ValueError: dictionary update sequence element #0 has length 1; 2 is required` from `self.__dict__.update(...)` — the default argument is the broken one. (2) The `except IndexError` block at `:236-238` re-executes `self.x = csv.data[0]; self.y = csv.data[1]` — byte-for-byte the statements that raised — so a one-column CSV raises `IndexError` again from inside the handler. Skip the `super().load` call for `file_type == 'csv'`, and either handle the short-file case properly or drop the dead `except`.
+- **Fix note:**
+
+### RF-188
+- **Status:** OPEN
+- **Severity:** S3 (`NCurve.__getitem__` raises `AttributeError` for every `NCurve`, and would return mismatched arrays if it did not)
+- **Location:** `chisurf/core/curve.py:54-70` (`NCurve.__getitem__`)
+- **Finding:** The method slices `self.d` into `y` and then builds `x = np.arange(0, len(self.y))` — but `NCurve` has no `y` attribute or property (it is introduced by `Curve`, which overrides `__getitem__` anyway), so `Base.__getattr__` raises. Verified: `NCurve(d=np.arange(6.))[0:3]` → `AttributeError: NCurve object has no attribute 'y'`. Even on a subclass that does define `y`, the index array is built from the *full* length while `y` is the *selected* slice, so the returned pair is inconsistent for any key that is not the whole array. Either build `x` from the sliced result (`np.arange(len(y))`) and use `self.d`, or delete the method — nothing in the tree calls it.
+- **Fix note:**
+
+### RF-189
+- **Status:** OPEN
+- **Severity:** S3 (three type-dispatch gaps in the one function all serialization funnels through)
+- **Location:** `chisurf/core/base.py:96-114` (the dict branch) and `:121-145` (the type ladder) in `to_elementary`
+- **Finding:** (1) The protected-key test is `if (k[0] == "_")`, which assumes every mapping key is a non-empty string: verified `to_elementary({1: 'a'})` → `TypeError: 'int' object is not subscriptable` and `to_elementary({'': 'a'})` → `IndexError: string index out of range`. A single integer-keyed dict anywhere in an object graph aborts the whole save. (2) `isinstance(obj, Iterable)` at `:129` is reached before any bytes handling, so `bytes` become a list of integers — verified: a `Data` with 1 KiB of embedded content serialises to a 13 183-character JSON whose `_data` is an array of 1024 ints, and it restores as a `list`, not `bytes` (`embed_data` defaults to `false`, so this needs the setting turned on). (3) `np.bool_` and `complex` match none of the branches and fall through to `str(obj)` — verified `to_elementary(np.bool_(True))` → `'True'` and `to_elementary(1+2j)` → `'(1+2j)'`, each with a "was not converted to basic type" warning and a stray `print` to stdout at `:167`. Guard the key test with `isinstance(k, str)`, handle `bytes` explicitly (base64 or hex), and add `np.bool_`/`complex` to the ladder.
+- **Fix note:**
