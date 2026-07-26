@@ -2,6 +2,23 @@
 
 ## 2026-07-26
 
+* **GUI walk — global analysis (two fits, one shared donor spectrum).** Drove
+  the whole global-analysis workflow headlessly on
+  `test/data/tcspc/EasyTau300` (D0 + DA decay, each with its own IRF): two local
+  fits (`Lifetime`, `FRET: FD (Discrete)`), the bi-exponential donor spectrum
+  linked across both fits in **Global View**, then one `Global fit` over both
+  datasets — χ²ᵣ = 3.55 over 8486 points in 11 s, with both members ending on
+  identical donor lifetimes (0.569 / 4.073 ns) and `R(G,1) = 52.4 Å`. Recorded
+  as [global analysis](/usecases/global-analysis-linked-fits.md) and filed
+  RF-278..RF-285. The analysis is right; the two unavoidable steps around it are
+  not: touching *Skiprows* in the CSV reader panel silently sets `col_y = 0`, so
+  the decay loads as its own time axis and the fit reports χ²ᵣ = 0.0000
+  (RF-278); and the parameter *Link…* menu both hides same-named parameters in
+  other fits (RF-280) and applies the link inside the **target** fit, modifying
+  a different fit than the user asked for (RF-279). Only the Global View graph
+  links correctly. A converged global fit also shows just one member's values
+  for every shared parameter name (RF-281).
+
 * **RF-221 fix — `histogram_rebin` raised on the one edge a caller is most
   likely to pass.** The out-of-range guard was `xi > max(bin_edges)`, so a new
   edge exactly on the largest original edge fell through to

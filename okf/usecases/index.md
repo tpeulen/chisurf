@@ -94,6 +94,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   orientation error, and generate a static FRET line to overlay on an smFRET
   histogram. The one core workflow that needs no data file.
   *(last driven 2026-07-25; RF-070..RF-077)*
+- [Global analysis — two fits, one shared donor spectrum](/usecases/global-analysis-linked-fits.md)
+  — the feature ChiSurf is named for: fit a donor-only and a donor–acceptor
+  decay side by side, link the donor lifetime spectrum across the two fits in
+  the Global View graph, and run one global fit over both datasets.
+  *(last driven 2026-07-26; RF-278..RF-285)*
 - [Light Path Simulator](/usecases/lightpath-crosstalk-r0.md) — the step before
   the measurement: assemble a two-colour detection path from catalogue spectra
   (lasers, excitation dichroic, emission splitter, bandpasses, detector QE) and a

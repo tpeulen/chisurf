@@ -3234,3 +3234,71 @@ Findings RF-269..RF-277.
 - **Location:** `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:25-28` (`EASY_LAST_CONFIG_PATH`, `EASY_PRESETS_DIR`, `OPTICAL_PRESETS_DIR`, `DYE_PRESETS_DIR` = `Path.home() / ".chisurf" / …`)
 - **Finding:** the four paths are hard-coded to `~/.chisurf` instead of `chisurf.core.settings.path_utils.get_path("settings")`, which the rest of the app uses and which honours `CHISURF_SETTINGS_DIR`. Verified with `CHISURF_SETTINGS_DIR=/tmp/…/altsettings`: `get_path("settings")` → `/tmp/…/altsettings` while `EASY_LAST_CONFIG_PATH` stays `/Users/<user>/.chisurf/settings/lightpath_easy_last.json`. A redirected profile (test runs, a second installation, a shared machine) silently reads and writes another profile's presets. Resolve all four from `get_path`.
 - **Fix note:**
+
+### GUI walk 2026-07-26 — Global analysis (two fits, one shared donor spectrum)
+
+Driven headlessly through the real main window on
+`test/data/tcspc/EasyTau300` (D0 + DA decays, each with its own IRF): reader
+panel, two local fits (`Lifetime`, `FRET: FD (Discrete)`), the donor lifetime
+spectrum linked across the fits in **Global View**, and one `Global fit` over
+both datasets. The analysis converges correctly (χ²ᵣ = 3.55 over 8486 points,
+both members ending on identical donor lifetimes), but the two steps a user
+cannot avoid — loading a text decay and linking a parameter across fits — are
+each broken. Use case:
+[global analysis](/usecases/global-analysis-linked-fits.md). RF-278..RF-285.
+
+### RF-278
+- **Status:** OPEN
+- **Severity:** S1 (touching the one control every text file needs silently loads the time axis as the decay; the fit then reports χ²ᵣ = 0.0000)
+- **Location:** `chisurf/gui/widgets/fio/fio.py:174-204` (`CsvWidget.changeCsvParameter`) with `chisurf/gui/widgets/fio/csvInput.ui` (spin-box defaults) and `chisurf/core/experiments/tcspc/reader.py:247,254` (`skiprows`, `col_y = 1`)
+- **Finding:** the CSV *File parameters* panel is never initialised **from** the reader, and any interaction with it pushes *all* of its own widget values onto the reader at once — including `col_x`/`col_y` from spin boxes whose `.ui` defaults are `0`/`0`, while the reader's default is `col_x = 0, col_y = 1`. Verified live: a fresh TCSPC/`TXT/CSV` reader reports `skiprows=8, col_x=0, col_y=1` while the panel shows `Skiprows 7` and both column spin boxes `0`; setting *Skiprows* to 0 (the normal first action for a headerless file) leaves `col_y = 0`, and the next file loads with `y == x/dt` — the decay **is** the time axis (`np.allclose(d.y, d.x/dt)` → `True`, `y.max() = 51.0` instead of 1e5 counts). Downstream there is no error at all: the auto fit range jumps to `3188..6375` (half the record), `Fit` runs for 3 s, the progress dialog says *Fitting finished!* and the plot annotation reads **`chi2r=0.0000`** with `τ = 55 ns`, `R(G,1) = −22.1 Å`, `E_FRET = 0.9996`. Initialise the widget from the reader (and/or only push the control the user actually changed); a test that constructs the panel and asserts every control agrees with the reader, then flips one control and asserts the others are unchanged, pins it.
+- **Fix note:**
+
+### RF-279
+- **Status:** OPEN
+- **Severity:** S1 (the *Link…* menu links the wrong parameter, in the wrong fit, with no feedback)
+- **Location:** `chisurf/gui/widgets/fitting/parameter_widgets.py:1131-1146` (`make_linkcall_by_name` → `fc.link_parameters(parameter_name=…, target_parameter_name=…, fit_uid=target_fit_dto["uid"])`) against `chisurf/server/services/parameters.py:458-520` (`parameter_link`, where `fit_uid` addresses the **source** and `target_fit_uid`/`target_fit_index` the target)
+- **Finding:** the closure passes the **target** fit's uid in the `fit_uid` slot and never sets `target_fit_uid`, so the server resolves source *and* target inside the target fit. Verified with two fits (D0 `Lifetime`, DA `FRET: FD (Discrete)`): opening *Link…* on the **DA** fit's `sc` and choosing *D0 fit → `bg`* left DA untouched (`DA free` unchanged, `sc.link is None`) and instead linked **D0's own `sc` to D0's `bg`** (`AFTER D0: sc->bg`, D0's free list dropped from `[sc,bg,tL1,ts]` to `[bg,tL1,ts]`). The user's parameter is never linked, a different fit is silently modified, and the widget still reports *Not linked*. The Global View path (`plugins/core/globalview/gui/tool.py:398-416`) builds the same call correctly with `fit_index` + `target_fit_index` — mirror that here, and pin it with a two-fit test asserting the source parameter carries the link.
+- **Fix note:**
+
+### RF-280
+- **Status:** OPEN
+- **Severity:** S2 (the one link a global analysis always needs — the same parameter in another fit — is not offered)
+- **Location:** `chisurf/gui/widgets/fitting/parameter_widgets.py:1122` (`if pname != self.fitting_parameter.name:` inside `build_link_menu`)
+- **Finding:** the guard that stops a parameter linking to itself is applied to **every** fit's submenu, not only the parameter's own fit, so no fit ever offers a target with the same name. Verified with the D0/DA pair above: the menu built on the DA fit's `tL1` lists 30 entries for the D0 fit — `sc, bg, xL1, n0, ts, …` — and **no `tL1`**, although the D0 `Lifetime` model has a fitted `tL1 = 3.9366`. Sharing a lifetime, a shift, a background or a rate across datasets — the whole point of global analysis, and what `docs/` describes — is therefore impossible from this menu; the workflow only completes through the Global View graph. Restrict the exclusion to the source parameter's own fit (or compare identity, not name).
+- **Fix note:**
+
+### RF-281
+- **Status:** OPEN
+- **Severity:** S2 (a converged global fit's result table shows only one member's values for every shared parameter name)
+- **Location:** `chisurf/core/fitting/fit.py:640` (`pd = self.model.parameters_all_dict` in `Fit.__str__`), rendered by `chisurf/gui/plots/fitinfo.py:716,745`
+- **Finding:** the report iterates a **name-keyed** dict, but a `GlobalFitModel`'s members share almost all their parameter names (`sc`, `bg`, `ts`, `dt`, `rep`, `n0`, `l1`, …), so one row per name survives and the rest are dropped. Verified on a converged two-member global fit (χ²ᵣ = 3.5459): the *Info* tab lists a single `bg -16.973`, `sc 0.05901`, `ts 4.5174` — all three the DA member's — while the D0 member's own `bg = 1.0486` (visible in that fit's local *Info* tab) appears nowhere. Half the fitted result of a global analysis is therefore invisible in the place the user reads it. The model already exposes `parameter_names_all` with `1:`/`2:` prefixes; render from the ordered `parameters_all` list with that prefix instead of a dict, and pin it with a two-member global fit asserting both members' `bg` rows are present.
+- **Fix note:**
+
+### RF-282
+- **Status:** OPEN
+- **Severity:** S2 (an advertised feature of the global model has no UI and raises when invoked)
+- **Location:** `chisurf/gui/widgets/models/global_model/widget.py:58` (`self.lineEdit.text()`), `:126-140` (`onAddGlobalVariable`, `self.verticalLayout`), `:141-148` (`onClearVariables`) against `chisurf/core/models/global_model/globalfit.ui` (widgets: `toolButton_6/7/8`, `comboBox`, `checkBox`, `tableWidget` — no `lineEdit`, no `verticalLayout`)
+- **Finding:** `GlobalFitModel` supports global parameters (`_global_parameters`, `global_parameters*`, used by `parameters`/`parameter_names`), and the widget defines `actionOnAddGlobalVariable` / `actionOnClearVariables` handlers for them, but the `.ui` contains no name field, no add button and no container layout, and the two actions are connected to nothing. Verified at runtime on a live global fit: `hasattr(gw, "lineEdit")` → `False`, `hasattr(gw, "verticalLayout")` → `False`, and `gw.onAddGlobalVariable()` raises `AttributeError: GlobalFitModelWidget object has no attribute 'lineEdit'`. (`onAddGlobalVariable` would in any case fail on `self._global_parameters.values()[-1]`, which is not subscriptable.) Either add the controls or remove the dead handlers; a construction test that triggers each connected action would have caught it.
+- **Fix note:**
+
+### RF-283
+- **Status:** OPEN
+- **Severity:** S3 (the fit chooser of the global model is empty until an unrelated button is pressed; its *add* button fires twice and prints to stdout)
+- **Location:** `chisurf/gui/widgets/models/global_model/widget.py:35-36` (`toolButton_7.clicked.connect(self.onAddToLocalFitList)`) with `chisurf/core/models/global_model/globalfit.ui:271-274` (the same button already connected to `actionOnAddToLocalFitList`), and `:208-212` (`update_widgets` is the only thing that fills `comboBox`), plus the `print()` calls at `:150,155,157`
+- **Finding:** verified on a fresh *Global fit* window with two local fits already open: `comboBox` is `[]` at open, so the *Fit* chooser next to **add** is empty and the "add the selected fit" path is unusable until the user presses **update** — after which the combo lists both fits and a single add works. Independently, `toolButton_7` is connected both in the `.ui` and in `__init__`, so one click runs `onAddToLocalFitList` twice (harmless only because `GlobalFitModel.append_fit` de-duplicates) and emits four raw `print()` lines — `onAddToLocalFitList`, `fit_indeces: range(0, 2)`, `onAddToLocalFitList:fitIndex:0/1` — to the console. Populate the combo when the widget is built (and on fit add/remove), drop one of the two connections, and route the prints through `chisurf.logging`.
+- **Fix note:**
+
+### RF-284
+- **Status:** OPEN
+- **Severity:** S3 (Global View's parameter table renders 7 of 77 rows and leaves most of the panel empty)
+- **Location:** `chisurf/plugins/core/globalview/gui/tool.py:272-279` (`_setup_parameters_tab`) and `:295-297` (`AutoForm(GlobalViewParametersModel())` added to that layout)
+- **Finding:** the *Parameters* tab hosts the `global_parameter_table` AutoForm section inside a plain `QVBoxLayout` with no stretch, so the table keeps its size hint while the tab is 850 px tall. Verified on a 1250×850 Global View over two fits: the footer reads **"77 rows × 11 columns"** while exactly **7** rows are visible, with roughly 500 px of empty panel underneath — a table of 77 parameters scrolled seven at a time. The tab also shows its title twice (a bold `All fitting parameters` header immediately above an identical plain label). Give the table the vertical stretch and drop the duplicate caption.
+- **Fix note:**
+
+### RF-285
+- **Status:** OPEN
+- **Severity:** S3 (four dead combo boxes and a checkbox that only enables one of them, in the panel every file load goes through)
+- **Location:** `chisurf/gui/widgets/fio/csvInput.ui` (`comboBox_x_column`, `comboBox_y_column`, `comboBox_error_x_column`, `comboBox_error_y_column`; the `checkBox` → `comboBox_x_column.setEnabled` connection at `:422-425`)
+- **Finding:** none of the four combo boxes is referenced anywhere in the tree (`grep -rn --include="*.py" "comboBox_x_column|comboBox_y_column|comboBox_error_[xy]_column" chisurf/` → no hits), so they are never populated and stay permanently empty; the actual column indices come from the spin boxes beside them (`spinBox_2..spinBox_5`, read in `changeCsvParameter`). The *x-values* checkbox therefore does nothing observable — verified live: unchecking it left `reader.col_x = 0` unchanged and only greyed out an empty combo. The *File parameters* box is the panel every text-file load passes through, and it currently shows four controls that cannot do anything. Populate them from the file's columns or remove them (and give *x-values* a real meaning: "the file carries an x column", which the reader currently infers from `col_x` alone).
+- **Fix note:**
