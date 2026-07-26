@@ -2,6 +2,41 @@
 
 ## 2026-07-26
 
+* **Plugin by plugin: the advertisements are honest, and the route from a
+  method name to a callable was not.** Audited all 102 manifests
+  mechanically — import every entry point, run each plugin's service
+  registration against a recording dispatcher, compare what registers with
+  what the manifest promises. Result: **41 service registrations, 49 command
+  lines and 100 GUI entry points all resolve**, with no stale advertisement
+  anywhere; the one apparent failure was my audit assuming the registration
+  function is called `register_services` when the entry point names the
+  attribute (`acq` uses `register`). All of it is now a guardrail in
+  `test/agent/test_plugin_entry_points.py`, including the strongest check —
+  every declared RPC method must actually be registered.
+* **Discovery works; using what you discover did not.** A manifest usually
+  leaves `params_schema` empty, so the assistant learns a method's name and not
+  its arguments, and has to read the implementation. Watching a real model do
+  that exposed two dead ends in the API index. Names are `snake_case` and `_`
+  is a word character, so a query stayed one unsplittable term: searching
+  `compute_from_efficiency` — the tail of the RPC name
+  `fret_calculator.fret.compute_from_efficiency` — returned **nothing**,
+  because the function is `compute_fret_from_efficiency`. The search now also
+  matches a query's individual words, weighted below a whole-phrase hit so
+  precision is kept. And `read_api_source` on a *module*, the natural next move
+  after finding a plugin, failed because the index holds only the definitions
+  inside one; it now lists them with a `next_step`. New composable skill
+  `use-a-plugin`: find it, read the function that implements it, call it in
+  `run_python`, and check it against a case whose answer is already known.
+  Re-run live, the model reaches the FRET calculator in four tool calls and
+  sanity-checks itself (E = 0.5 returns R = R0 = 52.0 Å exactly) before
+  answering R = 51.0 Å for E = 0.53.
+* **A sentence is not a tool name.** Mistral put a whole paragraph of reasoning
+  in `function.name`, and the client dispatched it, producing `unknown tool
+  'To compute a distance from a FRET efficiency, I will use…'` — a wasted turn,
+  and the prose lost from the answer. A tool name is an identifier in every
+  provider's schema, so anything else is now folded into the response text
+  instead of dispatched.
+
 * **A kinetic scheme is not a PDA concept — the fittable rate matrix is now
   general.** `RateMatrixMixin` had landed under `chisurf/core/models/pda/rates.py`,
   which put a facility that dynamic PDA, tcPDA, the photon-by-photon burst

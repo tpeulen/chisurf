@@ -126,6 +126,23 @@ def read_api_source(
 
     symbol = index.get(qualname)
     if symbol is None:
+        # Asking for a *module* is the natural move after finding a plugin —
+        # "read chisurf.plugins.x.core.algorithms" — and the index holds only
+        # the definitions inside it. Answering with its contents is what was
+        # meant, and beats a near-miss guess from the fuzzy search.
+        wanted = str(qualname).strip().rstrip(".")
+        inside = [s for s in index.symbols if s.module == wanted]
+        if inside:
+            return {
+                "ok": True,
+                "module": wanted,
+                "n_symbols": len(inside),
+                "symbols": [s.summary(doc_chars=200) for s in inside[:40]],
+                "next_step": (
+                    f"{wanted} is a module. Call read_api_source again with one "
+                    f"of the qualified names above to see its source."
+                ),
+            }
         candidates = [match.qualname for match in index.search(qualname, limit=5)]
         raise ToolError(
             f"no ChiSurf symbol called {qualname!r}."
@@ -281,7 +298,17 @@ def list_plugins(context: AgentContext, query: str = "") -> dict[str, Any]:
             f"no plugin matches {query!r}. Call list_plugins with no query to "
             f"see all of them, or search the source with search_api."
         )
-    return {"ok": True, "n_plugins": len(plugins), "plugins": plugins[:60]}
+    result: dict[str, Any] = {"ok": True, "n_plugins": len(plugins), "plugins": plugins[:60]}
+    # Most manifests declare a method's name and summary but leave its
+    # parameter schema empty, so the names alone are not enough to call one.
+    if any(entry.get("rpc_methods") for entry in plugins):
+        result["next_step"] = (
+            "An RPC method's arguments are usually not in the manifest. Read "
+            "them from the function that implements it — search_api for the "
+            "plugin's core/api module, then read_api_source — and call that "
+            "function directly with run_python."
+        )
+    return result
 
 
 def plugin_entry_points(manifest: dict[str, Any], directory: Any) -> dict[str, Any]:

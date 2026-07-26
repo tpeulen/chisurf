@@ -286,6 +286,14 @@ class ApiIndex:
         if not terms:
             return []
 
+        # Names here are snake_case, and a caller rarely has the exact one: an
+        # RPC method called ``fret.compute_from_efficiency`` is implemented by
+        # ``compute_fret_from_efficiency``, and searching the former found
+        # nothing at all, because ``_`` is a word character so the query stayed
+        # one unsplittable term. Words are therefore also matched individually,
+        # below the weight of a whole-phrase hit so precision is kept.
+        words = [word for term in terms for word in term.split("_") if len(word) > 2]
+
         scored: list[tuple[float, ApiSymbol]] = []
         for symbol in self.symbols:
             if kind and symbol.kind != kind:
@@ -303,6 +311,13 @@ class ApiIndex:
                     score += 2.0
                 if term in doc:
                     score += 1.0
+            if words:
+                name_words = set(re.split(r"[^\w]+|_", name))
+                present = sum(1 for word in words if word in name_words or word in name)
+                if present == len(words):
+                    score += 4.0            # every word of the query is in the name
+                elif present:
+                    score += present * 0.5
             if score:
                 # A shorter qualname is usually the more public entry point.
                 score += max(0.0, 3.0 - qualname.count(".") * 0.5)

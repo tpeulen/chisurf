@@ -50,3 +50,26 @@ def test_chunks_without_text_are_dropped_not_rendered():
 
 def test_an_empty_list_is_empty_not_brackets():
     assert message_text([]) == ""
+
+
+# ── malformed tool calls ──────────────────────────────────────────────
+
+
+def test_a_sentence_is_not_a_tool_name():
+    """Providers sometimes put prose where the function name goes.
+
+    Dispatching it wastes a turn on "unknown tool <paragraph>" and loses the
+    prose from the answer. A tool name is an identifier by every provider's
+    schema, so anything else is the model talking.
+    """
+    from chisurf.core.agent.llm import is_tool_name
+
+    assert is_tool_name("run_python")
+    assert is_tool_name("kappa2_dist.compute")
+    assert is_tool_name("fit-decay")
+
+    assert not is_tool_name("To compute a distance I will use the FRET Calculator plugin")
+    assert not is_tool_name("")
+    assert not is_tool_name("   ")
+    assert not is_tool_name("a" * 200)
+    assert not is_tool_name("{'code': 'x = 1'}")

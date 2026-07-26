@@ -100,11 +100,28 @@ methods it registers (with their summaries), its command line, and its
 they are often the only term a user would think of — "kappa" matches nothing in
 the calculator's description and everything in `kappa2_dist.compute`.
 
-A guardrail keeps the advertisement honest: every manifest must be valid, carry
-an id and a description, name entry-point modules that actually import, and
-declare RPC method names that are unique across the tree
-(`test/agent/test_plugin_entry_points.py`). Discovery is only useful if the
-claims resolve.
+Guardrails keep the advertisement honest
+(`test/agent/test_plugin_entry_points.py`): every manifest must be valid, carry
+an id and a description, name entry-point modules **and callables** that import,
+declare RPC method names unique across the tree, and — the strongest of them —
+**every declared RPC method must actually be registered** by the plugin's
+services entry point, checked by running its registration against a recording
+dispatcher. All 102 manifests pass: 41 service registrations, 49 command lines,
+100 GUI entry points.
+
+Discovery is only half of it, because a manifest usually leaves
+`params_schema` empty: the assistant learns a method's *name* and not its
+arguments. The route from there is the API index, and it had two dead ends,
+both found by watching a model walk them. Names are `snake_case` and `_` is a
+word character, so a query stayed one unsplittable term — searching
+`compute_from_efficiency` for
+`fret_calculator.fret.compute_from_efficiency` returned **nothing**, because
+the real function is `compute_fret_from_efficiency`. The search now also
+matches the words of a query, below the weight of a whole-phrase hit. And
+`read_api_source` on a *module* — the natural next move after finding a plugin
+— failed, because the index holds only the definitions inside one; it now lists
+them. The `use-a-plugin` skill ties this together: find it, read the function
+that implements it, call it, and check it against a case whose answer is known.
 
 # Skills compose
 

@@ -58,19 +58,25 @@ def test_every_manifest_declares_an_id_and_a_description():
     assert not incomplete, f"manifests without an id or description: {incomplete}"
 
 
-def entrypoint_module(target: object) -> str:
-    """Return the importable module named by an entry point, or "".
+def entrypoint_parts(target: object) -> tuple[str, str]:
+    """Return ``(module, attribute)`` of an entry point, either possibly "".
 
     Entry points come in two spellings: ``module:attribute`` for a GUI or a
     service, and the console-script form ``command=module:attribute`` for a
     CLI. A missing one is ``null``.
     """
     if not target:
-        return ""
+        return "", ""
     text = str(target)
     if "=" in text.split(":", 1)[0]:
         text = text.split("=", 1)[1]
-    return text.split(":", 1)[0].strip()
+    module, _, attribute = text.partition(":")
+    return module.strip(), attribute.strip()
+
+
+def entrypoint_module(target: object) -> str:
+    """Return only the module half of an entry point."""
+    return entrypoint_parts(target)[0]
 
 
 def test_every_entrypoint_names_a_module_that_exists():
@@ -119,6 +125,90 @@ def test_the_agent_sees_every_plugin():
 
     listed = codebase.list_plugins(AgentContext(working_directory="."))
     assert listed["n_plugins"] == len(ALL)
+
+
+def test_every_entrypoint_callable_exists():
+    """``module:attribute`` must name an attribute that is really there."""
+    import importlib
+
+    missing = []
+    for name, path, manifest in ALL:
+        if "cookiecutter" in str(path):
+            continue
+        for kind, target in (manifest.get("entrypoints") or {}).items():
+            module_name, attribute = entrypoint_parts(target)
+            if not module_name or not attribute:
+                continue
+            try:
+                module = importlib.import_module(module_name)
+            except Exception:
+                continue  # covered by the module test above
+            if not hasattr(module, attribute):
+                missing.append(f"{name}.{kind} -> {module_name}:{attribute}")
+    assert not missing, f"entry points naming callables that do not exist: {missing}"
+
+
+class _Recorder:
+    """Stand-in for the server's ServiceDispatcher."""
+
+    def __init__(self) -> None:
+        self.names: list[str] = []
+
+    def register(self, name, handler=None, *args, **kwargs):
+        """Record a registered method name."""
+        self.names.append(str(name))
+        return handler
+
+
+def test_every_declared_rpc_method_is_actually_registered():
+    """The manifest is a promise the service module has to keep.
+
+    A method the assistant is told about but that nothing registers fails only
+    at call time, over the wire, with an error that looks like the agent's
+    mistake rather than a stale manifest.
+    """
+    import importlib
+
+    problems = []
+    for name, path, manifest in ALL:
+        if "cookiecutter" in str(path):
+            continue
+        declared = [
+            str(method.get("name", ""))
+            for method in (manifest.get("rpc_methods") or [])
+            if isinstance(method, dict)
+        ]
+        if not declared:
+            continue
+
+        module_name, attribute = entrypoint_parts((manifest.get("entrypoints") or {}).get("services"))
+        if not module_name:
+            problems.append(f"{name}: declares {len(declared)} rpc_methods but no services entry point")
+            continue
+        try:
+            module = importlib.import_module(module_name)
+        except Exception as error:
+            problems.append(f"{name}: {module_name} does not import ({type(error).__name__})")
+            continue
+
+        register = getattr(module, attribute, None) if attribute else None
+        register = register or getattr(module, "register_services", None) or getattr(module, "register", None)
+        if register is None:
+            problems.append(f"{name}: {module_name} has no registration function")
+            continue
+
+        recorder = _Recorder()
+        try:
+            register(recorder)
+        except Exception as error:
+            problems.append(f"{name}: registration raised {type(error).__name__}: {error}")
+            continue
+
+        absent = [method for method in declared if method not in recorder.names]
+        if absent:
+            problems.append(f"{name}: declared but never registered: {absent}")
+
+    assert not problems, "; ".join(problems)
 
 
 @pytest.mark.parametrize(

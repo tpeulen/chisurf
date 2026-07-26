@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -48,6 +49,25 @@ class ToolCall:
     name: str
     arguments: dict[str, Any]
     raw_arguments: str = ""
+
+
+#: A tool name is an identifier, per every provider's function-calling schema.
+_TOOL_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]{0,63}$")
+
+
+def is_tool_name(name: str) -> bool:
+    """Return whether *name* could be a tool name rather than prose.
+
+    Parameters
+    ----------
+    name : str
+        The ``function.name`` a provider returned.
+
+    Returns
+    -------
+    bool
+    """
+    return bool(_TOOL_NAME.match(str(name or "").strip()))
 
 
 def message_text(content: Any) -> str:
@@ -291,6 +311,7 @@ class LLMClient:
         choice = choices[0]
         message = choice.get("message") or {}
         calls: list[ToolCall] = []
+        stray: list[str] = []
         for entry in message.get("tool_calls") or []:
             function = entry.get("function") or {}
             raw_arguments = function.get("arguments") or "{}"
@@ -300,16 +321,27 @@ class LLMClient:
                 arguments = {}
             if not isinstance(arguments, dict):
                 arguments = {}
+            name = str(function.get("name") or "")
+            if not is_tool_name(name):
+                # Providers sometimes put a sentence where the tool name goes.
+                # Dispatching it wastes a turn on "unknown tool <paragraph>"
+                # and leaves the prose out of the answer; it is the model
+                # talking, so treat it as such.
+                stray.append(name)
+                continue
             calls.append(
                 ToolCall(
                     id=str(entry.get("id") or f"call_{len(calls)}"),
-                    name=str(function.get("name") or ""),
+                    name=name,
                     arguments=arguments,
                     raw_arguments=str(raw_arguments),
                 )
             )
+        text = message_text(message.get("content"))
+        if stray:
+            text = "\n".join(part for part in [text, *stray] if part)
         return LLMResponse(
-            text=message_text(message.get("content")),
+            text=text,
             tool_calls=calls,
             raw_message=message,
             usage=data.get("usage") or {},

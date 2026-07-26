@@ -112,6 +112,7 @@ even sees it, so the right method is in play from the first turn.
 | `sub-ensemble-decay` | a decay built from selected bursts, seTCSPC |
 | `fret-from-bursts` | a distance or efficiency from single-molecule bursts |
 | `kappa2-from-anisotropy` | κ², orientation factor, residual anisotropy, how reliable a distance is |
+| `use-a-plugin` | "is there a tool for…", calculators, simulators, converters |
 | `global-fitting` | global or simultaneous analysis, linking parameters |
 | `fit-correlation` | FCS, correlation curves, diffusion |
 | `batch-fitting` | a whole folder, a series, comparing samples |
