@@ -1343,6 +1343,12 @@ class PlotWidget(QtWidgets.QWidget):
                 )
             except Exception:
                 pass
+        if getattr(section, "invert_y", False):
+            try:
+                # Image coordinates: row 0 is the top row.
+                self.plot.getPlotItem().getViewBox().invertY(True)
+            except Exception:
+                pass
         if section.legend:
             try:
                 self.plot.addLegend(offset=(-5, 5))

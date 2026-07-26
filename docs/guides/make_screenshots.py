@@ -318,6 +318,46 @@ def _grab_burst_gs_tool():
             break
 
 
+def _grab_tracking_tool():
+    """Grab the particle-tracking tool (guide 50).
+
+    Tracked on a simulated movie with a *known* diffusion coefficient, so the
+    figure can be read against the truth: 8 particles at D = 0.5 px^2/frame.
+    Two grabs -- the report beside the movie with detections marked, and the
+    trajectories, which is the view that reveals identity swaps.
+    """
+    from qtpy.QtWidgets import QTabWidget
+
+    from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
+
+    tool = ImgTrackingTool()
+    model = tool.model
+    model.use_simulation = True
+    model.sim_n_frames = 60
+    model.sim_size = 256
+    model.sim_n_particles = 8
+    model.sim_diffusion = 0.5
+    model.max_distance = 4.0
+    model.min_track_length = 15
+    model.n_bootstrap = 150
+    model.compute()
+    tool.resize(1500, 900)
+    tool.show()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "tracking_workspace.png")
+
+    for tabs in tool.findChildren(QTabWidget):
+        labels = [tabs.tabText(i) for i in range(tabs.count())]
+        if "Trajectories" in labels:
+            tabs.setCurrentIndex(labels.index("Trajectories"))
+            QApplication.instance().processEvents()
+            tool._refresh()
+            QApplication.instance().processEvents()
+            _grab(tool, "tracking_trajectories.png")
+            break
+
+
 def _grab_coloc_tool():
     """Grab the colocalization workspace and its intensity scatter (guide 38)."""
     # Import the tool first: it pulls the GUI packages in the order the app does
@@ -664,6 +704,7 @@ def main():
         _grab_drift_tool,
         _grab_precision_tool,
         _grab_burst_gs_tool,
+        _grab_tracking_tool,
         _grab_accurate_fret_tool,
         _grab_chimol_viewer,
         _grab_region_editor,

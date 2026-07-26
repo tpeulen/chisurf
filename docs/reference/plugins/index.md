@@ -2,7 +2,7 @@
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **103 plugins**, **45** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **104 plugins**, **46** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -11,7 +11,7 @@ Of the **103 plugins**, **45** build their interface from declarative AutoForm s
 *
 ```
 
-**103 plugins** across 24 categories.
+**104 plugins** across 25 categories.
 
 ## Core
 
@@ -73,6 +73,12 @@ Of the **103 plugins**, **45** build their interface from declarative AutoForm s
 | [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. Declarative AutoForm view. |
 | [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
 | [ndXplorer](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
+
+## Microscopy → Imaging
+
+| Plugin | Summary |
+| --- | --- |
+| [Particle Tracking](img_tracking.md) | Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement. |
 
 ## Setup
 

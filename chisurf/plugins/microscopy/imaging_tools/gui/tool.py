@@ -113,6 +113,13 @@ def _precision(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _tracking(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
+    widget = ImgTrackingTool(parent=parent, embedded=True)
+    parent._register_panel("tracking", widget)
+    return widget
+
+
 def _pixel_mle(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_pixel_mle.gui.tool import ImgPixelMleTool
     widget = ImgPixelMleTool(parent=parent, embedded=True)
@@ -227,6 +234,18 @@ IMAGING_PANELS: list[dict] = [
         "role": "drift",
     },
     {
+        "name": "Tracking",
+        "icon": "\U0001F41C",
+        "description": (
+            "Follow individual particles through the frames and fit their diffusion "
+            "coefficient. Sits after Drift because a drifting sample looks exactly "
+            "like directed motion, and outside the numbered steps because it "
+            "measures motion rather than building a per-pixel map."
+        ),
+        "factory": _tracking,
+        "role": "tracking",
+    },
+    {
         "name": "1. Intensity",
         "icon": "🔆",
         "description": "Per-pixel intensity map; creates the standard imaging HDF5 (with source back-reference).",
@@ -308,7 +327,7 @@ class ImagingToolsTool(NavigationPanelTool):
 
     #: Analysis steps in pipeline order for the "Next ▶" convenience.
     PIPELINE_ORDER = (
-        "browser", "drift", "pixel_intensity", "pixel_nb", "pixel_micro_time",
+        "browser", "drift", "tracking", "pixel_intensity", "pixel_nb", "pixel_micro_time",
         "calibration", "pixel_phasor", "pixel_mle",
     )
     #: Roles whose (Qt-free) view-models the coordinator owns + pre-computes.

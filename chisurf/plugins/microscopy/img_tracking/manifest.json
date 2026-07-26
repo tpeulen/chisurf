@@ -1,0 +1,32 @@
+{
+  "id": "img_tracking",
+  "version": "1.0.0",
+  "display_name": "Microscopy:Imaging:Particle Tracking",
+  "description": "Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement.",
+  "icon": "🐜",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Microscopy", "Imaging"],
+  "state_namespace": "img_tracking",
+  "statefulness": {
+    "enabled": true,
+    "window": {"enabled": true, "settings_key": null}
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.microscopy.img_tracking.gui.tool:ImgTrackingTool",
+    "cli": "img-tracking=chisurf.plugins.microscopy.img_tracking.cli:cli",
+    "services": "chisurf.plugins.microscopy.img_tracking.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "img_tracking.jobs.track",
+      "summary": "Detect, link and fit transport for an image stack.",
+      "long_running": true
+    },
+    {
+      "name": "img_tracking.jobs.simulate",
+      "summary": "Track a simulated movie of Brownian particles with a known D.",
+      "long_running": true
+    }
+  ],
+  "menu_hidden": false
+}

@@ -1,0 +1,265 @@
+{
+  "_comment": "Particle tracking. AutoForm over ImgTrackingViewModel. Left: where the movie comes from and the three stages (detect, link, transport). Right: the movie with detections marked, the trajectories, the MSD and the per-track table. Track lives in the host toolbar; long help sits behind the ? button.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Particle tracking",
+      "split": "horizontal",
+      "persist": "img_tracking",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Movie",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "filename",
+                  "label": "Image stack",
+                  "kind": "path",
+                  "description": "TIFF-like image stack or photon-stream file. Tracking runs on one channel at a time, because combining channels first would blur the very spots it has to localise."
+                },
+                {
+                  "type": "value",
+                  "attr": "channel",
+                  "label": "Channel",
+                  "kind": "int", "minimum": 0, "maximum": 63,
+                  "description": "Which channel to track in."
+                },
+                {
+                  "type": "value",
+                  "attr": "max_frames",
+                  "label": "Max frames",
+                  "kind": "int", "minimum": 0, "maximum": 1000000,
+                  "description": "Track at most this many frames; 0 uses all of them. Lower it for a first look at a long acquisition."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Simulate instead",
+              "collapsed": true,
+              "description": "Generate a movie of Brownian particles with a known diffusion coefficient. The only way to find out what your frame rate and particle density can actually resolve — and the only way to know the right answer.",
+              "sections": [
+                {
+                  "type": "toggle", "attr": "use_simulation", "label": "Simulate",
+                  "description": "Track a simulated movie instead of the loaded file."
+                },
+                {
+                  "type": "value", "attr": "sim_diffusion", "label": "True D [px²/frame]",
+                  "kind": "float", "decimals": 4, "minimum": 1e-06, "maximum": 10000.0,
+                  "description": "Diffusion coefficient of the simulated particles, in pixels squared per frame."
+                },
+                {
+                  "type": "value", "attr": "sim_n_particles", "label": "Particles",
+                  "kind": "int", "minimum": 1, "maximum": 2000,
+                  "description": "How many particles. Crowding is what breaks tracking: when particles come within the linking distance of one another the assignment is genuinely ambiguous and identities get swapped."
+                },
+                {
+                  "type": "value", "attr": "sim_n_frames", "label": "Frames",
+                  "kind": "int", "minimum": 2, "maximum": 5000,
+                  "description": "Number of simulated frames."
+                },
+                {
+                  "type": "value", "attr": "sim_size", "label": "Field [px]",
+                  "kind": "int", "minimum": 32, "maximum": 2048,
+                  "description": "Width and height of the simulated frame. Memory grows as frames × size²; a very large request is refused rather than allowed to exhaust the machine."
+                },
+                {
+                  "type": "value", "attr": "sim_amplitude", "label": "Spot amplitude",
+                  "kind": "float", "decimals": 1, "minimum": 1.0, "maximum": 100000.0,
+                  "description": "Peak counts of a particle above background."
+                },
+                {
+                  "type": "value", "attr": "sim_background", "label": "Background",
+                  "kind": "float", "decimals": 1, "minimum": 0.0, "maximum": 100000.0,
+                  "description": "Background level; shot noise is applied on top."
+                },
+                {
+                  "type": "value", "attr": "sim_seed", "label": "Seed",
+                  "kind": "int", "minimum": 0, "maximum": 1000000,
+                  "description": "Random seed, so a simulation can be reproduced."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "1. Detect",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "choice", "attr": "method", "label": "Detector",
+                  "options_source": "method_options",
+                  "description": "Wavelet is the multiscale-product detector: it suppresses the background and rejects single hot pixels without any intensity threshold, and holds up at low signal. Quantile thresholds the raw frame and is cheaper, but needs bright, well-separated spots on a flat background."
+                },
+                {
+                  "type": "value", "attr": "threshold", "label": "Threshold [σ]",
+                  "kind": "float", "decimals": 2, "minimum": 0.5, "maximum": 50.0,
+                  "description": "Detection threshold in robust standard deviations of the wavelet response. Check the detections per frame in the report against what you expect before lowering it — noise admitted here becomes short spurious tracks that bias everything downstream."
+                },
+                {
+                  "type": "value", "attr": "min_area", "label": "Min area [px]",
+                  "kind": "int", "minimum": 1, "maximum": 1000,
+                  "description": "Smallest connected bright region that can be a particle. A diffraction-limited spot is always wider than one pixel; a dead or hot camera pixel is exactly one."
+                },
+                {
+                  "type": "value", "attr": "min_separation", "label": "Min separation [px]",
+                  "kind": "float", "decimals": 2, "minimum": 0.0, "maximum": 200.0,
+                  "description": "Two particles closer than this in the same frame are collapsed to the brighter one. Spots nearer than the point-spread function cannot be told apart anyway, and admitting both invents a particle for the linker to mis-assign."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "2. Link",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value", "attr": "max_distance", "label": "Max step [px]",
+                  "kind": "float", "decimals": 2, "minimum": 0.1, "maximum": 1000.0,
+                  "description": "Largest displacement that may be called the same particle between consecutive frames. This is the whole safety margin — set it from the physics (a Brownian particle moves about sqrt(4·D·dt) per frame), never from what makes the tracks look longest."
+                },
+                {
+                  "type": "value", "attr": "max_frame_gap", "label": "Max gap [frames]",
+                  "kind": "int", "minimum": 0, "maximum": 100,
+                  "description": "How many missing frames a track may bridge; 0 disables gap closing. Every closed gap asserts that nothing else could have been there, so keep it small and check what changing it does to the answer."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "3. Transport",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value", "attr": "pixel_size", "label": "Pixel size [µm]",
+                  "kind": "float", "decimals": 5, "minimum": 1e-05, "maximum": 1000.0,
+                  "description": "Physical pixel size. Leave at 1 to report D in pixels squared per frame."
+                },
+                {
+                  "type": "value", "attr": "frame_interval", "label": "Frame interval [s]",
+                  "kind": "float", "decimals": 6, "minimum": 1e-06, "maximum": 10000.0,
+                  "description": "Time between frames. Leave at 1 to report D per frame."
+                },
+                {
+                  "type": "value", "attr": "min_track_length", "label": "Min track length",
+                  "kind": "int", "minimum": 3, "maximum": 10000,
+                  "description": "Shortest track admitted to the fit. Short tracks are not merely noisy but biased: a particle is likelier to be found twice in a row if it happened to stay put, so the shortest tracks over-represent the slowest motion."
+                },
+                {
+                  "type": "toggle", "attr": "fit_alpha", "label": "Fit anomalous exponent",
+                  "description": "Fit α as well as D instead of holding it at 1. Do this only when the question actually is whether the motion is anomalous: α and D are nearly degenerate, and fitting both roughly quadruples the spread of D."
+                },
+                {
+                  "type": "value", "attr": "n_bootstrap", "label": "Bootstrap resamples",
+                  "kind": "int", "minimum": 0, "maximum": 5000,
+                  "description": "Resamples of the track set behind the error bars. The fit covariance cannot be used here — MSD lags share displacements and are strongly correlated, so its error bar covers the truth about one run in five."
+                },
+                {
+                  "type": "value", "attr": "max_drawn_tracks", "label": "Tracks drawn",
+                  "kind": "int", "minimum": 1, "maximum": 2000,
+                  "description": "Upper limit of trajectories drawn in the plot, longest first. The fit always uses all of them."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Result",
+          "split": "vertical",
+          "persist": "img_tracking_result",
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Report",
+              "collapsed": false,
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "info",
+                  "source": "results_html",
+                  "height": 250,
+                  "max_height": 900
+                }
+              ]
+            },
+            {
+              "type": "dock_area",
+              "title": "Views",
+              "persist": "img_tracking_views",
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "image",
+                  "target": "movie_image",
+                  "title": "Movie",
+                  "options": {
+                    "colormap": true,
+                    "default_colormap": "viridis",
+                    "movie": true,
+                    "markers_source": "detection_markers",
+                    "image_orientation": true
+                  },
+                  "description": "The movie with every detection marked. Scrub the frame slider: markers that follow the particles mean the detector is working, markers that flicker on and off mean the threshold is too high, and markers on empty background mean it is too low."
+                },
+                {
+                  "type": "plot",
+                  "source": "track_series",
+                  "title": "Trajectories",
+                  "x_label": "x / px",
+                  "y_label": "y / px",
+                  "legend": false,
+                  "invert_y": true,
+                  "description": "The linked trajectories in image coordinates, longest first. Look for tracks that jump abruptly across the field: those are identity swaps, and each one invents a displacement that never happened and inflates D."
+                },
+                {
+                  "type": "plot",
+                  "source": "msd_series",
+                  "title": "MSD",
+                  "x_label": "lag",
+                  "y_label": "MSD",
+                  "log_x": true,
+                  "log_y": true,
+                  "legend": true,
+                  "description": "Ensemble mean squared displacement with the fitted model. On log axes free diffusion is a straight line of slope 1; a flattening tail is confinement, an upward curve is directed motion, and a constant floor at short lag is the localisation error."
+                },
+                {
+                  "type": "plot",
+                  "source": "length_series",
+                  "title": "Track lengths",
+                  "x_label": "track length / frames",
+                  "y_label": "tracks",
+                  "legend": false,
+                  "description": "How long the tracks are. A distribution piled up at the shortest lengths means the linking is shattering trajectories — raise the max step or allow a gap — and it biases D low, because short tracks over-represent particles that stayed put."
+                },
+                {
+                  "type": "table",
+                  "source": "track_rows",
+                  "title": "Tracks",
+                  "expand": true,
+                  "columns": [
+                    {"key": "track", "label": "#", "width": 60,
+                     "description": "Track identifier."},
+                    {"key": "length", "label": "Points", "width": 80,
+                     "description": "Number of detections linked into this track."},
+                    {"key": "frames", "label": "Frames", "width": 120,
+                     "description": "First and last frame the track spans."},
+                    {"key": "net", "label": "Net [px]", "width": 100,
+                     "description": "Straight-line distance from the first position to the last. Far larger than sqrt(4·D·T) suggests directed motion — or an identity swap."}
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

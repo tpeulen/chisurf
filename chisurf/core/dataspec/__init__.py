@@ -488,6 +488,11 @@ class PlotSection(Section):
     #: divide-by-almost-zero outliers would otherwise blow up.
     x_range: typing.Tuple[float, ...] = ()
     y_range: typing.Tuple[float, ...] = ()
+    #: Draw the y axis downward. Set it whenever the plot is in *image*
+    #: coordinates: rows run top-to-bottom in an image, so a plot of positions
+    #: drawn beside the image it came from is mirrored without this, and the
+    #: two views silently disagree about where anything is.
+    invert_y: bool = False
 
 
 @dataclasses.dataclass(frozen=True)

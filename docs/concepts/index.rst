@@ -68,6 +68,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    region_properties
    colocalization
    drift_correction
+   particle_tracking
 
 .. rubric:: Simulation
 
