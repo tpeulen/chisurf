@@ -3302,3 +3302,50 @@ each broken. Use case:
 - **Location:** `chisurf/gui/widgets/fio/csvInput.ui` (`comboBox_x_column`, `comboBox_y_column`, `comboBox_error_x_column`, `comboBox_error_y_column`; the `checkBox` → `comboBox_x_column.setEnabled` connection at `:422-425`)
 - **Finding:** none of the four combo boxes is referenced anywhere in the tree (`grep -rn --include="*.py" "comboBox_x_column|comboBox_y_column|comboBox_error_[xy]_column" chisurf/` → no hits), so they are never populated and stay permanently empty; the actual column indices come from the spin boxes beside them (`spinBox_2..spinBox_5`, read in `changeCsvParameter`). The *x-values* checkbox therefore does nothing observable — verified live: unchecking it left `reader.col_x = 0` unchanged and only greyed out an empty combo. The *File parameters* box is the panel every text-file load passes through, and it currently shows four controls that cannot do anything. Populate them from the file's columns or remove them (and give *x-values* a real meaning: "the file carries an x column", which the reader currently infers from `col_x` alone).
 - **Fix note:**
+
+### Review 2026-07-26 — chimol crystal symmetry (`symexp`, `get_symmetry`, `set_symmetry`)
+
+Slice: the two newest chimol landings, `e89d6374a` (symmetry commands and
+`analysis/symmetry.py`) and `25d0f5320` (the generated `space_groups.py` table).
+The **table** is in good shape — 528 operator sets, each checked in
+`test_symmetry.py` for closure under composition, proper rotations and exactly one
+identity, and the parser handles the forms that table contains. What is not in
+good shape is everything that reaches symmetry from a **file**: `read_file_operators`
+has no test at all and mis-reads every realistic mmCIF layout, and the cell is only
+ever read from a PDB `CRYST1` record although chimol loads (and `fetch_ihm`
+downloads) `.cif`. RF-286..RF-290 below.
+
+### RF-286
+- **Status:** OPEN
+- **Severity:** S1 (correctness — an mmCIF's own operators are read wrong, and file operators outrank the verified table)
+- **Location:** `chisurf/plugins/chimol/chimol/analysis/symmetry.py:354-386` (`read_file_operators`), consumed at `chisurf/plugins/chimol/chimol/cmd/symmetry.py:66-69` (`_symmetry_for`)
+- **Finding:** the reader takes the whole `_symmetry_equiv` loop row as the operator, but a PDBx loop always carries `_symmetry_equiv.id` beside `pos_as_xyz`, so the id digits are glued onto the first component once `parse_symmetry_operator` strips spaces. Verified on a four-operator C2-style loop (`1 x,y,z` / `2 -x,y,-z` / `3 x+1/2,y+1/2,z` / `4 -x+1/2,y+1/2,-z`): row 3 parses to a rotation with `R[0,0] = 3.0`, **det = 3.0** — a threefold *scaling*, not an isometry — and row 4 to a translation of `4.5` along x. Feeding those to `symmetry_mates` moves that mate by up to **19.6 Å** against the same operators written without the id column (integer-only errors cancel in the re-centring step, the fractional ones do not). Three further layouts fail differently, each verified: the RCSB quoted form (`1 'X,Y,Z'`) survives the `strip("'\"")` as `1 'X,Y,Z` and raises `ValueError: could not convert string to float: "1'"` out of `symexp`; the single-item form `_symmetry_equiv_pos_as_xyz  'x, y, z'` returns `[]` because the value sits on the tag line; and a loop whose tags are ordered `pos_as_xyz` then `id` returns `[]` because the second tag line trips the `startswith("_")` break. `_symmetry_for` prefers file operators over the table, so the one wrong case wins over the verified one. `grep -n read_file_operators chisurf/plugins/chimol/test/test_symmetry.py` → no hits: the function has **zero** tests, which is why none of this showed. Parse the loop header to find the column index of `pos_as_xyz` and take that field (honouring quotes), handle the tag-and-value-on-one-line form, and pin all four layouts.
+- **Fix note:**
+
+### RF-287
+- **Status:** OPEN
+- **Severity:** S2 (contract — `symmetry_mates` assumes the identity is `operators[0]` and silently emits a duplicate of the molecule instead of a real mate when it is not)
+- **Location:** `chisurf/plugins/chimol/chimol/analysis/symmetry.py:268-269` (`if index == 0 and (i, j, k) == (0, 0, 0): continue`)
+- **Finding:** "the molecule itself" is identified **positionally**, not by what the operator actually is. Nothing requires a file's `pos_as_xyz` list to start with `x,y,z`, and the docstring makes no such demand of the `operators` argument. Verified with `operators = ['-x,y,-z', 'x,y,z']` on a 40-atom box in a 30 Å cubic cell (`shells=0, cutoff=0`): the returned list holds one mate, `operator=1` at `(0,0,0)`, and `np.allclose(mate["coords"], coords)` → **True** — the genuine twofold copy (index 0) was thrown away as "the molecule itself" and an exact overlay of the original was created in its place. `symexp` then adds an object that is a perfect duplicate, which reads as a legitimate lattice contact at 0 Å. Compare the parsed operator against the identity (`R == I` and `t` integral) instead of testing `index == 0`.
+- **Fix note:**
+
+### RF-288
+- **Status:** OPEN
+- **Severity:** S2 (contract — the cell of an mmCIF is never read, so symmetry is unavailable for exactly the files chimol fetches)
+- **Location:** `chisurf/plugins/chimol/chimol/analysis/symmetry.py:325-351` (`read_cryst1`, `if not line.startswith("CRYST1")`) via `chisurf/plugins/chimol/chimol/cmd/symmetry.py:59-64` (`_symmetry_for`)
+- **Finding:** the cell has exactly one file source, the PDB fixed-column `CRYST1` record. chimol loads `.cif`/`.mmcif` (`io/structure.py:16` file filter) and `fetch_ihm` (`cmd/loader.py:140-148`) *downloads* `.cif` to a temp file and loads it, so `entry.source_path` is routinely an mmCIF — which carries its cell as `_cell.length_a` / `_cell.angle_alpha` and has no `CRYST1` at all. `read_cryst1` returns `None`, `_symmetry_for` returns `cell = None`, and both commands stop: `get_symmetry` reports "*carries no unit cell (no CRYST1 record, and none set)*" and `symexp` refuses, on a file that states its cell plainly. The asymmetry is inside one module — `read_file_operators` reads the *operators* out of mmCIF while `read_cryst1` reads the *cell* only out of PDB — so the mmCIF branch of `_symmetry_for` is unreachable unless the user first calls `set_symmetry`. Read `_cell.*` (and `_symmetry.space_group_name_H-M`) when the file is not a PDB.
+- **Fix note:**
+
+### RF-289
+- **Status:** OPEN
+- **Severity:** S2 (both "no operators" errors instruct the user to do something the command cannot do)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/symmetry.py:115-119` and `:242-248` (the error text) against `:121-188` (`set_symmetry`, whose signature is `selection, a, b, c, alpha, beta, gamma, space_group`)
+- **Finding:** when a space group is not in PyMOL's table both commands say "*supply them with set_symmetry*" / "*supply them rather than have mates built from a guess*", but `set_symmetry` has **no operators parameter**: it takes a cell and a *name*, and fills `entry.state.symmetry["operators"]` from `operators_for(name)` (`:174`) — the very lookup that just failed, so it stores `[]`. The user is told to route around a failed table lookup by performing the same table lookup. `analysis/symmetry.py:17` likewise lists "operators supplied explicitly (`set_symmetry`)" as trust source 1, and `_symmetry_for:44-52` implements that branch, but nothing can ever populate it. Either add an `operators` argument to `set_symmetry` (the branch that consumes it already exists) or change both messages to say what is actually possible.
+- **Fix note:**
+
+### RF-290
+- **Status:** OPEN
+- **Severity:** S3 (dead code — a compiled regex that looks like the operator grammar but is used by nothing)
+- **Location:** `chisurf/plugins/chimol/chimol/analysis/symmetry.py:102` (`_TERM`)
+- **Finding:** `_TERM = re.compile(r"([+-]?)\s*(?:(\d+)\s*/\s*(\d+)|(\d*\.?\d+))?\s*\*?\s*([xyz]?)")` is module-level and never referenced — `grep -rn '_TERM' chisurf/plugins/chimol/` returns only the definition. `parse_symmetry_operator` uses an inline `re.finditer(r"[+-]?[^+-]+", cleaned)` and `_as_number` instead. It sits directly above the parser under the "Operators" banner and reads as the authoritative term grammar, so the next person editing the parser will reasonably assume it is the thing to change. Delete it, or make the parser use it.
+- **Fix note:**
