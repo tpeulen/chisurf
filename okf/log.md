@@ -2,6 +2,25 @@
 
 ## 2026-07-26
 
+* **The setup loader every setup-picking tool calls could hang a headless run.**
+  `load_detector_setups` opens a modal warning (and, on one button, a whole
+  wizard) when the setups file is missing, gated on `QApplication.instance() is
+  not None`. In a test one always exists, so the gate is always open — and a
+  modal spins its own event loop until a button is pressed, which under
+  `offscreen` can never happen. The loader runs while widgets are being
+  *constructed*, so on any machine without `~/.chisurf/detector_setups.json`
+  (this one included) the run does not fail, it stops. Now gated on
+  `chisurf.gui.dialogs.is_interactive()`, which also requires a real window
+  system.
+
+  The guardrail test was **vacuous on the first write** and only the mutation
+  check showed it: it did `QApplication.instance() or QApplication([])` without
+  binding the result, so the fresh application was collected again before the
+  call and the old gate saw no app — the test passed against the very bug it was
+  meant to catch. Binding it makes it fail on the old gate and pass on the new.
+  Worth remembering for any test that needs a `QApplication` it did not get from
+  a fixture.
+
 * **The analysis region was Python-only, and three unlabelled boxes were the
   reason nobody noticed.** `MoleculeMleSettings.roi` confines the molecule
   search and — because it is applied *before* thresholding — decides which
