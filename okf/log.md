@@ -2,6 +2,24 @@
 
 ## 2026-07-26
 
+* **Anisotropy: the G-factor sat in the one place that is not invertible.**
+  Closes [RF-231](/reviews/findings.md#rf-231) (S2, open since the review pass), the
+  follow-up that [BUG-09](/specs/assessment.md#bug-09) deliberately left behind.
+  `vm_rt_to_vv_vh` built the perpendicular decay as `f_VM · (1 − g·r)` while its
+  sibling `calculcate_spectrum` — the one the fitting models actually call — builds
+  `g · f_VM · (1 − r)`. `g` is a *detection sensitivity*: it scales the whole channel,
+  not only its depolarization term, and only that placement satisfies
+  `r = (I_VV − I_VH/g)/(I_VV + 2·I_VH/g)`. The two agreed at `g = 1`, which is exactly
+  what the helper's doctest used, so nothing caught the disagreement. Fixed to
+  `g · vm · (1 − rt)`, with the docstring formula and the reason for the placement
+  rewritten. `test_vm_rt_to_vv_vh_recovers_anisotropy` asserts both halves at
+  `g ∈ {0.8, 1.0, 1.5}` — the pair inverts back to `r(t)`, *and* it matches the
+  spectrum-domain route term for term — and is verified to discriminate: the old form
+  recovers **0.6314** against a truth of 0.38 at `g = 1.5`. Both doc pages that
+  repeated the wrong formula were corrected in the same change
+  (`docs/concepts/anisotropy.md`, [anisotropy-theory](/references/anisotropy-theory.md)),
+  and the [known-issues](/references/known-issues.md) entry that parked it is struck.
+
 * **chimol: `orient` was a stub, and `zoom`/`center` did nothing on a ligand.**
   Reported by the user ("still not all actions work, eg, orient"), and all three
   had one cause plus one extra.

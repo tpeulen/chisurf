@@ -22,11 +22,19 @@ def vm_rt_to_vv_vh(
     The parallel (VV) and perpendicular (VH) decays are computed as
 
         f_VV(t) = f_VM(t) * (1 + 2 * r(t))
-        f_VH(t) = f_VM(t) * (1 - g * r(t))
+        f_VH(t) = g * f_VM(t) * (1 - r(t))
 
     where g is the g-factor and r(t) is calculated from the anisotropy spectrum:
 
         r(t) = sum_i (b_i * exp(-t / rho_i))
+
+    ``g`` is a detection sensitivity, so it scales the *whole* perpendicular
+    channel rather than only its depolarization term. That placement is what
+    makes the pair invert back to the anisotropy it was built from, and it is
+    what :func:`calculcate_spectrum` — the spectrum-domain sibling wired into
+    the fitting models — uses:
+
+        r(t) = (f_VV - f_VH / g) / (f_VV + 2 * f_VH / g)
 
     The mixing parameters l1 and l2 account for cross-talk between the
     polarization channels according to:
@@ -75,7 +83,8 @@ def vm_rt_to_vv_vh(
     ... )
 
     Both rotation components contribute, so ``r(0)`` equals their amplitude
-    sum ``r0 = 0.38``: VV starts at ``1 + 2*r0`` and VH at ``1 - r0``.
+    sum ``r0 = 0.38``: VV starts at ``1 + 2*r0`` and VH at ``g * (1 - r0)``,
+    here with the default ``g = 1``.
 
     >>> float(vv[0])
     1.76
@@ -99,7 +108,7 @@ def vm_rt_to_vv_vh(
         rho = anisotropy_spectrum[2 * i + 1]
         rt += b * np.exp(-times / rho)
     vv = vm * (1 + 2.0 * rt)
-    vh = vm * (1. - g_factor * rt)
+    vh = g_factor * vm * (1. - rt)
     vv_j = vv * (1. - l1) + vh * l1
     vh_j = vv * l2 + vh * (1. - l2)
     return vv_j, vh_j

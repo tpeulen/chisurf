@@ -287,11 +287,12 @@ The single largest source of non-uniformity across the codebase (see [core steer
   alias) gained real assertions — it previously computed a correlation and asserted
   nothing. The `calculcate_spectrum` docstring, which stated `f_VH = f_VM (1 − g r)`
   against its own code, was corrected.
-- Follow-up, **not** part of this fix: the sibling `vm_rt_to_vv_vh` still computes
-  `vm · (1 − g·r)`, i.e. the non-invertible placement, and disagrees with
-  `calculcate_spectrum` for `g ≠ 1`. It has no production caller (only its own doctest,
-  which uses `g = 1`), so it is tracked in
-  [known issues](../references/known-issues.md) rather than changed here.
+- Follow-up, ~~**not** part of this fix~~ — **landed 2026-07-26** as
+  [RF-231](../reviews/findings.md#rf-231): the sibling `vm_rt_to_vv_vh` computed
+  `vm · (1 − g·r)`, i.e. the non-invertible placement, and disagreed with
+  `calculcate_spectrum` for `g ≠ 1`. It now uses `g · vm · (1 − r)` too, and
+  `test_vm_rt_to_vv_vh_recovers_anisotropy` pins both the round trip and term-for-term
+  agreement between the two routes at `g ∈ {0.8, 1.0, 1.5}`.
 
 ## Data / schema / manifest issues (DATA)
 

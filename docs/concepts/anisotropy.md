@@ -207,8 +207,14 @@ spectrum:
 
 $$
 f_\parallel(t) = f_\mathrm{VM}(t)\,\big(1 + 2\,r(t)\big), \qquad
-f_\perp(t)     = f_\mathrm{VM}(t)\,\big(1 - G\,r(t)\big).
+f_\perp(t)     = G\,f_\mathrm{VM}(t)\,\big(1 - r(t)\big).
 $$
+
+$G$ is a *detection sensitivity*, so it multiplies the whole perpendicular
+channel rather than only its depolarization term. That placement is what makes
+the generated pair invert back to the anisotropy it was built from,
+$r = (f_\parallel - f_\perp/G)/(f_\parallel + 2 f_\perp/G)$; writing it as
+$f_\mathrm{VM}(1 - G r)$ instead is self-consistent only at $G = 1$.
 
 Both channels are then reconvolved with the IRF and compared to the measured
 VV and VH histograms in **one combined fit**, with the lifetimes shared (linked)

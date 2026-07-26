@@ -283,19 +283,16 @@ resolved on 2026-07-25 and 2026-07-26 and are recorded below.
 **Found 2026-07-25 while closing [BUG-09](/specs/assessment.md#bug-09).** Both sit
 in the anisotropy area; neither is reachable from a production call path today.
 
-- **`vm_rt_to_vv_vh` puts the g-factor in the one place that is not
-  invertible.** `chisurf/core/fluorescence/anisotropy/decay.py`. It computes
-  `vh = vm · (1 − g·r)`, while its sibling `calculcate_spectrum` — the one the
-  fitting models actually call — computes `g · vm · (1 − r)`. Only the latter
-  satisfies `r = (I_VV − I_VH/g) / (I_VV + 2 I_VH/g)`; a detection sensitivity
-  scales the whole perpendicular channel, not just its depolarization term, so
-  the two agree only at `g = 1`. Not changed on the spot because it is a
-  numerical change to a public helper and the same formula is repeated in
-  `docs/concepts/anisotropy.md` and
-  [anisotropy-theory](/references/anisotropy-theory.md); the fix is one line plus
-  those two doc updates plus a `g ≠ 1` test, and belongs in its own change.
-  Harmless meanwhile: the only in-tree callers are its doctest and
-  `test_vm_vv_vh`, both at the default `g = 1`.
+- ~~**`vm_rt_to_vv_vh` puts the g-factor in the one place that is not
+  invertible.**~~ Fixed 2026-07-26 in its own change, as
+  [RF-231](/reviews/findings.md#rf-231). It computed `vh = vm · (1 − g·r)`, while
+  its sibling `calculcate_spectrum` — the one the fitting models actually call —
+  computes `g · vm · (1 − r)`; only the latter satisfies
+  `r = (I_VV − I_VH/g) / (I_VV + 2 I_VH/g)`, because a detection sensitivity scales
+  the whole perpendicular channel, not just its depolarization term. The helper now
+  uses that placement, the two doc pages that repeated the wrong formula were
+  corrected with it, and `test_vm_rt_to_vv_vh_recovers_anisotropy` pins the round
+  trip *and* term-for-term agreement with the spectrum path at `g ∈ {0.8, 1, 1.5}`.
 
 **Fixed 2026-07-25/26 — kept here because the *patterns* keep recurring**
 

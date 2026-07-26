@@ -2840,11 +2840,23 @@ trajectory tool. RF-229..RF-238.
   (`np.True_`) against `True` and failed under NumPy 2.
 
 ### RF-231
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (two functions in the same module build "the VV and VH decays" with the G-factor in different places; they disagree for every g ≠ 1)
 - **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:102` (`vm_rt_to_vv_vh`: `vh = vm * (1. - g_factor * rt)`) against `:233-236` (`calculcate_spectrum`: `vh = e1tn(hstack([f, e1tn(d, -1.0)]), g_factor)`)
 - **Finding:** `calculcate_spectrum` places `g` on the *whole* perpendicular channel — `f_VH = g · f_VM · (1 − r)` — and its own docstring (`:129-133`) argues explicitly that this placement is what makes the pair invert back to the anisotropy it was built from. `vm_rt_to_vv_vh` places `g` on the depolarization term only — `f_VH = f_VM · (1 − g·r)` — which does not. Verified with `r0 = 0.38`, `g = 1.5`, `τ = 4 ns`: the spectrum path gives `vh(0) = 0.930 = g·(1 − r0)` and inverting with `r = (VV − VH/g)/(VV + 2·VH/g)` recovers **0.3800**; `vm_rt_to_vv_vh` gives `vh(0) = 0.430 = 1 − g·r0` and the same inversion recovers **0.6314** — a 66 % error in the anisotropy. `g` is a detection sensitivity, so `calculcate_spectrum` is the correct one (and it is the one wired into `chisurf/core/models/tcspc/anisotropy.py:264`). The two agree at `g = 1`, which is exactly the value the `vm_rt_to_vv_vh` doctest uses, so nothing catches it. `vm_rt_to_vv_vh` has no caller in the tree but is public, documented and doctested; fix the placement (and its docstring at `:25`) or delete it.
-- **Fix note:**
+- **Fix note:** Kept and corrected rather than deleted — it is the only time-domain
+  route from a magic-angle decay to a polarized pair, which is what a simulation or
+  a synthetic-data path wants. `vh = g_factor * vm * (1. - rt)`, matching
+  `calculcate_spectrum`, with the docstring formula and its invertibility argument
+  rewritten to say why `g` sits there. Pinned by
+  `test_fluorescence.py::test_vm_rt_to_vv_vh_recovers_anisotropy`, which asserts both
+  halves of the claim at `g ∈ {0.8, 1.0, 1.5}`: the pair inverts back to `r(t)` through
+  `(VV − VH/g)/(VV + 2·VH/g)`, **and** it agrees term for term with the spectrum-domain
+  sibling the fitting models call. Verified to discriminate — the old form recovers
+  0.6314 against a truth of 0.38 at `g = 1.5`. The two doc pages that repeated the wrong
+  formula (`docs/concepts/anisotropy.md`, [anisotropy-theory](/references/anisotropy-theory.md))
+  were corrected in the same change. The existing `test_vm_vv_vh` is unaffected: it runs
+  at the default `g = 1`, where both forms coincide.
 
 ### RF-232
 - **Status:** OPEN
