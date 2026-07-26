@@ -597,7 +597,8 @@ class DataGroup(list, chisurf.core.base.Base):
     def to_yaml(
             self,
             remove_protected: bool = False,
-            convert_values_to_elementary: bool = True
+            convert_values_to_elementary: bool = True,
+            skip_qt_widgets: bool = False
     ):
         """Serialize the group (including all contained datasets) to a YAML string.
 
@@ -607,6 +608,8 @@ class DataGroup(list, chisurf.core.base.Base):
             Whether to omit protected attributes.
         convert_values_to_elementary : bool
             Whether to convert compound types to elementary types.
+        skip_qt_widgets : bool
+            If True, skip Qt widgets during serialization.
 
         Returns
         -------
@@ -615,12 +618,14 @@ class DataGroup(list, chisurf.core.base.Base):
         """
         d = self.to_dict(
             remove_protected=remove_protected,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets
         )
         data = [
             d.to_dict(
                 remove_protected=remove_protected,
-                convert_values_to_elementary=convert_values_to_elementary
+                convert_values_to_elementary=convert_values_to_elementary,
+                skip_qt_widgets=skip_qt_widgets
             ) for d in self
         ]
         d['data'] = data

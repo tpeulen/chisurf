@@ -2,6 +2,19 @@
 
 ## 2026-07-26
 
+* **RF-183 fix — a data group could not be saved at all.** `Base.save` defaults
+  to `file_type='yaml'` and calls `self.to_yaml(skip_qt_widgets=…)`, but
+  `DataGroup.to_yaml` overrode the base signature without that keyword, so
+  `group.save(path)` raised `TypeError: DataGroup.to_yaml() got an unexpected
+  keyword argument 'skip_qt_widgets'` — for every reader's return value, since
+  `DataCurveGroup`, `ExperimentDataGroup` and `ExperimentDataCurveGroup` all
+  inherit the override. The parameter is now accepted and forwarded to both
+  `to_dict` calls (the group's and each contained dataset's), so a
+  widget-carrying member is skipped on the same terms as for a plain `Base`.
+  Pinned by `test/core/test_data.py::TestDataGroup::test_save_yaml`, which
+  round-trips `save()` to a file for all four group classes, plus a signature
+  test for the keyword itself.
+
 * **chimol: four rendering defects that only a real window showed.** The whole
   offscreen suite was green while `show spheres, all`, `show sticks, all` and
   `show cartoon, <selection>` drew *literally nothing*. Under

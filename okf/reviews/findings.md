@@ -2250,11 +2250,21 @@ Findings RF-181..RF-189.
 - **Fix note:**
 
 ### RF-183
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`DataGroup.save()` raises `TypeError` — a data group cannot be saved at all)
 - **Location:** `chisurf/core/data.py:588-592` (`DataGroup.to_yaml`) against `chisurf/core/base.py:363-364` (`Base.save`)
 - **Finding:** `Base.save(file_type='yaml')` calls `self.to_yaml(skip_qt_widgets=skip_qt_widgets)`, but `DataGroup.to_yaml` overrides the base signature with `(remove_protected, convert_values_to_elementary)` only. Verified: `DataGroup([curve]).save(path)` raises `TypeError: DataGroup.to_yaml() got an unexpected keyword argument 'skip_qt_widgets'`, and `yaml` is the default `file_type`, so the plain `group.save(path)` call is the broken one. This is the same class of defect as RF-087 (`Controller.to_dict` / `View.to_dict`) but on `to_yaml`, so a guardrail written only for `to_dict` would not catch it. `DataGroup` is what every reader returns, and `DataCurveGroup` / `ExperimentDataGroup` / `ExperimentDataCurveGroup` all inherit the override. Add `skip_qt_widgets` and forward it to both `to_dict` calls.
-- **Fix note:**
+- **Fix note:** `DataGroup.to_yaml` now takes `skip_qt_widgets` (default `False`,
+  matching `Base.save`) and forwards it to both `to_dict` calls — the group's own
+  and the per-dataset one — so a widget-carrying member is skipped on the same
+  terms as for a plain `Base`. Pinned by
+  `test/core/test_data.py::TestDataGroup::test_to_yaml_accepts_skip_qt_widgets`
+  (the signature) and `::test_save_yaml`, which round-trips `save()` to a file
+  for all four group classes (`DataGroup`, `DataCurveGroup`,
+  `ExperimentDataGroup`, `ExperimentDataCurveGroup`), so an override that drops
+  the keyword again fails on every subclass. `test/core` and `test/fio` green
+  (1082 passed; the 7 `test/fio` failures are the pre-existing
+  `ModuleNotFoundError: mmfdb` path issue, unrelated).
 
 ### RF-184
 - **Status:** OPEN

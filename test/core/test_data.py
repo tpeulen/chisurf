@@ -242,6 +242,29 @@ class TestDataGroup:
         yaml_str = sample_data_group.to_yaml()
         assert isinstance(yaml_str, str)
 
+    def test_to_yaml_accepts_skip_qt_widgets(self, sample_data_group):
+        """``Base.save`` forwards ``skip_qt_widgets``, so the override must take it."""
+        yaml_str = sample_data_group.to_yaml(skip_qt_widgets=True)
+        assert isinstance(yaml_str, str)
+
+    @pytest.mark.parametrize(
+        "group_type",
+        [
+            chisurf.core.data.DataGroup,
+            chisurf.core.data.DataCurveGroup,
+            chisurf.core.data.ExperimentDataGroup,
+            chisurf.core.data.ExperimentDataCurveGroup,
+        ]
+    )
+    def test_save_yaml(self, group_type, sample_curve_short, tmp_path):
+        """Saving a group as YAML (the default file type) must not raise."""
+        g = group_type([sample_curve_short])
+        filename = str(tmp_path / f"{group_type.__name__}")
+        g.save(filename)
+        written = tmp_path / f"{group_type.__name__}.yaml"
+        assert written.is_file()
+        assert written.stat().st_size > 0
+
 
 class TestDataCurveGroup:
 
