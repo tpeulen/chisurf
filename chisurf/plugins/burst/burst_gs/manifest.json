@@ -1,0 +1,40 @@
+{
+  "id": "burst_gs",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:Photon-by-photon kinetics",
+  "description": "Gopich-Szabo photon-by-photon maximum likelihood: continuous-time rate constants and per-state FRET efficiencies fitted directly to photon arrival times and colours, for two- and three-colour data, with a transition-time scan and an H2MM cross-check.",
+  "icon": "⏱️",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Single-Molecule", "FRET"],
+  "state_namespace": "burst_gs",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.burst.burst_gs.gui.tool:BurstGsTool",
+    "cli": "burst-gs=chisurf.plugins.burst.burst_gs.cli:cli",
+    "services": "chisurf.plugins.burst.burst_gs.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "burst_gs.jobs.fit",
+      "summary": "Fit a continuous-time kinetic scheme to coloured photons.",
+      "long_running": true
+    },
+    {
+      "name": "burst_gs.jobs.log_likelihood",
+      "summary": "Evaluate the Gopich-Szabo log-likelihood of a given scheme.",
+      "long_running": false
+    },
+    {
+      "name": "burst_gs.jobs.transition_time_scan",
+      "summary": "Scan the log-likelihood against the duration of a transition.",
+      "long_running": true
+    }
+  ],
+  "menu_hidden": false
+}

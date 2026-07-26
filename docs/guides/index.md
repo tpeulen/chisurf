@@ -69,6 +69,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 46 | [Exploring & fitting multidimensional data (ndXplorer)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.marginal_fit`, `chisurf.core.expressions` |
 | 47 | [From a selection to a fit: the ndXplorer bridges](47_ndxplorer_bridges.md) | `ndxplorer.analysis.burst_bridge`, `pda.from_bursts`, `burst_fcs.*`, `burst_mle.*` |
 | 48 | [Regions: selecting pixels, measuring what you selected](48_regions.md) | `chisurf.core.roi`, `regionprops`, `sm_image_mle --roi` |
+| 49 | [Photon-by-photon kinetics: rates without binning](49_photon_by_photon_kinetics.md) | `burst_gs` plugin, `core.fluorescence.burst.gopich_szabo` |
 
 ## Running
 

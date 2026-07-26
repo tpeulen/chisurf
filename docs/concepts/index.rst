@@ -47,6 +47,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    :maxdepth: 1
 
    h2mm
+   photon_by_photon_kinetics
    ebfret
 
 .. rubric:: Exploration & selection

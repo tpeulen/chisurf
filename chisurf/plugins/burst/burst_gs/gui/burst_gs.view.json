@@ -1,0 +1,371 @@
+{
+  "_comment": "Gopich-Szabo photon-by-photon kinetics. AutoForm over BurstGsViewModel. Left: where the photons come from and what scheme to fit. Right: the report, the fitted parameters, the transition-time scan and the states on the efficiency axis. Fit lives in the host toolbar; long help sits behind the ? button.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Photon-by-photon kinetics",
+      "split": "horizontal",
+      "persist": "burst_gs",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Photons",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "path_list",
+                  "target": "bur_files",
+                  "options": {
+                    "title": "Burst tables (drop .bur files or folders)",
+                    "extensions": [
+                      ".bur"
+                    ],
+                    "add_folders": true
+                  }
+                },
+                {
+                  "type": "value",
+                  "attr": "data_dir",
+                  "label": "TTTR folder",
+                  "kind": "path",
+                  "description": "Folder the raw TTTR files named in the burst table resolve against. Left empty, the burst table's own folder is used."
+                },
+                {
+                  "type": "choice",
+                  "attr": "file_type",
+                  "label": "Container",
+                  "options_source": "file_type_options",
+                  "description": "TTTR container type of the raw files, or Auto to detect it."
+                },
+                {
+                  "type": "value",
+                  "attr": "donor_channels",
+                  "label": "Donor channels",
+                  "kind": "str",
+                  "description": "Routing channels counted as donor photons, comma separated. This is colour 0."
+                },
+                {
+                  "type": "value",
+                  "attr": "acceptor_channels",
+                  "label": "Acceptor channels",
+                  "kind": "str",
+                  "description": "Routing channels counted as acceptor photons, comma separated. This is colour 1. Photons in neither list — acceptor-excitation photons, for instance — are dropped."
+                },
+                {
+                  "type": "value",
+                  "attr": "macro_time_resolution_ns",
+                  "label": "Macro-time tick [ns]",
+                  "kind": "float",
+                  "decimals": 4,
+                  "minimum": 0.0,
+                  "maximum": 1000000.0,
+                  "description": "Seconds per macro-time tick, in nanoseconds. Zero reads it from the file header. Every fitted rate is proportional to this, so a wrong value rescales the whole answer silently."
+                },
+                {
+                  "type": "value",
+                  "attr": "min_photons",
+                  "label": "Min photons/burst",
+                  "kind": "int",
+                  "minimum": 2,
+                  "maximum": 10000,
+                  "description": "Bursts with fewer photons are dropped. A burst too short to show a spread of interphoton gaps contributes nothing to the kinetics and only costs time."
+                },
+                {
+                  "type": "value",
+                  "attr": "max_bursts",
+                  "label": "Max bursts",
+                  "kind": "int",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Keep at most this many bursts; 0 uses all of them. Lower it for a quick first look."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Simulate instead",
+              "collapsed": true,
+              "description": "Generate photons from a known two-state molecule. The honest way to learn what this method can resolve on your photon budget — and the only way to know the right answer.",
+              "sections": [
+                {
+                  "type": "toggle",
+                  "attr": "use_simulation",
+                  "label": "Simulate",
+                  "description": "Fit simulated photons instead of the loaded files."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_k_forward",
+                  "label": "k(1→2) [1/s]",
+                  "kind": "float",
+                  "decimals": 1,
+                  "minimum": 0.1,
+                  "maximum": 10000000.0,
+                  "description": "True forward rate of the simulated molecule."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_k_backward",
+                  "label": "k(2→1) [1/s]",
+                  "kind": "float",
+                  "decimals": 1,
+                  "minimum": 0.1,
+                  "maximum": 10000000.0,
+                  "description": "True backward rate."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_e1",
+                  "label": "E state 1",
+                  "kind": "float",
+                  "decimals": 3,
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "description": "True FRET efficiency of state 1."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_e2",
+                  "label": "E state 2",
+                  "kind": "float",
+                  "decimals": 3,
+                  "minimum": 0.0,
+                  "maximum": 1.0,
+                  "description": "True FRET efficiency of state 2. States closer together than the shot noise cannot be separated however many photons you collect."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_photon_rate_khz",
+                  "label": "Photon rate [kHz]",
+                  "kind": "float",
+                  "decimals": 1,
+                  "minimum": 0.1,
+                  "maximum": 100000.0,
+                  "description": "Detected photons per second within a burst. This sets the fastest exchange that can be resolved at all: nothing faster than the interphoton time is visible."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_n_bursts",
+                  "label": "Bursts",
+                  "kind": "int",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "description": "Number of simulated bursts."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_photons_per_burst",
+                  "label": "Photons/burst",
+                  "kind": "int",
+                  "minimum": 5,
+                  "maximum": 100000,
+                  "description": "Photons in each simulated burst."
+                },
+                {
+                  "type": "value",
+                  "attr": "sim_seed",
+                  "label": "Seed",
+                  "kind": "int",
+                  "minimum": 0,
+                  "maximum": 1000000,
+                  "description": "Random seed, so a simulation can be reproduced."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Model",
+              "collapsed": false,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "n_states",
+                  "label": "States",
+                  "kind": "int",
+                  "minimum": 2,
+                  "maximum": 5,
+                  "description": "Number of kinetic states. Add one only when the BIC clearly falls: every extra state costs n more rates and always fits a little better."
+                },
+                {
+                  "type": "value",
+                  "attr": "initial_rate",
+                  "label": "Initial rate [1/s]",
+                  "kind": "float",
+                  "decimals": 1,
+                  "minimum": 0.1,
+                  "maximum": 10000000.0,
+                  "description": "Starting value for every rate. Rates are optimised in log space, so this only needs to be the right order of magnitude."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "fix_efficiencies",
+                  "label": "Fix efficiencies",
+                  "description": "Hold the per-state efficiencies at their starting values and fit only the rates. Worth doing when the efficiencies are known from a static measurement: rates and efficiencies are the most strongly correlated pair in this problem."
+                },
+                {
+                  "type": "choice",
+                  "attr": "method",
+                  "label": "Optimiser",
+                  "options_source": "method_options",
+                  "description": "Nelder-Mead is derivative-free and robust; L-BFGS-B is faster but leans on finite differences of a likelihood that is only piecewise smooth."
+                },
+                {
+                  "type": "value",
+                  "attr": "max_iterations",
+                  "label": "Max iterations",
+                  "kind": "int",
+                  "minimum": 50,
+                  "maximum": 100000,
+                  "description": "Optimiser iteration cap."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Extras",
+              "collapsed": true,
+              "sections": [
+                {
+                  "type": "toggle",
+                  "attr": "scan_transition_time",
+                  "label": "Scan transition time",
+                  "description": "After fitting, insert an explicit intermediate the molecule must cross and scan how long it takes. Two states only. Usually this returns an upper bound rather than a measurement, which is itself the useful answer."
+                },
+                {
+                  "type": "value",
+                  "attr": "transit_points",
+                  "label": "Scan points",
+                  "kind": "int",
+                  "minimum": 5,
+                  "maximum": 200,
+                  "description": "Points in the transition-time scan, spread logarithmically from 1 µs to 1 ms."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "decode_states",
+                  "label": "Decode state path",
+                  "description": "Compute the most likely state of every photon (Viterbi). An illustration of the fitted model, not a measurement: it draws a definite path even where the photons support none."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "cross_check_h2mm",
+                  "label": "Cross-check with H2MM",
+                  "description": "Fit the same photons with the discrete-time H2MM engine and compare. The two share no code and parameterise time differently, so agreement is real evidence — and disagreement is worth chasing before you believe either."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Result",
+          "split": "vertical",
+          "persist": "burst_gs_result",
+          "sections": [
+            {
+              "type": "panel",
+              "title": "Report",
+              "collapsed": false,
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "info",
+                  "source": "results_html",
+                  "height": 300,
+                  "max_height": 900
+                }
+              ]
+            },
+            {
+              "type": "dock_area",
+              "title": "Views",
+              "persist": "burst_gs_views",
+              "sections": [
+                {
+                  "type": "table",
+                  "source": "rate_rows",
+                  "title": "Rates",
+                  "columns": [
+                    {
+                      "key": "transition",
+                      "label": "Transition",
+                      "width": 110,
+                      "description": "From state to state."
+                    },
+                    {
+                      "key": "rate",
+                      "label": "k [1/s]",
+                      "width": 120,
+                      "description": "Fitted rate constant."
+                    },
+                    {
+                      "key": "time",
+                      "label": "1/k [µs]",
+                      "width": 120,
+                      "description": "Mean waiting time for that transition — usually the more intuitive number."
+                    }
+                  ]
+                },
+                {
+                  "type": "table",
+                  "source": "state_rows",
+                  "title": "States",
+                  "columns": [
+                    {
+                      "key": "state",
+                      "label": "State",
+                      "width": 70,
+                      "description": "State index."
+                    },
+                    {
+                      "key": "efficiency",
+                      "label": "E",
+                      "width": 110,
+                      "description": "Fitted apparent FRET efficiency."
+                    },
+                    {
+                      "key": "population",
+                      "label": "Population",
+                      "width": 110,
+                      "description": "Equilibrium fraction implied by the fitted rates."
+                    }
+                  ]
+                },
+                {
+                  "type": "plot",
+                  "source": "efficiency_series",
+                  "title": "State populations",
+                  "x_label": "FRET efficiency E",
+                  "y_label": "equilibrium population",
+                  "legend": true,
+                  "x_range": [
+                    0.0,
+                    1.0
+                  ],
+                  "description": "Where the fitted states sit on the efficiency axis and how much of the population each holds. Two states closer together than the shot-noise width of a burst cannot be separated no matter how the fit converges, so check this against the burst-wise E histogram before believing a narrow pair."
+                },
+                {
+                  "type": "plot",
+                  "source": "transit_series",
+                  "title": "Transition time",
+                  "x_label": "transition time / µs",
+                  "y_label": "Δ log-likelihood",
+                  "log_x": true,
+                  "legend": true,
+                  "description": "How much the data prefer a transition of finite duration over an instantaneous one. The grey line is the instantaneous model. A curve that stays at zero for short durations and falls for long ones is the normal result: it sets an upper bound on the crossing time. Only a clear positive peak is a measurement, and it needs a likelihood-ratio test before it is one."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

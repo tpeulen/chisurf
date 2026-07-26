@@ -21,8 +21,8 @@ import pandas as pd
 import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core import h2mm as H
+from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
-    StreamDef,
     bursts_from_dataframe,
 )
 

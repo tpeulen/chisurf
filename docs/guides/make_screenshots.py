@@ -281,6 +281,43 @@ def _grab_precision_tool():
     _grab(tool, "precision_workspace.png")
 
 
+def _grab_burst_gs_tool():
+    """Grab the photon-by-photon kinetics tool (guide 49).
+
+    Fitted on simulated photons from a molecule with *known* rates, so the
+    figure can be read against the truth: 3000 and 1000 s^-1 at E = 0.25 / 0.75.
+    Two grabs — the report with the fitted numbers, and the transition-time
+    scan, which is the part of the tool with no binned equivalent.
+    """
+    from qtpy.QtWidgets import QTabWidget
+
+    from chisurf.plugins.burst.burst_gs.gui.tool import BurstGsTool
+
+    tool = BurstGsTool()
+    model = tool.model
+    model.use_simulation = True
+    model.sim_n_bursts = 250
+    model.sim_photons_per_burst = 200
+    model.scan_transition_time = True
+    model.transit_points = 30
+    model.compute()
+    tool.resize(1440, 860)
+    tool.show()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "burst_gs_workspace.png")
+
+    for tabs in tool.findChildren(QTabWidget):
+        labels = [tabs.tabText(i) for i in range(tabs.count())]
+        if "Transition time" in labels:
+            tabs.setCurrentIndex(labels.index("Transition time"))
+            QApplication.instance().processEvents()
+            tool._refresh()
+            QApplication.instance().processEvents()
+            _grab(tool, "burst_gs_transition_time.png")
+            break
+
+
 def _grab_coloc_tool():
     """Grab the colocalization workspace and its intensity scatter (guide 38)."""
     # Import the tool first: it pulls the GUI packages in the order the app does
@@ -551,6 +588,7 @@ def main():
         _grab_coloc_tool,
         _grab_drift_tool,
         _grab_precision_tool,
+        _grab_burst_gs_tool,
         _grab_accurate_fret_tool,
         _grab_chimol_viewer,
     ):

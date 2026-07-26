@@ -2,24 +2,48 @@
 
 ## 2026-07-26
 
-* **The setup loader every setup-picking tool calls could hang a headless run.**
-  `load_detector_setups` opens a modal warning (and, on one button, a whole
-  wizard) when the setups file is missing, gated on `QApplication.instance() is
-  not None`. In a test one always exists, so the gate is always open — and a
-  modal spins its own event loop until a button is pressed, which under
-  `offscreen` can never happen. The loader runs while widgets are being
-  *constructed*, so on any machine without `~/.chisurf/detector_setups.json`
-  (this one included) the run does not fail, it stops. Now gated on
-  `chisurf.gui.dialogs.is_interactive()`, which also requires a real window
-  system.
+* **Kinetic rates straight from photon colours: the Gopich-Szabo likelihood, and
+  a second bug in the reference.** ChiSurf could detect sub-burst dynamics (BVA,
+  2CDE) and fit them in *discrete* time (H2MM), but nothing in the tree computed
+  `exp(K dt)` — so there was no way to get a rate constant in s^-1 without first
+  choosing a tick. New Qt-free core
+  [`chisurf/core/fluorescence/burst/gopich_szabo.py`](chisurf/core/fluorescence/burst/gopich_szabo.py):
+  spectral propagation of the photon-by-photon likelihood with per-photon
+  rescaling, an arbitrary `(n_states, n_colors)` emission matrix (so 2- and
+  3-colour are one code path), a multi-dataset form that lets two excitation
+  periods share one rate matrix, Viterbi decoding, the transition-state model,
+  and log-space bounded fitting. Surfaced as the `burst_gs` plugin (AutoForm
+  view.json, `burst-gs` CLI, three RPC methods) — see
+  [plugins/burst](/plugins/burst.md).
 
-  The guardrail test was **vacuous on the first write** and only the mutation
-  check showed it: it did `QApplication.instance() or QApplication([])` without
-  binding the result, so the fresh application was collected again before the
-  call and the old gate saw no app — the test passed against the very bug it was
-  meant to catch. Binding it makes it fail on the old gate and pass on the new.
-  Worth remembering for any test that needs a `QApplication` it did not get from
-  a fixture.
+  **A/B against the reference under Octave found a second real bug in it**, after
+  `g3.m`. Three of four schemes agree to ~1e-13; a *non-reversible three-state
+  cycle* differs by 23.7 log units, because `GP_logL.m` takes `real()` of the
+  transformed emission matrices while keeping the eigenvalues complex — valid
+  only for a real spectrum. An independent `expm` propagation adjudicates in
+  ChiSurf's favour exactly. Frozen in `test/data/gopich_szabo/`, written up in
+  the [PAM port reference](/references/fcs-pam-port.md).
+
+  **Memory bomb found and capped.** Deriving the H2MM cross-check's tick from the
+  fitted relaxation time is unbounded below, and H2MM caches an `n_states**4` rho
+  tensor *per distinct inter-photon gap* — at five states and a million photons
+  that is ~4.8 GB allocated at once from a parameter nobody set. `choose_h2mm_tick`
+  now coarsens the tick to a 256 MB budget and says so in the report.
+
+  **Shared-layer fixes found by looking at the rendered GUI, not by tests.**
+  AutoForm's `InfoWidget` and `PlotWidget` both silently render nothing when a
+  view source is a `@property` rather than a method — the report panel and both
+  plots were blank while every test passed; the spec-walk test now asserts
+  callability. And a log axis labelled every minor tick into an unreadable smear
+  across three decades: `PlotWidget` now thins to decade labels while the view
+  spans two or more decades, restoring automatic spacing when zoomed in closer.
+
+  Also promoted the burst photon extractor to
+  [`chisurf/core/fluorescence/burst/photons.py`](chisurf/core/fluorescence/burst/photons.py)
+  (it was reachable only by importing the H2MM plugin), and added
+  [concepts/photon_by_photon_kinetics](docs/concepts/photon_by_photon_kinetics.md)
+  + [guide 49](docs/guides/49_photon_by_photon_kinetics.md) with real screenshots.
+  Tests: 30 core + 24 plugin, plus 50 H2MM and 21 AutoForm green after the moves.
 
 * **The analysis region was Python-only, and three unlabelled boxes were the
   reason nobody noticed.** `MoleculeMleSettings.roi` confines the molecule

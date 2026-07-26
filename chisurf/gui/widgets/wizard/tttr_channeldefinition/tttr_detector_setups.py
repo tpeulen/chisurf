@@ -229,13 +229,10 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
     if not path.exists():
         is_default = (file_path is None) or (path == DETECTOR_SETUPS_FILE)
-        # A modal box blocks until a button is pressed, so "a QApplication
-        # exists" is not enough — offscreen there is nobody to press it and this
-        # loader would hang every headless run that has no setups file.
+        app_running = False
         try:
-            from chisurf.gui.dialogs import is_interactive
-
-            app_running = is_interactive()
+            from qtpy.QtWidgets import QApplication
+            app_running = QApplication.instance() is not None
         except Exception:
             app_running = False
 

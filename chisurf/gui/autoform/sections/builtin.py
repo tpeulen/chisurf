@@ -1330,7 +1330,17 @@ class PlotWidget(QtWidgets.QWidget):
             self.plot.setLabel("left", section.y_label)
         if getattr(section, "log_x", False) or section.log_y:
             try:
-                self.plot.setLogMode(bool(getattr(section, "log_x", False)), bool(section.log_y))
+                log_x = bool(getattr(section, "log_x", False))
+                self.plot.setLogMode(log_x, bool(section.log_y))
+                self._log_axes = tuple(
+                    (("bottom",) if log_x else ()) + (("left",) if section.log_y else ())
+                )
+                self._thin_log_ticks()
+                # Re-evaluate on zoom and pan: the right tick density depends on
+                # how much of the axis is showing, not on how it was declared.
+                self.plot.getPlotItem().getViewBox().sigRangeChanged.connect(
+                    lambda *_: self._thin_log_ticks()
+                )
             except Exception:
                 pass
         if section.legend:
@@ -1351,6 +1361,36 @@ class PlotWidget(QtWidgets.QWidget):
         if getattr(section, "description", ""):
             self.setToolTip(section.description)
         self.refresh()
+
+    #: Log axes ("bottom" / "left") whose tick density is managed adaptively.
+    _log_axes: tuple = ()
+
+    def _thin_log_ticks(self) -> None:
+        """Label a log axis once per decade while it spans several decades.
+
+        pyqtgraph labels every minor tick (1, 2, 3 … 9 per decade) whenever it
+        believes there is room, and its width estimate is wrong for the
+        ``n·10^k`` strings: across three decades the ~27 labels overlap into an
+        unreadable smear. Ticking once per decade is readable and is the natural
+        unit of a log axis.
+
+        It has to be conditional. Forcing decade ticks permanently would leave
+        an axis zoomed into less than one decade with no ticks at all, so the
+        automatic spacing is restored as soon as the view is that narrow — which
+        is why this is re-run on every range change rather than set once.
+        """
+        try:
+            item = self.plot.getPlotItem()
+            for name in self._log_axes:
+                lo, hi = item.getViewBox().viewRange()[0 if name == "bottom" else 1]
+                decades = abs(float(hi) - float(lo))  # already in log10 units
+                axis = item.getAxis(name)
+                if decades >= 2.0:
+                    axis.setTickSpacing(major=1.0, minor=1.0)
+                else:
+                    axis.setTickSpacing()  # back to automatic
+        except Exception:  # pragma: no cover - cosmetic only, never fatal
+            pass
 
     def _apply_ranges(self) -> None:
         """Pin the axes to the ranges the spec declares (if any).
