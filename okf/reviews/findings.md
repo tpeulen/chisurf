@@ -2448,11 +2448,23 @@ one and then two species, move the fit region, export, open Help — on
 (see [the use case](/usecases/pch-molecular-brightness.md)). Findings RF-208..RF-214.
 
 ### RF-208
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every fit ends in a modal error box; the fitted curve is never drawn and the results box never fills)
 - **Location:** `chisurf/plugins/pch/gui/tool.py` — `np` used at `:478-484` (`_plot_fit`) and `:500-505` (`_update_results_text`), while the only `import numpy as np` is local to `_save_outputs` at `:534`; module imports at `:1-34`
 - **Finding:** The module imports `csv`, `logging`, `typing`, Qt and chiplot but never numpy, so the first statement of `_plot_fit` that builds a mask raises `NameError: name 'np' is not defined`. `_on_fit` (`:377`) calls `_plot_fit()` then `_update_results_text()` inside its `try`, and the `except` turns the `NameError` into `QMessageBox.critical(self, "Error", str(e))`. Verified by driving the real `QAction`: the backend fit **succeeded** (ε = 0.6722, ⟨N⟩ = 2.6581 were written back into the spin boxes at `:403-404`, which runs before the plotting) and the status bar's "Fit complete: χ²=…" line at `:408` is never reached — the user sees a dialog reading `name 'np' is not defined`, an unchanged histogram with no red model curve, and a permanently empty *Fit Results* box (screenshots `04_fit1.png`, `05_fit2.png`). `_update_results_text` is also the region-drag handler (`_on_region_changed`, `:441`), so step 8 of the workflow — re-scoring χ² over a new k range — is silently inert as well: dragging the region produced no text and no error, because that path has no `try`. Add `import numpy as np` at module level and drop the local import.
-- **Fix note:**
+- **Fix note:** `import numpy as np` moved to the module imports and the local
+  import inside `_save_outputs` dropped, so `_plot_fit`, `_update_results_text`
+  and `_save_outputs` all resolve `np` from one place. `ruff check` on the file
+  went from **8** `F821 Undefined name 'np'` to none (the remaining findings
+  there are pre-existing and unrelated). Pinned by
+  `chisurf/plugins/pch/test/test_widgets.py::TestPCHApp::test_fit_plot_and_results_text`,
+  which fabricates a `PchResult`/`FitResult`, calls `_plot_fit()` and
+  `_update_results_text()` directly — bypassing the `except` in `_on_fit` that
+  used to hide the `NameError` — and asserts the *Fit Results* box actually
+  fills with the per-component and reduced-χ² lines. Verified the test pins the
+  fix: deleting `tool.np` at runtime makes `_plot_fit()` raise
+  `NameError: name 'np' is not defined` again. `chisurf/plugins/pch/test` +
+  `chisurf/plugins/pch/tests` green (13 tests).
 
 ### RF-209
 - **Status:** OPEN

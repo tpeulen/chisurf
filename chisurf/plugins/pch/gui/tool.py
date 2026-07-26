@@ -4,6 +4,7 @@ import csv
 import logging
 from typing import Any
 
+import numpy as np
 from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QApplication,
@@ -531,8 +532,6 @@ class PCHApp(QMainWindow):
     # ── file I/O ───────────────────────────────────────────────────
 
     def _save_outputs(self, fname_base: str):
-        import numpy as np
-
         from ..api.algorithms import pch_mixture
 
         npz_path = f"{fname_base}.npz"

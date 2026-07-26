@@ -2,6 +2,23 @@
 
 ## 2026-07-26
 
+* **RF-208 fix — the PCH tool never imported numpy, so every fit ended in an
+  error dialog.** `chisurf/plugins/pch/gui/tool.py` used `np` in `_plot_fit` and
+  `_update_results_text` while the only `import numpy as np` sat inside
+  `_save_outputs`. The backend fit actually succeeded — the recovered ε and
+  ⟨N⟩ were written back into the spin boxes — but the very next statement raised
+  `NameError: name 'np' is not defined`, which `_on_fit`'s `except` turned into
+  a `QMessageBox.critical` reading `name 'np' is not defined`. The user saw a
+  histogram with no red model curve and a permanently empty *Fit Results* box.
+  `_update_results_text` is also the region-drag handler, and that path has no
+  `try`, so re-scoring χ² over a dragged k range was silently inert. The import
+  moved to module scope and the local one was dropped; `ruff check` on the file
+  goes from 8 `F821 Undefined name 'np'` to none. Pinned by
+  `test_widgets.py::TestPCHApp::test_fit_plot_and_results_text`, which calls
+  both methods directly — bypassing the `except` that hid the failure — and
+  asserts the results box fills. `chisurf/plugins/pch/test` +
+  `chisurf/plugins/pch/tests` green (13 tests).
+
 * **RF-220 fix — `datatools.smooth` returned uninitialized heap memory.** The
   moving-average helper allocated with `np.empty` and only filled the first
   `l - m` elements, so the tail of every result was whatever was on the page:
