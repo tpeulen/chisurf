@@ -271,3 +271,93 @@ def permute_atom_state(state, order: np.ndarray) -> dict[str, int]:
             moved += 1
 
     return {"fields": moved, "bonds": remapped}
+
+
+def subset_atom_state(state, keep: np.ndarray) -> dict[str, int]:
+    """Apply an atom *removal* to every array that is indexed by atom.
+
+    The mirror of :func:`permute_atom_state`, and needed for the same reason:
+    deleting atoms invalidates every per-atom array and every bond index. Without
+    it ``remove solvent`` left a per-atom colour array of the **old** length --
+    silently mis-colouring what remained -- and a representation mask that no
+    longer lined up with the atoms, so a sphere stayed on screen where a deleted
+    water had been.
+
+    Parameters
+    ----------
+    state : _MolViewObjectState
+        The object state to trim in place.
+    keep : numpy.ndarray
+        Boolean over the *old* atoms; True for the ones that survive.
+
+    Returns
+    -------
+    dict
+        ``{"fields": n, "bonds": n}`` -- arrays trimmed, bonds kept.
+    """
+    keep = np.asarray(keep, dtype=bool)
+    n_old = keep.shape[0]
+    moved = 0
+    for field_name in ATOM_INDEXED_FIELDS:
+        value = getattr(state, field_name, None)
+        if value is None:
+            continue
+        array = np.asarray(value)
+        if array.shape[0] != n_old:
+            continue
+        setattr(state, field_name, array[keep])
+        moved += 1
+
+    # Old index -> new index, or -1 for a removed atom.
+    remap = np.full(n_old, -1, dtype=int)
+    remap[keep] = np.arange(int(keep.sum()))
+
+    kept_bonds = 0
+    pairs = getattr(state, "bond_pairs", None)
+    if pairs is not None:
+        arr = np.asarray(pairs, dtype=int)
+        if arr.ndim == 2 and arr.shape[1] >= 2:
+            survives = (remap[arr[:, 0]] >= 0) & (remap[arr[:, 1]] >= 0)
+            state.bond_pairs = remap[arr[survives][:, :2]]
+            kept_bonds = int(survives.sum())
+
+    edits = getattr(state, "bond_edits", None)
+    if isinstance(edits, dict):
+        def survives(key):
+            a, b = int(key[0]), int(key[1])
+            return 0 <= a < n_old and 0 <= b < n_old and remap[a] >= 0 and remap[b] >= 0
+
+        def moved_key(key):
+            a, b = int(remap[int(key[0])]), int(remap[int(key[1])])
+            return (a, b) if a <= b else (b, a)
+
+        added = edits.get("added") or {}
+        removed = edits.get("removed") or set()
+        edits["added"] = {
+            moved_key(k): v for k, v in added.items() if survives(k)
+        }
+        edits["removed"] = {moved_key(k) for k in removed if survives(k)}
+
+    for field_name in ("frames", "frames_raw"):
+        value = getattr(state, field_name, None)
+        if value is None:
+            continue
+        array = np.asarray(value)
+        if array.ndim == 3 and array.shape[1] == n_old:
+            setattr(state, field_name, array[:, keep, :])
+            moved += 1
+
+    # A representation is a mask *and* a flag, and removing the last atom a mask
+    # selected has to clear the flag too. Otherwise `show spheres, solvent`
+    # followed by `remove solvent` leaves the flag set over an empty mask, and
+    # the builder falls back to its default -- drawing points along the chain
+    # that nobody asked for.
+    for mask_name, flag_name in (
+        ("ball_mask", "show_atoms"),
+        ("sticks_mask", "show_sticks"),
+    ):
+        mask = getattr(state, mask_name, None)
+        if mask is not None and not np.asarray(mask, dtype=bool).any():
+            setattr(state, flag_name, False)
+
+    return {"fields": moved, "bonds": kept_bonds}

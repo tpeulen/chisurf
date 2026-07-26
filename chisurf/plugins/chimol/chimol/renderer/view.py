@@ -2063,12 +2063,25 @@ class MolView(QtWidgets.QWidget):
                         self._secondary_structure = None
 
             n_res = self._coords.shape[0]
-            self._cartoon_mask = np.ones(n_res, dtype=bool)
-
             n_atoms = self._all_atom_coords.shape[0] if self._all_atom_coords is not None else 0
-            self._ball_mask = self._hetero_atom_mask(atoms, n_atoms)
-            self._sticks_mask = np.zeros(n_atoms, dtype=bool)
-            if self._ball_mask.any():
+
+            # As in set_coordinates: keep per-atom state that still fits, and
+            # only fall back to the defaults when it does not. `remove` trims
+            # these arrays itself and then rebuilds, so re-deriving here undid
+            # the trim and re-applied the hetero-ball default -- which is how
+            # deleting the waters put a sphere on the zinc.
+            keep_reps = (
+                self._ball_mask is not None
+                and len(self._ball_mask) == n_atoms
+                and self._sticks_mask is not None
+                and len(self._sticks_mask) == n_atoms
+            )
+            if self._cartoon_mask is None or len(self._cartoon_mask) != n_res:
+                self._cartoon_mask = np.ones(n_res, dtype=bool)
+            if not keep_reps:
+                self._ball_mask = self._hetero_atom_mask(atoms, n_atoms)
+                self._sticks_mask = np.zeros(n_atoms, dtype=bool)
+            if not keep_reps and self._ball_mask.any():
                 # Waters and ligands are not part of any cartoon, so leaving them
                 # off means a deposited entry silently loses content the file
                 # carries. PyMOL shows them too (as nonbonded dots) until hidden.
@@ -2210,15 +2223,32 @@ class MolView(QtWidgets.QWidget):
         if self._residue_ids is None and self._residue_names is None:
             self._colors_per_ca = None
         self._colors_per_residue_override = None
-        self._colors_per_atom_override = None
-        self._cartoon_mask = None
-        # Per-atom masks sized to all atoms so the sticks/atoms toggles have a
-        # valid baseline to flip on (see set_sticks_visible/set_atoms_visible).
+        # Per-atom state is *kept* when it still fits the atoms, and only
+        # re-derived when it does not.
+        #
+        # Clobbering it unconditionally meant every coordinate change threw away
+        # what the user had set: `remove solvent` turned `show spheres, solvent`
+        # into a sphere on the zinc -- an atom nobody had selected -- because the
+        # hetero-ball default was re-applied over the top, and a `spectrum`
+        # colouring vanished the next time anything moved. The default belongs on
+        # a *fresh* structure, not on every rebuild of one.
         n_atoms = arr.shape[0]
-        self._ball_mask = self._hetero_atom_mask(self._atoms, n_atoms)
-        self._sticks_mask = np.zeros(n_atoms, dtype=bool)
-        if self._ball_mask.any():
-            self._show_atoms = True
+
+        def _fits(value) -> bool:
+            return value is not None and len(np.asarray(value)) == n_atoms
+
+        if not _fits(self._colors_per_atom_override):
+            self._colors_per_atom_override = None
+        n_residues = len(self._residue_ids) if self._residue_ids is not None else 0
+        if self._cartoon_mask is None or len(self._cartoon_mask) != n_residues:
+            self._cartoon_mask = None
+
+        if not _fits(self._ball_mask):
+            self._ball_mask = self._hetero_atom_mask(self._atoms, n_atoms)
+            if self._ball_mask.any():
+                self._show_atoms = True
+        if not _fits(self._sticks_mask):
+            self._sticks_mask = np.zeros(n_atoms, dtype=bool)
 
     def set_frames(
         self,

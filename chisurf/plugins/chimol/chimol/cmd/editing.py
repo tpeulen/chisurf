@@ -1164,14 +1164,20 @@ class EditingMixin(BaseCmd):
             self._emit_message(f"Removed {removed} atoms from {obj_name} (now empty)")
             return
 
-        entry.state.atoms = entry.state.atoms[keep_mask].copy()
+        # Trim *every* array indexed by atom, and remap the bond indices --
+        # the same list `sort` permutes, so the two cannot disagree about what
+        # is atom-indexed.
+        #
+        # The hand-written list this replaces named three masks, one of which
+        # (`cartoon_mask`) is per *residue* and so never matched, and missed
+        # `colors_per_atom_override`, `protected_mask` and `masked_mask`
+        # entirely. The colour array was the visible one: it kept the old
+        # length, so after `remove solvent` the remaining atoms were painted
+        # with colours belonging to atoms that no longer existed, and a sphere
+        # stayed on screen where a deleted water had been.
+        from ..analysis.atom_order import subset_atom_state
 
-        # Every per-atom mask has to shrink with the array, or the next redraw
-        # indexes past the end of it.
-        for name in ("ball_mask", "sticks_mask", "cartoon_mask"):
-            mask = getattr(entry.state, name, None)
-            if mask is not None and len(mask) == len(keep_mask):
-                setattr(entry.state, name, np.asarray(mask)[keep_mask].copy())
+        subset_atom_state(entry.state, keep_mask)
 
         # Everything derived from the coordinates -- the render-space positions,
         # the trace, the bonds, the bounding sphere -- is now stale. This used to

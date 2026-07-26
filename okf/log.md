@@ -2,6 +2,38 @@
 
 ## 2026-07-26
 
+* **chimol: `remove` changed how everything else was drawn.** Reported as
+  "remove waters changes rep", and it was three faults stacked — each of which
+  alone would have been enough.
+
+  The trim was a **hand-written list of three masks**, one of which
+  (`cartoon_mask`) is per *residue* and so never matched, and which missed
+  `colors_per_atom_override`, `protected_mask` and `masked_mask`. The colour
+  array kept its old length, so the survivors were painted with colours belonging
+  to atoms that no longer existed. It now shares the list `sort` permutes, via a
+  new `subset_atom_state`, so the two cannot disagree about what is atom-indexed.
+
+  Then the rebuild **re-derived** the representation from the default "hetero
+  atoms get balls" rule, in *two* places, so deleting the waters put a sphere on
+  the zinc — an atom nobody had selected. Defaults now apply only when the state
+  does not fit the atoms; they belong on a fresh structure, not on every rebuild
+  of one. That also means a `spectrum` colouring no longer vanishes the next time
+  anything moves.
+
+  And with the last selected atom gone the mask was empty while the **flag**
+  stayed set, so the builder fell back to drawing points along the chain. The
+  mask-and-flag pairing again — the same shape as the three representations that
+  drew nothing earlier today.
+
+  Found by screenshot, as asked: the render showed a phantom grey sphere where a
+  water had been and a cartoon in the wrong colours. The numbers agreed once
+  looked at — `colors_per_atom_override` was length 39 against 31 atoms — but the
+  picture is what said something was wrong. 9 tests.
+
+  One of my own assertions was wrong on the way: `protect polymer` leaves the zinc
+  unprotected, so asserting every survivor is protected tests the fixture rather
+  than the trim.
+
 * **A test that generated the wrong physics and still passed.** The PDA
   consistency check was accepting a deliberately wrong kinetic scheme
   (p = 0.297). Cause: `k_ex` became an **absolute rate in Hz** when time-binned
