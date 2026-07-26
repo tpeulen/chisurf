@@ -2605,3 +2605,83 @@ Findings RF-215..RF-227.
 - **Location:** `chisurf/core/math/regularization.py:234-276` (`l_curve`), dead assignment at `:264`
 - **Finding:** `l_curve` builds `reg_param = np.logspace(...)` internally and returns only `(rho, eta, corner)`, so a caller holding the corner index has no way to recover the corresponding `lam` short of duplicating the `lo`/`hi`/`logspace` derivation. The sibling `sample_lcurve` gets this right by returning an `LCurveData` that carries `reg` alongside the norms and exposes `corner_reg`. Also at `:264` the degenerate branch assigns `reg_param = np.array([1.0, 10.0])` and then returns `np.ones(2), np.ones(2), None` without using it — dead code that hints the return signature was meant to include it. Return `reg_param` (or an `LCurveData`) so the function is usable for what it exists to do. Only caller today is `test/fitting/test_regu.py:80`.
 - **Fix note:**
+
+## Review run — the anisotropy / orientation-factor layer (2026-07-26)
+
+Slice: `chisurf/core/fluorescence/anisotropy/` (`kappa2.py`, `decay.py`,
+`integrals.py`, `__init__.py`) plus the `nusiance` seam it shares with
+`chisurf/core/fluorescence/fret/__init__.py` — a subsystem with no findings on
+record. Every claim below was executed against the tree in the `arm64` env, not
+read off. Two of them are live in shipping code paths: `kappasq_all` feeds the
+κ² calculator's default cone model, and `calculate_kappa_distance` feeds the FRET
+trajectory tool. RF-229..RF-238.
+
+### RF-229
+- **Status:** OPEN
+- **Severity:** S1 (the isotropic orientational average is wrong by up to a factor of two — dipoles are sampled from one octant of a cube, not from the sphere)
+- **Location:** `chisurf/core/fluorescence/anisotropy/kappa2.py:361-362` (`kappasq_all`: `d1 = np.random.random(3)`, `d2 = np.random.random(3)`)
+- **Finding:** `np.random.random(3)` draws each component uniformly from `[0, 1)`, so both transition-dipole vectors are confined to the **positive octant** of the unit cube and are not uniform on the sphere (corner-biased). `kappasq_all` exists to produce the orientational average for the wobbling-in-a-cone model, so this is its entire job. Measured over 60k–100k samples against the same `kappasq` with proper isotropic (Gaussian) vectors: at `sD2 = sA2 = 1` the code gives ⟨κ²⟩ = **0.334 ± 0.428** where the exact answer is **2/3** (isotropic sampling reproduces 0.6667 ± 0.717); at the docstring's `sD2 = 0.3, sA2 = 0.5` it gives 0.6164 ± 0.1372 versus 0.6665 ± 0.1943, i.e. a biased mean and a width understated by ~30 %. The bug is invisible at `sD2 = sA2 = 0` (where `kappasq` returns 2/3 for any angle), which is why the doctest — which only checks `len` and `sum` of the histogram — never caught it. The sibling `kappasq_dwt` in the same file gets this right at `:66-67` with `np.random.randn`. Live: `chisurf/plugins/calculator/kappa2_dist/core/algorithms.py:87` calls `kappasq_all` for the cone model whenever `rAD_known` is false, and the reported ⟨κ²⟩/σ(κ²) and the κ²-derived distance range are read straight off it. Fix by drawing `np.random.randn(3)` (normalising is unnecessary — the code already divides by the norm) and add a test asserting ⟨κ²⟩ ≈ 2/3 at `sD2 = sA2 = 1`.
+- **Fix note:**
+
+### RF-230
+- **Status:** OPEN
+- **Severity:** S1 (frames whose computation raises are filled with uninitialized heap memory and only announced on stdout)
+- **Location:** `chisurf/core/fluorescence/anisotropy/kappa2.py:617-631` (`calculate_kappa_distance`: `np.empty` + `except Exception: print(...)`)
+- **Finding:** `ks`/`ds` are allocated with `np.empty` and written only inside the `try`. When `kappa_distance` raises — it raises `ZeroDivisionError` for any frame where the two dipole endpoints coincide, e.g. a missing/duplicated atom — the loop body is abandoned *after* the allocation and *before* the assignment, so `ks[i_frame]`/`ds[i_frame]` keep whatever was on the heap. Verified: a `(3, 4, 3)` all-zero trajectory returns `[0., 0., 0.]` on a clean heap and `[7777., 7777., 7777.]` after dirtying the allocator with `np.full(3, 7777., dtype=np.float32)` buffers — the same call, two different answers, and the second is indistinguishable from a real κ². The only signal is `print("Frame ", i, "skipped, calculation error")` to stdout, which is neither logged nor returned. Live consumer: `chisurf/plugins/traj/fret_trajectory/traj2fret.py:305` writes these arrays into a FRET trajectory. Fill the skipped entries with `np.nan` (and use `logging`, not `print`), or return a validity mask. Same class as RF-220.
+- **Fix note:**
+
+### RF-231
+- **Status:** OPEN
+- **Severity:** S2 (two functions in the same module build "the VV and VH decays" with the G-factor in different places; they disagree for every g ≠ 1)
+- **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:102` (`vm_rt_to_vv_vh`: `vh = vm * (1. - g_factor * rt)`) against `:233-236` (`calculcate_spectrum`: `vh = e1tn(hstack([f, e1tn(d, -1.0)]), g_factor)`)
+- **Finding:** `calculcate_spectrum` places `g` on the *whole* perpendicular channel — `f_VH = g · f_VM · (1 − r)` — and its own docstring (`:129-133`) argues explicitly that this placement is what makes the pair invert back to the anisotropy it was built from. `vm_rt_to_vv_vh` places `g` on the depolarization term only — `f_VH = f_VM · (1 − g·r)` — which does not. Verified with `r0 = 0.38`, `g = 1.5`, `τ = 4 ns`: the spectrum path gives `vh(0) = 0.930 = g·(1 − r0)` and inverting with `r = (VV − VH/g)/(VV + 2·VH/g)` recovers **0.3800**; `vm_rt_to_vv_vh` gives `vh(0) = 0.430 = 1 − g·r0` and the same inversion recovers **0.6314** — a 66 % error in the anisotropy. `g` is a detection sensitivity, so `calculcate_spectrum` is the correct one (and it is the one wired into `chisurf/core/models/tcspc/anisotropy.py:264`). The two agree at `g = 1`, which is exactly the value the `vm_rt_to_vv_vh` doctest uses, so nothing catches it. `vm_rt_to_vv_vh` has no caller in the tree but is public, documented and doctested; fix the placement (and its docstring at `:25`) or delete it.
+- **Fix note:**
+
+### RF-232
+- **Status:** OPEN
+- **Severity:** S2 (a documented parameter raises `TypeError` for every value except its default)
+- **Location:** `chisurf/core/fluorescence/anisotropy/integrals.py:79-80`, `:100-101` and `:165-166` (`float(np.sum(..., axis=axis))` in `compute_g_factor_isotropic`, `compute_g_factor_perrin` and `anisotropy_from_integrals`)
+- **Finding:** All three functions take `axis: Optional[int] = None`, documented as "Axis along which to sum", and then wrap the reduction in `float(...)`. For any non-`None` axis on a ≥2-D input the reduction returns an array and `float()` raises. Verified on `(2, 2)` inputs with `axis=0`: all three raise `TypeError: only 0-dimensional arrays can be converted to Python scalars`. The parameter is therefore unusable as documented, and `AnisotropyResult` is a scalar dataclass that could not hold a per-axis result anyway. Either drop `axis` from the three signatures and the docstrings, or make the whole path array-valued (and change `AnisotropyResult`'s field types with it). No caller in the tree passes `axis`, and `test/fitting/test_anisotropy_integrals.py` never exercises it.
+- **Fix note:**
+
+### RF-233
+- **Status:** OPEN
+- **Severity:** S2 (a decorator that writes its arguments into the wrapped function's module globals — cross-call leakage, not thread-safe, and it destroys the function's identity)
+- **Location:** `chisurf/core/fluorescence/intensity.py:21-44` (`nusiance.m` assigning into `f.__globals__`), applied at `chisurf/core/fluorescence/anisotropy/__init__.py:13,62` and `chisurf/core/fluorescence/fret/__init__.py:15,53,93,127,167,212,255,290`
+- **Finding:** Each call writes `Gfactor`, `Bp`, `Bs`, `l1`, `l2`, `Bg`, `Br`, `crosstalk`, `phiA`, `phiD`, `R0` into the *module dictionary* of the wrapped function and then calls it, so (a) two concurrent callers with different correction factors read each other's values — the ChiSurf server runs handlers off the main thread — and (b) every call resets to the hard defaults (`Gfactor=1.0`, `l1=l2=Bp=Bs=0.0`, `phiA=phiD=1.0`) any factor the *previous* caller set, silently. Verified: `fr.fret_efficency_to_fdfa(E=0.4, phiA=0.32, phiD=0.80)` leaves `chisurf.core.fluorescence.fret.phiA == 0.32`, and the next unrelated call rewrites it to `1.0`. Secondly, the wrapper has no `functools.wraps`, so `chisurf.core.fluorescence.anisotropy.r_exp.__name__` is `'m'`, its `__doc__` is `'Set the correction globals, then call the wrapped function.'` and its signature is `(*args, **kwargs)` — `doctest.DocTestFinder` finds **zero** doctests in either module, so the ten carefully written examples in these two files are never collected by `pytest --doctest-modules` and `help()` shows nothing. Also `nusiance(f, *args, **kwargs)` declares `*args, **kwargs` it never uses. Pass the corrections as real keyword arguments with defaults (or a small frozen `Corrections` dataclass) and delete the global write; at minimum add `functools.wraps`.
+- **Fix note:**
+
+### RF-234
+- **Status:** OPEN
+- **Severity:** S2 (the module's five "instrument constants" are dead, and both documented example results are unreachable)
+- **Location:** `chisurf/core/fluorescence/anisotropy/__init__.py:5-10` (`Bp`, `Bs`, `Gfactor`, `l1`, `l2`) with the doctests at `:48-55` and `:92-98`
+- **Finding:** The module defines `Bp = 10.0`, `Bs = 5.0`, `Gfactor = 1.2`, `l1 = 0.1`, `l2 = 0.2` under the comment "normally defined elsewhere", and the two docstrings walk through arithmetic based on exactly those numbers — `r_scatter(signal_vertical=100, signal_parallel=150)` → `0.3193...` and `r_exp(signal_parallel=150, signal_vertical=100)` → `0.3305...`. But `@nusiance` overwrites all five with `1.0`/`0.0` on entry to *every* call unless the caller passes them as kwargs, so the first call to either function permanently zeroes the module constants. Verified: both calls return **0.14285714285714285**, and after them `an.Bp, an.Bs, an.Gfactor, an.l1, an.l2 == (0.0, 0.0, 1.0, 0.0, 0.0)`; only `r_exp(..., Gfactor=1.2, l1=0.1, l2=0.2)` reproduces the documented `0.3305785123966942`. Nothing catches this because the doctests are not collectable (RF-232). Delete the five module constants and rewrite both examples to pass the corrections explicitly. Neither function has a caller in the tree.
+- **Fix note:**
+
+### RF-235
+- **Status:** OPEN
+- **Severity:** S2 (a function documented as the inverse of its sibling is not the inverse, and cannot be given the parameters it needs)
+- **Location:** `chisurf/core/fluorescence/fret/__init__.py:290-319` (`fdfa2transfer_efficency`) against `:255-287` (`fret_efficency_to_fdfa`)
+- **Finding:** Two defects. (1) `fret_efficency_to_fdfa` returns `fdfa = (phiA/phiD)·(1/E − 1)`; inverting that gives `E = 1/(1 + fdfa·phiD/phiA)`, but `fdfa2transfer_efficency` computes `1.0/(1.0 + fdfa*phiA/phiD)` — the yield ratio is upside down, and the docstring ("performs the inverse conversion of the relation used in `fret_efficency_to_fdfa`") states the wrong formula alongside it. (2) `fdfa2transfer_efficency(fdfa)` is the one `@nusiance`-decorated function in the module with **no `**kwargs`**, while the decorator forwards `**kwargs` to it verbatim — so the only channel for supplying `phiA`/`phiD` raises. Verified with `phiA = 0.32`, `phiD = 0.80`: `E = 0.4` → `fdfa = 0.6` (correct); `fdfa2transfer_efficency(0.6, phiA=0.32, phiD=0.80)` raises `TypeError: got an unexpected keyword argument 'phiA'`, and the only callable form, `fdfa2transfer_efficency(0.6)`, returns **0.625** against the true inverse **0.4**. Add `**kwargs` and swap the ratio, with a round-trip test at `phiA != phiD`.
+- **Fix note:**
+
+### RF-236
+- **Status:** OPEN
+- **Severity:** S2 (returns `nan` for physically reachable inputs, with no guard and no documented failure mode; the `nan` propagates into a user-facing κ² histogram)
+- **Location:** `chisurf/core/fluorescence/anisotropy/kappa2.py:568-570` (`s2delta`)
+- **Finding:** `s2_delta = r_inf_AD / (r_0 · s2_donor · s2_acceptor)` is fed straight into `arccos(sqrt((2·s2_delta + 1)/3))` with no clamp, so the result is `nan` whenever `s2_delta > 1` or `s2_delta < −0.5`, and `ZeroDivisionError`/`inf` when either order parameter is zero. Verified: `s2delta(s2_donor=0.2, s2_acceptor=0.3, r_inf_AD=0.1)` returns `(4.386, nan)` with only a `RuntimeWarning`. Those are values a user can type: `chisurf/plugins/calculator/kappa2_dist/core/algorithms.py:60-75` derives `sd2 = −sqrt(r_Dinf/r_0)` (deliberately negative) and `sa2 = +sqrt(r_Ainf/r_0)` from three residual anisotropies entered in the GUI, so the product is negative and the ratio is unbounded; the `nan` delta then goes into `kappasq_all_delta(delta=nan, …)` at `:79` and the plotted histogram is empty with no error shown. The docstring documents neither the `nan` nor the domain. Validate the ratio (raise or return `nan` explicitly with a documented contract) and have the plugin surface it.
+- **Fix note:**
+
+### RF-237
+- **Status:** OPEN
+- **Severity:** S3 (copy-paste in the histogram weight: `sin(beta1)²` instead of `sin(beta1)·sin(beta2)`)
+- **Location:** `chisurf/core/fluorescence/anisotropy/kappa2.py:173` (`kappasq_all_delta_new`: `weight_beta2 = np.sin(beta1)`)
+- **Finding:** The inner loop runs over `beta2` but computes its solid-angle weight from `beta1`, so `weights.append(weight_beta1 * weight_beta2)` accumulates `sin(beta1)²` and the returned `k2hist` is weighted by the wrong measure — the `beta2` dependence of the weight is dropped entirely. The `_new` variant has no caller in the tree (the plugin uses the numba `kappasq_all_delta`, which builds `beta2` geometrically and weights only by `sin(beta1)`, correctly for its parameterisation) and no test, so this is dead code with a latent bug: either fix the line to `np.sin(beta2)` with a test, or delete the function rather than leaving two divergent implementations of the same distribution.
+- **Fix note:**
+
+### RF-238
+- **Status:** OPEN
+- **Severity:** S3 (two implementations of the same one-line formula with different parameter names and opposite error contracts)
+- **Location:** `chisurf/core/fluorescence/anisotropy/integrals.py:18-48` (`perrin_steady_state_anisotropy(tau, rho, r0)`) and `chisurf/plugins/vv_vh_g_factor/core/calculations.py:291-312` (`perrin_steady_state_anisotropy(tau_ns, rho_ns, r0)`)
+- **Finding:** Same body — `r0 / (1 + tau/rho)` — but the core version **raises `ValueError`** for `rho <= 0` while the plugin version **returns `np.nan`**, and the keyword names differ (`tau`/`rho` vs `tau_ns`/`rho_ns`), so the two are not interchangeable at a call site. The plugin's RPC handler (`chisurf/plugins/vv_vh_g_factor/backend/services.py:89`) and its GUI (`gui/tool.py:668`) both bind the plugin copy, and `chisurf/plugins/vv_vh_g_factor/test/test_calculations.py:29` pins the plugin copy while `test/fitting/test_anisotropy_integrals.py:14` pins the core copy — nothing asserts they agree. Keep the core one (it is the shared physics layer), re-export it from the plugin under the `tau_ns`/`rho_ns` spelling, and pick one behaviour for `rho <= 0`.
+- **Fix note:**
