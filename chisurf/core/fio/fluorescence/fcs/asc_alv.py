@@ -555,7 +555,11 @@ def openASC_ALV_7004(
 
     dictionary = dict()
     dictionary["Correlation"] = np.array(corrlist)
-    dictionary["Trace"] = np.array(tracelist)
+    # The trace list stays a plain Python list: a cross-correlation carries a
+    # *pair* of traces while an autocorrelation carries a single one, so the
+    # entries are ragged and ``np.array`` refuses them. ``openASC_old`` returns
+    # a list as well and ``read_asc`` branches on ``isinstance(..., list)``.
+    dictionary["Trace"] = tracelist
     dictionary["Type"] = typelist
     dictionary["Filename"] = filelist
     dictionary["Duration"] = duration_sec
@@ -669,8 +673,12 @@ def read_asc(
             intensity_time = d['Trace'][i][:, 0]
             intensity = d['Trace'][i][:, 1]
 
-        # We want the intensity trace in seconds
-        intensity_time /= 1000.0
+        # We want the intensity trace in seconds. Not in place: in the
+        # autocorrelation branch ``intensity_time`` is a *view* into the
+        # reader's trace array, and the same array is handed out again for the
+        # cross-correlation curves of the same file — dividing in place would
+        # scale those a second time.
+        intensity_time = intensity_time / 1000.0
         try:
             aquisition_time = d["Duration"]
         except KeyError:

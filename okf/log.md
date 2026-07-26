@@ -2,6 +2,25 @@
 
 ## 2026-07-26
 
+* **Dual-channel ALV-7004 FCCS files are readable again (RF-044).** In mode
+  `a-ch0+1  c-ch0/1+1/0` the reader collects one trace per autocorrelation and a
+  *pair* of traces per cross-correlation, so `openASC_ALV_7004`'s trace list is
+  ragged; `np.array` on it has raised since NumPy 1.24, which made every FCCS
+  measurement from that instrument unopenable (`ValueError: setting an array
+  element with a sequence`, reproduced on the committed
+  `test/data/fcs/asc/ALV-7004USB_ac01_cc01_10.ASC`). The list now stays a plain
+  Python list — the form `openASC_old` already returns and the one `read_asc`
+  branches on. That alone was not enough: with a list the autocorrelation branch
+  of `read_asc` hands out a *view* into the reader's own trace array, and the
+  same array is reused for the cross-correlation curves, so the in-place
+  `intensity_time /= 1000.0` scaled those a second time — the two CC traces came
+  back ending at 0.0296 s instead of 29.65 s for a 30 s measurement. The
+  conversion is no longer in place. The four previously-readable ALV samples
+  return bit-identical datasets. Pinned by `test/fio/test_asc_alv_dual_channel.py`
+  (4 tests: the file opens, the trace list stays ragged, four datasets whose
+  traces span the measurement, and reading twice gives the same traces).
+  Tests: `test/fio`, 287 passed / 12 skipped.
+
 * **A non-finite draw no longer reads as a perfect chain (RF-100).** One `nan`
   or `inf` anywhere in a parameter's draws contaminates the FFT autocovariance,
   so `_ess_1d`'s "constant parameter" fallthrough fired and returned the *raw*

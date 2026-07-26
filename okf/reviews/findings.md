@@ -675,11 +675,34 @@ another instance); the symbol names are given so they stay findable.
   neither is verifiable without fixing it.
 
 ### RF-044
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a committed test file cannot be opened at all)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:553` (`openASC_ALV_7004`, `dictionary["Trace"] = np.array(tracelist)`)
 - **Finding:** In the four-curve ALV-7004 mode `a-ch0+1  c-ch0/1+1/0`, `tracelist` mixes single traces (`trace1`, shape `(n, 2)`) with *pairs* for the cross-correlations (`[trace1, trace2]`, shape `(2, n, 2)`) — see `:482-497`. `np.array` on that ragged list raises since NumPy 1.24. Verified on the committed sample `test/data/fcs/asc/ALV-7004USB_ac01_cc01_10.ASC` (header `Mode : "A-CH0+1  C-CH0/1+1/0"`, `MeanCR0 152.07`, `MeanCR1 85.07`): `openASC(...)` → `ValueError: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (4,) + inhomogeneous part.` So every dual-channel FCCS measurement from this instrument is unreadable. `dictionary["Correlation"]` at `:552` is fine (all curves share a shape); the trace list must stay a plain Python list — `openASC_old` already returns it as one (`:342`), and `read_asc:650` explicitly branches on `isinstance(d['Trace'][i], list)`, so the consumer expects it.
-- **Fix note:**
+- **Fix note:** `dictionary["Trace"]` is now the plain `tracelist`, with a
+  comment saying why it must stay ragged. Reproduced against `HEAD` first —
+  `openASC('test/data/fcs/asc/ALV-7004USB_ac01_cc01_10.ASC')` raised the quoted
+  `ValueError`. Fixing only that line was **not enough**, and the second half is
+  the reason this could not be a one-word change: with a list, the
+  autocorrelation branch of `read_asc` (`:669-670`) hands out a *view* into the
+  reader's own `trace1`/`trace2`, and those same arrays are handed out again for
+  the `CC12`/`CC21` curves of the same file, so the in-place
+  `intensity_time /= 1000.0` at `:673` scaled them a **second** time — with only
+  the ragged fix applied the two cross-correlation traces ended at `0.0296 s`
+  instead of `29.65 s` for a 30 s measurement, silently. The conversion is no
+  longer in place. The four ALV files that already read return **bit-identical**
+  datasets (correlation weights, trace times, count rate, acquisition time), so
+  nothing that worked changed. Pinned by `test/fio/test_asc_alv_dual_channel.py`
+  (4 tests: the four-curve mode opens and reports its `Duration`; the trace list
+  is a list whose AC entries are `(n, 2)` arrays and whose CC entries are pairs;
+  `read_asc` returns four datasets whose traces span the measurement — the
+  assertion the 1e-6 scaling fails — with finite weights; and reading the file
+  twice gives the same traces, which the in-place division broke). `test/fio`
+  green (287 passed, 12 skipped); `ruff check` on `asc_alv.py` reports the same
+  113 pre-existing findings as `HEAD` and none new, and the new test file is
+  `ruff check` + `ruff format` clean. The count-rate misindexing on the same
+  path ([RF-048](#rf-048)) is untouched and stays open — it is now reachable for
+  the first time on this file.
 
 ### RF-045
 - **Status:** FIXED
