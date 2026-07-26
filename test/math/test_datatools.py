@@ -86,15 +86,39 @@ def test_invert_interleaved():
     expected = np.array([0.1, 0.5, 0.2, 0.25])
     assert np.allclose(inverted, expected)
 
+def test_smooth_is_a_real_average():
+    # A constant signal is a fixed point of a moving average, edges included.
+    assert np.allclose(dt.smooth(np.ones(10), 3), 1.0)
+    # A unit spike is spread evenly over the (2 * m + 1) wide window.
+    x = np.zeros(7)
+    x[3] = 1.0
+    smoothed = dt.smooth(x, 1)
+    assert np.allclose(smoothed, [0, 0, 1 / 3, 1 / 3, 1 / 3, 0, 0])
+    # The window is centred, not shifted: the response mirrors about the spike.
+    assert np.allclose(smoothed, smoothed[::-1])
+
+
+def test_smooth_clips_the_window_at_the_edges():
+    # The window is clipped, never wrapped: the first element must not see the
+    # tail of the array.
+    x = np.array([0.0, 0.0, 0.0, 0.0, 100.0])
+    assert dt.smooth(x, 1)[0] == 0.0
+    # A half-window wider than the array averages everything.
+    assert np.allclose(dt.smooth(np.arange(5.0), 10), 2.0)
+
+
 def test_smooth_edge_cases():
-    x = np.ones(10)
-    # l < m case
-    smoothed = dt.smooth(x, 2, 5)
-    assert np.all(smoothed[2:] == 0) # Only first l-m elements are processed
-    # m = 0 case
-    smoothed_m0 = dt.smooth(x, 10, 0)
-    # When m=0, inner loop i-m to i+m is range(i, i), so xz[i] remains 0
-    # or takes one value if it was range(i-m, i+m+1). 
-    # Current implementation: range(i-m, i+m) which is i-0, i+0 -> empty.
-    assert np.all(smoothed_m0 == 0) 
+    x = np.arange(10.0)
+    # m <= 0 is the identity, not a zero array.
+    assert np.array_equal(dt.smooth(x, 0), x)
+    assert np.array_equal(dt.smooth(x, -1), x)
+    # Length is preserved and no element is left uninitialized.
+    for m in range(0, 6):
+        smoothed = dt.smooth(x, m)
+        assert smoothed.shape == x.shape
+        assert np.all(np.isfinite(smoothed))
+        assert np.all(smoothed >= x.min()) and np.all(smoothed <= x.max())
+    assert dt.smooth(np.array([]), 2).size == 0
+    # The input is not modified in place.
+    assert np.array_equal(x, np.arange(10.0))
 

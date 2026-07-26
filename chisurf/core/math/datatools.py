@@ -17,7 +17,7 @@ def distance_between_gaussian(
         sigma: float,
         normalize: bool = False
 ) -> np.ndarray:
-    """Calculates a Gaussian distribution of distances
+    """Calculate a Gaussian distribution of distances.
 
     Parameters
     ----------
@@ -33,11 +33,14 @@ def distance_between_gaussian(
     Returns
     -------
     np.ndarray
-        Gaussian distribution of distances
+        Gaussian distribution of distances. Non-finite distances carry zero
+        weight, so a single NaN cannot turn the whole distribution into NaN.
     """
     result = np.exp(-(distances - separation_distance) ** 2 / (2 * sigma ** 2))
-    if normalize and np.sum(result) > 0:
-        result /= np.sum(result)
+    result = np.where(np.isfinite(result), result, 0.0)
+    s = np.sum(result)
+    if normalize and s > 0:
+        result = result / s
     return result
 
 
@@ -393,32 +396,45 @@ def discriminate(
     return v_r[:n_v], w_r[:n_v]
 
 
-def smooth(x, l, m):
-    """Smooth an array using a moving average filter.
+def smooth(
+        x: np.ndarray,
+        m: int
+) -> np.ndarray:
+    """Smooth an array with a centred moving average.
 
-    This function applies a simple moving average smoothing to the input array `x`. The smoothing is performed
-    over a window of size (2*m + 1) for the first (l - m) elements of the array.
+    Output element `i` is the mean of the input samples in the window
+    ``[i - m, i + m]``. Windows are clipped to the array bounds rather than
+    wrapped, so the leading and trailing `m` elements average over fewer
+    samples instead of mixing in values from the opposite end of the array.
 
-    Note: The implementation divides by (2*m + 1) inside the inner loop, which may not produce the intended
-    averaging effect if multiple accumulations occur before division. Ensure that the parameters `l` and `m`
-    are chosen appropriately relative to the size of `x`.
-
-    :param x: numpy array
+    Parameters
+    ----------
+    x : np.ndarray
         Input array to be smoothed.
-    :param l: int
-        Number of elements from `x` to process.
-    :param m: int
-        Half-window size for the moving average. The full window size is (2*m + 1).
-    :return: numpy array
-        The smoothed array.
+    m : int
+        Half-window size. The full window is ``2 * m + 1`` samples wide; a
+        non-positive `m` returns an unmodified copy of the input.
+
+    Returns
+    -------
+    np.ndarray
+        Smoothed array with the same length as `x`.
+
+    Examples
+    --------
+    >>> smooth(np.ones(5), 1)
+    array([1., 1., 1., 1., 1.])
+    >>> np.round(smooth(np.array([0., 0., 1., 0., 0.]), 1), 6)
+    array([0.      , 0.333333, 0.333333, 0.333333, 0.      ])
     """
-    xz = np.empty(x.shape[0], dtype=np.float64)
-    for i in range(l - m):
-        xz[i] = 0
-        for j in range(i - m, i + m):
-            xz[i] += x[j]
-            xz[i] /= (2 * m + 1)
-    return xz
+    x = np.asarray(x, dtype=np.float64)
+    if m <= 0 or x.size == 0:
+        return x.copy()
+    i = np.arange(x.size)
+    lo = np.clip(i - m, 0, x.size)
+    hi = np.clip(i + m + 1, 0, x.size)
+    cumulative = np.concatenate((np.zeros(1), np.cumsum(x)))
+    return (cumulative[hi] - cumulative[lo]) / (hi - lo)
 
 
 def interleaved_to_two_columns(

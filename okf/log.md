@@ -2,6 +2,35 @@
 
 ## 2026-07-26
 
+* **RF-220 fix — `datatools.smooth` returned uninitialized heap memory.** The
+  moving-average helper allocated with `np.empty` and only filled the first
+  `l - m` elements, so the tail of every result was whatever was on the page:
+  the same call answered `[…, 0, 0, 0, 0]` on a clean heap and `[…, 7, 8, 9, 10]`
+  on a dirty one. It was not an average either — the `/= (2 * m + 1)` sat inside
+  the accumulation loop, so a window of ones came out as `0.2496` — and the
+  window `range(i - m, i + m)` was `2m` wide, not `2m + 1`, and wrapped negative
+  indices onto the end of the array. The test that "covered" it asserted
+  `np.all(smoothed[2:] == 0)`, i.e. it asserted on the uninitialized page and
+  passed only while the allocator happened to hand back zeros. `smooth(x, m)` is
+  now a real centred moving average computed from a running sum, same length as
+  the input, window clipped (never wrapped) at the bounds, `m <= 0` returning an
+  unmodified copy; the `l` parameter is gone, and it had no caller in the tree.
+  Replaced the flaky test with real ones — constant signal is a fixed point at
+  the edges too, a unit spike spreads symmetrically over `2m + 1` samples, the
+  first element never sees the tail, an over-wide `m` averages everything, and
+  every element is finite and bracketed by the input range for `m` in `0..5`.
+  Fixed in the same change, per the
+  [change-tracking rule](/workflows/change-tracking.md): the neighbouring
+  `distance_between_gaussian` left the "NaN handling" case of
+  `test_distance_between_gaussian` red, because `np.sum` of an array holding a
+  NaN can never equal 1.0 — non-finite weights are now zeroed before
+  normalizing. Two new findings recorded in
+  [/reviews/findings.md](/reviews/findings.md): RF-228 (three public
+  `distance_between_gaussian` functions, and the `datatools` one computes a
+  plain Gaussian rather than the distance distribution the other two compute),
+  plus a note on RF-221 that `histogram_rebin`'s docstring example fails under
+  NumPy 2 and is latent only because `test-doctest` never collects `chisurf/`.
+
 * **RF-217 fix — the MaxEnt MEM L-curve RPC never returned a corner.** The
   `maxent.lcurve` handler built its answer as
   `int(np.asarray(discrete_lcurve_corner(...))[0])`, but that function returns a

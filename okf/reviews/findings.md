@@ -2551,17 +2551,43 @@ Findings RF-215..RF-227.
 - **Fix note:**
 
 ### RF-220
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (returns uninitialized heap memory, and the moving average is not an average; the test that "covers" it asserts on that uninitialized memory)
 - **Location:** `chisurf/core/math/datatools.py:396-421` (`smooth`), test at `test/math/test_datatools.py:89-99`
 - **Finding:** Three defects. (1) `xz = np.empty(x.shape[0])` is filled only for `i in range(l - m)`; every element from `l - m` on is returned **uninitialized**. Verified: `smooth(np.arange(1, 11.), 8, 2)` returned `[..., 0, 0, 0, 0]` on a clean heap and `[..., 7., 8., 9., 10.]` on a dirtied one — the same call, two different answers. (2) The division `xz[i] /= (2 * m + 1)` sits *inside* the accumulation loop, so each partial sum is divided again on every iteration; a window of ones gives `0.2496` instead of `1.0`. (3) The window `range(i - m, i + m)` is asymmetric (it omits `i + m`, so it is `2m` wide, not `2m + 1`) and for `i < m` the negative indices wrap to the end of the array. `test_smooth_edge_cases` asserts `np.all(smoothed[2:] == 0)`, which only holds when the freshly-allocated page happens to be zero — a flaky test that documents the bug rather than catching it. The function has no caller in the tree (`chisurf/plugins/chimol/chimol/geometry/spline.py:42` defines an unrelated `smooth`); delete it or rewrite it against `np.convolve` with a real test.
+- **Fix note:** Rewritten as a real centred moving average over a running sum:
+  `smooth(x, m)` now returns a same-length array whose element `i` is the mean of
+  `x[i - m : i + m + 1]`, with the window **clipped** to the array bounds instead
+  of wrapping, and `m <= 0` (or an empty input) returning an unmodified copy. The
+  `l` parameter is gone — it existed only to bound the loop that left the tail
+  uninitialized, and the function had no caller in the tree. The flaky
+  `test_smooth_edge_cases` (which asserted on the uninitialized page) is replaced
+  by three real tests in `test/math/test_datatools.py`: a constant signal is a
+  fixed point including at the edges, a unit spike spreads symmetrically over
+  `2 * m + 1` samples, the first element never sees the tail, an over-wide `m`
+  averages everything, and every element is finite and bracketed by the input
+  range for `m` in `0..5`.
+  Incidental in the same module: `distance_between_gaussian` now zeroes
+  non-finite weights before normalizing, so one NaN distance no longer turns the
+  whole distribution into NaN — this had been failing the "NaN handling" case of
+  `test_distance_between_gaussian` (`np.sum` of an array containing NaN can never
+  be 1.0). Note this `datatools` copy is a plain Gaussian and is *not* the
+  distance distribution between two Gaussians that the two same-named functions
+  in `chisurf/core/math/functions/{rdf,distributions}.py` compute; it has no
+  caller and the name collision is recorded separately as RF-228.
+
+### RF-228
+- **Status:** OPEN
+- **Severity:** S3 (three public functions share one name; one of them computes a different quantity)
+- **Location:** `chisurf/core/math/datatools.py:13-45`, `chisurf/core/math/functions/rdf.py:283-320`, `chisurf/core/math/functions/distributions.py:322-370`
+- **Finding:** `distance_between_gaussian` exists three times. The two under `functions/` agree — `p(r) = r/d * (N(r; d, σ) - N(r; -d, σ))`, the distance distribution between two Gaussian-distributed points — and `chisurf/core/models/tcspc/fret.py:327` binds the `rdf` one. The copy in `datatools.py` is a **plain Gaussian** `exp(-(r - d)² / 2σ²)` under the same name, which is a different quantity, and it has no caller in the tree. `functions/rdf.py` and `functions/distributions.py` are themselves character-for-character duplicates of each other. → Keep one implementation (the `functions/` one the model already uses), re-export it, and either delete the `datatools` copy or rename it to what it computes (`gaussian_distance_distribution` / `normal_pdf`). Do not merge blindly: the `datatools` signature is the one covered by `test/math/test_datatools.py`.
 - **Fix note:**
 
 ### RF-221
 - **Status:** OPEN
 - **Severity:** S2 (`IndexError` on the upper bin edge — the one x-value the caller is most likely to pass)
 - **Location:** `chisurf/core/math/datatools.py:75-79` (`histogram_rebin`)
-- **Finding:** The out-of-range test is `xi > max(bin_edges) or xi < min(bin_edges)`, so `xi == max(bin_edges)` falls through to `sel = np.where(xi < bin_edges)`, which is empty, and `sel[0][0]` raises `IndexError: index 0 is out of bounds for axis 0 with size 0`. Verified: `histogram_rebin(np.array([0, 5, 10, 15]), np.array([0, 2, 1]), np.array([15.0]))` raises. The docstring example and `test/math/test_datatools.py:19` both dodge it by choosing new edges that never land exactly on the last edge. Either make the upper edge inclusive of the last bin or exclude it explicitly (`xi >= max(...)`), and add the boundary to the test. Same loop recomputes `max(bin_edges)`/`min(bin_edges)` for every new edge.
+- **Finding:** The out-of-range test is `xi > max(bin_edges) or xi < min(bin_edges)`, so `xi == max(bin_edges)` falls through to `sel = np.where(xi < bin_edges)`, which is empty, and `sel[0][0]` raises `IndexError: index 0 is out of bounds for axis 0 with size 0`. Verified: `histogram_rebin(np.array([0, 5, 10, 15]), np.array([0, 2, 1]), np.array([15.0]))` raises. The docstring example and `test/math/test_datatools.py:19` both dodge it by choosing new edges that never land exactly on the last edge. Either make the upper edge inclusive of the last bin or exclude it explicitly (`xi >= max(...)`), and add the boundary to the test. Same loop recomputes `max(bin_edges)`/`min(bin_edges)` for every new edge. Also: the return list mixes Python `0.0` floats with raw `counts` elements, so under NumPy 2 the docstring example renders as `np.int64(0), np.int64(2), …` and its doctest fails — latent today only because `test-doctest` runs `pytest test --doctest-modules` and never collects `chisurf/`. Returning `float(...)` uniformly fixes the example on both NumPy majors and matches the declared "list or float" contract.
 - **Fix note:**
 
 ### RF-222
