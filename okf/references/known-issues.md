@@ -432,6 +432,20 @@ be, because three of them were defects in the code rather than in the tests.
 
 # Deferred enhancements
 
+- **The chimol accessibility doc figure is not reproducible byte-for-byte, and
+  the reason is unknown.** Re-running `docs/guides/make_screenshots.py::
+  _grab_chimol_viewer` rewrote `docs/guides/figures/chimol_accessibility.png`
+  with ~41% of pixels changed (max channel delta 144) — the same molecule,
+  orientation and blue-white-red colouring, but uniformly lighter in the
+  crevices. The ray tracer has no RNG (`grep random renderer/raytracer.py` is
+  empty) and its occlusion is its own code, not the GL shader's, so the GL
+  ambient-occlusion floor cannot explain it. The figure was restored to its
+  committed bytes rather than churned on an unexplained diff. Worth pinning down
+  before the next deliberate figure regeneration: render it twice in one process
+  and compare, then bisect against the chimol commits of 2026-07-26. A doc
+  figure that changes on every build is churn a shared tree does not need.
+
+
 - **Per-item tooltips in the metadata-key combobox** (`chisurf/gui/plots/
   fitinfo.py`, keys from `chisurf/core/fio/mmcif/db/pdbx_metadata.py`). Multiple
   Qt approaches (`Qt.ToolTipRole`, `QStandardItem.setToolTip`, delegates, event
