@@ -380,8 +380,27 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self.update()
 
     def set_background_color(self, color) -> None:
-        if isinstance(color, (tuple, list)) and len(color) >= 3:
-            rgba = tuple(float(c) for c in color[:4]) if len(color) >= 4 else (*color[:3], 1.0)
+        """Set the clear colour, from a name, a Qt colour, or any RGB(A) sequence.
+
+        The sequence test has to be by *shape*, not by ``isinstance(tuple, list)``:
+        the command layer's colour parser returns a **numpy array**, which is
+        neither, so it fell through to ``QColor(ndarray)`` -- which raises, and
+        the caller swallowed the exception. `bg_color white` therefore did
+        nothing at all and reported success.
+        """
+        if isinstance(color, str):
+            sequence = None
+        else:
+            try:
+                sequence = [float(c) for c in color]
+            except (TypeError, ValueError):
+                sequence = None
+
+        if sequence is not None and len(sequence) >= 3:
+            rgba = (
+                tuple(sequence[:4]) if len(sequence) >= 4
+                else (*sequence[:3], 1.0)
+            )
         else:
             qcolor = QtGui.QColor(color)
             rgba = (

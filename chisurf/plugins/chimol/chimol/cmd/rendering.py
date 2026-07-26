@@ -25,9 +25,13 @@ class RenderingMixin(BaseCmd):
             return
         try:
             rgba = self._parse_color_spec(str(color))
-            viewer.set_background_color(rgba)
         except Exception as exc:
-            self._emit_error(f"Failed to set background color: {exc}")
+            self._emit_error(f"bg_color: {exc}")
+            return
+        if viewer.set_background_color(rgba) is False:
+            self._emit_error(f"bg_color: could not apply '{color}'")
+            return
+        self._emit_message(f"bg_color: background set to {color}")
 
     @command("show")
     def show(self, rep: str, sel: Selection = "") -> None:

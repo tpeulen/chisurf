@@ -12,7 +12,7 @@ faulthandler.enable(all_threads=True)
 from typing import Union
 
 from qtpy import QtWidgets, QtCore
-from qtpy.QtWidgets import QFileDialog
+from qtpy.QtWidgets import QFileDialog, QProgressDialog
 import pyqtgraph as pg
 import numpy as np
 import pandas as pd

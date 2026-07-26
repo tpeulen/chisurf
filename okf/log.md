@@ -2,6 +2,32 @@
 
 ## 2026-07-26
 
+* **chimol: `bg_color` did nothing and said nothing — confirmed and fixed.**
+  Logged as a lead in the previous entry; chased down straight away, because the
+  recent pattern says a reported success is not evidence. It was real: the clear
+  colour never changed and the corner pixel stayed black.
+
+  **Three layers had to line up for it to fail silently**, which is why it
+  survived: the command layer's colour parser returns a **numpy array**; the
+  renderer tested `isinstance(color, (tuple, list))`, which an ndarray is not, so
+  it fell through to `QColor(ndarray)` — which raises; and
+  `MolView.set_background_color` wrapped the call in `except Exception: pass`.
+  The exception was swallowed, nothing was emitted, and the command reported
+  success.
+
+  All three fixed: the renderer tests for a sequence by *shape* rather than by
+  exact type, `MolView` logs and returns False instead of swallowing, and the
+  command says what it did. The tests assert the **pixel**, because that is the
+  only thing none of the three layers could have faked.
+
+  That also unblocked the check I could not make when silhouettes landed: on a
+  white background the outlines are unmistakable — 17 128 pixels darker, 4.2% of
+  the frame, crisp edges both against the background and between overlapping
+  helices. Against black they were invisible, which is why the first verification
+  had to lean on pixel statistics rather than the picture.
+
+  8 tests.
+
 * **PDA2c / PDA3c: the colour count is now in every name.** The two-colour method
   was plain `Pda*` in `core/models/pda/` and the three-colour one had briefly been
   `c3PDA`; both now read the same way. `core/{models,experiments}/pda/` and the
@@ -801,26 +827,6 @@
   imported `QtWidgets`, so every one of those error reports would itself have
   raised. `chisurf/macros/` keeps its Qt imports function-local — macros run
   head-lessly through the action layer and must not drag Qt in to be defined.
-* **Then the ways *around* the new class, which is where the inconsistency would
-  have crept back.** Nine sites still built the modal `EnhancedProgressDialog`
-  themselves — including the two hottest paths in the app, running a fit and
-  loading a slow file — so they popped a window regardless of being embedded in
-  a panel or running head-lessly. They now go through `ChiSurfProgress`, which
-  grew the last of the old dialog's contract (`finish(final_text=…,
-  auto_close=…, close_delay_ms=…)`, `finalize(force_auto_close=…)`) so each move
-  was a one-line change, plus a `cancel=` callback: work in a *thread* cannot
-  poll `wasCanceled()`, so fitting, FRET docking, H2MM and staged loading push
-  the stop instead. Two further progress classes are gone (`ProgressWindow` in
-  the photon-filter wizard, and a dead Qt-free stand-in in the BVA core), the
-  photon-filter zip routine lost the `isinstance(progress, …)` branching that
-  existed only because the handle could be one of two types, and the last three
-  hand-rolled `QProgressBar`s (plugin check, AV computation, the file-drop
-  loader) became the shared inline bar. The guard test now rejects
-  `EnhancedProgressDialog` outside the backend as well. Screenshots caught the
-  cosmetic half of it: two of those panels already print the running message in
-  their own status label, so the bar repeats it unless built with
-  `show_text=False`.
-
 
 
 * **chimol: `h_add`/`h_fill`, and why a template beats counting valences.** The

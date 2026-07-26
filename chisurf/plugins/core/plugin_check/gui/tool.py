@@ -6,9 +6,7 @@ from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.progress import ChiSurfProgress
 
 
 class PluginCheckTool(QtWidgets.QWidget):
@@ -48,13 +46,10 @@ class PluginCheckTool(QtWidgets.QWidget):
         desc_label.setStyleSheet("color: #666; font-size: 11px;")
         layout.addWidget(desc_label)
 
-        # The shared inline bar, so a plugin sweep looks like every other long
-        # run in ChiSurf (and can be cancelled the same way). The message goes to
-        # the status label above it, so the bar does not repeat it.
-        self.progress_bar = InlineProgressWidget(show_text=False)
-        self.progress_bar.bar.setMaximumHeight(18)
+        self.progress_bar = QtWidgets.QProgressBar()
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setMaximumHeight(18)
         layout.addWidget(self.progress_bar)
-        self._task = None
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.setSizePolicy(
@@ -245,7 +240,9 @@ class PluginCheckTool(QtWidgets.QWidget):
 
         self._setup_runner(plugins, safe_mode=True)
         self._set_test_buttons_enabled(False)
-        self._task = ChiSurfProgress(self, "Testing safe plugins…", len(plugins))
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setMaximum(len(plugins))
+        self.progress_bar.setValue(0)
         self.status_label.setText("🛡️ Testing safe plugins (aggressive filtering)...")
         self.test_runner.start_testing()
 
@@ -267,7 +264,9 @@ class PluginCheckTool(QtWidgets.QWidget):
 
         self._setup_runner(plugins, safe_mode=False)
         self._set_test_buttons_enabled(False)
-        self._task = ChiSurfProgress(self, "Testing plugins…", len(plugins))
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setMaximum(len(plugins))
+        self.progress_bar.setValue(0)
         self.status_label.setText(f"{Glyphs.TEST} Testing plugins...")
         self.test_runner.start_testing()
 
@@ -301,8 +300,7 @@ class PluginCheckTool(QtWidgets.QWidget):
 
     def update_progress(self, current: int, total: int) -> None:
         """Update progress bar."""
-        if self._task is not None:
-            self._task.update_progress(current, f"Testing plugins… {current}/{total}")
+        self.progress_bar.setValue(current)
         self.status_label.setText(f"🧪 Testing plugins... {current}/{total}")
 
     def update_plugin_result(self, plugin_name: str, success: bool, error_message: str | None) -> None:
@@ -334,9 +332,7 @@ class PluginCheckTool(QtWidgets.QWidget):
     def testing_finished(self) -> None:
         """Called when all plugins have been tested."""
         self._set_test_buttons_enabled(True)
-        if self._task is not None:
-            self._task.close()
-            self._task = None
+        self.progress_bar.setVisible(False)
 
         total = len(self.plugin_results)
         successful = sum(1 for result in self.plugin_results.values() if result["success"])

@@ -2360,8 +2360,8 @@ class MolView(QtWidgets.QWidget):
                 idx = n - 1
             return idx
 
-    def set_background_color(self, color) -> None:
-        """Set the viewer background color.
+    def set_background_color(self, color) -> bool:
+        """Set the viewer background color. False when it could not be applied.
 
         This is a thin wrapper around the renderer's ``set_background_color``
         method and accepts the same Qt-compatible color values (strings like
@@ -2369,11 +2369,20 @@ class MolView(QtWidgets.QWidget):
         """
         renderer = self._renderer
         if renderer is None:
-            return
+            return False
         try:
             renderer.set_background_color(color)
-        except Exception:
-            pass
+        except Exception as exc:
+            # Not swallowed: a bare `except: pass` here is why `bg_color` failed
+            # silently for so long -- the colour arrived as a numpy array, the
+            # renderer raised, and the command reported success anyway.
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "chimol: could not set the background to %r (%s)", color, exc
+            )
+            return False
+        return True
 
     def set_field_of_view(self, fov: float) -> None:
         """Set the camera's vertical field of view in degrees.

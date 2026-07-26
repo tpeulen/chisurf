@@ -43,8 +43,7 @@ from qtpy.QtWidgets import (
 from chisurf import logging
 from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.widgets.progress import Worker
+from chisurf.gui.widgets.progress import EnhancedProgressDialog, Worker
 from chisurf.gui.widgets.wizard import DetectorWizardPage
 
 from ..api.models import H2mmSettings, StreamSettings
@@ -710,13 +709,23 @@ class H2mmTool(QMainWindow):
     def _make_progress(self, title, label, minv, maxv, cancel_cb):
         """Return a progress handle for a threaded run.
 
-        Thin alias for :class:`~chisurf.gui.progress.ChiSurfProgress`, which
-        decides where the bar appears (shell status bar when embedded, modal
-        dialog when standalone, the log when headless) and delivers Cancel to
-        *cancel_cb* — the fit runs in a thread, so the stop has to be pushed to
-        it rather than polled.
+        Embedded in the Burst Analysis shell this drives the shared status bar
+        (no popup), with its Cancel button wired to *cancel_cb*; standalone it is
+        the modal ``EnhancedProgressDialog``. Both duck-type
+        ``setValue`` / ``setLabelText`` / ``close``.
         """
-        return ChiSurfProgress(self, label, maxv, title=title, cancel=cancel_cb)
+        from chisurf.gui.widgets.navigation import find_status_reporter
+
+        reporter = find_status_reporter(self)
+        if reporter is not None:
+            return reporter.begin_task(label, maxv, cancel=cancel_cb)
+        prog = EnhancedProgressDialog(title, label, minv, maxv, self)
+        prog.show()
+        try:
+            prog.canceled.connect(cancel_cb)
+        except Exception:
+            pass
+        return prog
 
     def _run_analysis(self):
         if not self.data_folder:

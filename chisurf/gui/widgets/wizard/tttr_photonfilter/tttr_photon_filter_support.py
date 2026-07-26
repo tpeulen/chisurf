@@ -1,7 +1,25 @@
-from chisurf.gui import QtGui
+from chisurf.gui import QtGui, QtWidgets, QtCore
 
 
 QValidator = QtGui.QValidator
+
+
+class ProgressWindow(QtWidgets.QDialog):
+    def __init__(self, title="Processing Files", message="Loading files...", max_value=100, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(QtCore.Qt.WindowModal)
+        self.layout = QtWidgets.QVBoxLayout()
+        self.label = QtWidgets.QLabel(message)
+        self.progress_bar = QtWidgets.QProgressBar()
+        self.progress_bar.setRange(0, max_value)
+        self.layout.addWidget(self.label)
+        self.layout.addWidget(self.progress_bar)
+        self.setLayout(self.layout)
+
+    def set_value(self, value: int):
+        self.progress_bar.setValue(value)
+        QtWidgets.QApplication.processEvents()
 
 
 class CommaSeparatedIntegersValidator(QValidator):

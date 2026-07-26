@@ -18,7 +18,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf.core.fio.mmcif.db.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.progress import EnhancedProgressDialog
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.tool_buttons import action_button
 from chisurf.gui.widgets.tools import ChisurfDockTool
@@ -1867,8 +1867,15 @@ class BurstSelectionTool(ChisurfDockTool):
         frames: list[pd.DataFrame] = []
         frames_by_file: dict[Path, pd.DataFrame] = {}
         metadata: dict[str, Any] = {"n_files": len(self._file_paths), "n_bursts": 0, "n_photons": 0, "n_selected": 0}
-        dialog = ChiSurfProgress(self, "Processing files...", 100, title="Burst Selection")
-        dialog.update_progress(0)
+        dialog = EnhancedProgressDialog(
+            title="Burst Selection",
+            label_text="Processing files...",
+            min_value=0,
+            max_value=100,
+            parent=self,
+        )
+        dialog.show()
+        dialog.update_progress(0, "Processing files...")
         cancelled = False
         try:
             settings_dict = asdict(settings) if settings else {}

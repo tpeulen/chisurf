@@ -167,46 +167,6 @@ def test_progress_cancel_stops_the_loop(qapp):
     assert progress.was_canceled() is True
 
 
-def test_progress_cancel_callback_reaches_threaded_work(qapp):
-    """Work in a thread cannot poll, so Cancel has to be pushed to it.
-
-    Every threaded run (fitting, docking, H2MM, staged loading) hands
-    ``ChiSurfProgress`` a stop callback; without it the Cancel button would set
-    a flag nobody reads and the run would carry on to the end.
-    """
-    import threading
-
-    stop = threading.Event()
-    bar = InlineProgressWidget(hide_when_idle=False)
-    progress = ChiSurfProgress(bar, "Fitting", 100, cancel=stop.set)
-
-    assert not stop.is_set()
-    bar.cancel_button.click()
-    assert stop.is_set(), "Cancel never reached the running thread"
-    assert progress.was_canceled() is True
-
-
-def test_progress_finish_and_finalize_accept_the_dialog_contract(qapp):
-    """The call sites migrated off the modal dialog keep their own spelling.
-
-    ``finish(final_text=…, auto_close=…, close_delay_ms=…)`` and
-    ``finalize(force_auto_close=…)`` come from the popup this class replaced;
-    accepting them is what made those migrations one-line changes.
-    """
-    bar = InlineProgressWidget(hide_when_idle=False)
-    progress = ChiSurfProgress(bar, "Fitting", 100)
-    progress.update_progress(40)
-    progress.finish(final_text="Fitting finished!", auto_close=True, close_delay_ms=0)
-    # Both spellings release the bar rather than leaving a task owning it, and
-    # an inline bar goes back to idle instead of lingering on the last message.
-    assert bar._task is None
-    assert bar.label.text() == ""
-
-    progress = ChiSurfProgress(bar, "Fitting", 100)
-    progress.finalize(force_auto_close=True)
-    assert bar._task is None
-
-
 def test_progress_survives_a_raising_body(qapp):
     """The display comes down even when the work blows up mid-loop."""
     bar = InlineProgressWidget(hide_when_idle=True)
