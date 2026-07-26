@@ -81,6 +81,32 @@ nested handler is a direct-execution fallback. Anything genuinely optional goes
 in the test's `OPTIONAL` map **with a reason**, so "this may be absent" is a
 decision on the record rather than an anonymous `except`.
 
+# A failure path must not open a dialog nobody can close
+
+`QMessageBox.critical(...)` spins its own event loop until a button is pressed.
+Under `QT_QPA_PLATFORM=offscreen` — every headless suite, every CI job, every
+screenshot script — no button can ever be pressed, so a dialog on an `except`
+branch does not report the error: it **wedges the process**, and the traceback
+is never seen. That is worse than a crash, because a hung run is
+indistinguishable from a slow one. The fFCS filter-calculator module was hanging
+this way and had to be diagnosed with `sample(1)` and
+`faulthandler.dump_traceback_later`, which is the tell: if a suite stops
+producing dots and no test has failed, suspect a modal dialog before suspecting
+the machine.
+
+Report through [`chisurf/gui/dialogs.py`](../../chisurf/gui/dialogs.py) —
+`report_error` / `report_warning` / `report_information`. They log
+unconditionally and raise the box only when `QGuiApplication.platformName()` is
+a real window system, so interactive behaviour is unchanged. The same
+`is_interactive()` predicate is the right guard for any modal built by hand:
+"a `QApplication` exists" is *not* the same question as "a person is there".
+
+`test/test_headless_dialog_seam.py` fails when a **new** file calls a raw
+`QMessageBox` static from inside an `except` handler, tracking the remaining
+ones in `test/headless_dialog_allowlist.txt` (the same allow-list-as-tracker
+convention as the pyqtgraph seam). A confirmation prompt on a button click is
+deliberately not flagged: there the user is right there, which is the point.
+
 # GUI work is never blind — screenshot and look at it
 
 **Any change that touches a GUI is unfinished until the widget has been rendered

@@ -25,6 +25,7 @@ import chisurf  # Ensure chisurf is available module-wide
 import chisurf.core.settings
 from chisurf import logging
 import chisurf.gui.decorators
+from chisurf.gui.dialogs import report_error, report_information, report_warning
 
 
 plugin_menu_action: QtWidgets.QAction | None = None
@@ -707,7 +708,7 @@ def setup_gui(
                     parent = app.activeWindow()
                 except Exception:
                     parent = None
-                QtWidgets.QMessageBox.warning(
+                report_warning(
                     parent,
                     "Theme not found",
                     (
@@ -2023,9 +2024,9 @@ class LoginDialog(QtWidgets.QDialog):
                         if dlg.exec() == QtWidgets.QDialog.Accepted:
                             try:
                                 self.client.change_password(user_id=user_id, password=dlg.password, requester_id=user_id)
-                                QtWidgets.QMessageBox.information(self, "Success", "Password successfully updated.")
+                                report_information(self, "Success", "Password successfully updated.")
                             except Exception as e:
-                                QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save password:\n{e}")
+                                report_error(self, "Error", f"Failed to save password:\n{e}")
                 
                 import chisurf.core.settings as cs_settings
                 from mmfdb.security.credentials import (
@@ -2081,7 +2082,7 @@ class LoginDialog(QtWidgets.QDialog):
 
                 saved = set_mmfdb_login_settings(mmfdb_settings)
                 if not saved:
-                    QtWidgets.QMessageBox.warning(
+                    report_warning(
                         self,
                         "Settings Not Saved",
                         "Login succeeded, but ChiSurf could not store the MMFDB login settings.",
@@ -2107,7 +2108,7 @@ class LoginDialog(QtWidgets.QDialog):
                     if hasattr(cs_settings, "mmfdb"):
                         cs_settings.mmfdb["autologin"] = False
                     set_mmfdb_login_settings(mmfdb_settings)
-                    QtWidgets.QMessageBox.warning(
+                    report_warning(
                         self,
                         "Autologin Not Saved",
                         "Login succeeded, but ChiSurf could not store the session token in the OS credential store.",
@@ -2115,9 +2116,9 @@ class LoginDialog(QtWidgets.QDialog):
                     
                 self.accept()
             else:
-                QtWidgets.QMessageBox.warning(self, "Login Failed", _format_login_error(res.get("error")))
+                report_warning(self, "Login Failed", _format_login_error(res.get("error")))
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Login failed: {e}")
+            report_error(self, "Error", f"Login failed: {e}")
 
 
 def _smoke_test_enabled() -> bool:
@@ -2321,7 +2322,7 @@ def get_app():
                     app.quit()
         except Exception as e:
             logging.warning(f"Could not perform startup authentication check: {e}")
-            QtWidgets.QMessageBox.critical(
+            report_error(
                 None,
                 "MMFDB Login Unavailable",
                 f"Could not start or reach the MMFDB JSON-RPC service:\n{e}",

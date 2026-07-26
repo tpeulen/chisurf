@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **228 more dialogs that would hang a headless run, now tracked.** Fixing the
+  fFCS filter calculator turned up one instance of a class: a `QMessageBox`
+  static on an `except` branch spins an event loop until a button is pressed, so
+  offscreen it never reports the error — it wedges the process. An AST sweep
+  found **228 such calls across 84 files**. Each is a latent hang and, worse, a
+  traceback nobody will ever see.
+
+  Converting all 84 at once in a tree four instances are editing would be
+  reckless, so this follows the convention the pyqtgraph→chiplot migration
+  already established: `test/test_headless_dialog_seam.py` fails when a **new**
+  file calls a raw `QMessageBox` static from inside an `except`, with the
+  remaining ones listed in `test/headless_dialog_allowlist.txt` as the migration
+  tracker (a stale entry is also a failure, so a migrated file can never
+  regress). Scope is deliberately `except` handlers only — a confirmation prompt
+  on a button click is fine, the user is right there.
+
+  First batch migrated: `chisurf/__main__.py`, `chisurf/gui/__init__.py`,
+  `chisurf/gui/main.py`, `chisurf/gui/main_helper.py` — 27 call sites, 84 → 80
+  files. Only the exact `QMessageBox.<static>(parent, title, message)` shape was
+  rewritten: a call carrying buttons *returns the button pressed* and its caller
+  branches on that, so those keep their dialog. In `__main__.py` the helper is
+  imported inside the function, not at module scope — that entry point must stay
+  importable without Qt, which is why its `qtpy` import is guarded.
+
+  Related, and the reason a fresh machine hangs on startup: the detector-setups
+  loader gated its "no setups file" warning on `QApplication.instance() is not
+  None`. That asks whether a `QApplication` object exists, not whether a person
+  is there to click OK — `chisurf.gui.dialogs.is_interactive()` is the predicate
+  that asks the right question.
+
 * **One dispatcher, one registry (RF-174).** Resolving `chisurf.action_dispatcher`
   imports `chisurf.core.actions`, whose `@action` decorators read
   `chisurf.action_registry` and re-enter `chisurf.__getattr__`; that nested frame

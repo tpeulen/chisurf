@@ -12,6 +12,7 @@ import chisurf as cs
 import chisurf.gui.widgets as _gw
 from chisurf.history import replay as _hr
 from qtpy import QtCore, QtWidgets
+from chisurf.gui.dialogs import report_error, report_information, report_warning
 
 
 if typing.TYPE_CHECKING:
@@ -123,7 +124,7 @@ class ProjectMixin:
             )
         except Exception as exc:
             cs.logging.exception("Failed to save project to MMFDB")
-            QtWidgets.QMessageBox.warning(self, "Save Failed", str(exc))
+            report_warning(self, "Save Failed", str(exc))
 
     def onExportProject(self: Main, event: QtCore.QEvent = None):
         """Export the current project as a .csp archive file."""
@@ -154,7 +155,7 @@ class ProjectMixin:
                 self.add_recent_project(pathlib.Path(path_str))
             except Exception as exc:
                 cs.logging.exception("Export failed")
-                QtWidgets.QMessageBox.warning(self, "Export Failed", str(exc))
+                report_warning(self, "Export Failed", str(exc))
             return
 
         working = cs.working_path if getattr(cs, "working_path", None) else pathlib.Path.home()
@@ -198,7 +199,7 @@ class ProjectMixin:
         try:
             self.load_and_show_plugin("chisurf.plugins.core.project_browser")
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(
+            report_error(
                 self, "Open Project Failed",
                 f"Could not open projects from MMFDB:\n{exc}"
             )
@@ -216,7 +217,7 @@ class ProjectMixin:
 
             preview = client.import_preview(file_path=file_path)
             if not preview.get("ok", True):
-                QtWidgets.QMessageBox.warning(self, "Import Failed", preview.get("error", "Unknown error"))
+                report_warning(self, "Import Failed", preview.get("error", "Unknown error"))
                 return
             collisions = preview.get("collisions", {})
             has_collisions = any(v for v in collisions.values())
@@ -241,16 +242,16 @@ class ProjectMixin:
             if result.get("ok"):
                 self._current_project_id = result.get("project_id")
                 self._current_project_version_id = result.get("version_id")
-                QtWidgets.QMessageBox.information(
+                report_information(
                     self, "Import Complete",
                     f"Project imported.\n"
                     f"ID: {result.get('project_id', '?')} v{result.get('version_number', '?')}",
                 )
             else:
-                QtWidgets.QMessageBox.warning(self, "Import Failed", result.get("error", "Unknown error"))
+                report_warning(self, "Import Failed", result.get("error", "Unknown error"))
         except Exception as exc:
             cs.logging.exception("Import failed")
-            QtWidgets.QMessageBox.warning(self, "Import Failed", str(exc))
+            report_warning(self, "Import Failed", str(exc))
 
     def onCloseProject(self: Main, event: QtCore.QEvent = None):
         try:
@@ -328,19 +329,19 @@ class ProjectMixin:
                 self._current_project_version_id = res.get("version_id")
                 self._current_project_name = project_name
                 self._current_project_visibility = res.get("visibility", "private")
-                QtWidgets.QMessageBox.information(
+                report_information(
                     self,
                     "Project Archived",
                     f"Project successfully archived to database.\nProject ID: {res.get('project_id', project_id)}"
                 )
             else:
-                QtWidgets.QMessageBox.warning(
+                report_warning(
                     self,
                     "Archive Failed",
                     res.get("error", "Failed to archive project to database."),
                 )
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(
+            report_error(
                 self,
                 "Archive Failed",
                 f"Failed to archive project to database: {exc}"
@@ -904,14 +905,14 @@ class SetupMixin:
 
             progress_dialog.close()
             if show_success:
-                QtWidgets.QMessageBox.information(
+                report_information(
                     self,
                     "Reinitialization Complete",
                     "ChiSurf has been successfully reinitialized.\nAll data has been cleared, memory freed, and the application reset to initial state."
                 )
         except Exception as e:
             progress_dialog.close()
-            QtWidgets.QMessageBox.critical(
+            report_error(
                 self,
                 "Reinitialization Error",
                 f"An error occurred during reinitialization:\n{str(e)}"
@@ -2046,7 +2047,7 @@ class DevMixin:
             )
             result = resolve_focused_widget_source()
             if result is None:
-                QtWidgets.QMessageBox.information(
+                report_information(
                     self,
                     "No Source Target",
                     "Could not resolve a source file for the currently focused widget.",
@@ -2056,13 +2057,13 @@ class DevMixin:
             path, line = result
             open_in_editor(self, path, line)
         except ImportError:
-            QtWidgets.QMessageBox.warning(
+            report_warning(
                 self,
                 "Dev Mode Error",
                 "Source jump module not available.",
             )
         except Exception as e:
-            QtWidgets.QMessageBox.warning(
+            report_warning(
                 self,
                 "Dev Mode Error",
                 f"Could not open source: {e}",
@@ -2088,7 +2089,7 @@ class DevMixin:
                 )
             self._dev_settings_editor.show()
         except Exception as e:
-            QtWidgets.QMessageBox.warning(
+            report_warning(
                 self,
                 "Dev Mode Settings",
                 f"Could not open settings: {e}",

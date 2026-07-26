@@ -1411,7 +1411,9 @@ class Main(
             except Exception:
                 pass
             try:
-                QtWidgets.QMessageBox.warning(
+                from chisurf.gui.dialogs import report_warning
+
+                report_warning(
                     self,
                     "FRET RDA axis settings",
                     (
