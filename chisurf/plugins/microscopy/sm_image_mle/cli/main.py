@@ -58,6 +58,18 @@ def cli() -> None:
 @click.option("--peak-footprint-size", default=6, type=int, help="Peak-detection footprint size.")
 @click.option("--min-area", default=1, type=int, help="Minimum molecule area (pixels).")
 @click.option("--min-photons", default=1, type=int, help="Minimum photons per molecule to fit.")
+@click.option(
+    "--roi",
+    # None, not "": click validates the default against the Path type, and an
+    # empty string is not an existing file.
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help=(
+        "Analysis region: a saved ROI JSON, a mask image or a label image. "
+        "Molecules are searched only inside it, and an automatic threshold is "
+        "computed from its pixels alone. Several regions in one file are unioned."
+    ),
+)
 @click.option("--json", "json_output", is_flag=True, help="Print the result as JSON.")
 def analyze(
     files,
@@ -88,6 +100,7 @@ def analyze(
     peak_footprint_size,
     min_area,
     min_photons,
+    roi,
     json_output,
 ) -> None:
     """Analyze CLSM imaging FILES with molecule-wise MLE."""
@@ -96,6 +109,14 @@ def analyze(
 
     det_chs = [int(c.strip()) for c in detector_chs.split(",") if c.strip()]
     mtr = tuple(int(x.strip()) for x in micro_time_range.split(","))
+
+    # A region file may hold one region, several, or a whole segmentation; the
+    # analysis takes a single region, so several become their union.
+    analysis_roi = None
+    if roi:
+        from chisurf.core.roi import load_region
+
+        analysis_roi = load_region(roi).to_dict()
 
     settings = MoleculeMleSettings(
         detector_chs=det_chs,
@@ -120,6 +141,7 @@ def analyze(
         peak_footprint_size=peak_footprint_size,
         min_area=min_area,
         min_photons=min_photons,
+        roi=analysis_roi,
     )
     request = MoleculeMleRequest(
         files=list(files),

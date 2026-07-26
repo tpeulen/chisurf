@@ -184,6 +184,9 @@ closes the loop between measuring and selecting.
 
 ## See also
 
+- How to do it: {doc}`the regions guide </guides/48_regions>` — where regions
+  appear in each tool, the single-molecule foreground/background workflow, the
+  headless `--roi` option and the Python API.
 - Object-based colocalization, which counts and compares segmented objects:
   {ref}`concept-colocalization`.
 - Confocal images and per-pixel lifetime analysis:

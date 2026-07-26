@@ -166,7 +166,11 @@ biased in both directions, so `circularity` can exceed 1 (a 7x7 square scores
   frame, `background_rate()` reads the mean photon rate outside the molecules,
   and the per-molecule table's shape columns come from `regionprops`. The
   background is the *dilated* foreground's complement — the pixels touching a
-  molecule still carry its PSF tail.
+  molecule still carry its PSF tail. The region is reachable from all three
+  surfaces: an **Analysis region** `path_list` in the AutoForm view, `--roi` on
+  the CLI, and `MoleculeMleSettings(roi=…)` in Python; all three take a saved
+  ROI JSON, a mask image or a label image, several regions arriving as their
+  union.
 * **Drift correction** (`core/fluorescence/imaging/drift.py`) — estimates
   within a region, as PAM's MIA does, cropping to `ROI.bounding_box`.
 * **CLSM pixel select** (`plugins/microscopy/clsm`) — the brush still paints an
@@ -227,6 +231,13 @@ opposite mask convention (`True` = excluded). It lives in a separate package,
 so a bridge belongs on the ChiSurf side; `MaskROI.from_histogram` and
 `EllipseROI` now cover both of its 2-D shapes, which is what such a bridge would
 need.
+
+# Documentation
+
+The user-facing pair: `docs/concepts/region_properties.md` (what the
+measurements are and how they are defined) and `docs/guides/48_regions.md`
+(where regions appear in each tool, the foreground/background workflow, the
+headless `--roi` option and the Python API).
 
 # Citations
 

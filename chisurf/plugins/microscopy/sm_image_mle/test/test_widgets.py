@@ -171,3 +171,52 @@ def test_tool_creation(qapp, qtbot):
     assert widget.windowTitle() == "Molecule-wise MLE"
     assert hasattr(widget, "auto_form")
     assert hasattr(widget, "model")
+
+
+# --- the analysis region, from the GUI's side --------------------------------
+def test_choosing_a_region_file_loads_it_into_the_settings(tmp_path):
+    """The `path_list` binding turns a file into the setting the core reads.
+
+    The setting existed and shaped the analysis long before anything in the GUI
+    could set it; this is the binding that closes that gap.
+    """
+    from chisurf.core.roi import RectangleROI, save_rois
+    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
+        MoleculeMleViewModel,
+    )
+
+    path = tmp_path / "patch.json"
+    save_rois([RectangleROI(10, 10, 90, 90, name="cell patch")], str(path))
+
+    vm = MoleculeMleViewModel()
+    assert vm.settings.roi is None
+
+    vm.sel_roi_files = [str(path)]
+    assert vm.sel_roi_files == [str(path)]
+    assert vm.settings.analysis_roi() is not None
+    assert vm.settings.analysis_roi().name == "cell patch"
+    assert "cell patch" in vm.status_text
+
+    # Clearing the list must clear the region, not leave a stale one behind.
+    vm.sel_roi_files = []
+    assert vm.settings.roi is None
+
+
+def test_an_unreadable_region_file_is_reported_not_raised(tmp_path):
+    """A bad file leaves the analysis on the whole frame and says so.
+
+    Raising here would take down the drop handler; silently ignoring it would
+    run the whole analysis on a region the user thinks is applied.
+    """
+    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
+        MoleculeMleViewModel,
+    )
+
+    bad = tmp_path / "not_a_region.json"
+    bad.write_text("{ this is not json")
+
+    vm = MoleculeMleViewModel()
+    vm.sel_roi_files = [str(bad)]
+
+    assert vm.settings.roi is None
+    assert "Could not read the region" in vm.status_text

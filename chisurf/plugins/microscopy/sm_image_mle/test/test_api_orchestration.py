@@ -105,3 +105,78 @@ def test_analyze_request_reports_failures_as_warnings(tmp_path, monkeypatch):
     assert result.processed_files == [str(good)]
     assert result.n_molecules == 2
     assert any("boom" in w for w in result.warnings)
+
+
+# --- the CLI's analysis region ----------------------------------------------
+def test_cli_roi_option_reaches_the_settings(tmp_path, monkeypatch):
+    """``--roi FILE`` loads the region and hands it to the analysis.
+
+    The region only mattered from Python before: the setting existed, shaped
+    the analysis, and no command line could set it. The option accepts every
+    form ``load_region`` does, and several regions in one file arrive as their
+    union — so a saved segmentation works as an analysis mask.
+    """
+    from click.testing import CliRunner
+
+    from chisurf.core.roi import RectangleROI, save_rois
+    from chisurf.plugins.microscopy.sm_image_mle.api import molecule_mle as api
+    from chisurf.plugins.microscopy.sm_image_mle.cli.main import cli
+
+    roi_file = tmp_path / "patch.json"
+    save_rois(
+        [RectangleROI(0, 0, 16, 16, name="left"),
+         RectangleROI(32, 32, 48, 48, name="right")],
+        str(roi_file),
+    )
+    image = tmp_path / "img.ptu"
+    irf = tmp_path / "irf.ptu"
+    image.write_bytes(b"")
+    irf.write_bytes(b"")
+
+    seen = {}
+
+    def fake_fit(ptu_path, irf_path, settings, **kwargs):
+        seen['roi'] = settings.analysis_roi()
+        return _fake_result(1)
+
+    monkeypatch.setattr(api, "fit_molecules_from_files", fake_fit)
+
+    result = CliRunner().invoke(
+        cli,
+        ["analyze", "-i", str(irf), "-o", str(tmp_path),
+         "--roi", str(roi_file), str(image)],
+    )
+    assert result.exit_code == 0, result.output
+
+    roi = seen['roi']
+    assert roi is not None
+    # The union covers both rectangles and nothing between them.
+    inside = roi.contains(np.array([[8.0, 8.0], [40.0, 40.0], [24.0, 24.0]]))
+    assert inside.tolist() == [True, True, False]
+
+
+def test_cli_without_roi_leaves_the_whole_frame(tmp_path, monkeypatch):
+    """Omitting the option must not smuggle in an empty region."""
+    from click.testing import CliRunner
+
+    from chisurf.plugins.microscopy.sm_image_mle.api import molecule_mle as api
+    from chisurf.plugins.microscopy.sm_image_mle.cli.main import cli
+
+    image = tmp_path / "img.ptu"
+    irf = tmp_path / "irf.ptu"
+    image.write_bytes(b"")
+    irf.write_bytes(b"")
+
+    seen = {}
+
+    def fake_fit(ptu_path, irf_path, settings, **kwargs):
+        seen['roi'] = settings.analysis_roi()
+        return _fake_result(1)
+
+    monkeypatch.setattr(api, "fit_molecules_from_files", fake_fit)
+
+    result = CliRunner().invoke(
+        cli, ["analyze", "-i", str(irf), "-o", str(tmp_path), str(image)]
+    )
+    assert result.exit_code == 0, result.output
+    assert seen['roi'] is None

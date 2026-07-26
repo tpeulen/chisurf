@@ -32,6 +32,8 @@ class MoleculeMleViewModel(MleObserverMixin):
     def __init__(self) -> None:
         self.files: list[str] = []
         self.irf_files: list[str] = []
+        #: Analysis-region file, if one was chosen; empty means the whole frame.
+        self.roi_files: list[str] = []
         self.settings = MoleculeMleSettings()
         self.status_text: str = ""
         #: Per-file results of the last run.
@@ -121,6 +123,45 @@ class MoleculeMleViewModel(MleObserverMixin):
     @sel_irf_files.setter
     def sel_irf_files(self, value) -> None:
         self.irf_files = [str(v) for v in (value or [])]
+
+    @property
+    def sel_roi_files(self) -> list:
+        """Analysis-region file, if one was chosen (bound to the `path_list`).
+
+        The region confines the molecule search and, with an automatic
+        threshold, is what the threshold is computed from — so restricting the
+        analysis to a cell means the rest of the field does not set its
+        threshold. Empty means the whole frame.
+        """
+        return list(self.roi_files)
+
+    @sel_roi_files.setter
+    def sel_roi_files(self, value) -> None:
+        self.roi_files = [str(v) for v in (value or [])]
+        self._load_analysis_roi()
+
+    def _load_analysis_roi(self) -> None:
+        """Read the chosen region file into the settings, or clear the region.
+
+        A file may hold one region, several, or a whole segmentation; the
+        analysis takes a single region, so several become their union.
+        """
+        from chisurf.core.roi import load_region
+
+        if not self.roi_files:
+            self.settings.roi = None
+            self.status_text = ""
+        else:
+            try:
+                roi = load_region(self.roi_files[0])
+            except Exception as exc:  # noqa: BLE001 - reported in the status line
+                self.settings.roi = None
+                self.status_text = f"Could not read the region: {exc}"
+                logger.warning("analysis region not loaded: %s", exc)
+            else:
+                self.settings.roi = roi
+                self.status_text = f"Analysis region: {roi.name or type(roi).__name__}"
+        self.notify("status")
 
     # ── scalar settings bindings (AutoForm value/choice/toggle sections) ──
     @property

@@ -818,7 +818,30 @@ class AutoForm(QtWidgets.QWidget):
         # refresh_plots() still reaches them after a dock reparents/floats them.
         if widget is not None and getattr(widget, "AUTOFORM_REFRESH", False):
             self._refresh_targets.append(widget)
-        return widget
+        if widget is None:
+            return None
+        # A custom section may carry a title like every other section; it used to
+        # be silently dropped, so a panel with three `path_list`s showed three
+        # unlabelled drop boxes and nothing said which took the IRF. The widget
+        # supplies its own frame, so the caption is a plain label above it rather
+        # than a second box around it.
+        if not section.title:
+            return widget
+        holder = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(holder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        caption = QtWidgets.QLabel(section.title)
+        caption.setStyleSheet("font-weight: bold;")
+        if section.description:
+            caption.setToolTip(section.description)
+        layout.addWidget(caption)
+        layout.addWidget(widget)
+        # The hosting panel gives spare vertical space to expanding sections, and
+        # that marker lives on the inner widget — carry it out to the wrapper.
+        if getattr(widget, "_autoform_expanding", False):
+            holder._autoform_expanding = True
+        return holder
 
     def _build_dynamic_group(self, section: vs.DynamicGroupSection):
         group = self._resolve_group(section.target)

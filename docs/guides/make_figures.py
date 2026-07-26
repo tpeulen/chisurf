@@ -1291,6 +1291,89 @@ def fig_ndxplorer():
     save(fig, "ndxplorer_marginal_fit.png")
 
 
+# --------------------------------------------------------------------------
+# 48. Regions: analysis region, foreground molecules, background
+# --------------------------------------------------------------------------
+def fig_regions():
+    """Regions in single-molecule imaging: analysis region, molecules, background.
+
+    Runs the real ``chisurf.core.roi`` segmentation and measurement on a
+    synthetic frame — the same functions the guide describes.
+    """
+    from chisurf.core.roi import (
+        MaskROI,
+        RectangleROI,
+        labels_to_rois,
+        regionprops,
+        regionprops_table,
+    )
+    import scipy.ndimage as ndi
+
+    rng = np.random.default_rng(11)
+    ny = nx = 96
+    yy, xx = np.mgrid[0:ny, 0:nx]
+
+    # An immobilised sample: diffraction-limited spots of varying brightness,
+    # some inside the illuminated patch and some outside it.
+    spots = [(28, 26, 900), (34, 58, 1400), (58, 34, 700), (66, 62, 1100),
+             (18, 78, 800), (78, 18, 600), (12, 12, 500), (84, 84, 950)]
+    frame = np.full((ny, nx), 12.0)
+    for cy, cx, amp in spots:
+        frame += amp * np.exp(-((yy - cy) ** 2 + (xx - cx) ** 2) / (2 * 2.1 ** 2))
+    image = rng.poisson(frame).astype(float)
+
+    # 1. the analysis region — one illuminated patch, drawn or loaded
+    patch = RectangleROI(14, 14, 74, 74, name="illuminated patch")
+    patch_mask = patch.to_mask(image.shape)
+
+    # 2. the foreground — segment only inside the patch, and let the automatic
+    #    threshold see only the patch's own pixels
+    inside = image[patch_mask]
+    threshold = inside.mean() + 3.0 * inside.std()
+    labels, n = ndi.label((image > threshold) & patch_mask)
+    props = regionprops(labels, intensity_image=image)
+
+    # 3. the background — NOT the complement: dilate first, or the PSF tails
+    #    around every molecule inflate the background rate
+    foreground = MaskROI(labels > 0, name="molecules")
+    dilated = ndi.binary_dilation(labels > 0, iterations=3)
+    background = MaskROI(patch_mask & ~dilated, name="background")
+    bg_rate = image[background.to_mask(image.shape)].mean()
+    naive_rate = image[patch_mask & ~(labels > 0)].mean()
+
+    fig, axs = plt.subplots(1, 3, figsize=(12.0, 3.9))
+
+    axs[0].imshow(image, cmap="magma")
+    y0, x0, y1, x1 = 14, 14, 74, 74
+    axs[0].plot([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0], color="#4dd0e1", lw=1.6)
+    axs[0].set_title(f"Frame + analysis region\n{n} molecules inside, "
+                     f"{len(spots) - n} outside")
+
+    overlay = np.where(labels > 0, labels, np.nan)
+    axs[1].imshow(image, cmap="gray")
+    axs[1].imshow(overlay, cmap="tab10", alpha=0.85, interpolation="nearest")
+    for p in props:
+        r, c = p.centroid
+        axs[1].plot(c, r, "w+", ms=6, mew=1.2)
+    axs[1].set_title("Foreground: one region per molecule\n(+ = centroid)")
+
+    axs[2].imshow(background.to_mask(image.shape), cmap="Blues", vmin=0, vmax=1.6)
+    axs[2].set_title(f"Background after a 3-px margin\n"
+                     f"{bg_rate:.1f} ph/px  (naive: {naive_rate:.1f})")
+
+    for a in axs:
+        a.set_xticks([]); a.set_yticks([]); a.grid(False)
+    save(fig, "regions.png")
+
+    table = regionprops_table(
+        labels, intensity_image=image,
+        properties=("label", "area", "centroid", "eccentricity", "intensity_mean"),
+    )
+    print("  regions.png:", n, "molecules;",
+          "area", np.round(table["area"], 1).tolist()[:4], "…;",
+          f"background {bg_rate:.2f} ph/px vs naive {naive_rate:.2f}")
+
+
 if __name__ == "__main__":
     fig_lut()
     fig_av()
@@ -1304,4 +1387,5 @@ if __name__ == "__main__":
     fig_ebfret(); fig_burst_lifetime(); fig_clsm()
     fig_rcm_alex(); fig_2d_peak_fit(); fig_timestamps()
     fig_ndxplorer()
+    fig_regions()
     print("all figures written to", FIG)
