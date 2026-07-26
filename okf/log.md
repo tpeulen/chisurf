@@ -2,6 +2,22 @@
 
 ## 2026-07-26
 
+* **RF-195 fix — a loaded IRF had the lamp background subtracted twice.**
+  `Convolve._process_irf` subtracted `lamp_background` and clipped at zero
+  *inside* the loaded-IRF branch, then did exactly the same two statements again
+  in the shared tail below the `if`/`else`; the synthetic-IRF branch has no such
+  pair and was therefore corrected once. The two paths disagreed by a whole
+  background offset, and since `lb` is a fittable parameter whose upper bound is
+  set to half the lamp height when an IRF is loaded, any non-zero value doubled.
+  On the review's own case — IRF `[0,4,10,6,3,1,0,0]` with `lb = 1.0` — the
+  processed IRF was `[0,2,8,4,1,0,0,0]` where one subtraction gives
+  `[0,3,9,5,2,0,0,0]`. Deleted the duplicated pair inside the branch, leaving the
+  shared one as the single subtraction for both. `Curve` defines `__sub__` but no
+  `__isub__`, so the `-=` still rebinds to a fresh curve and the stored `_irf`
+  stays unmutated. Pinned by `test/tcspc/test_convolve_lamp_background.py`
+  (3 tests / 6 cases, including non-mutation across repeated processing); four of
+  them fail against the pre-fix file. Finding closed in
+  [/reviews/findings.md](/reviews/findings.md).
 * **INC-07 — one menu named "Fluorescence decay", not two.** The case split that
   [INC-07](/specs/assessment.md#inc-07) had just fixed in `categories` also sat
   in the **menu path**, where it is live: `synthetic_decay`'s `display_name` (and

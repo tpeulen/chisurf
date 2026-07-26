@@ -533,9 +533,8 @@ class Convolve(FittingParameterGroup):
             chisurf.core.curve.Curve: The processed IRF curve.
         """
         if isinstance(self._irf, chisurf.core.curve.Curve):
+            # The lamp background is subtracted below, for both branches alike.
             irf = self._irf
-            irf -= self.lamp_background
-            irf.y = np.clip(irf.y, 0, None)
         else:
             start_fraction = 0.1
             x = np.copy(self.data.x)

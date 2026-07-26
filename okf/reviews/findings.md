@@ -2282,11 +2282,26 @@ Findings RF-193..RF-201.
 - **Fix note:**
 
 ### RF-195
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a loaded IRF has the lamp background subtracted twice, a synthetic one once)
 - **Location:** `chisurf/core/models/tcspc/nusiance.py:535-554` (`Convolve._process_irf`)
 - **Finding:** The `isinstance(self._irf, Curve)` branch at `:535-538` already does `irf -= self.lamp_background` followed by `np.clip(irf.y, 0, None)`, and lines `:553-554` — outside the `if/else` — do exactly the same two statements again. `Curve` defines `__sub__` but no `__isub__`, so `-=` rebinds to a fresh curve each time and the stored IRF is not mutated; the result is simply `clip(clip(irf - lb, 0) - lb, 0)`. Verified on a real `Convolve`: with `lamp_background = 1.0` and IRF `y = [0,4,10,6,3,1,0,0]`, `_process_irf(normalize=False)` returns `[0,2,8,4,1,0,0,0]` where a single subtraction gives `[0,3,9,5,2,0,0,0]`. The synthetic-IRF branch (`:539-551`) never subtracts inside the branch, so it gets the background removed exactly once — the two paths disagree. `lb` is a fittable parameter whose upper bound is set to half the lamp height when an IRF is loaded (`:726-732`), so any non-zero value doubles. Delete the duplicated pair inside the `if`.
-- **Fix note:**
+- **Fix note:** The duplicated `irf -= self.lamp_background` / `np.clip` pair
+  inside the loaded-IRF branch was deleted; the shared pair below the
+  `if`/`else` is now the single subtraction for both branches, so a loaded and a
+  synthetic IRF lose the background exactly once
+  (`chisurf/core/models/tcspc/nusiance.py:535-537`). `Curve.__sub__` still
+  rebinds to a fresh curve, so the stored `_irf` remains unmutated. Confirmed on
+  the finding's own case: `[0,4,10,6,3,1,0,0]` with `lb=1.0` now processes to
+  `[0,3,9,5,2,0,0,0]` instead of `[0,2,8,4,1,0,0,0]`. Pinned by
+  `test/tcspc/test_convolve_lamp_background.py` (3 tests, 6 cases: the single
+  offset for a range of `lb`, non-mutation of the stored IRF across repeated
+  processing); all four value-bearing cases fail against the pre-fix file.
+  Note for whoever takes RF-196 and neighbours: the `irf_start`/`irf_stop`
+  *setters* (`:467-485`) wrap the value in `np.array([v], dtype=np.int64)`,
+  which `FittingParameter` rejects with `Cannot set parameter … to <class
+  'numpy.ndarray'>` — the window can only be set through `_irf_start.value` /
+  `_irf_stop.value`. Not in scope here; worth its own finding.
 
 ### RF-196
 - **Status:** OPEN
