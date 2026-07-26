@@ -2839,3 +2839,61 @@ RF-239..RF-248 below.
 - **Location:** `chisurf/core/fluorescence/fret/lines.py:133-135` (`gaussian_distance_distribution`)
 - **Finding:** The weight is evaluated at the **clipped** distance rather than at the sampled offset: `r = np.clip(mean + offsets, r_min, None)` and then `w = exp(-0.5*((r - mean)/sigma)**2)`. Every sample whose distance was clipped therefore receives the *same* weight — that of `r_min` — instead of its own, much smaller, tail weight, so the pile-up at `r_min` is over-weighted by the number of clipped samples. Verified for the default line parameters (`mean = 10 Å`, `sigma = 6 Å`, `n_points = 81`, `n_sigma = 3.5`, `r_min = 1 Å`): 23 of 81 samples are clipped and carry **0.2176** of the normalised weight, against **0.0626** when the weight is computed from the offset. The effect on the static line's `E` is small because those samples are fully quenched either way (ΔE ≈ 1.0e-4 at 10 Å, 5.6e-5 at 15 Å, zero beyond ~20 Å), but `fret_lifetime_spectrum` returns this amplitude spectrum *directly* for decay simulation, where 21.8 % rather than 6.3 % of the amplitude sits at `tau ≈ 0` — a visibly wrong simulated decay at short mean distance. Compute `w` from `offsets` (the distribution the docstring describes) and keep the clip only on the distance used for `(r0/R)^6`.
 - **Fix note:**
+
+### Review 2026-07-26 — PDA N-state rate matrices (`c47687c62`)
+
+Slice: the newest landing — `PdaDynamicNStates` / `PdaDynamicNStateModel`
+(`chisurf/core/models/pda/dynamic_mc.py`), the shared `rate_matrix` AutoForm
+section it is the first consumer of, and the Szabo–Gopich quadrature that is now
+the model's **default** route. The headline claim holds: the rates really are
+discovered by `find_parameters` now (verified — `k1_2 … k3_2` all appear in
+`parameters_all_dict`), and `rate_matrix()` / `rate_values` agree on the
+`K[target, source]` convention. Below it, the default quadrature matches its beta
+on the wrong interval (RF-258), the editor rewrites the parameters it renders
+(RF-259, RF-260), and resizing the scheme silently undoes the fixed/free and link
+setup the class docstring advertises as the way to express a scheme (RF-261).
+Findings RF-258..RF-262.
+
+### RF-258
+- **Status:** OPEN
+- **Severity:** S1 (the default route puts ~30 % of the probability spectrum on FRET states the scheme cannot produce, and is ~8× further from the exact law than the same approximation on the right support)
+- **Location:** `chisurf/core/fluorescence/kinetics.py:205-206` (`szabo_gopich_quadrature`, `lower: float = 0.0, upper: float = 1.0`) with `:247-249` and `:268`, called at `chisurf/core/models/pda/dynamic_mc.py:372-375` without `lower`/`upper`
+- **Finding:** The beta is moment-matched on ``[lower, upper] = [0, 1]`` rather than on the interval the observable can actually reach. A time average of a piecewise-constant observable taking values ``v_i`` is a convex combination of them, so it lives on ``[min(v), max(v)]`` — support ``[0, 1]`` is only correct when a state has ``pG = 0`` and another ``pG = 1``. Verified against **two independent references** (the exact two-state law `two_state_occupation_quadrature`, and a direct Gillespie simulation) for two states with ``pG = 0.35 / 0.65``, symmetric exchange, `n_nodes=2048`, total variation on 81 bins over ``[0, 1]``:
+
+  | K = k_ex·T | TV, beta on [0,1] | TV, beta on [min,max] | weight outside [0.35, 0.65] |
+  |---|---|---|---|
+  | 0.4 | 0.786 | **0.065** | 0.305 |
+  | 1.6 | 0.436 | **0.150** | 0.216 |
+  | 8 | 0.060 | 0.056 | 0.031 |
+  | 40 | 0.007 | 0.008 | 0.000 |
+
+  In slow exchange (`K = 0.4`) **30.5 % of the weight sits at green probabilities no mixture of the two states can produce**, including spikes at ``pG = 0`` and ``pG = 1``; that spectrum goes straight into `tttrlib.Pda`, so the modelled S1S2 histogram carries donor-only-like and acceptor-only-like populations the scheme never contains. The same holds at wider spans (`pG = 0.1/0.9`: TV 0.799 vs 0.096 at `K = 0.4`). This also revises the commit message's own explanation: the slow-exchange error is dominated by the wrong support, not by "a beta density cannot represent the point masses" — on ``[min(v), max(v)]`` the ``concentration → 0`` limit *is* two atoms at the state values, which is why TV falls 12×. Pass ``lower=float(np.min(values)), upper=float(np.max(values))`` (defaulting to the value range inside `szabo_gopich_quadrature` is the cleaner fix, since every caller wants it). Note the moments are preserved either way, so `test_the_quadrature_reproduces_the_moments_it_was_matched_to` cannot see this; the discriminating test is TV against `two_state_occupation_quadrature`, or simply asserting `nodes` never leaves ``[min(values), max(values)]``.
+- **Fix note:**
+
+### RF-259
+- **Status:** OPEN
+- **Severity:** S1 (merely opening the model editor silently rewrites rate parameters — a 5 MHz rate is written back as 1 MHz, a factor of 5, with no message)
+- **Location:** `chisurf/gui/autoform/sections/rate_matrix_section.py:156` (the unconditional `self._write_back(n)` closing `_build`) with `:135` (`spin.setRange(self._min, self._max)`) and `:140` (`spin.setValue(...)`)
+- **Finding:** `_build` populates each `QDoubleSpinBox` from the model and then pushes **all** spin values straight back onto the model attribute. A `QDoubleSpinBox` silently clamps to its range and rounds to its `decimals`, so any model value outside the section's configured `minimum`/`maximum` — or with more precision than `decimals` — is destroyed by the round trip, without the user touching anything. Verified headlessly with the exact options from `dynamic_mc.view.json` (`minimum: 0.0, maximum: 1e6, decimals: 2`) on a `PdaDynamicNStates` whose rates were set to `k1_2 = 5.0e6`, `k2_1 = 2.5e6`, `k1_3 = 123.456`: `rate_values` before construction `[0, 5e6, 123.456, 2.5e6, …]`, immediately after `RateMatrixWidget(...)` `[0, 1e6, 123.46, 1e6, …]` — and `rates_by_name()["k1_2"].value` is `1000000.0`, i.e. the **fitting parameter itself** was moved. The same corruption is reachable through `refresh()`: it clamps the display silently (signals blocked, so no write), after which editing *any other* cell calls `_write_back` and commits every clamped value. `_build` should not write back values the user has not edited; the write-back belongs on `valueChanged` only, and a value outside the configured range should be reported rather than clamped.
+- **Fix note:**
+
+### RF-260
+- **Status:** OPEN
+- **Severity:** S2 (the editor's range is three decades narrower than the parameter's own bounds, so a legitimate rate is unreachable and — via RF-259 — destroyed)
+- **Location:** `chisurf/core/models/pda/dynamic_mc.view.json:45,48` (`"decimals": 2`, `"maximum": 1000000.0`) against `chisurf/core/models/pda/dynamic_mc.py:144` (`lb=0.0, ub=1e9`)
+- **Finding:** Every rate parameter is created with `ub=1e9` Hz, but the rate-matrix grid is configured with `maximum: 1e6`. Verified: `rates_by_name()["k1_2"].bounds == (0.0, 1e9)` while the grid's spin box refuses anything above `1e6`. Rates between 1 MHz and 1 GHz are ordinary for fast conformational exchange and are exactly what the optimiser is allowed to explore — so a fit can converge to a rate the editor cannot display, and (with RF-259) will overwrite with `1e6` the next time the panel is built. `decimals: 2` has the same shape of problem at the other end: a rate below 0.005 Hz rounds to zero, which the model reads as "no transition". Derive the grid's range from the bound parameters (or raise `maximum` to `1e9` and use a sensible relative precision), and keep the two in one place so they cannot drift again.
+- **Fix note:**
+
+### RF-261
+- **Status:** OPEN
+- **Severity:** S2 (changing the state count silently re-fixes every freed rate and drops every link — undoing exactly the setup the class docstring says is how you express a scheme)
+- **Location:** `chisurf/core/models/pda/dynamic_mc.py:137-146` (`n_states` setter: `self._rates = []` then a fresh `FittingParameter` per pair) against the class docstring at `:71-79` and `dynamic_mc.view.json:36` (`"Adding one keeps the rates already set"`)
+- **Finding:** The resize carries over `p.value` only (`old_rates` at `:122`); `fixed`, the bounds, and any link are rebuilt from the defaults, and the parameter **objects are replaced**, so anything holding a reference to the old ones is silently orphaned. Verified on a three-state group: freeing `k1_2`/`k2_1` and linking `k2_1 → k1_2` (a detailed-balance constraint, the exact idiom `rates_by_name()`'s docstring at `:155-165` advertises), then `n_states = 4`, gives `free = []`, `k2_1.is_linked == False`, and `rates_by_name()["k1_2"] is` the old object `== False`. So a user who sets up a linear chain (`k1_3 = k3_1 = 0`, fixed) and frees the rest, then adds a state, gets every rate fixed again with no indication — and the linear-chain zeros survive only as values, not as an intent. Carry the surviving parameter *objects* across the resize (append/pop rather than rebuild) so `fixed`, bounds and links are preserved, and pin it with a test that frees + links a rate, resizes both ways, and asserts the flags survive.
+- **Fix note:**
+
+### RF-262
+- **Status:** OPEN
+- **Severity:** S2 (the sampling route the module documents as the answer in slow exchange has no control, while the spinner that configures it is on screen)
+- **Location:** `chisurf/core/models/pda/dynamic_mc.py:278` (`self.method = "szabo-gopich"`) and `:366`, with `dynamic_mc.view.json` (no section for `method`) and `dynamic_mc.py:104-106` (`n_windows`)
+- **Finding:** `method` is assigned once in `__init__` and read once in `update_model`; it is written nowhere else in the tree (`grep -rn "\.method\s*=" chisurf/` finds only the constructor) and `dynamic_mc.view.json` contains no control for it, so from the GUI the model is permanently on the analytic route. The module docstring (`:33-37`) and the `method` comment (`:267-277`) both say the Monte-Carlo route is the one to use in the slow-exchange limit "where the distribution is multimodal and no two-moment match has three peaks" — which is also where RF-258 bites hardest — yet a user has no way to select it. The inverse is on screen: `n_windows` is a `FittingParameter` on the states group (verified present in `parameters_all_dict`), so the `N_win` spinner is rendered in the *N-state kinetics* parameter table where it does nothing at all in the default mode. Add a `choice` section for `method` (and hide or annotate `n_windows` when the analytic route is selected).
+- **Fix note:**
