@@ -161,3 +161,11 @@ intensity`), which is the form to take into your own analysis.
 * **A single D from a heterogeneous sample is a weighted average**, and the
   weighting depends on track lengths. Two populations need to be separated before
   they mean anything.
+
+## Runnable example
+
+`examples/notebooks/Particle_Tracking_Simulation_And_Recovery.ipynb` does
+everything on this page from the Python API instead of the GUI, on simulated
+data whose diffusion coefficient is known — including the identity check against
+the ground truth, which is the one diagnostic the GUI cannot show you.
+

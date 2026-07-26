@@ -95,7 +95,8 @@ is **genuinely ambiguous**: no algorithm can resolve it from positions alone.
 In simulations where 10 % of particles had a neighbour inside the linking
 distance, up to a quarter of the recovered tracks merged two different particles,
 and the fitted $D$ scattered over a factor of two. On a sparse field the same
-code recovers identity *exactly*. The remedy is experimental, not computational:
+code recovers identity *exactly*. It bites earlier than one would guess: at only
+**4 %** crowded, eight tracks already merged and $D$ moved by ~20 %. The remedy is experimental, not computational:
 label more sparsely, or image faster so the linking distance shrinks.
 
 ### Gap closing
@@ -184,3 +185,13 @@ gives 20 out of 20.
 * Chenouard, N. *et al.* *Objective comparison of particle tracking methods.*
   Nat. Methods **11**, 281–289 (2014). — the community benchmark, and the source
   of the "density, not algorithm, is the limit" conclusion.
+
+## Runnable examples
+
+* `examples/notebooks/Particle_Tracking_Simulation_And_Recovery.ipynb` (with its
+  `.py` cell-script twin, which also runs as a plain script) — the full loop on
+  data whose answer is known: simulate a movie of Brownian particles, detect
+  them, link them, check the recovered *identities* against the truth, and fit
+  `D` with a bootstrapped error bar. It also shows how little crowding it takes
+  to start merging tracks, and what fitting `alpha` costs.
+

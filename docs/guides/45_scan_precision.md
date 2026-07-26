@@ -138,3 +138,11 @@ Finally, this is precision, not accuracy. It tells you how much your fitted $D$
 would scatter, and nothing about bias: a wrong beam waist, an uncorrected drift
 ({doc}`43_drift_correction`) or an unmodelled immobile fraction will move the
 answer in ways no amount of averaging removes.
+
+## Runnable example
+
+`examples/notebooks/RICS_Simulation_And_Recovery.ipynb` is the other half of this
+page: rather than *predicting* the precision of a scan, it simulates one with a
+known diffusion coefficient and measures what comes back — including the slow
+end of the working range this planner exists to keep you out of.
+

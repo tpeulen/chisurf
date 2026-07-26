@@ -167,3 +167,14 @@ stack adds a slow decay to the frame-lag axis that no diffusion model should be
 asked to absorb. Use the frame- or stack-average subtraction in the reader, and
 be suspicious of a fitted $D$ that depends strongly on how many frame lags you
 included.
+
+## Runnable examples
+
+* `examples/notebooks/RICS_Simulation_And_Recovery.ipynb` (with its `.py`
+  cell-script twin) — raster-scan a freely diffusing population with a known
+  `D`, look at the images and the correlation map, and fit `D` back out. It
+  makes the fast/slow axis asymmetry visible, shows the `N`-`D`-waist
+  degeneracy, finds the slow end of the working range, and demonstrates the
+  three ways to produce a scan that looks healthy and carries no diffusion
+  information at all.
+
