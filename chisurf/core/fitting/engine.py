@@ -61,6 +61,7 @@ __all__ = [
     "ENGINES",
     "gaussian_validity",
     "marginal_asymmetry",
+    "sample_asymmetry",
     "asymmetry_threshold",
     "ASYMMETRY_FLOOR",
 ]
@@ -1123,6 +1124,46 @@ def marginal_asymmetry(
     if not np.isfinite(effective) or effective <= 1.0:
         effective = float(column.size)
 
+    return sample_asymmetry(column, effective, p_value=p_value)
+
+
+def sample_asymmetry(
+        column: np.ndarray,
+        effective_draws: typing.Optional[float] = None,
+        p_value: float = 0.68,
+) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    """Summarise one column of draws as a possibly-asymmetric interval.
+
+    The arithmetic behind :func:`marginal_asymmetry`, separated from the job of
+    finding the column. A *derived* quantity -- a FRET efficiency, a mean
+    lifetime -- has no column of its own until one is computed for it, but once
+    it exists it deserves exactly the same reading, and doing it twice would let
+    the two answers drift apart.
+
+    Parameters
+    ----------
+    column : numpy.ndarray
+        Draws of a single scalar quantity. Non-finite entries are dropped.
+    effective_draws : float, optional
+        Effective sample size behind those draws, which sets how small a skew is
+        distinguishable from sampling noise. Defaults to the raw count, which is
+        optimistic for an autocorrelated chain.
+    p_value : float, optional
+        Coverage of the interval whose two arms are compared.
+
+    Returns
+    -------
+    dict or None
+        As :func:`marginal_asymmetry`. ``None`` when there are too few draws, or
+        when the quantity is so concentrated that both arms collapse to zero.
+    """
+    column = np.asarray(column, dtype=np.float64).ravel()
+    column = column[np.isfinite(column)]
+    if column.size < 32:
+        return None
+    if effective_draws is None or not np.isfinite(effective_draws) or effective_draws <= 1.0:
+        effective_draws = float(column.size)
+
     tail = 0.5 * (1.0 - float(p_value))
     low, median, high = np.percentile(column, [100.0 * tail, 50.0,
                                                100.0 * (1.0 - tail)])
@@ -1136,7 +1177,7 @@ def marginal_asymmetry(
 
     # Compared symmetrically, so a ratio of 0.8 counts the same as 1.25.
     ratio = max(asymmetry, 1.0 / asymmetry)
-    threshold = asymmetry_threshold(effective)
+    threshold = asymmetry_threshold(effective_draws)
     gaussian_ok = ratio < threshold
     note = (
         "" if gaussian_ok else
@@ -1153,7 +1194,7 @@ def marginal_asymmetry(
         "note": note,
         "p_value": float(p_value),
         "threshold": float(threshold),
-        "effective_draws": float(effective),
+        "effective_draws": float(effective_draws),
     }
 
 

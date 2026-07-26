@@ -90,6 +90,7 @@
     {"rpc": "fit.sample.status", "service": "fits.fit_sample_status"},
     {"rpc": "fit.posterior", "service": "fits.fit_posterior"},
     {"rpc": "fit.reweight_prior", "service": "fits.fit_reweight_prior"},
+    {"rpc": "fit.derived", "service": "fits.fit_derived"},
     {"rpc": "fit.parameter_scan.start", "service": "fits.fit_parameter_scan_start"},
     {"rpc": "fit.parameter_scan.cancel", "service": "fits.fit_parameter_scan_cancel"},
     {"rpc": "fit.parameter_scan.result", "service": "fits.fit_parameter_scan_result"},

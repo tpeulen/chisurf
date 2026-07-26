@@ -567,6 +567,19 @@ class DiscreteDistance(FittingParameterGroup):
 
 class FRETModel(LifetimeModel):
 
+    #: See :attr:`LifetimeModel.derived_quantities`. The FRET efficiency is the
+    #: reason this mechanism exists: it is a ratio of two averaged lifetimes and
+    #: is bounded on both sides, so its posterior is skewed even when every
+    #: parameter behind it is not, and a symmetric error bar on it is wrong at
+    #: both ends.
+    derived_quantities = (
+        "fret_efficiency",
+        "donor_species_averaged_lifetime",
+        "donor_fluorescence_averaged_lifetime",
+        "fret_species_averaged_lifetime",
+        "fret_fluorescence_averaged_lifetime",
+    )
+
     @property
     def distance_distribution(self) -> np.array:
         """

@@ -414,6 +414,56 @@ and `laplace` return immediately; `profile` and `mcmc` block for as long as they
 take, so use the `fit.sample.*` / `fit.parameter_scan.*` job endpoints when you
 need to poll progress.
 
+## 14. Error bars on the quantities you publish
+
+The FRET efficiency, `<tau>x` and `<tau>F` are *derived*: computed from the
+fitted parameters, never fitted themselves, and printed for years as bare
+numbers. They now come with intervals, in the fit report:
+
+```
+  Derived quantities
+    Name                              Value        Interval                     Method
+    species_averaged_lifetime         2.7834       [2.7797, 2.7868]             posterior draws
+    fluorescence_averaged_lifetime    3.3544       [3.3526, 3.3561]             posterior draws
+    var_lifetime                      1.5892       [1.582, 1.597]               posterior draws
+    steady_state_anisotropy           0            constant over the posterior  posterior draws
+    (skewed, so the interval is not value ± σ: species_averaged_lifetime, ...)
+```
+
+and from a script:
+
+```python
+for q in api.derived_quantities()['quantities']:
+    print(q['name'], q['median'], q['low'], q['high'], q['method'], q['warning'])
+```
+
+Read the `Method` column before the numbers:
+
+| Method | What it is | Read the interval as |
+| --- | --- | --- |
+| `posterior draws` | the quantity evaluated at every draw | the real interval, arms may differ |
+| `linear propagation` | $\nabla g^{\mathsf{T}}\Sigma\nabla g$ from the covariance | symmetric **by construction** — see below |
+| `no estimate` | neither a chain nor a covariance | nothing |
+
+`linear propagation` is what you get before you sample, and it cannot express a
+skew. For a ratio such as the FRET efficiency that is a real problem rather than
+a caveat: measured on a fit with a moderately determined denominator, the one
+symmetric width was 60 % too wide above and 1.7× too narrow below at the same
+time. **Sample the fit** and the row switches to `posterior draws` by itself.
+
+If the chain did not converge it is not used — you will see `linear propagation`
+together with *"the chain on this fit did not converge and was not used"*. Fix
+the sampling (§4) rather than reading the fallback.
+
+To report a quantity your model does not declare, name it:
+
+```python
+api.derived_quantities(names=['fret_efficiency'])
+```
+
+Anything reachable as an attribute returning a float qualifies, so a plugin or a
+one-off script can ask about its own quantity without touching the model class.
+
 ## Checklist
 
 - [ ] Priors reflect knowledge you actually have, not a convenience.
@@ -427,3 +477,5 @@ need to poll progress.
       collapsing when another is fixed.
 - [ ] For any interval wider than the re-fit check says the Gaussian holds:
       quote a `profile` or `mcmc` interval, not `±σ`.
+- [ ] Every derived quantity you publish quoted from `posterior draws`, not
+      `linear propagation` — especially any efficiency or other ratio.

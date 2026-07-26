@@ -521,6 +521,69 @@ class ChiSurfAPI:
             p_value=p_value,
         )
 
+    def derived_quantities(
+        self,
+        fit_index: Optional[int] = None,
+        fit_uid: Optional[str] = None,
+        names: Optional[List[str]] = None,
+        p_value: float = 0.68,
+        max_draws: int = 2048,
+    ) -> Dict[str, Any]:
+        """Report the numbers a fit computes but does not fit, with error bars.
+
+        The FRET efficiency that goes in the figure and the mean lifetime that
+        goes in the table are functions of the fitted parameters; ChiSurf printed
+        them as bare numbers. They carry the parameters' uncertainty, and because
+        the function is non-linear they carry a *shape*: a ratio bounded below is
+        skewed even when every parameter behind it is Gaussian, so the symmetric
+        interval that linear propagation gives is wrong at both ends at once.
+
+        Posterior draws are used when the fit carries a converged chain, and
+        linear propagation otherwise; ``method`` on each row says which, and
+        whether the interval may be read as ``value ± σ``. See
+        :mod:`chisurf.core.fitting.derived`.
+
+        Parameters
+        ----------
+        fit_index, fit_uid : int or str, optional
+            Which fit to query; defaults to the current one.
+        names : list of str, optional
+            Quantities to report; defaults to whatever the model declares.
+        p_value : float, optional
+            Central coverage of the reported interval.
+        max_draws : int, optional
+            Cap on posterior draws evaluated; the chain is thinned to fit.
+
+        Returns
+        -------
+        dict
+            ``ok`` and ``quantities``: per quantity ``name``, ``value``,
+            ``median``, ``low``, ``high``, ``method``, ``converged`` and
+            ``warning``. ``quantities`` is empty when the model declares none.
+
+        Examples
+        --------
+        >>> api = ChiSurfAPI()                                   # doctest: +SKIP
+        >>> for q in api.derived_quantities()['quantities']:     # doctest: +SKIP
+        ...     print(q['name'], q['median'], q['low'], q['high'], q['method'])
+        """
+        if self.mode == "server" and self.client is not None:
+            return self.client.fit__derived(
+                fit_index=fit_index, fit_uid=fit_uid, names=names,
+                p_value=p_value, max_draws=max_draws,
+            )
+        from chisurf.server.services import fits as _fits
+
+        class _State:
+            """Adapter presenting the process-local fits to the service layer."""
+
+            fits = property(lambda self: _local_fits())
+
+        return _fits.fit_derived(
+            _State(), fit_index=fit_index, fit_uid=fit_uid, names=names,
+            p_value=p_value, max_draws=max_draws,
+        )
+
     def run_fit(self, fit_index: Optional[int] = None, fit_uid: Optional[str] = None) -> Dict[str, Any]:
         if self.mode == "server" and self.client is not None:
             return self.client.fit__run(fit_index=fit_index, fit_uid=fit_uid)

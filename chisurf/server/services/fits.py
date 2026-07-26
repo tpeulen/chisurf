@@ -1379,6 +1379,87 @@ def fit_reweight_prior(
     }
 
 
+def fit_derived(
+    state: SessionState,
+    fit_index: int | None = None,
+    fit_uid: str | None = None,
+    names: list[str] | None = None,
+    p_value: float = 0.68,
+    max_draws: int = 2048,
+) -> ServiceResult:
+    """Report the quantities a model computes but does not fit, with intervals.
+
+    A FRET efficiency or a mean lifetime is a function of the fitted parameters,
+    and until this existed it left the program as a bare number. It inherits the
+    parameters' uncertainty, and -- being a non-linear function of them -- a
+    shape as well: a ratio's posterior is skewed even when everything behind it
+    is Gaussian. See :mod:`chisurf.core.fitting.derived`.
+
+    Parameters
+    ----------
+    state : SessionState
+        Server session.
+    fit_index, fit_uid : int or str, optional
+        Which fit to query.
+    names : list of str, optional
+        Quantities to report. Defaults to whatever the model declares.
+    p_value : float, optional
+        Central coverage of the reported interval.
+    max_draws : int, optional
+        Cap on posterior draws evaluated; the chain is thinned to fit.
+
+    Returns
+    -------
+    ServiceResult
+        ``quantities``, one entry each with ``value``, ``median``, ``low``,
+        ``high``, ``method`` (``draws``, ``delta`` or ``none``), ``converged``
+        and ``warning``.
+    """
+    fit, idx = _resolve_fit(state, fit_index, fit_uid)
+    if fit is None:
+        return service_error("fit not found", error_code=NOT_FOUND)
+
+    from chisurf.core.fitting import derived as derived_module
+
+    try:
+        rows = derived_module.derived_posterior(
+            fit,
+            names=[str(n) for n in names] if names else None,
+            p_value=float(p_value),
+            max_draws=int(max_draws),
+        )
+    except Exception as e:
+        return service_error(f"derived-quantity report failed: {e}")
+
+    # nan/inf do not survive JSON; a missing end is None rather than a number
+    # the caller would have to know to distrust.
+    def _clean(v):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            return None
+        return v if np.isfinite(v) else None
+
+    return {
+        "ok": True,
+        "fit_index": idx,
+        "p_value": float(p_value),
+        "quantities": [
+            {**{k: v for k, v in row.items()
+                if k not in ("value", "median", "low", "high", "sd", "asymmetry",
+                             "skew")},
+             "value": _clean(row.get("value")),
+             "median": _clean(row.get("median")),
+             "low": _clean(row.get("low")),
+             "high": _clean(row.get("high")),
+             "sd": _clean(row.get("sd")),
+             "asymmetry": _clean(row.get("asymmetry")),
+             "skew": _clean(row.get("skew"))}
+            for row in rows
+        ],
+    }
+
+
 def fit_sample_cancel(
     state: SessionState,
     job_id: str,

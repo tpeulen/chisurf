@@ -315,6 +315,18 @@ class LifetimeModel(ModelCurve):
 
     name = "Lifetime "
 
+    #: Quantities computed from the fitted parameters that the model reports but
+    #: does not fit, and which therefore have no error bar of their own. Listing
+    #: them here is what lets
+    #: :func:`chisurf.core.fitting.derived.derived_posterior` carry the
+    #: parameters' uncertainty across into them.
+    derived_quantities = (
+        "species_averaged_lifetime",
+        "fluorescence_averaged_lifetime",
+        "var_lifetime",
+        "steady_state_anisotropy",
+    )
+
     def __str__(self):
         """Return a string representation."""
         s = super().__str__()

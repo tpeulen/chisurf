@@ -2,6 +2,54 @@
 
 ## 2026-07-26
 
+* **The numbers ChiSurf publishes had no error bars at all.** A fit optimises
+  amplitudes and lifetimes; nobody publishes those. What leaves the program is a
+  **derived** quantity — `fret_efficiency`, `species_averaged_lifetime`,
+  `fluorescence_averaged_lifetime`, `var_lifetime` — computed from the fitted
+  parameters and printed to six digits as if exact. The uncertainty was never
+  absent, it was never carried across the function.
+
+  New `chisurf/core/fitting/derived.py` carries it, two ways, and says which. The
+  **delta method** (`∇gᵀ Σ ∇g` from a numerical gradient stepped in units of each
+  parameter's own marginal width) needs no sampling, costs two model touches per
+  parameter, and is *symmetric by construction*. Propagating **draws** — evaluating
+  the quantity at every posterior sample — makes no approximation and recovers the
+  real shape. Models declare what they can report in a class-level
+  `derived_quantities` tuple, collected up the whole MRO so `FRETModel` extends
+  rather than shadows `LifetimeModel`; an instance may add one the class never
+  anticipated, which is how a script or plugin asks about its own quantity.
+
+  **Measured, because the whole justification for evaluating a model thousands of
+  times is that the cheap answer is wrong by more than it looks.** On a bounded
+  ratio (the shape of `E = 1 − ⟨τ⟩_DA/⟨τ⟩_D`) with a moderately determined
+  denominator, the true arms were **+0.101 / −0.278** and linear propagation
+  reported **±0.163** for both: 60 % too wide above and 1.7× too narrow below, at
+  the same time. Where the denominator *is* well determined the two agree to a few
+  percent of the interval and nothing is flagged — a diagnostic that fired there
+  would be worthless, and there is a test pinning each half.
+
+  **A safety property was re-broken and caught by measuring.** The first working
+  version quoted a chain with R̂ 1.037 and ESS 230 — a chain the diagnostics had
+  already rejected — because passing draws through a function bypassed the gate
+  `StoredEngine` applies to a parameter. `derived.chain_verdict` now applies the
+  same rule: any parameter failing R̂/ESS rejects the whole derived report, since a
+  quantity mixing every parameter is only as good as the worst-mixed one. It falls
+  back to linear propagation and *says the chain was refused* rather than silently
+  looking like an ordinary delta-method row. No report at all is `converged: None`
+  — unverified, not approved.
+
+  Reachable everywhere: `Fit.derived_summary()`, a **Derived quantities** section
+  in the fit report `Fit.__str__` already prints, `ChiSurfAPI.derived_quantities()`
+  and the `fit.derived` RPC. The report's draw cap is 2048 — measured at 0.28 s
+  against 12.7 s for the full chain on a two-component TCSPC fit, with interval
+  ends within ~1 % of what they converge to; 512 was still moving several percent
+  in the long tail of a skewed quantity, which is visible in the printed digits.
+  `engine.sample_asymmetry` was split out of `marginal_asymmetry` so the skew
+  verdict is computed in exactly one place for parameters and derived quantities
+  alike. 18 tests in `test/fitting/test_derived_quantities.py`; concept and guide
+  sections in `docs/concepts/parameter_uncertainty.md` and
+  `docs/guides/39_parameter_uncertainty.md`.
+
 * **A calibration stored on the setup that no other tool could read.** The
   accurate-FRET tool now writes α/β/γ/δ/R₀ onto the detector setup, on the promise
   — made in its own docstring — that "every tool that already picks a setup starts

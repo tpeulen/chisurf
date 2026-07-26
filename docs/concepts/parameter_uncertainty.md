@@ -351,6 +351,65 @@ longer than the run — flattens, and the flattening is visible long before any
 single number crosses a threshold. A final ESS on its own cannot show this,
 being one point on that curve with the shape discarded.
 
+## The numbers you actually publish
+
+Nobody publishes an amplitude. What leaves ChiSurf is a **derived quantity** — a
+FRET efficiency, a species- or fluorescence-averaged lifetime, a distance — each
+a function $g(\theta)$ of the fitted parameters, and each printed for years as a
+bare number with no error bar at all. The uncertainty was never absent; it was
+simply never carried across $g$.
+
+There are two ways to carry it, and the difference between them is not
+cosmetic.
+
+**Linear propagation** (the *delta method*) expands $g$ to first order about the
+optimum:
+
+$$\sigma_g^2 \;=\; \nabla g^{\mathsf{T}}\,\Sigma\,\nabla g,$$
+
+with $\Sigma$ the parameter covariance. It needs no sampling and costs two model
+touches per parameter. It is also **symmetric by construction** — it returns one
+width and uses it on both sides — and that is exactly what a derived quantity in
+fluorescence is usually not.
+
+**Propagating draws** evaluates $g(\theta_s)$ at every posterior draw and reads
+the interval off the resulting sample. It makes no approximation, so no
+approximation can break, and it recovers the true shape.
+
+The FRET efficiency shows why this matters. Written from lifetime contrast,
+
+$$E \;=\; 1 - \frac{\langle\tau\rangle_{x,DA}}{\langle\tau\rangle_{x,D}},$$
+
+it is a **ratio**, and a ratio's distribution is skewed as soon as the
+denominator carries appreciable relative uncertainty — however Gaussian the
+numerator and denominator each are. It is bounded above by 1 as well. Measured on
+a fit whose denominator was moderately determined, the two routes gave:
+
+| | lower arm | upper arm |
+| --- | --- | --- |
+| draws (true) | 0.278 | 0.101 |
+| linear propagation | 0.163 | 0.163 |
+
+The single symmetric width is **60 % too wide above and 1.7× too narrow below**,
+at the same time. That is not a rounding difference: an interval built from it
+overstates one end and understates the other, and nothing about the printed
+$\pm\sigma$ says so.
+
+So ChiSurf reports which route produced each row, prefers draws whenever the fit
+carries a converged chain, and flags any quantity whose two arms differ by more
+than sampling noise can explain. The flag uses the same calibrated threshold as
+the per-parameter one: an asymmetry is only worth reporting when it is both
+*detectable* given the effective sample size and *material* enough to change the
+quoted interval.
+
+Two rules keep the report honest:
+
+- A chain that $\hat R$ or the effective sample size **rejected** is not used,
+  because passing bad draws through a function does not improve them. The report
+  falls back to linear propagation and says the chain was refused.
+- A quantity that does not vary across the posterior is reported as *constant*,
+  not as a failure to compute. Zero width is an answer.
+
 ## References
 
 - Gelman, A. & Rubin, D. B. *Inference from iterative simulation using multiple
