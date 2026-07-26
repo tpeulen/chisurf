@@ -1776,11 +1776,25 @@ was reproduced in the `arm64` env against the real registry, the real manifests
 and — for RF-138 — the real `csc` command. RF-138..RF-146.
 
 ### RF-138
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a shipped CLI command is dead: `csc trace-browser` cannot start)
 - **Location:** `chisurf/plugins/tttr/trace_browser/manifest.json:29` (`"cli": "trace-browser=chisurf.plugins.tttr.trace_browser.cli:cli"`) resolving to `chisurf/plugins/tttr/trace_browser/cli/__init__.py`, which does not export `cli`, while the intended `chisurf/plugins/tttr/trace_browser/cli.py` ("Trace Browser CLI compatibility shim", re-exporting `cli.main:cli`) is permanently shadowed by the sibling `cli/` package
 - **Finding:** A regular package always wins over a same-named module in the same directory, so `import chisurf.plugins.tttr.trace_browser.cli` yields the package and the shim file is unreachable. Reproduced through the real production path: `python -m chisurf.core.cli trace-browser --help` → `Error: Failed to import plugin CLI 'Spectroscopy:Single-Molecule:Trace Browser:cli': module 'chisurf.plugins.tttr.trace_browser.cli' has no attribute 'cli'`. The failure only appears at invocation because `chisurf/core/cli.py` registers commands from the manifest without importing the plugin, so `csc --help` lists a command that always errors. The sibling plugins that got this right point their manifest at `cli.main:cli` (e.g. `tttr_microtime_shifter`) or re-export `cli` from `cli/__init__.py` (e.g. `tttr_time_windows`); do one of the two here and delete the unreachable shim. A static resolve of every in-tree manifest entrypoint (`entrypoints.gui/cli/services` → module file → attribute defined or imported) flags this as the only broken one, so it is a one-plugin fix.
-- **Fix note:**
+- **Fix note:** `trace_browser/cli/__init__.py` now re-exports `cli` from `.main`
+  (the `tttr_time_windows` pattern) and the shadowed `trace_browser/cli.py` shim is
+  deleted; `python -m chisurf.core.cli trace-browser --help` prints the command
+  group. The static resolve written as the guardrail found **a second** instance of
+  the same defect that the review's sweep missed — `tttr_image_browser` had the
+  identical `cli.py` shim next to a `cli/` directory that had *no* `__init__.py`, so
+  the shim won the import and then failed on its own
+  `from …tttr_image_browser.cli.main import cli` (`'…cli' is not a package`); fixed
+  the same way in this change (CLAUDE.md "fix breakage the moment you find it").
+  Pinned by the new `test/core/test_plugin_entrypoint_resolution.py`: it resolves
+  every `entrypoints.gui`/`.cli`/`.services` in every built-in manifest statically —
+  module path → file, honouring package-shadows-module, then an AST scan for the
+  named attribute (189 targets, all green) — plus a focused test that imports both
+  `…cli` packages and asserts `cli` is a `click.Group` and no sibling shim is back.
+  Both tests fail on the pre-fix tree.
 
 ### RF-139
 - **Status:** OPEN

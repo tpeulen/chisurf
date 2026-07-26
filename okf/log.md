@@ -2,6 +2,24 @@
 
 ## 2026-07-26
 
+* **RF-138 fix — two shipped `csc` commands could never start.** `trace_browser`
+  and `tttr_image_browser` each carried a `cli.py` "compatibility shim" next to a
+  `cli/` directory, and their manifests point `entrypoints.cli` at `….cli:cli`.
+  Python resolves that dotted name to the directory, so `trace-browser` reached a
+  `cli/__init__.py` with no `cli` attribute (`csc trace-browser --help` → *module
+  … has no attribute 'cli'*), and `tttr-image-browser` — whose `cli/` had no
+  `__init__.py` at all — reached the shim, which then failed on its own
+  `from ….cli.main import cli` because `cli` was no longer a package. Both now
+  re-export `cli` from `.main` in `cli/__init__.py` (the `tttr_time_windows`
+  pattern) and the unreachable shims are deleted. The class of defect is invisible
+  from `csc --help` because [`chisurf/core/cli.py`](/architecture/plugin-system.md)
+  registers commands from the manifest *without* importing the plugin, so it only
+  surfaces on invocation. Guardrail: the new
+  `test/core/test_plugin_entrypoint_resolution.py` statically resolves every
+  `entrypoints.gui`/`.cli`/`.services` in every built-in manifest — module path to
+  file, honouring the package-shadows-module rule, then an AST scan for the named
+  attribute (189 targets) — plus an import check on the two fixed packages. Finding
+  closed in [/reviews/findings.md](/reviews/findings.md).
 * **PRD-36 — the FPS JSON Editor moved onto the shared dockable-tool base.**
   `FpsJsonEditorTool` subclassed `QMainWindow` directly, so it had neither the
   window-geometry persistence nor the path drag-drop every migrated tool gets for
