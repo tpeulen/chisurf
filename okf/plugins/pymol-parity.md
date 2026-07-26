@@ -9,15 +9,21 @@ timestamp: '2026-07-25T00:00:00Z'
 
 # Why this file exists
 
-The goal is for ChiMOL to **replace** PyMOL for this group's work, not merely to
-resemble it. That is a programme, not a task, so it needs a tracker that survives
-between sessions — otherwise each round rediscovers the same gaps and closes the
-easy ones twice.
+The **target** — a PyMOL clone that is command-compatible with PyMOL and better
+than it — is stated in [specs/chimol](/specs/chimol.md). This file is the
+*measured gap* against that target: the tier list, what is done, and the findings
+from closing each item. It needs to survive between sessions, or each round
+rediscovers the same gaps and closes the easy ones twice.
 
-Source of truth for PyMOL's behaviour is its **source**, checked out at
-`junk/pymol-open-source`. Reading it has repeatedly overturned conclusions drawn
-from observation alone; see [the log](/log.md) for three cases where a measured
-"constant" turned out to be a different algorithm.
+Two sources are read, and they answer different questions.
+**PyMOL** (`junk/pymol-open-source`) is the authority on *behaviour*: what a
+command does and what its defaults are. **ChimeraX** (`junk/ChimeraX`) is the
+reference for *how to do it well* — rendering above all — and is explicitly not
+the compatibility authority.
+
+Reading them has repeatedly overturned conclusions drawn from observation alone;
+see [the log](/log.md) for cases where a measured "constant" turned out to be a
+different algorithm, and for one where the data was blamed before the rule was.
 
 # The measured gap
 

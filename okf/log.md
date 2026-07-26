@@ -2,6 +2,35 @@
 
 ## 2026-07-26
 
+* **The ChiMOL target, written down.** New target spec
+  [specs/chimol](/specs/chimol.md): a PyMOL clone that is **command-compatible
+  with PyMOL and better than it**, built by reading both sources. The two answer
+  different questions and the distinction is the point — **PyMOL**
+  (`junk/pymol-open-source`) is the authority on *behaviour*, so when ChiMOL and
+  PyMOL disagree about what `orient` means PyMOL is right by definition;
+  **ChimeraX** (`junk/ChimeraX`, already checked out) is the reference for *how to
+  do it well*, and explicitly not the compatibility authority.
+
+  The spec carries the principles this effort has actually paid for: read the
+  source before implementing; carry data and verify it mathematically *and assert
+  its size*; no external library where a source read will do; one table, one seam;
+  a gap that is shown beats a gap that is hidden.
+
+  It also carries the rendering roadmap, surveyed from ChimeraX's
+  `graphics/src/opengl.py`, `fragmentShader.txt` and
+  `std_commands/src/lighting.py`. Its model is key/fill/ambient intensities, a
+  directional shadow map, **multishadow** (N shadow maps over a sphere of
+  directions — real ambient occlusion rather than a per-vertex estimate),
+  depth-buffer **silhouettes**, and depth cue, exposed as *named looks*
+  (`simple`, `full`, `soft`, `gentle`, `flat`). PyMOL has no equivalent outside
+  its ray tracer, so this is the axis on which "better than PyMOL" is won. Order
+  of work: silhouettes, a `lighting` command with ChimeraX's preset names,
+  multishadow occlusion, depth cue.
+
+  [pymol-parity](/plugins/pymol-parity.md) keeps its job — the measured gap, the
+  tier list and the findings — and now points at the target rather than restating
+  it.
+
 * **PRD-46 done: interactive example scripts now run head-lessly, and the first
   run of one found a silent wrong-number bug.** `test/scripts/_headless_runner.py`
   executes a `# !chisurf: console`/`ipython` script in a subprocess with

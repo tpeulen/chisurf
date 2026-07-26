@@ -18,6 +18,7 @@ good looks like. Read [overview](overview.md) first for the whole-system shape.
 * [RPC & API Facade](rpc.md) - The single boundary between UI and domain.
 * [MMFDB — Metadata & Provenance](mmfdb.md) - Provenance and metadata as the target sees it.
 * [Plugin System](plugins.md) - How features are packaged and integrated.
+* [ChiMOL — Target](chimol.md) - A PyMOL clone that is command-compatible with PyMOL and better than it, read from the PyMOL and ChimeraX sources.
 
 # Backlog
 

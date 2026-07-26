@@ -1,0 +1,145 @@
+---
+type: Specification
+title: ChiMOL — Target
+description: A PyMOL clone that is command-compatible with PyMOL and better than it, built by reading both the PyMOL and ChimeraX sources.
+resource: chisurf/plugins/chimol/
+tags: [target, chimol, viewer, structure, pymol, chimerax]
+timestamp: '2026-07-26T00:00:00Z'
+---
+
+> The target for the molecular viewer. Measured current state and findings:
+> [pymol-parity](/plugins/pymol-parity.md). Current shape:
+> [chimol subsystem](/subsystems/index.md).
+
+## Purpose
+
+ChiMOL **replaces PyMOL** for this group's work. Not resembles it, not covers the
+common cases — replaces it, so that a person who knows PyMOL can stop opening
+PyMOL. That means two commitments that pull in different directions, and both
+have to hold:
+
+1. **Command-compatible with PyMOL.** A PyMOL script runs. PyMOL muscle memory
+   works. The selection grammar, the command names, the argument order, the
+   defaults and the *semantics* are PyMOL's.
+2. **Better than PyMOL.** Where ChimeraX or a fresh implementation does something
+   better — rendering above all — ChiMOL takes the better one, without breaking
+   the first commitment.
+
+The two sources are read, not guessed at:
+
+* **PyMOL** (`junk/pymol-open-source`) is the authority on **behaviour**. What a
+  command does, what its defaults are, which table it consults. When ChiMOL and
+  PyMOL disagree about what `orient` means, PyMOL is right by definition.
+* **ChimeraX** (`junk/ChimeraX`) is a reference for **how to do it well**:
+  rendering, geometry, session design, command-argument typing. It is not the
+  compatibility authority and its command language is explicitly *not* a target.
+
+## Principles
+
+### Read the source before implementing
+
+Every value inferred from observation has been wrong here, and every value read
+from source has been right. This is not a style preference — it is the single
+highest-yield rule this effort has produced. Two cases worth remembering:
+
+* the atom-sort priority was derived from data, disagreed with two real
+  structures, and was diagnosed as "the files are non-canonical". Reading
+  `AtomInfoAssignParameters` showed the *rule* was wrong;
+* hydrogen counts were going to be derived from free valences. Measured against a
+  hydrogenated protein, that is wrong for **41.6%** of atoms.
+
+### Carry data, verify it mathematically
+
+Where a table is needed and no library may be added, transcribe PyMOL's with a
+checked-in generator, then verify the transcription by its own mathematical
+properties — closure, determinant, identity, multiplicity. **And assert its
+size**: a truncated extraction passes every property check, because whatever
+survives is self-consistent.
+
+### No external library where a source read will do
+
+Adding a dependency for space groups, chemistry or geometry is not the answer
+when the data is in a source tree that is already checked out. A carried,
+verified table keeps ChiMOL dependency-light and keeps it *agreeing with PyMOL*
+rather than agreeing with a third party.
+
+### One table, one seam
+
+Every vocabulary duplicated between a parser and an evaluator has drifted here,
+and the drift is silent — the feature keeps answering, with the stale answer.
+Found in the keyword list, `alter`'s property map, five atom dtypes, the
+representation mask-vs-flag pair, three copies of the colouring, and the camera
+commands' idea of what a selection is. When two pieces of code need the same
+knowledge, they read it from one place.
+
+### A gap that is shown beats a gap that is hidden
+
+Disabled menu entries explain themselves. Unknown settings are reported, not
+accepted. A space group with no operators is **named** and the command declines,
+because a symmetry mate built from a guess looks plausible and would be believed.
+An approximate hydrogen is worse than a missing one, because it looks like data.
+
+## What "better than PyMOL" means
+
+Concretely, and in priority order:
+
+1. **Rendering.** The view is the product, and this is where ChimeraX is ahead of
+   PyMOL. Its model, read from `src/bundles/graphics/src/opengl.py`,
+   `fragmentShader.txt` and `std_commands/src/lighting.py`, is:
+
+   | Piece | What it is |
+   | --- | --- |
+   | key / fill / ambient | three intensities, not one hard-coded direction |
+   | `shadows` | one directional shadow map |
+   | `multishadow` | **N shadow maps over a sphere of directions** — real ambient occlusion, not a per-vertex estimate |
+   | `silhouette` | edge detection on the depth buffer (`depth_jump`) |
+   | `depth_cue` | distance fog |
+
+   The presets are the useful part, because they are *named looks* rather than
+   sliders: `simple`, `full` (shadows + multishadow), `soft` (multishadow only,
+   ambient 1.5, no key light), `gentle` (cheaper multishadow), `flat`
+   (silhouettes, no shading). `soft` and `gentle` are what make a ChimeraX figure
+   look like a ChimeraX figure.
+
+   ChiMOL's order of work, cheapest visual win first: **silhouettes**, then a
+   `lighting` command with ChimeraX's preset names, then **multishadow occlusion**
+   to replace the current per-vertex estimate, then depth cue. PyMOL has no
+   equivalent of any of these outside its ray tracer, so this is the axis on which
+   "better than PyMOL" is actually won.
+2. **Honesty about limits.** PyMOL will happily add hydrogens to a ligand whose
+   bond orders it does not know. ChiMOL says so instead.
+3. **A session you can still read in ten years.** Not a pickle of internal
+   structures: a documented container that cannot execute code when opened.
+4. **Verifiable behaviour.** Every carried table and transcribed algorithm has a
+   test that would fail if it were wrong, not merely one that runs it.
+
+## Compatibility contract
+
+* **Command names, argument order and defaults are PyMOL's.** Where PyMOL's
+  spelling is odd — `ends` as a four-way integer, `get_bonds` returning positions
+  within the selection rather than atom indices — ChiMOL matches the oddity and
+  documents it.
+* **Where a format cannot be shared, say so at the point of writing.** ChiMOL
+  writes its own session format; saving to `.pse` states plainly that PyMOL
+  cannot read the result, rather than letting it be discovered later.
+* **Extensions are additive.** New arguments and new commands are allowed;
+  changing what an existing PyMOL command does is not.
+
+## Definition of done
+
+ChiMOL replaces PyMOL when a user of this group can do a day's structural work
+without opening PyMOL, and the picture they produce is better than the one PyMOL
+would have given them. Progress against that is tracked in
+[pymol-parity](/plugins/pymol-parity.md), which holds the measured gap, the tier
+list and the findings — this concept holds only the target.
+
+## Testing
+
+Beyond the [testing workflow](/workflows/testing.md), two rules this effort has
+had to learn the hard way:
+
+* **"It ran without error" is not "it works".** A 120-entry object-menu sweep
+  passed while `orient` was a stub, `zoom` did nothing on a ligand, and three
+  representations drew no geometry at all. Assert the observable outcome.
+* **Offscreen Qt does not exercise GL.** A green offscreen suite says nothing
+  about the picture. Render with a real window and *look at it*.
