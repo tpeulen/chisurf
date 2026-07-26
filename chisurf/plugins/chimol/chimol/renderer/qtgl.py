@@ -926,7 +926,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             // directions the crevice cannot see. Leaving them undamped fills the
             // shading back in and the occlusion reads as an overall dimming
             // instead of as shape.
-            float exposure = 1.0 - v_occ;
+            // Floored, not linear. Occlusion is *already* multiplied into
+            // v_color above, so damping these terms by the same factor counts it
+            // twice: a deeply occluded fragment got a dark base colour and then
+            // near-zero ambient, and went to solid black. On a cartoon that
+            // swallowed whole helices -- visible only in a real GL render, which
+            // is why it survived. A floor keeps occlusion reading as shape
+            // without extinguishing anything.
+            float exposure = mix(0.35, 1.0, clamp(1.0 - v_occ, 0.0, 1.0));
 
             // Fresnel for jelly/bubble look: edges are more opaque and reflective
             float fresnel = pow(clamp(1.0 - dot(n, viewDir), 0.0, 1.0), 2.5);

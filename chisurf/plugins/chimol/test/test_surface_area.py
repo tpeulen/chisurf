@@ -410,16 +410,27 @@ def test_ray_traces_only_what_is_shown(session):
 
 
 def test_the_mask_beats_the_flag(session):
-    """`show spheres, <sel>` sets the per-atom mask and leaves the flag alone.
+    """`show spheres, <sel>` needs the flag *and* the mask, and they say
+    different things.
 
-    Reading only the boolean flag therefore sees nothing, which is how the first
-    attempt at this filter came out empty for every selection.
+    The flag answers "is this representation drawn at all"; the mask answers
+    "for which atoms". A filter that reads only the flag therefore takes the
+    whole molecule instead of the selection.
+
+    This test used to assert the flag stayed *False* here, which was true and
+    was the bug: the selection branch set the mask and never raised the flag, so
+    the scene builder -- which requires both -- drew nothing. Nothing errored,
+    and it took a windowed GL render to see it. The flag is now set, so what is
+    worth pinning is that the two carry different information rather than that
+    one of them is broken.
     """
     cmd, view, _, _ = session
     cmd.do("hide everything")
     cmd.do("show spheres, resn NAG")
-    assert not bool(view._show_atoms)          # the flag says no...
-    assert int(view.sphere_visible_mask().sum()) == 14   # ...the mask says which
+    assert bool(view._show_atoms)              # something is drawn...
+    shown = int(view.sphere_visible_mask().sum())
+    assert shown == 14                         # ...and the mask says which
+    assert shown < len(view._atoms), "the flag alone would take every atom"
 
 
 def test_the_default_view_traces_its_hetero_balls(session):

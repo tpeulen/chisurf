@@ -163,6 +163,12 @@ class RenderingMixin(BaseCmd):
                          if 0 <= ri < mask.shape[0]:
                             mask[ri] = vis
                     entry.state.cartoon_mask = mask
+                    # As for the atom-level reps: the mask picks the residues, the
+                    # flag decides whether the cartoon is drawn at all, and the
+                    # scene builder wants both. `hide everything; show cartoon,
+                    # polymer` set a correct mask over a cleared flag and drew
+                    # nothing -- which is what a real GL render finally showed.
+                    entry.state.show_cartoon = bool(mask.any())
                     viewer._update_view()
                     return
                 except Exception as exc:
@@ -190,6 +196,19 @@ class RenderingMixin(BaseCmd):
                         cur_mask &= ~atom_mask
 
                     setattr(entry.state, field, cur_mask)
+
+                    # The mask says *which* atoms; the flag says whether that
+                    # representation is drawn at all, and the scene builder needs
+                    # both. Setting only the mask is why `show spheres, all` --
+                    # and every S-menu entry that reaches this branch -- produced
+                    # no geometry whatever: the mask was right and nothing drew.
+                    flag = (
+                        "show_atoms"
+                        if rep_target not in ("sticks", "bonds")
+                        else "show_sticks"
+                    )
+                    setattr(entry.state, flag, bool(cur_mask.any()))
+
                     viewer._update_view()
                     return
                 except Exception as exc:
@@ -951,7 +970,7 @@ class RenderingMixin(BaseCmd):
             spectrum_colors,
         )
 
-        _, viewer = self._require_window_and_viewer()
+        window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
@@ -1011,6 +1030,11 @@ class RenderingMixin(BaseCmd):
         if not viewer.set_atom_color_override(chosen, ramped, object_id=object_id):
             self._emit_error("spectrum: this object cannot carry per-atom colours")
             return
+        # The sequence strip draws its own copy of the colours, so it keeps
+        # showing the load-time gradient unless it is told to re-read them --
+        # `color` does this and `spectrum` did not, which left the 3D view and
+        # the sequence disagreeing about what colour a residue is.
+        self._update_sequence_view_safe(window)
         self._emit_message(
             f"spectrum: {chosen.size} atoms by {prop or 'count'} "
             f"over {lo:.4g} to {hi:.4g}"

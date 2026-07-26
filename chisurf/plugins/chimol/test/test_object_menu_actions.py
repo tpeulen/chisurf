@@ -15,11 +15,35 @@ exactly how "remove waters" stayed broken.
 
 from __future__ import annotations
 
+import copy
 import pathlib
 
 import pytest
 
 from chisurf.plugins.chimol.chimol.app import object_menus as om
+from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
+
+
+@pytest.fixture(autouse=True)
+def _restore_display_settings():
+    """Put the global display settings back after each entry.
+
+    A fresh window per entry is not enough isolation, because some entries are
+    not window-scoped at all: several are PyMOL ``set`` commands, and a setting
+    lives in one process-wide dict that every window reads. "sequence > hide"
+    runs ``set seq_view, off``, and `_update_sequence_view` returns early when
+    that is off -- so every window built *afterwards*, in any later test file,
+    silently had no sequence at all.
+
+    That is what it looked like: four failures in two other files, all of them
+    about sequence rows that were never built, none of them reproducible on
+    their own. Restore in place so the modules holding this dict by reference
+    see the restoration too.
+    """
+    snapshot = copy.deepcopy(_DISPLAY_CONFIG)
+    yield
+    _DISPLAY_CONFIG.clear()
+    _DISPLAY_CONFIG.update(snapshot)
 
 _PDB = (
     pathlib.Path(__file__).resolve().parents[4]

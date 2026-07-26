@@ -2,6 +2,56 @@
 
 ## 2026-07-26
 
+* **chimol: four rendering defects that only a real window showed.** The whole
+  offscreen suite was green while `show spheres, all`, `show sticks, all` and
+  `show cartoon, <selection>` drew *literally nothing*. Under
+  `QT_QPA_PLATFORM=cocoa` with a real `grabFramebuffer`, the viewport came back
+  empty and `get_current_scene()` returned zero objects.
+
+  The cause is one shape repeated four times: a thing is described by two pieces
+  of state, and the code writes one of them. Here the selection branches set the
+  per-atom **mask** and left the boolean **flag** the scene builder also
+  requires. `show lines` took a different branch and worked, which is what hid
+  it.
+
+  With geometry finally on screen, three more were visible in the image and in
+  nothing else:
+
+  - **Ambient occlusion was counted twice.** It is multiplied into the vertex
+    colour *and* passed to the shader, which damped ambient, rim, environment and
+    sun by `1 - v_occ` on top. Deeply occluded fragments got a dark colour and
+    near-zero ambient and went solid black — whole helices disappeared. Floored
+    to `mix(0.35, 1.0, 1 - v_occ)`.
+  - **`spectrum` never reached the cartoon.** It writes per-*atom* colours; the
+    cartoon and trace read per-*residue* ones. `spectrum count, rainbow` reported
+    success, coloured the atoms correctly, and left the ribbon showing the
+    load-time gradient — a "rainbow" whose green channel never exceeded 0.55.
+    New `_ca_rgba` projects the override down to per-residue at the single place
+    that array is finalised. The sequence strip was a *third* copy, refreshed by
+    `color` and not by `spectrum`.
+  - **`nonbonded_size` was applied to non-polymers rather than to unbonded
+    atoms.** PyMOL shrinks waters and free ions; chimol was quartering every
+    bonded ligand, so `show cartoon, polymer` + `show spheres, organic` drew the
+    ligand as a scatter of dots. Now derived from the inferred bond list, so it
+    agrees with the `nonbonded` selection keyword.
+
+  Also the default dock layout: `"sizes": [3, 1]` was meant as a 3:1 split among
+  entries that are otherwise pixel counts, so QSplitter clamped the viewport to
+  its minimum and the 3D view got ~40% of the window instead of 75%. The
+  sequence strip had 150 px for ~90 px of content, leaving a band of dead grey.
+
+  Ten tests in `chisurf/plugins/chimol/test/test_render_appearance.py`, each
+  verified to fail against the code it replaces. One testing lesson worth
+  keeping: quartering every ligand radius moves a bounding-box measurement only
+  from 0.998 to 0.892 of the van-der-Waals envelope, because a bounding box is
+  dominated by centre spread. It is glaring on screen and easy to sleep through
+  in an assertion — the first threshold written for it passed the bug.
+
+  Updated [pymol-parity](/plugins/pymol-parity.md), including a correction to
+  its capture notes: offscreen `grabFramebuffer` is black, so offscreen proves
+  geometry and cannot prove shading, representation flags, or anything the scene
+  builder decides.
+
 * **A model that misformats an action no longer loses the turn.** Three shapes,
   all seen in live runs, are now recovered instead of refused. **A call
   narrated rather than made** — the name left in the message text with the

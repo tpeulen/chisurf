@@ -3960,24 +3960,28 @@ class MolView(QtWidgets.QWidget):
                         radii_for_mesh[invalid_r] = base_global_radius
                     radii_for_mesh = np.maximum(radii_for_mesh, balls_min_size)
 
-                    # Non-polymer atoms are drawn at PyMOL's nonbonded size
-                    # rather than their van-der-Waals radius: a shell of
-                    # full-size water spheres buries the molecule it surrounds.
+                    # PyMOL's nonbonded_size applies to atoms that have no bonds
+                    # -- waters and free ions -- so a shell of full-size solvent
+                    # spheres does not bury the molecule it surrounds. It is
+                    # *not* a non-polymer rule: a bonded ligand is drawn at full
+                    # van-der-Waals radius, exactly as the protein is. Testing
+                    # "not in the polymer colour map" instead shrank every
+                    # ligand to a quarter of its size, which is why `show
+                    # spheres, organic` came out as a scatter of dots.
                     nonbonded_scale = float(balls_cfg.get("nonbonded_size", 0.25))
-                    if 0.0 < nonbonded_scale < 1.0 and color_map:
-                        try:
-                            is_polymer = np.fromiter(
-                                (rid in color_map for rid in sel_atom_res),
-                                dtype=bool, count=sel_atom_res.shape[0],
-                            )
-                        except Exception:
-                            is_polymer = None
-                        if (
-                            is_polymer is not None
-                            and is_polymer.shape[0] == radii_for_mesh.shape[0]
-                            and not is_polymer.all()
-                        ):
-                            radii_for_mesh[~is_polymer] *= nonbonded_scale
+                    if 0.0 < nonbonded_scale < 1.0:
+                        unbonded = self._unbonded_atom_mask()
+                        if unbonded is not None and atom_mask is not None:
+                            try:
+                                sel_unbonded = unbonded[atom_mask]
+                            except Exception:
+                                sel_unbonded = None
+                            if (
+                                sel_unbonded is not None
+                                and sel_unbonded.shape[0] == radii_for_mesh.shape[0]
+                                and sel_unbonded.any()
+                            ):
+                                radii_for_mesh[sel_unbonded] *= nonbonded_scale
 
                     # Render all balls for the current selection as a
                     # single merged mesh. This is much faster than
@@ -4785,6 +4789,117 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 pass
         return None
+
+    def _unbonded_atom_mask(self) -> np.ndarray | None:
+        """Atoms that take part in no bond at all.
+
+        These are what PyMOL calls nonbonded -- ordered waters, free ions -- and
+        the only atoms its ``nonbonded_size`` shrinks. Derived from the inferred
+        bond list so it agrees with the ``nonbonded`` selection keyword rather
+        than being a second, drifting opinion about what counts as solvent.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Boolean mask over all atoms, or None when no bonds are known -- in
+            which case no atom should be treated as nonbonded, since every atom
+            would otherwise qualify.
+        """
+        pairs = self._bond_pairs
+        coords = self._all_atom_coords
+        if pairs is None or coords is None:
+            return None
+        pairs = np.asarray(pairs, dtype=int)
+        if pairs.ndim != 2 or pairs.size == 0:
+            return None
+        n_atoms = int(np.asarray(coords).shape[0])
+        bonded = np.zeros(n_atoms, dtype=bool)
+        flat = pairs.reshape(-1)
+        flat = flat[(flat >= 0) & (flat < n_atoms)]
+        bonded[flat] = True
+        return ~bonded
+
+    def _ca_rgba(self, n_points: int) -> np.ndarray | None:
+        """Per-residue RGBA projected down from the per-atom override.
+
+        The mirror image of :meth:`_atom_rgba`, and it exists for the same
+        reason: there are two colour arrays -- one per atom, one per residue --
+        and a command that writes only one of them silently fails to colour
+        whatever reads the other. ``spectrum`` writes per-atom colours, the
+        cartoon and the trace read per-residue ones, so ``spectrum count,
+        rainbow`` left the cartoon showing the load-time gradient. Nothing
+        errored; the picture was simply the wrong colours.
+
+        A residue takes its CA atom's colour where there is one -- that is the
+        atom the cartoon spline is drawn through -- and the mean of its atoms
+        otherwise, which is what a ligand or a nucleic acid residue gets.
+
+        Parameters
+        ----------
+        n_points : int
+            Number of residues, i.e. the length of the per-residue arrays.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            ``(n_points, 4)`` colours, or None when there is no per-atom
+            override to project or the arrays do not line up.
+        """
+        override = getattr(self, "_colors_per_atom_override", None)
+        if override is None:
+            return None
+        atoms = self._atoms
+        res_ids = self._residue_ids
+        if atoms is None or res_ids is None:
+            return None
+        names = atoms.dtype.names or ()
+        if "res_id" not in names:
+            return None
+
+        ov = np.asarray(override, dtype=float)
+        atom_res = np.asarray(atoms["res_id"])
+        if ov.ndim != 2 or ov.shape[0] != atom_res.shape[0]:
+            return None
+
+        res_ids = np.asarray(res_ids)
+        if res_ids.shape[0] != n_points:
+            return None
+
+        is_ca = (
+            np.asarray([str(v).strip().upper() == "CA" for v in atoms["atom_name"]])
+            if "atom_name" in names
+            else np.zeros(atom_res.shape[0], dtype=bool)
+        )
+
+        out = np.empty((n_points, 4), dtype=float)
+        # One pass over the atoms rather than one selection per residue: on a
+        # ribosome the per-residue version is the whole frame budget.
+        order = {int(rid): i for i, rid in enumerate(res_ids)}
+        sums = np.zeros((n_points, 4), dtype=float)
+        counts = np.zeros(n_points, dtype=int)
+        ca_seen = np.zeros(n_points, dtype=bool)
+        ca_cols = np.zeros((n_points, 4), dtype=float)
+        for i_atom, rid in enumerate(atom_res):
+            i_res = order.get(int(rid))
+            if i_res is None:
+                continue
+            col = ov[i_atom]
+            if not np.isfinite(col).all():
+                continue
+            sums[i_res] += col
+            counts[i_res] += 1
+            if is_ca[i_atom] and not ca_seen[i_res]:
+                ca_seen[i_res] = True
+                ca_cols[i_res] = col
+
+        base = np.asarray(self._base_color_single, dtype=float)
+        empty = counts == 0
+        with np.errstate(invalid="ignore"):
+            out[:] = sums / np.maximum(counts, 1)[:, None]
+        out[ca_seen] = ca_cols[ca_seen]
+        out[empty] = base
+        out[:, 3] = 1.0
+        return out
 
     def _update_sticks(self, sticks_cfg: dict, colors_per_ca: np.ndarray | None) -> list[SceneObject] | None:
         if not self._show_sticks:
@@ -5901,6 +6016,13 @@ class MolView(QtWidgets.QWidget):
                 if mask.any():
                     base_cols[mask] = ov_arr[mask]
                 self._colors_per_ca = base_cols
+
+        # And the per-*atom* override on top of that. It has to be folded in
+        # here, at the one place the per-residue array is finalised, because the
+        # cartoon and the trace read only that array -- see _ca_rgba.
+        projected = self._ca_rgba(n_points)
+        if projected is not None:
+            self._colors_per_ca = projected
 
         scene_objects: list[SceneObject] = []
         scene_objects += self._update_cartoon(coords, n_points, cartoon_cfg, self._colors_per_ca)

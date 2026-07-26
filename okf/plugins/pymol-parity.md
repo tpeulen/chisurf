@@ -386,11 +386,17 @@ Real constraints, verified:
 * Offscreen clamps a `QMainWindow` to 640×603 whatever `resize` asks for, so
   **grab the widget you want rather than the window** — a child widget honours its
   own `resize`.
-* `QOpenGLWidget` content never appears in a grab: `QWidget.grab()` reads the
-  backing store, and `grabFramebuffer` returns black without a display session. A
-  window grab therefore shows the panels over an empty viewport. **The ray tracer
-  is the only way to capture the 3D view headlessly** — which is what
-  `okf/workflows/testing.md` already prescribes for visual tests.
+* `QOpenGLWidget` content never appears in a `QWidget.grab()`: that reads the
+  backing store, so a window grab shows the panels over an empty viewport. Use
+  `grabFramebuffer` for the 3D view and `grab()` for the surrounding layout —
+  two images, not one.
+* **Offscreen does not exercise GL.** Under `QT_QPA_PLATFORM=offscreen`
+  `grabFramebuffer` returns black, so the ray tracer is the only headless
+  capture — which is what `okf/workflows/testing.md` prescribes for visual
+  tests, and it is enough for geometry. It is *not* enough for shading,
+  representation flags or anything the scene builder decides: those need
+  `QT_QPA_PLATFORM=cocoa` and a real window. Four defects listed below survived
+  a full offscreen suite and were obvious in the first windowed render.
 * `ray` driven through `MolViewPluginWindow` hands the trace to a worker and
   reports `ray: cancelled` in a script with no event loop of its own. Driving a
   bare `MolView` traces synchronously and works.
@@ -406,6 +412,77 @@ tracebacks were hidden because the diagnostic scripts filtered stderr through
 the diagnostic one: a silent exit under a filtered pipe is not evidence of a
 crash, and the filter has to come off before drawing a conclusion.
 :::
+
+# What only a real window showed
+
+The capture notes above are about getting *an* image. Getting a **correct** one
+needed a window with a GPU behind it: `QT_QPA_PLATFORM=cocoa`, a real
+`grabFramebuffer`, and the PNG read back. Four defects were sitting in a tree
+where every test passed, and none of them raised anything.
+
+## Three representations drew nothing at all
+
+`show spheres, all`, `show sticks, all` and `show cartoon, <sel>` produced zero
+geometry. The selection branches set the per-atom *mask* and left the boolean
+*flag* the scene builder also requires — so the mask said which atoms and
+nothing said whether to draw them. `show lines` and an unqualified `show
+cartoon` took different branches and worked, which is why it went unnoticed.
+
+The general shape: **a representation is described by two pieces of state, and
+writing one of them is a silent no-op.**
+
+## Occlusion was counted twice, and swallowed half the picture
+
+Ambient occlusion is multiplied into the vertex colour *and* handed to the
+shader as `v_occ`. The fragment shader then damped ambient, rim, environment
+and sun by `1.0 - v_occ`. A deeply occluded fragment therefore got a dark base
+colour and near-zero ambient and came out solid black — whole helices vanished
+into the background. Flooring the second term (`mix(0.35, 1.0, 1 - v_occ)`)
+keeps occlusion reading as shape without extinguishing anything.
+
+## `spectrum` never reached the cartoon
+
+`spectrum count, rainbow` writes **per-atom** colours. The cartoon and the trace
+read **per-residue** ones. So the command reported success, the atoms were
+correctly coloured, and the ribbon went on showing the load-time blue-to-orange
+gradient — a picture with no green, cyan or yellow in it. Measured on the mesh:
+the green channel never exceeded 0.55 where a rainbow drives it to 1.0.
+
+`_ca_rgba` now projects the per-atom override down to per-residue (each residue
+takes its CA atom's colour, or the mean of its atoms), folded in at the single
+place the per-residue array is finalised. The sequence strip was a *third* copy
+of the same colouring, refreshed by `color` and not by `spectrum`.
+
+That is the [working rule 5](#working-rules) failing for the third time, now in
+its rendering form: **one colouring, three arrays, and a command that writes one
+of them.**
+
+## `nonbonded_size` is about bonds, not about polymers
+
+PyMOL shrinks *nonbonded* atoms — ordered waters, free ions — so a shell of
+full-size solvent does not bury the molecule. ChiMOL was shrinking everything
+absent from the polymer colour map, which quartered every bonded ligand:
+`show cartoon, polymer` plus `show spheres, organic` drew the ligand as a
+scatter of dots. It now derives the mask from the inferred bond list, so it
+agrees with the `nonbonded` selection keyword instead of being a second opinion
+about what counts as solvent.
+
+Worth recording as a testing lesson: at the bounding-box level, quartering every
+ligand radius moves the measurement only from 0.998 to 0.892 of the van-der-Waals
+envelope, because a bounding box is dominated by how far apart the atom *centres*
+are. It is glaring on screen and easy to sleep through in an assertion — the
+first threshold written for it (0.85) passed the bug.
+
+## The default layout gave the viewport 40% of the window
+
+The dock state asked for a 3:1 split by writing `"sizes": [3, 1]` among entries
+that are otherwise pixel counts. QSplitter reads pixels, clamped the viewport to
+its minimum width, and the 3D view ended up smaller than the side panels. The
+sequence strip had the mirror problem in the other direction: 150 px allocated
+for ~90 px of content, leaving a band of dead grey under the letters.
+
+A guard test now rejects any `sizes` entry below 20, since a ratio and a very
+small pixel count are indistinguishable by inspection.
 
 # Tier 3 — specialised or superseded here
 

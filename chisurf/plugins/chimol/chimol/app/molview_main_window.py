@@ -92,12 +92,19 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
     "root": {
         "type": "splitter",
         "orientation": "vertical",
-        "sizes": [600, 150, 40],
+        # The sequence strip needs its scrollbar, number row and one residue row
+        # -- about 90px. Giving it 150 left a band of dead grey under the
+        # letters, since the rows are top-aligned and do not stretch.
+        "sizes": [600, 95, 40],
         "children": [
             {
                 "type": "splitter",
                 "orientation": "horizontal",
-                "sizes": [3, 1],
+                # Pixels, like every other "sizes" here -- not a 3:1 ratio.
+                # QSplitter takes these literally, so [3, 1] asked for a 3-pixel
+                # viewport, got clamped to the children's minimum widths, and
+                # left the 3D view with about 40% of the window instead of 75%.
+                "sizes": [1200, 400],
                 "children": [
                     {
                         "type": "tab",
