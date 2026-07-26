@@ -39,11 +39,17 @@ back to the physically-motivated light-path prior.
   acceptor 2, second acceptor 3, …) with friendly `i_dd`/`i_da`/`i_aa`
   (≡ `I_11`/`I_12`/`I_22`) aliases in the user-facing API.
 - **Light-path → prior bridge** — `lightpath_correction_factors(...)` computes
-  `gamma = (gR·cRA·QYA)/(gG·cGD·QYD)`, `alpha` (leakage) and `delta` (direct
-  excitation) from a light-path `get_crosstalk_matrices()` payload (reusing
+  `gamma = (gR·cRA·QYA)/(gG·cGD·QYD)`, `alpha = (gR·cRD)/(gG·cGD)` (leakage) and
+  `delta` (direct excitation) from a light-path `get_crosstalk_matrices()` payload
+  (reusing
   `crosstalk.matrix_from_payload` and the MFD algebra from `pda/nusiance.py`);
   `set_priors_from_lightpath(...)` attaches a `NormalPrior` on `gamma`/`R0` and a
-  `TruncatedNormalPrior` on the bounded `alpha`/`delta`.
+  `TruncatedNormalPrior` on the bounded `alpha`/`delta`. The returned factors are in
+  the Hellenkamp convention the consumers apply — in particular `alpha = I_DA/I_DD`,
+  the leakage relative to the **green channel alone**, matching
+  `leakage_from_donor_only`. It is *not* the legacy MFD fraction-of-all-donor-photons
+  `R_D0/(G_D0 + R_D0)` (= `alpha/(1+alpha)`), which `pda/nusiance.py` keeps on purpose
+  for the PDA models. Mixing the two biases every corrected `E`.
 - **Per-burst E-S core** — `chisurf/core/fluorescence/burst/es.py`:
   `apparent_es` (raw proximity ratio + raw stoichiometry) and `corrected_es`
   (three-cube corrected `E` and `S`, reusing `crosstalk.correct_three_cube`).

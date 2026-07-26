@@ -210,7 +210,8 @@ def test_optics_imply_the_correction_factors():
     )
     factors = group.update_factors()
     assert factors["delta"] == pytest.approx(0.055)                     # ex ratio
-    assert factors["alpha"] == pytest.approx(0.72 * 0.075 / (0.92 + 0.72 * 0.075))
+    # Hellenkamp alpha = I_DA/I_DD = gR*cRD / (gG*cGD) — ratio to the green channel
+    assert factors["alpha"] == pytest.approx(0.72 * 0.075 / 0.92)
     assert factors["gamma"] == pytest.approx((0.72 * 0.90 * 0.33) / (0.92 * 0.92))
     assert group.gamma == pytest.approx(factors["gamma"])
 

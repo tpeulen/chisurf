@@ -272,7 +272,12 @@ def lightpath_correction_factors(
     Returns
     -------
     dict
-        ``{"gamma", "alpha", "delta"}``.
+        ``{"gamma", "alpha", "delta"}`` in the **Hellenkamp 2018** convention the
+        rest of this module and :func:`~chisurf.core.fluorescence.burst.es.corrected_es`
+        consume — in particular ``alpha = I_DA/I_DD = (gR·cRD)/(gG·cGD)``, the donor
+        leakage *relative to the green channel*, matching
+        :func:`leakage_from_donor_only`. This is **not** the legacy MFD fraction
+        ``R_D0/(G_D0 + R_D0)`` of ``pda/nusiance.py``.
     """
     exc = matrices.get("excitation", {}) if isinstance(matrices, dict) else {}
     emi = matrices.get("emission", {}) if isinstance(matrices, dict) else {}
@@ -287,7 +292,11 @@ def lightpath_correction_factors(
     eps = 1e-12
     den_g = gG * c_gd * qy_d
     gamma = (gR * c_ra * qy_a) / den_g if den_g > eps else float("nan")
-    den_a = gG * c_gd + gR * c_rd
+    # alpha in the Hellenkamp convention every consumer applies: I_DA/I_DD, the
+    # ratio to the *green* channel alone (not the legacy MFD fraction-of-all-donor-
+    # photons R_D0/(G_D0+R_D0) of pda/nusiance.py). qy_d cancels — both channels
+    # see the same donor emission.
+    den_a = gG * c_gd
     alpha = (gR * c_rd) / den_a if den_a > eps else 0.0
     delta = ex_ag / ex_dg if abs(ex_dg) > eps else 0.0
     return {"gamma": float(gamma), "alpha": float(alpha), "delta": float(delta)}

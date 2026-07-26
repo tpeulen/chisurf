@@ -2,6 +2,30 @@
 
 ## 2026-07-26
 
+* **The light-path prior for `alpha` is now the `alpha` every consumer applies (RF-239).**
+  `lightpath_correction_factors` returned the *legacy MFD* leakage — the fraction of
+  all detected donor photons landing in the red channel,
+  `alpha = gR·cRD/(gG·cGD + gR·cRD)` — while every consumer of
+  `CalibrationParameters.alpha` uses Hellenkamp's `alpha = I_DA/I_DD`, the ratio to
+  the **green channel alone** (`es.corrected_es` subtracts `alpha·F_DD`,
+  `global_es_correction` forms `f_da = r − alpha·g − delta·y`, and this module's own
+  data estimator `leakage_from_donor_only` returns `<i_da>/<i_dd>`). The two differ by
+  `alpha/(1+alpha)`, so `_combine_with_optics_priors` was precision-averaging the
+  optics prior with a data estimate of a *different quantity* and
+  `set_priors_from_lightpath` seeded the `TruncatedNormalPrior` mean from the wrong
+  one — a systematic bias on every corrected `E`, ~6.6 % on the verification payload
+  and worse for leakier dyes. Fixed to `den_a = gG * c_gd` (`qy_d` cancels; both
+  channels see the same donor emission), with the convention now stated on the return
+  value and contrasted against the legacy fraction, which `pda/nusiance.py` keeps on
+  purpose. Three tests encoded the old formula and were corrected. Pinned by
+  `test/fitting/test_fret_calibration.py::test_lightpath_alpha_matches_the_donor_only_data_estimator`,
+  the cross-check the finding asked for: donor-only counts synthesised from the *same*
+  excitation/emission matrices, light-path α equal to `leakage_from_donor_only` on them
+  to `rel=1e-9` with non-unit `gG`/`gR`/`qy_d`, and explicitly ≠ the legacy fraction.
+  105 calibration/burst/setup tests plus the 36 `lightpath_simulator` tests green.
+  `RF-240` (the matching `delta` convention bug in the same function) is untouched and
+  still `OPEN`. Concept updated: [references/fret-calibration.md](/references/fret-calibration.md).
+
 * **A DataCurve's five columns always describe the same samples (RF-086).**
   `Curve._set_axis` rebuilds the 2×N storage when an axis is assigned a different
   length — that is how an empty curve is filled and how `set_data` and every

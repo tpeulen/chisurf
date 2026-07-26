@@ -203,7 +203,8 @@ def test_optics_prior_supplies_factors_the_data_cannot():
     res = auto_calibrate(
         d["i_dd"], d["i_da"], d["i_aa"], lightpath=LIGHTPATH, n_bootstrap=10
     )
-    optics_alpha = 0.72 * 0.075 / (1.0 * 0.92 + 0.72 * 0.075)
+    # Hellenkamp alpha = I_DA/I_DD = gR*cRD / (gG*cGD)
+    optics_alpha = 0.72 * 0.075 / (1.0 * 0.92)
     optics_delta = 0.055
     assert res.factors["alpha"] == pytest.approx(optics_alpha, rel=1e-6)
     assert res.factors["delta"] == pytest.approx(optics_delta, rel=1e-6)

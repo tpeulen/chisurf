@@ -10,6 +10,7 @@ from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
 from chisurf.core.fluorescence.fret.calibration import (
     CalibrationParameters,
     global_es_correction,
+    leakage_from_donor_only,
     lightpath_correction_factors,
     refine_calibration,
     set_priors_from_lightpath,
@@ -19,7 +20,7 @@ from chisurf.core.fluorescence.fret.calibration import (
 def _lightpath(gamma_via_cgd=0.85, alpha=0.066, delta=0.03):
     """Build a synthetic light-path payload with a chosen gamma/alpha/delta."""
     c_gd = gamma_via_cgd
-    c_rd = alpha / (1.0 - alpha) * c_gd  # so alpha = gR*cRD/(gG*cGD+gR*cRD)
+    c_rd = alpha * c_gd  # so alpha = I_DA/I_DD = gR*cRD/(gG*cGD)  (Hellenkamp)
     return {
         "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"],
                        "values": [[1.0, delta]]},
@@ -60,6 +61,35 @@ def test_lightpath_correction_factors():
     assert f["gamma"] == pytest.approx(1.0 / 0.8, rel=1e-6)   # cRA=1, cGD=0.8
     assert f["alpha"] == pytest.approx(0.05, rel=1e-6)
     assert f["delta"] == pytest.approx(0.04, rel=1e-6)
+
+
+def test_lightpath_alpha_matches_the_donor_only_data_estimator():
+    """The light-path prior mean for ``alpha`` is the quantity consumers apply.
+
+    ``alpha`` is Hellenkamp's ``I_DA/I_DD``, so the light path must return exactly
+    what :func:`leakage_from_donor_only` measures on donor-only counts synthesised
+    from the *same* excitation/emission matrices — not the legacy MFD fraction
+    ``R_D0/(G_D0 + R_D0)``, which is ``alpha/(1 + alpha)`` and biases every
+    corrected E (RF-239). Non-unit ``gG``/``gR``/``qy_d`` pin the QY cancellation.
+    """
+    c_gd, c_rd, gG, gR, qy_d = 0.85, 0.06, 1.3, 0.7, 0.4
+    matrices = {
+        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"],
+                       "values": [[0.9, 0.03]]},
+        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
+                     "values": [[c_gd, c_rd], [0.02, 1.0]]},
+    }
+    f = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet",
+                                     gG=gG, gR=gR, qy_d=qy_d, qy_a=0.6)
+
+    # donor-only counts produced by those same matrices
+    excited = 2.0e5 * 0.9 * qy_d
+    data_alpha = leakage_from_donor_only([excited * c_gd * gG], [excited * c_rd * gR])
+    assert f["alpha"] == pytest.approx(data_alpha, rel=1e-9)
+    assert f["alpha"] == pytest.approx(gR * c_rd / (gG * c_gd), rel=1e-9)
+    # and is *not* the legacy fraction-of-all-donor-photons convention
+    legacy = gR * c_rd / (gG * c_gd + gR * c_rd)
+    assert f["alpha"] > legacy
 
 
 def test_set_priors_from_lightpath_attaches_priors():
