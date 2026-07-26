@@ -52,9 +52,18 @@ Single-molecule histogram = Poisson emission at local brightness
 
     p1(k) = (1/V) ∫_V  [ε PSF(r)]^k / k!  · exp(−ε PSF(r))  dr
 
-ChiSurf uses the 3-D Gaussian profile `PSF ∝ exp(−2x²)`.
+ChiSurf uses the 3-D Gaussian profile `PSF ∝ exp(−2x²)`, with `x = r/w` and the
+spherical volume element `dr = 4π w³ x² dx` — the `x²` shell weight is what makes
+the volume three-dimensional; dropping it silently degrades the model to a *1-D*
+Gaussian (shape factor `γ₂ = 2^{-1/2}` instead of `2^{-3/2}`) and biases the
+fitted brightness low by ≈2.5–3×.
 - `chisurf/plugins/pch/api/algorithms.py::compute_p1` / `pch_single_species`
-  (numba, integrates over `x_vals` on `[0,5]` with the `exp(-2 x²)` weight).
+  (numba, integrates over `x_vals` on `[0,5]` with the `x² · exp(-2 x²)` weight).
+  The `p1[0] = 1 − Σ` closure absorbs the constant `4π w³ / V₀` prefactor, so ε is
+  convention-free while the reported ⟨N⟩ is expressed in that reference volume.
+- The model widget `chisurf/gui/widgets/models/pch/widgets.py` carries a **second,
+  private copy** of the same kernel (`_compute_p1` … `_pch_mixture`); both are
+  pinned to `γ₂ = 2^{-3/2}` by the moment identity `Var/⟨k⟩ − 1 = ε·γ₂`.
 
 Open-volume occupancy is Poisson(N), so the observed histogram is the
 Poisson-weighted stack of self-convolutions of `p1`:

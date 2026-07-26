@@ -55,6 +55,28 @@ def test_every_configured_pch_model_resolves_with_a_name(qapp):
     assert any("FIDA" in n for n in names), f"FIDA model missing from {names}"
 
 
+def test_the_widget_pch_kernel_uses_the_three_dimensional_gaussian(qapp):
+    """The model widget carries its own PCH kernel — pin its detection volume.
+
+    ``Var/<k> - 1 == eps * gamma_2`` for a compound-Poisson PCH, and ``gamma_2``
+    is a pure shape factor: ``2**-1.5`` for the 3-D Gaussian, ``2**-0.5`` if the
+    radial volume element ``x**2`` is dropped.  The identity does not depend on
+    the eps/N normalisation, so it pins the profile and nothing else.
+    """
+    import numpy as np
+
+    from chisurf.gui.widgets.models.pch.widgets import _pch_open_system
+
+    k_vals = np.arange(60, dtype=float)
+    for brightness in (0.5, 1.0):
+        p = _pch_open_system(k_vals, brightness, 0.5, maxN=12)
+        p = p / p.sum()
+        mean = float((k_vals * p).sum())
+        var = float((k_vals**2 * p).sum()) - mean**2
+        gamma_2 = (var / mean - 1.0) / brightness
+        assert np.isclose(gamma_2, 2.0**-1.5, rtol=1e-6)
+
+
 def test_fida_model_is_a_model_curve(qapp):
     from chisurf.core.models.model import ModelCurve
     from chisurf.gui.widgets.models.pch.fida_widget import FidaModel, FidaModelWidget

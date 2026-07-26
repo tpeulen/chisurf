@@ -3441,11 +3441,33 @@ truncation, and a χ² that the CLI's own `refit` command cannot compute.
 RF-291..RF-295.
 
 ### RF-291
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the fitted molecular brightness — the plugin's whole purpose — is wrong by ≈2.5–3× because the single-molecule integral has no volume element)
 - **Location:** `chisurf/plugins/pch/api/algorithms.py:19-22` (the `for xi in x_vals` loop in `compute_p1`, `total += (brightness*exp_term)**k / fact * exp(-brightness*exp_term)`), reached through `pch_single_species:27-30`
 - **Finding:** `p^(1)(k) = (1/V)∫ (εPSF)^k/k! e^{-εPSF} dV` is evaluated as a **flat** sum over the reduced coordinate `x ∈ [0,5]` with `dV → dx`. The Jacobian is missing, so the implied brightness profile is `w(x) ∝ (-ln x)^{-1/2}/x` — a **1-D** Gaussian — not the 3-D Gaussian that `docs/concepts/pch_fida.md:76-78` names for exactly this function ("in ChiSurf the confocal volume is the 3-D Gaussian … `pch_single_species`") and whose shape factor the same page pins at `γ₂ = 2^{-3/2} ≈ 0.354` (`:36`). Verified with the convention-free moment identity `Var/⟨k⟩ − 1 = ε·γ₂`, which is independent of the ε/N normalisation: `pch_open_system` returns **γ₂ = 0.70827** for every (ε, N) in {0.5, 1, 2} × {0.5, 1} — i.e. `2^{-1/2}`, the 1-D value — while the sibling 3DG route in the same tree, `chisurf/core/models/pch/fida.py` (`fida_pch` with `dvdx_gaussian`, `w ∝ (-ln x)^{1/2}/x`), returns **0.35100** on the same grid. Inserting the spherical-shell weight (`total += xi*xi * …`) and nothing else makes `compute_p1` return **γ₂ = 0.3535533906**, exactly `2^{-3/2}` — which both identifies the omission and is the fix. The consequence is not a rescaling but a shape mismatch: feeding the plugin a histogram generated from the 3DG generating function (`fida_pch(60, [(q, 1.0)])`, 5 M bins, exact counts) and fitting it with `_fit_handler` recovers **ε = 0.7916 for a truth of q = 2.0** (0.396×, χ²ᵣ = 35) and **ε = 1.5161 for q = 5.0** (0.303×, χ²ᵣ = 1.4e3) — the 1-D model cannot reproduce a 3-D histogram at all, and the two documented-equivalent ChiSurf routes to (ε, N) disagree. None of the five kernels in `algorithms.py` carries a docstring, which is why the intended profile was never written down anywhere but the concept page. Pin it with the γ₂ moment assertion (0.354 to three digits) and a PCH-vs-FIDA agreement test.
-- **Fix note:**
+- **Fix note:** Restored the radial volume element in `compute_p1` — the integrand
+  now carries the spherical-shell weight `shell = xi * xi` (`dV = 4π w³ x² dx`),
+  and nothing else changed, so `pch_open_system` returns
+  **γ₂ = 0.3535533906 = 2^{-3/2}** for every (ε, N) tested instead of `2^{-1/2}`.
+  End-to-end against the independent 3DG route: fitting `fida_pch(60, [(q, 1.0)])`
+  with `_fit_handler` now recovers **ε = 1.970 for q = 2.0** (χ²ᵣ 35 → 0.036) and
+  **ε = 4.860 for q = 5.0** (χ²ᵣ 1.4e3 → 0.38), i.e. the two documented-equivalent
+  routes agree on brightness to ~3 %. The GUI model widget keeps its **own copy**
+  of the kernel (`chisurf/gui/widgets/models/pch/widgets.py:_compute_p1`) and had
+  the identical omission — fixed there in the same change. All five kernels in
+  `algorithms.py` gained NumPy-style docstrings that name the profile and state
+  which normalisation `p1[0] = 1 - Σ` absorbs (the reference-volume prefactor, so
+  ε is convention-free while the reported ⟨N⟩ is tied to that reference volume —
+  a separate convention question this fix does not change).
+  `docs/concepts/pch_fida.md` now writes the volume element out explicitly.
+  Pinned by `chisurf/plugins/pch/tests/test_algorithms.py::test_the_detection_volume_is_the_three_dimensional_gaussian`
+  (the γ₂ moment identity, `rtol=1e-6`) and
+  `::test_brightness_matches_the_independent_three_dimensional_gaussian_route`
+  (PCH-vs-FIDA agreement), plus
+  `test/gui/test_pch_models_resolve.py::test_the_widget_pch_kernel_uses_the_three_dimensional_gaussian`
+  for the widget copy. `chisurf/plugins/pch/`, `test/gui/test_pch_models_resolve.py`
+  and `test/models/test_fida.py` all green (28 tests); `ruff check` clean on the
+  touched files and the new lines are `ruff format`-clean.
 
 ### RF-292
 - **Status:** OPEN

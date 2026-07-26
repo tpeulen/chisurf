@@ -16,6 +16,12 @@ from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 def _compute_p1(k_vals: np.ndarray, brightness: float, x_vals: np.ndarray, dx: float) -> np.ndarray:
     """Compute the PCH distribution P(k) for a single species.
 
+    The detection volume is the 3-D Gaussian ``PSF(x) = exp(-2 x**2)``, whose
+    volume element ``dV = 4 pi w**3 x**2 dx`` contributes the radial shell weight
+    ``x**2``; dropping it would collapse the integral onto a *1-D* Gaussian and
+    bias the recovered brightness low (see
+    :func:`chisurf.plugins.pch.api.algorithms.compute_p1`).
+
     Parameters
     ----------
     k_vals : numpy.ndarray
@@ -23,7 +29,7 @@ def _compute_p1(k_vals: np.ndarray, brightness: float, x_vals: np.ndarray, dx: f
     brightness : float
         Molecular brightness.
     x_vals : numpy.ndarray
-        Spatial integration points.
+        Radial integration points, in units of the beam waist.
     dx : float
         Spatial step size.
 
@@ -45,7 +51,7 @@ def _compute_p1(k_vals: np.ndarray, brightness: float, x_vals: np.ndarray, dx: f
         for xi in x_vals:
             exp_term = np.exp(-2.0 * xi * xi)
             lam = brightness * exp_term
-            total += (lam**k / fact) * np.exp(-lam)
+            total += xi * xi * (lam**k / fact) * np.exp(-lam)
         p1[i] = total * dx
     s = p1[1:].sum()
     p1[0] = max(0.0, 1.0 - s)

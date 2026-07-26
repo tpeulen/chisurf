@@ -75,7 +75,11 @@ $$
 
 In ChiSurf the confocal volume is the 3-D Gaussian (3DG), so the radial
 brightness profile is $\bar{PSF}\propto e^{-2x^2}$ and the integral is taken over
-the reduced coordinate $x$ (`pch_single_species`). Second, the actual number of
+the reduced coordinate $x = r/w$ with the spherical volume element
+$\mathrm{d}\mathbf{r} = 4\pi w^3 x^2\,\mathrm{d}x$ (`pch_single_species`) — that
+$x^2$ shell weight is what makes the volume three-dimensional; without it the
+same integral describes a *1-D* Gaussian and returns $\gamma_2 = 2^{-1/2}$
+instead of $2^{-3/2}$. Second, the actual number of
 molecules in an *open* volume is itself Poisson-distributed with mean $N$, so
 the observed histogram is the sum over occupancies of $p^{(1)}$ **self-convolved**
 $n$ times — $n$ independent molecules add their counts:
