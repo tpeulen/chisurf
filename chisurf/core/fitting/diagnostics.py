@@ -154,19 +154,32 @@ def _ess_1d(chains: np.ndarray) -> float:
     *unknown* rather than maximal. :func:`rank_normalized_rhat` and
     :func:`bulk_tail_ess` refuse the same input, and returning the raw draw
     count here would read as perfectly independent draws beside their ``nan``.
+
+    A parameter that never moved is refused for the same reason: the draws
+    carry no autocorrelation structure to measure, so neither the raw draw
+    count (perfectly independent) nor a handful of samples (badly mixed)
+    describes it.
     """
     m, n = chains.shape
     total = float(m * n)
     if not np.all(np.isfinite(chains)):
+        return float("nan")
+    if np.ptp(chains) == 0.0:
+        # Test the *range*, not the variance: ``autocovariance`` centres the
+        # draws and transforms through the FFT, so a bit-identical chain comes
+        # back with a rounding residual at lag 0 rather than an exact zero,
+        # and every variance-based guard below silently misses it. This is the
+        # test :func:`rank_normalized_rhat` and :func:`bulk_tail_ess` already
+        # use, and they report the same input as undefined.
         return float("nan")
     if n < 4:
         return total
 
     within, var_plus, acov = _pooled_variance(chains)
     if not (var_plus > 0.0) or not (within > 0.0):
-        # A constant parameter carries no information; calling that "n samples"
-        # would be misleading, but so would zero. Report the raw draw count.
-        return total
+        # The range is non-zero but the variance underflowed, so the parameter
+        # is frozen for every practical purpose: undefined, as above.
+        return float("nan")
 
     # Combine the chains' autocorrelation through the pooled variance: with one
     # chain this reduces to the ordinary rho_t = acov_t / var.
@@ -205,7 +218,7 @@ def effective_sample_size(samples: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
         One effective sample size per parameter; ``nan`` for a parameter with
-        any non-finite draw.
+        any non-finite draw, and for one that never moved.
     """
     chains = as_chains(samples)
     return np.array(
@@ -229,7 +242,7 @@ def autocorrelation_time(samples: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
         One autocorrelation time per parameter; ``nan`` for a parameter with
-        any non-finite draw.
+        any non-finite draw, and for one that never moved.
     """
     chains = as_chains(samples)
     total = float(chains.shape[0] * chains.shape[1])
@@ -482,7 +495,7 @@ def mcse(samples: np.ndarray) -> np.ndarray:
     -------
     numpy.ndarray
         One standard error per parameter; ``nan`` for a parameter with any
-        non-finite draw.
+        non-finite draw, and for one that never moved.
     """
     chains = as_chains(samples)
     flat = chains.reshape(-1, chains.shape[2])
@@ -556,7 +569,10 @@ def summarize(
     list of dict
         Per parameter: ``name``, ``mean``, ``sd``, ``quantiles`` (a dict keyed by
         the requested probabilities), ``ess``, ``rhat``, ``tau``, ``mcse``,
-        ``n_chains``, ``n_draws`` and the applied ``burn_in``.
+        ``frozen``, ``n_chains``, ``n_draws`` and the applied ``burn_in``.
+        ``frozen`` is ``True`` when every kept draw is identical, which is the
+        one state in which the sample-size statistics are ``nan`` while
+        :math:`\\hat{R}` is a comfortable ``1.0``.
     """
     chains = as_chains(samples)
     if burn_in is None:
@@ -603,6 +619,7 @@ def summarize(
             "rhat_plain": float(plain_rhat[k]),
             "tau": float(tau[k]),
             "mcse": float(err[k]),
+            "frozen": bool(finite.size > 0 and np.ptp(finite) == 0.0),
             "n_chains": int(kept.shape[0]),
             "n_draws": int(kept.shape[1]),
             "burn_in": burn_in,
@@ -674,6 +691,18 @@ def convergence_warnings(
                 f"{len(low_ess)} parameter(s) have an effective sample size below "
                 f"{ess_threshold:g} (worst: {worst['name']} at {worst['ess']:.0f})."
             )
+    # A parameter that never moved is the one failure the numbers cannot state
+    # on their own: every sample-size statistic is nan (undefined, not low) and
+    # R-hat is a comfortable 1.0, so without this line it passes in silence.
+    frozen = [e for e in summary if e.get("frozen")]
+    if frozen:
+        messages.append(
+            f"{len(frozen)} parameter(s) never moved -- every draw is identical "
+            f"(e.g. {frozen[0]['name']} at {frozen[0]['mean']:g}); the sample "
+            "size and the Monte-Carlo error are undefined, not perfect. A "
+            "parameter pinned at a bound, or one the proposal never reaches, "
+            "looks like this."
+        )
     stuck = [e for e in summary if not np.isfinite(e.get("rhat", np.nan))]
     if stuck:
         messages.append(

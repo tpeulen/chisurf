@@ -215,6 +215,15 @@ against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
   and the MCSE alike — because one `nan`/`inf` contaminates the FFT
   autocovariance of the whole chain. Reporting the raw draw count instead would
   read as perfectly independent draws sitting beside a refused R̂.
+- **A parameter that never moved is refused and named.** The frozen case is
+  detected on the *range* (`np.ptp == 0`), never on a variance: the FFT
+  autocovariance centres the draws, so a bit-identical chain comes back with a
+  ~1e-31 rounding residual rather than an exact zero, and whether that residual
+  happens to cancel would otherwise decide between the best verdict and the
+  worst for the same input. `ess`, `τ` and the MCSE are `nan` — undefined, not
+  perfect — and because R̂ is a comfortable `1.0` here, `summarize` carries a
+  `frozen` flag and `convergence_warnings` says so out loud. A parameter pinned
+  at a bound, or one the proposal never reaches, is exactly this case.
 - All samplers return `chains` (per-chain, not only flattened) and
   `acceptance_rate`. `sample_fit` pools the `n_runs` **independent** runs, writes
   `diagnostics.json` beside `chains/`, logs the warnings and returns the report.

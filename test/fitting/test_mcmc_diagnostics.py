@@ -201,6 +201,39 @@ def test_a_non_finite_draw_leaves_the_sample_size_undefined_not_maximal(bad):
     assert dg.effective_sample_size(_ar1(0.5, n=1000, n_chains=4, seed=13))[0] > 0.0
 
 
+@pytest.mark.parametrize('value', [0.0, 1.0, 0.5, 2.5, 1.234, 0.001, 3.7])
+def test_a_frozen_parameter_gets_one_verdict_whatever_its_value(value):
+    """A bit-identical chain must not be graded by floating-point luck.
+
+    The constant-parameter guard used to test the pooled *variance*, which the
+    FFT autocovariance returns as a ~1e-31 rounding residual rather than an
+    exact zero. Whether the residual happened to cancel decided between the
+    best possible verdict (``ess`` = every draw, no warning at all) and the
+    worst (``ess`` = one per chain) for chains that never moved at all.
+    """
+    chains = np.full((4, 2000, 1), value)
+    assert np.isnan(dg.effective_sample_size(chains)[0])
+    assert np.isnan(dg.autocorrelation_time(chains)[0])
+    assert np.isnan(dg.mcse(chains)[0])
+
+    e = dg.summarize(chains, names=['tau1'], burn_in=0)[0]
+    assert e['frozen'] is True
+    assert np.isnan(e['ess']) and np.isnan(e['tau']) and np.isnan(e['mcse'])
+    assert np.isnan(e['ess_bulk']) and np.isnan(e['ess_tail'])
+
+    # And it is said out loud: R-hat is 1.0 here, so nothing else would.
+    messages = dg.convergence_warnings([e])
+    assert any('never moved' in m and 'tau1' in m for m in messages)
+
+
+def test_a_moving_parameter_is_not_reported_as_frozen():
+    """The frozen verdict must not leak onto an ordinary, well-mixed chain."""
+    e = dg.summarize(_ar1(0.5, n=2000, n_chains=4, seed=7), names=['x'])[0]
+    assert e['frozen'] is False
+    assert np.isfinite(e['ess']) and e['ess'] > 0.0
+    assert dg.convergence_warnings([e]) == []
+
+
 def test_short_chains_degrade_instead_of_raising():
     """Two draws are not enough to diagnose anything, and must not crash."""
     tiny = np.zeros((1, 2, 2))

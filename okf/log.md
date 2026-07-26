@@ -2,6 +2,29 @@
 
 ## 2026-07-26
 
+* **RF-099: a parameter that never moved is no longer graded by floating-point
+  luck.** `_ess_1d` in
+  [chisurf/core/fitting/diagnostics.py](chisurf/core/fitting/diagnostics.py)
+  guarded the constant-parameter case on the pooled *variance*, which the FFT
+  autocovariance returns as a ~1e-31 rounding residual rather than an exact zero
+  — so `np.full((4, 2000), v)`, a parameter bit-identical in all 8000 draws, gave
+  `ess = 8000, τ = 1, no warning at all` when the residual happened to cancel
+  (`v = 0.0`, `1.0`, `0.5`, `2.5`) and `ess = 4.0, τ = 1998` when it did not
+  (`v = 1.234`, `0.001`, `3.7`). The silent branch is the one a parameter pinned
+  at a bound of `0.0` takes. The guard now tests the *range* (`np.ptp == 0`), as
+  `rank_normalized_rhat` and `bulk_tail_ess` already did, and returns `nan` —
+  undefined, not perfect and not terrible — which `τ` and the MCSE inherit.
+  Because R̂ is a comfortable `1.0` for a frozen parameter, nothing would
+  otherwise say so: `summarize` gained a `frozen` flag and `convergence_warnings`
+  a line that names the parameter and its value. `suggest_burn_in` (which filters
+  non-finite τ) and `PosteriorEngine`'s `converged` test both improve for free.
+  Pinned by
+  `test/fitting/test_mcmc_diagnostics.py::test_a_frozen_parameter_gets_one_verdict_whatever_its_value`,
+  parametrised over both groups of constants, plus the converse test that an
+  ordinary AR(1) chain is not reported as frozen. 141 sampling/diagnostics tests
+  green. See [subsystems/fitting.md](subsystems/fitting.md) and
+  [PRD-69](prds/prd-69.md).
+
 * **RF-168: one BVA static line, with a docstring that is actually reachable.**
   `compute_static_bva_line` in [chisurf/core/fluorescence/burst/bva.py](chisurf/core/fluorescence/burst/bva.py)
   opened with a one-line summary, then `import pandas as pd`, and only then its

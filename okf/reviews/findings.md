@@ -1348,11 +1348,25 @@ forms. Findings RF-098..RF-102.
 - **Fix note:**
 
 ### RF-099
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a parameter the sampler never moved is reported as the best-converged one in the table, with no warning — or as the worst, decided by floating-point luck)
 - **Location:** `chisurf/core/fitting/diagnostics.py:157-160` (the `not (within > 0.0)` guard in `_ess_1d`) against `:114-124` (`autocovariance`, FFT-based)
 - **Finding:** The guard meant to catch a constant parameter is unreachable for a real constant chain: `autocovariance` centres with `x - x.mean()` and transforms through the FFT, so lag 0 comes back as a rounding residual (~1e-31) rather than `0.0`, and the entire ESS/τ/MCSE machinery then runs on that noise. Verified on `np.full((4, 2000), v)` — a parameter that is *bit-identical in all 8000 draws*: `v = 1.234`, `0.001`, `3.7` → `ess = 4.0`, `tau = 1998`; `v = 0.0`, `1.0`, `0.5`, `2.5` → the residual happens to be exactly `0.0`, the guard fires, and `ess = 8000`, `tau = 1.0`, `mcse ≈ 0`, `rhat = 1.0`, **`convergence_warnings` returns `[]`**. Identical situations, opposite verdicts, decided only by whether the constant is binary-exact — and the silent branch is the one a parameter pinned at a bound of `0.0` takes. This is on the live path: `sample_fit` → `_write_sampling_diagnostics` (`chisurf/core/fitting/fit.py:2166-2167`) writes it to `diagnostics.json` and logs the warnings. Test the *range* (`np.ptp(block) == 0.0`, as `rank_normalized_rhat:361` and `bulk_tail_ess:399` already do) instead of a floating-point variance, and report a frozen parameter as such rather than as either extreme.
-- **Fix note:**
+- **Fix note:** `_ess_1d` now tests the *range* (`np.ptp(chains) == 0.0`) before it
+  touches the FFT autocovariance, and returns `nan` for a frozen parameter — the
+  same refusal `rank_normalized_rhat` and `bulk_tail_ess` already give the same
+  input, so `tau` and `mcse` follow. The old variance guard is kept only as an
+  underflow net and now returns `nan` too. Because a frozen parameter has a
+  perfectly comfortable `rhat = 1.0`, `summarize` gained a `frozen` flag and
+  `convergence_warnings` a line that names it, so the case that used to pass in
+  silence is now stated; `suggest_burn_in` and `PosteriorEngine`'s `converged`
+  test both improve for free (a frozen parameter no longer inflates the burn-in
+  nor counts as a converged marginal). Pinned by
+  `test/fitting/test_mcmc_diagnostics.py::test_a_frozen_parameter_gets_one_verdict_whatever_its_value`,
+  parametrised over the binary-exact constants (`0.0`, `1.0`, `0.5`, `2.5`) and
+  the ones that leave an FFT residual (`1.234`, `0.001`, `3.7`) — pre-fix those
+  two groups gave `ess = 8000, no warning` and `ess = 4.0, low-ESS warning` —
+  plus `test_a_moving_parameter_is_not_reported_as_frozen` for the converse.
 
 ### RF-100
 - **Status:** FIXED
