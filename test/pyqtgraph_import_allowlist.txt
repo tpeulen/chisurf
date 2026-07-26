@@ -19,7 +19,6 @@ chisurf/plugins/core/acq/gui/tool.py
 chisurf/plugins/core/acq/gui/windows.py
 chisurf/plugins/core/globalview/graphplotwidget.py
 chisurf/plugins/core/globalview/gui/tool.py
-chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
 chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui.py
 chisurf/plugins/fluorescence_decay/maxent_decay/gui/qt_stack.py
 chisurf/plugins/tttr/intensity_trace/__init__.py
