@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **A kinetic scheme is not a PDA concept — the fittable rate matrix is now
+  general.** `RateMatrixMixin` had landed under `chisurf/core/models/pda/rates.py`,
+  which put a facility that dynamic PDA, tcPDA, the photon-by-photon burst
+  likelihood, lifetime-FCS and the acquisition simulator all want inside one
+  experiment's package. Moved to `chisurf/core/fitting/kinetics.py` and given a
+  concrete `RateMatrixParameters` group, so a model can simply own one instead of
+  subclassing boilerplate; `default_rate=0.0` makes an inert scheme, which is how a
+  model with optional dynamics keeps its static route as the default. The
+  arithmetic went the other way, down to `chisurf/core/fluorescence/kinetics.py`
+  beside the generator it is defined against: `rate_matrix_from_rates` /
+  `rates_from_rate_matrix` (the single flat-rate convention) and
+  `transitions_per_window`. `test/fitting/test_kinetics_parameters.py` (21) pins
+  that the parameter order *is* the shared flat order at N=2..5 — a second
+  convention being exactly the bug a shared module exists to prevent.
+
+  **Found while surveying who else owns a scheme:** 2D-FLC
+  (`plugins/fcs/flc_2d/fit/kinetics.py`) carried its own generator and equilibrium
+  populations reading `K[source, target]` — the **transpose** of the convention
+  everywhere else. Both readings are self-consistent, so a matrix crossing between
+  them is never rejected; it silently swaps the populations (verified: the shared
+  route gives `[0.6, 0.4]` where the plugin gives `[0.4, 0.6]` for the same
+  matrix). The duplicate implementation is gone — the plugin delegates to the
+  shared generator with one explicit transpose at its boundary, behaviour
+  unchanged (its 24 tests pass) and the divergence pinned by a test so nobody
+  "unifies" it away into a silent swap. See
+  [subsystems/fitting.md](/subsystems/fitting.md).
+
 * **228 more dialogs that would hang a headless run, now tracked.** Fixing the
   fFCS filter calculator turned up one instance of a class: a `QMessageBox`
   static on an `except` branch spins an event loop until a button is pressed, so

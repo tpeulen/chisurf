@@ -129,7 +129,7 @@ would have hidden).
 was a plain array attribute on `TcPdaModel`, so three-colour dynamics could
 *use* an arbitrary scheme but never *recover* one. It is now `TcPdaKinetics`, a
 parameter group over the shared `RateMatrixMixin`
-(`chisurf/core/models/pda/rates.py`) that [PRD-50](prd-50.md)'s two-colour
+(`chisurf/core/fitting/kinetics.py`) that [PRD-50](prd-50.md)'s two-colour
 `PdaDynamicNStates` was refactored onto — one implementation, not two copies.
 One state per distance population, the scheme resizing with the species count
 (`find_parameters` is the seam, so the optimiser's vector always covers the

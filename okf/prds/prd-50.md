@@ -351,10 +351,11 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   clipped any value wider than it: cells are now sized from the configured range
   and decimals. Found by rendering a 4-state scheme and reading the screenshot.
 
-  The shared half of this now lives in `chisurf/core/models/pda/rates.py`
-  (`RateMatrixMixin`), so the two- and three-colour models hold one
-  implementation of "a rate scheme whose entries are fitting parameters" rather
-  than two copies — see [PRD-65](prd-65.md) for the three-colour side.
+  The shared half of this lives in `chisurf/core/fitting/kinetics.py`
+  (`RateMatrixMixin`, `RateMatrixParameters`) — a **general** facility, not a PDA
+  one, since a rate scheme is the same object for burst likelihoods, lifetime-FCS
+  and the acquisition simulator. See [PRD-65](prd-65.md) for the three-colour
+  side and [subsystems/fitting.md](/subsystems/fitting.md) for the module.
 
 **Follow-ups (not yet done):**
 - ~~tcPDA's rate matrix is a plain array attribute, not fitting parameters.~~

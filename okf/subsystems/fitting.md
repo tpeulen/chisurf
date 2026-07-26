@@ -128,6 +128,45 @@ The dedicated single-molecule / image MLE path (tttrlib `fit2x`:
 `assemble_vv_vh`), the single seam consumed by the burst-MLE and image-MLE
 plugins in place of duplicated raw-tttrlib boilerplate.
 
+# Kinetic schemes as fitting parameters
+
+`chisurf/core/fitting/kinetics.py` is the **general** fitting layer over a rate
+matrix — not a PDA one. A scheme is the same object for dynamic PDA, three-colour
+PDA, the photon-by-photon burst likelihood, lifetime-FCS and the acquisition
+simulator: an `n x n` matrix of rates `k_ij` (state *i* to *j*, Hz) with a zero
+diagonal.
+
+- `RateMatrixParameters` — a standalone group; own one when the scheme is all it
+  holds. `RateMatrixMixin` — mix into an existing group when the states also carry
+  distances, efficiencies or brightnesses that belong beside their rates (both PDA
+  families do this).
+- **Topology is data, not code.** Every off-diagonal entry is a
+  `FittingParameter`, so a linear chain is the fully connected scheme with the
+  long-range rates fixed at zero, detailed balance is a link between two
+  parameters, and a one-way cycle is a set of zeros. There is no "which scheme"
+  mode for a model to fall out of step with.
+- **The rates are held in a list.** `find_objects` recurses into lists only, so
+  rates in a dict or tuple never reach `parameters_all`: freeing one does nothing
+  and the fit sits still while reporting success. That shipped once, in the
+  three-state PDA model.
+- `default_rate = 0.0` makes an **inert** scheme, which is how a model with
+  optional dynamics keeps its static route as the default — an all-zero matrix
+  reads as "no kinetics" rather than as kinetics that happen to be slow.
+- The arithmetic lives in `chisurf/core/fluorescence/kinetics.py`: the generator,
+  equilibrium populations, occupation-time law, `transitions_per_window`, and the
+  single flat-rate convention `rate_matrix_from_rates`
+  (`[k12, k21]`, `[k12, k13, k21, k23, k31, k32]`, …) that the parameter list,
+  the editable grid and the burst likelihood all order their rates by.
+- **One exception, deliberately kept:** 2D-FLC
+  (`plugins/fcs/flc_2d/fit/kinetics.py`) reads `K[source, target]`, the transpose
+  of everywhere else. Both readings are self-consistent, so a matrix crossing
+  between them is never rejected — it silently swaps the populations. The plugin
+  therefore delegates to the shared generator with **one explicit transpose at its
+  boundary**, pinned by a test, rather than carrying a second implementation.
+
+The editable `n x n` grid is the AutoForm `rate_matrix` section bound to
+`rate_values`; see [gui-autoform.md](/subsystems/gui-autoform.md).
+
 # Global analysis / parameter linking
 
 - `FittingParameter.link` ties a parameter to another parameter (across fits);

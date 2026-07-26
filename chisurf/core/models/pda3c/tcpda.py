@@ -114,7 +114,9 @@ from __future__ import annotations
 import numpy as np
 
 import chisurf as cs
+from chisurf.core.fitting.kinetics import RateMatrixParameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
+from chisurf.core.fluorescence.kinetics import transitions_per_window
 from chisurf.core.fluorescence.pda3c import (
     BurstCounts,
     ThreeColorSetup,
@@ -125,7 +127,6 @@ from chisurf.core.fluorescence.pda3c import (
 )
 from chisurf.core.fluorescence.pda3c.likelihood import log_multinomial_pmf
 from chisurf.core.models.model import ModelCurve
-from chisurf.core.models.pda.rates import RateMatrixMixin, transitions_per_window
 
 #: Bin edges of each displayed proximity-ratio histogram.
 N_RATIO_BINS = 41
@@ -282,14 +283,15 @@ class TcPdaSpecies(FittingParameterGroup):
         return out
 
 
-class TcPdaKinetics(RateMatrixMixin, FittingParameterGroup):
+class TcPdaKinetics(RateMatrixParameters):
     """The exchange scheme between the species, as fitting parameters.
 
     One state per distance population, and every off-diagonal ``k_ij`` (state
     *i* to *j*, Hz) an ordinary fitting parameter — so a three-colour dynamic
-    fit can *recover* a kinetic scheme rather than only being told one. The
-    machinery is shared with the two-colour N-state model; see
-    :mod:`chisurf.core.models.pda.rates`.
+    fit can *recover* a kinetic scheme rather than only being told one. All of
+    that is the general
+    :class:`~chisurf.core.fitting.kinetics.RateMatrixParameters`; the only thing
+    three-colour about it is the default.
 
     Every rate starts at **zero**, and an all-zero scheme is what
     :attr:`TcPdaModel.rate_matrix` reports as "no kinetics". That keeps the
@@ -299,29 +301,6 @@ class TcPdaKinetics(RateMatrixMixin, FittingParameterGroup):
 
     #: No kinetics until asked for -- see the class docstring.
     default_rate = 0.0
-
-    def __init__(self, name: str = "tcpda_kinetics", n_states: int = 2, **kwargs):
-        """Initialize an all-zero scheme over ``n_states`` states."""
-        super().__init__(name=name, **kwargs)
-        self._rates: list = []
-        self._n_states = 0
-        self._rebuild_rates(n_states)
-
-    @property
-    def n_states(self) -> int:
-        """Number of exchanging states; tracks the model's species count."""
-        return self._n_states
-
-    @n_states.setter
-    def n_states(self, value: int) -> None:
-        """Resize the scheme, keeping the rates that survive."""
-        if max(2, int(value)) != self._n_states:
-            self._rebuild_rates(value)
-
-    @property
-    def any_rate(self) -> bool:
-        """True when at least one transition has a non-zero rate."""
-        return any(float(p.value) > 0.0 for p in self._rates)
 
 
 class TcPdaSetup(FittingParameterGroup):

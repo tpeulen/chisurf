@@ -78,6 +78,7 @@ __all__ = [
     "generator_from_rate_matrix",
     "rate_matrix_from_rates",
     "rates_from_rate_matrix",
+    "transitions_per_window",
     "occupation_time_fractions",
     "occupation_time_fractions_reference",
     "szabo_gopich_quadrature",
@@ -185,6 +186,31 @@ def rates_from_rate_matrix(matrix) -> np.ndarray:
     return np.array(
         [matrix[t, s] for s in range(n) for t in range(n) if s != t], dtype=float
     )
+
+
+def transitions_per_window(rate_matrix, window: float) -> float:
+    """Return the largest expected number of transitions in ``window``.
+
+    Taken from the generator's diagonal — the escape rate out of each state —
+    rather than from the raw matrix. Summing ``|K|`` down a column double-counts
+    when the caller passes a matrix that already carries its generator diagonal,
+    so one physical system would measure two different exchange speeds depending
+    on how it was spelled, and could take different code paths for it.
+
+    Parameters
+    ----------
+    rate_matrix : array_like
+        ``(n, n)`` with ``K[target, source]`` in Hz; the diagonal is ignored, as
+        everywhere else the matrix is consumed.
+    window : float
+        Observation time in seconds.
+
+    Returns
+    -------
+    float
+    """
+    generator = generator_from_rate_matrix(rate_matrix)
+    return float(np.max(-np.diag(generator))) * float(window)
 
 
 def equilibrium_populations(rate_matrix) -> np.ndarray:

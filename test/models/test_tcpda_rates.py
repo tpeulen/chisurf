@@ -169,7 +169,7 @@ def test_transitions_per_window_does_not_depend_on_the_spelling():
     generator diagonal must not measure twice the escape rate of the same
     matrix written off-diagonal-only.
     """
-    from chisurf.core.models.pda.rates import transitions_per_window
+    from chisurf.core.fluorescence.kinetics import transitions_per_window
 
     off_diagonal = np.array([[0.0, 3e5], [3e5, 0.0]])
     generator = off_diagonal.copy()
@@ -182,7 +182,7 @@ def test_transitions_per_window_does_not_depend_on_the_spelling():
 
 def test_transitions_per_window_takes_the_fastest_state():
     """The estimate is the largest escape rate, not an average over states."""
-    from chisurf.core.models.pda.rates import transitions_per_window
+    from chisurf.core.fluorescence.kinetics import transitions_per_window
 
     # State 2 escapes at 100 + 400 = 500 Hz; state 1 at 10 Hz.
     K = np.array([[0.0, 100.0, 0.0], [10.0, 0.0, 0.0], [0.0, 400.0, 0.0]])

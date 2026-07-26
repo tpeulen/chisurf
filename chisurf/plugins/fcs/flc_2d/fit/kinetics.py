@@ -33,31 +33,35 @@ __all__ = [
 def make_generator_matrix(rate_matrix: np.ndarray) -> np.ndarray:
     """Return the master-equation generator from an off-diagonal rate matrix.
 
-    Port of ``TK_RateEq_MakeExpMatrix``: given ``K`` with ``K[n, m]`` the rate ``n -> m``,
-    the generator ``G`` has ``G[m, n] = K[n, m]`` for the gain terms and
-    ``G[i, i] = -sum_{m} K[i, m]`` for the loss terms, so that ``dp/dt = G p`` and
-    ``p(t) = expm(G t) p(0)``.
+    Port of ``TK_RateEq_MakeExpMatrix``: given ``K`` with ``K[n, m]`` the rate
+    ``n -> m``, the generator ``G`` has ``G[m, n] = K[n, m]`` for the gain terms
+    and ``G[i, i] = -sum_{m} K[i, m]`` for the loss terms, so that ``dp/dt = G p``
+    and ``p(t) = expm(G t) p(0)``.
+
+    .. warning::
+
+       This module reads ``K[source, target]``, the **transpose** of the
+       convention everywhere else in ChiSurf
+       (:func:`chisurf.core.fluorescence.kinetics.generator_from_rate_matrix`
+       and the fittable schemes read ``K[target, source]``). Both readings are
+       self-consistent, so a matrix that crosses between them is not rejected —
+       it silently swaps the populations. The transpose here is that boundary,
+       in one place, rather than a second implementation of the generator.
     """
-    K = np.asarray(rate_matrix, dtype=float)
-    n = K.shape[0]
-    G = np.zeros((n, n))
-    for i in range(n):
-        for m in range(n):
-            if m != i:
-                G[m, i] += K[i, m]  # gain of state m from state i
-                G[i, i] -= K[i, m]  # loss of state i to state m
-    return G
+    from chisurf.core.fluorescence.kinetics import generator_from_rate_matrix
+
+    return generator_from_rate_matrix(np.asarray(rate_matrix, dtype=float).T)
 
 
 def equilibrium_populations(rate_matrix: np.ndarray) -> np.ndarray:
-    """Equilibrium populations (normalized null space of the generator)."""
-    G = make_generator_matrix(rate_matrix)
-    w, v = np.linalg.eig(G)
-    idx = int(np.argmin(np.abs(w)))  # eigenvalue closest to 0
-    p = np.real(v[:, idx])
-    p = np.abs(p)
-    s = p.sum()
-    return p / s if s > 0 else np.full(G.shape[0], 1.0 / G.shape[0])
+    """Equilibrium populations (normalized null space of the generator).
+
+    Takes ``K[source, target]``; see :func:`make_generator_matrix` for why that
+    is the transpose of the rest of ChiSurf.
+    """
+    from chisurf.core.fluorescence import kinetics as shared
+
+    return shared.equilibrium_populations(np.asarray(rate_matrix, dtype=float).T)
 
 
 @dataclass

@@ -47,6 +47,7 @@ import tttrlib
 
 import chisurf as cs
 import chisurf.core.models.tcspc.fret
+from chisurf.core.fitting.kinetics import RateMatrixMixin
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
 from chisurf.core.fluorescence.kinetics import occupation_time_fractions
@@ -61,7 +62,6 @@ from chisurf.core.models.pda.common import (
     resolve_fit_settings,
 )
 from chisurf.core.models.pda.nusiance import PdaFretNuisance
-from chisurf.core.models.pda.rates import RateMatrixMixin
 
 #: Starting distances when a state is added, cycled so a fresh scheme is spread
 #: over the FRET-sensitive range rather than stacked on one value.
@@ -75,7 +75,7 @@ class PdaDynamicNStates(RateMatrixMixin, FittingParameterGroup):
     whatever the rates say: fix ``k_13``/``k_31`` at zero for a linear chain,
     free everything for a fully connected one, link a pair to impose detailed
     balance. The rate half of that lives in
-    :class:`~chisurf.core.models.pda.rates.RateMatrixMixin`, shared with the
+    :class:`~chisurf.core.fitting.kinetics.RateMatrixMixin`, shared with the
     three-colour model — including the reason the rates are held in a **list**
     and not a dict.
     """
