@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **A kinetic scheme reported no parameters at all until something else asked
+  for them.** `RateMatrixParameters` is the shared Markov rate matrix behind
+  dynamic PDA, three-colour PDA, the photon-by-photon burst likelihood,
+  lifetime-FCS and the acquisition simulator — every off-diagonal `k_ij` an
+  ordinary `FittingParameter`, so topology is data (a linear chain is the
+  connected scheme with the long-range rates zeroed, detailed balance is a link
+  between two rates). But a group only lists its parameters after
+  `find_parameters` has run, which the fitting machinery does when it builds a
+  model, so a scheme inspected on its own — from a script, a test, or the
+  assistant — came back **empty**. That reads as "this model has nothing to
+  fit" rather than "ask again later". `parameters_all` now discovers on first
+  use, guarded against the re-entrancy in `find_parameters`, which clears
+  `_parameters` and then reads the same property on nested groups.
+* **And the cache had to follow the scheme.** `find_parameters` snapshots the
+  rate objects, and resizing replaces every one of them, so without
+  invalidation the group kept reporting the *old* rates: an optimiser handed
+  those would move parameters that no longer belong to the scheme while the
+  ones that do sat untouched — and the fit would report success. `_rebuild_rates`
+  now invalidates and bumps the structure version. Verified on both shapes: a
+  standalone scheme (2 states → 2 rates, 4 → 12, back to 2 → 2, always the live
+  objects, values carried over by label) and the mixin case
+  (`PdaDynamicNStates`, where resizing has to grow the per-state distances and
+  widths alongside the rates). 12 tests in
+  `test/fitting/test_rate_scheme_exposure.py`, nine of which fail without the
+  fix; they also pin the `K[target, source]` orientation, which silently
+  transposes a scheme when it is read the other way round.
+
 * **Ratio-FRET maps: a hole no longer votes on its neighbours (RF-036).** The
   post-division median filter in `ratio_image` used to fill every undefined
   pixel with the image-wide `np.nanmedian` and then run an ordinary
