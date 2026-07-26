@@ -2041,3 +2041,52 @@ source was changed. Findings RF-163..RF-168.
   `test/fluorescence/test_bva_static_line.py` pins the docstring, the
   single-implementation identity, agreement with the binomial shot-noise limit
   `sqrt(E(1-E)/n)`, and the zero-photon edge case.
+
+## GUI-tester run — Decay Analysis hub (2026-07-26)
+
+Drove the **Spectroscopy:Decay Analysis** hub headlessly (`QT_QPA_PLATFORM=offscreen`,
+arm64 env, private RPC port) the way a user does: a `Lifetime` fit of
+`test/data/tcspc/ibh_sample/Decay_577D.txt` with `Prompt.txt` as IRF
+(χ²ᵣ = 1.6259, τ = 4.1494 ns), then panel *2. MaxEnt MEM* (Refresh → Run →
+L-curve), panel *1. IRF Estimation* on the VV/VH files in
+`test/data/tcspc/Jordi/`, and panel *5. VV/VH G-Factor*. Screenshots at every
+step. The MEM analysis itself is sound — 1.2 s to a distribution peaked at
+τ = 4.219 ns, ⟨τ⟩ₓ = 4.108 ns, `chisq = 1.352`, flat weighted residuals, matching
+the discrete fit. Everything below is a defect seen while driving; no source was
+changed. Use case: [/usecases/decay-analysis-maxent.md](/usecases/decay-analysis-maxent.md).
+Findings RF-169..RF-173.
+
+### RF-169
+- **Status:** OPEN
+- **Severity:** S2 (every IRF estimation — including the successful ones — ends in a red error dialog, and the error handler raises again, uncaught)
+- **Location:** `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:762-770` (`IRFEstimatorTool.estimate_irf`)
+- **Finding:** `estimate_irf` finishes the estimation, updates `irf_data`, the result fields and every plot, and then calls `self._status_bar.showMessage("IRF estimation completed", timeout=5000)`. `QStatusBar.showMessage` takes `msecs`, not `timeout`, so this raises `TypeError: showMessage(self, message: Optional[str], msecs: int = 0): 'timeout' is not a valid keyword argument` on the *success* path. The surrounding `except Exception` then shows a modal `QMessageBox.critical(self, "Estimation Error", str(e))` quoting that PyQt signature at the user, and its own `self._status_bar.showMessage("IRF estimation failed", timeout=5000)` (`:769`) raises the identical `TypeError` a second time — this one escapes the handler entirely (the `traceback.print_exc()` below it is unreachable), so the Qt slot terminates on an uncaught exception. Verified twice in the same session, on `02_18-577+7.5uM(577)UP_8ps.dat` and on `H2O_8-0 ps_2048 ch.dat`: the estimate takes 0.12 s, the results (`τ`, `k`, `A`, `C`) and the plot are correct and visible *behind* the dialog, and the status bar stays frozen on "Estimating IRF…" because the "completed" message never lands. In the headless driver the modal blocked the run for minutes. Both call sites need `msecs=`; `_setup_statusbar` (`:155`) already uses the positional form correctly.
+- **Fix note:**
+
+### RF-170
+- **Status:** OPEN
+- **Severity:** S2 (the advertised "detect optimal nu via L-curve corner" never fires — 5.5 s of computation is discarded on every dataset)
+- **Location:** `chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui_run.py:167` (`_MaxentRunMixin._run_lcurve`)
+- **Finding:** The corner is only accepted if `np.any(mask) and getattr(chisurf, "math", None) is not None` — but `chisurf.math` no longer exists (the package moved to `chisurf.core.math`; `getattr(chisurf, "math", None)` returns `None`), so `corner_idx` stays `None` and `self.spin_nu.setValue(...)` at `:174-177` is never reached, on any data. Everything else in the button works: the 16-point `nu` scan runs, the L-curve is plotted, and the detector itself is fine — `chisurf.core.math.regularization.discrete_lcurve_corner` is importable and returns `6` on a synthetic L-curve. Verified through the GUI: `nu` read `0.001` before the click and `0.001` after a 5.55 s scan, although the scanned grid is `10**linspace(-5, -1, 16)`, which contains no point at `1e-3` — so a working corner selection could not have left the value unchanged. The `chisurf` name here comes from `ensure_qt_stack()`, so the stale reference is invisible to a grep for `import chisurf.math`. Two lines below, the plot itself is drawn unconditionally, which is why the button looks like it worked.
+- **Fix note:**
+
+### RF-171
+- **Status:** OPEN
+- **Severity:** S2 (lifetimes and the whole time axis are reported in the wrong unit — 125× off on the test file — and the control that would fix it is disabled)
+- **Location:** `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:568` (`load_decay_file`, `dt = float(metadata.get("dt", 1.0))`) with `:190-196` (`dt_spinbox.setEnabled(False)`)
+- **Finding:** The panel's own file filter is `VV/VH Files (*.dat)`, and `chisurf.core.fio.read_vv_vh` returns `metadata = {}` for legacy VV/VH files (`_parse_footer_metadata` finds no footer), so `dt` silently falls back to **1.0 ns/channel**. The *Time/Channel (ns)* spin box is created with `setEnabled(False)` and the tooltip "automatically set from data", so the user cannot correct it. Verified on `test/data/tcspc/Jordi/H2O_8-0 ps_2048 ch.dat` (8 ps/channel, the value is only in the file name): the status bar reads `Time: 0.00 to 2047.00 ns (Δ = 2047.00 ns, dt = 1.0000 ns, 2048 pts)`, the plot's x axis runs to 2000 **ns** for a 16.4 ns record, and *Estimation Results* reports `Lifetime (τ) = 27.6563 ns` / `Decay Rate (k) = 0.036158 ns⁻¹` where the true tail lifetime is 27.66 channels × 8 ps = **0.221 ns**. `estimate_irf` propagates the same `dt` into `time_axis`, `lifetime_ns` and `decay_rate_ns` (`core/estimation.py:74-88`), so the saved/transferred IRF carries the wrong axis too. Either make the box editable when the file brings no `dt`, or refuse to display a lifetime in ns until one is supplied.
+- **Fix note:**
+
+### RF-172
+- **Status:** OPEN
+- **Severity:** S2 (a nonsense lifetime is presented as a result to four decimals, with no warning and with the plot rendered unreadable)
+- **Location:** `chisurf/core/fluorescence/tcspc/irf_estimation.py` (`IRFEstimator.find_t0_t1` → `fit_exponential`), surfaced by `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:723-764` (`estimate_irf` → `_update_results`)
+- **Finding:** `find_t0_t1` can select a tail window inside the **zero-padded** end of a decay, and the exponential fit that follows is then fitted to nothing. Verified on `test/data/tcspc/Jordi/02_18-577+7.5uM(577)UP_8ps.dat` (VV half: 2048 channels, peak at 380, last non-zero channel 1806): `find_t0_t1(window_length=11, polyorder=3)` returns `t0 = 1807`, `t1 = 2047`, and `fit_exponential` returns `k = 470.85` per channel, i.e. a decay to 1/e in **1/470 of one channel**. The GUI prints that straight into *Estimation Results* as `Lifetime (τ) = 0.0021 ns`, `Decay Rate (k) = 470.850919 ns⁻¹`, and the "IRF ⊗ Exp (Forward Model)" overlay degenerates into a dense comb spanning the whole plot that hides both the measured decay and the estimated IRF (screenshot). The neighbouring file `H2O_8-0 ps_2048 ch.dat` takes the good branch (`t0 = 381`, `k = 0.0362`/channel) from the same button with the same settings, so this is data-dependent and silent. A sanity check on the fitted rate (e.g. `1/k` must be several channels and `t0` must sit within the region carrying counts) belongs either in `find_t0_t1` or in front of `_update_results`.
+- **Fix note:**
+
+### RF-173
+- **Status:** OPEN
+- **Severity:** S2 (the calibration constant is biased upward at low counts, and the uncertainty shown next to it is ~19× too large)
+- **Location:** `chisurf/plugins/vv_vh_g_factor/core/calculations.py:194-210` (`calculate_g_factor_core`)
+- **Finding:** Tail matching is implemented as the **mean of the per-channel ratios** `VV[i]/VH[i]` and the reported *StdDev* is `np.std` of that same population. Both are wrong for photon-counting data: `E[A/B] > E[A]/E[B]` by Jensen's inequality, so the mean of ratios is biased upward exactly where tails are dim, and the population spread of per-channel ratios is not the uncertainty of G — it does not shrink as the matching region grows. Verified by simulation: two independent Poisson streams at 10 counts/channel over 4000 channels with a **true ratio of exactly 1.0** give mean-of-ratios `1.1172` (SD 0.585) against ratio-of-sums `0.9966`. Verified through the GUI on `test/data/tcspc/Jordi/H2O_8-0 ps_2048 ch.dat` with the panel's own default matching region (70–90 % of the record, channels 1433–1843, ≈ 12 counts/channel): the panel shows `G-Factor 1.7418`, `StdDev 1.3884`, where the ratio of summed counts over the same region is `1.3211` and the standard error of the mean is `0.0718`. A third bias comes from the validity filter at `:203` — `g_factors_uncorrected > 0` drops the 36 of 410 channels where `VV == 0`, i.e. exactly the low-ratio ones. The estimator should be `sum(VV)/sum(VH)` over the region with a Poisson-propagated error (and the same for the background-corrected branch at `:230+`, which shows the same pattern).
+- **Fix note:**

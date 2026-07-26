@@ -2,6 +2,29 @@
 
 ## 2026-07-26
 
+* **GUI walk of the Decay Analysis hub — a MaxEnt lifetime distribution over an
+  existing fit.** Drove `Spectroscopy:Decay Analysis` headlessly end to end: a
+  `Lifetime` fit of the IBH sample decay with its prompt as IRF
+  (χ²ᵣ = 1.6259, τ = 4.1494 ns), then *2. MaxEnt MEM* — **🔄 Refresh** pulls the
+  decay, the IRF, the fit range and the nuisance parameters out of the current
+  fit and seeds τ_min from the IRF FWHM — **🎯 Run** (1.2 s) returning a
+  distribution peaked at τ = 4.219 ns, ⟨τ⟩ₓ = 4.108 ns, `chisq = 1.352` with flat
+  weighted residuals, i.e. the model-free answer agrees with the discrete fit.
+  Then the hub's calibration panels: *1. IRF Estimation* on the VV/VH files and
+  *5. VV/VH G-Factor*. Recorded as
+  [/usecases/decay-analysis-maxent.md](/usecases/decay-analysis-maxent.md) with
+  the UX notes; five defects filed as **RF-169..RF-173** in
+  [/reviews/findings.md](/reviews/findings.md): the IRF estimator ends every
+  run — successful ones included — in a modal *"Estimation Error"* and then
+  re-raises the same `TypeError` uncaught; the MEM **L-curve** discards its own
+  corner because the guard tests the removed `chisurf.math` module; VV/VH decays
+  load with `dt = 1 ns/channel` into a **disabled** spin box (τ reported as
+  27.6563 ns for a 0.221 ns tail); the rise/tail detector can pick the
+  zero-padded end and present `τ = 0.0021 ns` as a result; and the G-factor is a
+  mean of per-channel ratios (1.1172 on simulated data whose true ratio is
+  exactly 1.0) whose *StdDev* is the population spread rather than the error of
+  G. No source was changed.
+
 * **RF-099: a parameter that never moved is no longer graded by floating-point
   luck.** `_ess_1d` in
   [chisurf/core/fitting/diagnostics.py](chisurf/core/fitting/diagnostics.py)

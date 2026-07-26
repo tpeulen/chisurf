@@ -70,6 +70,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   browse, intensity, number & brightness, mean micro-time, IRF & background,
   phasor, then the pixel-wise MLE lifetime map.
   *(last driven 2026-07-26; RF-155..RF-162)*
+- [Decay Analysis hub — MaxEnt lifetime distribution](/usecases/decay-analysis-maxent.md)
+  — the model-free counterpart to a discrete lifetime fit: fit a decay, then let
+  the MaxEnt MEM panel read decay, IRF and range from that fit and return a
+  lifetime distribution; plus the hub's IRF-estimation and VV/VH G-factor
+  calibration panels. *(last driven 2026-07-26; RF-169..RF-173)*
 - [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET
