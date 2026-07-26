@@ -132,3 +132,31 @@ def test_refine_weak_data_leans_on_prior():
     # large bootstrap sigma keeps it close to the prior.
     assert abs(out["gamma"] - out["gamma_prior"]) <= abs(out["gamma_data"] - out["gamma_prior"]) + 1e-9
     assert out["data_sigma"] > 0.05
+    assert out["gamma_updated"] is True
+
+
+def test_refine_keeps_gamma_when_the_data_estimate_is_not_finite():
+    """A degenerate population must not clip a NaN gamma to the lower bound."""
+    gamma, alpha, delta = 1.4, 0.08, 0.05
+    g, r, y, lab = _simulate(gamma, alpha, delta, [0.25, 0.55], 200, seed=6)
+    # a third population without any signal makes 1/S — and with it the E-S
+    # population fit — non-finite
+    n_zero = 50
+    g = np.concatenate([g, np.zeros(n_zero)])
+    r = np.concatenate([r, np.zeros(n_zero)])
+    y = np.concatenate([y, np.zeros(n_zero)])
+    lab = np.concatenate([lab, np.full(n_zero, 2)])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        assert not np.isfinite(global_es_correction(g, r, y, lab, alpha=alpha, delta=delta)["gamma"])
+
+        c = CalibrationParameters()
+        set_priors_from_lightpath(c, _lightpath(0.74, alpha, delta), "donor", "acceptor",
+                                  "gdet", "rdet")
+        c.alpha, c.delta = alpha, delta
+        gamma_before = c.gamma
+        out = refine_calibration(c, g, r, y, lab)
+    assert out["gamma_updated"] is False
+    assert not np.isfinite(out["gamma_data"])
+    # the prior-seeded value survives — in particular it is not the 0.05 bound
+    assert c.gamma == pytest.approx(gamma_before)
+    assert out["gamma"] == pytest.approx(gamma_before)

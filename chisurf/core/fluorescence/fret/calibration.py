@@ -566,7 +566,11 @@ def refine_calibration(calib: CalibrationParameters, i_dd, i_da, i_aa, labels,
     Returns
     -------
     dict
-        ``{**calib.as_dict(), "gamma_data", "gamma_prior", "data_sigma"}``.
+        ``{**calib.as_dict(), "gamma_data", "gamma_prior", "data_sigma",
+        "gamma_updated"}``. When the E-S fit does not identify a finite
+        ``gamma`` (a degenerate population, e.g. one without signal),
+        ``gamma_data``/``data_sigma`` are ``NaN``, ``gamma_updated`` is
+        ``False`` and ``calib.gamma`` keeps its current (prior) value.
     """
     from chisurf.core.fitting.priors import as_prior
 
@@ -581,35 +585,47 @@ def refine_calibration(calib: CalibrationParameters, i_dd, i_da, i_aa, labels,
     if np.isfinite(est["beta"]) and est["beta"] > 0:
         calib.beta = float(est["beta"])
 
-    if data_sigma is None:
-        rng = np.random.default_rng(seed)
-        n = labels.size
-        boot = []
-        for _ in range(int(n_bootstrap)):
-            idx = rng.integers(0, n, n)
-            try:
-                gb = global_es_correction(
-                    g[idx], r[idx], y[idx], labels[idx], alpha=calib.alpha, delta=calib.delta
-                )["gamma"]
-                if np.isfinite(gb):
-                    boot.append(gb)
-            except Exception:
-                continue
-        data_sigma = float(np.std(boot)) if len(boot) > 2 else abs(gamma_data) * 0.1
-    data_sigma = max(float(data_sigma), 1e-6)
-
     prior = as_prior(calib._gamma.prior)
     gamma_prior = float(getattr(prior, "mu", gamma_data))
-    if prior is not None and hasattr(prior, "sigma"):
-        w_d = 1.0 / data_sigma ** 2
-        w_p = 1.0 / float(prior.sigma) ** 2
-        gamma_post = (gamma_data * w_d + gamma_prior * w_p) / (w_d + w_p)
-    else:
-        gamma_post = gamma_data
 
-    calib.gamma = float(np.clip(gamma_post, 0.05, 20.0))
+    if not np.isfinite(gamma_data):
+        # A degenerate population (e.g. one with zero total signal) makes the
+        # E-S fit return NaN. Bootstrapping and combining it would only spread
+        # the NaN, and clipping it into the bounded parameter would silently
+        # write the lower bound, so keep the current (prior-seeded) gamma.
+        gamma_post = float("nan")
+        data_sigma = float("nan")
+    else:
+        if data_sigma is None:
+            rng = np.random.default_rng(seed)
+            n = labels.size
+            boot = []
+            for _ in range(int(n_bootstrap)):
+                idx = rng.integers(0, n, n)
+                try:
+                    gb = global_es_correction(
+                        g[idx], r[idx], y[idx], labels[idx], alpha=calib.alpha, delta=calib.delta
+                    )["gamma"]
+                    if np.isfinite(gb):
+                        boot.append(gb)
+                except Exception:
+                    continue
+            data_sigma = float(np.std(boot)) if len(boot) > 2 else abs(gamma_data) * 0.1
+        data_sigma = max(float(data_sigma), 1e-6)
+
+        if prior is not None and hasattr(prior, "sigma"):
+            w_d = 1.0 / data_sigma ** 2
+            w_p = 1.0 / float(prior.sigma) ** 2
+            gamma_post = (gamma_data * w_d + gamma_prior * w_p) / (w_d + w_p)
+        else:
+            gamma_post = gamma_data
+
+    gamma_updated = bool(np.isfinite(gamma_post))
+    if gamma_updated:
+        calib.gamma = float(np.clip(gamma_post, 0.05, 20.0))
     out = calib.as_dict()
-    out.update({"gamma_data": gamma_data, "gamma_prior": gamma_prior, "data_sigma": data_sigma})
+    out.update({"gamma_data": gamma_data, "gamma_prior": gamma_prior,
+                "data_sigma": data_sigma, "gamma_updated": gamma_updated})
     return out
 
 

@@ -2871,11 +2871,34 @@ RF-239..RF-248 below.
 - **Fix note:**
 
 ### RF-243
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a failed E-S fit is written back as `gamma = 0.05`, the parameter's lower bound, and reported as a normal result)
 - **Location:** `chisurf/core/fluorescence/fret/calibration.py:597-609` (`refine_calibration`)
 - **Finding:** `refine_calibration` never checks that the data estimate is finite. When `global_es_correction` returns `NaN` — which it does for reachable data, e.g. a population with zero total signal makes `1/S` infinite and `np.polyfit` return all-`NaN` — `data_sigma` becomes `NaN` (`max(NaN, 1e-6)` is `NaN`), `gamma_post` becomes `NaN`, and `calib.gamma = float(np.clip(NaN, 0.05, 20.0))` writes `NaN` into the bounded `FittingParameter`, which silently degenerates it to the **lower bound**. Verified end-to-end: with one all-zero population, `global_es_correction` returns `{'gamma': nan, 'beta': nan, …}` and `refine_calibration` leaves `calib.gamma == 0.05` while the returned dict reports `gamma_data = nan`, `data_sigma = nan` — so `out["gamma"]` looks like a plausible number and flows on to `calibration_to_setup` and every corrected `E`. The sibling path already gets this right: `calibrate_from_samples:1033` gates on `np.isfinite(est["gamma"])` before assigning. Gate the assignment the same way (keep the prior/current value and say so in the result) and pin it with a test on a degenerate population.
-- **Fix note:**
+- **Fix note:** Reproduced against `HEAD` first — two healthy FRET populations
+  plus one all-zero population gave `global_es_correction → gamma = nan` and
+  `refine_calibration` overwrote a `gamma` of 1.7 with **0.05** while reporting
+  `gamma_data = nan`. `refine_calibration` now takes the non-finite data
+  estimate as a branch of its own: the bootstrap and the precision-weighted
+  combination are skipped (they could only spread the `NaN` and cost 60 further
+  degenerate fits), `gamma_post`/`data_sigma` stay `NaN`, and the write-back is
+  gated on `np.isfinite(gamma_post)` — which also covers a finite
+  `gamma_data` combined with a zero-width prior. `calib.gamma` therefore keeps
+  its current (prior-seeded) value, and the result dict carries a new
+  `"gamma_updated"` flag so a caller can tell a data-driven `gamma` from a
+  retained prior; the docstring and `docs/guides/fret_calibration.md` document
+  it. Pinned by
+  `test/fitting/test_fret_calibration.py::test_refine_keeps_gamma_when_the_data_estimate_is_not_finite`
+  (asserts the estimate really is non-finite, then that `gamma` is unchanged and
+  is not the 0.05 bound), with `gamma_updated is True` added to the existing
+  weak-data test. `test/fitting/test_fret_calibration.py` (9),
+  `test_calibration_samples.py`, `test_calibration_shared.py`,
+  `test_calibration_ndx_bridge.py`, `test_setup_calibration.py`,
+  `test_core_fit_anisotropy_calibration.py` (34), `test_accurate_fret.py`,
+  `test_general_correction.py`, `test_alex_sm.py`,
+  `test_calibration_simulation.py`, `test_ndxplorer_unmix_headless.py` (44) all
+  green; `ruff check` adds no new findings on the touched files (the one `F841`
+  and the `ruff format` drift in `calibration.py` are pre-existing at `HEAD`).
 
 ### RF-244
 - **Status:** OPEN

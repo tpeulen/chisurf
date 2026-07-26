@@ -2,6 +2,25 @@
 
 ## 2026-07-26
 
+* **A calibration that could not be measured now says so instead of returning a
+  bound.** `refine_calibration` clipped the posterior `gamma` into `[0.05, 20]`
+  without ever asking whether it was a number. One population without signal is
+  enough to make `1/S` infinite and the E-S population fit return `NaN`
+  throughout; `np.clip(nan, 0.05, 20.0)` written into the bounded
+  `FittingParameter` silently degenerates to its **lower bound**, so a `gamma`
+  of 1.7 came back as 0.05 — a plausible-looking number that then flows into
+  `calibration_to_setup` and every corrected `E`. The non-finite estimate is now
+  a branch of its own: no bootstrap (60 further degenerate fits that could only
+  spread the `NaN`), no combination with the prior, and the write-back gated on
+  a finite posterior, which also catches a zero-width prior. The retained value
+  is reported rather than disguised — the result dict gained `gamma_updated`, so
+  a caller can distinguish a data-driven `gamma` from a kept prior. The sibling
+  path `calibrate_from_samples` already gated this way; the two now agree.
+  Pinned by `test_refine_keeps_gamma_when_the_data_estimate_is_not_finite`,
+  which first asserts the estimate really is non-finite so it cannot quietly
+  stop testing the case. Guide: `docs/guides/fret_calibration.md`. Finding
+  RF-243.
+
 * **ndXplorer's gates were the same type all along, and now there is a proof.**
   `chisurf/core/roi/selections.py` converts ndXplorer's `DataSelection`
   hierarchy — a 1-D interval, a Mahalanobis ellipse, a painted histogram bitmap

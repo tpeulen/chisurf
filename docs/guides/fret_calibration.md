@@ -106,6 +106,12 @@ combination of the data estimate (from the E-S population fit, with an
 uncertainty bootstrapped over bursts) and the light-path prior: strong data
 follows the data, scarce data falls back to the physically-motivated prior.
 
+If the E-S fit does not identify a finite `gamma` — a degenerate population, for
+instance one selected without signal — `calib.gamma` keeps its current (prior)
+value and the result says so: `post["gamma_updated"]` is `False` and
+`post["gamma_data"]` is `NaN`. Check that flag before treating the returned
+`gamma` as a data-driven number.
+
 ### 2. Reference samples (donor-only, acceptor-only)
 
 The standard smFRET procedure derives the factors directly from reference
