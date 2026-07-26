@@ -3654,3 +3654,67 @@ Findings RF-305..RF-310.
 - **Location:** `chisurf/plugins/burst/accurate_fret/gui/view_model.py` (`es_series`, which returns `[]` without an acceptor-excitation channel) rendered by `chisurf/plugins/burst/accurate_fret/gui/accurate_fret.view.json:157-159` (the `E–S` plot section)
 - **Finding:** with **I_AA (acceptor)** unmapped — the normal state for MFD data without ALEX/PIE, and the case guide 41 §2 calls out — the calibration still runs and is honest in its report (`! no acceptor-excitation channel: every burst is taken to be doubly labelled …`, γ = 0.9162 ± 0.0198 from the lifetime route), but the **E–S** tab draws a black panel with axes, no points, no legend and no message. Verified: `es_series()` returns `[]` while `e_tau_series()` still returns four series (845 + 597 bursts plus the two FRET lines), and the grab of the E–S tab is empty. There is no stoichiometry without I_AA, which is a fact worth stating in the plot ("no acceptor-excitation channel — stoichiometry is undefined; map I_AA to enable this view") rather than leaving the user to guess whether the run failed.
 - **Fix note:**
+
+## Review 2026-07-26 — the H2MM burst plugin core
+
+Slice: `chisurf/plugins/burst/burst_h2mm/` — the numba H2MM engine
+(`core/h2mm.py`), the analysis layer (`core/analysis.py`), the engine dispatcher
+(`core/engines.py`), the tttrlib adapter (`core/h2mm_tttrlib.py`), the ndX export
+(`core/export.py`) and the backend service. Zero findings on record for this
+plugin before today. `core/photons.py`, `gui/tool.py` and two test modules were
+being edited by another instance and were read but not reviewed for findings.
+Everything below was reproduced in the `arm64` env against the real modules
+(scripts under `/tmp/h2mm_probe*.py`, not committed). Findings RF-311..RF-317.
+
+The one thing that dominates: **the engine has no representation for a zero
+inter-photon gap**, and the plugin's own "make it faster" lever (`time_scale`)
+manufactures them by the thousand.
+
+### RF-311
+- **Status:** OPEN
+- **Severity:** S1 (coincident macro times are silently propagated as if the smallest non-zero gap had elapsed; when every gap is zero the fit returns a uniform model with an inflated log-likelihood and `converged=True`)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/h2mm.py:284-299` (`prepare_bursts`: `unique_dt = unique_dt[unique_dt > 0]` followed by `np.searchsorted(unique_dt, dt)`), consumed by `:603` / `:637` (`pow_cache[slot]`) and mirrored in `chisurf/plugins/burst/burst_h2mm/core/h2mm_tttrlib.py:56` and `chisurf/plugins/burst/burst_h2mm/core/analysis.py:672`
+- **Finding:** `prepare_bursts` drops `Δt == 0` from the unique-gap table and then maps every gap through `searchsorted`, so a zero gap resolves to **slot 0 — the smallest *positive* Δt**. Its own docstring documents the input as "monotonically **non-decreasing**", i.e. ties are contractually allowed, and `extract_burst_photons` produces them by construction: `chisurf/core/fluorescence/burst/photons.py:229-230` does `t = t // time_scale`. That is the same `time_scale` the GUI exposes as "Macro-time scale" with range 1..100000 (`gui/tool.py:368-370`), the CLI as `--time-scale`, and that `backend/services.py:110-120` explicitly *tells the user to raise* ("Increase 'Macro-time scale' (e.g. to ×100) to speed up"). Verified on 200 synthetic bursts × 60 photons with exponential gaps: `time_scale=10` → 10.4 % of all gaps are zero, `time_scale=50` → 42.5 %, `time_scale=100` → 63.0 % — and every one of them is propagated with `A**1` instead of `A**0 = I`. Verified directly on a tie-containing burst: `t = [0,0,5,5,5,12]` gives `unique_dt = [5,7]`, `gap_slot = [0,0,0,0,1,-1]`, so the true gaps `[0,5,0,0,7]` are seen by the engine as `[5,5,5,5,7]`. The degenerate case is worse: when *all* gaps are zero `unique_dt` is empty, `n_dt == 0` short-circuits the cache fill (`:888`) and the never-filled all-zero `pow_cache` is still indexed — a 20-burst × 30-photon dataset returns `loglik = -13.86` for 600 photons (= 20·ln 0.5, only the first photon of each burst counted), `trans = obs = [[0.5,0.5],[0.5,0.5]]`, `converged=True`, `bic = 59.7` — a score no honest model can beat, so the state scan would select it. Give `Δt = 0` its own slot by keeping `0` in `unique_dt` (the pair-power build already returns `(I, 0)` for `power=0`; the spectral build at `:461` needs a `Δt == 0` guard because `lam ** (dt-1)` is singular there), and add a guardrail test that a tie-containing burst scores identically to the same photons with the tie resolved by the identity propagator.
+- **Fix note:**
+
+### RF-312
+- **Status:** OPEN
+- **Severity:** S2 (a photon the model assigns probability zero *raises* the log-likelihood instead of making it `-inf`, so a broken model outscores every valid one in BIC/ICL selection)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/h2mm.py:589-593` and `:607-611` (`_estep`: `scale[li] = tot` then `if tot > 0.0: … ll_local += math.log(tot)`)
+- **Finding:** when the forward scale `tot` underflows to exactly zero the E-step skips both the normalisation *and* the `log`, so that photon contributes `0.0` to the log-likelihood — i.e. it is scored as probability **1**, the most favourable value possible, rather than the `-inf` it actually has. Every subsequent photon of the burst then has `alpha == 0` and is likewise scored as 1. This is what makes RF-311's degenerate case invisible: 600 photons report `loglik = -13.86` (only 20 non-zero scales, one per burst) instead of `-inf`, and the resulting `bic = 59.7` beats any real fit, so `scan_states` / `analyze` select the garbage model without a single warning. It also silently rewards any other zero-probability path (an emission column that EM has driven to exactly 0 for every state, an unfilled propagator row). Make a zero scale poison the result — accumulate `-inf`, or count the dropped photons and raise/log — so an impossible dataset cannot score better than a possible one, and pin it with a test asserting `optimize` on data whose propagators are undefined does not return a finite BIC.
+- **Fix note:**
+
+### RF-313
+- **Status:** OPEN
+- **Severity:** S2 (two different definitions of "dwell duration" in one function; the last dwell of every burst is systematically short by one inter-photon gap, and the documented single-photon case is wrong)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/analysis.py:675-691` (`_dwells_and_transitions`: interior `int(t[rel] - t[run_start])` vs trailing `int(t[e - s - 1] - t[run_start])`) against the `Dwell.dur` docstring at `:58-61` ("Dwell duration in base time units (``0`` for a single-photon dwell)")
+- **Finding:** an interior dwell is measured from its own first photon to the **first photon of the next dwell** (so it includes the gap that crosses the transition), while the trailing dwell of every burst is measured to **its own last photon** (so it excludes any trailing gap). Verified on one burst at `t = [0,10,20,30,40]` with Viterbi path `[0,0,1,0,0]`: the leading two-photon dwell (photons 0–1, spanning t = 0..10) is reported `dur = 20`, the trailing two-photon dwell (photons 3–4, spanning t = 30..40) is reported `dur = 10` — identical photon counts and identical internal spans, durations differing by a full gap. The same run shows the single-photon interior dwell (photon 2) reported as `dur = 10`, not the documented `0`; `0` only ever happens for a single-photon *trailing* dwell. Since every burst contributes exactly one trailing dwell and bursts hold only a handful of dwells, this is a large, one-sided bias in `H2mmAnalysis.dwell_times` and in the `dwell_mean_s` the RPC result reports (`backend/services.py:237-240`). Pick one convention (burstH2MM measures to the next transition and flags edge dwells — the `Is Edge` column already exists in `core/export.py:244`), apply it to both branches, fix the docstring, and pin it with a test on a hand-built path.
+- **Fix note:**
+
+### RF-314
+- **Status:** OPEN
+- **Severity:** S3 (the tttrlib fast path raises `IndexError` on a dataset with no positive inter-photon gap, and every caller swallows it silently with no log)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/h2mm_tttrlib.py:54-57` (`_to_engine`, `unique_dt[np.clip(slots, 0, len(unique_dt) - 1)]`) against the sibling reconstruction in `chisurf/plugins/burst/burst_h2mm/core/analysis.py:255` (`if n > 1 and uniq.size:`), swallowed by `chisurf/plugins/burst/burst_h2mm/core/engines.py:70-73` and `:157-165` (`except Exception: pass`)
+- **Finding:** `_to_engine` rebuilds macro times from `unique_dt[...]` without the `uniq.size` guard that `_subset_bursts` has. With an empty `unique_dt` (RF-311's all-ties case) `len(unique_dt) - 1 == -1`, so `np.clip(slots, 0, -1)` yields `-1` and the fancy-index raises `IndexError: index -1 is out of bounds for axis 0 with size 0` — verified directly. Both `engines.viterbi` and `engines.fit_one` then catch **every** exception with a bare `pass` and no logging, so the run silently falls back to the numba engine and produces RF-311's garbage fit instead of failing. The same blanket catch hides any genuine defect in the C++ backend: a mis-built or broken tttrlib costs a several-fold slowdown that nothing reports, and `active_backend()` (`engines.py:62-64`, the only introspection, and currently **called from nowhere in the tree**) would still answer `"tttrlib"`. Add the `uniq.size` guard, narrow the catch, log the fallback once with the exception, and make `active_backend()` reflect what actually ran (or delete it).
+- **Fix note:**
+
+### RF-315
+- **Status:** OPEN
+- **Severity:** S3 (Viterbi decoding allocates and fills the full ρ transition-count tensor it never reads — tens to hundreds of MB per call)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/h2mm.py:1029-1035` (`viterbi`: `rho_cache = np.zeros((n_slots, n, n, n, n))` passed to `_fill_caches`) — only `pow_cache` is used afterwards (`:1040`)
+- **Finding:** ρ exists for the Baum-Welch M-step; Viterbi needs only `A**Δt`. The function nevertheless allocates an `(n_slots, n, n, n, n)` float64 array and has `_build_caches` / `_build_caches_eig` populate every entry, then never reads it. The cost is real and grows as `n_states**4`: at `n_slots = 20000` — the very size `backend/services.py:110` warns about but does not cap — the tensor is **41 MB** for 4 states (measured, versus 2.6 MB for the propagators actually used), 207 MB for 6 states and 655 MB for 8; `n_slots` itself is unbounded. `scan_states` calls `viterbi` once per state count (`analysis.py:576`) and `analyze` once more (`:782`). Split the cache fill so Viterbi builds only `A**Δt` (a `rho=None` / dedicated `_build_pow` path), and keep the ρ build for the E-step.
+- **Fix note:**
+
+### RF-316
+- **Status:** OPEN
+- **Severity:** S3 (the likelihood profile rebuilds the Δt propagator caches at every grid point although the transition matrix is fixed for the whole scan)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/analysis.py:501-506` (`profile_likelihood`'s inner loop → `fixed_loglik`) → `:376` (`_h2mm_optimize(model, data, max_iter=1, tol=0.0)`) → `chisurf/plugins/burst/burst_h2mm/core/h2mm.py:880-889` (fresh `pow_cache`/`rho_cache` + `_fill_caches` per call)
+- **Finding:** the profile sweeps a state's apparent E (and S) by rewriting **only** the emission row — `_model_with_state_e` / `_model_with_state_s` copy `prior` and `trans` unchanged (`analysis.py:402-403`, `:426-427`) — so `A**Δt` and ρ are identical at every one of the `len(jobs) × n_points` evaluations. Each one nevertheless goes through the full `optimize` entry point, which allocates both caches and rebuilds them from scratch. For a 3-state ALEX fit that is 6 jobs × 25 points = 150 rebuilds of the same tensors; at `n_slots = 20000` each rebuild costs a 41 MB allocation plus the measured ~0.08 s pair-power build, i.e. ~12 s and 6 GB of allocation churn spent recomputing a constant. Expose a fixed-model forward-likelihood entry point that takes prebuilt caches (or cache them on the `BurstPhotons` keyed by `trans`), and have `profile_likelihood` build them once.
+- **Fix note:**
+
+### RF-317
+- **Status:** OPEN
+- **Severity:** S3 (a column named "Mean Macro Time (s)" carries the burst's *first* photon time; the per-dwell table in the same module computes the real mean)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/export.py:137` (`cols["Mean Macro Time (s)"].append(float(meta.macro_time[s]) * base_time_s)`, `s = offsets[b]`) against `:232-233` in `build_dwell_table` (`float(macro[s0:s1].mean()) * base_time_s`)
+- **Finding:** the per-burst ndX table fills the column with `meta.macro_time[s]`, the macro time of the burst's **first** photon, under a header that says *mean*. The per-dwell table two functions down uses the genuine mean of the dwell's photons, so the two exported tables disagree on what the same column name means, and the module docstring singles this name out as "the column ndX auto-selects as an axis" (`export.py:8-9`) — i.e. it is the axis a user plots against. Either compute `macro[s:e].mean()` for parity with the dwell table, or rename the burst column to what it is (`Start Macro Time (s)`).
+- **Fix note:**
