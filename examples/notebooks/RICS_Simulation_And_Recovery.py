@@ -84,22 +84,37 @@ for label, t in (("pixel→pixel", scan.pixel_time), ("line→line", scan.line_t
 # %% [markdown]
 # ## 2. Look at the images
 #
-# A single frame is mostly shot noise with a few molecules in it. Averaging over
-# frames shows the illumination is flat — there is no structure in the sample,
-# only moving point emitters.
+# The sample has no structure — it is point emitters in solution — so anything
+# you see in a frame is a molecule caught by the beam.
+#
+# Look at the **shape** of what the beam catches. Molecules appear as short
+# *horizontal streaks*, not round spots: the beam crosses a molecule's position
+# in 20 µs per pixel and so sees it several pixels in a row, but by the time it
+# returns 1.28 ms later on the next line the molecule has moved away. **That
+# elongation is the RICS signal, visible before any correlation is computed.**
+#
+# The third panel zooms in so the streaking is unmistakable. (The frame average
+# is deliberately not shown: with only ~0.5 molecules in the focus, 60 frames is
+# nowhere near enough to average flat, and a blotchy mean would say more about
+# the frame count than about the sample.)
 
 # %%
-fig, axes = plt.subplots(1, 3, figsize=(11, 3.4))
-for ax, (title, img) in zip(
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.6))
+for ax, (title, img, extent) in zip(
     axes,
-    [("frame 0", scan.images[0]), ("frame 30", scan.images[30]),
-     ("mean of 60 frames", scan.images.mean(axis=0))],
+    [("frame 0", scan.images[0], None),
+     ("frame 30", scan.images[30], None),
+     ("frame 0, zoom (24×24 px)", scan.images[0][20:44, 20:44], (20, 44, 44, 20))],
 ):
-    m = ax.imshow(img, cmap="viridis", origin="upper")
+    m = ax.imshow(img, cmap="viridis", origin="upper", extent=extent,
+                  interpolation="nearest")
     ax.set_title(title)
     ax.set_xlabel("x / pixel")
     fig.colorbar(m, ax=ax, fraction=0.046, label="counts")
 axes[0].set_ylabel("y / pixel")
+axes[2].set_ylabel("y / pixel")
+fig.suptitle("molecules are horizontal streaks — the beam outruns them along a line, "
+             "not across lines", y=1.04, fontsize=10)
 fig.tight_layout()
 
 # %% [markdown]

@@ -143,9 +143,22 @@ ax0.set(xlabel="x / px", ylabel="y / px", title="recovered trajectories")
 ax0.invert_yaxis()  # image coordinates: row 0 at the top
 ax0.set_aspect("equal")
 
-ax1.hist(lengths, bins=20)
-ax1.set(xlabel="track length / frames", ylabel="tracks", title="track lengths")
+# Per-track MSD rather than a histogram of track lengths: on a sparse field every
+# track runs the whole movie, so the length histogram is a single bar and says
+# nothing. The spread *between* tracks is the interesting quantity — it is what
+# the bootstrapped error bar below is measuring.
+for i in tracks.ids():
+    frames, pos = tracks.track(i)
+    lag, msd, _ = tk.mean_squared_displacement(pos, frames, max_lag=20)
+    ax1.plot(lag, msd, "-", lw=1, alpha=0.8)
+ax1.plot(np.arange(1, 21), 4 * D_TRUE * np.arange(1, 21), "k--", lw=2, label="truth")
+ax1.set(xlabel="lag / frames", ylabel="MSD / px²", xscale="log", yscale="log",
+        title="per-track MSD (one line per particle)")
+ax1.legend()
 fig.tight_layout()
+
+print(f"track lengths: {lengths.min()}–{lengths.max()} frames "
+      f"(all {len(tracks)} tracks span the whole movie on a field this sparse)")
 
 # %% [markdown]
 # ### Did the linking keep the identities?
