@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **A gated selection in the explorer can now become a full ChiSurf fit, and the
+  explorer earned a place in the manual.** Two threads, one subsystem. First,
+  documentation: ndXplorer had only a README, so its ideas were invisible to the
+  manual. Added a concepts page (multidimensional exploration — the burst
+  parameter space, marginals, the safe derived-parameter equation engine,
+  constants as crosslinkable `FittingParameter`s, marginal fitting) and two
+  numbered guides (46 the explorer workflow, 47 the analysis bridges), with a
+  real figure generated from the marginal-fit engine — two smFRET populations on
+  a fitted static FRET line plus a two-Gaussian E marginal — registered in the
+  concept/guide indexes and the `make_figures` pipeline.
+
+  Second, the **analysis bridges**. Fitting a marginal answers *where* a
+  population is; it cannot resolve a shot-noise distance distribution or a donor
+  decay — those need the photons back. The bridge is the handoff: a gate is a set
+  of selections, and every ChiSurf burst reader consumes the same per-file
+  `(first_photon, last_photon)` intervals, so the whole thing is one pure
+  transform (`selection_to_burst_slices`, verified to reproduce the trusted
+  `.bst` writer) plus a thin dispatcher (`BurstAnalysisBridge`) that marshals
+  those intervals into an RPC call — FCS (`burst_fcs.*`, already present), PDA, or
+  lifetime MLE. PDA had no burst-slices endpoint, so added the Qt-free core
+  service `pda.from_bursts` (wraps the PDA reader's `burst_slices` path →
+  S1/S2 histogram; registered in `server_methods.json`; tested end-to-end against
+  the `BH_SPC132` fixture). Found and fixed a real gap: the in-process client
+  ndXplorer uses in the GUI only registered the phasor/FRET-line plugins, so none
+  of the burst analyses were reachable — it now builds the core manifest and
+  registers `burst_fcs` + `burst_mle`, exposing every bridge target plus
+  `fit.*`/`dataset.*`. See [PRD-56](/prds/prd-56.md); client in
+  `modules/ndxplorer/ndxplorer/analysis/burst_bridge.py` (committed in the
+  submodule), server in `chisurf/server/services/pda.py`.
+
 * **An ICS region reported the wrong particle number — twice over.** Restricting an
   image correlation to a region made `G(0)` depend on how much of the field was
   analysed, and since `G(0)` scales as `1/N_particles` that is a wrong concentration.

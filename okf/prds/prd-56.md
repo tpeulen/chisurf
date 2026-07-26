@@ -253,6 +253,29 @@ Per the repo rule *every feature needs a headless test path*:
   column materializes and the semicircle overlay geometry is fetched.
 - **GUI smoke (offscreen)**: the phasor panel appears on `(g,s)` axes; overlays render.
 
+# Analysis bridges: a selection becomes a fit
+
+The same RPC channel carries a second class of feature beyond phasor overlays:
+routing a *gated sub-population* from the companion tool into a full ChiSurf burst
+analysis. A gate is a set of selections; every ChiSurf burst reader consumes the
+same representation of a burst set — per-file `(first_photon, last_photon)`
+photon-index intervals. So the bridge is one pure transform (gate mask → per-file
+intervals, verified to reproduce the tool's own burst-ID export) plus a thin
+dispatcher that marshals those intervals into an RPC call:
+
+- **Burst correlation (FCS)** — an existing `burst_fcs.*` service (one call per file).
+- **PDA** — a Qt-free core service `pda.from_bursts` wrapping the PDA reader's
+  burst-slicing path; returns an S1/S2 experimental histogram ready to fit.
+- **Lifetime (MLE)** and any future burst analysis — a configurable method name
+  (`burst_mle.*`), reached through the same generic dispatch.
+
+The in-process client the tool uses in the GUI now builds the **core service
+manifest** and registers the burst plugins, so every bridge target plus the
+generic `fit.*` / `dataset.*` path is reachable with no server process. The
+transform and dispatcher live on the tool side and stay free of any ChiSurf
+import; the analyses live entirely in ChiSurf. Documented in the manual as the
+exploration concept and the selection-to-fit guide.
+
 # Non-goals
 
 - Network transport security / TLS / per-call authz — deferred to PRD-37.
