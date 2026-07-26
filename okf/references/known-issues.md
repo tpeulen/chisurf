@@ -124,20 +124,47 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**Found 2026-07-26, owner unknown.**
-`test/gui/test_pda2c_consistency.py::test_consistency_check_rejects_the_wrong_kinetic_scheme`
-fails: the parametric bootstrap **accepts** a deliberately wrong kinetic scheme
-at p = 0.297, where the test wants rejection. Its sibling
-(`..._accepts_the_correct_kinetic_scheme`) passes, so the check runs — it is the
-discrimination that is gone.
+**Found 2026-07-26 while unifying the progress bars. `PDBFolderLoad` cannot be
+constructed at all.** `chisurf/gui/widgets/pdb/pdb.py` has rotted against a
+refactored `TrajectoryFile`, in two places: `__init__` calls `TrajectoryFile()`
+and `onLoadStructure` calls `TrajectoryFile(use_objects=…, calc_internal=…,
+verbose=…)`, but the current constructor requires a positional `p_object` and
+takes none of those keywords. The widget is reachable — the modelling
+experiment page builds one (`gui/widgets/experiments/modelling/modelling.py`) —
+so that page is broken too.
 
-Not caused by the PDA2c/PDA3c rename that found it: applying the rename
-substitutions to each file's HEAD version reproduces the working tree exactly
-for every file in the two-colour package, so that change moved no numerics.
-Bisect instead against the concurrent edits to the fitting layer
-(`core/fitting/engine.py`, `parameter.py`, `kinetics.py` all moved the same day),
-since the test runs a real `fit.run()` before resampling and is sensitive to what
-the optimiser does with the free-parameter set.
+Half of it is fixed: `LoadThread`'s `procDone`/`partDone` signals had been
+commented out during the PyQt-to-qtpy move (their `pyqtSignal` spelling did not
+survive), so construction raised `AttributeError` one line earlier still; they
+are restored as `QtCore.Signal`. The remaining `TrajectoryFile` calls need a
+real port, and what `use_objects` / `calc_internal` were meant to select is no
+longer expressed anywhere in that class — so the intent has to be recovered
+before the call sites can be rewritten, which is why this is logged rather than
+guessed at.
+
+**Found and fixed 2026-07-26 — and the first diagnosis was wrong.**
+`test_consistency_check_rejects_the_wrong_kinetic_scheme` was accepting a
+deliberately wrong scheme at p = 0.297. It was filed here as "not the rename,
+bisect the concurrent fitting-layer edits". That attribution was wrong: the
+cause was the earlier change that made `k_ex` an **absolute rate in Hz**
+(time-binned PDA) while this test still set it as the dimensionless
+`K = (k1 + k2) T`. At 2 Hz over a 2 ms window that is K = 0.004 — the
+"dynamic" data the test generated was *static*, so the static scheme it exists
+to reject fitted it perfectly. The sibling test in
+`test_pda2c_model_editor.py` had already been converted; this one was missed.
+
+Fixed by converting through the dataset's observation time, as the sibling
+does. With real dynamics the model recovers K = 2.04 against a truth of 2.0 and
+the static scheme is crushed (chi2r 176 against 1.38), so the rejection is now
+emphatic.
+
+Worth keeping from the episode: **a unit change in a shared parameter needs a
+sweep of every test that sets it**, because a test that silently generates the
+wrong physics still passes — it just stops testing anything. And the acceptance
+branch of that pair is now pinned to a typical realisation: at K = 2 the default
+seed gives chi2r = 1.55 at the *true* parameters where seeds 2-8 give 0.80-1.18,
+and the bootstrap correctly rejects that draw. Asserting on it would test the
+noise, not the model.
 
 **Found 2026-07-26 while making the PDA3c rate matrix fittable.** A rate fitted
 by the three-colour dynamic model comes out **systematically fast, by some tens

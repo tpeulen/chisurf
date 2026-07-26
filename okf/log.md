@@ -2,6 +2,31 @@
 
 ## 2026-07-26
 
+* **A test that generated the wrong physics and still passed.** The PDA
+  consistency check was accepting a deliberately wrong kinetic scheme
+  (p = 0.297). Cause: `k_ex` became an **absolute rate in Hz** when time-binned
+  PDA landed, but `test_pda2c_consistency.py` still set it as the dimensionless
+  `K = (k1 + k2) T`. At 2 Hz over a 2 ms window that is K = 0.004 — the
+  "dynamic" data it generated was *static*, so the static scheme it exists to
+  reject fitted it perfectly. Converted through the dataset's observation time,
+  as the sibling in `test_pda2c_model_editor.py` already was; with real dynamics
+  the model recovers K = 2.04 against a truth of 2.0 and the static alternative
+  is crushed (chi2r 176 against 1.38).
+
+  **The first diagnosis was wrong and is corrected in the record.** This was
+  filed in known-issues as "not the rename — bisect the concurrent fitting-layer
+  edits", on the strength of having proved the rename content-neutral. Proving
+  what it *was not* is not the same as knowing what it was, and the real cause
+  was an earlier change of mine. The entry now says so.
+
+  Two things worth keeping: a **unit change in a shared parameter needs a sweep
+  of every test that sets it**, since a test generating the wrong physics still
+  passes — it just stops testing anything. And the paired acceptance test is now
+  pinned to a *typical* realisation: at K = 2 the default seed gives chi2r = 1.55
+  at the true parameters where seeds 2-8 give 0.80-1.18, and the bootstrap
+  correctly rejects that draw, so asserting on it tested the noise rather than
+  the model.
+
 * **PCH fitted a 1-D Gaussian volume and called it a 3-D one (RF-291).**
   `compute_p1` integrated the single-molecule Poisson term over the reduced
   radius `x` with `dV → dx` — the `4π w³ x² dx` volume element was simply absent,
