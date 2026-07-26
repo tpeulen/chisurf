@@ -2,32 +2,44 @@
 
 ## 2026-07-26
 
-* **A kinetic scheme reported no parameters at all until something else asked
-  for them.** `RateMatrixParameters` is the shared Markov rate matrix behind
-  dynamic PDA, three-colour PDA, the photon-by-photon burst likelihood,
-  lifetime-FCS and the acquisition simulator — every off-diagonal `k_ij` an
-  ordinary `FittingParameter`, so topology is data (a linear chain is the
-  connected scheme with the long-range rates zeroed, detailed balance is a link
-  between two rates). But a group only lists its parameters after
-  `find_parameters` has run, which the fitting machinery does when it builds a
-  model, so a scheme inspected on its own — from a script, a test, or the
-  assistant — came back **empty**. That reads as "this model has nothing to
-  fit" rather than "ask again later". `parameters_all` now discovers on first
-  use, guarded against the re-entrancy in `find_parameters`, which clears
-  `_parameters` and then reads the same property on nested groups.
-* **And the cache had to follow the scheme.** `find_parameters` snapshots the
-  rate objects, and resizing replaces every one of them, so without
-  invalidation the group kept reporting the *old* rates: an optimiser handed
-  those would move parameters that no longer belong to the scheme while the
-  ones that do sat untouched — and the fit would report success. `_rebuild_rates`
-  now invalidates and bumps the structure version. Verified on both shapes: a
-  standalone scheme (2 states → 2 rates, 4 → 12, back to 2 → 2, always the live
-  objects, values carried over by label) and the mixin case
-  (`PdaDynamicNStates`, where resizing has to grow the per-state distances and
-  widths alongside the rates). 12 tests in
-  `test/fitting/test_rate_scheme_exposure.py`, nine of which fail without the
-  fix; they also pin the `K[target, source]` orientation, which silently
-  transposes a scheme when it is read the other way round.
+* **chimol: sessions.** `session_save` / `session_load` / `session_info`, with
+  `save x.pse` and `load x.pse` routed by extension because that is what a PyMOL
+  user types. Everything comes back: objects, representations, per-atom colours,
+  manual bonds and their orders, group collapse state, named scenes, display
+  settings and the camera down to its clip planes. Verified by comparing two real
+  GL framebuffers — a reloaded session is **pixel-for-pixel identical**, which is
+  the only check that covers the whole path.
+
+  The object field list is **derived from the state dataclass** rather than written
+  out. It has 53 fields; a hand-kept list drifts the first time one is added and
+  the drift is silent — the session saves, reloads, and quietly lacks whatever was
+  new. A test guards it by round-tripping `bond_edits`, a field added by separate
+  work and named nowhere in the session code.
+
+  Three defects found while building it:
+
+  - **JSON objects only have string keys, and some of ours are tuples.** The
+    bond-edit map is keyed by an `(i, j)` atom pair, so skipping non-string keys
+    dropped every recorded bond *order* while keeping the bonds: a reloaded
+    session had single bonds where doubles had been set. Caught by the
+    `bond_edits` test.
+  - **The camera must be restored after the GUI refresh.** Rebuilding the panel
+    re-zooms, replacing the saved distance and clip planes with ones computed from
+    the bounding sphere. Rotation and pivot survived, so the view looked restored
+    while the framing was wrong — three numbers out of eighteen.
+  - **`get_view` is a command, not a viewer method** (`get_view_state` is), so the
+    first version stored a null view behind an `except` clause.
+
+  Deliberately **not** PyMOL-compatible: a `.pse` is a pickle of PyMOL's C
+  structures. chimol writes a zip of `manifest.json` + `arrays.npz` — readable
+  without chimol, and loading one cannot execute code (`allow_pickle=False`),
+  because a format people exchange should not be a code-execution path. Writing to
+  `.pse` says so, and a real PyMOL session handed to `session_load` is named as
+  such rather than reported as corrupt. Anything a session cannot carry is named
+  in the message rather than dropped.
+
+  21 tests, a new guide section, and [pymol-parity](/plugins/pymol-parity.md)
+  updated — sessions were a Tier 1 gap.
 
 * **Ratio-FRET maps: a hole no longer votes on its neighbours (RF-036).** The
   post-division median filter in `ratio_image` used to fill every undefined

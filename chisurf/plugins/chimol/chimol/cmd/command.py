@@ -9,12 +9,13 @@ from .loader import LoaderCommands
 from .measurements import MeasurementMixin
 from .rendering import RenderingMixin
 from .selection import SelectionMixin
+from .session import SessionMixin
 from .settings import SettingsMixin
 
 MixinType = type[BaseCmd]
 
 
-class Cmd(LoaderCommands, SelectionMixin, SettingsMixin, RenderingMixin, AnimationMixin, MeasurementMixin, EditingMixin, LifecycleMixin, ExportMixin, BaseCmd):
+class Cmd(LoaderCommands, SelectionMixin, SettingsMixin, RenderingMixin, AnimationMixin, MeasurementMixin, EditingMixin, LifecycleMixin, ExportMixin, SessionMixin, BaseCmd):
     """Thin aggregator that wires together all command mixins."""
 
     def as_(self, rep: str) -> None:

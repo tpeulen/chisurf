@@ -51,6 +51,7 @@ bearing for this group's work**, and those are tiered below.
 | `create` / `extract` | **done** | Child drawn in its parent's frame, true coordinates kept |
 | `origin` | **done** | Needed the two-point camera the view tuple defines |
 | Undo / redo | **done** | PyMOL's scope: coordinates, per object, ring of 16 |
+| Sessions (`save`/`load` a whole state) | **done** | Own zip format, not PyMOL's pickled `.pse` |
 
 **Tier 1 is closed.** Everything a day's work touches is present. What follows is
 Tier 2, which is real but has workarounds.
@@ -232,6 +233,47 @@ confusion is exactly what hid `resn`.
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 `set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
 settings store and are deliberately not started.
+
+## Sessions carry everything, and the field list is derived
+
+`session_save` / `session_load` / `session_info`, with `save x.pse` and
+`load x.pse` routed by extension because that is what a PyMOL user types. A
+reloaded session renders **pixel-for-pixel identically** to the one saved --
+verified by comparing two real GL framebuffers, which is the only check that
+covers the whole path.
+
+**The object field list is derived from the state dataclass, not written out.**
+That dataclass has 53 fields; a hand-kept list drifts the first time one is
+added, and the drift is silent -- the session saves, reloads, and quietly lacks
+whatever was new. A test guards it by round-tripping `bond_edits`, a field added
+by separate work and named nowhere in the session code.
+
+Three things that were bugs first:
+
+* **JSON objects only have string keys, and some of ours are tuples.** The
+  bond-edit map is keyed by an `(i, j)` atom pair. Skipping non-string keys
+  dropped every recorded bond *order* while keeping the bonds, so a reloaded
+  session had single bonds where doubles had been set. Non-string-keyed dicts are
+  now stored as key/value pairs.
+* **The camera has to be restored after the GUI refresh.** Rebuilding the object
+  panel re-zooms, replacing the saved distance (slot 11) and clip planes (15, 16)
+  with ones computed from the bounding sphere. Rotation and pivot survived, so
+  the view looked restored while the framing was wrong -- three numbers out of
+  eighteen, invisible unless compared element by element. `load_session` returns
+  the view so whoever touches the camera last is the one restoring it.
+* **`get_view` is a command; the viewer's accessor is `get_view_state`.** Reaching
+  for the command name stored a null view behind an `except` clause.
+
+**Deliberately not PyMOL-compatible.** A `.pse` is a pickle of PyMOL's C
+structures. chimol writes a zip of `manifest.json` plus `arrays.npz`: readable
+without chimol, and loading one cannot execute code (`allow_pickle=False`). A
+format people exchange should not be a code-execution path. Saving to `.pse` says
+so, and a real PyMOL session handed to `session_load` is named as such rather
+than reported as corrupt -- that is the mistake a PyMOL user will actually make.
+
+Anything a session cannot carry -- an opaque RMF hierarchy handle, say -- is
+**named in the message** rather than dropped, and a field from a newer session is
+reported instead of crashing the load.
 
 ## Editing bonds, and the fixture that could not test it
 

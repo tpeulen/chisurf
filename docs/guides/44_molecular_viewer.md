@@ -50,6 +50,37 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Saving a session
+
+A figure in progress is not a PDB file plus a note about what was typed. Save the
+whole thing:
+
+```text
+session_save figure.cms      # objects, colours, camera, groups, scenes, settings
+session_load figure.cms      # put it all back
+session_info figure.cms      # what is in there, without loading it
+save figure.pse              # same thing; the extension routes here
+```
+
+Everything the viewer holds comes back — representations, per-atom colours,
+manual bonds and their orders, which groups are collapsed, the named scenes, and
+the camera down to its clip planes. A reloaded session renders pixel-for-pixel
+identically to the one that was saved.
+
+:::{warning}
+`.pse` here is **chimol's own session format, not PyMOL's.** PyMOL's `.pse` is a
+pickle of its internal C structures; nothing outside PyMOL can read one, and
+chimol does not pretend to. Writing to `.pse` is allowed because that is the
+extension a PyMOL user types, and chimol says so when it writes one. Handing a
+real PyMOL `.pse` to `session_load` reports the format difference rather than a
+decoding error.
+:::
+
+The file is a plain zip — a `manifest.json` you can read and an `arrays.npz` of
+the numeric data — so a session you keep for years is not opaque, and loading one
+cannot execute code (arrays are read with `allow_pickle=False`). That is the other
+reason not to copy a pickled format.
+
 ### Organising the panel
 
 Once a session has more than a handful of objects, the panel is easier to read

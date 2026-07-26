@@ -27,6 +27,11 @@ class LoaderCommands(BaseCmd):
 
         for raw in args:
             path = Path(raw).expanduser()
+            # A session replaces the whole viewer rather than adding an object,
+            # so it cannot go through the structure reader.
+            if self.names_a_session(path):
+                self.session_load(str(path))
+                continue
             try:
                 window._load_structure_from_path(path)
             except Exception as exc:

@@ -67,6 +67,11 @@ class ExportMixin(BaseCmd):
         if path.suffix.lower() == ".png":
             self.png(str(path))
             return
+        # A session, not a structure: `save figure.pse` is how a PyMOL user
+        # saves their work, so the extension has to route there.
+        if self.names_a_session(path):
+            self.session_save(str(path))
+            return
 
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
