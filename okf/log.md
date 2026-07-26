@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **Spots become trajectories, and trajectories become a diffusion
+  coefficient.** Detection was well served here (bead finding, segmentation)
+  but **linking had no prior art at all** — `linear_sum_assignment` appeared
+  nowhere in the tree — so there was no path from spots to transport. New
+  Qt-free core
+  [`chisurf/core/fluorescence/imaging/tracking.py`](chisurf/core/fluorescence/imaging/tracking.py):
+  à-trous/quantile detection, exact frame-to-frame assignment under a maximum
+  linking distance, gap closing, time-averaged MSD, and a fit of `D` and the
+  anomalous exponent — plus `simulate_particle_movie`, since the existing CLSM
+  simulator places *immobile* molecules and so cannot verify a tracker.
+
+  Four corrections that only measurement produced, none in the first draft:
+  **(1)** a single wavelet plane cannot reject a hot pixel — the transform
+  spreads a one-pixel spike, so the min-area rule admits it — and it let noise
+  scale with field area (9.8 / 33.9 / 131.2 detections per frame at 3σ on
+  128²/256²/512², against 8 planted); the multiscale product fixes both
+  (8.0 / 8.4 / 9.6). **(2)** the noise scale must come from the *unclipped*
+  planes: clipping the product at zero zeroes its MAD and collapses the
+  threshold, giving 1757 detections in a frame holding 8. **(3)** `curve_fit`'s
+  covariance is not a usable error bar here — MSD lags share displacements, and
+  it covered the truth in 4 runs of 20; resampling whole tracks gives 20/20.
+  **(4)** `D` and `α` are nearly degenerate, so fitting both spreads `D/D_true`
+  from sd 0.15 to 0.57; `MsdFit.warnings()` now says so.
+
+  `simulate_particle_movie` also grew a **memory budget**: `n_frames·ny·nx·8`
+  grows quietly, and a 200×2048² request — 6.7 GB — drove this machine into swap
+  until the disk filled. It refuses now, and `render=False` returns trajectories
+  alone. Verified against ground truth: zero tracks mixing two particles on a
+  well-posed field, and a known `D` recovered. 30 tests.
+
 * **One region GUI, because there were twenty-three and no two agreed.** A
   survey of every place a user creates or edits a region — a selection, a gate,
   a cursor, a mask — found 23 of them across chisurf and ndXplorer, five
