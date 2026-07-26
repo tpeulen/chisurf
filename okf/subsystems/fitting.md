@@ -446,6 +446,23 @@ mean to quote. The two scans need not share a grid — the Gaussian curve has a
 closed form, so it is evaluated wherever the re-fit actually happened, which lets
 the cheap sweep stay fine-grained and the expensive one coarse.
 
+**Every symmetric interval now says so when it is wrong.** A `laplace` or
+`gaussian` marginal is `value ± sd` by construction; whenever a chain is on the
+fit, `marginal_asymmetry` reads the two arms of the interval straight out of it
+for nothing, and the engines attach a `warning` and the measured asymmetry to
+`Marginal.diagnostics` — which the RPC payload and `Fit.posterior_summary`
+already carry. Absence of a chain returns `None`, never "symmetric": absence of
+evidence must not read as evidence of absence.
+
+The cut is calibrated rather than fixed, for the same reason the rank plot's is.
+Measured against true Gaussians (autocorrelated included), the 99th percentile of
+the observed asymmetry ratio tracks `1 + 2.4/√n_eff`: **1.17** at 200 effective
+draws, **1.04** at 3000. A single number therefore either fires on honest
+Gaussians when the chain is short or misses real skew when it is long — a fixed
+1.25 missed a parameter at ratio 1.20 with skew +0.57. The reported cut is the
+larger of that noise floor and a 10 % floor below which the asymmetry, however
+well established, is smaller than the width of a plotted error bar.
+
 # Showing whether a chain can be believed
 
 The convergence *numbers* were harvested from Stan earlier; the matching

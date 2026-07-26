@@ -542,3 +542,104 @@ def test_the_exact_scan_can_be_cancelled():
     assert done.sum() <= 4, "must stop when asked"
     # And still restore the fit.
     assert all(np.isfinite(float(p.value)) for p in fit.model.parameters_all)
+
+
+# -- flagging a symmetric interval on a skewed posterior ------------------
+
+def _with_chain(fit, steps=6000, burn=2000, seed=1):
+    """Sample the fit and leave the chain on it, as ``sample_fit`` would."""
+    import chisurf.core.fitting.sample
+    np.random.seed(0)
+    r = chisurf.core.fitting.sample.sample_differential_evolution(
+        fit=fit, steps=steps, thin=1, seed=seed)
+    chains = np.asarray(r['chains'])[:, burn:, :]
+    fit.sampling_chain = {
+        'parameter_names': list(r['parameter_names']),
+        'parameter_values': chains.reshape(-1, chains.shape[2]),
+        'chains': chains,
+        'burn_in': burn,
+    }
+    return fit
+
+
+def test_the_asymmetry_threshold_is_calibrated_to_the_effective_draws():
+    """A fixed cut is wrong at both ends, and measurably so.
+
+    Measured against true Gaussians (including autocorrelated ones), the 99th
+    percentile of the observed asymmetry ratio tracks ``1 + 2.4/sqrt(n_eff)``:
+    1.17 at 200 effective draws, 1.04 at 3000. A single number therefore either
+    fires on honest Gaussians when the chain is short, or misses real skew when
+    it is long.
+    """
+    assert E.asymmetry_threshold(200) > E.asymmetry_threshold(3000)
+    assert E.asymmetry_threshold(200) == pytest.approx(1.17, abs=0.02)
+    # ...but never drops below what is worth telling anyone about.
+    assert E.asymmetry_threshold(10 ** 9) == pytest.approx(E.ASYMMETRY_FLOOR)
+    # A chain too short to say anything cannot flag anything.
+    assert E.asymmetry_threshold(1.0) == float('inf')
+    assert E.asymmetry_threshold(float('nan')) == float('inf')
+
+
+def test_a_true_gaussian_is_not_flagged():
+    """The false-alarm case, on the model whose posterior really is Gaussian."""
+    fit = _with_chain(_fit(), steps=4000, burn=1000)
+    for m in E.LaplaceEngine(fit).add_all_targets().run().marginals():
+        assert 'warning' not in m.diagnostics, (m.name, m.diagnostics)
+
+
+def test_a_skewed_posterior_is_flagged_on_a_symmetric_interval():
+    """The whole point: the number looks the same either way, so it must say so."""
+    fit = _with_chain(_weak_component())
+    marginals = {m.name.split(':')[-1]: m
+                 for m in E.LaplaceEngine(fit).add_all_targets().run().marginals()}
+
+    flagged = {n: m for n, m in marginals.items() if 'warning' in m.diagnostics}
+    assert flagged, {n: m.diagnostics for n, m in marginals.items()}
+    for name, m in flagged.items():
+        evidence = m.diagnostics['asymmetry']
+        assert not evidence['gaussian_ok']
+        assert evidence['lower'] > 0 and evidence['upper'] > 0
+        # The note carries both arms, so the reader sees the actual interval.
+        assert '+' in m.diagnostics['warning'] and '-' in m.diagnostics['warning']
+        # And the flag agrees with the skewness, rather than firing on noise.
+        assert abs(evidence['skew']) > 0.15, (name, evidence)
+
+
+def test_no_chain_is_not_reported_as_symmetry():
+    """Absence of evidence is not evidence of absence, and must not read as it."""
+    fit = _weak_component()          # never sampled
+    assert E.marginal_asymmetry(fit, 'b') is None
+    for m in E.LaplaceEngine(fit).add_all_targets().run().marginals():
+        assert m.diagnostics == {} or 'warning' not in m.diagnostics
+
+
+def test_the_flag_reaches_the_summary_a_user_reads():
+    """A diagnostic nobody sees is not a diagnostic."""
+    fit = _with_chain(_weak_component())
+    rows = fit.posterior_summary()
+    assert rows
+    warned = [r for r in rows if r.get('warning')]
+    assert warned, [r['name'] for r in rows]
+    for row in warned:
+        assert 'skewed' in row['warning']
+        assert row['asymmetry'] > 0.0
+
+
+def test_the_gaussian_engine_flags_it_too():
+    """Both quadratic engines quote a symmetric interval, so both must warn."""
+    fit = _with_chain(_weak_component())
+    laplace = {m.name: m for m in
+               E.LaplaceEngine(fit).add_all_targets().run().marginals()}
+    gaussian = {m.name: m for m in
+                E.GaussianEngine(fit).add_all_targets().run().marginals()}
+    warned_l = {n for n, m in laplace.items() if 'warning' in m.diagnostics}
+    warned_g = {n for n, m in gaussian.items() if 'warning' in m.diagnostics}
+    assert warned_l and warned_l == warned_g
+
+
+def test_the_asymmetry_survives_the_trip_to_json():
+    """It travels in ``diagnostics``, which the RPC payload already carries."""
+    import json
+    fit = _with_chain(_weak_component())
+    for m in E.LaplaceEngine(fit).add_all_targets().run().marginals():
+        json.loads(json.dumps(m.as_dict()))

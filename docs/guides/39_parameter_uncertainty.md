@@ -332,6 +332,21 @@ histogram of that size *and* the chain's own autocorrelation — so "consistent
 with noise" means it, and a warning is worth acting on. The second tab plots
 effective sample size against draws, which should grow in a straight line.
 
+Every symmetric interval carries this check automatically once a chain exists.
+`posterior_summary()` rows, and the `diagnostics` of any `laplace` or `gaussian`
+marginal, gain a `warning` when the chain shows the posterior is skewed:
+
+```python
+for row in fit.posterior_summary():
+    if row.get('warning'):
+        print(row['name'], row['warning'])
+# b posterior is skewed (0.1447 +0.0329 -0.026); a symmetric interval
+#   misstates both ends
+```
+
+No chain means no warning — which is *not* a claim that the posterior is
+symmetric, only that nothing has checked.
+
 ## 11. In the GUI
 
 The **Sampling** button on the fit controller runs the same code on the server.

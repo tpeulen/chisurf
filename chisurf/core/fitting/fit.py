@@ -779,6 +779,12 @@ class Fit(cs.core.base.Base):
         carries, in decreasing order of fidelity: ``mcmc`` (posterior quantiles
         from a chain left by :func:`sample_fit`, the only one that needs no
         Gaussian or single-parameter assumption), ``profile`` and ``laplace``.
+
+        A ``laplace`` row is symmetric by construction, and the posterior it
+        approximates often is not -- bounded parameters and weak components are
+        routinely skewed. Where a stored chain shows this, the row carries a
+        ``warning`` and the measured ``asymmetry`` so a reader is not left to
+        assume the interval means what it looks like.
         """
         engine = cs.core.fitting.engine.StoredEngine(self, model=self.model)
         names = []
@@ -795,14 +801,22 @@ class Fit(cs.core.base.Base):
         out = []
         for name in names:
             m = engine.marginal(name)
-            out.append({
+            entry = {
                 'name': m.name,
                 'value': m.value,
                 'low': m.low,
                 'high': m.high,
                 'method': m.method,
                 'p_value': float(p_value),
-            })
+            }
+            # A ``laplace`` row is symmetric by construction. When a chain shows
+            # the posterior is not, the row says so rather than leaving the
+            # reader to assume the interval means what it looks like.
+            warning = (m.diagnostics or {}).get('warning')
+            if warning:
+                entry['warning'] = warning
+                entry['asymmetry'] = m.diagnostics['asymmetry']['asymmetry']
+            out.append(entry)
         return out
 
     def get_curves(

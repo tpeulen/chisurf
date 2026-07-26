@@ -60,6 +60,9 @@ __all__ = [
     "get_engine",
     "ENGINES",
     "gaussian_validity",
+    "marginal_asymmetry",
+    "asymmetry_threshold",
+    "ASYMMETRY_FLOOR",
 ]
 
 
@@ -413,6 +416,40 @@ class PosteriorEngine(abc.ABC):
                     return local, str(q.name)
         return self.fit, str(getattr(parameter, "name", ""))
 
+    def _symmetry_diagnostics(
+            self,
+            name: str,
+            p_value: float,
+    ) -> typing.Dict[str, typing.Any]:
+        """Return diagnostics flagging a symmetric interval on a skewed posterior.
+
+        Called wherever an engine builds a ``value ± sd`` marginal. When a chain
+        is on the fit the evidence is free, and quoting a symmetric interval
+        without checking it is the quiet failure this closes: the number looks
+        the same either way.
+
+        Parameters
+        ----------
+        name : str
+            Parameter whose marginal is being built.
+        p_value : float
+            Coverage of the interval being quoted.
+
+        Returns
+        -------
+        dict
+            ``{"asymmetry": ...}`` when a chain shows the posterior is skewed;
+            empty otherwise, including when there is no chain -- absence of
+            evidence is not evidence of symmetry.
+        """
+        try:
+            evidence = marginal_asymmetry(self.fit, name, p_value=p_value)
+        except Exception:
+            return {}
+        if evidence is None or evidence.get("gaussian_ok", True):
+            return {}
+        return {"asymmetry": evidence, "warning": evidence["note"]}
+
     def _apply_evidence(self):
         """Fix every conditioned parameter and re-optimise the rest.
 
@@ -519,6 +556,7 @@ class LaplaceEngine(PosteriorEngine):
                     self._marginals[name] = Marginal(
                         name=name, value=value, sd=sd, method=self.method,
                         low=value - z * sd, high=value + z * sd, p_value=p_value,
+                        diagnostics=self._symmetry_diagnostics(name, p_value),
                     )
 
                 self._joints = {}
@@ -699,6 +737,7 @@ class GaussianEngine(PosteriorEngine):
             self._marginals[name] = Marginal(
                 name=name, value=mean, sd=sd, method=self.method,
                 low=mean - z * sd, high=mean + z * sd, p_value=p_value,
+                diagnostics=self._symmetry_diagnostics(name, p_value),
             )
 
         self._joints = {}
@@ -971,6 +1010,151 @@ class GaussianEngine(PosteriorEngine):
             "chi2": chi2,
             "exact": True,
         }
+
+
+#: Smallest interval asymmetry worth reporting, however many draws prove it.
+#: The ratio is (upper arm)/(lower arm) of the central interval, so 1.0 is
+#: symmetric and 1.10 means one arm is a tenth longer than the other. Below this
+#: the symmetric interval is wrong by less than the width of a plotted line, and
+#: saying so would be noise in the user's face rather than information.
+ASYMMETRY_FLOOR = 1.10
+
+#: Sampling noise in the asymmetry ratio, as a multiple of ``1/sqrt(n_eff)``.
+#: Calibrated against true Gaussians at 2k-30k draws and autocorrelation times of
+#: 1 and 10: the 99th percentile of the observed ratio tracks
+#: ``1 + 2.4/sqrt(n_eff)`` across all of them. A fixed cut cannot do this job --
+#: at 2000 draws a genuine Gaussian reaches 1.17 by chance, while at 30000 the
+#: floor is 1.04 and a real 1.21 skew would go unreported.
+ASYMMETRY_NOISE = 2.4
+
+
+def asymmetry_threshold(effective_draws: float) -> float:
+    """Return the asymmetry ratio worth reporting for a chain of this quality.
+
+    Two conditions have to hold before a skew is worth putting in front of
+    someone: it must be **detectable** (above the sampling noise for the number
+    of *effective* draws in hand) and **material** (big enough to change a quoted
+    interval). This returns the larger of the two.
+
+    Parameters
+    ----------
+    effective_draws : float
+        Effective sample size of the chain for this parameter.
+
+    Returns
+    -------
+    float
+        The ratio at or above which the asymmetry is reported.
+    """
+    if not np.isfinite(effective_draws) or effective_draws <= 1.0:
+        return float("inf")
+    detectable = 1.0 + ASYMMETRY_NOISE / math.sqrt(effective_draws)
+    return max(ASYMMETRY_FLOOR, detectable)
+
+
+def marginal_asymmetry(
+        fit,
+        name: str,
+        p_value: float = 0.68,
+) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    r"""Measure how skewed a parameter's posterior actually is, from a chain.
+
+    A covariance error bar is symmetric by construction; the posterior it
+    approximates need not be, and in fluorescence usually is not -- lifetimes,
+    amplitudes, distances and FRET efficiencies are bounded below, and a
+    parameter near its bound has a one-sided posterior. Reporting
+    :math:`\pm\sigma` for one of those is not merely imprecise: it is wrong on
+    both ends at once, and nothing about the number says so.
+
+    Whenever a sampling run has left a chain on the fit, the evidence is already
+    in hand and costs nothing to read: the two arms of the central interval, and
+    the skewness. This returns them so that an engine quoting a symmetric
+    interval can *say* that it is quoting one.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit whose stored chain is consulted.
+    name : str
+        Parameter name; the group's ``fit:`` prefix is tolerated on either side.
+    p_value : float, optional
+        Coverage of the interval whose arms are compared.
+
+    Returns
+    -------
+    dict or None
+        ``lower``/``upper`` (the two arms), ``asymmetry`` (their ratio),
+        ``skew``, ``median``, ``gaussian_ok`` and a human-readable ``note``.
+        ``None`` when there is no chain to look at, which is not evidence of
+        symmetry and must not be reported as such.
+    """
+    chain = getattr(fit, "sampling_chain", None)
+    if not isinstance(chain, dict) or chain.get("parameter_values") is None:
+        return None
+    draws = np.atleast_2d(np.asarray(chain["parameter_values"], dtype=np.float64))
+    names = [str(n) for n in chain.get("parameter_names", [])]
+    if draws.shape[0] < 32 or len(names) != draws.shape[1]:
+        return None
+
+    short = str(name).split(":")[-1]
+    index = None
+    for i, candidate in enumerate(names):
+        if candidate == str(name) or candidate.split(":")[-1] == short:
+            index = i
+            break
+    if index is None:
+        return None
+
+    column = draws[:, index]
+    column = column[np.isfinite(column)]
+    if column.size < 32:
+        return None
+
+    # The threshold is set by the *effective* draw count, not the raw one: an
+    # autocorrelated chain of 30000 knows far less than 30000 independent draws
+    # and its asymmetry estimate is correspondingly noisier.
+    from chisurf.core.fitting import diagnostics as _dg
+    chains = chain.get("chains")
+    try:
+        effective = float(_dg.effective_sample_size(
+            np.asarray(chains, dtype=np.float64))[index])
+    except Exception:
+        effective = float(column.size)
+    if not np.isfinite(effective) or effective <= 1.0:
+        effective = float(column.size)
+
+    tail = 0.5 * (1.0 - float(p_value))
+    low, median, high = np.percentile(column, [100.0 * tail, 50.0,
+                                               100.0 * (1.0 - tail)])
+    lower, upper = float(median - low), float(high - median)
+    if not (lower > 0.0 and upper > 0.0):
+        return None
+    asymmetry = upper / lower
+    spread = float(column.std())
+    skew = (float(np.mean((column - column.mean()) ** 3) / spread ** 3)
+            if spread > 0 else 0.0)
+
+    # Compared symmetrically, so a ratio of 0.8 counts the same as 1.25.
+    ratio = max(asymmetry, 1.0 / asymmetry)
+    threshold = asymmetry_threshold(effective)
+    gaussian_ok = ratio < threshold
+    note = (
+        "" if gaussian_ok else
+        f"posterior is skewed ({median:.6g} +{upper:.3g} -{lower:.3g}); "
+        f"a symmetric interval misstates both ends"
+    )
+    return {
+        "lower": lower,
+        "upper": upper,
+        "median": float(median),
+        "asymmetry": float(asymmetry),
+        "skew": float(skew),
+        "gaussian_ok": bool(gaussian_ok),
+        "note": note,
+        "p_value": float(p_value),
+        "threshold": float(threshold),
+        "effective_draws": float(effective),
+    }
 
 
 def gaussian_validity(
@@ -1332,6 +1516,7 @@ class StoredEngine(PosteriorEngine):
                 self._marginals[name] = Marginal(
                     name=name, value=value, sd=err, method="laplace",
                     low=value - err, high=value + err, p_value=p_value,
+                    diagnostics=self._symmetry_diagnostics(name, p_value),
                 )
             else:
                 self._marginals[name] = Marginal(

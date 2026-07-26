@@ -917,6 +917,29 @@
 
 ## 2026-07-25
 
+* **Every symmetric error bar now says so when it is wrong.** The re-fit check
+  covered one plot; this covers every quoted interval. A `laplace`/`gaussian`
+  marginal is `value +- sd` by construction, and the posterior it approximates
+  routinely is not symmetric -- so whenever a chain is on the fit,
+  `marginal_asymmetry` reads the two arms straight out of it (free) and the
+  engines attach a `warning` plus the measured asymmetry to
+  `Marginal.diagnostics`, which the RPC payload and `Fit.posterior_summary`
+  already carry. No chain returns `None`, never "symmetric": absence of evidence
+  must not read as evidence of absence, and there is a test for that.
+  The cut is **calibrated**, not fixed, and measuring it changed the design. A
+  true Gaussian at finite chain length is never exactly symmetric: against real
+  Gaussians (autocorrelated included) the 99th percentile of the observed
+  asymmetry ratio tracks `1 + 2.4/sqrt(n_eff)` -- 1.17 at 200 effective draws,
+  1.04 at 3000. So a fixed threshold is wrong at *both* ends, and my first
+  attempt at 1.25 demonstrably missed a genuinely skewed parameter at ratio 1.20
+  with skew +0.57 while being needlessly lax on short chains. The reported cut is
+  now the larger of that noise floor and a 10 % floor, below which the asymmetry
+  -- however well established -- is narrower than the plotted error bar. On the
+  weak-component fit this flags all three skewed parameters (|skew| >= 0.54) and
+  stays quiet on the well-determined ones; on a model whose posterior really is
+  Gaussian it flags nothing. 7 tests.
+
+
 * **Non-Gaussian posteriors: the What-if lines are now checked, not assumed.**
   The conditional sweep is exact only for a Gaussian posterior, and a
   fluorescence posterior frequently is not one -- lifetimes, amplitudes,
