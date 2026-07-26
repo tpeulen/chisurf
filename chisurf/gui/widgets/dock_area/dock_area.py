@@ -1591,19 +1591,31 @@ class DockArea(QtWidgets.QWidget):
             return
 
         if isinstance(parent, QtWidgets.QSplitter):
-            sibling = None
-            for i in range(parent.count()):
-                w = parent.widget(i)
-                if w != tw:
-                    sibling = w
-                    break
+            # Take the empty tab widget out first, then decide what the splitter
+            # has left. The previous version assumed a splitter holds exactly
+            # *two* children: it moved the first sibling out and deleted the
+            # splitter, which took any third child down with it -- Qt deletes an
+            # orphaned widget's children. A three-pane layout (viewport /
+            # sequence / timeline is one) therefore lost a whole dock, and the
+            # first thing to touch that dock's widgets died with
+            # "wrapped C/C++ object ... has been deleted".
+            tw.setParent(None)
+            tw.deleteLater()
 
-            if sibling is not None:
-                self.replace_widget(parent, sibling)
-                tw.setParent(None)
-                tw.deleteLater()
+            siblings = [parent.widget(i) for i in range(parent.count())]
+            siblings = [w for w in siblings if w is not None and w is not tw]
+
+            if not siblings:
+                # Nothing left: the splitter can go.
                 parent.setParent(None)
                 parent.deleteLater()
+            elif len(siblings) == 1:
+                # One child: the splitter is redundant, so collapse it away.
+                self.replace_widget(parent, siblings[0])
+                parent.setParent(None)
+                parent.deleteLater()
+            # Two or more children left: removing the tab widget was the whole
+            # job. Deleting the splitter here is what destroyed them.
 
     def restore_tab(self, tw: DockTabWidget | DockStackedTabWidget, index: int) -> None:
         """Move a specific tab back to the main/primary tab group.

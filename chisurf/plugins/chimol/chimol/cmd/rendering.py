@@ -274,18 +274,19 @@ class RenderingMixin(BaseCmd):
             return
 
         selection = str(sel).strip() or None
-        if selection:
-            try:
-                # Note: this helper is available when mixed into Cmd
-                obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection) # type: ignore
-                if obj_id:
-                    viewer.center(res_indices, object_id=obj_id)
-                else:
-                    self._emit_error(f"Selection '{selection}' did not resolve.")
-            except Exception as exc:
-                self._emit_error(f"Failed to center: {exc}")
-        else:
+        if not selection:
             viewer.center()
+            return
+        # Atoms, not residue positions -- see MolView._selection_coords.
+        try:
+            obj_id, _obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"center: {exc}")
+            return
+        if not viewer.center(object_id=obj_id, atom_mask=mask):
+            self._emit_error(f"center: '{selection}' yielded no coordinates")
 
     @command("orient")
     def orient(self, sel: Selection = "") -> None:
@@ -295,17 +296,32 @@ class RenderingMixin(BaseCmd):
             return
 
         selection = str(sel).strip() or None
-        if selection:
-            try:
-                obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection) # type: ignore
-                if obj_id:
-                    viewer.orient(res_indices, object_id=obj_id)
-                else:
-                    self._emit_error(f"Selection '{selection}' did not resolve.")
-            except Exception as exc:
-                self._emit_error(f"Failed to orient: {exc}")
-        else:
-            viewer.orient()
+        if not selection:
+            if not viewer.orient():
+                self._emit_error("orient: nothing to orient")
+            return
+
+        # Atoms, not residue indices: residue positions are one CA-trace point
+        # each, so a ligand collapsed to a single point and `orient resn NAG`
+        # only framed. It reported success either way, which is why running it
+        # proved nothing.
+        try:
+            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"orient: {exc}")
+            return
+        import numpy as _np
+
+        if int(_np.asarray(mask, dtype=bool).sum()) < 2:
+            self._emit_error(
+                f"orient: '{selection}' matched fewer than two atoms; "
+                "there is no orientation to align"
+            )
+            return
+        if not viewer.orient(object_id=obj_id, atom_mask=mask):
+            self._emit_error(f"orient: could not orient on '{selection}'")
 
     @command("zoom")
     def zoom(self, sel: Selection = "", buffer: float = 0.0, complete: bool = False) -> None:
@@ -319,18 +335,28 @@ class RenderingMixin(BaseCmd):
             return
 
         selection = str(sel).strip() or None
-        if selection:
-            try:
-                obj_id, _, res_indices = self._resolve_selection_to_residue_indices(viewer, selection)  # type: ignore
-                if obj_id:
-                    viewer.zoom(res_indices, buffer=float(buffer),
-                                complete=bool(complete), object_id=obj_id)
-                else:
-                    self._emit_error(f"Selection '{selection}' did not resolve.")
-            except Exception as exc:
-                self._emit_error(f"Failed to zoom: {exc}")
-        else:
+        if not selection:
             viewer.zoom(buffer=float(buffer), complete=bool(complete))
+            return
+        # Atoms, not residue positions -- see MolView._selection_coords. With
+        # residue positions `zoom resn NAG` did nothing at all: a ligand has no
+        # CA, so the trace contributed no points and the camera never moved.
+        try:
+            obj_id, _obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection
+            )
+        except Exception as exc:
+            self._emit_error(f"zoom: {exc}")
+            return
+        import numpy as _np
+
+        if not int(_np.asarray(mask, dtype=bool).sum()):
+            self._emit_error(f"zoom: '{selection}' matched no atoms")
+            return
+        viewer.zoom(
+            buffer=float(buffer), complete=bool(complete),
+            object_id=obj_id, atom_mask=mask,
+        )
 
     @command("scene")
     def scene(

@@ -2621,13 +2621,63 @@ class MolView(QtWidgets.QWidget):
         out = scene / scale if scale else scene
         return out + np.asarray(centre, dtype=float) if centre is not None else out
 
-    def center(self, indices: Sequence[int] | None = None, *, object_id: str | None = None) -> None:
-        """Center camera on the geometric center of target residues."""
-        coords = self.get_residue_positions(indices, object_id=object_id)
+    def center(
+        self,
+        indices: Sequence[int] | None = None,
+        *,
+        object_id: str | None = None,
+        atom_mask: np.ndarray | None = None,
+    ) -> bool:
+        """Centre the camera on a selection's centre (PyMOL ``center``).
+
+        Returns
+        -------
+        bool
+            False when the selection yielded no coordinates, so a caller can
+            report that rather than a success.
+
+        See Also
+        --------
+        _selection_coords : why this takes atoms rather than residue positions.
+        """
+        coords = self._selection_coords(
+            indices, object_id=object_id, atom_mask=atom_mask
+        )
         if coords.size == 0 or self._renderer is None:
-            return
-        center = coords.mean(axis=0)
-        self._renderer.look_at(center)
+            return False
+        self._renderer.look_at(coords.mean(axis=0))
+        return True
+
+    def _selection_coords(
+        self,
+        indices=None,
+        *,
+        object_id: str | None = None,
+        atom_mask: np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Coordinates a camera command should measure, in render space.
+
+        Prefers the selection's **atoms**. Residue positions are one CA-trace
+        point per residue, so any residue without a CA -- a ligand, an ion, a
+        water -- reduced to nothing, and `zoom resn NAG`, `center resn NAG` and
+        `orient resn NAG` all silently did nothing while reporting success. A
+        ligand is exactly what those commands are usually pointed at.
+        """
+        if atom_mask is not None:
+            with self._activate_object(object_id):
+                all_atoms = getattr(self, "_all_atom_coords", None)
+            if all_atoms is not None:
+                array = np.asarray(all_atoms, dtype=float)
+                mask = np.asarray(atom_mask, dtype=bool)
+                if mask.shape[0] == array.shape[0] and mask.any():
+                    return array[mask]
+        if indices is None and object_id is None:
+            all_atoms = getattr(self, "_all_atom_coords", None)
+            if all_atoms is not None and np.asarray(all_atoms).size:
+                return np.asarray(all_atoms, dtype=float)
+        return np.asarray(
+            self.get_residue_positions(indices, object_id=object_id), dtype=float
+        )
 
     def zoom(
         self,
@@ -2636,6 +2686,7 @@ class MolView(QtWidgets.QWidget):
         buffer: float = 0.0,
         complete: bool = False,
         object_id: str | None = None,
+        atom_mask: np.ndarray | None = None,
     ) -> None:
         """Zoom the camera to fit target residues (PyMOL ``zoom``).
 
@@ -2660,13 +2711,9 @@ class MolView(QtWidgets.QWidget):
         # measures the whole molecule, and a trace-only fit reads ~20% small
         # because the side chains reaching furthest out are exactly the ones
         # left out of it.
-        coords = None
-        if indices is None and object_id is None:
-            all_atoms = getattr(self, "_all_atom_coords", None)
-            if all_atoms is not None and np.asarray(all_atoms).size:
-                coords = np.asarray(all_atoms, dtype=float)
-        if coords is None:
-            coords = self.get_residue_positions(indices, object_id=object_id)
+        coords = self._selection_coords(
+            indices, object_id=object_id, atom_mask=atom_mask
+        )
         if coords.size == 0:
             self.reset_view()
             return
@@ -2684,11 +2731,104 @@ class MolView(QtWidgets.QWidget):
             self._renderer.look_at(center)
             self._renderer.fit_to_radius(radius + float(buffer))
 
-    def orient(self, indices: Sequence[int] | None = None, *, object_id: str | None = None) -> None:
-        """Orient view to principal axes of target residues."""
-        # TODO: Implement PCA-based alignment once QtGLRenderer supports arbitrary rotation matrices.
-        # For now, zoom to fit provides the best "orient" approximation.
-        self.zoom(indices, object_id=object_id)
+    def orient(
+        self,
+        indices: Sequence[int] | None = None,
+        *,
+        object_id: str | None = None,
+        atom_mask: np.ndarray | None = None,
+    ) -> bool:
+        """Align the selection's principal axes with the screen (PyMOL ``orient``).
+
+        Follows ``ExecutiveOrient``: build the **inertia tensor** of the selection
+        about its own centre, eigensolve it, use the eigenvectors as the camera
+        basis, force the result right-handed, then frame it.
+
+        The sign convention matters and is easy to invert. For an inertia tensor
+        the **smallest** eigenvalue belongs to the **longest** axis -- a rod has
+        almost no moment about its own length -- so the longest extent goes on
+        screen x, the next on y, the shortest into the screen. Sorting the other
+        way puts the molecule end-on, which looks like a failure to orient at all.
+
+        Returns
+        -------
+        bool
+            False when there is nothing to orient, so a caller can say so rather
+            than report success.
+
+        Notes
+        -----
+        This was a stub for a long time -- it called :meth:`zoom` and returned,
+        behind a TODO saying the renderer could not take an arbitrary rotation. It
+        can (``set_view_state`` takes the full 3x3), so the note outlived the
+        limitation. It reported no error either way, which is why running the
+        command proved nothing.
+
+        PyMOL reaches the same place by loading the eigenvector matrix and then
+        applying a sequence of 90-degree rotations chosen from the eigenvalue
+        ordering -- with a comment in its own source that there must be a more
+        elegant way. Sorting the eigenvectors *is* that permutation, so it is done
+        directly here and the observable contract is asserted instead: the
+        extents, measured in the camera frame, come out descending.
+        """
+        coords = self._selection_coords(
+            indices, object_id=object_id, atom_mask=atom_mask
+        )
+        if coords.size == 0 or coords.shape[0] < 2:
+            # One point has no orientation; framing is all that is meaningful.
+            self.zoom(indices, object_id=object_id)
+            return False
+
+        centred = coords - coords.mean(axis=0)
+        # The inertia tensor, exactly as OMOP_CSetMoment accumulates it:
+        # sum over atoms of |r|^2 * I - r (outer) r.
+        squared = float(np.sum(centred * centred))
+        tensor = np.eye(3) * squared - centred.T @ centred
+
+        try:
+            eigenvalues, eigenvectors = np.linalg.eigh(tensor)
+        except np.linalg.LinAlgError:
+            self.zoom(indices, object_id=object_id)
+            return False
+
+        # Ascending eigenvalue: smallest moment first, which is the longest axis.
+        order = np.argsort(eigenvalues)
+        basis = eigenvectors[:, order]
+
+        # Right-handed, or the view is mirrored: PyMOL negates the third column
+        # when the cross product of the first two points the other way.
+        if float(np.dot(np.cross(basis[:, 0], basis[:, 1]), basis[:, 2])) < 0.0:
+            basis[:, 2] = -basis[:, 2]
+
+        # Of the equivalent orientations, take the one closest to where the camera
+        # already is, so `orient` does not spin the molecule through half a turn
+        # for no reason. PyMOL does this with a 180-degree flip chosen from the
+        # signs of the per-axis dot products; flipping two columns at once is the
+        # same thing and keeps the matrix right-handed.
+        try:
+            current = np.asarray(self.get_view_state(), dtype=float)[:9].reshape(3, 3)
+        except Exception:
+            current = None
+        if current is not None:
+            best, best_score = basis, -np.inf
+            for flip in ((1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1)):
+                candidate = basis * np.asarray(flip, dtype=float)
+                score = float(np.sum(candidate * current))
+                if score > best_score:
+                    best, best_score = candidate, score
+            basis = best
+
+        view = list(self.get_view_state())
+        # Slots 0-8 hold the camera basis in columns, which is what `basis` is.
+        view[:9] = [float(v) for v in basis.flatten()]
+        try:
+            self.set_view_state(view)
+        except Exception:
+            return False
+        # Frame it afterwards: the rotation changes which extent faces the camera,
+        # so a zoom computed before it would fit the wrong silhouette.
+        self.zoom(indices, object_id=object_id, atom_mask=atom_mask)
+        return True
 
     # ------------------------------------------------------------------
     # Representation / interaction helpers

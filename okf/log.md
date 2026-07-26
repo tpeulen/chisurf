@@ -2,6 +2,46 @@
 
 ## 2026-07-26
 
+* **chimol: `orient` was a stub, and `zoom`/`center` did nothing on a ligand.**
+  Reported by the user ("still not all actions work, eg, orient"), and all three
+  had one cause plus one extra.
+
+  `orient` called `zoom` and returned, behind a TODO saying the renderer could not
+  take an arbitrary rotation. It can — `set_view_state` takes the full 3×3 — so the
+  note had outlived the limitation. Now implemented from `ExecutiveOrient`: the
+  **inertia tensor** about the selection's centre, eigensolved, eigenvectors as the
+  camera basis, forced right-handed, then framed. The sign convention is the part
+  to get right: for an inertia tensor the *smallest* eigenvalue is the *longest*
+  axis (a rod has almost no moment about its own length), so ascending eigenvalue
+  gives long → x. Sorting the other way puts the molecule end-on, which looks like
+  a failure to orient at all.
+
+  The shared cause: all three commands resolved a selection to **residue indices**
+  and measured `get_residue_positions`, one CA-trace point per residue. A ligand,
+  ion or water has no CA, so `zoom resn NAG` and `center resn NAG` moved the camera
+  **not at all** and `orient resn NAG` only framed — all three reporting success.
+  They now go through one seam, `MolView._selection_coords`, which prefers the
+  selection's atoms.
+
+  **A wrong metric cost a wrong diagnosis.** My first check asserted the
+  peak-to-peak extents came out descending, and it failed on a correct
+  implementation: an inertia tensor orders by **second moment**, and ptp is not
+  monotonic with rms when a few outlying atoms stretch one range. Measured on
+  148L, axis 1 has ptp 32.3/rms 7.24 and axis 2 has ptp 34.9/rms 6.57 — the rms
+  *is* descending. Look at the numbers before concluding the code is wrong.
+
+  None of this was caught by the 120-entry object-menu sweep, because that sweep
+  asserts only that no error was reported. 15 new tests assert the camera moved
+  and that the result has the property the command promises.
+
+  Also, from the same report: a guard in `_update_sequence_view` so a deleted dock
+  widget logs instead of raising out of a *selection-changed* handler, and a
+  genuine latent defect fixed in `dock_area.cleanup_empty_tab_widget`, which
+  assumed a splitter holds exactly two children and deleted the splitter with any
+  third child still inside. **That defect was not shown to be the reported
+  cause** — see [known-issues](/references/known-issues.md) for what was ruled out
+  and what to drive next.
+
 * **chimol: a rotation now turns both coordinate arrays about the same point
   (RF-078).** The renderer keeps `(xyz - raw_center) * scale` beside the Angstrom
   atom array, so a scene-space rotation pivots on the molecule's centre.

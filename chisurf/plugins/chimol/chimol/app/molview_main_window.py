@@ -11,7 +11,6 @@ from typing import Optional, Any, Sequence
 import numpy as np
 
 from qtpy import QtWidgets, QtCore, QtGui
-from chisurf.gui import dialogs
 
 # These are imported independently on purpose: the structure reader is pure
 # core code, while `open_files` drags in the whole Qt widget stack. Sharing one
@@ -614,7 +613,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 except Exception:
                     pass
                 try:
-                    dialogs.warning(
+                    QtWidgets.QMessageBox.warning(
                         self,
                         "Failed to load structure",
                         f"Could not load structure from:\n{path}\n\n{e}",
@@ -815,6 +814,26 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         dlg = MolViewConfigEditor(self, json_path=json_path, viewer=self.viewer)
         dlg.exec_()
 
+    @staticmethod
+    def _widget_alive(widget) -> bool:
+        """Whether a Qt widget's C++ side still exists.
+
+        Touching a widget whose C++ object has been deleted raises
+        ``RuntimeError: wrapped C/C++ object ... has been deleted``, and here that
+        happened inside a *selection-changed* handler -- so clicking an object
+        killed the window. The dock bug that deleted the widgets is fixed
+        upstream in ``dock_area.cleanup_empty_tab_widget``, but a signal handler
+        should not be one stray deletion away from taking the application down,
+        so it checks rather than assumes.
+        """
+        if widget is None:
+            return False
+        try:
+            widget.objectName()
+        except RuntimeError:
+            return False
+        return True
+
     def _update_sequence_view(self, object_id: Optional[str] = None) -> None:
         active_id = object_id or self.viewer.get_active_object_id()
 
@@ -822,6 +841,18 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         seq_view_enabled = bool(seq_cfg.get("seq_view", True))
         self._set_tab_visible("Sequence", seq_view_enabled)
         if not seq_view_enabled:
+            return
+
+        if not (
+            self._widget_alive(self.seq_numbers_list)
+            and self._widget_alive(self.seq_list)
+        ):
+            # The sequence dock is gone. Say so once rather than raise out of a
+            # signal handler: the rest of the window is still usable.
+            logging.getLogger(__name__).warning(
+                "chimol: the sequence dock's widgets have been deleted; "
+                "skipping the sequence update"
+            )
             return
 
         self.seq_numbers_list.clear()
@@ -1622,10 +1653,10 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 self.hierarchy.set_hierarchy(hierarchy)
                 return object_id
             except RmfNotAvailableError as e:
-                dialogs.warning(self, "RMF Not Available", str(e))
+                QtWidgets.QMessageBox.warning(self, "RMF Not Available", str(e))
                 raise
             except Exception as e:
-                dialogs.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
+                QtWidgets.QMessageBox.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
                 raise
 
         # First try the standard IMP/Structure-based loader for static files.

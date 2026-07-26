@@ -504,6 +504,31 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
+- **A chimol dock's widgets were reported deleted, and the cause is not pinned
+  down.** The report: closing/moving a dock left
+  `_update_sequence_view` raising `RuntimeError: wrapped C/C++ object of type
+  QListWidget has been deleted`, out of the *selection-changed* handler, so
+  clicking an object killed the window.
+
+  Two things landed. A guard in `_update_sequence_view` checks the widgets are
+  alive and logs instead of raising, which stops the crash whatever deleted them.
+  And a genuine latent defect in `dock_area.cleanup_empty_tab_widget` was fixed:
+  it assumed a splitter holds exactly **two** children, moved the first sibling
+  out and deleted the splitter — taking any third child with it, because Qt
+  deletes an orphaned widget's children. chimol's default layout has a
+  three-child vertical splitter (viewport / sequence / timeline), so the shape was
+  present.
+
+  **But that defect was not shown to be the reported cause.** Driving
+  `removeTab` on the three-child splitter leaves every widget alive with the old
+  code as well as the new, because `removeTab` detaches the page widget before
+  cleanup runs. The remaining suspects are the drag paths (`_finish_drag`,
+  floating windows) and `restore_tab`/`restore_all_tabs`, none of which has been
+  driven. Next step: reproduce by *dragging* a dock out and closing the float,
+  with a liveness probe on every page widget, rather than by calling `removeTab`.
+
+
+
 
 - **The chimol accessibility doc figure is not reproducible byte-for-byte, and
   the reason is unknown.** Re-running `docs/guides/make_screenshots.py::
