@@ -54,10 +54,49 @@ def select_setup(name: str):
     return {}
 
 
+def _current_setup() -> typing.Any:
+    """Return the reader of the currently selected setup, or ``None``.
+
+    Returns
+    -------
+    object or None
+        The active :class:`ExperimentReader`. ``None`` when ChiSurf runs
+        without a main window (a plugin started standalone) or when no
+        experiment is selected yet — ``Main.current_setup`` raises in that
+        case, and a property raising :class:`AttributeError` is reported as
+        "``Main`` has no attribute ``current_setup``", which hides the cause.
+    """
+    gui = getattr(cs, "cs", None)
+    if gui is None:
+        return None
+    try:
+        return gui.current_setup
+    except (AttributeError, IndexError):
+        return None
+
+
 @action("setup.params.set", schema={"params": dict})
 def set_setup_params(params: typing.Dict[str, typing.Any]):
-    """Set parameters for the current setup."""
-    setup = cs.cs.current_setup
+    """Set parameters for the current setup.
+
+    Parameters
+    ----------
+    params : dict
+        Attribute names mapped to the values to assign. A dotted name
+        (``"a.b"``) walks attributes on the setup before assigning the last
+        component.
+
+    Returns
+    -------
+    dict
+        ``{"applied": [...]}`` — the keys that were written. Empty when no
+        setup is reachable; the action logs a warning instead of raising, so a
+        caller that dispatches from a Qt slot is not silently truncated.
+    """
+    setup = _current_setup()
+    if setup is None:
+        cs.logging.warning("setup.params.set: no setup is selected — parameters not applied")
+        return {"applied": []}
     for key, value in params.items():
         if "." in key:
             parts = key.split(".")
@@ -67,7 +106,7 @@ def set_setup_params(params: typing.Dict[str, typing.Any]):
             setattr(obj, parts[-1], value)
         else:
             setattr(setup, key, value)
-    return {}
+    return {"applied": list(params)}
 
 
 @action("project.save", schema={"project_name": str})

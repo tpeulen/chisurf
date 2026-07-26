@@ -1334,11 +1334,11 @@ plot — once given room — carries a correct legend and a *Micro Time (ns)* ax
 Findings RF-090..RF-097.
 
 ### RF-090
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the "Transfer to ChiSurf" button does nothing and reports nothing, in two plugins)
 - **Location:** `chisurf/core/actions/project_actions.py:60` (`set_setup_params`, `setup = cs.cs.current_setup`), reached from `chisurf/plugins/tttr/microtime_histogram/wizard.py:820` and `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:1058`
 - **Finding:** The `setup.params.set` action reads `cs.cs.current_setup`, an attribute that exists on no main window — `grep` finds the name nowhere else in the tree except an unrelated `_current_setup_idx` and per-plugin locals. Verified both ways: standalone (`cs.cs is None`) it raises `AttributeError: 'NoneType' object has no attribute 'current_setup'`, and with `Main()` constructed and assigned to `cs.cs` it raises `AttributeError: 'Main' object has no attribute 'current_setup'. Did you mean: 'current_fit'?`. Because the dispatch happens inside a Qt slot the exception is swallowed to stderr, so clicking **Transfer to ChiSurf** after a successful compute yields no dialog, no dataset and no error — `chisurf.imported_datasets` goes 0 → 0 — and the following `dataset.add` never runs. The same three-dispatch sequence (`experiment.set` → `setup.params.set` → `dataset.add`) is the IRF estimator's hand-off, so that path is dead too. Either give the main window a `current_setup` property over the active reader or route the action through the reader the way `setup.select` does, and add a smoke test that dispatches the action.
-- **Fix note:**
+- **Fix note:** Diagnosis partly corrected: `Main.current_setup` *does* exist (`chisurf/gui/main.py:154`) and the action works in a fully started app — re-verified headlessly, `setup.params.set` applied `dt=0.032` to the live `TCSPCReader`. The reviewer's second repro hit the property's *getter* raising `AttributeError` (bare `Main()` has no experiments, so `current_experiment` is `None`), which Python reports as "`Main` object has no attribute `current_setup`". Both failing modes are real for a plugin started **standalone** (`python -m chisurf.plugins.tttr.microtime_histogram --auto-transfer`, `cs.cs is None`) and for an app with no experiment selected: the hand-off then dies mid-sequence and `dataset.add` never runs. `set_setup_params` now resolves the setup through a guarded `_current_setup()` (like its sibling actions), logs a warning instead of raising, and returns `{"applied": [...]}`. Pinned by `test/macros/test_setup_params_action.py` (3 cases: params applied incl. dotted keys, no main window, raising `current_setup` getter).
 
 ### RF-091
 - **Status:** OPEN

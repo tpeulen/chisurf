@@ -2,6 +2,21 @@
 
 ## 2026-07-26
 
+* **`setup.params.set` died whenever no main window was up (RF-090).** The
+  "Transfer to ChiSurf" hand-off in the microtime-histogram wizard and the IRF
+  estimator dispatches `experiment.set` → `setup.params.set` → `dataset.add`.
+  The middle action dereferenced `chisurf.cs.current_setup` unguarded, so a
+  plugin started standalone (`cs.cs is None`, e.g. `python -m
+  chisurf.plugins.tttr.microtime_histogram --auto-transfer`) — or a session with
+  no experiment selected, where `Main.current_setup`'s getter itself raises and
+  Python reports the misleading "`Main` object has no attribute
+  `current_setup`" — aborted the sequence inside a Qt slot: no dialog, no
+  dataset, `dataset.add` never reached. The action now resolves the reader
+  through a guarded `_current_setup()` like its sibling actions, logs a warning
+  instead of raising, and returns `{"applied": [...]}`. Re-verified headlessly
+  that a fully started app still applies the parameters (`dt = 0.032` on the
+  live `TCSPCReader`); pinned by `test/macros/test_setup_params_action.py`.
+
 * **GUI tester: the TAC-linearization LUT workflow — the plumbing is sound, the
   decision that drives it is a guess.** Drove the documented calibration flow
   headlessly (Channel Definition editor → *Configure LUTs…* → ① Compute →
