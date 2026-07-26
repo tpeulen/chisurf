@@ -637,11 +637,19 @@ the working tree at review time (both have uncommitted count-rate edits by
 another instance); the symbol names are given so they stay findable.
 
 ### RF-042
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every curve in a multi-run ALV file is the same interleaved garbage)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/asc_alv.py:187` (`openASC_old`, `data = [[]]*len(curvelist)`)
 - **Finding:** `[[]]*n` builds `n` references to **one** list, so `data[i].append(...)` in the row loop at `:190-192` appends every column of every row to a single shared list; all `np.array(data[t])` at `:245-332` are then the identical, row-major-interleaved array. Verified on the real ALV-5000 multi-run file `junk/quickfit3/plugins/fccsfit/examples/NUNC3_dil_050p_025_ccf.ASC` (183 lag times × 7 curves): `read_asc` returns 7 datasets that are **byte-identical**, each with 1281 points instead of 183, whose `correlation_times` begin `[0.0002, 0.0002, 0.0002, …]` — the same lag repeated once per curve. Duplicated lag times then make `np.diff(times)` zero inside `noise()`, which is where the `divide by zero encountered in divide` warnings from `chisurf/core/fluorescence/fcs/__init__.py:147` come from. Fix: `data = [[] for _ in curvelist]`. (RF-043 currently masks this by crashing first.) No test covers a multi-run ALV file.
-- **Fix note:**
+- **Fix note:** `openASC_old` now builds one *independent* list per curve
+  (`data = [[] for _ in curvelist]`, with a comment naming the aliasing trap).
+  Re-checked on the real ALV-5000 file: seven curves of 183 points each with
+  strictly increasing lag times instead of seven identical 1281-point arrays.
+  Pinned by the new `test/fio/test_asc_alv_multi_run.py`, which writes a
+  synthetic ALV-5000 "Correlation (Multi, Averaged)" export (one average + three
+  runs, distinct column values) and asserts per-curve shape, per-curve values,
+  strictly increasing `correlation_times`, and that the runs differ from one
+  another — all three tests fail on the pre-fix reader.
 
 ### RF-043
 - **Status:** FIXED

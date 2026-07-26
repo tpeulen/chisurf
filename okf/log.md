@@ -2,6 +2,17 @@
 
 ## 2026-07-26
 
+* **RF-042 fix — every curve of a multi-run ALV file was the same interleaved
+  array.** `openASC_old` allocated its per-curve accumulators as
+  `[[]] * len(curvelist)`, aliasing one list into every slot, so the row loop
+  appended all columns of all rows to it: an ALV-5000 "Correlation (Multi,
+  Averaged)" export with 183 lag times × 7 curves came back as seven identical
+  1281-point arrays whose lag times repeated once per curve (which is where the
+  zero `np.diff(times)` in the FCS noise model came from). One independent list
+  per curve; pinned by the new `test/fio/test_asc_alv_multi_run.py`, which
+  synthesises a multi-run export and asserts per-curve shape, values, strictly
+  increasing lag times, and that the runs differ. Finding closed in
+  [/reviews/findings.md](/reviews/findings.md).
 * **GUI walk of the Decay Analysis hub — a MaxEnt lifetime distribution over an
   existing fit.** Drove `Spectroscopy:Decay Analysis` headlessly end to end: a
   `Lifetime` fit of the IBH sample decay with its prompt as IRF

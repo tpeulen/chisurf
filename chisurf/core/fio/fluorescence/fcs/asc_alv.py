@@ -189,7 +189,9 @@ def openASC_old(path):
     Truedata = Alldata[StartC: EndC]
     readdata = csv.reader(Truedata, delimiter='\t')
     # Add lists to *data* according to the length of *curvelist*
-    data = [[]]*len(curvelist)
+    # One *independent* list per curve: `[[]] * n` would alias a single list
+    # into every slot, so the row loop below would interleave all curves.
+    data = [[] for _ in curvelist]
     # Work through the rows in the read data
     for row in readdata:
         for i in np.arange(len(curvelist)):
