@@ -33,6 +33,126 @@ class RenderingMixin(BaseCmd):
             return
         self._emit_message(f"bg_color: background set to {color}")
 
+    #: ChimeraX's lighting presets, transcribed from
+    #: ``std_commands/src/lighting.py``. They are *named looks* rather than
+    #: sliders, which is what makes them worth having: `soft` and `gentle` are
+    #: how a ChimeraX figure gets its appearance.
+    #:
+    #: Two entries carry values ChiMOL cannot honour yet -- `shadows` and
+    #: `multishadow` need shadow maps, which the new offscreen target makes
+    #: possible but which are not built. They are kept in the table rather than
+    #: dropped, and the command *says* which parts it could not apply: a preset
+    #: that quietly does three of its five things is worse than one that reports.
+    LIGHTING_PRESETS: dict[str, dict] = {
+        "simple": {
+            "shadows": False, "multishadow": 0,
+            "key_light_intensity": 1.0, "fill_light_intensity": 0.5,
+            "ambient_light_intensity": 0.4, "silhouette": False,
+        },
+        "full": {
+            "shadows": True, "multishadow": 64,
+            "key_light_intensity": 0.7, "fill_light_intensity": 0.3,
+            "ambient_light_intensity": 0.8, "silhouette": False,
+        },
+        "soft": {
+            "shadows": False, "multishadow": 64,
+            "key_light_intensity": 0.0, "fill_light_intensity": 0.0,
+            "ambient_light_intensity": 1.5, "silhouette": False,
+        },
+        "gentle": {
+            "shadows": False, "multishadow": 64,
+            "key_light_intensity": 0.0, "fill_light_intensity": 0.0,
+            "ambient_light_intensity": 1.5, "silhouette": False,
+        },
+        "flat": {
+            "shadows": False, "multishadow": 0,
+            "key_light_intensity": 0.0, "fill_light_intensity": 0.0,
+            "ambient_light_intensity": 1.45, "silhouette": True,
+            "depth_jump": 0.01,
+        },
+        "default": {
+            "shadows": False, "multishadow": 0,
+            "key_light_intensity": 1.0, "fill_light_intensity": 0.0,
+            "ambient_light_intensity": 0.55, "silhouette": False,
+        },
+    }
+
+    #: Preset keys that need machinery ChiMOL has not built.
+    _LIGHTING_UNSUPPORTED = ("shadows", "multishadow")
+
+    @command("lighting")
+    def lighting(self, preset: str = "", **overrides) -> None:
+        """Set the lighting, by preset or by parameter (ChimeraX ``lighting``).
+
+        Not a PyMOL command: PyMOL has no equivalent outside its ray tracer, and
+        this is one of the places ChiMOL is deliberately ahead of it. The preset
+        names and parameter names are ChimeraX's.
+
+        Parameters
+        ----------
+        preset : str, optional
+            ``simple``, ``full``, ``soft``, ``gentle``, ``flat`` or ``default``.
+            With no argument the current settings are reported.
+        **overrides
+            Individual parameters, applied after the preset:
+            ``key_light_intensity``, ``fill_light_intensity``,
+            ``ambient_light_intensity``, ``silhouette``, ``silhouette_thickness``,
+            ``depth_jump``.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        renderer = getattr(viewer, "_renderer", None)
+        if renderer is None or not hasattr(renderer, "set_lighting"):
+            self._emit_error("lighting: this renderer has no lighting controls")
+            return
+
+        name = str(preset).strip().lower()
+        if not name and not overrides:
+            state = renderer.lighting_state()
+            self._emit_message(
+                "lighting: "
+                + ", ".join(f"{k}={v}" for k, v in sorted(state.items()))
+            )
+            return
+
+        values: dict = {}
+        missing: list[str] = []
+        if name:
+            settings = self.LIGHTING_PRESETS.get(name)
+            if settings is None:
+                self._emit_error(
+                    f"lighting: unknown preset '{preset}'. Use one of: "
+                    + ", ".join(sorted(self.LIGHTING_PRESETS))
+                )
+                return
+            for key, value in settings.items():
+                if key in self._LIGHTING_UNSUPPORTED:
+                    if value:
+                        missing.append(key)
+                    continue
+                values[key] = value
+
+        for key, value in overrides.items():
+            if key in self._LIGHTING_UNSUPPORTED:
+                missing.append(key)
+                continue
+            values[key] = value
+
+        renderer.set_lighting(**values)
+        self._emit_message(
+            f"lighting: {name or 'parameters'} applied"
+            + (f" ({len(overrides)} overrides)" if overrides else "")
+        )
+        if missing:
+            # Named, not silently skipped: `full` without its shadows is a
+            # different look, and the user should know which one they got.
+            self._emit_message(
+                "lighting: not applied -- "
+                + ", ".join(sorted(set(missing)))
+                + " needs shadow maps, which are not built yet"
+            )
+
     @command("show")
     def show(self, rep: str, sel: Selection = "") -> None:
         """Show a representation (PyMOL ``show rep [, selection]``)."""

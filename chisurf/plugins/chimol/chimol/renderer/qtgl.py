@@ -134,6 +134,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._normal_matrix_uniform = -1
         self._view_matrix_uniform = -1
         self._light_dir_uniform = -1
+        self._fill_light_dir_uniform = -1
+        self._key_intensity_uniform = -1
+        self._fill_intensity_uniform = -1
         self._ambient_uniform = -1
         self._spec_strength_uniform = -1
         self._shininess_uniform = -1
@@ -167,6 +170,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             float(light_dir[0]), float(light_dir[1]), float(light_dir[2])
         )
         self._ambient_strength = float(lighting_cfg.get("ambient_strength", 0.55))
+        fill_dir = lighting_cfg.get("fill_light_direction", [-0.4, -0.3, 0.8])
+        self._fill_light_direction = QtGui.QVector3D(
+            float(fill_dir[0]), float(fill_dir[1]), float(fill_dir[2])
+        )
+        self._key_intensity = float(lighting_cfg.get("key_light_intensity", 1.0))
+        self._fill_intensity = float(lighting_cfg.get("fill_light_intensity", 0.0))
         self._specular_strength = float(lighting_cfg.get("specular_strength", 0.18))
         self._shininess = float(lighting_cfg.get("shininess", 38.0))
         self._rim_strength = float(lighting_cfg.get("rim_strength", 0.18))
@@ -411,6 +420,47 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             )
         self._background = rgba
         self.update()
+
+    def set_lighting(self, **values) -> None:
+        """Set lighting parameters by name and redraw.
+
+        Names are ChimeraX's -- ``key_light_intensity``, ``fill_light_intensity``,
+        ``ambient_light_intensity``, ``silhouette`` and friends -- so a preset is
+        just a dict of them and the command layer needs no translation table.
+        """
+        mapping = {
+            "key_light_intensity": "_key_intensity",
+            "fill_light_intensity": "_fill_intensity",
+            "ambient_light_intensity": "_ambient_strength",
+            "specular_strength": "_specular_strength",
+            "shininess": "_shininess",
+            "rim_strength": "_rim_strength",
+            "rim_power": "_rim_power",
+        }
+        for name, value in values.items():
+            attribute = mapping.get(name)
+            if attribute is not None:
+                setattr(self, attribute, float(value))
+            elif name == "silhouette":
+                self._post.silhouette = bool(value)
+            elif name == "silhouette_thickness":
+                self._post.silhouette_thickness = float(value)
+            elif name == "depth_jump":
+                self._post.depth_jump = float(value)
+        self.update()
+
+    def lighting_state(self) -> dict:
+        """The current lighting parameters, under ChimeraX's names."""
+        return {
+            "key_light_intensity": float(self._key_intensity),
+            "fill_light_intensity": float(self._fill_intensity),
+            "ambient_light_intensity": float(self._ambient_strength),
+            "specular_strength": float(self._specular_strength),
+            "shininess": float(self._shininess),
+            "silhouette": bool(self._post.silhouette),
+            "silhouette_thickness": float(self._post.silhouette_thickness),
+            "depth_jump": float(self._post.depth_jump),
+        }
 
     def set_grid_visible(self, visible: bool) -> None:
         self._grid_visible = bool(visible)
@@ -730,6 +780,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._program.setUniformValue(self._normal_matrix_uniform, normal_matrix)
         self._program.setUniformValue(self._view_matrix_uniform, view)
         self._program.setUniformValue(self._light_dir_uniform, self._light_direction)
+        self._program.setUniformValue(
+            self._fill_light_dir_uniform, self._fill_light_direction
+        )
+        self._program.setUniformValue(
+            self._key_intensity_uniform, float(self._key_intensity)
+        )
+        self._program.setUniformValue(
+            self._fill_intensity_uniform, float(self._fill_intensity)
+        )
         self._program.setUniformValue(self._ambient_uniform, float(self._ambient_strength))
         self._program.setUniformValue(self._spec_strength_uniform, float(self._specular_strength))
         self._program.setUniformValue(self._shininess_uniform, float(self._shininess))
@@ -939,6 +998,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         varying float v_occ;
         uniform vec3 lightDir;
         uniform float ambientStrength;
+        // ChimeraX's model: a key light, a fill light from a second direction,
+        // and an ambient term, each with its own intensity. One hard-coded
+        // direction cannot express `soft` or `flat`, which are the presets that
+        // make a figure look like a ChimeraX figure.
+        uniform vec3 fillLightDir;
+        uniform float keyIntensity;
+        uniform float fillIntensity;
         uniform float specStrength;
         uniform float shininess;
         uniform float rimStrength;
@@ -966,7 +1032,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             }
             vec3 viewDir = normalize(-v_viewPos);
             float lambert = max(dot(n, l), 0.0);
-            float lighting = ambientStrength + (1.0 - ambientStrength) * lambert;
+            float fillLambert = max(dot(n, normalize(fillLightDir)), 0.0);
+            // Key + fill + ambient, each scaled. With keyIntensity 1, fill 0 and
+            // ambient equal to ambientStrength this is exactly the old formula,
+            // so the default look is unchanged.
+            float lighting = ambientStrength
+                           + (1.0 - ambientStrength)
+                             * (keyIntensity * lambert + fillIntensity * fillLambert);
 
             float spec = 0.0;
             if (lambert > 0.0) {
@@ -1052,6 +1124,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._normal_matrix_uniform = program.uniformLocation("normalMatrix")
         self._view_matrix_uniform = program.uniformLocation("viewMatrix")
         self._light_dir_uniform = program.uniformLocation("lightDir")
+        self._fill_light_dir_uniform = program.uniformLocation("fillLightDir")
+        self._key_intensity_uniform = program.uniformLocation("keyIntensity")
+        self._fill_intensity_uniform = program.uniformLocation("fillIntensity")
         self._ambient_uniform = program.uniformLocation("ambientStrength")
         self._spec_strength_uniform = program.uniformLocation("specStrength")
         self._shininess_uniform = program.uniformLocation("shininess")

@@ -108,6 +108,41 @@ rotation must be an isometry, and each group must have exactly one identity —
 7658 operators verified.
 :::
 
+### Making it look good
+
+The viewer's lighting follows ChimeraX's model — a key light, a fill light and an
+ambient term, each with its own intensity — and its **named looks** rather than a
+row of sliders:
+
+```text
+lighting soft                # all ambient, no key light: the ChimeraX look
+lighting flat                # bright and unshaded, with outlines
+lighting simple              # key + fill, modest ambient
+lighting default             # back to the plain key light
+lighting                     # report the current settings
+```
+
+Silhouettes are the other half, and PyMOL has no equivalent outside its ray
+tracer:
+
+```text
+lighting flat                # turns them on
+lighting default, silhouette=1
+```
+
+They come from a depth-buffer pass, so they outline the molecule against the
+background *and* mark where one part passes in front of another — which is what
+makes a crowded cartoon readable. On a black background a black outline is
+invisible, so pair them with `bg_color white`.
+
+:::{note}
+`lighting full` and the shadow parts of the other presets are **not applied
+yet** — they need shadow maps, which are not built. The command names what it
+skipped rather than quietly giving you a different look. For the same reason
+`soft` and `gentle` are currently identical: in ChimeraX they differ only in
+shadow-map resolution.
+:::
+
 ### Tidying and shielding
 
 ```text

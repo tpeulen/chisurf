@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **chimol: a `lighting` command with ChimeraX's presets.** Second item on the
+  rendering roadmap, on the scaffolding from the previous commit.
+
+  The shader gained ChimeraX's model — a **key light, a fill light and an ambient
+  term**, each with its own intensity — replacing one hard-coded direction. With
+  key 1, fill 0 and ambient at the old value the formula is unchanged, so the
+  default look does not move. That is what lets `soft` (all ambient, no key
+  light) and `flat` exist at all; they are the presets that give a ChimeraX
+  figure its appearance.
+
+  All six presets transcribed from `std_commands/src/lighting.py`, with the
+  parameter names kept as ChimeraX spells them, so a preset is a dict of them and
+  the command layer needs no translation table.
+
+  **What it cannot do, it names.** `shadows` and `multishadow` need shadow maps,
+  which are not built, so `lighting full` applies its intensities and then says
+  which two parts it skipped — a preset that quietly does three of its five
+  things is worse than one that reports, because `full` without shadows is a
+  different look. For the same reason `soft` and `gentle` are currently
+  *identical*: in ChimeraX they differ only in shadow-map size and depth bias. A
+  test pins that equality, so when multishadow lands the test fails and forces
+  the difference to become real.
+
+  Verified by rendering all six and measuring the molecule's mean and contrast:
+  every preset moves them except the soft/gentle pair, which is correct and
+  explained. 12 tests and a guide section.
+
 * **DATA-05, half of it: `operation_type` had two validators that disagreed.**
   `record_operation` checks the **extensible** `mmfdb_vocabulary` table;
   `record_operation_with_artifacts` and the chinet adapter's
