@@ -2,6 +2,41 @@
 
 ## 2026-07-26
 
+* **chimol: render-to-texture scaffolding, and silhouettes on top of it.** The
+  first thing from the [ChiMOL target](/specs/chimol.md)'s rendering roadmap.
+
+  `qtgl.py` drew straight to the default framebuffer, which rules out every
+  effect that needs to *read the scene back*. `renderer/postprocess.py` adds the
+  target once — colour **and depth textures**, sized to the device pixel ratio —
+  and silhouettes, occlusion and depth cue now each become a small pass rather
+  than three separate rewrites of `paintGL`. With nothing enabled `begin`
+  declines and the old direct path runs unchanged, so it costs nothing unused.
+
+  Three things cost time and are worth not rediscovering:
+
+  - **the depth attachment must be a texture, not a renderbuffer.** Qt's
+    `QOpenGLFramebufferObject` gives a renderbuffer, which cannot be sampled, so
+    the framebuffer is built by hand;
+  - **"the screen" is not framebuffer 0.** `QOpenGLWidget` composites through its
+    own framebuffer, so the target to return to is `defaultFramebufferObject()`;
+  - **the context is OpenGL 2.1 / GLSL 120.** macOS gives the legacy profile
+    unless a core profile is requested, and chimol never requests one — the main
+    shader is `#version 120`. A 330 post-process shader fails to compile and the
+    effect *silently falls back*, which is exactly how it first appeared to do
+    nothing. So: `attribute`/`varying`, `gl_FragColor`, `texture2D`, no VAOs, and
+    a constant loop bound with the radius test inside. The fallback now logs its
+    reason rather than being mistaken for the effect being switched off.
+
+  Verified in a real window: 5462 pixels change when silhouettes are enabled and
+  **every one of them is darker**, which is what a black outline must do; the
+  edges are visible between overlapping helices and strands in the render.
+
+  Found while checking it and *not* chased: `bg_color white` appears to change
+  nothing — the frame was byte-identical to the black-background run. Recorded as
+  a lead in [known-issues](/references/known-issues.md), because the recent
+  pattern (`orient` a stub, `zoom`/`center` inert on a ligand, three
+  representations drawing nothing) says a reported success is not evidence.
+
 * **GUI walk — Accurate FRET: the simulated sample is exemplary, the real one is
   not.** Drove `AccurateFretTool` headlessly end to end (drop, auto-map,
   photophysics, **🎯 Calibrate**, all five view tabs, CSV export, the four

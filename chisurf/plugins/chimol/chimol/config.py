@@ -153,6 +153,14 @@ def _load_display_config() -> dict:
                 "coil": {"width": 0.5, "thickness": 0.5, "profile_power": 2.2},
             },
         },
+        # PyMOL has no equivalent outside its ray tracer; ChimeraX exposes it as
+        # a per-scene setting, and the names here are its names.
+        "silhouette": {
+            "enabled": False,
+            "thickness": 1.0,
+            "depth_jump": 0.03,
+            "color": [0.0, 0.0, 0.0, 1.0],
+        },
         "balls": {
             "size_scale": 0.04,
             "min_size": 3.0,

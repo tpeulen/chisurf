@@ -511,6 +511,22 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
+- **`bg_color` may be another silent no-op — unverified lead.** While checking
+  silhouettes on a white background, `bg_color white` changed nothing: the
+  rendered frame was byte-identical to the black-background run (same lit-pixel
+  count, same mean), and no error was reported. On a white background nearly
+  every pixel would be lit, so the difference is unmissable.
+
+  Not chased down, so this is a *lead*, not a finding: the command may be
+  applying to a different surface, or the viewer may be re-reading the
+  background from config on each paint. Given `orient` was a stub, `zoom` and
+  `center` did nothing on a ligand and three representations drew no geometry —
+  all reported success — this one deserves the same functional check rather than
+  the benefit of the doubt. Reproduce with `bg_color white` then compare
+  `grabFramebuffer` statistics.
+
+
+
 - **A chimol dock's widgets were reported deleted, and the cause is not pinned
   down.** The report: closing/moving a dock left
   `_update_sequence_view` raising `RuntimeError: wrapped C/C++ object of type

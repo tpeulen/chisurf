@@ -148,6 +148,19 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._occlusion_attr = -1
         self._background = (0.0, 0.0, 0.0, 1.0)
 
+        # Render-to-texture scaffolding. Silhouettes today; occlusion and depth
+        # cue reuse the same target rather than each adding their own.
+        from .postprocess import PostProcess
+
+        self._post = PostProcess()
+        silhouette_cfg = (_DISPLAY_CONFIG.get("silhouette") or {})
+        self._post.silhouette = bool(silhouette_cfg.get("enabled", False))
+        self._post.silhouette_thickness = float(silhouette_cfg.get("thickness", 1.0))
+        self._post.depth_jump = float(silhouette_cfg.get("depth_jump", 0.03))
+        self._post.silhouette_color = tuple(
+            float(c) for c in silhouette_cfg.get("color", [0.0, 0.0, 0.0, 1.0])
+        )
+
         lighting_cfg = (_DISPLAY_CONFIG.get("lighting") or {})
         light_dir = lighting_cfg.get("light_direction", [0.0, 0.0, 1.0])
         self._light_direction = QtGui.QVector3D(
@@ -654,11 +667,28 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if gl is None:
             return
 
+        # Effects that read the scene back -- silhouettes now, occlusion and
+        # depth cue next -- need it rendered into a texture first. With none of
+        # them on, `begin` declines and everything below draws straight to the
+        # widget exactly as before, so the scaffolding costs nothing unused.
+        ratio = float(self.devicePixelRatioF()) if hasattr(self, "devicePixelRatioF") else 1.0
+        buffer_w = max(1, int(self.width() * ratio))
+        buffer_h = max(1, int(self.height() * ratio))
+        # The depth-linearisation factor needs the near/far ratio, and collapses
+        # to 1 under an orthographic projection.
+        self._post.near_far_ratio = (
+            1.0 if self._orthoscopic
+            else float(self._near_clip) / max(float(self._far_clip), 1e-6)
+        )
+        offscreen = self._post.begin(buffer_w, buffer_h)
+
         r, g_col, b, a = self._background
         gl.glClearColor(r, g_col, b, a)
         gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         if self._program is None:
+            if offscreen:
+                self._post.end(self.defaultFramebufferObject())
             return
 
         if not self._gpu_calls and self._draw_data:
@@ -669,6 +699,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._needs_upload = False
 
         if not self._gpu_calls:
+            if offscreen:
+                self._post.end(self.defaultFramebufferObject())
             return
 
         mvp, view = self._build_matrices()
@@ -833,6 +865,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
         self._program.release()
         self._render_labels()
+
+        # Back to the widget, then the effect passes. `defaultFramebufferObject`,
+        # not 0: QOpenGLWidget composites through its own framebuffer, so binding
+        # 0 here draws into nothing visible.
+        if offscreen:
+            self._post.end(self.defaultFramebufferObject())
 
     # ------------------------------------------------------------------
     # Internal helpers
