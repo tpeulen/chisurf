@@ -5331,7 +5331,10 @@ class MolView(QtWidgets.QWidget):
         -------
         numpy.ndarray or None
             ``(n_points, 4)`` colours, or None when there is no per-atom
-            override to project or the arrays do not line up.
+            override to project or the arrays do not line up. A residue no
+            overridden atom belongs to is NaN, i.e. it abstains -- the caller
+            blends on the finite mask so that a partial override leaves the
+            rest of the colouring alone.
         """
         override = getattr(self, "_colors_per_atom_override", None)
         if override is None:
@@ -5380,13 +5383,17 @@ class MolView(QtWidgets.QWidget):
                 ca_seen[i_res] = True
                 ca_cols[i_res] = col
 
-        base = np.asarray(self._base_color_single, dtype=float)
         empty = counts == 0
         with np.errstate(invalid="ignore"):
             out[:] = sums / np.maximum(counts, 1)[:, None]
         out[ca_seen] = ca_cols[ca_seen]
-        out[empty] = base
         out[:, 3] = 1.0
+        # A residue no overridden atom belongs to abstains -- it must not be
+        # given the base colour here. The override is normally partial (``color
+        # red, resi 4`` touches one residue), and the caller assigns this array
+        # wholesale, so a fallback colour would flatten the colour mode and the
+        # per-residue override for every residue the user did not name.
+        out[empty] = np.nan
         return out
 
     def _update_sticks(self, sticks_cfg: dict, colors_per_ca: np.ndarray | None) -> list[SceneObject] | None:
@@ -6510,7 +6517,15 @@ class MolView(QtWidgets.QWidget):
         # cartoon and the trace read only that array -- see _ca_rgba.
         projected = self._ca_rgba(n_points)
         if projected is not None:
-            self._colors_per_ca = projected
+            base_cols = self._colors_per_ca
+            base_cols = (
+                np.asarray(base_cols, dtype=float)
+                if base_cols is not None and np.shape(base_cols) == projected.shape
+                else np.tile(np.asarray(self._base_color_single, dtype=float), (n_points, 1))
+            )
+            mask = np.all(np.isfinite(projected), axis=1)
+            base_cols[mask] = projected[mask]
+            self._colors_per_ca = base_cols
 
         scene_objects: list[SceneObject] = []
         scene_objects += self._update_cartoon(coords, n_points, cartoon_cfg, self._colors_per_ca)

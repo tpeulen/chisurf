@@ -158,6 +158,66 @@ def test_no_override_leaves_the_residue_colours_alone(lysozyme):
     assert viewer._ca_rgba(len(viewer._residue_ids)) is None
 
 
+def test_colouring_one_residue_leaves_the_others_alone(qapp):
+    """A *partial* per-atom override must not flatten the rest of the cartoon.
+
+    The override is normally partial -- ``color red, resi 4`` touches one
+    residue -- and the projection used to hand every untouched residue the base
+    colour, which the caller then assigned over the whole array. One named
+    residue therefore destroyed the load-time gradient everywhere else.
+    """
+    win, shared = _window(qapp, _SOLVATED)
+    try:
+        viewer = win.viewer
+        before = np.asarray(viewer._colors_per_ca, dtype=float).copy()
+        assert np.abs(np.diff(before[:, :3], axis=0)).sum() > 0.1, (
+            "the fixture should load with a gradient to destroy"
+        )
+
+        shared.do("color red, resi 4")
+        for _ in range(10):
+            qapp.processEvents()
+
+        after = np.asarray(viewer._colors_per_ca, dtype=float)
+        i_red = int(np.flatnonzero(np.asarray(viewer._residue_ids) == 4)[0])
+        assert after[i_red, 0] > 0.9 and after[i_red, 1] < 0.1, (
+            "the residue that was named is not red"
+        )
+        others = np.ones(after.shape[0], dtype=bool)
+        others[i_red] = False
+        assert np.allclose(after[others], before[others]), (
+            "colouring one residue changed the colour of the others"
+        )
+    finally:
+        win.close()
+
+
+def test_an_untouched_residue_abstains_from_the_projection(qapp):
+    """The projection reports "no colour" as NaN, not as the base colour.
+
+    That is what lets the caller blend on the finite mask; a fallback colour
+    here is indistinguishable from a residue the user really did paint in the
+    base colour.
+    """
+    win, shared = _window(qapp, _SOLVATED)
+    try:
+        viewer = win.viewer
+        shared.do("color red, resi 4")
+        for _ in range(10):
+            qapp.processEvents()
+
+        projected = viewer._ca_rgba(len(viewer._residue_ids))
+        assert projected is not None
+        finite = np.all(np.isfinite(projected), axis=1)
+        i_red = int(np.flatnonzero(np.asarray(viewer._residue_ids) == 4)[0])
+        assert finite[i_red], "the residue that was coloured has no colour"
+        assert not finite[np.arange(len(finite)) != i_red].any(), (
+            "an untouched residue was given a colour instead of abstaining"
+        )
+    finally:
+        win.close()
+
+
 def test_spectrum_refreshes_the_sequence_strip(lysozyme):
     """The letters and the ribbon are two views of one colouring."""
     win, shared, qapp = lysozyme
