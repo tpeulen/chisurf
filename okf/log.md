@@ -34,6 +34,35 @@
   says why. See [prds/prd-65.md](/prds/prd-65.md) and
   [prds/prd-50.md](/prds/prd-50.md).
 
+* **AutoForm no longer aims a fit edit at somebody else's fit.**
+  `_own_fit_index()` returned `0` when the bound model's fit was not registered
+  in `chisurf.fits` — not "unknown" but *another fit*. Against an empty list it
+  raised (visible only as a `bound control commit failed` warning, after which
+  the host form never rebuilt); against a populated one it would have dispatched
+  the edit at whichever fit came first. It now returns **-1**, all four copies
+  share that contract, and every fit-targeted dispatch goes through one
+  `_dispatch_fit_update()` guard; `ValueWidget._commit` falls back to the direct
+  attribute set so a scripted form still applies the value. Found by rendering
+  the tcPDA editor headlessly and reading the log rather than only the picture.
+  `test/gui/test_autoform_fit_dispatch.py` (5). See
+  [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
+
+* **Bounded the two unbounded allocations in the three-colour likelihood.**
+  `burst_log_likelihood` returns a `(points x bursts)` grid but built it from a
+  `(points x bursts x channels)` broadcast carrying several temporaries of that
+  size — now chunked over bursts under the existing `_KERNEL_ELEMENT_BUDGET`,
+  the same convention the background path already used (whose comment claimed to
+  be "the one place this can exhaust memory"; it was not). And tcPDA's
+  multistate route gained `dynamic_max_nodes` (2000): the occupancy grid bounds
+  the node count only combinatorially, so many trajectories over several states
+  push distinct nodes toward `dynamic_samples`. Over the ceiling the grid is
+  **coarsened** — merging trajectories that spent nearly the same time in each
+  state, which the smooth occupancy-to-probability map makes interchangeable —
+  rather than nodes dropped, which would silently reweight the occupation
+  distribution, and it is logged once with both numbers. Measured for honesty:
+  real node counts are 800–2700 (a 13–42 MB grid), so this is a guard rail and
+  **not** the cause of any observed memory spike.
+
 * **The numbers ChiSurf publishes had no error bars at all.** A fit optimises
   amplitudes and lifetimes; nobody publishes those. What leaves the program is a
   **derived** quantity — `fret_efficiency`, `species_averaged_lifetime`,

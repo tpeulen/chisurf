@@ -189,6 +189,73 @@ def test_transitions_per_window_takes_the_fastest_state():
     assert transitions_per_window(K, 1.0) == pytest.approx(500.0)
 
 
+# -- bounded cost ------------------------------------------------------------
+
+
+def test_the_node_ceiling_coarsens_and_says_so(caplog):
+    """The likelihood grid is (nodes x bursts); the node count must be bounded.
+
+    The occupancy grid bounds the node count only combinatorially, so with many
+    trajectories and several states the distinct nodes approach
+    ``dynamic_samples``. Coarsening merges trajectories that spent nearly the
+    same time in each state — interchangeable under the smooth
+    occupancy-to-probability map — rather than dropping nodes, which would
+    silently reweight the occupation distribution.
+    """
+    model = _model(n_extra_species=2, n_bursts=150)
+    model.dynamic = True
+    model.rate_matrix = np.array([[0.0, 300.0, 100.0],
+                                  [200.0, 0.0, 250.0],
+                                  [150.0, 220.0, 0.0]])
+    model.dynamic_samples, model.dynamic_resolution = 2000, 128
+    model.dynamic_max_nodes = 40
+
+    with caplog.at_level("WARNING"):
+        assert np.isfinite(model.total_log_likelihood())
+
+    messages = [r.getMessage() for r in caplog.records if "dynamic_max_nodes" in r.getMessage()]
+    assert len(messages) == 1, f"expected one summary warning, got {messages}"
+    assert "coarsened to" in messages[0]
+
+
+def test_a_ceiling_that_does_not_bind_changes_nothing():
+    """Under the ceiling the quadrature must be untouched, bit for bit."""
+    model = _model(n_extra_species=1, n_bursts=150)
+    model.dynamic = True
+    model.rate_matrix = np.array([[0.0, 300.0], [200.0, 0.0]])
+    model.dynamic_samples, model.dynamic_resolution = 600, 24
+
+    model.dynamic_max_nodes = 2000
+    bounded = model.total_log_likelihood()
+    model.dynamic_max_nodes = 10**9
+    assert model.total_log_likelihood() == bounded
+
+
+def test_the_burst_likelihood_chunks_over_bursts():
+    """``burst_log_likelihood`` must not build a (points x bursts x K) block.
+
+    The result is (points x bursts); the broadcast that builds it is a factor
+    ``K`` larger and carries several temporaries of that size. Chunked, the
+    answer has to be identical to the unchunked one.
+    """
+    from chisurf.core.fluorescence.pda3c import likelihood as lk
+
+    rng = np.random.default_rng(0)
+    counts = rng.integers(0, 12, size=(400, 3)).astype(float)
+    p = rng.dirichlet(np.ones(3), size=37)
+
+    full = lk.burst_log_likelihood(counts, p)
+    original = lk._KERNEL_ELEMENT_BUDGET
+    try:
+        lk._KERNEL_ELEMENT_BUDGET = 64      # force many chunks
+        chunked = lk.burst_log_likelihood(counts, p)
+    finally:
+        lk._KERNEL_ELEMENT_BUDGET = original
+
+    assert chunked.shape == (37, 400)
+    assert np.array_equal(full, chunked)
+
+
 # -- the fit itself ----------------------------------------------------------
 
 

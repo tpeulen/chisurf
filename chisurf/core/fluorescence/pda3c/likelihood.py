@@ -459,7 +459,19 @@ def burst_log_likelihood(
     counts = np.atleast_2d(np.asarray(counts, dtype=float))
     p = np.atleast_2d(np.asarray(p, dtype=float))
 
-    out = log_multinomial_pmf(counts[None, :, :], p[:, None, :])
+    # The result is (points x bursts), but the broadcast that builds it is
+    # (points x bursts x channels) and carries several temporaries of that size
+    # inside log_multinomial_pmf. Chunk over bursts under the same element
+    # budget as the background path: the peak then depends on the budget rather
+    # than on the caller's point count, which is what a dynamic model varies
+    # (occupancy nodes) without any sense of how much memory that asks for.
+    out = np.empty((p.shape[0], counts.shape[0]), dtype=float)
+    chunk = max(1, _KERNEL_ELEMENT_BUDGET // max(p.shape[0] * p.shape[1], 1))
+    for start in range(0, counts.shape[0], chunk):
+        stop = min(start + chunk, counts.shape[0])
+        out[:, start:stop] = log_multinomial_pmf(
+            counts[None, start:stop, :], p[:, None, :]
+        )
 
     if background is None:
         background = np.zeros(counts.shape[1], dtype=float)
@@ -486,7 +498,8 @@ def burst_log_likelihood(
 
     # The burst factor is (n_bursts x prod(boxes)) and the box grows as the K-th
     # power of the cutoff, so chunk under a fixed element budget rather than a
-    # fixed burst count — that is the one place this can exhaust memory.
+    # fixed burst count — one of the two places this can exhaust memory (the
+    # other is the multinomial broadcast above, chunked the same way).
     chunk = max(1, _KERNEL_ELEMENT_BUDGET // max(exponents.shape[0], 1))
     correction = np.empty(out.shape, dtype=float)
     for start in range(0, counts.shape[0], chunk):

@@ -190,6 +190,20 @@ preview into one view; the FCS Filter Calculator's synthetic-component dialog an
 the acquisition simulator's Decay modal both embed it so the two never diverge
 (see [plugins/fcs.md](/plugins/fcs.md)).
 
+## A bound control only dispatches at a fit the machinery knows
+
+`_own_fit_index()` answers "which fit does this bound model belong to". When the
+model's fit is **not registered** in `chisurf.fits` — a scripted or headless
+fit, or a tool with no fit at all — it now returns **-1**, and every
+fit-targeted dispatch goes through the single `_dispatch_fit_update()` guard
+that skips a negative index. It used to return `0`, which is not "unknown" but
+*another fit*: against an empty list it raised (the edit was logged as a failed
+commit and the host form never rebuilt), and against a populated one it would
+have aimed the edit at whichever fit happened to be first. `ValueWidget._commit`
+additionally falls back to the direct attribute set when the index is negative,
+so a scripted form still applies the value instead of dropping it.
+`test/gui/test_autoform_fit_dispatch.py`.
+
 ## Equation editor + safe expression engine
 
 `chisurf/core/expressions.py` is a **general, Qt-free safe expression engine**:

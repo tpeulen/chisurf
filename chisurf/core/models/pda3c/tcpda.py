@@ -885,7 +885,7 @@ class TcPdaModel(ModelCurve):
         # meaningful loss: the map from occupancy to channel probability is
         # smooth, so trajectories that spent almost the same time in each state
         # are interchangeable.
-        resolution = max(1, int(self.dynamic_resolution))
+        resolution = requested = max(1, int(self.dynamic_resolution))
         ceiling = max(1, int(getattr(self, "dynamic_max_nodes", 2000)))
         while True:
             quantised = np.round(fractions * resolution)
@@ -899,9 +899,13 @@ class TcPdaModel(ModelCurve):
             # occupancy-to-probability map makes interchangeable. Dropping nodes
             # instead would silently reweight the occupation distribution.
             resolution = max(1, resolution // 2)
+        if resolution != requested:
+            # Said once, with both numbers: a bound that quietly changed the
+            # quadrature is worse than one that refused.
             cs.logging.warning(
-                f"tcPDA: {index.size} occupancy nodes exceed dynamic_max_nodes="
-                f"{ceiling}; coarsening the grid to {resolution}"
+                f"tcPDA: occupancy nodes exceeded dynamic_max_nodes={ceiling} at "
+                f"resolution {requested}; coarsened to {resolution} "
+                f"({index.size} nodes)"
             )
         fractions = fractions[index]
         weights = multiplicity / multiplicity.sum()
