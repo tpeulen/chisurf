@@ -2,6 +2,30 @@
 
 ## 2026-07-26
 
+* **DATA-05, half of it: `operation_type` had two validators that disagreed.**
+  `record_operation` checks the **extensible** `mmfdb_vocabulary` table;
+  `record_operation_with_artifacts` and the chinet adapter's
+  `store_chinet_session` re-checked the **static** `.dic` enum first. So the
+  documented extension mechanism only half-worked — a type registered with
+  `register_vocabulary_value()` went in fine through the plain path and was
+  rejected by the two richer ones, with an error listing the 34 dictionary
+  values as if the caller had simply mistyped.
+  **Removing the pre-checks loosens nothing**, which is what made this safe to
+  do rather than reconcile the other way: `mmfdb_operation.operation_type`
+  deliberately carries no CHECK constraint, and `_seed_vocabulary_from_dictionary`
+  fills the vocabulary table from the very same `_mmfdb_operation.operation_type`
+  enum at schema creation. The extensible check is therefore a strict superset —
+  every dictionary value plus site registrations, and nothing else.
+  One behavioural difference: the rejection now surfaces from *inside* the
+  transaction instead of before it, so the new test asserts an unknown type
+  still leaves `mmfdb_operation`, `mmfdb_artifact` and `mmfdb_operation_artifact`
+  empty. Tests: `modules/mmfdb/tests/test_fdb_vocab_and_migration.py` (+2),
+  `test/fio/test_mmfdb_chinet_adapter.py` (+2); mmfdb suite 700 passed,
+  `test/fio` + `test/experiments/test_mmfdb_reader_contract.py` 305 passed.
+  Committed in the mmfdb repo (`e0721ee`). The rest of DATA-05 —
+  `command_line`/`exit_code` columns, an `external_tool` type, the
+  software-vs-human actor flag, a container/environment schema — is untouched.
+
 * **chimol: `bg_color` did nothing and said nothing — confirmed and fixed.**
   Logged as a lead in the previous entry; chased down straight away, because the
   recent pattern says a reported success is not evidence. It was real: the clear

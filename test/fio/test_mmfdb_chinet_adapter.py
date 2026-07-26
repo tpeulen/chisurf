@@ -4,7 +4,6 @@ import json
 
 import chinet as cn
 import pytest
-
 from mmfdb.adapters.chinet import (
     clear_mmfdb_backend,
     load_chinet_session,
@@ -127,6 +126,44 @@ def test_store_chinet_session_rejects_invalid_parameter_before_writes(tmp_path) 
         assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
         assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_operation_artifact").fetchone()[0] == 0
         assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_parameter").fetchone()[0] == 0
+
+
+def test_store_chinet_session_rejects_unknown_operation_type_before_writes(tmp_path) -> None:
+    db_path = tmp_path / "chinet_invalid_op_type.db"
+    session = _connected_session()
+
+    with MFDatabase(db_path) as db:
+        with pytest.raises(ValueError, match="operation_type"):
+            store_chinet_session(
+                db,
+                session,
+                operation_id="op_invalid_type",
+                operation_type="quantum_computing",
+            )
+
+        assert db.get_operation("op_invalid_type") is None
+        assert db.conn.execute("SELECT COUNT(*) FROM mmfdb_artifact").fetchone()[0] == 0
+
+
+def test_store_chinet_session_accepts_a_site_registered_operation_type(tmp_path) -> None:
+    """A type registered in the extensible vocabulary is usable from the adapter.
+
+    The adapter used to pre-check the static dictionary enum, which rejected a
+    type the underlying ``record_operation`` accepts (DATA-05).
+    """
+    db_path = tmp_path / "chinet_site_op_type.db"
+    session = _connected_session()
+
+    with MFDatabase(db_path) as db:
+        db.register_vocabulary_value("operation_type", "external_tool")
+        store_chinet_session(
+            db,
+            session,
+            operation_id="op_site_type",
+            operation_type="external_tool",
+        )
+
+        assert db.get_operation("op_site_type")["operation_type"] == "external_tool"
 
 
 def test_store_chinet_session_rolls_back_on_artifact_failure(tmp_path, monkeypatch) -> None:
