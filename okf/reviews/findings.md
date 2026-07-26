@@ -1948,3 +1948,69 @@ All findings were verified by running the real model on the simulator reader
 - **Location:** the TTTR library's `CLSMImage` marker auto-detection (`WARNING: no complete frames; salvaging …` path), reached from `chisurf/core/fluorescence/imaging/pixel_maps.py:123-128`
 - **Finding:** `python -c "import tttrlib; t = tttrlib.TTTR('test/data/clsm/Leica_SP8.ptu'); tttrlib.CLSMImage(t, channels=[1], fill=True)"` **segfaults** (exit 139) in a bare interpreter, before the warning is printed; `fill=False` and `channels=[0]` crash identically, so it is the construction/auto-detection, not the fill. The same call preceded by `import chisurf` prints the salvage warning and returns a (wrong, see RF-161) 1 × 14 × 512 image, which is why the GUI never crashes here. Reproduced with tttrlib 0.27.0 in the `arm64` env. Worth pinning down in the library — a stray segfault in the marker-salvage path will eventually reach a chisurf entry point that does not import the whole package first (e.g. a plain worker process).
 - **Fix note:**
+
+### Review 2026-07-26 (11) — burst statistics: the burst table, BVA and RASP
+
+Slice: the per-burst statistics layer, chosen because it has no findings on
+record yet and everything downstream (E/S histograms, BVA, H2MM, PDA, MLE) reads
+its numbers. Files read in full: `chisurf/core/fio/fluorescence/burst.py`
+(`generate_burst_dataframe`, `write_bur_file_old`), `chisurf/core/math/signal.py`
+`find_bursts`, and the burst core `chisurf/core/fluorescence/burst/`
+(`background.py`, `bva.py`, `recurrence.py`, `es.py`, `count_rate.py`,
+`burst.py`, `utils.py`), against their consumers in
+`chisurf/plugins/burst/burst_analysis/api/workflow.py`,
+`chisurf/plugins/burst/burst_bva/core/computation.py` and
+`chisurf/plugins/burst/burst_background/`.
+
+What holds up: the E/S correction chain in `es.py` is sound — I checked the
+claimed two-colour reduction of `corrected_es_general` by hand
+(`emission = [[1, α], [0, γ]]`, `excitation = [[1, δ], [0, 1]]` really does give
+`E = F_da / (γ·F_dd + F_da)`), and `corrected_es_matrix`'s coupled donor budget
+reduces to `corrected_es` for a single acceptor. The Poisson-MLE tail fit in
+`background.py` and the pair-counting in `same_molecule_probability` (ordered
+pairs vs `λ²(T−τ)dτ`, edge correction included) are both right.
+
+Everything below was verified by running the real code in the `arm64` env; no
+source was changed. Findings RF-163..RF-168.
+
+### RF-163
+- **Status:** OPEN
+- **Severity:** S1 (every burst in every `.bur` loses its last photon: `Number of Photons` is one short and `Count Rate (KHz)` is biased low by `N/(N+1)`)
+- **Location:** `chisurf/core/fio/fluorescence/burst.py:432-435` and `:451` (`generate_burst_dataframe`), against its producer `chisurf/core/math/signal.py:436-498` (`find_bursts`)
+- **Finding:** `generate_burst_dataframe` uses **two different conventions for `stop` in the same four lines**. `dur = (macro[stop] - macro[start])` and `meanm = (macro[stop] + macro[start]) / 2` index the photon *at* `stop`, i.e. treat it as the inclusive last photon; `npix = stop - start` and `sl = slice(start, stop)` (which drives every per-detector and per-window count below) treat it as an exclusive end. `find_bursts` — the producer for the burst-selection API, the photon-filter wizard and the trace browser — documents and doctests its pairs as **inclusive** (`chisurf/core/math/signal.py:454`, `:497` "stop is exclusive, so subtract 1"), so the count side is the wrong one and the last photon of every burst is dropped from all counts. Verified on a synthetic 11-photon stream (10 burst photons 1 µs apart, then one background photon 1 ms later): `find_bursts` returns `[[0, 9]]` and the table reports `Number of Photons = 9`, `Number of Photons (g) = 9`, `Duration = 0.009 ms`, `Count Rate = 1.000 kHz` against the true 10 photons / 1.111 kHz. The bias is `1/N` per burst, so it is largest exactly where burst counts matter most — the short, dim bursts. Fixing it means `stop + 1` in the slice and `stop - start + 1` in the count (or normalising the producer), and it will move every existing burst table, so the fix must also re-baseline the counts asserted in `chisurf/plugins/burst/burst_selection/tests/test_real_data.py` — note that test compares two chisurf paths to each other, not to a reference implementation, so it never caught this. The now-unreachable `write_bur_file_old` (`:203-217`) carries the identical mix, plus a guard (`stop_idx > n_ph`) that admits `stop_idx == n_ph` and then indexes `macro_times[n_ph]`.
+- **Fix note:**
+
+### RF-164
+- **Status:** OPEN
+- **Severity:** S2 (a purely static, shot-noise-only sample reports 31–41 % "dynamic" bursts, and the number drifts with burst length)
+- **Location:** `chisurf/plugins/burst/burst_analysis/api/workflow.py:210-225` (`Bva.dynamic_fraction`)
+- **Finding:** `dynamic_fraction` is documented as the "fraction of bursts above the shot-noise static line (dynamics)" and computes exactly that: `mean(stds > expected)`, where `expected` is the *expected* standard deviation from `compute_static_bva_line`. But a burst's measured slice-SD scatters around that expectation, so a sample with no dynamics at all does not give 0 — it gives whatever fraction of the SD sampling distribution lies above its own mean. Verified by simulating purely static bursts (per-slice counts drawn from `Binomial(5, E)`, `E ~ U(0.1, 0.9)`, 3000 bursts) and feeding them straight into `Bva`: **0.308** at 5 slices per burst, **0.353** at 10, **0.410** at 20. So the metric has a large non-zero null baseline *and* that baseline grows with burst duration, which makes it non-comparable between datasets and between detection settings. Standard BVA compares against a confidence band of the static line (e.g. the simulated 95th percentile per bin), not the mean; `compute_static_bva_line` already draws `n_samples` per bin, so the percentile is one line away. Until then the number should not be presented as a dynamics fraction.
+- **Fix note:**
+
+### RF-165
+- **Status:** OPEN
+- **Severity:** S2 (the headless CLI and the GUI report different background rates for the same file, and the PAM parity the module docstring claims holds for neither)
+- **Location:** `chisurf/core/fluorescence/burst/background.py:144-150` (`tail_fraction: float = 0.2`) vs `:185-191` (`tail_fraction: float = 0.8`), with `chisurf/plugins/burst/burst_background/cli.py:43` (`0.2`) against `chisurf/plugins/burst/burst_background/view_model.py:148` (no argument → `0.8`) and `chisurf/core/fluorescence/burst/irf_bg.py:160` (`0.8`)
+- **Finding:** The same parameter has two different defaults in the same module. `estimate_background_from_interphoton_times` defaults to `0.2` and its docstring explains that this "reproduces the PAM criterion `dt > max(dt)/5`", while `estimate_background_from_bursts` — the documented "main public entry point" — defaults to `0.8`, i.e. the last 20 % of the range and *not* the PAM criterion the module docstring at `:1-10` claims to follow. The drift reaches the user: the Burst Background CLI passes `0.2` while the GUI view-model calls `background_diagnostics_from_bursts(tttr, detectors)` with no argument and gets `0.8`, so the same file analysed headlessly and in the window yields different background rates and hence different corrected E/S. Verified on a synthetic mixture (200 k background intervals at 2 kHz plus 50 k burst intervals): `0.2` → 2.431 kHz, `0.8` → 2.079 kHz on identical input. Pick one default, state which convention it is, and make the diagnostics plot and the estimator share it by construction.
+- **Fix note:**
+
+### RF-166
+- **Status:** OPEN
+- **Severity:** S2 (an empty recurrence window returns an all-NaN histogram instead of zeros, so the RASP plot silently draws nothing)
+- **Location:** `chisurf/core/fluorescence/burst/recurrence.py:171` (`rec_h, _ = np.histogram(rec, bins=edges, density=True)`)
+- **Finding:** `recurrence_efficiencies` legitimately returns an empty array whenever no burst recurs in the chosen window — a narrow `dt_range_s`, an `e_range` that selects nothing, or simply a sample without recurrence; the module's own test `test_recurrence_efficiencies_respects_time_window` exercises exactly that. `np.histogram` with `density=True` then divides by `n.sum() == 0` and returns **all NaN** plus an unsuppressed `RuntimeWarning: invalid value encountered in divide`. Verified through the public API: `recurrence_histogram([0, .01, 1, 1.01], [.2, .8, .2, .8], (0, .4), (5, 10), bins=5)` → `[nan nan nan nan nan]` and the warning. `Recurrence.plot` (`workflow.py:373-392`) bars those NaNs, so the recurrence overlay simply does not appear and nothing says why; any downstream `sum`/`argmax` on the result is NaN too. Return zeros for an empty input (and guard the same call for `e_all`).
+- **Fix note:**
+
+### RF-167
+- **Status:** OPEN
+- **Severity:** S2 (one noisy large-lag bin stretches the reported recurrence window ~4×, i.e. the window in which "the same molecule" is assumed)
+- **Location:** `chisurf/plugins/burst/burst_analysis/api/workflow.py:345-353` (`Recurrence.recurrence_time`)
+- **Finding:** The method is documented as the "largest lag at which `P_same` still exceeds `threshold`" and used as "a practical upper bound for the recurrence-time window", but it takes `tau[p_same >= threshold].max()` over *all* bins — not the first crossing. `P_same = 1 - 1/G` is computed per log-spaced lag bin, and at large lags the bins hold few pairs, so `G` fluctuates upward and single isolated bins cross the threshold long after the real decay. Verified on six simulated recurrence datasets (300 molecules over 600 s, 2–3 bursts each within a 50 ms recurrence window, 50 bins): five seeds give 0.045–0.051 s, matching the true window, while seed 2 returns **0.204 s** because bin 38 alone crosses — the contiguous run of above-threshold bins ends at index 27 (0.045 s) in every case. A 4× over-long window is not a rounding error here: it decides which recurring bursts are treated as the same molecule. Take the first lag at which `P_same` drops below the threshold (end of the leading contiguous run), and return NaN when even the first bin is below it.
+- **Fix note:**
+
+### RF-168
+- **Status:** OPEN
+- **Severity:** S3 (the NumPy docstring is a no-op string expression; `help()`, tooltips and generated docs show only the one-line summary)
+- **Location:** `chisurf/core/fluorescence/burst/bva.py:11-42` (`compute_static_bva_line`) and `:110-112` (`compute_bva`)
+- **Finding:** `compute_static_bva_line` opens with the one-liner `"""Compute static BVA line"""`, then `import pandas as pd`, and only then the 28-line NumPy docstring — which, following a statement, is a discarded expression, not `__doc__`. Verified: `compute_static_bva_line.__doc__` is exactly `'Compute static BVA line'`, so every parameter description (`prox_mean_bins`, `number_of_photons_per_slice`, `n_samples`) and the returns block are invisible to `help()`, to Sphinx and to the ruff `D` rules that are supposed to enforce them. The `import pandas as pd` that displaced it is itself unused — in both `compute_static_bva_line` and `compute_bva`, whose identical "lazy import to avoid circular import" line at `:112` is likewise never referenced. Move the text into the real docstring and drop both imports. While here: `chisurf/plugins/burst/burst_bva/core/computation.py:80-91` defines a second, vectorized `compute_static_bva_line` with the same name and signature (numerically equivalent — `total_photons` in the core version is `number_of_photons_per_slice` by construction, so its `np.where` guard is dead); `Bva.plot`/`dynamic_fraction` use the plugin copy while `chisurf.core.fluorescence.burst` re-exports the core one. One of the two should go.
+- **Fix note:**
