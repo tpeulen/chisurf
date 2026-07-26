@@ -1474,28 +1474,30 @@ def fit_parameter_scan_start(
         chi2rs = []
         n_total = len(values)
 
-        for i, v in enumerate(values):
-            if _JOBS.should_cancel(job_id):
-                # The scan walks the live model, so a cancelled scan still owes
-                # the caller its starting point back.
-                param.value = value
+        try:
+            for i, v in enumerate(values):
+                if _JOBS.should_cancel(job_id):
+                    return None
+                param.value = float(v)
                 model.update_model()
-                return None
-            param.value = float(v)
+                chi2 = getattr(fit, "chi2", None)
+                if chi2 is None:
+                    chi2 = float("nan")
+                chi2r = getattr(fit, "chi2r", None)
+                if chi2r is None:
+                    chi2r = float("nan")
+                chi2s.append(float(chi2))
+                chi2rs.append(float(chi2r))
+                _JOBS.set_progress(job_id, int(100.0 * (i + 1) / n_total))
+        finally:
+            # The scan borrows the live parameter, so every exit owes the
+            # starting point back -- a normal finish, a cancellation, and a
+            # probe value outside the model's domain that made ``update_model``
+            # raise alike. The assignment comes before the re-evaluation so the
+            # parameter is restored even if evaluating there raises again.
+            param.value = value
             model.update_model()
-            chi2 = getattr(fit, "chi2", None)
-            if chi2 is None:
-                chi2 = float("nan")
-            chi2r = getattr(fit, "chi2r", None)
-            if chi2r is None:
-                chi2r = float("nan")
-            chi2s.append(float(chi2))
-            chi2rs.append(float(chi2r))
-            _JOBS.set_progress(job_id, int(100.0 * (i + 1) / n_total))
 
-        # Restore original value
-        param.value = value
-        model.update_model()
         _JOBS.set_progress(job_id, 100)
         return {
             "values": [float(v) for v in values],

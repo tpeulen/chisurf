@@ -2,6 +2,28 @@
 
 ## 2026-07-26
 
+* **A failed parameter scan hands the borrowed parameter back (RF-113).** The
+  scan in `fit_parameter_scan_start._run` walks the *live* model — it writes
+  probe values into the user's parameter and re-evaluates — so it owes the
+  starting value back on every exit. Cancellation paid that debt; an exception
+  did not. `model.update_model()` raising on step *k* propagated straight out of
+  `_run`, the job was recorded FAILED, and the parameter silently kept the probe
+  value with the model evaluated there: a model that raises on its 4th update
+  left `value == 1.6` for a parameter that started at `2.0`, the job reporting
+  only `status='failed'`. That is not an exotic path — walking towards the edge
+  of a model's domain is what a scan is *for*, so an out-of-domain probe value is
+  the normal way one fails. The loop is now wrapped in `try`/`finally` with the
+  single restore in the `finally`, serving the normal, cancelled and failed exits
+  alike (the cancel checkpoint just returns; its duplicated restore is gone), and
+  the assignment precedes the re-evaluation so the value is restored even when
+  evaluating there raises in turn. Pinned by
+  `test_a_failing_scan_still_restores_the_parameter` plus the value assertion
+  added to `test_a_failing_scan_is_reported_as_failed`; both fail with
+  `1.6 != 2.0` against the old restore placement.
+  Tests: `test/server/test_fit_jobs_use_job_manager.py`, `test_services_fits.py`,
+  `test_service_robustness.py` and the `test/fitting` posterior/sampling/prior
+  suites, 149 passed; `ruff check` unchanged on the touched files.
+
 * **Dual-channel ALV-7004 FCCS files are readable again (RF-044).** In mode
   `a-ch0+1  c-ch0/1+1/0` the reader collects one trace per autocorrelation and a
   *pair* of traces per cross-correlation, so `openASC_ALV_7004`'s trace list is

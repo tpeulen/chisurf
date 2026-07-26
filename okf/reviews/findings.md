@@ -1482,11 +1482,26 @@ Reproduced in the `arm64` env against the service functions directly (the fakes
 from `test/server/test_fit_jobs_use_job_manager.py`). RF-113..RF-119.
 
 ### RF-113
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a scan that raises leaves the user's fit sitting at an arbitrary probe value, silently, and the model is re-evaluated there)
 - **Location:** `chisurf/server/services/fits.py:1477-1498` (`fit_parameter_scan_start._run`: the restore at `:1497-1498` is reachable only by falling off the end of the loop) against `:1478-1483` (the cancel checkpoint, which *does* restore)
 - **Finding:** The scan borrows the live parameter (`param.value = float(v)`; `model.update_model()`) and owes it back. Cancellation pays that debt — the comment at `:1479-1480` says so — but an exception does not: `update_model()` raising on step *k* propagates straight out of `_run`, `_execute_job` records FAILED, and `param.value` keeps the probe value forever. Verified with the test file's own fakes: a model that raises on its 4th update leaves `parameters_all_dict['a'].value == 1.6` for a parameter that started at `2.0`, with the job reporting only `status='failed', error='model blew up'`. A raising `update_model` is not exotic — it is the normal outcome of a probe value outside the model's domain, which a scan deliberately walks towards. `test_a_failing_scan_is_reported_as_failed` already drives this path and asserts only the status, so the corruption is uncovered. Wrap the loop in `try/finally` so the single restore serves the normal, cancelled and failed exits alike, and extend that test with the value assertion the cancel test already makes.
-- **Fix note:**
+- **Fix note:** The scan loop in `_run` is now wrapped in `try`/`finally` and the
+  restore lives in the `finally`, so the one restore serves the normal,
+  cancelled and failed exits alike — the cancel checkpoint just returns and the
+  duplicated restore it carried is gone. The assignment (`param.value = value`)
+  precedes the re-evaluation (`model.update_model()`), so the parameter is put
+  back even when evaluating at the restored value raises in turn. Pinned by
+  `test/server/test_fit_jobs_use_job_manager.py::test_a_failing_scan_still_restores_the_parameter`
+  (a model that raises on its 4th update — the case the finding measured at
+  `1.6`) plus the value assertion added to
+  `test_a_failing_scan_is_reported_as_failed` for the raises-immediately case.
+  Both fail with `1.6 != 2.0` against the pre-fix restore placement.
+  `test/server/test_fit_jobs_use_job_manager.py`, `test_services_fits.py`,
+  `test_service_robustness.py`, `test/fitting/test_posterior_api.py`,
+  `test_sampling_job_reports_convergence.py` and `test_prior_reweighting.py` all
+  green (149 tests); `ruff check` reports the same 93 pre-existing findings on
+  `fits.py` as at HEAD and none on the test file.
 
 ### RF-114
 - **Status:** OPEN

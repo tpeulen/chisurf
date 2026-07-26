@@ -130,6 +130,37 @@ def test_a_failing_scan_is_reported_as_failed():
     result = _wait_for(started["job_id"])
     assert result["status"] == "failed"
     assert "model blew up" in (result["error"] or "")
+    # Even a scan that never took a single successful step must not leave the
+    # fit holding a probe value.
+    assert fit.model.parameters_all_dict["a"].value == pytest.approx(2.0)
+
+
+def test_a_failing_scan_still_restores_the_parameter():
+    """A probe value outside the model's domain is the normal way a scan fails.
+
+    Walking towards the edge of a model's domain is what a scan is for, so
+    ``update_model`` raising mid-scan is expected -- and the borrowed parameter
+    must come back regardless, not keep whichever probe value blew up.
+    """
+    fit = _Fit()
+    real_update = fit.model.update_model
+    calls = {"n": 0}
+
+    def _boom_on_the_fourth_step() -> None:
+        """Behave normally, then raise once the scan is genuinely under way."""
+        calls["n"] += 1
+        if calls["n"] == 4:
+            raise RuntimeError("model blew up")
+        real_update()
+
+    fit.model.update_model = _boom_on_the_fourth_step
+    started = fit_service.fit_parameter_scan_start(
+        _State([fit]), parameter_name="a", fit_index=0, n_steps=11,
+    )
+    result = _wait_for(started["job_id"])
+    assert result["status"] == "failed"
+    assert "model blew up" in (result["error"] or "")
+    assert fit.model.parameters_all_dict["a"].value == pytest.approx(2.0)
 
 
 def test_the_two_job_families_do_not_share_an_id_space():
