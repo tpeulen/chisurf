@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tools import ChisurfDockTool
 
 from ..api.client import FpsJsonEditorClient
 from .editor import FpsJsonEditor
@@ -16,8 +17,10 @@ from .editor import FpsJsonEditor
 _manifest = load_manifest(Path(__file__).parents[1] / "manifest.json")
 
 
-class FpsJsonEditorTool(QtWidgets.QMainWindow):
+class FpsJsonEditorTool(ChisurfDockTool):
     """Main window for the FPS JSON Editor plugin."""
+
+    tool_settings_name = "FpsJsonEditorTool"
 
     def __init__(self) -> None:
         """Initialize the plugin window and editor widget."""
@@ -29,6 +32,7 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
         self.editor = FpsJsonEditor(client=self._client)
         self.setCentralWidget(self.editor)
         self._init_actions()
+        self.restore_window_geometry()
 
     def _init_actions(self) -> None:
         """Create window actions for file-level editor operations."""
@@ -46,7 +50,7 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
         save_action.triggered.connect(self.editor.onSaveJSON)
         file_menu.addAction(save_action)
         toolbar.addAction(save_action)
-        
+
         toolbar.addSeparator()
 
         update_action = QtWidgets.QAction(f"{Glyphs.REFRESH} Update", self)
@@ -59,7 +63,7 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
         clear_action.triggered.connect(self.editor.onClearAll)
         file_menu.addAction(clear_action)
         toolbar.addAction(clear_action)
-        
+
         spacer = QtWidgets.QWidget()
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
@@ -79,9 +83,9 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("FPS JSON Editor Help")
         dialog.setMinimumSize(600, 400)
-        
+
         layout = QtWidgets.QVBoxLayout(dialog)
-        
+
         text_edit = QtWidgets.QTextEdit()
         text_edit.setReadOnly(True)
         help_html = (
@@ -102,18 +106,40 @@ class FpsJsonEditorTool(QtWidgets.QMainWindow):
         )
         text_edit.setHtml(help_html)
         layout.addWidget(text_edit)
-        
+
         btn_box = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok)
         btn_box.accepted.connect(dialog.accept)
         layout.addWidget(btn_box)
-        
+
         dialog.exec()
+
+    def on_paths_dropped(self, paths: list[Path]) -> None:
+        """Load the first dropped ``.json`` file into the editor.
+
+        The base class turns a window-level file drop into this call; the editor
+        only ever holds one configuration, so the first JSON path wins and any
+        further dropped paths are ignored.
+
+        Parameters
+        ----------
+        paths : list of pathlib.Path
+            Local paths dropped onto the window.
+        """
+        for path in paths:
+            if path.is_file() and path.suffix.lower() == ".json":
+                self.editor.onLoadJSON(str(path))
+                return
 
     def showEvent(self, event: QtCore.QShowEvent) -> None:
         """Apply manifest statefulness once when the window is shown."""
         if _manifest is not None:
             apply_manifest_statefulness(self, _manifest)
         super().showEvent(event)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """Persist the window geometry before closing."""
+        self.save_window_geometry()
+        super().closeEvent(event)
 
 
 __all__ = ["FpsJsonEditorTool"]

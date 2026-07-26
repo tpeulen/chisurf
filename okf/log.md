@@ -2,6 +2,31 @@
 
 ## 2026-07-26
 
+* **PRD-36 — the FPS JSON Editor moved onto the shared dockable-tool base.**
+  `FpsJsonEditorTool` subclassed `QMainWindow` directly, so it had neither the
+  window-geometry persistence nor the path drag-drop every migrated tool gets for
+  free. It now subclasses `ChisurfDockTool` with `tool_settings_name =
+  "FpsJsonEditorTool"`, restores its geometry on construction and saves it in
+  `closeEvent`, and overrides `on_paths_dropped` to load the first dropped
+  `*.fps.json` into the editor — the editor holds a single configuration, so the
+  first JSON path wins. Verified headlessly: a dropped two-position/one-distance
+  `fps.json` renders with the distance row, its labels and its `inter` score set
+  populated (the trailing blank row is the distance table's intentional
+  new-entry placeholder, excluded from serialization at `distance_panel.py:788`,
+  and the payload carries exactly one distance). Pinned by
+  `chisurf/plugins/modelling/fps_json_editor/test/test_construction_smoke.py`
+  (construction + base identity + `acceptDrops` + no MMFDB connection on init +
+  the drop-loads-JSON path). **Incidental fix:** that plugin's
+  `test_root_import_does_not_import_gui` asserted over the live `sys.modules`,
+  so it went red as soon as any test in the session imported `gui.tool`
+  legitimately; it now runs its check in a clean subprocess, matching the idiom
+  in `test/test_i18n.py:33`. Also corrected four stale rows in
+  [PRD-36](/prds/prd-36.md): `tttr_header_edit`'s tool is a plain `QWidget`, the
+  `mmfdb_admin`/`setup` tools already sit on `NavigationPanelTool`, and
+  hydropro's window lives in `gui/tool.py`, not the old `hydrogui.py`. Four tools
+  born on the base (`accurate_fret`, `img_coloc`, `img_drift`, `img_precision`)
+  were never recorded as done. 45 tests green; `ruff check` clean on the files
+  touched.
 * **RF-195 fix — a loaded IRF had the lamp background subtracted twice.**
   `Convolve._process_irf` subtracted `lamp_background` and clipped at zero
   *inside* the loaded-IRF branch, then did exactly the same two statements again

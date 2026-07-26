@@ -31,12 +31,24 @@ class TestPackageBoundaries:
     """Package imports should preserve api/core/rpc/cli/gui boundaries."""
 
     def test_root_import_does_not_import_gui(self):
-        """Importing the plugin root should not import GUI modules."""
-        import chisurf.plugins.modelling.fps_json_editor as fps_json_editor
+        """Importing the plugin root should not import GUI modules.
 
-        assert fps_json_editor.name
-        assert "chisurf.plugins.modelling.fps_json_editor.gui.tool" not in sys.modules
-        assert "chisurf.plugins.modelling.fps_json_editor.gui.editor" not in sys.modules
+        Checked in a clean subprocess: another test in the session (the GUI
+        construction smoke test) legitimately imports ``gui.tool``, so an
+        in-process ``sys.modules`` check would depend on collection order.
+        """
+        import subprocess
+
+        code = (
+            "import sys\n"
+            "import chisurf.plugins.modelling.fps_json_editor as p\n"
+            "assert p.name\n"
+            "root = 'chisurf.plugins.modelling.fps_json_editor'\n"
+            "bad = [m for m in sys.modules if m.startswith(root + '.gui')]\n"
+            "assert not bad, bad\n"
+        )
+        proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+        assert proc.returncode == 0, proc.stderr
 
     def test_cli_import_does_not_import_rpc(self):
         """CLI uses core helpers directly and should not import RPC services."""

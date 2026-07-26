@@ -47,6 +47,11 @@ directly in a FRET decay fit, and the FRET-docking tools use AV clouds as
 restraints. The coarse-grained dye models for docking come from the external
 molecular-modelling framework.
 
+Besides **Load** in the toolbar, the editor window accepts a dropped
+`*.fps.json` file from the file manager — the first JSON path dropped anywhere on
+the window is loaded. The window also remembers its size and position between
+sessions.
+
 ## Result
 
 Two accessible volumes (donor, acceptor) simulated on T4 lysozyme (PDB 148L) and

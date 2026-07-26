@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; three reference tools are migrated and a backlog of ~20 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; eight tools are on the base and a backlog of ~18 tools remains.
 
 # Goal
 
@@ -49,12 +49,24 @@ read-only-construction guard already exist.
 6. Add an offscreen construction smoke test (PRD-23 Task 3) asserting it constructs,
    `isinstance(tool, ChisurfDockTool)`, and opens no MMFDB connection on init.
 
-# Done (reference + first rollout)
+# Done (reference + rollout)
 
 - [x] `burst/burst_selection` — reference transformer.
 - [x] `tttr/tttr_microtime_shifter` — reference transformer.
 - [x] `tttr/tttr_time_windows` — first rollout; drove the `path_filter` generalization
       (extension-filtered drop list).
+- [x] `burst/accurate_fret`, `microscopy/img_coloc`, `microscopy/img_drift`,
+      `microscopy/img_precision` — born on the base (new tools, never forked the
+      boilerplate); they were never on the backlog below.
+- [x] `modelling/fps_json_editor` — priority-B rollout; the base's window-level drop is
+      overridden to load the first dropped `*.fps.json` into the editor, geometry is
+      persisted under `FpsJsonEditorTool`, and a construction smoke test pins both.
+      The plugin's own `test_root_import_does_not_import_gui` boundary check moved to a
+      clean subprocess, since the new GUI smoke test legitimately imports `gui.tool`
+      into the same session.
+
+The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
+chisurf/plugins`; keep this section in sync with it.
 
 # To migrate
 
@@ -72,17 +84,14 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `tttr/trace_browser/gui/tool.py`
 - [ ] `tttr/tttr_image_browser/gui/tool.py`
 - [ ] `tttr/tttr_lut_tools/gui/tool.py`
-- [ ] `tttr/tttr_header_edit/gui/tool.py` (verify base class; `wizard.py` retired)
 - [ ] `pch/gui/tool.py`
 - [ ] `calculator/fret_calculator/gui/tool.py`
 - [ ] `fluorescence_decay/irf_estimator/gui/tool.py`
 - [ ] `fluorescence_decay/lltf/lltf_gui.py`
-- [ ] `modelling/fps_json_editor/gui/tool.py`
-- [ ] `modelling/hydropro/hydrogui.py`
+- [ ] `modelling/hydropro/gui/tool.py` (`HydroProTool`; the old top-level
+      `hydrogui.py` no longer defines a window)
 - [ ] `traj/traj_tools/gui/tool.py`
 - [ ] `core/project_browser/gui/tool.py`
-- [ ] `core/mmfdb_admin/gui/tool.py`
-- [ ] `core/setup/gui/tool.py`
 - [ ] `core/lightpath_simulator/gui/tool.py`
 - [ ] `core/globalview/gui/tool.py`
 - [ ] `core/help/gui/tool.py`
@@ -96,6 +105,12 @@ read-only-construction guarantee; no drop list to dedupe):**
   test.
 - `cookiecutter-chisurf-plugin/...` template — update the template to subclass the
   base once the API is stable so new plugins start conformant.
+- `tttr/tttr_header_edit/gui/tool.py` — its tool is a plain `QWidget` (`TagsEditor`),
+  never a `QMainWindow`; it was listed in error.
+- `core/mmfdb_admin/gui/tool.py` (`MMFDBWidget`) and `core/setup/gui/tool.py`
+  (`UnifiedSettingsTool`) already subclass `NavigationPanelTool`, itself a
+  `QMainWindow` base carrying the navigation-panel contract. Reconciling the two bases
+  is its own decision, not a per-tool migration; both were listed in error.
 
 # Notes / status (2026-06-24)
 
