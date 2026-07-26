@@ -92,6 +92,7 @@ def normalise_ics(
     images: np.ndarray,
     x_range: Sequence[int],
     y_range: Sequence[int],
+    mask: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """Normalise a raw correlation stack to ``G`` when the correlator did not.
 
@@ -105,15 +106,28 @@ def normalise_ics(
     ics_stack : numpy.ndarray
         Correlation stack of shape ``(n, ny, nx)``.
     images : numpy.ndarray
-        The image stack the correlation was computed from.
+        The image stack the correlation was computed from. When a *mask* was
+        applied, this is the already-masked stack.
     x_range, y_range : sequence of int
         Region of interest used for the correlation, as ``(start, stop)``.
+    mask : numpy.ndarray, optional
+        The boolean region the correlation was restricted to, shape
+        ``(ny, nx)``. Both ``<I>`` and ``N`` are taken over the pixels it keeps.
 
     Returns
     -------
     numpy.ndarray
         The normalised correlation stack, or the input unchanged when it was
         already normalised.
+
+    Notes
+    -----
+    ``<I>`` and ``N`` must describe the *same* set of pixels the correlation was
+    computed over. Taking them over the enclosing rectangle instead is wrong
+    whenever the region is not that rectangle: the pixels outside it have been
+    zeroed, so they drag the mean down while still being counted in ``N``. Since
+    ``G(0)`` scales as ``1/N_particles``, that misnormalisation lands directly on
+    the reported particle number and concentration.
     """
     finite = np.isfinite(ics_stack)
     if not np.any(finite):
@@ -130,11 +144,20 @@ def normalise_ics(
         y1 = ny_full
     x0, y0 = max(0, x0), max(0, y0)
     roi = images[:, y0:y1, x0:x1]
+    sub_mask = None if mask is None else np.asarray(mask, dtype=bool)[y0:y1, x0:x1]
     if roi.ndim != 3 or roi.size == 0:
         roi = images
+        sub_mask = None if mask is None else np.asarray(mask, dtype=bool)
 
-    mean_intensity = float(roi.mean())
-    n_pixels = float(roi.shape[1] * roi.shape[2])
+    if sub_mask is not None and sub_mask.shape == roi.shape[1:]:
+        n_pixels = float(np.count_nonzero(sub_mask))
+        if n_pixels <= 0.0:
+            return ics_stack
+        mean_intensity = float(roi[:, sub_mask].mean())
+    else:
+        mean_intensity = float(roi.mean())
+        n_pixels = float(roi.shape[1] * roi.shape[2])
+
     norm = mean_intensity ** 2 * n_pixels
     if not np.isfinite(norm) or norm <= 0.0:
         return ics_stack
@@ -167,7 +190,10 @@ def compute_ics_carpet(
         Region to restrict the correlation to: any
         :class:`chisurf.core.roi.ROI` (rasterised against the frame shape and
         the stack, so intensity-dependent regions work) or a ready-made boolean
-        array ``(ny, nx)``. Pixels outside it are zeroed before correlating.
+        array ``(ny, nx)``. The stack is **cropped** to the region's bounding
+        box, so the returned maps are the size of that box rather than of the
+        input. A region that is not its own bounding box additionally zeroes the
+        remaining corners, which biases ``G`` slightly (see Notes).
     use_fftshift : bool
         Centre the zero lag in each spatial map.
     **kwargs
@@ -183,7 +209,19 @@ def compute_ics_carpet(
     RuntimeError
         If the correlation backend is unavailable.
     ValueError
-        If none of the requested frame lags is realisable in the stack.
+        If none of the requested frame lags is realisable in the stack, or if
+        the region selects no pixels.
+
+    Notes
+    -----
+    A region is applied by **cropping**, not by blanking pixels in place. A
+    zeroed pixel is not an absent one: it still enters the correlator's sum and
+    the frame average it subtracts from every other pixel, which inflated
+    ``G(0)`` — and so deflated the particle number read from it — by about 15 %
+    for a rectangle and far more for a ragged region. Cropping is exact whenever
+    the region *is* its bounding box. For a ragged region the corners of that
+    box must still be zeroed, so a residual bias remains; removing it needs
+    correlator-level support for excluded pixels.
     """
     if tttrlib is None:
         raise RuntimeError("tttrlib is not available; cannot compute ICS")
@@ -194,13 +232,34 @@ def compute_ics_carpet(
     stack = _ensure_3d_stack(images)
     n_frames, ny, nx = stack.shape
 
+    region_mask: Optional[np.ndarray] = None
     if mask is not None:
         m = as_mask(mask, (ny, nx), image=stack)
         if m.shape != (ny, nx):
             raise ValueError(
                 f"Mask shape {m.shape} does not match image shape {(ny, nx)}"
             )
-        stack = stack * m[None, ...]
+        rows = np.flatnonzero(m.any(axis=1))
+        cols = np.flatnonzero(m.any(axis=0))
+        if rows.size == 0 or cols.size == 0:
+            raise ValueError("The region selects no pixels; nothing to correlate")
+        # Crop to the region rather than zeroing it in place. A zeroed pixel is
+        # not an absent pixel: it still enters the correlator's sum and its
+        # frame-average subtraction, which biases G by ~15 % for a rectangle and
+        # far more for a ragged region. Cropping removes those pixels outright,
+        # which is exact whenever the region *is* its bounding box.
+        y0, y1 = int(rows[0]), int(rows[-1]) + 1
+        x0, x1 = int(cols[0]), int(cols[-1]) + 1
+        stack = np.ascontiguousarray(stack[:, y0:y1, x0:x1])
+        m = m[y0:y1, x0:x1]
+        if not m.all():
+            # A ragged region still has to zero the corners of its own bounding
+            # box, so the bias above is reduced but not removed. Normalising over
+            # the kept pixels (below) is the most that can be done without
+            # correlator-level support for excluded pixels.
+            stack = stack * m[None, ...]
+        region_mask = m
+        n_frames, ny, nx = stack.shape
 
     x_range = list(settings.x_range) if settings.x_range is not None else [0, -1]
     y_range = list(settings.y_range) if settings.y_range is not None else [0, -1]
@@ -238,7 +297,7 @@ def compute_ics_carpet(
         raw = np.asarray(raw, dtype=float)
         if raw.ndim == 2:
             raw = raw[None, ...]
-        raw = normalise_ics(raw, stack, x_range, y_range)
+        raw = normalise_ics(raw, stack, x_range, y_range, mask=region_mask)
 
         n_pairs = raw.shape[0]
         mean = raw.mean(axis=0)

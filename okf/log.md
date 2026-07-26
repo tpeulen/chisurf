@@ -2,6 +2,92 @@
 
 ## 2026-07-26
 
+* **An ICS region reported the wrong particle number — twice over.** Restricting an
+  image correlation to a region made `G(0)` depend on how much of the field was
+  analysed, and since `G(0)` scales as `1/N_particles` that is a wrong concentration.
+  A half-frame region reported **1.66×** the full-frame amplitude.
+
+  Two independent causes, found while surveying the ROI subsystem. First, the
+  normalisation: `normalise_ics` took `⟨I⟩` and `N` over the enclosing *rectangle*
+  while the correlation had been computed over the *masked* stack, so the mean was
+  diluted by the zeros and `N` counted pixels that contributed nothing. `⟨I⟩` and `N`
+  must describe the same pixel set; they now do, via a `mask` argument.
+
+  Second, and larger: **the region was applied by zeroing pixels in place**. A zeroed
+  pixel is not an absent pixel — it still enters the correlator's sum and the frame
+  average it subtracts from every other pixel. Measured on a synthetic stack against a
+  cropped reference: zeroing left a **15 %** error for a rectangle and **45 %** for an
+  L-shape, *after* the normalisation was corrected. Regions are now applied by
+  **cropping to the bounding box**, which is exact whenever the region is that box;
+  a ragged region still zeroes the corners of its own box, so a residual bias remains
+  and is documented rather than hidden. Removing it needs correlator-level support for
+  excluded pixels.
+
+  Result: a rectangular region now agrees with the full frame to 0.4 % (statistics),
+  against 66 % before. Note the returned maps are now the size of the region's bounding
+  box, not of the input. Pinned by three tests in `test_ics_unification.py` — the
+  amplitude is invariant across half/left-half/quadrant regions, a region crops rather
+  than blanks, and an empty region raises instead of returning a meaningless
+  correlation. 78 pass across the ICS suites, drift, the PAM parity tests and the model
+  editor.
+
+  Caught only because the ROI survey asked *why* ICS carried both `x_range`/`y_range`
+  and a `roi`; the answer was that the two were never reconciled. The remaining
+  duplication (one region concept, not two) is scoped as ROI cleanup work.
+
+* **chiplot Batch 29 — the deferred `lineplot` pass, and a latent transparency
+  bug it exposed (PRD-64).** The core TCSPC line plot was left on pyqtgraph
+  earlier because its `_apply_curve_style` and per-fit transparency logic are
+  deeply renderer-internal (`setSymbol`/`setSymbolBrush`/`setOpacity`/
+  `setGraphicsEffect`/`opts['pen']`). Rather than paper over that with `.native`
+  passthroughs on the most-used plot in the app, this pass grew the clean handle
+  surface the earlier finding asked for: `Curve.set_opacity` (the four-method
+  transparency fallback collapses to one verb), `Curve.set_symbol`/
+  `set_symbol_size`/`set_symbol_brush`, `Region.set_limits` (drag bounds — the
+  `setBounds`/`setRegion` naming trap, distinct from `set_bounds`=position), and
+  `Plot.text(..., anchored=True)` — parenting the label to the `PlotItem` for a
+  screen-pinned fixed-pixel overlay, the missing piece that had the χ²ᵣ metrics
+  box drifting to the bottom on the first port. `lineplot.py` is now fully off
+  pyqtgraph (allow-list 22 → 21); `distribution.py` took a self-contained local
+  `DraggableTextItem` copy (mirroring `residual_image`) since it is still
+  allow-listed. Verified with a seeded simulated-TCSPC bi-exponential fit
+  (Gaussian IRF + Poisson noise → `DataCurve` → `FitGroup(LifetimeModel)`,
+  `fit.run()`): before/after screenshots are pixel-identical. Side benefit — a
+  real bug fixed: pyqtgraph misreads `#AARRGGBB` colour strings as RGBA
+  (`#4DFF0000`→transparent, wrong hue), where chiplot's `to_color` reads ARGB
+  correctly. Tests: `test_curve_set_opacity`, `test_curve_symbol_setters`,
+  `test_region_set_limits_constrains_drag`, `test_anchored_text_is_screen_pinned`,
+  and the alpha-contract assertion in `test_lineplot.py`.
+* **PDA fits arbitrary N-state rate matrices — and the rates were never fittable
+  at all (PRD-50).** The question "can PDA fit an arbitrary transition-rate
+  matrix?" had a worse answer than a hardcoded state count.
+  `PdaDynamicThreeStates` held its six rate parameters in a **dict**, and
+  `base.find_objects` recurses into lists only — so `find_parameters` never
+  discovered them and the optimiser was never offered a single rate, whatever
+  their `fixed` flags said. They were constants wearing parameter clothing.
+  `PdaDynamicNStates` replaces it: rates in a list, settable `n_states` (>= 2)
+  that preserves surviving rates on resize, and every off-diagonal `k_ij` an
+  ordinary fitting parameter — so scheme topology is data, not code. A linear
+  chain is the fully-connected scheme with `k13`/`k31` at zero; a linked pair
+  imposes detailed balance; `rates_by_name()` is the scripting handle. Model
+  renamed `PdaDynamicNStateModel`, and the general `rate_matrix` AutoForm section
+  gets its first real consumer: an editable n×n grid with the diagonal disabled,
+  above the table that controls which entries are free.
+  Validated where an exact answer exists. At N=2 the closed-form occupation law
+  lets the general path be checked against truth instead of another
+  approximation, and the result explains the default route's limit: the
+  moment-match total variation (0.242 / 0.121 / 0.013 / 0.001 at K = 0.4 / 1.6 /
+  8 / 40) tracks the **boundary-atom mass** (0.819 / 0.450 / 0.018 / 0.000)
+  almost exactly, because a beta density cannot represent the point masses a
+  molecule that never switched sits on. The sampled route stays within 0.03
+  throughout. "Use monte-carlo in slow exchange" is now a measured criterion.
+  Rendering a 4-state scheme also caught a hard 78 px cell cap in the shared
+  rate-matrix widget that silently clipped any wider value; cells are now sized
+  from the configured range and decimals.
+  Known boundary, recorded in the PRD: tcPDA's rate matrix is still a plain array
+  attribute, so three-colour dynamics can use an arbitrary scheme but not fit one.
+  Concept: [PRD-50](/prds/prd-50.md).
+
 * **Labels have two names now, and the calibration belongs to the instrument.**
   A quantity is spelled one way for code and translators (`tau_D(0)`, `Phi_A`,
   `kappa^2`) and another for the reader. Writing the second by hand as HTML in a

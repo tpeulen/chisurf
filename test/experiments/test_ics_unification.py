@@ -199,3 +199,66 @@ def test_flow_displaces_the_peak_along_the_scan_axis():
     flowing = image_correlation(xi, psi, 2.0, v_x=2.0, **kw)
     assert int(np.argmax(still)) == 10          # centred on zero lag
     assert int(np.argmax(flowing)) > 10         # displaced downstream
+
+
+# --- regions must not change the amplitude ---------------------------------
+def _g_zero(carpet) -> float:
+    """Return G at zero spatial lag of the first frame-lag slice."""
+    m = carpet.correlation[0]
+    ny, nx = m.shape
+    return float(m[ny // 2, nx // 2])
+
+
+def test_a_region_does_not_change_the_particle_number(stack):
+    """The same sample must report the same G(0) however much of it is analysed.
+
+    ``G(0)`` scales as ``1/N_particles``, so an amplitude that moves with the
+    size of the region is a wrong concentration. Two things used to break this:
+    the normalisation took ``<I>`` and ``N`` over the enclosing rectangle rather
+    than the selected pixels, and the region was applied by *zeroing* pixels,
+    which leaves them in the correlator's sum and in its frame-average
+    subtraction. Before the fix a half-frame region reported 1.66x the
+    full-frame amplitude.
+    """
+    from chisurf.core.roi import RectangleROI
+
+    settings = IcsSettings(frame_lags=(0,))
+    full = _g_zero(compute_ics_carpet(stack, settings))
+    ny, nx = stack.shape[1], stack.shape[2]
+
+    for name, roi in (
+        ("upper half", RectangleROI(-0.5, -0.5, nx - 0.5, ny / 2 - 0.5)),
+        ("left half", RectangleROI(-0.5, -0.5, nx / 2 - 0.5, ny - 0.5)),
+        ("quadrant", RectangleROI(-0.5, -0.5, nx / 2 - 0.5, ny / 2 - 0.5)),
+    ):
+        got = _g_zero(compute_ics_carpet(stack, settings, mask=roi))
+        assert got == pytest.approx(full, rel=0.10), (
+            f"{name} region moved G(0) from {full:.4f} to {got:.4f}"
+        )
+
+
+def test_a_rectangular_region_is_cropped_not_zeroed(stack):
+    """A region shrinks the correlated field, rather than blanking part of it.
+
+    The distinction is not cosmetic: a zeroed pixel still contributes to the
+    correlation sum and to the mean that is subtracted from every other pixel.
+    """
+    from chisurf.core.roi import RectangleROI
+
+    settings = IcsSettings(frame_lags=(0,))
+    ny, nx = stack.shape[1], stack.shape[2]
+    carpet = compute_ics_carpet(
+        stack, settings, mask=RectangleROI(-0.5, -0.5, nx / 2 - 0.5, ny / 2 - 0.5)
+    )
+    assert carpet.correlation.shape[1:] == (ny // 2, nx // 2)
+
+
+def test_an_empty_region_is_rejected(stack):
+    """A region that selects nothing is an error, not an empty correlation."""
+    from chisurf.core.roi import ThresholdROI
+
+    with pytest.raises(ValueError, match="no pixels"):
+        compute_ics_carpet(
+            stack, IcsSettings(frame_lags=(0,)),
+            mask=ThresholdROI(low=float(stack.max()) + 1.0),
+        )
