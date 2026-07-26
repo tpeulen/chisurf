@@ -37,6 +37,19 @@ FRET-docking / burst-workflow `simulate()` helpers wrap this for common cases,
 returning data registered in MMFDB so recovered states can be compared with the
 truth.
 
+### Setting up state kinetics in the GUI
+
+The acquisition simulator's setup dialog has a **Kinetics** panel with two
+buttons — *Radiative* (`k_rad`) and *Non-radiative* (`k_nrad`). Each opens an
+editable N×N grid of interconversion rates in 1/ms, where row *i*, column *j* is
+the rate from species *i* to species *j*; the diagonal is fixed at zero, and both
+grids resize with the **Species** count. The button reads back the scheme's size
+and how many transitions are non-zero, so the panel says what the kinetics are
+without being opened.
+
+The same grid appears in the dynamic PDA model editors, so a rate matrix is read
+the same way everywhere — see {ref}`concept-pda`.
+
 ## Result
 
 A simulated confocal intensity trace (molecules transiting the Gaussian spot) and

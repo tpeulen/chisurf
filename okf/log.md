@@ -2,6 +2,26 @@
 
 ## 2026-07-26
 
+* **A rate matrix can now live behind a button.** The reusable AutoForm
+  `rate_matrix` section gained `"popup": true`: the grid opens in its own window
+  instead of sitting in the panel. An N×N grid costs N rows of vertical space
+  whether or not anyone is editing it, which is the wrong trade for a *secondary*
+  control — the acquisition simulator carries two of them (`k_rad`, `k_nrad`) and
+  they pushed the rest of the setup dialog off the screen. Both are now buttons,
+  and the setup dialog fits.
+
+  The button is not a bare label: it reads back the scheme's size and how many
+  transitions are non-zero (`↗ Non-radiative (k_nrad)  (3×3, 4 set)`), updated on
+  every edit and resize, because a collapsed control that says nothing about its
+  contents makes the panel lie about the model's state. The window is
+  **modeless** — edits apply live, so a rate can be changed while watching what it
+  does, and a modal window on an offscreen run has nobody to close it. It is the
+  same grid either way; only where it is parented differs, so the inline callers
+  (both PDA model editors) are untouched. Rendered and read both ways.
+  `test/gui/test_rate_matrix.py`; the acq suite's kinetics test still drives the
+  real table through the button. See
+  [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
+
 * **chimol: object groups, and three ways to get a hierarchy wrong.** All eleven
   of PyMOL's `group` actions plus `ungroup` and `order`, with group header rows
   in the objects panel — a disclosure marker, the same five A/S/H/L/C menus an

@@ -33,7 +33,12 @@ ordered lists that may legitimately repeat an entry, such as a homodimer's per-b
 PDBs),
 `rate_matrix` (a reusable editable N×N transition-rate grid that tracks a
 `size_attr` such as the species/state count, with the diagonal fixed at 0 — for
-kinetic interconversion matrices anywhere in ChiSurf), `parameter_group_table` (a
+kinetic interconversion matrices anywhere in ChiSurf; `"popup": true` puts the
+grid behind a button carrying a live summary — size and how many transitions are
+non-zero — since an N×N grid costs N rows of panel whether or not anyone is
+editing it, which is the wrong trade for a secondary control such as the
+acquisition simulator's two matrices. The popup is **modeless**: edits apply
+live, and a modal window on an offscreen run has nobody to close it), `parameter_group_table` (a
 space-saving **table** rendering of a `FittingParameterGroup` — one row per
 `FittingParameter`, `QTableView` with columns `name`/`value`/`fixed`/`bounds_lo`/
 `bounds_hi`/`bounds_on`/`error` and click-to-toggle checkbox delegates, cells

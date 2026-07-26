@@ -141,3 +141,57 @@ def test_the_grid_agrees_with_the_shared_rate_convention(qapp):
     assert K[1, 0] == pytest.approx(250.0)
     assert K[1, 2] == pytest.approx(70.0)
     assert np.array_equal(rates_from_rate_matrix(K), host.kinetics.flat_rates)
+
+
+def test_popup_mode_keeps_the_grid_behind_a_button(qapp):
+    """``popup`` trades N rows of grid for one button that still says the state.
+
+    A collapsed control that reports nothing about its contents makes the panel
+    lie about the model, so the button carries a live summary — size and how
+    many transitions are non-zero — and it has to track edits.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.core.dataspec import load_view_spec
+    from chisurf.gui.autoform import AutoForm
+    from chisurf.gui.autoform.sections.rate_matrix_section import RateMatrixWidget
+
+    class _Popup(_Model):
+        def __init__(self):
+            super().__init__()
+            self.n = 3
+            self.k = [0.0] * 9
+
+        def view_spec(self):
+            return load_view_spec({
+                "sections": [
+                    {"type": "custom", "key": "rate_matrix", "target": "k",
+                     "options": {"size_attr": "n", "minimum": 0.0, "decimals": 2,
+                                 "popup": True, "title": "Rates"}},
+                ]
+            })
+
+    model = _Popup()
+    form = AutoForm(model)
+    grid = form.findChildren(RateMatrixWidget)[0]
+
+    assert grid.button is not None
+    assert "3×3" in grid.button.text()
+    assert "0 set" in grid.button.text()
+    # The grid must not be occupying the panel before it is asked for.
+    assert grid.table.parent() is not grid or not grid.table.isVisibleTo(form)
+    assert grid._dialog is None
+
+    grid.button.click()
+    assert isinstance(grid._dialog, QtWidgets.QDialog)
+    assert grid.table.isVisibleTo(grid._dialog)
+
+    # An edit in the popup reaches the model and updates the summary.
+    grid.table.cellWidget(0, 1).setValue(4.0)
+    assert model.k[1] == pytest.approx(4.0)
+    assert "1 set" in grid.button.text()
+
+    # Reopening reuses the one dialog rather than stacking windows.
+    dialog = grid._dialog
+    grid.button.click()
+    assert grid._dialog is dialog

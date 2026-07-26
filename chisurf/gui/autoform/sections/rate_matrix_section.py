@@ -17,6 +17,13 @@ Declare it in a view spec as a custom section::
   resizes to it on ``refresh`` (so it can track e.g. the species count).
 - ``labels_attr`` — optional per-state row/column labels; defaults to ``1..N``.
 - ``diagonal`` — when false (default) the i→i cells are fixed at 0 and disabled.
+- ``popup`` — when true the grid lives behind a button instead of sitting in the
+  panel. An N×N grid costs N rows of vertical space whether or not anyone is
+  editing it, which is the wrong trade when the scheme is a secondary control
+  (two of them, as in the acquisition simulator, push everything else off the
+  screen). The button carries a live summary — size and how many transitions are
+  non-zero — so the panel still says what the scheme is without being opened.
+  The same grid is used either way; only where it is parented differs.
 """
 
 from __future__ import annotations
@@ -54,27 +61,82 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self._diagonal = bool(options.get("diagonal", False))
         self._unit = str(options.get("unit", ""))
         self._title = str(options.get("title", ""))
+        self._popup = bool(options.get("popup", False))
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(1)
-        header_bits = []
-        if self._title:
-            header_bits.append(f"<b>{self._title}</b>")
-        header_bits.append(f"i → j rate ({self._unit})" if self._unit else "i → j rate")
-        hint = QtWidgets.QLabel("  ·  ".join(header_bits))
-        hint.setStyleSheet("color: palette(mid);")
-        layout.addWidget(hint)
+
         self.table = QtWidgets.QTableWidget(0, 0)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
         self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        layout.addWidget(self.table)
+
+        self.button = None
+        self._dialog = None
+        if self._popup:
+            # One button standing in for N rows of grid. It is a real summary,
+            # not just a label: a collapsed control that says nothing about its
+            # contents makes the panel lie about the model's state.
+            self.button = QtWidgets.QToolButton()
+            self.button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+            self.button.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Fixed)
+            self.button.clicked.connect(self._open)
+            layout.addWidget(self.button)
+        else:
+            layout.addWidget(self._header())
+            layout.addWidget(self.table)
         # Do not let the grid stretch to fill the panel — keep it tight.
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
         self._spins: dict[tuple[int, int], QtWidgets.QDoubleSpinBox] = {}
         self._build()
+
+    def _header(self) -> QtWidgets.QLabel:
+        """Return the caption naming the matrix and its rate direction."""
+        bits = []
+        if self._title:
+            bits.append(f"<b>{self._title}</b>")
+        bits.append(f"i → j rate ({self._unit})" if self._unit else "i → j rate")
+        label = QtWidgets.QLabel("  ·  ".join(bits))
+        label.setStyleSheet("color: palette(mid);")
+        return label
+
+    # -- popup ---------------------------------------------------------
+    def _open(self) -> None:
+        """Show the grid in its own window, building it on first use."""
+        if self._dialog is None:
+            self._dialog = QtWidgets.QDialog(self)
+            self._dialog.setWindowTitle(self._title or "Transition rates")
+            inner = QtWidgets.QVBoxLayout(self._dialog)
+            inner.addWidget(self._header())
+            inner.addWidget(self.table)
+            buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Close)
+            buttons.rejected.connect(self._dialog.hide)
+            inner.addWidget(buttons)
+        # Deliberately modeless: edits apply live, so the user can watch what a
+        # rate does to the model while changing it -- and a modal dialog on an
+        # offscreen run has nobody to close it.
+        self._dialog.show()
+        self._dialog.raise_()
+
+    def _update_button(self) -> None:
+        """Put the scheme's size and how much of it is set on the button."""
+        if self.button is None:
+            return
+        n = self.table.rowCount()
+        active = sum(
+            1 for (i, j), spin in self._spins.items()
+            if i != j and abs(spin.value()) > 0.0
+        )
+        name = self._title or "Transition rates"
+        unit = f" {self._unit}" if self._unit else ""
+        self.button.setText(f"\u2197 {name}  ({n}\u00d7{n}, {active} set)")
+        self.button.setToolTip(
+            f"{name}: {n} states, {active} of {max(n * (n - 1), 0)} transitions "
+            f"non-zero{unit}. Click to edit the i \u2192 j rate matrix."
+        )
 
     # -- data helpers --------------------------------------------------
     def _size(self) -> int:
@@ -108,6 +170,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 flat[i * n + j] = float(spin.value())
         if self._attr:
             setattr(self._model, self._attr, flat)
+        self._update_button()
 
     # -- build / refresh ----------------------------------------------
     def _build(self) -> None:
@@ -154,8 +217,10 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self.table.setFixedHeight(header_h + row_h * n + 4)
         self.table.blockSignals(False)
         self._write_back(n)
+        self._update_button()
 
     def refresh(self) -> None:
+        """Re-read the model, rebuilding only if the state count changed."""
         # Rebuild when the state count changed (tracks size_attr, e.g. n_species).
         if self.table.rowCount() != self._size():
             self._build()
@@ -166,3 +231,4 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 spin.blockSignals(True)
                 spin.setValue(flat[idx] if idx < len(flat) else 0.0)
                 spin.blockSignals(False)
+            self._update_button()

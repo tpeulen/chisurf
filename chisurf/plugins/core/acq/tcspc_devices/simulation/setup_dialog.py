@@ -13,6 +13,7 @@ from qtpy import QtCore, QtWidgets
 from chisurf.core import dataspec as ds
 from chisurf.gui.autoform import AutoForm, register_section
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 
 @register_section("acq_channels")
@@ -621,18 +622,18 @@ class SimulationSettingsModel:
                 ds.PanelSection(
                     title="Kinetics",
                     collapsed=True,
-                    description="Species-interconversion transition rates (radiative and non-radiative). The N×N grids track the species count.",
+                    description="Species-interconversion transition rates (radiative and non-radiative). Each button opens an N×N grid that tracks the species count and says how many transitions are set.",
                     sections=(
                         ds.CustomSection(
                             key="rate_matrix", target="k_rad",
                             options={"size_attr": "n_species", "minimum": 0.0,
-                                     "decimals": 4, "unit": "1/ms",
+                                     "decimals": 4, "unit": "1/ms", "popup": True,
                                      "title": "Radiative (k_rad)"},
                         ),
                         ds.CustomSection(
                             key="rate_matrix", target="k_nrad",
                             options={"size_attr": "n_species", "minimum": 0.0,
-                                     "decimals": 4, "unit": "1/ms",
+                                     "decimals": 4, "unit": "1/ms", "popup": True,
                                      "title": "Non-radiative (k_nrad)"},
                         ),
                     ),
@@ -987,7 +988,7 @@ class SimulationSettingsModel:
 
     def view_json(self) -> None:
         """Show the current serialized parameter JSON."""
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             None,
             "Simulation Parameters",
             json.dumps(self.to_parameters(), indent=2),
