@@ -66,6 +66,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 43 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
 | 44 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
 | 45 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `img_precision` plugin, `experiments.ics.precision` |
+| 46 | [Exploring & fitting multidimensional data (ndXplorer)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.marginal_fit`, `chisurf.core.expressions` |
 
 ## Running
 

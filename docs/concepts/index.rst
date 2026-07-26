@@ -49,6 +49,13 @@ ordering below runs from the physical fundamentals to the specific methods.
    h2mm
    ebfret
 
+.. rubric:: Exploration & selection
+
+.. toctree::
+   :maxdepth: 1
+
+   multidimensional_exploration
+
 .. rubric:: Structure & imaging
 
 .. toctree::

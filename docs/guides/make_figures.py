@@ -1220,6 +1220,77 @@ def fig_timestamps():
     save(fig, "timestamps_bursts.png")
 
 
+def fig_ndxplorer():
+    """ndXplorer: marginal fitting of an overlay curve, and the static FRET line.
+
+    Two static smFRET populations (a no-FRET species and a FRET species) are
+    simulated with binomial shot noise. The left panel is the E-vs-lifetime plane
+    every burst lives in, with the **static FRET line** fitted through both
+    clusters; the right panel is the E marginal fitted with two Gaussians using
+    ndXplorer's own ``fit_equation_to_marginal`` engine (the very function the
+    guide's overlay-fit button drives).
+    """
+    import sys
+    root = pathlib.Path(__file__).resolve().parents[2]
+    ndx = str(root / "modules" / "ndxplorer")
+    if ndx not in sys.path:
+        sys.path.insert(0, ndx)
+    from ndxplorer.analysis.marginal_fit import bin_centers, fit_equation_to_marginal
+    from scipy.optimize import curve_fit
+
+    rng = np.random.default_rng(3)
+    tau0 = 4.0                       # donor-only lifetime (ns)
+    n_no, n_fret = 2400, 3600
+    E_no, E_fret = 0.02, 0.50        # true population efficiencies
+    # Per-burst shot noise: N photons -> binomial acceptor count -> measured E.
+    N_no = rng.integers(40, 200, n_no)
+    N_fret = rng.integers(40, 200, n_fret)
+    Emeas_no = rng.binomial(N_no, E_no) / N_no
+    Emeas_fret = rng.binomial(N_fret, E_fret) / N_fret
+    Emeas = np.concatenate([Emeas_no, Emeas_fret])
+    # A burst on the static line: tau = tau0*(1 - E), plus lifetime-fit scatter.
+    tau = tau0 * (1.0 - Emeas) + rng.normal(0, 0.05, Emeas.size)
+
+    # Fit the static FRET line E = 1 - tau/tau0 through every burst (1 parameter).
+    popt, _ = curve_fit(lambda t, t0: 1.0 - t / t0, tau, Emeas, p0=[3.5])
+    tau0_fit = float(popt[0])
+
+    # Fit the E marginal with two Gaussians via ndXplorer's marginal-fit engine.
+    counts, edges = np.histogram(Emeas, bins=70, range=(-0.1, 0.9))
+    xc = bin_centers(edges)
+    res = fit_equation_to_marginal(
+        "a1*exp(-(x-m1)**2/(2*s1**2)) + a2*exp(-(x-m2)**2/(2*s2**2))",
+        initial={"a1": counts.max(), "m1": 0.05, "s1": 0.03,
+                 "a2": counts.max() * 0.6, "m2": 0.45, "s2": 0.06},
+        x=xc, counts=counts.astype(float),
+    )
+
+    fig, (ax, axm) = plt.subplots(1, 2, figsize=(10.4, 4.2),
+                                  gridspec_kw={"width_ratios": [1.15, 1]})
+    ax.scatter(tau[:n_no], Emeas[:n_no], s=6, alpha=0.25, color="#7f7f7f",
+               label="no-FRET species")
+    ax.scatter(tau[n_no:], Emeas[n_no:], s=6, alpha=0.25, color="#d62728",
+               label="FRET species")
+    tl = np.linspace(tau.min(), tau.max(), 100)
+    ax.plot(tl, 1.0 - tl / tau0_fit, "k-", lw=1.8,
+            label=fr"static line $E=1-\tau/\tau_0$, $\tau_0={tau0_fit:.2f}$ ns")
+    ax.set_xlabel(r"$\langle\tau_{D(A)}\rangle_F$  (ns)")
+    ax.set_ylabel("FRET efficiency $E$")
+    ax.set_title("Every burst lives on the static FRET line", fontsize=10)
+    ax.legend(fontsize=8, loc="upper right")
+
+    axm.step(xc, counts, where="mid", color="0.4", label="E marginal")
+    if res.ok and res.y_fit is not None:
+        axm.plot(xc, res.y_fit, "-", color="#1f77b4", lw=1.8,
+                 label=fr"two-Gaussian fit, $\chi^2_r={res.chi2r:.1f}$")
+        axm.axvline(res.params["m1"], color="#7f7f7f", ls="--", lw=1)
+        axm.axvline(res.params["m2"], color="#d62728", ls="--", lw=1)
+    axm.set_xlabel("FRET efficiency $E$"); axm.set_ylabel("bursts / bin")
+    axm.set_title("The E marginal, fitted in the parameter table", fontsize=10)
+    axm.legend(fontsize=8)
+    save(fig, "ndxplorer_marginal_fit.png")
+
+
 if __name__ == "__main__":
     fig_lut()
     fig_av()
@@ -1232,4 +1303,5 @@ if __name__ == "__main__":
     fig_nsalex_etau(); fig_accurate_fret(); fig_combining_repeats(); fig_multispot()
     fig_ebfret(); fig_burst_lifetime(); fig_clsm()
     fig_rcm_alex(); fig_2d_peak_fit(); fig_timestamps()
+    fig_ndxplorer()
     print("all figures written to", FIG)
