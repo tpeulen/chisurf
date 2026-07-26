@@ -215,6 +215,7 @@ class MolView(QtWidgets.QWidget):
     _ball_mask = _StateField("ball_mask")
     _sticks_mask = _StateField("sticks_mask")
     _bond_pairs = _StateField("bond_pairs")
+    _bond_edits = _StateField("bond_edits")
     _surface_visible = _StateField("surface_visible")
     _metaballs_visible = _StateField("metaballs_visible")
     _point_overlays = _StateField("point_overlays")
@@ -1918,7 +1919,9 @@ class MolView(QtWidgets.QWidget):
             # Pre-compute simple covalent bonds for sticks representation
             # using a distance cutoff in *raw* (unscaled) coordinates so the
             # list is independent of the global scaling we apply for viewing.
-            self._bond_pairs = self._infer_bonds(coords_all_raw, atoms)
+            self._bond_pairs = self._apply_bond_edits(
+                self._infer_bonds(coords_all_raw, atoms)
+            )
 
             coords, res_ids, res_names, chain_ids = _extract_ca_trace(atoms)
             if coords is None:
@@ -2073,7 +2076,11 @@ class MolView(QtWidgets.QWidget):
             arr.shape[0], _DEFAULT_ATOM_RADIUS_A * scale, dtype=float
         )
 
-        self._bond_pairs = self._infer_bonds(raw_all, self._atoms)
+        # Replay any manual bond/unbond over the fresh inference: a hand-made
+        # bond stored only in bond_pairs vanishes the moment coordinates change.
+        self._bond_pairs = self._apply_bond_edits(
+            self._infer_bonds(raw_all, self._atoms)
+        )
 
         trace_arr = None
         if trace_coords is not None:
@@ -4888,6 +4895,130 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 pass
         return None
+
+    # ------------------------------------------------------------------
+    # Bonds (PyMOL ``bond`` / ``unbond`` / ``get_bonds``)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _bond_key(i: int, j: int) -> tuple[int, int]:
+        """Canonical key for a bond: sorted, so i-j and j-i are one bond."""
+        a, b = int(i), int(j)
+        return (a, b) if a <= b else (b, a)
+
+    def _apply_bond_edits(self, pairs: np.ndarray | None) -> np.ndarray | None:
+        """Replay the manual bond edits over a freshly inferred bond list.
+
+        Called wherever ``_infer_bonds`` result is stored, which is the only way
+        a hand-made bond survives a coordinate change.
+
+        Parameters
+        ----------
+        pairs : numpy.ndarray or None
+            Inferred ``(N, 2)`` bond list.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The list with manual additions merged in and removals taken out.
+        """
+        edits = self._bond_edits or {}
+        added = edits.get("added") or {}
+        removed = edits.get("removed") or set()
+        if not added and not removed:
+            return pairs
+
+        keys: list[tuple[int, int]] = []
+        if pairs is not None:
+            arr = np.asarray(pairs, dtype=int)
+            if arr.ndim == 2 and arr.shape[1] >= 2:
+                keys = [self._bond_key(a, b) for a, b in arr[:, :2]]
+        live = [k for k in keys if k not in removed]
+        seen = set(live)
+        for key in added:
+            if key not in seen and key not in removed:
+                live.append(key)
+                seen.add(key)
+        if not live:
+            return np.zeros((0, 2), dtype=int)
+        return np.asarray(live, dtype=int)
+
+    def bond_list(self) -> np.ndarray:
+        """Current bonds as an ``(N, 2)`` array of atom indices."""
+        pairs = self._bond_pairs
+        if pairs is None:
+            return np.zeros((0, 2), dtype=int)
+        arr = np.asarray(pairs, dtype=int)
+        if arr.ndim != 2 or arr.shape[1] < 2:
+            return np.zeros((0, 2), dtype=int)
+        return arr[:, :2]
+
+    def bond_order(self, i: int, j: int) -> int:
+        """Order of one bond. Inferred bonds are single unless said otherwise."""
+        edits = self._bond_edits or {}
+        return int((edits.get("added") or {}).get(self._bond_key(i, j), 1))
+
+    def add_bond(self, i: int, j: int, order: int = 1) -> bool:
+        """Bond two atoms. False when they are already bonded or i == j.
+
+        Parameters
+        ----------
+        i, j : int
+            Atom indices within the active object.
+        order : int, optional
+            Bond order; 1 unless given.
+        """
+        if int(i) == int(j):
+            return False
+        coords = self._all_atom_coords
+        if coords is None:
+            return False
+        n_atoms = int(np.asarray(coords).shape[0])
+        if not (0 <= int(i) < n_atoms and 0 <= int(j) < n_atoms):
+            return False
+
+        key = self._bond_key(i, j)
+        existing = {self._bond_key(a, b) for a, b in self.bond_list()}
+        edits = self._bond_edits or {"added": {}, "removed": set()}
+        # An explicit `bond` outranks an earlier `unbond` of the same pair.
+        edits.setdefault("removed", set()).discard(key)
+        if key in existing:
+            # Already bonded: record the order anyway, since `bond a, b, 2` on an
+            # existing single bond is how its order is changed.
+            edits.setdefault("added", {})[key] = int(order)
+            self._bond_edits = edits
+            return False
+        edits.setdefault("added", {})[key] = int(order)
+        self._bond_edits = edits
+        self._bond_pairs = self._apply_bond_edits(self._bond_pairs)
+        self._update_view()
+        return True
+
+    def remove_bonds(self, pairs: list[tuple[int, int]]) -> int:
+        """Remove bonds between the given index pairs. Returns how many went.
+
+        Pairs that are not bonded are skipped rather than reported: ``unbond``
+        takes two *selections* and removes every bond between them, so most
+        candidate pairs in a real call are legitimately not bonded.
+        """
+        if not pairs:
+            return 0
+        existing = {self._bond_key(a, b) for a, b in self.bond_list()}
+        edits = self._bond_edits or {"added": {}, "removed": set()}
+        removed = edits.setdefault("removed", set())
+        added = edits.setdefault("added", {})
+        gone = 0
+        for i, j in pairs:
+            key = self._bond_key(i, j)
+            if key not in existing:
+                continue
+            removed.add(key)
+            added.pop(key, None)
+            gone += 1
+        if gone:
+            self._bond_edits = edits
+            self._bond_pairs = self._apply_bond_edits(self._bond_pairs)
+            self._update_view()
+        return gone
 
     def _unbonded_atom_mask(self) -> np.ndarray | None:
         """Atoms that take part in no bond at all.

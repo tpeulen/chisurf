@@ -2,6 +2,41 @@
 
 ## 2026-07-26
 
+* **chimol: bond editing, and a test fixture that could not exist.** `bond`,
+  `unbond` and `get_bonds` transcribed from PyMOL's `editing.py`/`querying.py`.
+  `bond` takes exactly one atom from each selection in the same object and
+  re-bonding a pair sets its *order*; `unbond` removes every bond running between
+  two selections; `get_bonds` returns `(atm1, atm2, order)` where the indices are
+  0-based **positions within the selection**, not `index` — PyMOL warns about that
+  in capitals, and the two coincide for `all`, so a test that checks only `all`
+  cannot tell the difference.
+
+  Bonds are re-inferred whenever coordinates change, so a manual bond kept only in
+  `bond_pairs` disappears the next time an atom moves. Edits are stored as deltas
+  and replayed over each fresh inference; the edits are the source of truth and
+  `bond_pairs` is derived, so the two cannot drift. Orders live in that delta map
+  rather than as a third column, because consumers flatten `bond_pairs` to ask
+  "which atoms have a bond" and an order column reads as an atom index.
+
+  **The fixture was geometrically impossible.** `solvated_fragment.pdb`, added
+  earlier in this effort as the first fixture with waters, an ion and a two-letter
+  element, placed its six alanines along a helical path *without constructing the
+  backbone*: `C(i)-N(i+1)` was 4.4–5.2 Å against a peptide bond's 1.33 Å, so the
+  file had **no peptide bonds at all**, and residues 4 and 5 interpenetrated
+  (`O4-CB5 = 0.63 Å`). Inference produced 40 bonds where 29 are right — 11
+  spurious contacts, 4 of 5 peptide bonds missing. Found because an `unbond resi
+  1, resi 2` test removed nothing.
+
+  Rebuilt by NeRF placement from ideal internal coordinates, with the generator
+  kept beside it as `make_solvated_fragment.py` and self-checking the things that
+  matter: five peptide bonds at 1.329 Å, closest contact 1.231 Å (the C=O), CA-CA
+  at 3.8 Å. All 207 tests across the four files that use the fixture pass on the
+  corrected geometry, and none had encoded the wrong counts.
+
+  The lesson is about fixtures, not bonds: **a fixture is an assertion too, and
+  nothing checks it.** Every test built on this one was green while the molecule
+  it described could not exist. 25 new tests in `test_bonds_edit.py`.
+
 * **The tcPDA rate bias has an exact statement now: the dynamic model does not
   nest the static one.** Went after the bias filed earlier and found the sharp
   version of it — at 1e-3 Hz over a 2 ms window nothing switches, so the

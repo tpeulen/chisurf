@@ -516,6 +516,199 @@ class EditingMixin(BaseCmd):
                 viewer._secondary_structure = secondary
         viewer._update_view()
 
+    @command("bond")
+    def bond(self, atom1: str = "", atom2: str = "", order: str = "1") -> None:
+        """Bond two atoms (PyMOL ``bond atom1, atom2 [, order]``).
+
+        Each selection must match exactly one atom, and both must be in the same
+        object -- PyMOL's own restriction, since a bond is stored inside an
+        object's connectivity table and cannot span two.
+
+        Repeating ``bond`` on an already-bonded pair sets its order, which is how
+        a single bond is promoted to a double one.
+
+        Parameters
+        ----------
+        atom1, atom2 : str
+            Selections, each matching one atom.
+        order : str, optional
+            Bond order, 1 by default.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        if not str(atom1).strip() or not str(atom2).strip():
+            self._emit_error("Usage: bond atom1, atom2 [, order]")
+            return
+        try:
+            order_value = int(str(order).strip() or 1)
+        except ValueError:
+            self._emit_error(f"bond: order must be a whole number, not {order!r}")
+            return
+
+        picked = self._one_atom_each(viewer, atom1, atom2)
+        if picked is None:
+            return
+        obj_name, i, j = picked
+        if i == j:
+            # add_bond also refuses, but it answers False for "already bonded"
+            # too, and reporting that here would be a plainly wrong diagnosis.
+            self._emit_error(
+                f"bond: both selections matched the same atom ({i}); "
+                "an atom cannot be bonded to itself"
+            )
+            return
+
+        if viewer.add_bond(i, j, order_value):
+            self._emit_message(
+                f"bond: {obj_name} atoms {i} and {j} bonded"
+                + (f" (order {order_value})" if order_value != 1 else "")
+            )
+        else:
+            self._emit_message(
+                f"bond: {obj_name} atoms {i} and {j} were already bonded; "
+                f"order set to {order_value}"
+            )
+
+    @command("unbond")
+    def unbond(self, atom1: str = "", atom2: str = "") -> None:
+        """Remove every bond between two selections (PyMOL ``unbond``).
+
+        Unlike ``bond`` this takes selections of any size and removes *all*
+        bonds running between them, which is what PyMOL documents. Pairs that
+        are not bonded are simply not affected.
+
+        Parameters
+        ----------
+        atom1, atom2 : str
+            Selections; every bond from one to the other is removed.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        if not str(atom1).strip() or not str(atom2).strip():
+            self._emit_error("Usage: unbond atom1, atom2")
+            return
+
+        try:
+            id1, name1, mask1 = self._resolve_selection_to_atom_mask(
+                viewer, str(atom1)
+            )
+            id2, name2, mask2 = self._resolve_selection_to_atom_mask(
+                viewer, str(atom2)
+            )
+        except Exception as exc:
+            self._emit_error(f"unbond: {exc}")
+            return
+
+        if id1 != id2:
+            self._emit_error(
+                f"unbond: '{name1}' and '{name2}' are different objects; "
+                "a bond exists inside one object"
+            )
+            return
+
+        first = set(np.nonzero(np.asarray(mask1, dtype=bool))[0].tolist())
+        second = set(np.nonzero(np.asarray(mask2, dtype=bool))[0].tolist())
+        if not first or not second:
+            self._emit_error("unbond: a selection matched no atoms")
+            return
+
+        with viewer._activate_object(id1):
+            # Only bonds that actually run between the two selections, in either
+            # direction -- not the cross product, which would try to remove
+            # bonds that were never there.
+            doomed = [
+                (int(a), int(b))
+                for a, b in viewer.bond_list()
+                if (int(a) in first and int(b) in second)
+                or (int(b) in first and int(a) in second)
+            ]
+            gone = viewer.remove_bonds(doomed)
+        self._emit_message(f"unbond: {gone} bonds removed from {name1}")
+
+    @command("get_bonds", aliases=("get_bond_list",))
+    def get_bonds(self, selection: str = "all") -> list[tuple[int, int, int]]:
+        """List the bonds within a selection (PyMOL ``get_bonds``).
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to report bonds for; both ends must be inside it.
+
+        Returns
+        -------
+        list of tuple
+            ``(atm1, atm2, order)`` triples.
+
+        Notes
+        -----
+        ``atm1``/``atm2`` are **0-based positions within the selection**, not the
+        ``index`` property -- PyMOL says the same, in capitals, because the two
+        coincide for ``all`` and diverge for everything else, which is exactly
+        the kind of difference that is discovered late.
+        """
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return []
+        try:
+            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, str(selection).strip() or "all"
+            )
+        except Exception as exc:
+            self._emit_error(f"get_bonds: {exc}")
+            return []
+
+        chosen = np.nonzero(np.asarray(mask, dtype=bool))[0]
+        if chosen.size == 0:
+            self._emit_error(f"get_bonds: '{selection}' matched no atoms")
+            return []
+        # Position within the selection, which is what the indices mean.
+        position = {int(a): k for k, a in enumerate(chosen)}
+
+        with viewer._activate_object(obj_id):
+            out = [
+                (position[int(a)], position[int(b)], viewer.bond_order(a, b))
+                for a, b in viewer.bond_list()
+                if int(a) in position and int(b) in position
+            ]
+        return out
+
+    def _one_atom_each(
+        self, viewer, atom1: str, atom2: str
+    ) -> tuple[str, int, int] | None:
+        """Resolve two one-atom selections in the same object to their indices.
+
+        Returns None and reports why when either selection is not exactly one
+        atom, or when the two land in different objects.
+        """
+        resolved = []
+        for text in (atom1, atom2):
+            try:
+                obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
+                    viewer, str(text)
+                )
+            except Exception as exc:
+                self._emit_error(f"bond: {exc}")
+                return None
+            hits = np.nonzero(np.asarray(mask, dtype=bool))[0]
+            if hits.size != 1:
+                self._emit_error(
+                    f"bond: '{text}' matched {hits.size} atoms; "
+                    "each selection must name exactly one"
+                )
+                return None
+            resolved.append((obj_id, obj_name, int(hits[0])))
+
+        (id1, name1, i), (id2, name2, j) = resolved
+        if id1 != id2:
+            self._emit_error(
+                f"bond: '{name1}' and '{name2}' are different objects; "
+                "both atoms must be in the same one"
+            )
+            return None
+        return name1, i, j
+
     @command("remove", aliases=("rm",))
     def remove(self, selection: str = "") -> None:
         """Delete the atoms matched by ``selection``."""

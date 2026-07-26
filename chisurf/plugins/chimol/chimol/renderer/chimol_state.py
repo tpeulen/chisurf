@@ -88,6 +88,21 @@ class _MolViewObjectState:
     ball_mask: Optional[np.ndarray] = None
     sticks_mask: Optional[np.ndarray] = None
     bond_pairs: Optional[np.ndarray] = None
+    bond_edits: dict = field(default_factory=lambda: {"added": {}, "removed": set()})
+    """Manual ``bond``/``unbond`` edits, kept as *deltas* over the inferred list.
+
+    Bonds are re-inferred from the coordinates whenever a structure is loaded or
+    its coordinates change, so a hand-made bond stored only in ``bond_pairs``
+    would silently disappear the next time anything moved an atom. Recording the
+    edits instead and replaying them over each fresh inference is what makes
+    ``bond`` stick, and it is one-directional -- the edits are the source of
+    truth for the deltas, ``bond_pairs`` is derived -- so the two cannot drift.
+
+    ``added`` maps a sorted ``(i, j)`` index pair to its bond order; ``removed``
+    holds pairs to take out. Orders live here rather than as a third column of
+    ``bond_pairs`` because several consumers flatten that array to ask "which
+    atoms have a bond", and an order column would read as an atom index.
+    """
     surface_visible: bool = False
     metaballs_visible: bool = False
     point_overlays: dict[str, dict] = field(default_factory=dict)

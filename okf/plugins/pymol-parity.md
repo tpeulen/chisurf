@@ -224,12 +224,59 @@ confusion is exactly what hid `resn`.
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
 `alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
-`group`/`ungroup`/`order`.
+`group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`.
 
-**Remaining:** `get_bond`, `smooth`, `sort`, `protect`, `mask`, `bond`/`unbond`,
+**Remaining:** `smooth`, `sort`, `protect`, `mask`,
 `h_add`/`h_fill`, `cealign`, `matrix_copy`,
 `symexp`/`symmetry`, `ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
+`set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
+settings store and are deliberately not started.
+
+## Editing bonds, and the fixture that could not test it
+
+`bond`, `unbond` and `get_bonds`, transcribed from `editing.py` and
+`querying.py`. Three details that are not guessable:
+
+* `bond` requires **exactly one atom** from each selection and both in the same
+  object, because a bond lives inside one object's connectivity table. Repeating
+  it on an already-bonded pair sets the *order* — that is how a single bond is
+  promoted, not an error.
+* `unbond` takes selections of any size and removes **every** bond between them.
+  Not the cross product: only bonds that actually run from one selection to the
+  other, or it would try to remove bonds that were never there.
+* `get_bonds` indices are **0-based positions within the selection**, not the
+  `index` property. PyMOL warns about this in capitals. They coincide for `all`,
+  so a test that checks only `all` cannot tell the difference.
+
+Bonds are re-inferred whenever coordinates change, so a manual bond kept only in
+`bond_pairs` vanishes the next time an atom moves. Edits are stored as **deltas**
+(`added` orders, `removed` pairs) and replayed over each fresh inference. The
+direction matters: the edits are the source of truth and `bond_pairs` is derived,
+so the two cannot drift. Orders live in that delta map rather than as a third
+column of `bond_pairs`, because several consumers flatten that array to ask
+"which atoms have a bond" and an order column reads as an atom index.
+
+### The fixture was geometrically impossible
+
+`solvated_fragment.pdb` — added earlier in this effort as the first fixture with
+waters, an ion and a two-letter element — placed its six alanines along a helical
+path *without constructing the backbone*. `C(i)-N(i+1)` came out at 4.4–5.2 Å
+against a peptide bond's 1.33 Å, so the file had **no peptide bonds at all**, and
+residues 4 and 5 interpenetrated (`O4-CB5 = 0.63 Å`, which is not a chemical
+distance). Bond inference on it produced 40 bonds where 29 are correct: 11
+spurious contacts and 4 of 5 peptide bonds missing.
+
+Rebuilt by NeRF placement from ideal internal coordinates — the way a peptide is
+actually constructed, each atom from the previous three by a length, an angle and
+a torsion. The generator lives beside the file as
+`make_solvated_fragment.py` and self-checks what matters: all five
+`C(i)-N(i+1)` at 1.329 Å, closest contact 1.231 Å (the C=O bond), CA-CA at 3.8 Å
+as an α-helix requires.
+
+The lesson is about fixtures rather than about bonds: **a fixture is an
+assertion too, and nothing checks it.** Every test built on this one was
+green while the molecule it described could not exist.
 
 ## Groups are a display hierarchy, and membership belongs to the member
 
