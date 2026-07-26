@@ -191,9 +191,67 @@ class AccurateFretViewModel:
         """
         self.detectors = dict((payload or {}).get("detectors") or {})
         self.setup_name = str((payload or {}).get("name") or "")
+        self.load_calibration_from_setup()
         if self._columns:
             self._map_columns()
         self.notify("setup")
+
+    def load_calibration_from_setup(self) -> bool:
+        """Seed the photophysics fields from the setup's stored calibration.
+
+        A correction factor belongs to the instrument, so once a setup has been
+        calibrated every later session on that setup should start from the
+        measured numbers rather than the defaults. Only the fields this tool
+        owns are seeded — the factors themselves are what the run determines.
+
+        Returns
+        -------
+        bool
+            Whether the setup carried a calibration.
+        """
+        if not self.setup_name:
+            return False
+        from chisurf.core.data_io.detector_setups import get_setup_calibration
+
+        values = (get_setup_calibration(self.setup_name) or {}).get("values") or {}
+        if not values:
+            return False
+        for key, attr in (("r0", "forster_radius"), ("bg_dd", "background_dd"),
+                          ("bg_da", "background_da"), ("bg_aa", "background_aa"),
+                          ("phi_d", "quantum_yield_donor"),
+                          ("phi_a", "quantum_yield_acceptor")):
+            value = values.get(key)
+            if value is not None and np.isfinite(float(value)):
+                setattr(self, attr, float(value))
+        return True
+
+    def save_calibration_to_setup(self) -> str:
+        """Store the calibration just determined on the selected detector setup.
+
+        The hand-off to every other tool: burst analysis, PDA and the filter
+        calculator all pick a detector setup already, and can read the factors
+        back with
+        :func:`chisurf.core.data_io.detector_setups.get_setup_calibration`.
+
+        Returns
+        -------
+        str
+            A status message.
+        """
+        if self._result is None:
+            return "Nothing to store — run a calibration first."
+        if not self.setup_name:
+            return "Pick a detector setup first — the calibration is stored on it."
+        from chisurf.core.data_io.detector_setups import set_setup_calibration
+        from chisurf.core.fluorescence.fret.calibration import calibration_to_setup
+
+        payload = calibration_to_setup(
+            self._result.calibration.calibration,
+            uncertainties=getattr(self._result.calibration, "uncertainties", None),
+        )
+        if not set_setup_calibration(self.setup_name, payload):
+            return f"No detector setup named {self.setup_name!r} to store the calibration on."
+        return f"Calibration stored on setup {self.setup_name!r}; other tools read it from there."
 
     def _window_hints(self) -> dict:
         """Column-name fragments per channel role, from the setup's windows.

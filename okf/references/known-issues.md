@@ -97,6 +97,31 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Found 2026-07-26 while adding typeset labels.** `pytest test/fitting` used to
+**abort the interpreter** part-way through (~47 %), so everything after it never
+ran. `chisurf/macros/core_data.py::add_dataset` popped a `MyMessageBox` on its
+two "nothing was read" paths; a modal dialog needs a GUI to close it, and with no
+`QApplication` at all Qt aborts the process outright. The exception path a few
+lines below already guarded on `gui is None` with exactly that reasoning — the
+two earlier sites had been missed. Fixed by applying the same guard (head-lessly
+the log is the report), which is what makes the suite run to completion.
+
+That uncovered **14 pre-existing failures and 1 collection error** that the abort
+had been hiding. All confirmed identical on an unmodified tree with only the
+guard applied, so none belongs to the change that found them; recorded rather
+than fixed because they span five unrelated subsystems:
+
+- `test_fit_state.py` (5) — model `get_state`/`set_state` round-trips, including
+  the FRET-Gaussian and PDA length-preservation contracts.
+- `test_grouping.py` (3) + `test_grouped_default_linking_contract.py` (1) —
+  auto-linking of non-nuisance parameters across grouped fits, and two
+  `core_data` guard contracts.
+- `test_experiment.py::test_FCS_Reader`, `test_models_regression.py::
+  test_parse_model_evaluation`, `test_parameter.py::test_equality`,
+  `test_fit.py::test_fit_save_full_length_curves_have_nan_padding`,
+  `test_reference_models.py::test_lifetime_model_convergence`.
+- `test_group_polarization_any_size.py` errors at collection.
+
 **Found 2026-07-26 while closing [RF-168](/reviews/findings.md#rf-168) in the
 BVA layer.** `test/plugins/burst/test_background_gui.py` has two failures that
 are stale against the AutoForm conversion of the Burst Background tool

@@ -148,6 +148,20 @@ back to the physically-motivated light-path prior.
   correction parameter can `link_to_calibration` (chinet-port identity). Refining
   one calibration then updates every linked fit — calibration-shared global
   analysis.
+- **The calibration belongs to the setup** — γ is fixed by the detection
+  efficiencies and quantum yields, α by the filters, δ by the excitation: all
+  properties of the instrument, not of one burst file. `calibration_to_setup` /
+  `calibration_from_setup` reduce a group to a plain JSON payload (values plus
+  the bootstrap σ) stored under `fret_calibration` in the detector setup, and
+  `detector_setups.get_setup_calibration` / `set_setup_calibration` read and
+  write it. The store rewrites only that field, so annotating a setup can never
+  be what loses a channel definition, and refuses an unknown setup name rather
+  than inventing one (a calibration on a typo'd setup is a calibration nothing
+  ever finds). This is the hand-off to every other tool: they already ask the
+  user to pick a setup, so they get the measured factors for free instead of
+  defaults. The accurate-FRET tool writes it with **🔬 Store on setup** and seeds
+  its own photophysics fields from it whenever a setup is selected.
+  Tests: `test/fitting/test_setup_calibration.py` (7).
 - **ndxplorer bridge** — `calibration_to_ndx_constants` maps the posterior
   factors onto ndx's MFD constants (inverting ndx's effective
   `gamma = (PhiA/PhiD)/(gG/gR)`), and

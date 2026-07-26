@@ -184,8 +184,32 @@ offset.
 
 ### 8. Use the calibration
 
+* **🔬 Store on setup** saves the factors on the detector setup selected at the
+  top of the panel. This is the one to reach for if you will analyse more data
+  from the same instrument. A correction factor is a property of the *setup*,
+  not of this burst file — $\gamma$ is fixed by the detection efficiencies and
+  quantum yields, $\alpha$ by the filters, $\delta$ by the excitation — so once
+  a setup is calibrated, every tool that asks you to pick a detector setup
+  starts from the measured numbers instead of defaults. Only the calibration is
+  written; the setup's channels, windows and LUTs are left exactly as they were.
+  Read it back anywhere with:
+
+  ```python
+  from chisurf.core.data_io.detector_setups import get_setup_calibration
+  from chisurf.core.fluorescence.fret.calibration import calibration_from_setup
+
+  payload = get_setup_calibration("BS")          # {"values": …, "uncertainties": …}
+  calibration = calibration_from_setup(setup)    # a ready CalibrationParameters group
+  ```
+
+  A setup that has never been calibrated returns an empty payload and the
+  defaults, so this is always safe to call.
 * **🔗 Share in session** publishes it as a linkable pseudo-fit, so any fit can
-  link its correction parameters to this one calibration (global analysis).
+  link its correction parameters to this one calibration (global analysis). The
+  factors are real `FittingParameter`s: each carries a process-wide identity, so
+  a fit parameter can be *linked* to one — one number, one owner, many
+  consumers — and each carries a typeset label, so a parameter table shows
+  $\gamma$ and $\Phi_A$ rather than `gamma` and `PhiA`.
 * **📤 To ndXplorer** writes the factors into an open ndXplorer window's MFD
   constants and recomputes its derived columns.
 * **💾 Export CSV** writes the per-burst $E$, $S$, lifetime and distance with the

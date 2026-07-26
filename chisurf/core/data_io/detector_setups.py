@@ -109,3 +109,78 @@ def setup_lut_open_kwargs(setup: dict[str, Any] | None) -> dict[str, Any]:
         "channel_shifts": channel_shifts,
         "apply_lut": bool(setup.get("apply_lut", False)),
     }
+
+
+def get_setup_calibration(
+    setup_name: str,
+    file_path: str | pathlib.Path | None = None,
+) -> dict[str, Any]:
+    """Return the FRET calibration stored on a named detector setup.
+
+    The read half of "calibrate once per instrument". A tool that already lets
+    the user pick a detector setup gets the measured correction factors for
+    free, instead of asking for them again or falling back to defaults.
+
+    Parameters
+    ----------
+    setup_name : str
+        Name of the setup, as shown in the setup picker.
+    file_path : str or Path, optional
+        Override the default setups file.
+
+    Returns
+    -------
+    dict
+        ``{"values": {...}, "uncertainties": {...}}``, or an empty dict when the
+        setup is unknown or carries no calibration.
+    """
+    from chisurf.core.fluorescence.fret.calibration import SETUP_CALIBRATION_FIELD
+
+    setups = (load_detector_setups(file_path) or {}).get("setups") or {}
+    setup = setups.get(str(setup_name))
+    if not isinstance(setup, dict):
+        return {}
+    payload = setup.get(SETUP_CALIBRATION_FIELD)
+    return dict(payload) if isinstance(payload, dict) else {}
+
+
+def set_setup_calibration(
+    setup_name: str,
+    payload: dict[str, Any],
+    file_path: str | pathlib.Path | None = None,
+) -> bool:
+    """Store a FRET calibration on a named detector setup.
+
+    Only the calibration field is touched: the setup's detectors, windows and
+    LUTs are read back and written out unchanged, so this can never be the thing
+    that loses a channel definition.
+
+    Parameters
+    ----------
+    setup_name : str
+        Name of the setup to annotate. It must already exist — this attaches a
+        calibration to a setup, it does not create one.
+    payload : dict
+        As produced by
+        :func:`chisurf.core.fluorescence.fret.calibration.calibration_to_setup`.
+    file_path : str or Path, optional
+        Override the default setups file.
+
+    Returns
+    -------
+    bool
+        Whether the setup existed and was updated.
+    """
+    from chisurf.core.fluorescence.fret.calibration import SETUP_CALIBRATION_FIELD
+
+    data = load_detector_setups(file_path) or {}
+    setups = data.get("setups") or {}
+    setup = setups.get(str(setup_name))
+    if not isinstance(setup, dict):
+        logger.warning("Cannot store a calibration: no detector setup named %r", setup_name)
+        return False
+    setup[SETUP_CALIBRATION_FIELD] = dict(payload or {})
+    save_detector_setups(
+        {"setups": setups, "last_used": data.get("last_used") or ""}, file_path
+    )
+    return True

@@ -98,11 +98,19 @@ class CalibrationResult:
                     origin[key] = "light path (optics prior)"
                 elif message.startswith(f"{key}: data"):
                     origin[key] = "data × light-path prior"
+        # A table cell renders one flat string, so the symbols come from
+        # Unicode rather than markup. ``r0`` is spelled ``R_0`` only to be
+        # typeset; the row keys stay the plain factor names.
+        from chisurf.core.labels import to_unicode
+
+        symbol = {key: to_unicode(key) for key in ("alpha", "beta", "gamma", "delta")}
+        symbol["r0"] = to_unicode("R_0")
+
         rows = []
         for key in ("alpha", "beta", "gamma", "delta", "r0"):
             sigma = self.calibration.uncertainties.get(key, float("nan"))
             rows.append({
-                "factor": key,
+                "factor": symbol.get(key, key),
                 "value": f"{self.factors.get(key, float('nan')):.4f}",
                 "uncertainty": "—" if not np.isfinite(sigma) else f"{sigma:.4f}",
                 "origin": origin.get(key, ""),

@@ -78,6 +78,13 @@ class AccurateFretTool(ChisurfDockTool):
             "Publish the calibration so any fit can link its correction parameters to it."
         )
         a_register.triggered.connect(self._register)
+        a_setup = toolbar.addAction("🔬 Store on setup")
+        a_setup.setToolTip(
+            "Save the factors on the selected detector setup. They belong to the "
+            "instrument, not to this file, so every tool that picks the same setup "
+            "starts from the measured calibration instead of defaults."
+        )
+        a_setup.triggered.connect(self._store_on_setup)
         a_csv = toolbar.addAction("💾 Export CSV")
         a_csv.setToolTip("Write the per-burst accurate E, S, lifetime and distance to a CSV file.")
         a_csv.triggered.connect(self._export_csv)
@@ -134,6 +141,10 @@ class AccurateFretTool(ChisurfDockTool):
     def _register(self) -> None:
         """Publish the calibration as a session-wide link target."""
         self.statusBar().showMessage(self.model.register_in_session(), 8000)
+
+    def _store_on_setup(self) -> None:
+        """Attach the calibration to the selected detector setup."""
+        self.statusBar().showMessage(self.model.save_calibration_to_setup(), 8000)
 
     def _export_csv(self) -> None:
         """Ask for a path and write the per-burst accurate values to it."""

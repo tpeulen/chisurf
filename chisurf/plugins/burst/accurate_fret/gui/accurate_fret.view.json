@@ -45,7 +45,7 @@
                  "description": "Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which."},
                 {"type": "choice", "attr": "acceptor_dye", "label": "Acceptor", "options_source": "dye_names", "call": "apply_dye_selection",
                  "description": "Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0."},
-                {"type": "value", "attr": "kappa2", "label": "kappa²", "kind": "float", "minimum": 0.0, "maximum": 4.0, "step": 0.01, "decimals": 4, "call": "apply_dye_selection",
+                {"type": "value", "attr": "kappa2", "label": "kappa^2", "kind": "float", "minimum": 0.0, "maximum": 4.0, "step": 0.01, "decimals": 4, "call": "apply_dye_selection",
                  "description": "Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %."},
                 {"type": "value", "attr": "refractive_index", "label": "Refractive index", "kind": "float", "minimum": 1.0, "maximum": 2.0, "step": 0.01, "decimals": 3, "call": "apply_dye_selection",
                  "description": "Refractive index of the medium between the dyes: 1.33 for water, ~1.4 inside a protein. R0 scales as n^(-2/3)."}
@@ -59,7 +59,7 @@
               "sections": [
                 {"type": "value", "attr": "donor_lifetime", "label": "tau_D(0) (ns)", "kind": "float", "minimum": 0.01, "maximum": 100.0, "step": 0.1, "decimals": 3,
                  "description": "Donor-only lifetime, measured on a donor-only sample. It anchors the FRET lines: the line ends at (tau_D(0), E = 0), so an error here tilts the whole lifetime-based calibration."},
-                {"type": "value", "attr": "forster_radius", "label": "R0 (Å)", "kind": "float", "minimum": 1.0, "maximum": 200.0, "step": 0.5, "decimals": 2,
+                {"type": "value", "attr": "forster_radius", "label": "R_0 (Å)", "kind": "float", "minimum": 1.0, "maximum": 200.0, "step": 0.5, "decimals": 2,
                  "description": "Förster radius of the dye pair. It does not affect the efficiency at all — only the distance derived from it, and the shape of the FRET lines."},
                 {"type": "value", "attr": "linker_sigma", "label": "Linker width (Å)", "kind": "float", "minimum": 0.0, "maximum": 30.0, "step": 0.5, "decimals": 2,
                  "description": "Width of the donor-acceptor distance distribution caused by the dye linkers. It is what bends the static FRET line away from the straight E = 1 - tau/tau_D(0) diagonal; 6 Å is typical for common linkers."},

@@ -544,15 +544,21 @@ def add_dataset(
                 )
             except Exception:
                 pass
-            cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
-                label="Error",
-                info="No data could be read. Check reading settings and file.",
-                details=(
-                    "Reader returned no dataset."
-                    if experiment_reader is not None
-                    else "No experiment reader available for the provided file."
-                )
+            details = (
+                "Reader returned no dataset."
+                if experiment_reader is not None
+                else "No experiment reader available for the provided file."
             )
+            cs.logging.error("add_dataset: no dataset read from %s. %s", filename, details)
+            # Same rule as the exception path below: a modal dialog needs a GUI
+            # to close it, and with no QApplication at all Qt aborts the whole
+            # process. Head-lessly the log is the report.
+            if gui is not None:
+                cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
+                    label="Error",
+                    info="No data could be read. Check reading settings and file.",
+                    details=details,
+                )
             return
 
         # Normalize to a group without modifying global state yet.
@@ -593,11 +599,17 @@ def add_dataset(
                 )
             except Exception:
                 pass
-            cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
-                label="Error",
-                info="No data entries found in the selected file using the current reader.",
-                details=f"Reader: {getattr(experiment_reader, 'name', type(experiment_reader).__name__)}\nFilename: {filename}"
+            details = (
+                f"Reader: {getattr(experiment_reader, 'name', type(experiment_reader).__name__)}"
+                f"\nFilename: {filename}"
             )
+            cs.logging.error("add_dataset: the reader returned an empty group. %s", details)
+            if gui is not None:
+                cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
+                    label="Error",
+                    info="No data entries found in the selected file using the current reader.",
+                    details=details,
+                )
             return
 
         # Append valid data. Preserve ExperimentDataGroup objects even when

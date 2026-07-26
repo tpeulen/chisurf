@@ -55,6 +55,40 @@ def _make_field_shrinkable(field) -> None:
             editor.setMinimumContentsLength(3)
 
 
+def _make_form_label(text: str) -> QtWidgets.QLabel:
+    """Build the caption shown left of a field.
+
+    The spec's ``label`` is the *plain* name — greppable, translatable, and what
+    the generated documentation table prints. What the user sees is its typeset
+    form, so ``"tau_D(0) (ns)"`` in the view spec renders as τ with a real
+    subscript without anyone hand-writing HTML (see
+    :mod:`chisurf.core.labels`). A label that already carries markup is passed
+    through untouched.
+
+    The plain text stays reachable as the tooltip and as
+    ``label.property("plainLabel")``, so a caption that is typeset on screen can
+    still be matched by tests and searched by the user.
+
+    Parameters
+    ----------
+    text : str
+        The spec label, plain or already marked up.
+
+    Returns
+    -------
+    QtWidgets.QLabel
+        A right-aligned rich-text label.
+    """
+    from chisurf.core.labels import to_plain, to_rich
+
+    plain = to_plain(text)
+    label = QtWidgets.QLabel(to_rich(text))
+    label.setTextFormat(QtCore.Qt.RichText)
+    label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+    label.setProperty("plainLabel", plain)
+    return label
+
+
 def _align_label_columns(param_widgets):
     """Give a batch of fitting-parameter rows one shared label width.
 
@@ -150,6 +184,54 @@ class AutoForm(QtWidgets.QWidget):
         if not expanding:
             self._layout.addStretch(1)  # push panels to the top; prevent height distribution
 
+    def set_field_label(self, target: str, text: str = None, html: str = None) -> bool:
+        """Retitle a field's caption at run time.
+
+        The counterpart of a :class:`FittingParameterWidget`'s ``label_text``:
+        the field keeps its programmatic identity (the model attribute it is
+        bound to) while what the user reads changes — a channel called
+        ``i_da`` shown as ``I_DA`` for one setup and ``F_D|A`` for another.
+
+        Parameters
+        ----------
+        target : str
+            The model attribute the field is bound to.
+        text : str, optional
+            New plain label; it is typeset with :func:`chisurf.core.labels.to_rich`.
+        html : str, optional
+            Ready-made markup, used verbatim in preference to ``text``.
+
+        Returns
+        -------
+        bool
+            Whether a field bound to ``target`` was found.
+        """
+        from chisurf.core.labels import to_plain, to_rich
+
+        if html is None and text is None:
+            return False
+        markup = html if html is not None else to_rich(text)
+        plain = to_plain(html) if html is not None else str(text)
+
+        found = False
+        for widget in self.findChildren(QtWidgets.QWidget):
+            section = getattr(widget, "_section", None)
+            if section is None:
+                continue
+            # Field sections bind through ``attr``; a few section types name the
+            # same thing ``target``. Accept either rather than making the caller
+            # know which kind of section it is retitling.
+            bound = getattr(section, "attr", None) or getattr(section, "target", None)
+            if bound != target:
+                continue
+            widget.form_label = plain
+            label = getattr(widget, "_autoform_label", None)
+            if label is not None:
+                label.setText(markup)
+                label.setProperty("plainLabel", plain)
+            found = True
+        return found
+
     def sync_fields(self):
         """Re-read model values into existing field widgets without rebuilding.
 
@@ -226,11 +308,13 @@ class AutoForm(QtWidgets.QWidget):
             for i, field in enumerate(pending):
                 r, c = divmod(i, per_row)
                 col = c * 2
-                label = QtWidgets.QLabel(getattr(field, "form_label", ""))
-                label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                label = _make_form_label(getattr(field, "form_label", ""))
                 tip = field.toolTip()
                 if tip:
                     label.setToolTip(tip)
+                # The field keeps a handle on its caption so a tool can retitle
+                # it at run time (see AutoForm.set_field_label).
+                field._autoform_label = label
                 # Fields stretch horizontally to share the available width; the
                 # field columns carry the stretch, the label columns stay fixed.
                 # A field marked ``_autoform_expanding`` (e.g. a text preview) also

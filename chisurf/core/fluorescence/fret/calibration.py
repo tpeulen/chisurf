@@ -29,6 +29,7 @@ import numpy as np
 
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
+from chisurf.core.labels import to_rich
 
 __all__ = [
     "CalibrationParameters",
@@ -44,6 +45,11 @@ __all__ = [
     "link_to_calibration",
     "calibration_to_ndx_constants",
     "calibration_from_ndx_constants",
+    "calibration_to_setup",
+    "calibration_from_setup",
+    "setup_calibration_uncertainties",
+    "SETUP_CALIBRATION_KEYS",
+    "SETUP_CALIBRATION_FIELD",
     "leakage_from_donor_only",
     "direct_excitation_from_acceptor_only",
     "calibrate_from_samples",
@@ -90,16 +96,30 @@ class CalibrationParameters(FittingParameterGroup):
             Forwarded to :class:`FittingParameterGroup`.
         """
         super().__init__(name=name, **kwargs)
-        self._gamma = FittingParameter(value=1.0, name="gamma", lb=0.05, ub=20.0, bounds_on=True)
-        self._alpha = FittingParameter(value=0.0, name="alpha", lb=0.0, ub=1.0, bounds_on=True)
-        self._beta = FittingParameter(value=1.0, name="beta", lb=0.01, ub=100.0, bounds_on=True)
-        self._delta = FittingParameter(value=0.0, name="delta", lb=0.0, ub=1.0, bounds_on=True)
-        self._bg_dd = FittingParameter(value=0.0, name="Bg_DD", lb=0.0, ub=1e6, bounds_on=True)
-        self._bg_da = FittingParameter(value=0.0, name="Bg_DA", lb=0.0, ub=1e6, bounds_on=True)
-        self._bg_aa = FittingParameter(value=0.0, name="Bg_AA", lb=0.0, ub=1e6, bounds_on=True)
-        self._r0 = FittingParameter(value=52.0, name="R0", lb=1.0, ub=200.0, bounds_on=True)
-        self._phi_a = FittingParameter(value=1.0, name="PhiA", lb=0.0, ub=1.0, bounds_on=True)
-        self._phi_d = FittingParameter(value=1.0, name="PhiD", lb=0.0, ub=1.0, bounds_on=True)
+
+        def factor(name, label, **kwargs):
+            """One calibration factor: a programmatic name and a typeset label.
+
+            The ``name`` is what code, links and the ndxplorer mapping key on and
+            must not change; the ``label`` is the plain spelling of what the
+            reader should see, typeset by :func:`chisurf.core.labels.to_rich` so
+            a parameter table shows γ and Φ<sub>A</sub> rather than ``gamma``
+            and ``PhiA``.
+            """
+            return FittingParameter(
+                name=name, label_text=to_rich(label), bounds_on=True, **kwargs
+            )
+
+        self._gamma = factor("gamma", "gamma", value=1.0, lb=0.05, ub=20.0)
+        self._alpha = factor("alpha", "alpha", value=0.0, lb=0.0, ub=1.0)
+        self._beta = factor("beta", "beta", value=1.0, lb=0.01, ub=100.0)
+        self._delta = factor("delta", "delta", value=0.0, lb=0.0, ub=1.0)
+        self._bg_dd = factor("Bg_DD", "Bg_DD", value=0.0, lb=0.0, ub=1e6)
+        self._bg_da = factor("Bg_DA", "Bg_DA", value=0.0, lb=0.0, ub=1e6)
+        self._bg_aa = factor("Bg_AA", "Bg_AA", value=0.0, lb=0.0, ub=1e6)
+        self._r0 = factor("R0", "R_0", value=52.0, lb=1.0, ub=200.0)
+        self._phi_a = factor("PhiA", "Phi_A", value=1.0, lb=0.0, ub=1.0)
+        self._phi_d = factor("PhiD", "Phi_D", value=1.0, lb=0.0, ub=1.0)
         self.find_parameters()
 
     # --- scalar accessors -------------------------------------------------
@@ -742,6 +762,111 @@ def calibration_to_ndx_constants(calibration) -> dict:
         "PhiD": phi_d,
         "forster_radius": float(calib.r0),
     }
+
+
+#: The calibration factors stored on a detector setup, and the group attribute
+#: each maps to. Deliberately a plain ``{name: float}`` payload rather than a
+#: pickled parameter group: it is written to the setups file and read by tools
+#: that have no reason to import the fitting stack.
+SETUP_CALIBRATION_KEYS = (
+    "gamma", "alpha", "beta", "delta",
+    "bg_dd", "bg_da", "bg_aa",
+    "r0", "phi_a", "phi_d",
+)
+
+#: Key under which the calibration payload lives inside a detector-setup dict.
+SETUP_CALIBRATION_FIELD = "fret_calibration"
+
+
+def calibration_to_setup(calibration, *, uncertainties: dict | None = None) -> dict:
+    """Reduce a calibration to the payload stored on a detector setup.
+
+    A correction factor is a property of the *instrument*, not of one burst
+    file: γ is set by the detection efficiencies and quantum yields, α by the
+    filters, δ by the excitation. Determining it once and hanging it on the
+    detector setup is what lets every other tool that already picks a setup —
+    burst analysis, PDA, the filter calculator — start from a measured
+    calibration instead of typed-in defaults.
+
+    Parameters
+    ----------
+    calibration : CalibrationParameters or CalibrationFit
+        The calibration to store.
+    uncertainties : dict, optional
+        ``{factor: sigma}`` as returned by the automatic calibration; kept
+        alongside the values so a consumer can weight or display them.
+
+    Returns
+    -------
+    dict
+        ``{"values": {...}, "uncertainties": {...}}``, JSON-serializable.
+
+    See Also
+    --------
+    calibration_from_setup : the inverse.
+    """
+    calib = calibration.model if isinstance(calibration, CalibrationFit) else calibration
+    values = {key: float(getattr(calib, key)) for key in SETUP_CALIBRATION_KEYS}
+    payload: dict = {"values": values}
+    if uncertainties:
+        payload["uncertainties"] = {
+            str(k): float(v)
+            for k, v in dict(uncertainties).items()
+            if v is not None and np.isfinite(float(v))
+        }
+    return payload
+
+
+def calibration_from_setup(setup: dict | None, calib=None):
+    """Read a stored calibration back out of a detector-setup dict.
+
+    Parameters
+    ----------
+    setup : dict or None
+        A detector setup as stored in the setups file. A setup without a stored
+        calibration (the normal case for a fresh setup) yields the defaults.
+    calib : CalibrationParameters, optional
+        Group to fill in place; a fresh one is created when omitted.
+
+    Returns
+    -------
+    CalibrationParameters
+        The calibration group, unchanged where the setup says nothing.
+    """
+    calib = calib if calib is not None else CalibrationParameters()
+    payload = (setup or {}).get(SETUP_CALIBRATION_FIELD) or {}
+    values = payload.get("values") if isinstance(payload, dict) else None
+    if not isinstance(values, dict):
+        return calib
+    for key in SETUP_CALIBRATION_KEYS:
+        value = values.get(key)
+        if value is None:
+            continue
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(value):
+            setattr(calib, key, value)
+    return calib
+
+
+def setup_calibration_uncertainties(setup: dict | None) -> dict:
+    """Return the stored ``{factor: sigma}`` of a setup's calibration, if any.
+
+    Parameters
+    ----------
+    setup : dict or None
+        A detector setup as stored in the setups file.
+
+    Returns
+    -------
+    dict
+        Possibly empty mapping of factor name to standard deviation.
+    """
+    payload = (setup or {}).get(SETUP_CALIBRATION_FIELD) or {}
+    found = payload.get("uncertainties") if isinstance(payload, dict) else None
+    return dict(found) if isinstance(found, dict) else {}
 
 
 def calibration_from_ndx_constants(constants: dict, calib=None):

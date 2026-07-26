@@ -2,6 +2,63 @@
 
 ## 2026-07-26
 
+* **Labels have two names now, and the calibration belongs to the instrument.**
+  A quantity is spelled one way for code and translators (`tau_D(0)`, `Phi_A`,
+  `kappa^2`) and another for the reader. Writing the second by hand as HTML in a
+  view spec — which is what the sources did — buys the typography and loses
+  everything else: the string stops being greppable, the translator is handed
+  markup, and the generated documentation cell prints literal angle brackets.
+  New Qt-free `chisurf/core/labels.py` derives the second from the first, in the
+  convention the models already used (`_` subscript, `^` superscript, braces to
+  group, a spelled-out Greek name becomes the letter — only as a whole word, so
+  `alphabet` survives). Three renderings, one source: `to_rich` (HTML for a
+  rich-text `QLabel`), `to_unicode` (Greek plus Unicode scripts, for table cells,
+  plot axes and CSV headers where markup cannot go) and `to_plain` (stripped,
+  for tooltips, docs and search). `AutoForm` applies `to_rich` to every field
+  caption, so **every existing plain label in every view spec is typeset with no
+  change at the call site**, and keeps the plain text on the widget as
+  `plainLabel` so a caption can still be matched by a test. Hand-written markup
+  is passed through untouched — there are hundreds of those and re-escaping one
+  would show the user angle brackets.
+  Two traps found by driving it rather than reasoning about it: a subscript has
+  to allow parentheses for `tau_D(0)` but must not eat the bracket that closes
+  an enclosing group, so `P(R_DA)` was rendering as `P(R<sub>DA)</sub>`; and
+  Python's `\w` counts `²` as a word character, so a neighbour test written the
+  obvious way silently refused to convert `kappa²`.
+  `AutoForm.set_field_label(target, text=…/html=…)` retitles a caption at run
+  time — the counterpart of a `FittingParameterWidget`'s `label_text`, the field
+  keeping the model attribute it binds to while what the reader sees changes.
+  The calibration factors are `FittingParameter`s already (linkable, in the
+  Global View); they now also carry `label_text`, so a parameter table reads γ
+  and Φ<sub>A</sub> instead of `gamma` and `PhiA` while the **names stay put** —
+  links, state files and the ndxplorer mapping key on them.
+  **A calibration is a property of the instrument, not of a burst file**: γ is
+  fixed by the detection efficiencies and quantum yields, α by the filters, δ by
+  the excitation. `calibration_to_setup` / `calibration_from_setup` reduce a
+  group to a plain JSON payload (values plus bootstrap σ) stored on the detector
+  setup, with `get_setup_calibration` / `set_setup_calibration` either side. The
+  store rewrites only that field — annotating a setup can never be what loses a
+  channel definition — and refuses an unknown name rather than inventing a setup
+  a calibration would then hide in. This is the hand-off the other tools needed:
+  they already ask the user to pick a setup. The accurate-FRET tool writes it
+  with a new **🔬 Store on setup** action and seeds its own photophysics fields
+  from it whenever a setup is picked. Verified end to end on a simulation with
+  known truth: stored and read back as γ 0.6621, α 0.0807, β 1.3835, δ 0.0579
+  (truth 0.65 / 0.08 / 1.4 / 0.06), with the channel definitions untouched.
+  *Found in passing and fixed:* `pytest test/fitting` **aborted the interpreter**
+  at ~47 %, so a third of it never ran. `macros/core_data.py::add_dataset` popped
+  a `MyMessageBox` on its two "nothing was read" paths, and with no
+  `QApplication` Qt aborts the process outright; the exception path below already
+  guarded on `gui is None` for exactly that reason and these two had been missed.
+  With the guard the suite completes — and exposes **14 pre-existing failures and
+  1 collection error** it had been hiding, all confirmed identical on an
+  unmodified tree and recorded in [known issues](/references/known-issues.md)
+  rather than fixed, since they span five unrelated subsystems.
+  Tests: `test/core/test_labels.py` (24), `test/gui/test_autoform_labels.py` (4),
+  `test/fitting/test_setup_calibration.py` (7). See
+  [gui-autoform](/subsystems/gui-autoform.md) and
+  [fret-calibration](/references/fret-calibration.md).
+
 * **A skipped kappa2 frame now says so** ([RF-230](/reviews/findings.md)).
   `calculate_kappa_distance` allocated `ks`/`ds` with `np.empty` and wrote them
   only inside the `try`, so a frame whose dipole endpoints coincide — a missing or

@@ -312,6 +312,43 @@ side by side and controls must stay narrow. Therefore, for **all** UI (AutoForm
 This is a standing rule: when adding or editing any control, choose the
 space-efficient form by default and move detail into the tooltip.
 
+## UI convention: write labels plain, let them be typeset
+
+A quantity has two names — the one code and translators use (`tau_D(0)`,
+`R_DA`, `Phi_A`, `kappa^2`) and the one a physicist reads (τ with a real
+subscript). Writing the second by hand as HTML in a view spec buys the
+typography and loses everything else: the string stops being greppable, the
+translator is handed markup, and the generated documentation cell renders
+literal angle brackets.
+
+So **spell view-spec labels plain** and let [`chisurf/core/labels.py`](/subsystems/gui-autoform.md)
+derive the typeset form. The convention is the one already used in the models:
+`_` opens a subscript, `^` a superscript, braces group an explicit run
+(`tau_{D,app}`), and a spelled-out Greek name becomes the letter — only when it
+is the whole word, so `alphabet` survives.
+
+Three renderings, one source:
+
+- `to_rich` — HTML for a rich-text `QLabel`. `AutoForm._emit_sections` applies it
+  to every field caption, so a plain `label` in a `.view.json` is typeset with no
+  work at the call site. Labels that already carry hand-written markup (there are
+  hundreds in the models) are passed through untouched.
+- `to_unicode` — Greek plus Unicode sub/superscripts, for the places markup
+  cannot go: table cells, plot axes, CSV headers, log lines. Only digits and
+  signs have subscript glyphs, so `R_DA` deliberately keeps its underscore rather
+  than being mangled into `RDA`, which names a different thing.
+- `to_plain` — markup stripped, for tooltips, documentation tables and search.
+
+The plain text stays reachable at run time as the label's `plainLabel` property,
+so a caption that is typeset on screen can still be matched by a test.
+
+`AutoForm.set_field_label(target, text=…/html=…)` retitles a caption
+programmatically — the counterpart of a `FittingParameterWidget`'s `label_text`:
+the field keeps its programmatic identity (the model attribute it binds to) while
+what the reader sees changes. A `FittingParameter` follows the same split: `name`
+is what links, state files and the ndxplorer mapping key on and must not move;
+`label_text` is what the parameter table shows.
+
 # Node editor widget
 
 `chisurf/gui/widgets/node_editor/` is a self-contained, dependency-light node
