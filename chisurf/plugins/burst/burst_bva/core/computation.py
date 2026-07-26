@@ -15,6 +15,19 @@ except ImportError:
 
 import tttrlib
 
+# The shot-noise static line has one home: the core burst package. It is
+# re-exported here because callers (the GUI tool, the burst-analysis workflow)
+# reach for it next to ``compute_bva``.
+from chisurf.core.fluorescence.burst.bva import compute_static_bva_line
+
+__all__ = [
+    "ProgressWindow",
+    "read_burst_analysis",
+    "compute_static_bva_line",
+    "compute_bva",
+    "write_bv4_analysis",
+]
+
 
 class ProgressWindow:
     """Minimal progress reporter (can be a QDialog or a callable wrapper)."""
@@ -75,21 +88,6 @@ def read_burst_analysis(
             tttrs[ff] = tttrlib.TTTR(fn, tttr_file_type)
 
     return df, tttrs
-
-
-def compute_static_bva_line(
-        prox_mean_bins: np.ndarray,
-        number_of_photons_per_slice: int = 4,
-        n_samples: int = 10_000
-) -> Tuple[np.ndarray, np.ndarray]:
-    """Simulate BVA static line via binomial sampling."""
-    binom_samples = np.random.binomial(
-        number_of_photons_per_slice,
-        prox_mean_bins,
-        size=(n_samples, len(prox_mean_bins))
-    )
-    ratios = binom_samples / number_of_photons_per_slice
-    return ratios.mean(axis=0), ratios.std(axis=0)
 
 
 def _compute_bva_tttrlib(

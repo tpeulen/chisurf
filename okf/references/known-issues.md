@@ -97,6 +97,25 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Found 2026-07-26 while closing [RF-168](/reviews/findings.md#rf-168) in the
+BVA layer.** `test/plugins/burst/test_background_gui.py` has two failures that
+are stale against the AutoForm conversion of the Burst Background tool
+(`61a2803ae`, then `993577745`), unrelated to the BVA change that surfaced them.
+
+- **`test_diagnostics_plots_build_and_render`** asserts
+  `hasattr(w, "iht_plot")` on `BurstBackgroundEstimator`; the AutoForm rebuild
+  no longer exposes named plot attributes on the tool, so the assertion fails at
+  the first line and the render path is never exercised.
+- **`test_semantic_detector_colors`** does
+  `from chisurf.plugins.burst.burst_background import _det_color`, which no
+  longer exists — the detector-colour mapping moved with the conversion.
+
+  Both need re-pointing at the AutoForm section handles rather than a code fix;
+  left open here because doing that properly means driving the tool headlessly
+  and inspecting the render (the screenshot rule), which does not belong in an
+  unrelated docstring/dedup change. The colour test in particular should assert
+  through a public seam, not a private helper name.
+
 **Found 2026-07-26 while routing the fit jobs through the job manager
 ([INC-08](/specs/assessment.md#inc-08)).** Two failures in the server suite,
 both confirmed identical on the unmodified tree, both about the RPC *transport*

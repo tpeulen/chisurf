@@ -2009,8 +2009,21 @@ source was changed. Findings RF-163..RF-168.
 - **Fix note:**
 
 ### RF-168
-- **Status:** OPEN
+- **Status:** FIXED (2026-07-26)
 - **Severity:** S3 (the NumPy docstring is a no-op string expression; `help()`, tooltips and generated docs show only the one-line summary)
 - **Location:** `chisurf/core/fluorescence/burst/bva.py:11-42` (`compute_static_bva_line`) and `:110-112` (`compute_bva`)
 - **Finding:** `compute_static_bva_line` opens with the one-liner `"""Compute static BVA line"""`, then `import pandas as pd`, and only then the 28-line NumPy docstring — which, following a statement, is a discarded expression, not `__doc__`. Verified: `compute_static_bva_line.__doc__` is exactly `'Compute static BVA line'`, so every parameter description (`prox_mean_bins`, `number_of_photons_per_slice`, `n_samples`) and the returns block are invisible to `help()`, to Sphinx and to the ruff `D` rules that are supposed to enforce them. The `import pandas as pd` that displaced it is itself unused — in both `compute_static_bva_line` and `compute_bva`, whose identical "lazy import to avoid circular import" line at `:112` is likewise never referenced. Move the text into the real docstring and drop both imports. While here: `chisurf/plugins/burst/burst_bva/core/computation.py:80-91` defines a second, vectorized `compute_static_bva_line` with the same name and signature (numerically equivalent — `total_photons` in the core version is `number_of_photons_per_slice` by construction, so its `np.where` guard is dead); `Bva.plot`/`dynamic_fraction` use the plugin copy while `chisurf.core.fluorescence.burst` re-exports the core one. One of the two should go.
-- **Fix note:**
+- **Fix note:** The 28-line text is now the real `__doc__` of
+  `compute_static_bva_line` (verified by asserting on `__doc__`), and both unused
+  `import pandas as pd` lines are gone. The duplicate was resolved in favour of
+  the vectorized body — one binomial draw of shape `(n_samples, n_bins)` instead
+  of a Python loop over bins — moved into the core module, with the dead
+  `np.where(total_photons > 0, …)` guard replaced by an explicit
+  `number_of_photons_per_slice <= 0` early return (the vectorized form would
+  otherwise divide by zero, which the loop form did not).
+  `chisurf/plugins/burst/burst_bva/core/computation.py` re-exports the core
+  function rather than redefining it, so `Bva.plot` / `Bva.dynamic_fraction` and
+  the GUI tool now share the one implementation the package re-exports.
+  `test/fluorescence/test_bva_static_line.py` pins the docstring, the
+  single-implementation identity, agreement with the binomial shot-noise limit
+  `sqrt(E(1-E)/n)`, and the zero-photon edge case.

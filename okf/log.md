@@ -2,6 +2,29 @@
 
 ## 2026-07-26
 
+* **RF-168: one BVA static line, with a docstring that is actually reachable.**
+  `compute_static_bva_line` in [chisurf/core/fluorescence/burst/bva.py](chisurf/core/fluorescence/burst/bva.py)
+  opened with a one-line summary, then `import pandas as pd`, and only then its
+  28-line NumPy docstring — which, following a statement, was a discarded string
+  expression rather than `__doc__`, so every parameter description was invisible
+  to `help()`, to Sphinx and to the ruff `D` rules. The text is now the real
+  docstring and both unused `import pandas as pd` lines (the second in
+  `compute_bva`, with the same misleading "lazy import to avoid circular import"
+  comment) are gone. The second, vectorized copy of the same function in
+  `chisurf/plugins/burst/burst_bva/core/computation.py` was removed in favour of
+  the core one, which now carries the vectorized body — a single binomial draw of
+  shape `(n_samples, n_bins)` — so `Bva.plot` / `Bva.dynamic_fraction`, the GUI
+  tool and the package re-export all reach the same implementation. The dead
+  `np.where(total_photons > 0, …)` guard (total is `number_of_photons_per_slice`
+  by construction) became an explicit non-positive-slice early return, which the
+  vectorized form genuinely needs. `test/fluorescence/test_bva_static_line.py`
+  pins the docstring, the single-implementation identity, agreement with the
+  binomial shot-noise limit `sqrt(E(1-E)/n)`, and the zero-photon edge case.
+  Recorded in [known-issues](okf/references/known-issues.md): two
+  `test/plugins/burst/test_background_gui.py` failures met on the way are stale
+  against the AutoForm conversion of the Burst Background tool (`iht_plot`,
+  `_det_color`), pre-existing and unrelated.
+
 * **Docs reconciled with the source; Sphinx still warning-free.** A scheduled
   truth pass over `docs/` and `okf/`, each mismatch checked against the code
   before editing.

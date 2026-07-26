@@ -8,56 +8,58 @@ def compute_static_bva_line(
         number_of_photons_per_slice: int = 4,
         n_samples: int = 10_000
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Compute static BVA line"""
-    # Lazy import pandas to avoid circular import during initialization
-    import pandas as pd
-    """
+    """Simulate the shot-noise-limited (static) BVA line.
+
     Simulates fluorescence burst variance analysis (BVA) by calculating the mean
     and standard deviation of proximity ratios for a static species based on the
     assumption of binomial photon emission distribution.
 
-    In BVA, the proximity ratio between two fluorescent species (e.g., acceptor and donor)
-    is calculated using the number of photons emitted in specific time slices. This function
-    simulates photon counts using a binomial distribution, where photons are randomly
-    assigned to each species based on the provided proximity ratios.
+    In BVA, the proximity ratio between two fluorescent species (e.g., acceptor
+    and donor) is calculated using the number of photons emitted in specific time
+    slices. This function simulates photon counts using a binomial distribution,
+    where photons are randomly assigned to each species based on the provided
+    proximity ratios. Because every slice holds exactly
+    ``number_of_photons_per_slice`` photons, the proximity ratio of a sample is
+    simply the acceptor count divided by that constant.
 
-    Parameters:
+    Parameters
     ----------
     prox_mean_bins : np.ndarray
-        An array of proximity ratio bins, representing the expected ratio of emitted
-        photons from the donor and acceptor species.
-
+        An array of proximity ratio bins, representing the expected ratio of
+        emitted photons from the donor and acceptor species.
     number_of_photons_per_slice : int, optional
         The total number of photons emitted per time slice. Default is 4.
-
     n_samples : int, optional
-        The number of samples to simulate for each proximity ratio bin. Default is 10,000.
+        The number of samples to simulate for each proximity ratio bin.
+        Default is 10,000.
 
-    Returns:
+    Returns
     -------
     Tuple[np.ndarray, np.ndarray]
         A tuple containing two arrays:
-        - prox_mean: An array of mean proximity ratios for each bin.
-        - prox_sd: An array of standard deviations of proximity ratios for each bin.
+
+        - ``prox_mean``: mean proximity ratio for each bin.
+        - ``prox_sd``: standard deviation of the proximity ratio for each bin.
+
+    Notes
+    -----
+    A non-positive ``number_of_photons_per_slice`` carries no information about
+    the proximity ratio; zeros are returned for both arrays rather than dividing
+    by zero.
     """
-    prox_mean = np.zeros(len(prox_mean_bins))  # Preallocate for mean proximity ratios
-    prox_sd = np.zeros(len(prox_mean_bins))  # Preallocate for standard deviations
+    prox_mean_bins = np.asarray(prox_mean_bins, dtype=float)
+    if number_of_photons_per_slice <= 0:
+        zeros = np.zeros(len(prox_mean_bins))
+        return zeros, zeros.copy()
 
-    for i, prox in enumerate(prox_mean_bins):
-        # Simulate red photons based on the proximity ratio
-        prox_sim_red = np.random.binomial(number_of_photons_per_slice, prox, n_samples)
-        prox_sim_green = number_of_photons_per_slice - prox_sim_red
-
-        # Calculate proximity ratio for the simulated counts
-        # Using np.where to avoid division by zero and improve performance
-        total_photons = prox_sim_red + prox_sim_green
-        prox_ratios = np.where(total_photons > 0, prox_sim_red / total_photons, 0)
-
-        # Store the mean and standard deviation of proximity ratios
-        prox_mean[i] = prox_ratios.mean()
-        prox_sd[i] = prox_ratios.std()
-
-    return prox_mean, prox_sd
+    # One binomial draw per (sample, bin); ``p`` broadcasts along the bin axis.
+    binom_samples = np.random.binomial(
+        number_of_photons_per_slice,
+        prox_mean_bins,
+        size=(n_samples, len(prox_mean_bins))
+    )
+    prox_ratios = binom_samples / number_of_photons_per_slice
+    return prox_ratios.mean(axis=0), prox_ratios.std(axis=0)
 
 
 
@@ -108,9 +110,6 @@ def compute_bva(
         Updated DataFrame with added columns for proximity ratio mean ('Proximity Ratio Mean') and
         standard deviation ('Proximity Ratio Std') for each burst.
     """
-    # Lazy import pandas to avoid circular import during initialization
-    import pandas as pd
-
     # Initialize lists to store the proximity ratio statistics
     proximity_ratios_mean, proximity_ratios_sd = list(), list()
 
