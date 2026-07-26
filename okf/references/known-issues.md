@@ -506,3 +506,22 @@ be, because three of them were defects in the code rather than in the tests.
   Deferred; descriptions are shown as the combo/value-cell tooltip after a key is
   chosen. If revisited, try a custom popup `QListView`/delegate applied *after*
   `showPopup()`, or a side-panel hint instead of dropdown tooltips.
+- **RICS recovers a simulated diffusion coefficient ~35 % high, and the cause is
+  unknown.** The closed loop now exists (`test/microscopy/test_rics_closed_loop.py`):
+  `simulate_clsm_diffusion` raster-scans an open-volume population with a known
+  `D`, and the `image_correlation` model is fitted to the resulting RICS map. It
+  works — the fast/slow axis asymmetry that carries `D` behaves correctly
+  (`G_line/G_pixel` at lag 4 falls 0.96 → 0.87 → 0.79 for `D` = 1 → 5 → 20) and
+  the ordering is right — but the fitted value is biased **high by about 35 %**:
+  over four seeds at `D` = 2 µm²/s the ratio is 1.34 ± 0.12, so it is a
+  systematic, not scatter. Ruled out: **axial truncation of the box** (quadrupling
+  `box_z` from 4 to 16 µm with the population scaled to match moves the ratio only
+  1.40 → 1.31), and **non-stationarity** (the open-volume population holds the
+  mean intensity flat across the acquisition, which a fixed emitter set does not).
+  Still to check: whether the simulator's `SimGrid.gaussian3d(w0, z0, …)` axial
+  argument means the same `1/e²` waist as the model's `w_z` (a 1/e-versus-1/e²
+  convention difference would be a √2 in the axial term); the correlator's
+  normalisation convention against the model's `γ` factor; and whether the fitted
+  lag window (10 lags) is wide enough to constrain `D` rather than trading against
+  `N`. The test pins the loop with a deliberately wide tolerance so that fixing
+  the bias, or breaking the recovery, both show up.
