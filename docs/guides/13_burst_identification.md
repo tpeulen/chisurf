@@ -12,7 +12,7 @@ crossing it produces a short, intense **burst** of photons above the diffuse
 background. Identifying those bursts — and building the **burst list** (the
 photon-index ranges of each burst) — is the first step of every burst analysis
 ([2CDE](01_fret_2cde.md), [BVA](08_burst_variance_analysis.md),
-[PDA](11_pda.md), MLE lifetimes, HMM).
+[PDA](11_pda2c.md), MLE lifetimes, HMM).
 
 A **sliding-window** search flags photons whose local count rate (photons per
 short window, or the inverse inter-photon time) exceeds a threshold; contiguous

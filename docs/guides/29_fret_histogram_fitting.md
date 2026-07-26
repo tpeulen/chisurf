@@ -36,7 +36,7 @@ fractions = gm.weights_
 
 For a fully model-based description that also accounts for the shot-noise line
 shape (rather than Gaussians), fit the histogram with a
-[PDA model](11_pda.md) instead.
+[PDA model](11_pda2c.md) instead.
 
 ## Result
 
@@ -53,4 +53,4 @@ FRET-efficiency histogram fit.
 
 ## See also
 
-- `chisurf/plugins/burst/burst_selection/api/features.py`; shot-noise-aware fitting: [PDA](11_pda.md).
+- `chisurf/plugins/burst/burst_selection/api/features.py`; shot-noise-aware fitting: [PDA](11_pda2c.md).

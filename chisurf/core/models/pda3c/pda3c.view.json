@@ -1,0 +1,202 @@
+{
+  "_comment": "Editor layout for the three-colour PDA model (Pda3cModel). PRD-65; compute stays in pda3c.py, this JSON is user-editable.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Distance populations",
+      "collapsible": true,
+      "collapsed": false,
+      "bounds_toggle": true,
+      "description": "Trivariate-Gaussian species over the three dye-pair distances. One row per species: amplitude, then mean and width for each pair.",
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "species",
+          "rows_source": "_distance_parameter_rows",
+          "row_width": 7,
+          "append_method": "append",
+          "remove_method": "pop",
+          "min_rows": 1,
+          "collapsible": false,
+          "style": "table"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Distance correlations",
+      "collapsible": true,
+      "collapsed": false,
+      "bounds_toggle": true,
+      "description": "Correlation between the three distances within a species — the quantity three-colour FRET exists to measure. Free these to ask whether the distances move together; fixed at zero they are three independent widths.",
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "species",
+          "rows_source": "_correlation_parameter_rows",
+          "row_width": 3,
+          "append_method": "append",
+          "remove_method": "pop",
+          "min_rows": 1,
+          "collapsible": false,
+          "style": "table"
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Corrections",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Two effects that change what a species contributes without changing its distances. Swapped labels: when the two labelling sites are chemically equivalent, green and red land on either one, so each population has a mirror with R(BG) and R(BR) exchanged. Brightness: energy transfer moves photons between channels of different detection efficiency, so a species can be genuinely dimmer and produce smaller bursts.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "stochastic_labeling",
+          "label": "Correct for swapped labels",
+          "description": "Doubles the species count; only physical when the sites really are equivalent."
+        },
+        {
+          "type": "toggle",
+          "attr": "brightness_correction",
+          "label": "Correct for species brightness",
+          "description": "Gives each species its own burst-size distribution, stretched by a brightness derived from its distances (not a fitted parameter). Changes the likelihood normalisation, so chi2r is not comparable across the switch."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Exchange (dynamic)",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "Treat the species as conformational states that interconvert during the burst, rather than a static mixture. With no rates entered, the first two species exchange at K_ex, the mean number of transitions per observation window: zero is the static limit, so the dynamic model nests the static one, and species three onward stay static. Entering rates switches to the full scheme below, where any number of states is handled by sampling the occupation times — exact in distribution for any rate matrix. Fitted rates carry a systematic offset of some tens of percent that more sampling does not remove; read them as an exchange timescale rather than a rate measurement, and see the concept page.",
+      "sections": [
+        {
+          "type": "toggle",
+          "attr": "dynamic",
+          "label": "Two exchanging states",
+          "description": "Needs at least two species. Their amplitudes become the steady-state occupancies."
+        },
+        {
+          "type": "info",
+          "text": "Rate scheme k_ij (state i to j, Hz), one state per distance population. Every entry is a fitting parameter: zero the transitions the scheme does not have, free the ones it does, link a pair for detailed balance. All zero means no scheme. Rates are absolute — T_window must match how the data was segmented."
+        },
+        {
+          "type": "custom",
+          "key": "rate_matrix",
+          "target": "rate_values",
+          "options": {
+            "size_attr": "n_states",
+            "labels_attr": "state_names",
+            "minimum": 0.0,
+            "decimals": 2,
+            "diagonal": false,
+            "unit": "Hz",
+            "maximum": 1000000.0
+          }
+        },
+        {
+          "type": "parameter_group_table",
+          "target": "kinetics",
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Instrument / corrections",
+      "collapsible": true,
+      "collapsed": true,
+      "bounds_toggle": true,
+      "description": "Foerster radii, spectral crosstalk, relative detection efficiencies, direct excitation and per-channel background. These become the excitation and emission probability matrices the model composes.",
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "target": "setup",
+          "collapsible": false
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Quadrature",
+      "collapsible": true,
+      "collapsed": true,
+      "description": "How the Gaussian species is integrated. Gauss-Hermite nodes per distance axis; a handful is ample because the species is exactly Gaussian in the transformed coordinates.",
+      "sections": [
+        {
+          "type": "custom",
+          "key": "scalar_table",
+          "options": {
+            "title": "Integration",
+            "rows": [
+              {
+                "attr": "n_nodes",
+                "label": "Nodes / axis",
+                "kind": "int"
+              },
+              {
+                "attr": "truncate",
+                "label": "Weight cutoff"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {
+      "key": "distribution",
+      "options": {
+        "with_residual_panel": true,
+        "distribution_options": {
+          "Proximity ratios (BG | BR | GR)": {
+            "attribute": "fit",
+            "accessor": "chisurf.core.models.pda3c.pda3c:get_pda3c_ratio_curves",
+            "accessor_kwargs": {},
+            "scale_x": "lin",
+            "curve_options": {
+              "stepMode": false,
+              "connect": "all",
+              "multi_curve": true,
+              "symbol": [
+                "None",
+                "None",
+                "None"
+              ],
+              "pen": [
+                "b",
+                "r",
+                "k"
+              ]
+            }
+          },
+          "Distance P(R)": {
+            "attribute": "fit",
+            "accessor": "chisurf.core.models.pda3c.pda3c:get_pda3c_distance_distributions",
+            "accessor_kwargs": {},
+            "scale_x": "lin",
+            "curve_options": {
+              "stepMode": false,
+              "connect": "all",
+              "multi_curve": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "residual",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    }
+  ]
+}

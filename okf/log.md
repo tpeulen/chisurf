@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **PDA2c / PDA3c: the colour count is now in every name.** The two-colour method
+  was plain `Pda*` in `core/models/pda/` and the three-colour one had briefly been
+  `c3PDA`; both now read the same way. `core/{models,experiments}/pda/` and the
+  matching `gui/widgets/{models,experiments}/pda/` become `pda2c/`, the 25
+  `Pda<Something>` classes become `Pda2c<Something>`, the experiment key `pda`
+  becomes `pda2c`, and the model dropdown says `PDA2c-Gaussian-distance` rather
+  than `PDA-Gaussian-distance`. Three-colour settles on `pda3c` / `Pda3c*` /
+  `PDA3c`. Docs follow: `concepts/pda2c.md`, `concepts/pda3c.md`,
+  `guides/11_pda2c.md`, `guides/42_pda3c.md`, their labels and every cross-link;
+  the PDA test files are `test_pda2c_*` / `test_pda3c_*`.
+
+  **`tttrlib.Pda` is untouched** — it is the external histogram engine, and every
+  renamed name is `Pda` followed by a capital, which bare `Pda` is not. All 29
+  call sites verified intact after the rewrite.
+
+  The rename was proved content-neutral rather than assumed: applying the same
+  substitutions to each file's HEAD version reproduces the working tree exactly,
+  for every file in the two-colour package. That matters because a
+  statistical test (`test_pda2c_consistency.py::
+  test_consistency_check_rejects_the_wrong_kinetic_scheme`, bootstrap p = 0.297
+  where it wants rejection) is currently failing — and it cannot be this change.
+  Recorded in [references/known-issues.md](/references/known-issues.md) for
+  someone to bisect against the concurrent fitting-layer edits.
+
+  `okf/log.md` and `okf/reviews/findings.md` keep the names they were written
+  with; the concept pages carry pointers from the old ones.
+
 * **chimol: an mmCIF's own symmetry operators were read out of the wrong field**
   (RF-286). `read_file_operators` took the whole `_symmetry_equiv` loop row, but a
   PDBx loop carries `_symmetry_equiv.id` beside `pos_as_xyz`, so `3 x+1/2,y+1/2,z`

@@ -48,7 +48,7 @@ and how many transitions are non-zero, so the panel says what the kinetics are
 without being opened.
 
 The same grid appears in the dynamic PDA model editors, so a rate matrix is read
-the same way everywhere — see {ref}`concept-pda`.
+the same way everywhere — see {ref}`concept-pda2c`.
 
 ## Result
 

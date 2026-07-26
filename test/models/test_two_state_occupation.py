@@ -52,7 +52,7 @@ def test_the_quadrature_is_a_distribution_with_the_right_mean(p1, k_ex):
     equal the steady-state occupancy — the process is stationary, so it spends
     ``p1`` of its time in state 1 whatever the exchange rate.
     """
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     fractions, weights = two_state_occupation_quadrature(p1, k_ex)
     assert np.all(weights >= 0.0)
@@ -63,7 +63,7 @@ def test_the_quadrature_is_a_distribution_with_the_right_mean(p1, k_ex):
 @pytest.mark.parametrize("k_ex", (0.0, 1e-6))
 def test_the_static_limit_puts_everything_on_the_boundaries(k_ex):
     """No exchange means every molecule stayed put for the whole window."""
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     fractions, weights = two_state_occupation_quadrature(0.3, k_ex)
     boundary = weights[0] + weights[-1]
@@ -74,7 +74,7 @@ def test_the_static_limit_puts_everything_on_the_boundaries(k_ex):
 
 def test_fast_exchange_collapses_onto_the_mean():
     """Many switches per window average the two states out."""
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     fractions, weights = two_state_occupation_quadrature(0.3, 200.0)
     spread = np.sqrt(weights @ (fractions - 0.3) ** 2)
@@ -86,7 +86,7 @@ def test_fast_exchange_collapses_onto_the_mean():
 @pytest.mark.parametrize("p1, k_ex", [(0.3, 2.0), (0.8, 5.0), (0.5, 1.0)])
 def test_the_quadrature_reproduces_a_direct_simulation(p1, k_ex):
     """The independent check: simulate the process and compare distributions."""
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     fractions, weights = two_state_occupation_quadrature(p1, k_ex)
     sample = _simulate(p1, k_ex)
@@ -113,7 +113,7 @@ def test_unequal_populations_are_where_the_old_density_failed():
     survived an acceptance test that happened to fit ``x1 = 0.503``. This pins
     the property it violated, at the populations where it violated it.
     """
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     for p1 in (0.05, 0.2, 0.35, 0.65, 0.8, 0.95):
         for k_ex in (0.5, 2.0, 8.0):

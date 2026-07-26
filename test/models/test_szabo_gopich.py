@@ -140,7 +140,7 @@ def test_two_state_moments_agree_with_the_exact_occupation_law():
     against simulation.
     """
     from chisurf.core.fluorescence.kinetics import time_averaged_moments
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     p1, k_ex = 0.3, 4.0
     window = 1.0                      # the exact law works in units of the window
@@ -257,7 +257,7 @@ def test_slow_two_state_exchange_follows_the_exact_occupation_law(k_ex):
     away, with 30 % of the weight outside ``[0.35, 0.65]``.
     """
     from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
-    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+    from chisurf.core.models.pda2c.dynamic import two_state_occupation_quadrature
 
     values = np.array([0.35, 0.65])
     p1 = 0.5
@@ -320,10 +320,10 @@ def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_n
     multi-species fit models directly.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStateModel
-    from test.gui.test_pda_model_editor import _make_pda_data  # noqa: PLC0415
+    from chisurf.core.models.pda2c.dynamic_mc import Pda2cDynamicNStateModel
+    from test.gui.test_pda2c_model_editor import _make_pda_data  # noqa: PLC0415
 
-    fit = fit_mod.Fit(model_class=PdaDynamicNStateModel, data=_make_pda_data())
+    fit = fit_mod.Fit(model_class=Pda2cDynamicNStateModel, data=_make_pda_data())
     model = fit.model
     assert model.method == "szabo-gopich"
     base = model.states.rate_matrix().copy()
@@ -352,10 +352,10 @@ def test_the_approximation_converges_where_it_should_and_says_so_where_it_does_n
 def test_the_analytic_route_is_deterministic():
     """A stochastic objective makes an optimiser chase simulation noise."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStateModel
-    from test.gui.test_pda_model_editor import _make_pda_data  # noqa: PLC0415
+    from chisurf.core.models.pda2c.dynamic_mc import Pda2cDynamicNStateModel
+    from test.gui.test_pda2c_model_editor import _make_pda_data  # noqa: PLC0415
 
-    fit = fit_mod.Fit(model_class=PdaDynamicNStateModel, data=_make_pda_data())
+    fit = fit_mod.Fit(model_class=Pda2cDynamicNStateModel, data=_make_pda_data())
     model = fit.model
     model.update()
     first = np.array(model.y, copy=True)
@@ -365,13 +365,13 @@ def test_the_analytic_route_is_deterministic():
 
 
 def test_three_colour_model_takes_a_rate_matrix():
-    """c3PDA gets the same multistate route, driven by a rate matrix."""
+    """PDA3c gets the same multistate route, driven by a rate matrix."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
-    from chisurf.core.models.c3pda.c3pda import C3PdaModel
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.pda3c import Pda3cModel
 
-    data = C3PdaSimulatorReader(n_bursts=400, seed=17).read()[0]
-    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
+    data = Pda3cSimulatorReader(n_bursts=400, seed=17).read()[0]
+    fit = fit_mod.Fit(model_class=Pda3cModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)
@@ -408,11 +408,11 @@ def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
     the only place the approximation claims to be right.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
-    from chisurf.core.models.c3pda.c3pda import C3PdaModel
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.pda3c import Pda3cModel
 
-    data = C3PdaSimulatorReader(n_bursts=600, seed=23).read()[0]
-    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
+    data = Pda3cSimulatorReader(n_bursts=600, seed=23).read()[0]
+    fit = fit_mod.Fit(model_class=Pda3cModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)
@@ -441,11 +441,11 @@ def test_simulating_the_kinetics_agrees_where_the_approximation_is_valid():
 def test_the_simulated_route_is_deterministic():
     """A fixed seed keeps the objective smooth for the optimiser."""
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
-    from chisurf.core.models.c3pda.c3pda import C3PdaModel
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.pda3c import Pda3cModel
 
-    data = C3PdaSimulatorReader(n_bursts=400, seed=29).read()[0]
-    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
+    data = Pda3cSimulatorReader(n_bursts=400, seed=29).read()[0]
+    fit = fit_mod.Fit(model_class=Pda3cModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.dynamic = True
@@ -466,11 +466,11 @@ def test_the_simulated_route_works_where_the_approximation_does_not():
     route exists for.
     """
     import chisurf.core.fitting.fit as fit_mod
-    from chisurf.core.experiments.c3pda import C3PdaSimulatorReader
-    from chisurf.core.models.c3pda.c3pda import C3PdaModel
+    from chisurf.core.experiments.pda3c import Pda3cSimulatorReader
+    from chisurf.core.models.pda3c.pda3c import Pda3cModel
 
-    data = C3PdaSimulatorReader(n_bursts=600, seed=23).read()[0]
-    fit = fit_mod.Fit(model_class=C3PdaModel, data=data)
+    data = Pda3cSimulatorReader(n_bursts=600, seed=23).read()[0]
+    fit = fit_mod.Fit(model_class=Pda3cModel, data=data)
     model = fit.model
     model.species.append(r_gr=62.0, r_bg=56.0, r_br=74.0)
     model.species.append(r_gr=70.0, r_bg=64.0, r_br=82.0)

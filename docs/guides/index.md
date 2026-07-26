@@ -30,7 +30,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 8 | [Burst Variance Analysis (BVA)](08_burst_variance_analysis.md) | `tttrlib.BVA`, `burst_bva` plugin |
 | 9 | [Diffusion FCS](09_diffusion_fcs.md) | FCS models + `fcs_correlator` plugin |
 | 10 | [Lifetime & anisotropy decay fitting](10_lifetime_anisotropy_fitting.md) | `core.fluorescence.tcspc`, TCSPC models |
-| 11 | [Photon Distribution Analysis (PDA)](11_pda.md) | `tttrlib.Pda`, `core.models.pda` |
+| 11 | [Two-colour PDA (PDA2c)](11_pda2c.md) | `tttrlib.Pda`, `core.models.pda2c` |
 | 12 | [Handling TTTR files (& Photon-HDF5)](12_handling_tttr_files.md) | `tttrlib.TTTR`, `plugins/tttr` |
 | 13 | [Photon burst identification](13_burst_identification.md) | `TTTR.burst_search`, `burst_selection` |
 | 14 | [Multi-parameter E–S & correction factors](14_multiparameter_es.md) | `burst/es.py`, `fret/calibration.py` |
@@ -62,7 +62,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 39 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics`, `fitting.reweight`, `fitting.graphview` |
 | 40 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | 41 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
-| 42 | [Three-colour PDA (c3PDA)](42_c3pda.md) | `core.models.c3pda`, `core.fluorescence.c3pda`, `core.fluorescence.kinetics` |
+| 42 | [Three-colour PDA (PDA3c)](42_c3pda.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | 43 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
 | 44 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
 | 45 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `img_precision` plugin, `experiments.ics.precision` |

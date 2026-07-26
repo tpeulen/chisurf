@@ -38,8 +38,8 @@ ordering below runs from the physical fundamentals to the specific methods.
    burst_2cde
    bva
    recurrence
-   pda
-   c3pda
+   pda2c
+   pda3c
 
 .. rubric:: Dynamics (hidden Markov)
 

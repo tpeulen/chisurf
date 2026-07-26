@@ -130,7 +130,7 @@ histogram with a near-zero-efficiency population fits the broad FRET peak well
 but the low-E peak poorly, because at $E\approx 0$ with tens of photons the
 acceptor count is a small integer and that cluster is shot-noise-discretised
 rather than Gaussian. The honest description of a shot-noise line shape is a
-{ref}`PDA model <concept-pda>` — which is exactly the kind of quantitative model a
+{ref}`PDA model <concept-pda2c>` — which is exactly the kind of quantitative model a
 {ref}`bridge <concept-md-bridges>` hands the gated population off to.
 
 (concept-md-bridges)=
@@ -139,7 +139,7 @@ rather than Gaussian. The honest description of a shot-noise line shape is a
 
 Fitting a marginal answers *where* and *how wide*. It does not answer questions
 that need the photons back — the shot-noise-resolved distance distribution
-({ref}`PDA <concept-pda>`), the multi-exponential donor decay
+({ref}`PDA <concept-pda2c>`), the multi-exponential donor decay
 ({ref}`lifetime <concept-tcspc-lifetime>`), the diffusion time and dynamics
 ({ref}`FRET-FCS <concept-filtered-fcs>`). Those are ChiSurf's job, on the *photon
 stream* of the selected bursts, not on a histogram of a derived column.

@@ -166,7 +166,7 @@ filtered datasets rather than as an absolute number.
 **It is a flag, not a rate.** 2CDE scores that a burst changed; it does not
 estimate how fast, how many states, or in which direction. Use it to *select*
 dynamic bursts, then hand them to a method that models kinetics —
-{ref}`concept-h2mm` for photon-by-photon rates, {ref}`concept-pda` for
+{ref}`concept-h2mm` for photon-by-photon rates, {ref}`concept-pda2c` for
 distributions, or the FRET-line analysis in {ref}`concept-fret`.
 
 **Other things move the score.** Acceptor blinking or bleaching mid-burst is a

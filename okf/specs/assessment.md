@@ -547,7 +547,7 @@ form on the `retranslate_from_ui` path so language switching keeps working meanw
 - Location: `chisurf/core/math/statistics.py::chi2_threshold` and
   `chisurf/core/fitting/fit.py::adaptive_chi2_scan` (crossings consumed by
   `chisurf/core/fitting/support_plane.py::confidence_intervals_from_scan_result`).
-- Found while validating c3PDA error surfaces, where MCMC and the support plane
+- Found while validating PDA3c error surfaces, where MCMC and the support plane
   disagreed on interval width by a factor that *grew with dataset size* — 1.32,
   2.05, 2.86 at 1500, 2500 and 5000 bursts. Two independent faults pushing in
   opposite directions, which is why the ratio drifted instead of being constant.
@@ -556,7 +556,7 @@ form on the `retranslate_from_ui` path so language switching keeps working meanw
   for least squares with an *unknown* noise scale; it is wrong for a likelihood
   deviance, whose scale the likelihood already fixes. The right level is the
   plain likelihood-ratio one, `Δchi2 = 6.63` at 99% / one parameter. Measured on
-  c3PDA: the likelihood-ratio threshold gives widths 0.883 and 0.489 at 1500 and
+  PDA3c: the likelihood-ratio threshold gives widths 0.883 and 0.489 at 1500 and
   5000 bursts against MCMC's 0.897 and 0.497 — 2% agreement and the correct
   `1/sqrt(n)` scaling. The F-test form inflates by `sqrt(chi2r)`, which is 1.5×
   when `chi2r ≈ 2.3`.
@@ -576,4 +576,4 @@ form on the `retranslate_from_ui` path so language switching keeps working meanw
   hand back its own edge.
 - Not fixed here: this is shared fitting code under concurrent edit, and the
   threshold change is a design decision about how objectives declare themselves.
-  Evidence and the reproduction are in the c3PDA model docstring.
+  Evidence and the reproduction are in the PDA3c model docstring.

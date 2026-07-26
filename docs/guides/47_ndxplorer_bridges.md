@@ -3,7 +3,7 @@
 :::{admonition} Theory
 :class: seealso
 See {ref}`concept-md-bridges` for why a marginal fit is not enough and what a
-bridge does; {ref}`concept-pda` for PDA, {ref}`concept-tcspc-lifetime` for
+bridge does; {ref}`concept-pda2c` for PDA, {ref}`concept-tcspc-lifetime` for
 lifetime, {ref}`concept-filtered-fcs` for FRET-FCS.
 :::
 

@@ -1,1 +1,0 @@
-from chisurf.gui.widgets.models.pda.widgets import PdaSimpleModelWidget, PdaGaussianDistanceModelWidget, PdaAnisotropyModelWidget

@@ -402,7 +402,7 @@ back to the physically-motivated light-path prior.
   `chisurf/core/fluorescence/crosstalk.py`.
 - Priors: `chisurf/core/fitting/priors.py`, `chisurf/core/fitting/fit.py`
   (`set_parameter_prior`, `_prior_residuals`, `lnprob`).
-- Factor algebra reused from `chisurf/core/models/pda/nusiance.py::PdaFretNuisance`.
+- Factor algebra reused from `chisurf/core/models/pda2c/nusiance.py::Pda2cFretNuisance`.
 - Simulation: `chisurf/plugins/burst/burst_analysis/api/workflow.py`
   (`simulate`, `GroundTruth`, `select_bursts`).
 - Plugin: `chisurf/plugins/burst/accurate_fret/` (GUI + CLI + RPC).

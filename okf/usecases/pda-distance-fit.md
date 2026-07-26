@@ -24,9 +24,9 @@ plus the burst tables a previous burst search wrote next to them in
 channels 0/8 (green) and 1/9 (red), container `SPC-130`.
 
 **Experiment:** `PDA` / setup `PTU/HT3/SPC`
-(`chisurf.core.experiments.pda.PdaReader` +
-`chisurf.gui.widgets.experiments.pda.controller.PdaTTTRWidget`), models
-`chisurf/core/models/pda/`.
+(`chisurf.core.experiments.pda2c.Pda2cReader` +
+`chisurf.gui.widgets.experiments.pda2c.controller.Pda2cTTTRWidget`), models
+`chisurf/core/models/pda2c/`.
 
 ## Steps
 
@@ -121,7 +121,7 @@ Everything that went wrong is in the shell around that analysis:
   a `RICS` experiment whose reader and six models do not exist
   (`No module named 'chisurf.core.experiments.rics'`, logged as ERROR at every
   start), the PDA model list was missing `PDA-dynamic-N-state` and offered a
-  removed `PdaDynamicThreeStateModel` instead, and the shipped `c3PDA (3-colour)`
+  removed `Pda2cDynamicThreeStateModel` instead, and the shipped `PDA3c (3-colour)`
   experiment was absent altogether. Cause: the shipped defaults are read from a
   path that never exists, so the user's copy of `experiment_configs.yaml` is the
   only source and the "configuration update available" prompt can never fire.

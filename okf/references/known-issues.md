@@ -124,7 +124,22 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**Found 2026-07-26 while making the c3PDA rate matrix fittable.** A rate fitted
+**Found 2026-07-26, owner unknown.**
+`test/gui/test_pda2c_consistency.py::test_consistency_check_rejects_the_wrong_kinetic_scheme`
+fails: the parametric bootstrap **accepts** a deliberately wrong kinetic scheme
+at p = 0.297, where the test wants rejection. Its sibling
+(`..._accepts_the_correct_kinetic_scheme`) passes, so the check runs — it is the
+discrimination that is gone.
+
+Not caused by the PDA2c/PDA3c rename that found it: applying the rename
+substitutions to each file's HEAD version reproduces the working tree exactly
+for every file in the two-colour package, so that change moved no numerics.
+Bisect instead against the concurrent edits to the fitting layer
+(`core/fitting/engine.py`, `parameter.py`, `kinetics.py` all moved the same day),
+since the test runs a real `fit.run()` before resampling and is sensitive to what
+the optimiser does with the free-parameter set.
+
+**Found 2026-07-26 while making the PDA3c rate matrix fittable.** A rate fitted
 by the three-colour dynamic model comes out **systematically fast, by some tens
 of percent**, and more computation does not help. Measured on bursts simulated
 from a known two-state scheme by an independent forward route (a fresh distance
@@ -136,14 +151,14 @@ sampled trajectories and from an occupancy resolution of 24 to 192. So it is
 in distribution.
 
 The cause is the approximation made *outside* the sampling, in
-`C3PdaModel._mean_channel_probabilities`: each state is collapsed to its
+`Pda3cModel._mean_channel_probabilities`: each state is collapsed to its
 distance-averaged per-photon probability vector *before* the occupation-time
 mixing, so the intra-state distance spread contributes to the predicted
 burst-to-burst width differently than it does to real bursts. Fixing it properly
 means carrying the distance quadrature through the dynamic average (nodes x
 occupancy nodes x bursts), which is a real cost increase and a design decision
 about where to truncate — hence recorded rather than fixed in the change that
-found it. Until then, `c3pda.py`, the concept page and the guide all say to read
+found it. Until then, `pda3c.py`, the concept page and the guide all say to read
 a fitted rate as an exchange **timescale**, not a rate measurement; comparisons
 between conditions are sound.
 
@@ -161,7 +176,7 @@ distance-*averaged* probability vector where the static model integrates the
 likelihood over the distance distribution, and those differ by Jensen. A
 static-versus-dynamic comparison (an F-test, a model choice) is therefore
 meaningless in exactly the regime where the two models are nested.
-`test/models/test_c3pda_rates.py::test_the_multistate_route_nests_the_static_model`
+`test/models/test_pda3c_rates.py::test_the_multistate_route_nests_the_static_model`
 records this as a **strict xfail**, so it will fail loudly when fixed.
 
 **Two approaches tried and rejected, so nobody repeats them:**
@@ -511,6 +526,7 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
+
 - **`bg_color` may be another silent no-op — unverified lead.** While checking
   silhouettes on a white background, `bg_color white` changed nothing: the
   rendered frame was byte-identical to the black-background run (same lit-pixel
@@ -524,7 +540,6 @@ be, because three of them were defects in the code rather than in the tests.
   all reported success — this one deserves the same functional check rather than
   the benefit of the doubt. Reproduce with `bg_color white` then compare
   `grabFramebuffer` statistics.
-
 
 
 - **A chimol dock's widgets were reported deleted, and the cause is not pinned
@@ -551,8 +566,6 @@ be, because three of them were defects in the code rather than in the tests.
   with a liveness probe on every page widget, rather than by calling `removeTab`.
 
 
-
-
 - **The chimol accessibility doc figure is not reproducible byte-for-byte, and
   the reason is unknown.** Re-running `docs/guides/make_screenshots.py::
   _grab_chimol_viewer` rewrote `docs/guides/figures/chimol_accessibility.png`
@@ -574,6 +587,7 @@ be, because three of them were defects in the code rather than in the tests.
   Deferred; descriptions are shown as the combo/value-cell tooltip after a key is
   chosen. If revisited, try a custom popup `QListView`/delegate applied *after*
   `showPopup()`, or a side-panel hint instead of dropdown tooltips.
+
 - **RESOLVED — the RICS "35 % recovery bias" was the fit region, not the physics.**
   Recorded here on 2026-07-26 as an unexplained systematic and closed the same
   day. The closed loop (`test/microscopy/test_rics_closed_loop.py`) fitted the

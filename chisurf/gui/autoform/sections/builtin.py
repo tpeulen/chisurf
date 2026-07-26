@@ -74,7 +74,7 @@ def _resolve_accessor(accessor: str):
 
     Bare names (e.g. ``"interleaved_to_two_columns"``) resolve against
     :mod:`chisurf.core.math.datatools`. A dotted or ``module:function`` path
-    (e.g. ``"chisurf.core.models.pda.common:get_pda_distribution"``) is imported
+    (e.g. ``"chisurf.core.models.pda2c.common:get_pda_distribution"``) is imported
     directly, so model-specific Qt-free accessors stay authorable in JSON.
     """
     if ":" in accessor or "." in accessor:

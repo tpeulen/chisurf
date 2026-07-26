@@ -18,11 +18,12 @@ experiment_types:
   pch:
     name: PCH
     hidden: false
-  pda:
+
+  pda2c:
     name: PDA
     hidden: false
-  c3pda:
-    name: c3PDA (3-colour)
+  pda3c:
+    name: PDA3c (3-colour)
     hidden: false
   deer:
     name: DEER
@@ -100,9 +101,9 @@ stopped_flow:
     - chisurf.gui.widgets.models.stopped_flow.ParseStoppedFlowWidget
     - chisurf.gui.widgets.models.stopped_flow.ReactionWidget
 
-pda:
+pda2c:
   readers:
-    - reader_class: chisurf.core.experiments.pda.PdaReader
+    - reader_class: chisurf.core.experiments.pda2c.Pda2cReader
       reader_params:
         name: PTU/HT3/SPC
         micro_time_ranges:
@@ -111,25 +112,25 @@ pda:
         channels:
           - [0, 3]
           - [1, 2]
-      controller_class: chisurf.gui.widgets.experiments.pda.controller.PdaTTTRWidget
+      controller_class: chisurf.gui.widgets.experiments.pda2c.controller.Pda2cTTTRWidget
       controller_params:
         name: PTU/HT3/SPC
   models:
     # AutoForm-rendered pure models (PRD-38 model/view-spec split). The
     # build_model_editor seam wraps these via view_spec() -> *.view.json.
-    - chisurf.core.models.pda.simple.PdaSimpleModel
-    - chisurf.core.models.pda.pdagauss.PdaGaussianDistanceModel
-    - chisurf.core.models.pda.saw_nu.PdaSawNuModel
-    - chisurf.core.models.pda.dynamic.PdaDynamicTwoStateModel
-    - chisurf.core.models.pda.dynamic_mc.PdaDynamicNStateModel
-    - chisurf.core.models.pda.anisotropy.PdaAnisotropyModel
+    - chisurf.core.models.pda2c.simple.Pda2cSimpleModel
+    - chisurf.core.models.pda2c.pdagauss.Pda2cGaussianDistanceModel
+    - chisurf.core.models.pda2c.saw_nu.Pda2cSawNuModel
+    - chisurf.core.models.pda2c.dynamic.Pda2cDynamicTwoStateModel
+    - chisurf.core.models.pda2c.dynamic_mc.Pda2cDynamicNStateModel
+    - chisurf.core.models.pda2c.anisotropy.Pda2cAnisotropyModel
 
-c3pda:
+pda3c:
   readers:
     # The *same* reader as two-colour PDA: three channel groups and two
     # excitation windows put it on the burst-table path instead of the S1S2 one,
     # so a three-colour setup needs no separate TTTR reading code.
-    - reader_class: chisurf.core.experiments.pda.PdaReader
+    - reader_class: chisurf.core.experiments.pda2c.Pda2cReader
       reader_params:
         name: PTU/HT3/SPC
         n_colors: 3
@@ -140,23 +141,23 @@ c3pda:
           - [0]            # blue detector
           - [1]            # green detector
           - [2]            # red detector
-      controller_class: chisurf.gui.widgets.experiments.pda.controller.PdaTTTRWidget
+      controller_class: chisurf.gui.widgets.experiments.pda2c.controller.Pda2cTTTRWidget
       controller_params:
         name: PTU/HT3/SPC
     # A burst table someone else produced.
-    - reader_class: chisurf.core.experiments.c3pda.C3PdaBurstTableReader
+    - reader_class: chisurf.core.experiments.pda3c.Pda3cBurstTableReader
       reader_params:
         name: Burst table (CSV/NPZ)
       controller_class: null
     # Three-colour data is scarce; the simulator makes the model openable and
     # lets a fit be checked against a truth the reader itself set.
-    - reader_class: chisurf.core.experiments.c3pda.C3PdaSimulatorReader
+    - reader_class: chisurf.core.experiments.pda3c.Pda3cSimulatorReader
       reader_params:
         name: Simulator
       controller_class: null
   models:
     # AutoForm-rendered pure model (PRD-38 model/view-spec split).
-    - chisurf.core.models.c3pda.c3pda.C3PdaModel
+    - chisurf.core.models.pda3c.pda3c.Pda3cModel
 
 deer:
   readers:

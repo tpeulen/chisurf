@@ -37,7 +37,7 @@ Relevant code:
 - `chisurf/core/models/tcspc/lifetime.py` — `background_curve`, `scatter`, `t_bg`, `t_exp`
 - `chisurf/core/models/tcspc/anisotropy.py` — `g_factor`, `l1`, `l2`
 - `chisurf/core/models/tcspc/fret.py` — `R0`, `tauD0`, `kappa2`
-- `chisurf/core/models/pda/nusiance.py` — `crosstalk`, `gamma`, `direct_excitation`
+- `chisurf/core/models/pda2c/nusiance.py` — `crosstalk`, `gamma`, `direct_excitation`
 - `chisurf/core/fluorescence/fret/__init__.py` — intensity-based FRET corrections
 - `chisurf/plugins/vv_vh_g_factor/` — g-factor calculator plugin
 - `chisurf/core/mmfdb/result_registry.py` — the result registry (PRD-03)

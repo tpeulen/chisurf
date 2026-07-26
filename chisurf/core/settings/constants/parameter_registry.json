@@ -601,15 +601,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 190,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -624,15 +624,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 194,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -886,15 +886,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 213,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -909,15 +909,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 208,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -997,15 +997,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 186,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -1175,13 +1175,13 @@
           "bounds_on": null,
           "class": "Background",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 71,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -1198,13 +1198,13 @@
           "bounds_on": null,
           "class": "Background",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 75,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -3998,15 +3998,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 198,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -4021,15 +4021,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": true,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 203,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -4663,15 +4663,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 237,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]
@@ -4686,15 +4686,15 @@
       "sources": [
         {
           "bounds_on": null,
-          "class": "PdaFretNuisance",
+          "class": "Pda2cFretNuisance",
           "description_in_code": null,
-          "file": "chisurf/core/models/pda/nusiance.py",
+          "file": "chisurf/core/models/pda2c/nusiance.py",
           "fixed": null,
           "function": "__init__",
           "label_text": null,
           "lb": null,
           "line": 233,
-          "module": "chisurf.core.models.pda.nusiance",
+          "module": "chisurf.core.models.pda2c.nusiance",
           "ub": null
         }
       ]

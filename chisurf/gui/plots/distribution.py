@@ -122,7 +122,7 @@ class DistributionPlotControl(QtWidgets.QWidget):
         """Return whether individual Gaussian component curves should be shown.
 
         For non-Gaussian PDA models this has no effect, but for
-        PdaGaussianDistanceModel the extra component curves are drawn only
+        Pda2cGaussianDistanceModel the extra component curves are drawn only
         when this checkbox is enabled.
         """
         try:
@@ -355,7 +355,7 @@ class DistributionPlot(plotbase.Plot):
         # Optionally derive weighted residuals and basic fit statistics from the
         # first two curves (data, model) using counting shot noise
         # sigma = sqrt(max(data, 1)). For PDA 1D histograms this matches the
-        # definition used in chisurf.gui.widgets.models.pda.get_distribution and
+        # definition used in chisurf.gui.widgets.models.pda2c.get_distribution and
         # allows us to define DW directly from the currently shown histogram
         # rather than only from the global Fit object. Bins with zero
         # experimental counts do not contribute to DW or the effective

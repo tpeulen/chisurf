@@ -22,7 +22,7 @@ This axis is consumed by several components:
 - TCSPC FRET distance models in `chisurf.core.models.tcspc.fret` (Gaussian, discrete
   and worm-like chain distance distributions).
 - PDA Gaussian-distance models and their per-component distance curves in
-  `chisurf.core.models.pda.pdagauss` and `chisurf.gui.widgets.models.pda.widgets`.
+  `chisurf.core.models.pda2c.pdagauss` and `chisurf.gui.widgets.models.pda2c.widgets`.
 - Structural distance histograms that accept an `rda_axis` argument and default
   to the global R_DA axis.
 
