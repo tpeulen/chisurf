@@ -169,7 +169,7 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
     >>> from chisurf.core.data import DataCurve
     >>> dc = DataCurve(x=np.array([0.0, 1.0]), y=np.array([1.0, 2.0]))
     >>> dc.data.shape
-    (4, 2)
+    (5, 2)
     """
 
     @property
@@ -241,6 +241,31 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         if not isinstance(mask, np.ndarray):
             mask = np.ones_like(self.y)
         self.mask = np.copy(mask) if copy_array else mask
+
+    def _resize_companions(self, size: int) -> None:
+        """Keep ``ex``, ``ey`` and ``mask`` at the curve's number of samples.
+
+        :meth:`chisurf.core.curve.Curve._set_axis` resizes the 2×N storage
+        whenever an axis is assigned a different length. Without this the error
+        and mask arrays would keep the previous length, and ``data``,
+        ``__getitem__`` and ``to_dict`` would describe a dataset whose columns
+        disagree about how many samples it has.
+
+        Parameters
+        ----------
+        size : int
+            The curve's new number of samples.
+        """
+        # `ex`/`ey`/`mask` are assigned at the end of __init__, after `load` has
+        # already written the axes, so a companion may not exist yet.
+        for name, fill in (("ex", 0.0), ("ey", 1.0), ("mask", 1.0)):
+            previous = getattr(self, name, None)
+            if not isinstance(previous, np.ndarray) or previous.size == size:
+                continue
+            resized = np.full(size, fill, dtype=previous.dtype)
+            kept = min(previous.size, size)
+            resized[:kept] = previous[:kept]
+            setattr(self, name, resized)
 
     def __str__(self):
         """Return a human-readable summary of the dataset (head/tail values)."""

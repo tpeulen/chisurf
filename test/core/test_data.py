@@ -135,6 +135,40 @@ class TestDataCurve:
         np.testing.assert_array_equal(sample_curve_short.ey, ey)
         np.testing.assert_array_equal(sample_curve_short.mask, mask)
 
+    def test_a_shorter_axis_takes_the_companions_with_it(self, sample_curve):
+        """A DataCurve's five columns always describe the same samples.
+
+        Assigning one axis a different length resizes the 2xN storage; ``ex``,
+        ``ey`` and ``mask`` have to follow, or ``data``, ``__getitem__`` and
+        ``to_dict`` report a dataset whose columns disagree about how long it is.
+        """
+        sample_curve.ey[:] = 3.0
+        sample_curve.mask[:] = 0.0
+        sample_curve.y = np.ones(4)
+        assert len(sample_curve.x) == 4
+        assert [len(column) for column in sample_curve[:]] == [4] * 5
+        assert sample_curve.data.shape == (5, 4)
+        serialized = sample_curve.to_dict()
+        assert {len(serialized[k]) for k in ("x", "y", "ex", "ey", "mask")} == {4}
+        # the samples that survive keep their values
+        np.testing.assert_array_equal(sample_curve.ey, np.full(4, 3.0))
+        np.testing.assert_array_equal(sample_curve.mask, np.zeros(4))
+
+    def test_a_longer_axis_pads_the_companions_with_their_defaults(self, sample_curve_short):
+        """Growing a curve keeps the known samples and pads with the defaults."""
+        sample_curve_short.set_data(
+            x=np.array([1.0, 2.0]),
+            y=np.array([3.0, 4.0]),
+            ex=np.array([0.5, 0.5]),
+            ey=np.array([2.0, 2.0]),
+            mask=np.array([0.0, 0.0])
+        )
+        sample_curve_short.x = np.arange(5.0)
+        assert [len(column) for column in sample_curve_short[:]] == [5] * 5
+        np.testing.assert_array_equal(sample_curve_short.ex, [0.5, 0.5, 0.0, 0.0, 0.0])
+        np.testing.assert_array_equal(sample_curve_short.ey, [2.0, 2.0, 1.0, 1.0, 1.0])
+        np.testing.assert_array_equal(sample_curve_short.mask, [0.0, 0.0, 1.0, 1.0, 1.0])
+
     def test_set_weights(self, sample_curve):
         w = np.array([0.5, 1.0, 2.0, 4.0, 5.0, 10.0, 1.0, 1.0, 1.0, 1.0, 1.0])
         sample_curve.set_weights(w)

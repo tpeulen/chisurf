@@ -35,6 +35,14 @@ via `meta_data['grid']` (`ndim`, `shape`, `order`, optional row/col indices) so
 GUI range/residual tools can rebuild logical coordinates without technique-specific
 knowledge.
 
+All five columns always describe the same samples. Assigning `x` or `y` an array
+of a different length resizes the whole curve — that is how an empty curve is
+filled and how a reader replaces a dataset — and `Curve._resize_companions`, which
+`DataCurve` overrides, carries `ex`/`ey`/`mask` along (keeping the samples that
+survive, padding new ones with their defaults). Without it a one-axis assignment
+left the error and mask arrays at the previous length, and `data`, `__getitem__`
+and `to_dict` then reported a dataset whose columns disagreed about its length.
+
 # Data groups
 
 Multiple datasets are held in `DataGroup(list, Base)` — a list that also tracks a

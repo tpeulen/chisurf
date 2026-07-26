@@ -1247,11 +1247,36 @@ its getter's `__dict__` lookup. Findings RF-083..RF-089.
 - **Fix note:**
 
 ### RF-086
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a length mismatch that used to raise now silently truncates the other axis and desynchronises `ex`/`ey`/`mask`)
 - **Location:** `chisurf/core/curve.py:148-176` (`Curve._set_axis`, new in `0f7e07e69`) against `chisurf/core/data.py:232-243` (`DataCurve`'s `ex`/`ey`/`mask`), `:176-186` (the `data` property) and `:498` (`__getitem__`)
 - **Finding:** Before this commit `curve.y = v` was `self.d[1] = v` and a wrong length raised `ValueError: could not broadcast`. `_set_axis` now rebuilds the 2×N storage instead, keeping `min(old, new)` samples of the *other* axis and zero-padding the rest — so assigning one axis silently rewrites the other, and on a `DataCurve` it leaves the error and mask arrays at the old length. Verified: a 10-point `DataCurve`, then `dc.y = np.ones(4)` → `dc.x` is silently truncated to `[0,1,2,3]` while `len(dc.ex) == len(dc.ey) == len(dc.mask) == 10`; `dc[:]` returns arrays of lengths `(4, 4, 10, 10, 10)`, `to_dict()` writes `x`/`y` of 4 against `ex`/`ey`/`mask` of 10 into the project file, and the `data` property raises `ValueError: all the input array dimensions … must match exactly` from its `np.vstack` — a curve that no longer describes a dataset, produced by an assignment that reports success. The intended case (filling an empty curve) is served by the `storage.size == 0` situation alone; restrict the rebuild to that, or resize the companion arrays too and raise on a genuine mismatch. `test/core/test_curve.py:28-32` only covers the empty-curve fill, so nothing catches this.
-- **Fix note:**
+- **Fix note:** Took the second option — resize the companions — because the first
+  is not available: the tree relies on the rebuild well beyond an empty curve.
+  `DataCurve.set_data` assigns `x` then `y`, and every model's `update_model`
+  writes `self.x = …` / `self.y = …` on a curve that already holds the previous
+  fit's grid (`models/fcs/general.py:247`, `mdf.py:225`, `tcspc/maxent.py:207`,
+  …), so restricting the rebuild to `storage.size == 0` would raise on ordinary
+  paths. `Curve._set_axis` now calls a new `Curve._resize_companions(size)` hook
+  after a length change — a documented no-op on `Curve`, which owns nothing but
+  the 2×N array — and `DataCurve` overrides it to bring `ex`, `ey` and `mask` to
+  the curve's new length, keeping the samples that survive and padding new ones
+  with the constructor's defaults (`0.0` for `ex`, `1.0` for `ey`/`mask`). The
+  companions may not exist yet when `load` writes the axes from inside
+  `__init__`, so a missing one is skipped. The desynchronisation is gone: after
+  `dc.y = np.ones(4)` on a 10-point curve, `dc[:]` is `(4, 4, 4, 4, 4)`,
+  `dc.data.shape` is `(5, 4)` and `to_dict()` writes five columns of 4. Pinned by
+  `test/core/test_data.py::TestDataCurve::test_a_shorter_axis_takes_the_companions_with_it`
+  (the finding's exact case, all five columns plus the surviving values) and
+  `::test_a_longer_axis_pads_the_companions_with_their_defaults` (growth). Two
+  stale doctests in the same two files, red before this change, fixed with it:
+  `Curve.cdf` expected `6.0` for a `np.float64` repr, and the `DataCurve` class
+  example claimed `data.shape == (4, 2)` for the 5-row stack. `test/core` 836
+  passed / 3 skipped; `--doctest-modules` on both files green; `ruff check` adds
+  no finding on the touched files. `test/models` + `test/fitting` have 10
+  failures both with and without this change (missing `chisurf.core.fitting.fit`,
+  `models.pda.simple.PdaGaussianDistanceModel`, `LifetimeModel.data`) — another
+  instance's in-flight uncommitted refactor, not this fix and not mine to land.
 
 ### RF-087
 - **Status:** OPEN

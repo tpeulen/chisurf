@@ -117,7 +117,7 @@ class Curve(NCurve):
         >>> import numpy as np
         >>> from chisurf.core.curve import Curve
         >>> c = Curve(x=np.array([0., 1., 2.]), y=np.array([1., 2., 3.]))
-        >>> c.cdf.y[-1]
+        >>> float(c.cdf.y[-1])
         6.0
         """
         return self.__class__(
@@ -152,8 +152,11 @@ class Curve(NCurve):
         case of replacing values on a fixed grid. It cannot serve the equally
         ordinary case of filling an empty curve — ``c = Curve(); c.x = x; c.y = y``
         — where the new length simply differs, and a plain broadcast raises
-        instead. The other axis keeps whatever still fits and is zero-padded
-        beyond that.
+        instead. A differing length therefore *resizes the whole curve*: the
+        other axis keeps whatever still fits and is zero-padded beyond that, and
+        :meth:`_resize_companions` brings any per-sample arrays a subclass keeps
+        alongside the storage to the same length. Setting one axis alone can only
+        ever leave a curve whose columns all describe the same samples.
 
         Parameters
         ----------
@@ -174,6 +177,21 @@ class Curve(NCurve):
             other[:kept] = previous[:kept]
         rows = [values, other] if index == 0 else [other, values]
         self.d = np.vstack(rows)
+        self._resize_companions(values.size)
+
+    def _resize_companions(self, size: int) -> None:
+        """Bring per-sample arrays held beside the storage to ``size`` samples.
+
+        A :class:`Curve` keeps nothing but the 2×N array, so this is a no-op
+        here. Subclasses that carry one value per sample outside ``d`` — errors,
+        masks — override it so that a length change through :meth:`_set_axis`
+        cannot leave those arrays at the previous length.
+
+        Parameters
+        ----------
+        size : int
+            The curve's new number of samples.
+        """
 
     @property
     def dx(self) -> np.ndarray:

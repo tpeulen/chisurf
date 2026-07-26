@@ -2,6 +2,19 @@
 
 ## 2026-07-26
 
+* **A DataCurve's five columns always describe the same samples (RF-086).**
+  `Curve._set_axis` rebuilds the 2×N storage when an axis is assigned a different
+  length — that is how an empty curve is filled and how `set_data` and every
+  model's `update_model` replace a grid — but on a `DataCurve` it left `ex`, `ey`
+  and `mask` at the previous length. `dc.y = np.ones(4)` on a 10-point curve gave
+  `dc[:]` lengths `(4, 4, 10, 10, 10)`, a `to_dict()` that wrote four x/y values
+  against ten errors into the project file, and a `data` property that raised.
+  A length change now calls a `Curve._resize_companions` hook — a no-op on
+  `Curve`, overridden by `DataCurve` to carry the errors and the mask along,
+  keeping the surviving samples and padding new ones with the constructor's
+  defaults. Pinned by two tests in `test/core/test_data.py` (shrink and grow);
+  see [data-model](/subsystems/data-model.md).
+
 * **chimol: crystal symmetry — `symexp`, `get_symmetry`, `set_symmetry`.**
   Generation follows `ExecutiveSymExp`: transform in fractional space, shift the
   copy so it lands beside the original rather than an arbitrary number of cells
