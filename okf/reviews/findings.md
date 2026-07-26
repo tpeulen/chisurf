@@ -2495,3 +2495,104 @@ one and then two species, move the fit region, export, open Help — on
 - **Location:** `chisurf/plugins/pch/backend/services.py:75` (`t_max = times.max()` on the masked array), surfaced by the `except` at `chisurf/plugins/pch/gui/tool.py:374-375`; the unused metadata is `routing_channels` from `_load_tttr_handler:38`
 - **Finding:** The *Channels* field is free text defaulting to `0,2`, and nothing validates it against the file. Loading `test/data/clsm/Leica_SP8.ptu` (routing channels **1** and 15) and pressing **Compute PCH** with the default selects zero photons, so `times` is empty and `times.max()` raises `ValueError: zero-size array to reduction operation maximum which has no identity`, which the GUI shows verbatim in a "Error" box. Two things make it worse than a bad message: the status bar still reads `Loaded: /…/Leica_SP8.ptu (3,104,829 photons)` (the failing `_on_compute` never updates it), and both plots still show the **previous** file's data — the screenshot after the failure (`09_wrongchannels.png`) is indistinguishable from a successful run on the wrong file. `pch.load_tttr` already returns the file's `routing_channels`, and the GUI discards them: `_on_load` (`:325-343`) uses only `n_photons`. Populate/validate the channel field from the loaded file, raise a named error for an empty selection ("no photons in channels 0, 2 — the file has 1, 15"), and clear the plots when a new file is loaded or a compute fails.
 - **Fix note:**
+
+### Review 2026-07-26 — `chisurf/core/math/` (statistics, regularization, datatools)
+
+Slice chosen by coverage rather than recency: the three general-purpose numeric
+modules under `chisurf/core/math/` had **zero** findings on record, while
+`discrete_lcurve_corner` alone is the corner detector behind every regularized
+inversion in the tree (TCSPC MaxEnt, FCS MaxEnt, DEER Tikhonov/MaxEnt, the
+`maxent_decay` RPC service, `flc_2d`). Every claim below was executed in the
+`arm64` env (NumPy 2.4.6) against the real functions, not reasoned about.
+Findings RF-215..RF-227.
+
+### RF-215
+- **Status:** OPEN
+- **Severity:** S2 (the Durbin-Watson statistic is silently rescaled — perfect anti-correlation can be reported as strong positive correlation)
+- **Location:** `chisurf/core/math/statistics.py:256` (`durbin_watson`, `return nom / max(1.0, denomminator)`)
+- **Finding:** The denominator guard clamps the *value*, not the zero case: whenever `sum(r**2) < 1` the statistic is divided by `1.0` instead of by the sum, so the returned number is not a ratio at all and is not in `[0, 4]`. Verified: `durbin_watson([0.1, -0.1, 0.1, -0.1])` returns **0.12**, where the statistic is exactly **3.0** — a perfectly anti-correlated series reported as if it were strongly *positively* autocorrelated. The scaling is silent and magnitude-dependent (multiplying the same residuals by 10 changes the answer). This is consumed as a fit-quality verdict: `chisurf/core/fitting/fit.py:283` and `:1313` expose it as `Fit.durbin_watson`, `chisurf/gui/plots/residual_image.py:511` prints it, and `chisurf/core/agent/tools/decay.py:274` turns `durbin_watson < 1.5` into the sentence "the residuals are correlated" in an LLM-facing report. Reached whenever the weighted residual sum of squares is below one (a short fit range, over-estimated errors) or when the public helper is called on raw residuals. Guard the zero case instead (`return nom / den if den > 0 else 0.0`). `test/math/test_durbin_watson.py` pins the current behaviour via a `_reference` that copies the same clamp, so the fix must update that helper too.
+- **Fix note:**
+
+### RF-216
+- **Status:** OPEN
+- **Severity:** S2 (deprecated NumPy call on the shared L-curve corner path; already warns on the installed NumPy, breaks when it is removed)
+- **Location:** `chisurf/core/math/regularization.py:417` (`discrete_lcurve_corner`, `dist = np.abs(np.cross(chord, P - P[0])) / chord_norm`)
+- **Finding:** `np.cross` on 2-dimensional vectors was deprecated in NumPy 2.0 and is slated for removal. Verified in the project env (NumPy 2.4.6): `discrete_lcurve_corner(rho, eta)` emits `DeprecationWarning: Arrays of 2-dimensional vectors are deprecated. Use arrays of 3-dimensional vectors instead.` on every call. This is not a corner of the tree — the function is called from `chisurf/core/models/tcspc/maxent.py:198,376`, `chisurf/core/models/fcs/maxent.py:1020`, `chisurf/core/models/deer/tikhonov.py:94`, `chisurf/core/models/deer/maxent.py:161`, `chisurf/core/models/deer/deer.py:591`, `chisurf/plugins/fluorescence_decay/maxent_decay/{backend/services.py:239,gui/gui_run.py:174}` and `chisurf/gui/widgets/models/fcs/maxent_widget.py:274,1193`, so under a `-W error` run or a future NumPy every L-curve corner in ChiSurf fails at once (and most call sites swallow it in a bare `except`, so it degrades to "no corner" rather than an error). The 2-D cross product here is one line of arithmetic: `chord[0]*d[:, 1] - chord[1]*d[:, 0]`. Per the repo's compatibility rule this belongs in `chisurf/core/compat.py` if it is kept as a shim.
+- **Fix note:**
+
+### RF-217
+- **Status:** OPEN
+- **Severity:** S1 (`maxent.lcurve` **always** returns `corner_index: null` — the auto-selected regularization weight never reaches the client)
+- **Location:** `chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py:239`, inside the `try` at `:236-241`
+- **Finding:** The handler writes `corner_index = int(np.asarray(discrete_lcurve_corner(...))[0])`. `discrete_lcurve_corner` returns a **Python `int` or `None`**, so `np.asarray(...)` is a 0-dimensional array and `[0]` raises `IndexError: too many indices for array: array is 0-dimensional, but 1 were indexed` — verified directly. The surrounding `except Exception: corner_index = None` swallows it, so the RPC always answers `corner_index = None` even when a corner was found. The field is a declared part of the contract (`api/contract.py:114`, `api/models.py:75`) and the consumer reads it (`chisurf/gui/widgets/models/fcs/maxent_widget.py:257,1176`), falling back to recomputing the corner client-side — so the failure is invisible and the backend computation is wasted. Drop the `np.asarray(...)[0]` wrapper and handle `None` explicitly rather than by exception. See RF-218 for the masking defect in the same expression.
+- **Fix note:**
+
+### RF-218
+- **Status:** OPEN
+- **Severity:** S2 (the corner index is an index into a *filtered* array but is reported against the unfiltered one)
+- **Location:** `chisurf/core/models/tcspc/maxent.py:196-200` and `:374-378`; the same expression at `chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py:237-239`
+- **Finding:** All three sites build `mask = isfinite(chi2) & isfinite(sol_norm)`, call `discrete_lcurve_corner(chi2[mask], sol_norm[mask])`, and store the result as an index into the **unmasked** `_l_curve_log10_nu` / `chi2r` / `sol_norm` arrays that they also publish. As soon as one grid point fails to converge (a `NaN` χ², which is exactly what the surrounding code prepares for) the index is shifted and points at the wrong regularization weight. `discrete_lcurve_corner` already handles non-finite input itself — `_clean_lcurve_points` drops it and `return int(idx_all[k_local])` maps back to the *original* index — so the pre-masking is both unnecessary and the cause of the misalignment; `chisurf/core/models/fcs/maxent.py:1020` gets this right by passing the raw arrays. Secondary: `int(...)` on a `None` return raises `TypeError` into the bare `except`, and `_l_curve_corner_index` in `tcspc/maxent.py` is written but never read anywhere in the tree — the TCSPC MaxEnt L-curve has no consumer for its corner.
+- **Fix note:**
+
+### RF-219
+- **Status:** OPEN
+- **Severity:** S2 (linear interpolation with an inverted slope, plus a last point that is the mean of the tail)
+- **Location:** `chisurf/core/math/datatools.py:228-241` (`align_x_spacing`, `method='linear-close'`)
+- **Finding:** Two independent defects in the one interpolation branch. (1) The slope is built as `m = (ry2 - ry1) / (rx1 - rx2)` — the denominator is reversed, so `m` is the negative of the true slope and `ny[j] = m * tx[j] + ry1 - m * rx1` reflects the interpolated value about `ry1` instead of interpolating. (2) The guard `if j < len(tx) - 1` excludes the **last** template point, whose `else` branch runs `ny[j] = ry[i:].mean()` once per remaining sample, so the final value ends up as `ry[-1]` (the mean of a one-element tail) rather than an interpolated value. Verified on exactly linear data `y = 2x + 1`, template `x = [0.6, 1.7, 2.8]`: returns `[1.8, 3.6, 9.0]` where the correct answer is `[2.2, 4.4, 6.6]`. The function has no test (`test/math/test_datatools.py` covers its neighbours but not this one) and no caller in the tree; it is public API of `chisurf.core.math.datatools`, so either fix it with a test or delete it.
+- **Fix note:**
+
+### RF-220
+- **Status:** OPEN
+- **Severity:** S2 (returns uninitialized heap memory, and the moving average is not an average; the test that "covers" it asserts on that uninitialized memory)
+- **Location:** `chisurf/core/math/datatools.py:396-421` (`smooth`), test at `test/math/test_datatools.py:89-99`
+- **Finding:** Three defects. (1) `xz = np.empty(x.shape[0])` is filled only for `i in range(l - m)`; every element from `l - m` on is returned **uninitialized**. Verified: `smooth(np.arange(1, 11.), 8, 2)` returned `[..., 0, 0, 0, 0]` on a clean heap and `[..., 7., 8., 9., 10.]` on a dirtied one — the same call, two different answers. (2) The division `xz[i] /= (2 * m + 1)` sits *inside* the accumulation loop, so each partial sum is divided again on every iteration; a window of ones gives `0.2496` instead of `1.0`. (3) The window `range(i - m, i + m)` is asymmetric (it omits `i + m`, so it is `2m` wide, not `2m + 1`) and for `i < m` the negative indices wrap to the end of the array. `test_smooth_edge_cases` asserts `np.all(smoothed[2:] == 0)`, which only holds when the freshly-allocated page happens to be zero — a flaky test that documents the bug rather than catching it. The function has no caller in the tree (`chisurf/plugins/chimol/chimol/geometry/spline.py:42` defines an unrelated `smooth`); delete it or rewrite it against `np.convolve` with a real test.
+- **Fix note:**
+
+### RF-221
+- **Status:** OPEN
+- **Severity:** S2 (`IndexError` on the upper bin edge — the one x-value the caller is most likely to pass)
+- **Location:** `chisurf/core/math/datatools.py:75-79` (`histogram_rebin`)
+- **Finding:** The out-of-range test is `xi > max(bin_edges) or xi < min(bin_edges)`, so `xi == max(bin_edges)` falls through to `sel = np.where(xi < bin_edges)`, which is empty, and `sel[0][0]` raises `IndexError: index 0 is out of bounds for axis 0 with size 0`. Verified: `histogram_rebin(np.array([0, 5, 10, 15]), np.array([0, 2, 1]), np.array([15.0]))` raises. The docstring example and `test/math/test_datatools.py:19` both dodge it by choosing new edges that never land exactly on the last edge. Either make the upper edge inclusive of the last bin or exclude it explicitly (`xi >= max(...)`), and add the boundary to the test. Same loop recomputes `max(bin_edges)`/`min(bin_edges)` for every new edge.
+- **Fix note:**
+
+### RF-222
+- **Status:** OPEN
+- **Severity:** S2 (values below `bin_min` are counted into a bin near the *top* of the histogram instead of being discarded)
+- **Location:** `chisurf/core/math/datatools.py:285-288` (`bin_count`)
+- **Finding:** `bin_index = int(np.rint(data[i] / bin_width) - n_min)` is only checked against the upper limit (`if bin_index < n_bins`). For any sample below `bin_min` the index is negative and Python's negative indexing wraps it to the far end of `count`, so out-of-range data is silently added to a valid-looking bin. Verified: `bin_count(np.array([0, 10]), bin_width=16, bin_min=1000, bin_max=4095)` — both samples are far below `bin_min` — returns a histogram with counts at indices **132 and 133** of 194 and a total of 2.0, instead of an empty histogram. The existing test only uses `bin_min=0`, where the bug cannot fire. Add the lower bound to the guard (`if 0 <= bin_index < n_bins`). Note the function is unused in the tree.
+- **Fix note:**
+
+### RF-223
+- **Status:** OPEN
+- **Severity:** S3 (misleading docstring on a public numeric helper: it is not the KL divergence and does not skip what it says it skips)
+- **Location:** `chisurf/core/math/statistics.py:259-293` (`kl`)
+- **Finding:** The docstring says "Compute the Kullback-Leibler divergence D(P || Q)" and "If either p[i] or q[i] is zero, that term is skipped in the summation". Neither is accurate. The body accumulates `s += qi` **unconditionally** and then `s += pi*log(pi/qi) - pi` when both are positive, i.e. it computes the *generalized* KL divergence (I-divergence) `sum(p log(p/q) - p + q)` — which coincides with KL only for normalized inputs, and which returns a finite number for `q_i == 0, p_i > 0` where the true divergence is infinite. Verified: `kl([1, 0], [0.5, 0.5])` = `log 2` (right, because normalized), while for unnormalized inputs the answer differs from `sum(p log(p/q))` by `sum(q) - sum(p)`. Either rename it to `generalized_kl_divergence` and state the formula, or restrict it to KL. The function has no caller in the tree, and is `@nb.jit(nopython=True)` without `cache=True` — the same first-use compile stall that `durbin_watson` (`:245-249`) was explicitly de-JIT-ed to avoid.
+- **Fix note:**
+
+### RF-224
+- **Status:** OPEN
+- **Severity:** S3 (two public functions with different names, parameter names and defaults compute exactly the same expression)
+- **Location:** `chisurf/core/math/statistics.py:296-333` (`chi2_max`) and `:336-368` (`chi2_threshold`)
+- **Finding:** The two bodies are the same formula character for character — `chi2 * (1 + n_params/nu * scipy.stats.f.isf(1 - level, n_params, nu))` — differing only in argument names (`chi2_value`/`number_of_parameters`/`conf_level` vs `chi2_min`/`n_extra_params`/`p_value`) and in the default confidence (0.95 vs 0.99). They already drift in intent: `chi2_threshold` is what the support-plane scan uses (`chisurf/core/fitting/support_plane.py:239,395`), `chi2_max` is what the F-test plugin panel uses (`chisurf/plugins/core/f_test/gui/tool.py:80`), and `chisurf/plugins/core/f_test/test/test_widgets.py:90` exists only to assert the two agree. Keep one and alias the other, so the two user-facing tools cannot diverge.
+- **Fix note:**
+
+### RF-225
+- **Status:** OPEN
+- **Severity:** S3 (the docstring contradicts the code in both branches; whoever calls it will pass the wrong quantity)
+- **Location:** `chisurf/core/math/statistics.py:182-219` (`bayesian_information_criterion`)
+- **Finding:** The two branches interpret `value` in opposite ways and the docstring matches neither. The `'gaussian'` branch returns `n * value + k * log(n)`, which is the standard Gaussian BIC only if `value` is `ln(RSS/n)`; the docstring says it is "the maximized value of the likelihood function", and the `Parameters` block says it is "the reduced chi-squared (chi2/n)" — as written, passing either gives a number that is not a BIC (the missing `log` is the whole point of the form). The `else` branch returns `k*log(n) - 2*log(value)`, which *does* treat `value` as a likelihood — the opposite of what the `Parameters` block claims for the non-Gaussian case. The doctest (`bic(k=3, n=100, value=2.5) == 263.8155...`) only pins the arithmetic, not the meaning. The function has no caller in the tree; fix the contract (one meaning for `value`, stated) or remove it.
+- **Fix note:**
+
+### RF-226
+- **Status:** OPEN
+- **Severity:** S3 (silent `inf`/`nan` solution for a rank-deficient matrix instead of an error or a rank clamp)
+- **Location:** `chisurf/core/math/regularization.py:179-180` (`tsvd`)
+- **Finding:** `k` is clamped to `[0, s.size]` but never to the numerical rank: `x = V[:, :k] @ ((U[:, :k].T @ b) / s[:k])` divides by any zero (or denormal) singular value inside the first `k`, producing `inf`/`nan` that then propagate into the returned `rho`/`eta` norms with no warning. `csvd` returns the full compact spectrum including exact zeros for a rank-deficient forward matrix, and truncated SVD is precisely the tool one reaches for when the matrix *is* rank-deficient, so the degenerate input is the expected one. Clamp `k` to `np.count_nonzero(s > tol * s[0])` or drop the zero components from the sum. `gcv` (`:216`) and `l_curve` (`:262`) already filter with `s[s > 0.0]`; `tsvd` is the odd one out.
+- **Fix note:**
+
+### RF-227
+- **Status:** OPEN
+- **Severity:** S3 (the L-curve corner index it returns cannot be mapped back to a regularization weight)
+- **Location:** `chisurf/core/math/regularization.py:234-276` (`l_curve`), dead assignment at `:264`
+- **Finding:** `l_curve` builds `reg_param = np.logspace(...)` internally and returns only `(rho, eta, corner)`, so a caller holding the corner index has no way to recover the corresponding `lam` short of duplicating the `lo`/`hi`/`logspace` derivation. The sibling `sample_lcurve` gets this right by returning an `LCurveData` that carries `reg` alongside the norms and exposes `corner_reg`. Also at `:264` the degenerate branch assigns `reg_param = np.array([1.0, 10.0])` and then returns `np.ones(2), np.ones(2), None` without using it — dead code that hints the return signature was meant to include it. Return `reg_param` (or an `LCurveData`) so the function is usable for what it exists to do. Only caller today is `test/fitting/test_regu.py:80`.
+- **Fix note:**
