@@ -1937,11 +1937,23 @@ All findings were verified by running the real model on the simulator reader
 (`Pda3cSimulatorReader`) in the `arm64` env; no source was changed.
 
 ### RF-147
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (any failure inside the likelihood is reported as chi2r = 0.0 — a perfect fit — and then kills `fit.run()` with an unrelated `TypeError`)
-- **Location:** `chisurf/core/models/pda3c/tcpda.py:498-504` (`TcPdaModel.get_wres`, `except Exception: return np.zeros(0)`) and `:436-439` (`burst_counts`, `except Exception: return None`)
+- **Location:** `chisurf/core/models/pda3c/pda3c.py:626` (`Pda3cModel.get_wres`, `except Exception: return np.zeros(0)`) and `:560` (`burst_counts`, `except Exception: return None`) — the module was `tcpda.py`/`TcPdaModel` when the finding was written (renamed in `674548d8d`)
 - **Finding:** `get_wres` wraps the whole evaluation in a bare `except` and returns a **zero-length** residual, while `n_points` (`:471-487`) keeps reporting `3 * n_bursts` from the same cached counts. The two disagree, so `sum(wres**2) / (n_points - n_free)` evaluates to `0.0` — the best chi2r the GUI can show. Verified on an 800-burst simulated dataset: healthy `chi2r = 2.487` with `wres.size = 800`; after setting a rate matrix whose state count does not match the species list, `chi2r = 0.0`, `wres.size = 0`, `n_points = 2400` — no log line, no message. Pressing **Fit** then raises `TypeError: Improper input: N=7 must not exceed M=(0,)` from `chisurf/core/math/optimization/leastsqbound.py:436`, which names neither the model nor the real cause. A model that cannot evaluate must report that, not a zero residual: let the exception through (or log it and return `nan`s of the right length so the optimiser fails loudly at the right place).
-- **Fix note:**
+- **Fix note:** Both swallows removed. `Pda3cModel.get_wres` no longer wraps the
+  likelihood in a bare `except` — an evaluation failure now propagates with its
+  own message instead of becoming an empty residual that reads as `chi2r = 0`
+  next to an unchanged `n_points`. `burst_counts` still returns `None` for a
+  *missing* payload (the state of a model before a dataset arrives) but raises
+  `ValueError("unusable pda3c burst payload on …")`, chained from the original,
+  when a payload is present and cannot be turned into a `BurstCounts` — reading
+  malformed data as "no data" is the same silent-zero disease. Pinned by
+  `test/models/test_pda3c_residuals.py` (healthy residual is one entry per
+  collapsed burst; a failing `_per_burst_log_likelihood` raises rather than
+  returning length zero while `n_points > 0`; a mismatched payload raises).
+  The sibling routes (`total_log_likelihood`, `update_model`) never guarded, so
+  the module is now consistent.
 
 ### RF-148
 - **Status:** OPEN

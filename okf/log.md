@@ -2,6 +2,22 @@
 
 ## 2026-07-26
 
+* **A three-colour PDA model that cannot evaluate now says so (RF-147).**
+  `Pda3cModel.get_wres` wrapped the whole likelihood in a bare `except` and
+  answered any failure with a zero-length residual, while `n_points` kept
+  counting the bursts from the same cached table — so `sum(wres**2) / n_points`
+  came out as `0.0`, the best chi2r the GUI can show, with no log line. Pressing
+  **Fit** then died inside MINPACK (`Improper input: N=7 must not exceed M=(0,)`)
+  naming neither the model nor the cause. The guard is gone: the exception
+  propagates with its own message, which is what the sibling routes
+  (`total_log_likelihood`, `update_model`) always did. `burst_counts` had the
+  same disease one level down — a payload that was present but unusable became
+  `None`, indistinguishable from "no dataset attached"; it now raises
+  `ValueError("unusable pda3c burst payload on …")` chained from the original,
+  and still returns `None` only when there is genuinely no payload. Pinned by
+  `test/models/test_pda3c_residuals.py` (3 tests). All pda3c suites green
+  (79 passed, 7 skipped).
+
 * **The rate-matrix grid is a view, not an owner (RF-259).** Opening any panel
   carrying an AutoForm `rate_matrix` section rewrote the rates it rendered: a
   `QDoubleSpinBox` clamps to its range and rounds to its `decimals`, and `_build`

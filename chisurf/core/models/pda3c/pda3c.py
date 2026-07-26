@@ -558,7 +558,14 @@ class Pda3cModel(ModelCurve):
     # -- data ------------------------------------------------------------
 
     def burst_counts(self) -> BurstCounts | None:
-        """Return the (collapsed) burst table from the fit's dataset."""
+        """Return the (collapsed) burst table from the fit's dataset.
+
+        ``None`` means *no three-colour payload is attached* — the state a
+        freshly created model is in before a dataset arrives. A payload that is
+        present but unusable is an error and raises: turning it into ``None``
+        would be indistinguishable from "no data", which every caller reads as a
+        reason to report zero rather than to complain.
+        """
         if self._counts_cache is not None:
             return self._counts_cache
         payload = None
@@ -572,8 +579,8 @@ class Pda3cModel(ModelCurve):
             return None
         try:
             counts = BurstCounts(blue=payload["blue"], green=payload["green"]).collapsed()
-        except Exception:
-            return None
+        except Exception as e:
+            raise ValueError(f"unusable pda3c burst payload on {data}: {e}") from e
         self._counts_cache = counts
         return counts
 
@@ -628,15 +635,17 @@ class Pda3cModel(ModelCurve):
 
         ``sum(wres**2)`` equals ``const - 2 log L``, so least-squares
         minimisation of this vector is maximum-likelihood estimation.
+
+        A failure inside the likelihood propagates. Swallowing it and returning
+        an empty residual would report ``chi2r = 0`` — the best fit the GUI can
+        show — while ``n_points`` keeps counting the bursts, and the optimiser
+        would then fail far from the cause.
         """
         counts = self.burst_counts()
         if counts is None:
             return np.zeros(0, dtype=np.float64)
-        try:
-            per_burst = self._per_burst_log_likelihood(counts)
-            saturated = self._saturated_log_likelihood(counts)
-        except Exception:
-            return np.zeros(0, dtype=np.float64)
+        per_burst = self._per_burst_log_likelihood(counts)
+        saturated = self._saturated_log_likelihood(counts)
         deviance = 2.0 * (saturated - per_burst) * counts.multiplicity
         return np.sqrt(np.maximum(deviance, 0.0))
 
