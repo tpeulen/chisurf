@@ -7,7 +7,6 @@ def setup_connections(page):
     import chisurf as cs
     import chisurf.gui.decorators
     from chisurf.gui import QtCore, QtWidgets
-    from .tttr_photon_filter_support import ProgressWindow
 
     # Action connections
     page.actionUpdate_Values.triggered.connect(page.update_parameter)

@@ -129,11 +129,17 @@ def test_progress_is_reported_through_the_one_class():
         if rel in {"chisurf/gui/progress.py", "chisurf/gui/widgets/progress.py"}:
             continue  # the implementation and its modal backend
         for node in ast.walk(tree):
-            if isinstance(node, ast.Call) and _names(node.func) == "QProgressDialog":
+            # ``EnhancedProgressDialog`` is the modal *backend*: constructing it
+            # directly pins the work to a popup, which is the same "always a
+            # window, even head-lessly" bypass as a raw QProgressDialog.
+            if isinstance(node, ast.Call) and _names(node.func) in {
+                "QProgressDialog",
+                "EnhancedProgressDialog",
+            }:
                 offenders.add(rel)
                 break
     assert not offenders, (
-        "Raw QProgressDialog — use chisurf.gui.progress.ChiSurfProgress so the "
+        "Raw progress dialog — use chisurf.gui.progress.ChiSurfProgress so the "
         "work reports into the panel, the status bar or the log as appropriate:"
         "\n  " + "\n  ".join(sorted(offenders))
     )

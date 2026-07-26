@@ -145,6 +145,9 @@ class _LoggingBackend:
     def close(self) -> None:
         logger.info("%s — done", self._message)
 
+    def finish(self, *args, **kwargs) -> None:
+        self.close()
+
 
 class ChiSurfProgress:
     """Report the progress of a long operation, wherever it is running.
@@ -164,6 +167,11 @@ class ChiSurfProgress:
     cancellable : bool
         Whether the user is offered a Cancel button. When ``False`` the loop's
         :meth:`wasCanceled` never becomes ``True``.
+    cancel : callable, optional
+        Called when the user cancels. For work that runs in a *thread* this is
+        how the stop is delivered (e.g. ``threading.Event().set``); a loop on the
+        GUI thread can just poll :meth:`wasCanceled` instead. Passing it also
+        implies ``cancellable``.
     autoclose : bool
         Close the display when the context manager exits (default ``True``).
 
@@ -176,14 +184,15 @@ class ChiSurfProgress:
 
     def __init__(self, parent=None, text: str = "", maximum: int = 0, *,
                  title: str = "Progress", cancellable: bool = True,
-                 autoclose: bool = True) -> None:
+                 cancel=None, autoclose: bool = True) -> None:
         self._text = str(text)
         self._maximum = int(maximum)
         self._autoclose = bool(autoclose)
+        self._cancel_cb = cancel
         self._canceled = False
         self._closed = False
         self._value = 0
-        self.backend = self._make_backend(parent, title, cancellable)
+        self.backend = self._make_backend(parent, title, cancellable or cancel is not None)
 
     # ── backend selection ───────────────────────────────────────────────────
     def _make_backend(self, parent, title: str, cancellable: bool):
@@ -227,13 +236,25 @@ class ChiSurfProgress:
             )
             if not cancellable:
                 dialog.setCancelButton(None)
+            else:
+                # The dialog's own Cancel only flips wasCanceled(); routing it
+                # here is what delivers the stop to threaded work.
+                try:
+                    dialog.canceled.connect(self._request_cancel)
+                except Exception:
+                    logger.debug("progress dialog has no canceled signal", exc_info=True)
             dialog.show()
             return dialog
         return _LoggingBackend(self._text, self._maximum)
 
     def _request_cancel(self) -> None:
-        """Mark the operation canceled (wired to a host's Cancel button)."""
+        """Mark the operation canceled and tell the work, if it asked to know."""
         self._canceled = True
+        if callable(self._cancel_cb):
+            try:
+                self._cancel_cb()
+            except Exception:
+                logger.warning("progress cancel callback failed", exc_info=True)
 
     def _call(self, name: str, *args) -> None:
         """Invoke *name* on the backend when it has it, ignoring failures.
@@ -343,12 +364,59 @@ class ChiSurfProgress:
                 self._call(name)
                 break
 
-    def finish(self, text: str | None = None) -> None:
-        """Fill the bar to 100 % (with an optional final message) and close it."""
-        if text is not None:
-            self.set_text(text)
+    def finish(self, final_text: str | None = None, **options) -> None:
+        """Fill the bar, show a closing message, and take the display down.
+
+        Parameters
+        ----------
+        final_text : str, optional
+            Last message to show before the display goes away.
+        **options
+            ``auto_close`` / ``wait_for_user`` / ``close_delay_ms``, forwarded to
+            a modal dialog backend that can linger on the final message. The
+            inline and status-bar displays release immediately — a bar sitting in
+            a panel has nothing to linger for — and ignore them.
+        """
+        if final_text is not None:
+            self.set_text(final_text)
         if self._maximum:
             self.set_value(self._maximum)
+        if self._closed:
+            return
+        self._closed = True
+        backend_finish = getattr(self.backend, "finish", None)
+        if not callable(backend_finish):
+            self._call("close")
+            return
+        try:
+            backend_finish(**options) if options else backend_finish()
+        except TypeError:
+            # A backend with the simpler finish() signature.
+            self._call("finish")
+        except RuntimeError:
+            pass
+        except Exception:
+            logger.debug("progress backend finish failed", exc_info=True)
+
+    def finalize(self, force_auto_close=None) -> None:
+        """Close the display right now, cancelling any pending linger timer.
+
+        Parameters
+        ----------
+        force_auto_close : bool, optional
+            Forwarded to a modal dialog backend; ignored by the others.
+        """
+        self._closed = True
+        backend_finalize = getattr(self.backend, "finalize", None)
+        if callable(backend_finalize):
+            try:
+                backend_finalize(force_auto_close)
+                return
+            except TypeError:
+                pass
+            except RuntimeError:
+                return
+        self._closed = False
         self.close()
 
     # ── Qt-compatible spellings, so migrated call sites need no edits ───────

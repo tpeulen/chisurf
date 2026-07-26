@@ -617,16 +617,12 @@ class FittingControllerWidget(Controller):
         dialog = None
         success = False
         try:
-            # Create a modal progress dialog if the GUI helpers are available.
+            # One progress handle; where it renders (inline bar, status bar,
+            # modal dialog, the log) is resolved from this widget.
             try:
-                dialog = cs.gui.widgets.progress.EnhancedProgressDialog(
-                    title="Fitting",
-                    label_text=base_label,
-                    min_value=0,
-                    max_value=100,
-                    parent=self,
-                )
-                dialog.show()
+                from chisurf.gui.progress import ChiSurfProgress
+
+                dialog = ChiSurfProgress(self, base_label, 100, title="Fitting")
                 dialog.update_progress(0)
             except Exception:
                 dialog = None

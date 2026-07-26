@@ -108,11 +108,32 @@ is resolved, nearest first:
 4. plain logging (one line per 10 % of the work), when there is no GUI.
 
 The handle duck-types both `QProgressDialog` (`setValue`, `setLabelText`,
-`setRange`, `wasCanceled`, `close`) and the status-bar task (`set_value`,
-`update_progress`, `finish`), so migrating an old call site is a one-line change
-of where the handle comes from. `maximum=0` renders a busy indicator for work of
-unknown length. Cancellation is cooperative: `wasCanceled()` becomes true and the
-loop is expected to break — nothing is interrupted behind it.
+`setRange`, `wasCanceled`, `close`, `finish(final_text=…, auto_close=…,
+close_delay_ms=…)`, `finalize(force_auto_close=…)`) and the status-bar task
+(`set_value`, `update_progress`, `finish`), so migrating an old call site is a
+one-line change of where the handle comes from. `maximum=0` renders a busy
+indicator for work of unknown length.
+
+### Cancelling
+
+Cancellation is cooperative — nothing is interrupted behind the work:
+
+* a loop **on the GUI thread** polls `bar.wasCanceled()` each iteration and
+  breaks (`iterate()` does this for you);
+* work **in a thread** cannot poll, so pass the stop in:
+
+  ```python
+  stop = threading.Event()
+  bar = ChiSurfProgress(self, "Fitting…", 100, cancel=stop.set)
+  ```
+
+  Fitting, FRET docking, H2MM and staged loading all take this form. Without
+  `cancel=` the button would set a flag nobody reads and the run would continue
+  to the end.
+
+Do not construct `EnhancedProgressDialog` (the modal backend) yourself: that
+pins the work to a popup even when it is embedded in a panel or running
+headless, which is what this class exists to prevent. The guard test rejects it.
 
 ### The AutoForm `progress` section
 

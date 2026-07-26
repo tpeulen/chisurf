@@ -801,6 +801,26 @@
   imported `QtWidgets`, so every one of those error reports would itself have
   raised. `chisurf/macros/` keeps its Qt imports function-local — macros run
   head-lessly through the action layer and must not drag Qt in to be defined.
+* **Then the ways *around* the new class, which is where the inconsistency would
+  have crept back.** Nine sites still built the modal `EnhancedProgressDialog`
+  themselves — including the two hottest paths in the app, running a fit and
+  loading a slow file — so they popped a window regardless of being embedded in
+  a panel or running head-lessly. They now go through `ChiSurfProgress`, which
+  grew the last of the old dialog's contract (`finish(final_text=…,
+  auto_close=…, close_delay_ms=…)`, `finalize(force_auto_close=…)`) so each move
+  was a one-line change, plus a `cancel=` callback: work in a *thread* cannot
+  poll `wasCanceled()`, so fitting, FRET docking, H2MM and staged loading push
+  the stop instead. Two further progress classes are gone (`ProgressWindow` in
+  the photon-filter wizard, and a dead Qt-free stand-in in the BVA core), the
+  photon-filter zip routine lost the `isinstance(progress, …)` branching that
+  existed only because the handle could be one of two types, and the last three
+  hand-rolled `QProgressBar`s (plugin check, AV computation, the file-drop
+  loader) became the shared inline bar. The guard test now rejects
+  `EnhancedProgressDialog` outside the backend as well. Screenshots caught the
+  cosmetic half of it: two of those panels already print the running message in
+  their own status label, so the bar repeats it unless built with
+  `show_text=False`.
+
 
 
 * **chimol: `h_add`/`h_fill`, and why a template beats counting valences.** The

@@ -143,10 +143,18 @@ empty and the parallel `MyMessageBox` class is gone.
 the work was started from and resolves the display nearest-first: an inline
 `progress` section in the same panel → the navigation shell's shared status bar
 → a modal dialog when standalone → the log when there is no GUI. The handle
-duck-types both `QProgressDialog` and the status-bar task, so migrating a call
-site is a one-line change. `iterate()` wraps a loop (range from `len`, stops on
-Cancel, closes on exit); `maximum=0` is a busy indicator; cancellation is
-cooperative.
+duck-types both `QProgressDialog` (including `finish(final_text=…, auto_close=…,
+close_delay_ms=…)` / `finalize(force_auto_close=…)`) and the status-bar task, so
+migrating a call site is a one-line change. `iterate()` wraps a loop (range from
+`len`, stops on Cancel, closes on exit); `maximum=0` is a busy indicator.
+Cancellation is cooperative in two forms: a GUI-thread loop polls
+`wasCanceled()`, while threaded work (fitting, FRET docking, H2MM, staged
+loading) passes `cancel=<callable>` so the stop is *pushed* to the thread — a
+flag it never reads would let the run continue to the end. The modal
+`EnhancedProgressDialog` is now strictly the *backend*: constructing it directly
+pins work to a popup even when embedded or headless, so the guard test rejects
+it, and the two further duplicates (a `ProgressWindow` in the photon-filter
+wizard and a dead Qt-free stand-in in the BVA core) are gone.
 
 The `progress` **AutoForm section** (`{"type": "custom", "key": "progress"}`) is
 what makes this wiring-free: the widget itself is a progress host, so a run

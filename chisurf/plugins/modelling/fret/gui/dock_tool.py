@@ -592,17 +592,19 @@ class FretDockingTool(QtWidgets.QWidget):
 
     # -- run / modal progress ----------------------------------------------
     def _make_dialog(self, op: str, n_trials: int):
-        """Modal progress dialog with ETA + Cancel (reuses the chisurf fitting one)."""
-        try:
-            from chisurf.gui.widgets.progress import EnhancedProgressDialog
-        except Exception:  # pragma: no cover - run without a dialog if unavailable
-            return None
+        """Progress handle with ETA + Cancel for a docking run.
+
+        Where it renders is decided by :class:`~chisurf.gui.progress.ChiSurfProgress`
+        (inline bar, shell status bar, modal dialog or the log). Cancel is a
+        cooperative stop: the docking runs in a thread, so the callback sets the
+        stop event rather than interrupting it.
+        """
+        from chisurf.gui.progress import ChiSurfProgress
+
         label = (f"Docking {n_trials} trials…" if op == "errors" else "Docking…")
-        dlg = EnhancedProgressDialog("FRET Docking", label, 0, 100, parent=self)
-        # Cancel -> cooperative stop (signal is robust even if the dialog closes).
-        dlg.canceled.connect(self._stop_event.set)
-        dlg.show()
-        return dlg
+        return ChiSurfProgress(
+            self, label, 100, title="FRET Docking", cancel=self._stop_event.set
+        )
 
     def _start_progress(self, op: str) -> None:
         """Prime the trace files and open the modal dialog (results are appended)."""

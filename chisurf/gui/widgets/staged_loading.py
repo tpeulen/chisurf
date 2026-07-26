@@ -1,7 +1,7 @@
 """GUI front-end for :mod:`chisurf.core.fio.staging`.
 
 :func:`load_with_progress` runs a (potentially slow) file load off the GUI
-thread behind an :class:`~chisurf.gui.widgets.progress.EnhancedProgressDialog`
+thread behind a :class:`~chisurf.gui.progress.ChiSurfProgress` handle
 that shows copy percent, transfer speed (MB/s) and ETA while the file is being
 staged from slow/network storage, then an indeterminate "Parsing…" bar while
 ``tttrlib`` reads the local copy. The call is *synchronous from the caller's
@@ -21,7 +21,8 @@ from collections.abc import Callable
 
 from chisurf.core.fio import staging
 from chisurf.gui import QtCore, QtWidgets, run_on_gui_thread
-from chisurf.gui.widgets.progress import EnhancedProgressDialog, Worker
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.progress import Worker
 
 __all__ = ["load_with_progress", "make_lazy_stage_dialog"]
 
@@ -79,9 +80,9 @@ def load_with_progress(
         with staging.staged_source(src_path) as local:
             return loader(str(local))
 
-    dlg = EnhancedProgressDialog(title, label or src_path, 0, 100, parent)
+    # The load runs in a worker thread, so Cancel is delivered as a callback.
     cancelled = threading.Event()
-    dlg.canceled.connect(cancelled.set)
+    dlg = ChiSurfProgress(parent, label or src_path, 100, title=title, cancel=cancelled.set)
 
     def _apply_progress(done, total, mbps, eta):
         try:
@@ -128,7 +129,6 @@ def load_with_progress(
     worker.signals.finished.connect(loop.quit)
 
     pool = QtCore.QThreadPool.globalInstance()
-    dlg.show()
     pool.start(worker)
     loop.exec_()
 
@@ -164,8 +164,7 @@ def make_lazy_stage_dialog(parent: QtWidgets.QWidget | None = None, title: str =
     def progress_cb(done, total, mbps, eta):
         dlg = state["dlg"]
         if dlg is None:
-            dlg = state["dlg"] = EnhancedProgressDialog(title, "Copying …", 0, 100, parent)
-            dlg.show()
+            dlg = state["dlg"] = ChiSurfProgress(parent, "Copying …", 100, title=title)
         try:
             pct = int(100 * done / total) if total > 0 else 0
             dlg.update_progress(pct, _format_label(done, total, mbps, eta))
