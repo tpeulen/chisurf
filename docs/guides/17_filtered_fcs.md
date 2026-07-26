@@ -38,6 +38,29 @@ The `fcs_filter_calculator` and `flc_2d` plugins provide the interactive
 filter-design and 2D-FLCS workflow, and the lifetime-FCS simulator closes the
 loop for validation.
 
+### Instrument parameters
+
+When a species is a coupled smFRET decay rather than a plain lifetime spectrum,
+its green/red/yellow patterns depend on the correction factors, so the filter
+calculator carries an **Instrument** dock holding $\alpha$ (donor leakage),
+$\beta$ (excitation-flux ratio of the acceptor to the donor laser), $\gamma$
+(detection / quantum yield), $\delta$ (direct acceptor excitation), the
+polarization calibration $G$, $l_1$, $l_2$, the Förster radius $R_0$ and the
+laser period.
+
+These are **pre-filled from the detector setup** you pick at the top of the
+panel. Measure them once with the [Accurate FRET tool](41_accurate_fret.md) and
+press *🔬 Store on setup*; every later session that selects the same setup starts
+from the measured values instead of the defaults. Anything you edit here wins
+over the stored value for the current session.
+
+```{note}
+$\beta$ is a *ratio*, so its neutral value is **1**, not 0. The excitation
+matrix is $\begin{pmatrix}1 & \delta\\ 0 & \beta\end{pmatrix}$: at $\beta = 0$
+the acceptor laser excites nothing and the acceptor-excitation (yellow) pattern
+is identically zero, which silently removes that channel from the filters.
+```
+
 ## Result
 
 **Left:** two species with a long and a short lifetime and their measured mix.

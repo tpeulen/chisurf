@@ -2,6 +2,101 @@
 
 ## 2026-07-26
 
+* **A calibration stored on the setup that no other tool could read.** The
+  accurate-FRET tool now writes α/β/γ/δ/R₀ onto the detector setup, on the promise
+  — made in its own docstring — that "every tool that already picks a setup starts
+  from a measured calibration instead of typed-in defaults". No tool did. The one
+  consumer that had the code for it, the fFCS filter calculator's **Instrument**
+  dock, read `setup["calibration"]` / `setup["crosstalk"]`: fields nothing in the
+  tree has ever written. Its "pre-populated from the selected setup" had therefore
+  never populated anything.
+
+  `setup_calibration_values(setup)` is the reader for consumers that keep plain
+  scalar fields rather than a `CalibrationParameters` group — which is most of
+  them. It returns the Förster radius under **both** `r0` (as stored) and
+  `forster_radius` (as nearly every GUI field is named), so no consumer needs a
+  rename table of its own and none of them can get that rename wrong; it drops
+  non-finite and unparsable entries rather than letting a corrupt setups file put
+  NaN into a field every later fit uses. Legacy loose dicts are still read, since
+  they can carry keys the calibration has no notion of (G-factor, laser period),
+  but the canonical `fret_calibration` field wins where both speak. The filter
+  calculator uses it in both places, and the FRET-species editor now seeds from
+  the Instrument dock — the more specific statement, being the setup's stored
+  values plus whatever the user edited.
+
+  **Found while wiring it: β defaulted to 0, which silently switched off a whole
+  detection channel.** β is the excitation-flux *ratio* of the acceptor to the
+  donor laser, so its neutral value is 1 — the excitation matrix is `[[1, δ], [0,
+  β]]`. The filter calculator's instrument defaults had it at `0.0` and labelled
+  it "direct acceptor excitation", which is δ's meaning, not β's; the field list
+  described both β and δ as direct excitation. At β = 0 the acceptor laser excites
+  nothing and the acceptor-excitation (yellow) pattern comes out **identically
+  zero**: measured on a two-state species, `{green: 0.51, red: 0.49, yellow:
+  0.00}` against `{0.35, 0.34, 0.31}` at β = 1. Nothing raises — the channel
+  simply cannot contribute to the filters, which is worse than a crash. Default
+  and both labels corrected, and the help text now says why 1 is the neutral
+  value.
+
+  Tests: `test/fitting/test_setup_calibration.py` (7 → 10; the flat seed, its
+  junk-dropping, and canonical-over-legacy precedence) and two in the filter
+  calculator's `test_widgets.py` — a calibration measured once arrives in the
+  Instrument dock and reaches the species editor, and the yellow pattern is
+  non-zero under the shipped defaults. Docs: the accurate-FRET guide gained the
+  flat-reader hand-off, the filtered-FCS guide an **Instrument parameters**
+  section with the β note.
+
+* **A modal dialog on an `except` branch hangs a headless run forever.** The
+  fFCS filter-calculator test module did not fail — it *never finished*, and had
+  to be sampled with `sample(1)`/`faulthandler` to find out why. Two defects in
+  series, both invisible as long as nobody waited for the run:
+
+  `_clear_recon_plot` re-added the fit-range selector with
+  `plot_recon.addItem(region)` — the pyqtgraph idiom, left behind by the chiplot
+  migration. `plot_recon` is a `cp.Plot`, so `addItem` fell through chiplot's
+  `__getattr__` passthrough to the *native* pyqtgraph item, which rejects a
+  chiplot handle: `TypeError: argument 2 has unexpected type '_Region'`, raised
+  on **every replot**. `Plot.clear()` drops every handle and a cleared handle
+  cannot be re-added, so the selector is now rebuilt at its previous bounds by a
+  new `_make_fit_region`, shared with construction.
+
+  That `TypeError` was caught by a broad `except Exception` which reported it
+  with `QMessageBox.critical(...)`. A message box spins its own event loop until
+  a button is pressed; under `QT_QPA_PLATFORM=offscreen` no button can ever be
+  pressed. So the error did not surface as an error — it wedged the process, in
+  a call chain reached from `__init__` via `_populate_example_project`. New
+  `chisurf/gui/dialogs.py` (`report_error`/`report_warning`/
+  `report_information`) always logs and raises the box only when
+  `QGuiApplication.platformName()` is a real window system; interactive
+  behaviour is unchanged. All 17 dialogs in the filter calculator now go through
+  it. This is the third instance of this trap (`add_dataset` was the previous
+  one) — prefer these helpers to a bare `QMessageBox` static anywhere an
+  exception handler can be reached without a user.
+
+  With the hang gone, a **third** defect became visible immediately: six
+  `plot_residuals.line(..., connect="finite")` calls, another pyqtgraph idiom
+  chiplot's `line()` does not take, so *every* residual plot had been raising
+  `TypeError` since the migration — the weighted-residuals panel simply never
+  drew. Breaking a line at a gap is a general need (residuals outside the fit
+  window are NaN precisely so they are not drawn), so chiplot grew
+  `line(..., skip_missing=True)`, on by default, rather than each call site
+  reaching past the API. The two region tests were still asserting against
+  `pg.LinearRegionItem` and `getPlotItem().items` and now check chiplot's
+  `Region` and, more to the point, that the selector still drives the fit range
+  after a recompute; the `setRegion`/`getRegion` passthrough warnings in that
+  module are gone. Whole module: 49 passed, from a run that previously never
+  terminated.
+
+  **The Instrument dock, once rendered, was unreadable** — every name truncated
+  ("α (donor leakage…") and the last one-and-a-half rows cut off, so R₀ was half
+  drawn and the laser period invisible. Both faults are in the shared
+  `scalar_table` section, so every plugin using it was affected: the name column
+  was pinned at 130 px, and the height assumed a uniform row height, clipping
+  the last row whenever the painted rows are taller than the configured default.
+  The column now sizes to its longest label (bounded 90–260 px) and the height
+  is summed from the real row heights. Labels shortened to `α leakage`,
+  `β flux ratio`, … with the full sentence in the per-row `description`
+  tooltip, per the short-label rule.
+
 * **A gated selection in the explorer can now become a full ChiSurf fit, and the
   explorer earned a place in the manual.** Two threads, one subsystem. First,
   documentation: ndXplorer had only a README, so its ideas were invisible to the

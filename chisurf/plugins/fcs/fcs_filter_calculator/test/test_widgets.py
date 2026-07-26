@@ -502,7 +502,7 @@ def test_auto_fit_joint_irf_fit_resolves_distinct_components(qapp, qtbot, tmp_pa
     qtbot.addWidget(widget)
     widget.detector_selection.refresh(["green"])
     widget._set_total_paths([total_path])
-    widget._fit_region.setRegion((0.0, 255.0))
+    widget._fit_region.set_bounds(0.0, 255.0)
     widget._fit_region_initialized = True
     width_before = widget.detector_selection.width("green", "")
     widget.lw_species.clear()
@@ -526,36 +526,64 @@ def test_auto_fit_joint_irf_fit_resolves_distinct_components(qapp, qtbot, tmp_pa
 
 
 def test_fit_region_selector_present(qapp, qtbot):
-    import pyqtgraph as pg
+    """The fit range is a chiplot region and drives ``_fit_range``."""
+    from chisurf.gui.chiplot import handles as H
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
-    assert isinstance(widget._fit_region, pg.LinearRegionItem)
+    assert isinstance(widget._fit_region, H.Region)
     # Draggable range is functional: setting it drives _fit_range (used by auto-fit).
-    widget._fit_region.setRegion((30.0, 200.0))
+    widget._fit_region.set_bounds(30.0, 200.0)
     widget._fit_region_initialized = True
     assert widget._fit_range(256) == (30, 200)
 
 
 def test_fit_region_survives_replots(qapp, qtbot):
-    """The draggable fit region stays in the plot after every recompute.
+    """The draggable fit region stays usable after every recompute.
 
-    ``PlotWidget.clear()`` on each replot removes all items; the region selector
-    must be re-added (``_clear_recon_plot``) so it does not silently disappear the
-    first time filters are computed or a detector is toggled.
+    ``Plot.clear()`` on each replot drops every handle, region included, and a
+    cleared handle cannot be put back — so ``_clear_recon_plot`` rebuilds it at
+    the same bounds. Without that the selector silently disappears (or, worse,
+    lingers as a handle onto a canvas it is no longer drawn on) the first time
+    filters are computed or a detector is toggled.
     """
+    from chisurf.gui.chiplot import handles as H
     from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
 
     widget = FcsFilterCalculatorWidget()
     qtbot.addWidget(widget)
-    in_plot = lambda: widget._fit_region in widget.plot_recon.getPlotItem().items
-    assert in_plot(), "region missing after the initial example compute"
-    # Toggle a detector → recompute → region must still be present.
+    assert isinstance(widget._fit_region, H.Region), "region gone after the example compute"
+
+    widget._fit_region.set_bounds(30.0, 200.0)
+    widget._fit_region_initialized = True
+
+    # Toggle a detector → recompute → the selector must still be there, at the
+    # range the user chose, and still drive the fit window.
     names = list(widget.detector_selection.checkboxes.keys())
     widget.detector_selection.checkboxes[names[0]].setChecked(False)
     qapp.processEvents()
-    assert in_plot(), "region wiped by the detector-toggle recompute"
+
+    assert isinstance(widget._fit_region, H.Region), "region wiped by the recompute"
+    assert widget._fit_range(256) == (30, 200), "recompute reset the chosen fit range"
+
+
+def test_a_masked_residual_range_is_not_drawn_across(qapp, qtbot):
+    """Residuals outside the fit window are NaN and must read as a gap.
+
+    Drawing a segment straight across the excluded bins would invent residuals
+    the fit never produced. chiplot breaks the line at non-finite samples, so
+    this only holds while ``skip_missing`` is on by default.
+    """
+    import numpy as np
+
+    from chisurf.gui import chiplot as cp
+
+    plot = cp.Plot()
+    qtbot.addWidget(plot)
+    y = np.array([1.0, 2.0, np.nan, 4.0])
+    handle = plot.line(np.arange(y.size), y)
+    assert handle.native.opts["connect"] == "finite"
 
 
 def test_auto_fit_fits_irf_when_no_measured_irf(qapp, qtbot):
@@ -719,6 +747,64 @@ def test_instrument_dock_autoform_and_period(qapp, qtbot):
     assert widget.instrument_model.g_factor == 1.15
 
 
+def test_a_calibration_measured_once_arrives_here(qapp, qtbot):
+    """The point of storing a calibration on the setup: this tool reads it.
+
+    The Accurate FRET tool measures α/β/γ/δ and hangs them on the detector
+    setup; picking that setup here must fill the instrument parameters with the
+    measured values rather than the defaults — otherwise the calibration is
+    written to a file nobody opens.
+    """
+    from chisurf.core.fluorescence.fret.calibration import (
+        CalibrationParameters, calibration_to_setup,
+    )
+    from chisurf.plugins.fcs.fcs_filter_calculator import FcsFilterCalculatorWidget
+
+    calib = CalibrationParameters()
+    calib.gamma, calib.alpha, calib.beta, calib.delta, calib.r0 = 0.65, 0.08, 1.4, 0.06, 54.0
+
+    widget = FcsFilterCalculatorWidget()
+    qtbot.addWidget(widget)
+    widget._detector_settings = {
+        "detectors": {"green": {}, "red": {}},
+        "fret_calibration": calibration_to_setup(calib),
+    }
+    widget._prepopulate_instrument_from_setup()
+
+    assert widget.instrument_model.gamma == pytest.approx(0.65)
+    assert widget.instrument_model.alpha == pytest.approx(0.08)
+    assert widget.instrument_model.beta == pytest.approx(1.4)
+    assert widget.instrument_model.delta == pytest.approx(0.06)
+    # stored as r0, shown in a field named forster_radius
+    assert widget.instrument_model.forster_radius == pytest.approx(54.0)
+    # and it reaches the FRET-species editor through the instrument dock
+    assert widget._calibration_seed()["gamma"] == pytest.approx(0.65)
+
+
+def test_the_acceptor_excitation_channel_is_not_switched_off_by_default(qapp, qtbot):
+    """β is the excitation-flux *ratio* — it must default to 1, not 0.
+
+    The excitation matrix is ``[[1, δ], [0, β]]``, so β = 0 means the acceptor
+    laser excites nothing and the yellow (acceptor-excitation) pattern comes out
+    identically zero. Nothing raises; the channel simply cannot contribute to
+    the filters, which is far worse than a crash.
+    """
+    import numpy as np
+
+    from chisurf.core.fluorescence.fret.species_decay import fret_species_detector_patterns
+    from chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.instrument_options import DEFAULTS
+
+    assert DEFAULTS["beta"] == 1.0
+    source = {
+        "model": "fret_species", "state": "da",
+        "donor_spectrum": [1.0, 4.0], "acceptor_spectrum": [1.0, 2.0],
+        "fret_mode": "efficiency", "transfer_efficiency": 0.5, "bin_width": 0.032,
+        "crosstalk": {k: DEFAULTS[k] for k in ("alpha", "beta", "gamma", "delta")},
+    }
+    patterns = fret_species_detector_patterns(source, ["green", "red", "yellow"], 256)
+    assert np.sum(patterns["yellow"]) > 0.0
+
+
 def test_filters_computed_over_fit_range_window(qapp, qtbot):
     """fFCS filters are solved on the fit-range slice, not the full decay: the
     reconstruction equals the total outside the range (residual 0) and the filters
@@ -858,7 +944,7 @@ def test_fit_range_resets_on_new_data_and_spinboxes_sync(qapp, qtbot, tmp_path):
     widget._set_total_paths([p])
     widget._update_plots()  # re-initializes the region for the 2000-bin data
 
-    lo, hi = widget._fit_region.getRegion()
+    lo, hi = widget._fit_region.bounds
     # Range spans the new (2000-bin) data, not the stale 256-bin example.
     assert hi > 500
     # Region ↔ spinboxes kept in sync.

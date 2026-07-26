@@ -18,6 +18,7 @@ from chisurf.core.fluorescence.decay import (
     sample_decay_shot_noise,
     scattered_light_decay_pattern,
 )
+from chisurf.gui.dialogs import report_error, report_information, report_warning
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 
@@ -263,18 +264,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.plot_recon.legend()
         # Draggable fit/filter range (TAC bins of the first detector). Auto-fit and
         # the reconstruction use only this window — set past the prompt to a tail fit.
-        self._fit_region = self.plot_recon.region(
-            (0.0, 1.0),
-            brush=(90, 150, 255, 55),
-            pen=cp.to_pen((150, 190, 255), width=2),
-            movable=True,
-        )
-        self._fit_region.z = 10  # above the decays so its handles are grabbable
         self._fit_region_initialized = False
         self._syncing_range = False
-        self._fit_region.on_change(self._on_region_changed, final=False)
-        # Re-apply the range on release: recompute (re-zero filters) + re-mask residuals.
-        self._fit_region.on_change(self._on_fit_range_committed, final=True)
+        self._make_fit_region()
         self.plot_residuals = cp.Plot(title="Weighted Residuals")
         self.plot_residuals.set_labels(bottom="TAC bin", left="Residuals (σ)")
         self._build_docks(sidebar)
@@ -518,8 +510,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         """Fill the instrument parameters from the selected setup's calibration."""
         if not hasattr(self, "instrument_model"):
             return
-        settings = self._detector_settings or {}
-        cal = dict(settings.get("calibration") or settings.get("crosstalk") or {})
+        from chisurf.core.fluorescence.fret.calibration import setup_calibration_values
+
+        cal = setup_calibration_values(self._detector_settings)
         # Default the laser period to the full micro-time window when the setup
         # does not specify one.
         if not cal.get("period_ns"):
@@ -995,7 +988,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._micro_time_binning = max(1, int(getattr(ctx, "microtime_binning", 1) or 1))
         paths = [p for p in self._correlator_file_paths() if pathlib.Path(p).is_file()]
         if not paths:
-            QtWidgets.QMessageBox.information(
+            report_information(
                 self, "No correlator data",
                 "No files are loaded in the Correlator (Files & Steps) step yet.",
             )
@@ -1126,7 +1119,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if current is not None and all(current is not fit for fit in fits):
             fits.append(current)
         if not fits:
-            QtWidgets.QMessageBox.information(parent, "No Fits", "No ChiSurf fits are open.")
+            report_information(parent, "No Fits", "No ChiSurf fits are open.")
             return None
         labels = [str(getattr(fit, "name", None) or fit) for fit in fits]
         default = fits.index(current) if current in fits else 0
@@ -1140,7 +1133,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         try:
             spectrum = lifetime_spectrum_from_model(model)
         except Exception as error:
-            QtWidgets.QMessageBox.warning(parent, "Unsupported Fit", str(error))
+            report_warning(parent, "Unsupported Fit", str(error))
             return None
         return spectrum, label, fit
 
@@ -1229,7 +1222,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             if irf is not None and not irf.is_file():
                 raise ValueError("The selected IRF file does not exist.")
         except ValueError as error:
-            QtWidgets.QMessageBox.warning(self, "Invalid Synthetic Decay", str(error))
+            report_warning(self, "Invalid Synthetic Decay", str(error))
             return
 
         source = editor_model.component()
@@ -1265,7 +1258,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                     source["patterns_by_detector"][key] = noisy_by_pattern[identity].tolist()
                 source["source_fit"] = editor_model.selected_fit_label
             except Exception as error:
-                QtWidgets.QMessageBox.warning(self, "Fit Pattern Error", str(error))
+                report_warning(self, "Fit Pattern Error", str(error))
                 return
         if edit_item is not None:
             self.lw_species.replace_synthetic_source(edit_item, source)
@@ -1333,13 +1326,23 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         return shifted
 
     def _calibration_seed(self) -> dict:
-        """Crosstalk factors seeded from the selected detector setup, if any."""
-        settings = self._detector_settings or {}
-        cal = settings.get("calibration") or settings.get("crosstalk") or {}
+        """Crosstalk factors offered to the FRET-species editor.
+
+        The Instrument dock is the more specific statement: it starts as the
+        selected setup's stored calibration and then carries whatever the user
+        edited. Falling back to the setup keeps the seed working before that
+        dock has been built.
+        """
+        from chisurf.core.fluorescence.fret.calibration import setup_calibration_values
+
+        cal = setup_calibration_values(self._detector_settings)
+        if hasattr(self, "instrument_model"):
+            cal.update(self._instrument())
         seed = {}
         for key in ("alpha", "beta", "gamma", "delta", "forster_radius"):
-            if key in cal:
-                seed[key] = float(cal[key])
+            value = cal.get(key)
+            if value is not None:
+                seed[key] = float(value)
         return seed
 
     def _commit_fret_component(self, editor_model, edit_item, parent) -> None:
@@ -1353,7 +1356,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 source, detector_names, n_bins, irf_for_detector=self._detector_irf,
             )
         except Exception as error:
-            QtWidgets.QMessageBox.warning(self, "FRET Species Error", str(error))
+            report_warning(self, "FRET Species Error", str(error))
             return
         source["patterns_by_detector"] = {k: np.asarray(v, dtype=float).tolist()
                                           for k, v in patterns.items()}
@@ -1416,18 +1419,44 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         pattern = self._load_and_sum_vectors(paths, chs)
         return self._resize_pattern(pattern, n_bins), [str(path.absolute()) for path in paths]
 
+    def _make_fit_region(self, bounds: tuple[float, float] = (0.0, 1.0)):
+        """Build the draggable fit/filter-range selector on the reconstruction plot.
+
+        In one place because every replot has to rebuild it: the selector is a
+        chiplot handle bound to the canvas it was drawn on, so once the plot is
+        cleared the old one cannot be put back.
+
+        Parameters
+        ----------
+        bounds : tuple of float
+            Initial ``(low, high)`` TAC-bin edges.
+        """
+        region = self.plot_recon.region(
+            bounds,
+            brush=(90, 150, 255, 55),
+            pen=cp.to_pen((150, 190, 255), width=2),
+            movable=True,
+        )
+        region.z = 10  # above the decays so its handles are grabbable
+        region.on_change(self._on_region_changed, final=False)
+        # Re-apply the range on release: recompute (re-zero filters) + re-mask residuals.
+        region.on_change(self._on_fit_range_committed, final=True)
+        self._fit_region = region
+        return region
+
     def _clear_recon_plot(self) -> None:
         """Clear the reconstruction plot but keep the draggable fit-range region.
 
-        ``PlotWidget.clear()`` removes *all* items, including the
-        :class:`~pyqtgraph.LinearRegionItem` selector — so every recompute would
-        otherwise wipe the region and it would never reappear. Re-add it after the
-        clear so the range selector survives replots.
+        ``Plot.clear()`` drops *every* handle, the range selector included — so
+        without this a recompute would wipe it and it would never come back.
+        The old handle cannot simply be re-added: it belongs to the canvas that
+        was just cleared, so an equivalent one is rebuilt at the same bounds.
         """
-        self.plot_recon.clear()
         region = getattr(self, "_fit_region", None)
-        if region is not None:
-            self.plot_recon.addItem(region)
+        bounds = tuple(region.bounds) if region is not None else None
+        self.plot_recon.clear()
+        if bounds is not None:
+            self._make_fit_region(bounds)
 
     def _init_fit_region(self, decay) -> None:
         """Set a sensible default fit range (just past the prompt → near the end)."""
@@ -1489,9 +1518,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         """Blank residuals outside the fit range (NaN → not drawn).
 
         Residuals are only meaningful inside the fit window, so bins outside
-        ``[start, stop]`` are set to NaN and the residual traces are drawn with
-        ``connect="finite"`` so the excluded region is simply not shown. When a
-        ``detector`` is given its per-detector range override (if any) is used.
+        ``[start, stop]`` are set to NaN; chiplot breaks a line at non-finite
+        samples, so the excluded region is simply not drawn. When a ``detector``
+        is given its per-detector range override (if any) is used.
         """
         v = np.asarray(values, dtype=float).copy()
         start, stop = self._detector_fit_range(detector, v.size)
@@ -1630,7 +1659,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA
 
         if not self._has_total_decay():
-            QtWidgets.QMessageBox.warning(
+            report_warning(
                 self, "Missing Total Decay", "Load a mixed total decay first."
             )
             return
@@ -1698,7 +1727,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 )
                 taus = result["lifetimes"]
         except Exception as error:
-            QtWidgets.QMessageBox.critical(self, "Auto-fit Error", str(error))
+            report_error(self, "Auto-fit Error", str(error))
             return
         if kind == "fret":
             # The FRET fit reports species fractions directly.
@@ -1896,7 +1925,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
     def _unmix_total(self) -> None:
         if not self._has_total_decay():
-            QtWidgets.QMessageBox.warning(self, "Missing Total Decay", "Load a mixed total decay first.")
+            report_warning(self, "Missing Total Decay", "Load a mixed total decay first.")
             return
         try:
             chs = self.detector_selection.get_selected() if self.detector_selection.checkboxes else None
@@ -1956,7 +1985,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             self._update_status(f"Unmixed total — {fractions}{suffix}")
         except Exception as error:
             cs.logging.error(f"Decay unmixing error: {error}")
-            QtWidgets.QMessageBox.critical(self, "Unmixing Error", str(error))
+            report_error(self, "Unmixing Error", str(error))
             self._update_status(f"Unmixing error: {error}")
 
     def _remove_selected_species(self) -> None:
@@ -2194,7 +2223,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Computation Error", str(e))
+            report_error(self, "Computation Error", str(e))
             self._update_status(f"Error: {e}")
 
     def _invalidate_cache(self) -> None:
@@ -2489,7 +2518,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Anisotropy computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Anisotropy Computation Error", str(e))
+            report_error(self, "Anisotropy Computation Error", str(e))
             self._update_status(f"Anisotropy Error: {e}")
 
     def _compute_filters_multi_anisotropy(self, chs: List[str]) -> None:
@@ -2601,7 +2630,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Multi-Anisotropy computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Multi-Anisotropy Computation Error", str(e))
+            report_error(self, "Multi-Anisotropy Computation Error", str(e))
             self._update_status(f"Multi-Anisotropy Error: {e}")
 
     def _compute_filters_multi_detector(self, chs: List[str]) -> None:
@@ -2675,7 +2704,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Multi-detector computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Multi-Detector Computation Error", str(e))
+            report_error(self, "Multi-Detector Computation Error", str(e))
             self._update_status(f"Multi-Detector Error: {e}")
 
     def _compute_filters_stacked(self, chs: List[str]) -> None:
@@ -2779,7 +2808,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Stacked computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Stacked Filter Computation Error", str(e))
+            report_error(self, "Stacked Filter Computation Error", str(e))
             self._update_status(f"Stacked Filter Error: {e}")
 
     def _build_detector_setup_selector(self, layout) -> None:
@@ -2848,7 +2877,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         if self._result is None:
             # We can still save the UI state if paths are present
             if not self._total_paths and self.lw_species.count() == 0:
-                QtWidgets.QMessageBox.warning(self, "Empty Project", "No data loaded to save.")
+                report_warning(self, "Empty Project", "No data loaded to save.")
                 return
             
             # Filters are automatically computed, so we can proceed with saving
@@ -3020,7 +3049,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         except Exception as e:
             import traceback
             cs.logging.error(f"Error loading project: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Load Error", str(e))
+            report_error(self, "Load Error", str(e))
 
     def _update_plots(self) -> None:
         # Keep the Info dock in sync with every recompute / data change.
@@ -3109,10 +3138,10 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 
                 # Parallel
                 detector_color = self._stable_plot_color(det_name)
-                self.plot_residuals.line(x + base_x, self._mask_to_fit_range(res.weighted_residuals_par, det_name), pen=detector_color, connect="finite",
+                self.plot_residuals.line(x + base_x, self._mask_to_fit_range(res.weighted_residuals_par, det_name), pen=detector_color,
                                         name=f"{det_name} (||)")
                 # Perpendicular
-                self.plot_residuals.line(x + base_x + offset, self._mask_to_fit_range(res.weighted_residuals_perp, det_name), pen=detector_color, connect="finite",
+                self.plot_residuals.line(x + base_x + offset, self._mask_to_fit_range(res.weighted_residuals_perp, det_name), pen=detector_color,
                                         name=f"{det_name} (⊥)")
                 # Reference lines
                 for val in [-3, 0, 3]:
@@ -3163,7 +3192,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
                 det_name = dr['detector']
                 x = np.arange(res.n_bins) + (det_idx * offset)
                 
-                self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals, det_name), pen=self._stable_plot_color(det_name), connect="finite",
+                self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals, det_name), pen=self._stable_plot_color(det_name),
                                         name=f"{det_name}")
                 # Reference lines for this detector
                 for val in [-3, 0, 3]:
@@ -3205,9 +3234,9 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
             # 3. Residuals - stack horizontally
             self.plot_residuals.clear()
             # Parallel (left)
-            self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals_par), pen='g', connect="finite", name="Residuals (||)")
+            self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals_par), pen='g', name="Residuals (||)")
             # Perpendicular (right)
-            self.plot_residuals.line(x + offset, self._mask_to_fit_range(res.weighted_residuals_perp), pen='y', connect="finite", name="Residuals (⊥)")
+            self.plot_residuals.line(x + offset, self._mask_to_fit_range(res.weighted_residuals_perp), pen='y', name="Residuals (⊥)")
             # Reference lines for both channels
             for val in [-3, 0, 3]:
                 pen = cp.to_pen('r' if val != 0 else 'w', style="dash")
@@ -3240,7 +3269,7 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
 
         # 3. Residuals
         self.plot_residuals.clear()
-        self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals), pen='g', connect="finite")
+        self.plot_residuals.line(x, self._mask_to_fit_range(res.weighted_residuals), pen='g')
         for val in [-3, 0, 3]:
             self.plot_residuals.line(x, np.full_like(x, val), pen=cp.to_pen('r' if val != 0 else 'w', style="dash"))
 

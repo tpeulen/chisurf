@@ -92,6 +92,7 @@ class Plot(QtWidgets.QWidget):
         symbol_size=7.0,
         symbol_brush=None,
         symbol_pen=None,
+        skip_missing=True,
     ) -> H.Curve:
         """Draw a line (or step) curve, optionally with point markers.
 
@@ -119,6 +120,10 @@ class Plot(QtWidgets.QWidget):
             Marker fill.
         symbol_pen : pen-like, optional
             Marker outline.
+        skip_missing : bool
+            Break the line at non-finite samples (the default) instead of
+            drawing a segment straight across them. A masked-out range is
+            usually written as NaN and is meant to read as a gap.
 
         Returns
         -------
@@ -143,6 +148,7 @@ class Plot(QtWidgets.QWidget):
             symbol_size=symbol_size,
             symbol_brush=S.to_brush(symbol_brush) if symbol_brush is not None else None,
             symbol_pen=S.to_pen(symbol_pen) if symbol_pen is not None else None,
+            skip_missing=skip_missing,
         )
         self._series.append((name or f"curve{len(self._series)}", handle))
         return handle

@@ -204,6 +204,20 @@ offset.
 
   A setup that has never been calibrated returns an empty payload and the
   defaults, so this is always safe to call.
+
+  A tool that keeps plain scalar fields rather than a parameter group wants the
+  flat reader instead. It answers to the field name a GUI actually uses — the
+  Förster radius comes back both as `r0` (as stored) and as `forster_radius`:
+
+  ```python
+  from chisurf.core.fluorescence.fret.calibration import setup_calibration_values
+
+  seed = setup_calibration_values(setup)   # {"gamma": 0.65, "alpha": 0.08, …}
+  ```
+
+  This is how the [filtered-FCS filter calculator](17_filtered_fcs.md) fills its
+  **Instrument** parameters: pick the calibrated setup there and $\alpha$,
+  $\beta$, $\gamma$, $\delta$ and $R_0$ arrive already measured.
 * **🔗 Share in session** publishes it as a linkable pseudo-fit, so any fit can
   link its correction parameters to this one calibration (global analysis). The
   factors are real `FittingParameter`s: each carries a process-wide identity, so

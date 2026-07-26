@@ -523,9 +523,14 @@ class _PgCanvas(base.Canvas):
         symbol_size=7.0,
         symbol_brush=None,
         symbol_pen=None,
+        skip_missing=True,
     ) -> H.Curve:
         """Draw a line/step curve, optionally with point markers."""
         kw = {"pen": _pen(pen)}
+        if skip_missing:
+            # Break the line at NaN/inf rather than drawing a segment across the
+            # gap, which is what a masked-out range is meant to look like.
+            kw["connect"] = "finite"
         if name is not None:
             kw["name"] = name
         if step:

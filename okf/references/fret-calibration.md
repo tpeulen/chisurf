@@ -161,7 +161,19 @@ back to the physically-motivated light-path prior.
   user to pick a setup, so they get the measured factors for free instead of
   defaults. The accurate-FRET tool writes it with **🔬 Store on setup** and seeds
   its own photophysics fields from it whenever a setup is selected.
-  Tests: `test/fitting/test_setup_calibration.py` (7).
+  Tests: `test/fitting/test_setup_calibration.py` (10).
+- **Two readers, because consumers differ** — `calibration_from_setup` fills a
+  `CalibrationParameters` group; `setup_calibration_values` returns a flat
+  `{name: float}` seed for the majority of tools, which keep plain scalar fields
+  and only want a starting point. The flat reader returns the Förster radius
+  under both `r0` (as stored) and `forster_radius` (as nearly every GUI field is
+  named), so no consumer needs a rename table of its own, and it drops
+  non-finite/unparsable entries rather than letting a corrupt file put NaN in a
+  field. Legacy loose `calibration` / `crosstalk` dicts on a setup are still read
+  — they may carry keys the calibration has no notion of (G-factor, laser
+  period) — but the canonical field wins where both speak. First consumer: the
+  fFCS filter calculator's **Instrument** dock, whose seeding read the legacy
+  field only and had therefore never fired.
 - **ndxplorer bridge** — `calibration_to_ndx_constants` maps the posterior
   factors onto ndx's MFD constants (inverting ndx's effective
   `gamma = (PhiA/PhiD)/(gG/gR)`), and

@@ -103,15 +103,30 @@ class ScalarTableWidget(QtWidgets.QWidget):
             self.table.setItem(r, 0, name)
             self.table.setItem(r, 1, self._value_item(row))
         self.table.blockSignals(False)
-        try:
-            self.table.setColumnWidth(0, 130)
-        except Exception:
-            pass
-        self.table.horizontalHeader().setSectionResizeMode(
-            1, QtWidgets.QHeaderView.Stretch
-        )
-        header_h = self.table.horizontalHeader().height() or self._row_h
-        self.table.setFixedHeight(header_h + self._row_h * max(1, len(self._rows)) + 2)
+        header = self.table.horizontalHeader()
+        # Size the name column to the longest label instead of a fixed width: a
+        # truncated "α (donor leakage…" names nothing. Bounded so one verbose
+        # row cannot squeeze the value column out of the panel.
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
+        self.table.resizeColumnToContents(0)
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.Interactive)
+        self.table.setColumnWidth(0, max(90, min(self.table.columnWidth(0) + 8, 260)))
+        self.table.setFixedHeight(self._natural_height())
+
+    def _natural_height(self) -> int:
+        """Exact pixel height of header + every row, so no row is clipped.
+
+        Assuming a uniform row height clips the last row whenever the painted
+        rows are taller than the configured default (a larger UI font, a
+        platform style with more padding) — and a half-drawn last row reads as
+        "that is all of them".
+        """
+        header = self.table.horizontalHeader()
+        height = max(header.height(), header.sizeHint().height())
+        for r in range(self.table.rowCount()):
+            height += self.table.rowHeight(r) or self._row_h
+        return height + 2 * self.table.frameWidth() + 2
 
     def _value_item(self, row: dict) -> QtWidgets.QTableWidgetItem:
         attr = str(row.get("attr", ""))

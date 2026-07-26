@@ -25,6 +25,7 @@ from chisurf.core.fluorescence.fret.calibration import (
     calibration_from_setup,
     calibration_to_setup,
     setup_calibration_uncertainties,
+    setup_calibration_values,
 )
 
 TRUTH = {"gamma": 0.65, "alpha": 0.08, "beta": 1.4, "delta": 0.06}
@@ -134,6 +135,51 @@ def test_non_finite_and_junk_values_are_ignored(setups_file):
     assert restored.gamma == pytest.approx(fresh.gamma)
     assert restored.alpha == pytest.approx(fresh.alpha)
     assert restored.delta == pytest.approx(0.06)   # the one good value still lands
+
+
+def test_a_tool_with_plain_scalar_fields_can_seed_itself(setups_file):
+    """Most consumers keep plain floats, not a calibration group.
+
+    They seed by attribute name, so the Förster radius has to answer to the
+    spelling their field actually uses — otherwise every such tool needs its own
+    ``r0`` → ``forster_radius`` lookup table and one of them will get it wrong.
+    """
+    calib = _calibrated()
+    calib.r0 = 54.0
+    set_setup_calibration("BS", calibration_to_setup(calib), setups_file)
+    setup = load_detector_setups(setups_file)["setups"]["BS"]
+
+    seed = setup_calibration_values(setup)
+    assert seed["gamma"] == pytest.approx(TRUTH["gamma"])
+    assert seed["beta"] == pytest.approx(TRUTH["beta"])
+    assert seed["r0"] == pytest.approx(54.0)
+    assert seed["forster_radius"] == pytest.approx(54.0)
+
+
+def test_the_flat_seed_drops_what_it_cannot_use(setups_file):
+    """A junk entry must stay out of a GUI field rather than become NaN in it."""
+    setups = load_detector_setups(setups_file)["setups"]
+    setups["BS"]["fret_calibration"] = {
+        "values": {"gamma": float("inf"), "alpha": "junk", "delta": 0.06}
+    }
+    seed = setup_calibration_values(setups["BS"])
+    assert seed == {"delta": pytest.approx(0.06)}
+    assert setup_calibration_values(None) == {}
+
+
+def test_a_legacy_field_still_seeds_but_the_calibration_wins(setups_file):
+    """Setups predating the calibration field carry loose ``calibration`` dicts.
+
+    They may hold values the calibration proper has no notion of (the G-factor,
+    the laser period), so they are still read — but where both speak, the
+    measured calibration is the answer.
+    """
+    setups = load_detector_setups(setups_file)["setups"]
+    setups["BS"]["calibration"] = {"gamma": 0.5, "g_factor": 1.15}
+    setups["BS"]["fret_calibration"] = {"values": {"gamma": 0.65}}
+    seed = setup_calibration_values(setups["BS"])
+    assert seed["gamma"] == pytest.approx(0.65)
+    assert seed["g_factor"] == pytest.approx(1.15)
 
 
 def test_the_factors_carry_a_typeset_label_and_keep_their_plain_name():

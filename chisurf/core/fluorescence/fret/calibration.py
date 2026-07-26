@@ -47,6 +47,7 @@ __all__ = [
     "calibration_from_ndx_constants",
     "calibration_to_setup",
     "calibration_from_setup",
+    "setup_calibration_values",
     "setup_calibration_uncertainties",
     "SETUP_CALIBRATION_KEYS",
     "SETUP_CALIBRATION_FIELD",
@@ -849,6 +850,60 @@ def calibration_from_setup(setup: dict | None, calib=None):
         if np.isfinite(value):
             setattr(calib, key, value)
     return calib
+
+
+def setup_calibration_values(setup: dict | None) -> dict:
+    """Flat ``{name: value}`` seed for a tool that has a detector setup in hand.
+
+    :func:`calibration_from_setup` is the right reader for anything that owns a
+    :class:`CalibrationParameters` group. Most consumers do not: the filter
+    calculator, the FRET-species editor and the burst tools each keep plain
+    scalar fields, and only want to *start* from the measured instrument values
+    instead of the typed-in defaults. This is that reader.
+
+    The Förster radius is returned under **both** spellings — ``r0`` as stored,
+    and ``forster_radius`` as almost every GUI field is named — so a caller can
+    seed by attribute name without a lookup table of its own.
+
+    Legacy ``"calibration"`` / ``"crosstalk"`` dicts on the setup are read too
+    and may carry keys the calibration proper has no notion of (``g_factor``,
+    ``l1``, ``l2``, ``period_ns``); the canonical field wins where both speak.
+
+    Parameters
+    ----------
+    setup : dict or None
+        A detector setup as stored in the setups file.
+
+    Returns
+    -------
+    dict
+        Possibly empty mapping of factor name to float. Non-finite and
+        unparsable entries are dropped rather than propagated into a GUI field.
+    """
+    seed: dict[str, float] = {}
+
+    def take(source) -> None:
+        if not isinstance(source, dict):
+            return
+        for key, value in source.items():
+            try:
+                value = float(value)
+            except (TypeError, ValueError):
+                continue
+            if np.isfinite(value):
+                seed[str(key)] = value
+
+    setup = setup or {}
+    take(setup.get("calibration"))
+    take(setup.get("crosstalk"))
+    payload = setup.get(SETUP_CALIBRATION_FIELD)
+    if isinstance(payload, dict):
+        take(payload.get("values"))
+    if "r0" in seed:
+        seed["forster_radius"] = seed["r0"]
+    elif "forster_radius" in seed:
+        seed["r0"] = seed["forster_radius"]
+    return seed
 
 
 def setup_calibration_uncertainties(setup: dict | None) -> dict:

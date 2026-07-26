@@ -2,17 +2,17 @@
   "_comment": "Instrument / calibration parameters, prepopulated from the selected setup. Rendered by AutoForm.",
   "sections": [
     {"type": "custom", "key": "scalar_table", "options": {"call": "field_changed", "rows": [
-      {"attr": "alpha", "label": "α (spectral crosstalk / leakage)"},
-      {"attr": "beta", "label": "β (direct acceptor excitation)"},
-      {"attr": "gamma", "label": "γ (detection / quantum-yield)"},
-      {"attr": "delta", "label": "δ (acceptor direct-excitation prob.)"},
-      {"attr": "g_factor", "label": "G (polarization detection ratio)"},
-      {"attr": "l1", "label": "l₁ (polarization mixing)"},
-      {"attr": "l2", "label": "l₂ (polarization mixing)"},
-      {"attr": "forster_radius", "label": "R₀ (Förster radius, Å)"},
-      {"attr": "period_ns", "label": "Laser period (ns, 0 ⇒ full window)"}
+      {"attr": "alpha", "label": "α leakage", "description": "Donor leakage into the red (acceptor) channel."},
+      {"attr": "beta", "label": "β flux ratio", "description": "Excitation-flux ratio of the acceptor laser to the donor laser. 1 is the balanced, neutral value — at 0 the acceptor laser excites nothing and the acceptor-excitation channel drops out entirely."},
+      {"attr": "gamma", "label": "γ detection", "description": "Detection / quantum-yield correction, (g_R·Φ_A)/(g_G·Φ_D)."},
+      {"attr": "delta", "label": "δ direct exc.", "description": "Direct excitation of the acceptor by the donor laser."},
+      {"attr": "g_factor", "label": "G factor", "description": "Polarization detection ratio, parallel over perpendicular."},
+      {"attr": "l1", "label": "l₁ mixing", "description": "Polarization mixing factor l₁ (parallel leakage)."},
+      {"attr": "l2", "label": "l₂ mixing", "description": "Polarization mixing factor l₂ (perpendicular leakage)."},
+      {"attr": "forster_radius", "label": "R₀ (Å)", "description": "Förster radius of the dye pair."},
+      {"attr": "period_ns", "label": "Period (ns)", "description": "Laser repetition period for periodic convolution. 0 uses the full micro-time window."}
     ]}},
     {"type": "toggle", "attr": "periodic", "label": "⟳ Periodic convolution", "call": "field_changed", "description": "Model the finite laser repetition period: the previous pulse's decay tail wraps into the window (fixes the ramp/offset in the residuals)."},
-    {"type": "custom", "key": "help", "options": {"title": "Instrument parameters", "text": "**Instrument / calibration parameters** are pre-populated from the selected setup (the setup picker at the top) and used by the auto-fit and the FRET-species decays.\n\n- **α, β, γ, δ** — the Hellenkamp crosstalk factors (leakage, direct excitation, detection correction).\n- **G, l₁, l₂** — polarization calibration (G-factor detection ratio and the two mixing factors) used when *Pol* is on so anisotropy and lifetimes are fit together.\n- **R₀** — Förster radius (Å).\n- **Laser period** — enables periodic (wrap-around) convolution."}}
+    {"type": "custom", "key": "help", "options": {"title": "Instrument parameters", "text": "**Instrument / calibration parameters** are pre-populated from the selected setup (the setup picker at the top) and used by the auto-fit and the FRET-species decays.\n\n- **α, β, γ, δ** — the Hellenkamp correction factors: α donor leakage into the red channel, β the excitation-flux ratio of the acceptor to the donor laser (**1** for a balanced setup — 0 switches the acceptor-excitation channel off entirely), γ the detection/quantum-yield correction, δ direct acceptor excitation by the donor laser. Measure them with the *Accurate FRET* tool and store them on the setup; they are read back here.\n- **G, l₁, l₂** — polarization calibration (G-factor detection ratio and the two mixing factors) used when *Pol* is on so anisotropy and lifetimes are fit together.\n- **R₀** — Förster radius (Å).\n- **Laser period** — enables periodic (wrap-around) convolution."}}
   ]
 }

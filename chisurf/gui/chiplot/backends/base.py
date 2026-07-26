@@ -47,6 +47,7 @@ class Canvas(abc.ABC):
         symbol_size: float = 7.0,
         symbol_brush: S.Brush | None = None,
         symbol_pen: S.Pen | None = None,
+        skip_missing: bool = True,
     ) -> H.Curve:
         """Draw a line/step curve (optionally with markers) and return its handle."""
 
