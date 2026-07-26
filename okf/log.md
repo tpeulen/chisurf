@@ -2,6 +2,26 @@
 
 ## 2026-07-26
 
+* **A curve built from a file keeps the file's error bars** (RF-182).
+  `DataCurve.__init__` read the file first and only then initialised
+  `ex`/`ey`/`mask` from its own arguments. Those arguments are `None` for every
+  caller that passes a filename, so the `isinstance(..., np.ndarray)` guards all
+  failed and the freshly loaded columns were overwritten with the defaults —
+  `ey` came back as **ones**, the unit weights every chi2 is then computed from,
+  for a 3-, 4- or 5-column file that carried real per-point uncertainties. `x`
+  and `y` survived only because nothing wrote them afterwards, which is why the
+  damage was invisible: the curve plotted correctly and fitted with the wrong
+  weights. The documented constructor form (`models/tcspc/av_decay.py`,
+  `structure/av/__init__.py`) is exactly the affected one, while
+  `DataCurve().load(fn)` was always right — so the two routes to the same file
+  disagreed. The companions are now initialised **before** the load, which also
+  settles the precedence question the way the class already answers it for `x`
+  and `y`: a file wins over the passed arrays. Pinned by
+  `test/core/test_data_curve_file_columns.py` (constructor-vs-`load()`
+  equivalence on 5 columns, the 4- and 3-column forms, and an in-memory curve
+  that must still get the argument defaults); all three file tests fail against
+  the old ordering. See [data model](/subsystems/data-model.md).
+
 * **GUI-tester: the Light Path Simulator.** Drove the "before the measurement"
   workflow headlessly and recorded it as
   [Light Path Simulator](/usecases/lightpath-crosstalk-r0.md): pick the 2-colour

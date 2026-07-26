@@ -14,7 +14,9 @@ import copy
 import chisurf.core.data
 import chisurf.core.experiments
 import chisurf.core.models
+import chisurf.core.models.parse
 import chisurf.core.fitting
+import chisurf.core.fitting.fit
 
 
 def get_data_values(

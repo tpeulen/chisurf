@@ -204,6 +204,20 @@ than fixed because they span five unrelated subsystems:
 - ~~`test_group_polarization_any_size.py` errors at collection.~~ — fixed
   2026-07-26.
 
+**Found 2026-07-26 while closing [RF-182](/reviews/findings.md#rf-182).**
+`test/core/test_curve.py::Tests::test_reading` passes when `test/core` runs on
+its own and fails when `test/fitting` has run first in the same process: the
+yaml round-trip comes back with a different `unique_identifier`. It is an
+ordering artifact over process-wide registry state, not a defect in the curve
+I/O, and it is identical with and without the `DataCurve` change that surfaced
+it. Not fixed here because the poisoning module is somewhere in `test/fitting`
+as a whole (no single file reproduces it) and chasing it is a separate job.
+Two order-dependent failures in the *same* run **were** fixed:
+`test_fit.py::test_fit_parse` and `::test_fit_data_setter` used
+`chisurf.core.models.parse` / `chisurf.core.fitting.fit` while importing only
+the package roots, so they passed only when another test module had imported
+those submodules first; the test module now imports them itself.
+
 **Found 2026-07-26 while closing [RF-168](/reviews/findings.md#rf-168) in the
 BVA layer.** `test/plugins/burst/test_background_gui.py` has two failures that
 are stale against the AutoForm conversion of the Burst Background tool

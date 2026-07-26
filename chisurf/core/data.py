@@ -220,6 +220,23 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
             *args,
             **kwargs
         )
+        # The companions are initialised *before* the file is read, because
+        # `load` writes the file's own `ex`/`ey`/`mask` columns and they must
+        # survive. Doing it the other way round overwrites a 3-, 4- or 5-column
+        # file's uncertainties with the argument defaults (`ex`/`ey`/`mask` are
+        # `None` for every caller that passes a filename), leaving unit weights.
+        # A file therefore wins over the passed arrays, exactly as it already
+        # does for `x` and `y`.
+        if not isinstance(ex, np.ndarray):
+            ex = np.zeros_like(self.x)
+        if not isinstance(ey, np.ndarray):
+            ey = np.ones_like(self.y)
+        if not isinstance(mask, np.ndarray):
+            mask = np.ones_like(self.y)
+        self.ex: np.ndarray = np.copy(ex) if copy_array else ex
+        self.ey: np.ndarray = np.copy(ey) if copy_array else ey
+        self.mask: np.ndarray = np.copy(mask) if copy_array else mask
+
         # `filename` is empty for every curve built in-memory (model decays,
         # shifted IRFs, arithmetic results), and Path('').is_file() is still a
         # filesystem stat. Curves are constructed inside the fit's hot loop, so
@@ -227,20 +244,6 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         if load_filename_on_init and filename:
             if pathlib.Path(filename).is_file():
                 self.load(filename, **kwargs)
-
-        # Compute errors
-        self.ex: np.ndarray = None
-        self.ey: np.ndarray = None
-        if not isinstance(ex, np.ndarray):
-            ex = np.zeros_like(self.x)
-        if not isinstance(ey, np.ndarray):
-            ey = np.ones_like(self.y)
-        self.ex = np.copy(ex) if copy_array else ex
-        self.ey = np.copy(ey) if copy_array else ey
-        self.mask: np.ndarray = None
-        if not isinstance(mask, np.ndarray):
-            mask = np.ones_like(self.y)
-        self.mask = np.copy(mask) if copy_array else mask
 
     def _resize_companions(self, size: int) -> None:
         """Keep ``ex``, ``ey`` and ``mask`` at the curve's number of samples.
@@ -256,8 +259,8 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
         size : int
             The curve's new number of samples.
         """
-        # `ex`/`ey`/`mask` are assigned at the end of __init__, after `load` has
-        # already written the axes, so a companion may not exist yet.
+        # `ex`/`ey`/`mask` are assigned in __init__, after `super().__init__`
+        # has already written the axes, so a companion may not exist yet.
         for name, fill in (("ex", 0.0), ("ey", 1.0), ("mask", 1.0)):
             previous = getattr(self, name, None)
             if not isinstance(previous, np.ndarray) or previous.size == size:

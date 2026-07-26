@@ -43,6 +43,13 @@ survive, padding new ones with their defaults). Without it a one-axis assignment
 left the error and mask arrays at the previous length, and `data`, `__getitem__`
 and `to_dict` then reported a dataset whose columns disagreed about its length.
 
+Constructing a curve from a file (`DataCurve(filename=…)`) reads the file *after*
+`ex`/`ey`/`mask` have been initialised from the constructor arguments, so a 3-, 4-
+or 5-column file's uncertainty and mask columns are what the curve ends up with.
+The file therefore wins over the passed arrays, exactly as it already does for
+`x` and `y`; initialising the companions last instead silently replaced a loaded
+`ey` with ones — the unit weights every chi2 would then have been computed from.
+
 # Data groups
 
 Multiple datasets are held in `DataGroup(list, Base)` — a list that also tracks a

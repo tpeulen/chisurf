@@ -2302,11 +2302,32 @@ Findings RF-181..RF-189.
 - **Fix note:** `DataCurve.__init__` now forwards `filename=filename` to `super().__init__`, so `Data.filename` receives the real path (`chisurf/core/data.py:214-223`). Since `DataCurve` defaults `filename=''` while `Data` defaults `"None"`, the `Data.filename` setter now stores an empty path as `''` instead of running it through `os.path.normpath` — `normpath('')` is `'.'`, which would make every in-memory curve claim the working directory as its source file (`chisurf/core/base.py:898-915`). An in-memory curve therefore reports `''`, a curve from a reader its path. The TCSPC hand-patches were **kept**: those call sites never pass `filename` to the constructor, and moving it into the constructor would trip the `load_filename_on_init` branch and re-read the file over the rebinned arrays (RF-182). Pinned by `test/core/test_data.py::TestDataCurve::test_filename_is_forwarded_to_base` and `::test_filename_empty_for_in_memory_curve`, plus a reader-level assertion in `test/experiments/test_deer_reader.py::test_reader_loads_csv`.
 
 ### RF-182
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (constructing a curve from a file silently replaces the file's `ey` with ones — the weights every chi2 is computed from)
 - **Location:** `chisurf/core/data.py:227-243` (`DataCurve.__init__`, the `self.load(...)` call followed by the `ex`/`ey`/`mask` block)
 - **Finding:** `DataCurve.__init__` loads the file *first* (`:227-229`) and only *then* initialises the error and mask arrays from its own arguments (`:232-243`). Since `ex`/`ey`/`mask` default to `None`, the `isinstance(..., np.ndarray)` guards all fail and the freshly loaded columns are overwritten with `np.zeros_like(self.x)`, `np.ones_like(self.y)` and `np.ones_like(self.y)`. `x` and `y` survive only because nothing writes them afterwards. Verified on a 5-column CSV (`ex=0.1`, `ey=0.5`, `mask=0`): `DataCurve(filename=fn)` gives `ex=[0…0]`, `ey=[1…1]`, `mask=[1…1]`, while the identical file through `DataCurve().load(fn)` gives the correct `[0.1…]`, `[0.5…]`, `[0…]`. So the documented constructor form (`chisurf/core/models/tcspc/av_decay.py:23-26`, `chisurf/core/structure/av/__init__.py:758-759`) reads a 3-, 4- or 5-column file and throws its uncertainty columns away, leaving unit weights. Initialise `ex`/`ey`/`mask` before the load, or skip the defaults for arrays the load already set.
-- **Fix note:**
+- **Fix note:** Took the first option — `ex`/`ey`/`mask` are now initialised from
+  the arguments (or their defaults) *before* `self.load(...)` runs, so a file's
+  own columns are what the curve keeps. That also settles the precedence question
+  the way the class already answers it for `x` and `y`: when a filename names an
+  existing file, the file wins over the passed arrays. `_resize_companions`
+  keeps working — the companions now exist before `load` writes the axes, and its
+  `getattr` guard is still needed for the `super().__init__` axis writes that
+  precede them (its comment is corrected accordingly). Reproduced against `HEAD`
+  first: the three file-column tests fail with the old ordering (`ey` comes back
+  as `[1, 1]` for a file carrying `[0.5, 0.25]`) and pass with the new one.
+  Pinned by the new `test/core/test_data_curve_file_columns.py` — the 5-column
+  constructor-vs-`load()` equivalence plus the 4- and 3-column forms and an
+  in-memory curve that must still get the argument defaults. `test/core` (840
+  passed, 3 skipped) is fully green on its own, and `test/fitting` + `test/core`
+  together leave only the 10 pre-existing failures recorded in
+  [known-issues](/references/known-issues.md) — the identical set, name for
+  name, with and without this change. `ruff check` adds no finding on the
+  touched lines (both files' pre-existing style debt is left alone). Fixed
+  alongside, per the fix-breakage rule: `test/fitting/test_fit.py` used
+  `chisurf.core.models.parse` and `chisurf.core.fitting.fit` while importing
+  only the package roots, so two of its tests passed only when another module
+  had imported those submodules first; it now imports them itself.
 
 ### RF-183
 - **Status:** FIXED
