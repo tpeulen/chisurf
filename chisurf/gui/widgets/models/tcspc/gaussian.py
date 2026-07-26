@@ -103,7 +103,7 @@ class GaussianWidget(fret.Gaussians, QtWidgets.QWidget):
         removeGaussian.clicked.connect(self.onRemoveGaussian)
 
         # add some initial distance
-        self.append(1.0, 50.0, 6.0, 0.0)
+        self.append(mean=50.0, sigma=6.0, x=1.0)
 
         try:
             self._install_code_badge()
@@ -147,10 +147,30 @@ class GaussianWidget(fret.Gaussians, QtWidgets.QWidget):
             payload={"component_name": str(self.name)},
         )
 
-    # TODO: needs docstring
-    def append(self, *args, **kwargs):
-        """Add a new component."""
-        super().append(50.0,6.0,1.0,)
+    def append(
+            self,
+            mean: float = 50.0,
+            sigma: float = 6.0,
+            x: float = 1.0,
+            shape: float = 0.0
+    ):
+        """Add a new Gaussian distance component and its editor group box.
+
+        The defaults are the values the "add component" button uses; scripts and
+        the public model API pass explicit ones, which are forwarded unchanged.
+
+        Parameters
+        ----------
+        mean : float, optional
+            Mean donor-acceptor distance of the new component in Angstrom.
+        sigma : float, optional
+            Width of the new normal distribution in Angstrom.
+        x : float, optional
+            Amplitude (species fraction) of the new component.
+        shape : float, optional
+            Shape parameter of the generalized Gaussian.
+        """
+        super().append(mean, sigma, x, shape)
 
         gb = QtWidgets.QGroupBox()
         n_gauss = len(self)

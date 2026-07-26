@@ -42,6 +42,16 @@ These are the patterns; each caused more than one bug.
   fixture) and build the rest under `qtbot`, which deletes them while Qt is
   still alive.
 
+- **Collecting a TCSPC model widget between tests is a bus error.** Same
+  signature as the entry above — every test prints a dot and then
+  `Fatal Python error: Bus error` — but a different subject and a different
+  trigger: `Fit(model_class=GaussianModelWidget, …)`. Building *five in one
+  test* is stable; building one per test across five tests aborts on roughly
+  four runs in five, so it is the per-test garbage collection of the fit and its
+  Qt children (with the session `QApplication` still up), not the count. Not
+  root-caused. Until it is, hold every such fit in a module-level list and never
+  release it — see `test/gui/models/test_distance_widget_append.py`.
+
 - **Qt Python-wrapper vs C++ lifetime.** `RuntimeError: wrapped C/C++ object …
   has been deleted` on window close. The Python wrapper outlives the destroyed
   C++ widget; a shared `_new_closeEvent` in `chisurf/gui/misc_helpers.py` calls

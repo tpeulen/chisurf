@@ -3,7 +3,7 @@ type: PRD
 prd: "46"
 title: "PRD-46: Scripts as first-class citizens in the test pipeline"
 description: Brings shipped example scripts into the automated test suite by running headless/process scripts under a shebang-driven runner with numeric assertions, plus unit tests for the public model API they exercise.
-status: in-progress
+status: done
 phase: "unassigned"
 resource: test/scripts/
 tags: [prd, core]
@@ -11,10 +11,11 @@ timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-PRD-46 brings ChiSurf's runnable example scripts, which exercise the core model API end-to-end but sit outside CI, into the automated test suite so regressions in the public model API are caught automatically. A parametrized pytest runner discovers `scripts/*.py` and runs each according to its shebang: process scripts as subprocesses with stdout and numeric-output assertions, and console/ipython scripts headlessly by exec against a thin `cs` namespace stub that provides the real core but no GUI. It also adds unit tests for the public model API surface (`chain_length`, `persistence_length`, mixture `fractions` setter) and wires a `test-scripts` task into the default test suite. Scripts stay runnable interactively without modification — the harness is a thin wrapper.
+PRD-46 brings ChiSurf's runnable example scripts, which exercise the core model API end-to-end but sit outside CI, into the automated test suite so regressions in the public model API are caught automatically. A parametrized pytest runner discovers `scripts/*.py` and runs each according to its shebang: process scripts as subprocesses with stdout and numeric-output assertions, and console/ipython scripts headlessly by exec against an injected `cs` namespace with the experiment registry bootstrapped off-screen. It also adds unit tests for the public model API surface (`chain_length`, `persistence_length`, mixture `fractions` setter) and wires a `test-scripts` task into the default test suite. Scripts stay runnable interactively without modification — the harness is a thin wrapper.
 
 # Status
-In-progress. Landed (`test/scripts/test_scripts.py`, `test/models/test_wlc_public_api.py`,
+Done. Landed (`test/scripts/test_scripts.py`, `test/scripts/_headless_runner.py`,
+`test/models/test_wlc_public_api.py`, `test/gui/models/test_distance_widget_append.py`,
 `pixi.toml`):
 
 - **Discovery + process runner** — `test/scripts/test_scripts.py` discovers every
@@ -39,11 +40,31 @@ In-progress. Landed (`test/scripts/test_scripts.py`, `test/models/test_wlc_publi
   example script fail to import. Reworked to a `None` sentinel resolved at call
   time via `_verbose_default()`.
 
-Deferred: **headless execution of `console`/`ipython` scripts** (goal 3). Those
-endpoints need the experiment registry and `cs.macros` bootstrapped without Qt,
-which does not exist yet — a bare `import chisurf` has an empty `cs.experiment`
-and no `cs.macros`. Interactive scripts are currently reported as skipped test
-nodes with that reason.
+- **Headless `console`/`ipython` execution** (goal 3) — `test/scripts/_headless_runner.py`
+  runs an interactive script in a subprocess with `chisurf` itself as the `cs`
+  namespace, after `chisurf.core.experiments.bootstrap.ensure_experiments_registered()`
+  populates the registry the endpoints expect. The PRD's original "thin `cs`
+  namespace stub" is unnecessary: `chisurf` already exposes `core`, `experiment`,
+  `imported_datasets`, `fits` and a lazily-imported `macros`, and the registry
+  bootstrap the agent/CLI needed landed independently. Most reader and model
+  classes are `QWidget` subclasses, so the runner first creates an off-screen
+  `QApplication` — which is why it stays in a subprocess and never runs inside
+  the Qt-free suite. Without a Qt binding the runner exits `77` and the caller
+  skips.
+- **The defect goal 3 immediately caught** — `protein_unfolding_gui.py` reaches
+  the same two-state model as the headless script, but through `add_fit`, i.e.
+  through the *widget* model classes. `GaussianWidget.append` and
+  `DiscreteDistanceWidget.append` took `*args, **kwargs` and called the core
+  `append` with the editor defaults, so `gaussians.append(mean=35.0, sigma=4.0)`
+  silently produced a 50 Å / 6 Å component and flattened the FRET line from
+  0.91 → 0.58 to 0.580 → 0.584. Both now declare and forward the real parameters
+  (defaults unchanged for the argument-free "add component" button). The
+  swallowing signature had also hidden two scrambled amplitude-first constructor
+  calls (`self.append(1.0, 50.0, 6.0, 0.0)`), fixed with the same change; it also
+  silently defeated `fret_line.py`'s `gaussians.append(distance, sigma, 1.0)`
+  whenever a widget model was used. `test_protein_unfolding_gui_matches_headless`
+  pins the two paths to the same FRET line, and
+  `test/gui/models/test_distance_widget_append.py` pins the forwarding directly.
 
 # Problem
 ChiSurf ships runnable example scripts (e.g. `examples/scripts/protein_unfolding_fret_line.py`, `examples/scripts/protein_unfolding_gui.py`) that exercise the core model API end-to-end. They are currently **outside the automated test suite**: no CI job runs them, no assertion checks their output, and regressions in the public model API go undetected until a user manually runs a script and notices something is wrong.

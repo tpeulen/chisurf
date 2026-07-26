@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **PRD-46 done: interactive example scripts now run head-lessly, and the first
+  run of one found a silent wrong-number bug.** `test/scripts/_headless_runner.py`
+  executes a `# !chisurf: console`/`ipython` script in a subprocess with
+  `chisurf` itself as the injected `cs` namespace, after
+  `ensure_experiments_registered()` populates the registry those endpoints
+  expect; the PRD's planned "thin `cs` stub" was unnecessary because that Qt-free
+  bootstrap had landed independently for the agent/CLI. Most readers and models
+  are `QWidget` subclasses, so the runner first creates an off-screen
+  `QApplication` — hence the subprocess, which keeps Qt out of the Qt-free suite;
+  no Qt binding means exit `77` and a skip. Running
+  `protein_unfolding_gui.py` this way reproduced the same two-state model as the
+  headless script but through `add_fit`, i.e. through the **widget** model
+  classes, and returned a flat FRET line (0.580 → 0.584 instead of 0.909 →
+  0.584): `GaussianWidget.append` and `DiscreteDistanceWidget.append` took
+  `*args, **kwargs` and called the core `append` with the editor defaults, so
+  `gaussians.append(mean=35.0, sigma=4.0, x=1.0)` silently produced a 50 Å / 6 Å
+  component. Both now declare and forward the real parameters, defaults
+  unchanged for the argument-free "add component" button. The swallowing
+  signature had also hidden two scrambled amplitude-first constructor calls
+  (`self.append(1.0, 50.0, 6.0, 0.0)`), fixed with it, and had silently defeated
+  `fret_line.py`'s `gaussians.append(distance, sigma, 1.0)` for any widget model.
+  Widget and core now agree bit-for-bit on the lifetime spectrum. Pinned by
+  `test_protein_unfolding_gui_matches_headless` (the two script paths must give
+  the same FRET line) and `test/gui/models/test_distance_widget_append.py`
+  (5 tests on forwarding, defaults, and the seeded component); both verified to
+  fail with the fix reverted. Suites: `test/scripts` + `test/models` +
+  `test/gui/models` = 278 passed, 16 skipped. A pre-existing bus error when a
+  TCSPC model widget is collected between tests is recorded in
+  [known issues](/references/known-issues.md).
+
 * **`setup.params.set` died whenever no main window was up (RF-090).** The
   "Transfer to ChiSurf" hand-off in the microtime-histogram wizard and the IRF
   estimator dispatches `experiment.set` → `setup.params.set` → `dataset.add`.

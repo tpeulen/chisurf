@@ -1,12 +1,15 @@
 """Bring shipped example scripts into the automated test suite (PRD-46).
 
 Every file in ``examples/scripts/*.py`` is discovered and, depending on its
-ChiSurf endpoint shebang (``# !chisurf: process | console | ipython``), either
+ChiSurf endpoint shebang (``# !chisurf: process | console | ipython``), run as a
+subprocess and checked for a clean exit — either directly (``process`` / no
+shebang) or through :mod:`_headless_runner`, which injects the ``cs`` namespace
+and registers the experiments the interactive endpoints expect
+(``console`` / ``ipython``).
 
-* run as a subprocess and checked for a clean exit (``process`` / no shebang), or
-* skipped with a clear reason (``console`` / ``ipython``) — headless execution of
-  the interactive endpoints needs the experiment registry and ``cs.macros`` to be
-  bootstrapped without Qt, which does not exist yet (tracked in PRD-46).
+The interactive endpoints stay in a subprocess because registering the Qt model
+classes needs an off-screen ``QApplication``, which must not leak into this
+Qt-free suite.
 
 Adding a new script to ``examples/scripts/`` automatically adds a test node — no
 manual registration. Scripts are copied into a temporary directory before running
@@ -23,9 +26,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from _headless_runner import EXIT_NO_QT
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS_DIR = REPO_ROOT / "examples" / "scripts"
+HEADLESS_RUNNER = Path(__file__).resolve().with_name("_headless_runner.py")
 
 # Local module sources that are on PYTHONPATH rather than installed as packages.
 _EXTRA_PATHS = [
@@ -65,12 +70,23 @@ def _subprocess_env() -> dict:
 
 
 def _run_isolated(script: Path, workdir: Path) -> subprocess.CompletedProcess:
-    """Copy ``script`` into ``workdir`` and run it there so outputs stay local."""
+    """Copy ``script`` into ``workdir`` and run it there so outputs stay local.
+
+    Interactive endpoints (``console`` / ``ipython``) are run through
+    :mod:`_headless_runner`, which supplies the ``cs`` namespace and the
+    experiment registry they expect; every other script is run directly.
+    """
     local = workdir / script.name
     shutil.copy2(script, local)
+    if _endpoint(script) in _INTERACTIVE_SHEBANGS:
+        command = [sys.executable, str(HEADLESS_RUNNER), str(local)]
+    else:
+        command = [sys.executable, str(local)]
+    env = _subprocess_env()
+    env.setdefault("QT_QPA_PLATFORM", "offscreen")
     return subprocess.run(
-        [sys.executable, str(local)],
-        env=_subprocess_env(),
+        command,
+        env=env,
         cwd=str(workdir),
         capture_output=True,
         text=True,
@@ -78,21 +94,25 @@ def _run_isolated(script: Path, workdir: Path) -> subprocess.CompletedProcess:
     )
 
 
-@pytest.mark.parametrize("script", SCRIPTS, ids=[s.name for s in SCRIPTS])
-def test_example_script_runs(script: Path, tmp_path: Path) -> None:
-    """Each headless (``process``) example script runs to a clean exit."""
-    endpoint = _endpoint(script)
-    if endpoint in _INTERACTIVE_SHEBANGS:
-        pytest.skip(
-            f"'{endpoint}' endpoint needs a headless experiment/macros bootstrap "
-            "that does not exist yet (PRD-46)"
-        )
-    proc = _run_isolated(script, tmp_path)
+def _assert_clean_exit(script: Path, proc: subprocess.CompletedProcess) -> None:
+    """Fail with the captured output unless ``proc`` exited cleanly.
+
+    A :data:`EXIT_NO_QT` exit skips instead — the machine has no Qt binding, so
+    the interactive endpoints cannot be exercised at all.
+    """
+    if proc.returncode == EXIT_NO_QT:
+        pytest.skip(f"{script.name}: no Qt binding available for the interactive endpoint")
     assert proc.returncode == 0, (
         f"{script.name} exited {proc.returncode}\n"
         f"--- stdout tail ---\n{proc.stdout[-2000:]}\n"
         f"--- stderr tail ---\n{proc.stderr[-2000:]}"
     )
+
+
+@pytest.mark.parametrize("script", SCRIPTS, ids=[s.name for s in SCRIPTS])
+def test_example_script_runs(script: Path, tmp_path: Path) -> None:
+    """Each example script runs to a clean exit on its declared endpoint."""
+    _assert_clean_exit(script, _run_isolated(script, tmp_path))
 
 
 def test_protein_unfolding_fret_line_numeric(tmp_path: Path) -> None:
@@ -112,7 +132,7 @@ def test_protein_unfolding_fret_line_numeric(tmp_path: Path) -> None:
         pytest.skip("protein_unfolding_fret_line.py not present")
 
     proc = _run_isolated(script, tmp_path)
-    assert proc.returncode == 0, proc.stderr[-2000:]
+    _assert_clean_exit(script, proc)
 
     line = np.genfromtxt(tmp_path / "unfolding_fret_line.txt")
     frac, e_fret = line[:, 0], line[:, 1]
@@ -129,4 +149,51 @@ def test_protein_unfolding_fret_line_numeric(tmp_path: Path) -> None:
     assert np.ptp(e_folded) < 1e-6, "folded (f=0) FRET must not depend on WLC params"
     assert e_folded[0] == pytest.approx(e_fret[0], abs=1e-6), (
         "folded FRET must match between the main line and the sweep"
+    )
+
+
+def test_protein_unfolding_gui_matches_headless(tmp_path: Path) -> None:
+    """The interactive script's FRET line equals the pure-core script's.
+
+    Both scripts describe the same two-state model with the same numbers; the
+    interactive one reaches it through ``add_fit``, i.e. through the *widget*
+    model classes.  Those used to discard the arguments of
+    ``gaussians.append(mean=..., sigma=...)`` and silently keep the editor
+    defaults, which flattened the FRET line from 0.91 -> 0.58 to 0.580 -> 0.584
+    without failing anything.
+    """
+    gui_script = SCRIPTS_DIR / "protein_unfolding_gui.py"
+    core_script = SCRIPTS_DIR / "protein_unfolding_fret_line.py"
+    if not (gui_script.exists() and core_script.exists()):
+        pytest.skip("protein-unfolding example scripts not present")
+
+    proc = _run_isolated(gui_script, tmp_path)
+    _assert_clean_exit(gui_script, proc)
+
+    # The printed table is "f_unfold  E_FRET  <tau> ns" over 11 fractions.
+    rows = []
+    for raw in proc.stdout.splitlines():
+        fields = raw.split()
+        if len(fields) != 3:
+            continue
+        try:
+            rows.append([float(value) for value in fields])
+        except ValueError:
+            continue
+    table = np.array(rows)
+    assert table.shape == (11, 3), f"expected an 11-point FRET line, got {table.shape}"
+
+    frac, e_fret = table[:, 0], table[:, 1]
+    assert frac[0] == pytest.approx(0.0) and frac[-1] == pytest.approx(1.0)
+    assert np.all(np.diff(e_fret) < 0), "E must decrease as fraction-unfolded rises"
+
+    core_proc = _run_isolated(core_script, tmp_path)
+    _assert_clean_exit(core_script, core_proc)
+    core_line = np.genfromtxt(tmp_path / "unfolding_fret_line.txt")
+    core_e = np.interp(frac, core_line[:, 0], core_line[:, 1])
+    np.testing.assert_allclose(
+        e_fret,
+        core_e,
+        atol=1e-4,
+        err_msg="the widget model path must give the same FRET line as the core one",
     )

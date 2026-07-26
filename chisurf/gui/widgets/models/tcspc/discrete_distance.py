@@ -59,7 +59,7 @@ class DiscreteDistanceWidget(fret.DiscreteDistance, QtWidgets.QWidget):
         removeFRETrate.clicked.connect(self.onRemoveFRETrate)
 
         # add some initial distance
-        self.append(1.0, 50.0, False)
+        self.append(mean=50.0, x=1.0)
 
         s = kwargs.pop('short', None)
         anisotropy = AnisotropyWidget(
@@ -113,10 +113,20 @@ class DiscreteDistanceWidget(fret.DiscreteDistance, QtWidgets.QWidget):
             payload={"component_name": "fret_rates"},
         )
 
-    # TODO: needs docstring
-    def append(self, *args, **kwargs):
-        """Add a new component."""
-        super().append(50., 1.0)
+    def append(self, mean: float = 50.0, x: float = 1.0):
+        """Add a new discrete distance and its editor group box.
+
+        The defaults are the values the "add component" button uses; scripts and
+        the public model API pass explicit ones, which are forwarded unchanged.
+
+        Parameters
+        ----------
+        mean : float, optional
+            Donor-acceptor distance of the new component in Angstrom.
+        x : float, optional
+            Amplitude (species fraction) of the new component.
+        """
+        super().append(mean, x)
 
         gb = QtWidgets.QGroupBox()
         n_rates = len(self)
