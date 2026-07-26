@@ -156,5 +156,48 @@ def test_channel_luts_round_trip_json(tmp_path):
     assert int({str(k): v for k, v in s["channel_shifts"].items()}["1"]) == -2
 
 
+def test_a_missing_setups_file_never_blocks_a_headless_run(tmp_path, monkeypatch):
+    """The loader must return, not open a modal box nobody can dismiss.
+
+    ``load_detector_setups`` runs while widgets are being *constructed* — every
+    tool with a setup picker calls it. Its missing-file branch pops a
+    ``QMessageBox`` and, on one button, a whole wizard; a modal spins its own
+    event loop until a button is pressed, which under ``offscreen`` can never
+    happen. Guarding on "a QApplication exists" is not enough, because in a test
+    one always does: the run then hangs rather than fails, and a hang looks
+    exactly like a slow suite.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.gui.dialogs import is_interactive
+    from chisurf.gui.widgets.warning_once import reset_warnings
+
+    # A QApplication exists — exactly the condition the old guard tested for —
+    # yet nothing here can dismiss a dialog. Bind it: an unreferenced
+    # QApplication is collected again straight away, and then this test passes
+    # for the wrong reason.
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    assert app is not None
+    assert QtWidgets.QApplication.instance() is not None
+    assert not is_interactive()
+
+    missing = tmp_path / "does_not_exist.json"
+    reset_warnings()
+    monkeypatch.setattr(detector_setups_module, "DETECTOR_SETUPS_FILE", missing)
+    monkeypatch.setattr(detector_setups_module, "_use_mmfdb", lambda *a, **k: False)
+
+    shown = []
+    monkeypatch.setattr(
+        QtWidgets.QMessageBox, "exec_", lambda self: shown.append("box"), raising=False
+    )
+
+    result = detector_setups_module.load_detector_setups(
+        file_path=str(missing), skip_migration=True
+    )
+
+    assert result == {"setups": {}}
+    assert not shown, "a modal dialog was opened in a headless run"
+
+
 if __name__ == "__main__":
     test_save_detector_setups()
