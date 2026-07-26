@@ -2,6 +2,29 @@
 
 ## 2026-07-26
 
+* **chimol: `split_chains` left the source drawn on top of every chain.** Reported
+  as "after split chains cartoons look weird", and it was two bugs.
+
+  PyMOL's `split_chains` ends with `_self.disable(model)` — it **hides the
+  source** after making the per-chain copies. chimol did not, so the whole
+  structure stayed drawn over every chain: two cartoons per residue in the same
+  place, fighting for the depth buffer. Hidden rather than deleted, as PyMOL does:
+  re-enabling it is how the split is undone. Also added PyMOL's `group` argument,
+  which puts the copies straight into a group.
+
+  **The second bug has reach well beyond this command.** Hiding the source did not
+  stick, because `_add_object_list_item` set every row's checkbox to `Checked`
+  unconditionally — so *any* panel rebuild silently re-showed *anything* that had
+  been hidden. Every `disable`, every unchecked box, undone by the next refresh.
+  The row now takes its state from the entry, and a test asserts the checkbox and
+  the stored visibility agree, because what the user sees has to match what is
+  drawn.
+
+  Worth noting how it was found: the per-residue arrays were all *consistent*
+  after the split (554 residues, 554 SS codes, 554 colours), so the numbers said
+  nothing was wrong. What said otherwise was counting the objects — the parent was
+  still there, still visible, at full size. 8 tests.
+
 * **PCH: two starting values for one species, and the fit still said `ok`.**
   Closes [RF-210](/reviews/findings.md#rf-210) (S1). `pch.fit` concatenates
   `initial_epsilons + initial_Ns` into one vector and splits the optimiser's answer at

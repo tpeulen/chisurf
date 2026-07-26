@@ -1906,7 +1906,15 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         self._block_object_list_signals = True
         try:
-            item.setCheckState(QtCore.Qt.Checked)
+            # From the entry, not always Checked. Forcing Checked meant every
+            # panel rebuild silently re-showed anything that had been hidden --
+            # so `split_chains` hid its source and the very next refresh brought
+            # it back, drawing the whole structure on top of every chain copy.
+            item.setCheckState(
+                QtCore.Qt.Checked
+                if bool(entry.get("visible", True))
+                else QtCore.Qt.Unchecked
+            )
         finally:
             self._block_object_list_signals = False
 

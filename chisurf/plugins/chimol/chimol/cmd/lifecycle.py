@@ -614,8 +614,26 @@ class LifecycleMixin(BaseCmd):
             pass
 
     @command("split_chains")
-    def split_chains(self, prefix: str = "") -> None:
-        """Split the active object into one object per chain."""
+    def split_chains(self, prefix: str = "", group: str = "") -> None:
+        """Split the active object into one object per chain (PyMOL ``split_chains``).
+
+        Parameters
+        ----------
+        prefix : str, optional
+            Name prefix for the new objects; the source object's name by default.
+        group : str, optional
+            Collect the new objects into this group, as PyMOL's ``group``
+            argument does.
+
+        Notes
+        -----
+        The source object is **hidden** afterwards, which is what PyMOL does
+        (``_self.disable(model)`` at the end of its own ``split_chains``).
+        Leaving it visible draws the whole structure on top of every chain copy:
+        two cartoons per residue, in the same place, fighting for the depth
+        buffer. That is not a subtle difference -- it is what "the cartoons look
+        weird after split_chains" is.
+        """
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
@@ -628,6 +646,7 @@ class LifecycleMixin(BaseCmd):
             self._emit_error("No active object for split_chains")
             return
 
+        before = {str(o.get("id")) for o in viewer.list_objects()}
         prefix = (prefix or "").strip() or None
 
         try:
@@ -636,5 +655,31 @@ class LifecycleMixin(BaseCmd):
             self._emit_error(f"Failed to split chains: {exc}")
             return
 
+        created = [
+            str(o.get("id")) for o in viewer.list_objects()
+            if str(o.get("id")) not in before
+        ]
+
+        # Hide the source, as PyMOL does. Not delete: the split is meant to be
+        # undoable by re-enabling it, and the original still carries anything the
+        # per-chain copies do not (inter-chain measurements, say).
+        if created:
+            try:
+                if window is not None and hasattr(window, "_set_object_visible"):
+                    window._set_object_visible(active_id, False)
+                else:
+                    viewer.set_object_visible(active_id, False)
+            except Exception:
+                pass
+
+        target = str(group).strip()
+        if target and created:
+            for object_id in created:
+                viewer.set_object_group(object_id, target)
+
         self._refresh_window_objects(window)
-        self._emit_message("Split chains completed")
+        self._emit_message(
+            f"split_chains: {len(created)} chains"
+            + (f" in group {target}" if target and created else "")
+            + (" (source hidden)" if created else "")
+        )
