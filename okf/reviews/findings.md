@@ -3015,3 +3015,67 @@ Findings RF-258..RF-262.
 - **Location:** `chisurf/core/models/pda/dynamic_mc.py:278` (`self.method = "szabo-gopich"`) and `:366`, with `dynamic_mc.view.json` (no section for `method`) and `dynamic_mc.py:104-106` (`n_windows`)
 - **Finding:** `method` is assigned once in `__init__` and read once in `update_model`; it is written nowhere else in the tree (`grep -rn "\.method\s*=" chisurf/` finds only the constructor) and `dynamic_mc.view.json` contains no control for it, so from the GUI the model is permanently on the analytic route. The module docstring (`:33-37`) and the `method` comment (`:267-277`) both say the Monte-Carlo route is the one to use in the slow-exchange limit "where the distribution is multimodal and no two-moment match has three peaks" — which is also where RF-258 bites hardest — yet a user has no way to select it. The inverse is on screen: `n_windows` is a `FittingParameter` on the states group (verified present in `parameters_all_dict`), so the `N_win` spinner is rendered in the *N-state kinetics* parameter table where it does nothing at all in the default mode. Add a `choice` section for `method` (and hide or annotate `n_windows` when the analytic route is selected).
 - **Fix note:**
+
+### GUI-tester run 2026-07-26 — PDA distance fit (burst tables → S1S2 → fit)
+
+Drove the **PDA experiment** end-to-end headlessly, the way a user would: pick
+`PDA` / `PTU/HT3/SPC`, configure the two detectors, drop three `.bur` burst
+tables from a finished burst search, load (827 bursts resolved back onto
+`m000..m002.spc`, three time-window histograms of 151×151), add
+`PDA-Gaussian-distance` and `PDA-discrete` fits, fit, inspect all five fit tabs
+and the whole model editor. **The analysis is right** — χ²ᵣ 16.16 → 3.46 with
+R = 46.95 ± 0.46 Å, s = 6.26 ± 0.33 Å, xDOnly = 0.336 ± 0.025 on the dsDNA
+sample, and the `Info` tab reports errors, sources and likelihood intervals
+properly. Everything below is in the shell around it. Use case:
+[/usecases/pda-distance-fit.md](/usecases/pda-distance-fit.md). Findings
+RF-263..RF-268.
+
+### RF-263
+- **Status:** OPEN
+- **Severity:** S1 (selecting a member of a dataset group creates the fit on a *different* dataset, with no warning — or fails silently)
+- **Location:** `chisurf/gui/main.py:433` (`MainWindow.onAddFit`: `data_idx = [r.row() for r in self.dataset_selector.selectedIndexes()]`), consumed by `chisurf/gui/fit_helpers.py:9` → `fit.add` → `chisurf/macros/core_fit.py:872` (`add_fit`)
+- **Finding:** `QModelIndex.row()` of a *child* item is its row **within its parent**, not its index in `cs.imported_datasets`, but `add_fit` indexes the flat top-level list with it. Any experiment reader that returns an `ExperimentDataGroup` with more than one member is affected; the PDA reader returns one member per time-window entry, so this is the normal case there. Verified live on a group `m000_TW1ms` with members `m000_TW1ms / _TW2ms / _TW3ms`, `cs.imported_datasets == ['Global Dataset', <the PDA group>]`, model `PDA-discrete`, clicking each member row then **+ Analysis**:
+
+  | member clicked | `selectedIndexes()` | result |
+  |---|---|---|
+  | `m000_TW1ms` | `[(0, 0)]` | index 0 → *Global Dataset*; **no fit**, status bar only: `Add fit failed for dataset index 0 with model 'PDA-discrete': DataCurve object has no attribute 'pda'` |
+  | `m000_TW2ms` | `[(1, 0)]` | index 1 → the **whole group**; a 3-member global fit named `PDA-discrete - m000_TW1ms` is created — **silently the wrong data**, no warning |
+  | `m000_TW3ms` | `[(2, 0)]` | index 2 → **no fit**, status bar only: `add_fit: dataset indices out of bounds of cs.imported_datasets` |
+
+  So one of the three cases produces a plausible-looking fit on data the user did not select, and the other two produce nothing with no dialog (RF-267). Resolve the selection to the dataset object (or to a `(group, member)` pair) instead of a bare row number — `dataset_selector` already exposes `selected_dataset`. The discriminating test: build a two-member `ExperimentDataGroup`, select member 1, and assert the created fit's `data is group[1]`.
+- **Fix note:**
+
+### RF-264
+- **Status:** OPEN
+- **Severity:** S1 (the shipped experiment configuration is never merged on an existing installation, so renamed/added readers and models silently disappear and the update prompt is dead code)
+- **Location:** `chisurf/gui/main_helper.py:666` (`source_config_file = pathlib.Path(cs.core.settings.get_path('cs')) / "settings" / "experiment_configs.yaml"`) against `chisurf/core/settings/path_utils.py:39-76` (`get_path` accepts only `'settings'` and `'chisurf'`)
+- **Finding:** `'cs'` is not a valid `path_type`, so `get_path('cs')` falls into the catch-all branch and returns `~/.chisurf`; `source_config_file` becomes `~/.chisurf/settings/experiment_configs.yaml`, which does not exist. Verified: `get_path('cs')/'settings'/'experiment_configs.yaml'` → `exists() == False`. Three consequences, all live in this run: (1) the startup *"Experiment configuration update available"* prompt at `:673` is guarded by `source_config_file.exists()` and therefore **can never fire**; (2) `default_configs` at `:746` loads nothing, so `experiment_configs` degenerates to the user's copy alone and the shipped defaults never merge; (3) `if not user_config_file.exists()` at `:738` cannot seed a first-run copy either. On this installation the user copy is a stale snapshot, so the GUI offered a `RICS` experiment whose reader and six models no longer exist (`Failed to resolve class chisurf.core.experiments.rics.RICSReader: No module named …`, plus `chisurf.core.models.rics.rics.Rics{Simple,Triplet,Immobile,Flow,Full}Model` and `IcsGaussian2DModel`, all logged as ERROR at every start), the PDA model list offered a removed `PdaDynamicThreeStateModel` and was **missing** `PdaDynamicNStateModel`, and the shipped `c3pda` experiment was absent entirely. Cross-check: with `CHISURF_SETTINGS_DIR` pointed at a fresh directory the experiment list is correct (`TCSPC, PDA, c3PDA (3-colour), DEER, FCS, PCF, Image correlation, PCH, Modelling`) — i.e. the bug is invisible on a clean profile and permanent on a real one. The correct spelling is already used at `chisurf/core/experiments/bootstrap.py:148` and `chisurf/core/experiments/__init__.py:67` (`pathlib.Path(__file__).parent.parent / 'settings'`); use `get_path('chisurf')` (or the same package-relative path) here, and pin it with a test asserting the resolved source file exists.
+- **Fix note:**
+
+### RF-265
+- **Status:** OPEN
+- **Severity:** S1 (after a successful fit the plot the user is looking at still shows the starting model and the starting χ²ᵣ, so a converged fit reads as a failed one)
+- **Location:** `chisurf/gui/widgets/fitting/fit_controller.py:736-742` (the `success = True` branch of `_run_fit_impl` finalizes parameter controllers and the result spin box but never calls `self.fit.update()` or any plot refresh)
+- **Finding:** the fit plots repaint from their `showEvent`, so only a tab that is *not* currently visible gets fresh data — the one in front is left stale. Verified on a single-curve `PDA-discrete` fit: `fit.chi2r` went 37.6816 → 8.7048, and immediately after the fit the visible **Distribution** tab still drew the pre-fit red model (a peak at proximity ratio ≈ 0.9 nowhere near the data) with the annotation `χ²ᵣ=37.6816`, while the **Info** tab of the *same* sub-window already read `chi2r=8.7048` with the fitted parameters. Switching to another tab and back repaints it correctly (`χ²ᵣ=8.7048`), and so does calling `fit.update()` by hand — which is the fix: update the fit (or emit the plot-refresh) in the success branch. Also reproduced on the 3-member group fit (χ²ᵣ 16.1562 → 3.4558, Distribution frozen at 16.1562). Pin it with a test that fits and then asserts the plot's annotation/curve matches `fit.chi2r` without an intervening tab change.
+- **Fix note:**
+
+### RF-266
+- **Status:** OPEN
+- **Severity:** S2 (every fit freezes the whole GUI behind a progress dialog stuck at 0 %; the ETA and χ² readout that was written for it is unreachable)
+- **Location:** `chisurf/gui/widgets/fitting/fit_controller.py:634-708` (`_on_progress`, defined inside `_run_fit_impl`) versus `:714-718` (`fc.run_fit(fit_uid=...)`) and `chisurf/gui/widgets/fitting/fitting_client.py:387-400` (`run_fit(self, fit_uid=None, fit_index=None)`)
+- **Finding:** `_on_progress` is a 75-line callback that computes a percentage, an ETA and a `chi2/chi2r` status line and pushes them through `EnhancedProgressDialog.update_progress` (which calls `QApplication.processEvents()` at `chisurf/gui/widgets/progress.py:281`, i.e. it is what keeps the UI alive). It is **never passed anywhere** — `grep -n "_on_progress" chisurf/gui/widgets/fitting/fit_controller.py` finds only its own `def`, and `FittingClient.run_fit` has no callback parameter. So the dialog is shown at 0 % and next touched by `dialog.finish(...)`. Verified: a `QTimer` on a 1000 ms interval armed before clicking **Fit** on a 3-curve global PDA fit fired **exactly once**, at t = 22.0 s, after the fit returned (`'EnhancedProgressDialog', 'Fitting finished!'`) — no Qt event was processed during the 22 s, so the window was frozen and the Cancel button in that dialog was also inert. Either thread `_on_progress` through `run_fit` to the optimizer's callback, or delete it and be honest with a busy indicator.
+- **Fix note:**
+
+### RF-267
+- **Status:** OPEN
+- **Severity:** S2 (a failed *Add fit* is reported only to the log and a 10 s status-bar message, in an app that has a unified error dialog)
+- **Location:** `chisurf/gui/fit_helpers.py:28-38` (`except Exception` → `cs.logging.error` + `window.status.showMessage(msg, 10000)`)
+- **Finding:** `add_fits_for_datasets` swallows every failure into a log line and a transient status-bar message, then continues with the next index. Verified live: two of the three *Add fit* attempts in RF-263 produced **no fit and no dialog** — `QtWidgets.QApplication.activeModalWidget()` was `None` in both cases, and the only user-visible trace was `Add fit failed for dataset index 0 with model 'PDA-discrete': DataCurve object has no attribute 'pda'` in the status bar, gone after ten seconds. A user who clicks the button and looks at the plot area sees nothing happen and nothing explaining why. The project already has `chisurf.gui.dialogs.error` for exactly this; route the failure there (once per run, summarising the failed indices) and keep the log line.
+- **Fix note:**
+
+### RF-268
+- **Status:** OPEN
+- **Severity:** S3 (the fit sub-window is titled after the wrong curve — a leaked loop variable)
+- **Location:** `chisurf/macros/core_fit.py:1209` (`fit_window.setWindowTitle(fit.name)`) with `:1197` (`for fit in fit_group:`)
+- **Finding:** the loop at `:1197` that builds one model editor per group member rebinds `fit`, and the `setWindowTitle` twelve lines later reuses that leaked name instead of `fit_group`. Verified: a fit named `PDA-Gaussian-distance - m000_TW1ms` over the three-member group `[m000_TW1ms, m000_TW2ms, m000_TW3ms]` opens a sub-window titled `PDA-Gaussian-distance - m000_TW3ms`, so the one window representing the group advertises its *last* member, while the analysis dock's *Dataset selection* box for the same fit reads `m000_TW1ms`. Single-member fits hide it (the loop leaves `fit` equal to the only member). Use `fit_group.name`, and rename the loop variable so it cannot leak again.
+- **Fix note:**

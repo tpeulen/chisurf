@@ -2,6 +2,27 @@
 
 ## 2026-07-26
 
+* **Used the PDA experiment like a user, and the analysis was the part that
+  worked.** New use case
+  [pda-distance-fit](/usecases/pda-distance-fit.md): burst tables from a finished
+  burst search dropped into the `PDA` reader, 827 bursts resolved back onto their
+  SPC files, one 151×151 S1S2 histogram per time-window entry, then
+  `PDA-Gaussian-distance` fitted to χ²ᵣ 16.16 → 3.46 with
+  R = 46.95 ± 0.46 Å, s = 6.26 ± 0.33 Å and a 34 % donor-only fraction — all
+  correct, and the `Info` tab reports errors, their source and likelihood
+  intervals better than most tools do. **Every defect found was in the shell
+  around that**, and two of them are the kind that make a working analysis look
+  broken: the fit plot in front of the user is never refreshed when the fit
+  finishes (it keeps the starting model and the starting χ²ᵣ until you switch
+  tabs), and clicking a *member* of a multi-curve dataset group builds the fit on
+  whatever unrelated dataset happens to sit at that row number in the flat list —
+  once silently, twice not at all and with nothing but a ten-second status-bar
+  line to say so. A third is quieter and worse for a long-lived install: the
+  shipped `experiment_configs.yaml` is read from `get_path('cs')`, which is not a
+  valid path type, so the defaults never merge and the "update available" prompt
+  is unreachable — this machine's PDA menu was offering a model class that had
+  been deleted and missing the N-state one, and carrying a `RICS` experiment
+  whose reader and six models no longer exist. Findings RF-263..RF-268.
 * **Dynamic PDA's moment match was matched on the wrong support (RF-258).** The
   Szabo–Gopich route in
   [`chisurf/core/fluorescence/kinetics.py`](chisurf/core/fluorescence/kinetics.py)
