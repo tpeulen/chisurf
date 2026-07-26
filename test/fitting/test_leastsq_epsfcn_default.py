@@ -36,7 +36,7 @@ import pytest
 import chisurf.core.settings
 from chisurf.core.fitting.fit import DEFAULT_EPSFCN, _leastsq_options
 
-from test_tcspc_fit_convergence import _build, _chi2r, TRUE_TAUS
+from .test_tcspc_fit_convergence import _build, _chi2r, TRUE_TAUS
 
 
 def test_zero_is_treated_as_unset():

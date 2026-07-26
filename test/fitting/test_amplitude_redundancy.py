@@ -26,7 +26,7 @@ normalised ones on every update.
 import numpy as np
 import pytest
 
-from test_tcspc_fit_convergence import _build, _chi2r, TRUE_AMPS, TRUE_TAUS
+from .test_tcspc_fit_convergence import _build, _chi2r, TRUE_AMPS, TRUE_TAUS
 
 
 def _jacobian(m):
