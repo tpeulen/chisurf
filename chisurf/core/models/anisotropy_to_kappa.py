@@ -1,7 +1,11 @@
+import logging
+
 import numpy as np
 import chisurf.core.models
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.fluorescence.anisotropy.kappa2 import kappasq, s2delta
+
+logger = logging.getLogger(__name__)
 
 class AnisotropyToKappaModel(chisurf.core.fitting.parameter.FittingParameterGroup):
     """Calculate the orientation factor kappa^2 from anisotropy values.
@@ -64,7 +68,17 @@ class AnisotropyToKappaModel(chisurf.core.fitting.parameter.FittingParameterGrou
                 beta2=0.0
             )
         except Exception:
-            self.kappa_squared.value = 2.0/3.0
+            # Falling back to 2/3 silently is the worst available answer: it is
+            # exactly the value a user would report for freely rotating dyes,
+            # so a failed calculation is indistinguishable from a real result
+            # that says "no orientation bias". NaN cannot be mistaken for one.
+            logger.warning(
+                "kappa^2 could not be calculated from r_donor=%s, r_acceptor=%s, "
+                "r_sensitized=%s (r0=%s)",
+                self.r_donor.value, self.r_acceptor.value,
+                self.r_sensitized.value, self.r0, exc_info=True,
+            )
+            self.kappa_squared.value = float("nan")
 
     def __str__(self):
         """Return a string summary of the model parameters and kappa^2 value."""

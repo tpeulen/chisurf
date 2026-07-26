@@ -97,19 +97,34 @@ def compute_kappa2_dist(**params: float | bool | str) -> dict:
         k2_centers = 0.5 * (k2_edges[1:] + k2_edges[:-1])
         k2hist = p_isotropic_orientation_factor(k2_centers, normalize=True)
         x = k2_edges
-        k2v = k2_centers
+        # The reported statistics come from a grid fine enough that they do not
+        # depend on the histogram the caller asked for. The isotropic density
+        # is singular at kappa^2 = 1, so a midpoint rule converges only as 1/n:
+        # at the default 131 bins the mean came out 4 % above its exact value
+        # of 2/3.
+        fine_edges = np.linspace(0.0, 4.0, 20001)
+        k2v = 0.5 * (fine_edges[1:] + fine_edges[:-1])
+        weights = p_isotropic_orientation_factor(k2v, normalize=True)
     else:
         raise ValueError(f"Unknown model_type: {model_type}")
 
-    k2c = x[1:]
-    total = max(float(np.sum(k2hist)), 1e-30)
-    k2_mean = float(np.dot(k2hist, k2c) / total)
-    k2_sd = float(np.sqrt(np.dot(k2hist, (k2c - k2_mean) ** 2) / total))
+    if model_type != "isotropic":
+        # ``k2v`` holds the sampled orientation factors themselves, so the
+        # moments need no binning at all. Taking them from the histogram
+        # instead made them depend on ``n_bins``, and the previous code paired
+        # the counts with the *upper* bin edges, shifting every mean up by half
+        # a bin.
+        k2v = np.asarray(k2v, dtype=float)
+        weights = np.ones_like(k2v)
+
+    total = max(float(np.sum(weights)), 1e-30)
+    k2_mean = float(np.dot(weights, k2v) / total)
+    k2_sd = float(np.sqrt(np.dot(weights, (k2v - k2_mean) ** 2) / total))
 
     k2t = max(kappa2_true, 1e-10)
-    r_scale = (k2c / k2t) ** (1.0 / 6.0)
-    Rapp_mean = float(np.dot(k2hist, r_scale) / total)
-    RappSD = float(np.sqrt(np.dot(k2hist, (r_scale - Rapp_mean) ** 2) / total))
+    r_scale = (np.maximum(k2v, 0.0) / k2t) ** (1.0 / 6.0)
+    Rapp_mean = float(np.dot(weights, r_scale) / total)
+    RappSD = float(np.sqrt(np.dot(weights, (r_scale - Rapp_mean) ** 2) / total))
 
     delta_deg = float(delta * 180.0 / np.pi)
 

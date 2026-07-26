@@ -90,6 +90,22 @@ The built-in library: `fit-decay`, `fret-from-decays`, `global-fitting`,
 family `burst-search`, `burst-selection`, `sub-ensemble-decay`,
 `fret-from-bursts`.
 
+# Reaching the plugins
+
+ChiSurf's ~100 plugins are most of what it can do, and a plugin the assistant
+cannot find or call may as well not exist. `list_plugins` therefore reports,
+per manifest, the **ways the plugin can be driven without its window**: the RPC
+methods it registers (with their summaries), its command line, and its
+`api`/`core` packages. The method names are part of the search text, because
+they are often the only term a user would think of — "kappa" matches nothing in
+the calculator's description and everything in `kappa2_dist.compute`.
+
+A guardrail keeps the advertisement honest: every manifest must be valid, carry
+an id and a description, name entry-point modules that actually import, and
+declare RPC method names that are unique across the tree
+(`test/agent/test_plugin_entry_points.py`). Discovery is only useful if the
+claims resolve.
+
 # Skills compose
 
 A skill declares in its `uses:` frontmatter the smaller procedures it is built

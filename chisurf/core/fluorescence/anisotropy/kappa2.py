@@ -358,8 +358,16 @@ def kappasq_all(
     k2scale = np.arange(k2_min, k2_max + 1e-14, step, dtype=np.float64)
     k2hist = np.zeros(k2scale.shape[0] - 1, dtype=np.float64)
     for i in range(n_samples):
-        d1 = np.random.random(3)
-        d2 = np.random.random(3)
+        # Normally distributed components give a direction uniform on the
+        # sphere. ``np.random.random`` fills the unit *cube* with non-negative
+        # components, so both dipoles were confined to one octant: the angle
+        # between them averaged 34 degrees instead of 90 and never exceeded
+        # 90. The mean orientation factor must be 2/3 whatever the order
+        # parameters are; with cube sampling it fell to 0.46 at S2 = 0.8, and
+        # the distribution was far too narrow -- which understates exactly the
+        # distance uncertainty this function exists to quantify.
+        d1 = np.random.randn(3)
+        d2 = np.random.randn(3)
         n1 = np.linalg.norm(d1)
         n2 = np.linalg.norm(d2)
         # Assumption: connecting vector R_DA is along the x-axis (R_DA = [1,0,0])

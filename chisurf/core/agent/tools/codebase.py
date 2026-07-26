@@ -267,13 +267,68 @@ def list_plugins(context: AgentContext, query: str = "") -> dict[str, Any]:
             "path": manifest_path.parent.relative_to(base).as_posix(),
         }
         haystack = " ".join(entry.values()).lower()
-        if wanted and wanted not in haystack:
+        # A plugin's RPC method names are often the only searchable term a user
+        # would think of ("kappa2", "2cde"), and knowing a plugin exists is
+        # useless without knowing how to reach it, so both are reported.
+        entry.update(plugin_entry_points(manifest, manifest_path.parent))
+        haystack += " " + " ".join(str(v) for v in entry.get("rpc_methods", []))
+        if wanted and wanted not in haystack.lower():
             continue
         plugins.append(entry)
 
     if not plugins:
-        raise ToolError(f"no plugin matches {query!r}")
+        raise ToolError(
+            f"no plugin matches {query!r}. Call list_plugins with no query to "
+            f"see all of them, or search the source with search_api."
+        )
     return {"ok": True, "n_plugins": len(plugins), "plugins": plugins[:60]}
+
+
+def plugin_entry_points(manifest: dict[str, Any], directory: Any) -> dict[str, Any]:
+    """Return how a plugin can be driven without its GUI.
+
+    Three routes exist and a plugin may offer any of them: a declared RPC
+    method (callable over the server, and the documented contract), a command
+    line, or plain Python in its ``api``/``core`` package. Reporting them turns
+    "this plugin exists" into "here is how to call it".
+
+    Parameters
+    ----------
+    manifest : dict
+        Parsed ``manifest.json``.
+    directory : pathlib.Path
+        The plugin's directory.
+
+    Returns
+    -------
+    dict
+        Only the keys that apply, so a plugin with no head-less route is
+        visibly bare rather than padded with empty fields.
+    """
+    found: dict[str, Any] = {}
+
+    methods = manifest.get("rpc_methods") or []
+    if isinstance(methods, list) and methods:
+        found["rpc_methods"] = [
+            {
+                "name": str(method.get("name", "")),
+                "summary": str(method.get("summary", ""))[:160],
+                **({"long_running": True} if method.get("long_running") else {}),
+            }
+            for method in methods
+            if isinstance(method, dict)
+        ][:12]
+
+    for candidate in ("cli.py", "cli"):
+        if (directory / candidate).exists():
+            found["cli"] = (
+                str(directory.name) if candidate == "cli" else f"{directory.name}.cli"
+            )
+            break
+    for candidate in ("api", "core"):
+        if (directory / candidate).is_dir():
+            found.setdefault("python_packages", []).append(candidate)
+    return found
 
 
 @registry.add(

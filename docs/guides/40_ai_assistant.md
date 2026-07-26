@@ -111,6 +111,7 @@ even sees it, so the right method is in play from the first turn.
 | `burst-selection` | proximity ratio, PR histogram, picking a population |
 | `sub-ensemble-decay` | a decay built from selected bursts, seTCSPC |
 | `fret-from-bursts` | a distance or efficiency from single-molecule bursts |
+| `kappa2-from-anisotropy` | κ², orientation factor, residual anisotropy, how reliable a distance is |
 | `global-fitting` | global or simultaneous analysis, linking parameters |
 | `fit-correlation` | FCS, correlation curves, diffusion |
 | `batch-fitting` | a whole folder, a series, comparing samples |
@@ -125,6 +126,13 @@ even sees it, so the right method is in play from the first turn.
 
 `python -m chisurf.core.agent --list-skills` prints them with the phrases that
 trigger each one.
+
+**It can reach the plugins.** `list_plugins` reports every plugin with the ways
+it can be driven without its window: the RPC methods it registers, its command
+line, and its Python packages. Searching for `kappa` finds the orientation
+factor calculator through its method name `kappa2_dist.compute`, which the
+assistant can then call directly — the same route a script or the server would
+take.
 
 **Skills compose.** A skill can declare the smaller ones it is built out of,
 and they are loaded with it. Asking for a distance from single-molecule bursts

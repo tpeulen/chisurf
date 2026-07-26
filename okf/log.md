@@ -2,6 +2,45 @@
 
 ## 2026-07-26
 
+* **Two bugs in the orientation factor, found by teaching the assistant to use
+  it.** Making κ² reachable meant running it, and running it against what it
+  must obey. **(1)** `kappasq_all` sampled dipole directions with
+  `np.random.random(3)` — the unit *cube*, all components non-negative — so both
+  dipoles sat in one octant: the angle between them averaged 34° instead of 90°
+  and could never exceed 90°. The mean orientation factor must be 2/3 whatever
+  the order parameters are; it fell to **0.46 at S² = 0.8**, and the
+  distribution was far too narrow, understating exactly the distance
+  uncertainty the function exists to quantify (95 % range 0.22–1.39 where it
+  should be 0.18–2.09, i.e. 41.5–56.4 Å reported for a 50 Å distance instead of
+  40.1–60.4 Å). `np.random.randn` fixes it; the same module's `kappasq_dwt`
+  already sampled correctly, so this was an outlier, not a convention. Nothing
+  tested the function. **(2)** The κ² calculator plugin took its moments from
+  the histogram paired with the **upper** bin edges, so every reported mean sat
+  half a bin high and moved with `n_bins`; the isotropic model, whose mean is
+  exactly 2/3, reported 0.71. Moments now come from the samples themselves for
+  the sampled models, and from a fixed fine grid for the isotropic density
+  (whose singularity at κ² = 1 makes a midpoint rule converge only as 1/n), so
+  they no longer depend on the requested resolution: 0.669 at every `n_bins`.
+  Also killed a silent `except: kappa_squared = 2/3` in
+  `models/anisotropy_to_kappa.py` — falling back to the isotropic value made a
+  failed calculation indistinguishable from a real result saying "no
+  orientation bias"; it now warns and yields NaN. 19 tests
+  (`test/fitting/test_kappa2_distribution.py`,
+  `plugins/calculator/kappa2_dist/test/test_algorithms.py`), the sampling ones
+  confirmed to fail on the old code.
+* **The assistant can now find and drive the plugins.** `list_plugins` reports
+  each plugin's head-less entry points — the RPC methods it registers with
+  their summaries, its command line, its `api`/`core` packages — and searches
+  method names as well as descriptions, because "kappa" appears only in
+  `kappa2_dist.compute`. A guardrail
+  (`test/agent/test_plugin_entry_points.py`) checks all 102 manifests: valid
+  JSON, an id and a description, entry-point modules that import, and RPC
+  method names unique across the tree. New composable skill
+  `kappa2-from-anisotropy`: VV/VH decays → r∞ → S² → κ² distribution → the
+  distance *range*, with the point that the sixth-root dependence makes even a
+  factor-of-two κ² error only 12 % in distance, and that a systematic of this
+  size belongs beside the fitting error rather than instead of it.
+
 * **RF-208 fix — the PCH tool never imported numpy, so every fit ended in an
   error dialog.** `chisurf/plugins/pch/gui/tool.py` used `np` in `_plot_fit` and
   `_update_results_text` while the only `import numpy as np` sat inside

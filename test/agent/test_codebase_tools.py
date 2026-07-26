@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from chisurf.core.agent import AgentContext, ToolError
@@ -184,7 +186,33 @@ def test_list_plugins_reports_manifests(context):
 def test_list_plugins_can_be_filtered(context):
     result = codebase_tools.list_plugins(context, query="burst")
     assert result["n_plugins"] >= 1
-    assert all("burst" in " ".join(entry.values()).lower() for entry in result["plugins"])
+    # An entry now carries lists as well as strings (RPC methods, packages),
+    # so the haystack is flattened rather than joined.
+    assert all("burst" in json.dumps(entry).lower() for entry in result["plugins"])
+
+
+def test_list_plugins_says_how_to_drive_a_plugin(context):
+    """Knowing a plugin exists is useless without knowing how to reach it."""
+    result = codebase_tools.list_plugins(context)
+    entries = result["plugins"]
+
+    assert any("rpc_methods" in entry for entry in entries), "no plugin advertises an RPC method"
+    assert any("cli" in entry for entry in entries), "no plugin advertises a command line"
+
+    for entry in entries:
+        for method in entry.get("rpc_methods", []):
+            assert method["name"], f"{entry['id']} has an unnamed RPC method"
+
+
+def test_a_plugin_is_findable_by_its_rpc_method_name(context):
+    """"kappa" is what a user types; it appears only in the method name."""
+    result = codebase_tools.list_plugins(context, query="kappa")
+    names = [
+        method["name"]
+        for entry in result["plugins"]
+        for method in entry.get("rpc_methods", [])
+    ]
+    assert "kappa2_dist.compute" in names
 
 
 def test_list_plugins_reports_a_miss(context):
