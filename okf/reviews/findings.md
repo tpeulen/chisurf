@@ -1562,3 +1562,51 @@ from `test/agent/test_runtime.py`. RF-120..RF-125.
 - **Location:** `chisurf/core/agent/cli.py:249-254` (`except KeyboardInterrupt: session.cancel()`) against `chisurf/core/agent/runtime.py:229-231` (`cancel` sets a flag the loop tests) and `:251` (`ask` clears `_cancelled` on entry)
 - **Finding:** By the time the `except` runs, `KeyboardInterrupt` has already propagated out of `ask()` and unwound the loop, so setting `_cancelled` has no loop left to stop; the next question clears the flag before anything reads it. The cooperative cancel the runtime provides is therefore never exercised by the CLI — the only path is the hard unwind, which is also what leaves the orphaned tool ids of RF-120 (and, unlike the loop's own cancel path, produces no `agent.completed` event and no `stop_reason`). Either install a SIGINT handler that calls `session.cancel()` from outside the call (so the loop stops itself at its next checkpoint) or, at minimum, `session.reset()` here so the next question starts from a conversation the provider will accept.
 - **Fix note:**
+
+## GUI-tester run — Anisotropy wizard (2026-07-26)
+
+Driven headlessly through the real widgets: the Read-data experiment/reader combo
+boxes in VV/VH mode, `WizardHub`, the AutoForm `WizardWidget` Back/Next rail, the
+bound file-path line edits, the embedded `IrfNormalizationWidget` and
+`ComponentsWidget`, and the **Create fits** button, with screenshots at every
+step. Data: the VV/VH-stacked `test/data/tcspc/Jordi/` decay and water IRF. Use
+case: [anisotropy wizard](/usecases/anisotropy-wizard-global-fit.md). The
+workflow does work end to end — 14 VV↔VH links applied, global fit converged to
+χ²ᵣ = 4.58 — but only once the fitting RPC was pinned to a private port; the
+first two attempts hit RF-012 (a foreign ChiSurf on 8765) and every link call
+returned *"fit not found"* while the wizard reported success. RF-126..RF-130.
+
+### RF-126
+- **Status:** OPEN
+- **Severity:** S2 (the only feedback control on the wizard's Data step is dead — it reports "no file" for four files that are loaded and fitted)
+- **Location:** `chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py:311-323` (`data_html`) rendered by the `{"type": "info", "source": "data_html"}` section of `anisotropy.view.json:32`, fed by `chisurf/gui/autoform/sections/builtin.py:1066-1069` (`_commit_file`) → `:369` (`_commit`) which never calls `model.notify()` / `model.update()`
+- **Finding:** `data_html` builds a four-row checklist (`IRF VV / IRF VH / Data VV / Data VH`, ✓ or `—`, plus the path) and is rendered once when the step is built. Committing a path — typing it and pressing Enter, or picking it with the **…** browse button — sets the model attribute but fires no model notification, so the info panel is never re-rendered. Verified across a whole session: after all four paths were set (`model.data_ready == True`) the panel still read `IRF VV —`, `IRF VH —`, `Data VV —`, `Data VH —`; after navigating to *Normalize IRF* and back it still read `—` on all four rows (`05_data_step_filled.png`, `05b_data_step_revisited.png`), and it was still `—` after the curves had been loaded and a global fit run off them. The nav ✓ on **Data** has the milder version of the same bug: it is driven by `WizardWidget.refresh()`, which only runs from `_on_nav_changed`, so it appears one navigation late — the nav labels are `['✓ Welcome', 'Data', ...]` immediately after filling and `['✓ Welcome', '✓ Data', ...]` after a Next+Back. A user who types the paths sees no acknowledgement anywhere on the step. Have `_commit_file`/`_commit` notify the model (the wizard already re-renders info sections on `AUTOFORM_REFRESH`), and refresh the nav on model change rather than only on navigation.
+- **Fix note:**
+
+### RF-127
+- **Status:** OPEN
+- **Severity:** S2 (the wizard reports "created … with all parameters linked" when not one link was applied; the links are the whole purpose of the tool)
+- **Location:** `chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py:428` (`self._set_status(True, "Created VV, VH and global anisotropy fits.")`, reached unconditionally after `core_fits.apply_link_plan`) with `chisurf/plugins/fluorescence_decay/tr_anisotropy/core/fits.py:81-120` (`apply_link_plan` ignores every return value) and `chisurf/gui/widgets/fitting/fitting_client.py:125-169` (`_try_rpc` logs and returns `None` on failure)
+- **Finding:** `apply_link_plan` replays ~40 `link_parameters` / `set_parameter_value` / `set_parameter_fixed` / `update_fit` calls through the fitting client. Each one swallows its own failure (`_try_rpc` → `None`), the plan ignores the results, and `create_fits` then prints the green success message regardless. Observed twice in this run: with the RPC transport pointing at a foreign ChiSurf every call failed (`RemoteError: fit not found`, `RemoteError: source fit not found` — ~40 tracebacks in the log) and the Finish step still showed *"Created VV, VH and global anisotropy fits."* in green (`14_finish_after_create.png`). The resulting fits had `g = 1`, `l1 = l2 = 0` (typed: 1.15 / 0.12 / 0.44), `n0` fixed, and an empty `Link` column in the global fit's *Info* tab — i.e. two unrelated single-channel fits presented as a linked anisotropy analysis. The wizard is the one place a user cannot check the wiring by hand, so a silent failure here is unrecoverable. Make `apply_link_plan` collect the failed operations and have `create_fits` report them (`_set_status(False, …)` already exists and is used for the two pre-flight checks).
+- **Fix note:**
+
+### RF-128
+- **Status:** OPEN
+- **Severity:** S3 (the datasets the wizard registers are named with an absolute path and a doubled polarisation suffix)
+- **Location:** `chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py:266-280` (`_make_curve`: `name=os.path.splitext(template.name)[0] + suffix` at `:278`) called at `:264-265` with `suffix="_vv"` / `"_vh"` on templates whose `name` was already given the suffix at `:246`
+- **Finding:** `load_data` names each loaded curve `<path-without-extension>_<pol>`; `apply_region` then passes that curve to `_make_curve` with the *same* suffix again. Verified: the corrected IRFs are appended to `chisurf.imported_datasets` as `/Users/…/test/data/tcspc/Jordi/H2O_8-0 ps_2048 ch_vv_vv` and `…_vh_vh`, and the sample decays as `/Users/…/02_18-577+7.5uM(577)UP_8ps_vv`. Every dataset the wizard creates therefore carries the user's full filesystem path as its display name (it is the fit-window title, the dataset-tree row and the IRF-picker entry — the fit window title truncates to `…/Jordi/02_18-577+7.5uM(577)UP_8ps_U`, so the `_vv`/`_vh` that distinguishes the two windows is the part that gets cut). Use the basename, and do not re-append a suffix the template already carries.
+- **Fix note:**
+
+### RF-129
+- **Status:** OPEN
+- **Severity:** S3 (the two polarisation channels of one measurement are fitted over different time windows, both running into the next excitation pulse, and the wizard offers no way to set the range)
+- **Location:** `chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py:371-380` (`create_fits` dispatches `fit.add` for the two datasets and never touches the range) with the per-fit auto-range in `chisurf/gui/widgets/fitting/fitting_widget.py` (`onAutoFitRange`)
+- **Finding:** Each of the two fits auto-ranges from its own curve, so the VV fit gets `(328, 1809)` and the VH fit `(343, 1827)` — a 15-channel (0.5 ns) difference in start and an 18-channel difference in stop, on two channels that share one time axis, one IRF position and (after the link plan) one `ts`, one `n0` and one lifetime spectrum. Verified in this run's fit windows (`Range 328, 1809` / `Range 343, 1827`). Both stops also sit past the end of the usable window: at `dt = 0.032` ns and 25 MHz, channel 1809 is 57.9 ns and the data are already rising into the following pulse there, which is the +20 σ spike at the right edge of the VV weighted residuals (`16_fitwindow_0.png`) and a large part of the χ²ᵣ = 4.67. The wizard has no fit-range step, so a user who follows it end to end never sees or sets this. Give the wizard one common range for both channels (auto-detected from VV, editable), or at minimum link `start`/`stop` in the plan alongside `ts` and `n0`.
+- **Fix note:**
+
+### RF-130
+- **Status:** OPEN
+- **Severity:** S3 (two model outputs are `nan` in every fit the wizard builds)
+- **Location:** `chisurf/gui/widgets/models/tcspc/anisotropy.py:635-657` (`_compute_vv_bg_corrected_integral` / `_compute_vh_bg_corrected_integral` → `float('nan')` when the diagnostics are unavailable) reached via `:482-501` (`_extract_vv_vh_bg_corrected`, whose stacked branch requires `polarization_type in ('vv/vh', 'vvvh')`) against `chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/view_model.py:418-419`, which sets `polarization_type` to `"vv"` and `"vh"`
+- **Finding:** The anisotropy model exposes `vv_bg_int` / `vh_bg_int` as `is_output=True` parameters (`VV_bg-corr` / `VH_bg-corr` in the panel, and rows in the fit's *Info* tab). In both wizard-built fits they read `nan` after a converged global fit — verified by dumping `model.parameters_all` on the VV fit after `chi2r = 4.6712`: `vv_bg_int = nan fixed=True`, `vh_bg_int = nan fixed=True`, while every other output (`r_ss_l = 0.2569`, `r_ss_i = 0.1820`) is finite. The wizard puts one polarisation per fit and sets `polarization_type` to `"vv"`/`"vh"`, so the stacked branch of `_extract_vv_vh_bg_corrected` is skipped and the fit-group branch does not find a usable VV/VH pair either. Either make the diagnostics work for the wizard's split-channel layout (the group branch already looks for local fits by `polarization_type`) or hide the two outputs when they cannot be computed — printing `nan` next to real numbers invites it into a table.
+- **Fix note:**
