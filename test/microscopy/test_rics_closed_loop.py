@@ -136,6 +136,88 @@ def test_photons_and_not_scanner_markers_form_the_image():
     assert scan.n_photons == int(scan.images.sum())
 
 
+def test_neighbouring_pixels_dominate_the_signal():
+    """A molecule is excited by the beam wherever it is, not only under it.
+
+    With a 250 nm waist and 50 nm pixels most of the excitation comes from
+    *outside* the pixel being scanned, so a simulation that lit only the current
+    pixel would be wrong by more than it was right. Checked on the point-spread
+    function directly, since it is a property of the optics rather than of any
+    one scan.
+    """
+    import tttrlib
+
+    focus = tttrlib.SimGrid.analytic_gaussian3d(0.25, 1.0, 1.0)
+    centre = focus.at(0.0, 0.0, 0.0)
+    # One pixel away the beam still excites ~92 % as strongly as at the centre.
+    assert focus.at(0.05, 0.0, 0.0) / centre > 0.9
+    # Three pixels away — a different pixel entirely — it is still substantial.
+    assert focus.at(0.15, 0.0, 0.0) / centre > 0.4
+    # Eight pixels away it has effectively vanished, which is why a grid a few
+    # waists wide loses nothing.
+    assert focus.at(0.40, 0.0, 0.0) / centre < 0.01
+
+
+def test_coasting_must_stay_off_for_a_scan():
+    """``per_molecule_skip`` is valid for a fixed focus and wrong for a raster.
+
+    The optimisation decides a molecule is too far from the focus to matter and
+    fast-forwards it. That holds when the focus stands still; in a scan the beam
+    travels **to** the molecule, so the ones it skips are exactly the ones about
+    to be scanned. This pins the damage — it is the kind of setting that looks
+    like free speed and silently removes much of the signal.
+
+    How much it removes depends on the configuration, so the assertion below
+    is deliberately loose: measured at 11x fewer photons with a wide analytic
+    focus, and 1.85x with the focus-sized voxel grid this function uses. The
+    claim worth pinning is that coasting is *not* free, not a given factor.
+    """
+    import tttrlib
+
+    from chisurf.core.fluorescence.imaging.simulate import simulate_clsm_diffusion
+
+    honest = simulate_clsm_diffusion(2.0, n_pixel=32, n_frames=8,
+                                     n_molecules=300, seed=7)
+
+    # Build the same scan by hand, with coasting switched on.
+    w_r, w_z, pixel_time, pixel_size = 0.25, 1.0, 2e-5, 0.05
+    scanned = 32 * pixel_size
+    box_xy = 0.5 * scanned * np.sqrt(2.0) + 4.0 * w_r
+    sample = tttrlib.SimSystem()
+    species = tttrlib.SimSpecies()
+    species.D = 2.0
+    species.q = tttrlib.VectorDouble([2e6])
+    species.r0 = 0.0
+    sample.add_species(species)
+    sample.set_background([0.0])
+    sample.set_box(box_xy, 4.0)
+    sample.set_population(0, 300.0)
+    settings = tttrlib.SimIntegrator()
+    settings.dt = pixel_time
+    settings.n_channels = 1
+    settings.n_ph_max = 10 ** 12
+    settings.seed_diffusion = 7
+    settings.seed_emission = 8
+    settings.per_molecule_skip = True
+    engine = tttrlib.SimEngine(
+        sample, tttrlib.SimGrid.gaussian3d(w_r, w_z, 4.0 * w_r, 4.0, 0.05, 1.0),
+        tttrlib.VectorSimGrid([]), settings,
+    )
+    scanner = tttrlib.SimScanner.uniform(
+        32, 32, pixel_time, pixel_size, pixel_size,
+        -0.5 * scanned, -0.5 * scanned, tttrlib.SimMarkerConfig(), False,
+    )
+    for _ in range(8):
+        engine.run_scan(scanner)
+    event_type = np.asarray(engine.event_type())
+    coasted = int((event_type == 0).sum())
+
+    # Coasting throws photons away; the honest scan must collect materially
+    # more. If this ever stops holding, coasting has been taught about the
+    # scanner and the warning in simulate_clsm_diffusion can be revisited.
+    assert honest.n_photons > 1.4 * coasted
+
+
 def test_an_impossible_setting_is_refused():
     """Nonsense in, error out — not a scan that quietly means nothing."""
     with pytest.raises(ValueError, match="cannot be negative"):

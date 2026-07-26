@@ -518,10 +518,16 @@ be, because three of them were defects in the code rather than in the tests.
   `box_z` from 4 to 16 µm with the population scaled to match moves the ratio only
   1.40 → 1.31), and **non-stationarity** (the open-volume population holds the
   mean intensity flat across the acquisition, which a fixed emitter set does not).
-  Still to check: whether the simulator's `SimGrid.gaussian3d(w0, z0, …)` axial
-  argument means the same `1/e²` waist as the model's `w_z` (a 1/e-versus-1/e²
-  convention difference would be a √2 in the axial term); the correlator's
-  normalisation convention against the model's `γ` factor; and whether the fitted
-  lag window (10 lags) is wide enough to constrain `D` rather than trading against
-  `N`. The test pins the loop with a deliberately wide tolerance so that fixing
-  the bias, or breaking the recovery, both show up.
+  **Also ruled out: the simulated PSF.** Refining the excitation grid sixfold
+  (spacing 0.05 → 0.02 µm) leaves the ratio unmoved (1.390 → 1.392), and an
+  *exact*, voxel-free analytic Gaussian focus is slightly **worse** (1.53). Since
+  the RICS model assumes precisely that Gaussian, an exact PSF should have fitted
+  best — so the discrepancy lives in the analysis, not the simulation.
+  **The fit is degenerate**, which is probably why: freeing `w_r` does not
+  converge on the simulated 0.25 µm but slides along an `N`–`D`–`w_r` trade-off
+  to `w_r` = 0.303 µm and a *worse* ratio (2.11). Still to check: the
+  correlator's normalisation convention against the model's `γ` factor, and
+  whether a 10-lag window constrains `D` at all rather than trading it against
+  `N` — a support-plane scan over `D` would answer that directly. The test pins
+  the loop with a deliberately wide tolerance so that fixing the bias, or
+  breaking the recovery, both show up.
