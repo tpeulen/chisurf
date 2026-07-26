@@ -2,6 +2,43 @@
 
 ## 2026-07-26
 
+* **chimol: `sort` and `mask`/`unmask`.** The priority table is transcribed from
+  `AtomInfoAssignParameters`, and reading the C++ overturned a conclusion I had
+  already drawn from data. My first rule folded the branch digit into the priority
+  and disagreed with **both** hydrogenated structures checked — 10% of atoms in
+  148L, 2% in hGBP1 — which I initially read as "these files are non-canonical".
+  They are not: PyMOL's priority depends **only on the Greek letter**, so `CG2`
+  and `OG1` both score 5 and the *name* comparison settles them, giving `CG2`
+  first, exactly as deposited files have it. The rule was wrong, not the files.
+
+  The second surprise: a one-character `C` or `O` scores 997/998, so PyMOL's
+  canonical order is `N, CA, CB, ..., C, O, OXT` — side chain *before* the
+  carbonyl, which is not PDB write order. Sorting a freshly loaded file therefore
+  moves 74% of its atoms, and matching PyMOL means accepting that.
+
+  **The consequence, not the ordering, is the dangerous part.** A reorder
+  invalidates every array indexed by atom and every bond index. The atom-indexed
+  fields are written out rather than detected by shape — a residue-length array
+  can coincidentally match the atom count, and being wrong pairs colours with the
+  wrong coordinates — with a **guardrail test** that walks the state dataclass and
+  fails on any array field neither listed as atom-indexed nor as exempt. It found
+  three unclassified fields on its first run.
+
+  Mutation testing said something worth recording: breaking the per-atom colour
+  permutation fails 2 tests and breaking the `bond_edits` remap fails 1, but
+  breaking the `bond_pairs` remap **passes**. That is not a hole in the tests — the
+  command rebuilds afterwards and re-infers bonds from coordinates, overwriting
+  what the remap set. So that line is belt-and-braces for a direct API caller and
+  the `bond_edits` remap is the part that must be right. Recorded in the code
+  rather than left looking tested.
+
+  `mask`/`unmask` are threaded into the pick site, because a flag nothing reads is
+  decoration, and kept separate from `protect`: one is about the mouse, the other
+  about transforms.
+
+  29 tests and a guide section. Tier 2 now has `cealign` (skipped by request),
+  `matrix_copy`, `symexp`/`symmetry`, `ramp_new` and the cartoon variants left.
+
 * **A calibration that could not be measured now says so instead of returning a
   bound.** `refine_calibration` clipped the posterior `gamma` into `[0.05, 20]`
   without ever asking whether it was a number. One population without signal is

@@ -226,14 +226,58 @@ confusion is exactly what hid `resn`.
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
 `alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
 `group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`, `h_add`/`h_fill`, `smooth`,
-`protect`/`deprotect`.
+`protect`/`deprotect`, `sort`, `mask`/`unmask`.
 
-**Remaining:** `sort`, `mask`,
-`cealign`, `matrix_copy`,
+**Remaining:** `cealign`, `matrix_copy`,
 `symexp`/`symmetry`, `ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 `set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
 settings store and are deliberately not started.
+
+## `sort`: the ordering was the easy half
+
+The priority table is transcribed from `AtomInfoAssignParameters`. Two of its
+properties are counter-intuitive, and both were got wrong by guessing before the
+source was read:
+
+* **priority depends only on the Greek letter, not the branch number.** `CG2` and
+  `OG1` both score 5, and the *name* comparison settles them — giving `CG2` first,
+  which is what deposited files contain. Folding the branch digit into the
+  priority put `OG1` first and disagreed with **both** real structures checked
+  (148L and hGBP1), at 10% and 2% of atoms. Reading the C++ turned a
+  "the files are non-canonical" conclusion into "the rule was wrong";
+* **a one-character `C` or `O` scores 997/998**, so the canonical order is
+  `N, CA, CB, ..., C, O, OXT` — side chain *before* the carbonyl. That is not PDB
+  write order, so sorting a freshly loaded file genuinely reorders it (74% of
+  atoms move), and matching PyMOL means accepting that.
+
+**The consequence, not the ordering, is the dangerous part.** A reorder
+invalidates every array indexed by atom and every bond index. The atom-indexed
+fields are written out rather than detected by shape — a residue-length array can
+coincidentally match the atom count, and being wrong there pairs colours with the
+wrong coordinates — and a **guardrail test** walks the state dataclass and fails
+on any array field that is neither listed as atom-indexed nor listed as exempt.
+It found three unclassified fields on its first run.
+
+Mutation testing was informative beyond confirming the tests bite:
+
+| broken deliberately | caught? |
+| --- | --- |
+| per-atom colour array not permuted | yes, 2 failures |
+| manual `bond_edits` keys not remapped | yes |
+| `bond_pairs` indices not remapped | **no** |
+
+The last one is not a gap in the tests but a fact about the code: `sort` rebuilds
+afterwards, which re-infers bonds from coordinates and overwrites whatever the
+remap set. So that line is belt-and-braces for a direct API caller, and the
+`bond_edits` remap is the part that has to be right — it is replayed on top of
+each fresh inference. Said so in the code rather than leaving a line that looks
+tested and is not.
+
+`mask`/`unmask` are threaded into the pick site, because a flag nothing reads is
+decoration. Kept separate from `protect`: one is about the mouse, the other about
+transforms, and conflating them would mean hiding an atom from selection also
+froze it.
 
 ## `smooth` is four decisions, none of them in the help text
 

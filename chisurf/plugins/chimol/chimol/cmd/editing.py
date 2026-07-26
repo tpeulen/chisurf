@@ -516,6 +516,122 @@ class EditingMixin(BaseCmd):
                 viewer._secondary_structure = secondary
         viewer._update_view()
 
+    @command("sort")
+    def sort(self, object: str = "") -> None:
+        """Reorder atoms canonically (PyMOL ``sort [object]``).
+
+        Mainly needed after ``alter`` has changed the names the order depends on.
+        With no argument every object is sorted.
+
+        Parameters
+        ----------
+        object : str, optional
+            Object to sort; all of them when omitted.
+
+        Notes
+        -----
+        PyMOL's order puts the side chain **before** the carbonyl: ``N, CA, CB,
+        CG, ..., C, O, OXT``, because a one-character ``C`` and ``O`` score 997
+        and 998 in its priority table. That is not the order a PDB file is
+        written in, so sorting a freshly loaded structure does change it.
+        """
+        from ..analysis.atom_order import permute_atom_state, sort_order
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        wanted = str(object).strip()
+        targets = []
+        if wanted:
+            info = self._find_object_by_name(viewer, wanted)
+            if info is None:
+                self._emit_error(f"sort: no such object: {wanted}")
+                return
+            targets.append(str(info.get("id")))
+        else:
+            targets = [
+                str(o.get("id")) for o in viewer.list_objects()
+            ]
+
+        total_moved = 0
+        for object_id in targets:
+            entry = viewer._objects.get(object_id)
+            state = getattr(entry, "state", None)
+            atoms = getattr(state, "atoms", None)
+            if atoms is None or len(atoms) == 0:
+                continue
+            order = sort_order(atoms)
+            if np.array_equal(order, np.arange(len(atoms))):
+                continue
+            permute_atom_state(state, order)
+            total_moved += int((order != np.arange(len(atoms))).sum())
+            self._rebuild_after_coordinate_change(viewer, object_id)
+
+        if window is not None and hasattr(window, "_refresh_objects_from_viewer"):
+            window._refresh_objects_from_viewer()
+        if total_moved:
+            self._emit_message(f"sort: {total_moved} atoms moved")
+        else:
+            self._emit_message("sort: already in order")
+
+    @command("mask")
+    def mask(self, selection: str = "all") -> None:
+        """Make atoms unpickable (PyMOL ``mask``).
+
+        Useful when one molecule sits in front of another and you want to stop
+        clicking through to the one behind.
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to mask; everything by default.
+        """
+        self._set_masking(str(selection), masked=True)
+
+    @command("unmask")
+    def unmask(self, selection: str = "all") -> None:
+        """Make atoms pickable again (PyMOL ``unmask``).
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to unmask; everything by default.
+        """
+        self._set_masking(str(selection), masked=False)
+
+    def _set_masking(self, selection: str, *, masked: bool) -> None:
+        verb = "mask" if masked else "unmask"
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        try:
+            obj_id, obj_name, sel_mask = self._resolve_selection_to_atom_mask(
+                viewer, selection or "all"
+            )
+        except Exception as exc:
+            self._emit_error(f"{verb}: {exc}")
+            return
+
+        entry = viewer._objects.get(obj_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            self._emit_error(f"{verb}: {obj_name} carries no atoms")
+            return
+
+        sel_mask = np.asarray(sel_mask, dtype=bool)
+        current = entry.state.masked_mask
+        if current is None or np.asarray(current).shape[0] != len(atoms):
+            current = np.zeros(len(atoms), dtype=bool)
+        else:
+            current = np.asarray(current, dtype=bool).copy()
+        current[sel_mask] = masked
+        entry.state.masked_mask = current
+        self._emit_message(
+            f"{verb}: {int(sel_mask.sum())} atoms; "
+            f"{int(current.sum())} now unpickable in {obj_name}"
+        )
+
     @command("protect")
     def protect(self, selection: str = "all") -> None:
         """Hold atoms still during transforms (PyMOL ``protect``).

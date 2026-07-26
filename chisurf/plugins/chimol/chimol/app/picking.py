@@ -231,6 +231,7 @@ def pick_atom_from_click(
     view,
     ev: QtGui.QMouseEvent,  # type: ignore[name-defined]
     radius_px: float,
+    unpickable: Optional[np.ndarray] = None,
 ) -> Optional[int]:
     """Return index of the atom closest to the click in screen space.
 
@@ -244,6 +245,11 @@ def pick_atom_from_click(
         The mouse event.
     radius_px : float
         Click radius in pixels.
+    unpickable : np.ndarray, optional
+        Boolean over atoms, from PyMOL's ``mask``. Masked atoms are excluded
+        from the search, which is the whole point of the command: with one
+        molecule in front of another, it stops the click reaching the one
+        behind.
 
     Returns
     -------
@@ -255,6 +261,10 @@ def pick_atom_from_click(
         return None
 
     sx, sy, mask = projected
+    if unpickable is not None:
+        blocked = np.asarray(unpickable, dtype=bool)
+        if blocked.shape[0] == mask.shape[0]:
+            mask = mask & ~blocked
     if not np.any(mask):
         return None
 

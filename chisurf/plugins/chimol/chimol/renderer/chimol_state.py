@@ -103,6 +103,14 @@ class _MolViewObjectState:
     ``bond_pairs`` because several consumers flatten that array to ask "which
     atoms have a bond", and an order column would read as an atom index.
     """
+    masked_mask: Optional[np.ndarray] = None
+    """Atoms made unpickable by ``mask``, as a boolean over all atoms.
+
+    PyMOL's ``mask`` stops the mouse selecting an atom, which is what makes a
+    molecule in front workable when another sits behind it. Kept separate from
+    ``protected_mask``: one is about the mouse, the other about transforms, and
+    conflating them would mean hiding an atom from selection also froze it.
+    """
     protected_mask: Optional[np.ndarray] = None
     """Atoms held in place by ``protect``, as a boolean over all atoms.
 

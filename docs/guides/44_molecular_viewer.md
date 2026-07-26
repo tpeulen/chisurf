@@ -77,6 +77,23 @@ deprotect all
 `protect` shields atoms from `translate` and `rotate`, and the command reports how
 many it held so a silent no-op is not mistaken for a move.
 
+### Tidying and shielding
+
+```text
+sort                         # canonical atom order, all objects
+sort 148l                    # just one
+mask resi 1-40               # stop the mouse selecting these
+unmask all
+```
+
+`sort` is mainly needed after `alter` has changed the names the order depends on.
+It reorders more than you may expect on a freshly loaded file, because PyMOL's
+canonical order puts the side chain **before** the carbonyl —
+`N, CA, CB, CG, ..., C, O, OXT` — which is not how a PDB file is written.
+
+`mask` is about the mouse and `protect` is about transforms; they are deliberately
+separate, so hiding an atom from selection does not also freeze it.
+
 ### Adding hydrogens
 
 Crystal structures usually have none:
