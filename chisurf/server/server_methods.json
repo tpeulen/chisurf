@@ -55,6 +55,7 @@
     {"rpc": "model.set_parse_function", "service": "models.model_set_parse_function"},
     {"rpc": "graph.build_fits", "service": "graph.build_fit_graph"},
     {"rpc": "graph.build", "service": "graph.build_fit_graph"},
+    {"rpc": "pda.from_bursts", "service": "pda.from_bursts"},
     {"rpc": "log.write", "service": "log_svc.write_log"},
 
     {"rpc": "editor.document.list", "service": "code_editor.list_documents"},

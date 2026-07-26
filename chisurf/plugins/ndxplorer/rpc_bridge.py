@@ -2,10 +2,17 @@
 
 In the GUI, ndXplorer runs in-process with ChiSurf, so it does not need a socket: it can
 be handed an :class:`~chisurf.core.plugin.client.InProcessClient` wired to a
-``ServiceDispatcher`` that has the phasor and FRET-line services registered. That client
-satisfies ndXplorer's chisurf-free ``RpcClient`` contract (``call(method, params)``), so
-``NDXplorer(chisurf_rpc=...)`` gains the ``phasor.*`` / ``fret_line.*`` methods with no
-server process and no configuration.
+``ServiceDispatcher`` that has ChiSurf's services registered. That client satisfies
+ndXplorer's chisurf-free ``RpcClient`` contract (``call(method, params)``), so
+``NDXplorer(chisurf_rpc=...)`` gains ChiSurf's RPC methods with no server process and no
+configuration.
+
+The dispatcher is built with the **core manifest** (``fit.*``, ``dataset.*``,
+``pda.from_bursts``, …) *plus* the plugin services below, so ndXplorer gets both the
+phasor / FRET-line overlays and the analysis **bridges** — routing a gated burst
+selection into PDA (``pda.from_bursts``), burst correlation (``burst_fcs.*``) or
+lifetime MLE (``burst_mle.*``), via
+:class:`ndxplorer.analysis.burst_bridge.BurstAnalysisBridge`.
 """
 
 from __future__ import annotations
@@ -15,10 +22,14 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-#: Plugin service entrypoints to register on the in-process dispatcher.
+#: Plugin service entrypoints to register on the in-process dispatcher (on top of
+#: the core manifest). These add the phasor / FRET-line overlays and the burst
+#: analysis targets the bridges dispatch to.
 _SERVICE_REGISTRARS = (
     "chisurf.plugins.microscopy.img_pixel_phasor.backend.services:register_services",
     "chisurf.plugins.fret_line.backend.services:register_services",
+    "chisurf.plugins.burst.burst_fcs_correlator.backend.services:register_services",
+    "chisurf.plugins.burst.burst_mle_analysis.backend.services:register_services",
 )
 
 
@@ -44,6 +55,10 @@ def make_inprocess_chisurf_client() -> Any | None:
         return None
 
     dispatcher = ServiceDispatcher(SessionState())
+    try:
+        dispatcher._build_default_registry()  # core manifest: fit/dataset/pda/…
+    except Exception:
+        logger.warning("Could not build the core RPC registry", exc_info=True)
     for path in _SERVICE_REGISTRARS:
         try:
             _load(path)(dispatcher)
