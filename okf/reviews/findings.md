@@ -2254,6 +2254,82 @@ Findings RF-181..RF-189.
 - **Finding:** (1) The protected-key test is `if (k[0] == "_")`, which assumes every mapping key is a non-empty string: verified `to_elementary({1: 'a'})` → `TypeError: 'int' object is not subscriptable` and `to_elementary({'': 'a'})` → `IndexError: string index out of range`. A single integer-keyed dict anywhere in an object graph aborts the whole save. (2) `isinstance(obj, Iterable)` at `:129` is reached before any bytes handling, so `bytes` become a list of integers — verified: a `Data` with 1 KiB of embedded content serialises to a 13 183-character JSON whose `_data` is an array of 1024 ints, and it restores as a `list`, not `bytes` (`embed_data` defaults to `false`, so this needs the setting turned on). (3) `np.bool_` and `complex` match none of the branches and fall through to `str(obj)` — verified `to_elementary(np.bool_(True))` → `'True'` and `to_elementary(1+2j)` → `'(1+2j)'`, each with a "was not converted to basic type" warning and a stray `print` to stdout at `:167`. Guard the key test with `isinstance(k, str)`, handle `bytes` explicitly (base64 or hex), and add `np.bool_`/`complex` to the ladder.
 - **Fix note:**
 
+### Review 2026-07-26 (14) — the TCSPC nuisance layer (`models/tcspc/nusiance.py`)
+
+Slice: `Generic` / `Corrections` / `Convolve` — the three parameter groups every
+TCSPC decay model composes — plus the two kernels they call
+(`fluorescence/tcspc/corrections.py`, `fluorescence/tcspc/tcspc.py:rescale_w_bg`)
+and the widgets that drive them (`gui/widgets/models/tcspc/convolve.py`,
+`corrections.py`). This is the layer that turns a lifetime spectrum into a
+comparable model decay, and it is essentially untested: the only files in `test/`
+that mention `Convolve` assert *method names* via `ast` (`test_convolve_widget_contract.py`),
+and nothing exercises `_process_irf`, `scale`, `pileup` or the mode dispatch.
+Every finding below was reproduced in the `arm64` env against the real objects.
+Findings RF-193..RF-201.
+
+### RF-193
+- **Status:** OPEN
+- **Severity:** S1 (the pile-up correction silently turns the entire model decay into `NaN`)
+- **Location:** `chisurf/core/fluorescence/tcspc/corrections.py:170-186` (`add_pile_up_to_model`), called from `chisurf/core/models/tcspc/nusiance.py:280-294` (`Corrections.pileup`)
+- **Finding:** `n_excitation_pulses = max(live_time * rep_rate, n_pulse_detected)` and then `p = data / (n_excitation_pulses - np.cumsum(data))`. Whenever the first term loses the `max` — i.e. whenever the assumed measurement time is too short for the number of recorded photons — `n_excitation_pulses` equals `cumsum[-1]`, so the **last** denominator is exactly `0`, `p[-1]` is `inf`, and `-log(1 - inf)` is `NaN`. The single `NaN` is then broadcast over the whole array by the normalisation `sf = sf / np.sum(sf) * len(data)`. Verified: `add_pile_up_to_model(y, m, rep_rate=20.0, dead_time=85.0, measurement_time=1.0, modify_inplace=False)` on a 64-channel decay holding 1e8 photons returns **64 NaN of 64**; the same call with `measurement_time=300.0` returns none. This is reachable by default, not exotic: `Corrections.measurement_time` reads `generic.t_exp`, whose `FittingParameter` default is `1.0` s and which the user must set by hand, so ticking the pile-up box on any long measurement poisons the model. The function is `@nb.jit(nopython=True)`, so there is no warning — the fit just reports `NaN` chi². Clamp the denominator (and `p < 1`) or refuse to correct when `live_time <= 0`.
+- **Fix note:**
+
+### RF-194
+- **Status:** OPEN
+- **Severity:** S1 (the convolution on/off checkbox and the `convolution_on_by_default` setting have no effect)
+- **Location:** `chisurf/core/models/tcspc/nusiance.py:497-505` (`Convolve.do_convolution`), written at `:979`, `:1038` and `chisurf/gui/widgets/models/tcspc/convolve.py:167`
+- **Finding:** `do_convolution` is written from four places — the settings key `tcspc.convolution_on_by_default`, the GUI checkbox in `onConvolutionModeChanged`, `Convolve.set_state` on project load, and `fluorescence/decay_fit_model.py:135` — and **read by nobody**. `grep -rn do_convolution chisurf --include='*.py'` returns only the property, those writes, and a doc mention in `core/dataspec/__init__.py:328`; neither `Convolve.convolve` nor `Lifetime.update_model` consults it, and `update_model` calls `self.convolve.convolve(...)` unconditionally. So unticking the box in the Convolve panel leaves the model convolved with the IRF, and the state faithfully round-trips through a project save while meaning nothing. Either honour the flag in `Convolve.convolve` (return the raw decay when it is off) or remove the flag, the checkbox and the setting.
+- **Fix note:**
+
+### RF-195
+- **Status:** OPEN
+- **Severity:** S1 (a loaded IRF has the lamp background subtracted twice, a synthetic one once)
+- **Location:** `chisurf/core/models/tcspc/nusiance.py:535-554` (`Convolve._process_irf`)
+- **Finding:** The `isinstance(self._irf, Curve)` branch at `:535-538` already does `irf -= self.lamp_background` followed by `np.clip(irf.y, 0, None)`, and lines `:553-554` — outside the `if/else` — do exactly the same two statements again. `Curve` defines `__sub__` but no `__isub__`, so `-=` rebinds to a fresh curve each time and the stored IRF is not mutated; the result is simply `clip(clip(irf - lb, 0) - lb, 0)`. Verified on a real `Convolve`: with `lamp_background = 1.0` and IRF `y = [0,4,10,6,3,1,0,0]`, `_process_irf(normalize=False)` returns `[0,2,8,4,1,0,0,0]` where a single subtraction gives `[0,3,9,5,2,0,0,0]`. The synthetic-IRF branch (`:539-551`) never subtracts inside the branch, so it gets the background removed exactly once — the two paths disagree. `lb` is a fittable parameter whose upper bound is set to half the lamp height when an IRF is loaded (`:726-732`), so any non-zero value doubles. Delete the duplicated pair inside the `if`.
+- **Fix note:**
+
+### RF-196
+- **Status:** OPEN
+- **Severity:** S2 (the user-facing `start` channel of the Convolve panel can never take effect)
+- **Location:** `chisurf/core/models/tcspc/nusiance.py:764` (`Convolve.scale`) and `:843` (`Convolve.convolve`)
+- **Finding:** Both read `start = min(0, self.start)`. `self.start` is `int(self._start.value // self.dt)` and is non-negative in every realistic setting, so `min(0, ...)` is **always 0** — this is a `max`/`min` inversion. `_start` is a real widget (`gui/widgets/models/tcspc/convolve.py:90` builds a fitting-parameter widget for it next to `_stop`, whose `min(self.stop, len(decay))` clamp *is* correct), and `Lifetime.update_model` calls `self.convolve.scale(decay, bg=...)` with no explicit `start`, so the analytic n0 rescale always runs over `[0, stop)` and silently ignores the channel the user asked to start at. In `convolve` the local is dead as well: `convolve_lifetime_spectrum_periodic` drops its `start` argument entirely and the `exp` path never receives one. Use `max(0, self.start)` in `scale` and delete the unused local in `convolve`.
+- **Fix note:**
+
+### RF-197
+- **Status:** OPEN
+- **Severity:** S2 (the analytic autoscale weights channels by their variance instead of its inverse, so `n0` is not the chi²-optimal amplitude)
+- **Location:** `chisurf/core/fluorescence/tcspc/tcspc.py:87-91` (`rescale_w_bg`), called from `chisurf/core/models/tcspc/nusiance.py:772-781` (`Convolve.scale`)
+- **Finding:** The kernel computes `iwsq = 1.0 / (w[i] * w[i] + 1e-12)` and multiplies both sums by it, i.e. it treats its `experimental_weights` argument as an *error* σ. Both callers pass the reciprocal: `Convolve.scale` uses `weights = 1.0 / data.ey` and `plugins/fluorescence_decay/lltf/core/scaling.py:97` uses `1.0 / np.sqrt(...)`. `data.ey` is σ (`counting_noise` returns `sqrt(counts)`, and `calculate_weighted_residuals` divides by `data.ey`), so the sums end up weighted by **σ² instead of 1/σ²** — the inverse of the weighting the fit itself minimises. Verified on a 1024-channel Poisson decay: the closed-form WLS optimum `Σ m·d/σ² / Σ m²/σ²` is `20041.73` (chi²r `1.39442`); calling `rescale_w_bg` with `ey` reproduces it to 4 decimals, while the call as chisurf makes it returns `20017.59` (chi²r `1.39621`). Since autoscale exists precisely to place `n0` at its conditional optimum, it currently leaves chi² systematically above what the same model can reach. Fix in the kernel (`iwsq = w[i]*w[i]`, matching the parameter name) or at both call sites, not half of each.
+- **Fix note:**
+
+### RF-198
+- **Status:** OPEN
+- **Severity:** S2 (the `curve` convolution mode is offered by the lifetime widget, where it convolves the lifetime *spectrum*; an unknown mode returns a zero decay)
+- **Location:** `chisurf/core/models/tcspc/nusiance.py:845-871` (`Convolve.convolve`, the mode ladder), exposed by `chisurf/gui/widgets/models/tcspc/lifetime.py:390` (`hide_curve_convolution=False`)
+- **Finding:** Two defects in the mode dispatch. (1) `mode == "full"` runs `np.convolve(data, irf_y)`, which is only meaningful when `data` is a *decay* — as it is for `ParseDecayModel`, which passes `self.y`. `Lifetime.update_model` passes the interleaved lifetime spectrum `(a₁, τ₁, a₂, τ₂, …)`, so the "curve" radio produces the IRF smeared by a 2n-element amplitude array with no exponential tail at all. Verified with a τ=4 ns single exponential and a Gaussian IRF: `per` decays as `[1e-4, 2.3e-3, 0.031, 0.166, 0.423, 0.606, 0.593, 0.485, 0.380, …]`, `full` gives `[1e-4, 5e-3, 0.072, 0.458, 1.367, 1.838, 1.022, 0.220, 0.018, 5e-4, 0, 0]` — dead within ten channels. `ConvolveWidget` hides that radio by default, but the lifetime, MaxEnt and parse widgets all pass `hide_curve_convolution=False`. (2) The ladder has no `else`: an unrecognised mode returns the untouched zero buffer plus `scatter * irf_y`. Verified: `convolve(spec, mode='banana')` returns all zeros. `Convolve.set_state` assigns any string from a project file straight to `self.mode` with no validation, so a stale or corrupted project silently yields an all-zero model. Restrict the mode list per model and raise on an unknown mode.
+- **Fix note:**
+
+### RF-199
+- **Status:** OPEN
+- **Severity:** S2 (changing the smoothing window raises `AttributeError` when no linearization curve is loaded, swallowed by a bare `except`)
+- **Location:** `chisurf/core/models/tcspc/nusiance.py:180-195` (`Corrections.window_length` / `window_function` setters), `_curve` initialised to `None` at `:399`
+- **Finding:** Both setters end with `self._lintable = self.calc_lintable(self._curve.y)`, but `_curve` is only assigned by the `lintable` setter — it is `None` until a linearization curve is loaded, and `unload_lintable` puts it back to `None`. So `model.corrections.window_function = 'hamming'` on a fit with no lintable raises `AttributeError: 'NoneType' object has no attribute 'y'`. In the GUI the combo box routes through `model.set_correction` → `chisurf/macros/model.py:71-75`, whose `try/except Exception: pass` swallows it silently, and `Corrections.set_state` (`:355-360`) swallows it again on project load. Guard both setters with `if self._curve is not None` — and note the bare `except` in the macro hides *every* failure of every correction, not just this one.
+- **Fix note:**
+
+### RF-200
+- **Status:** OPEN
+- **Severity:** S3 (two divergent copies of `rescale_w_bg`)
+- **Location:** `chisurf/plugins/fluorescence_decay/lltf/core/scaling.py:12-62` versus `chisurf/core/fluorescence/tcspc/tcspc.py:53-94`
+- **Finding:** The plugin ships a private numba copy of `rescale_w_bg` with the same name, signature and docstring as the core one, and the two have already drifted: the plugin indexes the weights as `w[i - start]` (its caller passes a sliced array) while core uses `w[i]` (its caller passes the full array), and the plugin guards the division as `sum_nom / max(1.0, sum_denom)` while core uses `if sum_denom != 0.0`. Any fix to the weighting convention (RF-197) has to be made twice or the two silently disagree. Import the core function and pass the full array plus `start`/`stop`, or move the sliced variant into core as the single implementation.
+- **Fix note:**
+
+### RF-201
+- **Status:** OPEN
+- **Severity:** S3 (dead state plus a docstring that describes behaviour the code does not have)
+- **Location:** `chisurf/core/models/tcspc/nusiance.py:684-694` (`Convolve.unnormalized_irf`), `:709` and `:981` (`n_photons_irf`)
+- **Finding:** `unnormalized_irf`'s docstring says it "scales the IRF by the `n_photons_irf` factor to restore its original height", but the property just calls `_processed_irf(normalize=False)`, which only *skips* the normalisation and logs `'No IRF scaling'` — no factor is applied anywhere. `n_photons_irf` itself is written in `__init__` and in the `_irf` setter and never read: the only other mention is the commented-out `# / self.n_photons_irf` at `:424`. Either apply the factor or drop the attribute and correct the docstring; as written, a reader has to run the code to find out which of the two is true.
+- **Fix note:**
+
 ### Use-case walk 2026-07-26 — fFCS filter calculator (GUI tester)
 
 Found by driving the **FCS → 🧪 Filter Calc** panel headlessly the way a user does
