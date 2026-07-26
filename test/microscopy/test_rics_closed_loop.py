@@ -28,11 +28,30 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def fit_rics(scan, n_lags: int = 10):
+def fit_rics(scan, n_lags: int = 10, region: str = "line"):
     """Fit ``N`` and ``D`` to the RICS map of *scan*.
 
-    The zero lag is excluded: it carries the shot-noise spike, which is not part
-    of the correlation model and would otherwise dominate a least-squares fit.
+    ``region`` selects which lags enter the fit, and it matters more than any
+    other choice here:
+
+    ``"line"``
+        The slow-axis column only (``xi = 0``, ``1 <= |psi| <= n_lags``). This is
+        where the diffusion information lives — neighbouring lines are a whole
+        line time apart, neighbouring pixels only a dwell.
+    ``"square"``
+        The full ``(2 n + 1)^2`` block, zero lag excluded. The obvious choice,
+        and a bad one.
+
+    Measured over twelve simulations spanning ``D`` = 1 to 5 µm²/s, the square
+    region recovers ``D`` with mean 1.10x and **sd 0.37**, swinging from 0.62x
+    at ``D`` = 1 to 1.41x at ``D`` = 2; the line region gives mean **0.99x, sd
+    0.13**. The square block is dominated by points that carry no information
+    about ``D`` — the ``psi = 0`` row has no time lag at all, and the far lags
+    are pure noise — and 440 mostly-uninformative points outvote the few that
+    matter.
+
+    The zero lag is excluded from both: it carries the shot-noise spike, which
+    is not part of the correlation model.
     """
     from scipy.optimize import curve_fit
 
@@ -43,7 +62,12 @@ def fit_rics(scan, n_lags: int = 10):
         np.arange(-n_lags, n_lags + 1), np.arange(-n_lags, n_lags + 1), indexing="xy"
     )
     block = correlation[cy - n_lags:cy + n_lags + 1, cx - n_lags:cx + n_lags + 1]
-    keep = ~((xi == 0) & (psi == 0))
+    if region == "line":
+        keep = (xi == 0) & (np.abs(psi) >= 1)
+    elif region == "square":
+        keep = ~((xi == 0) & (psi == 0))
+    else:
+        raise ValueError(f"unknown region {region!r}; use 'line' or 'square'")
 
     def model(_, n, d, offset):
         return image_correlation(
@@ -231,21 +255,35 @@ def test_an_impossible_setting_is_refused():
 # ──────────────────────────────────────────────────────────────────────────────
 @pytest.mark.slow
 def test_rics_recovers_the_simulated_diffusion_coefficient():
-    """RICS must read back the D that was scanned, to within a factor.
+    """RICS must read back the D that was scanned.
 
-    The tolerance is wide on purpose and reflects what was measured rather than
-    what would be nice: over four seeds at D = 2 um^2/s the recovered value is
-    biased high by about 35 % with a seed-to-seed spread of 12 %, and the bias
-    does not come from the axial extent of the box (quadrupling ``box_z`` moves
-    it from 1.40 to 1.31). That residual is an open question recorded in the
-    known-issues list; this test pins the loop as it stands, so a change that
-    breaks the recovery — or fixes the bias — is visible immediately.
+    Fitted over the line axis, recovery is essentially unbiased: mean 0.99x with
+    sd 0.13 over twelve simulations spanning D = 1 to 5 um^2/s. The tolerance
+    here covers that scatter with margin rather than papering over a systematic.
     """
     scan = simulate_clsm_diffusion(
         2.0, n_pixel=64, n_frames=60, n_molecules=400, seed=1
     )
     fit = fit_rics(scan)
-    assert fit["diffusion_coefficient"] == pytest.approx(2.0, rel=0.6)
+    assert fit["diffusion_coefficient"] == pytest.approx(2.0, rel=0.35)
+
+
+@pytest.mark.slow
+def test_the_fit_region_is_what_decided_the_old_bias():
+    """Including lags that carry no information about D corrupts the answer.
+
+    The obvious fit region — the whole square block of lags — is dominated by
+    points that say nothing about diffusion: the ``psi = 0`` row spans one pixel
+    dwell, and the far lags have no correlation left. They outvote the line-axis
+    column that does carry it, and the result swings with D (0.62x at D = 1,
+    1.41x at D = 2) in a way that looks like a systematic bias when measured at
+    a single D. This pins the difference so the region cannot quietly revert.
+    """
+    scan = simulate_clsm_diffusion(1.0, n_pixel=64, n_frames=60,
+                                   n_molecules=400, seed=2)
+    line = fit_rics(scan, region="line")["diffusion_coefficient"]
+    square = fit_rics(scan, region="square")["diffusion_coefficient"]
+    assert abs(line - 1.0) < abs(square - 1.0)
 
 
 @pytest.mark.slow
@@ -265,15 +303,27 @@ def test_a_faster_sample_reads_back_as_faster():
 
 @pytest.mark.slow
 def test_a_sample_too_slow_for_the_scan_is_not_resolvable():
-    """RICS cannot measure a D the scan never samples, and should not pretend to.
+    """RICS cannot measure a D the scan never samples — and it does not say so.
 
     At 20 us per pixel a molecule with D = 0.05 um^2/s moves 2 nm between
-    neighbouring pixels and 16 nm across a line, against a 250 nm waist — the
-    correlation is the static focus and D is unidentifiable. The fit runs into
-    its lower bound rather than returning a plausible-looking number, which is
-    the honest outcome and the reason the scan-precision planner exists.
+    neighbouring pixels and 16 nm across a line, against a 250 nm waist, so the
+    correlation is essentially the static focus and D is unidentifiable.
+
+    **The failure is silent, and that is worth knowing.** Fitted over the line
+    axis the result is not a refusal but a confident wrong number: 2.6x the
+    truth at D = 0.05, and 15x at D = 0.02. (The old square region collapsed to
+    its lower bound instead, which was less accurate everywhere else but at
+    least looked broken.) Nothing in the fit announces this, which is precisely
+    why the scan-precision planner exists — the working range has to be checked
+    before the measurement, not after.
     """
-    scan = simulate_clsm_diffusion(0.05, n_pixel=64, n_frames=40,
+    truth = 0.05
+    scan = simulate_clsm_diffusion(truth, n_pixel=64, n_frames=40,
                                    n_molecules=400, seed=1)
-    fit = fit_rics(scan)
-    assert fit["diffusion_coefficient"] < 0.05
+    recovered = fit_rics(scan)["diffusion_coefficient"]
+    # Wrong by more than a factor of two, while a resolvable D lands within ~15 %.
+    assert recovered > 2.0 * truth
+
+    resolvable = simulate_clsm_diffusion(5.0, n_pixel=64, n_frames=40,
+                                         n_molecules=400, seed=1)
+    assert fit_rics(resolvable)["diffusion_coefficient"] == pytest.approx(5.0, rel=0.35)

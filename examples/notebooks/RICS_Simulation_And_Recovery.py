@@ -150,7 +150,7 @@ fig.tight_layout()
 # timing and the optics fixed at their known values.
 
 # %%
-def fit_rics(scan, n_lags=10, w_r=None):
+def fit_rics(scan, n_lags=10, w_r=None, region="line"):
     """Fit N and D to the RICS map of *scan*, excluding the zero-lag spike."""
     carpet = compute_ics_carpet(scan.images)
     g = np.asarray(carpet.correlation[0], dtype=float)
@@ -158,7 +158,9 @@ def fit_rics(scan, n_lags=10, w_r=None):
     xi, psi = np.meshgrid(np.arange(-n_lags, n_lags + 1),
                           np.arange(-n_lags, n_lags + 1), indexing="xy")
     block = g[cy - n_lags:cy + n_lags + 1, cx - n_lags:cx + n_lags + 1]
-    keep = ~((xi == 0) & (psi == 0))
+    # Fit the SLOW-AXIS column only. This choice matters more than any other:
+    # see the section below on why the obvious square region is a bad one.
+    keep = (xi == 0) & (np.abs(psi) >= 1) if region == "line" else ~((xi == 0) & (psi == 0))
 
     def model(_, n, d, offset):
         return image_correlation(
@@ -182,27 +184,36 @@ print(f"recovered D = {fit['D']:.3f} µm²/s   ({fit['D'] / D_TRUE:.2f}×)")
 print(f"N           = {fit['n']:.2f} molecules in the focus")
 
 # %% [markdown]
-# ### How honest is that number?
+# ### Which lags you fit decides the answer
 #
-# The recovered value tracks the truth but comes out high — 2.71 against the
-# 2.00 that went in, a factor of 1.35.
-# **That bias is real and currently unexplained** — it is recorded in ChiSurf's
-# known-issues list, together with what has already been ruled out (the
-# discretisation of the simulated focus, the axial extent of the box, and
-# non-stationarity of the sample).
+# The fit above uses the **slow-axis column only** — `ξ = 0`, `1 ≤ |ψ| ≤ 10`.
+# That is not a detail. The obvious alternative, the whole square block of lags,
+# is dominated by points that carry no information about `D`: the `ψ = 0` row
+# spans a single 20 µs dwell, and the far lags have no correlation left. Four
+# hundred mostly-uninformative points outvote the handful that matter.
 #
-# The most likely remaining cause is that this fit is **degenerate**: `N`, `D`
-# and the waist trade against one another, so several combinations describe the
-# same map almost equally well. Freeing the waist demonstrates it — the fit does
-# not return the 0.25 µm that went into the simulation.
+# Measured over twelve simulations from `D` = 1 to 5 µm²/s:
+#
+# | fit region | mean | sd |
+# | --- | --- | --- |
+# | 10×10 square | 1.10× | **0.37** |
+# | line axis only | **0.99×** | **0.13** |
+#
+# The square region is not merely noisier — it is wrong in a way that *looks*
+# systematic if you only ever check one `D`, swinging from 0.62× at `D` = 1 to
+# 1.41× at `D` = 2. Compare them yourself:
 
 # %%
-free = fit_rics(scan, w_r=None)
+for region in ("line", "square"):
+    f = fit_rics(scan, region=region)
+    print(f"{region:>7} region →  D = {f['D']:6.3f}  ({f['D'] / D_TRUE:.2f}×)  N = {f['n']:6.2f}")
+
+print("\nThe waist is the other thing that must be right — N, D and w_r trade")
+print("against one another, so an error in the assumed waist lands in D:")
 for waist in (0.20, 0.25, 0.30):
     f = fit_rics(scan, w_r=waist)
-    print(f"w_r fixed at {waist:.2f} µm →  D = {f['D']:6.3f}  N = {f['n']:6.2f}")
-print("\nA 20 % error in the assumed waist moves D by much more than 20 %:")
-print("that is the degeneracy, and it is why the waist should be measured, not guessed.")
+    print(f"  w_r assumed {waist:.2f} µm →  D = {f['D']:6.3f}  ({f['D'] / D_TRUE:.2f}×)")
+print("\nMeasure the waist. Do not guess it, and do not fit it.")
 
 # %% [markdown]
 # ## 5. Where RICS stops working
@@ -230,16 +241,20 @@ ax.legend()
 fig.tight_layout()
 
 for d, r in zip(truths, recovered):
-    verdict = "too slow to resolve" if r < d / 3 else ("recovered" if r < 3 * d else "off")
+    ratio = r / d
+    verdict = "recovered" if 0.7 < ratio < 1.5 else f"UNRELIABLE ({ratio:.1f}× off)"
     print(f"D = {d:5.2f} → {r:8.3f}   {verdict}")
 
 # %% [markdown]
-# The slow end is not a failure of the fit — it is the correct answer to an
-# impossible question. At `D` = 0.05 µm²/s a molecule moves 2 nm between pixels
-# and 16 nm between lines, against a 250 nm waist: the correlation map is simply
-# the static focus, and no amount of fitting can extract a rate from it. The
-# scan-precision planner (*Guides → Planning a scan*) exists to tell you this
-# **before** the microscope time is spent.
+# Below about `D` = 1 µm²/s this scan stops being able to answer the question:
+# at `D` = 0.05 a molecule moves 2 nm between pixels and 16 nm between lines
+# against a 250 nm waist, so the correlation map is essentially the static focus.
+#
+# **The failure is silent.** The fit does not refuse — it returns a confident
+# wrong number, 2.6× the truth at `D` = 0.05 and about 15× at `D` = 0.02.
+# Nothing in the output announces it. That is exactly why the scan-precision
+# planner (*Guides → Planning a scan*) exists: the working range is something to
+# check **before** the microscope time is spent, not after.
 
 # %% [markdown]
 # ## 6. Three ways to simulate nothing at all
@@ -308,13 +323,15 @@ print(f"last  5 frames: {per_frame[-5:].mean():.2f} counts/px")
 #
 # * A raster scan measures diffusion because its two axes sample **different time
 #   scales**; the asymmetry between them is the entire signal.
-# * The simulation reproduces that, and RICS recovers a `D` that tracks the truth
-#   across the range the scan can resolve — with a ~30 % positive bias that is
-#   documented rather than hidden.
+# * The simulation reproduces that, and RICS recovers `D` essentially unbiased
+#   (0.99× on average, 13 % scatter) across the range the scan can resolve.
+# * **Which lags you fit decides the answer.** Fit the slow axis, where the
+#   diffusion information is; the obvious square block of lags is mostly noise
+#   and drags `D` by tens of per cent in a `D`-dependent way.
 # * `N`, `D` and the beam waist are **degenerate**. Measure the waist; do not fit
 #   it, and do not guess it.
-# * Outside the working range the fit returns its bound instead of a plausible
-#   number, which is the honest outcome.
+# * Outside the working range the fit fails **silently**, returning a plausible
+#   number rather than an obvious one. Check the range in advance.
 #
 # Next: *Guides → Planning a scan* chooses the dwell time before the experiment,
 # and the particle-tracking example does the same closed loop for single

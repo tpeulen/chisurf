@@ -506,28 +506,28 @@ be, because three of them were defects in the code rather than in the tests.
   Deferred; descriptions are shown as the combo/value-cell tooltip after a key is
   chosen. If revisited, try a custom popup `QListView`/delegate applied *after*
   `showPopup()`, or a side-panel hint instead of dropdown tooltips.
-- **RICS recovers a simulated diffusion coefficient ~35 % high, and the cause is
-  unknown.** The closed loop now exists (`test/microscopy/test_rics_closed_loop.py`):
-  `simulate_clsm_diffusion` raster-scans an open-volume population with a known
-  `D`, and the `image_correlation` model is fitted to the resulting RICS map. It
-  works — the fast/slow axis asymmetry that carries `D` behaves correctly
-  (`G_line/G_pixel` at lag 4 falls 0.96 → 0.87 → 0.79 for `D` = 1 → 5 → 20) and
-  the ordering is right — but the fitted value is biased **high by about 35 %**:
-  over four seeds at `D` = 2 µm²/s the ratio is 1.34 ± 0.12, so it is a
-  systematic, not scatter. Ruled out: **axial truncation of the box** (quadrupling
-  `box_z` from 4 to 16 µm with the population scaled to match moves the ratio only
-  1.40 → 1.31), and **non-stationarity** (the open-volume population holds the
-  mean intensity flat across the acquisition, which a fixed emitter set does not).
-  **Also ruled out: the simulated PSF.** Refining the excitation grid sixfold
-  (spacing 0.05 → 0.02 µm) leaves the ratio unmoved (1.390 → 1.392), and an
-  *exact*, voxel-free analytic Gaussian focus is slightly **worse** (1.53). Since
-  the RICS model assumes precisely that Gaussian, an exact PSF should have fitted
-  best — so the discrepancy lives in the analysis, not the simulation.
-  **The fit is degenerate**, which is probably why: freeing `w_r` does not
-  converge on the simulated 0.25 µm but slides along an `N`–`D`–`w_r` trade-off
-  to `w_r` = 0.303 µm and a *worse* ratio (2.11). Still to check: the
-  correlator's normalisation convention against the model's `γ` factor, and
-  whether a 10-lag window constrains `D` at all rather than trading it against
-  `N` — a support-plane scan over `D` would answer that directly. The test pins
-  the loop with a deliberately wide tolerance so that fixing the bias, or
-  breaking the recovery, both show up.
+- **RESOLVED — the RICS "35 % recovery bias" was the fit region, not the physics.**
+  Recorded here on 2026-07-26 as an unexplained systematic and closed the same
+  day. The closed loop (`test/microscopy/test_rics_closed_loop.py`) fitted the
+  full square block of lags, `|ξ| ≤ 10` and `|ψ| ≤ 10`. Most of those 440 points
+  carry no information about `D`: the `ψ = 0` row spans one 20 µs pixel dwell,
+  and the far lags have no correlation left — so they outvote the slow-axis
+  column that does carry it. Fitting `ξ = 0`, `1 ≤ |ψ| ≤ 10` instead gives
+  **mean 0.99×, sd 0.13** over twelve simulations spanning `D` = 1–5 µm²/s,
+  against **1.10×, sd 0.37** for the square region. The apparent "systematic"
+  was the `D` = 2 slice of a strongly `D`-dependent artefact (0.62× at `D` = 1,
+  1.41× at `D` = 2), which is why measuring at one `D` made it look constant.
+
+  Ruled out along the way, and worth not re-testing: the discretisation of the
+  simulated focus (a sixfold finer grid moves it 1.390 → 1.392, an exact
+  analytic focus is no better), the axial term (an axially long focus leaves the
+  bias unchanged, and the 2-D and 3-D models return identical `D`), the box
+  extent, and non-stationarity. The static limit was already exact — with `D`
+  fixed at 0 the model recovers the simulated waist to 1.4 % — which is what
+  localised the problem to the *dynamic* term and then to the lags being fitted.
+
+  One consequence is now documented rather than fixed: with the better region
+  the slow end fails **silently**. Below about `D` = 1 µm²/s for a 20 µs / 50 nm
+  scan the fit returns a confident wrong number (2.6× at `D` = 0.05, ~15× at
+  `D` = 0.02) instead of collapsing to its bound as the square region did. The
+  scan-precision planner is the intended defence.
