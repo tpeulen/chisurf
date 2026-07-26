@@ -57,6 +57,8 @@ from .simulate import (
     have_simulator,
     load_image_map,
     simulate_clsm_from_maps,
+    DiffusionScan,
+    simulate_clsm_diffusion,
     simulate_clsm_molecules,
 )
 
@@ -105,6 +107,8 @@ __all__ = [
     "have_simulator",
     "load_image_map",
     "simulate_clsm_from_maps",
+    "DiffusionScan",
+    "simulate_clsm_diffusion",
     "simulate_clsm_molecules",
     "build_clsm",
     "build_clsm_windowed",

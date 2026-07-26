@@ -192,6 +192,209 @@ def simulate_clsm_molecules(
     )
 
 
+@dataclasses.dataclass
+class DiffusionScan:
+    """A raster scan of a freely diffusing population, with its ground truth.
+
+    Attributes
+    ----------
+    images : numpy.ndarray
+        ``(n_frames, n_pixel, n_pixel)`` photon counts per pixel.
+    diffusion_coefficient : float
+        The ``D`` that was simulated, in um^2/s.
+    pixel_time, line_time, frame_time : float
+        Scanner timing in **seconds**, as the correlation model needs it.
+    pixel_size, w_r, w_z : float
+        Geometry in um.
+    n_photons : int
+        Photons in the scan (markers excluded).
+    """
+
+    images: np.ndarray
+    diffusion_coefficient: float
+    pixel_time: float
+    line_time: float
+    frame_time: float
+    pixel_size: float
+    w_r: float
+    w_z: float
+    n_photons: int = 0
+
+    def to_dict(self) -> dict:
+        """Return the ground truth as JSON-compatible values."""
+        return {
+            "diffusion_coefficient": float(self.diffusion_coefficient),
+            "pixel_time": float(self.pixel_time),
+            "line_time": float(self.line_time),
+            "frame_time": float(self.frame_time),
+            "pixel_size": float(self.pixel_size),
+            "w_r": float(self.w_r),
+            "w_z": float(self.w_z),
+            "shape": [int(v) for v in self.images.shape],
+            "n_photons": int(self.n_photons),
+        }
+
+
+def simulate_clsm_diffusion(
+    diffusion_coefficient: float = 1.0,
+    *,
+    n_pixel: int = 64,
+    n_frames: int = 30,
+    pixel_size: float = 0.05,
+    pixel_time: float = 2e-05,
+    w_r: float = 0.25,
+    w_z: float = 1.0,
+    n_molecules: float = 400.0,
+    brightness: float = 2e06,
+    box_xy: float = 0.0,
+    box_z: float = 4.0,
+    windows_per_pixel: int = 1,
+    seed: int = 1,
+) -> DiffusionScan:
+    """Raster-scan a freely **diffusing** population, for RICS and friends.
+
+    The companion to :func:`simulate_clsm_molecules`, which places *immobile*
+    emitters at known pixels for lifetime imaging. This one is the opposite
+    experiment: no molecule has a fixed position, and the observable is how far
+    the sample decorrelates between one pixel and the next -- which is exactly
+    what raster image correlation spectroscopy measures.
+
+    Three things have to be right for the scan to carry a diffusion
+    coefficient at all, and each of them is silently wrong in the obvious
+    implementation:
+
+    **Real seconds, not scanner units.** The integrator step is set to
+    ``pixel_time / windows_per_pixel``, so the beam spends the dwell on each
+    pixel *and* a molecule takes a Brownian step of ``sqrt(2 D dt)`` over the
+    same interval. An immobile simulation does not care what the time unit
+    means; a diffusing one is nothing but the time unit.
+
+    **Mobile molecules.** ``add_fluorophore`` takes ``mobile=False`` by
+    default, and an immobile molecule ignores ``D`` entirely -- the images then
+    come out **bit-identical** for every diffusion coefficient, which looks like
+    a working simulation until you compare two of them.
+
+    **An open volume.** A fixed set of emitters diffuses out of the box and
+    dies, so the concentration falls through the acquisition and the sample is
+    not stationary -- the one assumption every correlation analysis makes. A
+    population (surface-flux injection) is replenished at the boundary and
+    stays stationary.
+
+    Parameters
+    ----------
+    diffusion_coefficient : float
+        ``D`` in um^2/s.
+    n_pixel : int
+        Image side length in pixels (square).
+    n_frames : int
+        Number of frames scanned.
+    pixel_size : float
+        Pixel size in um. It should sample the waist several times over.
+    pixel_time : float
+        Pixel dwell in **seconds**.
+    w_r, w_z : float
+        Lateral and axial ``1/e^2`` waists of the focus in um.
+    n_molecules : float
+        Expected number of molecules in the box (not in the focus).
+    brightness : float
+        Peak photon rate of one molecule at the focus centre, per second.
+    box_xy : float
+        Box radius in um; ``0`` picks a radius comfortably beyond the scanned
+        field, which it must be, or molecules cannot enter from outside it.
+    box_z : float
+        Axial box extent in um.
+    windows_per_pixel : int
+        Integrator steps per pixel. ``1`` samples diffusion at the pixel rate,
+        which is all the scan can resolve; raise it only to check that the
+        answer does not depend on it.
+    seed : int
+        Random seed.
+
+    Returns
+    -------
+    DiffusionScan
+
+    Raises
+    ------
+    RuntimeError
+        If tttrlib's photon simulator is unavailable.
+    ValueError
+        If a setting cannot produce a usable scan.
+    """
+    import tttrlib
+
+    if not hasattr(tttrlib, "SimEngine"):
+        raise RuntimeError("tttrlib was built without the photon simulator (SimEngine)")
+    if diffusion_coefficient < 0.0:
+        raise ValueError("the diffusion coefficient cannot be negative")
+    if pixel_time <= 0.0:
+        raise ValueError("the pixel dwell must be a positive number of seconds")
+    windows_per_pixel = max(int(windows_per_pixel), 1)
+
+    scanned = n_pixel * pixel_size
+    if box_xy <= 0.0:
+        # The focus must be able to see molecules that were never scanned, so
+        # the box has to reach past the corner of the field plus a few waists.
+        box_xy = 0.5 * scanned * np.sqrt(2.0) + 4.0 * w_r
+    window_dt = float(pixel_time) / windows_per_pixel
+
+    sample = tttrlib.SimSystem()
+    species = tttrlib.SimSpecies()
+    species.D = float(diffusion_coefficient)
+    species.q = tttrlib.VectorDouble([float(brightness)])
+    species.r0 = 0.0
+    sample.add_species(species)
+    sample.set_background([0.0])
+    sample.set_box(float(box_xy), float(box_z))
+    sample.set_population(0, float(n_molecules))
+
+    settings = tttrlib.SimIntegrator()
+    settings.dt = window_dt
+    settings.n_channels = 1
+    settings.n_ph_max = 10 ** 12
+    settings.seed_diffusion = int(seed)
+    settings.seed_emission = int(seed) + 1
+    engine = tttrlib.SimEngine(
+        sample,
+        tttrlib.SimGrid.gaussian3d(w_r, w_z, 2.0 * box_xy, box_z, 0.05, 1.0),
+        tttrlib.VectorSimGrid([]),
+        settings,
+    )
+
+    scanner = tttrlib.SimScanner.uniform(
+        n_pixel, n_pixel, float(pixel_time), pixel_size, pixel_size,
+        -0.5 * scanned, -0.5 * scanned, tttrlib.SimMarkerConfig(), False,
+    )
+    for _ in range(int(n_frames)):
+        engine.run_scan(scanner)
+
+    # Markers outnumber photons in a scan (one per pixel, plus line and frame
+    # markers), so binning the raw record stream would make an image that is
+    # mostly scanner bookkeeping. Event type 0 is a photon.
+    event_type = np.asarray(engine.event_type())
+    windows = np.asarray(engine.macro_window(), dtype=np.int64)[event_type == 0]
+
+    per_frame = n_pixel * n_pixel * windows_per_pixel
+    total = per_frame * int(n_frames)
+    windows = windows[(windows >= 0) & (windows < total)]
+    counts = np.bincount(windows // windows_per_pixel,
+                         minlength=n_pixel * n_pixel * int(n_frames))
+    images = counts.astype(float).reshape(int(n_frames), n_pixel, n_pixel)
+
+    line_time = n_pixel * float(pixel_time)
+    return DiffusionScan(
+        images=images,
+        diffusion_coefficient=float(diffusion_coefficient),
+        pixel_time=float(pixel_time),
+        line_time=line_time,
+        frame_time=n_pixel * line_time,
+        pixel_size=float(pixel_size),
+        w_r=float(w_r),
+        w_z=float(w_z),
+        n_photons=int(windows.size),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Shared simulator helpers
 # ---------------------------------------------------------------------------
@@ -220,11 +423,19 @@ def _lifetime_species(tttrlib, tau: float, irf: np.ndarray, dt: float, q):
 
 
 def _run_scan(tttrlib, sample, *, n_channels, n_pixel, pixel_size, n_micro, dt,
-              dwell, psf_w0, fill_channels):
-    """Raster-scan *sample* and reconstruct a filled ``CLSMImage``."""
+              dwell, psf_w0, fill_channels, window_dt: float = 0.01):
+    """Raster-scan *sample* and reconstruct a filled ``CLSMImage``.
+
+    ``window_dt`` is the integrator step, in the same time unit as *dwell*: the
+    scanner spends ``round(dwell / window_dt)`` windows on each pixel (at least
+    one), and that is also the interval over which a mobile molecule takes one
+    Brownian step. It therefore sets **both** the macro-time scale and the
+    diffusion granularity, which is why it cannot stay hard-coded once the
+    sample moves — see :func:`simulate_clsm_diffusion`.
+    """
     excitation = tttrlib.SimGrid.gaussian3d(psf_w0, 1.0, 0.8, 1.0, 0.04, 1.0)
     integrator = tttrlib.SimIntegrator()
-    integrator.dt = 0.01
+    integrator.dt = float(window_dt)
     integrator.n_channels = int(n_channels)
     integrator.n_ph_max = 10**9
     integrator.n_microtime_channels = n_micro
