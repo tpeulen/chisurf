@@ -2,6 +2,22 @@
 
 ## 2026-07-26
 
+* **GUI walk of the Image Tools FLIM pipeline (RF-155..RF-162).** Drove the
+  numbered pipeline — Setup → Browser → 1. Intensity → 2. Number & Brightness →
+  3. Mean Micro-Time → 4. IRF & BG → 5. Phasor-FLIM → 6. Pixel-wise MLE — on
+  `test/data/clsm/PQ_Olympus_MFIS.ht3` with a matched mirror-scan IRF, and
+  recorded it as [FLIM pixel maps and pixel-wise MLE](/usecases/flim-pixel-maps-mle.md).
+  Steps 1–3 and 5 are fast and correct; the fit step is not: the default
+  micro-time binning makes it allocate ~86 GB and the process is SIGKILLed
+  (RF-155), it fits every frame separately with no stacking control so 277 of
+  2.6 M pixel rows survive (RF-156), the fit window mixes binned and raw
+  micro-time units (RF-157), a failed fit wipes its own error message (RF-158),
+  and the ∥/⊥ split by channel parity merges the green and red detectors
+  (RF-159). Also filed: the Browser silently hides files that do not match the
+  setup's file type (RF-160) and Image Tools has no CLSM reading-routine
+  control, so both Leica PTUs in `test/data/clsm` are analysed with a wrong
+  image geometry (RF-161, plus a library-side segfault RF-162).
+
 * **Burst Selection can export again (RF-053).** Both entries of *File →
   Export* guarded on `if not self._last_frame:`, and `_last_frame` is a
   `pandas.DataFrame` — an object with no truth value — so `export_bur` and

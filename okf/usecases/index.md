@@ -65,6 +65,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   files, IRF background region, g-factor and l1/l2, lifetime and rotation
   spectra) and let it build the VV, VH and global fits with all shared
   parameters linked. *(last driven 2026-07-26; RF-126..RF-130)*
+- [FLIM pixel maps and pixel-wise MLE](/usecases/flim-pixel-maps-mle.md) — the
+  numbered Image Tools pipeline on a confocal FLIM measurement: detector setup,
+  browse, intensity, number & brightness, mean micro-time, IRF & background,
+  phasor, then the pixel-wise MLE lifetime map.
+  *(last driven 2026-07-26; RF-155..RF-162)*
 - [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET
