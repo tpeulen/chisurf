@@ -5,7 +5,8 @@
 
 # --- FROM test_interpolate_shift_empty.py ---
 import numpy as np
-from chisurf.plugins.burst_mle_analysis.interpolate import interpolate_shift
+
+from chisurf.core.fluorescence.mle.irf import interpolate_shift
 
 
 def test_interpolate_shift_empty_array_returns_empty():

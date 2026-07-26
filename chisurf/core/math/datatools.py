@@ -55,6 +55,10 @@ def histogram_rebin(
     If a new bin edge is outside the range of the original histogram's bin edges, the value
     is set to 0. This is useful for changing the bin spacing of a histogram.
 
+    Bins are half-open, ``[edge_i, edge_i+1)``, except for the last one, which is
+    closed on the right as in :func:`numpy.histogram`: a new edge that coincides
+    with the largest original edge is inside the histogram and takes the last count.
+
     :param bin_edges: array
         The bin edges of the original histogram.
     :param counts: array
@@ -71,15 +75,21 @@ def histogram_rebin(
     >>> bin_edges = np.array([0, 5, 10, 15])
     >>> new_bin_edges = np.linspace(-5, 20, 17)
     >>> histogram_rebin(bin_edges, counts, new_bin_edges)
-    [0.0, 0.0, 0.0, 0.0, 0, 0, 0, 2, 2, 2, 1, 1, 1, 0.0, 0.0, 0.0, 0.0]
+    [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0, 2.0, 2.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0]
+    >>> histogram_rebin(bin_edges, counts, np.array([15.0]))
+    1.0
     """
+    lower = float(np.min(bin_edges))
+    upper = float(np.max(bin_edges))
     re = list()
     for xi in new_bin_edges.flatten():
-        if xi > max(bin_edges) or xi < min(bin_edges):
+        if xi < lower or xi > upper:
             re.append(0.0)
+        elif xi == upper:
+            re.append(float(counts[-1]))
         else:
             sel = np.where(xi < bin_edges)
-            re.append(counts[sel[0][0] - 1])
+            re.append(float(counts[sel[0][0] - 1]))
     if len(re) == 1:
         return re[0]
     else:

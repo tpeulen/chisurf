@@ -2732,11 +2732,11 @@ Findings RF-215..RF-227.
 - **Fix note:**
 
 ### RF-221
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (`IndexError` on the upper bin edge — the one x-value the caller is most likely to pass)
 - **Location:** `chisurf/core/math/datatools.py:75-79` (`histogram_rebin`)
 - **Finding:** The out-of-range test is `xi > max(bin_edges) or xi < min(bin_edges)`, so `xi == max(bin_edges)` falls through to `sel = np.where(xi < bin_edges)`, which is empty, and `sel[0][0]` raises `IndexError: index 0 is out of bounds for axis 0 with size 0`. Verified: `histogram_rebin(np.array([0, 5, 10, 15]), np.array([0, 2, 1]), np.array([15.0]))` raises. The docstring example and `test/math/test_datatools.py:19` both dodge it by choosing new edges that never land exactly on the last edge. Either make the upper edge inclusive of the last bin or exclude it explicitly (`xi >= max(...)`), and add the boundary to the test. Same loop recomputes `max(bin_edges)`/`min(bin_edges)` for every new edge. Also: the return list mixes Python `0.0` floats with raw `counts` elements, so under NumPy 2 the docstring example renders as `np.int64(0), np.int64(2), …` and its doctest fails — latent today only because `test-doctest` runs `pytest test --doctest-modules` and never collects `chisurf/`. Returning `float(...)` uniformly fixes the example on both NumPy majors and matches the declared "list or float" contract.
-- **Fix note:**
+- **Fix note:** `histogram_rebin` now closes the last bin on the right, as `np.histogram` does: `xi == max(bin_edges)` returns the last count instead of raising `IndexError`. The bounds are computed once before the loop rather than per new edge, and every returned value goes through `float(...)`, so the list no longer mixes Python floats with `np.int64` counts and the docstring example renders identically on both NumPy majors (verified by evaluating it). The docstring states the half-open/closed convention. Pinned by `test_histogram_rebin_upper_edge` in `test/math/test_datatools.py`, which asserts the upper edge, the lower edge, both just-outside values and that every element is a plain `float`.
 
 ### RF-222
 - **Status:** OPEN

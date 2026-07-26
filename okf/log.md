@@ -2,6 +2,27 @@
 
 ## 2026-07-26
 
+* **RF-221 fix — `histogram_rebin` raised on the one edge a caller is most
+  likely to pass.** The out-of-range guard was `xi > max(bin_edges)`, so a new
+  edge exactly on the largest original edge fell through to
+  `np.where(xi < bin_edges)`, which is empty, and `sel[0][0]` raised
+  `IndexError` — `histogram_rebin([0, 5, 10, 15], [0, 2, 1], [15.0])` crashed.
+  The last bin is now closed on the right, the convention `np.histogram` uses
+  and the one the docstring's "outside the range" wording implies, and the
+  docstring says so. Two things fixed in the same change: the bounds are
+  computed once instead of per new edge, and every returned value goes through
+  `float(...)`, so the list no longer mixes Python floats with raw `np.int64`
+  counts — under NumPy 2 that made the docstring example render as
+  `np.int64(0), np.int64(2), …`, a doctest that is red today and latent only
+  because `test-doctest` never collects `chisurf/`. Pinned by
+  `test_histogram_rebin_upper_edge`. Fixed while here, per the
+  [fix-breakage rule](/workflows/change-tracking.md): `test/math/test_interp.py`
+  and `test/math/test_interpolate_shift_empty.py` both imported
+  `interpolate_shift` from `chisurf.plugins.burst_mle_analysis.interpolate`,
+  a path that no longer exists, so **the whole `test/math` package failed to
+  collect**; they now import it from
+  `chisurf.core.fluorescence.mle.irf`, where it lives.
+
 * **A curve built from a file keeps the file's error bars** (RF-182).
   `DataCurve.__init__` read the file first and only then initialised
   `ex`/`ey`/`mask` from its own arguments. Those arguments are `None` for every

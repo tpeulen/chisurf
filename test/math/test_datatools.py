@@ -27,6 +27,25 @@ def test_histogram_rebin():
     expected = [0.0, 0, 2, 1, 0.0]
     assert rebinded == expected
 
+
+def test_histogram_rebin_upper_edge():
+    """The largest original edge is inside the histogram, not out of range."""
+    counts = np.array([0, 2, 1])
+    bin_edges = np.array([0, 5, 10, 15])
+
+    # the upper edge closes the last bin (np.histogram convention)
+    assert dt.histogram_rebin(bin_edges, counts, np.array([15.0])) == 1.0
+    # the lower edge opens the first one, anything beyond either is zero
+    assert dt.histogram_rebin(bin_edges, counts, np.array([0.0])) == 0.0
+    assert dt.histogram_rebin(bin_edges, counts, np.array([15.001])) == 0.0
+    assert dt.histogram_rebin(bin_edges, counts, np.array([-0.001])) == 0.0
+
+    # every value is a plain float, whatever dtype the counts have
+    rebinned = dt.histogram_rebin(bin_edges, counts, np.array([2.5, 7.5, 15.0]))
+    assert rebinned == [0.0, 2.0, 1.0]
+    assert all(type(v) is float for v in rebinned)
+
+
 def test_bin_count():
     data = np.array([0, 10, 20, 30, 4000])
     bins, counts = dt.bin_count(data, bin_width=100, bin_min=0, bin_max=4000)
