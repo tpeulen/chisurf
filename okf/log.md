@@ -998,6 +998,30 @@
 
 ## 2026-07-25
 
+* **Stored draws are an answer even without a diagnostics report.** Found while
+  verifying the previous change end to end, which is the only reason it turned
+  up: a fit with a chain on it was still quoting symmetric `laplace` intervals,
+  because `StoredEngine` consulted `sampling_diagnostics` -- a *summary* -- and
+  never the draws. So a chain restored from file, or left by anything that did
+  not also write that report, was ignored while the asymmetric interval sat
+  unused on the same object. It now falls back to computing quantiles from the
+  draws, marked `converged: None` and `source: draws`, because nothing checked
+  them and claiming otherwise would be a verdict nobody made.
+  The fallback deliberately does **not** apply when the report exists and
+  rejected every parameter. My first version used `out or self._chain_quantiles()`
+  and would have quietly reinstated a chain that R-hat and the effective sample
+  size had just thrown out -- worse than not having the fallback at all. There is
+  a test asserting an unconverged chain is not quoted *by any route*.
+  One earlier test correctly broke and was rewritten rather than patched: the
+  asymmetry warning belongs to a symmetric row, and now that the summary can
+  quote the chain, it does -- an honest asymmetric interval beats a warning about
+  a misleading one. The warning is exercised on the path that still has to quote
+  `value +- sd`. 4 tests.
+  Also corrected in the process: I had claimed the profile scan has no visual.
+  It does -- `ParameterScanPlot` draws the chi2 curve with thresholds and interval
+  markers, and `StoredEngine` already ranks a profile scan above the covariance.
+
+
 * **Every symmetric error bar now says so when it is wrong.** The re-fit check
   covered one plot; this covers every quoted interval. A `laplace`/`gaussian`
   marginal is `value +- sd` by construction, and the posterior it approximates

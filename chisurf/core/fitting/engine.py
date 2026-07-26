@@ -1529,11 +1529,20 @@ class StoredEngine(PosteriorEngine):
         return self
 
     def _stored_chain(self, p_value: float) -> typing.Dict[str, Marginal]:
-        """Return marginals from a stored sampling report, keyed by name."""
+        """Return marginals from a stored sampling report, keyed by name.
+
+        Falls back to the draws themselves when there is no report. The report
+        is a *summary*, and it is not the only thing a run leaves behind: a chain
+        restored from file, reweighted, or produced by anything that did not also
+        write diagnostics would otherwise be ignored, and the fit would quote a
+        symmetric ``value ± sd`` while the asymmetric answer sat unused on the
+        same object. Quantiles read from draws carry no convergence verdict, so
+        they are marked ``converged: None`` rather than being claimed as checked.
+        """
         from chisurf.core.fitting import diagnostics as dg
         report = getattr(self.fit, "sampling_diagnostics", None)
         if not isinstance(report, dict):
-            return {}
+            return self._chain_quantiles(p_value)
         out = {}
         for e in report.get("parameters") or []:
             rhat, ess = e.get("rhat", float("nan")), e.get("ess", 0.0)
@@ -1552,6 +1561,56 @@ class StoredEngine(PosteriorEngine):
                 quantiles=quantiles, low=float(lo), high=float(hi),
                 p_value=p_value,
                 diagnostics={"ess": ess, "rhat": rhat, "converged": True},
+            )
+        # Deliberately *not* falling back to the draws here. An empty result
+        # means the report exists and rejected every parameter for failing its
+        # R-hat / effective-sample-size checks, and reading the same draws
+        # directly would launder exactly the chain that was just refused. The
+        # fallback above applies only when no verdict was ever recorded.
+        return out
+
+    def _chain_quantiles(self, p_value: float) -> typing.Dict[str, Marginal]:
+        """Return marginals computed directly from stored draws.
+
+        Parameters
+        ----------
+        p_value : float
+            Coverage of the reported interval.
+
+        Returns
+        -------
+        dict
+            Name to :class:`Marginal`, empty when the fit carries no draws.
+        """
+        chain = getattr(self.fit, "sampling_chain", None)
+        if not isinstance(chain, dict) or chain.get("parameter_values") is None:
+            return {}
+        draws = np.atleast_2d(np.asarray(chain["parameter_values"], dtype=np.float64))
+        names = [str(n) for n in chain.get("parameter_names", [])]
+        if draws.shape[0] < 32 or len(names) != draws.shape[1]:
+            return {}
+
+        tail = 0.5 * (1.0 - float(p_value))
+        probabilities = (0.025, tail, 0.5, 1.0 - tail, 0.975)
+        out = {}
+        for i, name in enumerate(names):
+            column = draws[:, i]
+            column = column[np.isfinite(column)]
+            if column.size < 32:
+                continue
+            quantiles = {float(q): float(np.quantile(column, q))
+                         for q in probabilities}
+            out[name] = Marginal(
+                name=name, value=float(np.median(column)),
+                sd=float(column.std(ddof=1)), method="mcmc",
+                quantiles=quantiles,
+                low=float(np.quantile(column, tail)),
+                high=float(np.quantile(column, 1.0 - tail)),
+                p_value=p_value,
+                # No report means nothing checked R-hat or the effective sample
+                # size, and saying "converged: True" here would be a claim
+                # nobody made.
+                diagnostics={"converged": None, "source": "draws"},
             )
         return out
 

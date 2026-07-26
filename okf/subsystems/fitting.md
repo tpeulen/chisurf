@@ -454,6 +454,16 @@ for nothing, and the engines attach a `warning` and the measured asymmetry to
 already carry. Absence of a chain returns `None`, never "symmetric": absence of
 evidence must not read as evidence of absence.
 
+**And where the honest interval exists, it is quoted rather than warned about.**
+`StoredEngine` read only `sampling_diagnostics`, which is a *summary* — so a
+chain restored from file, or left by anything that did not also write that
+report, was ignored and the fit quoted `value ± sd` while the asymmetric answer
+sat unused on the same object. It now falls back to the draws, marked
+`converged: None` because nothing checked them. The fallback deliberately does
+**not** apply when the report exists and rejected every parameter: an empty
+result there means R-hat / ESS threw the chain out, and reading the same draws
+directly would launder exactly what was refused.
+
 The cut is calibrated rather than fixed, for the same reason the rank plot's is.
 Measured against true Gaussians (autocorrelated included), the 99th percentile of
 the observed asymmetry ratio tracks `1 + 2.4/√n_eff`: **1.17** at 200 effective

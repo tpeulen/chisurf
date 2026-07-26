@@ -614,15 +614,39 @@ def test_no_chain_is_not_reported_as_symmetry():
 
 
 def test_the_flag_reaches_the_summary_a_user_reads():
-    """A diagnostic nobody sees is not a diagnostic."""
+    """A diagnostic nobody sees is not a diagnostic.
+
+    The warning belongs to a *symmetric* row. When the summary can quote the
+    chain it does, and an honest asymmetric interval is better than a warning
+    about a misleading one -- so the flag is exercised on the path that still
+    has to quote ``value ± sd``: a chain the report rejected.
+    """
     fit = _with_chain(_weak_component())
+    names = list(fit.sampling_chain['parameter_names'])
+    fit.sampling_diagnostics = {
+        'parameters': [
+            {'name': n, 'rhat': 1.9, 'ess': 3.0, 'mean': 0.0, 'sd': 1.0,
+             'quantiles': {'0.16': -1.0, '0.84': 1.0}}
+            for n in names
+        ],
+        'warnings': ['not converged'], 'n_chains': 8, 'n_draws': 100,
+        'burn_in': 0,
+    }
     rows = fit.posterior_summary()
-    assert rows
+    assert rows and all(r['method'] != 'mcmc' for r in rows)
     warned = [r for r in rows if r.get('warning')]
     assert warned, [r['name'] for r in rows]
     for row in warned:
         assert 'skewed' in row['warning']
         assert row['asymmetry'] > 0.0
+
+
+def test_an_honest_interval_beats_a_warning_about_a_misleading_one():
+    """Where the chain can be quoted, it is -- and then there is nothing to warn."""
+    fit = _with_chain(_weak_component())
+    rows = fit.posterior_summary()
+    assert all(r['method'] == 'mcmc' for r in rows)
+    assert not any(r.get('warning') for r in rows)
 
 
 def test_the_gaussian_engine_flags_it_too():
@@ -643,3 +667,63 @@ def test_the_asymmetry_survives_the_trip_to_json():
     fit = _with_chain(_weak_component())
     for m in E.LaplaceEngine(fit).add_all_targets().run().marginals():
         json.loads(json.dumps(m.as_dict()))
+
+
+# -- draws are an answer even without a report ----------------------------
+
+def test_stored_draws_give_an_asymmetric_interval_without_a_report():
+    """The asymmetric answer must not sit unused on the same object.
+
+    ``sampling_diagnostics`` is a *summary*, and not the only thing a run leaves
+    behind: a chain restored from file, or produced by anything that did not also
+    write diagnostics, would otherwise be ignored and the fit would quote a
+    symmetric ``value ± sd`` while the honest interval was already in hand.
+    """
+    fit = _with_chain(_weak_component())
+    assert getattr(fit, 'sampling_diagnostics', None) is None
+
+    rows = {r['name'].split(':')[-1]: r for r in fit.posterior_summary()}
+    assert rows
+    for name, row in rows.items():
+        assert row['method'] == 'mcmc', (name, row)
+        upper = row['high'] - row['value']
+        lower = row['value'] - row['low']
+        assert upper > 0 and lower > 0
+    # And at least one is visibly asymmetric, or the test proves nothing.
+    assert any(abs((r['high'] - r['value']) - (r['value'] - r['low']))
+               > 0.05 * (r['high'] - r['low']) for r in rows.values())
+
+
+def test_a_rejected_chain_is_not_laundered_by_reading_its_draws():
+    """The refusal has to survive the convenience.
+
+    An empty result from the report means it *judged* the chain and threw it
+    out for failing R-hat / effective-sample-size. Reading the same draws
+    directly would quietly reinstate exactly what was refused, which is worse
+    than not having the fallback at all.
+    """
+    fit = _with_chain(_weak_component())
+    names = list(fit.sampling_chain['parameter_names'])
+    fit.sampling_diagnostics = {
+        'parameters': [
+            {'name': n, 'rhat': 1.9, 'ess': 3.0, 'mean': 0.0, 'sd': 1.0,
+             'quantiles': {'0.16': -1.0, '0.84': 1.0}}
+            for n in names
+        ],
+        'warnings': ['not converged'],
+        'n_chains': 8, 'n_draws': 100, 'burn_in': 0,
+    }
+    rows = fit.posterior_summary()
+    assert rows
+    assert not any(r['method'] == 'mcmc' for r in rows), \
+        "an unconverged chain must not be quoted, by any route"
+
+
+def test_draws_without_a_report_do_not_claim_to_be_converged():
+    """No one checked, so nothing may say it was checked."""
+    fit = _with_chain(_weak_component())
+    engine = E.StoredEngine(fit, model=fit.model).add_all_targets().run()
+    for m in engine.marginals():
+        if m.method == 'mcmc':
+            assert m.diagnostics.get('converged') is None
+            assert m.diagnostics.get('source') == 'draws'
