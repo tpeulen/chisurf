@@ -38,7 +38,12 @@ grid behind a button carrying a live summary — size and how many transitions a
 non-zero — since an N×N grid costs N rows of panel whether or not anyone is
 editing it, which is the wrong trade for a secondary control such as the
 acquisition simulator's two matrices. The popup is **modeless**: edits apply
-live, and a modal window on an offscreen run has nobody to close it), `parameter_group_table` (a
+live, and a modal window on an offscreen run has nobody to close it. The grid is a
+**view, not an owner**: building or refreshing it never writes back, and a stored
+rate outside the configured `minimum`/`maximum` is displayed clamped and in red
+while the model keeps the real value — a spin box clamps and rounds, so a grid
+that wrote what it displayed silently moved every rate it could not
+show), `parameter_group_table` (a
 space-saving **table** rendering of a `FittingParameterGroup` — one row per
 `FittingParameter`, `QTableView` with columns `name`/`value`/`fixed`/`bounds_lo`/
 `bounds_hi`/`bounds_on`/`error` and click-to-toggle checkbox delegates, cells

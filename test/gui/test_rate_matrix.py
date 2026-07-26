@@ -143,6 +143,82 @@ def test_the_grid_agrees_with_the_shared_rate_convention(qapp):
     assert np.array_equal(rates_from_rate_matrix(K), host.kinetics.flat_rates)
 
 
+def test_building_the_grid_never_moves_a_rate_it_cannot_display(qapp):
+    """Opening a panel is not an edit, and a spin box is not the model.
+
+    A ``QDoubleSpinBox`` clamps to its range and rounds to its ``decimals``, so
+    a grid that writes back what it displays destroys every rate outside the
+    configured range — merely rendering the editor moved a 5 MHz rate to the
+    1 MHz maximum. Values the grid cannot show survive both the build and a
+    later edit of another cell; only the cell the user touched is committed.
+    """
+    from chisurf.core.dataspec import load_view_spec
+    from chisurf.core.fitting.kinetics import RateMatrixParameters
+    from chisurf.gui.autoform import AutoForm
+    from chisurf.gui.autoform.sections.rate_matrix_section import RateMatrixWidget
+
+    class _Host:
+        """A three-state scheme rendered with the shipped PDA grid options."""
+
+        def __init__(self):
+            self.kinetics = RateMatrixParameters(name="k", n_states=3, default_rate=0.0)
+
+        @property
+        def n_states(self):
+            return self.kinetics.n_states
+
+        @property
+        def rate_values(self):
+            return self.kinetics.rate_values
+
+        @rate_values.setter
+        def rate_values(self, values):
+            self.kinetics.rate_values = values
+
+        def view_spec(self):
+            return load_view_spec({
+                "sections": [
+                    {"type": "custom", "key": "rate_matrix", "target": "rate_values",
+                     "options": {"size_attr": "n_states", "minimum": 0.0,
+                                 "maximum": 1e6, "decimals": 2, "diagonal": False}},
+                ]
+            })
+
+    host = _Host()
+    rates = host.kinetics.rates_by_name()
+    rates["k1_2"].value = 5.0e6         # above the grid's maximum
+    rates["k2_1"].value = 2.5e6
+    rates["k1_3"].value = 123.456       # finer than the grid's decimals
+    before = list(host.rate_values)
+
+    form = AutoForm(host)
+    grid = form.findChildren(RateMatrixWidget)[0]
+    assert list(host.rate_values) == pytest.approx(before)
+    assert host.kinetics.rates_by_name()["k1_2"].value == pytest.approx(5.0e6)
+    # The clamped cell still says what it can, and says that it is clamped.
+    assert grid.table.cellWidget(0, 1).value() == pytest.approx(1.0e6)
+    assert "outside the range" in grid.table.cellWidget(0, 1).toolTip()
+    # A cell that merely rounds is not flagged — that is what a grid does.
+    assert "outside the range" not in grid.table.cellWidget(0, 2).toolTip()
+
+    # Editing one cell commits that cell only.
+    grid.table.cellWidget(2, 1).setValue(70.0)      # k_32
+    after = host.kinetics.rates_by_name()
+    assert after["k3_2"].value == pytest.approx(70.0)
+    assert after["k1_2"].value == pytest.approx(5.0e6)
+    assert after["k2_1"].value == pytest.approx(2.5e6)
+    assert after["k1_3"].value == pytest.approx(123.456)
+
+    # A refresh reloads the display; the values behind it are still intact
+    # after the next edit.
+    grid.refresh()
+    grid.table.cellWidget(1, 2).setValue(5.0)       # k_23
+    after = host.kinetics.rates_by_name()
+    assert after["k2_3"].value == pytest.approx(5.0)
+    assert after["k1_2"].value == pytest.approx(5.0e6)
+    assert after["k1_3"].value == pytest.approx(123.456)
+
+
 def test_popup_mode_keeps_the_grid_behind_a_button(qapp):
     """``popup`` trades N rows of grid for one button that still says the state.
 

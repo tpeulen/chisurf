@@ -3121,11 +3121,36 @@ Findings RF-258..RF-262.
   `ruff check` clean on the touched files.
 
 ### RF-259
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (merely opening the model editor silently rewrites rate parameters — a 5 MHz rate is written back as 1 MHz, a factor of 5, with no message)
 - **Location:** `chisurf/gui/autoform/sections/rate_matrix_section.py:156` (the unconditional `self._write_back(n)` closing `_build`) with `:135` (`spin.setRange(self._min, self._max)`) and `:140` (`spin.setValue(...)`)
 - **Finding:** `_build` populates each `QDoubleSpinBox` from the model and then pushes **all** spin values straight back onto the model attribute. A `QDoubleSpinBox` silently clamps to its range and rounds to its `decimals`, so any model value outside the section's configured `minimum`/`maximum` — or with more precision than `decimals` — is destroyed by the round trip, without the user touching anything. Verified headlessly with the exact options from `dynamic_mc.view.json` (`minimum: 0.0, maximum: 1e6, decimals: 2`) on a `PdaDynamicNStates` whose rates were set to `k1_2 = 5.0e6`, `k2_1 = 2.5e6`, `k1_3 = 123.456`: `rate_values` before construction `[0, 5e6, 123.456, 2.5e6, …]`, immediately after `RateMatrixWidget(...)` `[0, 1e6, 123.46, 1e6, …]` — and `rates_by_name()["k1_2"].value` is `1000000.0`, i.e. the **fitting parameter itself** was moved. The same corruption is reachable through `refresh()`: it clamps the display silently (signals blocked, so no write), after which editing *any other* cell calls `_write_back` and commits every clamped value. `_build` should not write back values the user has not edited; the write-back belongs on `valueChanged` only, and a value outside the configured range should be reported rather than clamped.
-- **Fix note:**
+- **Fix note:** Reproduced with the finding's exact options (`minimum 0`,
+  `maximum 1e6`, `decimals 2`) on a three-state `RateMatrixParameters`: merely
+  constructing the widget turned `[0, 5e6, 123.456, 2.5e6, …]` into
+  `[0, 1e6, 123.46, 1e6, …]`. Fixed in
+  `chisurf/gui/autoform/sections/rate_matrix_section.py` by making the grid a
+  *view* rather than an owner. A new `_load` puts a model value in its cell and
+  remembers **both** numbers — the value read and the value the spin box ended up
+  showing — so `_cell_value` writes the value that was read back for any cell
+  still displaying it, i.e. any cell the user has not edited; only an edited cell
+  commits its display. The unconditional `self._write_back(n)` closing `_build`
+  is gone: a rebuild writes only when the stored matrix no longer holds `N*N`
+  entries, the genuine resize case that nothing else reshapes (the existing
+  `test_rate_matrix_edits_and_resizes` pins it). `refresh()` reloads through the
+  same `_load`, so the "clamp the display, then commit it on the next edit" path
+  is closed too. Clamping is now *reported* instead of silent — logged, in the
+  cell tooltip, and the cell's text turns red — while pure rounding to
+  `decimals` stays quiet, since preserving the read value already makes it
+  harmless. The narrow configured range itself is RF-260 and is untouched here.
+  Pinned by
+  `test/gui/test_rate_matrix.py::test_building_the_grid_never_moves_a_rate_it_cannot_display`
+  (verified failing on the pre-fix behaviour). `test/gui/test_rate_matrix.py`,
+  `test/gui/test_pda2c_model_editor.py`, `test/gui/test_pda3c_model_editor.py`,
+  the acquisition-simulator setup-widget tests and `plugins/fcs/flc_2d/test`
+  green (73 passed, 9 skipped); `ruff check` clean on both files. Rendered
+  headlessly and inspected: the two out-of-range rates show as red `1000000.00`
+  with the stored 5 MHz / 2.5 MHz intact, the merely-rounded cell is normal.
 
 ### RF-260
 - **Status:** OPEN

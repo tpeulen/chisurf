@@ -16,6 +16,10 @@ Declare it in a view spec as a custom section::
 - ``size_attr`` — model attribute (or zero-arg method) giving N; the grid
   resizes to it on ``refresh`` (so it can track e.g. the species count).
 - ``labels_attr`` — optional per-state row/column labels; defaults to ``1..N``.
+- ``minimum`` / ``maximum`` / ``decimals`` — what a cell can show. The grid is a
+  *view*: a stored rate outside that range is displayed clamped and in red, and
+  is left untouched in the model until that cell is actually edited. Building or
+  refreshing the grid never writes a value back.
 - ``diagonal`` — when false (default) the i→i cells are fixed at 0 and disabled.
 - ``popup`` — when true the grid lives behind a button instead of sitting in the
   panel. An N×N grid costs N rows of vertical space whether or not anyone is
@@ -28,11 +32,14 @@ Declare it in a view spec as a custom section::
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
 from .registry import register_section
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve(model: Any, name: str, default=None):
@@ -91,6 +98,10 @@ class RateMatrixWidget(QtWidgets.QWidget):
         # Do not let the grid stretch to fill the panel — keep it tight.
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
         self._spins: dict[tuple[int, int], QtWidgets.QDoubleSpinBox] = {}
+        # Per cell: (value read from the model, value the spin box can show).
+        # The two differ whenever the model holds a rate outside the configured
+        # range or finer than ``decimals`` -- see :meth:`_load`.
+        self._loaded: dict[tuple[int, int], tuple[float, float]] = {}
         self._build()
 
     def _header(self) -> QtWidgets.QLabel:
@@ -163,11 +174,52 @@ class RateMatrixWidget(QtWidgets.QWidget):
             return [str(labels[i]) for i in range(n)]
         return [str(i + 1) for i in range(n)]
 
+    def _load(self, i: int, j: int, spin: QtWidgets.QDoubleSpinBox, raw: float) -> None:
+        """Show one model value in its cell and remember what was read.
+
+        A ``QDoubleSpinBox`` silently clamps to its range and rounds to its
+        ``decimals``, so a rate the grid cannot represent would come back
+        changed on the next write-back. Both numbers are kept: the value the
+        model holds and the value the box ends up showing. A cell that still
+        shows the latter has not been edited, so :meth:`_cell_value` writes the
+        former back untouched instead of the display.
+        """
+        spin.blockSignals(True)
+        spin.setValue(raw)
+        spin.blockSignals(False)
+        shown = float(spin.value())
+        self._loaded[(i, j)] = (float(raw), shown)
+        # Rounding to ``decimals`` is what a grid is for and is handled silently
+        # by keeping the value that was read. Clamping is not: the number on
+        # screen is then a different rate, so say so in the log, the tooltip and
+        # in colour.
+        clamped = not self._min <= raw <= self._max
+        spin.setStyleSheet("color: #c62828;" if clamped else "")
+        if clamped:
+            logger.warning(
+                "rate_matrix: %s[%d, %d] = %g is outside the range this grid "
+                "shows (%g..%g); it is displayed as %g and kept unchanged in "
+                "the model until the cell is edited.",
+                self._attr or "rates", i, j, raw, self._min, self._max, shown,
+            )
+            spin.setToolTip(
+                f"Stored value {raw:g} is outside the range this grid shows "
+                f"({self._min:g} … {self._max:g}), so it is shown as {shown:g}. "
+                f"Editing this cell replaces it with the shown value."
+            )
+
+    def _cell_value(self, i: int, j: int, spin: QtWidgets.QDoubleSpinBox) -> float:
+        """Return the value to store for one cell: the edit, or what was read."""
+        loaded = self._loaded.get((i, j))
+        if loaded is not None and float(spin.value()) == loaded[1]:
+            return loaded[0]
+        return float(spin.value())
+
     def _write_back(self, n: int) -> None:
         flat = [0.0] * (n * n)
         for (i, j), spin in self._spins.items():
             if i < n and j < n:
-                flat[i * n + j] = float(spin.value())
+                flat[i * n + j] = self._cell_value(i, j, spin)
         if self._attr:
             setattr(self._model, self._attr, flat)
         self._update_button()
@@ -180,6 +232,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self.table.blockSignals(True)
         self.table.clear()
         self._spins.clear()
+        self._loaded.clear()
         self.table.setRowCount(n)
         self.table.setColumnCount(n)
         self.table.setHorizontalHeaderLabels(labels)
@@ -200,14 +253,15 @@ class RateMatrixWidget(QtWidgets.QWidget):
                 spin.setKeyboardTracking(False)
                 spin.setMinimumWidth(min(cell_width, 160))
                 idx = i * n + j
-                spin.setValue(flat[idx] if idx < len(flat) else 0.0)
+                raw = flat[idx] if idx < len(flat) else 0.0
                 if i == j and not self._diagonal:
-                    spin.setValue(0.0)
+                    self._load(i, j, spin, 0.0)
                     spin.setEnabled(False)
                     spin.setToolTip("Self-transition (i→i) is fixed at 0.")
                 else:
                     spin.setToolTip(f"Rate from state {labels[i]} to state {labels[j]}"
                                     + (f" ({self._unit})" if self._unit else ""))
+                    self._load(i, j, spin, raw)
                     spin.valueChanged.connect(lambda _v, ni=n: self._write_back(ni))
                 self._spins[(i, j)] = spin
                 self.table.setCellWidget(i, j, spin)
@@ -216,7 +270,12 @@ class RateMatrixWidget(QtWidgets.QWidget):
         header_h = 26
         self.table.setFixedHeight(header_h + row_h * n + 4)
         self.table.blockSignals(False)
-        self._write_back(n)
+        # Building the grid is not an edit: opening a panel must leave the model
+        # exactly as it was found. The one case that does need a write is a
+        # genuine resize, where the stored matrix no longer holds N*N entries
+        # and nothing else reshapes it.
+        if len(flat) != n * n:
+            self._write_back(n)
         self._update_button()
 
     def refresh(self) -> None:
@@ -226,9 +285,11 @@ class RateMatrixWidget(QtWidgets.QWidget):
             self._build()
         else:
             flat = self._flat()
+            n = self.table.rowCount()
             for (i, j), spin in self._spins.items():
-                idx = i * self.table.rowCount() + j
-                spin.blockSignals(True)
-                spin.setValue(flat[idx] if idx < len(flat) else 0.0)
-                spin.blockSignals(False)
+                idx = i * n + j
+                raw = flat[idx] if idx < len(flat) else 0.0
+                if i == j and not self._diagonal:
+                    raw = 0.0
+                self._load(i, j, spin, raw)
             self._update_button()

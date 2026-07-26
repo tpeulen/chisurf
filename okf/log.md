@@ -2,6 +2,23 @@
 
 ## 2026-07-26
 
+* **The rate-matrix grid is a view, not an owner (RF-259).** Opening any panel
+  carrying an AutoForm `rate_matrix` section rewrote the rates it rendered: a
+  `QDoubleSpinBox` clamps to its range and rounds to its `decimals`, and `_build`
+  pushed every spin value straight back onto the model, so a 5 MHz rate in a grid
+  configured `maximum: 1e6` came back as 1 MHz — the fitting parameter itself,
+  with no message. `_load` now remembers both the value read from the model and
+  the value the box can show, and a cell still displaying the latter writes the
+  former back, so only cells the user actually edited are committed; the
+  unconditional write-back closing `_build` is gone (a rebuild writes only on a
+  genuine `N*N` resize) and `refresh()` reloads through the same path, closing the
+  "clamp the display, commit it on the next edit" route. Clamping is now reported
+  — logged, in the tooltip, and the cell turns red — while pure rounding stays
+  quiet because preserving the read value already makes it harmless. The grid's
+  range being three decades narrower than the parameters' own bounds is RF-260
+  and stays open. Pinned by
+  `test/gui/test_rate_matrix.py::test_building_the_grid_never_moves_a_rate_it_cannot_display`.
+
 * **GUI walk — H2MM: the analysis is fast and clean, the reporting around it is
   not.** Drove `H2mmTool` headlessly end to end (Run with nothing loaded, folder
   drag-drop, `BS` setup, donor/acceptor/Aex combos, state-count scan, all seven
