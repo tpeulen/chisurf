@@ -364,6 +364,44 @@ class RegionProperties:
         """Diameter of the disc with the same area as the region."""
         return math.sqrt(4.0 * self.area / math.pi)
 
+    def as_ellipse(self, name: str = "") -> "ROI":
+        """Return the ellipse with the same second moments, as a region.
+
+        This is the classic way to *draw* what regionprops measured: an outline
+        whose size, elongation and tilt are the numbers in the table, so a
+        segmentation can be checked against the image it came from at a glance.
+        It is also the bridge back the other way — a measured object becomes a
+        region that can be gated with, combined and stored like a drawn one.
+
+        The angle conversion is the fiddly part. :attr:`orientation` follows
+        scikit-image and is measured from the **row** axis towards the column
+        axis, while :class:`~chisurf.core.roi.roi.EllipseROI` rotates in the
+        ``(x, y) = (column, row)`` plane, so the major-axis direction
+        ``(-sin θ, -cos θ)`` becomes a rotation of ``-(θ + π/2)``.
+
+        Parameters
+        ----------
+        name : str, optional
+            Name for the region; defaults to ``"region <label>"``.
+
+        Returns
+        -------
+        chisurf.core.roi.roi.EllipseROI
+            Centred on the region's centroid, with semi-axes half the major and
+            minor axis lengths.
+        """
+        from .roi import EllipseROI
+
+        row, col = self.centroid
+        return EllipseROI(
+            cx=col,
+            cy=row,
+            rx=0.5 * self.axis_major_length,
+            ry=0.5 * self.axis_minor_length,
+            angle=-(self.orientation + math.pi / 2.0),
+            name=name or f"region {self.label}",
+        )
+
     # --- boundary ----------------------------------------------------------
     def _border_codes(self) -> np.ndarray:
         """Return the 3x3 neighbourhood code of every border pixel."""

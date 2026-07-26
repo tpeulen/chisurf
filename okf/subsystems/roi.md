@@ -265,6 +265,22 @@ Drawing an ellipse or a polygon needed chiplot to grow those ROI kinds, plus
 `Roi.points` and `Roi.set_pen`. Until then `PolygonROI` and `EllipseROI` had
 **no producer anywhere in the GUI** — loadable from a file, not drawable.
 
+An overlay may also be *read-only* (`movable=False`), which is how a measured
+object is drawn: `RegionProperties.as_ellipse()` returns the ellipse with the
+same second moments — centroid, axis lengths, orientation — so a segmentation
+can be checked against the image rather than trusted, and a measured object
+becomes a region that can be gated with, combined and stored like a drawn one.
+The angle conversion is the fiddly part: `orientation` follows scikit-image and
+is measured from the *row* axis, while `EllipseROI` rotates in `(x, y) =
+(column, row)`, so the rotation is `-(θ + π/2)`.
+
+Regions are `(x, y) = (column, row)` throughout. The AutoForm `image` section
+disagreed for 2-D images only — pyqtgraph's default maps axis 0 to *x* — while
+its own markers, click picks, rectangle gate and 3-D path all assumed
+column-major x. Its image item is now `axisOrder="row-major"`, which makes the
+widget agree with itself, with numpy and with this subsystem; before that, a
+marker on any 2-D map landed transposed.
+
 # Documentation
 
 The user-facing pair: `docs/concepts/region_properties.md` (what the

@@ -277,6 +277,16 @@ class ImageBrowserWidget(QtWidgets.QWidget):
         self._update_note()
         self._canvas.refresh()
 
+    def add_roi(self, **kwargs):
+        """Add a region shape to the canvas, returning a chiplot ROI handle.
+
+        Forwarded to the inner :class:`ImageMapWidget` so this browser is also a
+        surface :class:`~chisurf.gui.widgets.roi.overlay.RegionOverlay` can draw
+        a shared region collection on — a tool whose image lives behind an entry
+        list should not need a different overlay from one whose image does not.
+        """
+        return self._canvas.add_roi(**kwargs)
+
     def _on_selection_changed(self) -> None:
         if self._syncing or not self._selected_ids_attr:
             return

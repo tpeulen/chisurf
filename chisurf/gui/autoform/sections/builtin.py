@@ -1713,6 +1713,17 @@ class ImageMapWidget(QtWidgets.QWidget):
             import pyqtgraph as pg
 
             self._image = pg.ImageView()
+            # pyqtgraph's default for a 2-D array maps axis 0 to *x*, i.e. it
+            # draws the transpose of what numpy holds — while everything else in
+            # this widget is written the other way round: markers are placed at
+            # ``(x, y) = (col, row)``, clicks are bounds-checked against
+            # ``shape[:2]`` as ``(ny, nx)``, the rectangle gate builds a
+            # ``RectangleROI`` whose x is a column, and the 3-D path already
+            # passes ``axes={'x': 2, 'y': 1}``. Only the 2-D display disagreed,
+            # so markers and picks landed transposed on every 2-D map. Row-major
+            # makes the widget agree with itself, with numpy and with the ROI
+            # subsystem.
+            self._image.getImageItem().setOpts(axisOrder="row-major")
             self._image.ui.roiBtn.hide()
             self._image.ui.menuBtn.hide()
             if not invert_y:
@@ -1910,6 +1921,10 @@ class ImageMapWidget(QtWidgets.QWidget):
     def _setup_brush(self, pg) -> None:
         """Add a paintable selection overlay on top of the image."""
         self._overlay = pg.ImageItem()
+        # Same axis order as the image underneath, or a stroke would land on the
+        # transposed pixel. The mask handed to ``selection_attr`` is the item's
+        # own array either way, so its ``(row, col)`` meaning is unchanged.
+        self._overlay.setOpts(axisOrder="row-major")
         self._overlay.setCompositionMode(QtGui.QPainter.CompositionMode_Plus)
         self._image.getView().addItem(self._overlay)
         self._overlay.hoverEvent = self._hover_event

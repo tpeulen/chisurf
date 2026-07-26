@@ -2,6 +2,43 @@
 
 ## 2026-07-26
 
+* **Molecule-wise MLE takes the shared region GUI, and a five-year-old
+  transpose falls out of it.** The tool's analysis region was a file picker; it
+  is now the shared editor, so a region can be drawn, named, inverted, combined
+  and measured in place. The measured molecules come back the other way: each is
+  drawn as `RegionProperties.as_ellipse()` — the ellipse with the same second
+  moments as the object, its centroid, axis lengths and orientation, the numbers
+  already in the result table — on a **read-only** overlay, because a drag there
+  would claim to edit something the analysis owns. That closes the loop the
+  subsystem exists for: a measured object is a region, gateable and storable
+  like a drawn one. The angle conversion is the fiddly part — scikit-image
+  measures `orientation` from the *row* axis while `EllipseROI` rotates in
+  `(x, y) = (column, row)`, so the rotation is `-(θ + π/2)`; checked against
+  rasterised ellipses at 0/30/60/90/135°, IoU 0.98–1.00.
+
+  The first screenshot showed every molecule ellipse sitting up-left of its
+  spot, and the cause was not the ellipse. pyqtgraph maps a **2-D** array's axis
+  0 to *x* — it draws the transpose — while every other part of the AutoForm
+  `image` section is written the other way round: markers are placed at
+  `(col, row)`, click picks are bounds-checked against `shape[:2]` read as
+  `(ny, nx)`, the rectangle gate builds a `RectangleROI` whose x is a column,
+  and the **3-D** path already passes `axes={'x': 2, 'y': 1}`. Only the 2-D
+  display disagreed, so on every 2-D map a marker landed transposed — a picked
+  PSF bead, a molecule centroid — and nothing noticed, because the image still
+  renders and the marker still appears, just not on the pixel it names. The
+  image item is now `axisOrder="row-major"`, which makes the widget agree with
+  itself, with numpy and with the ROI subsystem; the brush is unaffected, since
+  the mask it hands over is the item's own array either way. Nine plugins use
+  that section; all 193 microscopy tests pass.
+
+  Two smaller things worth remembering. `ImageBrowserWidget` forwards `add_roi`
+  to its inner canvas, so a tool whose image sits behind an entry list needs no
+  different overlay. And several pyqtgraph `ImageView`s destroyed together at
+  interpreter exit take each other down through `ViewBox.forgetView` — a green
+  run with a non-zero exit code — so the image-section tests live in their own
+  module under `qtbot`, which deletes them while Qt is still healthy. Recorded
+  in [known-issues](/references/known-issues.md).
+
 * **tcPDA renamed to c3PDA, and the two spellings collapsed into one.** The
   three-colour method was `tcPDA` in prose, classes and one module, and `pda3c`
   in three package names — so the same thing had two names and neither said the

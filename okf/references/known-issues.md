@@ -25,6 +25,23 @@ against the current tree before acting, as some may already be fixed.
 
 These are the patterns; each caused more than one bug.
 
+- **pyqtgraph draws a 2-D array transposed.** `ImageItem`'s default axis order
+  is column-major: axis 0 becomes *x*. Everything else in ChiSurf — numpy, the
+  ROI subsystem, the AutoForm `image` section's own markers, click picks and
+  rectangle gate, and its 3-D path — treats `(x, y)` as `(column, row)`. The
+  mismatch is invisible on square or symmetric data and puts every marker and
+  every drawn region on the transposed pixel otherwise. Set
+  `axisOrder="row-major"` on any new `ImageItem`/`ImageView`; the array handed
+  around is unchanged either way, so masks keep their `(row, col)` meaning.
+- **Several pyqtgraph views destroyed together abort the process.** `ViewBox`
+  registers itself in a process-global `NamedViews` dict and, when destroyed,
+  walks every other registered view to rebuild its menu — reaching one whose
+  `QComboBox` is already gone. At interpreter exit this aborts *after* the last
+  test passed: a green run with a non-zero exit code, and no pytest summary to
+  explain it. Keep at most one long-lived view per test module (module-scoped
+  fixture) and build the rest under `qtbot`, which deletes them while Qt is
+  still alive.
+
 - **Qt Python-wrapper vs C++ lifetime.** `RuntimeError: wrapped C/C++ object …
   has been deleted` on window close. The Python wrapper outlives the destroyed
   C++ widget; a shared `_new_closeEvent` in `chisurf/gui/misc_helpers.py` calls

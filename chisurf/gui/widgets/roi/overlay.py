@@ -104,6 +104,11 @@ class RegionOverlay:
         Write back continuously while dragging rather than on release. Off by
         default: the write-back re-measures every region, and doing that on
         every mouse-move event is what makes an interactive gate feel heavy.
+    movable : bool, optional
+        Whether the shapes can be dragged. ``False`` draws them as read-only
+        outlines and registers no write-back — for regions that are a *result*
+        rather than a control, such as the second-moment ellipses of segmented
+        objects, where a drag would claim to edit something the analysis owns.
 
     Examples
     --------
@@ -118,12 +123,14 @@ class RegionOverlay:
         *,
         on_change: Optional[Callable[[], None]] = None,
         live: bool = False,
+        movable: bool = True,
     ) -> None:
         """Bind the overlay to a canvas and a collection."""
         self._canvas = canvas
         self._get = collection_getter
         self._on_change = on_change
         self._live = bool(live)
+        self._movable = bool(movable)
         self._handles: List[Any] = []
         self._names: List[str] = []
         self._syncing = False
@@ -161,11 +168,15 @@ class RegionOverlay:
             # regions: a painted mask contributes no handle, so indexing the
             # collection would give a region one colour here and another in
             # :meth:`select`, and picking a row would appear to recolour it.
-            handle = self._canvas.add_roi(pen=self._pen_for(entry, len(self._handles)),
-                                          **spec)
-            handle.on_change(
-                lambda h=handle, n=entry.name: self._write_back(h, n), final=not self._live
+            handle = self._canvas.add_roi(
+                pen=self._pen_for(entry, len(self._handles)),
+                movable=self._movable, **spec,
             )
+            if self._movable:
+                handle.on_change(
+                    lambda h=handle, n=entry.name: self._write_back(h, n),
+                    final=not self._live,
+                )
             self._handles.append(handle)
             self._names.append(entry.name)
 

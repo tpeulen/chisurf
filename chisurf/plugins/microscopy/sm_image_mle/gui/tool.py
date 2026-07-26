@@ -31,6 +31,41 @@ class SmImageMleTool(AutoFormMleTool):
             embedded=embedded,
             min_size=(640, 420),
         )
+        self.region_overlay, self.molecule_overlay = self._connect_regions()
+
+    # ── regions: the one drawn, and the ones measured ──────────────────
+    def _connect_regions(self):
+        """Draw the analysis region on the image, and the molecules beside it.
+
+        Two overlays on the same canvas, and they mean different things. The
+        analysis region is a *control*: draggable, and every edit re-collapses
+        the list into the single region the segmentation is confined to. The
+        molecules are a *result*: the second-moment ellipse of each measured
+        object, drawn read-only, because a drag there would claim to edit
+        something the analysis owns.
+        """
+        from chisurf.gui.autoform.sections.image_browser_section import ImageBrowserWidget
+        from chisurf.gui.widgets.roi import RegionEditor, RegionOverlay
+
+        editor = self.auto_form.findChild(RegionEditor)
+        canvas = self.auto_form.findChild(ImageBrowserWidget)
+        if editor is None or canvas is None:
+            return None, None
+
+        regions = RegionOverlay(canvas, lambda: self.model.regions,
+                                on_change=self.model.apply_regions)
+        molecules = RegionOverlay(canvas, self.model.molecule_regions, movable=False)
+        editor.changed.connect(self.model.apply_regions)
+        editor.changed.connect(regions.refresh)
+        editor.selectionChanged.connect(regions.select)
+        regions.refresh()
+        return regions, molecules
+
+    def _refresh_region_overlays(self) -> None:
+        """Redraw both overlays — the image or the molecule set has changed."""
+        for overlay in (self.region_overlay, self.molecule_overlay):
+            if overlay is not None:
+                overlay.refresh()
 
     def handle_event(self, event: str) -> bool:
         """Segmentation preview runs on a worker; export prompts on the UI thread."""
@@ -40,6 +75,10 @@ class SmImageMleTool(AutoFormMleTool):
         if event == "start_export":
             self._export()
             return True
+        if event in ("done", "preview", "results"):
+            # A new segmentation means new measured molecules to outline; the
+            # canvas may also have swapped to another file's image.
+            self._refresh_region_overlays()
         return False
 
     def _export(self) -> None:

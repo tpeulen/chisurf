@@ -14,7 +14,7 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 
 | Tool | What a region does there |
 |---|---|
-| **Imaging → Lifetime → Molecule-wise MLE** | confines the molecule search; foreground and background come back as regions |
+| **Imaging → Lifetime → Molecule-wise MLE** | the editor confines the molecule search; every measured molecule is drawn back as a region |
 | **Imaging → CLSM-Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
 | **Imaging → Colocalization** | gates the joint intensity histogram — bright pixels only, or a painted cloud |
 | **Imaging → Phasor-FLIM** | the phasor cursor *is* a region on the $(g,s)$ plane |
@@ -106,6 +106,27 @@ Tune the segmentation with **Preview** before pressing **Run**: it draws the
 labels and one row per region, so *Smoothing σ*, *Threshold*, *Peak footprint*
 and *Min area (px)* can be set against what they actually produce.
 
+The **Molecules** tab shows both kinds of region at once, and they behave
+differently on purpose:
+
+* the **analysis region** has grab handles — it is a control, and moving it
+  re-runs the search;
+* each **molecule** is drawn as the ellipse with the same second moments as the
+  measured object: its centroid, its major and minor axis lengths and its
+  orientation, the numbers already in the result table. Those outlines are
+  read-only, because a drag there would claim to edit something the analysis
+  owns. They are what lets a segmentation be *checked* rather than trusted — an
+  ellipse that misses its spot, or swallows two, is visible at a glance where a
+  table of areas is not.
+
+The same conversion is available in Python, so a measured object can be gated
+with, combined and stored like a drawn one:
+
+```python
+for props in result.region_properties():
+    region = props.as_ellipse()      # centroid, axes and orientation as a ROI
+```
+
 ## Getting a region in
 
 The **Analysis region** list accepts, and tells them apart by content:
@@ -117,6 +138,9 @@ The **Analysis region** list accepts, and tells them apart by content:
   in one file, which arrive as their union when a single region is wanted.
 
 ## Headless
+
+The GUI's **Analysis region** panel and this option are the same setting; the
+editor's 💾 writes a file the CLI reads.
 
 ```bash
 sm-image-mle analyze -i irf.ptu --roi cell_patch.json scan_001.ptu

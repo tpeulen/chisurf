@@ -1,5 +1,6 @@
 """Smoke tests for the molecule-wise MLE AutoForm GUI."""
 
+import numpy as np
 import pytest
 
 
@@ -173,50 +174,98 @@ def test_tool_creation(qapp, qtbot):
     assert hasattr(widget, "model")
 
 
-# --- the analysis region, from the GUI's side --------------------------------
-def test_choosing_a_region_file_loads_it_into_the_settings(tmp_path):
-    """The `path_list` binding turns a file into the setting the core reads.
+# --- the analysis region, and the measured molecules ------------------------
+def test_the_region_list_drives_the_setting_the_analysis_reads(tmp_path):
+    """The list is the editing surface; the setting takes one region.
 
-    The setting existed and shaped the analysis long before anything in the GUI
-    could set it; this is the binding that closes that gap.
+    ``MoleculeMleSettings`` carries a single region because it crosses an RPC
+    boundary as plain data, so the collapse has to happen somewhere — here,
+    rather than in every caller.
     """
-    from chisurf.core.roi import RectangleROI, save_rois
+    from chisurf.core.roi import RectangleROI
     from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
         MoleculeMleViewModel,
     )
+
+    vm = MoleculeMleViewModel()
+    assert vm.settings.roi is None
+
+    vm.regions.add(RectangleROI(0, 0, 16, 16, name="patch"))
+    vm.regions.add(RectangleROI(4, 4, 8, 8, name="hole"), invert=True)
+    vm.apply_regions()
+
+    roi = vm.settings.analysis_roi()
+    assert roi is not None
+    assert roi.contains(np.array([[2.0, 2.0], [6.0, 6.0]])).tolist() == [True, False]
+
+    # Everything switched off is the whole frame, not an empty selection.
+    for name in vm.regions.names:
+        vm.regions.set_enabled(name, False)
+    vm.apply_regions()
+    assert vm.settings.roi is None
+
+
+def test_a_region_file_still_loads_through_the_shared_editor(tmp_path):
+    """The file picker is gone; the editor's own load replaces it."""
+    from chisurf.core.roi import RectangleROI, RegionCollection, save_rois
 
     path = tmp_path / "patch.json"
     save_rois([RectangleROI(10, 10, 90, 90, name="cell patch")], str(path))
 
-    vm = MoleculeMleViewModel()
-    assert vm.settings.roi is None
-
-    vm.sel_roi_files = [str(path)]
-    assert vm.sel_roi_files == [str(path)]
-    assert vm.settings.analysis_roi() is not None
-    assert vm.settings.analysis_roi().name == "cell patch"
-    assert "cell patch" in vm.status_text
-
-    # Clearing the list must clear the region, not leave a stale one behind.
-    vm.sel_roi_files = []
-    assert vm.settings.roi is None
+    loaded = RegionCollection.load(str(path))
+    assert loaded.names == ["cell patch"]
 
 
-def test_an_unreadable_region_file_is_reported_not_raised(tmp_path):
-    """A bad file leaves the analysis on the whole frame and says so.
+def test_the_measured_molecules_come_back_as_regions():
+    """The loop the region subsystem is for: measured objects become regions.
 
-    Raising here would take down the drop handler; silently ignoring it would
-    run the whole analysis on a region the user thinks is applied.
+    Each molecule is drawn as the ellipse with the same second moments as the
+    object — the centroid, axis lengths and orientation already in the result
+    table — so the outline shows what was measured rather than a guess at it.
     """
+    import pandas as pd
+
+    from chisurf.plugins.microscopy.sm_image_mle.core.molecule_mle import (
+        MoleculeMleResult,
+    )
     from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
         MoleculeMleViewModel,
     )
 
-    bad = tmp_path / "not_a_region.json"
-    bad.write_text("{ this is not json")
+    labels = np.zeros((32, 32), dtype=int)
+    labels[4:8, 4:16] = 1      # elongated along the columns
+    labels[20:28, 22:26] = 2   # elongated along the rows
+    intensity = np.where(labels > 0, 50.0, 2.0)
 
     vm = MoleculeMleViewModel()
-    vm.sel_roi_files = [str(bad)]
+    vm.results = [MoleculeMleResult(
+        dataframe=pd.DataFrame({"label": [1, 2], "tau": [2.0, 3.0]}),
+        intensity_image=intensity,
+        label_image=labels,
+        centroids=np.zeros((2, 2)),
+    )]
 
-    assert vm.settings.roi is None
-    assert "Could not read the region" in vm.status_text
+    molecules = vm.molecule_regions()
+    assert molecules.names == ["Mol 1", "Mol 2"]
+    assert molecules.combine == "or"
+
+    first = molecules.roi("Mol 1")
+    # Centred on the object, and wider than it is tall — the orientation is
+    # carried through, which is the whole point of using the moments.
+    assert first.cx == pytest.approx(9.5, abs=0.5)
+    assert first.cy == pytest.approx(5.5, abs=0.5)
+    assert first.to_mask((32, 32)).sum() > 0
+    x0, y0, x1, y1 = first.bounds((32, 32))
+    assert (x1 - x0) > (y1 - y0)
+
+    second = molecules.roi("Mol 2")
+    x0, y0, x1, y1 = second.bounds((32, 32))
+    assert (y1 - y0) > (x1 - x0)
+
+
+def test_molecule_regions_are_empty_before_anything_is_analysed():
+    from chisurf.plugins.microscopy.sm_image_mle.gui.view_model import (
+        MoleculeMleViewModel,
+    )
+
+    assert len(MoleculeMleViewModel().molecule_regions()) == 0
