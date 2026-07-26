@@ -555,13 +555,22 @@ class DataGroup(list, chisurf.core.base.Base):
 
     @property
     def name(self) -> str:
-        """Return the group name, falling back to the current dataset's name."""
-        try:
-            return self.__dict__['name']
-        except KeyError:
-            if len(self) == 0:
-                return "Empty group"
-            return self.names[self._current_dataset]
+        """Return the group name, falling back to the current dataset's name.
+
+        The fallback was unreachable: ``Base.__init__`` stamps
+        ``self.__class__.__name__`` into ``__dict__['name']`` whenever no name
+        is passed, so the ``KeyError`` branch could never be taken and every
+        unnamed group called itself ``ExperimentDataCurveGroup``. That is what
+        the dataset list showed after loading an FCS file. A stamped class name
+        is not a name anyone chose, so it counts as absent here.
+        """
+        name = self.__dict__.get('name')
+        if name and name != type(self).__name__:
+            return name
+        if len(self) == 0:
+            # Nothing to fall back to, so the stamp stands.
+            return name or "Empty group"
+        return self.names[self._current_dataset]
 
     @name.setter
     def name(self, v: str) -> None:

@@ -2300,11 +2300,27 @@ Every finding below was reproduced in the `arm64` env against the real objects.
 Findings RF-193..RF-201.
 
 ### RF-193
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the pile-up correction silently turns the entire model decay into `NaN`)
 - **Location:** `chisurf/core/fluorescence/tcspc/corrections.py:170-186` (`add_pile_up_to_model`), called from `chisurf/core/models/tcspc/nusiance.py:280-294` (`Corrections.pileup`)
 - **Finding:** `n_excitation_pulses = max(live_time * rep_rate, n_pulse_detected)` and then `p = data / (n_excitation_pulses - np.cumsum(data))`. Whenever the first term loses the `max` — i.e. whenever the assumed measurement time is too short for the number of recorded photons — `n_excitation_pulses` equals `cumsum[-1]`, so the **last** denominator is exactly `0`, `p[-1]` is `inf`, and `-log(1 - inf)` is `NaN`. The single `NaN` is then broadcast over the whole array by the normalisation `sf = sf / np.sum(sf) * len(data)`. Verified: `add_pile_up_to_model(y, m, rep_rate=20.0, dead_time=85.0, measurement_time=1.0, modify_inplace=False)` on a 64-channel decay holding 1e8 photons returns **64 NaN of 64**; the same call with `measurement_time=300.0` returns none. This is reachable by default, not exotic: `Corrections.measurement_time` reads `generic.t_exp`, whose `FittingParameter` default is `1.0` s and which the user must set by hand, so ticking the pile-up box on any long measurement poisons the model. The function is `@nb.jit(nopython=True)`, so there is no warning — the fit just reports `NaN` chi². Clamp the denominator (and `p < 1`) or refuse to correct when `live_time <= 0`.
-- **Fix note:**
+- **Fix note:** `add_pile_up_to_model` no longer clamps `n_excitation_pulses` up to
+  the detected count: when `live_time * rep_rate <= n_pulse_detected` the assumed
+  measurement time cannot account for the recorded photons, Coates' correction is
+  undefined, and the model is now left unscaled (`sf = 1`) instead of being turned
+  into `NaN`. On the regular path the per-pulse probability is additionally capped
+  at `MAX_DETECTION_PROBABILITY = 1 - 1e-12`, so eq. 4 also stays finite for a
+  measurement time that only barely exceeds the counts (`N = 1.5 × total` used to
+  give `p > 1` → `NaN`); the healthy path is bit-identical to before. Pinned by
+  `test/tcspc/test_pile_up_correction.py` (four tests: too-short time leaves the
+  model untouched and finite, barely-sufficient time stays finite and positive,
+  the sufficient-time path still matches an explicit Coates computation, and the
+  `modify_inplace` contract). The stale `verbose` entry in the docstring was
+  dropped and `docs/concepts/tcspc_lifetime.md` now states that pile-up needs a
+  consistent measurement time and is skipped otherwise. Note (not part of this
+  finding): the denominator uses an *inclusive* `cumsum`, whereas Coates eq. 2
+  subtracts only the *preceding* channels — a residual `n_i`-sized bias left
+  untouched here because it moves every corrected decay.
 
 ### RF-194
 - **Status:** OPEN

@@ -243,8 +243,10 @@ class Tests(unittest.TestCase):
             207
         )
 
-        ref_str = """Dataset:
-filename: None
+        # The curve carries the file it was read from; the reference used to
+        # say "None", recorded back when the reader dropped that provenance.
+        ref_str = f"""Dataset:
+filename: {os.path.normpath(filename)}
 length  : 207
 x	y	error-x	error-y
 1.360e-05   	4.216e+00   	1.000e+00   	1.174e-01   	

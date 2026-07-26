@@ -88,6 +88,46 @@
   attribute, so three-colour dynamics can use an arbitrary scheme but not fit one.
   Concept: [PRD-50](/prds/prd-50.md).
 
+* **Nine tests that could not fail, and the two live bugs hiding behind them.**
+  Five files in `test/fitting/` were written during one bug hunt about
+  polarization assignment in a fit group, and between them they contained *zero*
+  assertions about polarization: each `logger.error(...)`d on a wrong value
+  instead of asserting; one took a `num_datasets` argument with no fixture and no
+  `parametrize`, so pytest errored at collection and the sizes were only ever
+  passed from a `__main__` block; one ended `return True`. Four more were
+  "contract" tests that read *source text* — `assert "def
+  _is_global_fit_dataset(" in Path("cs/macros/core_data.py").read_text()` — from
+  paths that stopped existing when `cs/` was renamed `chisurf/`, so they raised
+  `FileNotFoundError`. A test that asserts a substring appears in a file it
+  cannot open tells you nothing twice over.
+
+  All nine are now assertions about behaviour. The polarization five collapse
+  into one parametrized file pinning the contract that
+  `Anisotropy.set_polarization_by_group_position` states: a lone fit is
+  magic-angle, a stacked VV/VH pair is `vv/vh` on both, and every other group
+  alternates `vv`/`vh` by index — so a three-fit group really is vv/vh/vv, which
+  had been recorded as an open question needing an owner's call when the code
+  answers it in so many words. The contract four become tests of what the
+  functions do: which parameters count as nuisance (instrument and corrections,
+  not physics), that grouping links `g`/`l1`/`l2`/`r0`/`tL1`/`xL1` across fits
+  while leaving `bg`/`dt`/`irf_start`/… local, that a single-fit group links
+  nothing, and that the global-fit dataset survives `remove_datasets`.
+
+  Writing the assertions immediately turned up two live bugs the logging had
+  been swallowing. **(1)** Two fits added *separately* are two groups of one, so
+  both are `vm` — not the `vv`/`vh` the old test wanted; the even/odd rule keys
+  off position within a group, and the mismatch had been logged and ignored.
+  **(2)** Every unnamed data group called itself `ExperimentDataCurveGroup`.
+  `DataGroup.name` documented a fallback to the current dataset's name in an
+  `except KeyError` branch that could never run, because `Base.__init__` stamps
+  `self.__class__.__name__` into `__dict__['name']` whenever no name is passed —
+  so after loading an FCS file the dataset list showed the class name instead of
+  the file. A stamped class name now counts as absent. `test/fitting` and
+  `test/core` are green on this path; the frozen reference string in
+  `test_FCS_Reader` was also updated, since it recorded `filename: None` from
+  back when the reader dropped that provenance. Recorded in
+  [known-issues](/references/known-issues.md).
+
 * **A `.pqres` file could not be loaded, and three layers had to be wrong for
   that.** The PicoQuant SymPhoTime result format is binary (`PQRESLT\0` magic)
   and it was being handed to `np.loadtxt`, which died on byte 0xff. The reason

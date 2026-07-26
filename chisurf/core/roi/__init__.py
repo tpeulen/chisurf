@@ -26,6 +26,18 @@ readily as a label image, and to hand the measured region back as a ROI.
 
 from __future__ import annotations
 
+from .builders import arbitrary_region, local_statistics
+from .io import (
+    load_region,
+    load_regions,
+    load_roi_metadata,
+    load_rois,
+    roi_from_mask_file,
+    rois_from_cellpose,
+    rois_from_label_image,
+    save_label_image,
+    save_rois,
+)
 from .props import (
     INTENSITY_PROPERTIES,
     PROPERTIES,
@@ -50,6 +62,7 @@ from .roi import (
 )
 
 __all__ = [
+    # geometry
     "ROI",
     "RectangleROI",
     "EllipseROI",
@@ -69,4 +82,17 @@ __all__ = [
     "regionprops_table",
     "PROPERTIES",
     "INTENSITY_PROPERTIES",
+    # built from image data
+    "arbitrary_region",
+    "local_statistics",
+    # persistence and interchange
+    "save_rois",
+    "load_rois",
+    "load_region",
+    "load_regions",
+    "load_roi_metadata",
+    "rois_from_cellpose",
+    "rois_from_label_image",
+    "roi_from_mask_file",
+    "save_label_image",
 ]

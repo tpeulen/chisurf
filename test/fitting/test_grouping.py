@@ -1,135 +1,137 @@
+"""Default parameter linking in a fit group, and the global-fit dataset guard.
+
+Every test in this file used to read *source text* and grep it for the presence
+of a function definition or a decorator line:
+
+    src = Path("cs/macros/core_data.py").read_text(...)
+    assert "def _is_global_fit_dataset(" in src
+
+That pins the spelling, not the behaviour — and the paths were stale (``cs/``
+was renamed ``chisurf/``, and one of them was relative to the working
+directory), so all four raised ``FileNotFoundError``. A test that asserts a
+substring appears in a file it cannot open tells you nothing twice over. They
+are replaced here with tests of what the functions do.
+
+The polarization copy that also lived in this file is consolidated into
+``test_group_polarization_any_size.py``.
+"""
 from __future__ import annotations
 
-# Consolidated test file: test_grouping.py
-
-
-# --- FROM test_grouping.py ---
-
-# --- FROM test_group_reference.py ---
-import logging
-import chisurf as cs
-from chisurf.core.data import DataCurve, ExperimentDataCurveGroup
-from chisurf.core.fitting.fit import Fit, FitGroup
-from chisurf.core.models.tcspc.lifetime import LifetimeModel
 import numpy as np
+import pytest
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+import chisurf as cs
+import chisurf.core.actions
+import chisurf.core.actions.dataset_actions  # noqa: F401 - registers the actions
+from chisurf.core.data import DataCurve, ExperimentDataCurveGroup
+from chisurf.core.fitting.fit import FitGroup
+from chisurf.core.models.tcspc.lifetime import LifetimeModel
+from chisurf.macros.core_data import _is_global_fit_dataset
+from chisurf.macros.core_fit import (
+    _auto_link_non_nuisance_group_parameters,
+    _collect_group_nuisance_parameter_names,
+)
 
-def test_group_reference():
-    """
-    Test that the group reference is working correctly for polarization assignment.
-    """
-    logger.info("Testing group reference for polarization assignment")
-    
-    # Clear any existing datasets and fits
-    cs.imported_datasets = []
-    cs.fits = []
-    
-    # Create two simple datasets
+
+def _two_fit_group() -> FitGroup:
+    """A two-dataset lifetime group with its parameters discovered."""
     x = np.linspace(0, 10, 100)
-    y1 = np.exp(-x/2) + 0.1*np.random.randn(100)
-    y2 = np.exp(-x/4) + 0.1*np.random.randn(100)
-    
-    data1 = DataCurve(x=x, y=y1, name="Dataset 1")
-    data2 = DataCurve(x=x, y=y2, name="Dataset 2")
-    
-    # Create a data group with both datasets
-    data_group = ExperimentDataCurveGroup([data1, data2])
-    
-    # Create a fit group with the data group
-    fit_group = FitGroup(
-        data=data_group,
-        model_class=LifetimeModel
+    group = FitGroup(
+        data=ExperimentDataCurveGroup([
+            DataCurve(x=x, y=np.exp(-x / (i + 1)), name=f"Dataset {i}")
+            for i in range(2)
+        ]),
+        model_class=LifetimeModel,
     )
-    
-    # Check that each fit has a group attribute that references the fit group
-    for i, fit in enumerate(fit_group.grouped_fits):
-        if hasattr(fit, 'group'):
-            logger.info(f"Fit {i} has group attribute: {fit.group is fit_group}")
-        else:
-            logger.error(f"Fit {i} does not have group attribute")
-    
-    # Check polarization types for each fit in the group
-    for i, fit in enumerate(fit_group.grouped_fits):
-        pol_type = fit.model.anisotropy.polarization_type
-        logger.info(f"Fit {i} polarization type: {pol_type}")
-        
-        # Verify polarization type is set correctly
-        if i == 0 and pol_type != 'vv':
-            logger.error(f"Fit 0 should have polarization type 'vv', but has '{pol_type}'")
-        elif i == 1 and pol_type != 'vh':
-            logger.error(f"Fit 1 should have polarization type 'vh', but has '{pol_type}'")
-    
-    # Test with the example code from the issue description
+    for fit in group.grouped_fits:
+        fit.model.find_parameters()
+    return group
+
+
+def test_nuisance_parameters_are_collected_from_the_nuisance_containers():
+    """Instrument and correction parameters count as nuisance, physics does not.
+
+    The collector walks the model's attributes for the containers named
+    ``generic``/``corrections``/``convolve`` (and anything spelled *nuisance*,
+    misspelling included) and takes their parameter names.
+    """
+    model = _two_fit_group().grouped_fits[0].model
+    nuisance = _collect_group_nuisance_parameter_names(model)
+
+    # Instrument/correction parameters: background, dead time, IRF window, …
+    assert {'bg', 'dt', 'irf_start', 'irf_stop', 'lb', 'sc', 'tDead'} <= nuisance
+    # Physics parameters must not be swept in with them.
+    assert nuisance.isdisjoint({'g', 'l1', 'l2', 'r0'})
+
+
+def test_grouped_fits_auto_link_non_nuisance_parameters():
+    """Grouping links the physics across fits and leaves the nuisances local."""
+    group = _two_fit_group()
+    masters, followers = _auto_link_non_nuisance_group_parameters(group)
+    assert masters > 0 and followers > 0
+
+    first, second = (f.model.parameters_all_dict for f in group.grouped_fits)
+    nuisance = _collect_group_nuisance_parameter_names(
+        group.grouped_fits[0].model
+    )
+
+    linked = {n for n, p in second.items() if getattr(p, 'is_linked', False)}
+    assert linked, "grouping linked nothing at all"
+    assert linked.isdisjoint(nuisance)
+    for name in linked:
+        # A follower points at the *first* fit's parameter of the same name.
+        assert second[name].link is first[name]
+        assert first[name].is_link_master
+
+
+def test_a_single_fit_group_links_nothing():
+    """With no second fit there is no follower, so the pass is a no-op."""
+    x = np.linspace(0, 10, 100)
+    group = FitGroup(
+        data=ExperimentDataCurveGroup([DataCurve(x=x, y=np.exp(-x), name="one")]),
+        model_class=LifetimeModel,
+    )
+    group.grouped_fits[0].model.find_parameters()
+    assert _auto_link_non_nuisance_group_parameters(group) == (0, 0)
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("Global-fit", True),
+        ("global-fit", True),
+        ("  Global Dataset ", True),
+        ("Global-fit dataset", True),
+        ("Dataset 0", False),
+        ("", False),
+    ],
+)
+def test_global_fit_dataset_is_recognised_by_name(name, expected):
+    """The guard matches on the dataset's name, case- and space-insensitively."""
+    assert _is_global_fit_dataset(DataCurve(name=name)) is expected
+    # It must accept the server-side dict form as well as the object.
+    assert _is_global_fit_dataset({"name": name}) is expected
+
+
+def test_the_global_fit_dataset_cannot_be_removed():
+    """`remove_datasets` skips it, which is the point of the guard."""
+    from chisurf.macros import core_data
+
+    saved = cs.imported_datasets
     try:
-        logger.info("\nTesting with example code from issue description")
-        
-        # Clear any existing datasets and fits
-        cs.imported_datasets = []
-        cs.fits = []
-        
-        # Try to add a dataset as described in the issue
-        try:
-            cs.macros.add_dataset(filename=r'/test/data/tcspc/Jordi/02_18-577+7.5uM(577)UP_8ps.dat')
-            logger.info(f"Dataset added successfully. Total datasets: {len(cs.imported_datasets)}")
-        except Exception as e:
-            logger.error(f"Error adding dataset: {e}")
-            
-            # If the file doesn't exist, create a dummy dataset for testing
-            logger.info("Creating dummy dataset for testing")
-            x = np.linspace(0, 10, 100)
-            y = np.exp(-x/2) + 0.1*np.random.randn(100)
-            data = DataCurve(x=x, y=y, name="Test Dataset")
-            cs.imported_datasets.append(data)
-        
-        # Add a fit with the Lifetime model
-        logger.info("Adding fit with Lifetime model")
-        cs.macros.add_fit(model_name='Lifetime ', dataset_indices=[0])
-        logger.info(f"Fit added successfully. Total fits: {len(cs.fits)}")
-        
-        # Check if the fit has a group attribute
-        if len(cs.fits) > 0:
-            fit = cs.fits[0]
-            if hasattr(fit, 'group'):
-                logger.info(f"Fit has group attribute: {fit.group}")
-            else:
-                logger.info("Fit does not have group attribute (expected for single dataset)")
-            
-            # Check the polarization type that was set
-            pol_type = fit.model.anisotropy.polarization_type
-            logger.info(f"Polarization type set to: {pol_type}")
-    except Exception as e:
-        logger.error(f"Error testing example code: {e}")
+        keep = DataCurve(name="Global-fit")
+        drop = DataCurve(name="Dataset 0")
+        cs.imported_datasets = [keep, drop]
+        core_data.remove_datasets([0, 1], _from_controller=True)
+        assert cs.imported_datasets == [keep]
+    finally:
+        cs.imported_datasets = saved
 
 
-# --- FROM test_grouped_default_linking_contract.py ---
-from pathlib import Path
-
-
-def test_grouped_fits_auto_link_non_nuisance_parameters_contract():
-    path = Path(__file__).resolve().parents[2] / "cs" / "macros" / "core_fit.py"
-    src = path.read_text(encoding="utf-8")
-
-    assert "def _auto_link_non_nuisance_group_parameters" in src
-    assert "_collect_group_nuisance_parameter_names" in src
-    assert "generic\", \"corrections\", \"convolve\"" in src
-    assert "linked_masters, linked_followers = _auto_link_non_nuisance_group_parameters(fit_group)" in src
-    assert "action_type=\"fit_group_auto_link\"" in src
-
-# --- FROM test_global_fit_dataset_guard.py ---
-
-from pathlib import Path
-
-
-def test_core_data_global_fit_guard_contracts():
-    src = Path("cs/macros/core_data.py").read_text(encoding="utf-8")
-    assert "def _is_global_fit_dataset(" in src
-    assert "def restore_global_fit_dataset(" in src
-    assert "dataset_restore_global_fit" in src
-
-
-def test_dataset_actions_exposes_restore_global_fit_action_contract():
-    src = Path("cs/actions/dataset_actions.py").read_text(encoding="utf-8")
-    assert "@action(\"dataset.restore_global_fit\")" in src
+def test_restore_global_fit_is_a_registered_action():
+    """The GUI reaches the restore through the action registry, by this name."""
+    catalog = chisurf.core.actions.get_action_catalog()
+    names = set(catalog) if isinstance(catalog, dict) else {
+        a.get('name', a) for a in catalog
+    }
+    assert 'dataset.restore_global_fit' in names

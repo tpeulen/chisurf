@@ -97,6 +97,33 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Found 2026-07-26 while making the tcPDA rate matrix fittable.** A rate fitted
+by the three-colour dynamic model comes out **systematically fast, by some tens
+of percent**, and more computation does not help. Measured on bursts simulated
+from a known two-state scheme by an independent forward route (a fresh distance
+triple per state per burst, mixed by sampled occupation times, then split
+multinomially): the profile likelihood along `k_tot` peaks at 650–700 Hz for a
+truth of 500 Hz, and the argmax moves by at most one grid step from 600 to 8000
+sampled trajectories and from an occupancy resolution of 24 to 192. So it is
+**not** Monte-Carlo noise in the occupation-time sampling — that part is exact
+in distribution.
+
+The cause is the approximation made *outside* the sampling, in
+`TcPdaModel._mean_channel_probabilities`: each state is collapsed to its
+distance-averaged per-photon probability vector *before* the occupation-time
+mixing, so the intra-state distance spread contributes to the predicted
+burst-to-burst width differently than it does to real bursts. Fixing it properly
+means carrying the distance quadrature through the dynamic average (nodes x
+occupancy nodes x bursts), which is a real cost increase and a design decision
+about where to truncate — hence recorded rather than fixed in the change that
+found it. Until then, `tcpda.py`, the concept page and the guide all say to read
+a fitted rate as an exchange **timescale**, not a rate measurement; comparisons
+between conditions are sound.
+
+Note this was invisible before, because the rate matrix was a plain array
+attribute nobody could fit — the bias only became reachable when the rates
+became parameters.
+
 **Found 2026-07-26 while adding typeset labels.** `pytest test/fitting` used to
 **abort the interpreter** part-way through (~47 %), so everything after it never
 ran. `chisurf/macros/core_data.py::add_dataset` popped a `MyMessageBox` on its
@@ -113,14 +140,16 @@ than fixed because they span five unrelated subsystems:
 
 - `test_fit_state.py` (5) — model `get_state`/`set_state` round-trips, including
   the FRET-Gaussian and PDA length-preservation contracts.
-- `test_grouping.py` (3) + `test_grouped_default_linking_contract.py` (1) —
-  auto-linking of non-nuisance parameters across grouped fits, and two
-  `core_data` guard contracts.
-- `test_experiment.py::test_FCS_Reader`, `test_models_regression.py::
-  test_parse_model_evaluation`, `test_parameter.py::test_equality`,
+- ~~`test_grouping.py` (3) + `test_grouped_default_linking_contract.py` (1)~~ —
+  fixed 2026-07-26; they read *source text* from paths that no longer exist and
+  are now behavioural.
+- ~~`test_experiment.py::test_FCS_Reader`~~ — fixed 2026-07-26. Remaining:
+  `test_models_regression.py::test_parse_model_evaluation`,
+  `test_parameter.py::test_equality`,
   `test_fit.py::test_fit_save_full_length_curves_have_nan_padding`,
   `test_reference_models.py::test_lifetime_model_convergence`.
-- `test_group_polarization_any_size.py` errors at collection.
+- ~~`test_group_polarization_any_size.py` errors at collection.~~ — fixed
+  2026-07-26.
 
 **Found 2026-07-26 while closing [RF-168](/reviews/findings.md#rf-168) in the
 BVA layer.** `test/plugins/burst/test_background_gui.py` has two failures that
@@ -200,16 +229,45 @@ in the anisotropy area; neither is reachable from a production call path today.
   those two doc updates plus a `g ≠ 1` test, and belongs in its own change.
   Harmless meanwhile: the only in-tree callers are its doctest and
   `test_vm_vv_vh`, both at the default `g = 1`.
-- **`test_group_polarization_any_size.py` never runs, and would pass even when
-  wrong.** `test_group_polarization_assignment(num_datasets)` takes an argument
-  with no fixture and no `parametrize`, so pytest errors at collection; the sizes
-  are only passed from a `__main__` block. Worse, the body `logger.error(...)`s
-  on a wrong polarization type instead of asserting, and ends with `return True`
-  — so even once collected it could not fail. Converting it needs the intended
-  semantics for odd group sizes (does a 3-fit group really alternate vv/vh/vv?),
-  which is an owner call.
 
 **Fixed 2026-07-25/26 — kept here because the *patterns* keep recurring**
+
+- **Five test files about one behaviour, and none of them could fail.**
+  `test_group_polarization_any_size.py`, `test_polarization_fix.py`,
+  `test_unified_polarization.py`, `test_group_reference.py` and
+  `test_polarization_group_update.py` were written during a single bug hunt and
+  between them contained *zero* assertions about polarization: each
+  `logger.error(...)`d on a wrong value instead of asserting; one took a
+  `num_datasets` argument with no fixture and no `parametrize`, so pytest errored
+  at collection and the sizes were only passed from a `__main__` block; one ended
+  `return True`. Consolidated into one parametrized file that asserts the
+  contract stated in `Anisotropy.set_polarization_by_group_position`. The open
+  question this was filed under — does a 3-fit group really alternate
+  vv/vh/vv? — was not an owner call after all: the code answers it in so many
+  words, and it does. The rewrite also found the expectation that had been
+  logged-and-ignored for years: two fits *added separately* are two groups of
+  one, so both are `vm`, not the `vv`/`vh` the old test wanted. **Pattern: a
+  test that logs instead of asserting is worse than no test — it occupies the
+  slot where a real one would go.**
+- **Four "contract" tests grepped source text out of files they could not
+  open.** `test_grouping.py` and `test_grouped_default_linking_contract.py`
+  asserted that `"def _is_global_fit_dataset(" in Path("cs/macros/core_data.py")
+  .read_text()`. The package was renamed `cs/` → `chisurf/` and one path was
+  relative to the working directory, so all four raised `FileNotFoundError` —
+  a test that asserts a substring appears in a file it cannot open tells you
+  nothing twice over. Replaced with tests of what the functions do: which
+  parameters count as nuisance, that grouping links the physics and leaves the
+  instrument parameters local, that the global-fit dataset survives
+  `remove_datasets`. **Pattern: asserting on source text pins the spelling, not
+  the behaviour, and rots at the first rename.**
+- **Every unnamed data group called itself `ExperimentDataCurveGroup`.**
+  `DataGroup.name` documented a fallback to the current dataset's name, in a
+  `except KeyError` branch that could never run: `Base.__init__` stamps
+  `self.__class__.__name__` into `__dict__['name']` whenever no name is passed,
+  so the key was always present. After loading an FCS file the dataset list
+  showed the class name instead of the file. A stamped class name is now treated
+  as absent. **Pattern: a fallback guarded by a condition its own constructor
+  makes impossible is dead code that reads as a feature.**
 
 - **A binary `.pqres` file was read with `np.loadtxt`, and three layers had to
   break for that to happen.** `FCS.read()` accepted a `reader_name` argument,
