@@ -387,26 +387,32 @@ in the anisotropy area; neither is reachable from a production call path today.
   list has to follow the active one.**
 
 **Test collection**
-- `test/core/test_rename.py` breaks collection of the **whole** `test/core`
-  package on any machine that is not the original Windows one: it is not a test
-  but an ad-hoc tttrlib file-locking script that runs at import time and opens a
-  hardcoded `e:\dev\chisurf\test\data\clsm\Leica_SP8.ptu`, so
-  `pytest test/core` stops at `FileNotFoundError` before running anything. It
-  carries no test function and no assertion; it was swept in by the
-  package-layout reorganisation (`e56240187`). The fix is to delete it or turn
-  it into a real test over `test/data/clsm/`. Left alone here only because this
-  run was scoped to a single review finding (RF-001) in a shared working tree —
-  workaround: `pytest test/core --ignore=test/core/test_rename.py`.
-- Four test modules import `chisurf.gui.widgets.yaml_utils`, which **has never
-  existed** — `git log -S` finds no commit adding or removing it. They fail at
-  collection with `ModuleNotFoundError`, taking `test/plugins` down with them:
-  `test/plugins/test_plugins_list_format.py`, `test/settings/test_yaml.py`,
-  `test/settings/test_real_settings.py`, `test/gui/test_list_editor_fix.py`.
-  Neither `dump_yaml` nor `prepare_for_yaml` is defined anywhere in `chisurf/`,
-  so these tests never ran against real code — they are the same
-  never-existed-API class as `test/models/test_user_models.py` below and need
-  rewriting against the settings serializer or deleting, not a re-import. Left
-  alone here only because this run was scoped to one PRD-36 tool migration.
+- **RESOLVED — `test/core/test_rename.py`** no longer breaks collection of the
+  whole `test/core` package. It used to be an ad-hoc tttrlib file-locking script
+  that ran at import time against a hardcoded `e:\dev\chisurf\…\Leica_SP8.ptu`;
+  it is now a real test over the repository's own `test/data/clsm/`, guarding
+  that reading a photon file leaves no handle that blocks renaming or deleting it.
+- **RESOLVED — the `chisurf.gui.widgets.yaml_utils` test modules are gone**
+  (2026-07-26). Four modules imported `dump_yaml`/`prepare_for_yaml` from a
+  module that **has never existed** — `git log -S` finds no commit adding or
+  removing it — so they failed at collection with `ModuleNotFoundError` and took
+  `test/settings`, `test/plugins` and `test/gui` down with them. They were
+  print-driven prototyping scripts that never ran against real code (the same
+  never-existed-API class as `test/models/test_user_models.py` below), so they
+  were deleted and replaced by `test/settings/test_settings_yaml_lists.py`,
+  which asks the same question — do list-valued settings survive as lists? — of
+  the serializer that does exist (`chisurf/core/settings/settings_utils.py`).
+- **RESOLVED — `test/plugins` collects again** (2026-07-26). Three further
+  modules tested `chisurf.plugins._dev.chato`, a scratch tree that is
+  **gitignored** (`.gitignore:78`) and absent from the repo, and one tested
+  `chisurf.plugins.chat`, deleted in `c28d07b65`; all four were untestable by
+  construction and were removed. `test_plugin_manager_mistral_icon.py` imported
+  a real class (`AIIconRateLimitError`) that the package simply did not
+  re-export — it now does. Two `test_manifest.py` files in `__init__.py`-less
+  directories also collided on the module name (`import file mismatch`); the
+  three `test/plugins/*/` subpackages got their `__init__.py`.
+  **Pattern: a test module whose import fails takes its whole package's
+  collection with it, so one dead import hides hundreds of live tests.**
 
 **Qt teardown in test suites**
 - `chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py` aborts with

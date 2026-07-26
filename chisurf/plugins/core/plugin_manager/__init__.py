@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+
 import chisurf as cs
 from chisurf.core.plugin import load_manifest
 from chisurf.core.plugin.registry import apply_manifest_statefulness
 from chisurf.plugins.core.plugin_manager.gui.tool import (
+    AIIconRateLimitError,
     PluginManagerWidget,
     read_module_docstring,
 )
@@ -27,6 +29,7 @@ def load():
 
 
 __all__ = [
+    "AIIconRateLimitError",
     "PluginManagerWidget",
     "read_module_docstring",
     "load",

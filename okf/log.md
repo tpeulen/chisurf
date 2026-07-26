@@ -2,6 +2,35 @@
 
 ## 2026-07-26
 
+* **Nine dead test modules were hiding 250 live ones.** `test/settings`,
+  `test/plugins` and `test/gui` did not *collect*: a module whose import fails
+  aborts collection for its whole package, so one dead import silently costs
+  hundreds of tests. Four modules imported
+  `chisurf.gui.widgets.yaml_utils.dump_yaml`, which **has never existed**
+  (`git log -S` finds no commit adding or removing it) — print-driven
+  prototyping scripts that therefore never ran against real code; one of them
+  defined `test_yaml_formatting` twice. Deleted, and replaced by
+  `test/settings/test_settings_yaml_lists.py`, which asks their question of the
+  serializer that does exist: list-valued settings (`plugins.toolbar_plugins`
+  and friends) stay YAML *sequences* through the shipped defaults, the
+  `_deep_merge` loader (a user list replaces the packaged one wholesale) and a
+  write/read round-trip. The list-ness matters because `load_toolbar_plugins`
+  iterates the value — a comma-joined scalar would not raise, it would iterate
+  *characters* and come up empty. Three more modules tested
+  `chisurf.plugins._dev.chato`, a scratch tree that is gitignored
+  (`.gitignore:78`) and absent from the tree, and one tested
+  `chisurf.plugins.chat`, deleted in `c28d07b65` — untestable by construction,
+  removed. `test_plugin_manager_mistral_icon.py` (8 real tests) failed on a
+  class that exists but was not re-exported: `AIIconRateLimitError` is now part
+  of the `plugin_manager` package surface next to `PluginManagerWidget`. Last,
+  two `test_manifest.py` files in `__init__.py`-less directories collided on the
+  module name; `test/plugins/{boarding,burst,burst_selection}` got their
+  `__init__.py`. `test/plugins` now collects 253 tests with zero errors (was 1
+  test + 6 errors) and `test/settings` 4. Remaining failures there are
+  pre-existing and unrelated (the two AutoForm-rebuild burst-background ones in
+  [known issues](/references/known-issues.md), plus two contract tests tracking
+  other instances' in-flight edits).
+
 * **GUI walk — global analysis (two fits, one shared donor spectrum).** Drove
   the whole global-analysis workflow headlessly on
   `test/data/tcspc/EasyTau300` (D0 + DA decay, each with its own IRF): two local
