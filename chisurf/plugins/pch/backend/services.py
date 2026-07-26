@@ -117,6 +117,20 @@ def _fit_handler(
     fit_high: int | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
+    if n_components < 1:
+        return {"ok": False, "error": f"n_components must be >= 1, got {n_components}"}
+    for name, values in (
+        ("initial_epsilons", initial_epsilons),
+        ("initial_Ns", initial_Ns),
+    ):
+        if values and len(values) != n_components:
+            return {
+                "ok": False,
+                "error": (
+                    f"{name} has length {len(values)}, expected n_components = "
+                    f"{n_components} (one starting value per species)"
+                ),
+            }
     try:
         from scipy.optimize import least_squares
 

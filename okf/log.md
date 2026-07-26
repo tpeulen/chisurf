@@ -2,6 +2,19 @@
 
 ## 2026-07-26
 
+* **PCH: two starting values for one species, and the fit still said `ok`.**
+  Closes [RF-210](/reviews/findings.md#rf-210) (S1). `pch.fit` concatenates
+  `initial_epsilons + initial_Ns` into one vector and splits the optimiser's answer at
+  `n_components`, so a caller sending one ε and one ⟨N⟩ for two components got the ⟨N⟩
+  read back as a second ε and an *empty* occupancy list — `pch_mixture`'s
+  `zip(epsilons, avgNs)` then paired nothing, `p_fit` came back as a delta at k = 0 and
+  `fractions` as `[]`, all under `ok: True` with a plausible-looking χ². The handler now
+  refuses a mismatched list up front (naming the list, its length and the expected
+  count) and the `zip` is `strict=True`, so the silent-truncation mechanism cannot
+  degenerate any other caller either. Omitted lists still fall back to the per-species
+  defaults. Pinned in `chisurf/plugins/pch/tests/test_services.py`. The GUI spin box
+  that generates the mismatch is a separate open finding (RF-209).
+
 * **Anisotropy: the G-factor sat in the one place that is not invertible.**
   Closes [RF-231](/reviews/findings.md#rf-231) (S2, open since the review pass), the
   follow-up that [BUG-09](/specs/assessment.md#bug-09) deliberately left behind.

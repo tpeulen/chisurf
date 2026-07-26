@@ -2632,11 +2632,33 @@ one and then two species, move the fit region, export, open Help — on
 - **Fix note:**
 
 ### RF-210
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`pch.fit` returns `ok: True` with a degenerate model when the parameter lists disagree with `n_components`, and that garbage is what gets exported)
 - **Location:** `chisurf/plugins/pch/backend/services.py:130-165` (`_fit_handler`, `params_init = init_eps + init_Ns` at `:143`, the `p[:n_components]` / `p[n_components:]` split at `:146`), with the GUI writeback at `chisurf/plugins/pch/gui/tool.py:402-404`
 - **Finding:** The handler concatenates `initial_epsilons` and `initial_Ns` into one flat vector and then splits the optimiser's answer at `n_components`, without ever checking that either list has `n_components` entries. Given `n_components=2` with one ε and one ⟨N⟩ — exactly what the GUI sends while RF-209 keeps a single species row on screen — the split yields **two epsilons** (the ε *and* the ⟨N⟩) and an **empty** occupancy list, so `pch_mixture` convolves nothing, `p_fit` is `[1, 0, 0, …]` (a delta at k = 0), `fractions` is `[]` from `Ns_arr/Ns_arr.sum()` on an empty array, and the handler still returns `{"ok": True, …, "chi2": 581023.7}`. Verified directly against `_fit_handler` and through the GUI. The GUI then raises `IndexError: list index out of range` in the writeback loop — but only *after* `self._fit_result` has been assigned at `:400`, so the degenerate result is live: **💾 Save Results** wrote `pch_results.csv` with a `P_fit` column of `1.0, 0.0, 0.0, …`, a **0-byte** `pch_results.txt` and an npz whose `fit_results` array is empty, all under a "Results saved as: …" success dialog. Validate the lengths (pad or reject) and refuse `len(initial_Ns) != n_components` instead of returning `ok: True`; guard the export on a valid fit.
-- **Fix note:**
+- **Fix note:** `_fit_handler` now validates before it fits: `n_components < 1` and a
+  non-empty `initial_epsilons`/`initial_Ns` whose length is not `n_components` return
+  `{"ok": False, "error": …}` naming the offending list, its length and the expected
+  count — rejected rather than padded, because a starting value the user never set is
+  not a better answer than an error. An omitted/empty list still falls back to the
+  per-species defaults as before. Reproduced against `HEAD` first: `n_components=2`
+  with `initial_epsilons=[2.0]`, `initial_Ns=[3.0]` returned `ok: True` with
+  `epsilons=[2.0, 3.0]`, `avg_Ns=[]`, `fractions=[]` and `p_fit=[1.0, 0.0, …]`; it now
+  returns `ok: False`. The mechanism is closed at the root as well —
+  `pch_mixture`'s `zip(epsilons, avgNs)` silently dropped the unpaired ε and returned
+  the delta, and is now `strict=True`, so any caller with mismatched lists raises
+  instead. Nothing further is needed on the export side: `PCHClient.fit` raises
+  `RuntimeError` on `ok: False`, so `_on_fit` never assigns `self._fit_result` and the
+  save path stays on its `_fit_result is None` branch (data only, no fit columns) —
+  verified by reading both paths. Pinned by
+  `chisurf/plugins/pch/tests/test_services.py::test_fit_handler_refuses_starting_values_that_do_not_match_n_components`
+  (each list short in turn, plus `n_components=0`) and
+  `::test_pch_mixture_refuses_unequal_parameter_lists`. A valid two-component fit and
+  the all-defaults path still return `ok: True`. `chisurf/plugins/pch/tests/`,
+  `chisurf/plugins/pch/test/`, `test/gui/test_pch_models_resolve.py`,
+  `test/models/test_rpc_method_view.py` and `test/models/test_fida.py` green (56
+  tests); `ruff check`/`format` add no finding on the touched lines. RF-209 (the GUI
+  spin box that produces the mismatched pair) is untouched and still `OPEN`.
 
 ### RF-211
 - **Status:** OPEN

@@ -58,7 +58,7 @@ def pch_open_system(k_vals, brightness, avgN, maxN=30):
 def pch_mixture(k_vals, epsilons, avgNs):
     pk = np.zeros_like(k_vals, dtype=float)
     pk[0] = 1.0
-    for eps, n in zip(epsilons, avgNs):
+    for eps, n in zip(epsilons, avgNs, strict=True):
         pj = pch_open_system(k_vals, eps, n)
         pk = fftconvolve(pk, pj)[:len(k_vals)]
     return pk
