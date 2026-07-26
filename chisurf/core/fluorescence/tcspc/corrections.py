@@ -5,6 +5,11 @@ import numpy as np
 
 import chisurf.core.math
 
+#: Largest per-pulse detection probability Coates' eq. 4 is evaluated at. A
+#: probability of exactly one corresponds to a detection in every excitation
+#: pulse and makes ``-log(1 - p)`` diverge.
+MAX_DETECTION_PROBABILITY = 1.0 - 1e-12
+
 
 def compute_linearization_table(
         data: np.ndarray,
@@ -121,6 +126,10 @@ def add_pile_up_to_model(
     be adjusted after adding pile-up to the model. The function uses the
     assumptions as described in ref [1]_.
 
+    The correction needs more excitation pulses than detected photons. If the
+    *measurement_time* is too short to account for the recorded photons the
+    model is returned unscaled, as the correction is undefined there.
+
     Parameters
     ----------
     data : numpy-array
@@ -133,8 +142,6 @@ def add_pile_up_to_model(
         The dead-time of the system in nanoseconds
     measurement_time : float
         The measurement time in seconds
-    verbose : bool
-        If this parameter is set to True information is printed to stdout.
     modify_inplace : bool
         If set to True (default) pile-up is added to the input model array and
         the input is modified inplace. If False a copy of the input model array
@@ -168,19 +175,29 @@ def add_pile_up_to_model(
     n_pulse_detected = cum_sum[-1]
     total_dead_time = n_pulse_detected * dead_time
     live_time = measurement_time - total_dead_time
-    n_excitation_pulses = max(live_time * rep_rate, n_pulse_detected)
+    n_excitation_pulses = live_time * rep_rate
 
-    # Coates, 1968, eq. 2
-    p = data / (n_excitation_pulses - np.cumsum(data))
-    # Coates, 1968, eq. 4
-    rescaled_data = -np.log(1.0 - p)
-    rescaled_data[rescaled_data == 0] = 1.0
+    if n_excitation_pulses <= n_pulse_detected:
+        # The assumed measurement time accounts for fewer excitation pulses
+        # than there are detected photons. Coates' correction is undefined in
+        # that case (the denominator of eq. 2 reaches zero in the last channel
+        # and eq. 4 diverges), so the model is left unscaled instead of being
+        # turned into NaN.
+        sf = np.ones(len(data))
+    else:
+        # Coates, 1968, eq. 2. The probability is capped strictly below one so
+        # that eq. 4 stays finite for a measurement time that is only barely
+        # long enough.
+        p = np.minimum(data / (n_excitation_pulses - cum_sum), MAX_DETECTION_PROBABILITY)
+        # Coates, 1968, eq. 4
+        rescaled_data = -np.log(1.0 - p)
+        rescaled_data[rescaled_data == 0] = 1.0
 
-    # instead of rescaling the data, the model function is
-    # rescaled, to preserve the counting statistics and the
-    # known noise.
-    sf = data / rescaled_data
-    sf = sf / np.sum(sf) * len(data)
+        # instead of rescaling the data, the model function is
+        # rescaled, to preserve the counting statistics and the
+        # known noise.
+        sf = data / rescaled_data
+        sf = sf / np.sum(sf) * len(data)
     if modify_inplace:
         model *= sf
         return model

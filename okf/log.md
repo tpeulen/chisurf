@@ -1207,6 +1207,24 @@
   wrong return type for `project.save` (it returns the archive `Path`) while
   writing that archive into a literal `C:/tmp/demo` folder in the repo.
 
+* **Pile-up asked for a measurement time and punished you for not knowing it.**
+  Coates' correction divides by the excitation pulses that have not yet produced
+  a detection, so it needs the measurement time — and `t_exp` ships at `1.0` s,
+  which the user must set by hand. The old code papered over an inconsistent
+  value with `n_excitation_pulses = max(live_time * rep_rate, n_pulse_detected)`,
+  which made the *last* denominator exactly zero: `p = inf`, `-log(1 - inf) =
+  NaN`, and the normalisation of the scaling factors then spread that single
+  `NaN` over the entire model decay. Inside a `nopython` jit there is no warning
+  — the fit simply reported `NaN` chi². `add_pile_up_to_model` now treats "fewer
+  pulses than photons" as what it is (the correction is undefined) and leaves the
+  model unscaled, and caps the per-pulse probability strictly below one so eq. 4
+  also survives a measurement time that only barely exceeds the counts. The
+  healthy path is bit-identical. Pinned by
+  `test/tcspc/test_pile_up_correction.py`; the nuisance section of
+  [tcspc_lifetime](../docs/concepts/tcspc_lifetime.md) now says the correction is
+  skipped rather than silently applied. RF-193 closed in
+  [/reviews/findings.md](/reviews/findings.md).
+
 ## 2026-07-25
 
 * **Stored draws are an answer even without a diagnostics report.** Found while

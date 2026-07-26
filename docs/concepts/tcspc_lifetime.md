@@ -90,7 +90,11 @@ $$
   (measured from a buffer run or fitted).
 - **Pile-up $P_i$** — high count rates preferentially drop *late* photons,
   shortening the apparent lifetime; corrected per-channel on the model (Coates
-  1968) so the measured Poisson statistics are preserved.
+  1968) so the measured Poisson statistics are preserved. The correction divides
+  by the excitation pulses that have not yet produced a detection, so it needs
+  the *measurement time* (nuisance $t_{exp}$) and the *repetition rate* of the
+  run: if the two imply fewer pulses than there are recorded photons the
+  correction is undefined and is skipped rather than applied.
 - **Differential non-linearity $L_i$** — channel-width variations of the
   time converter, flattened with a linearization table from uncorrelated light.
 
