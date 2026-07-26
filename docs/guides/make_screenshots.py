@@ -529,6 +529,26 @@ def _grab_chimol_viewer():
     panel.grab().save(str(FIG / "chimol_objects_panel.png"))
     print("wrote chimol_objects_panel.png")
 
+    # -- the same panel with groups, one open and one collapsed --------------
+    panel_cmd.do("create nag, resn NAG")
+    panel_cmd.do("group ligands, ligand nag")
+    panel_cmd.do("group parts, peptidoglycan")
+    panel_cmd.do("group parts, close")
+    for _ in range(30):
+        app.processEvents()
+    panel.resize(900, 250)
+    for _ in range(20):
+        app.processEvents()
+    panel.grab().save(str(FIG / "chimol_groups_panel.png"))
+    print("wrote chimol_groups_panel.png")
+    # Leave the panel ungrouped: later figures in this function read the same
+    # window, and a collapsed group would hide rows they expect to be drawn.
+    panel_cmd.do("ungroup ligands")
+    panel_cmd.do("ungroup parts")
+    panel_cmd.do("delete nag")
+    for _ in range(20):
+        app.processEvents()
+
     # -- a ray-traced render, coloured by solvent accessibility ---------------
     # Driven through a bare MolView rather than the plugin window: inside the
     # window `ray` hands the trace to a worker, which a script with no event loop

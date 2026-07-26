@@ -873,6 +873,9 @@ class MolView(QtWidgets.QWidget):
         if object_id not in self._objects:
             return False
         self._objects.pop(object_id, None)
+        # Deleting the last member of a group must take the group with it, or
+        # the panel keeps an empty row nothing can be dragged out of.
+        self._prune_group_state()
         if self._active_object_id == object_id:
             self._active_object_id = None
         if self._objects:
@@ -893,6 +896,94 @@ class MolView(QtWidgets.QWidget):
             self._auto_create_enabled = False
         self._update_view()
         return True
+
+    # ------------------------------------------------------------------
+    # Groups (PyMOL ``group`` / ``ungroup`` / ``order``)
+    # ------------------------------------------------------------------
+    def group_names(self) -> list[str]:
+        """Every group that currently has at least one member, in panel order.
+
+        Derived from membership rather than kept as a list, so a group cannot
+        outlive its last member as a phantom row -- which is what PyMOL's
+        ``ExecutiveGroupPurge`` exists to clean up after.
+        """
+        seen: list[str] = []
+        for entry in self._objects.values():
+            if entry.group and entry.group not in seen:
+                seen.append(entry.group)
+        return seen
+
+    def group_members(self, group: str) -> list[str]:
+        """Object ids belonging to ``group``, in panel order."""
+        name = str(group).strip()
+        return [
+            oid for oid, entry in self._objects.items()
+            if entry.group == name and not entry.placeholder
+        ]
+
+    def set_object_group(self, object_id: str, group: str | None) -> bool:
+        """Put an object in a group, or take it out with ``None``."""
+        entry = self._objects.get(object_id)
+        if entry is None:
+            return False
+        name = str(group).strip() if group else None
+        if name and name == entry.name:
+            # A group cannot contain itself; PyMOL rejects this too, and the
+            # alternative is a row that is its own parent.
+            return False
+        entry.group = name or None
+        if name:
+            self._group_open.setdefault(name, True)
+        self._prune_group_state()
+        return True
+
+    def is_group_open(self, group: str) -> bool:
+        """Whether a group's members are shown in the panel."""
+        return bool(self._group_open.get(str(group).strip(), True))
+
+    def set_group_open(self, group: str, open_: bool) -> bool:
+        """Expand or collapse a group row. False when no such group exists."""
+        name = str(group).strip()
+        if name not in self.group_names():
+            return False
+        self._group_open[name] = bool(open_)
+        return True
+
+    def _prune_group_state(self) -> None:
+        """Forget the open/closed flag of groups that no longer have members."""
+        live = set(self.group_names())
+        for name in [n for n in self._group_open if n not in live]:
+            self._group_open.pop(name, None)
+
+    def reorder_objects(self, object_ids: list[str]) -> None:
+        """Move the named objects into the given relative order.
+
+        Objects not mentioned keep their positions relative to each other, and
+        the named ones are placed at the first position any of them occupied --
+        which is what PyMOL's ``order`` with the default ``location=current``
+        does. Passing ids that do not exist is ignored rather than an error, so
+        a script naming an object that failed to load still orders the rest.
+        """
+        wanted = [oid for oid in object_ids if oid in self._objects]
+        if not wanted:
+            return
+        current = list(self._objects.keys())
+        anchor = min(current.index(oid) for oid in wanted)
+        rest = [oid for oid in current if oid not in wanted]
+        # The anchor counts positions in the original list, so translate it to
+        # an index into the remaining ones.
+        before = [oid for oid in current[:anchor] if oid not in wanted]
+        new_order = before + wanted + rest[len(before):]
+        self._objects = OrderedDict((oid, self._objects[oid]) for oid in new_order)
+
+    def move_objects_to_edge(self, object_ids: list[str], *, top: bool) -> None:
+        """Move the named objects to the top or bottom of the panel."""
+        wanted = [oid for oid in object_ids if oid in self._objects]
+        if not wanted:
+            return
+        rest = [oid for oid in self._objects if oid not in wanted]
+        new_order = wanted + rest if top else rest + wanted
+        self._objects = OrderedDict((oid, self._objects[oid]) for oid in new_order)
 
     def copy_object(self, object_id: str, *, name: str | None = None) -> str | None:
         """Create a deep copy of an existing loaded object."""
@@ -1129,6 +1220,10 @@ class MolView(QtWidgets.QWidget):
                     "visible": entry.visible,
                     "source_path": entry.source_path,
                     "has_geometry": bool(has_geometry),
+                    "group": entry.group,
+                    "group_open": (
+                        self.is_group_open(entry.group) if entry.group else True
+                    ),
                 }
             )
         return objects
@@ -1497,6 +1592,10 @@ class MolView(QtWidgets.QWidget):
         self._objects: OrderedDict[str, _MolViewObjectEntry] = OrderedDict()
         self._active_object_id: str | None = None
         self._object_counter: int = 0
+        # Groups hold only what is *not* derivable from their members: whether
+        # the row is expanded. Membership lives on the member entry, so a group
+        # cannot disagree with its objects about who belongs to it.
+        self._group_open: dict[str, bool] = {}
         # Coordinate undo is per object, as PyMOL's is; see renderer/undo.py.
         self._undo_rings: dict[str, UndoRing] = {}
         # Allow creating an initial entry during startup; turned off when last object is deleted.

@@ -2,6 +2,43 @@
 
 ## 2026-07-26
 
+* **chimol: object groups, and three ways to get a hierarchy wrong.** All eleven
+  of PyMOL's `group` actions plus `ungroup` and `order`, with group header rows
+  in the objects panel — a disclosure marker, the same five A/S/H/L/C menus an
+  object row carries, and indented members that collapse away without unloading
+  anything.
+
+  Membership is stored **on the member**, not as a list on the group: a list plus
+  a back-pointer is two places that say where an object sits, and they drift the
+  first time an object is deleted. A group therefore has no existence apart from
+  its members, and deleting the last one removes it rather than leaving a row
+  nothing can be dragged out of.
+
+  Three defects found while building it, two of them by a test:
+
+  - **Members are not adjacent in the registry.** Grouping the first and third
+    objects leaves the order `lig, pep, nag`, so walking it directly drew `nag`
+    under whichever group header came last — visibly the wrong group. Display
+    order is now computed separately; nothing in the viewer is reordered, so
+    `order` still means what it says.
+  - **`order lig nag` was a no-op.** The shared name resolver returned ids in
+    *panel* order, discarding the order given — which is the entire point of the
+    command. It only looked correct because the names are usually already in
+    panel order.
+  - **The second argument means members *or* an action.** `group kinases, close`
+    is how PyMOL's own menu writes it and how every example in its help text is
+    written; reading the word as an object name reports a missing object for all
+    of them.
+
+  A group used as a menu target expands to one command per member, which is
+  PyMOL's documented behaviour. Not yet supported: a group name inside an *atom
+  selection* (`show cartoon, ligands`), because the resolver returns a single
+  `(object_id, mask)` pair — noted in the guide and in
+  [pymol-parity](/plugins/pymol-parity.md).
+
+  33 tests, a regenerated `chimol_groups_panel.png` figure, and a new section in
+  [guide 44](../docs/guides/44_molecular_viewer.md).
+
 * **One kinetics class and one kinetics widget, after the generalization.**
   Follow-through on moving the fittable rate scheme to
   `chisurf/core/fitting/kinetics.py`: `TcPdaKinetics` was a subclass whose entire

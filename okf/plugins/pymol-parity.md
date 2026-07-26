@@ -223,12 +223,53 @@ confusion is exactly what hid `resn`.
 # Tier 2 — routine, works around-able
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
-`alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`.
+`alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
+`group`/`ungroup`/`order`.
 
 **Remaining:** `get_bond`, `smooth`, `sort`, `protect`, `mask`, `bond`/`unbond`,
 `h_add`/`h_fill`, `cealign`, `matrix_copy`,
-`symexp`/`symmetry`, `group`/`ungroup`/`order`, `ramp_new`, `cartoon_putty`,
+`symexp`/`symmetry`, `ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
+
+## Groups are a display hierarchy, and membership belongs to the member
+
+All eleven of PyMOL's group actions (`creating.py::group_action_dict`) plus
+`ungroup` and `order`. Three decisions worth recording, each of which the
+obvious alternative gets wrong:
+
+**Membership is stored on the member, not as a list on the group.** A list plus
+a back-pointer is two places that say where an object sits, and they drift the
+first time an object is deleted — the failure this codebase keeps finding in its
+own colour, keyword and representation state. A group therefore has no existence
+apart from its members: `group_names()` is derived, and deleting the last member
+removes the group, which is what PyMOL needs `ExecutiveGroupPurge` for.
+
+**The second argument means either members or an action.** `group kinases, close`
+is how PyMOL's own menu writes it, and every example in the command's help text
+uses that form. Reading the word as an object name instead makes the documented
+examples all report a missing object.
+
+**Members must be drawn contiguously, and the registry does not keep them
+adjacent.** Grouping the first and third objects leaves the registry order
+`lig, pep, nag`, so walking it directly drew `nag` under whichever header came
+last — visibly the wrong group. The display order is computed separately
+(`_grouped_display_order`): a group's block goes where its first member sits, and
+nothing in the viewer is reordered, so `order` still means what it says.
+
+Two smaller ones, both found by a test rather than by reading:
+
+* `order lig nag` has to keep the order **given**, not panel order. The shared
+  name resolver sorted into panel order, which made `order` a silent no-op
+  whenever the names were already in panel order — most of the time.
+* A group used as a menu target expands to one command per member, which is
+  PyMOL's documented "the command should be applied to all members". The
+  expansion happens where the target is known (the row), because the selection
+  resolver answers for one object at a time.
+
+**Not yet:** a group name inside an *atom selection* — `show cartoon, ligands` —
+because `_resolve_selection_to_atom_mask` returns a single `(object_id, mask)`
+pair. Supporting it means a multi-object resolver; the group's row menus and any
+command taking object names work today.
 
 ## Two coordinate arrays, and they had drifted apart
 

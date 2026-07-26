@@ -171,6 +171,71 @@ def _swatch(color: str) -> QtGui.QIcon:
     return QtGui.QIcon(pixmap)
 
 
+#: Item role carrying a group row's name. Distinct from ``_OBJECT_ID_ROLE``
+#: because a group is not an object: nothing may look one up in the viewer's
+#: object registry, and code that iterates rows has to be able to tell them
+#: apart rather than guessing from the absence of an id.
+_GROUP_NAME_ROLE = _OBJECT_ID_ROLE + 1
+
+
+class GroupRow(QtWidgets.QWidget):
+    """A group's header: a disclosure marker, its name, and its A/S/H/L/C.
+
+    The menus are the same five as an object's, because in PyMOL a group can be
+    used wherever an object name can and the command applies to every member --
+    ``hide everything, kinases`` hides all of them. That is handled in the
+    command layer by expanding a group name to its members, so this row needs no
+    special-casing beyond passing the group's name as the selection.
+    """
+
+    def __init__(
+        self,
+        parent: QtWidgets.QWidget,
+        group: str,
+        is_open: bool,
+        run_command: Callable[[Callable[[], str], MenuEntry], None],
+    ) -> None:
+        super().__init__(parent)
+        self._group = group
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(2, 0, 2, 0)
+        layout.setSpacing(2)
+
+        self.disclosure = QtWidgets.QToolButton(self)
+        self.disclosure.setAutoRaise(True)
+        self.disclosure.setText(("▾ " if is_open else "▸ ") + group)
+        self.disclosure.setStyleSheet(
+            f"QToolButton {{ color: {_ENABLED_FG}; font-family: {_MONO}; "
+            "border: none; }"
+        )
+        self.disclosure.clicked.connect(
+            lambda: run_command(
+                lambda: self._group, MenuEntry("toggle", "group {sele}, toggle")
+            )
+        )
+        layout.addWidget(self.disclosure)
+        layout.addStretch(1)
+
+        self._menus = _MenuHost(self, lambda: self._group, run_command)
+        for key, _, _ in OBJECT_MENUS:
+            layout.addWidget(self._menus.buttons[key])
+
+    @property
+    def group(self) -> str:
+        """Name of the group this row stands for."""
+        return self._group
+
+    @property
+    def buttons(self) -> dict[str, QtWidgets.QToolButton]:
+        """The row's five menu buttons, keyed by letter."""
+        return self._menus.buttons
+
+    def set_open(self, is_open: bool) -> None:
+        """Update the disclosure marker without rebuilding the row."""
+        self.disclosure.setText(("▾ " if is_open else "▸ ") + self._group)
+
+
 class ObjectRow(QtWidgets.QWidget):
     """One molecule: a visibility box, its name, and its own A/S/H/L/C."""
 
@@ -182,6 +247,7 @@ class ObjectRow(QtWidgets.QWidget):
         run_command: Callable[[Callable[[], str], MenuEntry], None],
         on_toggled: Callable[[str, bool], None],
         on_clicked: Callable[[str], None],
+        indent: int = 0,
     ) -> None:
         super().__init__(parent)
         self._object_id = object_id
@@ -189,7 +255,12 @@ class ObjectRow(QtWidgets.QWidget):
         self._on_clicked = on_clicked
 
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(2, 0, 2, 0)
+        # Group members are indented so the hierarchy is visible at a glance,
+        # the way it is in PyMOL's panel. The indent goes in the margin rather
+        # than as a spacer widget, so the A/S/H/L/C buttons still line up with
+        # every other row's -- indenting the whole row instead would push them
+        # out of column, which is the alignment defect this panel already had.
+        layout.setContentsMargins(2 + int(indent), 0, 2, 0)
         layout.setSpacing(2)
 
         self.check = QtWidgets.QCheckBox(name, self)
@@ -272,6 +343,7 @@ class ObjectsDock(QtCore.QObject):
         super().__init__(parent)
         self._run_command = run_command
         self._rows: Dict[str, ObjectRow] = {}
+        self._group_rows: Dict[str, GroupRow] = {}
         self._widget = QtWidgets.QWidget(parent)
         layout = QtWidgets.QVBoxLayout(self._widget)
         layout.setContentsMargins(*margins)
@@ -398,10 +470,42 @@ class ObjectsDock(QtCore.QObject):
             line = line.strip()
             if not line:
                 continue
-            line = line.replace("{sele}", name)
             if text is not None:
                 line = line.replace("{text}", text)
-            self._run_command(line)
+            for target_name in self._targets_for(line, name):
+                self._run_command(line.replace("{sele}", target_name))
+
+    #: Commands that take a group name themselves, so must not be expanded into
+    #: one call per member. `group kinases, toggle` run per member would toggle
+    #: nothing and complain about objects that are not groups.
+    _GROUP_AWARE = ("group", "ungroup", "order", "delete", "del")
+
+    def _targets_for(self, line: str, name: str) -> list[str]:
+        """Names to substitute for ``{sele}`` — a group becomes its members.
+
+        PyMOL: "Group objects can typically be used as arguments to commands. In
+        such cases, the command should be applied to all members of the group."
+        The selection resolver here answers for one object at a time, so the
+        expansion happens where the target is known instead: the group's row
+        runs the entry once per member.
+        """
+        verb = line.split(None, 1)[0].strip().lower() if line.strip() else ""
+        if verb in self._GROUP_AWARE:
+            return [name]
+        viewer = getattr(self.parent(), "viewer", None)
+        members = getattr(viewer, "group_members", None)
+        if not callable(members):
+            return [name]
+        try:
+            ids = members(name)
+        except Exception:
+            return [name]
+        if not ids:
+            return [name]
+        by_id = {
+            str(o.get("id")): str(o.get("name", "")) for o in viewer.list_objects()
+        }
+        return [by_id.get(oid) or oid for oid in ids]
 
     # ------------------------------------------------------------------ #
     # List items
@@ -427,6 +531,8 @@ class ObjectsDock(QtCore.QObject):
         item: QtWidgets.QListWidgetItem,
         object_id: str,
         entry: Dict[str, Any],
+        *,
+        indent: int = 0,
     ) -> ObjectRow:
         """Give ``item`` its PyMOL-style row, once it is in the list.
 
@@ -440,6 +546,7 @@ class ObjectsDock(QtCore.QObject):
             self._run_entry,
             self._set_item_check_state,
             self._select_object,
+            indent=indent,
         )
         row.set_state(*self._state_of(object_id))
         # Span the viewport, not the row's own content width. A row sized to its
@@ -455,6 +562,35 @@ class ObjectsDock(QtCore.QObject):
         item.setText("")
         self.object_list.setItemWidget(item, row)
         self._rows[object_id] = row
+        self._sync_header_inset()
+        return row
+
+    def create_group_item(
+        self, group: str, is_open: bool
+    ) -> QtWidgets.QListWidgetItem:
+        """Build the list item standing for a group row.
+
+        A group is not an object, so it gets no visibility checkbox and no id:
+        the marker plus the name is the whole row, and clicking it toggles the
+        group open. It is not selectable, because selecting it would make it the
+        active object and there is no such object.
+        """
+        item = QtWidgets.QListWidgetItem("")
+        item.setFlags(QtCore.Qt.ItemIsEnabled)
+        item.setData(_GROUP_NAME_ROLE, group)
+        item.setData(_OBJECT_ID_ROLE, None)
+        return item
+
+    def attach_group_row(
+        self, item: QtWidgets.QListWidgetItem, group: str, is_open: bool
+    ) -> GroupRow:
+        """Give a group item its row widget, once it is in the list."""
+        row = GroupRow(self.object_list, group, is_open, self._run_entry)
+        item.setSizeHint(
+            QtCore.QSize(self._row_width(), row.sizeHint().height())
+        )
+        self.object_list.setItemWidget(item, row)
+        self._group_rows[group] = row
         self._sync_header_inset()
         return row
 
@@ -517,3 +653,4 @@ class ObjectsDock(QtCore.QObject):
     def clear_rows(self) -> None:
         """Forget the row widgets; call when the list itself is cleared."""
         self._rows.clear()
+        self._group_rows.clear()

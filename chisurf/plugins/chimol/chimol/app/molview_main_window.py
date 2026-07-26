@@ -1793,6 +1793,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         # Reset store and UI list
         self._object_store.clear()
+        self._drawn_groups: set[str] = set()
         try:
             self.object_list.blockSignals(True)
             self.object_list.clear()
@@ -1800,9 +1801,17 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         finally:
             self.object_list.blockSignals(False)
 
-        for obj in objects:
+        # A group's members must be drawn together under its header, and the
+        # viewer's registry does not guarantee they are adjacent: grouping `lig`
+        # and `nag` while `pep` sits between them leaves the registry order
+        # lig, pep, nag, so walking it directly drew `nag` under whichever
+        # header came last. Build the display order first -- each row's position
+        # is decided by its group, its group's first appearance decides where
+        # the block goes, and the objects themselves are never reordered.
+        for obj in self._grouped_display_order(objects):
             oid = str(obj.get("id"))
             name = obj.get("name") or oid
+            group = obj.get("group")
             entry = {
                 "name": name,
                 "path": obj.get("source_path"),
@@ -1810,9 +1819,19 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 "ss_codes": None,
                 "visible": bool(obj.get("visible", True)),
                 "n_atoms": obj.get("n_atoms", obj.get("has_geometry")),
+                "group": group,
             }
+            # The store keeps every object whether or not its row is drawn: a
+            # collapsed group hides rows, it does not unload molecules, and code
+            # that looks an object up by id must still find it.
             self._object_store[oid] = entry
-            self._add_object_list_item(oid, entry)
+            if group:
+                if group not in self._drawn_groups:
+                    self._drawn_groups.add(group)
+                    self._add_group_list_item(group, bool(obj.get("group_open", True)))
+                if not obj.get("group_open", True):
+                    continue
+            self._add_object_list_item(oid, entry, indent=12 if group else 0)
 
         # Reselect the active object if possible
         active_id = self.viewer.get_active_object_id()
@@ -1848,7 +1867,9 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             suffix += 1
         return f"{base} ({suffix})"
 
-    def _add_object_list_item(self, object_id: str, entry: dict[str, Any]) -> None:
+    def _add_object_list_item(
+        self, object_id: str, entry: dict[str, Any], *, indent: int = 0
+    ) -> None:
         item = self.objects.create_item(object_id, entry)
 
         self._block_object_list_signals = True
@@ -1859,8 +1880,48 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         self.object_list.addItem(item)
         # The row widget can only be hosted once the item exists in the list.
-        self.objects.attach_row(item, object_id, entry)
+        self.objects.attach_row(item, object_id, entry, indent=indent)
         entry["item"] = item
+
+    @staticmethod
+    def _grouped_display_order(objects: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Order objects so each group's members are contiguous.
+
+        A group's block goes where its *first* member sits in the registry, and
+        within the block the members keep their registry order. Ungrouped
+        objects keep their positions. Nothing is reordered in the viewer -- this
+        is only how the rows are laid out, so ``order`` still means what it says.
+
+        Parameters
+        ----------
+        objects : list of dict
+            Entries as returned by ``MolView.list_objects``.
+
+        Returns
+        -------
+        list of dict
+            The same entries, reordered for display.
+        """
+        blocks: list[tuple[str | None, list[dict[str, Any]]]] = []
+        index: dict[str, int] = {}
+        for obj in objects:
+            group = obj.get("group")
+            if not group:
+                blocks.append((None, [obj]))
+                continue
+            slot = index.get(group)
+            if slot is None:
+                index[group] = len(blocks)
+                blocks.append((group, [obj]))
+            else:
+                blocks[slot][1].append(obj)
+        return [obj for _group, members in blocks for obj in members]
+
+    def _add_group_list_item(self, group: str, is_open: bool) -> None:
+        """Add the header row that stands for a group."""
+        item = self.objects.create_group_item(group, is_open)
+        self.object_list.addItem(item)
+        self.objects.attach_group_row(item, group, is_open)
 
     def _select_object_in_ui(self, object_id: Optional[str]) -> None:
         if object_id is None:

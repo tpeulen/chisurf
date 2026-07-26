@@ -50,6 +50,52 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Organising the panel
+
+Once a session has more than a handful of objects, the panel is easier to read
+with them grouped. A **group** is a container row, not an object:
+
+```text
+group ligands, lig nag       # collect two objects under one row
+group ligands, close         # collapse it; the molecules stay loaded
+group ligands               # with no members, toggles open/closed
+ungroup lig                  # take one back out
+```
+
+```{figure} figures/chimol_groups_panel.png
+:name: fig-chimol-groups
+:width: 680px
+
+Two groups in the Objects panel. `ligands` is open, so its members are drawn
+indented beneath it; `parts` is collapsed. A group row carries the same five
+menus an object row does, and a menu choice made there is applied to every
+member — so **H ▸ everything** on `ligands` hides both molecules.
+```
+
+Collapsing a group only hides its rows. Nothing is unloaded, and every command
+still reaches the members by name.
+
+The full set of actions matches PyMOL's: `add`, `remove`, `open`, `close`,
+`toggle`, `auto`, `empty` (release the members), `purge` (delete them),
+`excise` (delete them and the group) and `raise`.
+
+Row order is `order`:
+
+```text
+order nag lig                # exactly this order
+order *, yes                 # sort everything by name
+order lig, location=top      # move one to the top
+```
+
+A group name may be used wherever an object name is wanted, and it stands for
+all of its members — `order ligands, location=top` moves the whole block.
+
+:::{note}
+One place a group is *not* yet accepted is inside an atom selection:
+`show cartoon, ligands` does not resolve, because a selection is evaluated
+against a single object. Use the group's row menus, or name the members.
+:::
+
 The camera follows PyMOL's commands and its 18-float view tuple, so a view can
 be copied between the two programs:
 

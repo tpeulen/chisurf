@@ -142,6 +142,15 @@ class _MolViewObjectEntry:
     visible: bool = True
     placeholder: bool = False
     source_path: Optional[str] = None
+    group: Optional[str] = None
+    """Name of the group this object belongs to, or None for a top-level object.
+
+    Membership is stored on the member rather than as a list on the group, so
+    there is exactly one place that says where an object sits. A list on the
+    group plus a back-pointer here would be two, and the two would drift the
+    first time an object was deleted -- which is the failure this codebase keeps
+    finding in its own colour, keyword and representation state.
+    """
 
 
 class _StateField:
