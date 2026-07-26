@@ -66,6 +66,21 @@ Every feature should have a headless test path (API/CLI), not GUI-only.
 Model/UI changes have a dedicated headless check via the `test-model-editor`
 skill.
 
+# Guarded imports are checked, because they fail quietly
+
+`test/architecture/test_guarded_imports.py` walks the tree and re-resolves
+every absolute import that a `try` body depends on. A `try: import x / except:
+x = None` is how an optional dependency is handled *and* how a renamed module
+becomes a feature that silently stops working — three such cases were live when
+the test was written (ndXplorer's reorganisation had disconnected two tools; a
+renamed editor had degraded a labelling view to raw text).
+
+Two patterns are deliberately not flagged: a handler re-importing the *same*
+names is a version shim (a private SciPy symbol moving between releases), and a
+nested handler is a direct-execution fallback. Anything genuinely optional goes
+in the test's `OPTIONAL` map **with a reason**, so "this may be absent" is a
+decision on the record rather than an anonymous `except`.
+
 # GUI work is never blind — screenshot and look at it
 
 **Any change that touches a GUI is unfinished until the widget has been rendered

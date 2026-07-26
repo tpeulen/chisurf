@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **Guarded imports fail quietly, so they are now checked.**
+  `test/architecture/test_guarded_imports.py`. `try: import x / except: x =
+  None` is how an optional dependency is handled and also how a *renamed*
+  module becomes a feature that stops working with no error, no log line and no
+  failing test. Writing the check found four live cases, none of which anything
+  had reported: ndXplorer's package reorganisation had disconnected **both** the
+  trace browser and the MMFDB admin tool (handing a burst analysis to ndXplorer
+  did nothing); the FPS editor's rename had degraded proteinMC's labelling view
+  to opening the JSON as raw text; the login flow could not offer to set a
+  password, because `PasswordChangeDialog` was imported from the package that
+  does not re-export it; and chimol's `MolView` test skipped itself on every
+  run.
+  The check re-resolves every absolute import a `try` body depends on. Two
+  patterns are deliberately exempt — a handler re-importing the *same* names is
+  a version shim (SciPy's private `_check_func` moving between releases), and a
+  nested handler is a direct-execution fallback — and genuinely optional
+  packages are listed **with a reason**, so "may be absent" is a decision on the
+  record rather than an anonymous `except`. Getting there took three passes:
+  the first draft flagged submodules that simply were not imported yet, the
+  second flagged every fallback, and only the third distinguished a shim from a
+  dependency.
+  It also caught the model/UI boundary test having been red since the FCS
+  consolidation: `core/models/fcs/mdf.py` wrote derived outputs through the
+  GUI's fitting client. It goes through `ChiSurfAPI` now — the same
+  `parameter.set_value` handler, no GUI import, and it works headlessly where
+  no client exists at all.
+
 * **Two bugs in the orientation factor, found by teaching the assistant to use
   it.** Making κ² reachable meant running it, and running it against what it
   must obey. **(1)** `kappasq_all` sampled dipole directions with
