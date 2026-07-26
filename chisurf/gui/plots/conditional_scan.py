@@ -14,6 +14,7 @@ that one. The numbers in real units are underneath.
 """
 from __future__ import annotations
 
+import numpy as np
 from qtpy import QtCore, QtWidgets
 
 import chisurf.core.fitting
@@ -68,6 +69,17 @@ class ConditionalScanPlot(Plot):
         self.held_label.setMinimumWidth(170)
         self.held_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         top.addWidget(self.held_label, 0)
+        # The straight lines are exact only for a Gaussian posterior, which a
+        # bounded parameter or a weak component is not. This checks by
+        # re-fitting, which costs a fit per point -- hence a button.
+        self.check_button = QtWidgets.QToolButton()
+        self.check_button.setText("🔍 Check (re-fit)")
+        self.check_button.setToolTip(
+            "Re-fit at each held value instead of assuming the posterior is "
+            "Gaussian, and report how far the straight lines can be trusted."
+        )
+        self.check_button.clicked.connect(self._check_exact)
+        top.addWidget(self.check_button, 0)
         self.layout.addLayout(top)
 
         self.plot = ChiPlot()
@@ -83,6 +95,8 @@ class ConditionalScanPlot(Plot):
         self.layout.addWidget(self.readout, 0)
 
         self._marker = None
+        self._exact = None
+        self._validity = None
 
     # -- data ---------------------------------------------------------------
 
@@ -129,6 +143,9 @@ class ConditionalScanPlot(Plot):
         self._scan = self._engine.conditional_scan(
             self._full_names[index], points=61, span=SCAN_SPAN
         )
+        # The overlay belongs to the parameter it was computed for.
+        self._exact = None
+        self._validity = None
         self._draw()
 
     # -- drawing ------------------------------------------------------------
@@ -154,10 +171,63 @@ class ConditionalScanPlot(Plot):
         # The optimum, so "no change" has somewhere to be read off.
         plot.line([-SCAN_SPAN, SCAN_SPAN], [0.0, 0.0],
                   pen=S.to_pen("#808080", width=1.0, style="dash"))
+
+        if self._exact is not None:
+            exact_by_name = {t["name"]: t for t in self._exact["targets"]}
+            for k, target in enumerate(scan["targets"]):
+                other = exact_by_name.get(target["name"])
+                if other is None:
+                    continue
+                colour = TARGET_COLOURS[k % len(TARGET_COLOURS)]
+                z = np.asarray(other["z"], dtype=float)
+                finite = np.isfinite(z)
+                if not finite.any():
+                    continue
+                plot.scatter(np.asarray(self._exact["held_z"])[finite], z[finite],
+                             size=8.0, brush=colour,
+                             pen=S.to_pen("#101010", width=1.0))
+            # The range the straight lines can actually be trusted over.
+            valid = self._validity.get("valid_to") if self._validity else None
+            if valid is not None and np.isfinite(valid) and valid < SCAN_SPAN:
+                for sign in (-1.0, 1.0):
+                    plot.line([sign * valid, sign * valid],
+                              [-SCAN_SPAN * 1.05, SCAN_SPAN * 1.05],
+                              pen=S.to_pen("#c05050", width=1.2, style="dash"))
         plot.set_range(x=(-SCAN_SPAN, SCAN_SPAN),
                        y=(-SCAN_SPAN * 1.05, SCAN_SPAN * 1.05), padding=0.0)
         plot.grid(x=True, y=True, alpha=0.15)
         self._draw_marker()
+
+    def _check_exact(self) -> None:
+        """Re-fit at each held value and overlay the honest answer.
+
+        The straight lines are exact only for a Gaussian posterior. Bounded
+        parameters -- lifetimes, amplitude fractions, distances, FRET
+        efficiencies -- routinely are not, and a weak component least of all, so
+        this is the check that says whether the picture can be believed. It
+        costs one fit per point, which is why it is a button.
+        """
+        if self._scan is None:
+            return
+        self.check_button.setEnabled(False)
+        self.check_button.setText("re-fitting…")
+        QtWidgets.QApplication.processEvents()
+        try:
+            self._exact = self._engine.exact_conditional_scan(
+                self._scan["name"], points=13, span=SCAN_SPAN
+            )
+            self._validity = (
+                E.gaussian_validity(self._scan, self._exact)
+                if self._exact is not None else None
+            )
+        except Exception as e:
+            self._exact, self._validity = None, None
+            self.readout.setText(f"<i>the re-fit check failed: {e}</i>")
+        finally:
+            self.check_button.setEnabled(True)
+            self.check_button.setText("🔍 Check (re-fit)")
+        if self._exact is not None:
+            self._draw()
 
     def _draw_marker(self, *args) -> None:
         """Move the held-value marker and refresh the numbers underneath."""
@@ -180,7 +250,20 @@ class ConditionalScanPlot(Plot):
                 self.plot.remove(self._marker)
                 self._marker = self.plot.vline(z, pen="#e0e0e0")
 
-        rows = [
+        rows = []
+        if self._validity is not None:
+            valid = self._validity["valid_to"]
+            colour = ("#3c8f5c" if not np.isfinite(valid) or valid >= 2.0
+                      else "#b07020" if valid >= 1.0 else "#b03030")
+            rows.append(
+                f"<span style='color:{colour}'><b>&#9679; Re-fit check:</b> "
+                f"{self._validity['verdict']}</span> "
+                f"<span style='color:#888'>(worst disagreement "
+                f"{self._validity['worst']:.2f}&sigma; on "
+                f"{self._validity['worst_target'].split(':')[-1]}; dots are the "
+                f"re-fitted truth)</span><br>"
+            )
+        rows += [
             "<span style='color:#888'>slope = correlation; the width is what "
             "the data still does not know once "
             f"{short} is pinned down</span>",

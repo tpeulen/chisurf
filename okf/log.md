@@ -854,6 +854,33 @@
 
 ## 2026-07-25
 
+* **Non-Gaussian posteriors: the What-if lines are now checked, not assumed.**
+  The conditional sweep is exact only for a Gaussian posterior, and a
+  fluorescence posterior frequently is not one -- lifetimes, amplitudes,
+  distances and FRET efficiencies are bounded below, and a weak component sits
+  near its bound. Measured on a two-exponential with a weak second component and
+  hard bounds at zero: the sampled marginals are visibly skewed (b at
+  +0.033/-0.026 against a Gaussian +-0.0295; asymmetry 1.27, skew +0.59), so the
+  symmetric error bar misstates both ends. `GaussianEngine.exact_conditional_scan`
+  redoes the sweep the honest way -- hold the parameter, re-optimise everything
+  else, repeat, one fit per point -- and `gaussian_validity` reports the *range*
+  over which the two agree rather than a yes/no, because a posterior is nearly
+  always Gaussian near the optimum and the question is whether that region covers
+  the interval being quoted. On the weak-component fit the straight lines hold to
+  **1.5 sigma** and are wrong by **4 sigma** beyond it; on the same model with a
+  well-determined component they hold everywhere to within 0.12 sigma. Surfaced
+  in the What-if plot behind a button (it costs a fit per point), drawn as dots
+  over the lines with the breakdown radius marked, and the verdict colour-coded
+  underneath. The scan restores the fit exactly, including the held parameter's
+  fixed flag, and can be cancelled.
+  One design note worth keeping: the two scans deliberately need **not** share a
+  grid. Requiring that forced either a coarse picture or an expensive check; the
+  Gaussian curve has a closed form, so it is evaluated wherever the re-fit
+  actually happened. The first version did require it and failed with a broadcast
+  error the moment the GUI paired its 61-point sweep with a 13-point check.
+  6 tests, guide section with a screenshot, and a checklist item.
+
+
 
 * **chiplot: seam capabilities for the linked-panel family (PRD-64).** Added
   `Plot.link_x`/`link_y` (shared pan/zoom across stacked panels — residuals above

@@ -287,14 +287,36 @@ the last column is the useful one — how much narrower a parameter becomes once
 the swept one is pinned down. A parameter that goes 90 % narrower was never
 really measured independently.
 
-The same sweep is available headlessly:
+Those straight lines are exact **only if the posterior is Gaussian**, and in
+fluorescence it often is not: lifetimes, amplitudes, distances and FRET
+efficiencies are all bounded below, and a weak component sits near its bound.
+Press **🔍 Check (re-fit)** and the sweep is redone the honest way — hold the
+parameter, re-optimise everything else, repeat — and the result is overlaid as
+dots.
+
+![What-if with the re-fit check on a weak second component](../images/whatif_non_gaussian.png)
+
+Near the optimum the dots sit on the lines. Past the red markers they do not,
+and the verdict says so: *breaks down beyond 1.5σ — quote a profile or sampled
+interval, not ±σ*. On this fit the worst disagreement is **4σ**, so a ±σ error
+bar taken from the curvature would be badly wrong two standard deviations out
+while looking perfectly respectable.
+
+Read the verdict as a *range*, not a yes/no. A posterior is nearly always
+Gaussian close enough to the optimum; what matters is whether that region covers
+the interval you intend to quote.
+
+Both sweeps are available headlessly:
 
 ```python
 from chisurf.core.fitting import engine
 
 eng = engine.GaussianEngine(fit).add_all_targets().run()
-scan = eng.conditional_scan('tau1', points=61, span=3.0)
-for t in scan['targets']:
+approx = eng.conditional_scan('tau1', points=61, span=3.0)      # free
+exact = eng.exact_conditional_scan('tau1', points=13, span=3.0)  # one fit/point
+print(engine.gaussian_validity(approx, exact)['verdict'])
+
+for t in approx['targets']:
     print(t['name'], t['correlation'], t['marginal_sd'], '->', t['sd'])
 ```
 
@@ -388,3 +410,5 @@ need to poll progress.
 - [ ] Any reweighted answer checked for `reliable` / `pareto_k` before use.
 - [ ] No parameter quoted as independently measured that **What-if** shows
       collapsing when another is fixed.
+- [ ] For any interval wider than the re-fit check says the Gaussian holds:
+      quote a `profile` or `mcmc` interval, not `±σ`.

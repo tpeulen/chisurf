@@ -429,6 +429,23 @@ know once the swept parameter is pinned down. A parameter that goes 90 % narrowe
 was never independently measured — the same statement the correlation view of the
 [posterior graph](#seeing-the-structure-not-only-reading-it) makes, in numbers.
 
+**And the approximation is checked, not assumed.** Those lines are exact only for
+a Gaussian posterior, which a fluorescence posterior frequently is not: lifetimes,
+amplitudes, distances and FRET efficiencies are bounded below, and a weak
+component sits near its bound. `exact_conditional_scan` redoes the sweep by
+re-fitting at every point — one fit per point, so it is a separate call — and
+`gaussian_validity` reports the range over which the two agree. Measured on a
+two-exponential with a weak second component: the straight lines hold to about
+**1.5 σ** and are wrong by **4 σ** beyond that, while on the same model with a
+well-determined second component they hold everywhere to within 0.12 σ.
+
+The answer is deliberately a *range* rather than a yes/no. A posterior is almost
+always near-Gaussian close to the optimum and stops being so somewhere further
+out; what a user needs to know is whether that region covers the interval they
+mean to quote. The two scans need not share a grid — the Gaussian curve has a
+closed form, so it is evaluated wherever the re-fit actually happened, which lets
+the cheap sweep stay fine-grained and the expensive one coarse.
+
 # Showing whether a chain can be believed
 
 The convergence *numbers* were harvested from Stan earlier; the matching

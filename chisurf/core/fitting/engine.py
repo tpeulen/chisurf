@@ -59,6 +59,7 @@ __all__ = [
     "AutoEngine",
     "get_engine",
     "ENGINES",
+    "gaussian_validity",
 ]
 
 
@@ -847,6 +848,219 @@ class GaussianEngine(PosteriorEngine):
             "sd": sd,
             "targets": targets,
         }
+
+
+    def exact_conditional_scan(
+            self,
+            name: str,
+            points: int = 13,
+            span: float = 3.0,
+            check_cancel: typing.Callable = None,
+    ) -> typing.Optional[typing.Dict[str, typing.Any]]:
+        r"""Run the same sweep, re-fitting at every point instead of assuming.
+
+        :meth:`conditional_scan` is exact *for a Gaussian posterior*, and a
+        fluorescence posterior often is not one: lifetimes, amplitude fractions,
+        distances and FRET efficiencies are bounded, and a parameter near its
+        bound or a weak component has a visibly skewed posterior. There the true
+        conditional is **curved**, and the straight line the Gaussian draws is
+        wrong in a way no amount of algebra will reveal.
+
+        This computes the honest answer the only way there is: hold the
+        parameter, re-optimise everything else, repeat. That costs one fit per
+        point — thousands of times the Gaussian sweep — so it is a separate
+        call, not the default.
+
+        The two are directly comparable: the returned ``z`` are standardised on
+        the *same* marginal scale as :meth:`conditional_scan`, so plotting them
+        together shows exactly where the quadratic approximation stops being
+        trustworthy. See :func:`gaussian_validity`.
+
+        Parameters
+        ----------
+        name : str
+            Parameter to hold.
+        points : int, optional
+            Number of held values. Each costs a full re-fit, so this defaults far
+            lower than the Gaussian sweep's.
+        span : float, optional
+            Half-width of the sweep, in standard deviations of ``name``.
+        check_cancel : callable, optional
+            Polled between points; the scan stops early and returns what it has
+            when this returns ``True``.
+
+        Returns
+        -------
+        dict or None
+            As :meth:`conditional_scan`, plus ``chi2`` (the profile chi² at each
+            point) and ``exact=True``. Points where the re-fit failed are
+            ``nan``. ``None`` when there is no usable curvature to standardise
+            against.
+        """
+        reference = self.conditional_scan(name, points=points, span=span)
+        if reference is None:
+            return None
+
+        parameter = self._parameter(name)
+        if parameter is None:
+            return None
+        targets = [t["name"] for t in reference["targets"]]
+        by_name = {t["name"]: t for t in reference["targets"]}
+
+        # Snapshot everything before touching it: this walks the optimiser over
+        # the whole sweep and must put the fit back exactly as it was found.
+        before = [(p, float(p.value)) for p in self.model.parameters_all
+                  if hasattr(p, "value")]
+        was_fixed = bool(getattr(parameter, "fixed", False))
+
+        means = {t: np.full(len(reference["held"]), np.nan) for t in targets}
+        chi2 = np.full(len(reference["held"]), np.nan)
+        try:
+            parameter.fixed = True
+            for i, held in enumerate(reference["held"]):
+                if check_cancel is not None and check_cancel():
+                    break
+                parameter.value = float(held)
+                try:
+                    self.fit.run()
+                except Exception:
+                    continue
+                current = {n: v for n, v in
+                           zip(self.parameter_names, self.model.parameter_values)}
+                for t in targets:
+                    if t in current:
+                        means[t][i] = float(current[t])
+                try:
+                    chi2[i] = float(self.fit.chi2r)
+                except (TypeError, ValueError, AttributeError):
+                    pass
+        finally:
+            parameter.fixed = was_fixed
+            for p, value in before:
+                try:
+                    p.value = value
+                except (TypeError, ValueError):
+                    continue
+            try:
+                self.fit.update()
+            except Exception:
+                pass
+
+        out = []
+        for t in targets:
+            base = by_name[t]
+            sd = base["marginal_sd"]
+            out.append({
+                "name": t,
+                "mean": means[t],
+                # Standardised on the same scale as the Gaussian sweep, which is
+                # the only way the two curves can be laid over each other.
+                "z": (means[t] - base["marginal"]) / sd if sd > 0 else means[t] * np.nan,
+                "sd": base["sd"],
+                "marginal": base["marginal"],
+                "marginal_sd": sd,
+                "correlation": base["correlation"],
+            })
+        return {
+            "name": name,
+            "held": reference["held"],
+            "held_z": reference["held_z"],
+            "centre": reference["centre"],
+            "sd": reference["sd"],
+            "targets": out,
+            "chi2": chi2,
+            "exact": True,
+        }
+
+
+def gaussian_validity(
+        approximate: typing.Dict[str, typing.Any],
+        exact: typing.Dict[str, typing.Any],
+        tolerance: float = 0.25,
+) -> typing.Dict[str, typing.Any]:
+    r"""Say how far the quadratic approximation can be trusted.
+
+    Compares a :meth:`~GaussianEngine.conditional_scan` against an
+    :meth:`~GaussianEngine.exact_conditional_scan` of the same parameter and
+    reports the range over which they agree.
+
+    The answer is given as a *range*, not a yes/no, because that is the useful
+    form: a posterior is almost always near-Gaussian close to the optimum and
+    stops being so somewhere further out. Knowing the interval within which the
+    straight line is honest is what tells you whether a 1σ error bar is fine and
+    a 3σ one is fiction.
+
+    Parameters
+    ----------
+    approximate, exact : dict
+        Scans of the same parameter. The grids need not match: the Gaussian
+        curve has a closed form, so it is evaluated on the *exact* scan's grid
+        rather than the two being lined up. That matters in practice, because
+        the cheap sweep is naturally run at many more points than the one that
+        re-fits.
+    tolerance : float, optional
+        How far the two may differ, in units of the target's own marginal
+        standard deviation, before the approximation is called broken.
+
+    Returns
+    -------
+    dict
+        ``valid_to`` (the largest ``|z|`` at which every target still agrees,
+        ``inf`` when they agree everywhere tested), ``worst`` (the largest
+        disagreement seen), ``worst_target``, and ``verdict``.
+    """
+    held_z = np.asarray(exact["held_z"], dtype=np.float64)
+    correlations = {t["name"]: float(t["correlation"])
+                    for t in approximate["targets"]}
+
+    worst = 0.0
+    worst_target = ""
+    # The largest |z| out to which *every* target still agrees.
+    ok = np.ones(held_z.size, dtype=bool)
+    for other in exact["targets"]:
+        rho = correlations.get(other["name"])
+        if rho is None:
+            continue
+        # The Gaussian prediction in standardised units is exactly rho * z, so
+        # it can be evaluated wherever the re-fit was actually done.
+        difference = np.abs(rho * held_z
+                            - np.asarray(other["z"], dtype=np.float64))
+        finite = np.isfinite(difference)
+        if not finite.any():
+            continue
+        ok &= ~(finite & (difference > tolerance))
+        peak = float(np.nanmax(difference[finite]))
+        if peak > worst:
+            worst, worst_target = peak, str(other["name"])
+
+    # Walk outwards from the centre: the approximation is valid up to the first
+    # radius at which any target disagrees, not merely wherever it happens to.
+    order = np.argsort(np.abs(held_z))
+    valid_to = float("inf")
+    for i in order:
+        if not ok[i]:
+            valid_to = float(abs(held_z[i]))
+            break
+
+    if valid_to == float("inf"):
+        verdict = ("the quadratic approximation holds everywhere tested — "
+                   "Gaussian intervals are fine here")
+    elif valid_to >= 2.0:
+        verdict = (f"holds to about {valid_to:.1f}σ — a 1σ interval is fine, "
+                   f"further out is not")
+    elif valid_to >= 1.0:
+        verdict = (f"breaks down beyond {valid_to:.1f}σ — quote a profile or "
+                   f"sampled interval, not ±σ")
+    else:
+        verdict = ("breaks down inside 1σ — the posterior is not Gaussian and "
+                   "the ±σ error bar is misleading")
+    return {
+        "valid_to": valid_to,
+        "worst": worst,
+        "worst_target": worst_target,
+        "tolerance": float(tolerance),
+        "verdict": verdict,
+    }
 
 
 class ProfileEngine(PosteriorEngine):

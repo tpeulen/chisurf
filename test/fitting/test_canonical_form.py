@@ -409,3 +409,136 @@ def test_an_unknown_parameter_gives_nothing_rather_than_a_guess():
     fit = _fit()
     engine = E.GaussianEngine(fit).add_all_targets().run()
     assert engine.conditional_scan('not-a-parameter') is None
+
+
+# -- when the posterior is not Gaussian -----------------------------------
+
+def _weak_component(seed=0, weak=0.10):
+    """Return a two-exponential fit whose second component is barely there.
+
+    The realistic non-Gaussian case: amplitudes and lifetimes are bounded below
+    by zero, and a weak component's posterior is visibly skewed — measured on
+    this fit at a +0.033/-0.026 interval where the Gaussian claims ±0.0295.
+    """
+    rng = np.random.default_rng(seed)
+    x = np.linspace(0.05, 10.0, 160)
+    y = 1.6 * np.exp(-x / 0.7) + weak * np.exp(-x / 4.0) + rng.normal(0, 0.02, x.size)
+    data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.full_like(y, 0.02))
+    fit = chisurf.core.fitting.fit.FitGroup(
+        data=chisurf.core.data.DataGroup([data]),
+        model_class=chisurf.core.models.parse.ParseModel,
+    )
+    fit.fit_range = 0, len(fit.model.y)
+    fit.model.func = 'a*exp(-x/s)+b*exp(-x/t)'
+    fit.model.find_parameters()
+    for p in fit.model.parameters_all:
+        if p.name in ('a', 'b', 's', 't'):
+            p.bounds = (0.0, np.inf)
+            p.bounds_on = True
+    fit.run()
+    return fit
+
+
+def test_the_exact_scan_matches_the_gaussian_one_on_a_linear_model():
+    """Where the posterior really is Gaussian, re-fitting must confirm it.
+
+    A model linear in its parameters with Gaussian noise has an exactly
+    quadratic objective, so the straight lines are not an approximation at all
+    and the check must say so rather than manufacturing a discrepancy.
+    """
+    fit = _fit()          # c + a*x + b*x**2 — linear in every parameter
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    name = engine.form().names[0]
+    approximate = engine.conditional_scan(name, points=9, span=2.0)
+    exact = engine.exact_conditional_scan(name, points=9, span=2.0)
+    assert exact is not None and exact['exact'] is True
+
+    verdict = E.gaussian_validity(approximate, exact)
+    assert verdict['worst'] < 0.05, verdict
+    assert verdict['valid_to'] == float('inf')
+    assert 'holds everywhere' in verdict['verdict']
+
+
+def test_a_weak_component_is_caught_as_not_gaussian():
+    """The case the check exists for, and the one that is common in practice."""
+    fit = _weak_component()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    name = [n for n in engine.form().names if n.split(':')[-1] == 't'][0]
+    approximate = engine.conditional_scan(name, points=61, span=3.0)
+    exact = engine.exact_conditional_scan(name, points=13, span=3.0)
+
+    verdict = E.gaussian_validity(approximate, exact)
+    # Measured at 4.0 sd of disagreement, breaking down beyond ~1.5 sd.
+    assert verdict['worst'] > 1.0, verdict
+    assert verdict['valid_to'] < 3.0, verdict
+    assert 'not' in verdict['verdict'] or 'breaks down' in verdict['verdict']
+
+
+def test_the_grids_need_not_match():
+    """The cheap sweep is naturally run at far more points than the re-fit one.
+
+    Requiring them to line up would either force a coarse picture or an
+    expensive check; the Gaussian curve has a closed form, so it is evaluated
+    wherever the re-fit actually happened.
+    """
+    fit = _fit()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    name = engine.form().names[0]
+    coarse = engine.exact_conditional_scan(name, points=7, span=2.0)
+    for points in (5, 61, 200):
+        approximate = engine.conditional_scan(name, points=points, span=2.0)
+        verdict = E.gaussian_validity(approximate, coarse)
+        assert np.isfinite(verdict['worst'])
+
+
+def test_the_exact_scan_puts_the_fit_back_exactly():
+    """It walks the optimiser over the whole sweep, so it must leave no trace."""
+    fit = _weak_component()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    before = [float(p.value) for p in fit.model.parameters_all]
+    fixed_before = [bool(getattr(p, 'fixed', False))
+                    for p in fit.model.parameters_all]
+
+    name = [n for n in engine.form().names if n.split(':')[-1] == 't'][0]
+    engine.exact_conditional_scan(name, points=9, span=2.0)
+
+    after = [float(p.value) for p in fit.model.parameters_all]
+    fixed_after = [bool(getattr(p, 'fixed', False))
+                   for p in fit.model.parameters_all]
+    assert after == pytest.approx(before, rel=1e-9)
+    assert fixed_after == fixed_before, "the held parameter must be freed again"
+
+
+def test_the_exact_scan_records_the_profile_chi2():
+    """The chi² at each held value is the profile likelihood, and is worth having."""
+    fit = _weak_component()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    name = [n for n in engine.form().names if n.split(':')[-1] == 't'][0]
+    exact = engine.exact_conditional_scan(name, points=11, span=2.0)
+    chi2 = np.asarray(exact['chi2'], dtype=float)
+    finite = np.isfinite(chi2)
+    assert finite.sum() >= 8
+    # The minimum sits at the optimum, because that is what the optimum means.
+    centre = int(np.argmin(np.abs(exact['held_z'])))
+    assert chi2[centre] == pytest.approx(np.nanmin(chi2), rel=1e-6)
+
+
+def test_the_exact_scan_can_be_cancelled():
+    """A re-fit per point is slow enough that a caller must be able to stop it."""
+    fit = _weak_component()
+    engine = E.GaussianEngine(fit).add_all_targets().run()
+    name = [n for n in engine.form().names if n.split(':')[-1] == 't'][0]
+
+    calls = [0]
+
+    def cancel():
+        calls[0] += 1
+        return calls[0] > 3
+
+    exact = engine.exact_conditional_scan(
+        name, points=21, span=2.0, check_cancel=cancel)
+    assert exact is not None
+    done = np.isfinite(np.asarray(exact['targets'][0]['mean'], dtype=float))
+    assert done.sum() <= 4, "must stop when asked"
+    # And still restore the fit.
+    assert all(np.isfinite(float(p.value)) for p in fit.model.parameters_all)
