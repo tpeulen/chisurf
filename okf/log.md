@@ -2,6 +2,28 @@
 
 ## 2026-07-26
 
+* **RF-217 fix — the MaxEnt MEM L-curve RPC never returned a corner.** The
+  `maxent.lcurve` handler built its answer as
+  `int(np.asarray(discrete_lcurve_corner(...))[0])`, but that function returns a
+  plain `int` or `None`, so `np.asarray(...)` is 0-dimensional and `[0]` raised
+  `IndexError` on *every* call. A bare `except Exception: corner_index = None`
+  swallowed it, so the declared `corner_index` field of the contract was always
+  `null`: the auto-selected regularization weight never reached the client, which
+  silently recomputed it itself and made the wasted backend work invisible. The
+  expression and its `except` are replaced by a documented
+  `_lcurve_corner_index` helper that filters the sweep to the finite, positive
+  points, returns `None` when fewer than three survive or no corner is found, and
+  maps the corner back through `np.nonzero(usable)[0]` — so the index refers to
+  the unfiltered `log10_nu`/`chi2r`/`sol_norm` arrays it is reported alongside.
+  That mapping also closes the `services.py` site of RF-218 (the two
+  `core/models/tcspc/maxent.py` sites remain open). Pinned by the new
+  `chisurf/plugins/fluorescence_decay/maxent_decay/test/test_lcurve_corner.py`.
+  Suites: 3 new + 30 (all `fluorescence_decay` plugin tests) + 85
+  (`test/math`, `test/models/test_fcs_maxent_lcurve.py`) green; the two
+  `test_datatools.py` failures and the two `test/math` collection errors
+  (`chisurf.plugins.burst_mle_analysis` no longer exists) are pre-existing and
+  untouched by this change.
+
 * **RF-138 fix — two shipped `csc` commands could never start.** `trace_browser`
   and `tttr_image_browser` each carried a `cli.py` "compatibility shim" next to a
   `cli/` directory, and their manifests point `entrypoints.cli` at `….cli:cli`.

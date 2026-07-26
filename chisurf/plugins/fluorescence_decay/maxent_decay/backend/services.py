@@ -53,6 +53,37 @@ def _request_from_payload(payload: dict[str, Any]) -> MEMRequest:
     return request_from_dict(payload)
 
 
+def _lcurve_corner_index(chi2: list[float], sol_norm: list[float]) -> int | None:
+    """Locate the L-curve corner among the usable points of a nu sweep.
+
+    Parameters
+    ----------
+    chi2 : list of float
+        Reduced chi-square for every regularization weight of the sweep.
+    sol_norm : list of float
+        Solution norms for the same weights as in ``chi2``.
+
+    Returns
+    -------
+    int or None
+        Index of the corner into the *unfiltered* sweep, or ``None`` when no
+        corner can be determined. Sweep points that are non-finite or
+        non-positive are excluded from the search, but the returned index is
+        mapped back so that it always refers to the reported ``log10_nu`` /
+        ``chi2r`` / ``sol_norm`` arrays.
+    """
+    rho = np.asarray(chi2, dtype=float)
+    eta = np.asarray(sol_norm, dtype=float)
+    usable = np.isfinite(rho) & np.isfinite(eta) & (rho > 0.0) & (eta > 0.0)
+    index = np.nonzero(usable)[0]
+    if index.size < 3:
+        return None
+    corner = chisurf.core.math.regularization.discrete_lcurve_corner(rho[index], eta[index])
+    if corner is None:
+        return None
+    return int(index[corner])
+
+
 def run_lifetime_handler(
     decay: list[float],
     irf: list[float],
@@ -232,13 +263,7 @@ def run_lcurve_handler(
             sol_vals.append(float(np.linalg.norm(p)) if p.size else float("nan"))
             log10_vals.append(float(np.log10(nu_val)))
 
-        corner_index = None
-        try:
-            mask = np.isfinite(chi2_vals) & np.isfinite(sol_vals) & (np.asarray(chi2_vals) > 0.0) & (np.asarray(sol_vals) > 0.0)
-            if np.any(mask):
-                corner_index = int(np.asarray(chisurf.core.math.regularization.discrete_lcurve_corner(np.asarray(chi2_vals)[mask], np.asarray(sol_vals)[mask]))[0])
-        except Exception:
-            corner_index = None
+        corner_index = _lcurve_corner_index(chi2_vals, sol_vals)
         return service_success(
             LCurveResult(
                 log10_nu=log10_vals,

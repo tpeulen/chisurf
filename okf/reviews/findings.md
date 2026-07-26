@@ -2521,16 +2521,25 @@ Findings RF-215..RF-227.
 - **Fix note:**
 
 ### RF-217
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`maxent.lcurve` **always** returns `corner_index: null` — the auto-selected regularization weight never reaches the client)
 - **Location:** `chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py:239`, inside the `try` at `:236-241`
 - **Finding:** The handler writes `corner_index = int(np.asarray(discrete_lcurve_corner(...))[0])`. `discrete_lcurve_corner` returns a **Python `int` or `None`**, so `np.asarray(...)` is a 0-dimensional array and `[0]` raises `IndexError: too many indices for array: array is 0-dimensional, but 1 were indexed` — verified directly. The surrounding `except Exception: corner_index = None` swallows it, so the RPC always answers `corner_index = None` even when a corner was found. The field is a declared part of the contract (`api/contract.py:114`, `api/models.py:75`) and the consumer reads it (`chisurf/gui/widgets/models/fcs/maxent_widget.py:257,1176`), falling back to recomputing the corner client-side — so the failure is invisible and the backend computation is wasted. Drop the `np.asarray(...)[0]` wrapper and handle `None` explicitly rather than by exception. See RF-218 for the masking defect in the same expression.
-- **Fix note:**
+- **Fix note:** The one-line expression (and the `except Exception` that hid it)
+  was replaced by a documented `_lcurve_corner_index` helper in the same module:
+  it filters the sweep to the finite, positive points, returns `None` when fewer
+  than three survive or when `discrete_lcurve_corner` finds no corner, and
+  otherwise maps the corner back through `np.nonzero(usable)[0]` so the reported
+  index refers to the unfiltered `log10_nu`/`chi2r`/`sol_norm` arrays — which
+  also closes the `services.py` site of RF-218. Pinned by
+  `chisurf/plugins/fluorescence_decay/maxent_decay/test/test_lcurve_corner.py`
+  (corner is reported and never swallowed to `None`; index is offset back past
+  filtered leading points; `None` without three usable points).
 
 ### RF-218
 - **Status:** OPEN
 - **Severity:** S2 (the corner index is an index into a *filtered* array but is reported against the unfiltered one)
-- **Location:** `chisurf/core/models/tcspc/maxent.py:196-200` and `:374-378`; the same expression at `chisurf/plugins/fluorescence_decay/maxent_decay/backend/services.py:237-239`
+- **Location:** `chisurf/core/models/tcspc/maxent.py:196-200` and `:374-378` (the `services.py` site was fixed with RF-217; only the two `tcspc/maxent.py` sites remain)
 - **Finding:** All three sites build `mask = isfinite(chi2) & isfinite(sol_norm)`, call `discrete_lcurve_corner(chi2[mask], sol_norm[mask])`, and store the result as an index into the **unmasked** `_l_curve_log10_nu` / `chi2r` / `sol_norm` arrays that they also publish. As soon as one grid point fails to converge (a `NaN` χ², which is exactly what the surrounding code prepares for) the index is shifted and points at the wrong regularization weight. `discrete_lcurve_corner` already handles non-finite input itself — `_clean_lcurve_points` drops it and `return int(idx_all[k_local])` maps back to the *original* index — so the pre-masking is both unnecessary and the cause of the misalignment; `chisurf/core/models/fcs/maxent.py:1020` gets this right by passing the raw arrays. Secondary: `int(...)` on a `None` return raises `TypeError` into the bare `except`, and `_l_curve_corner_index` in `tcspc/maxent.py` is written but never read anywhere in the tree — the TCSPC MaxEnt L-curve has no consumer for its corner.
 - **Fix note:**
 
