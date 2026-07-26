@@ -2,6 +2,46 @@
 
 ## 2026-07-26
 
+* **chimol: `h_add`/`h_fill`, and why a template beats counting valences.** The
+  geometry is transcribed from `layer2/HydrogenAdder.cpp`, where the trap is the
+  control flow rather than the constants: the `switch` **falls through**, so one
+  existing neighbour on a tetrahedral centre yields the second, third *and*
+  fourth directions. Read as an if/elif it gives one hydrogen where three belong.
+
+  **The count cannot come from valences when the file has no bond orders.**
+  Measured on `hGBP1_closed.pdb` (4671 deposited hydrogens),
+  `valence(element) - heavy neighbours` is wrong for **41.6% of atoms** — it puts
+  a hydrogen on every carbonyl carbon, every carboxyl oxygen and every aromatic
+  carbon. PyMOL warns about exactly this in `h_add`'s help. Standard residues
+  therefore use a template, which is exact for proteins.
+
+  Validated by stripping that protein's hydrogens and putting them back:
+  **99.78% of counts correct** (4634/4644), **median position error 0.10 Å**,
+  97.8% within 1.0 Å, and no clash below 0.8 Å. The 2.8% beyond 1 Å are *all*
+  rotatable terminal groups — hydroxyls, thiols, amide and guanidinium NH₂ —
+  whose torsion the geometry does not fix and which PyMOL also places
+  arbitrarily. A test pins that set, so a backbone atom appearing there fails
+  rather than being absorbed into the tolerance.
+
+  Two corrections a per-residue template cannot express, both found by that
+  comparison and both the only disagreements in 4644 atoms: the **N-terminus is
+  an ammonium** (three hydrogens, tetrahedral), detected from the bond graph
+  rather than a residue name; and **histidine's tautomer is a property of the
+  structure**, so ND1-protonated is assumed unless a hydrogen is already on NE2 —
+  stated rather than implied, because without hydrogens the two are
+  indistinguishable.
+
+  A residue with no template is named and skipped, not approximated: an
+  approximate hydrogen is worse than a missing one because it looks like data.
+
+  Incidental finding, not a defect: `coordinates.read` defaults to
+  `keep_water=False, only_standard_residues=True` — deliberately, for the
+  modelling code — so a test fixture built with it silently lacks the ligands and
+  waters the viewer shows. Tests that need what the viewer holds must call
+  `read_coordinates` with those flags.
+
+  31 tests and a new guide section.
+
 * **Molecule-wise MLE takes the shared region GUI, and a five-year-old
   transpose falls out of it.** The tool's analysis region was a file picker; it
   is now the shared editor, so a region can be drawn, named, inverted, combined

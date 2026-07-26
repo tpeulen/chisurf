@@ -50,6 +50,42 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Adding hydrogens
+
+Crystal structures usually have none:
+
+```text
+h_add                        # every residue with a template
+h_add polymer                # just the protein
+h_fill resi 42               # replace the hydrogens there, after moving something
+```
+
+`h_add` leaves already-hydrogenated atoms alone; `h_fill` removes and re-places
+them, which is what you want after moving a heavy atom.
+
+Counts come from a **residue template** rather than from counting free valences.
+That is not a shortcut avoided for tidiness — measured against a fully
+hydrogenated protein, `valence(element) − heavy neighbours` is wrong for **41.6%
+of atoms**, because a double bond looks like a free valence when the file carries
+no bond orders. It puts a hydrogen on every carbonyl carbon, every carboxyl
+oxygen and every aromatic carbon. PyMOL warns about the same thing in `h_add`'s
+own help.
+
+Against that protein, the template gets **99.8% of counts right** and places
+hydrogens with a median error of **0.10 Å**. The remaining spread is torsional:
+hydroxyls, thiols and amide NH₂ groups can rotate freely, and nothing in the
+geometry fixes which way they point — PyMOL places them arbitrarily too.
+
+:::{note}
+Two things a template cannot settle, both reported rather than assumed:
+
+* **a residue with no template is skipped and named.** Ligands and modified
+  residues need bond orders, which PDB files do not carry;
+* **histidine's tautomer is not in the coordinates.** ND1-protonated is assumed
+  unless the file already has a hydrogen on NE2. On a real protein this was the
+  *only* disagreement with the deposited hydrogens, in 5 residues out of 578.
+:::
+
 ### Saving a session
 
 A figure in progress is not a PDB file plus a note about what was typed. Save the

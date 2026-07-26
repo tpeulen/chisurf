@@ -225,14 +225,60 @@ confusion is exactly what hid `resn`.
 
 **Done:** `get_area`, `get_extent`, `get_chains`, `get_title`, `iterate_state`,
 `alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
-`group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`.
+`group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`, `h_add`/`h_fill`.
 
 **Remaining:** `smooth`, `sort`, `protect`, `mask`,
-`h_add`/`h_fill`, `cealign`, `matrix_copy`,
+`cealign`, `matrix_copy`,
 `symexp`/`symmetry`, `ramp_new`, `cartoon_putty`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 `set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
 settings store and are deliberately not started.
+
+## Hydrogens need a template, and the reason is measurable
+
+`h_add`/`h_fill`. The geometry is a transcription of
+`layer2/HydrogenAdder.cpp::ObjectMoleculeSetMissingNeighborCoords`, where the
+trap is the control flow rather than the constants: the `switch (n_system)`
+**falls through**, so one existing neighbour on a tetrahedral centre yields the
+second, third *and* fourth directions, each built from the ones before. Read as
+an if/elif it produces one hydrogen where three are wanted.
+
+**The count cannot be derived from valences without bond orders.** PyMOL works
+from valences and warns in `h_add`'s own help that PDB files lack them for
+ligands. Measured here on `hGBP1_closed.pdb` (4671 deposited hydrogens),
+`valence(element) - heavy neighbours` is wrong for **41.6% of atoms** — it adds a
+hydrogen to every carbonyl carbon, every carboxyl oxygen and every aromatic
+carbon. So standard residues use a template of "how many hydrogens, and what
+geometry", which is exact for proteins.
+
+Validated against that protein by stripping its hydrogens and putting them back:
+
+| | |
+| --- | --- |
+| counts correct | **99.78%** (4634 / 4644) |
+| median position error | **0.10 Å** |
+| within 1.0 Å | 97.8% |
+| clashes introduced | none below 0.8 Å |
+
+The 2.8% beyond 1 Å are **all** rotatable terminal groups — SER/THR/TYR
+hydroxyls, CYS thiols, and the amide and guanidinium NH₂ groups — whose torsion
+the geometry does not determine and which PyMOL also places arbitrarily. A test
+asserts that set, so a *backbone* atom appearing there would fail rather than be
+absorbed into the tolerance.
+
+Two corrections a per-residue template cannot express, both found by that
+comparison and both the *only* disagreements in 4644 atoms:
+
+* **the N-terminus is an ammonium, not an amide** — three hydrogens on a
+  tetrahedral centre. Detected from the bond graph (a backbone nitrogen with no
+  preceding carbonyl), so it needs no separate residue name;
+* **histidine's tautomer is a property of the structure, not the residue.**
+  ND1-protonated is assumed unless the file already carries a hydrogen on NE2.
+  Without hydrogens to read, the two are indistinguishable — so it is stated
+  rather than implied.
+
+A residue with no template is **named and skipped**, not approximated. An
+approximate hydrogen is worse than a missing one, because it looks like data.
 
 ## Sessions carry everything, and the field list is derived
 

@@ -516,6 +516,150 @@ class EditingMixin(BaseCmd):
                 viewer._secondary_structure = secondary
         viewer._update_view()
 
+    @command("h_add")
+    def h_add(self, selection: str = "all") -> None:
+        """Add missing hydrogens (PyMOL ``h_add [selection]``).
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms to hydrogenate; everything by default.
+
+        Notes
+        -----
+        Hydrogen counts come from a **residue template**, not from counting free
+        valences. PyMOL works from bond valences and warns in ``h_add``'s own
+        help that PDB files do not carry them; measured on a fully hydrogenated
+        protein, ``valence - heavy neighbours`` is wrong for 41.6% of atoms,
+        because a double bond looks like a free valence when no orders are known.
+        A residue without a template is **reported** rather than guessed at.
+
+        Histidine is treated as ND1-protonated unless the file already carries a
+        hydrogen on NE2. Without any hydrogens to go on, the tautomer cannot be
+        determined from coordinates -- so it is stated rather than implied.
+        """
+        self._add_hydrogens(str(selection), reposition=False)
+
+    @command("h_fill")
+    def h_fill(self, selection: str = "all") -> None:
+        """Replace the hydrogens on a selection (PyMOL ``h_fill``).
+
+        Existing hydrogens are removed and put back at the template geometry,
+        which is what makes it useful after moving a heavy atom: ``h_add`` leaves
+        an already-hydrogenated atom alone, ``h_fill`` re-places it.
+
+        Parameters
+        ----------
+        selection : str, optional
+            Atoms whose hydrogens should be replaced.
+        """
+        self._add_hydrogens(str(selection), reposition=True)
+
+    def _add_hydrogens(self, selection: str, *, reposition: bool) -> None:
+        """Shared body of ``h_add`` and ``h_fill``."""
+        from ..analysis.hydrogens import TAUTOMER_NOTES, plan_hydrogens
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        verb = "h_fill" if reposition else "h_add"
+
+        try:
+            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
+                viewer, selection or "all"
+            )
+        except Exception as exc:
+            self._emit_error(f"{verb}: {exc}")
+            return
+
+        entry = viewer._objects.get(obj_id)
+        atoms = getattr(getattr(entry, "state", None), "atoms", None)
+        if atoms is None:
+            self._emit_error(f"{verb}: {obj_name} carries no atoms")
+            return
+
+        mask = np.asarray(mask, dtype=bool)
+        elements = np.char.strip(np.asarray(atoms["element"]).astype(str))
+        is_hydrogen = np.char.upper(elements) == "H"
+
+        if reposition:
+            # Drop the selection's hydrogens first, so the plan places all of
+            # them rather than topping up whatever happened to be there.
+            doomed = mask & is_hydrogen
+            # A hydrogen bonded to a selected heavy atom also goes, or moving the
+            # parent leaves its hydrogens behind.
+            parents = set(np.nonzero(mask & ~is_hydrogen)[0].tolist())
+            with viewer._activate_object(obj_id):
+                for a, b in viewer.bond_list():
+                    for x, y in ((a, b), (b, a)):
+                        if int(x) in parents and is_hydrogen[int(y)]:
+                            doomed[int(y)] = True
+            if doomed.any():
+                keep = ~doomed
+                entry.state.atoms = atoms[keep].copy()
+                # Every array indexed by atom has to follow, which
+                # _rebuild_after_coordinate_change does from the atom array.
+                self._rebuild_after_coordinate_change(viewer, obj_id)
+                atoms = entry.state.atoms
+                mask = mask[keep]
+
+        with viewer._activate_object(obj_id):
+            bonds = viewer.bond_list()
+        plan, unknown = plan_hydrogens(atoms, bonds, mask)
+
+        if not plan:
+            note = ""
+            if unknown:
+                note = "; no template for " + ", ".join(sorted(unknown))
+            self._emit_message(f"{verb}: nothing to add to {obj_name}{note}")
+            return
+
+        # One block of new atoms, appended in the object's own dtype so the
+        # result is compatible with everything that reads atoms.
+        additions = np.zeros(len(plan), dtype=atoms.dtype)
+        names = atoms.dtype.names or ()
+        for k, item in enumerate(plan):
+            parent = atoms[item["parent"]]
+            for field_name in names:
+                # Inherit the parent's residue identity, then override.
+                additions[field_name][k] = parent[field_name]
+            if "xyz" in names:
+                additions["xyz"][k] = item["xyz"]
+            if "atom_name" in names:
+                additions["atom_name"][k] = item["name"]
+            if "element" in names:
+                additions["element"][k] = "H"
+            if "radius" in names:
+                additions["radius"][k] = 1.2
+            if "mass" in names:
+                additions["mass"][k] = 1.008
+            if "atom_id" in names:
+                additions["atom_id"][k] = int(len(atoms)) + k + 1
+            if "i" in names:
+                additions["i"][k] = int(len(atoms)) + k
+
+        entry.state.atoms = np.concatenate([atoms, additions])
+        self._rebuild_after_coordinate_change(viewer, obj_id)
+        if window is not None and hasattr(window, "_refresh_objects_from_viewer"):
+            window._refresh_objects_from_viewer()
+
+        message = f"{verb}: added {len(plan)} hydrogens to {obj_name}"
+        self._emit_message(message)
+        if unknown:
+            # Named, not silently skipped: a ligand left unhydrogenated is a
+            # result the user has to know about.
+            self._emit_message(
+                f"{verb}: no template for "
+                + ", ".join(f"{k} ({v} atoms)" for k, v in sorted(unknown.items()))
+                + " -- these need bond orders, which PDB files do not carry"
+            )
+        residues = set(
+            np.char.strip(np.asarray(atoms["res_name"]).astype(str)).tolist()
+        )
+        for residue, note in TAUTOMER_NOTES.items():
+            if residue in residues:
+                self._emit_message(f"{verb}: {note}")
+
     @command("bond")
     def bond(self, atom1: str = "", atom2: str = "", order: str = "1") -> None:
         """Bond two atoms (PyMOL ``bond atom1, atom2 [, order]``).
