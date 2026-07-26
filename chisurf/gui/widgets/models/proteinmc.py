@@ -1225,9 +1225,13 @@ class ProteinMCModelWidget(ModelWidget):
         if not filename:
             return
         try:
-            from chisurf.plugins.modelling.fps_json_editor.label_structure import LabelStructure
+            # The structured editor, which understands what a labelling file
+            # is. It was renamed (LabelStructure -> FpsJsonEditor) and moved,
+            # and because this import is guarded the rename degraded the
+            # feature to the raw-text fallback below without anyone noticing.
+            from chisurf.plugins.modelling.fps_json_editor.gui.editor import FpsJsonEditor
 
-            editor = LabelStructure()
+            editor = FpsJsonEditor()
             editor.onLoadJSON(filename)
         except Exception:
             from chisurf.plugins.core.code_editor import CodeEditor

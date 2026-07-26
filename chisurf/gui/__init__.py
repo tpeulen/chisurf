@@ -2015,7 +2015,9 @@ class LoginDialog(QtWidgets.QDialog):
                         QtWidgets.QMessageBox.Yes
                     )
                     if reply == QtWidgets.QMessageBox.Yes:
-                        from chisurf.plugins.core.user_editor.gui import PasswordChangeDialog
+                        from chisurf.plugins.core.user_editor.gui.tool import (
+                            PasswordChangeDialog,
+                        )
                         is_admin = bool(user_data.get("is_admin", False))
                         dlg = PasswordChangeDialog(user_id=user_id, is_admin=is_admin, parent=self)
                         if dlg.exec() == QtWidgets.QDialog.Accepted:
