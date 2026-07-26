@@ -1506,3 +1506,59 @@ from `test/server/test_fit_jobs_use_job_manager.py`). RF-113..RF-119.
 - **Location:** `chisurf/server/app.py:51` (`self.job_manager = JobManager()`, plumbed on to `AppStartupServiceManager` at `:68` and into every `AppStartupContext` — `chisurf/startup/services.py:159`, `:406`, `:587`) against `chisurf/server/services/fits.py:1081` (`_JOBS = JobManager()`, where the fit jobs actually live)
 - **Finding:** There are two managers. Every `create_job` in the tree goes to the `fits.py` module-level `_JOBS`; `ServerApp.job_manager` is constructed, handed to the startup-service context and to `chisurf/gui/background_startup.py:84`, and never has a job put in it or taken out of it — grep finds only assignments. A startup service or plugin handed `context.job_manager` therefore sees an empty registry and cannot list, poll or cancel the sampling and scan jobs the server is actually running, and a generic `jobs.*` endpoint cannot be written against it; `test/server/test_app.py:45` asserts only that the attribute is not `None`. It is also process-global rather than per-session, so two `SessionState`s in one process share a job id space. Either inject the app's manager into the fits service (the dispatcher already carries `state` and `event_bus` the same way) or drop the unused attribute and the context field, so "one job manager" (INC-08) is true of the code and not only of the commit message.
 - **Fix note:**
+
+### Review 2026-07-26 — the LLM agent harness (`chisurf/core/agent/`)
+
+Slice: the agent loop and its transport — `runtime.py`, `llm.py`, `spec.py`,
+`context.py`, `prompt.py`, `cli.py`, `skills.py` and `tools/scripting.py` —
+picked because the package has no findings on record and carries recent
+landings (`da896d13b`, `d5d1c11b4`, `448c8538e`). The core design holds: the
+multi-call turn, the failure-signature counter, the safety tiers and the
+portable-assistant-message normalisation (`test_provider_dialects.py`) all do
+what they claim. The findings are on the paths the tests do not follow — what
+the *conversation* looks like after a run stops early, what a provider dialect
+outside the three replayed ones produces, and the budgets that are documented
+but not enforced. Reproduced in the `arm64` env with the scripted-LLM harness
+from `test/agent/test_runtime.py`. RF-120..RF-125.
+
+### RF-120
+- **Status:** OPEN
+- **Severity:** S1 (a run that hits any budget, or is cancelled, leaves the conversation permanently malformed — every later question in the same session re-sends it and is rejected by the provider)
+- **Location:** `chisurf/core/agent/runtime.py:292-319` (the `for call in calls` loop breaks on `cancelled` / `tool_budget` / `repeated_failures` **after** `_append_assistant` at `:290` has already written the assistant turn carrying every `tool_call` id) with `:413-431` (`_append_tool_result`, run only for the calls that were executed)
+- **Finding:** The OpenAI dialect requires each `tool_call.id` in an assistant turn to be answered by a `tool` message; the loop appends the assistant turn with *all* the ids and then executes only some of them. Verified with the test file's own `ScriptedLLM`: a three-call turn under `max_tool_calls=2` leaves `messages` as `system, user, assistant(call_0, call_1, call_2), tool(call_0), tool(call_1)` — `call_2` unanswered — and the follow-up question posts that same list verbatim to the provider. The other two early exits do the same: cancelling after the first call orphans `['call_1', 'call_2']`, and `max_consecutive_failures=2` on a five-call turn orphans `['call_2', 'call_3', 'call_4']`. Because `ask()` clears `_cancelled` and keeps `self.messages` (the "conversation survives across questions" property in the module docstring, and the reason `reset()` exists separately), the session is poisoned from then on: `cancel()` is the *documented* way to stop a run, and it makes the next question fail with a 400 rather than a cancellation. `test_tool_call_budget_is_enforced` and `test_cancel_stops_the_loop` assert only `stop_reason` and the invocation count, so nothing covers the resulting history. Fix in one place: when the loop exits early, append a synthetic `{"ok": false, "error": "not run — the request stopped"}` result for every unanswered id (which is also honest to the model), or drop the assistant turn. The same shape is reachable from `cli.py:249-254`, where a Ctrl-C mid-tool unwinds out of `ask()`.
+- **Fix note:**
+
+### RF-121
+- **Status:** OPEN
+- **Severity:** S2 (against a provider that sends tool arguments as an object rather than a string, every single tool call fails — and fails with a message accusing the model of malformed JSON)
+- **Location:** `chisurf/core/agent/llm.py:263-279` (`parse_response`: `raw_arguments = function.get("arguments") or "{}"`, `json.loads(raw_arguments)` guarded by `except (TypeError, ValueError, AttributeError)` → `arguments = {}`) with `chisurf/core/agent/runtime.py:539-545` (the "is not a JSON object" rejection)
+- **Finding:** The parser assumes `function.arguments` is a JSON *string*. Several OpenAI-compatible servers (the local-model providers this client explicitly targets in its module docstring) emit it as an already-decoded object. That case is not malformed — it is the parsed form — but `raw_arguments.strip()` raises `AttributeError`, the blanket `except` discards it, and `raw_arguments=str(raw_arguments)` stores the Python `repr`. Verified end to end: a reply whose arguments are `{"directory": "tcspc", "pattern": "*.dat"}` produces `ToolCall.arguments == {}` and `raw_arguments == "{'directory': 'tcspc', 'pattern': '*.dat'}"`, and `_execute` then returns `could not parse the arguments for 'load_data': "{'directory': 'tcspc', 'pattern': '*.dat'}" is not a JSON object` — with the arguments plainly visible in the error. The model cannot correct this, so the run burns its whole budget on `repeated_failures`. One `isinstance(raw_arguments, dict)` branch (use it directly, `raw_arguments=json.dumps(...)`) fixes it; `test_provider_dialects.py` is the right home for the case, alongside the three reply shapes already replayed there.
+- **Fix note:**
+
+### RF-122
+- **Status:** OPEN
+- **Severity:** S2 (a documented per-call wall-clock limit that no code reads; a model-written `while True:` hangs the GUI or CLI with no way back except killing the process)
+- **Location:** `chisurf/core/agent/context.py:43,56` (`code_timeout_s : float — Wall-clock limit for a single run_python call`, default `60.0`) against `chisurf/core/agent/tools/scripting.py:152-161` (`exec(compile(...))` with no timeout), grep: the attribute is only ever defined, never read
+- **Finding:** `run_python` runs the model's code synchronously in the calling thread and returns whenever it returns. Verified: `AgentContext(code_timeout_s=0.1)` running `time.sleep(2.0)` took **2.11 s** and reported `ok=True`. Nothing else covers the gap — `AgentConfig.time_budget_s` is tested only at the top of the loop (`runtime.py:269`), and `cancel()` is documented to "stop after the current tool call" (`:229-231`), so both are unreachable while the snippet runs. In the GUI the agent panel drives the loop, so a non-terminating snippet freezes the event loop with no cancel button that can bite. Either enforce the field (run the snippet on a worker thread and report a timeout as a `ToolError`, which is what the model needs to hear) or delete it and say plainly in the docstring that the snippet is uninterruptible.
+- **Fix note:**
+
+### RF-123
+- **Status:** OPEN
+- **Severity:** S3 (an empty session turns a clean tool error into a raw `IndexError` that the model is asked to interpret)
+- **Location:** `chisurf/core/agent/tools/fitting.py:474-506` (`set_parameter`: `targets = list(range(len(context.fits)))` under `all_fits`, then `context.fits[targets[0]]` in the `if not changed` branch at `:499-502`)
+- **Finding:** With `all_fits=True` and no fits in the session, `targets` is `[]`, the loop body never runs, and the "no fit has a parameter called …" branch indexes `targets[0]`. Verified: `set_parameter(ctx, parameter="tau", value=1.0, all_fits=True)` on an empty session raises `IndexError: list index out of range`, which `runtime._execute` hands back as `IndexError: list index out of range` — no mention of fits, parameters or what to do instead. Every sibling path raises a `ToolError` that names the fix (`run_fit:367-368`, `context._resolve:213-216`). The single-fit path is fine because `resolve_fit` raises first; only `all_fits` skips it. Guard the empty-target case with the same `ToolError` text `run_fit` uses.
+- **Fix note:**
+
+### RF-124
+- **Status:** OPEN
+- **Severity:** S3 (a reply cut off by `max_tokens` is shown to the user as the finished answer, JSON braces and all)
+- **Location:** `chisurf/core/agent/llm.py:285` (`finish_reason` parsed onto `LLMResponse` and, by grep, never read anywhere) with `chisurf/core/agent/prompt.py:262` (`parse_text_protocol` returns the raw text as `{"answer": ...}` when it does not parse) and `chisurf/core/agent/runtime.py:285-288` (no tool calls ⇒ this is the final answer)
+- **Finding:** `finish_reason == "length"` is the provider saying "this is not the whole reply", and the runtime never asks. In text-protocol mode a truncated object is not JSON, so it falls through to the "treat it as prose" branch and the user is shown the source: verified, `parse_text_protocol('{"answer": "the fit converged with chi2r =')` returns `{'answer': '{"answer": "the fit converged with chi2r ='}`. In native mode a truncated `tool_calls` argument string fails to parse and the model is told its JSON was malformed (RF-121's message) rather than that its answer was cut off. `max_tokens` is user-settable and the client already explains it to the user on an HTTP 402 (`llm.py:392-401`), so a short setting is an expected state, not an exotic one. Surface it: mark the result when `finish_reason == "length"` and say so in the answer text.
+- **Fix note:**
+
+### RF-125
+- **Status:** OPEN
+- **Severity:** S3 (the interactive CLI's Ctrl-C handler calls a cancel that can no longer do anything)
+- **Location:** `chisurf/core/agent/cli.py:249-254` (`except KeyboardInterrupt: session.cancel()`) against `chisurf/core/agent/runtime.py:229-231` (`cancel` sets a flag the loop tests) and `:251` (`ask` clears `_cancelled` on entry)
+- **Finding:** By the time the `except` runs, `KeyboardInterrupt` has already propagated out of `ask()` and unwound the loop, so setting `_cancelled` has no loop left to stop; the next question clears the flag before anything reads it. The cooperative cancel the runtime provides is therefore never exercised by the CLI — the only path is the hard unwind, which is also what leaves the orphaned tool ids of RF-120 (and, unlike the loop's own cancel path, produces no `agent.completed` event and no `stop_reason`). Either install a SIGINT handler that calls `session.cancel()` from outside the call (so the loop stops itself at its next checkpoint) or, at minimum, `session.reset()` here so the next question starts from a conversation the provider will accept.
+- **Fix note:**
