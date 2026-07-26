@@ -293,6 +293,54 @@ class Plot(QtWidgets.QWidget):
             np.asarray(data), colormap=cmap, levels=levels, rect=rect, axis_order=axis_order
         )
 
+    def add_roi(
+        self,
+        *,
+        kind="rect",
+        pos=(0.0, 0.0),
+        size=(10.0, 10.0),
+        pen="y",
+        movable=True,
+        rotatable=False,
+        points=None,
+    ) -> H.Roi:
+        """Add a region-of-interest shape over the plot.
+
+        The same shapes as :meth:`ImageView.add_roi`, on a *data* plane: a gate
+        on a joint intensity histogram, a cursor round a phasor cluster, a box
+        on an E–S plot. A region carries no axes, so one overlay serves both —
+        which is what lets the shared region editor gate scattered data and
+        restrict an image with the same object.
+
+        Parameters
+        ----------
+        kind : str
+            ``"rect"``, ``"circle"``, ``"ellipse"`` or ``"polygon"``.
+        pos, size : tuple of float
+            Corner and extent in data coordinates.
+        pen : pen-like
+            Outline style.
+        movable : bool
+            Whether the user can drag/resize it.
+        rotatable : bool
+            Whether a rectangle may be rotated.
+        points : sequence of (float, float), optional
+            Vertices for ``kind="polygon"``.
+
+        Returns
+        -------
+        handles.Roi
+        """
+        return self._canvas.add_roi(
+            kind=kind,
+            pos=tuple(pos),
+            size=tuple(size),
+            pen=S.to_pen(pen),
+            movable=movable,
+            rotatable=rotatable,
+            points=points,
+        )
+
     def region(
         self, bounds, *, orientation="vertical", movable=True, brush=None, pen=None
     ) -> H.Region:

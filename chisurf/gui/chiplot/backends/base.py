@@ -13,6 +13,7 @@ third-party rendering library, so swapping backends never touches call sites.
 from __future__ import annotations
 
 import abc
+from collections.abc import Sequence
 
 import numpy as np
 from qtpy import QtWidgets
@@ -124,6 +125,25 @@ class Canvas(abc.ABC):
         pen: S.Pen | None,
     ) -> H.Region:
         """Draw a draggable interval selector and return its handle."""
+
+    @abc.abstractmethod
+    def add_roi(
+        self,
+        *,
+        kind: str = "rect",
+        pos: tuple[float, float] = (0.0, 0.0),
+        size: tuple[float, float] = (10.0, 10.0),
+        pen: S.Pen,
+        movable: bool = True,
+        rotatable: bool = False,
+        points: Sequence[tuple[float, float]] | None = None,
+    ) -> H.Roi:
+        """Draw a region-of-interest shape on the plot; return its handle.
+
+        The 2-D counterpart of :meth:`add_region`'s interval: a gate on a joint
+        histogram, a cursor round a phasor cluster. A region carries no axes, so
+        the same shapes serve a plot and an image view.
+        """
 
     @abc.abstractmethod
     def add_marker(

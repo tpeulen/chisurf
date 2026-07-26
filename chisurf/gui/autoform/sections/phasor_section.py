@@ -239,6 +239,21 @@ class PhasorSectionWidget(QtWidgets.QWidget):
         if self._playing:
             self._start_play()  # restart at the new rate
 
+    def add_roi(self, **kwargs):
+        """Add a region shape on the phasor plane, returning a chiplot handle.
+
+        The surface :class:`~chisurf.gui.widgets.roi.overlay.RegionOverlay`
+        needs, so a phasor *cursor* is a shared region like any other: drawn,
+        named, inverted, combined and stored. Until this existed the phasor
+        cursor lived only in the analysis API — ``cursor_roi`` could build an
+        ellipse that no GUI could produce.
+
+        The coordinates are ``(g, s)``, which is exactly the point: a region
+        carries no axes, so the same object gates a phasor cluster here and
+        restricts an image elsewhere.
+        """
+        return self._plot.add_roi(**kwargs)
+
     def _refresh_overlays(self) -> None:
         for item in self._overlay_items:
             item.remove()

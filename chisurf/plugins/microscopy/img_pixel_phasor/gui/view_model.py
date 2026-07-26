@@ -12,6 +12,7 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.roi import RegionCollection
 from chisurf.plugins.microscopy.imaging_common.base import ImagingMapViewModel
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "phasor.view.json"
@@ -33,6 +34,9 @@ class PhasorImgViewModel(ImagingMapViewModel):
         self.n_ph_min: int = 3
         self.frequency: float = -1.0
         self.colormap = "viridis"
+        #: Phasor cursors — the shared named region list, on the (g, s) plane.
+        #: A cursor is a region like any other: drawn, inverted, combined, saved.
+        self.cursors = RegionCollection(combine="or", name="cursor")
 
     def _extra_signature(self) -> tuple:
         """Phasor settings that change the result (for recompute dedup)."""
@@ -114,9 +118,12 @@ class PhasorImgViewModel(ImagingMapViewModel):
         """Return a per-frame stack of phasor density histograms ``(n_frames, bins, bins)``.
 
         The movie source for the phasor *plot*: one ``log(1+count)`` density per
-        acquisition frame (axis 1 = ``g``, axis 2 = ``s``), built from the same
-        unstacked per-frame phasors as :meth:`g_frames`. Discriminated pixels come
-        back as ``(0, 0)`` and are excluded.
+        acquisition frame, built from the same unstacked per-frame phasors as
+        :meth:`g_frames`. Discriminated pixels come back as ``(0, 0)`` and are
+        excluded.
+
+        Axes are ``(frame, s, g)`` — row-major, as the plotting layer draws
+        images — so ``g`` runs horizontally and ``s`` vertically.
         """
         win = self._windows().get(self.display_window) or {}
         sig = (
@@ -136,7 +143,9 @@ class PhasorImgViewModel(ImagingMapViewModel):
                 g, s = g_st[f], s_st[f]
                 valid = np.isfinite(g) & np.isfinite(s) & ~((g == 0.0) & (s == 0.0))
                 hist, _, _ = np.histogram2d(g[valid].ravel(), s[valid].ravel(), bins=bins, range=rng)
-                out[f] = np.log1p(hist)
+                # histogram2d puts g on axis 0; the image is drawn row-major, so
+                # the transpose is what puts g on the horizontal axis.
+                out[f] = np.log1p(hist.T)
             return out
 
         return self._cached_stack("phasor_histogram_frames", sig, build)
@@ -151,11 +160,15 @@ class PhasorImgViewModel(ImagingMapViewModel):
     def phasor_histogram_map(self, bins: int = 160) -> Any:
         """Return a 2-D density histogram of the displayed window's (g, s) cloud.
 
-        Axis 0 is ``g``, axis 1 is ``s`` (pyqtgraph ``ImageItem`` is column-major,
-        so this renders with g horizontal / s vertical — no rotation), values are
-        ``log(1+count)``. A 2-D histogram reads far better than a scatter for the
-        dense per-pixel phasor cloud; the phasor section overlays the universal
-        semicircle and calibrates the axes.
+        Axis 0 is ``s`` and axis 1 is ``g`` — row-major, the convention the
+        plotting layer draws images in — so ``g`` runs horizontally and ``s``
+        vertically. Values are ``log(1+count)``. A 2-D histogram reads far better
+        than a scatter for the dense per-pixel phasor cloud; the phasor section
+        overlays the universal semicircle and calibrates the axes.
+
+        ``np.histogram2d`` puts the first argument on axis 0, so the transpose
+        below is not cosmetic: without it the cloud is drawn mirrored about the
+        diagonal, which for phasor data means every lifetime reads wrong.
         """
         g, s, n = self._disp("g"), self._disp("s"), self._disp("n_photons")
         if g is None or s is None:
@@ -167,4 +180,66 @@ class PhasorImgViewModel(ImagingMapViewModel):
             gg[valid], ss[valid], bins=bins,
             range=[list(self.PHASOR_G_RANGE), list(self.PHASOR_S_RANGE)],
         )
-        return np.log1p(hist)
+        return np.log1p(hist.T)
+
+    # ── phasor cursors ──
+    def cursor_extent(self) -> tuple:
+        """Where a newly drawn cursor is placed: the phasor plot's own box."""
+        return (*self.PHASOR_G_RANGE, *self.PHASOR_S_RANGE)
+
+    def cursor_mask(self):
+        """Return the pixels the combined cursor selects, as a boolean map.
+
+        The phasor plane and the image are two views of the same pixels, which
+        is the whole point of a cursor: a cluster picked out on ``(g, s)``
+        answers *which pixels* have that lifetime. Nothing enabled means every
+        pixel, not none.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Boolean map with the shape of the ``g`` map, or ``None`` when there
+            is no phasor result yet.
+        """
+        g, s = self._disp("g"), self._disp("s")
+        if g is None or s is None:
+            return None
+        combined = self.cursors.combined()
+        if combined is None:
+            return np.ones_like(g, dtype=bool)
+        from ..analysis import mask_from_cursor
+
+        return mask_from_cursor(np.asarray(g), np.asarray(s), combined)
+
+    def cursor_summary(self) -> str:
+        """One line on what the cursors select, for the panel."""
+        mask = self.cursor_mask()
+        if mask is None:
+            return ""
+        n = self._disp("n_photons")
+        valid = np.isfinite(np.asarray(self._disp("g")))
+        if n is not None:
+            valid &= np.asarray(n) > 0
+        total = int(valid.sum())
+        picked = int((mask & valid).sum())
+        if not total:
+            return ""
+        return f"{picked} of {total} px ({100.0 * picked / total:.1f} %)"
+
+    def masked_intensity_map(self):
+        """Intensity of the pixels the cursors select, zero elsewhere.
+
+        This is what makes a cursor worth drawing: the image, gated by the
+        lifetime cluster picked out on the phasor plane.
+        """
+        intensity = self._disp("n_photons")
+        if intensity is None:
+            return None
+        mask = self.cursor_mask()
+        if mask is None:
+            return np.asarray(intensity)
+        return np.where(mask, np.asarray(intensity), 0.0)
+
+    def notify_cursors(self) -> None:
+        """Tell the views the cursor set changed."""
+        self.notify("cursor")

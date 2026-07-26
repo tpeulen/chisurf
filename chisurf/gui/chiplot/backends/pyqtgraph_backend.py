@@ -534,6 +534,34 @@ class _Text(_Item):
 # --------------------------------------------------------------------------
 
 
+
+def _roi_item(kind, pos, size, pen, movable, rotatable, points):
+    """Build the pyqtgraph ROI item for a region shape.
+
+    Shared by the image view and the plot canvas: a region carries no axes, so
+    the same shapes serve a frame and a data plane (a phasor cursor, a gate on a
+    joint histogram).
+    """
+    if kind == "circle":
+        return pg.CircleROI(list(pos), list(size), pen=_pen(pen), movable=movable)
+    if kind == "ellipse":
+        return pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable)
+    if kind == "polygon":
+        # A polygon is defined by its vertices, not a corner and a size; the box
+        # is only the fallback when no vertices were given.
+        if points is None:
+            x, y = float(pos[0]), float(pos[1])
+            w, h = float(size[0]), float(size[1])
+            points = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+        return pg.PolyLineROI(
+            [tuple(map(float, p)) for p in points],
+            closed=True, pen=_pen(pen), movable=movable,
+        )
+    return pg.RectROI(
+        list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable
+    )
+
+
 class _PgCanvas(base.Canvas):
     """A pyqtgraph-backed single plot panel."""
 
@@ -663,6 +691,21 @@ class _PgCanvas(base.Canvas):
         item = pg.LinearRegionItem(**kw)
         self._pi.addItem(item)
         return _Region(item, self._pi)
+
+    def add_roi(
+        self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True,
+        rotatable=False, points=None,
+    ) -> H.Roi:
+        """Add a region-of-interest shape over the plot.
+
+        A region on a *data* plane, not an image: a gate on a joint intensity
+        histogram, a cursor round a phasor cluster, a box on an E–S plot. The
+        shapes and the handle are the image view's, because a region carries no
+        axes and does not care which of the two it is drawn on.
+        """
+        item = _roi_item(kind, pos, size, pen, movable, rotatable, points)
+        self._pi.addItem(item)
+        return _Roi(item, self._pi)
 
     def add_marker(self, pos, *, orientation, movable, pen, label) -> H.Marker:
         """Draw a movable cursor line."""
@@ -953,25 +996,7 @@ class _PgImageView(base.ImageViewCanvas):
         rotatable=False, points=None
     ) -> H.Roi:
         """Add a region-of-interest to the view."""
-        if kind == "circle":
-            roi = pg.CircleROI(list(pos), list(size), pen=_pen(pen), movable=movable)
-        elif kind == "ellipse":
-            roi = pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable)
-        elif kind == "polygon":
-            # A polygon is defined by its vertices, not a corner and a size; the
-            # box is only the fallback when no vertices were given.
-            if points is None:
-                x, y = float(pos[0]), float(pos[1])
-                w, h = float(size[0]), float(size[1])
-                points = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
-            roi = pg.PolyLineROI(
-                [tuple(map(float, p)) for p in points],
-                closed=True, pen=_pen(pen), movable=movable,
-            )
-        else:
-            roi = pg.RectROI(
-                list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable
-            )
+        roi = _roi_item(kind, pos, size, pen, movable, rotatable, points)
         view = self._iv.getView()
         view.addItem(roi)
         return _Roi(roi, view)

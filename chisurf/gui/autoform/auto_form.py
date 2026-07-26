@@ -153,6 +153,7 @@ class AutoForm(QtWidgets.QWidget):
         self._param_widgets = []
         self._dock_areas = []
         self._refresh_targets = []
+        self._section_widgets = []
         self._layout = QtWidgets.QVBoxLayout(self)
         self._layout.setAlignment(QtCore.Qt.AlignTop)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -170,6 +171,7 @@ class AutoForm(QtWidgets.QWidget):
         self._param_widgets = []
         self._dock_areas = []
         self._refresh_targets = []
+        self._section_widgets = []
 
         view = self.model.view_spec()
         self._emit_sections(view.sections, self._layout.addWidget)
@@ -375,7 +377,48 @@ class AutoForm(QtWidgets.QWidget):
         return list(self._param_widgets)
 
     # -- section dispatch ---------------------------------------------------
+    def section_widget(self, title: str = "", key: str = ""):
+        """Return the widget built for a section, found by its title and/or key.
+
+        A tool sometimes has to reach one section from outside — to draw a
+        region overlay on *this* canvas, to connect two panels. Doing that with
+        ``findChild(SomeWidget)`` picks the first of its type, which is wrong the
+        moment a tool has two: the phasor tool has a static plot and a movie
+        plot, and the overlay silently attached to whichever came first.
+
+        Parameters
+        ----------
+        title : str, optional
+            The section's ``title`` in the view spec.
+        key : str, optional
+            The ``key`` of a ``custom`` section.
+
+        Returns
+        -------
+        QWidget or None
+            The first section matching every criterion given, or ``None``.
+        """
+        for section, widget in getattr(self, "_section_widgets", []):
+            if title and str(getattr(section, "title", "") or "") != title:
+                continue
+            if key and str(getattr(section, "key", "") or "") != key:
+                continue
+            # A titled custom section is wrapped in a caption holder; the caller
+            # wants what the factory built.
+            return getattr(widget, "_autoform_inner", widget)
+        return None
+
     def _build_section(self, section: vs.Section):
+        widget = self._build_section_widget(section)
+        if widget is not None:
+            # Recorded so :meth:`section_widget` can find a built section by the
+            # name the view spec gave it, rather than by widget type.
+            if not hasattr(self, "_section_widgets"):
+                self._section_widgets = []
+            self._section_widgets.append((section, widget))
+        return widget
+
+    def _build_section_widget(self, section: vs.Section):
         if isinstance(section, vs.PanelSection):
             return self._build_panel(section)
         if isinstance(section, vs.DynamicGroupSection):
@@ -841,6 +884,10 @@ class AutoForm(QtWidgets.QWidget):
         # that marker lives on the inner widget — carry it out to the wrapper.
         if getattr(widget, "_autoform_expanding", False):
             holder._autoform_expanding = True
+        # ``section_widget`` must hand back the widget the factory built, not the
+        # caption wrapper: a caller asking for a section by name wants the thing
+        # with the API on it.
+        holder._autoform_inner = widget
         return holder
 
     def _build_dynamic_group(self, section: vs.DynamicGroupSection):

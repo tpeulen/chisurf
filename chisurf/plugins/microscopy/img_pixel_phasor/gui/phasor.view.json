@@ -18,12 +18,18 @@
             {"type": "value", "attr": "frequency", "label": "Frequency (MHz, -1=auto)", "kind": "float",
              "decimals": 3, "minimum": -1.0, "maximum": 1000.0, "step": 1.0,
              "description": "Modulation frequency; -1 auto-derives from the TTTR header."},
-            {"type": "info", "source": "results_html", "height": 90}
+            {"type": "info", "source": "results_html", "height": 90},
+            {"type": "custom", "key": "region_list", "target": "cursors", "title": "Phasor cursors",
+             "options": {"extent_attr": "cursor_extent", "refresh_on": ["cursor", "done", "display"]},
+             "description": "Cursors on the (g, s) plane. Draw an ellipse round a lifetime cluster, a polygon round one that is neither round nor elliptical, or several combined; ~ selects everything outside. The Selected dock shows the pixels they pick out."}
           ]
         },
         {"type": "custom", "key": "image", "target": "intensity_map", "title": "Intensity",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
+        {"type": "custom", "key": "image", "target": "masked_intensity_map", "title": "Selected",
+         "description": "Intensity of the pixels the phasor cursors select — the image, gated by lifetime.",
+         "options": {"colormap": true, "colormap_attr": "colormap"}},
         {"type": "custom", "key": "image", "target": "g_map", "title": "Phasor g",
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
