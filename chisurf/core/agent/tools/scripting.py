@@ -31,10 +31,21 @@ logger = logging.getLogger(__name__)
 
 registry = ToolRegistry()
 
+#: What a snippet can rely on. Naming the objects is not enough: a model that
+#: is told only "datasets" reaches for ``datasets[0].curve.y`` and
+#: ``chisurf.data``, neither of which exists, and burns turns finding out.
 _CODE_PREAMBLE = """\
 Available names: cs (the chisurf package), datasets (chisurf.imported_datasets),
-fits (chisurf.fits), np (numpy), Path (pathlib.Path), result (set it to return
-a value)."""
+fits (chisurf.fits), np (numpy), Path (pathlib.Path), WORKDIR (a Path to the
+working directory, which the script also runs in, so plain relative paths work
+too), result (set it to return a value).
+A dataset is a DataCurve: use dataset.x, dataset.y, dataset.ey (errors),
+dataset.name, dataset.meta_data — there is no .curve attribute.
+A fit has fit.data, fit.model, fit.chi2r, fit.fit_range, and its parameters are
+fit.model.parameters_all_dict, a name -> parameter mapping where each parameter
+has .value, .fixed and .error_estimate.
+Import anything else normally (pandas, tttrlib, chisurf.plugins...); there is no
+chisurf.data module."""
 
 
 def build_namespace(context: AgentContext) -> dict[str, Any]:
@@ -61,7 +72,10 @@ def build_namespace(context: AgentContext) -> dict[str, Any]:
         "chisurf": cs,
         "np": np,
         "Path": pathlib.Path,
-        "WORKDIR": str(context.working_directory),
+        # A Path, not a string: ``WORKDIR / "file.txt"`` is the first thing
+        # anyone writes, and a string makes it a TypeError. It still behaves
+        # as a string wherever one is wanted.
+        "WORKDIR": pathlib.Path(context.working_directory),
         "datasets": getattr(cs, "imported_datasets", []),
         "fits": getattr(cs, "fits", []),
         "result": None,

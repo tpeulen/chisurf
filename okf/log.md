@@ -2,6 +2,37 @@
 
 ## 2026-07-26
 
+* **Driving the κ² workflow with a real model: three more harness defects, and
+  a trap in my own skill.** Asked in plain language to fit an anisotropy decay
+  and turn it into a distance uncertainty, Mistral loaded the right skills and
+  computed the anisotropy — then the run fell apart in ways that were all ours.
+  **(1)** The provider returns `content` as a **list of typed chunks** (text
+  beside references), and the client stringified it, so a real answer reached
+  the user as `[{'type': 'text', 'text': '...'}, {'type': 'reference', ...}]`
+  with tool-call syntax leaking into the prose. `message_text` now joins the
+  text parts and drops the rest. **(2)** `WORKDIR` was a *string*, so
+  `WORKDIR / "file.txt"` — the first thing anyone writes — raised a TypeError;
+  it is a `Path` now. **(3)** The `run_python` preamble named `datasets` and
+  `fits` without saying what they are, so the model reached for
+  `datasets[0].curve.y` and a `chisurf.data` module, neither of which exists.
+  It now spells out the attributes of a DataCurve and a fit.
+* **The skill's own snippet taught a silent wrong answer.** It built the
+  anisotropy with `np.divide(..., out=np.zeros_like(total), where=total > 0)`,
+  which fills the *empty* channels of a decay tail with `r = 0`. A run
+  inspected that tail, found a long flat run of zeros, and concluded the dye
+  rotates freely — reporting no orientation uncertainty and calling the
+  distance "fully reliable", when the true residual anisotropy of that same
+  measurement is 0.045. Undefined channels are now NaN, the fit window runs
+  from the peak to where the signal has decayed, weights come from
+  `sqrt(total)` rather than a possibly-zero error column, and the skill says
+  outright that an `r_inf` equal to the starting guess, an infinite error bar
+  or a covariance warning means the fit did not converge. Re-run, the model
+  recovers r_inf = 0.044 ± 0.001 and ρ = 2.15 ns against reference values of
+  0.0453 and 2.16, states that the dye is *not* freely rotating, and flags the
+  acceptor anisotropies it had to assume. **Three of four runs now land on the
+  right answer; the failure mode is a confident wrong one, so the run-to-run
+  variance is worth knowing about.**
+
 * **Three-colour PDA can now fit a kinetic scheme, not only be told one.**
   tcPDA's rate matrix was a plain array attribute on `TcPdaModel`, so an
   arbitrary scheme could be *used* and never *recovered*. It is now

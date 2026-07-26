@@ -61,8 +61,17 @@ A polarised measurement gives two decays, parallel (VV) and perpendicular
 import numpy as np
 
 total = vv + 2.0 * G * vh                       # the isotropic sum
-r = np.divide(vv - G * vh, total, out=np.zeros_like(total), where=total > 0)
+r = np.full(total.shape, np.nan)
+signal = total > 0
+r[signal] = (vv[signal] - G * vh[signal]) / total[signal]
 ```
+
+**Leave empty channels undefined, never zero.** The anisotropy does not exist
+where no photons arrived, and a decay's tail is mostly empty channels. Filling
+them with `0.0` produces a long flat run of "r = 0" that is indistinguishable
+from a real, freely rotating dye — a model reading it concluded exactly that,
+reported no orientation uncertainty at all, and called the distance "fully
+reliable". The true residual anisotropy of that same measurement is 0.045.
 
 Fit the tail of `r(t)` with `r(t) = (r_0 - r_inf) exp(-t/rho) + r_inf`:
 
@@ -72,9 +81,27 @@ Fit the tail of `r(t)` with `r(t) = (r_0 - r_inf) exp(-t/rho) + r_inf`:
   needs.** It is what the anisotropy settles to: zero means the dye explores
   every orientation, non-zero means it is held.
 
+Fit **from the peak of `total` to where the signal has fallen to a small
+fraction of it** — a few hundred channels, not the whole axis — and weight by
+`sqrt(total)` rather than by an error column that may be zero:
+
+```python
+peak = int(np.nanargmax(total))
+window = signal & (np.arange(total.size) > peak) & (total > 0.01 * total[peak])
+popt, _ = curve_fit(model, time[window] - time[peak], r[window],
+                    p0=[0.35, 0.05, 1.0], sigma=1.0 / np.sqrt(total[window]))
+```
+
 `G` is a property of the detection path, not of the sample. Take it from a
 calibration; do not fit it alongside `r_inf`, because the two trade against
 each other and both become meaningless.
+
+**Check the fit before believing it.** A returned `r_inf` that is exactly your
+starting guess, or an error estimate of `inf`, or a warning that the covariance
+could not be estimated, all mean the fit did not converge — usually because
+zero-count channels made some weights infinite. Do not report such a number,
+and above all do not report an `r_inf` of 0 without confirming that the
+anisotropy really is flat at zero where there is still signal.
 
 ## 2. Order parameters
 

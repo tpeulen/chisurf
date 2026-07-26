@@ -50,6 +50,37 @@ class ToolCall:
     raw_arguments: str = ""
 
 
+def message_text(content: Any) -> str:
+    """Return the assistant's prose from a chat message's ``content``.
+
+    Providers disagree on the shape. Most send a string; some send a list of
+    typed chunks (``{"type": "text", "text": ...}`` beside references, images
+    or thinking blocks). Stringifying the list put a Python repr in front of
+    the user — a real answer arrived as
+    ``[{'type': 'text', 'text': '...'}, {'type': 'reference', ...}]``.
+
+    Parameters
+    ----------
+    content : object
+        The ``content`` field of an assistant message.
+
+    Returns
+    -------
+    str
+        The text parts, in order, joined by newlines.
+    """
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, dict):
+        return str(content.get("text") or "")
+    if isinstance(content, (list, tuple)):
+        parts = [message_text(chunk) for chunk in content]
+        return "\n".join(part for part in parts if part)
+    return str(content)
+
+
 @dataclass
 class LLMResponse:
     """Normalised result of one chat-completion call.
@@ -278,7 +309,7 @@ class LLMClient:
                 )
             )
         return LLMResponse(
-            text=str(message.get("content") or ""),
+            text=message_text(message.get("content")),
             tool_calls=calls,
             raw_message=message,
             usage=data.get("usage") or {},
