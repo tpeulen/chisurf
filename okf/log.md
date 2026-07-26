@@ -2,6 +2,26 @@
 
 ## 2026-07-26
 
+* **A skipped kappa2 frame now says so** ([RF-230](/reviews/findings.md)).
+  `calculate_kappa_distance` allocated `ks`/`ds` with `np.empty` and wrote them
+  only inside the `try`, so a frame whose dipole endpoints coincide — a missing or
+  duplicated atom, which makes the numba kernel raise `ZeroDivisionError` on the
+  zero dipole length — kept whatever was on the heap. The same all-zero trajectory
+  answered `[0., 0., 0.]` on a clean allocator and `[7777., 7777., 7777.]` after
+  another float32 buffer had passed through, and both are indistinguishable from a
+  real orientation factor; the only signal was a `print` to stdout, which the FRET
+  trajectory writer (`traj2fret.py`) never sees. The arrays are now `np.full(...,
+  np.nan)` and the skip goes to the module logger, so an unevaluable frame reads
+  `NaN` in the written trajectory instead of a plausible number. Pinned by
+  `test/fitting/test_kappa2_trajectory.py` (3 tests: all-degenerate is all-`NaN`
+  and stays so after the allocator is deliberately dirtied with the old `7777.0`
+  pattern; a good frame beside a degenerate one keeps `kappa = 1.0`; the skip
+  reaches `caplog`). Fixed alongside: the `s2delta` doctest compared `np.True_`
+  against `True` and failed under NumPy 2. Suites: 16 (anisotropy + kappa2) + 9
+  (module doctests) + 15 (kappa2-dist and FRET-trajectory plugins) green.
+  RF-229 in the same file was re-checked and flipped to FIXED — `09eee6e9a` had
+  already landed the isotropic `randn` sampling and its pinning test.
+
 * **Traj Tools onto the shared dockable-tool base** ([PRD-36](/prds/prd-36.md)).
   `TrajectoryToolsTool` subclassed `QMainWindow` directly, so it had neither the
   window-geometry persistence nor the path drag-drop every migrated tool gets for
@@ -62,7 +82,6 @@
   1530 for eight rows, and 0.4–0.8 s per rebuild. That is the root cause of both the
   sluggishness and the alignment being fought through layout negotiation rather than
   arithmetic.
-
 
 * **Guarded imports fail quietly, so they are now checked.**
   `test/architecture/test_guarded_imports.py`. `try: import x / except: x =
@@ -325,6 +344,23 @@
   [/usecases/pch-molecular-brightness.md](/usecases/pch-molecular-brightness.md);
   seven defects filed in [/reviews/findings.md](/reviews/findings.md). No
   application source was changed.
+* **RF-181 fix — every dataset a reader produced called itself `'None'`.**
+  `filename` is a named parameter of `DataCurve.__init__`, so it never reached
+  `**kwargs`, and the `super().__init__` call did not pass it on: the
+  [core data model](/subsystems/data-model.md) stored `Data`'s own default
+  `"None"` for every curve, which is what the dataset-list tooltips and
+  `DataGroup.filename` showed. `DeerReader().read('…/deer_trace.csv')` gave a
+  curve named `deer_trace` whose filename was the four-character string
+  `None`. The constructor now forwards it, and the `Data.filename` setter stores
+  an empty path as `''` rather than sending it through `os.path.normpath` —
+  `normpath('')` is `'.'`, which would let an in-memory curve claim the working
+  directory as its source file. Only the TCSPC reader had escaped, by assigning
+  `.filename` by hand after construction; those assignments stay, because those
+  call sites cannot move the filename into the constructor without tripping the
+  `load_filename_on_init` branch and re-reading the file over their rebinned
+  arrays. Pinned by two `test/core/test_data.py` cases and a reader-level
+  assertion in `test/experiments/test_deer_reader.py`. Finding closed in
+  [/reviews/findings.md](/reviews/findings.md).
 * **RF-042 fix — every curve of a multi-run ALV file was the same interleaved
   array.** `openASC_old` allocated its per-curve accumulators as
   `[[]] * len(curvelist)`, aliasing one list into every slot, so the row loop
@@ -768,7 +804,6 @@
   set does not contain is invisible however many tests there are. The test data had
   no two-letter element in it.
 
-
 * **The accurate-FRET button in ndXplorer computed the right answer and then
   threw it away.** Checking whether accurate FRET is reachable from inside ndx
   meant driving the real window head-lessly rather than reading the code, and
@@ -878,7 +913,6 @@
   without which two atoms at the same coordinates are the *shortest* distance of all
   and so always bond.
 
-
 * **The external graph library is gone; graphs are ours now (`chinet.graph`).**
   Three subsystems needed the same handful of graph operations — the fit
   [factor graph](/subsystems/fitting.md) (moralised Markov graph, components,
@@ -941,6 +975,27 @@
   [compiled modules](/subsystems/compiled-modules.md) still listed `chinet`
   among the C++ extensions; it has been pure Python for some time.
 
+* **RF-179 fix — the action re-entrancy guard is per thread, not per process.**
+  `@action`'s guard lived on the wrapper *function*, so it was shared by every
+  thread: while one thread was inside a handler, a call to the same action from
+  another thread saw the flag set and took the re-entrant shortcut — running the
+  body, and mutating state, with no payload validation, no debounce and no
+  history record. Actions are dispatched from worker threads (fit runs, staged
+  loading, debounce timers), so this was reachable. The guard now lives on the
+  same `threading.local()` that already carries `is_dispatching`, as a per-thread
+  set of action names. New `test/macros/test_action_reentrancy.py` pins both
+  halves: same-thread nesting still short-circuits (one history event), a
+  concurrent mistyped call raises from the schema. Finding closed in
+  [/reviews/findings.md](/reviews/findings.md).
+
+  **Fixed in passing:** `test/macros/test_actions.py` restored
+  `cs.action_dispatcher` in `tearDown` but not `cs.action_registry`, leaking a
+  scratch registry into the rest of the session — the reason
+  `test/history/test_vocabulary.py` failed whenever `test/macros` ran first; and
+  `test_action_dispatcher.py::test_chisurf_action_execute_accessor` asserted the
+  wrong return type for `project.save` (it returns the archive `Path`) while
+  writing that archive into a literal `C:/tmp/demo` folder in the repo.
+
 ## 2026-07-25
 
 * **Every symmetric error bar now says so when it is wrong.** The re-fit check
@@ -964,7 +1019,6 @@
   weak-component fit this flags all three skewed parameters (|skew| >= 0.54) and
   stays quiet on the well-determined ones; on a model whose posterior really is
   Gaussian it flags nothing. 7 tests.
-
 
 * **Non-Gaussian posteriors: the What-if lines are now checked, not assumed.**
   The conditional sweep is exact only for a Gaussian posterior, and a
@@ -992,18 +1046,6 @@
   error the moment the GUI paired its 61-point sweep with a 13-point check.
   6 tests, guide section with a screenshot, and a checklist item.
 
-
-
-* **chiplot: seam capabilities for the linked-panel family (PRD-64).** Added
-  `Plot.link_x`/`link_y` (shared pan/zoom across stacked panels — residuals above
-  data) and `fill`/`border` on `Plot.text` (a boxed draggable label — the
-  fit-quality overlay). Both screenshot-verified vs the pyqtgraph originals (zoom
-  propagates across the 3 panels; the χ²ᵣ/τ label draws with a blue fill + white
-  border). Tests `test_link_x_shares_range` + `test_text_fill_border`. Prep for
-  `lineplot`, which additionally needs a larger `Curve`-handle API
-  (symbol/opacity/pen-introspection) before a clean port — deferred so the core
-  TCSPC plot isn't littered with `.native` passthroughs. See [PRD-64](prds/prd-64.md).
-
 * **The free conditional query is now a slider (What-if).** PRD-70's canonical
   form made a conditional query a matrix update rather than a re-fit, and a test
   had shown 25 queries costing zero model evaluations -- but nothing exposed it.
@@ -1019,7 +1061,6 @@
   narrower each parameter becomes once the swept one is pinned -- 90 % narrower
   means it was never independently measured. 7 tests; guide section and
   checklist item added.
-
 
 * **Docs caught up with the three fitting changes.** Prior reweighting, the
   posterior-graph views and the chain-diagnostics plots are all user-visible, and
@@ -1037,44 +1078,6 @@
   in a realistic state (a four-dataset global fit sharing one parameter; eight
   converged chains) and inspected before shipping. Both indexes updated;
   image links verified to resolve.
-
-
-* **The ROI subsystem's own cleanup pass: three coercions, one loader, one
-  `find_objects`.** Migrating nine consumers onto the subsystem left the same
-  small pieces copied around, and copies drift.
-  *Coercions.* Four consumers (ICS reader, molecule MLE, pixel MLE, drift) each
-  wrote out "a `ROI`, its serialised dict, or `None`" by hand, handling the
-  `None` case slightly differently; several more wrote "a `ROI` or a raw array →
-  mask". Now `as_roi`, `as_mask` and `union_of`. `as_mask` carries the rule the
-  copies disagreed on: in a numeric array only **positive** entries are inside,
-  because a paint buffer marks erased pixels with a negative and the obvious
-  `!= 0` selects exactly what the erase brush removed.
-  *Loading.* I had written the same extension dispatch in three places — and all
-  three shared a defect: a label image sent to the mask reader comes back as
-  **one merged region** instead of one per object, silently, because a label
-  image is also a valid mask. `io.load_regions(path)` / `load_region(path)`
-  decide from the file's content instead, and are the entry point consumers use.
-  *Speed.* `regionprops` compared the whole frame against every label in turn.
-  It now locates all of them with one `find_objects` pass and cuts each from its
-  own box: measuring 1521 molecules on a 512² frame — every property object
-  built — takes 16 ms, where merely *locating* them the old way took 53 ms. The
-  ascending-label order the docstring promises survives a non-zero `background`
-  (the swap that makes the fast path work would otherwise reorder them), and a
-  negative label now raises instead of being silently dropped.
-
-
-## 2026-07-25
-
-
-* **chiplot Batch 28 — FCS filter-calculator off pyqtgraph (allow-list 23 → 22).**
-  Migrated `plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py` (3291L):
-  3 `pg.PlotWidget`s → `cp.Plot`, ~37 `.plot()`→`line()`, `pg.mkPen`→`cp.to_pen`
-  (`QtCore.Qt.{Dot,Dash}Line`→`"dot"`/`"dash"`), the draggable fit-range region →
-  `region` + two `on_change` handlers + `set_bounds`/`.bounds`; pyqtgraph-only
-  hover styling dropped (no `setHoverPen` setter). Compute too heavy to construct
-  headless, so screenshot-verified via isolated repro of the exact draw calls
-  (log-y reconstruction + fit region, dotted/dashed filters, residuals). See
-  [PRD-64](prds/prd-64.md).
 
 * **Whether a chain can be believed, as a picture (Stan/ArviZ display side).**
   The convergence *numbers* were harvested from Stan earlier; the matching
@@ -1111,7 +1114,6 @@
   new test helper had shadowed an existing `_ar1` in the same file, which broke
   fourteen unrelated tests until renamed. 10 new tests.
 
-
 * **Putty cartoons, and a cross-test config leak they exposed.** A putty tube's
   thickness carries a per-residue number — for this group rarely a b-factor, more
   often an accessibility from `get_area` or a fitted per-residue quantity written
@@ -1138,7 +1140,6 @@
   saw. Fixed with a fixture that restores the dict's **identity**, not just its
   contents. Same failure mode as everything else this week: two copies of one
   thing, and the drift is silent.
-
 
 * **GUI-tester: the Calculators hub.** Drove the sixth core workflow headlessly
   and recorded it as [FRET calculators](/usecases/fret-calculators.md) — the one
@@ -1205,7 +1206,6 @@
   Two general rules fell out: drop a name's prefix only where the short form is
   unique, and rotate a layout so its widest direction is horizontal.
 
-
 * **`pair_fit`, and superposition now actually moves things.** `align` finds its own
   correspondence between two structures; `pair_fit` takes one you state, matching
   atoms *in order* within each pair — which is what you need when the two are not
@@ -1221,7 +1221,6 @@
   `intra_fit`/`intra_rms` fit the *states* of one object; chimol holds one
   coordinate set per object, so they are deliberately absent rather than stubbed
   into something that always errors.
-
 
 * **Two suspected provenance defects were already gone; now they cannot come
   back.** The cleanup backlog's DATA-04 said `add_processing_run` could write an
@@ -1307,17 +1306,6 @@
   content never appears in a grab, `ray` is cancelled under the plugin window —
   stand. The diagnostic lesson: a silent exit under a filtered pipe is not evidence
   of a crash.
-
-
-
-* **chiplot Batch 27 — guiqwt compat shim off pyqtgraph (allow-list 24 → 23).**
-  Rewrote `gui/plots/_qwt_compat.py` (the guiqwt→pyqtgraph shim used by
-  `global_tcspc` + `surfaceplot`) onto chiplot: `_PgPlot` subclasses `cp.Plot`;
-  guiqwt methods → chiplot verbs; the `make.*` adapters (curve/label/histogram/
-  histogram2D/range) defer handle creation to `attach()` and build chiplot
-  handles (`line`/`line(step,fill)`/`image`/`region`). Consumers keep the same API
-  and import clean. Before/after screenshot-verified: exp-decay curves, overlaid
-  step histograms, "hot" 2-D ES histogram all identical. See [PRD-64](prds/prd-64.md).
 
 * **A skill that composes a whole analysis: bursts to a distance.** The
   request "process this smFRET measurement, select the bursts with a proximity
@@ -1558,7 +1546,6 @@
   Tracker: [plugins/pymol-parity.md](/plugins/pymol-parity.md) — the documentation
   gap recorded earlier today is closed.
 
-
 * **An unreadable ALV file failed like a `KeyboardInterrupt`, and the ALV
   writer wrote nothing (RF-050, RF-051).** `LoadALVError` derived from
   `BaseException`, so the five malformed-file conditions `openASC_ALV_7004`
@@ -1682,16 +1669,28 @@
   [known issues](/references/known-issues.md) with its symptom rather than
   guessed at, because "test left behind" and "code regressed" need different
   fixes and the answer belongs to whoever owns each subsystem.
-
-* **chiplot Batch 26 — ProteinMC trace + FPS network off pyqtgraph (allow-list
-  25 → 24).** Migrated `gui/plots/proteinMC.py` (2 widgets): the 2×2
-  RMSD/dRMSD/Energy/FRET trace view (curves + per-panel frame `vline`) and the
-  FPS distance-network diagram (aspect-locked dark canvas, agreement-coloured
-  edges recoloured via `Curve.set_pen`, node `scatter` + `text` labels). Added a
-  clean `Plot.set_axis_visible(left=, bottom=, ...)` verb (replaces
-  `.native.hideAxis`); dropped `getPlotItem()`, `setRange`→`set_xlim`/`set_ylim`.
-  New `test_set_axis_visible_returns_self`; both widgets before/after
-  screenshot-verified. See [PRD-64](prds/prd-64.md).
+* **The ROI subsystem's own cleanup pass: three coercions, one loader, one
+  `find_objects`.** Migrating nine consumers onto the subsystem left the same
+  small pieces copied around, and copies drift.
+  *Coercions.* Four consumers (ICS reader, molecule MLE, pixel MLE, drift) each
+  wrote out "a `ROI`, its serialised dict, or `None`" by hand, handling the
+  `None` case slightly differently; several more wrote "a `ROI` or a raw array →
+  mask". Now `as_roi`, `as_mask` and `union_of`. `as_mask` carries the rule the
+  copies disagreed on: in a numeric array only **positive** entries are inside,
+  because a paint buffer marks erased pixels with a negative and the obvious
+  `!= 0` selects exactly what the erase brush removed.
+  *Loading.* I had written the same extension dispatch in three places — and all
+  three shared a defect: a label image sent to the mask reader comes back as
+  **one merged region** instead of one per object, silently, because a label
+  image is also a valid mask. `io.load_regions(path)` / `load_region(path)`
+  decide from the file's content instead, and are the entry point consumers use.
+  *Speed.* `regionprops` compared the whole frame against every label in turn.
+  It now locates all of them with one `find_objects` pass and cuts each from its
+  own box: measuring 1521 molecules on a 512² frame — every property object
+  built — takes 16 ms, where merely *locating* them the old way took 53 ms. The
+  ascending-label order the docstring promises survives a non-zero `background`
+  (the swap that makes the fast path work would otherwise reorder them), and a
+  negative label now raises instead of being silently dropped.
 
 * **The FCS count rate is part of the fit, and two readers computed it wrong.**
   A correlation reader derives `correlation_amplitude_weights` from the
@@ -1777,6 +1776,63 @@
   the wrong file. The fixture now restores the original axis in a `finally`.
   Found while verifying an unrelated change; fixed under the new "fix breakage
   the moment you find it" rule.
+* **A round focus crashed the RICS precision predictor (RF-008).** The
+  dwell-time brightness correction in `rics_precision` follows the reference in
+  writing `sqrt(1 - beta)` (with `beta = (w_r/w_z)²`) both inside an `atanh` and
+  as the divisor of the whole expression. Taken literally that is a division by
+  zero for a spherical focus (`w_z == w_r`) and a `math domain error` for a
+  squat one — yet neither is a singularity of the *function*: the two occurrences
+  cancel, and the correction is smooth right through `alpha = 1`. Factoring the
+  root out leaves `atanh(z)/z` with a purely real `z²`, which the new
+  `_atanh_over_argument` evaluates on three branches — `atanh(z)/z` above,
+  `atan(y)/y` below (the continuation through the imaginary axis, where the
+  `1/root` prefactor cancels the `i`) and the series `1 + z²/3 + z⁴/5` through
+  the removable singularity. Identical to the old expression wherever the old one
+  ran (rel. 1.6e-14 at the shipped `alpha = 5`), and now continuous across it.
+  A round or oblate detection volume is an ordinary confocal geometry, so this
+  was a crash on valid input, reported as a bare arithmetic error the docstring
+  did not mention. Pinned by
+  `test_ics_precision.py::test_a_focus_that_is_not_elongated_is_an_ordinary_acquisition`;
+  `test/experiments/` green (60).
+
+* **The docs build is warning-free again (INC-12).** Two published development
+  pages carried links that could never resolve, and both were load-bearing for
+  the "a clean docs build means something" signal. The ChiMOL render plan pointed
+  at `okf/plugins/profiles/chimol.md` — but `okf/` is deliberately excluded from
+  the user-facing Sphinx build, so every build emitted `Unknown source document`,
+  and the user-facing docs are not supposed to reach into the knowledge bundle at
+  all. Rather than repoint it, the material it was borrowing is now stated where
+  the reader needs it: the parity metric is the symmetric mean surface distance
+  between chimol's and PyMOL's cartoon meshes, both programs must be fed the
+  *same* secondary structure first, and on the full RCSB 148L that distance is
+  0.428 Å with cross-sections agreeing to ~0.1 Å. Removing it exposed a second
+  warning it had been sharing the build with: `plugin_architecture.md` had a
+  placeholder `[GUI startup](#)` link (empty MyST target) left over from a
+  section that was never written, replaced by the prose it stood for.
+  `sphinx-build -E -b html docs …` now finishes with **zero** warnings, which
+  makes a `-W` strict-docs guardrail a real option rather than an aspiration.
+  Assessment INC-12 closed and its count line corrected — the finding claimed to
+  be the *only* warning; it was one of two.
+
+* **A zero-radius region selected everything (RF-001).** `EllipseROI.contains`
+  substituted `np.inf` for a zero radius to keep the division finite, which
+  quietly turned the degenerate case into an *unbounded* one: `(dx/inf)**2 +
+  (dy/inf)**2 == 0 <= 1` is true for every point, so a phasor cursor wound down
+  to `radius = 0` gated the whole `(g, s)` plane and fed a whole-plane mask into
+  `pseudo_color` and the fraction maps — where the pre-region implementation had
+  selected essentially nothing. A collapsed axis has *no* extent, so `contains`
+  now adds the exact-equality constraint the `inf` washes out (`dx == 0` /
+  `dy == 0`): a zero-radius circle is its centre, one zero semi-axis is a
+  segment. The fix is in the shared geometry, so every consumer (gating,
+  `to_mask`, `regionprops`) is degenerate-safe, not just the phasor cursors. On
+  top of that, `cursor_roi` now refuses a zero *radius* on the circular path with
+  the same `ValueError` the elliptic path already raised — the inconsistency that
+  let `phasor.cursor_mask` accept `radius: 0` from an RPC client in the first
+  place. Pinned by `test/core/test_roi.py::test_ellipse_with_a_zero_radius_has_no_extent`
+  and `img_pixel_phasor/test/test_analysis.py::test_a_zero_radius_cursor_is_refused`;
+  every ROI-consumer suite green (284: ROI, regionprops, ROI-io, phasor,
+  colocalization, CLSM, pixel/molecule MLE, ratio-FRET, FRAP, drift).
+
 * **A finished chain now answers for priors it was not run under (PSIS).** The
   standing answer to "what if I had assumed a tighter lifetime prior?" was to
   sample again — a few hundred thousand model evaluations for a change that
@@ -1827,6 +1883,52 @@
   scale-invariant in them — exactly one free parameter is linear by default.
   Recorded in [autodiff-assessment](/references/autodiff-assessment.md).
 
+* **PDA's two diagnostics reach the editor (PRD-50, follow-ups closed).** The
+  kinetic consistency check and the light-path bridge were headless APIs nobody
+  could reach from a model editor. Both are now methods on a shared
+  `common.PdaDiagnosticsMixin` inherited by all five PDA models plus SAW-ν, so a
+  `button_row` in each view spec is the whole user interface and the clicked path
+  is the scripted path.
+  `run_consistency_check()` bootstraps from the fitted spectrum and reports the
+  p-value and verdict — the question a good chi2 does not answer, since chi2 says
+  the model *can be made* to fit while this says whether the data could have come
+  from it. `get_pda_consistency` exposes the measured/expected histograms and
+  returns nothing before the check has run, so the panel is blank rather than
+  misleading. `apply_light_path()` reads a light-path graph, or the plugin's last
+  session when the field is empty, and maps the excitation/emission matrices onto
+  the crosstalk terms; dye and detector labels come from the matrices, and
+  anything other than two-by-two is refused **with its labels listed** rather than
+  guessed at, because a wrong donor/acceptor assignment silently rescales every
+  corrected quantity. Neither button can throw into the editor.
+  Two mistakes the headless screenshot and a real payload caught: an `info`
+  section's `source` is *called*, so the status accessors have to be methods — as
+  properties they rendered as two blank boxes; and the light-path matrix keys are
+  `rows`/`columns`, not the `row_labels`/`column_labels` of the builder's local
+  variables, so the first version applied nothing. 18 tests, including that every
+  view spec's button actions and info sources name attributes that exist.
+  Scope call worth recording: the hook takes a graph file rather than a handle on
+  a live plugin widget — reaching into a running GUI instance is untestable
+  headlessly and would put Qt in the Qt-free model layer, and defaulting to the
+  plugin's last session gives the same one click. Concept:
+  [PRD-50](/prds/prd-50.md).
+
+* **The help browser stopped presenting agent scratch as user documentation
+  (INC-11).** The "Core" category `rglob`-ed the whole project root and
+  deny-listed exactly two paths (`docs/`, anything containing `plugins`), so the
+  browser offered **576** pages of which 331 came from `junk/`, 151 from the
+  internal `okf/` knowledge bundle, 41 from `.opencode/` and 16 from `.claude/`.
+  The GUI tree held a *second copy* of that deny-list, so the branch the user
+  actually sees was filtered independently of the document index. Both now read
+  one allow-list, `help/api/io.py::core_doc_paths()` — the project-root files
+  worth showing (`README.md`, `CHANGELOG.md`) plus the `examples/` and
+  `modules/` roots, skipping dot-directories and plugin pages, which the
+  "Plugins" category owns. Result: **12** entries, every one genuine
+  documentation (changelog, readme, the two example projects, the companion
+  modules' manuals); `search_docs`, which re-reads every discovered file, no
+  longer greps scratch space either. Verified by a hermetic `core_doc_paths`
+  test over a synthetic tree, a widget test asserting the rendered branch holds
+  no scratch/bundle/dot-directory page, and a headless screenshot of the
+  expanded branch. Tracked in [assessment INC-11](/specs/assessment.md#inc-11).
 
 * **A canonical form refuses a duplicated variable name (RF-003).**
   `CanonicalForm` addresses its scope by name — `marginal`, `condition` and
@@ -1845,6 +1947,32 @@
   (`test/fitting/test_canonical_form.py`, 16 passed), with the posterior-engine,
   factor-graph, collapsed-sampler and covariance suites green alongside.
   Concept: [fitting](/subsystems/fitting.md).
+
+* **Time-binned dynamic PDA: the exchange parameter becomes a rate (PRD-50).** The
+  dynamic PDA models carried a dimensionless `K_ex`, so a fit reported transitions
+  per observation and stopped there. Three changes close it.
+  The reader can cut **fixed-width bins** — `PdaReader(segmentation="time-bins")`
+  splits the whole stream into abutting windows of exactly the requested length
+  rather than burst-searching, whose window durations vary with the local photon
+  flux. A dynamic model needs a known constant observation time; a burst search
+  only bounds it below. The payload now carries `observation_time` and
+  `segmentation`.
+  The models **read that time from the data** (`common.pda_observation_time`,
+  `model.observation_time`, `model.transitions_per_window`). The three-state
+  model's free-floating `T_win` spinner is gone: it was a setting that could
+  silently disagree with how the data was segmented and rescale every rate.
+  And `k_ex` is now the **rate** `k1 + k2` in Hz, with `K = k_ex * T` formed by the
+  model, so a global fit over several bin widths shares one absolute rate.
+  What that buys is a *test*, not only a number: one histogram is fit by some `K`
+  whether or not two-state exchange is the right description, so a single time
+  window cannot falsify a kinetic model. Measured — one rate across bin widths
+  differing by 4x is recovered at chi2r < 1; windows generated from different
+  rates each fit alone (chi2r 0.92 and 1.01) and are rejected jointly at chi2r
+  ≈ 490, a factor of 500. `test/models/test_pda_time_binned.py`, 9 tests, covering
+  the degeneracy itself, the fallback for data read before the field existed, and
+  the reader's binning against a synthetic Poisson stream. Reader editor gains a
+  Segmentation panel (rendered and inspected). Docs: concept + guide sections on
+  why one bin width is not enough. Concept: [PRD-50](/prds/prd-50.md).
 
 * **The 2-D residual rectangle was the last in-tree region on its own.**
   `gui/plots/residual_image.py` mapped its lag-window rectangle to a fit range
@@ -5271,6 +5399,45 @@
   `bayesian_information_criterion` / `chi2_max` / `chi2_threshold` return real
   `float`s as annotated, fixing two stale NumPy-2 repr doctests.
 
+* **chiplot: seam capabilities for the linked-panel family (PRD-64).** Added
+  `Plot.link_x`/`link_y` (shared pan/zoom across stacked panels — residuals above
+  data) and `fill`/`border` on `Plot.text` (a boxed draggable label — the
+  fit-quality overlay). Both screenshot-verified vs the pyqtgraph originals (zoom
+  propagates across the 3 panels; the χ²ᵣ/τ label draws with a blue fill + white
+  border). Tests `test_link_x_shares_range` + `test_text_fill_border`. Prep for
+  `lineplot`, which additionally needs a larger `Curve`-handle API
+  (symbol/opacity/pen-introspection) before a clean port — deferred so the core
+  TCSPC plot isn't littered with `.native` passthroughs. See [PRD-64](prds/prd-64.md).
+
+* **chiplot Batch 28 — FCS filter-calculator off pyqtgraph (allow-list 23 → 22).**
+  Migrated `plugins/fcs/fcs_filter_calculator/gui_parts/main_window.py` (3291L):
+  3 `pg.PlotWidget`s → `cp.Plot`, ~37 `.plot()`→`line()`, `pg.mkPen`→`cp.to_pen`
+  (`QtCore.Qt.{Dot,Dash}Line`→`"dot"`/`"dash"`), the draggable fit-range region →
+  `region` + two `on_change` handlers + `set_bounds`/`.bounds`; pyqtgraph-only
+  hover styling dropped (no `setHoverPen` setter). Compute too heavy to construct
+  headless, so screenshot-verified via isolated repro of the exact draw calls
+  (log-y reconstruction + fit region, dotted/dashed filters, residuals). See
+  [PRD-64](prds/prd-64.md).
+
+* **chiplot Batch 27 — guiqwt compat shim off pyqtgraph (allow-list 24 → 23).**
+  Rewrote `gui/plots/_qwt_compat.py` (the guiqwt→pyqtgraph shim used by
+  `global_tcspc` + `surfaceplot`) onto chiplot: `_PgPlot` subclasses `cp.Plot`;
+  guiqwt methods → chiplot verbs; the `make.*` adapters (curve/label/histogram/
+  histogram2D/range) defer handle creation to `attach()` and build chiplot
+  handles (`line`/`line(step,fill)`/`image`/`region`). Consumers keep the same API
+  and import clean. Before/after screenshot-verified: exp-decay curves, overlaid
+  step histograms, "hot" 2-D ES histogram all identical. See [PRD-64](prds/prd-64.md).
+
+* **chiplot Batch 26 — ProteinMC trace + FPS network off pyqtgraph (allow-list
+  25 → 24).** Migrated `gui/plots/proteinMC.py` (2 widgets): the 2×2
+  RMSD/dRMSD/Energy/FRET trace view (curves + per-panel frame `vline`) and the
+  FPS distance-network diagram (aspect-locked dark canvas, agreement-coloured
+  edges recoloured via `Curve.set_pen`, node `scatter` + `text` labels). Added a
+  clean `Plot.set_axis_visible(left=, bottom=, ...)` verb (replaces
+  `.native.hideAxis`); dropped `getPlotItem()`, `setRange`→`set_xlim`/`set_ylim`.
+  New `test_set_axis_visible_returns_self`; both widgets before/after
+  screenshot-verified. See [PRD-64](prds/prd-64.md).
+
 * **chiplot Batch 25 — parameter-scan χ²-surface off pyqtgraph (allow-list
   26 → 25).** Finished `gui/plots/parameter_scan` (dockarea already moved).
   `pg.PlotWidget`→`cp.Plot`; χ²-curve → `line`/`set_data`; confidence-interval
@@ -5456,6 +5623,44 @@
   adding a fresh one — so call sites just do `clear()` then `legend()`. Seam
   guard green, both widgets construct headless and refresh cleanly. See
   [PRD-64](prds/prd-64.md).
+
+* **BUG-09 closed: the anisotropy test pinned a VH model that cannot be
+  inverted.** `test_fluorescence_anisotropy_decay_calculcate_spectrum` asserted
+  `−2·r` in the perpendicular channel (`-0.3`, `-3.`, `-2.7`) where
+  `calculcate_spectrum` produces `−1·r`, and the backlog left it open as "a
+  question about which mixing convention is intended — an owner decision". It is
+  not a matter of preference: the definition `r = (I_VV − I_VH/g) / (I_VV + 2
+  I_VH/g)` only returns the `r(t)` that generated the pair if the perpendicular
+  channel is `g · f_VM · (1 − r)`, i.e. the g-factor is a detection sensitivity
+  scaling the whole channel rather than only its depolarization term. The stale
+  expectation was therefore non-invertible for every `g ≠ 1`. **The code was
+  right; no fit semantics changed.**
+  The test now compares the *decays* the spectra stand for against the analytic
+  definitions across four `(l1, l2)` combinations, so it no longer depends on the
+  term count or ordering of the spectrum algebra — which is what the companion
+  known-issue "returns 16 terms where the test expects 8" was really about (the
+  union/concatenate mixing form, not a defect). A new
+  `test_calculcate_spectrum_recovers_anisotropy` pins the `g` placement directly
+  by round-tripping `r(t)` at `g ∈ {0.8, 1.0, 1.5}`. Verified to discriminate:
+  re-running the old `−2·r` convention through the new assertions fails them.
+  `test_fcs`, revived earlier by restoring the `np.float` alias, still asserted
+  **nothing** — it computed a correlation and dropped it — and now pins the
+  autocorrelation invariants (both channels see every photon, `B·nc` strictly
+  increasing lags, `normalize` rescaling in place and returning `min(N/Δt)`, the
+  zero-lag channel dominating). The `calculcate_spectrum` docstring, which stated
+  `f_VH = f_VM (1 − g r)` against its own code, was corrected to match.
+  Two follow-ups recorded in [known issues](references/known-issues.md) rather
+  than fixed here: the sibling `vm_rt_to_vv_vh` still uses the non-invertible
+  placement (no production caller; its doctest and test both run at `g = 1`, and
+  the same formula is repeated in two doc pages, so it wants its own change), and
+  `test_group_polarization_any_size.py` both fails collection (an argument with no
+  fixture) and `logger.error`s instead of asserting, so it could not fail even if
+  it ran. Fixed on the spot: `test_anisotropy_integrals.py` loaded its subject via
+  a hand-built path that rotted into `test/chisurf/...` at the `chisurf.core` move
+  and errored at collection — replaced with a normal import.
+  Suites: 6 + 2 doctests + 3 + 26 green; `test/fluorescence/` 84 passed with the
+  two known-issue failures (`test_pqres`, `test_labeled_structure`) unchanged.
+  See [BUG-09](specs/assessment.md#bug-09).
 
 * **A lag range the image cannot hold is now a message, not a division by
   zero** ([RF-057](reviews/findings.md), closing [RF-009](reviews/findings.md)

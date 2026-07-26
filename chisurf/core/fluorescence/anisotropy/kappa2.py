@@ -1,7 +1,11 @@
 from chisurf import typing
 
+import logging
+
 import numba as nb
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def kappasq_dwt(
@@ -570,7 +574,7 @@ def s2delta(
     >>> s2d, delta = s2delta(s2_donor=s2donor, s2_acceptor=s2acceptor, r_inf_AD=r_inf_AD, r_0=r0)
     >>> round(s2d, 4)
     0.4386
-    >>> 0.0 < delta < 1.6
+    >>> bool(0.0 < delta < 1.6)
     True
     """
     s2_delta = r_inf_AD / (r_0 * s2_donor * s2_acceptor)
@@ -613,6 +617,10 @@ def calculate_kappa_distance(
           - ds (np.ndarray): Array of distances between dipole centers for each frame.
           - ks (np.ndarray): Array of corresponding orientation factors kappa.
 
+        Frames whose dipoles are degenerate (coinciding endpoints, e.g. a missing
+        or duplicated atom) cannot be evaluated and are reported as ``np.nan`` in
+        both arrays.
+
     Examples
     --------
     >>> import numpy as np
@@ -623,8 +631,10 @@ def calculate_kappa_distance(
     ((1,), (1,))
     """
     n_frames = xyz.shape[0]
-    ks = np.empty(n_frames, dtype=np.float32)
-    ds = np.empty(n_frames, dtype=np.float32)
+    # NaN, not np.empty: a frame that raises below is never written, and an
+    # uninitialized buffer is indistinguishable from a real kappa2/distance.
+    ks = np.full(n_frames, np.nan, dtype=np.float32)
+    ds = np.full(n_frames, np.nan, dtype=np.float32)
 
     for i_frame in range(n_frames):
         try:
@@ -635,7 +645,7 @@ def calculate_kappa_distance(
             ks[i_frame] = k
             ds[i_frame] = d
         except Exception:
-            print("Frame ", i_frame, "skipped, calculation error")
+            logger.warning("Frame %d skipped: degenerate dipole, kappa2 is NaN", i_frame)
     return ds, ks
 
 

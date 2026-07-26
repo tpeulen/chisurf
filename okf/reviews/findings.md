@@ -2172,11 +2172,29 @@ identity, or concurrency. Findings RF-174..RF-180.
 - **Fix note:**
 
 ### RF-179
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a concurrent call to the same action bypasses validation, debounce and history while still mutating state)
 - **Location:** `chisurf/core/actions/_decorator.py:71-89` (`wrapper._executing`), beside the correctly thread-local `is_dispatching` at `:8-13`
 - **Finding:** The re-entrancy guard is stored as an attribute **on the wrapper function**, i.e. shared by every thread, while the flag right above it (`_threading_local.is_dispatching`) is deliberately thread-local. So while thread A is inside `dispatch`, any call to the same action from thread B sees `_executing == True` and takes the `return func(*args, **kwargs)` shortcut: the body runs and mutates state, but the payload is never validated, the debounce never applies, and nothing is recorded in history. Verified: with one thread held inside a slow `test.slow` handler, a concurrent `slow("not-an-int")` **executed the body** with a payload the `{"x": int}` schema rejects, and only one history record exists for the two calls. Actions are dispatched from worker threads (fit runs, staged loading, the Timer thread of RF-175), so this is reachable. Make `_executing` thread-local like its neighbour.
-- **Fix note:**
+- **Fix note:** The guard moved off the wrapper function onto the same
+  `threading.local()` that already carries `is_dispatching`: a per-thread set of
+  action names (`_executing_actions()`), added on entry and discarded in the
+  `finally`. Same-thread re-entrancy still short-circuits to the bare body;
+  another thread now gets a full `dispatch` — validation, debounce, history.
+  Pinned by `test/macros/test_action_reentrancy.py` (2): the nested same-thread
+  call records exactly one history event, and a concurrent bad-typed call made
+  while a handler thread is parked inside the body raises `TypeError` from the
+  schema instead of running. Both probe actions register into a scratch
+  registry/dispatcher so the process-wide action vocabulary stays untouched.
+  **Fixed in passing:** `test/macros/test_actions.py` restored
+  `cs.action_dispatcher` in `tearDown` but not `cs.action_registry`, leaking its
+  scratch registry (with `test.*` actions and no builtins) into the rest of the
+  session — which is why `test/history/test_vocabulary.py` failed whenever
+  `test/macros` ran before it; and
+  `test_action_dispatcher.py::test_chisurf_action_execute_accessor` asserted
+  `project.save` returns `None` or a dict when it returns the written archive
+  `Path`, and wrote that archive to a literal `C:/tmp/demo` directory inside the
+  repo. Both fixed; the combined run is now green.
 
 ### RF-180
 - **Status:** OPEN
@@ -2206,11 +2224,11 @@ neither of which has a test that exercises the argument combination that breaks.
 Findings RF-181..RF-189.
 
 ### RF-181
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every dataset produced by five readers reports its filename as the literal string `'None'`)
 - **Location:** `chisurf/core/data.py:199-222` (`DataCurve.__init__`, the `super().__init__(...)` call)
 - **Finding:** `filename` is a named parameter of `DataCurve.__init__`, so it is consumed there and is **not** in `**kwargs` — and the `super().__init__` call passes `x`, `y`, `copy_array`, `data_reader`, `experiment` and `**kwargs` but never `filename`. `chisurf.core.base.Data.__init__` therefore always sees its default `filename="None"`, and `os.path.normpath("None")` stores the four-character string. Verified end-to-end through a real reader: `DeerReader().read('test/data/deer/deer_trace.csv')` yields a curve with `name='deer_trace'` and `filename='None'`. The same constructor kwarg with no follow-up assignment is used by `chisurf/core/experiments/ics/__init__.py:496`, `deer/reader.py:170`, `pch/reader.py:369`, `pda/reader.py:231`/`:794` and `chisurf/core/fio/fluorescence/pqres.py:244`/`:325` — none of them re-assigns `.filename` afterwards. Only the TCSPC reader escapes, because it works around this by hand (`chisurf/core/fio/fluorescence/tcspc.py:397`, `:409`, `:426`: `data.filename = filename` right after construction). Downstream this is what the dataset-list tooltips show (`chisurf/gui/widgets/experiments/widgets.py:165`, `:181`, `:194`) and what `DataGroup.filename` reports. Forward `filename=filename` to `super().__init__` and drop the three hand-patches.
-- **Fix note:**
+- **Fix note:** `DataCurve.__init__` now forwards `filename=filename` to `super().__init__`, so `Data.filename` receives the real path (`chisurf/core/data.py:214-223`). Since `DataCurve` defaults `filename=''` while `Data` defaults `"None"`, the `Data.filename` setter now stores an empty path as `''` instead of running it through `os.path.normpath` — `normpath('')` is `'.'`, which would make every in-memory curve claim the working directory as its source file (`chisurf/core/base.py:898-915`). An in-memory curve therefore reports `''`, a curve from a reader its path. The TCSPC hand-patches were **kept**: those call sites never pass `filename` to the constructor, and moving it into the constructor would trip the `load_filename_on_init` branch and re-read the file over the rebinned arrays (RF-182). Pinned by `test/core/test_data.py::TestDataCurve::test_filename_is_forwarded_to_base` and `::test_filename_empty_for_in_memory_curve`, plus a reader-level assertion in `test/experiments/test_deer_reader.py::test_reader_loads_csv`.
 
 ### RF-182
 - **Status:** OPEN
@@ -2655,18 +2673,31 @@ read off. Two of them are live in shipping code paths: `kappasq_all` feeds the
 trajectory tool. RF-229..RF-238.
 
 ### RF-229
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the isotropic orientational average is wrong by up to a factor of two — dipoles are sampled from one octant of a cube, not from the sphere)
 - **Location:** `chisurf/core/fluorescence/anisotropy/kappa2.py:361-362` (`kappasq_all`: `d1 = np.random.random(3)`, `d2 = np.random.random(3)`)
 - **Finding:** `np.random.random(3)` draws each component uniformly from `[0, 1)`, so both transition-dipole vectors are confined to the **positive octant** of the unit cube and are not uniform on the sphere (corner-biased). `kappasq_all` exists to produce the orientational average for the wobbling-in-a-cone model, so this is its entire job. Measured over 60k–100k samples against the same `kappasq` with proper isotropic (Gaussian) vectors: at `sD2 = sA2 = 1` the code gives ⟨κ²⟩ = **0.334 ± 0.428** where the exact answer is **2/3** (isotropic sampling reproduces 0.6667 ± 0.717); at the docstring's `sD2 = 0.3, sA2 = 0.5` it gives 0.6164 ± 0.1372 versus 0.6665 ± 0.1943, i.e. a biased mean and a width understated by ~30 %. The bug is invisible at `sD2 = sA2 = 0` (where `kappasq` returns 2/3 for any angle), which is why the doctest — which only checks `len` and `sum` of the histogram — never caught it. The sibling `kappasq_dwt` in the same file gets this right at `:66-67` with `np.random.randn`. Live: `chisurf/plugins/calculator/kappa2_dist/core/algorithms.py:87` calls `kappasq_all` for the cone model whenever `rAD_known` is false, and the reported ⟨κ²⟩/σ(κ²) and the κ²-derived distance range are read straight off it. Fix by drawing `np.random.randn(3)` (normalising is unnecessary — the code already divides by the norm) and add a test asserting ⟨κ²⟩ ≈ 2/3 at `sD2 = sA2 = 1`.
-- **Fix note:**
+- **Fix note:** Already closed before this run reached it — commit `09eee6e9a`
+  ("fix(kappa2): isotropic dipole sampling, unbiased moments, and plugin discovery")
+  switched both draws to `np.random.randn(3)` and added
+  `test/fitting/test_kappa2_distribution.py`, which pins ⟨κ²⟩ ≈ 2/3 across the order
+  parameters. Re-verified against the source; status flipped only.
 
 ### RF-230
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (frames whose computation raises are filled with uninitialized heap memory and only announced on stdout)
 - **Location:** `chisurf/core/fluorescence/anisotropy/kappa2.py:617-631` (`calculate_kappa_distance`: `np.empty` + `except Exception: print(...)`)
 - **Finding:** `ks`/`ds` are allocated with `np.empty` and written only inside the `try`. When `kappa_distance` raises — it raises `ZeroDivisionError` for any frame where the two dipole endpoints coincide, e.g. a missing/duplicated atom — the loop body is abandoned *after* the allocation and *before* the assignment, so `ks[i_frame]`/`ds[i_frame]` keep whatever was on the heap. Verified: a `(3, 4, 3)` all-zero trajectory returns `[0., 0., 0.]` on a clean heap and `[7777., 7777., 7777.]` after dirtying the allocator with `np.full(3, 7777., dtype=np.float32)` buffers — the same call, two different answers, and the second is indistinguishable from a real κ². The only signal is `print("Frame ", i, "skipped, calculation error")` to stdout, which is neither logged nor returned. Live consumer: `chisurf/plugins/traj/fret_trajectory/traj2fret.py:305` writes these arrays into a FRET trajectory. Fill the skipped entries with `np.nan` (and use `logging`, not `print`), or return a validity mask. Same class as RF-220.
-- **Fix note:**
+- **Fix note:** `ks`/`ds` are now allocated with `np.full(..., np.nan)`, so a frame the
+  loop abandons reads `NaN` rather than whatever the allocator handed over, and the
+  skip is reported through the module logger (`logging.getLogger(__name__)`) instead
+  of `print`. The docstring says so under *Returns*. Pinned by
+  `test/fitting/test_kappa2_trajectory.py`: the all-degenerate trajectory must be all
+  `NaN` **and** must answer the same after the allocator has been dirtied with a
+  recognisable `7777.0` pattern (which is exactly what the old code returned), a good
+  frame next to a degenerate one keeps its `kappa = 1.0` / `d = 0.86603`, and the skip
+  reaches `caplog`. Also fixed in passing: the `s2delta` doctest compared a NumPy bool
+  (`np.True_`) against `True` and failed under NumPy 2.
 
 ### RF-231
 - **Status:** OPEN
