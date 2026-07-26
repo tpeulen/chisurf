@@ -99,6 +99,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   decay side by side, link the donor lifetime spectrum across the two fits in
   the Global View graph, and run one global fit over both datasets.
   *(last driven 2026-07-26; RF-278..RF-285)*
+- [Accurate FRET calibration](/usecases/accurate-fret-calibration.md) — the step
+  between a burst search and a quotable number: let the tool find the burst
+  populations itself, determine the four Hellenkamp correction factors
+  (α, β, γ, δ) from them, and read the corrected E–S, E–lifetime and distance
+  with error bars. *(last driven 2026-07-26; RF-305..RF-310)*
 - [Light Path Simulator](/usecases/lightpath-crosstalk-r0.md) — the step before
   the measurement: assemble a two-colour detection path from catalogue spectra
   (lasers, excitation dichroic, emission splitter, bandpasses, detector QE) and a

@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **GUI walk — Accurate FRET: the simulated sample is exemplary, the real one is
+  not.** Drove `AccurateFretTool` headlessly end to end (drop, auto-map,
+  photophysics, **🎯 Calibrate**, all five view tabs, CSV export, the four
+  hand-off buttons) on its own simulated ALEX table and on the repo's
+  `bh_spc132_sm_dna` `.bur` burst tables. Recorded as
+  [usecases/accurate-fret-calibration](/usecases/accurate-fret-calibration.md).
+
+  On the simulation the tool is genuinely good: α 0.0738 ± 0.0041, δ 0.0634 ±
+  0.0032, γ 0.6361 ± 0.0203, β 1.4039 ± 0.0258 against a declared 0.08 / 0.06 /
+  0.65 / 1.40, populations at E = 0.302 / 0.758 against 0.30 / 0.75, both sitting
+  on the static FRET line, and the GUI reproducing the documented `csc
+  accurate-fret` CLI run exactly.
+
+  On real MFD data it is not. Six findings, RF-305..RF-310. The sharpest is
+  RF-305: **selecting a detector setup — which guide 41 recommends precisely to
+  help the column mapping — is what breaks it**, because the setup's window names
+  become bare `green`/`red`/`yellow` substring hints tried before the built-in
+  conventions, and the first `.bur` column containing "green" is `First Photon
+  (green)`, a photon index. The tool then calibrates photon indices and reports
+  "converged after 2 iterations". RF-306 is its companion: the *Correction
+  factors* tab, the default view, prints `γ | 1.0000 | — | E-S fit / FRET line`
+  for a run whose own report says γ "was neither identified by the data nor
+  constrained by the light path" — and that report (RF-307) shows 8 of its 15
+  lines in a 554 × 192 box beside a mostly empty 919 × 867 pane, warnings last.
+  Also: a ten-file measurement drop keeps one file silently (RF-308),
+  **🔬 Store on setup** fails for every setup the picker offers because the picker
+  reads MMFDB and the writer reads `~/.chisurf/detector_setups.json` (RF-309),
+  and the E–S tab renders empty axes with no explanation when I_AA is unmapped
+  (RF-310).
+
 * **ChiMOL target: the rendering design, and what else ChimeraX is worth reading
   for.** Two additions to [specs/chimol](/specs/chimol.md) and
   [pymol-parity](/plugins/pymol-parity.md), both surveys rather than
