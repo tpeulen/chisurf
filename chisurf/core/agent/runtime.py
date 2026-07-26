@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -106,6 +107,58 @@ class ToolInvocation:
     result: dict[str, Any]
     elapsed_ms: int
     error: str | None = None
+
+
+def _leading_json_object(text: str) -> dict[str, Any] | None:
+    """Return the JSON object *text* starts with, ignoring whatever follows.
+
+    A recovered call is followed by the rest of the model's sentence, so the
+    object has to be found by matching braces rather than parsing the lot.
+
+    Parameters
+    ----------
+    text : str
+        Text beginning with ``{``.
+
+    Returns
+    -------
+    dict or None
+    """
+    depth = 0
+    in_string = False
+    escaped = False
+    for index, character in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                candidate = text[: index + 1]
+                for loads in (json.loads, _loads_pythonish):
+                    try:
+                        value = loads(candidate)
+                    except Exception:
+                        continue
+                    return value if isinstance(value, dict) else None
+                return None
+    return None
+
+
+def _loads_pythonish(text: str) -> Any:
+    """Parse a dict a model wrote with Python quoting rather than JSON."""
+    import ast
+
+    return ast.literal_eval(text)
 
 
 def last_failure(result: "AgentResult") -> str:
@@ -342,7 +395,10 @@ class AgentSession:
     def _tool_calls(self, response: LLMResponse) -> list[ToolCall]:
         """Return the tool calls requested by *response*, in either protocol."""
         if self.native_tools:
-            return response.tool_calls
+            if response.tool_calls:
+                return response.tool_calls
+            recovered = self._recover_tool_call(response.text)
+            return [recovered] if recovered else []
         parsed = parse_text_protocol(response.text)
         if "tool" in parsed:
             return [
@@ -353,6 +409,87 @@ class AgentSession:
                 )
             ]
         return []
+
+    def _nearest_tool(self, name: str):
+        """Return the tool an unrecognised name unambiguously meant, or None.
+
+        Matching is deliberately narrow — case, separators, a namespace prefix
+        some providers add, and a trailing plural. A guess beyond that would
+        run the wrong operation, which is far worse than an error message.
+
+        Parameters
+        ----------
+        name : str
+            The name the model used.
+
+        Returns
+        -------
+        ToolSpec or None
+        """
+
+        def normalise(value: str) -> str:
+            """Reduce a name to its comparable core."""
+            value = str(value).strip().lower().rsplit(".", 1)[-1]
+            return re.sub(r"[^a-z0-9]", "", value).rstrip("s")
+
+        wanted = normalise(name)
+        if not wanted:
+            return None
+        matches = [
+            self.registry.get(known)
+            for known in self.registry.names()
+            if normalise(known) == wanted
+        ]
+        return matches[0] if len(matches) == 1 else None
+
+    def _recover_tool_call(self, text: str) -> ToolCall | None:
+        """Find a tool call a model wrote as prose instead of calling.
+
+        Even with native tool calling, a model sometimes narrates the call:
+        the name lands in the message text, or in ``function.name`` as a whole
+        sentence, with the arguments as a JSON object beside it. Dispatching
+        what it plainly meant costs one regex; refusing costs a turn, and
+        after a few of them the run gives up with nothing to show.
+
+        Only a **known** tool name is accepted, so prose that merely mentions
+        JSON is still just prose.
+
+        Parameters
+        ----------
+        text : str
+            The assistant's message text.
+
+        Returns
+        -------
+        ToolCall or None
+        """
+        if not text or "{" not in text:
+            return None
+
+        parsed = parse_text_protocol(text)
+        if "tool" in parsed and self.registry.get(str(parsed["tool"])):
+            return ToolCall(
+                id=f"recovered_{int(time.time() * 1000)}",
+                name=str(parsed["tool"]),
+                arguments=parsed.get("arguments") or {},
+            )
+
+        for name in self.registry.names():
+            # ``…list_plugins{"query": "kappa"}`` and
+            # ``{'run_python': {'code': …}}`` are both this shape.
+            match = re.search(rf"{re.escape(name)}\W{{0,4}}?(\{{.*)", text, flags=re.DOTALL)
+            if not match:
+                continue
+            arguments = _leading_json_object(match.group(1))
+            if arguments is None:
+                continue
+            if len(arguments) == 1 and name in arguments and isinstance(arguments[name], dict):
+                arguments = arguments[name]
+            self.context.emit("tool.recovered", {"tool": name})
+            return ToolCall(
+                id=f"recovered_{int(time.time() * 1000)}", name=name, arguments=arguments
+            )
+        return None
 
     def _final_text(self, response: LLMResponse) -> str:
         """Return the assistant's prose answer and record it in the conversation."""
@@ -525,11 +662,27 @@ class AgentSession:
 
         spec = self.registry.get(call.name)
         if spec is None:
-            return self._failure(
-                call,
-                started,
-                f"unknown tool {call.name!r}. Available tools: {self.registry.names()}",
-            )
+            # A near miss is a spelling slip, not a different intention:
+            # ``list_plugin``, ``functions.run_python``, ``Run_Fit``. Routing an
+            # unambiguous one is worth more than a turn spent correcting it.
+            corrected = self._nearest_tool(call.name)
+            if corrected is not None:
+                self.context.emit(
+                    "tool.rerouted", {"from": call.name, "to": corrected.name}
+                )
+                call = ToolCall(
+                    id=call.id,
+                    name=corrected.name,
+                    arguments=call.arguments,
+                    raw_arguments=call.raw_arguments,
+                )
+                spec = corrected
+            else:
+                return self._failure(
+                    call,
+                    started,
+                    f"unknown tool {call.name!r}. Available tools: {self.registry.names()}",
+                )
         if spec not in self.registry.filtered(self.config.max_safety):
             return self._failure(
                 call,

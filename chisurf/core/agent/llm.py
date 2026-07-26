@@ -70,6 +70,43 @@ def is_tool_name(name: str) -> bool:
     return bool(_TOOL_NAME.match(str(name or "").strip()))
 
 
+#: Content-chunk types that carry a model's scratch work rather than its answer.
+_REASONING_CHUNKS = {"thinking", "reasoning", "redacted_thinking", "reference"}
+
+#: Inline reasoning wrappers some models emit in plain text.
+_REASONING_TAGS = re.compile(
+    r"<\s*(think|thinking|reasoning|scratchpad)\s*>.*?<\s*/\s*\1\s*>",
+    flags=re.DOTALL | re.IGNORECASE,
+)
+
+
+def strip_reasoning(text: str) -> str:
+    """Remove inline reasoning blocks from an assistant's prose.
+
+    Some models wrap their scratch work in ``<think>…</think>`` inside the
+    ordinary text field. It is not addressed to the user, it is often longer
+    than the answer, and it frequently contains abandoned conclusions that
+    read as findings.
+
+    An unclosed opening tag is treated as "everything after it is scratch",
+    which is what a truncated response looks like.
+
+    Parameters
+    ----------
+    text : str
+        Raw assistant text.
+
+    Returns
+    -------
+    str
+    """
+    cleaned = _REASONING_TAGS.sub("", str(text or ""))
+    unclosed = re.search(r"<\s*(think|thinking|reasoning|scratchpad)\s*>", cleaned, re.IGNORECASE)
+    if unclosed:
+        cleaned = cleaned[: unclosed.start()]
+    return cleaned.strip()
+
+
 def message_text(content: Any) -> str:
     """Return the assistant's prose from a chat message's ``content``.
 
@@ -92,9 +129,13 @@ def message_text(content: Any) -> str:
     if content is None:
         return ""
     if isinstance(content, str):
-        return content
+        return strip_reasoning(content)
     if isinstance(content, dict):
-        return str(content.get("text") or "")
+        # A thinking/reasoning chunk is the model's scratch work, not its
+        # answer; only text chunks are addressed to the user.
+        if str(content.get("type") or "") in _REASONING_CHUNKS:
+            return ""
+        return strip_reasoning(str(content.get("text") or ""))
     if isinstance(content, (list, tuple)):
         parts = [message_text(chunk) for chunk in content]
         return "\n".join(part for part in parts if part)

@@ -60,6 +60,32 @@ A **failing tool does not end the run** — its error goes back to the model,
 which corrects itself. Only *repeated identical* failures stop the loop; that
 is the difference between an assistant that recovers and one that gives up.
 
+# Misformatted actions are recovered, not punished
+
+A model that knows what it wants and expresses it wrongly should not lose a
+turn. Three shapes, all seen live, are handled before the loop sees them:
+
+* **A call narrated instead of made** — the name left in the message text with
+  the arguments beside it (`…list_plugins{"query": "kappa"}`), or the whole
+  payload as `{'run_python': {'code': …}}`. When native tool calling produced
+  nothing, the text is scanned for a **known** tool name followed by a JSON
+  object (matched by brace depth, so trailing prose is fine, and read as JSON
+  or as Python quoting). Only registered names are ever routed, so prose that
+  merely contains JSON stays prose.
+* **A near-miss name** — `list_plugin`, `functions.run_python`, `Run_Fit`.
+  Routed when the name reduces to the same identifier after dropping case,
+  separators, a namespace prefix and a trailing plural, and only when that
+  reduction is unambiguous. Anything looser could run the wrong operation,
+  which is worse than an error.
+* **Reasoning in the answer** — `thinking`/`reasoning` content chunks, and
+  inline `<think>…</think>` (an unclosed tag takes the rest with it, which is
+  what a truncated response looks like). It is scratch work, often longer than
+  the answer, and it carries abandoned conclusions that read as findings.
+
+The measure of it: the request that first exposed these took **eight** tool
+calls with an `unknown tool 'To compute a distance from a FRET efficiency, I
+will use…'` among them, and now takes **three** with none.
+
 # Skills: tools say *what*, skills say *how*
 
 `set_irf` is a tool. "Attach the IRF, then add lifetime components until

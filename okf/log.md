@@ -2,6 +2,30 @@
 
 ## 2026-07-26
 
+* **A model that misformats an action no longer loses the turn.** Three shapes,
+  all seen in live runs, are now recovered instead of refused. **A call
+  narrated rather than made** — the name left in the message text with the
+  arguments beside it (`…list_plugins{"query": "kappa"}`), or the whole payload
+  as `{'run_python': {'code': …}}` — is picked up when native tool calling
+  produced nothing: the text is scanned for a **known** tool name followed by a
+  JSON object, matched by brace depth so trailing prose is harmless, and read
+  as JSON or as Python quoting. Only registered names are routed, so prose that
+  merely contains JSON stays prose. **A near-miss name** (`list_plugin`,
+  `functions.run_python`, `Run_Fit`) is routed when it reduces to the same
+  identifier after dropping case, separators, a namespace prefix and a trailing
+  plural — and only when that reduction is unambiguous, because anything looser
+  could run the wrong operation. **Reasoning left in the answer** is stripped:
+  `thinking`/`reasoning` content chunks, and inline `<think>…</think>`, where
+  an unclosed tag takes the rest with it, since that is what a truncated
+  response looks like. The measure: the request that exposed all of this took
+  **eight** tool calls with an `unknown tool 'To compute a distance from a FRET
+  efficiency, I will use…'` among them; it now takes **three**, with none, and
+  still reports the sanity check (E = 0.5 → R = R0 = 52.0 Å) beside the answer
+  (R = 51.0 Å at E = 0.53). 17 tests in
+  `test/agent/test_reasoning_recovery.py`, including that a genuinely unknown
+  name is never invented and that `run_fit` and `run_python` cannot be confused
+  for one another.
+
 * **Plugin by plugin: the advertisements are honest, and the route from a
   method name to a callable was not.** Audited all 102 manifests
   mechanically — import every entry point, run each plugin's service
