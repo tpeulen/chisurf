@@ -240,6 +240,16 @@ in the anisotropy area; neither is reachable from a production call path today.
   it into a real test over `test/data/clsm/`. Left alone here only because this
   run was scoped to a single review finding (RF-001) in a shared working tree —
   workaround: `pytest test/core --ignore=test/core/test_rename.py`.
+- Four test modules import `chisurf.gui.widgets.yaml_utils`, which **has never
+  existed** — `git log -S` finds no commit adding or removing it. They fail at
+  collection with `ModuleNotFoundError`, taking `test/plugins` down with them:
+  `test/plugins/test_plugins_list_format.py`, `test/settings/test_yaml.py`,
+  `test/settings/test_real_settings.py`, `test/gui/test_list_editor_fix.py`.
+  Neither `dump_yaml` nor `prepare_for_yaml` is defined anywhere in `chisurf/`,
+  so these tests never ran against real code — they are the same
+  never-existed-API class as `test/models/test_user_models.py` below and need
+  rewriting against the settings serializer or deleting, not a re-import. Left
+  alone here only because this run was scoped to one PRD-36 tool migration.
 
 **Qt teardown in test suites**
 - `chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py` aborts with

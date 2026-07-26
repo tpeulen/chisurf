@@ -2,6 +2,32 @@
 
 ## 2026-07-26
 
+* **Traj Tools onto the shared dockable-tool base** ([PRD-36](/prds/prd-36.md)).
+  `TrajectoryToolsTool` subclassed `QMainWindow` directly, so it had neither the
+  window-geometry persistence nor the path drag-drop every migrated tool gets for
+  free. It now subclasses `ChisurfDockTool` with
+  `tool_settings_name = "TrajectoryToolsTool"`, restores its geometry on
+  construction and saves it in `closeEvent`, and overrides `on_paths_dropped` to
+  route the first dropped path to the panel currently in front through the
+  `trajectory_filename` property four of the panels share (align, remove-clashes,
+  rotate/translate, save-topology). Panels without that property — converter,
+  FRET, join — say so in the status bar instead of swallowing the drop; their own
+  per-field drop targets are unaffected, since Qt offers a drag to the child under
+  the cursor before the window.
+  Two defects the screenshot made obvious and the migration fixed with it: the
+  status bar claimed "Active tool: Align" forever, because `_active_tool` was only
+  written by `_select_tool` at construction and never by a user tab switch — it is
+  now driven by `DockArea.currentChanged`, which also makes the drop reach the
+  *visible* panel rather than the first one; and `PotentialEnergyWidget` was
+  instantiated **twice**, as "Energy Calc" and again as "Traj Energy", so the tab
+  bar overflowed with a duplicate of the same tool. With the duplicate gone all
+  eight tabs fit at 1000 px.
+  Pinned by `chisurf/plugins/traj/traj_tools/test/test_construction_smoke.py`
+  (3 tests: construction + base identity + no MMFDB connection on init; one panel
+  per label *and* per class, and tab selection tracking; a dropped path reaching
+  the active panel and being reported by a panel that takes none). Verified
+  headlessly at 1000x600 before and after.
+
 * **Panel alignment: the object buttons never lined up, and the sequence dock was
   laid out loosely.** Screenshotted the panels, looked, measured, fixed, re-grabbed.
 

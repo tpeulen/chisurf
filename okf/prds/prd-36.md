@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; eight tools are on the base and a backlog of ~18 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; nine tools are on the base and a backlog of ~15 tools remains.
 
 # Goal
 
@@ -64,6 +64,12 @@ read-only-construction guard already exist.
       The plugin's own `test_root_import_does_not_import_gui` boundary check moved to a
       clean subprocess, since the new GUI smoke test legitimately imports `gui.tool`
       into the same session.
+- [x] `traj/traj_tools` — priority-B rollout; geometry is persisted under
+      `TrajectoryToolsTool`, and the base's window-level drop routes the first dropped
+      path to the panel currently in front via the `trajectory_filename` property the
+      trajectory panels share (panels without it say so in the status bar rather than
+      swallowing the drop). The tab bar also tracks the active panel now, and the
+      duplicated `PotentialEnergyWidget` tab was removed.
 
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
@@ -90,7 +96,6 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `fluorescence_decay/lltf/lltf_gui.py`
 - [ ] `modelling/hydropro/gui/tool.py` (`HydroProTool`; the old top-level
       `hydrogui.py` no longer defines a window)
-- [ ] `traj/traj_tools/gui/tool.py`
 - [ ] `core/project_browser/gui/tool.py`
 - [ ] `core/lightpath_simulator/gui/tool.py`
 - [ ] `core/globalview/gui/tool.py`
