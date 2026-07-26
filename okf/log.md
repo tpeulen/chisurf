@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **GUI test: two-channel colocalization — right numbers, wrong labels.**
+  Drove *Imaging → Colocalization* (`chisurf/plugins/microscopy/img_coloc`)
+  headlessly through its whole workflow — drop, channel pair, auto background,
+  Costes thresholds, van Steensel, the randomization test, a typed scatter gate,
+  a painted ROI, object analysis, CSV export — on the shipped confocal
+  `PQ_Olympus_MFIS.ht3`, on `Leica_SP5.ptu`, and on two-channel TIFFs whose
+  answer is known by construction. New use case
+  [two-channel colocalization](/usecases/image-colocalization.md), which closes
+  the second half of the "Imaging / CLSM" coverage area next to
+  [FLIM pixel maps](/usecases/flim-pixel-maps-mle.md). The arithmetic is sound —
+  whole-image Pearson matches `np.corrcoef` to the digit, the ROI area fraction
+  is exact, Costes/van Steensel behave, and 15.6 M photons go from drop to full
+  coefficient set in ~2 s — but the window keeps saying things that are not so:
+  a channel pick does not recompute, so the table, both maps and the status line
+  stay on the previous pair under the new labels (RF-336); a *remembered*
+  detector setup is applied at open and never explained, so "green vs red" on
+  the shipped HT3 is really green ∥ vs green ⊥ truncated to the first 4096 of
+  32 768 micro-time channels (RF-337); marker and zero-photon routing channels
+  are offered as detectors and picked by default (RF-338); a gate rectangle is
+  drawn while gating is off (RF-339); the *PCC vs intensity* tab plots
+  intensities and a ratio on one axis so a third of it is invisible (RF-340);
+  the ROI brush paints opaque white over the map being outlined (RF-341); the
+  object defaults count 130/261 objects where there are 30/25 (RF-342); and the
+  side-by-side *Channels* tab draws the two maps at ~2× different scale
+  (RF-343). RF-161 (Leica scans reconstructing as 1 × 7921 × 256) reproduces
+  here too, through `build_clsm_windowed`. Findings RF-336..RF-343, all OPEN.
+
 * **A three-colour PDA model that cannot evaluate now says so (RF-147).**
   `Pda3cModel.get_wres` wrapped the whole likelihood in a bare `except` and
   answered any failure with a zero-length residual, while `n_points` kept

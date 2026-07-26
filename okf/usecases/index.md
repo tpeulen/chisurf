@@ -123,6 +123,13 @@ The workflows a first pass should cover — expand as the tester discovers more:
   times, per-state decays and the per-burst Viterbi state path — plus the
   bootstrap and likelihood-profile confidence intervals.
   *(last driven 2026-07-26; RF-321..RF-327)*
+- [Two-channel colocalization](/usecases/image-colocalization.md) — the other
+  half of imaging: load a two-channel image, subtract background, derive Costes
+  thresholds, read the Pearson / Manders / Li coefficient set, check registration
+  with van Steensel and significance with the Costes randomization test, gate a
+  population in the intensity scatter, paint a region of interest, and count
+  objects when the signal is punctate.
+  *(last driven 2026-07-26; RF-336..RF-343)*
 
 ## Per-workflow file format
 

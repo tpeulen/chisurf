@@ -3956,3 +3956,73 @@ the simulation's own units. Findings RF-332..RF-335.
 - **Location:** `chisurf/core/fluorescence/imaging/tracking.py:686-691` (`diffusion_coefficient_error`: *"Standard error on ``D`` from the fit covariance"*) against `:919-945` (the bootstrap, whose comment argues the covariance *"is worse than no error bar"* and which is the only writer of that field), and `:728-758` (`warnings()`)
 - **Finding:** `fit_msd` never uses `curve_fit`'s covariance — it discards it (`popt, _ = curve_fit(...)`) and estimates the error by resampling whole tracks — so the one place a reader looks up what the number means says the opposite of what the module argues two hundred lines below. The same field is left `nan` whenever `n_bootstrap == 0`, the fit failed, or fewer than three tracks contributed (`:929`), and nothing says so: `report()` prints `D = 0.5581 ± nan px²/frame` (verified, `n_bootstrap=0` on the 6-track simulation) and `warnings()` stays silent, because its only error check is `np.isfinite(relative) and relative > 0.25` — a `nan` falls through. `n_bootstrap=0` is documented as the *honest* choice (`:822-826`), so this is the path a careful user takes. Fix the attribute docstring to name the track bootstrap and its `nan` conditions, and add a `warnings()` line for a non-finite `diffusion_coefficient_error`.
 - **Fix note:**
+
+## GUI-tester run — two-channel colocalization (`img_coloc`) (2026-07-26)
+
+Drove *Imaging → Colocalization* headlessly end to end — file drops, toolbar
+actions, combo picks, typed gates, a painted ROI, object analysis — on the
+shipped confocal `test/data/clsm/PQ_Olympus_MFIS.ht3`, on `Leica_SP5.ptu`, and
+on two-channel TIFFs whose answer is known by construction (the pair from
+`examples/scripts/colocalization.py`). **The mathematics holds up**: whole-image
+Pearson matched `np.corrcoef` exactly (0.9403), the ROI area fraction was exact
+(4900/65536), the Costes thresholds/randomization test, van Steensel profile and
+2-D CCF all behaved, `📉 Estimate background` is idempotent, and the 68 MB /
+15.6 M-photon HT3 runs the whole coefficient set in ~2 s. What does not hold up
+is what the window *says* is being measured. Use case:
+[image-colocalization](/usecases/image-colocalization.md). Findings RF-336..RF-343.
+
+### RF-336
+- **Status:** OPEN
+- **Severity:** S2 (picking a different channel leaves the previous pair's coefficients, maps and status line on screen under the new labels, with nothing marking them stale)
+- **Location:** `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:25-28` (both channel `choice` sections use `"call": "refresh_display"`) → `chisurf/plugins/microscopy/img_coloc/gui/view_model.py:179-181` (`refresh_display` only does `self.notify("run")`) → `chisurf/plugins/microscopy/img_coloc/gui/tool.py:176-179` (`_handle_model_event` runs a compute for `"file"`/`"setup"` and only `_refresh()` for everything else)
+- **Finding:** `set_filename` and `apply_setup_settings` notify `"file"`/`"setup"` and therefore auto-run, but a channel pick notifies `"run"`, which merely re-reads the model into the widgets — and the model has no new result to re-read. Verified on `PQ_Olympus_MFIS.ht3`: after loading (auto-run gives `ch0` vs `ch1`, PCC 0.9953) selecting `ch4` in the *Channel B* combo left `model.channel_b == "ch4"` while the table still read `Pearson PCC (thresholded) 0.9953`, the status bar still read `… ch0 vs ch1 · PCC = 0.995`, and the *Channels* tab still showed `ch1` under the caption "Channel B"; pressing **▶ Run** changed it to 0.9721. So the form, the maps and the numbers disagree, and the only cue is the 8-second status message the user has probably already lost. The same holds for every other setting (thresholds, frame, bins) — but those at least do not relabel the axes. Either call `compute()` from `refresh_display` (it already runs off the UI thread via `run_with_progress`) or mark the result stale in the tab titles/table until Run is pressed.
+- **Fix note:**
+
+### RF-337
+- **Status:** OPEN
+- **Severity:** S2 (a detector setup the user never picked in this window silently redefines what "Channel A / Channel B" mean, and the tool reports a plausible number under the wrong label)
+- **Location:** `chisurf/gui/autoform/sections/setup_selector_section.py:76-77` (*"Adopt whatever the selector restored (last-used setup) right away"* — `self._on_changed(self.selector.current_setup())` in `__init__`) over `chisurf/gui/widgets/setup_selector.py:121-132` (restores `last_used` instead of the placeholder), reaching `chisurf/plugins/microscopy/img_coloc/gui/view_model.py:123-154`; the view spec at `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:16-19` advertises `placeholder: "— raw detector channels —"` and the model default is `setup_name = ""` (`view_model.py:32`)
+- **Finding:** the colocalization window opens with a setup already applied — here **BS**, a Becker & Hickl SPC-130 definition (`green` = routing channels 8,0,3 gated to raw micro-time 0–4095; `red` = 9,1,2 gated 0–2048; `yellow` = 9,1,2 gated 2048–4095). Dropping the shipped `test/data/clsm/PQ_Olympus_MFIS.ht3` on that window then reports `green vs red · PCC = 0.992`, but "green" is a micro-time-truncated `ch0` (2 390 710 of 3 364 714 photons) and **"red" is a micro-time-truncated `ch1`** — the file's *other green* detector (3 254 098 photons) — while its actual red detectors `ch4`/`ch5` (650 171 / 1 318 043 photons) are never read. The user gets a green-∥-vs-green-⊥ autocorrelation labelled as a green/red colocalization. Two things make it invisible: the micro-time gate is in raw channels (0–4095 of the file's 32 768, i.e. the first 3.9 ns of a 31.25 ns period) and nothing in the window states a window's channels or gate — the muted summary line reads only "green, red, yellow". The mirror failure is just as quiet: on `Leica_SP5.ptu` the same setup's `red` window matches no channel in the file, so `image_b` is all zeros and every coefficient is `n/a` behind the generic *"no pixel passes both thresholds"* warning, which names neither the empty channel nor the setup. Show each window's channels and micro-time range next to the pick, and warn when a window resolves to zero photons in the loaded file.
+- **Fix note:**
+
+### RF-338
+- **Status:** OPEN
+- **Severity:** S3 (the channel list offers marker and empty routing channels, and the default pair is "first, second", so the run that fires automatically on load can be guaranteed empty)
+- **Location:** `chisurf/core/fluorescence/imaging/image_source.py:228-258` (`_stack_from_tttr` names one channel per routing channel present in the file, with no photon-count filter) and `chisurf/plugins/microscopy/img_coloc/gui/view_model.py:300-302` (`channel_a = self.channel_a or (names[0] …)`, `channel_b = … names[1]`)
+- **Finding:** for `test/data/clsm/Leica_SP5.ptu` the *Channel A/B* combos offer `ch0, ch1, ch2, ch4, ch6`, of which **only `ch0` carries photons** — and `ch4`/`ch6` are the file's *frame-marker* channels (they are `frame_marker: [4, 6]` in the CLSM plugin's own `Leica SP5` preset), i.e. instrument markers presented as detectors. Because the default pair is names[0] vs names[1], the run that fires automatically when the file is dropped compares `ch0` against the empty `ch1` and produces `Pixels above threshold = 0` and `n/a` for every coefficient. `PQ_Olympus_MFIS.ht3` has the same shape of problem more mildly (`ch2` is empty and listed). Drop channels with no photons from the offered list (or annotate them with their photon count), and prefer the two *brightest* channels as the default pair rather than the two first.
+- **Fix note:**
+
+### RF-339
+- **Status:** OPEN
+- **Severity:** S3 (a gate rectangle is drawn over the intensity scatter while gating is off, so the plot says a population is selected when none is)
+- **Location:** `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:169-175` (the *Intensity scatter* image section sets `region_call: "set_gate_region"`) against `chisurf/gui/autoform/sections/builtin.py:1620-1630` (*"Setting this option is what enables the rectangle … Without [`region_source`] the rectangle starts on the central quarter of the image"*) and `chisurf/plugins/microscopy/img_coloc/gui/view_model.py:553-565` (`gate_region` returns `None` when `gate_enabled` is false)
+- **Finding:** the rectangle is enabled by `region_call` alone, so it is drawn unconditionally; `region_source` only *places* it. Verified straight after a first run on the synthetic pair: `gate_enabled` is `False`, `len(model.gates) == 0`, `gate_region()` returns `None`, the metric table contains no `Gate:` rows and the four gate spin boxes are all `0.0` — and yet the *Intensity scatter* tab shows a prominent blue rectangle covering the middle of the pixel cloud (`06_scatter`). A reader has every reason to think the reported Pearson is that population's. Hide the rectangle when `region_source` returns `None` (or when the model's gate is off) and show it the moment gating is enabled.
+- **Fix note:**
+
+### RF-340
+- **Status:** OPEN
+- **Severity:** S3 (the *PCC vs intensity* tab plots two incompatible x units on one axis and leaves one of the three curves invisible, and its bins are not guarded against tiny pixel counts)
+- **Location:** `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:181-182` (one `plot` section, `x_label: "intensity / ratio"`) fed by `chisurf/plugins/microscopy/img_coloc/gui/view_model.py:473-499` (`profile_series` returns the `a`, `b` and `ratio` profiles as three series of one plot; it filters non-finite points but ignores `profile["counts"]`)
+- **Finding:** the two intensity profiles run over background-subtracted intensities while the third runs over the A/B *ratio*, and they share one axis. Measured on the synthetic pair (Costes thresholds, 30 profile bins): *vs channel A* spans x = 18.5 … 239.3, *vs channel B* 17.1 … 204.8, *vs A/B ratio* **0.553 … 1.829** — so the ratio curve is compressed into the leftmost pixel column of an axis that runs to 240 and cannot be read at all (`04_profiles`). It is also statistically empty: of its 30 bins, **10 hold zero pixels** and **13 report |PCC| = 1** off a handful of pixels, which is why its whole visible y range is 0.948 … 1.000. Give the ratio profile its own plot (or a second x axis), and drop profile bins below a minimum pixel count instead of plotting a two-pixel correlation of 1.
+- **Fix note:**
+
+### RF-341
+- **Status:** OPEN
+- **Severity:** S3 (the ROI brush paints an opaque overlay, so the image being outlined disappears under the outline)
+- **Location:** `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:156-160` (the *Channel A* image section, `selection_attr: "roi_mask"`, `brush_kernel_source`, `on_draw`) rendering the selection layer in `chisurf/gui/autoform/sections/builtin.py` (the image section's `selection_attr` overlay)
+- **Finding:** painting the region of interest on the *Channel A* map covers it with solid white — verified on `PQ_Olympus_MFIS.ht3` by setting a 70 × 70 px ROI over the nucleus and grabbing the *Channels* tab (`50_roi_channels`): the painted square is featureless white and the nucleus it is supposed to outline is no longer visible, so a user cannot see whether the brush is following the structure. The analysis underneath is correct (`ROI area fraction 0.07477` = 4900/65536 exactly, PCC 0.9706 → 0.9334 inside the ROI, `Pixels total` correctly becomes 4900). Draw the selection as a translucent tint or a contour over the data, the way a mask overlay normally is.
+- **Fix note:**
+
+### RF-342
+- **Status:** OPEN
+- **Severity:** S3 (the shipped object-analysis defaults over-count objects 4–10× on a realistically noisy punctate image, and every reported object fraction is wrong with it)
+- **Location:** `chisurf/plugins/microscopy/img_coloc/gui/view_model.py:65-69` (`object_min_size = 4`, `object_smoothing = 0.0`, `object_split = False`) and the matching defaults in `chisurf/plugins/microscopy/img_coloc/core.py:50-53`
+- **Finding:** driven on the punctate pair from `examples/scripts/colocalization.py` (30 spots in A, 25 in B, 20 of them partners 1 px apart, Gaussian noise σ = 2 on a background of 8) with Costes thresholds on. With the shipped defaults the tool reports **130 objects in A and 261 in B**, *fraction A with B partner* 0.331 and *fraction B with A partner* 0.180 — against a truth of 30 / 25 and 0.667 / 0.800. The *Objects* map shows why (`12_objects`): about thirty real puncta plus more than a hundred noise specks, because a 4-pixel connected clump above a ~2.5σ threshold is admitted as an object. The analysis itself is fine — smoothing 1 px + min size 9 px + *Split touching objects* gives **29 / 26** objects and 0.655 / 0.731, within noise of the truth. Ship those as the defaults (or at least a non-zero smoothing), and/or report the object-size distribution so an over-count is visible rather than silently halving every fraction.
+- **Fix note:**
+
+### RF-343
+- **Status:** OPEN
+- **Severity:** S3 (the one view whose purpose is comparing the two channels side by side draws them at ~2× different magnification)
+- **Location:** `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:151-165` (the *Channels* `dock_area`, `"split": "horizontal"`, no size hint or `persist` key on the two child image sections)
+- **Finding:** at the tool's own default window size the *Channel A* pane is roughly half the width of the *Channel B* pane, so two identically-shaped maps (160 × 160 for the TIFF, 256 × 256 for the HT3) are rendered at about twice the scale on the right as on the left — reproduced on a fresh instance for both files (`05_channels`, `31_ht3_channels`, `50_roi_channels`). Since each pane also auto-scales its own colour range, neither the size nor the brightness of a feature can be compared between the two panes by eye, which is the entire point of the tab. Split the horizontal dock area evenly (and consider an optional shared colour scale).
+- **Fix note:**
