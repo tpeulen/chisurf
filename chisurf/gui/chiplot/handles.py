@@ -112,6 +112,46 @@ class Curve(Handle, Protocol):
         """
         ...
 
+    def set_symbol(self, symbol) -> None:
+        """Set (or clear with ``None``) a per-point marker on the curve.
+
+        Parameters
+        ----------
+        symbol : str, Symbol, or None
+            Marker shape (``"o"``, ``"s"``, …); ``None`` removes markers.
+        """
+        ...
+
+    def set_symbol_size(self, size: float) -> None:
+        """Set the per-point marker size in pixels.
+
+        Parameters
+        ----------
+        size : float
+            Marker diameter in pixels.
+        """
+        ...
+
+    def set_symbol_brush(self, brush) -> None:
+        """Set the per-point marker fill.
+
+        Parameters
+        ----------
+        brush : brush-like
+            Marker fill colour or :class:`style.Brush`.
+        """
+        ...
+
+    def set_opacity(self, alpha: float) -> None:
+        """Set the whole-curve opacity.
+
+        Parameters
+        ----------
+        alpha : float
+            Opacity in ``0.0`` (transparent) .. ``1.0`` (opaque).
+        """
+        ...
+
 
 @runtime_checkable
 class Scatter(Handle, Protocol):
@@ -239,6 +279,20 @@ class Region(Handle, Protocol):
         ----------
         low, high : float
             New edges in data coordinates.
+        """
+        ...
+
+    def set_limits(self, low: float, high: float) -> None:
+        """Constrain how far the region can be dragged (its allowed range).
+
+        This bounds *where the region may go*, not its current position (that is
+        :meth:`set_bounds`). Programmatic; blocks the native item's signals so it
+        never re-enters an :meth:`on_change` drag callback.
+
+        Parameters
+        ----------
+        low, high : float
+            Minimum and maximum draggable edges in data coordinates.
         """
         ...
 

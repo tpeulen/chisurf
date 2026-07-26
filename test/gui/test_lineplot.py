@@ -23,9 +23,11 @@ def test_group_display_methods_exist():
 
 def test_group_display_alpha_and_setalpha_contract():
     src = _lineplot_source()
-    assert "line.setAlpha(int(alpha * 255), auto=False)" in src
-    assert "alpha = 1.0" in src
-    assert "alpha = 0.4" in src
+    # The former four-method pyqtgraph transparency fallback (setGraphicsEffect /
+    # setOpacity / setAlpha / pen-alpha) collapsed to chiplot's Curve.set_opacity
+    # when lineplot migrated off pyqtgraph.
+    assert "line.set_opacity(alpha)" in src
+    assert "alpha = 1.0 if fit_index == current_fit_index else 0.4" in src
 
 def test_group_display_uses_selected_fit_when_available():
     src = _lineplot_source()

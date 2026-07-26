@@ -259,7 +259,31 @@ class _Curve(_Item):
 
     def set_pen(self, pen) -> None:
         """Restyle the curve's line (accepts a Pen or any pen-like spec)."""
+        if pen is None:
+            self._native.setPen(_pen(None))
+            return
         self._native.setPen(_pen(pen if isinstance(pen, S.Pen) else S.to_pen(pen)))
+
+    def set_symbol(self, symbol) -> None:
+        """Set (or clear with ``None``) the per-point marker symbol."""
+        if symbol is None:
+            self._native.setSymbol(None)
+        elif isinstance(symbol, H.Symbol):
+            self._native.setSymbol(symbol.value)
+        else:
+            self._native.setSymbol(symbol)
+
+    def set_symbol_size(self, size) -> None:
+        """Set the per-point marker size in pixels."""
+        self._native.setSymbolSize(size)
+
+    def set_symbol_brush(self, brush) -> None:
+        """Set the per-point marker fill (accepts a Brush or brush-like spec)."""
+        self._native.setSymbolBrush(_brush(brush) if isinstance(brush, S.Brush) else brush)
+
+    def set_opacity(self, alpha: float) -> None:
+        """Set the whole-curve opacity (0 transparent .. 1 opaque)."""
+        self._native.setOpacity(float(alpha))
 
 
 class _Scatter(_Item):
@@ -334,6 +358,20 @@ class _Region(_Item):
         blocked = self._native.blockSignals(True)
         try:
             self._native.setRegion((low, high))
+        finally:
+            self._native.blockSignals(blocked)
+
+    def set_limits(self, low: float, high: float) -> None:
+        """Constrain the region's draggable range to ``(low, high)``.
+
+        Maps to pyqtgraph's ``setBounds`` (the drag limits), which is distinct
+        from ``setRegion`` (the current position, exposed as
+        :meth:`set_bounds`). Blocks signals so the limit update never re-enters
+        an ``on_change`` drag callback.
+        """
+        blocked = self._native.blockSignals(True)
+        try:
+            self._native.setBounds((low, high))
         finally:
             self._native.blockSignals(blocked)
 
@@ -592,13 +630,20 @@ class _PgCanvas(base.Canvas):
         self._pi.addItem(item)
         return _Marker(item, self._pi)
 
-    def add_text(self, text, pos, *, color, anchor, draggable, fill=None, border=None) -> H.Text:
+    def add_text(
+        self, text, pos, *, color, anchor, draggable, fill=None, border=None, anchored=False
+    ) -> H.Text:
         """Draw a text label.
 
-        Added with ``ignoreBounds=True`` so the annotation never drives the
-        view's auto-range — a text placed at a data coordinate (especially on a
-        log axis, where a raw coordinate lands far off the log scale) must not
-        blow the range out. Optional ``fill``/``border`` draw a background box.
+        Data-anchored labels (default) are added with ``ignoreBounds=True`` so
+        the annotation never drives the view's auto-range — a text placed at a
+        data coordinate (especially on a log axis, where a raw coordinate lands
+        far off the log scale) must not blow the range out.
+
+        Screen-anchored labels (``anchored=True``) are parented to the
+        ``PlotItem`` instead, so they stay pinned to a fixed pixel offset and do
+        not move or rescale with the data. Optional ``fill``/``border`` draw a
+        background box.
         """
         cls = _DraggableTextItem if draggable else pg.TextItem
         kw = {"text": text, "color": color.as_tuple(), "anchor": anchor}
@@ -607,8 +652,14 @@ class _PgCanvas(base.Canvas):
         if border is not None:
             kw["border"] = _pen(border)
         item = cls(**kw)
-        item.setPos(*pos)
-        self._pi.addItem(item, ignoreBounds=True)
+        if anchored:
+            # Pin to the plot rectangle in screen space (pos is a pixel offset
+            # from the PlotItem's top-left), not to a data coordinate.
+            item.setParentItem(self._pi)
+            item.setPos(*pos)
+        else:
+            item.setPos(*pos)
+            self._pi.addItem(item, ignoreBounds=True)
         return _Text(item, self._pi)
 
     def add_legend(self, *, offset=(30, 30)) -> None:

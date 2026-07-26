@@ -607,3 +607,63 @@ def test_instance_passthrough_to_native(qapp):
         vb = plot.getViewBox()  # pyqtgraph-only method, not native chiplot
     assert vb is plot.native.getViewBox()
     assert "Plot.getViewBox" in cp.passthrough_gaps()
+
+
+def test_curve_set_opacity(qapp):
+    """Curve.set_opacity sets whole-curve opacity (replaces the old 4-method
+    pyqtgraph transparency fallback used by the grouped LinePlot)."""
+    plot = cp.Plot()
+    c = plot.line([0, 1, 2], [0, 1, 0])
+    c.set_opacity(0.4)
+    assert abs(float(c.native.opacity()) - 0.4) < 1e-6
+    c.set_opacity(1.0)
+    assert abs(float(c.native.opacity()) - 1.0) < 1e-6
+
+
+def test_curve_symbol_setters(qapp):
+    """Curve.set_symbol/set_symbol_size/set_symbol_brush drive point markers.
+
+    Backs LinePlot's ``curve_styles`` path (e.g. the PCH model draws data as
+    open circles with no connecting line).
+    """
+    plot = cp.Plot()
+    c = plot.line([0, 1, 2], [0, 1, 0])
+    c.set_symbol("o")
+    c.set_symbol_size(6)
+    c.set_symbol_brush("r")
+    assert c.native.opts["symbol"] == "o"
+    assert c.native.opts["symbolSize"] == 6
+    # Clearing the symbol (and the line) is supported too.
+    c.set_symbol(None)
+    assert c.native.opts["symbol"] is None
+    c.set_pen(None)  # no_line style
+    assert c.native.opts["pen"] is None or c.native.opts["pen"].style() == qtpy.QtCore.Qt.NoPen
+
+
+def test_region_set_limits_constrains_drag(qapp):
+    """Region.set_limits bounds the draggable range (pyqtgraph setBounds), which
+    is distinct from set_bounds (the current position) and must be signal-safe."""
+    plot = cp.Plot()
+    reg = plot.region((2.0, 4.0), movable=True)
+    seen = []
+    reg.on_change(lambda lo, hi: seen.append((lo, hi)), final=True)
+    reg.set_limits(0.0, 10.0)  # programmatic -> silent
+    assert seen == []
+    # A drag beyond the limit is clamped to it.
+    reg.native.setRegion((-5.0, 4.0))
+    lo, _ = reg.bounds
+    assert lo >= 0.0 - 1e-9
+
+
+def test_anchored_text_is_screen_pinned(qapp):
+    """text(anchored=True) parents to the PlotItem (fixed screen offset) rather
+    than living at a data coordinate — the LinePlot fit-quality overlay."""
+    plot = cp.Plot()
+    data_txt = plot.text("data", (1.0, 2.0))
+    anchored_txt = plot.text("pinned", (10, 0), anchored=True, draggable=True)
+    # The anchored label's parent is the PlotItem itself; the data label's is not.
+    assert anchored_txt.native.parentItem() is plot.native
+    assert data_txt.native.parentItem() is not plot.native
+    # The text property setter keeps working through the handle.
+    anchored_txt.text = "updated"
+    assert anchored_txt.native.toPlainText() == "updated"

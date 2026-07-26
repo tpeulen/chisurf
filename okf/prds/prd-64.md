@@ -274,7 +274,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 22):*
+*Landed so far (allow-list 76 → 21):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -582,6 +582,31 @@ screenshot/qtbot verification after each cluster.
   so a clean port needs a larger `Curve`-handle API (symbol/opacity/pen-introspection)
   rather than `.native` passthroughs on the core TCSPC plot — deferred to a
   dedicated pass that grows that handle surface first.
+- **Batch 29** (allow-list 22 → 21) — the deferred `lineplot` pass. Grew the
+  clean handle surface the finding above called for rather than reaching for
+  `.native`: **`Curve.set_opacity`** (per-fit group transparency — the old
+  four-method `setGraphicsEffect`/`setOpacity`/`setAlpha`/pen-alpha fallback
+  collapses to one verb), **`Curve.set_symbol`/`set_symbol_size`/
+  `set_symbol_brush`** (the `_apply_curve_style` scatter styling), and
+  **`Region.set_limits`** (drag bounds — pyqtgraph's `setBounds`, distinct from
+  `set_bounds`=position). Also added **`Plot.text(..., anchored=True)`**, which
+  parents the label to the `PlotItem` for a screen-pinned fixed-pixel overlay
+  (the fit-metrics box) instead of a data-coordinate item — the missing piece
+  that had the χ²ᵣ box drifting to the bottom on the first port. Migrated
+  `gui/plots/lineplot/lineplot.py` fully off pyqtgraph (deleted its module-level
+  `DraggableTextItem`; `distribution.py`, still allow-listed, took a
+  self-contained local copy, mirroring `residual_image`). Verified with a
+  **seeded simulated-TCSPC bi-exponential fit** (Gaussian IRF + Poisson noise →
+  `DataCurve` → `FitGroup(LifetimeModel)`, xmin/xmax 15/500, `fit.run()`): the
+  before/after screenshots are pixel-identical (a.corr + w.res panels, log-y
+  data+model, green 15–500 region, magenta reference line, top-left yellow
+  metrics box). A **latent transparency bug** surfaced and was fixed as a side
+  benefit: pyqtgraph misreads `#AARRGGBB` colour strings as RGBA
+  (`#4DFF0000`→transparent wrong-hue); chiplot's `to_color` reads them as ARGB
+  correctly. Tests: `test_curve_set_opacity`, `test_curve_symbol_setters`,
+  `test_region_set_limits_constrains_drag`, `test_anchored_text_is_screen_pinned`
+  (chiplot); the alpha-contract test in `test_lineplot.py` now asserts
+  `line.set_opacity(alpha)`.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

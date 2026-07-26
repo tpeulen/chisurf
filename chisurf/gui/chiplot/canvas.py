@@ -361,16 +361,27 @@ class Plot(QtWidgets.QWidget):
             y, orientation=H.Orientation.HORIZONTAL, movable=movable, pen=S.to_pen(pen), label=label
         )
 
-    def text(self, text, pos, *, color="w", anchor=(0, 0), draggable=False,
-             fill=None, border=None) -> H.Text:
-        """Add a text label in data coordinates.
+    def text(
+        self,
+        text,
+        pos,
+        *,
+        color="w",
+        anchor=(0, 0),
+        draggable=False,
+        fill=None,
+        border=None,
+        anchored=False,
+    ) -> H.Text:
+        """Add a text label.
 
         Parameters
         ----------
         text : str
             Label content.
         pos : tuple of float
-            ``(x, y)`` anchor position.
+            ``(x, y)`` anchor position. A data coordinate normally; a pixel
+            offset from the panel's top-left when ``anchored`` is ``True``.
         color : color-like
             Text color.
         anchor : tuple of float
@@ -381,6 +392,11 @@ class Plot(QtWidgets.QWidget):
             Background fill for the label box (``None`` = transparent).
         border : pen-like, optional
             Border pen for the label box (``None`` = no border).
+        anchored : bool
+            If ``True`` the label is pinned to the panel in screen space and
+            does not move or rescale with the data (for fixed overlays such as a
+            fit-quality readout); ``pos`` is then a pixel offset. If ``False``
+            (default) the label lives at a data coordinate.
 
         Returns
         -------
@@ -394,6 +410,7 @@ class Plot(QtWidgets.QWidget):
             draggable=draggable,
             fill=S.to_brush(fill) if fill is not None else None,
             border=S.to_pen(border) if border is not None else None,
+            anchored=anchored,
         )
 
     def legend(self, *, offset=(30, 30)) -> None:

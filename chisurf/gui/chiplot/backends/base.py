@@ -145,8 +145,17 @@ class Canvas(abc.ABC):
         color: S.Color,
         anchor: tuple[float, float],
         draggable: bool,
+        fill: S.Brush | None = None,
+        border: S.Pen | None = None,
+        anchored: bool = False,
     ) -> H.Text:
-        """Draw a text label and return its handle."""
+        """Draw a text label and return its handle.
+
+        When ``anchored`` is ``True`` the label is pinned to the panel in
+        screen space (``pos`` is a pixel offset from the top-left) and does not
+        move or rescale with the data — for fixed overlays like a fit-quality
+        readout. When ``False`` (default) ``pos`` is a data coordinate.
+        """
 
     @abc.abstractmethod
     def add_legend(self, *, offset: tuple[int, int]) -> None:

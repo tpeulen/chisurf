@@ -9,9 +9,9 @@ import numpy as np
 
 from chisurf import typing
 
-from chisurf.gui import QtWidgets, QtCore, QtGui
+from chisurf.gui import QtWidgets, QtCore
 
-import pyqtgraph as pg
+from chisurf.gui import chiplot as cp
 import matplotlib.colors
 
 from chisurf.gui.widgets.dock_area.dock_area import DockSplitter
@@ -35,44 +35,6 @@ import chisurf.core.math.statistics
 from chisurf.gui.plots import plotbase
 from chisurf.core.actions import record_action
 
-
-class DraggableTextItem(pg.TextItem):
-    """A TextItem that can be dragged with the mouse."""
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAcceptHoverEvents(True)
-        self.setCursor(QtCore.Qt.OpenHandCursor)
-        self._dragging = False
-        self._dragOffset = QtCore.QPointF(0, 0)
-
-    def hoverEnterEvent(self, event):
-        self.setCursor(QtCore.Qt.OpenHandCursor)
-
-    def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self._dragging = True
-            self.setCursor(QtCore.Qt.ClosedHandCursor)
-            self._dragOffset = event.pos()
-            event.accept()
-        else:
-            event.ignore()
-
-    def mouseMoveEvent(self, event):
-        if self._dragging and event.buttons() & QtCore.Qt.LeftButton:
-            new_pos = self.mapToParent(event.pos() - self._dragOffset)
-            self.setPos(new_pos)
-            event.accept()
-        else:
-            event.ignore()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self._dragging = False
-            self.setCursor(QtCore.Qt.OpenHandCursor)
-            event.accept()
-        else:
-            event.ignore()
 
 colors = cs.core.settings.gui['plot']['colors']
 
@@ -863,9 +825,9 @@ class LinePlot(plotbase.Plot):
     def get_bounds(
             self,
             fit: cs.core.fitting.fit.Fit,
-            region_selector: pg.LinearRegionItem
+            region_selector: "cp.handles.Region"
     ) -> typing.Tuple[int, int]:
-        lb, ub = region_selector.getRegion()
+        lb, ub = region_selector.bounds
 
         x_shift = self.plot_controller.x_shift
         lb -= x_shift
@@ -917,24 +879,28 @@ class LinePlot(plotbase.Plot):
             self._auto_enable_display_group_if_grouped()
         except Exception:
             pass
-        p1 = pg.PlotWidget()
-        p2 = pg.PlotWidget()
-        p3 = pg.PlotWidget()
-        p1.getViewBox().setXLink(p3.getViewBox())
-        p2.getViewBox().setXLink(p3.getViewBox())
+        # chiplot panels (renderer-neutral): each cp.Plot is a QWidget wrapping
+        # the active backend's canvas, so it drops straight into the DockSplitter
+        # where a pg.PlotWidget used to go. The residual panels share the data
+        # panel's x-axis via link_x.
+        p1 = cp.Plot()
+        p2 = cp.Plot()
+        p3 = cp.Plot()
+        p1.link_x(p3)
+        p2.link_x(p3)
 
         plots = {
-            'top_left_plot': p1.getPlotItem(),
-            'top_right_plot': p2.getPlotItem(),
-            'main_plot': p3.getPlotItem()
+            'top_left_plot': p1,
+            'top_right_plot': p2,
+            'main_plot': p3
         }
-        plots['top_left_plot'].hideAxis('bottom')
-        plots['top_right_plot'].hideAxis('bottom')
+        plots['top_left_plot'].set_axis_visible(bottom=False)
+        plots['top_right_plot'].set_axis_visible(bottom=False)
 
         # Vertical stack (chisurf dock impl): A.corr. residuals, residuals, data
         # — matching the former pyqtgraph DockArea arrangement. Titles are hidden
         # by default (settings gui.plot.hideTitle), so a plain DockSplitter is a
-        # faithful replacement; the panels' x-axes are linked below.
+        # faithful replacement; the panels' x-axes are linked above.
         area = DockSplitter(QtCore.Qt.Vertical)
         area.addWidget(p2)  # A.corr. residuals
         area.addWidget(p1)  # Residuals
@@ -942,31 +908,34 @@ class LinePlot(plotbase.Plot):
         area.setSizes([80, 80, 250])
         self.layout.addWidget(area)
 
-        # Labels - using draggable text item for quality parameters
-        self.text = DraggableTextItem(
-            text='',
+        # Labels - draggable text box for the fit-quality metrics overlay. Yellow
+        # text on a translucent-blue box, drawn on the data panel; created with
+        # ignoreBounds so it never drives the view auto-range.
+        self.text = plots['main_plot'].text(
+            '',
+            (100, 0),
+            color="#FF0",
             border='w',
             fill=(0, 0, 255, 100),
-            anchor=(0, 0)
+            anchor=(0, 0),
+            draggable=True,
+            anchored=True,
         )
-        self.text.setParentItem(plots['main_plot'])
-        self.text.setPos(100, 0)
 
         # Fitting-region selector
         if cs.core.settings.gui['plot']['enable_region_selector']:
             ca = list(matplotlib.colors.hex2color(colors["region_selector"]))
             co = [ca[0] * 255, ca[1] * 255, ca[2] * 255, colors["region_selector_alpha"]]
-            region = pg.LinearRegionItem(brush=co)
-            plots['main_plot'].addItem(region)
+            region = plots['main_plot'].region((0.0, 1.0), brush=co)
             self.region = region
 
-            def onRegionUpdate(evt):
+            def onRegionUpdate(*_):
                 # Get the currently selected fit for region update
                 if hasattr(fit, 'selected_fit'):
                     current_fit = fit.selected_fit
                 else:
                     current_fit = fit
-                    
+
                 self.lb_i, self.ub_i = self.get_bounds(current_fit, region)
                 lb, ub = current_fit.data.x[self.lb_i], current_fit.data.x[self.ub_i]
                 x_shift = self.plot_controller.x_shift
@@ -975,7 +944,7 @@ class LinePlot(plotbase.Plot):
                 if self.plot_controller.data_is_log_x:
                     lb = np.log10(lb)
                     ub = np.log10(ub)
-                self.region.setRegion((lb, ub))
+                self.region.set_bounds(lb, ub)
                 cs.core.actions.dispatch(
                     name="fit.range.set",
                     payload={
@@ -990,21 +959,20 @@ class LinePlot(plotbase.Plot):
                     pass
                 self.update(only_fit_range=True)
 
-            region.sigRegionChangeFinished.connect(onRegionUpdate)
+            region.on_change(onRegionUpdate, final=True)
 
         # Grid
         if cs.core.settings.gui['plot']['enable_grid']:
             if cs.core.settings.gui['plot']['show_data_grid']:
-                plots['main_plot'].showGrid(True, True, 0.5)
+                plots['main_plot'].grid(x=True, y=True, alpha=0.5)
             if cs.core.settings.gui['plot']['show_residual_grid']:
-                plots['top_left_plot'].showGrid(True, True, 1.0)
+                plots['top_left_plot'].grid(x=True, y=True, alpha=1.0)
             if cs.core.settings.gui['plot']['show_acorr_grid']:
-                plots['top_right_plot'].showGrid(True, True, 1.0)
+                plots['top_right_plot'].grid(x=True, y=True, alpha=1.0)
         # Axis labels: always show for clarity
-        plots['top_left_plot'].setLabel('left', "w.res.")
-        plots['top_right_plot'].setLabel('left', "a.corr.")
-        plots['main_plot'].setLabel('left', y_label)
-        plots['main_plot'].setLabel('bottom', x_label)
+        plots['top_left_plot'].set_labels(left="w.res.")
+        plots['top_right_plot'].set_labels(left="a.corr.")
+        plots['main_plot'].set_labels(left=y_label, bottom=x_label)
 
         lines = OrderedDict()
         curves = self.fit.get_curves()
@@ -1051,6 +1019,39 @@ class LinePlot(plotbase.Plot):
                 pass
         self._auto_display_group_applied = True
 
+    @staticmethod
+    def _make_line(target_plot, pen_color, lw, name, auto_downsample, clip_to_view):
+        """Draw an empty chiplot curve with optional render-perf hints.
+
+        The line/scatter data is filled in later by :meth:`update`. Auto-
+        downsampling and clip-to-view are pyqtgraph render optimisations with no
+        renderer-neutral chiplot verb, so they are set on the backend item via
+        the documented ``.native`` escape hatch.
+
+        Parameters
+        ----------
+        target_plot : cp.Plot
+            Panel to draw on.
+        pen_color : str
+            Line color (hex, possibly with a leading ``#RRGGBBAA`` alpha).
+        lw : float
+            Line width.
+        name : str
+            Legend label.
+        auto_downsample, clip_to_view : bool
+            pyqtgraph render-perf hints.
+
+        Returns
+        -------
+        cp.handles.Curve
+        """
+        line = target_plot.line([0.0], [0.0], pen=pen_color, width=lw, name=name)
+        if auto_downsample or clip_to_view:
+            native = line.native
+            native.setDownsampling(auto=auto_downsample)
+            native.setClipToView(clip_to_view)
+        return line
+
     def add_plot(
             self,
             curves: typing.Dict,
@@ -1081,13 +1082,9 @@ class LinePlot(plotbase.Plot):
                         # make the line half as wide, and transparent (30%)
                         lw *= 0.5
                         pen_color = '#4D' + pen_color.split('#')[1]
-                    pen = pg.mkPen(pen_color, width=lw)
-                    line = target_plot.plot(
-                        x=[0.0], y=[0.0],
-                        pen=pen,
-                        name=label,
-                        autoDownsample=auto_downsample,
-                        clipToView=clip_to_view,
+                    line = self._make_line(
+                        target_plot, pen_color, lw, label,
+                        auto_downsample, clip_to_view,
                     )
                     self._apply_curve_style(curve_key, line)
                     return line
@@ -1100,13 +1097,9 @@ class LinePlot(plotbase.Plot):
                 ]
                 auto_downsample = curve_options.get('auto_downsample', False)
                 clip_to_view = curve_options.get('clip_to_view', auto_downsample)
-                pen = pg.mkPen(pen_color, width=lw)
-                line = target_plot.plot(
-                    x=[0.0], y=[0.0],
-                    pen=pen,
-                    name=curve_key,
-                    autoDownsample=auto_downsample,
-                    clipToView=clip_to_view,
+                line = self._make_line(
+                    target_plot, pen_color, lw, curve_key,
+                    auto_downsample, clip_to_view,
                 )
                 self._apply_curve_style(curve_key, line)
                 return line
@@ -1125,36 +1118,36 @@ class LinePlot(plotbase.Plot):
                 return styles[base]
         return None
 
-    def _apply_curve_style(self, curve_key: str, line: pg.PlotDataItem) -> None:
+    def _apply_curve_style(self, curve_key: str, line: "cp.handles.Curve") -> None:
         style = self._get_curve_style(curve_key)
         if not style:
             return
         try:
             if "pen" in style:
-                line.setPen(style.get("pen"))
+                line.set_pen(style.get("pen"))
         except Exception:
             pass
         try:
             symbol = style.get("symbol")
             if symbol is not None:
-                line.setSymbol(symbol)
+                line.set_symbol(symbol)
         except Exception:
             pass
         try:
             size = style.get("symbol_size")
             if size is not None:
-                line.setSymbolSize(size)
+                line.set_symbol_size(size)
         except Exception:
             pass
         try:
             brush = style.get("symbol_brush")
             if brush is not None:
-                line.setSymbolBrush(brush)
+                line.set_symbol_brush(brush)
         except Exception:
             pass
         try:
             if style.get("no_line"):
-                line.setPen(None)
+                line.set_pen(None)
         except Exception:
             pass
 
@@ -1239,10 +1232,12 @@ class LinePlot(plotbase.Plot):
     def _metrics_text_alive(self) -> bool:
         """Return True when the overlay TextItem and backing Qt objects are alive."""
 
-        text_item = getattr(self, "text", None)
-        if text_item is None:
+        text_handle = getattr(self, "text", None)
+        if text_handle is None:
             return False
 
+        # self.text is a chiplot Text handle; the backing Qt item is .native.
+        text_item = getattr(text_handle, "native", text_handle)
         try:
             if sip.isdeleted(text_item):  # type: ignore[arg-type]
                 return False
@@ -1347,8 +1342,8 @@ class LinePlot(plotbase.Plot):
         y_shift = self.plot_controller.y_shift
         x_shift = self.plot_controller.x_shift
 
-        # update region selector
-        self.region.blockSignals(True)
+        # update region selector (set_limits/set_bounds each block the region's
+        # signals internally, so no manual blockSignals dance is needed)
 
         # Get the currently selected fit for region selector bounds
         if hasattr(self.fit, 'selected_fit'):
@@ -1378,10 +1373,8 @@ class LinePlot(plotbase.Plot):
             lb = np.log10(lb)
             ub = np.log10(ub)
 
-        self.region.setBounds((lb_min, ub_max))
-        self.region.setRegion((lb, ub))
-
-        self.region.blockSignals(False)
+        self.region.set_limits(lb_min, ub_max)
+        self.region.set_bounds(lb, ub)
 
         # Handle group display mode
         if self.plot_controller.display_group and hasattr(self.fit, 'grouped_fits'):
@@ -1395,12 +1388,11 @@ class LinePlot(plotbase.Plot):
             self._plot_single_fit_curves(fit, curves, data_log_x, data_log_y, director, x_shift, y_shift)
 
         # Set log-scales
-        self.plots['main_plot'].setLogMode(x=data_log_x, y=data_log_y)
-        self.plots['top_left_plot'].setLogMode(x=data_log_x)
-        self.plots['top_right_plot'].setLogMode(x=data_log_x)
-        self.plots['main_plot'].setLabel(
-            'left',
-            self._reference_y_label_override or self._base_y_label
+        self.plots['main_plot'].set_log(x=data_log_x, y=data_log_y)
+        self.plots['top_left_plot'].set_log(x=data_log_x)
+        self.plots['top_right_plot'].set_log(x=data_log_x)
+        self.plots['main_plot'].set_labels(
+            left=self._reference_y_label_override or self._base_y_label
         )
 
         # Set manual scale
@@ -1438,16 +1430,14 @@ class LinePlot(plotbase.Plot):
         except Exception:
             pass
         if xRange is not None or yRange is not None:
-            self.plots['main_plot'].setRange(xRange=xRange, yRange=yRange)
+            self.plots['main_plot'].set_range(x=xRange, y=yRange)
 
         if self._metrics_text_alive() and not bool(getattr(cs, "_suspend_plot_metrics_overlay", False)):
             try:
-                self.text.updateTextPos()
                 metrics_text = self._build_metrics_overlay_text(current_fit=current_fit)
-                try:
-                    self.text.setText(metrics_text, color="#FF0")
-                except TypeError:
-                    self.text.setText(metrics_text)
+                # The overlay was created yellow; the text property setter keeps
+                # that color while replacing the content.
+                self.text.text = metrics_text
             except Exception:
                 pass
 
@@ -1642,7 +1632,7 @@ class LinePlot(plotbase.Plot):
             y = np.copy(curve.y)
             x = np.copy(curve.x)
 
-            line: pg.PlotDataItem = self.lines[curve_key]
+            line: "cp.handles.Curve" = self.lines[curve_key]
 
             if curve_settings.get('allow_reference_transform', False):
                 result = self._apply_reference_mode_to_curve(
@@ -1654,7 +1644,7 @@ class LinePlot(plotbase.Plot):
                     curves=curves,
                 )
                 if not result.visible:
-                    line.setData(x=[], y=[])
+                    line.set_data([], [])
                     line.hide()
                     continue
                 x = np.asarray(result.x, dtype=float)
@@ -1675,7 +1665,7 @@ class LinePlot(plotbase.Plot):
                 x_plot = x
                 y_plot = y
 
-            line.setData(x=x_plot, y=y_plot)
+            line.set_data(x_plot, y_plot)
             if not self.plot_controller.getCheckState(curve_key):
                 line.hide()
             else:
@@ -1731,7 +1721,7 @@ class LinePlot(plotbase.Plot):
                 )
                 if not result.visible:
                     if line_name in self.lines:
-                        self.lines[line_name].setData(x=[], y=[])
+                        self.lines[line_name].set_data([], [])
                         self.lines[line_name].hide()
                     continue
                 x = np.asarray(result.x, dtype=float)
@@ -1771,14 +1761,10 @@ class LinePlot(plotbase.Plot):
                     # make the line half as wide, and transparent (30%)
                     lw *= 0.5
                     pen_color = '#4D' + pen_color.split('#')[1]
-                
-                pen = pg.mkPen(pen_color, width=lw)
-                line = target_plot.plot(
-                    x=[0.0], y=[0.0],
-                    pen=pen,
-                    name=label,
-                    autoDownsample=auto_downsample,
-                    clipToView=clip_to_view,
+
+                line = self._make_line(
+                    target_plot, pen_color, lw, label,
+                    auto_downsample, clip_to_view,
                 )
                 self._apply_curve_style(curve_key, line)
                 self.lines[line_name] = line
@@ -1793,65 +1779,17 @@ class LinePlot(plotbase.Plot):
                 x_plot = x
                 y_plot = y
 
-            # Apply transparency and highlighting
+            # Apply transparency and highlighting: the active fit is solid, the
+            # other grouped fits are dimmed. chiplot's Curve.set_opacity gives
+            # this in one call (replacing the former four-method fallback stack).
             fit_index = grouped_fits.index(group_fit)
-            if fit_index == current_fit_index:
-                # Current fit: solid (full opacity)
-                alpha = 1.0  # Full opacity
-            else:
-                # Other fits: transparent (reduced alpha)
-                alpha = 0.4  # Semi-transparent
-            
-            # Try multiple approaches for transparency
+            alpha = 1.0 if fit_index == current_fit_index else 0.4
             try:
-                # Method 1: Try Qt graphics opacity effect
-                from qtpy import QtCore, QtGui
-                if hasattr(line, 'setGraphicsEffect'):
-                    effect = QtGui.QGraphicsOpacityEffect()
-                    effect.setOpacity(alpha)
-                    line.setGraphicsEffect(effect)
-                else:
-                    raise AttributeError("No graphics effect support")
-            except:
-                try:
-                    # Method 2: Set opacity on the line item
-                    line.setOpacity(alpha)
-                except:
-                    try:
-                        # Method 3: Use setAlpha
-                        line.setAlpha(int(alpha * 255), auto=False)
-                    except:
-                        try:
-                            # Method 4: Modify pen color with alpha
-                            current_pen = line.opts['pen']
-                            if hasattr(current_pen, 'color'):
-                                color = current_pen.color()
-                                if isinstance(color, str) and color.startswith('#'):
-                                    # Convert hex color to RGB and add alpha
-                                    rgb = tuple(int(color[i:i+2], 16) for i in (1, 3, 5))
-                                    # Use RGBA format instead of ARGB
-                                    new_color = f'#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}{int(alpha*255):02x}'
-                                    new_pen = pg.mkPen(new_color, width=current_pen.width())
-                                    line.setPen(new_pen)
-                                else:
-                                    # Create new pen with alpha using QColor
-                                    qcolor = QtGui.QColor(color)
-                                    qcolor.setAlphaF(alpha)
-                                    new_pen = pg.mkPen(qcolor, width=current_pen.width())
-                                    line.setPen(new_pen)
-                            else:
-                                # Direct pen color with QColor
-                                pen_color = current_pen
-                                if isinstance(pen_color, str) and pen_color.startswith('#'):
-                                    rgb = tuple(int(pen_color[i:i+2], 16) for i in (1, 3, 5))
-                                    qcolor = QtGui.QColor(*rgb)
-                                    qcolor.setAlphaF(alpha)
-                                    new_pen = pg.mkPen(qcolor, width=2)
-                                    line.setPen(new_pen)
-                        except:
-                            pass  # If all methods fail, continue without transparency
-                
-            line.setData(x=x_plot, y=y_plot)
+                line.set_opacity(alpha)
+            except Exception:
+                pass  # If opacity is unsupported, continue without transparency
+
+            line.set_data(x_plot, y_plot)
 
             # Show/hide based on checkbox state
             if not self.plot_controller.getCheckState(curve_key):

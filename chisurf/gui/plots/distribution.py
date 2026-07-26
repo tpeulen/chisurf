@@ -4,14 +4,57 @@ import pyqtgraph as pg
 import copy
 import numpy as np
 
-from chisurf.gui import QtWidgets
+from chisurf.gui import QtWidgets, QtCore
 from chisurf.gui.widgets.parameter_editor import ParameterEditor
 
 import chisurf.core.fitting
 import chisurf.core.fluorescence
 import chisurf.core.math.datatools
 from chisurf.gui.plots import plotbase
-from chisurf.gui.plots.lineplot.lineplot import DraggableTextItem
+
+
+class DraggableTextItem(pg.TextItem):
+    """A ``pg.TextItem`` the user can drag with the left mouse button.
+
+    Local to this still-pyqtgraph plot (mirroring ``residual_image``'s own
+    copy); the TCSPC LinePlot's equivalent has migrated to chiplot's
+    ``Plot.text(..., draggable=True, anchored=True)``. This copy retires when
+    :mod:`distribution` itself migrates to chiplot.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setAcceptHoverEvents(True)
+        self.setCursor(QtCore.Qt.OpenHandCursor)
+        self._dragging = False
+        self._drag_offset = QtCore.QPointF(0, 0)
+
+    def hoverEnterEvent(self, event):
+        self.setCursor(QtCore.Qt.OpenHandCursor)
+
+    def mousePressEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self._dragging = True
+            self.setCursor(QtCore.Qt.ClosedHandCursor)
+            self._drag_offset = event.pos()
+            event.accept()
+        else:
+            event.ignore()
+
+    def mouseMoveEvent(self, event):
+        if self._dragging and event.buttons() & QtCore.Qt.LeftButton:
+            self.setPos(self.mapToParent(event.pos() - self._drag_offset))
+            event.accept()
+        else:
+            event.ignore()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == QtCore.Qt.LeftButton:
+            self._dragging = False
+            self.setCursor(QtCore.Qt.OpenHandCursor)
+            event.accept()
+        else:
+            event.ignore()
 
 plot_settings = chisurf.core.settings.gui['plot']
 colors = plot_settings['colors']
