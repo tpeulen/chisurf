@@ -2,6 +2,33 @@
 
 ## 2026-07-26
 
+* **Particles get a tool, not just a library.** The tracking core landed
+  earlier today; this is the user-facing half. New `img_tracking` plugin
+  (Qt-free `core.py`, AutoForm `tracking.view.json`, `img-tracking` CLI, two RPC
+  methods) plus a **Tracking** panel in the Image Tools toolbox, placed **after
+  Drift** because a drifting sample is indistinguishable from directed motion.
+  See [plugins/imaging](/plugins/imaging.md).
+
+  The GUI is laid out as the three stages that can each fail on their own —
+  **1. Detect / 2. Link / 3. Transport** — because a problem in one is invisible
+  in the output of the next. Views: the movie with every detection marked (scrub
+  the frame slider and the markers should follow the particles — the cheapest
+  diagnostic there is), the trajectories, the MSD, a track-length histogram and a
+  per-track table.
+
+  **Two things the rendered PNG caught that no test would have.** The trajectory
+  plot was drawn with y increasing *upward* while the movie beside it has row 0
+  at the top, so the two views silently disagreed about where anything was; the
+  AutoForm plot section gained an `invert_y` field for image coordinates, which
+  any plot drawn beside its image needs. And the whole panel exists at all
+  because looking at it is how the layout got fixed.
+
+  Docs: [concepts/particle_tracking](docs/concepts/particle_tracking.md) and
+  [guide 50](docs/guides/50_particle_tracking.md), both with real screenshots of
+  a simulation with a **known** D — the figure shows 8 particles at
+  D = 0.5 px²/frame recovered as 0.504 ± 0.1, and the tool still printing a
+  "Read with care" note because eight tracks is not many. 20 plugin tests.
+
 * **One message box and one progress bar, everywhere.** Telling the user
   something went wrong, and showing how far the work has got, were each done
   four different ways: 604 raw `QMessageBox` statics, 14 hand-built boxes, a
