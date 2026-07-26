@@ -2,6 +2,28 @@
 
 ## 2026-07-26
 
+* **GUI walk of the filtered-FCS filter calculator (RF-190..RF-192).** Drove the
+  **FCS → 🧪 Filter Calc** panel headlessly the way a user does — detector
+  selection, both Auto-fit entry points, **🧩 Unmix**, the fit-range spin boxes,
+  every dock tab — on the tool's built-in 70/30 example (τ = 1.2 / 4 ns) and
+  through the `fcs-filter-calculator` CLI. The numerics are sound: the dock
+  auto-fit recovers `67 %·1.20 ns, 33 %·3.74 ns` at χ²ᵣ = 1.03 as linkable
+  `FittingParameter`s, the unmix returns 70.9 % / 29.1 %, and the CLI writes a
+  clean `(2, 256)` filter matrix. The GUI around them is not: selecting the panel
+  raises **five modal error boxes** and blocks (the plugin's own pytest suite
+  hangs on the same modal), the reconstruction and residual plots stay
+  permanently empty, and the toolbar **🎯 Auto-fit** silently fits a single
+  component whatever the user typed. Recorded as
+  [/usecases/ffcs-filter-calculator.md](/usecases/ffcs-filter-calculator.md);
+  three defects filed in [/reviews/findings.md](/reviews/findings.md) —
+  **RF-190**, `_clear_recon_plot` re-adds the chiplot `_Region` through the
+  pyqtgraph passthrough `addItem`, so every recompute dies with a `TypeError`
+  (regression from `ff7aec4ba`); **RF-191**, the toolbar Auto-fit action passes
+  `QAction.triggered`'s `checked=False` as `n_components`, and
+  `fit_lifetime_model` accepts `n_components=0` by quietly fitting one; and
+  **RF-192**, `_on_range_spin_changed` recomputes through the `_syncing_range`
+  guard, so opening the panel runs the filter computation six times, nested two
+  deep. No application source was changed.
 * **RF-042 fix — every curve of a multi-run ALV file was the same interleaved
   array.** `openASC_old` allocated its per-curve accumulators as
   `[[]] * len(curvelist)`, aliasing one list into every slot, so the row loop

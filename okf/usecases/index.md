@@ -75,6 +75,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   the MaxEnt MEM panel read decay, IRF and range from that fit and return a
   lifetime distribution; plus the hub's IRF-estimation and VV/VH G-factor
   calibration panels. *(last driven 2026-07-26; RF-169..RF-173)*
+- [filtered-FCS filter calculator](/usecases/ffcs-filter-calculator.md) — the
+  species-selective half of FCS: open the FCS window's *Filter Calc* tool,
+  auto-fit the mixed decay into lifetime components, compute the per-species
+  lifetime filters, unmix the mixture and export the filters for a filtered
+  correlation. *(last driven 2026-07-26; RF-190..RF-192)*
 - [FRET calculators](/usecases/fret-calculators.md) — open the Calculators hub,
   convert a measured efficiency into a donor–acceptor distance, bound the κ²
   orientation error, and generate a static FRET line to overlay on an smFRET
