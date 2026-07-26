@@ -3405,3 +3405,52 @@ downloads) `.cif`. RF-286..RF-290 below.
 - **Location:** `chisurf/plugins/chimol/chimol/analysis/symmetry.py:102` (`_TERM`)
 - **Finding:** `_TERM = re.compile(r"([+-]?)\s*(?:(\d+)\s*/\s*(\d+)|(\d*\.?\d+))?\s*\*?\s*([xyz]?)")` is module-level and never referenced — `grep -rn '_TERM' chisurf/plugins/chimol/` returns only the definition. `parse_symmetry_operator` uses an inline `re.finditer(r"[+-]?[^+-]+", cleaned)` and `_as_number` instead. It sits directly above the parser under the "Operators" banner and reads as the authoritative term grammar, so the next person editing the parser will reasonably assume it is the thing to change. Delete it, or make the parser use it.
 - **Fix note:**
+
+### Review 2026-07-26 — the PCH kernel (`plugins/pch/api/algorithms.py` + `pch.fit`)
+
+Slice: the PCH plugin's numerical core, picked because `c44d71839` had just landed
+in `_fit_handler` and the GUI walk (RF-208..RF-214) only ever exercised the layer
+above it. The GUI-side findings from that walk are not repeated here. What the
+walk could not see is that the **model itself is the wrong model**: the
+single-molecule integral omits the volume element, so the plugin fits a *1-D*
+Gaussian detection profile while the concept page, the guide and the in-repo FIDA
+route all state a 3-D Gaussian — a factor ≈2 in the shape factor γ₂ and ≈2.5–3×
+in the recovered brightness. Around it, three narrower defects: a `double`
+factorial ceiling that puts NaN into the residual, a hard-coded occupancy
+truncation, and a χ² that the CLI's own `refit` command cannot compute.
+RF-291..RF-295.
+
+### RF-291
+- **Status:** OPEN
+- **Severity:** S1 (the fitted molecular brightness — the plugin's whole purpose — is wrong by ≈2.5–3× because the single-molecule integral has no volume element)
+- **Location:** `chisurf/plugins/pch/api/algorithms.py:19-22` (the `for xi in x_vals` loop in `compute_p1`, `total += (brightness*exp_term)**k / fact * exp(-brightness*exp_term)`), reached through `pch_single_species:27-30`
+- **Finding:** `p^(1)(k) = (1/V)∫ (εPSF)^k/k! e^{-εPSF} dV` is evaluated as a **flat** sum over the reduced coordinate `x ∈ [0,5]` with `dV → dx`. The Jacobian is missing, so the implied brightness profile is `w(x) ∝ (-ln x)^{-1/2}/x` — a **1-D** Gaussian — not the 3-D Gaussian that `docs/concepts/pch_fida.md:76-78` names for exactly this function ("in ChiSurf the confocal volume is the 3-D Gaussian … `pch_single_species`") and whose shape factor the same page pins at `γ₂ = 2^{-3/2} ≈ 0.354` (`:36`). Verified with the convention-free moment identity `Var/⟨k⟩ − 1 = ε·γ₂`, which is independent of the ε/N normalisation: `pch_open_system` returns **γ₂ = 0.70827** for every (ε, N) in {0.5, 1, 2} × {0.5, 1} — i.e. `2^{-1/2}`, the 1-D value — while the sibling 3DG route in the same tree, `chisurf/core/models/pch/fida.py` (`fida_pch` with `dvdx_gaussian`, `w ∝ (-ln x)^{1/2}/x`), returns **0.35100** on the same grid. Inserting the spherical-shell weight (`total += xi*xi * …`) and nothing else makes `compute_p1` return **γ₂ = 0.3535533906**, exactly `2^{-3/2}` — which both identifies the omission and is the fix. The consequence is not a rescaling but a shape mismatch: feeding the plugin a histogram generated from the 3DG generating function (`fida_pch(60, [(q, 1.0)])`, 5 M bins, exact counts) and fitting it with `_fit_handler` recovers **ε = 0.7916 for a truth of q = 2.0** (0.396×, χ²ᵣ = 35) and **ε = 1.5161 for q = 5.0** (0.303×, χ²ᵣ = 1.4e3) — the 1-D model cannot reproduce a 3-D histogram at all, and the two documented-equivalent ChiSurf routes to (ε, N) disagree. None of the five kernels in `algorithms.py` carries a docstring, which is why the intended profile was never written down anywhere but the concept page. Pin it with the γ₂ moment assertion (0.354 to three digits) and a PCH-vs-FIDA agreement test.
+- **Fix note:**
+
+### RF-292
+- **Status:** OPEN
+- **Severity:** S2 (`p^(1)(k)` is exactly 0 for every k ≥ 171 and NaN above a brightness-dependent k, and the NaN reaches the optimiser)
+- **Location:** `chisurf/plugins/pch/api/algorithms.py:15-21` (`fact = 1.0; for j in range(1, k+1): fact *= j` and `(brightness*exp_term)**k / fact`), with `p1[0] = 1.0 - p1[1:].sum()` at `:23`
+- **Finding:** the Poisson term is formed as a ratio of two `double`s that both overflow. `k!` exceeds `DBL_MAX` at k = 171, so **`p1[k] == 0.0` exactly for every k ≥ 171 at any brightness** — verified: `pch_single_species(arange(300.), 10.0)` has `last non-zero k = 170`, `p1[170] = 3.3e-143`, `p1[171] = 0.0`. Above `k > 308/log10(ε)` the numerator overflows too and `inf/inf` gives **NaN**, which `p1[0] = 1 - p1[1:].sum()` then smears over the whole array: `pch_single_species(arange(400.), 20.0)` returns 164 non-finite entries with `p1[0] = nan` and `sum = nan` (measured thresholds: ε = 20 → NaN once the axis reaches 250, ε = 40 and ε = 100 → at 200; theory 237/192/154). Because `_fit_handler` bounds ε only from below (`bounds=(0, np.inf)`, `:164`), the optimiser reaches that region on its own, and a legitimate starting point already does: `_fit_handler(k_vals=arange(300.), initial_epsilons=[40.0], initial_Ns=[2.0])` returns `{"ok": False, "error": "Residuals are not finite in the initial point."}` (scipy), while ε = 5.0 on the same axis fits. A 300-long k axis is ordinary at 1 ms binning — the real file in RF-211 gives 126 k-values at 100 µs. Compute the term in log space (`k*log(εPSF) − lgamma(k+1) − εPSF`, then `exp`), which removes both the ceiling and the NaN; pin with `assert isfinite(pch_single_species(arange(400.), 100.0)).all()` and a non-zero `p1[200]`.
+- **Fix note:**
+
+### RF-293
+- **Status:** OPEN
+- **Severity:** S2 (the occupancy sum is truncated at N = 30 and the result silently renormalised, so a high-occupancy fit is biased with nothing to signal it)
+- **Location:** `chisurf/plugins/pch/api/algorithms.py:49` (`def pch_open_system(k_vals, brightness, avgN, maxN=30)`) and `:53-54` (`for N in range(maxN+1)`), called without `maxN` from `pch_mixture:62`; renormalised at `chisurf/plugins/pch/backend/services.py:161` (`pmod /= pmod.sum()`) and `:170`
+- **Finding:** `P(k) = Σ_N Poisson(N; ⟨N⟩) (p^(1))^{*N}` is cut at a fixed `maxN = 30` with no reference to `avgN`, and `maxN` is reachable from neither `pch.fit` nor the manifest, so a user cannot raise it. The Poisson mass actually captured is 98.65 % at ⟨N⟩ = 20, **54.84 %** at ⟨N⟩ = 30 and 0.16 % at ⟨N⟩ = 50 — and since `resid`/`p_fit` divide by `pmod.sum()`, the deficit is normalised away instead of showing up as a bad fit. Verified: `pch_open_system(arange(300.), 1.0, 30.0)` sums to 0.5484 and, after renormalisation, has mean **16.37** against **18.87** for `maxN=200` — a 13 % error in the model's mean counts/bin, in a model whose entire job is to separate ⟨N⟩ from ε. `least_squares` has no upper bound on ⟨N⟩ (`bounds=(0, np.inf)`), so the optimiser walks straight into the truncated region where the model stops responding to ⟨N⟩. Size the sum from the mean (e.g. grow until the Poisson tail is < 1e-8, or `⟨N⟩ + 8√⟨N⟩`); pin with `pch_open_system(k, ε, 30)` matching a `maxN=200` reference to 1e-6 and summing to 1.
+- **Fix note:**
+
+### RF-294
+- **Status:** OPEN
+- **Severity:** S2 (`csc pch refit` reports χ²ᵣ ≈ 0.000 for a fit whose real χ²ᵣ is 1.39 — a garbage number printed as a perfect fit)
+- **Location:** `chisurf/plugins/pch/backend/services.py:141-146` (`hc = … else pe * (total_bins or 1)`, `tb = total_bins or 1`) and `:171-175` (`exp_cnt = p_fit * tb`, χ² and `reduced_chi2`), driven by `chisurf/plugins/pch/cli/main.py:95-101` (`refit` passes neither `hist_counts` nor `total_bins`) and `:71-79` (`analyze`'s npz stores neither)
+- **Finding:** with `total_bins` omitted the Pearson χ² is computed between **probabilities** rather than counts — `Σ (p_exp − p_fit)²/p_fit` — because `tb` falls back to `1`. The fallback is not a corner case: it is the only path `csc pch refit` can take, and `analyze --output` writes an npz containing `k_vals`, `p_exp`, `p_fit` and the fit-result keys but **no** `hist_counts` and **no** `total_bins`, so a refit of ChiSurf's own saved file can never restore them. Verified on one synthetic histogram (ε = 3, ⟨N⟩ = 1.5, 1 M multinomial bins), same data both ways: with counts, `chi2 = 52.75`, `reduced_chi2 = 1.3882`, dof 38; without, `chi2 = 5.275e-05`, `reduced_chi2 = 1.388e-06` — which `cli/main.py:115` prints with `:.3f` as **`red. χ² = 0.000`**, i.e. the scale-free failure looks like an ideal fit rather than a missing input. Either refuse to report χ² without `total_bins` (return `None` and have the CLI print "n/a"), or add `hist_counts`/`total_bins` to the npz and pass them from `refit`. Related to RF-211, which is about the *weighting* of a χ² that does have counts; this one is about the χ² that has none.
+- **Fix note:**
+
+### RF-295
+- **Status:** OPEN
+- **Severity:** S3 (`pch.load_tttr` reports a fabricated micro-time range and a constant `has_micro_times`, and silently ignores its documented `channels` argument)
+- **Location:** `chisurf/plugins/pch/backend/services.py:46-47` (`"micro_time_range": [0, 65535]`, `"has_micro_times": True`) and `:32` (the unused `channels` parameter), against the `pch.load_tttr` description in `chisurf/plugins/pch/manifest.json`
+- **Finding:** the manifest advertises that the method "reports its metadata: available routing channels, total photon count, macro-time resolution and **micro-time range**", and that `channels` restricts "the metadata scan"; both are literals in the handler. `routing_channels` and `n_photons` are read from the file, the micro-time range is not. Verified on the shipped test files: `test/data/clsm/Leica_SP5.ptu` reports `[0, 65535]` where its micro-times actually span `0..2000` (`header.get_effective_number_of_micro_time_channels() == 1999`), and `Leica_SP8.ptu` reports `[0, 65535]` against an actual `0..3213` (3211 channels) — a range 20–30× too wide, so a client (or the GUI, once it stops hard-coding its spin-box bounds) that sizes a micro-time gate from this gets one that cannot be positioned meaningfully. `has_micro_times` is `True` even for a stream that carries none. The header call used by `chisurf/core/fio/tttr_shift.py:85` and `chisurf/core/fluorescence/burst/irf_bg.py:62` gives the real value; either read it or drop both keys and the `channels` parameter from the handler and the manifest.
+- **Fix note:**
