@@ -104,14 +104,22 @@ class FCS(ExperimentReader):
             Path to the FCS file.
         verbose : bool, optional
             If *True*, enable verbose output during reading.
+        reader_name : str, optional
+            Format to read the file as, overriding the reader's configured
+            :attr:`experiment_reader` for this call only. Without it the
+            configured format is used — which silently mattered: a caller
+            asking for ``'pqres'`` used to get the default ``kristine`` text
+            parser and a decode error on the binary file.
 
         Returns
         -------
         chisurf.core.data.ExperimentDataCurveGroup
             Group containing the loaded FCS curves.
         """
+        reader_name = kwargs.pop("reader_name", None) or self.experiment_reader
+        reader_name = str(reader_name).lower()
         csv_kwargs = {}
-        if self.experiment_reader == 'csv':
+        if reader_name == 'csv':
             csv_kwargs = dict(
                 col_x=self.col_x,
                 col_y=self.col_y,
@@ -125,7 +133,7 @@ class FCS(ExperimentReader):
             data_reader=self,
             skiprows=self.skiprows,
             use_header=self.use_header,
-            reader_name=self.experiment_reader,
+            reader_name=reader_name,
             experiment=getattr(self, 'experiment', None),
             weight_mode=getattr(self, 'weight_mode', None),
             weight_kwargs=getattr(self, 'weight_kwargs', None) or {},

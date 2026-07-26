@@ -175,16 +175,10 @@ Three red tests, each pointing at real behaviour rather than a stale test alone.
 Left open because each needs a decision from the owner of code being actively
 worked in this tree; the fourth found alongside them (a `np.float` in
 `test_fluorescence`, removed in NumPy 1.24) and three stale imports of the
-retired `_dev/fluorophore_db` plugin were fixed on the spot. The first of the
-three — the `calculcate_spectrum` term count — was resolved on 2026-07-25 and is
-recorded below.
+retired `_dev/fluorophore_db` plugin were fixed on the spot. Two of the three —
+the `calculcate_spectrum` term count and the binary `.pqres` read — were
+resolved on 2026-07-25 and 2026-07-26 and are recorded below.
 
-- **A binary `.pqres` file is read with `np.loadtxt`.**
-  `test_fluorescence/test_pqres.py::test_read_fcs_pqres` fails with
-  `UnicodeDecodeError` on byte 0xff — the PicoQuant result format is binary
-  (`PQRESLT\0` magic) and the FCS reader dispatches it to the text path. Either
-  the reader needs a binary branch for this format or the dispatcher must stop
-  claiming it.
 - **`test_structure.py::test_labeled_structure` fails on the labelled-structure
   path.** Molecular modelling has moved out of chisurf into the external
   framework, so this may be a test that outlived its subject rather than a
@@ -215,8 +209,21 @@ in the anisotropy area; neither is reachable from a production call path today.
   semantics for odd group sizes (does a 3-fit group really alternate vv/vh/vv?),
   which is an owner call.
 
-**Fixed 2026-07-25 — kept here because the *patterns* keep recurring**
+**Fixed 2026-07-25/26 — kept here because the *patterns* keep recurring**
 
+- **A binary `.pqres` file was read with `np.loadtxt`, and three layers had to
+  break for that to happen.** `FCS.read()` accepted a `reader_name` argument,
+  documented it, and then dropped it on the floor — every call used the reader's
+  configured default (`kristine`), so asking for `'pqres'` sent a binary file to
+  a text parser and it died on byte 0xff. Behind that, `read_pqres_fcs` returned
+  a `DataCurveGroup` where the dispatcher expects `list[dict]`, so the format had
+  never worked through `read_fcs` at all. Behind *that*, every `<base>X`/`<base>Y`
+  tag pair was promoted to a curve — the standard deviations, the weights and a
+  25 025-point TCSPC decay included — yielding 10 curves where the file holds 3.
+  **Pattern: a keyword argument that is accepted and ignored is worse than one
+  that raises; and a test that `print`s and `return`s reports green over all of
+  it.** (`test/fluorescence/test_pqres.py` now asserts the three named
+  correlations, their 54 lag times and finite non-zero weights.)
 - **The anisotropy spectrum test pinned a VH model that cannot be inverted.**
   The test asserted `−2·r` in the perpendicular channel where the code produces
   `−1·r`, and the "16 terms vs 8" term-count mismatch it was filed under was the

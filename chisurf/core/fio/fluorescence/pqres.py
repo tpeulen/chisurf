@@ -199,60 +199,98 @@ class PQResReader:
         return "\n".join(lines)
 
 
-def read_pqres_fcs(filename: str, data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None, 
-                  experiment: chisurf.core.experiments.core.experiment.Experiment = None, **kwargs) -> chisurf.core.data.DataCurveGroup:
+#: Suffixes SymPhoTime uses for the per-point error and weight of a curve.
+_COMPANION_SUFFIXES = ("StdDev", "Weight")
+
+#: Substrings marking a tag as a correlation curve rather than, say, the
+#: overall TCSPC decay that the same result file also carries.
+_CORRELATION_MARKERS = ("FCS", "FCCS")
+
+
+def _is_correlation_curve(name: str, curves: dict) -> bool:
+    """Whether *name* is a correlation curve rather than a companion or a decay.
+
+    Every array in the file is stored as a ``<base>X`` / ``<base>Y`` pair, so
+    the per-point standard deviations and weights look exactly like curves. A
+    companion is recognised by its suffix, and the remaining tags are kept only
+    when they name a correlation — the same file also holds the overall decay,
+    which is 25 000 points of TCSPC and not an FCS curve.
     """
-    Read a PicoQuant SymPhoTime .pqres FCS result file and return a DataCurveGroup.
+    if any(name.endswith(suffix) for suffix in _COMPANION_SUFFIXES):
+        return False
+    return any(marker in name for marker in _CORRELATION_MARKERS)
+
+
+def _companion(curves: dict, base: str, suffix: str, size: int):
+    """Return the ``StdDev``/``Weight`` array belonging to *base*, or ``None``.
+
+    The cross-correlation is stored as ``VarFCCSCurve`` while its companions
+    are named ``VarFCSCurve...`` — one C short — so the direct name is tried
+    first and that spelling second.
+    """
+    for candidate in (f"{base}{suffix}", f"{base.replace('FCCS', 'FCS')}{suffix}"):
+        curve = curves.get(candidate)
+        if curve is None:
+            continue
+        values = np.asarray(curve["Y"], dtype=np.float64)
+        if values.size == size:
+            return values
+    return None
+
+
+def read_pqres_fcs(filename: str, verbose: bool = False, **kwargs) -> list:
+    """Read the FCS curves of a PicoQuant SymPhoTime ``.pqres`` result file.
+
+    Returns the same shape every other FCS reader returns — one dict per
+    correlation curve — so ``read_fcs`` builds the curves, applies the shared
+    weight handling and attaches the reader, exactly as it does for the text
+    formats. Returning ready-made ``DataCurve`` objects instead (as this
+    function used to) meant the dispatcher's curve builder was handed something
+    it could not read, and a ``.pqres`` file could not be loaded at all.
 
     Parameters
     ----------
     filename : str
-        Path to the .pqres file
-    data_reader : chisurf.core.experiments.core.reader.ExperimentReader, optional
-        Data reader to use for reading the file
-    experiment : chisurf.core.experiments.core.experiment.Experiment, optional
-        Experiment to associate with the data
+        Path to the ``.pqres`` file.
+    verbose : bool, optional
+        Accepted for signature compatibility with the other readers.
     **kwargs
-        Additional keyword arguments to pass to the DataCurve constructor
+        Ignored; present so the dispatcher can pass its common arguments.
 
     Returns
     -------
-    chisurf.core.data.DataCurveGroup
-        A DataCurveGroup containing all curves in the .pqres file
+    list of dict
+        One entry per curve, with ``correlation_times``,
+        ``correlation_amplitudes``, ``correlation_amplitude_weights``,
+        ``measurement_id`` and ``filename``.
     """
     reader = PQResReader(filename)
     curves = reader.get_curves()
-
-    # Create a DataCurveGroup to hold all curves
-    curve_group = chisurf.core.data.DataCurveGroup([])
-
-    # Add each curve to the group
-    for name, curve_data in curves.items():
-        x = curve_data["X"]
-        y = curve_data["Y"]
-
-        # Use StdDev as error if available, otherwise use None
-        ex = np.zeros_like(x)
-        ey = curve_data["StdDev"] if curve_data["StdDev"].size else np.ones_like(y)
-
-        # Create a DataCurve for this curve
-        data_curve = chisurf.core.data.DataCurve(
-            x=x, 
-            y=y, 
-            ex=ex, 
-            ey=ey,
-            filename=filename,
-            data_reader=data_reader,
-            experiment=experiment,
-            name=name,
-            load_filename_on_init=False,
-            **kwargs
-        )
-
-        # Add the curve to the group
-        curve_group.append(data_curve)
-
-    return curve_group
+    out = []
+    for name in sorted(curves):
+        if not _is_correlation_curve(name, curves):
+            continue
+        curve = curves[name]
+        x = np.asarray(curve["X"], dtype=np.float64)
+        y = np.asarray(curve["Y"], dtype=np.float64)
+        std = _companion(curves, name, "StdDev", y.size)
+        # SymPhoTime stores the per-point standard deviation; the FCS stack
+        # weights by 1/sigma. Where it is absent or zero the dispatcher falls
+        # back to Suren photon-noise weights.
+        if std is not None and np.any(std > 0):
+            weights = np.zeros_like(std)
+            np.divide(1.0, std, out=weights, where=std > 0)
+        else:
+            weights = np.ones_like(y)
+        out.append({
+            "filename": filename,
+            "measurement_id": str(name),
+            "correlation_times": x,
+            "correlation_amplitudes": y,
+            "correlation_amplitude_weights": weights,
+            "acquisition_time": reader.get_tag("MeasDesc_AcquisitionTime", 0.0),
+        })
+    return out
 
 
 def read_pqres_tcspc(filename: str, data_reader: chisurf.core.experiments.core.reader.ExperimentReader = None, 

@@ -88,6 +88,34 @@
   attribute, so three-colour dynamics can use an arbitrary scheme but not fit one.
   Concept: [PRD-50](/prds/prd-50.md).
 
+* **A `.pqres` file could not be loaded, and three layers had to be wrong for
+  that.** The PicoQuant SymPhoTime result format is binary (`PQRESLT\0` magic)
+  and it was being handed to `np.loadtxt`, which died on byte 0xff. The reason
+  was not the parser. `FCS.read()` **accepted a `reader_name` argument and
+  dropped it**: every call used the reader's configured `experiment_reader`
+  (default `kristine`), so `read(filename=..., reader_name='pqres')` — the exact
+  call the test made — silently selected the text parser. Behind that,
+  `read_pqres_fcs` returned a `DataCurveGroup` where the dispatcher's curve
+  builder expects `list[dict]` with `correlation_times` /
+  `correlation_amplitudes` / `correlation_amplitude_weights`, so the format had
+  never worked *through* `read_fcs` at all. Behind that again, every
+  `<base>X`/`<base>Y` tag pair in the header was promoted to a curve — the
+  per-point `StdDev` and `Weight` companions and a 25 025-point TCSPC decay
+  included — yielding 10 pseudo-curves where the file holds three correlations.
+  Now: the argument overrides the configured format for one call, the reader
+  returns the shared dict shape (so weights, naming and reader attachment go
+  through the same path as every text format), and only tags naming a
+  correlation and not ending in a companion suffix become curves. The cross
+  correlation is stored as `VarFCCSCurve` while its companions are spelled
+  `VarFCSCurve…` — one C short — so companion lookup tries that spelling too.
+  Reading the example file yields exactly `VarAutoFCSA`, `VarAutoFCSB` and
+  `VarFCCSCurve`, 54 lag points each from 300 ns to 92 ms, with errors from the
+  file's own standard deviations. The test that was supposed to guard this
+  `print`ed and `return`ed a value instead of asserting, so pytest reported it
+  green throughout; it now pins the curve names, the lag axis and finite
+  non-zero weights. Recorded in
+  [known-issues](/references/known-issues.md).
+
 * **Labels have two names now, and the calibration belongs to the instrument.**
   A quantity is spelled one way for code and translators (`tau_D(0)`, `Phi_A`,
   `kappa^2`) and another for the reader. Writing the second by hand as HTML in a
