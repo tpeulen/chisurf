@@ -409,7 +409,7 @@ def test_condition_and_device_docks_create_update_and_delete_records(
     seeded_admin_db,
     qapp,
 ):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         condition_dock = _entity_dock(widget, qapp, "condition")
@@ -475,7 +475,7 @@ def test_experiment_type_dock_creates_updates_and_deletes_type(
     seeded_admin_db,
     qapp,
 ):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "experiment_type")
@@ -562,7 +562,7 @@ def test_user_entity_dock_selects_and_auto_saves_display_name(seeded_admin_db, q
 
 
 def test_user_entity_dock_creates_renames_and_deletes_user(seeded_admin_db, qapp):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "user")
@@ -602,7 +602,7 @@ def test_user_entity_dock_creates_renames_and_deletes_user(seeded_admin_db, qapp
 
 
 def test_user_entity_dock_prevents_builtin_user_delete(seeded_admin_db, qapp):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "user")
@@ -685,7 +685,7 @@ def test_object_entity_dock_copies_reveals_and_deletes_seeded_object(
 
 
 def test_branch_entity_dock_creates_updates_and_deletes_branch(seeded_admin_db, qapp):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "branch")

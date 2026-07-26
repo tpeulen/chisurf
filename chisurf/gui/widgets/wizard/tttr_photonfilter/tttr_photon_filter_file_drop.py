@@ -4,7 +4,7 @@ import tttrlib
 
 import chisurf.gui.decorators
 
-from .tttr_photon_filter_support import ProgressWindow
+from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui import dialogs
 
 
@@ -72,9 +72,9 @@ def install_file_drop(page):
 
         # Proceed with loading the files and showing progress
         total_files = len(page.settings['tttr_filenames'])
-        progress_window = ProgressWindow(title="Loading Files", message="Processing files...",
-                                         max_value=total_files, parent=page)
-        progress_window.show()
+        progress_window = ChiSurfProgress(
+            page, "Processing files...", total_files, title="Loading Files"
+        )
 
         for i, fn in enumerate(page.settings['tttr_filenames'], start=1):
             p = pathlib.Path(fn).resolve()

@@ -926,6 +926,49 @@
   imported `QtWidgets`, so every one of those error reports would itself have
   raised. `chisurf/macros/` keeps its Qt imports function-local — macros run
   head-lessly through the action layer and must not drag Qt in to be defined.
+* **Then the ways *around* the new class, which is where the inconsistency would
+  have crept back.** Nine sites still built the modal `EnhancedProgressDialog`
+  themselves — including the two hottest paths in the app, running a fit and
+  loading a slow file — so they popped a window regardless of being embedded in
+  a panel or running head-lessly. They now go through `ChiSurfProgress`, which
+  grew the last of the old dialog's contract (`finish(final_text=…,
+  auto_close=…, close_delay_ms=…)`, `finalize(force_auto_close=…)`) so each move
+  was a one-line change, plus a `cancel=` callback: work in a *thread* cannot
+  poll `wasCanceled()`, so fitting, FRET docking, H2MM and staged loading push
+  the stop instead. Two further progress classes are gone (`ProgressWindow` in
+  the photon-filter wizard, and a dead Qt-free stand-in in the BVA core), the
+  photon-filter zip routine lost the `isinstance(progress, …)` branching that
+  existed only because the handle could be one of two types, and the last three
+  hand-rolled `QProgressBar`s (plugin check, AV computation, the file-drop
+  loader) became the shared inline bar. The guard test now rejects
+  `EnhancedProgressDialog` outside the backend as well. Screenshots caught the
+  cosmetic half of it: two of those panels already print the running message in
+  their own status label, so the bar repeats it unless built with
+  `show_text=False`.
+* **And the bars declared in `.ui` files, which no amount of Python discipline
+  reaches.** Qt Designer cannot name an `InlineProgressWidget` without a
+  promotion, so `adopt_progress_bar(self)` swaps the child after `loadUi`:
+  it keeps the widget's place in the layout — grid cells and their spans
+  included, which a box-layout `insertWidget` would have quietly lost — and its
+  attribute name. The replacement answers the plain `QProgressBar` calls, so the
+  tool's own `self.progressBar.setValue(…)` is untouched; that façade is what
+  makes adopting the shared bar a one-line change per tool instead of a rewrite,
+  and it makes the tool a progress host at the same time. Applied to the
+  correlator, the burst selector and the PDB folder loader. The ribbon's
+  `addProgressBar` is deliberately left alone: it is one entry in a uniform
+  generated family of `addX` widget factories with no users, not a progress
+  mechanism.
+* **Two dead breakages surfaced under that last one.** `PDBFolderLoad` cannot be
+  constructed at all, and has not been for some time: `LoadThread`'s
+  `procDone`/`partDone` signals were left commented out in the PyQt-to-qtpy move
+  (their `pyqtSignal` spelling did not survive), and the class then calls a
+  `TrajectoryFile` whose signature has since changed twice over. The signals are
+  restored; the `TrajectoryFile` port needs intent that no longer exists in the
+  code (`use_objects`, `calc_internal` name nothing the current class has), so it
+  is written up in [known issues](/references/known-issues.md) rather than
+  guessed at. The modelling experiment page builds this widget, so it is broken
+  too.
+
 
 
 * **chimol: `h_add`/`h_fill`, and why a template beats counting valences.** The

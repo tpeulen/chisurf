@@ -143,10 +143,18 @@ empty and the parallel `MyMessageBox` class is gone.
 the work was started from and resolves the display nearest-first: an inline
 `progress` section in the same panel → the navigation shell's shared status bar
 → a modal dialog when standalone → the log when there is no GUI. The handle
-duck-types both `QProgressDialog` and the status-bar task, so migrating a call
-site is a one-line change. `iterate()` wraps a loop (range from `len`, stops on
-Cancel, closes on exit); `maximum=0` is a busy indicator; cancellation is
-cooperative.
+duck-types both `QProgressDialog` (including `finish(final_text=…, auto_close=…,
+close_delay_ms=…)` / `finalize(force_auto_close=…)`) and the status-bar task, so
+migrating a call site is a one-line change. `iterate()` wraps a loop (range from
+`len`, stops on Cancel, closes on exit); `maximum=0` is a busy indicator.
+Cancellation is cooperative in two forms: a GUI-thread loop polls
+`wasCanceled()`, while threaded work (fitting, FRET docking, H2MM, staged
+loading) passes `cancel=<callable>` so the stop is *pushed* to the thread — a
+flag it never reads would let the run continue to the end. The modal
+`EnhancedProgressDialog` is now strictly the *backend*: constructing it directly
+pins work to a popup even when embedded or headless, so the guard test rejects
+it, and the two further duplicates (a `ProgressWindow` in the photon-filter
+wizard and a dead Qt-free stand-in in the BVA core) are gone.
 
 The `progress` **AutoForm section** (`{"type": "custom", "key": "progress"}`) is
 what makes this wiring-free: the widget itself is a progress host, so a run
@@ -154,10 +162,20 @@ button in the same form is found by walking up from it. Note the bar is normally
 a *sibling* of the button, never an ancestor — resolution therefore looks inside
 each ancestor as it climbs, which is exactly the run-button-plus-bar row four
 plugins had each hand-rolled. Options: `cancellable`, `hide_when_idle`,
-`show_text`, `handle` (publish the widget on the model), and `target` (a model
-attribute holding a fraction 0–1 or percent, polled on refresh) for progress a
-model owns rather than a GUI loop drives; a live task always wins over a stale
-model value.
+`show_text` (turn it off where the surrounding tool already prints the running
+message in its own label, or it appears twice), `handle` (publish the widget on
+the model), and `target` (a model attribute holding a fraction 0–1 or percent,
+polled on refresh) for progress a model owns rather than a GUI loop drives; a
+live task always wins over a stale model value.
+
+Tools whose layout comes from a `.ui` file cannot declare that widget without a
+Designer promotion, so they call `adopt_progress_bar(self)` after `loadUi`: the
+child named `progressBar` is swapped in place, keeping its position (grid cells
+and spans included) and its attribute name. The replacement answers the plain
+`QProgressBar` calls (`setValue`, `setRange`, …), so the tool's existing code is
+untouched — that façade is what makes adopting the shared bar a one-line change
+rather than a rewrite, and it turns the tool into a progress host at the same
+time.
 
 A `panel`'s (or `parameter_group_table`'s / `dynamic_group`'s)
 `collapsed_when: {target?, attr, equals|not_equals}` folds it based on a bound

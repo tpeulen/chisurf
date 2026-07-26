@@ -34,7 +34,6 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
-    QProgressDialog,
     QPushButton,
     QSizePolicy,
     QSplitter,

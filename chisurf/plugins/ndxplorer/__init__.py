@@ -125,7 +125,6 @@ if __name__ == "plugin":
     # Calibrate the loaded measurement: the correction constants ndx applies
     # should follow from the data in the window, not from typed-in guesses.
     try:
-        from qtpy import QtWidgets
 
         from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 

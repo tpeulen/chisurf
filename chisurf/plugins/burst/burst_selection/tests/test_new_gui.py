@@ -385,9 +385,14 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
             }
 
     class FakeDialog:
-        """Progress-dialog stand-in for headless batch tests."""
+        """Progress stand-in for headless batch tests.
 
-        def __init__(self, **_kwargs: object) -> None:
+        ``ChiSurfProgress`` would already be harmless here (head-lessly it writes
+        to the log), but the test asserts on the closing message, so it stands in
+        to capture it.
+        """
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.finished: list[str] = []
 
         def show(self) -> None:
@@ -416,7 +421,7 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
 
     client = FakeClient()
     summary_text: list[str] = []
-    monkeypatch.setattr(tool_module, "EnhancedProgressDialog", FakeDialog)
+    monkeypatch.setattr(tool_module, "ChiSurfProgress", FakeDialog)
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
     tool._file_paths = paths
     tool._client = client

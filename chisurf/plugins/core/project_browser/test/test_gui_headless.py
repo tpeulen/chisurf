@@ -185,7 +185,6 @@ def test_project_browser_gui_deletes_selected_version_with_confirmation(
     tmp_path,
     monkeypatch,
 ):
-    from qtpy import QtWidgets
     from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
     from chisurf.plugins.core.project_browser.backend.services import (
         save_project_handler,
@@ -299,7 +298,7 @@ def test_project_browser_gui_restores_selected_version_into_chisurf_context(
     import chisurf as cs
     import chisurf.macros.core_fit as core_fit
     from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
     from chisurf.plugins.core.project_browser.backend.services import (
         save_project_handler,
     )

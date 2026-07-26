@@ -10,7 +10,6 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets as gui_widgets
-import chisurf.gui.widgets.general as gui_general
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor import SimpleCodeEditor
 

@@ -28,7 +28,8 @@ try:
 except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
-from chisurf.gui.widgets.progress import EnhancedProgressDialog
+from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
+from chisurf.gui.progress import ChiSurfProgress
 
 from .. import adapter as burst_gui
 from ..gmm_settings_dialog import GMMSettingsDialog
@@ -200,14 +201,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
             dialogs.information(self, "No items", "No folders to process.")
             return
 
-        progress = EnhancedProgressDialog(
-            title="Batch Processing",
-            label_text="Starting batch...",
-            min_value=0,
-            max_value=n,
-            parent=self
-        )
-        progress.show()
+        progress = ChiSurfProgress(self, "Starting batch...", n, title="Batch Processing")
 
         # Ensure wizard UI is enabled during processing; wizard.process_all_files manages its own state
         for i in range(n):
@@ -375,6 +369,9 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         # ---------------------------------------------------------
         # base class init is called by decorator
         # super().__init__(*args, **kwargs)
+
+        # The bar comes from the .ui file; swap in the shared one.
+        adopt_progress_bar(self)
 
         # Store the initial visibility settings
         self.show_channel_selection = show_channel_selection
