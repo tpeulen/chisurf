@@ -124,6 +124,42 @@ Note this was invisible before, because the rate matrix was a plain array
 attribute nobody could fit — the bias only became reachable when the rates
 became parameters.
 
+**Narrowed down 2026-07-26, with the exact statement of the defect.** The same
+approximation has a consequence with a *checkable* answer: **the multistate
+route does not nest the static model.** At 1e-3 Hz over a 2 ms window nothing
+switches, so every molecule sits in one state for the whole burst and the
+likelihood must equal the static mixture's term for term. It is off by **2357
+log-likelihood units** — because a pure trajectory is evaluated at its
+distance-*averaged* probability vector where the static model integrates the
+likelihood over the distance distribution, and those differ by Jensen. A
+static-versus-dynamic comparison (an F-test, a model choice) is therefore
+meaningless in exactly the regime where the two models are nested.
+`test/models/test_tcpda_rates.py::test_the_multistate_route_nests_the_static_model`
+records this as a **strict xfail**, so it will fail loudly when fixed.
+
+**Two approaches tried and rejected, so nobody repeats them:**
+
+1. *Exact atoms alone.* Giving pure trajectories the full static treatment, with
+   the analytic weight `pi_i exp(-lambda_i T)` rather than their sampled
+   frequency, makes the static limit exact to five decimals and removes a
+   1901-unit spike at slow exchange (caused by occupancy quantisation merging a
+   switching trajectory into a near-pure cell). But it leaves the *interior*
+   annealed, and the halves are then inconsistent: the fit compensates by
+   slowing exchange, the recovered rate moves from 199 to **65** against a truth
+   of 200, and the profile bias flips from +30% to −30% (stably, 300–350 Hz at
+   every sampling setting). Fixing one half alone is not an improvement.
+2. *Sampling the joint average.* Drawing one quenched distance triple per state
+   per occupancy node is the right average in principle, but the node labels
+   *are* the occupancies, which shift continuously with the rates — so
+   neighbouring evaluations see unrelated conformations however the draws are
+   keyed (a per-node hash of the quantised occupancy included). The optimiser
+   reads the noise as structure and walks off: 200 → 52.
+
+**The fix is to carry the distance quadrature through the occupancy average** —
+both halves together, deterministically — and the open question is where to
+truncate it, since the product over states is combinatorial in the quadrature
+nodes.
+
 **Found 2026-07-26 while adding typeset labels.** `pytest test/fitting` used to
 **abort the interpreter** part-way through (~47 %), so everything after it never
 ran. `chisurf/macros/core_data.py::add_dataset` popped a `MyMessageBox` on its

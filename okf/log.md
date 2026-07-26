@@ -2,6 +2,31 @@
 
 ## 2026-07-26
 
+* **The tcPDA rate bias has an exact statement now: the dynamic model does not
+  nest the static one.** Went after the bias filed earlier and found the sharp
+  version of it — at 1e-3 Hz over a 2 ms window nothing switches, so the
+  multistate likelihood must equal the static mixture's term for term, and it is
+  off by **2357 log-likelihood units**. A pure trajectory is evaluated at its
+  distance-*averaged* probability vector where the static model integrates the
+  likelihood over the distance distribution; those differ by Jensen. So a
+  static-versus-dynamic F-test is meaningless in exactly the regime where the two
+  models are nested. Recorded as a **strict xfail**
+  (`test_the_multistate_route_nests_the_static_model`) so it fails loudly when
+  fixed, with the diagnosis and two rejected approaches in
+  [references/known-issues.md](/references/known-issues.md).
+
+  **Not shipped, deliberately.** Giving the pure trajectories their exact static
+  treatment with analytic atom weights makes the limit exact to five decimals and
+  removes a 1901-unit spike at slow exchange — but it leaves the interior
+  annealed, and the inconsistent halves make the fit *worse*: the recovered rate
+  goes from 199 to 65 against a truth of 200 and the profile bias flips from +30%
+  to −30%. Sampling the joint average instead makes the objective jagged (the
+  node labels are the occupancies, which move continuously with the rates), and
+  the optimiser walks off to 52. The two halves have to move together, by
+  carrying the distance quadrature through the occupancy average; where to
+  truncate that product is the open design question. Reverted rather than land
+  half of a fix that degrades the capability it is meant to improve.
+
 * **The CLSM tool is the first host of the shared region GUI, and the migration
   found two interoperability breaks.** Its bespoke `{name: ROI}` dict and its
   `_RoiList` widget (the only real region *manager* in the tree) are replaced by

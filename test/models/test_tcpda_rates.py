@@ -316,3 +316,50 @@ def test_a_rate_is_recovered_from_a_wrong_start():
     model.fit.run()
 
     assert model.rates_by_name()["k1_2"].value == pytest.approx(200.0, rel=0.35)
+
+
+# -- the defect behind the rate bias, as an executable record ----------------
+
+
+@pytest.mark.xfail(
+    reason="the multistate route does not nest the static model: pure "
+           "trajectories are evaluated at their mean probability instead of "
+           "integrated over their distance distribution. See known-issues.",
+    strict=True,
+)
+def test_the_multistate_route_nests_the_static_model():
+    """At frozen exchange the dynamic model must *be* the static mixture.
+
+    Nothing switches in 2 ms at 1e-3 Hz, so every molecule sits in one state for
+    the whole burst and the likelihood is the static mixture's, term for term.
+    It is not: the route collapses each state to its distance-averaged
+    probability vector and evaluates the likelihood there, where the static
+    model integrates the likelihood over the distance distribution. Those differ
+    by Jensen's inequality, and here by **2357 log-likelihood units** — so a
+    static-versus-dynamic comparison (an F-test, a model choice) is meaningless
+    in the regime where the two models are nested.
+
+    This is the same defect as the rate bias recorded in the module docstring,
+    seen from the side where there is an exact answer to check against. Fixing
+    only this half is not an improvement: giving the pure trajectories their
+    exact static treatment makes the limit exact but leaves the interior
+    annealed, and the fit then compensates by slowing exchange — the recovered
+    rate moves from 199 to 65 against a truth of 200, and the profile bias flips
+    from +30% to -30%. Both halves have to move together, by carrying the
+    distance quadrature through the occupancy average.
+    """
+    model = _model(n_extra_species=1, n_bursts=400)
+    for parameter, value in zip(model.species._means[:3], (45.0, 42.0, 58.0)):
+        parameter.value = value
+    model.species._means[3].value = 70.0
+    model.species._means[4].value = 64.0
+    model.species._means[5].value = 82.0
+    for amplitude in model.species._amplitudes:
+        amplitude.value = 1.0
+
+    static = model.total_log_likelihood()
+
+    model.dynamic = True
+    frozen = 1e-3                                   # one switch per ~17 minutes
+    model.rate_matrix = np.array([[0.0, frozen], [frozen, 0.0]])
+    assert model.total_log_likelihood() == pytest.approx(static, rel=1e-6)
