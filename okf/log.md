@@ -2,6 +2,41 @@
 
 ## 2026-07-26
 
+* **GUI walk — H2MM: the analysis is fast and clean, the reporting around it is
+  not.** Drove `H2mmTool` headlessly end to end (Run with nothing loaded, folder
+  drag-drop, `BS` setup, donor/acceptor/Aex combos, state-count scan, all seven
+  result docks, burst state-path navigation, **±** bootstrap, **📈** likelihood
+  scan, **💾** save, **ℹ** help) on the repo's `bh_spc132_sm_dna` burst folder —
+  2 980 bursts, ~220 000 photons. Recorded as
+  [usecases/h2mm-burst-dynamics](/usecases/h2mm-burst-dynamics.md).
+
+  The machinery is genuinely good: states 1–3 in 20.5 s and 1–4 in 126 s with a
+  live ETA and live criterion/FRET plots, a 20-resample bootstrap in 73 s, a
+  150-evaluation likelihood scan in 23 s, each cancellable, and not one traceback
+  or hang across two full runs.
+
+  What surrounds it is where a user is misled. Seven findings, RF-321..RF-327.
+  Two matter most. **RF-322:** with Max states 4, BIC fell monotonically while
+  ICL exploded (197 291 → 240 711) and the 4-state fit hit the iteration cap
+  *without converging* — the tool reported "Selected 4 states (BIC)" and drew
+  states exchanging at 20 537 s⁻¹; the `converged` flag is computed, stored, and
+  read by nothing in the GUI, CLI or export. **RF-321:** every burst's first and
+  last Viterbi dwell is cut off by the burst boundary and is pooled with the
+  complete ones — 4 458 of 11 905 dwells touch an edge and, for the two slow
+  states, only 4 of 1 378 and 3 of 156 dwells are interior — so the *Dwell times*
+  panel reports 1.14 ms where the *Transition rates* panel beside it says
+  1/k = 64.8 ms. The exported per-dwell CSV already carries the `Is Edge` column
+  the GUI does not use.
+
+  The rest: the transition-density plot is built from the model's per-state E, so
+  it can only be delta peaks (RF-323); the dwell-E histogram is photon-weighted
+  under a "Dwells" axis label (RF-324); the likelihood-scan dialog hard-codes
+  0–1 axes, so its confidence intervals are sub-pixel (RF-325); the Aex combo
+  auto-picks a third detector and silently turns two-colour data into an E–S
+  analysis with a degenerate S ≈ 0.95 (RF-326); and in the shared detector page
+  three fixed 143 px `QLineEdit` columns starve the identifying ones, so
+  `2048:4095` renders as `048:4095` (RF-327). No application source touched.
+
 * **chimol: `remove` changed how everything else was drawn.** Reported as
   "remove waters changes rep", and it was three faults stacked — each of which
   alone would have been enough.

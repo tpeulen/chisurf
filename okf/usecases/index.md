@@ -116,6 +116,13 @@ The workflows a first pass should cover — expand as the tester discovers more:
   Channel Definition editor's LUT Tools, add it to the detector setup, and have
   every later TTTR read linearized at the `staging.open_tttr` seam.
   *(last driven 2026-07-26; RF-291..RF-299)*
+- [H2MM — dynamics inside the burst](/usecases/h2mm-burst-dynamics.md) — what a
+  FRET histogram cannot answer: point the photon-by-photon HMM at an existing
+  `.bur` folder, assign donor/acceptor (and optionally Aex) streams, scan state
+  counts with BIC/ICL, and read the dwell FRET states, transition rates, dwell
+  times, per-state decays and the per-burst Viterbi state path — plus the
+  bootstrap and likelihood-profile confidence intervals.
+  *(last driven 2026-07-26; RF-321..RF-327)*
 
 ## Per-workflow file format
 
