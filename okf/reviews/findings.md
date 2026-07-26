@@ -2950,7 +2950,7 @@ setup the class docstring advertises as the way to express a scheme (RF-261).
 Findings RF-258..RF-262.
 
 ### RF-258
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the default route puts ~30 % of the probability spectrum on FRET states the scheme cannot produce, and is ~8× further from the exact law than the same approximation on the right support)
 - **Location:** `chisurf/core/fluorescence/kinetics.py:205-206` (`szabo_gopich_quadrature`, `lower: float = 0.0, upper: float = 1.0`) with `:247-249` and `:268`, called at `chisurf/core/models/pda/dynamic_mc.py:372-375` without `lower`/`upper`
 - **Finding:** The beta is moment-matched on ``[lower, upper] = [0, 1]`` rather than on the interval the observable can actually reach. A time average of a piecewise-constant observable taking values ``v_i`` is a convex combination of them, so it lives on ``[min(v), max(v)]`` — support ``[0, 1]`` is only correct when a state has ``pG = 0`` and another ``pG = 1``. Verified against **two independent references** (the exact two-state law `two_state_occupation_quadrature`, and a direct Gillespie simulation) for two states with ``pG = 0.35 / 0.65``, symmetric exchange, `n_nodes=2048`, total variation on 81 bins over ``[0, 1]``:
@@ -2963,7 +2963,30 @@ Findings RF-258..RF-262.
   | 40 | 0.007 | 0.008 | 0.000 |
 
   In slow exchange (`K = 0.4`) **30.5 % of the weight sits at green probabilities no mixture of the two states can produce**, including spikes at ``pG = 0`` and ``pG = 1``; that spectrum goes straight into `tttrlib.Pda`, so the modelled S1S2 histogram carries donor-only-like and acceptor-only-like populations the scheme never contains. The same holds at wider spans (`pG = 0.1/0.9`: TV 0.799 vs 0.096 at `K = 0.4`). This also revises the commit message's own explanation: the slow-exchange error is dominated by the wrong support, not by "a beta density cannot represent the point masses" — on ``[min(v), max(v)]`` the ``concentration → 0`` limit *is* two atoms at the state values, which is why TV falls 12×. Pass ``lower=float(np.min(values)), upper=float(np.max(values))`` (defaulting to the value range inside `szabo_gopich_quadrature` is the cleaner fix, since every caller wants it). Note the moments are preserved either way, so `test_the_quadrature_reproduces_the_moments_it_was_matched_to` cannot see this; the discriminating test is TV against `two_state_occupation_quadrature`, or simply asserting `nodes` never leaves ``[min(values), max(values)]``.
-- **Fix note:**
+- **Fix note:** Reproduced exactly (TV 0.786 / 0.436 / 0.060 / 0.007 on `[0, 1]`
+  against 0.065 / 0.150 / 0.056 / 0.010 on `[min, max]`, 30.5 % of the weight
+  outside `[0.35, 0.65]` at `K = 0.4`) and fixed inside
+  `szabo_gopich_quadrature`, as the finding suggests: `lower`/`upper` are now
+  `None` by default and fall back to `min(values)` / `max(values)`, the interval
+  a convex combination of the state values can actually reach. An explicit
+  support is still honoured for a caller that wants a wider one. Pinned by
+  `test/models/test_szabo_gopich.py::test_the_quadrature_stays_on_the_support_the_states_can_reach`
+  (nodes never leave the value range across five windows; the explicit `[0, 1]`
+  support still widens them) and
+  `::test_slow_two_state_exchange_follows_the_exact_occupation_law` (total
+  variation against `two_state_occupation_quadrature` at `k_ex` = 0.4 / 1.6 / 8).
+  Consequence, verified at model level: the two-state slow-exchange limit of the
+  `szabo-gopich` route is gone (TV against the exact law 0.242 → 0.010 at
+  `K = 0.4`), so `test_pda_time_binned.py`'s moment-match test — which pinned the
+  old failure — now asserts the agreement, renamed to
+  `test_the_moment_match_follows_the_boundary_atoms_on_the_reachable_support`.
+  Three or more resolved states are still multi-modal and still need
+  `monte-carlo` (TV 0.138 at `k·T = 0.004`), so that guidance is narrowed rather
+  than dropped in `dynamic_mc.py`'s module docstring, the `method` comment and
+  `docs/concepts/pda.md`. `test/models/` + `test/fluorescence/test_gopich_szabo.py`
+  + `test/fitting/test_{rate_scheme_exposure,kinetics_parameters}.py` green (345
+  passed, plus the 9 `slow`-marked PDA tests and `test/gui/test_pda_model_editor.py`);
+  `ruff check` clean on the touched files.
 
 ### RF-259
 - **Status:** OPEN

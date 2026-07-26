@@ -29,12 +29,15 @@ handed to :class:`tttrlib.Pda`.
 The distribution of ``f`` comes from one of two routes, both valid for any ``N``:
 
 * ``"szabo-gopich"`` (default) matches a bounded shape to the exact first two
-  moments — deterministic, so the fit objective is smooth;
+  moments, on the interval the time average can reach (``[min pG, max pG]``) --
+  deterministic, so the fit objective is smooth;
 * ``"monte-carlo"`` samples occupation times with
   :func:`chisurf.core.fluorescence.kinetics.occupation_time_fractions`, which
   runs the photon simulator's kinetics rather than a second Gillespie loop here.
-  Exact, at the cost of a stochastic objective; needed in the slow-exchange limit
-  where the distribution is multimodal and no two-moment match has three peaks.
+  Exact, at the cost of a stochastic objective; needed once *three or more*
+  states are slow enough to be resolved, where the distribution is multimodal
+  and no two-moment match has three peaks. Two slow states are covered by the
+  moment match, whose zero-concentration limit is the static mixture itself.
 
 The sampled result is cached on the rate matrix, observation time and sample
 count, so it reruns only when the kinetics actually change.
@@ -205,8 +208,10 @@ class PdaDynamicNStateModel(PdaDiagnosticsMixin, ModelCurve):
         #: route is the default because a stochastic objective makes the fit
         #: itself noisy -- the optimiser sees simulation scatter as structure.
         #: It agrees with sampling to ~1% once there is more than a transition
-        #: or two per window; in the slow-exchange limit the true distribution
-        #: is trimodal and a two-moment match cannot follow it, so use
+        #: or two per window, and on two states to ~1% at any exchange rate,
+        #: because the shape is matched on the interval the time average can
+        #: reach; with three or more resolved states the true distribution is
+        #: trimodal and a two-moment match cannot follow it, so use
         #: ``"monte-carlo"`` there -- or a static multi-species model, which is
         #: what slow exchange actually means.
         self.method = "szabo-gopich"

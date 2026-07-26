@@ -174,13 +174,21 @@ because slow exchange makes the distribution multi-modal and no two-parameter
 shape has three peaks, the occupation times can be **sampled** instead.
 
 The choice between them is not a matter of taste, and the boundary is
-measurable. The moment match fits a *density*, while the exact occupation-time
-law is not one: a molecule that never switched during the window sits on a point
-mass at $f = 0$ or $f = 1$. Checked at $N = 2$, where the exact law is available,
-the total-variation error of the moment match tracks the mass in those atoms —
-0.24 when they hold 82% of the distribution, 0.001 when they hold none — while
-the sampled route stays within 0.03 throughout. So: sample when the exchange is
-slow enough that molecules survive the window without switching.
+measurable — it is set by the number of states, not by the exchange rate. What
+makes the moment match work is that the shape is matched on the interval the
+time average can actually *reach*. A time average of a piecewise-constant
+observable is a convex combination of the state values, so it lives on
+$[\min_i p_{G,i}, \max_i p_{G,i}]$ and not on $[0, 1]$; matched there, the
+$\text{concentration} \to 0$ limit of the bounded shape is exactly two atoms at
+the extreme state values, which is the static mixture. Checked at $N = 2$, where
+the exact law is available, the total-variation error of the moment match stays
+within 0.02 across the whole range — 0.010 in slow exchange, where a molecule
+that never switched puts 82% of the distribution on the point masses at $f = 0$
+and $f = 1$, and 0.000 in fast exchange — as does the sampled route. (Matched on
+$[0, 1]$ instead, the same two moments give 0.24 in slow exchange, with 30% of
+the weight on green probabilities no mixture of the two states can produce.) So:
+sample when three or more states are slow enough to be resolved, because then the
+time average is genuinely multi-modal and no two-parameter shape has three peaks.
 
 That sampling runs in the photon simulator's kinetics rather than in ChiSurf.
 The simulator records a *state trajectory* — every transition with the time it

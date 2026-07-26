@@ -2,6 +2,36 @@
 
 ## 2026-07-26
 
+* **Dynamic PDA's moment match was matched on the wrong support (RF-258).** The
+  Szabo–Gopich route in
+  [`chisurf/core/fluorescence/kinetics.py`](chisurf/core/fluorescence/kinetics.py)
+  fitted its beta on `[0, 1]` — the interval a green probability is *defined* on.
+  But the observable is a **time average** of a piecewise-constant quantity, i.e.
+  a convex combination of the state values, so it can only reach
+  `[min(pG), max(pG)]`. On the wider support the two moments are still exact and
+  the shape is still normalised, which is why the existing moment test could not
+  see it: what leaks is *where* the weight goes. For two states at 0.35/0.65
+  exchanging once per observation window, 30 % of the spectrum sat outside
+  `[0.35, 0.65]`, with spikes at `pG = 0` and `pG = 1` — donor-only-like and
+  acceptor-only-like populations, in a modelled S1S2 histogram whose scheme
+  contains neither. `lower`/`upper` now default to the range of `values`.
+  **This overturns the slow-exchange story, not just a number.** On the reachable
+  support the `concentration -> 0` limit of a beta *is* two atoms at the extreme
+  state values — the static mixture itself — so the boundary atoms the old note
+  blamed are reproduced rather than missed. Total variation against the exact
+  two-state occupation law at `K = 0.4`: **0.242 → 0.010**, matching the sampled
+  route. The guidance to switch to `monte-carlo` therefore narrows from "when
+  exchange is slow" to "when **three or more** states are resolved", where the
+  time average is genuinely trimodal and no two-parameter shape has three peaks
+  (three-state TV after the fix: 0.138 / 0.110 / 0.016 / 0.003 at `k·T` = 0.004 /
+  0.4 / 4 / 40). Pinned in `test/models/test_szabo_gopich.py` by a support test
+  (which the moment test cannot replace) and a total-variation test against
+  `two_state_occupation_quadrature`; `test_pda_time_binned.py`'s moment-match
+  test asserted the *old* failure and now asserts the agreement. Narrowed
+  guidance follows into `dynamic_mc.py` and
+  [`docs/concepts/pda.md`](docs/concepts/pda.md). See
+  [prds/prd-50.md](/prds/prd-50.md).
+
 * **chimol: `sort` and `mask`/`unmask`.** The priority table is transcribed from
   `AtomInfoAssignParameters`, and reading the C++ overturned a conclusion I had
   already drawn from data. My first rule folded the branch digit into the priority

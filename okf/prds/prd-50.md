@@ -357,6 +357,39 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   and the acquisition simulator. See [PRD-65](prd-65.md) for the three-colour
   side and [subsystems/fitting.md](/subsystems/fitting.md) for the module.
 
+- **The moment match was matched on the wrong support (2026-07-26).** Review
+  finding RF-258, and it revises the bullet above: the slow-exchange error of the
+  `szabo-gopich` route was **the support, not the boundary atoms**.
+  `szabo_gopich_quadrature` matched its beta on `[0, 1]` — the interval a green
+  probability is *defined* on — where a time average of a piecewise-constant
+  observable is a convex combination of the state values and can only reach
+  `[min(pG), max(pG)]`. Matched on that reachable interval instead (the new
+  default; an explicit `lower`/`upper` still wins), the `concentration -> 0`
+  limit *is* two atoms at the state values, i.e. the static mixture, and the same
+  two moments give:
+
+  ======  ==============  ==================  =======  =========
+  K       beta on [0, 1]  beta on [min, max]  sampled  atom mass
+  ======  ==============  ==================  =======  =========
+  0.4     0.242           0.010               0.012    0.819
+  1.6     0.121           0.022               0.017    0.450
+  8       0.013           0.010               0.009    0.018
+  40      0.001           0.000               0.003    0.000
+  ======  ==============  ==================  =======  =========
+
+  At `K = 0.4` the old route put **30 % of the weight outside `[0.35, 0.65]`**
+  for two states at those values, including spikes at `pG = 0` and `pG = 1` — so
+  the modelled S1S2 histogram carried donor-only-like and acceptor-only-like
+  populations the scheme never contains. Two slow states are therefore now
+  covered by the analytic route; the guidance to switch to `monte-carlo`
+  survives for **three or more** resolved states, where the time average is
+  genuinely trimodal (three-state total variation against sampling, after the
+  fix: 0.138 / 0.110 / 0.016 / 0.003 at `k·T` = 0.004 / 0.4 / 4 / 40). Pinned by
+  `test_szabo_gopich.py::test_the_quadrature_stays_on_the_support_the_states_can_reach`
+  and `::test_slow_two_state_exchange_follows_the_exact_occupation_law`;
+  `test_pda_time_binned.py`'s moment-match test now asserts the agreement it used
+  to assert the absence of.
+
 **Follow-ups (not yet done):**
 - ~~c3PDA's rate matrix is a plain array attribute, not fitting parameters.~~
   Done — see [PRD-65](prd-65.md).

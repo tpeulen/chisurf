@@ -308,7 +308,7 @@ def time_averaged_moments(rate_matrix, values, window: float):
 
 
 def szabo_gopich_quadrature(rate_matrix, values, window: float, n_nodes: int = 32,
-                            lower: float = 0.0, upper: float = 1.0):
+                            lower: float | None = None, upper: float | None = None):
     """Return nodes and weights over a time-averaged, bounded observable.
 
     The Szabo–Gopich step: keep the exact mean and variance from
@@ -324,18 +324,31 @@ def szabo_gopich_quadrature(rate_matrix, values, window: float, n_nodes: int = 3
     limits — two spikes at the ends when slow, a narrow peak at the mean when
     fast — with the same two moments.
 
+    The support that matters is the one the *observable* can reach, not the one
+    the quantity is defined on. A time average of a piecewise-constant
+    observable is a convex combination of the state values, so it lives on
+    ``[min(values), max(values)]`` — which is why that, and not ``[0, 1]``, is
+    the default. Matching the beta on a wider interval keeps the two moments but
+    puts weight on values no mixture of the states can produce (30 % of it for
+    two states at ``0.35``/``0.65`` exchanging once per window, including spikes
+    at both ends), and is ~12x further from the exact two-state law in slow
+    exchange. On the reachable support the ``concentration -> 0`` limit *is* two
+    atoms at the extreme state values, which is the static mixture.
+
     Parameters
     ----------
     rate_matrix : array_like
         ``(n, n)`` rates in Hz.
     values : array_like
-        ``(n,)`` observable per state; must lie within ``[lower, upper]``.
+        ``(n,)`` observable per state.
     window : float
         Observation time in seconds.
     n_nodes : int
         Number of quadrature nodes.
-    lower, upper : float
-        Support of the observable.
+    lower, upper : float, optional
+        Support of the time-averaged observable. Defaults to the range of
+        ``values``, which is what it can actually reach; pass them only to
+        widen the support deliberately.
 
     Returns
     -------
@@ -344,7 +357,10 @@ def szabo_gopich_quadrature(rate_matrix, values, window: float, n_nodes: int = 3
     weights : numpy.ndarray
         Normalised weights summing to one.
     """
+    values = np.asarray(values, dtype=float).ravel()
     mean, variance = time_averaged_moments(rate_matrix, values, window)
+    lower = float(np.min(values)) if lower is None else float(lower)
+    upper = float(np.max(values)) if upper is None else float(upper)
     span = float(upper - lower)
     if span <= 0.0:
         return np.array([mean]), np.array([1.0])

@@ -222,6 +222,65 @@ def test_slow_exchange_keeps_the_states_apart():
     assert np.sqrt(weights @ (nodes - mean) ** 2) > 0.15
 
 
+def test_the_quadrature_stays_on_the_support_the_states_can_reach():
+    """A time average is a convex combination, so it cannot leave the values.
+
+    The beta is matched on ``[min(values), max(values)]`` for that reason.
+    Matching it on the interval the observable is merely *defined* on keeps the
+    two moments — so the moment test above cannot see the difference — while
+    putting weight on values no mixture of the states produces.
+    """
+    from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
+
+    for window in (1e-9, 1e-5, 5e-4, 1e-2, 100.0):
+        nodes, _ = szabo_gopich_quadrature(
+            THREE_STATE, EFFICIENCIES, window, n_nodes=256
+        )
+        assert nodes.min() >= EFFICIENCIES.min() - 1e-9, window
+        assert nodes.max() <= EFFICIENCIES.max() + 1e-9, window
+
+    # An explicit support is still honoured, for a caller that wants a wider one.
+    wide, _ = szabo_gopich_quadrature(
+        THREE_STATE, EFFICIENCIES, 1e-9, n_nodes=256, lower=0.0, upper=1.0
+    )
+    assert wide.min() < EFFICIENCIES.min()
+    assert wide.max() > EFFICIENCIES.max()
+
+
+@pytest.mark.parametrize("k_ex", (0.4, 1.6, 8.0))
+def test_slow_two_state_exchange_follows_the_exact_occupation_law(k_ex):
+    """The discriminating check: total variation against the exact two-state law.
+
+    Two states at 0.35/0.65 exchanging symmetrically. On the reachable support
+    the two-moment match is within a few percent of the exact distribution even
+    at less than one transition per window; on ``[0, 1]`` the same match is 0.79
+    away, with 30 % of the weight outside ``[0.35, 0.65]``.
+    """
+    from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
+    from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
+
+    values = np.array([0.35, 0.65])
+    p1 = 0.5
+    window = 1.0                      # the exact law works in units of the window
+    rate_matrix = np.array([[0.0, k_ex * p1], [k_ex * (1 - p1), 0.0]])
+
+    nodes, weights = szabo_gopich_quadrature(
+        rate_matrix, values, window, n_nodes=2048
+    )
+    fractions, exact_weights = two_state_occupation_quadrature(p1, k_ex)
+    exact_nodes = values[1] + fractions * (values[0] - values[1])
+
+    def binned(x, w):
+        h, _ = np.histogram(x, bins=np.linspace(0.0, 1.0, 82), weights=w)
+        return h / h.sum()
+
+    total_variation = 0.5 * np.abs(
+        binned(nodes, weights) - binned(exact_nodes, exact_weights)
+    ).sum()
+    assert total_variation < 0.16, total_variation
+    assert np.all((nodes >= values.min() - 1e-9) & (nodes <= values.max() + 1e-9))
+
+
 def test_a_single_state_has_no_dynamics():
     from chisurf.core.fluorescence.kinetics import szabo_gopich_quadrature
 

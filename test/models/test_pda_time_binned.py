@@ -471,25 +471,31 @@ def test_the_sampled_n_state_route_reproduces_the_exact_two_state_law(qapp):
         assert _two_state_pair(rate, "monte-carlo") < 0.03, rate
 
 
-def test_the_moment_match_fails_exactly_where_the_boundary_atoms_carry_the_mass(qapp):
-    """Why the default route has a slow-exchange limit, measured against the truth.
+def test_the_moment_match_follows_the_boundary_atoms_on_the_reachable_support(qapp):
+    """Two states: the moment match holds even where the point masses dominate.
 
-    The Szabo-Gopich route matches a *density* to two moments, and the exact
-    occupation-time law is not a density: a molecule that never switched sits on
-    a point mass at f = 0 or f = 1. Those atoms hold 82% of the distribution at
-    K = 0.4 and nothing at K = 40, and the error tracks them:
+    The exact occupation-time law is not a density — a molecule that never
+    switched sits on a point mass at f = 0 or f = 1, and those atoms hold 82% of
+    the distribution at K = 0.4 and nothing at K = 40. A beta matched on the
+    interval the time average can actually reach (``[min(pG), max(pG)]``, the
+    convex hull of the state values) reproduces them anyway, because its
+    ``concentration -> 0`` limit *is* two atoms at the state values:
 
     ======  =============  ===========  ============
     K       szabo-gopich   sampled      atom mass
     ======  =============  ===========  ============
-    0.4     0.242          0.012        0.819
-    1.6     0.121          0.017        0.450
-    8       0.013          0.009        0.018
-    40      0.001          0.003        0.000
+    0.4     0.010          0.012        0.819
+    1.6     0.022          0.017        0.450
+    8       0.010          0.009        0.018
+    40      0.000          0.003        0.000
     ======  =============  ===========  ============
 
-    So the guidance is not a rule of thumb: switch to ``monte-carlo`` when the
-    exchange is slow enough that molecules survive the window without switching.
+    Matched on ``[0, 1]`` instead — the same two moments, a wider support — the
+    slow column reads 0.242, with 30% of the weight on green probabilities no
+    mixture of the two states can produce. So the slow-exchange limit of the
+    default route was the support, not the atoms. It survives for *three or
+    more* states, where the time average is multi-modal and no two-parameter
+    shape follows it: see ``test_szabo_gopich.py``.
     """
     from chisurf.core.models.pda.dynamic import two_state_occupation_quadrature
 
@@ -500,6 +506,6 @@ def test_the_moment_match_fails_exactly_where_the_boundary_atoms_carry_the_mass(
     assert atoms_slow[0] + atoms_slow[-1] > 0.7        # nearly all mass is atoms
     assert atoms_fast[0] + atoms_fast[-1] < 1e-6       # none is
 
-    assert _two_state_pair(slow, "szabo-gopich") > 0.1      # cannot follow them
-    assert _two_state_pair(slow, "monte-carlo") < 0.03      # sampling can
+    assert _two_state_pair(slow, "szabo-gopich") < 0.03     # follows them anyway
+    assert _two_state_pair(slow, "monte-carlo") < 0.03      # as does sampling
     assert _two_state_pair(fast, "szabo-gopich") < 0.01     # nothing left to miss
