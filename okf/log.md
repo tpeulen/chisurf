@@ -2,6 +2,30 @@
 
 ## 2026-07-26
 
+* **GUI tester: the TAC-linearization LUT workflow — the plumbing is sound, the
+  decision that drives it is a guess.** Drove the documented calibration flow
+  headlessly (Channel Definition editor → *Configure LUTs…* → ① Compute →
+  *➡ Add all channels to setup* → master gate → `staging.open_tttr`) on
+  `test/data/tttr/BH/132/BH_SPC132.spc`. Nothing crashed: per-channel LUTs are
+  monotone 0 → 3664, the setup `get_settings`/`_load_data` round trip is
+  bit-exact, loading a LUT-free setup clears the gate, reads are reproducible
+  under the fixed dither seed, and the `lut-tools` CLI group works. But the one
+  number the whole calibration rests on — the flat "linear plateau" — is
+  fabricated on 3 of the file's 4 routing channels: `autodetect_linear_region`
+  raises, `_select_channel` silently substitutes the middle fifth of the axis,
+  and the panel presents that guess exactly like a measurement (the same call
+  through the CLI exits 1). The detector's per-bin 10 % criterion is shot-noise
+  blind — it rejects genuinely flat Poisson data below ~100 counts/bin and
+  therefore only ever "detects" a plateau on the brightest part of the histogram
+  (on channel 8: a 40-bin window on the decay peak, `f = 16.29` against 0.53).
+  Nothing validates the result before `➡ Add all channels to setup` assigns it
+  and auto-enables the master gate, so every later read is corrected: channel 0's
+  decay peak moved from micro-time bin 775 to 2843, with no warning at any point.
+  The corrected-preview plot cannot catch this either — it is flat by
+  construction. Recorded as
+  [TAC linearization (micro-time LUT calibration)](/usecases/tttr-lut-calibration.md);
+  RF-291..RF-299 filed in the [findings queue](/reviews/findings.md).
+
 * **chimol: `split_chains` left the source drawn on top of every chain.** Reported
   as "after split chains cartoons look weird", and it was two bugs.
 

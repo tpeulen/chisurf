@@ -3454,3 +3454,80 @@ RF-291..RF-295.
 - **Location:** `chisurf/plugins/pch/backend/services.py:46-47` (`"micro_time_range": [0, 65535]`, `"has_micro_times": True`) and `:32` (the unused `channels` parameter), against the `pch.load_tttr` description in `chisurf/plugins/pch/manifest.json`
 - **Finding:** the manifest advertises that the method "reports its metadata: available routing channels, total photon count, macro-time resolution and **micro-time range**", and that `channels` restricts "the metadata scan"; both are literals in the handler. `routing_channels` and `n_photons` are read from the file, the micro-time range is not. Verified on the shipped test files: `test/data/clsm/Leica_SP5.ptu` reports `[0, 65535]` where its micro-times actually span `0..2000` (`header.get_effective_number_of_micro_time_channels() == 1999`), and `Leica_SP8.ptu` reports `[0, 65535]` against an actual `0..3213` (3211 channels) — a range 20–30× too wide, so a client (or the GUI, once it stops hard-coding its spin-box bounds) that sizes a micro-time gate from this gets one that cannot be positioned meaningfully. `has_micro_times` is `True` even for a stream that carries none. The header call used by `chisurf/core/fio/tttr_shift.py:85` and `chisurf/core/fluorescence/burst/irf_bg.py:62` gives the real value; either read it or drop both keys and the `channels` parameter from the handler and the manifest.
 - **Fix note:**
+
+### Review 2026-07-26 — GUI tester: TAC-linearization LUT calibration (`tttr_lut_tools` + Channel Definition)
+
+Drove the documented LUT workflow headlessly end to end (Channel Definition editor
+→ *Configure LUTs…* → ① Compute → *➡ Add all channels to setup* → gate →
+`staging.open_tttr`) on `test/data/tttr/BH/132/BH_SPC132.spc`. Nothing crashed and
+the plumbing is sound — per-channel LUTs are monotone, the setup round trip is
+bit-exact, the gate really gates and reads are reproducible. What is not sound is
+everything around *deciding the linear plateau* and *deciding that the result is
+usable*: on 3 of the file's 4 routing channels the region shown to the user is a
+geometric guess presented as a detection, and the whole correction switches itself
+on with no plausibility check. Use case:
+[/usecases/tttr-lut-calibration.md](/usecases/tttr-lut-calibration.md).
+RF-291..RF-299 below.
+
+### RF-291
+- **Status:** OPEN
+- **Severity:** S2 (a failed plateau detection is silently replaced by a geometric guess and displayed as if measured; the CLI errors on the same input)
+- **Location:** `chisurf/plugins/tttr/tttr_lut_tools/gui/view_model.py:129-133` (`_select_channel`) and `:218-221` (`_lut_for_channel`), fallback at `:165-176` (`_fallback_region`)
+- **Finding:** both call sites wrap `autodetect_linear_region` in a bare `except` and fall back to `_fallback_region()` — "the middle fifth of the non-empty axis" — with no marker in the UI. Verified on the repo's own `test/data/tttr/BH/132/BH_SPC132.spc`: detection **raises** for routing channels 0, 1 and 9 (`plateau too short (18 < 32)`, `(5 < 32)`, `(6 < 32)`) and the region the panel then reports (`ch 0 | Range [1749, 2387) | width=638 | f=0.526734 | n_mean=8.12`, ch 1 `(1750, 2388)`, ch 9 `(1728, 2361)`) equals `_fallback_region()` bin-for-bin on all three. The LUT that `➡ Add all channels to setup` assigns is built from that invented region. The same api call through the documented CLI (`lut-tools compute --channel 0`) **exits 1** with the error text, so the GUI and the CLI report opposite outcomes for one file. Either surface the failure (status line + a visually distinct region marker, e.g. "plateau not found — showing a guess") or refuse to build a LUT, but do not present a guess as a measurement.
+- **Fix note:**
+
+### RF-292
+- **Status:** OPEN
+- **Severity:** S3 (the one button that sets the critical parameter does nothing and says nothing when it fails)
+- **Location:** `chisurf/plugins/tttr/tttr_lut_tools/gui/view_model.py:154-163` (`LutComputeViewModel.autodetect`)
+- **Finding:** the `except` branch does `logger.info("autodetect failed: %s", exc)` and returns — no dialog, no status-bar message, no `notify()`, and the region is left exactly as it was. Verified by clicking the real **🎯 Auto-detect region** button with the sample file loaded on channel 0: `linear_start`/`linear_stop` unchanged, zero ChiSurf dialogs raised (captured), the only trace an INFO log line `autodetect failed: plateau too short (18 < 32)`. Because detection never succeeds on this file (see RF-293), the button is indistinguishable from a dead control. Report the reason where the user is looking — the info label right under the plots already exists.
+- **Fix note:**
+
+### RF-293
+- **Status:** OPEN
+- **Severity:** S2 (the plateau criterion is shot-noise-blind: it rejects genuinely flat data and only "detects" plateaus where the signal is brightest)
+- **Location:** `chisurf/plugins/tttr/tttr_lut_tools/api/lut.py:123-175` (`autodetect_linear_region`; `rel_dev_thresh=0.10`, `min_width=32`, the `rel_dev = |region_counts / mean − 1|` test at `:166-169`)
+- **Finding:** the test requires **every** bin of the run to sit within 10 % of the rolling mean, compared against raw counts. Poisson noise at `n` counts/bin is ~`1/√n`, so the criterion silently demands ≳100 counts/bin *and* 32 consecutive such bins. Verified on synthetic **perfectly flat** Poisson histograms of 3664 bins: 8 counts/bin → `plateau too short (4 < 32)`, 30 counts/bin → `(11 < 32)`, 200 counts/bin → returns only `(0, 42)`, i.e. 42 of 3664 bins. The bias is the harmful part: the only place the criterion can pass is the high-count region, so on channel 8 of the sample file it returns `(788, 828)` — a 40-bin window centred on the **decay peak** (`n_mean = 353.3` against 5.2–8.1 for the other channels), yielding `f = 16.288` against 0.527/0.835/0.775. Scale the tolerance to the expected shot noise (e.g. `k/√mean`) or test the smoothed curve, and reject regions whose mean is an outlier against the rest of the axis.
+- **Fix note:**
+
+### RF-294
+- **Status:** OPEN
+- **Severity:** S2 (an unvalidated LUT is applied to every subsequent TTTR read, with no plausibility check and no warning anywhere in the flow)
+- **Location:** `chisurf/plugins/tttr/tttr_lut_tools/gui/tool.py:118-140` (`_bridge_compute_to_assign`) → `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py:1451-1471` (`_pull_luts_from_panel`) → `:1433-1449` (`_enable_apply_lut`)
+- **Finding:** the documented one-click path computes a LUT for every routing channel, assigns them all, and turns the master gate on — nothing in between checks that the reference measurement is plausibly flat, that the plateau covers a sensible share of the axis (40 of 3664 bins = 1.1 % was accepted), or that `f` is comparable across channels (0.53 … 16.29 in one file was accepted). Verified by driving the flow on `BH_SPC132.spc`, a fluorescence decay rather than a flat-light file: dialogs raised during the whole sequence = **none**, gate afterwards = **on**, and reading the same file back through `staging.open_tttr` moves channel 0's peak from micro-time bin 775 to 2843 while the bins above half maximum go from 95 to 1362 — the decay shape is destroyed for every downstream lifetime / FCS / PDA read. The panel cannot reveal this either: the "After linearization" preview is flat **by construction** (the LUT is derived from the histogram it flattens), so a wrong LUT looks perfect. Add a validity gate before assignment (flatness of the reference, plateau share of the axis, per-channel `f` outliers) and require confirmation when it fails.
+- **Fix note:**
+
+### RF-295
+- **Status:** OPEN
+- **Severity:** S3 (auto-enabling the gate bypasses the "Missing LUTs" warning, so channels that stay raw are never mentioned)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py:1443-1448` (`_enable_apply_lut` ticks the box inside `blockSignals(True)`) against `:1310-1329` (`_on_apply_lut_toggled`, which does warn)
+- **Finding:** ticking *Apply TAC linearization (LUT) when reading* by hand asks the right question — verified live: *"Channels without a LUT will be read raw: 0, 1, 2, 3, 8, 9. Open the LUT calculator to compute one now?"*. But the normal route never goes through that slot: `_enable_apply_lut` sets `_apply_lut = True` and calls `setChecked(True)` with signals blocked, so no warning appears. Verified on the shipped `BS` setup, whose detectors use routing channels 0, 1, 2, 3, 8 and 9 while the calibration file only provides 0, 1, 8, 9: after the pull the gate is on, channels 2 and 3 are read raw, and **zero** dialogs were raised. That is a mixed axis inside one polarization pair (`red` = `9, 1, 2`), which quietly biases anisotropy and PIE gating. Run the same missing-channel check from `_enable_apply_lut`.
+- **Fix note:**
+
+### RF-296
+- **Status:** OPEN
+- **Severity:** S3 (after the normal flow the advertised settings.tttr.json export is unreachable — the button is disabled and the channel list empty although 4 channels are assigned)
+- **Location:** `chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py:556-586` (`receive_computed_lut`) against `:651-677` (`_load_tttr_paths`, the only place that fills `channel_list` and enables `btn_save_settings`)
+- **Finding:** `receive_computed_lut` — the ①→② bridge — populates `loaded_luts` and `channel_luts` but never touches `channel_list`, `shift_spin` or `btn_save_settings`. Verified after clicking `➡ Add all channels to setup`: `sorted(channel_luts) == [0, 1, 8, 9]`, `loaded_luts == ['ch0_lut', 'ch1_lut', 'ch8_lut', 'ch9_lut']`, but `channel_list.count() == 0`, `shift_spin.isEnabled() == False` and `btn_save_settings.isEnabled() == False` (greyed *Save JSON* in the grab). So tab ② shows no evidence that anything was assigned, and the export that the plugin header, the panel tooltip and guide 37 all call "optional" cannot be performed at all unless the user separately loads TTTR files into tab ②. Populate the channel rows from `channel_luts` and enable the save button when any LUT is assigned.
+- **Fix note:**
+
+### RF-297
+- **Status:** OPEN
+- **Severity:** S3 (six buttons render as elided fragments, so the user cannot tell what they do)
+- **Location:** `chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py:413` (`controls_panel.setMaximumWidth(360)`) with the file-list row at `:510-513` and the JSON row at `:546-553`
+- **Finding:** the right-hand control column is capped at 360 px, which is not enough for the five `PathListWidget` buttons plus the three JSON buttons. Verified in a 1148 × 776 offscreen grab of the panel: the *Files* row reads `+ ...es`, `...er`, `...se`, `— ...ve`, `...ar` (Files / Folder / Database / Remove / Clear) and the *JSON* row reads `Sho...SON` (Show JSON). The *Loaded LUTs* list, capped in the same column, shows 3 of the 4 entries. Let the buttons keep their text (icon-only with tooltips, a wider column, or a wrapping layout).
+- **Fix note:**
+
+### RF-298
+- **Status:** OPEN
+- **Severity:** S3 (the LUT table clips its last rows while the table directly above it keeps blank space)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py:1177` (`self._lut_table.setMaximumHeight(160)`) in `_build_lut_box`
+- **Finding:** the per-channel LUT table is hard-capped at 160 px. Measured on the shipped `BS` setup in a 1150 × 900 editor: `rowCount = 6`, `rowHeight = 30`, viewport height 134 px → 4 whole rows fit, so the rows for routing channels 8 and 9 are clipped behind a vertical scrollbar (`verticalScrollBar().maximum() > 0`) exactly when the user is checking that every channel got a LUT. In the same grab the *Detectors* table above holds 3 rows and ~120 px of empty space. Give the LUT table the stretch (or size it to its contents) instead of a fixed cap.
+- **Fix note:**
+
+### RF-299
+- **Status:** OPEN
+- **Severity:** S3 (the documented headless example produces a channel-pooled LUT, which the same page says is wrong)
+- **Location:** `docs/guides/37_tttr_microtime_lut.md:60-65` (the CLI block) and `:67-74` (the Python block) against `chisurf/plugins/tttr/tttr_lut_tools/cli/main.py:42-44` (`--channel`, default `None`, "per-channel; recommended")
+- **Finding:** the guide states twice that TAC differential non-linearity is **per routing channel**, and the GUI enforces it (one LUT per channel), but its headless example is `chisurf lut-tools compute uniform.spc -o green.npy --routine SPC-130` — no `--channel`. Verified: without `--channel`, `compute` histograms all routing channels together and writes a single pooled LUT (region `[769, 877)` on the sample file) with no warning, while `--channel 8` gives `[788, 828)` and `--channel 0/1/9` fail outright. The `api` example below it has the same omission (`compute_lut_from_files(["uniform.spc"], routine="SPC-130")`). Add `--channel` / `channel=` to both examples, and have `compute` warn when several routing channels are pooled.
+- **Fix note:**

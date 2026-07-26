@@ -105,6 +105,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   dye pair, and read the Förster radii and the excitation / emission / detected
   crosstalk matrices that prime the accurate-FRET correction factors.
   *(last driven 2026-07-26; RF-269..RF-277)*
+- [TAC linearization — micro-time LUT calibration](/usecases/tttr-lut-calibration.md)
+  — the instrument calibration underneath every micro-time analysis: compute a
+  per-routing-channel TAC-linearization LUT from a flat-light measurement in the
+  Channel Definition editor's LUT Tools, add it to the detector setup, and have
+  every later TTTR read linearized at the `staging.open_tttr` seam.
+  *(last driven 2026-07-26; RF-291..RF-299)*
 
 ## Per-workflow file format
 
