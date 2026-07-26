@@ -3134,3 +3134,82 @@ RF-263..RF-268.
 - **Location:** `chisurf/macros/core_fit.py:1209` (`fit_window.setWindowTitle(fit.name)`) with `:1197` (`for fit in fit_group:`)
 - **Finding:** the loop at `:1197` that builds one model editor per group member rebinds `fit`, and the `setWindowTitle` twelve lines later reuses that leaked name instead of `fit_group`. Verified: a fit named `PDA-Gaussian-distance - m000_TW1ms` over the three-member group `[m000_TW1ms, m000_TW2ms, m000_TW3ms]` opens a sub-window titled `PDA-Gaussian-distance - m000_TW3ms`, so the one window representing the group advertises its *last* member, while the analysis dock's *Dataset selection* box for the same fit reads `m000_TW1ms`. Single-member fits hide it (the loop leaves `fit` equal to the only member). Use `fit_group.name`, and rename the loop variable so it cannot leak again.
 - **Fix note:**
+
+## GUI-tester run — Light Path Simulator (2026-07-26)
+
+Drove **Spectroscopy:Light Path Simulator** headlessly (`QT_QPA_PLATFORM=offscreen`,
+arm64 env, embedded RPC server on a private port) the way a user does: open the
+plugin, switch to **Easy Mode**, pick the `2-color (2 detector)` template, choose
+excitation dichroic `ZT532/640/NIR rpc`, splitter `ZT640rdc`, bandpasses
+`ET585/20m` / `ET720/60m` and a detector QE from the catalogue tables, tick
+`ATTO 550` + `ATTO 647N`, **Recalculate**, read all four result tabs, push the
+form into the node graph and run **Calculate Emission Intensity**, then export the
+instrument setting. Screenshots at every step. **The physics is right** — R₀ =
+65.1 Å for ATTO 550 → ATTO 647N (literature ≈ 65 Å), 14.2 Å reversed, and one
+recalculation takes 6–18 ms — but the default detector silently zeroes the whole
+detection chain and the most common dye family cannot be selected at all. Use
+case: [/usecases/lightpath-crosstalk-r0.md](/usecases/lightpath-crosstalk-r0.md).
+Findings RF-269..RF-277.
+
+### RF-269
+- **Status:** OPEN
+- **Severity:** S1 (the default detector multiplies the whole detected signal by zero; the tool's three main result tables come back empty with no error)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/backend/crosstalk.py:265` (`db.get_probe_spectrum(probe_id, "quantum_efficiency")` in the `detector` branch) with `chisurf/plugins/core/lightpath_simulator/backend/simulator.py:143` (`if val <= 1e-12: continue`)
+- **Finding:** the detector node computes `signal = ∫ in_spec · interp(get_probe_spectrum(pid, "quantum_efficiency"))`. `interp(None)` returns zeros, so a detector probe that has no spectrum row of exactly that type produces `0.0` for every source. `get_detector_signals` then drops every zero row, so `crosstalk_matrices["emission"]` and `["detected"]` are built from an empty record list and render as empty tables. In the shipped catalogue (`~/.chisurf/flr/sample_management.db`) **`APD120A2` (probe 1268) is the one detector-category probe out of 69 that stores its curve as `responsivity`, not `quantum_efficiency`** — and it is the alphabetically first row of the QE picker and the value in this machine's saved easy-mode config, i.e. the default. Verified with a complete 2-colour path (lasers 488/640, exci dichroic 988, splitter 1007, bandpasses 672/722, dyes 1722/1733): with `qe_probe_id=1268` → `get_detector_signals() == []`, detected matrix `rows=[] columns=[]`; with `qe_probe_id=2182` (`Becker & Hickl HPM 100 06`, curve stored as `quantum_efficiency`) → 8 signal rows, detected matrix 4×2 with values `2.3e-08 … 8.5e-01`. The per-node trace shows the light arriving at the detector (`In/ATTO 550 (ex 488 nm) = 22.68`) and leaving as `0.0`. Fix at the lookup (accept `responsivity`/`quantum_efficiency`, converting where needed) **and** make a zero/absent QE curve visible instead of silent. Discriminating test: propagate the same graph with probe 1268 and 2182 and assert both yield non-empty `detected` matrices.
+- **Fix note:**
+
+### RF-270
+- **Status:** OPEN
+- **Severity:** S1 (the most common FRET dye family cannot be selected, and the documented calibration workflow names exactly those dyes)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/core/workflow.py:373` (`"has_abs": "absorption" in types`), consumed by `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:1078` and `gui/node_types.py:298` (`if p.get("has_abs") and p.get("has_em")`); simulator side `backend/crosstalk.py:159` (`get_probe_spectrum(probe_id, "absorption")`)
+- **Finding:** the fluorophore tables keep only probes that have a spectrum row typed `absorption`, but the catalogue stores an absorption curve as `excitation` for **165 of 2165 probes**, including **all 16 Alexa Fluor entries** (`Alexa Fluor 488™` = probe 1039, `Alexa Fluor 647™` = 1048 — both `excitation` + `emission`, no `absorption`) and the whole Abberior Star/Live/Cage family. Verified live: the dye table holds 696 rows and typing `alexa` in its filter returns **0**. The simulator has the same blind spot with no fallback, so selecting such a probe by id would give a zero absorption spectrum, zero excitation probability and R₀ = 0. `docs/guides/fret_calibration.md:97` instructs the user to feed this tool's crosstalk matrices with `donor="Alexa488", acceptor="Alexa647"` — a workflow that cannot be performed in the GUI. Treat `excitation` as absorption (normalised) at both places, or normalise the catalogue; pin it with a test asserting `Alexa Fluor 488` appears in the dye table and yields a non-zero R₀ against `Alexa Fluor 647`.
+- **Fix note:**
+
+### RF-271
+- **Status:** OPEN
+- **Severity:** S2 (the crosstalk numbers — the point of the tool — are rounded to `0.0` in Easy Mode, while the full simulator prints them correctly)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:1849` (`txt = f"{float(v):.1f}"` in `LightPathEasyWidget._fill_table`) versus `chisurf/plugins/core/lightpath_simulator/gui/tool.py` (full-mode tables, scientific formatting)
+- **Finding:** all four Easy Mode result tables share one formatter with one decimal. R₀ (tens of Å) and the excitation overlap (10³–10⁵) survive it; the emission and detected crosstalk never do, because crosstalk is by construction ≪ 1. Verified in one run with a fully configured 2-colour path and a working detector: Easy Mode *Emission CT* rendered `0.0 / 0.0 / 0.0 / 0.0` and *Detected CT* `0.0` in seven of eight cells (single non-zero `0.8`), while the full simulator's tables, built from the same `crosstalk_matrices`, showed `2.2646e-08 … 8.1051e-05` and `2.3482e-08 … 8.4617e-01` respectively. Screenshot `33_tab_3.png` of that run shows a table of zeros. Use the same significant-digit/scientific formatting as the full mode (or format per matrix).
+- **Fix note:**
+
+### RF-272
+- **Status:** OPEN
+- **Severity:** S2 (a modal warning after every single control change while the path is being configured)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:1783-1788` (`recalculate` → `dialogs.warning(self, "No Dyes", "Select at least one dye.")`) with `auto_recalc_cb` defaulting to checked at `:1517` and the *Fluorophores* section built after the component sections at `:1497`
+- **Finding:** *Auto recalculate* is on by default and every component table's `changed` signal schedules a recalculation. Until a dye is ticked, each recalculation aborts in a **modal** `dialogs.warning`. Because the dye table is the last section of the form, the natural top-down order (dichroic → splitter → bandpasses → QE → dyes) hits it every time. Verified: one ordinary configuration pass — template + 6 component selections — logged **7** `No Dyes: Select at least one dye.` warnings from `chisurf.gui.dialogs`, one per interaction. An incomplete configuration is the normal state during configuration; report it passively (status line / disabled Recalculate with a tooltip), and keep the dialog for an explicit **Recalculate** click.
+- **Fix note:**
+
+### RF-273
+- **Status:** OPEN
+- **Severity:** S2 (a timing-dependent RPC timeout opens the plugin with an empty spectra catalogue and tells the user nothing)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/gui/tool.py:45` (`_ProbeInfoLoader(timeout_ms=1500)`, started at `:192`) and `:367-374` (`_on_probe_load_failed` → `logger.error` only)
+- **Finding:** the spectra catalogue (2165 probes) is fetched once at open with a hard 1500 ms timeout. Measured on this machine, the first call after a server start takes **0.73 s** and later calls 6–8 ms — i.e. the cold path spends half the budget — and the fetch did time out on one of this session's runs (`MMFDB RPC failed: lightpath.get_probes_info: timeout: no response within 1500ms`). The failure handler sets `self.probes = []`, builds the Easy Mode tab anyway and logs an ERROR; the user sees a fully functional window in which *every* component table and the dye table are empty, `Recalculate` produces nothing, and nothing on screen says why. Raise/retry the timeout for a first fetch, and surface the failure in the panel (empty-state text plus a Retry button) instead of only in the log.
+- **Fix note:**
+
+### RF-274
+- **Status:** OPEN
+- **Severity:** S2 (the plugin ignores the documented client-configuration contract and connects to the wrong port)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/api/client.py:35-44` (`LightPathClient.from_settings` reads `mmfdb_settings.get("last_server")` / `get("last_port", 8765)` directly) versus `chisurf/plugins/core/mmfdb_admin/gui/client.py:64` (`client_config`, "the nested block is the canonical prerelease contract"), which `chisurf/gui/__init__.py:1764` uses to place the server
+- **Finding:** every other consumer resolves the endpoint through `client_config()`, which prefers `mmfdb.client.{host,cmd_port,pub_port}` and only falls back to the flat legacy keys. The light-path client re-implements the lookup with the legacy keys alone. Verified: with `mmfdb = {"client": {"host": "127.0.0.1", "cmd_port": 9111, "pub_port": 9112}}` and no flat keys, `client_config()` → `9111/9112` (where the embedded server is started) while `LightPathClient.from_settings()` builds a client on **8765/8766**. Every light-path RPC then times out and the plugin opens with no probes (RF-273's symptom, permanently). Call `client_config()` here; a test asserting the two agree for a nested-only configuration pins it.
+- **Fix note:**
+
+### RF-275
+- **Status:** OPEN
+- **Severity:** S2 (ChiSurf's own startup locks the embedded MMFDB admin out after five restarts in fifteen minutes)
+- **Location:** `chisurf/gui/__init__.py:2347` (`result = client.login(user_id=default_user, password="")` in the autologin sequence) against `modules/mmfdb/src/mmfdb/security/login.py:238` (`if is_throttled(...)`) and `modules/mmfdb/src/mmfdb/security/auth.py:15-16` (`MAX_FAILED_ATTEMPTS = 5`, `THROTTLE_WINDOW_MINUTES = 15`)
+- **Finding:** when no valid session token is stored, startup first tries a **passwordless** login for the default user and only then the known desktop-admin password. On any profile whose admin has a real password the first attempt always fails, and `_record_failure` commits it as a failed auth attempt that counts toward the brute-force throttle — which counts failures in a window and is not reset by the subsequent successful login. Verified over this session: one `mmfdb.security.auth.login: Invalid credentials` per ChiSurf start, and after the fifth start inside fifteen minutes every login returned `Too many failed login attempts. Try again later.`, including the desktop-admin fallback; that start never got past the login step (the driver hung there). A user restarting ChiSurf a few times — after a crash, or while testing — locks themselves out of their own local database for 15 minutes. Options: skip the `password=""` probe when a desktop-admin password is known, mark the app's own autologin probe so it is not counted, or reset the failure counter on a successful login. Pin it with a test that performs five failed logins plus one success and asserts the account is usable.
+- **Fix note:**
+
+### RF-276
+- **Status:** OPEN
+- **Severity:** S3 (the generated node graph lays nodes 50 px apart although they are 150–350 px wide, so half the path is hidden behind the other half)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:728` (`build_easy_graph`, the `pos` values it assigns)
+- **Finding:** the graph produced from a template/Easy Mode config places `Excitation Dichroic` at `x = 500` and `Dichroic Splitter 1` at `x = 550`, `Bandpass: Transmission` at `x = 700` with its detector at `x = 850`, and `Bandpass: Reflection` at `730` with its detector at `880`, while the rendered nodes are roughly 150 px (splitter/filter) to 350 px (detector) wide. Verified visually after *Edit in Full Simulator*: the excitation dichroic is almost entirely covered by the emission splitter (only `Ex…` of its title is legible), each bandpass node is covered by its own detector, and the sample node's spectra plot is clipped by the Förster node. The information in the nodes (per-node spectra, the QE overlay, the R₀ matrix) is good and unreadable. Space the columns by at least the node width, or run the existing auto-layout after building the graph.
+- **Fix note:**
+
+### RF-277
+- **Status:** OPEN
+- **Severity:** S3 (plugin presets and last-used config bypass the ChiSurf settings directory)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:25-28` (`EASY_LAST_CONFIG_PATH`, `EASY_PRESETS_DIR`, `OPTICAL_PRESETS_DIR`, `DYE_PRESETS_DIR` = `Path.home() / ".chisurf" / …`)
+- **Finding:** the four paths are hard-coded to `~/.chisurf` instead of `chisurf.core.settings.path_utils.get_path("settings")`, which the rest of the app uses and which honours `CHISURF_SETTINGS_DIR`. Verified with `CHISURF_SETTINGS_DIR=/tmp/…/altsettings`: `get_path("settings")` → `/tmp/…/altsettings` while `EASY_LAST_CONFIG_PATH` stays `/Users/<user>/.chisurf/settings/lightpath_easy_last.json`. A redirected profile (test runs, a second installation, a shared machine) silently reads and writes another profile's presets. Resolve all four from `get_path`.
+- **Fix note:**

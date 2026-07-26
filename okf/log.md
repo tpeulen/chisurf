@@ -2,6 +2,30 @@
 
 ## 2026-07-26
 
+* **GUI-tester: the Light Path Simulator.** Drove the "before the measurement"
+  workflow headlessly and recorded it as
+  [Light Path Simulator](/usecases/lightpath-crosstalk-r0.md): pick the 2-colour
+  template, choose dichroic / splitter / bandpasses / detector QE and a dye pair
+  from the 2165-probe spectra catalogue, recalculate, read the Förster radii and
+  the three crosstalk matrices, push the form into the node graph, export the
+  instrument setting. The physics is right — R₀ = 65.1 Å for ATTO 550 → ATTO 647N
+  against ≈ 65 Å in the literature, and a recalculation costs 6–18 ms — but the
+  tool cannot be used as it ships: the default detector `APD120A2` stores its
+  curve as `responsivity` while the detector node looks up `quantum_efficiency`
+  only, so every detected intensity is exactly zero and the *Signals*,
+  *Emission CT* and *Detected CT* tables come back **empty with no error**
+  (RF-269); and all 16 Alexa Fluor dyes — the pair the FRET-calibration guide
+  names — are invisible in the fluorophore table because their absorption
+  spectrum is typed `excitation`, one of 165 such probes (RF-270). When it does
+  work, Easy Mode prints the crosstalk with `%.1f`, so numbers ≪ 1 read as `0.0`
+  while the full simulator shows them correctly (RF-271). Also filed: a modal
+  "No Dyes" warning after every control change (RF-272), a silent 1500 ms
+  catalogue timeout that opens the plugin empty (RF-273), an endpoint lookup that
+  bypasses the `mmfdb.client` contract (RF-274), a startup autologin that
+  brute-force-throttles ChiSurf's own MMFDB admin after five restarts in fifteen
+  minutes (RF-275), overlapping node positions (RF-276) and presets written
+  outside the settings directory (RF-277). No source changed.
+
 * **The light-path prior for `alpha` is now the `alpha` every consumer applies (RF-239).**
   `lightpath_correction_factors` returned the *legacy MFD* leakage — the fraction of
   all detected donor photons landing in the red channel,
