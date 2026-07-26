@@ -232,6 +232,39 @@ so a bridge belongs on the ChiSurf side; `MaskROI.from_histogram` and
 `EllipseROI` now cover both of its 2-D shapes, which is what such a bridge would
 need.
 
+## The collection, and the GUI over it
+
+A single region answers "is this inside?". What a user works with is a *list*:
+several named regions, some switched off, one or two inverted, reduced to the
+one selection an analysis uses. `RegionCollection` (`collection.py`) is that
+list — an ordered sequence of `RegionEntry` (region + `enabled` + `invert`) with
+a `combine` rule (`and`/`or`/`xor`), unique names, measurement, and JSON
+persistence that keeps every shape and flag. It is Qt-free, so a headless
+script, an RPC payload and the widget share one object.
+
+Its semantics are deliberately the union of what the tools had: the CLSM tool's
+names/save/load/measure, ndXplorer's per-row enabled+invert combined by AND, and
+the MLE tools' implicit union of everything in a file. `combined()` returns
+`None` when nothing is enabled — *not* an all-true region, so "no regions" and
+"every region switched off" stay distinguishable; the `to_mask`/`contains`
+conveniences answer all-true, and `excluded()` names ndXplorer's inverted
+convention rather than leaving it to be remembered.
+
+The GUI is `chisurf/gui/widgets/roi/`, in two separable halves:
+
+* `RegionEditor` — the list: name, shape, measurement, on/off, invert, the
+  combining rule, save/load, and an optional `+` that keeps whatever the host is
+  currently painting. Registered as the AutoForm section `region_list`, so a
+  plugin gets it from its `.view.json`.
+* `RegionOverlay` — the shapes on a chiplot canvas, dragged and written back
+  into the collection. Rectangle, ellipse and polygon; a mask or a threshold has
+  no handle, on purpose (a bounding box that replaced the mask on first drag
+  would destroy what the user painted).
+
+Drawing an ellipse or a polygon needed chiplot to grow those ROI kinds, plus
+`Roi.points` and `Roi.set_pen`. Until then `PolygonROI` and `EllipseROI` had
+**no producer anywhere in the GUI** — loadable from a file, not drawable.
+
 # Documentation
 
 The user-facing pair: `docs/concepts/region_properties.md` (what the

@@ -939,10 +939,16 @@ def as_roi(value: Any) -> Optional[ROI]:
     consumer needs the same three-line coercion, and writing it per consumer is
     how the ``None`` case ends up handled differently in each.
 
+    An array is read as a mask, which is what a paint brush produces: the
+    buffer *is* the region, and the alternative — every caller wrapping it in
+    ``MaskROI`` itself — is where the ``> 0`` versus ``!= 0`` disagreement came
+    from (the CLSM erase brush writes negatives, so ``!= 0`` keeps erased
+    pixels).
+
     Parameters
     ----------
-    value : ROI or dict or None
-        The region, its serialised description, or nothing.
+    value : ROI or dict or numpy.ndarray or None
+        The region, its serialised description, a mask, or nothing.
 
     Returns
     -------
@@ -960,11 +966,17 @@ def as_roi(value: Any) -> Optional[ROI]:
     True
     >>> as_roi(RectangleROI(0, 0, 2, 2).to_dict()).to_mask((3, 3)).sum()
     np.int64(4)
+    >>> as_roi(np.array([[0, 1], [1, 0]])).to_mask((2, 2)).sum()
+    np.int64(2)
     """
     if value is None or isinstance(value, ROI):
         return value
     if isinstance(value, dict):
         return roi_from_dict(value)
+    if isinstance(value, np.ndarray) or isinstance(value, (list, tuple)):
+        array = np.asarray(value)
+        if array.ndim == 2:
+            return MaskROI(array if array.dtype == bool else array > 0)
     raise ValueError(f"cannot read {type(value).__name__} as a region")
 
 

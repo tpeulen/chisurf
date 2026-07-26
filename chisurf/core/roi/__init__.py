@@ -27,6 +27,7 @@ readily as a label image, and to hand the measured region back as a ROI.
 from __future__ import annotations
 
 from .builders import arbitrary_region, local_statistics
+from .collection import COMBINE_OPS, RegionCollection, RegionEntry
 from .io import (
     load_region,
     load_regions,
@@ -82,6 +83,10 @@ __all__ = [
     "regionprops_table",
     "PROPERTIES",
     "INTENSITY_PROPERTIES",
+    # a named, ordered list of regions — what a GUI edits
+    "RegionCollection",
+    "RegionEntry",
+    "COMBINE_OPS",
     # built from image data
     "arbitrary_region",
     "local_statistics",

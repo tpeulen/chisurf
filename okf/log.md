@@ -2,6 +2,53 @@
 
 ## 2026-07-26
 
+* **One region GUI, because there were twenty-three and no two agreed.** A
+  survey of every place a user creates or edits a region — a selection, a gate,
+  a cursor, a mask — found 23 of them across chisurf and ndXplorer, five
+  distinct interaction modes, **no shared editor**, and two incompatible mask
+  conventions. Naming and measuring existed in exactly one tool (CLSM);
+  everything else was a single anonymous region or a file picker. Boolean
+  combination is in the core (`&`/`|`/`~`) and had **no UI anywhere**;
+  ndXplorer approximated it with per-row invert and implicit AND. `PolygonROI`
+  and `EllipseROI` had **no producer in any GUI** — loadable from a file, not
+  drawable — so the phasor cursor's ellipse existed only in the API.
+
+  Two new things, one Qt-free and one not. `RegionCollection`
+  (`chisurf/core/roi/collection.py`) is the list every tool was reinventing: an
+  ordered sequence of region + `enabled` + `invert`, a `combine` rule
+  (`and`/`or`/`xor`), unique names, measurement and a JSON round-trip that keeps
+  every shape and flag — where ndXplorer's loader silently dropped everything
+  that was not a rectangle. Its semantics are the union of the three: CLSM's
+  names/save/load/measure, ndXplorer's per-row flags, the MLE tools' union of
+  whatever a file held. `combined()` returns `None` when nothing is enabled,
+  *not* an all-true region, so "no regions" and "every region switched off" stay
+  distinguishable; the convenience methods answer all-true, and `excluded()`
+  gives ndXplorer's inverted convention a name instead of leaving it to be
+  remembered three call sites later.
+
+  `chisurf/gui/widgets/roi/` is the GUI, in two halves a host can take
+  separately: `RegionEditor` — the list, with name, shape, measurement, on/off,
+  invert, the combining rule, save/load and an optional `+` that keeps whatever
+  the tool is currently painting — and `RegionOverlay`, the shapes drawn on a
+  chiplot canvas and dragged back into the collection. A mask or a threshold
+  deliberately gets no handle: a bounding box that replaced the mask on the
+  first drag would destroy what the user painted. The editor registers as the
+  AutoForm section `region_list`, so a plugin gets the whole thing from one line
+  of `.view.json`.
+
+  Drawing an ellipse or a polygon meant chiplot had to grow those ROI kinds,
+  plus `Roi.points` and `Roi.set_pen`. Reading a polygon's vertices through the
+  *scene* transform returned coordinates scaled by a few hundred before the
+  widget was laid out; mapping through the ROI's own transform is
+  layout-independent. Writing the tests also caught the overlay reporting a drag
+  for programmatic moves — pyqtgraph emits its change signal either way — which
+  would have re-measured every region on each placement.
+
+  41 tests (19 on the collection, 22 on the widget and overlay), and the panel
+  rendered headlessly and read: rectangle, ellipse, polygon and a painted mask
+  in one list with their measurements, the disabled one greyed on the canvas,
+  `3 of 4 → 8779 px` in the footer. Concept: [roi](/subsystems/roi.md).
+
 * **The posterior graph shaded its edges by a number that is zero for the most
   strongly coupled pairs there are.** Edge weight was `|r|`, which for a Gaussian
   posterior *is* mutual information up to a monotone map — and for a banana or a

@@ -893,13 +893,16 @@ class ImageView(QtWidgets.QWidget):
         pen="y",
         movable=True,
         rotatable=False,
+        points=None,
     ) -> H.Roi:
-        """Add a region-of-interest rectangle (or circle) over the image.
+        """Add a region-of-interest shape over the image.
 
         Parameters
         ----------
         kind : str
-            ``"rect"`` or ``"circle"``.
+            ``"rect"``, ``"circle"``, ``"ellipse"`` or ``"polygon"``. The last
+            two exist because the ROI subsystem has an ellipse and a polygon
+            region and, until they could be drawn, no GUI could produce one.
         pos : tuple of float
             Lower-left corner in image coordinates.
         size : tuple of float
@@ -909,7 +912,11 @@ class ImageView(QtWidgets.QWidget):
         movable : bool
             Whether the user can drag/resize it.
         rotatable : bool
-            Whether a rectangle ROI can be rotated (ignored for circles).
+            Whether a rectangle ROI can be rotated (ignored for the others).
+        points : sequence of (float, float), optional
+            Vertices for ``kind="polygon"``; a polygon is defined by these, not
+            by a corner and a size. Without them the polygon starts as the box
+            described by *pos* and *size*.
 
         Returns
         -------
@@ -922,6 +929,7 @@ class ImageView(QtWidgets.QWidget):
             pen=S.to_pen(pen),
             movable=movable,
             rotatable=rotatable,
+            points=points,
         )
 
     @property

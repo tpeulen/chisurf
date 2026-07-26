@@ -470,6 +470,42 @@ class _Roi(_Item):
         """Resize the ROI."""
         self._native.setSize((float(w), float(h)))
 
+    @property
+    def points(self) -> list:
+        """The vertices in scene coordinates, for a polygon ROI.
+
+        ``PolyLineROI.getLocalHandlePositions`` gives handle positions in the
+        ROI's *own* frame, which is not where the region is once the user has
+        dragged the whole polygon; mapping each through the ROI's transform is
+        what makes the vertices usable as geometry.
+        """
+        if not isinstance(self._native, pg.PolyLineROI):
+            # Every pyqtgraph ROI has handles, but on a rectangle they are the
+            # scale grips — one of them — not the shape. The corners are what a
+            # caller means by "the vertices" here.
+            x, y = self.pos
+            w, h = self.size
+            return [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+        # Map out of the ROI's own frame with the ROI's transform, not through
+        # the scene: scene coordinates depend on the viewport transform, which
+        # is meaningless until the widget has been laid out — so a polygon read
+        # before the window is shown came back scaled by a few hundred.
+        return [
+            (lambda p: (float(p.x()), float(p.y())))(self._native.mapToParent(local))
+            for _, local in self._native.getLocalHandlePositions()
+        ]
+
+    def set_pen(self, pen, **overrides) -> None:
+        """Restyle the ROI's outline (colour, width).
+
+        A region editor needs this to say which row of its list the picture is
+        showing, and to grey out a region the user has switched off.
+        """
+        self._native.setPen(
+            _pen(S.to_pen(pen, **overrides) if not isinstance(pen, S.Pen) or overrides
+                 else pen)
+        )
+
     def on_change(self, callback, *, final: bool = True) -> None:
         """Fire ``callback()`` while/after the ROI is dragged or resized."""
         sig = self._native.sigRegionChangeFinished if final else self._native.sigRegionChanged
@@ -913,11 +949,25 @@ class _PgImageView(base.ImageViewCanvas):
         return _Image(item, view)
 
     def add_roi(
-        self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True, rotatable=False
+        self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0), pen, movable=True,
+        rotatable=False, points=None
     ) -> H.Roi:
         """Add a region-of-interest to the view."""
         if kind == "circle":
             roi = pg.CircleROI(list(pos), list(size), pen=_pen(pen), movable=movable)
+        elif kind == "ellipse":
+            roi = pg.EllipseROI(list(pos), list(size), pen=_pen(pen), movable=movable)
+        elif kind == "polygon":
+            # A polygon is defined by its vertices, not a corner and a size; the
+            # box is only the fallback when no vertices were given.
+            if points is None:
+                x, y = float(pos[0]), float(pos[1])
+                w, h = float(size[0]), float(size[1])
+                points = [(x, y), (x + w, y), (x + w, y + h), (x, y + h)]
+            roi = pg.PolyLineROI(
+                [tuple(map(float, p)) for p in points],
+                closed=True, pen=_pen(pen), movable=movable,
+            )
         else:
             roi = pg.RectROI(
                 list(pos), list(size), pen=_pen(pen), movable=movable, rotatable=rotatable

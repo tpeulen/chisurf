@@ -347,7 +347,12 @@ class Marker(Handle, Protocol):
 
 @runtime_checkable
 class Roi(Handle, Protocol):
-    """A draggable/resizable region-of-interest rectangle over an image."""
+    """A draggable/resizable region of interest over an image.
+
+    Rectangle, circle, ellipse or polygon. The first three are described by
+    :attr:`pos` and :attr:`size`; a polygon by :attr:`points`, which the others
+    also answer (with their corners) so a caller need not branch on the kind.
+    """
 
     @property
     def pos(self) -> tuple[float, float]:
@@ -357,6 +362,16 @@ class Roi(Handle, Protocol):
     @property
     def size(self) -> tuple[float, float]:
         """The ``(w, h)`` size in image coordinates."""
+        ...
+
+    @property
+    def points(self) -> list[tuple[float, float]]:
+        """The vertices in image coordinates.
+
+        For a polygon these are its handles, mapped out of the ROI's own frame
+        so they stay correct after the whole shape is dragged. For the box-like
+        kinds they are the four corners.
+        """
         ...
 
     def set_pos(self, x: float, y: float) -> None:
@@ -376,6 +391,18 @@ class Roi(Handle, Protocol):
         ----------
         w, h : float
             New width and height in image coordinates.
+        """
+        ...
+
+    def set_pen(self, pen, **overrides) -> None:
+        """Restyle the ROI's outline.
+
+        Parameters
+        ----------
+        pen : pen-like
+            A colour/style spec or :class:`style.Pen`.
+        **overrides
+            ``width``, ``style``, … applied on top (see ``style.to_pen``).
         """
         ...
 
