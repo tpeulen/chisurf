@@ -35,7 +35,7 @@ folder stays clean. Set it once per machine with
 
 ```bash
 pixi run chisurf            # launch the GUI (builds extensions first, == python -m chisurf)
-pixi run build-extensions   # build modules/ C++ extensions (+ local tttrlib)
+pixi run build-extensions   # install modules/ (chinet, ndxplorer, quest) + build tttrlib
 pixi run lint               # ruff check + ruff format --check
 pixi run fmt                # ruff format + ruff check --fix
 pixi run typecheck          # mypy chisurf/

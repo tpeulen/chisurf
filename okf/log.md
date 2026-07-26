@@ -2,6 +2,54 @@
 
 ## 2026-07-26
 
+* **Docs reconciled with the source; Sphinx still warning-free.** A scheduled
+  truth pass over `docs/` and `okf/`, each mismatch checked against the code
+  before editing.
+  **Server contract.** `chisurf/server/dto.py` was deleted by the SV-02 fix on
+  2026-07-05, but `docs/development/architecture.md` and
+  `architecture_client_server.md` still described it as the JSON contract — both
+  now say handlers build the dicts themselves, name `services/fits.py::_fit_dto`
+  as the shape owner, and the example fit summary is the one `fit.list` really
+  returns (it was missing `chi2r`, `n_points`, `n_free`, `data`, `model`,
+  `parameters`). The **RPC namespace tables in both files listed 8 of the 13
+  registered namespaces** — `plot`, `detector_setups`, `flr`, `editor` and `log`
+  were absent, as were `fit.sample.*`, `fit.parameter_scan.*`, `fit.group.*`,
+  `fit.diagnostics`, `fit.posterior`, `fit.reweight_prior`, `parameter.set_prior`,
+  `model.component.*` and `model.state.*`; regenerated from
+  `server_methods.json`, and noted that plugins add further namespaces through
+  their `services` entrypoint. The server file table lost `dto.py` and gained
+  `rpc_logging.py`.
+  **Found while doing it, not fixed** (filed under [INC-03](/specs/assessment.md)):
+  `protocol.py::METHOD_CATALOGUE`, which `meta.protocol` returns verbatim, is a
+  *second* hand-kept contract and lags the registry by **40 methods** including
+  those three whole namespaces — nothing phantom, just blind. `meta.methods` sees
+  them.
+  **`modules/` is not four C++ extensions.** `clsmview` is gone from the tree
+  entirely, and `chinet`/`ndxplorer`/`quest` are plain editable installs —
+  `tttrlib` is the only compiled entry `build-extensions` produces, and the
+  burbulator C++ library lives with the acquisition plugin and is built by
+  `setup.py`. Corrected in [compiled modules](/subsystems/compiled-modules.md)
+  (now a table of what each entry actually is), [overview](/overview.md),
+  [build & env](/workflows/build-and-env.md) and `docs/getting_started/index.rst`.
+  **Dead references.** `docs/architecture.md` moved under `docs/development/`
+  three commits ago; fixed in [overview](/overview.md),
+  [specs overview](/specs/overview.md) and the
+  [architecture-doc reference](/references/architecture-doc.md) (including its
+  `resource:`). Four broken bundle-relative links repaired —
+  `/subsystems/model-view-spec.md` → [gui-autoform](/subsystems/gui-autoform.md),
+  `/architecture/overview.md` → [CLAUDE.md](/references/claude-md.md), and the
+  two `/guides/*` targets that are `docs/guides/` pages, not bundle concepts;
+  `docs/H2MM.md` in [burst plugins](/plugins/burst.md) is now
+  `docs/concepts/h2mm.md` + `docs/guides/h2mm.md`. Every non-log bundle link now
+  resolves.
+  **Bundle indexes.** `usecases` and `reviews` were reachable only by guessing —
+  both are listed in the root index now, and `reviews/` gained the `index.md`
+  every other group has. `ui-glossary`, `pymol-parity` and `mmfdb-sql-audit` were
+  each missing from their group index.
+  **Generated catalogue.** `docs-plugins` had not been re-run since the scan-precision
+  plugin landed (`bf7a5cb38`), so `docs/reference/plugins/img_precision.md` did not
+  exist; regenerated. `docs-html` is warning-free before and after.
+
 * **GUI walk of the Image Tools FLIM pipeline (RF-155..RF-162).** Drove the
   numbered pipeline — Setup → Browser → 1. Intensity → 2. Number & Brightness →
   3. Mean Micro-Time → 4. IRF & BG → 5. Phasor-FLIM → 6. Pixel-wise MLE — on

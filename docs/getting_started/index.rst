@@ -13,8 +13,9 @@ manager (the CI uses it too). From a checkout of the repository:
    pixi run test           # non-GUI test suite
    pixi run test-gui       # GUI / widget tests
 
-The compiled C++ extensions in ``modules/`` (chinet, ndxplorer, clsmview, quest)
-must be built before the tests run; the ``test*`` tasks already depend on
+The sibling packages in ``modules/`` (``tttrlib``, built from C++ source, plus
+the pure-Python ``chinet``, ``ndxplorer`` and ``quest``) must be installed
+before the tests run; the ``test*`` tasks already depend on
 ``build-extensions``. If imports of those modules fail, run
 ``pixi run build-extensions``.
 

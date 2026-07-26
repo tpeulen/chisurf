@@ -22,6 +22,7 @@ good looks like. Read [overview](overview.md) first for the whole-system shape.
 # Backlog
 
 * [Assessment — Cleanup Backlog](assessment.md) - Concrete, verified findings where today's code diverges from the targets, most severe first.
+* [MMFDB raw-SQL audit](mmfdb-sql-audit.md) - Per-file count of raw CRUD SQL that should route through the DAO (PRD-26), separating the bespoke/DDL statements that may stay raw.
 
 # Authoring
 

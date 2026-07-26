@@ -1,20 +1,28 @@
 ---
 type: Subsystem
 title: Compiled Modules
-description: C++ extensions in modules/ that must be built before tests.
+description: The sibling packages under modules/ and the build tasks that install them.
 resource: modules/
 tags: [cpp, extensions, build, swig]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
-# Extensions
+# What lives in `modules/`
 
-The compiled extensions in `modules/` — `ndxplorer`, `clsmview`, `quest` —
-plus the burbulator C++ library must be built before the test suites run.
-`ndxplorer` and `quest` are git submodules (see `.gitmodules`). `chinet` sits
-in the same folder and is installed by the same task, but is **pure Python**
-(runtime, schema, and the [graph layer](/subsystems/graph.md)) and needs no
-compilation.
+| Entry | Kind | How it is provided |
+|-------|------|--------------------|
+| `tttrlib` | C++/SWIG, **compiled** | `build-tttrlib`, from the source behind a tracked symlink to a sibling checkout |
+| `chinet` | pure Python (runtime, schema, [graph layer](/subsystems/graph.md)) | `build-chinet`, editable install |
+| `ndxplorer` | pure Python | `build-ndxplorer`, editable install; git submodule (see `.gitmodules`) |
+| `quest` | pure Python | `build-quest`, editable install; git submodule |
+| `mmfdb` | pure Python | symlink to a sibling checkout; **not** installed by `build-extensions` |
+| `imp-tricks` | external modelling framework | symlink to a sibling checkout; **not** installed by `build-extensions` |
+
+`tttrlib` is the only entry that is compiled — the other three that
+`build-extensions` installs are plain editable installs. ChiSurf's own
+burbulator C++ library is *not* in `modules/`: it lives with the acquisition
+plugin (`chisurf/plugins/core/acq/tcspc_devices/simulation/csrc/`) and is built
+by the repository's `setup.py` when ChiSurf itself is installed.
 
 # Building
 

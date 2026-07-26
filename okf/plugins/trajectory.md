@@ -32,7 +32,7 @@ expanding this group so it can be called from scripts, services, and tests.
 All eight single-tool `traj_*` widgets — `traj_save_topology`, `traj_align`,
 `traj_join`, `traj_rotate_translate`, `traj_convert`, `traj_remove_clashes`,
 `potential_energy` and `fret_trajectory` — have been migrated off their
-hand-built `.ui` files onto the [AutoForm](/subsystems/model-view-spec.md)
+hand-built `.ui` files onto the [AutoForm](/subsystems/gui-autoform.md)
 pattern. Each now pairs a Qt-free view-model (holding the paths, options and a
 running log, and doing all the `mdtraj`/compute work) with an `AutoForm` laid out
 from a sibling `*.view.json`: a picker custom section (`<name>_io`, with H5/PDB

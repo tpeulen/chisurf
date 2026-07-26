@@ -14,7 +14,7 @@ single-molecule fluorescence data (TCSPC, FCS, smFRET). These specs describe the
 description of the current tree. The current code is a historic mess; the gap
 between it and this target is tracked in [assessment](assessment.md). For the
 current-state layout, see the [architecture](/architecture/index.md) and
-[subsystems](/subsystems/index.md) groups and `docs/architecture.md`.
+[subsystems](/subsystems/index.md) groups and `docs/development/architecture.md`.
 
 ## The shape
 

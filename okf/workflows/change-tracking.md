@@ -11,9 +11,8 @@ timestamp: '2026-07-07T00:00:00Z'
 
 OKF is the durable, agent-readable knowledge layer that sits beside the code. It
 is only useful if it stays in sync with the tree, so **every material change runs
-the same loop**. This is the process rule that the per-area
-[change policy](/architecture/overview.md) and the root `CLAUDE.md`
-"Working practices" section point at.
+the same loop**. This is the process rule that the root
+[`CLAUDE.md`](/references/claude-md.md) "Working practices" section points at.
 
 ## The loop (do this for every material change)
 

@@ -121,10 +121,10 @@ Qt-free and lives under `chisurf/server/`.
 | `client_methods.json` | Declarative client wrapper method registry |
 | `protocol.py` | JSON-RPC encode/decode helpers and protocol metadata |
 | `session.py` | `SessionState`, server-side runtime state container |
-| `dto.py` | Dataclasses documenting JSON-safe DTO contract shapes |
 | `eventbus.py` | In-process event bus feeding ZMQ PUB/SUB events |
 | `jobs.py` | Job lifecycle helpers for long-running work |
-| `services/` | Dataset, fit, parameter, project, session, model, and graph handlers |
+| `rpc_logging.py` | `RpcLogWriter`, ships log records to the server over JSON-RPC (`log.write`), with local logging as fallback |
+| `services/` | Handler modules: datasets, fits, parameters, models, model_svc, projects, session_svc, graph, plot_svc, detector_setups, flr, code_editor, log_svc, agent |
 | `transport/zmq.py` | ZMQ REP/PUB server and REQ/SUB client transport |
 
 Services receive a `SessionState` and return `ServiceResult` dictionaries with
@@ -141,12 +141,22 @@ The authoritative method registry is `chisurf/server/server_methods.json`.
 |-----------|---------|
 | `meta` | `meta.ping`, `meta.methods`, `meta.protocol` |
 | `dataset` | `dataset.list`, `dataset.get`, `dataset.curve_data`, `dataset.load`, `dataset.rename`, `dataset.group`, `dataset.ungroup`, `dataset.remove`, `dataset.clear` |
-| `fit` | `fit.list`, `fit.get`, `fit.create`, `fit.run`, `fit.update`, `fit.save`, `fit.curve_data`, `fit.set_dataset`, `fit.set_result_idx`, `fit.set_fit_range`, `fit.remove`, `fit.clear` |
-| `parameter` | `parameter.get`, `parameter.set_value`, `parameter.set_fixed`, `parameter.set_bounds`, `parameter.set_bounds_on`, `parameter.link`, `parameter.unlink` |
+| `fit` | `fit.list`, `fit.get`, `fit.create`, `fit.add`, `fit.run`, `fit.update`, `fit.save`, `fit.curve_data`, `fit.select`, `fit.reorder`, `fit.set_dataset`, `fit.set_result_idx`, `fit.set_fit_range`, `fit.range.auto`, `fit.mask.set`, `fit.remove`, `fit.clear`, `fit.diagnostics`, `fit.posterior`, `fit.reweight_prior`, `fit.parameter_snapshot`, `fit.restore_parameters`, `fit.sample.start`, `fit.sample.cancel`, `fit.sample.status`, `fit.parameter_scan.start`, `fit.parameter_scan.cancel`, `fit.parameter_scan.result`, `fit.group.select_member`, `fit.group.add_member`, `fit.group.remove_member`, `fit.group.link_parameters_by_name` |
+| `parameter` | `parameter.get`, `parameter.set_value`, `parameter.set_fixed`, `parameter.set_bounds`, `parameter.set_bounds_on`, `parameter.set_prior`, `parameter.link`, `parameter.unlink` |
+| `model` | `model.finalize`, `model.set_parse_function`, `model.component.add`, `model.component.remove`, `model.state.get`, `model.state.set` |
 | `project` | `project.info`, `project.save`, `project.load` |
 | `session` | `session.describe`, `session.clear`, `session.snapshot`, `session.restore` |
-| `model` | `model.finalize`, `model.set_parse_function` |
 | `graph` | `graph.build`, `graph.build_fits` |
+| `plot` | `plot.fit_data` |
+| `detector_setups` | `detector_setups.list`, `detector_setups.get`, `detector_setups.save`, `detector_setups.current`, `detector_setups.set_current` |
+| `flr` | `flr.metadata.get`, `flr.metadata.set`, `flr.metadata.add`, `flr.metadata.delete`, `flr.analysis.update`, `flr.photon_stream.add`, `flr.photon_stream.list`, `flr.export`, `flr.probe_types`, `flr.probes` |
+| `editor` | `editor.document.list`, `editor.document.get`, `editor.document.set`, `editor.document.apply_edits`, `editor.document.ruff_check`, `editor.document.ruff_fix` |
+| `log` | `log.write` |
+
+Plugins add further namespaces at runtime: `PluginRegistry.register_services()`
+calls each plugin's `services` entrypoint with the dispatcher, and the methods it
+registers are declared in the `rpc_methods` block of the plugin's
+`manifest.json`. Those are not part of the core registry above.
 
 Every method is registered under exactly one, namespaced name. The former flat
 aliases (`list_datasets`, `get_fit_info`, `run_fit`, `save_project`, `ping`, …)
@@ -156,13 +166,16 @@ a protocol-version-independent health probe.
 
 ## DTO Policy
 
-`chisurf/server/dto.py` contains dataclasses such as `DatasetSummary`,
-`FitSummary`, `FitDetail`, `ParameterDTO`, `SetupDTO`, `ProjectInfoDTO`, and
-`ActionResultDTO`. These classes document the JSON contract and provide helper
-serialization. Service handlers are not required to return dataclass instances;
-they should return JSON-safe dictionaries matching the documented shapes.
+Service handlers return plain JSON-safe dictionaries; there is no dataclass
+layer. The former `chisurf/server/dto.py` (`DatasetSummary`, `FitSummary`,
+`FitDetail`, `ParameterDTO`, `SetupDTO`, `ProjectInfoDTO`, `ActionResultDTO`) was
+removed because nothing constructed it — it documented shapes the handlers built
+by hand. Each handler module owns the shape it returns (`services/fits.py::_fit_dto`
+for fits, for example); `chisurf/server/protocol.py::METHOD_SCHEMAS` names the
+expected params and result type per method, and the long-term intent is to make a
+JSON Schema the single contract authority.
 
-DTOs must not contain Qt objects or arbitrary Python domain objects. Stable IDs
+Payloads must not contain Qt objects or arbitrary Python domain objects. Stable IDs
 should be exposed as `uid` strings where possible. GUI code should compare DTOs
 by `uid`, not by Python object identity.
 

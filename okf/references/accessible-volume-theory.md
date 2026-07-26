@@ -20,7 +20,7 @@ science/pedagogy layer for ChiSurf's AV tooling: what the AV is, why three
 different "distances" fall out of it, and how those become restraints.
 
 It complements the maintained user guide
-[/guides/23_accessible_volume.md](/guides/23_accessible_volume.md) (workflow and
+[`docs/guides/23_accessible_volume.md`](../../docs/guides/23_accessible_volume.md) (workflow and
 API), the [modelling roadmap](modelling-roadmap.md) (forward-looking `fps.json`
 and parameter-adapter work), and the [Modelling plugins](/plugins/modelling.md)
 group. The molecular-modelling kernel itself has migrated out of ChiSurf into the
@@ -239,9 +239,9 @@ measured decay.
   `core/imp_engine.py`.
 - Editor & config: `chisurf/plugins/modelling/fps_json_editor/` (the `fps.json`
   labeling/scoring schema).
-- User guide: [/guides/23_accessible_volume.md](/guides/23_accessible_volume.md);
+- User guide: [`docs/guides/23_accessible_volume.md`](../../docs/guides/23_accessible_volume.md);
   polymer $P(R)$ companion
-  [/guides/03_polymer_distance_distributions.md](/guides/03_polymer_distance_distributions.md).
+  [`docs/guides/03_polymer_distance_distributions.md`](../../docs/guides/03_polymer_distance_distributions.md).
 - Forward roadmap (full `fps.json` schema, distance-parameter adapters):
   [modelling-roadmap.md](modelling-roadmap.md); modelling plugin overview
   [/plugins/modelling.md](/plugins/modelling.md).

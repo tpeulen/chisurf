@@ -12,4 +12,5 @@
 * [TTTR tools](tttr.md) - photon-stream conversion, browsing, count-rate, micro-time and image-browser tools.
 * [Trajectory tools](trajectory.md) - molecular-dynamics trajectory conversion, alignment, energy, FRET, and clash/topology utilities.
 * [Sample, spectra & curation](sample-spectra.md) - sample database, spectra downloader, PCH, VV/VH calibration, and AI settings.
+* [ChiMOL vs PyMOL parity](pymol-parity.md) - Measured gap between the built-in molecular viewer and PyMOL, with a prioritised route to replacing it.
 * [Core tools](core-tools.md) - setup, onboarding, MMFDB admin, user editor and other infrastructure plugins.

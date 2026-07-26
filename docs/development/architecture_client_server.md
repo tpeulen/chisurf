@@ -47,7 +47,6 @@ ZMQ subscriber <-- ZMQ PUB/SUB events --------  EventBus
 | `SessionState` | `chisurf/server/session.py` | Server-side datasets, fits, experiments, project/session snapshots |
 | `ServiceResult` | `chisurf/server/services/__init__.py` | Standard `{"ok": bool, ...}` service return shape |
 | `service_error()` | `chisurf/server/services/__init__.py` | Structured service error helper |
-| DTO dataclasses | `chisurf/server/dto.py` | JSON contract documentation and helper serialization |
 | Protocol metadata | `chisurf/server/protocol.py` | JSON-RPC helpers, protocol version, method catalogue, schemas |
 
 ## Server Responsibilities
@@ -75,12 +74,17 @@ method wrappers are generated from `chisurf/server/client_methods.json`.
 |-----------|---------|
 | `meta` | `meta.ping`, `meta.methods`, `meta.protocol` |
 | `dataset` | `dataset.list`, `dataset.get`, `dataset.curve_data`, `dataset.load`, `dataset.rename`, `dataset.group`, `dataset.ungroup`, `dataset.remove`, `dataset.clear` |
-| `fit` | `fit.list`, `fit.get`, `fit.create`, `fit.run`, `fit.update`, `fit.save`, `fit.curve_data`, `fit.set_dataset`, `fit.set_result_idx`, `fit.set_fit_range`, `fit.remove`, `fit.clear` |
-| `parameter` | `parameter.get`, `parameter.set_value`, `parameter.set_fixed`, `parameter.set_bounds`, `parameter.set_bounds_on`, `parameter.link`, `parameter.unlink` |
+| `fit` | `fit.list`, `fit.get`, `fit.create`, `fit.add`, `fit.run`, `fit.update`, `fit.save`, `fit.curve_data`, `fit.select`, `fit.reorder`, `fit.set_dataset`, `fit.set_result_idx`, `fit.set_fit_range`, `fit.range.auto`, `fit.mask.set`, `fit.remove`, `fit.clear`, `fit.diagnostics`, `fit.posterior`, `fit.reweight_prior`, `fit.parameter_snapshot`, `fit.restore_parameters`, `fit.sample.*`, `fit.parameter_scan.*`, `fit.group.*` |
+| `parameter` | `parameter.get`, `parameter.set_value`, `parameter.set_fixed`, `parameter.set_bounds`, `parameter.set_bounds_on`, `parameter.set_prior`, `parameter.link`, `parameter.unlink` |
 | `project` | `project.info`, `project.save`, `project.load` |
 | `session` | `session.describe`, `session.clear`, `session.snapshot`, `session.restore` |
-| `model` | `model.finalize`, `model.set_parse_function` |
+| `model` | `model.finalize`, `model.set_parse_function`, `model.component.add`, `model.component.remove`, `model.state.get`, `model.state.set` |
 | `graph` | `graph.build`, `graph.build_fits` |
+| `plot` | `plot.fit_data` |
+| `detector_setups` | `detector_setups.list`, `detector_setups.get`, `detector_setups.save`, `detector_setups.current`, `detector_setups.set_current` |
+| `flr` | `flr.metadata.*`, `flr.analysis.update`, `flr.photon_stream.*`, `flr.export`, `flr.probe_types`, `flr.probes` |
+| `editor` | `editor.document.list`, `editor.document.get`, `editor.document.set`, `editor.document.apply_edits`, `editor.document.ruff_check`, `editor.document.ruff_fix` |
+| `log` | `log.write` |
 
 The flat aliases (`ping`, `list_datasets`, `get_dataset_info`, `list_fits`,
 `get_fit_info`, `run_fit`, `get_parameter`, `set_parameter_value`,
@@ -90,27 +94,34 @@ probe. `ChisurfClient` still offers the short Python spellings
 (`client.list_datasets()`, `client.ping()`); they are convenience wrappers that
 send the namespaced method over the wire.
 
-## DTO Principles
+## Payload Principles
 
-- DTOs must be JSON-serializable.
-- DTOs must not contain Qt objects or arbitrary Python domain objects.
-- DTOs should include stable `uid` strings wherever possible.
+- Every payload must be JSON-serializable.
+- Payloads must not contain Qt objects or arbitrary Python domain objects.
+- Payloads should include stable `uid` strings wherever possible.
 - GUI and plugin code should compare server-owned objects by `uid`, not Python identity.
-- DTO dataclasses in `chisurf/server/dto.py` document shapes; services may return plain dicts matching those shapes.
+- There is no dataclass layer: handlers build the dicts directly, each handler
+  module owning its own shape (`chisurf/server/services/fits.py::_fit_dto` for fits).
 
-Example `FitSummary` shape:
+Example fit summary, as returned by `fit.list` (`_fit_dto`):
 
 ```json
 {
-  "uid": "fit-uuid",
   "index": 0,
+  "uid": "fit-uuid",
   "name": "Fit 1",
   "type": "FitGroup",
   "chi2": 1.23,
-  "dataset_uid": "dataset-uuid",
+  "chi2r": 1.05,
+  "n_points": 1024,
+  "n_free": 5,
   "dataset_name": "sample.ptu",
+  "dataset_uid": "dataset-uuid",
   "model_name": "LifetimeModel",
-  "parameter_count": 12
+  "parameter_count": 12,
+  "data": {},
+  "model": {},
+  "parameters": []
 }
 ```
 

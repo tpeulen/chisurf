@@ -21,4 +21,6 @@ need durable context on how the repository is organized.
 * [workflows](workflows/index.md) - Developer workflows: environment/build with pixi, and running the test suites.
 * [specs](specs/index.md) - Target ("north star") architecture specifications and the cleanup backlog tracking where today's code diverges from them.
 * [prds](prds/index.md) - Product-requirement / design notes (PRD-NN) driving current work — one self-contained concept per PRD with persistent number and status; the retired top-level `overhaul/` folder now lives here.
+* [usecases](usecases/index.md) - What a ChiSurf user actually does, one workflow per file — discovered and kept current by the headless GUI-tester job, doubling as manual test scripts.
+* [reviews](reviews/index.md) - The automated code-review ↔ fix findings queue.
 * [references](references/index.md) - Pointers to maintained design docs and roadmap material.
