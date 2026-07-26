@@ -2,6 +2,24 @@
 
 ## 2026-07-26
 
+* **Burst Selection can export again (RF-053).** Both entries of *File →
+  Export* guarded on `if not self._last_frame:`, and `_last_frame` is a
+  `pandas.DataFrame` — an object with no truth value — so `export_bur` and
+  `export_flr_cif` raised `ValueError: The truth value of a DataFrame is
+  ambiguous` before the file dialog opened, in exactly the case that has
+  something to export. With no data the guard happened to work (`not None` is
+  `True`), which is why a smoke test that never loads a measurement saw
+  nothing. Both now use `self._last_frame is None or self._last_frame.empty`,
+  the idiom the rest of the class already uses, which also closes the second
+  half: an *empty* frame previously passed the guard and wrote a header-only
+  file. Pinned by `test/plugins/burst_selection/test_export_guards.py`, which
+  drives the real widget headlessly with the save dialog patched — a non-empty
+  frame round-trips through both writers, and `None` / an empty frame report
+  "No burst data to export." without touching the disk. Four of its six tests
+  fail against `HEAD` (the two writes with the `ValueError`, the two
+  empty-frame cases by writing a file). `test/plugins/burst_selection` +
+  `test/plugins/test_burst_selection_transformer.py` green (22 passed).
+
 * **One name per RPC method ([INC-03](/specs/assessment.md#inc-03), server
   half).** The ChiSurf server registered every core operation twice — flat
   `list_datasets`/`run_fit`/`get_parameter`/`save_project`/`session_*`/`model_*`/`ping`

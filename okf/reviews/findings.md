@@ -839,11 +839,30 @@ Findings RF-052..RF-056.
 - **Fix note:**
 
 ### RF-053
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (both export menu items raise on every non-empty dataset)
 - **Location:** `chisurf/plugins/burst/burst_selection/gui/tool.py:3055` (`export_bur`) and `:3071` (`export_flr_cif`)
 - **Finding:** Both guards are `if not self._last_frame:` and `_last_frame` is a `pandas.DataFrame`, so the guard raises `ValueError: The truth value of a DataFrame is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all()` exactly when there *is* something to export — before the file dialog opens, so the whole *File → Export → Export as .bur / Export as flrCIF* surface is dead. Verified by driving the widget: with 620 bursts loaded both calls raise; after `clear()` both correctly write "No burst data to export." to the summary (`not None` is `True`), which is why the bug is invisible to a smoke test that never loads data. Use `if self._last_frame is None or self._last_frame.empty:` (the same idiom the rest of the class already uses at `:2040`, `:2438`, `:2543`) and add a test that exports a non-empty frame to `tmp_path` with the file dialog patched.
-- **Fix note:**
+- **Fix note:** Both guards are now `if self._last_frame is None or
+  self._last_frame.empty:`. Reproduced against `HEAD` first, through the real
+  widget headlessly: with a three-row frame assigned to `_last_frame`, both
+  `export_bur()` and `export_flr_cif()` raised the quoted `ValueError`. Fixing
+  the `None` half alone would have left the second, quieter defect the same
+  line carries: an **empty** frame passed the old guard (`not <empty frame>` is
+  `True`, so it returned early — but only by accident of pandas' own error
+  path; with `.empty` the intent is explicit and the header-only file the
+  flrCIF writer would emit for a zero-row frame is no longer written). Pinned
+  by the new `test/plugins/burst_selection/test_export_guards.py` (6 tests: a
+  non-empty frame round-trips through `.bur` — read back with the same columns
+  and row count — and through flrCIF, which carries the `loop_` block and one
+  `_column` tag per column; and the four `None` / empty-frame combinations
+  report "No burst data to export." without creating the target file). Four of
+  the six fail against `HEAD` — the two writes with the `ValueError`, the two
+  empty-frame cases by writing a file that should not exist.
+  `test/plugins/burst_selection` + `test/plugins/test_burst_selection_transformer.py`
+  green (22 passed); `ruff check` on `tool.py` reports the same 5 pre-existing
+  findings as `HEAD` and none new, and the new test file is `ruff check` +
+  `ruff format` clean.
 
 ### RF-054
 - **Status:** OPEN

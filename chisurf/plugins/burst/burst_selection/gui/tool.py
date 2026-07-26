@@ -3052,7 +3052,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def export_bur(self) -> None:
         """Export burst data as .bur file."""
-        if not self._last_frame:
+        if self._last_frame is None or self._last_frame.empty:
             self.summary.setPlainText("No burst data to export.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -3068,7 +3068,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
     def export_flr_cif(self) -> None:
         """Export burst data as flrCIF format."""
-        if not self._last_frame:
+        if self._last_frame is None or self._last_frame.empty:
             self.summary.setPlainText("No burst data to export.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
