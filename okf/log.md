@@ -2,6 +2,37 @@
 
 ## 2026-07-26
 
+* **ndXplorer's gates were the same type all along, and now there is a proof.**
+  `chisurf/core/roi/selections.py` converts ndXplorer's `DataSelection`
+  hierarchy — a 1-D interval, a Mahalanobis ellipse, a painted histogram bitmap
+  — into a `RegionCollection`. The mapping is term for term: each selection's
+  `enabled`/`invert` are the entry's flags, and ndXplorer's implicit AND is
+  `combine="and"`. The ellipse comes from the covariance's eigenvectors; the
+  interval becomes a rectangle unbounded along the axis it does not constrain.
+  Two things differ and both are mechanical: `get_mask` returns `True` for
+  *excluded* where a region answers *inside* — which is what `excluded()` is for
+  — and a selection names its axes by parameter index where a region carries
+  none, so the axes are supplied at conversion. A selection constraining a
+  parameter that is not on the plane is skipped rather than approximated: a
+  wrong gate is worse than a missing one.
+
+  The tests assert **agreement with ndXplorer's own `get_mask`, point for
+  point**, for every selection kind and for enabled/inverted/combined cases.
+  That is the only way to know an inverted convention was reconciled rather than
+  merely described — getting it backwards is completely silent. Writing them
+  caught one real defect in my own bridge: `MaskDataSelection` names its axes
+  `idx1`/`idx2` where the others use `parameter_idx*`, so a painted gate would
+  have been applied to whatever plane it was handed.
+
+  Sharing the type also fixes a loss ndXplorer has today: its
+  `onLoad_selection` reconstructs **only** `RectangularDataSelection`, so a
+  saved ellipse or painted population silently disappears on reload and the
+  analysis afterwards runs over a different set of points than the one on
+  screen. Saved as a collection every shape and flag survives, which one test
+  pins by round-tripping and re-comparing the masks. The bridge is duck-typed
+  and lives on the ChiSurf side, so the dependency stays one-directional.
+  11 tests. Concept: [roi](/subsystems/roi.md), guide 48.
+
 * **chimol: `smooth` and `protect`/`deprotect`.** `smooth` is transcribed from
   `layer3/Executive.cpp::ExecutiveSmooth`, whose behaviour depends on four things
   its own help text does not mention: the half-windows are `window / 2` in

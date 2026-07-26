@@ -16,8 +16,8 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 |---|---|
 | **Imaging → Lifetime → Molecule-wise MLE** | the editor confines the molecule search; every measured molecule is drawn back as a region |
 | **Imaging → CLSM-Draw** | the full editor: paint, draw, name, combine, measure; the decay follows the combined region |
-| **Imaging → Colocalization** | gates the joint intensity histogram — bright pixels only, or a painted cloud |
-| **Imaging → Phasor-FLIM** | the phasor cursor *is* a region on the $(g,s)$ plane |
+| **Imaging → Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
+| **Imaging → Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* dock shows the pixels they pick out |
 | **Imaging → Drift Correction** | a structured patch gives a sharper correlation peak than a mostly-dark frame |
 | **ndXplorer** | a gate on any two parameters selects the bursts inside it |
 
@@ -126,6 +126,38 @@ with, combined and stored like a drawn one:
 for props in result.region_properties():
     region = props.as_ellipse()      # centroid, axes and orientation as a ROI
 ```
+
+## A region on a data plane
+
+Three of those tools do not gate an image at all. A region carries no axes, so
+the same object works wherever there are two of them:
+
+* the **phasor cursor** is an ellipse — or a polygon, for a cluster that is
+  neither round nor elliptical — drawn on $(g,s)$. Because the phasor plane and
+  the image are two views of the same pixels, a cursor answers *which pixels have
+  that lifetime*; the **Selected** dock is the intensity map gated by it.
+* the **colocalization gate** is drawn on the joint intensity histogram, whose
+  axes carry the intensities themselves. The typed box, a painted population and
+  any shape you draw are entries in one list, so "this cloud **and** above that
+  threshold" is expressible — previously a painted gate simply overrode the box.
+* **ndXplorer's** gates are the same thing under another name. Its selections
+  carry per-row *enabled* and *invert* and combine by AND, which is exactly a
+  region collection; `chisurf.core.roi.selections` converts between them:
+
+  ```python
+  from chisurf.core.roi import collection_from_selections, excluded_mask
+
+  gates = collection_from_selections(ndx_selections, axes=(0, 1))
+  hidden = excluded_mask(gates, data, axes=(0, 1))   # ndX's convention
+  gates.save("gates.json")                           # every shape survives
+  ```
+
+  Note the two conventions: `contains` answers where a point is *inside*, ndX's
+  `get_mask` answers where it is *excluded*. `excluded()` names the second so it
+  is not re-derived — and re-derived wrongly — at each call site. Saving through
+  a collection also fixes a real loss: ndXplorer's own loader rebuilds only
+  rectangles, so a saved ellipse or painted population silently disappeared on
+  reload.
 
 ## Getting a region in
 

@@ -274,6 +274,24 @@ The angle conversion is the fiddly part: `orientation` follows scikit-image and
 is measured from the *row* axis, while `EllipseROI` rotates in `(x, y) =
 (column, row)`, so the rotation is `-(θ + π/2)`.
 
+### ndXplorer's selections are the same type
+
+`selections.py` converts ndXplorer's `DataSelection` hierarchy — a 1-D interval,
+a Mahalanobis ellipse, a painted histogram bitmap — into a `RegionCollection`.
+The mapping is term for term: each selection's `enabled`/`invert` are the entry's
+flags, and ndXplorer's implicit AND is `combine="and"`. Two things differ and
+both are mechanical: its `get_mask` returns `True` for *excluded* (hence
+`excluded()`), and a selection names its axes by parameter index where a region
+carries none, so the axes are supplied at conversion. A selection constraining a
+parameter that is not on the plane is skipped, not approximated.
+
+The bridge is duck-typed and lives on the ChiSurf side, so the dependency stays
+one-directional. Its tests assert agreement with ndXplorer's own `get_mask`
+point for point, which is the only way to know the inverted convention was
+reconciled rather than merely described. Storing gates as a collection also
+fixes a real loss: ndXplorer's `onLoad_selection` rebuilds **only** rectangles,
+so a saved ellipse or painted population disappeared on reload.
+
 Regions are `(x, y) = (column, row)` throughout. The AutoForm `image` section
 disagreed for 2-D images only — pyqtgraph's default maps axis 0 to *x* — while
 its own markers, click picks, rectangle gate and 3-D path all assumed
