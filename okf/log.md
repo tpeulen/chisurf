@@ -2,6 +2,22 @@
 
 ## 2026-07-26
 
+* **INC-07 — one menu named "Fluorescence decay", not two.** The case split that
+  [INC-07](/specs/assessment.md#inc-07) had just fixed in `categories` also sat
+  in the **menu path**, where it is live: `synthetic_decay`'s `display_name` (and
+  its legacy module-level `name`) read `Spectroscopy:Fluorescence Decay:…` while
+  its five siblings read `Spectroscopy:Fluorescence decay:…`, so the ribbon built
+  two sibling submenus differing only in capitalisation and the generated
+  catalogue carried two adjacent headings — one holding a single tool, the other
+  five. Renamed the outlier to the majority spelling in both places and
+  regenerated `docs/reference/plugins/` (the six decay tools now share one
+  heading; 25 categories → 24). Guardrail:
+  `test_builtin_menu_paths_are_case_consistent` pins one spelling per
+  `display_name` parent segment across all 101 manifests — the sibling of the
+  existing `categories` check, but over the segments that actually build the
+  menu; it fails on the pre-change tree. Tests:
+  `test/core/test_plugin_registry.py` (+1), 64 passed with the manifest and
+  `synthetic_decay` suites.
 * **GUI walk of the filtered-FCS filter calculator (RF-190..RF-192).** Drove the
   **FCS → 🧪 Filter Calc** panel headlessly the way a user does — detector
   selection, both Auto-fit entry points, **🧩 Unmix**, the fit-range spin boxes,

@@ -187,7 +187,7 @@ sum-of-exponentials, the `tcspc/convolve.py` IRF kernels, and
 `api.py::synthetic_decay` (a duplicate exponential+`np.convolve` implementation)
 now re-exports the core function. That generator is also surfaced as a
 full-stack plugin, `chisurf/plugins/fluorescence_decay/synthetic_decay/`
-(**Spectroscopy:Fluorescence Decay:Synthetic Decay Generator**) with API / CLI
+(**Spectroscopy:Fluorescence decay:Synthetic Decay Generator**) with API / CLI
 (`synth-decay generate|component`) / RPC (`synthetic_decay.compute[_component]`)
 / AutoForm GUI (editable lifetime-spectrum table + histogram/IRF/noise options +
 live decay plot). The **photon-stream simulators build their per-species

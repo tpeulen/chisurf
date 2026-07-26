@@ -384,6 +384,32 @@ class TestPluginRegistryState:
         split = {k: sorted(v) for k, v in spellings.items() if len(v) > 1}
         assert not split, f"categories spelled inconsistently: {split}"
 
+    def test_builtin_menu_paths_are_case_consistent(self):
+        """INC-07 guard: one spelling per menu-path segment across all manifests.
+
+        Unlike ``categories``, ``display_name`` is live: its ``:``-separated
+        parent segments build the ribbon submenus, so ``"Fluorescence decay"``
+        and ``"Fluorescence Decay"`` produce two sibling menus differing only
+        in case (and two adjacent headings in the generated catalogue).
+        """
+        import collections
+        import json
+        import pathlib
+
+        import chisurf.plugins
+
+        plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
+        spellings: dict[str, set[str]] = collections.defaultdict(set)
+        for mf in sorted(plugins_root.rglob("manifest.json")):
+            if "cookiecutter" in str(mf):  # template placeholders, not real labels
+                continue
+            display_name = json.loads(mf.read_text()).get("display_name") or ""
+            for segment in display_name.split(":")[:-1]:  # parents only, not the leaf
+                spellings[segment.casefold()].add(segment)
+
+        split = {k: sorted(v) for k, v in spellings.items() if len(v) > 1}
+        assert not split, f"menu-path segments spelled inconsistently: {split}"
+
 
 class TestLegacyMetadata:
     """_read_legacy_metadata() fallback."""

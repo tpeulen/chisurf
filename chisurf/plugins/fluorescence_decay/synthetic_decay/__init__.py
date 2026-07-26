@@ -9,7 +9,7 @@ optional IRF convolution and Poisson shot noise.
 # Plugin brand icon (unified emoji set)
 icon = "⚗️"
 
-name = "Spectroscopy:Fluorescence Decay:Synthetic Decay Generator"
+name = "Spectroscopy:Fluorescence decay:Synthetic Decay Generator"
 
 
 if __name__ == "plugin":  # pragma: no cover

@@ -11,7 +11,7 @@ Of the **100 plugins**, **42** build their interface from declarative AutoForm s
 *
 ```
 
-**100 plugins** across 25 categories.
+**100 plugins** across 24 categories.
 
 ## Core
 
@@ -113,12 +113,6 @@ Of the **100 plugins**, **42** build their interface from declarative AutoForm s
 | [FCS-Merger](fcs_merger.md) *(hidden)* | Merge / average multiple FCS correlation curves to improve signal-to-noise. |
 | [Lifetime-FCS Simulator](fcs-lfcs-sim.md) *(hidden)* | Simulate diffusing species with distinct fluorescence lifetimes and optional interconversion, then recover them by lifetime-filtered (FLCS) correlation. |
 
-## Spectroscopy → Fluorescence Decay
-
-| Plugin | Summary |
-| --- | --- |
-| [Synthetic Decay Generator](synthetic_decay.md) *(hidden)* | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
-
 ## Spectroscopy → Fluorescence decay
 
 | Plugin | Summary |
@@ -128,6 +122,7 @@ Of the **100 plugins**, **42** build their interface from declarative AutoForm s
 | [IRF Estimation](irf_estimator.md) *(hidden)* | Blind IRF estimation from fluorescence decay data using truncated exponential fitting and Richardson-Lucy deconvolution. |
 | [Lazy Lifetime Analysis](lltf.md) *(hidden)* | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
 | [MaxEnt MEM](maxent_decay.md) *(hidden)* | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
+| [Synthetic Decay Generator](synthetic_decay.md) *(hidden)* | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
 | [VV/VH G-Factor Calculator](vv_vh_g_factor.md) *(hidden)* | Calculate detector G-factors using tail-matching on VV/VH format files. |
 
 ## Spectroscopy → Single-Molecule
