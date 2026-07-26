@@ -1606,6 +1606,10 @@ class ImageMapWidget(QtWidgets.QWidget):
     * ``on_pick`` (str) — model method called after a pick (e.g. to fit the bead).
     * ``markers_source`` (str) — model method returning a list of ``(z, y, x)``
       points; those on the current slice are drawn as green square markers.
+    * ``extent_source`` (str) — model method returning ``(x0, x1, y0, y1)``, the
+      real-world span the image covers. Without it the axes are pixel indices;
+      with it they carry the quantity, so a region drawn on the plane is already
+      in the units the analysis gates with.
     * ``roi_source`` (str) — model method returning ``{"x", "y", "r", "z"}`` (or
       ``None``); draws a non-interactive yellow circle of radius ``r`` at ``(x, y)``
       when the current slice matches ``z``.
@@ -1656,6 +1660,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         select_attr: str | None = None,
         on_pick: str | None = None,
         markers_source: str | None = None,
+        extent_source: str | None = None,
         labels_source: str | None = None,
         roi_source: str | None = None,
         region_call: str | None = None,
@@ -1704,6 +1709,8 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._marker_items = []
         self._label_items = []
         self._roi_item = None
+        self._extent_source = extent_source
+        self._applied_extent = None
         # interactive rectangle gate
         self._region_call = region_call
         self._region_source = region_source
@@ -2135,6 +2142,34 @@ class ImageMapWidget(QtWidgets.QWidget):
                 except Exception:  # pragma: no cover - CircleROI optional
                     self._roi_item = None
 
+
+    def _apply_extent(self) -> None:
+        """Place the image on real axes when the model supplies an extent.
+
+        Without this an image is drawn in *pixel* coordinates, so a histogram
+        reads in bin indices and anything overlaid on it — a gate, a cursor —
+        has to be converted bin-by-bin at every call site. Given
+        ``extent_source`` the axes carry the quantity itself, and a region drawn
+        on the plane is in the same units the analysis gates with.
+        """
+        if self._image is None or not self._extent_source:
+            return
+        fn = getattr(self._model, self._extent_source, None)
+        extent = fn() if callable(fn) else fn
+        if extent is None or len(extent) != 4:
+            return
+        x0, x1, y0, y1 = (float(v) for v in extent)
+        if x1 <= x0 or y1 <= y0:
+            return
+        self._image.getImageItem().setRect(QtCore.QRectF(x0, y0, x1 - x0, y1 - y0))
+        # Range to it only when the span itself changed. The view is still in
+        # pixel coordinates until something tells it otherwise — the image lands
+        # in a corner and everything drawn on it looks like a speck — but
+        # re-ranging on every refresh would undo the user's zoom.
+        if extent != getattr(self, "_applied_extent", None):
+            self._applied_extent = tuple(extent)
+            self._image.getView().autoRange()
+
     # ── surface for the shared region overlay ──────────────────────────
     def add_roi(self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0),
                 pen="y", movable=True, rotatable=False, points=None):
@@ -2286,6 +2321,7 @@ class ImageMapWidget(QtWidgets.QWidget):
                 self._image.setCurrentIndex(prev)
         else:
             self._image.setImage(data, autoLevels=True)
+        self._apply_extent()
         apply_colormap(self._image, self._current_cmap())
         if self._overlay is not None and self._selection_attr:
             sel = getattr(self._model, self._selection_attr, None)
