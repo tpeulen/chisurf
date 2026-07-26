@@ -21,7 +21,7 @@
 | **Manual RPC registration** | `server/app.py` hardcodes `register_burst_selection_services(dispatcher)`. Every new plugin would need the same treatment. Methods are not auto-discoverable. |
 | **`SessionState` is not JSON-safe** | Stores real Python objects (`datasets`, `fits` lists). `to_dict()` only returns counts/names, not full state. No plugin namespacing. |
 | **GUI imports core directly** | `gui/tool.py` calls `analyze_file()` directly from `api/selection.py`. No client/server boundary. Even with `--no-deps`, this prevents web frontend. |
-| **Method naming inconsistency** | `server_methods.json` mixes legacy snake_case (`list_datasets`, `run_fit`) with dotted names (`dataset.list`, `fit.run`). Burst Selection uses `burst_selection.analyze_files` (dotted) — consistent with dotted convention but not auto-registered. |
+| **Method naming inconsistency** | Resolved for core methods: `server_methods.json` registers dotted names only (`dataset.list`, `fit.run`); the flat snake_case aliases are gone. Burst Selection uses `burst_selection.analyze_files` (dotted) — consistent with the convention but still not auto-registered. |
 | **No state patches** | GUI has no standardized way to learn about state changes. Events exist but aren't used for state sync. |
 | **No schema validation** | RPC method params/results have no formal schemas. `METHOD_SCHEMAS` is incomplete. |
 | **Duplicate legacy code paths** | `gui/legacy/burst_selector.py` (962 lines) is a full second implementation. |

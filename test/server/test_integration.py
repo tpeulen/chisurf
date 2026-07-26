@@ -26,22 +26,22 @@ def server_client():
     server.stop()
 
 
-# ── Legacy round-trip tests ─────────────────────────────────────
+# ── Round-trip tests ────────────────────────────────────────────
 
 def test_full_round_trip_list_methods(server_client):
     client, server = server_client
     methods = client.list_methods()
     expected = {
-        "list_datasets", "get_dataset_info", "add_dataset", "remove_datasets",
-        "clear_datasets",
-        "list_fits", "get_fit_info", "run_fit", "remove_fits", "clear_fits",
-        "get_parameter", "set_parameter_value", "set_parameter_fixed",
-        "set_parameter_bounds",
-        "save_project", "load_project", "get_project_info",
-        "list_methods", "ping",
+        "dataset.list", "dataset.get", "dataset.load", "dataset.remove",
+        "dataset.clear",
+        "fit.list", "fit.get", "fit.run", "fit.remove", "fit.clear",
+        "parameter.get", "parameter.set_value", "parameter.set_fixed",
+        "parameter.set_bounds",
+        "project.save", "project.load", "project.info",
+        "meta.methods", "meta.ping",
     }
     missing = expected - set(methods)
-    assert not missing, f"Missing legacy methods: {missing}"
+    assert not missing, f"Missing methods: {missing}"
 
 
 def test_full_round_trip_list_datasets(server_client):
@@ -128,22 +128,21 @@ def test_namespaced_fit_clear(server_client):
     assert result.get("ok") is True
 
 
-def test_legacy_and_namespaced_ping_equivalent(server_client):
+def test_short_client_alias_and_namespaced_ping_equivalent(server_client):
+    """``ChisurfClient.ping()`` is a Python-side shorthand for ``meta.ping``."""
     client, server = server_client
-    legacy = client.ping()
+    shorthand = client.ping()
     namespaced = client.meta__ping()
-    assert legacy.get("ok") == namespaced.get("ok")
-    assert legacy.get("status") == namespaced.get("status")
+    assert shorthand.get("ok") == namespaced.get("ok")
+    assert shorthand.get("status") == namespaced.get("status")
 
 
-def test_legacy_and_namespaced_list_methods_includes_both(server_client):
+def test_advertised_methods_are_namespaced(server_client):
+    """The wire surface is namespaced; the flat snake_case aliases are gone."""
     client, server = server_client
-    methods = client.list_methods()
-    # Namespaced methods should coexist with legacy
-    assert "ping" in methods
-    assert "meta.ping" in methods
-    assert "list_fits" in methods
-    assert "fit.list" in methods
+    methods = set(client.list_methods())
+    assert {"meta.ping", "fit.list", "dataset.list"} <= methods
+    assert not {"ping", "list_fits", "list_datasets"} & methods
 
 
 def test_server_events_broadcast_over_zmq(server_client):
@@ -191,7 +190,7 @@ def test_session_restore_with_project_nonexistent(server_client):
 def test_remote_dataset_add(server_client):
     """Verify add_dataset via reader_name + filename works remotely."""
     client, server = server_client
-    result = client.call("add_dataset", {
+    result = client.call("dataset.load", {
         "reader_name": "DataCurve",
         "filename": "/tmp/test_data.dat",
         "name": "RemoteTest",
@@ -210,7 +209,7 @@ def test_remote_dataset_add_with_curve_data(server_client):
     client, server = server_client
     x_vals = [0.0, 1.0, 2.0, 3.0]
     y_vals = [1.0, 4.0, 9.0, 16.0]
-    result = client.call("add_dataset", {
+    result = client.call("dataset.load", {
         "reader_name": "FakeReader",
         "filename": "/tmp/test_curve.dat",
         "name": "CurveDataTest",
@@ -254,7 +253,7 @@ def test_dataset_curve_data_endpoint(server_client):
     client, server = server_client
     x_vals = [0.0, 1.0, 2.0, 3.0, 4.0]
     y_vals = [0.0, 1.0, 4.0, 9.0, 16.0]
-    result = client.call("add_dataset", {
+    result = client.call("dataset.load", {
         "reader_name": "TestReader",
         "filename": "/tmp/curve_test.dat",
         "name": "CurveEndpointTest",
@@ -282,7 +281,7 @@ def test_fit_save_endpoint(server_client):
     import os, tempfile
     client, server = server_client
     # Add dataset with curve data
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "TestReader",
         "filename": "/tmp/fit_save_test.dat",
         "name": "FitSaveTest",
@@ -307,7 +306,7 @@ def test_fit_save_endpoint(server_client):
 def test_fit_curve_data_endpoint(server_client):
     """Verify fit.curve_data returns curve data."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "TestReader",
         "filename": "/tmp/fit_curve_test.dat",
         "name": "FitCurveTest",
@@ -328,7 +327,7 @@ def test_fit_curve_data_endpoint(server_client):
 def test_fit_list_includes_chi2r(server_client):
     """Verify list_fits includes chi2r at top level and model.chi2r."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "TestReader",
         "filename": "/tmp/chi2r_test.dat",
         "name": "Chi2rTest",
@@ -357,7 +356,7 @@ def test_fit_list_includes_chi2r(server_client):
 def test_fit_set_fit_range_endpoint(server_client):
     """Verify fit.set_fit_range works on server-side fit."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "TestReader",
         "filename": "/tmp/fit_range_test.dat",
         "name": "FitRangeTest",
@@ -375,7 +374,7 @@ def test_fit_set_fit_range_endpoint(server_client):
 def test_model_finalize_endpoint(server_client):
     """Verify model.finalize works via ZMQ."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "MFReader",
         "filename": "/tmp/mf_test.dat",
         "name": "ModelFinalize",
@@ -392,7 +391,7 @@ def test_model_finalize_endpoint(server_client):
 def test_model_set_parse_function_endpoint(server_client):
     """Verify model.set_parse_function works via ZMQ."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "MSPFReader",
         "filename": "/tmp/mspf_test.dat",
         "name": "ModelParse",
@@ -412,7 +411,7 @@ def test_model_set_parse_function_endpoint(server_client):
 def test_dataset_rename_endpoint(server_client):
     """Verify dataset.rename works via ZMQ."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "RenReader",
         "filename": "/tmp/ren_test.dat",
         "name": "OriginalName",
@@ -429,11 +428,11 @@ def test_dataset_rename_endpoint(server_client):
 def test_fit_set_dataset_endpoint(server_client):
     """Verify fit.set_dataset works via ZMQ."""
     client, server = server_client
-    ds1 = client.call("add_dataset", {
+    ds1 = client.call("dataset.load", {
         "reader_name": "SDS1", "filename": "/tmp/sds1.dat",
         "name": "Data1", "curve_data": {"x": [0.0], "y": [1.0]},
     })
-    ds2 = client.call("add_dataset", {
+    ds2 = client.call("dataset.load", {
         "reader_name": "SDS2", "filename": "/tmp/sds2.dat",
         "name": "Data2", "curve_data": {"x": [0.0], "y": [2.0]},
     })
@@ -451,7 +450,7 @@ def test_fit_set_dataset_endpoint(server_client):
 def test_fit_set_result_idx_endpoint(server_client):
     """Verify fit.set_result_idx works via ZMQ."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "SRIReader", "filename": "/tmp/sri.dat",
         "name": "ResultIdxTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })
@@ -476,7 +475,7 @@ def test_event_broadcast_on_dataset_add(server_client):
     import time
     time.sleep(0.3)
 
-    result = client.call("add_dataset", {
+    result = client.call("dataset.load", {
         "reader_name": "EvtReader", "filename": "/tmp/evt.dat",
         "name": "EventTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })
@@ -491,7 +490,7 @@ def test_event_broadcast_on_dataset_add(server_client):
 def test_event_broadcast_on_dataset_remove(server_client):
     """Verify ZMQ event broadcast on dataset.removed."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "RemEvt", "filename": "/tmp/remevt.dat",
         "name": "RemoveEvent", "curve_data": {"x": [0.0], "y": [1.0]},
     })
@@ -526,7 +525,7 @@ def test_graph_build_fits_endpoint(server_client):
 def test_parameter_link_endpoint(server_client):
     """Verify parameter.link works via ZMQ."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "LinkReader", "filename": "/tmp/link.dat",
         "name": "LinkTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })
@@ -549,7 +548,7 @@ def test_parameter_link_endpoint(server_client):
 def test_event_broadcast_on_fit_run(server_client):
     """Verify ZMQ event broadcast on fit.run."""
     client, server = server_client
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "RunEvt", "filename": "/tmp/run_evt.dat",
         "name": "RunEventTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })

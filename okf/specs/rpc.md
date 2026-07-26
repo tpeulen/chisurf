@@ -81,14 +81,19 @@ presentation ─▶ ChiSurfAPI / PluginContext        the facade: the only door
 7. State-change events are declared alongside the methods that emit them; a
    method emits only declared events, and every declared event has an emitter.
 8. Long-running work is uniform: one mechanism to start, observe, and cancel it.
+9. Every method is reachable under exactly one name. A second spelling of the
+   same operation is a second contract to keep in step, and callers split across
+   both.
 
 ## Steering notes
 
 Today the boundary is uneven: the GUI leaks into the supposedly headless service
 layer, the shared contract types exist but are unused so local and remote replies
-have drifted apart, application errors hide inside "successful" responses, event
-names disagree between emitter and declaration, and legacy flat method names sit
-beside the namespaced ones. The target is a clean facade with location
+have drifted apart, application errors hide inside "successful" responses, and
+event names disagree between emitter and declaration. The flat method names that
+used to sit beside the namespaced ones are gone from the ChiSurf server; the
+metadata store still carries a versioned and an unversioned spelling of its own
+surface. The target is a clean facade with location
 transparency, one authoritative set of contract shapes, one error convention, and
 a declared event catalogue. The backlog is the `SV-01`, `SV-02`, `SV-04`,
 `SV-05`, `BUG-02`, `BUG-03`, `INC-03`, and `INC-08` findings in

@@ -37,9 +37,9 @@ def test_client_list_methods(zmq_server):
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
     methods = client.list_methods()
     assert isinstance(methods, list)
-    assert "list_datasets" in methods
-    assert "list_fits" in methods
-    assert "list_methods" in methods
+    assert "dataset.list" in methods
+    assert "fit.list" in methods
+    assert "meta.methods" in methods
     client.close()
 
 
@@ -197,7 +197,7 @@ def test_client_dataset_rename_with_dataset(zmq_server):
     """dataset__rename succeeds on a real dataset."""
     cmd_port, pub_port, _, _ = zmq_server
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
-    ds = client.call("add_dataset", {
+    ds = client.call("dataset.load", {
         "reader_name": "RenameReader",
         "filename": "/tmp/rename_test.dat",
         "name": "OriginalName",

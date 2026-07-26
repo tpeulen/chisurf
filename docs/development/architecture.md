@@ -148,8 +148,11 @@ The authoritative method registry is `chisurf/server/server_methods.json`.
 | `model` | `model.finalize`, `model.set_parse_function` |
 | `graph` | `graph.build`, `graph.build_fits` |
 
-Legacy aliases such as `list_datasets`, `get_fit_info`, `run_fit`, and
-`save_project` remain registered for compatibility while code migrates.
+Every method is registered under exactly one, namespaced name. The former flat
+aliases (`list_datasets`, `get_fit_info`, `run_fit`, `save_project`, `ping`, …)
+were removed; call `dataset.list`, `fit.get`, `fit.run`, `project.save` and
+`meta.ping` instead. `list_methods` is the single deliberate exception, kept as
+a protocol-version-independent health probe.
 
 ## DTO Policy
 

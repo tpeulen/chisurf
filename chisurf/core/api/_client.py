@@ -213,29 +213,29 @@ class ChisurfClient:
         if dataset_name is not None:
             params["dataset_name"] = dataset_name
         params.update(kwargs)
-        return self._call("add_dataset", params)
+        return self._call("dataset.load", params)
 
     def get_parameter(self, fit_index: int, param_id: str) -> Dict[str, Any]:
         return self._call(
-            "get_parameter",
+            "parameter.get",
             {"fit_index": fit_index, "parameter_name": param_id},
         ).get("parameter", {})
 
     def set_parameter_value(self, fit_index: int, param_id: str, value: float) -> Dict[str, Any]:
         return self._call(
-            "set_parameter_value",
+            "parameter.set_value",
             {"fit_index": fit_index, "parameter_name": param_id, "value": value},
         )
 
     def set_parameter_fixed(self, fit_index: int, param_id: str, fixed: bool) -> Dict[str, Any]:
         return self._call(
-            "set_parameter_fixed",
+            "parameter.set_fixed",
             {"fit_index": fit_index, "parameter_name": param_id, "fixed": fixed},
         )
 
     def set_parameter_bounds(self, fit_index: int, param_id: str, lower: float, upper: float) -> Dict[str, Any]:
         return self._call(
-            "set_parameter_bounds",
+            "parameter.set_bounds",
             {"fit_index": fit_index, "parameter_name": param_id, "bounds": [lower, upper]},
         )
 

@@ -19,9 +19,9 @@ def test_server_app_list_methods():
 
     client = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
     methods = client.list_methods()
-    assert "list_datasets" in methods
-    assert "list_fits" in methods
-    assert "list_methods" in methods
+    assert "dataset.list" in methods
+    assert "fit.list" in methods
+    assert "meta.methods" in methods
     client.close()
     server.stop()
 

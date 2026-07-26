@@ -111,11 +111,20 @@ territory and does not belong in an unrelated change.
   unknown method and asserts on the returned payload, and gets
   `RemoteError: method '…' not found`. The tests need updating to
   `pytest.raises(RemoteError)`, not the code.
-- **`test/server/test_client.py::test_client_meta_ping` hangs indefinitely.**
-  It blocks with the process idle (seconds of CPU over ten-plus minutes of
-  wall clock), so a plain `pytest test/server` never terminates. Whatever it
-  waits on needs a timeout; until then the file must be excluded to run the
-  suite.
+- **`pytest test/server` never terminates; the wedge is in
+  `test_integration_lifecycle.py`.** Localised on 2026-07-26 by an A/B against a
+  clean `HEAD` worktree: `pytest test/server --ignore=test/server/test_integration_lifecycle.py`
+  finishes in **86 s** with **21 failed, 501 passed**, while the same run *with*
+  that file idles indefinitely (0 % CPU) inside `TestParameterLifecycle` —
+  stack in `zmq_ctx_destroy` → `zmq::mailbox_t::recv` → `poll`, i.e. a context
+  termination waiting on a socket an earlier test left open. Run in isolation
+  (`-k TestParameterLifecycle`) the class completes, so it is leaked state from
+  earlier tests in the file, not the class itself. Until a socket is closed (or
+  `LINGER` set) somewhere upstream, exclude that one file to run the suite.
+  The 21 remaining failures are pre-existing at `HEAD` — the eight stale
+  `test_rpc_edge_cases.py` expectations above plus fit-endpoint tests
+  (`test_fit_save_endpoint`, `test_fit_list_includes_chi2r`,
+  `test_model_finalize_endpoint`, …).
 
 **Found 2026-07-25 while migrating the imaging tools onto the ROI subsystem.**
 Three red tests, each pointing at real behaviour rather than a stale test alone.

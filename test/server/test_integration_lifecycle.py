@@ -61,7 +61,7 @@ def _reset():
 
 
 def _add_ds(c, name="TestDS", x=(0.0, 1.0), y=(2.0, 3.0)):
-    return c.call("add_dataset", {
+    return c.call("dataset.load", {
         "reader_name": f"{name}R", "filename": f"/tmp/{name}.dat",
         "name": name, "curve_data": {"x": list(x), "y": list(y)},
     })
@@ -182,7 +182,7 @@ class TestLargePayload:
         n = 100_000
         x = [float(i) for i in range(n)]
         y = [math.sin(i * 0.001) for i in range(n)]
-        r = client.call("add_dataset", {
+        r = client.call("dataset.load", {
             "reader_name": "L100kR", "filename": "/tmp/l100k.dat",
             "name": "L100k",
             "curve_data": {"x": x, "y": y},
@@ -530,7 +530,7 @@ class TestZmqEvents:
             received.append(e)
         cl.subscribe(topic="", callback=h)
         time.sleep(0.3)
-        cl.call("add_dataset", {
+        cl.call("dataset.load", {
             "reader_name": "AllR", "filename": "/tmp/all.dat",
             "name": "AllDS",
             "curve_data": {"x": [0.0], "y": [1.0]},
@@ -546,7 +546,7 @@ class TestZmqEvents:
             received.append(e)
         cl.subscribe(topic="fit.ran", callback=h)
         time.sleep(0.3)
-        cl.call("add_dataset", {
+        cl.call("dataset.load", {
             "reader_name": "FiltR", "filename": "/tmp/filt.dat",
             "name": "FiltDS",
             "curve_data": {"x": [0.0], "y": [1.0]},
@@ -562,7 +562,7 @@ class TestZmqEvents:
             received.append(e)
         cl.subscribe(topic="dataset.", callback=h)
         time.sleep(0.3)
-        cl.call("add_dataset", {
+        cl.call("dataset.load", {
             "reader_name": "PrefR", "filename": "/tmp/pref.dat",
             "name": "PrefDS",
             "curve_data": {"x": [0.0], "y": [1.0]},
@@ -716,7 +716,7 @@ class TestUnicodeData:
     def test_unicode_dataset_name(self, client):
         """Unicode characters in dataset name survive round-trip."""
         name = "DatenSatz_über_100_µs"
-        r = client.call("add_dataset", {
+        r = client.call("dataset.load", {
             "reader_name": "UniR", "filename": "/tmp/uni.dat",
             "name": name,
             "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
@@ -737,7 +737,7 @@ class TestUnicodeData:
 
     def test_unicode_in_curve_data(self, client):
         """Unicode chars in filename (not in numeric data)."""
-        r = client.call("add_dataset", {
+        r = client.call("dataset.load", {
             "reader_name": "UniCurveR",
             "filename": "/tmp/ünïcödé.dat",
             "name": "UnicodeCurve",

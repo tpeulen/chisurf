@@ -220,7 +220,7 @@ class ChiSurfAPI:
                             params["curve_data"] = curve_data
                     except Exception:
                         pass
-            return self.client.call("add_dataset", params)
+            return self.client.call("dataset.load", params)
         from chisurf.macros import core_data
         core_data.add_dataset(
             experiment_reader=experiment_reader,

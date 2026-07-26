@@ -82,10 +82,13 @@ method wrappers are generated from `chisurf/server/client_methods.json`.
 | `model` | `model.finalize`, `model.set_parse_function` |
 | `graph` | `graph.build`, `graph.build_fits` |
 
-Legacy aliases are still registered for compatibility. Examples include
-`ping`, `list_methods`, `list_datasets`, `get_dataset_info`, `list_fits`,
+The flat aliases (`ping`, `list_datasets`, `get_dataset_info`, `list_fits`,
 `get_fit_info`, `run_fit`, `get_parameter`, `set_parameter_value`,
-`save_project`, and `load_project`.
+`save_project`, `load_project`, …) were removed — each method answers to its
+namespaced name only. `list_methods` is kept as a version-independent health
+probe. `ChisurfClient` still offers the short Python spellings
+(`client.list_datasets()`, `client.ping()`); they are convenience wrappers that
+send the namespaced method over the wire.
 
 ## DTO Principles
 

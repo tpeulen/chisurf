@@ -57,7 +57,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [DATA-06](#data-06) | S3 | DATA | MMFDB | Deposition is one-way: `archive.zip.export` exists but no importer; bundler reads `file_path` not object store; mmCIF export is FLR-only | VERIFIED |
 | [INC-01](#inc-01) | S2 | INC | Core | Three overlapping instance registries with different lifetimes | REPORTED |
 | [INC-02](#inc-02) | S2 | INC | Core | `@register` renames classes → fragile name-based `isinstance` | REPORTED |
-| [INC-03](#inc-03) | S3 | INC | Server/MMFDB | Legacy flat/`mmfdb.*` aliases coexist with namespaced/`mmfdb.v1.*` | REPORTED |
+| [INC-03](#inc-03) | S3 | INC | Server/MMFDB | Legacy flat/`mmfdb.*` aliases coexist with namespaced/`mmfdb.v1.*` | 🚧 PARTIAL (ChiSurf server surface is namespaced-only; `mmfdb.*` vs `mmfdb.v1.*` open) |
 | [INC-04](#inc-04) | S2 | INC | MMFDB | Auth enforced in ~5/40 `api.py` fns; ACL rows exist for few entity kinds | 🚧 ADDRESSED — `api.py` boundary now threads/enforces `auth` |
 | [INC-05](#inc-05) | S3 | INC | MMFDB | Repository composition and API boundaries | 🚧 IN PROGRESS (one DAO/repository authority; request context + shallow root landed) |
 | [INC-06](#inc-06) | S2 | INC | Plugins | Two plugin identity conventions coexist; `ndxplorer` has no manifest | ~~REPORTED~~ ✅ FIXED |
@@ -70,7 +70,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 
-36 findings (24 FIXED): 4 VERIFIED, 3 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 2 PARTIAL, 1 OPEN.
+36 findings (24 FIXED): 4 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 3 PARTIAL, 1 OPEN.
 Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
@@ -345,6 +345,7 @@ The single largest source of non-uniformity across the codebase (see [core steer
 
 ### INC-03
 **S3 · Legacy method aliases coexist with the canonical ones.** [rpc steering](rpc.md#steering-notes), [mmfdb steering](mmfdb.md#steering-notes). Flat `list_datasets`/`run_fit` vs namespaced `dataset.*`/`fit.*`; MMFDB `mmfdb.*` (73) vs `mmfdb.v1.*` (40). The prerelease `sample_database` surface is retired rather than supported for compatibility. → Remove remaining aliases directly; no compatibility schedule is required.
+- 🚧 **PARTIAL** (2026-07-26): the **ChiSurf server** half is done — the 33 flat snake_case registrations (`list_datasets`, `run_fit`, `get_parameter`, `save_project`, `session_*`, `model_*`, `ping`, …) are gone from `chisurf/server/server_methods.json`, so every core method answers to exactly one namespaced name. The three production call sites still on the flat wire names moved with them: `ChiSurfAPI.add_dataset` and `ChisurfClient.add_dataset` now send `dataset.load`, and `ChisurfClient.get_parameter` / `set_parameter_{value,fixed,bounds}` send `parameter.*`. These stay as *Python* method names on the client — a short spelling for callers is not a second wire contract, and the generated wrappers in `client_methods.json` were already namespaced. `list_methods` is the one deliberate survivor: the companion photon-data exploration tool probes server health with it before it knows the protocol version. Guardrails: `test/server/test_rpc_method_names.py` (36) pins that every registration is namespaced, that each retired alias is gone *and* its replacement registered, that no name is registered twice, and that no client wrapper calls an unregistered method. Remaining: the MMFDB `mmfdb.*` / `mmfdb.v1.*` split, and `list_methods` once the companion tool moves to `meta.methods`.
 
 ### INC-04
 **S2 · MMFDB auth is incomplete and decentralized.** [mmfdb steering](mmfdb.md#steering-notes), contradicts `docs/prd_mmfdb_auth_rights.md`. Only ~5 of ~40 `api.py` functions check auth; ACL rows are created for essentially only `artifact` (conditionally `mmfdb_operation`), so `can_access` has nothing to evaluate for samples/experiments/setups/parameters/branches; real enforcement is scattered in plugin services. → Centralize enforcement at the `api.py` boundary and create ACL rows for every guarded entity kind.

@@ -2,6 +2,27 @@
 
 ## 2026-07-26
 
+* **One name per RPC method ([INC-03](/specs/assessment.md#inc-03), server
+  half).** The ChiSurf server registered every core operation twice — flat
+  `list_datasets`/`run_fit`/`get_parameter`/`save_project`/`session_*`/`model_*`/`ping`
+  *and* namespaced `dataset.list`/`fit.run`/… — 33 duplicate registrations in
+  `server_methods.json`, each a second contract to keep in step and a second
+  spelling for callers to split across. Removed all 33; the three production
+  call sites still on the flat wire names moved with them (`ChiSurfAPI.add_dataset`
+  and `ChisurfClient.add_dataset` now send `dataset.load`, `ChisurfClient.get_parameter`
+  / `set_parameter_{value,fixed,bounds}` send `parameter.*`). The short *Python*
+  spellings on the client stay — an ergonomic method name is not a second wire
+  contract. `list_methods` is the one deliberate survivor: the companion
+  photon-data exploration tool probes server health with it before it knows the
+  protocol version. Guardrails in `test/server/test_rpc_method_names.py` (36):
+  every registration namespaced, each retired alias gone *and* its replacement
+  present, no name registered twice, no client wrapper calling an unregistered
+  method. [rpc spec](/specs/rpc.md) gained rule 9 and its steering note is
+  updated; `docs/development/{architecture,architecture_client_server,plugin_architecture,client_server_migration_plan}.md`
+  no longer advertise the aliases. Verified by A/B against a clean `HEAD`
+  worktree: identical 21-failure set on both trees, +36 passing tests on mine.
+  The pre-existing `test/server` wedge found on the way is localised in
+  [known issues](/references/known-issues.md).
 * **Single-curve ConfoCor files are readable again (RF-047).** `openFCS`
   dispatches to `openFCS_Single` for every `.fcs` file whose first line is not
   `Carl Zeiss ConfoCor3` — ConfoCor2 and older AIM exports — and that function

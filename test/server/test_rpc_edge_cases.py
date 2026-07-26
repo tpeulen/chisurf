@@ -36,7 +36,7 @@ class TestInfNanEdgeCases:
     def test_inf_value_in_curve_data(self, server_client):
         """Server accepts float('inf') in curve_data y values."""
         client, server = server_client
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "InfReader",
             "filename": "/tmp/inf_test.dat",
             "name": "InfTest",
@@ -57,7 +57,7 @@ class TestInfNanEdgeCases:
     def test_nan_value_in_curve_data(self, server_client):
         """Server accepts float('nan') in curve_data."""
         client, server = server_client
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "NaNReader",
             "filename": "/tmp/nan_test.dat",
             "name": "NaNTest",
@@ -78,7 +78,7 @@ class TestInfNanEdgeCases:
     def test_set_parameter_value_inf(self, server_client):
         """Setting parameter value to inf works server-side."""
         client, server = server_client
-        ds = client.call("add_dataset", {
+        ds = client.call("dataset.load", {
             "reader_name": "PInfReader",
             "filename": "/tmp/pinf_test.dat",
             "name": "PInfTest",
@@ -99,7 +99,7 @@ class TestInfNanEdgeCases:
     def test_nan_in_parameter_bounds(self, server_client):
         """NaN in parameter bounds is forwarded correctly."""
         client, server = server_client
-        ds = client.call("add_dataset", {
+        ds = client.call("dataset.load", {
             "reader_name": "BoundsNaN",
             "filename": "/tmp/bounds_nan.dat",
             "name": "BoundsNaN",
@@ -126,7 +126,7 @@ class TestLargePayloadEdgeCases:
         n = 100_000
         x = [float(i) for i in range(n)]
         y = [float(i * i) for i in range(n)]
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "LargeReader",
             "filename": "/tmp/large_test.dat",
             "name": "LargeTest",
@@ -143,7 +143,7 @@ class TestLargePayloadEdgeCases:
         n = 10_000
         x = [float(i) for i in range(n)]
         y = [float(i * 0.5) for i in range(n)]
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "RTReader",
             "filename": "/tmp/rt_test.dat",
             "name": "RTLarge",
@@ -191,7 +191,7 @@ class TestConcurrencyEdgeCases:
         """Rapid add/clear cycles don't cause errors."""
         client, server = server_client
         for i in range(10):
-            r = client.call("add_dataset", {
+            r = client.call("dataset.load", {
                 "reader_name": "RapidReader",
                 "filename": f"/tmp/rapid_{i}.dat",
                 "name": f"Rapid{i}",
@@ -206,7 +206,7 @@ class TestConcurrencyEdgeCases:
     def test_rapid_fit_add_remove(self, server_client):
         """Rapid add/remove fit cycles work cleanly."""
         client, server = server_client
-        client.call("add_dataset", {
+        client.call("dataset.load", {
             "reader_name": "RapidFit",
             "filename": "/tmp/rapid_fit.dat",
             "name": "RapidFitDS",
@@ -235,7 +235,7 @@ class TestConcurrencyEdgeCases:
                 c = ChisurfClient(cmd_port=cmd_port, pub_port=pub_port)
                 c.connect()
                 for i in range(5):
-                    c.call("add_dataset", {
+                    c.call("dataset.load", {
                         "reader_name": "Concur",
                         "filename": f"/tmp/concur_{i}.dat",
                         "name": f"Concur{i}",
@@ -287,7 +287,7 @@ class TestTimeoutAndConnectionEdgeCases:
     def test_invalid_params_error(self, server_client):
         """Invalid params (bad types) return error, not crash."""
         client, server = server_client
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "BadReader",
             "filename": "/tmp/bad.dat",
             "name": "Bad",
@@ -367,7 +367,7 @@ class TestSerializerEdgeCases:
         """Unicode characters in names survive round trip."""
         client, server = server_client
         name = "Datenreihe äöü 测试 📊"
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "UnicodeReader",
             "filename": "/tmp/unicode_test.dat",
             "name": name,
@@ -380,7 +380,7 @@ class TestSerializerEdgeCases:
     def test_empty_curve_data(self, server_client):
         """Empty x/y lists in curve_data are accepted."""
         client, server = server_client
-        result = client.call("add_dataset", {
+        result = client.call("dataset.load", {
             "reader_name": "EmptyReader",
             "filename": "/tmp/empty.dat",
             "name": "Empty",

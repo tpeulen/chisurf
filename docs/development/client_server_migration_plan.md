@@ -34,7 +34,7 @@ Read this with [`architecture_client_server.md`](architecture_client_server.md).
 The following should be treated as existing infrastructure, not future work:
 
 - `chisurf/server/dto.py` contains `DatasetSummary`, `DatasetDetail`, `FitSummary`, `FitDetail`, `ParameterDTO`, `SetupDTO`, `ProjectInfoDTO`, and `ActionResultDTO`.
-- `chisurf/server/server_methods.json` registers legacy and namespaced RPC methods.
+- `chisurf/server/server_methods.json` registers the namespaced RPC methods; the flat snake_case aliases were removed (INC-03). `list_methods` is the one exception, kept as a version-independent health probe.
 - `chisurf/server/client_methods.json` defines generated `ChisurfClient` convenience methods.
 - `chisurf/server/protocol.py` exposes `PROTOCOL_VERSION`, `METHOD_CATALOGUE`, and initial `METHOD_SCHEMAS`.
 - `meta.ping`, `meta.methods`, and `meta.protocol` are available.
