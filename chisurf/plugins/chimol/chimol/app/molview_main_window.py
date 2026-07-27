@@ -1651,23 +1651,24 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         ))
 
         if is_map:
-            points, meta = load_mrc_as_points(path)
-            pts_arr = np.asarray(points, dtype=float)
-            if pts_arr.ndim != 2 or pts_arr.shape[1] != 3 or pts_arr.shape[0] == 0:
-                raise ValueError(f"No valid voxel positions in map {path!s}")
+            # A real map object with a contour, not a thinned point cloud. The
+            # cloud came from a time when there was nothing else to make of a
+            # map; it threw the volume away, so the level could not be changed
+            # and the Map panel had nothing to show.
+            from ..io.mrc import load_mrc_grid
 
-            object_id = self.viewer.add_coordinates(
-                pts_arr,
-                name=display_name,
-                source_path=source_path,
-            )
-            n_atoms: Any = int(pts_arr.shape[0])
-
+            grid = load_mrc_grid(path)
+            grid.name = display_name or grid.name
+            object_id = self.viewer.add_volume(grid, name=display_name)
             try:
-                self.viewer.set_dots_visible(True)
+                entry_obj = self.viewer._objects.get(object_id)
+                if entry_obj is not None:
+                    entry_obj.source_path = source_path
             except Exception:
                 pass
+            n_atoms: Any = grid.voxel_count
 
+            low, high = grid.value_range()
             entry: dict[str, Any] = {
                 "name": display_name,
                 "path": source_path,
@@ -1675,11 +1676,24 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 "ss_codes": None,
                 "visible": True,
                 "n_atoms": n_atoms,
-                "mrc_meta": meta,
+                "mrc_meta": {
+                    "shape": grid.shape,
+                    "voxel_size": tuple(float(v) for v in grid.step),
+                    "origin": tuple(float(v) for v in grid.origin),
+                    "n_voxels": grid.voxel_count,
+                    "range": (low, high),
+                },
             }
             self._object_store[object_id] = entry
             self._add_object_list_item(object_id, entry)
             self._select_object_in_ui(object_id)
+            # The Map panel follows whatever map is loaded.
+            panel = getattr(self, "volume_panel", None)
+            if panel is not None:
+                try:
+                    panel.refresh()
+                except Exception:
+                    pass
             return object_id
 
         if name_lower.endswith((".rmf", ".rmf3")):

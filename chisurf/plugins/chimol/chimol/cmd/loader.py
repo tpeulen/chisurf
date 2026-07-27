@@ -39,126 +39,135 @@ class LoaderCommands(BaseCmd):
             else:
                 self._emit_message(f"Loaded: {path}")
 
+    #: The repositories `fetch` knows, in the order an unlabelled id is tried
+    #: against them. One table rather than three near-identical commands: the
+    #: three that were here had drifted, and one of them had never worked at all.
+    REPOSITORIES = {
+        "pdb": {
+            "label": "RCSB PDB",
+            "url": "https://files.rcsb.org/download/{id}.pdb",
+            "suffix": ".pdb",
+            "normalise": str.lower,
+            #: 4-character PDB codes, and the newer extended ones.
+            "pattern": r"^[0-9a-z]{4}$|^pdb_[0-9a-z]{8}$",
+        },
+        "emdb": {
+            "label": "EMDB",
+            "url": (
+                "https://ftp.ebi.ac.uk/pub/databases/emdb/structures/"
+                "EMD-{num}/map/emd_{num}.map.gz"
+            ),
+            "suffix": ".map.gz",
+            "normalise": str.upper,
+            "pattern": r"^emd[-_]?\d{4,5}$",
+        },
+        "pdb-ihm": {
+            "label": "PDB-IHM",
+            "url": "https://pdb-ihm.org/cif/{id}.cif",
+            "suffix": ".cif",
+            "normalise": str.lower,
+            "pattern": r"^\d[0-9a-z]{3}$|^ihm[-_]?\d+$",
+        },
+    }
+
     @command("fetch")
-    def fetch(self, *pdb_ids: str) -> None:
-        """Fetch PDB structures from RCSB (PyMOL ``fetch id[, ...]``)."""
-        args = list(pdb_ids)
+    def fetch(self, *ids: str) -> None:
+        """Fetch entries from the PDB, EMDB or PDB-IHM (PyMOL ``fetch id[, ...]``).
+
+        The repository is recognised from the identifier, so ``fetch 148l`` gets
+        a structure and ``fetch EMD-1234`` gets a density map. Naming one
+        explicitly still works::
+
+            fetch 148l
+            fetch EMD-3061
+            fetch 8zzz, pdb-ihm
+
+        An EMDB map arrives as a **map object** with a contour on it, not as a
+        structure -- see the Map panel.
+        """
+        args = [str(value).strip() for value in ids if str(value).strip()]
         if not args:
-            self._emit_error("Usage: fetch <pdb_id> [more ids...]")
+            self._emit_error(
+                "Usage: fetch <id> [more ids...] [, repository]  "
+                f"(repositories: {', '.join(self.REPOSITORIES)})"
+            )
             return
 
-        window = self.window
-        if window is None:
-            self._emit_error("No viewer window is attached")
-            return
+        # A trailing token naming a repository applies to everything before it.
+        forced = None
+        if len(args) > 1 and args[-1].lower() in self.REPOSITORIES:
+            forced = args.pop().lower()
 
-        tmp_root = Path(tempfile.gettempdir())
-
-        for raw in args:
-            code = (raw or "").strip()
-            if not code:
-                continue
-            pdb_id = code.lower()
-            url = f"https://files.rcsb.org/download/{pdb_id}.pdb"
-            dest = tmp_root / f"chimol_{pdb_id}.pdb"
-
-            try:
-                with urllib.request.urlopen(url) as resp, dest.open("wb") as fh:
-                    fh.write(resp.read())
-            except Exception as exc:
-                self._emit_error(f"Failed to fetch '{pdb_id}' from RCSB: {exc}")
-                continue
-
-            try:
-                window._load_structure_from_path(dest, name=code)
-            except Exception as exc:
-                self._emit_error(f"Failed to load fetched PDB '{pdb_id}': {exc}")
-            else:
-                self._emit_message(f"Fetched and loaded PDB: {pdb_id}")
+        for code in args:
+            self._fetch_one(code, forced)
 
     @command("fetch_emdb")
     def fetch_emdb(self, *emdb_ids: str) -> None:
         """Fetch EMDB density maps (``fetch_emdb id[, ...]``)."""
-        args = list(emdb_ids)
-        if not args:
-            self._emit_error("Usage: fetch_emdb <emdb_id> [more ids...]")
-            return
-
-        window = self.window
-        if window is None:
-            self._emit_error("No viewer window is attached")
-            return
-
-        tmp_root = Path(tempfile.gettempdir())
-
-        for raw in args:
-            code = (raw or "").strip()
-            if not code:
-                continue
-            m = re.search(r"(\\d+)", code)
-            if not m:
-                self._emit_error(f"Could not parse EMDB id from {code!r}")
-                continue
-            emdb_num = m.group(1)
-            folder = f"EMD-{emdb_num}"
-            fname = f"emd_{emdb_num}.map.gz"
-            url = (
-                "https://ftp.ebi.ac.uk/pub/databases/emdb/structures/"
-                f"{folder}/map/{fname}"
-            )
-            dest = tmp_root / f"chimol_emd_{emdb_num}.map.gz"
-
-            try:
-                with urllib.request.urlopen(url) as resp, dest.open("wb") as fh:
-                    fh.write(resp.read())
-            except Exception as exc:
-                self._emit_error(f"Failed to fetch EMDB map '{code}': {exc}")
-                continue
-
-            try:
-                window._load_structure_from_path(dest, name=f"EMD-{emdb_num}")
-            except Exception as exc:
-                self._emit_error(f"Failed to load EMDB map '{code}': {exc}")
-            else:
-                self._emit_message(f"Fetched and loaded EMDB map: EMD-{emdb_num}")
+        for code in [str(v).strip() for v in emdb_ids if str(v).strip()]:
+            self._fetch_one(code, "emdb")
 
     @command("fetch_ihm")
     def fetch_ihm(self, *entry_ids: str) -> None:
-        """Fetch integrative-model structures (``fetch_ihm id[, ...]``)."""
-        args = list(entry_ids)
-        if not args:
-            self._emit_error("Usage: fetch_ihm <entry_id> [more ids...]")
-            return
+        """Fetch integrative-model structures from PDB-IHM."""
+        for code in [str(v).strip() for v in entry_ids if str(v).strip()]:
+            self._fetch_one(code, "pdb-ihm")
 
+    def _repository_for(self, code: str) -> str:
+        """Which repository an identifier looks like it belongs to."""
+        lowered = code.lower()
+        for name, spec in self.REPOSITORIES.items():
+            if re.match(spec["pattern"], lowered):
+                return name
+        return "pdb"
+
+    def _fetch_one(self, code: str, repository: str | None = None) -> None:
+        """Download one entry and load it, reporting what went wrong if it did."""
         window = self.window
         if window is None:
             self._emit_error("No viewer window is attached")
             return
 
-        tmp_root = Path(tempfile.gettempdir())
+        name = repository or self._repository_for(code)
+        spec = self.REPOSITORIES.get(name)
+        if spec is None:
+            self._emit_error(
+                f"fetch: unknown repository {name!r}; "
+                f"known: {', '.join(self.REPOSITORIES)}"
+            )
+            return
 
-        base_url = "https://pdb-ihm.org/cif"
-
-        for raw in args:
-            code = (raw or "").strip()
-            if not code:
-                continue
-            entry_id = code.lower()
-            url = f"{base_url}/{entry_id}.cif"
-            dest = tmp_root / f"chimol_ihm_{entry_id}.cif"
-
-            try:
-                with urllib.request.urlopen(url) as resp, dest.open("wb") as fh:
-                    fh.write(resp.read())
-            except Exception as exc:
+        identifier = spec["normalise"](code)
+        digits = re.search(r"\d+", code)
+        if name == "emdb":
+            if digits is None:
                 self._emit_error(
-                    f"Failed to fetch IHM CIF '{entry_id}' from pdb-ihm.org: {exc}"
+                    f"fetch: could not read an EMDB number from {code!r} "
+                    "(expected something like EMD-3061)"
                 )
-                continue
+                return
+            url = spec["url"].format(num=digits.group(0), id=identifier)
+            display = f"EMD-{digits.group(0)}"
+        else:
+            url = spec["url"].format(id=identifier, num=digits.group(0) if digits else "")
+            display = identifier
 
-            try:
-                window._load_structure_from_path(dest, name=code)
-            except Exception as exc:
-                self._emit_error(f"Failed to load fetched IHM CIF '{entry_id}': {exc}")
-            else:
-                self._emit_message(f"Fetched and loaded IHM CIF: {entry_id}")
+        destination = (
+            Path(tempfile.gettempdir())
+            / f"chimol_{name.replace('-', '_')}_{identifier}{spec['suffix']}"
+        )
+        try:
+            with urllib.request.urlopen(url) as response, destination.open("wb") as fh:
+                fh.write(response.read())
+        except Exception as exc:
+            self._emit_error(
+                f"fetch: could not get {display} from {spec['label']}: {exc}"
+            )
+            return
+
+        try:
+            window._load_structure_from_path(destination, name=display)
+        except Exception as exc:
+            self._emit_error(f"fetch: {display} downloaded but would not load: {exc}")
+            return
+        self._emit_message(f"fetch: loaded {display} from {spec['label']}")

@@ -2,6 +2,24 @@
 
 ## 2026-07-27
 
+* **chimol `fetch`: PDB, EMDB and PDB-IHM behind one command, and the EMDB one
+  had never worked.** Its identifier pattern was `r"(\\d+)"` — in a raw string
+  that matches a literal backslash followed by "d"s, so **no EMDB id ever
+  parsed** and the command answered "could not parse" to correct input, which
+  reads as the user's mistake rather than the command's. Nothing caught it
+  because nothing tested it.
+
+  The three near-identical fetch commands are now one table of repositories with
+  one downloader; `fetch` recognises the repository from the identifier (a
+  four-character code is PDB, `EMD-…` is EMDB) and a trailing repository name
+  settles the cases where identifiers look alike. `fetch_emdb` and `fetch_ihm`
+  remain as thin aliases.
+
+  Also: a map file loaded from disk or fetched now becomes a **map object with a
+  contour**, not the thinned point cloud it used to become. The cloud dates from
+  before there was anything else to make of a map — it discarded the volume, so
+  the level could not be changed and the Map panel had nothing to show.
+
 * **"Drop files, click Next" killed the app — the shell advanced while the run
   was still going (RF-446).** Second crash report from the burst shell, same
   frame as the first (``PyQtSlotProxy::qt_metacall`` → ``postEvent``), but a

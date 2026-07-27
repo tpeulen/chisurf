@@ -35,7 +35,20 @@ viewer:
 ```text
 load 148l.pdb
 fetch 1rtd                  # from the PDB, by accession code
+fetch EMD-3061              # ...or a density map from EMDB
+fetch 8zzz, pdb-ihm         # ...or an integrative model from PDB-IHM
 ```
+
+`fetch` recognises the repository from the identifier — a four-character code is
+a PDB entry, `EMD-…` is an EMDB map — and naming one explicitly settles the cases
+where the identifiers look alike. An EMDB map arrives as a **map object** with a
+contour on it, not as a structure; see [voxel maps](#voxel-maps).
+
+| Repository | Looks like | Gives you |
+| --- | --- | --- |
+| `pdb` | `148l`, `pdb_00001abc` | a structure |
+| `emdb` | `EMD-3061` | a density map |
+| `pdb-ihm` | `8zzz` (name it explicitly) | an integrative model |
 
 Objects appear in the **Objects** panel, one row each. Every row carries the same
 five menus PyMOL uses, and the grey `all` row applies them to everything at once:
@@ -60,6 +73,7 @@ model can be looked at inside its data.
 
 ```text
 load_map density.mrc         # MRC / CCP4 / MAP, gzipped or not
+fetch EMD-3061               # ...or straight from EMDB
 map_info                     # size, voxel step, origin, value range
 isosurface dens, density     # a solid contour at a level from the data
 isomesh dens, density, 0.08, skyblue

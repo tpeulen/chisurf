@@ -700,3 +700,98 @@ def test_the_panel_view_spec_uses_the_shared_section(shell):
     spec = VolumeViewModel(view).view_spec()
     keys = [getattr(section, "key", "") for section in spec.sections]
     assert "level_histogram" in keys, keys
+
+
+# --------------------------------------------------------------------------- #
+# Fetching from the three repositories
+# --------------------------------------------------------------------------- #
+def test_an_identifier_names_its_repository():
+    """`fetch 148l` is a structure, `fetch EMD-3061` is a map."""
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    cmd = Cmd()
+    assert cmd._repository_for("148l") == "pdb"
+    assert cmd._repository_for("1RTD") == "pdb"
+    assert cmd._repository_for("EMD-3061") == "emdb"
+    assert cmd._repository_for("emd_1234") == "emdb"
+    assert cmd._repository_for("pdb_00001abc") == "pdb"
+
+
+def test_all_three_repositories_are_reachable():
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    assert set(Cmd.REPOSITORIES) == {"pdb", "emdb", "pdb-ihm"}
+    for spec in Cmd.REPOSITORIES.values():
+        assert spec["url"].startswith("http")
+        assert spec["suffix"].startswith(".")
+
+
+def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch):
+    """The EMDB fetch never worked: its pattern matched a literal backslash.
+
+    Every identifier failed to parse, so the command reported "could not parse"
+    for correct input -- which reads as the user's mistake rather than the
+    command's. This pins both that a real id parses and that a bad one is named.
+    """
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    cmd = Cmd()
+    errors = []
+    cmd.set_error_callback(errors.append)
+    cmd.set_window(type("W", (), {"viewer": object()})())
+
+    requested = []
+    import urllib.request
+
+    def _refuse(url, *a, **k):
+        requested.append(url)
+        raise OSError("no network in tests")
+
+    monkeypatch.setattr(urllib.request, "urlopen", _refuse)
+
+    cmd._fetch_one("EMD-3061", "emdb")
+    assert requested and "emd_3061.map.gz" in requested[-1], requested
+    assert "EMD-3061" in errors[-1]
+
+    errors.clear(); requested.clear()
+    cmd._fetch_one("nonsense", "emdb")
+    assert not requested, "a number-less EMDB id should not be requested at all"
+    assert "EMDB number" in errors[-1]
+
+
+def test_each_repository_builds_the_url_it_should(monkeypatch):
+    from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+
+    cmd = Cmd()
+    cmd.set_error_callback(lambda _m: None)
+    cmd.set_window(type("W", (), {"viewer": object()})())
+    requested = []
+    import urllib.request
+
+    monkeypatch.setattr(
+        urllib.request, "urlopen",
+        lambda url, *a, **k: (_ for _ in ()).throw(OSError(requested.append(url) or "x")),
+    )
+
+    cmd._fetch_one("148l", "pdb")
+    assert requested[-1] == "https://files.rcsb.org/download/148l.pdb"
+    cmd._fetch_one("8zzz", "pdb-ihm")
+    assert requested[-1] == "https://pdb-ihm.org/cif/8zzz.cif"
+    cmd._fetch_one("EMD-3061", "emdb")
+    assert "EMD-3061/map/emd_3061.map.gz" in requested[-1]
+
+
+def test_a_map_file_loads_as_a_map_object_not_a_point_cloud(tmp_path, blob, qapp):
+    """The point cloud threw the volume away: no level, nothing for the panel."""
+    from chisurf.plugins.chimol.chimol.app.molview_main_window import (
+        MolViewPluginWindow,
+    )
+
+    path = write_mrc(tmp_path / "loaded.mrc", blob, step=(1.5, 1.5, 1.5))
+    window = MolViewPluginWindow()
+    try:
+        object_id = window._load_structure_from_path(path)
+        assert window.viewer.get_volume(object_id) is not None
+        assert window.viewer.get_volume_levels(object_id), "it should open contoured"
+    finally:
+        window.close()
