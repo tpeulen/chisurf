@@ -32,6 +32,8 @@ The workflows a first pass should cover — expand as the tester discovers more:
   histograms, LUT calibration.
 - **Imaging / CLSM** — image representations, pixel selection, phasor, pixel-wise MLE.
 - **Calculators & wizards** — FRET lines, kappa², anisotropy, the guided wizards.
+- **Structure / modelling** — labelling positions and accessible volumes on a
+  PDB structure, FRET distance restraints, docking and screening.
 
 ## Recorded workflows
 
@@ -105,6 +107,13 @@ The workflows a first pass should cover — expand as the tester discovers more:
   dye pair, and read the Förster radii and the excitation / emission / detected
   crosstalk matrices that prime the accurate-FRET correction factors.
   *(last driven 2026-07-26; RF-269..RF-277)*
+
+- [FPS JSON Editor — labelling positions and distance restraints](/usecases/fps-labelling-positions.md)
+  — the structure side of FRET: put dyes on a PDB structure (chain, residue,
+  attachment atom, linker geometry), simulate each dye's accessible volume, pair
+  the sites into distance restraints with R₀ and asymmetric errors, group them
+  into scoring sets and save the `fps.json` that drives FRET docking and
+  screening. *(last driven 2026-07-27; RF-379..RF-385)*
 
 ## Per-workflow file format
 

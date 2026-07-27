@@ -2,6 +2,29 @@
 
 ## 2026-07-27
 
+* **A labelling site that says residue 1 while pointing at residue 134.** Drove
+  the FPS JSON Editor end to end on T4 Lysozyme (148L) as the "Structure /
+  modelling" use case — two labelling sites, their accessible volumes, one FRET
+  distance restraint, save and reload. The skeleton is sound (the AV for an
+  exposed `E:134:CB` comes back 2 513 points / 8 481 Å³ on a background thread,
+  the restraint type maps `dRDAE` → `RDAMeanE`, and the `fps.json` round-trips),
+  but three defects make a site lie about itself: entering the PDB path
+  auto-names the row while the residue selector still reads its default, so every
+  position ends up named `E1`/`E1_2`/`E1_3` whatever residue is chosen
+  (**RF-380**); `_find_attachment_point` falls back to `atoms[resseq-1]` when the
+  chain/residue/atom lookup misses, so a typo or a residue past the end of the
+  chain silently attaches the dye to an unrelated atom instead of erroring
+  (**RF-379**); and an empty accessible volume is announced as *"AV: Calculated …
+  (Vol: 0.0 Å³, Points: 0)"* while still handing out a mean position — the
+  attachment point — that the 3D distance line then measures from (**RF-381**).
+  Plus a busy indicator that never stops if a row is renamed mid-computation
+  (**RF-382**), a Dye Preset dropdown whose only entry is a placeholder called
+  `a` because `dye_definition.json` does not exist (**RF-383**), a full AV
+  simulation launched for a site nobody chose (**RF-384**) and a blank row left
+  behind by every *Add Row* click (**RF-385**). Recorded as
+  [FPS labelling positions](/usecases/fps-labelling-positions.md); findings
+  RF-379..RF-385 in the [findings queue](/reviews/findings.md).
+
 * **The anisotropy curve now *is* the published equation.** Follow-up to the
   G-factor fix: `_tcspc_rt_curves` applied the l1/l2 leakage correction by
   unmixing the raw (VV, VH) pair *before* the sensitivity correction. It belongs

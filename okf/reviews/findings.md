@@ -3934,3 +3934,68 @@ carries a row index that goes stale the moment a row above it is deleted
 - **Location:** `chisurf/gui/widgets/metadata_editor.py:39-48` (two `try: ... except Exception: _PDBX_KEYS = [] / _PDBX_DESCRIPTIONS = {}`) and `chisurf/plugins/burst/burst_selection/gui/tool.py:82-85`
 - **Finding:** the commit's own message records that these bare guards are how the broken dictionary path stayed invisible for so long ("The guard was never the problem: the function did not raise, it returned `[]`"), and it added a `logger.warning` in `pdbx_metadata._load` for the empty case — but the consumers' silent `except Exception` is untouched, so a dictionary that *raises* (a malformed bundled `.dic`, an mmfdb accessor renamed again) still degrades to the 37 hard-coded keys with nothing in the log. The guard also does not guard what it appears to: the `from ... import get_pdbx_metadata_keys` at `metadata_editor.py:8` and `tool.py:18` sits outside any `try`, so a missing `mmfdb` raises at import and takes the whole module down regardless. Log the exception (`logger.exception`) in both handlers, or drop the guards and let the facade — which already logs — be the single place that decides what an unusable dictionary looks like.
 - **Fix note:**
+
+### Use-case run 2026-07-27 — FPS JSON Editor: putting dyes on a structure
+
+Workflow driven: [FPS labelling positions](/usecases/fps-labelling-positions.md)
+— open the FPS JSON Editor, load `test/data/atomic_coordinates/pdb_files/148l.pdb`
+(T4 Lysozyme, chain `E`), declare two labelling sites, compute their accessible
+volumes, pair them into a FRET distance restraint and save/reload the `fps.json`.
+Driven offscreen in the `arm64` env with screenshots inspected at each step. The
+skeleton works: the structure loads in ~1.5 s and fills chain/residue/atom, an
+exposed site (`E:134:CB`) computes a 2 513-point / 8 481 Å³ AV1 volume on a
+background thread, the restraint name and type map correctly into the payload
+(`dRDAE` → `RDAMeanE`), and save → reload round-trips positions and distances.
+What it does not do is tell the truth about a site: the auto-generated label names
+every position after residue 1, an attachment atom that cannot be resolved is
+silently swapped for an unrelated one, and an empty accessible volume is announced
+as a successful calculation. Findings RF-379..RF-385.
+
+### RF-379
+- **Status:** OPEN
+- **Severity:** S2 (an unresolvable chain / residue / atom is silently replaced by an unrelated atom, so the dye is attached somewhere else and no error is raised)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:641-650` (`_find_attachment_point`: the exact-match loop is wrapped in `try/except Exception: pass` and the function then `return atoms[resseq - 1, :3] if resseq > 0 and resseq <= atoms.shape[0] else None`), with the matching miss in `_strip_residue_atoms` (`:653-`); reached from `chisurf/plugins/modelling/fps_json_editor/gui/av_worker.py:56-77`, whose own fallback (`get_atom_index` → `raise ValueError("Attachment point … not found")`) is dead code because the callee never returns `None` for an in-range `resseq`
+- **Finding:** the fallback treats the *residue sequence number* as an index into the flat atom array, so any miss resolves to "the resseq-th atom of the file". Verified against `148l.pdb` (1 385 atoms, sole chain `E`, residues 1–162): `("E", 134, "CG")` — ALA 134 has no CG — returns `[2.51, 50.53, 52.92]`, exactly `atoms[133]`; `("E", 18, "SD")` returns `atoms[17]`; `("A", 18, "CB")`, a chain that does not exist, returns `atoms[17]` rather than `None`; and `("E", 300)` / `("E", 500)`, residues past the end of a 162-residue protein, return `atoms[299]` / `atoms[499]`. `_strip_residue_atoms` misses on the same inputs (0 of 1 385 atoms removed, against 5–9 for a correct site), so the AV is then simulated with the source atom buried inside its own un-stripped residue. In 148L that always collapses to 0 points, which the GUI reports as a successful calculation (RF-381) — but on a structure where the mis-indexed atom is solvent-exposed the user gets a full, plausible, entirely wrong accessible volume. This is reachable straight from the UI: the Chain, Res and Atom cells are editable `QComboBox`es, and a loaded `fps.json` is not validated against the structure at all. Return `None` when the lookup misses and let the worker's existing `ValueError` path surface it.
+- **Fix note:**
+
+### RF-380
+- **Status:** OPEN
+- **Severity:** S2 (every labelling site is auto-named after residue 1, whatever residue the user actually selects — and that name is the identity in the Distances tab and in the saved fps.json)
+- **Location:** `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:603-631` (`_set_auto_name_for_row`, which returns early at `if current_name: return current_name`), first called from `onRowPdbChanged` (`:748-762`) via `_maybe_auto_fill_name` — i.e. before the user has touched the Res dropdown — and again, to no effect, from `onRowChainChanged` / `onRowResidueChanged` / `onRowAtomChanged` (`:637-682`)
+- **Finding:** `onRowPdbChanged` fills the Chain/Res/Atom dropdowns and immediately auto-names the row. At that instant `_update_row_residues` has just done `res_cb.setCurrentIndex(0)`, so the residue reads `1` and `default_label_name("E", "1")` yields `E1`. Every later call sees a non-empty name and returns it unchanged. Verified by driving the plain user path (type the PDB path → chain `E` → res `134` → atom `CB`, no manual rename): the name is `E1` after the PDB drop and still `E1` after the residue is chosen, and the model holds `{"E1": {"chain_identifier": "E", "residue_seq_number": 134, "atom_name": "CB"}}`. Three sites at residues 134, 60 and 18 came out as `E1`, `E1_2` and `E1_3` (screenshot: three rows whose Res column reads 134 / 60 / 18 under names E1 / E1_2 / E1_3). Those names are what the Distances tab pairs, what the 3D overlays key on and what `fps.json` records, so a saved restraint set reads as if all its dyes sat on residue 1. Re-derive the auto name whenever the chain or residue changes and the user has not typed their own (track "auto vs user-set" in `Qt.UserRole`, which `_set_auto_name_for_row` already writes), or do not auto-name until an attachment atom has been chosen.
+- **Fix note:**
+
+### RF-381
+- **Status:** OPEN
+- **Severity:** S2 (an accessible volume of zero is announced as a successful calculation and still hands out a mean dye position, which downstream distances then use)
+- **Location:** `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:1149-1187` (`onAVComputationFinished` formats `f"AV: Calculated {name} (Vol: {volume:.1f} Å³, Points: {n_points})"` and caches `(coords, [mx,my,mz], …)` with no check on `n_points`), fed by `gui/av_worker.py:90-99`; consumed by `gui/distance_panel.py:806-828` (`update_distance_lines`, `val = np.linalg.norm(xyz1 - xyz2)`) and by the tooltip at `position_panel.py:477-522`
+- **Finding:** a buried attachment point produces an empty AV, and `AccessibleVolume.mean_position` then falls back to the source coordinate. Verified on `148l.pdb`: `E:18:CB` (TYR 18) and `E:101:CB` both give `n_points = 0` with `mean == src` (`[9.616, 52.874, 48.956]` for residue 18), while `E:44`/`E:60`/`E:134` give 4 097 / 3 905 / 2 513 points. The GUI reports the empty one as *"AV: Calculated E1_3 (Vol: 0.0 Å³, Points: 0)"* — same wording, same styling, same row appearance as a good site — and the *Details…* tooltip presents the attachment point as *"Mean Position (XYZ): (9.62, 52.87, 48.96)"* under the heading *AV Computation Results*. Because the label only ever shows the last worker to finish, computing several sites at once hides the zero entirely: after three sites the status line read the 0-point result only because it happened to finish last. Any restraint built on such a site gets a model distance measured from a fictitious point (`update_distance_lines` drew a `33.4 Å` line from one) with nothing flagging it. Treat `n_points == 0` as a failure: report it through `onAVComputationError`'s path, refuse to cache a mean position, and mark the row.
+- **Fix note:**
+
+### RF-382
+- **Status:** OPEN
+- **Severity:** S2 (renaming a labelling site while its AV is computing leaves the busy indicator spinning and the worker registered for the rest of the session)
+- **Location:** `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:1157-1159` (`onAVComputationFinished` opens with `if name not in self._row_colors: return`, which sits **above** `self._close_av_task()` at `:1161` and `self._active_workers.pop(name, None)` at `:1168`), against `_do_trigger_row_av` (`:1106-1148`), which creates the single shared `ChiSurfProgress` on `self.av_progress_bar`
+- **Finding:** the guard is meant to drop the result of a row that was renamed or deleted mid-flight, but it also skips the two cleanups that belong to *every* completion. Verified: start an AV on `E:60:CB`, rename the row from the auto name `E1` to `Donor` before it returns, then let everything settle — `_active_workers == ['E1']`, `av_progress_bar.isVisible() == True`, `_av_task` is still a live `ChiSurfProgress`, and the preview label is frozen at *"AV: Computing E1..."*. Computing a further site afterwards does **not** take the bar down (`progress visible = True` at the end). This is not an edge case: loading a saved `fps.json` renames rows as it populates them, and the reload screenshot shows the striped busy bar running under a finished, idle table. Move `_close_av_task()` and the `_active_workers.pop()` above the guard (or into a `finally`) so a discarded result still ends its task.
+- **Fix note:**
+
+### RF-383
+- **Status:** OPEN
+- **Severity:** S3 (the Dye Preset column offers one placeholder entry named `a`, and selecting it does nothing — the dye catalogue behind it does not exist)
+- **Location:** `chisurf/core/structure/av/__init__.py:17-28` (`dye_file = os.path.join(chisurf.core.settings.package_directory, 'dye_definition.json')`, `try: json.load(...) except IOError: dye_definition = {'a': 0}`) and its consumers `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:441-445` (`preset_cb.addItems(list(chisurf.core.structure.av.dye_names))`) and `:1570-1616` (`onDyePresetChanged`)
+- **Finding:** `chisurf/core/settings/dye_definition.json` does not exist in the tree, so the fallback runs on every start and `dye_names == ['a']`. The Positions table therefore renders a *Dye Preset* combo containing `a` and `Custom` (verified: `['a', 'Custom']` on a live row). Selecting `a` reaches `dye_def = dye_definition.get('a')` → `0` → `if not dye_def: return`, so nothing changes: the row's L/W/R1–R3 and dye model are untouched (verified — the params dict diff after selecting the preset is `{}`). The control that is supposed to spare a user from typing Alexa 488 / Alexa 647 / Cy3B linker geometry by hand is a dead stub advertising a dye called "a". Either ship the catalogue (the fluorophore data curated in `mfdb_admin` is the obvious source) or drop the column until there is one — and make the missing-file path log instead of silently substituting a placeholder.
+- **Fix note:**
+
+### RF-384
+- **Status:** OPEN
+- **Severity:** S3 (entering the PDB path alone launches a full AV simulation for a site the user has not chosen)
+- **Location:** `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:748-763` (`onRowPdbChanged` ends with `_maybe_auto_fill_name(row)` after `_update_row_chains` / `_update_row_residues` / `_update_row_atoms` have defaulted the three selectors), plus `onRowChainChanged` (`:637-651`), which calls `_trigger_row_av(row)` immediately after defaulting the residue to the first in the chain
+- **Finding:** the dropdowns default to `<first chain>` / `<first residue>` / `CB`, and the change handlers treat that as a user selection. Instrumenting `AVWorker.start` while driving PDB → chain `E` → res `134` → atom `CB` recorded launches `[('E', 1, 'CB'), ('E', 134, 'CB')]` — a complete AV1 simulation of residue 1 that nobody asked for, ~1.5 s of work per row, before the real site is even chosen. It is also what fixes the wrong auto label (RF-380). Do not auto-compute until the row has an attachment atom the user has actually selected, and leave the selectors on a blank entry until then.
+- **Fix note:**
+
+### RF-385
+- **Status:** OPEN
+- **Severity:** S3 (the Add Row button and the automatic trailing row both add a row, so every click leaves a blank behind)
+- **Location:** `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:532-540` (`onAddRowTriggered` → `_add_empty_row`) against `:592-601` (`_ensure_trailing_empty_row`, called from `_set_auto_name_for_row` at `:630`)
+- **Finding:** the table already keeps one empty row at the bottom and appends a fresh one as soon as that row gets a label, so **➕ Add Row** — the obvious affordance, and the only one the toolbar advertises — is redundant and additive. Verified: starting from the one blank row, clicking *Add Row* and filling the new row for each of two positions ends with **five rows, three of them blank** (screenshot: rows 1, 3 and 5 empty, each still carrying a `Custom`/`AV1` combo pair, a *Details…* button and a delete button). The blanks are harmless to the payload — `_trigger_row_av` skips unnamed rows — but they triple the visual size of the table and the log fills with *"AV: Not computed (labeling site Name is empty)"*. Either drop the button or have it jump to (and start editing) the existing trailing blank instead of inserting another.
+- **Fix note:**
