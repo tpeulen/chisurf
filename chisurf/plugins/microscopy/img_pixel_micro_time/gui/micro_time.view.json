@@ -24,7 +24,7 @@
          "options": {"colormap": true, "colormap_attr": "colormap",
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}},
         {"type": "custom", "key": "image", "target": "mean_micro_time_frames", "title": "Mean micro-time movie",
-         "options": {"colormap": true, "colormap_attr": "colormap", "movie": true, "match_2d": true,
+         "options": {"colormap": true, "colormap_attr": "colormap", "movie": true,
                      "channel_source": "window_names", "channel_attr": "display_window", "channel_call": "refresh_display"}}
       ]
     }

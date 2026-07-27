@@ -232,8 +232,15 @@ def test_image_widget_channel_selector_and_movie(qtbot):
     assert m.display_window == "red" and m.calls[-1] == "red"
 
 
-def test_image_widget_match_2d_orientation(qtbot):
-    """``match_2d`` renders a 3D stack frame identically to the 2D map (no transpose)."""
+def test_a_stack_frame_renders_like_the_2d_map(qtbot):
+    """A movie frame must be drawn exactly as the same array is in a 2-D dock.
+
+    This used to be a ``match_2d`` flag, and it was inverted: the mapping it
+    selected transposed every frame 90° from the 2-D map docked beside it, while
+    its docstring claimed the opposite, and six shipped panels set it. The frame
+    is ``(row, column)`` like any image, so x is the last axis and y the middle
+    one — there is nothing to choose, and the flag is gone.
+    """
     from chisurf.gui.autoform.sections.builtin import ImageMapWidget
 
     class _M:
@@ -249,19 +256,20 @@ def test_image_widget_match_2d_orientation(qtbot):
         return a
 
     stored = lambda w: np.asarray(w._image.getImageItem().image)  # noqa: E731
+    drawn = lambda w: w._image.getImageItem().boundingRect()  # noqa: E731
 
     ref = ImageMapWidget(_M(base()), "the")
     qtbot.addWidget(ref)
     ref.refresh()
-    off = ImageMapWidget(_M(base()[None]), "the", movie=True, match_2d=False)
-    qtbot.addWidget(off)
-    off.refresh()
-    on = ImageMapWidget(_M(base()[None]), "the", movie=True, match_2d=True)
-    qtbot.addWidget(on)
-    on.refresh()
+    movie = ImageMapWidget(_M(base()[None]), "the", movie=True)
+    qtbot.addWidget(movie)
+    movie.refresh()
 
-    assert stored(off).shape != stored(ref).shape  # default 3D path transposes
-    assert stored(on).shape == stored(ref).shape and np.allclose(stored(on), stored(ref))
+    assert stored(movie).shape == stored(ref).shape
+    assert np.allclose(stored(movie), stored(ref))
+    # Same pixels is not enough: the drawn extent is what a rotation shows up in.
+    assert drawn(movie).width() == drawn(ref).width() == 14
+    assert drawn(movie).height() == drawn(ref).height() == 6
 
 
 @_needs_data

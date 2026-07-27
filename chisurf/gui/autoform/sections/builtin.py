@@ -1582,8 +1582,6 @@ class ImageMapWidget(QtWidgets.QWidget):
     * ``movie`` (bool) — show play/pause + loop + stop buttons and an fps selector
       (default ``False``). The controls auto-disable when the current image is 2D.
     * ``movie_fps`` (int) — initial playback speed (default ``10``).
-    * ``match_2d`` (bool) — render a 3D stack with the same axis mapping as the 2D
-      map docks, so a movie and its sibling maps share one orientation (default
       ``False`` keeps the ``{x:2, y:1}`` mapping the PSF stack picker relies on).
 
     Brush / draw ``options`` turn the dock into a paintable pixel selector (e.g. for
@@ -1648,7 +1646,6 @@ class ImageMapWidget(QtWidgets.QWidget):
         channel_call: str | None = None,
         movie: bool = False,
         movie_fps: int = 10,
-        match_2d: bool = False,
         selection_attr: str | None = None,
         brush_kernel_source: str | None = None,
         on_draw: str | None = None,
@@ -1681,7 +1678,6 @@ class ImageMapWidget(QtWidgets.QWidget):
         # When True, a 3D stack uses the SAME axis mapping as the 2D path, so a
         # movie dock and its sibling 2D map docks render at identical orientation
         # (the default {x:2,y:1} transposes the frame vs the 2D default {x:0,y:1}).
-        self._match_2d = bool(match_2d)
         self._play_btn = None
         self._loop_btn = None
         self._stop_btn = None
@@ -2273,14 +2269,16 @@ class ImageMapWidget(QtWidgets.QWidget):
         if self._movie:
             self._set_movie_enabled(data.ndim == 3)
         if data.ndim == 3:
-            # Preserve the current slice across refreshes. Default maps the frame
-            # to (y, x) = (axis 1, axis 2); ``match_2d`` instead uses {x:1,y:2} so
-            # the frame renders exactly like the 2D map docks (no 90° transpose).
+            # Preserve the current slice across refreshes. The frame is
+            # ``(row, column)`` like any 2-D map, so x is the last axis and y the
+            # middle one; the opposite mapping renders every frame 90° off from
+            # the 2-D map docked beside it, which is what the removed ``match_2d``
+            # flag did while claiming the reverse.
             try:
                 prev = int(self._image.currentIndex)
             except Exception:
                 prev = 0
-            axes = {"t": 0, "x": 1, "y": 2} if self._match_2d else {"t": 0, "x": 2, "y": 1}
+            axes = {"t": 0, "x": 2, "y": 1}
             self._image.setImage(data, autoLevels=True, axes=axes)
             if 0 <= prev < data.shape[0]:
                 self._image.setCurrentIndex(prev)

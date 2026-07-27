@@ -41,7 +41,7 @@ Model contract (all names resolve to attributes/methods on the bound model):
 * ``list_width`` — initial width of the list pane (px).
 
 Every remaining option is forwarded verbatim to the inner :class:`ImageMapWidget`
-(``colormap``, ``default_colormap``, ``colormap_attr``, ``movie``, ``match_2d``,
+(``colormap``, ``default_colormap``, ``colormap_attr``, ``movie``,
 ``markers_source``, ``labels_source`` (on-image text overlays), ``roi_source``,
 ``select_attr``, ``on_pick``, ``channel_source``/``channel_attr``/``channel_call``,
 brush options, …).

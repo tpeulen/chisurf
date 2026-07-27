@@ -2,6 +2,28 @@
 
 ## 2026-07-27
 
+* **`match_2d` did the opposite of what it said, in six shipped image panels.**
+  The AutoForm `image` section took a `match_2d` flag documented as "render a 3D
+  stack with the same axis mapping as the 2D map (no 90° transpose)". Rendering a
+  6×14 frame three ways — as a 2-D map, as a movie with the flag off, and with it
+  on — shows the **default** already matches the 2-D map and the flag is what
+  rotates the frame: stored `(6, 14)` and a 14×6 drawn extent become `(14, 6)` and
+  6×14. Every per-pixel movie set it: intensity, number-and-brightness, mean
+  micro-time and the three phasor maps, so each played its frames 90° off from
+  the 2-D map docked beside it.
+  The flag is **removed** rather than inverted — the frame is `(row, column)` like
+  any image, so `{"t": 0, "x": 2, "y": 1}` is not a choice, and a flag whose only
+  correct value is the default is a trap. Gone from the widget, its docstring, the
+  `image_browser` option list and the four view specs.
+  **The test asserted the same false premise and so went red instead of catching
+  it**: `assert stored(off).shape != stored(ref).shape  # default 3D path
+  transposes`. It has been rewritten to pin the invariant that matters — a movie
+  frame renders exactly like the 2-D map, in stored pixels *and* in drawn extent,
+  since a rotation shows up in the extent even when the pixel count does not.
+  Confirmed on the real photon stream: the intensity panel's *Intensity* and
+  *Frames (movie)* tabs now show the same cell the same way up.
+  Suites: `test/microscopy` 75 passed (was 74 + 1 failing).
+
 * **GUI-tester: 2D-FLCS, where the maths lands and the window does not.** Drove
   *Spectroscopy → FCS → 2D-FLCS* headlessly against the plugin's own two-state
   exchange simulator, whose answer is known by construction (τ = 1/3 ns, 25 ms
