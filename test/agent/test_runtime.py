@@ -219,6 +219,63 @@ def test_cancel_stops_the_loop(session):
     assert len(result.invocations) == 1
 
 
+def unanswered_tool_calls(agent) -> list[str]:
+    """Return the ids the model asked for that no ``tool`` message answers."""
+    requested, answered = [], set()
+    for message in agent.messages:
+        if message.get("role") == "assistant":
+            requested += [call["id"] for call in message.get("tool_calls") or []]
+        elif message.get("role") == "tool":
+            answered.add(message["tool_call_id"])
+    return [identifier for identifier in requested if identifier not in answered]
+
+
+def test_a_turn_stopped_by_the_tool_budget_leaves_no_unanswered_call(session):
+    agent = session(
+        [[("list_fits", {}), ("list_datasets", {}), ("describe_session", {})]],
+        config=AgentConfig(max_tool_calls=2),
+    )
+    result = agent.ask("look around")
+
+    assert result.stop_reason == "tool_budget"
+    assert len(result.invocations) == 2
+    assert unanswered_tool_calls(agent) == []
+    stopped = json.loads(agent.messages[-1]["content"])
+    assert stopped["ok"] is False
+    assert "not run" in stopped["error"]
+
+
+def test_a_cancelled_turn_leaves_no_unanswered_call(session):
+    agent = session([[("list_fits", {}), ("list_datasets", {}), ("describe_session", {})]])
+
+    original = agent._execute
+
+    def cancel_after_first(call):
+        """Run the tool, then cancel the session."""
+        invocation = original(call)
+        agent.cancel()
+        return invocation
+
+    agent._execute = cancel_after_first
+    result = agent.ask("look around")
+
+    assert result.stop_reason == "cancelled"
+    assert len(result.invocations) == 1
+    assert unanswered_tool_calls(agent) == []
+
+
+def test_a_turn_stopped_by_repeated_failures_leaves_no_unanswered_call(session):
+    agent = session(
+        [[("no_such_tool", {})] * 5],
+        config=AgentConfig(max_consecutive_failures=2),
+    )
+    result = agent.ask("do the impossible")
+
+    assert result.stop_reason == "repeated_failures"
+    assert len(result.invocations) == 2
+    assert unanswered_tool_calls(agent) == []
+
+
 # ── safety policy ─────────────────────────────────────────────────────
 
 

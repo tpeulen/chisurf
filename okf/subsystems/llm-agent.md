@@ -56,6 +56,13 @@ fix. Nothing is left to be guessed.
 4. The loop ends when the model answers in prose, or when a budget (steps,
    tool calls, wall clock, consecutive failures) is spent.
 
+A turn the model batched several calls into is answered **whole** even when the
+run stops half-way through it: the calls that were never executed get a
+`not run — the request stopped` result of their own. The conversation survives
+across questions, and a provider rejects an assistant turn whose tool-call ids
+are not all answered — so a cancelled or budget-capped run would otherwise
+poison every later question in the session rather than just its own.
+
 A **failing tool does not end the run** — its error goes back to the model,
 which corrects itself. Only *repeated identical* failures stop the loop; that
 is the difference between an assistant that recovers and one that gives up.

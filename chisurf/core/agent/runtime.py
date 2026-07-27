@@ -161,7 +161,7 @@ def _loads_pythonish(text: str) -> Any:
     return ast.literal_eval(text)
 
 
-def last_failure(result: "AgentResult") -> str:
+def last_failure(result: AgentResult) -> str:
     """Return why the last failing tool call failed.
 
     A tool can fail two ways: by raising, which fills ``ToolInvocation.error``,
@@ -342,6 +342,7 @@ class AgentSession:
 
             self._append_assistant(response, calls)
 
+            answered = 0
             for call in calls:
                 if self._cancelled:
                     result.stop_reason = "cancelled"
@@ -353,6 +354,7 @@ class AgentSession:
                 invocation = self._execute(call)
                 result.invocations.append(invocation)
                 self._append_tool_result(call, invocation)
+                answered += 1
 
                 if invocation.ok:
                     consecutive_failures = 0
@@ -367,6 +369,8 @@ class AgentSession:
                 if consecutive_failures >= self.config.max_consecutive_failures:
                     result.stop_reason = "repeated_failures"
                     break
+
+            self._answer_unrun_calls(calls[answered:], result.stop_reason)
 
             if result.stop_reason != "answer":
                 break
@@ -567,6 +571,35 @@ class AgentSession:
                 }
             )
 
+    def _answer_unrun_calls(self, calls: Sequence[ToolCall], stop_reason: str) -> None:
+        """Answer the calls the loop stopped short of running.
+
+        A provider rejects an assistant turn whose ``tool_call`` ids are not
+        each answered by a ``tool`` message, and the conversation survives
+        across questions — so a turn abandoned half-way (cancelled, out of tool
+        budget, too many failures) would poison every later question in the
+        session.  Saying "not run" is also the honest thing to tell the model.
+
+        Parameters
+        ----------
+        calls : sequence of ToolCall
+            The calls that were requested but never executed.
+        stop_reason : str
+            Why the loop stopped, reported back to the model.
+        """
+        for call in calls:
+            self._append_tool_result(
+                call,
+                ToolInvocation(
+                    name=call.name,
+                    arguments=call.arguments,
+                    ok=False,
+                    result={"ok": False, "error": f"not run — the request stopped ({stop_reason})"},
+                    elapsed_ms=0,
+                    error="not run",
+                ),
+            )
+
     @property
     def active_skills(self) -> list[str]:
         """Names of the skills whose instructions are currently in context."""
@@ -667,9 +700,7 @@ class AgentSession:
             # unambiguous one is worth more than a turn spent correcting it.
             corrected = self._nearest_tool(call.name)
             if corrected is not None:
-                self.context.emit(
-                    "tool.rerouted", {"from": call.name, "to": corrected.name}
-                )
+                self.context.emit("tool.rerouted", {"from": call.name, "to": corrected.name})
                 call = ToolCall(
                     id=call.id,
                     name=corrected.name,

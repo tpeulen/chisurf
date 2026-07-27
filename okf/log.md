@@ -2,6 +2,17 @@
 
 ## 2026-07-27
 
+* **A stopped agent turn no longer poisons the conversation (RF-120).** The tool
+  loop wrote the assistant turn carrying *every* `tool_call` id and then, on
+  cancel / tool budget / repeated failures, executed only some of them — leaving
+  ids no `tool` message answers. Since the conversation survives across
+  questions, and a provider rejects such a turn, `cancel()` — the documented way
+  to stop a run — made the *next* question fail with a 400. `AgentSession` now
+  answers the calls it stopped short of running with an explicit
+  `not run — the request stopped (<stop_reason>)` result, which is also what the
+  model needs to be told. Three tests in `test/agent/test_runtime.py` pin one
+  early-exit path each. [llm-agent](/subsystems/llm-agent.md) records the rule.
+
 * **PRD-57: voxel maps written up as a first-class requirement.** ChiMOL has to
   show volumetric data to the standard of the reference molecular-visualisation
   tool — accessible volumes above all, plus probability/occupancy densities,

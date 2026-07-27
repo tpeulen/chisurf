@@ -1678,11 +1678,25 @@ but not enforced. Reproduced in the `arm64` env with the scripted-LLM harness
 from `test/agent/test_runtime.py`. RF-120..RF-125.
 
 ### RF-120
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a run that hits any budget, or is cancelled, leaves the conversation permanently malformed — every later question in the same session re-sends it and is rejected by the provider)
 - **Location:** `chisurf/core/agent/runtime.py:292-319` (the `for call in calls` loop breaks on `cancelled` / `tool_budget` / `repeated_failures` **after** `_append_assistant` at `:290` has already written the assistant turn carrying every `tool_call` id) with `:413-431` (`_append_tool_result`, run only for the calls that were executed)
 - **Finding:** The OpenAI dialect requires each `tool_call.id` in an assistant turn to be answered by a `tool` message; the loop appends the assistant turn with *all* the ids and then executes only some of them. Verified with the test file's own `ScriptedLLM`: a three-call turn under `max_tool_calls=2` leaves `messages` as `system, user, assistant(call_0, call_1, call_2), tool(call_0), tool(call_1)` — `call_2` unanswered — and the follow-up question posts that same list verbatim to the provider. The other two early exits do the same: cancelling after the first call orphans `['call_1', 'call_2']`, and `max_consecutive_failures=2` on a five-call turn orphans `['call_2', 'call_3', 'call_4']`. Because `ask()` clears `_cancelled` and keeps `self.messages` (the "conversation survives across questions" property in the module docstring, and the reason `reset()` exists separately), the session is poisoned from then on: `cancel()` is the *documented* way to stop a run, and it makes the next question fail with a 400 rather than a cancellation. `test_tool_call_budget_is_enforced` and `test_cancel_stops_the_loop` assert only `stop_reason` and the invocation count, so nothing covers the resulting history. Fix in one place: when the loop exits early, append a synthetic `{"ok": false, "error": "not run — the request stopped"}` result for every unanswered id (which is also honest to the model), or drop the assistant turn. The same shape is reachable from `cli.py:249-254`, where a Ctrl-C mid-tool unwinds out of `ask()`.
-- **Fix note:**
+- **Fix note:** The tool loop now counts the calls it answered and, on every exit
+  from the `for call in calls` loop, hands the remainder to a new
+  `AgentSession._answer_unrun_calls`, which appends a
+  `{"ok": false, "error": "not run — the request stopped (<stop_reason>)"}`
+  result for each of them through the existing `_append_tool_result` (so both
+  the native and the text protocol are served). Every `tool_call` id an
+  assistant turn carries is therefore answered whatever stops the run, and the
+  model is told plainly which calls were skipped and why. Pinned by three tests
+  in `test/agent/test_runtime.py` — `test_a_turn_stopped_by_the_tool_budget_…`,
+  `test_a_cancelled_turn_…` and `test_a_turn_stopped_by_repeated_failures_…` —
+  each asserting `unanswered_tool_calls(agent) == []` for one early-exit path;
+  all three fail on the pre-fix tree. The CLI Ctrl-C unwind (`cli.py:249-254`,
+  its own finding) is a separate hole and stays open. Also cleaned two
+  pre-existing ruff failures in the same file (a quoted `AgentResult`
+  annotation, one over-wrapped `emit` call).
 
 ### RF-121
 - **Status:** OPEN
