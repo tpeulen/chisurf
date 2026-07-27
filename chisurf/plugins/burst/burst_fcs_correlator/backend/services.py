@@ -27,6 +27,14 @@ def _ok(result: Any) -> Dict[str, Any]:
     return {"ok": True, "result": result}
 
 
+def _read_error(exc: OSError) -> Dict[str, Any]:
+    """Return the service error for a TTTR input that could not be read."""
+    from chisurf.server.services import NOT_FOUND, OPERATION_FAILED, service_error
+
+    code = NOT_FOUND if isinstance(exc, FileNotFoundError) else OPERATION_FAILED
+    return service_error(str(exc), error_code=code, exception=exc)
+
+
 def parse_bst_handler(path: str) -> Dict[str, Any]:
     tttr_path, ranges = parse_bst_file(pathlib.Path(path))
     return _ok({
@@ -73,10 +81,18 @@ def correlate_file_handler(
     settings: Dict[str, Any] = None,
     filetype=None,
 ) -> Dict[str, Any]:
+    """Correlate one TTTR file, reporting an unreadable input as a service error.
+
+    An empty ``curves`` list therefore means the file was read and produced no
+    curve — never that it could not be opened.
+    """
     s = BurstFcsSettings.from_dict(settings or {})
     pair_cfgs = [PairConfig.from_dict(p) for p in (pairs or [])]
     rng = [(int(a), int(b)) for a, b in ranges]
-    curves = correlate_burst_file(pathlib.Path(tttr_path), rng, pair_cfgs, s, filetype=filetype)
+    try:
+        curves = correlate_burst_file(pathlib.Path(tttr_path), rng, pair_cfgs, s, filetype=filetype)
+    except OSError as exc:
+        return _read_error(exc)
     return _ok({"curves": curves})
 
 

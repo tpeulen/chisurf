@@ -503,10 +503,24 @@ def correlate_burst_file(
     Opens the TTTR once, applies optional time padding around each burst, slices
     the burst photons, correlates each channel pair and (optionally) fits the
     curve. Returns one transport-friendly dict per produced curve.
+
+    An empty list means *no curve was produced* — no bursts, no pairs, or every
+    burst too short. A file that cannot be opened at all raises instead, because
+    the two are not the same answer and a caller that reports "done, no curves"
+    for an unreadable input announces a failed analysis as a success.
+
+    Raises
+    ------
+    FileNotFoundError
+        The TTTR file does not exist.
+    OSError
+        The file exists but could not be read as TTTR data.
     """
     tttr = open_tttr(pathlib.Path(tttr_path), filetype)
     if tttr is None:
-        return []
+        if not pathlib.Path(tttr_path).exists():
+            raise FileNotFoundError(f"TTTR file does not exist: {tttr_path}")
+        raise OSError(f"TTTR file could not be read: {tttr_path}")
 
     try:
         n_events = len(tttr)

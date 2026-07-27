@@ -2,6 +2,22 @@
 
 ## 2026-07-27
 
+* **A burst-FCS run that read not one photon reported success (RF-472, FCS half).**
+  ndX's *Send selection to* handed 7 312 gated bursts across 45 files to the
+  burst-FCS consumer; every path failed to open, and the status bar said
+  *"Sent 7312 bursts from 45 file(s) to fcs"*. `correlate_burst_file` returned
+  `[]` both when it had read a file and produced no curve and when it could not
+  open the file at all, and `correlate_file_handler` wrapped that as
+  `{"ok": True, "curves": []}`. The two answers are now distinct: a missing path
+  raises `FileNotFoundError`, an existing-but-unreadable one `OSError`, and the
+  handler maps them to `service_error(NOT_FOUND)` / `service_error(OPERATION_FAILED)`
+  — the same shape the decay and PCH consumers already return, which is why those
+  two raised on the identical input. ndX's `BurstBridge._call` raises on
+  `ok: False`, so that send now fails out loud. Pinned by
+  `chisurf/plugins/burst/burst_fcs_correlator/test/test_read_errors.py` (5 tests,
+  failing at `HEAD`). The PDA consumer still answers `ok` with an empty result and
+  RF-472 stays open for it.
+
 * **Every backbone Cα was calcium, and every `HE` hydrogen was helium (RF-477).**
   An accessible volume is grown against an obstacle surface built from per-atom
   van-der-Waals radii, and those radii come from an element symbol. A PDB that
