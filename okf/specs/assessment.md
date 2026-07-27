@@ -71,10 +71,10 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 | [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | ~~VERIFIED~~ ✅ FIXED |
-| [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | VERIFIED |
+| [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | ~~VERIFIED~~ ✅ FIXED |
 
-39 findings (26 FIXED): 4 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
-Of the 13 open: 1×S1 (BUG-10), 4×S2, 8×S3.
+39 findings (27 FIXED): 3 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
+Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
 
@@ -648,3 +648,25 @@ that the runtime would consult. → Decide the owner: either ship the curated DB
 `mmfdb/data/` (it is mmfdb's seed, not chisurf's) or have chisurf configure
 `source_database_path` at startup; either way delete the 0-byte `example.db` fallback so a
 missing seed fails loudly.
+
+**✅ Fixed 2026-07-27.** MMFDB owns the seed. `sample_management.db` moved out of chisurf into
+`modules/mmfdb/src/mmfdb/data/` — the directory the resolver has always looked in, and the
+directory `mmfdb.samples.seed_data.seed_curated_database()` writes to by default, so the
+generator and the consumer now agree on one path. It is **regenerated on the current schema**
+first: the committed copy was stamped v39 against a v45 schema, and since PRD-19 removed the
+migration waterfall a stale seed is not migrated forward (`ALTER ADD COLUMN` cannot repair a
+missing UNIQUE that an FK needs), so shipping it verbatim would have moved the failure rather
+than fixed it. The rebuilt seed carries the same 139 curated rows across 19 tables (7 probes,
+14 spectra, 27 optical properties, 3 samples, 4 experiments), passes `PRAGMA
+foreign_key_check`, and a `register_raw_measurement` round trip. The 0-byte `example.db` is
+deleted and `source_database_path()` no longer falls back to it: it returns the packaged path
+whether or not the file exists, so a broken install is visible — `reset_from_source` raises
+`FileNotFoundError` and first-run resolution logs a warning before creating an empty
+current-schema database rather than silently copying a 0-byte file over it. Verified
+end-to-end against a fresh settings dir: 7 probes and 3 samples now reach a first-run user
+database where before it got 0 bytes. `MANIFEST.in` drops the chisurf entry (mmfdb's
+`package-data` already declared `data/*.db`) and `build_tools/regenerate_curated_db.py` points
+at the new home, writing its pre-replace backup to a scratch dir so package data stays clean.
+Tests: `modules/mmfdb/tests/test_mmcif_database_resolver.py` (+4) pin that the seed ships, that
+its `_schema_version` equals `SCHEMA_VERSION`, that no `example.db` shadows a missing seed, and
+that a missing seed still yields a migrated database.

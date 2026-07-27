@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Regenerate the shipped curated MMFDB on the current schema.
 
-The curated source database (``chisurf/core/fio/mmcif/sample_management.db``)
-is copied to a user's settings dir on first run when ``source_database_path`` is
-configured to point at it (see INC-15). After PRD-19 removed the
-versioned migration waterfall (option B), a pre-PRD-19 curated DB is no longer
+The curated seed database is owned by MMFDB and ships as its package data
+(``modules/mmfdb/src/mmfdb/data/sample_management.db``); ``source_database_path``
+resolves to it and it is copied to a user's settings dir on first run (INC-15).
+Its schema version must therefore track ``mmfdb.schema.schema.SCHEMA_VERSION``:
+after PRD-19 removed the versioned migration waterfall (option B), a stale seed is
+no longer
 fully migrated forward: missing *columns* are added by ``_ensure_canonical_columns``
 but stale *table structure* (e.g. a missing ``flr_sample_users.user_uuid`` UNIQUE
 that an FK needs) cannot be fixed by ``ALTER ADD COLUMN``, so first-run object
@@ -30,7 +32,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-SHIPPED_DB = REPO / "chisurf" / "core" / "fio" / "mmcif" / "sample_management.db"
+SHIPPED_DB = REPO / "modules" / "mmfdb" / "src" / "mmfdb" / "data" / "sample_management.db"
 
 
 def _common_columns(old: sqlite3.Connection, new: sqlite3.Connection, table: str) -> list[str]:
@@ -138,7 +140,9 @@ def main() -> int:
     verify(out)
 
     if args.replace:
-        backup = args.source.with_suffix(".db.pre-prd19.bak")
+        # The seed is version-controlled, so the backup goes to a scratch dir
+        # rather than beside it — MMFDB's package data stays free of strays.
+        backup = Path(tempfile.mkdtemp()) / "sample_management.db.bak"
         shutil.copy(args.source, backup)
         shutil.copy(out, args.source)
         print(f"  backed up old -> {backup}")

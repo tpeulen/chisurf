@@ -7,7 +7,7 @@ include chisurf/settings/constants/*.json
 include chisurf/gui/styles/*.css
 include chisurf/gui/i18n/*.ts chisurf/gui/i18n/*.qm
 include chisurf/plugins/spectra_viewer/*.db
-include chisurf/core/fio/mmcif/sample_management.db
+# The curated sample_management.db seed is MMFDB package data, not ChiSurf's.
 global-exclude *.db-wal *.db-shm
 include notebooks/*.ipynb
 recursive-include modules/chinet/chinet *.py

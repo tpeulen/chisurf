@@ -2,6 +2,28 @@
 
 ## 2026-07-27
 
+* **The curated sample database now actually reaches a first-run user** ([INC-15](specs/assessment.md#inc-15)).
+  815 KB of curated reference data — 7 probes, 14 spectra, 27 optical properties,
+  3 samples, 4 experiments — was committed and shipped by ChiSurf and read by
+  nobody: the one live resolver looks for `sample_management.db` under
+  `mmfdb/data/`, it was not there, and the fallback it took instead was a
+  **0-byte `example.db`** that exists, so `resolve_database_location()` happily
+  copied zero bytes over as the user's database. MMFDB owns the seed, so the file
+  moved to `modules/mmfdb/src/mmfdb/data/` — which is both where the resolver
+  looks *and* where `seed_curated_database()` writes by default, so generator and
+  consumer finally name the same path. It is **regenerated on the current schema**
+  in the move: the committed copy was stamped v39 against v45, and since PRD-19
+  removed the migration waterfall a stale seed is not migrated forward, so
+  shipping it verbatim would only have moved the failure. `example.db` is deleted
+  and the fallback with it — `source_database_path()` returns the packaged path
+  whether or not it exists, so a broken install is loud (a `FileNotFoundError`
+  from `reset_from_source`, a warning before an empty-but-migrated first run)
+  instead of quietly producing a zero-byte database. Verified against a fresh
+  settings dir: 7 probes and 3 samples where there were 0 bytes. Tests:
+  `modules/mmfdb/tests/test_mmcif_database_resolver.py` (+4), one of which pins
+  the seed's `_schema_version` to `SCHEMA_VERSION` so it cannot go stale silently
+  again.
+
 * **FRC left CLSM Draw and became a resolution measurement.** The drawing tool
   carried a *Fourier ring correlation* panel, an RPC method and a `clsm frc`
   command, and none of them produced a resolution: the panel plotted the
