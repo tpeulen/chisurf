@@ -2,6 +2,22 @@
 
 ## 2026-07-27
 
+* **Written down, not fixed: the ribbon is not translated.** Reported from use.
+  `chisurf/gui/widgets/ribbon/` holds no `i18n.tr` call and no `.ui` file, so its
+  category/panel titles (Main, Edit, Analysis, Tools, Setup, View, Help, …) and
+  its own chrome (Collapse/Expand Ribbon, Panel options, Quick Access Toolbar
+  entries, Pin/Unpin) are neither translatable nor **extracted** — the extractor
+  reads `.view.json`, `manifest.json`, `.ui` and AST `i18n.tr(...)` calls, and
+  the ribbon matches none of them, so the strings are absent from the catalogues
+  entirely. What hid it: the language-change handler rebuilds the ribbon and its
+  docstring claims that re-reads every string through the new translator. True
+  for the buttons derived from **QActions** (retranslated one step earlier),
+  false for a hard-coded literal, which re-reads as itself. Recorded in
+  [known issues](/references/known-issues.md) with the affected string list, the
+  in-place `i18n.tr` path that fixes it, and the caveat that much of the package
+  is vendored — so whether to localize those files or only ChiSurf's own ribbon
+  layer is a decision to take before starting.
+
 * **regionprops takes an anisotropic pixel spacing.** A confocal voxel is rarely
   square and a scan is often sampled differently along the two axes, so
   scikit-image's `spacing=` was the one real gap left in the compatibility

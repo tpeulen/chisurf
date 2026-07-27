@@ -124,6 +124,48 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Reported 2026-07-27. The ribbon is not translated, and the mechanism that
+looks like it covers it does not.** Switch the language and the whole top
+navigation stays English. `chisurf/gui/widgets/ribbon/` contains **no**
+`i18n.tr` call and no `.ui` file, so none of its text is translatable, and none
+of it is even *extracted*: `build_tools/i18n/extract_strings.py` collects from
+`.view.json`, `manifest.json`, `.ui` files and AST `i18n.tr(...)` calls, and the
+ribbon matches none of those. Verified — "Other Tools", "Utilities" and
+"Clipboard" have zero entries in `chisurf_en.ts`. ("Fitting" and "Analysis" do
+appear, but from `fittingWidget.ui`; the ribbon's own literals are never looked
+up, so those entries are a coincidence, not coverage.)
+
+Two groups of strings are affected:
+
+- **Category and panel titles**, hard-coded in `ribbon_categories.py`: Main,
+  Edit, Analysis, Tools, Setup, View, Help, Documentation, Basic, Clipboard,
+  Fitting, Utilities, Other Tools.
+- **The ribbon's own chrome**, hard-coded across `titlewidget.py`,
+  `ribbonbar.py`, `panel.py`, `toolbutton.py`, `ribbon_auto_fold.py`: "Collapse
+  Ribbon" / "Expand Ribbon", "Panel options", "Remove from Quick Access
+  Toolbar", "Show All Hidden Items", "Pin ribbon" / "Unpin ribbon", "Open Help
+  Plugin", and the "ChiSurf" title and its tooltip.
+
+Why it went unnoticed: `main.py::_retranslate_interface` tears the ribbon down
+and rebuilds it on every language change, and its docstring says that rebuild
+"re-reads every string through the freshly installed translator". That holds for
+ribbon buttons derived from **QActions** — those come from `gui.ui` and are
+retranslated in the step before — but a hard-coded literal re-read is the same
+English literal. The rebuild is therefore not the fix, and the docstring
+overstates what it achieves.
+
+Fixing it is the ordinary in-place path already used for rich non-form tools
+(wrap each static string in `i18n.tr`, see `tttr_time_windows` /
+`tttr_microtime_shifter`), after which the extractor picks them up. Note the
+ribbon is a **vendored** widget family: `ribbonbar.py`, `panel.py`,
+`toolbutton.py`, `titlewidget.py` etc. carry upstream chrome strings, so decide
+per file whether to localize in place or to keep the vendored copy pristine and
+translate only ChiSurf's own layer (`ribbon_categories.py`,
+`ribbon_auto_fold.py`, `ribbon_file.py`). Also mind the anchoring gotcha in
+[/subsystems/i18n.md](/subsystems/i18n.md): the ribbon styles buttons by object
+names derived from action text, so any `i18n.tr` added there must be mirrored
+wherever a key is re-derived from display text.
+
 **Found 2026-07-26 while unifying the progress bars. `PDBFolderLoad` cannot be
 constructed at all.** `chisurf/gui/widgets/pdb/pdb.py` has rotted against a
 refactored `TrajectoryFile`, in two places: `__init__` calls `TrajectoryFile()`
