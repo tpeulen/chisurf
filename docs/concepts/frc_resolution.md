@@ -47,8 +47,12 @@ object. Two failure modes, both of which produce a confident number:
   frequency would claim single-pixel resolution. Correlating it with a smoothed
   copy of itself measures the smoothing kernel.
 * **Not the same object.** Two spectrally distinct labels on different
-  structures correlate nowhere, and the crossing lands in the first few rings —
-  a "resolution" of the order of the field of view.
+  structures correlate nowhere. Under the fixed 1/7 criterion the crossing then
+  lands in the first few rings — a "resolution" of the order of the field of
+  view; under the count-dependent criteria, whose thresholds start at 1, the
+  curve never rises above its threshold at all and the answer is *no crossing*.
+  A crossing is only ever reported where the curve was above its threshold and
+  falls through it, so neither case can produce a number finer than the data.
 
 The usual split, even/odd frames, is robust to slow drift because both halves
 span the whole acquisition. Splitting into the first and the second half instead

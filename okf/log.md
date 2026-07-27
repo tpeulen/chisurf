@@ -2,6 +2,23 @@
 
 ## 2026-07-27
 
+* **An FRC crossing is now interpolated, never extrapolated (RF-408).**
+  `resolve` took the first ring *below* its threshold and interpolated back to
+  its predecessor without ever checking that the predecessor was above the line.
+  On a dim image — where the count-dependent thresholds start at 1 and the curve
+  begins below them — the weight left `[0, 1]` and the "crossing" landed outside
+  the two rings it was computed from: two independent noise fields reported
+  **-40.86 px** under 2σ, and the tool printed that as the headline resolution.
+  The search now requires a genuinely *downward* crossing (`below[i] and not
+  below[i - 1]`), so `gap_before >= 0 > gap_now` is an invariant and the result
+  cannot leave the bracket; a curve that never rises above its threshold answers
+  `crossed=False` — nothing was resolved — instead of a number. Two tests in
+  `test/fluorescence/test_frc.py` pin it (a dim shot-noise pair that all three
+  criteria must resolve to its band limit, and unrelated noise over six seeds
+  that must never report a frequency off the axis).
+  `docs/concepts/frc_resolution.md` now states that halves which share nothing
+  answer "no crossing" under the count-dependent criteria.
+
 * **A stopped agent turn no longer poisons the conversation (RF-120).** The tool
   loop wrote the assistant turn carrying *every* `tool_call` id and then, on
   cancel / tool budget / repeated failures, executed only some of them — leaving

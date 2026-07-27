@@ -180,9 +180,7 @@ def frc_curve(
     s12, s11, s22, counts = _ring_sums(f1f2, f12, f22, nx, ny, n_bins, bin_width)
 
     denominator = np.sqrt(s11 * s22)
-    correlation = np.divide(
-        s12, denominator, out=np.zeros_like(s12), where=denominator > 0
-    )
+    correlation = np.divide(s12, denominator, out=np.zeros_like(s12), where=denominator > 0)
     frequency = (np.arange(n_bins) + 0.5) * bin_width
     # Rings beyond the Nyquist frequency exist only in the corners of the
     # Fourier square: they are partial, anisotropic, and not a resolution the
@@ -300,9 +298,17 @@ def resolve(
     start = 1
     while start < threshold.size and threshold[start] >= 1.0:
         start += 1
+    # A crossing is a *downward* one, so the ring before it has to sit above its
+    # own threshold: only then do the two rings bracket the crossing and only
+    # then is the interpolation below an interpolation. Taking the first ring
+    # that is merely below the line extrapolates instead — from the ring the
+    # `start` loop deliberately skipped, or from an innermost ring that was
+    # already below — and the crossing then lands outside the bracket, at a
+    # frequency finer than the sampling or at a negative one. A curve that never
+    # rises above its threshold has no crossing at all: nothing is resolved.
     index = None
     for i in range(start, below.size):
-        if below[i]:
+        if below[i] and not below[i - 1]:
             index = i
             break
     if index is None:
@@ -311,13 +317,11 @@ def resolve(
     previous = index - 1
     gap_now = values[index] - threshold[index]
     gap_before = values[previous] - threshold[previous]
-    if gap_before == gap_now:
-        crossing = float(frequency[index])
-    else:
-        weight = gap_before / (gap_before - gap_now)
-        crossing = float(
-            frequency[previous] + weight * (frequency[index] - frequency[previous])
-        )
+    # ``gap_before >= 0 > gap_now`` by the search above, so the denominator is
+    # strictly positive and the weight lies in [0, 1]: the crossing cannot leave
+    # the bracket ``[frequency[previous], frequency[index]]``.
+    weight = gap_before / (gap_before - gap_now)
+    crossing = float(frequency[previous] + weight * (frequency[index] - frequency[previous]))
     resolution = float("inf") if crossing == 0 else 1.0 / crossing
     return FrcResolution(criterion, crossing, resolution, threshold, True)
 

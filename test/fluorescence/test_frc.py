@@ -33,6 +33,24 @@ def _band_limited_pair(size=256, cutoff=0.15, noise=0.5, seed=1):
     )
 
 
+def _dim_poisson_pair(size=128, cutoff=0.15, counts=1.0, seed=4):
+    """Two shot-noise-limited views of the same band-limited field.
+
+    Photon-counting rather than Gaussian noise, and dim enough that the
+    count-dependent thresholds start *above* the measured correlation — the
+    regime in which the crossing search has to interpolate rather than
+    extrapolate.
+    """
+    rng = np.random.default_rng(1)
+    field = rng.normal(size=(size, size))
+    fx = np.fft.fftfreq(size)[:, None]
+    fy = np.fft.fftfreq(size)[None, :]
+    truth = np.real(np.fft.ifft2(np.fft.fft2(field) * (np.sqrt(fx**2 + fy**2) <= cutoff)))
+    rate = counts * np.clip(truth / truth.std() + 3.0, 0.0, None) / 3.0
+    photons = np.random.default_rng(seed)
+    return photons.poisson(rate).astype(float), photons.poisson(rate).astype(float)
+
+
 def test_identical_images_correlate_perfectly():
     """Two copies of one image agree at every frequency, so nothing crosses."""
     rng = np.random.default_rng(0)
@@ -118,6 +136,42 @@ def test_rings_are_binned_by_frequency_not_by_index():
     square = frc.resolve(frc.frc_curve(a, b)).resolution
     strip = frc.resolve(frc.frc_curve(a[:64], b[:64])).resolution
     assert strip == pytest.approx(square, rel=0.25)
+
+
+@pytest.mark.parametrize("criterion", frc.CRITERIA)
+def test_the_crossing_is_interpolated_not_extrapolated(criterion):
+    """A dim image resolves its band limit under every criterion.
+
+    On shot-noise data the count-dependent thresholds sit above the correlation
+    for the first few rings. Taking the first ring that is merely *below* the
+    line then extrapolates from a ring that was never above it, and the reported
+    crossing lands outside the two rings it was computed from — 2σ read 45 px
+    here where the band limit is 6.7 px.
+    """
+    a, b = _dim_poisson_pair(cutoff=0.15)
+    result = frc.resolve(frc.frc_curve(a, b), criterion)
+    assert result.crossed
+    assert result.resolution == pytest.approx(1 / 0.15, rel=0.3)
+
+
+@pytest.mark.parametrize("criterion", frc.CRITERIA)
+@pytest.mark.parametrize("seed", range(6))
+def test_a_crossing_is_never_reported_outside_the_frequency_axis(criterion, seed):
+    """Halves that share nothing cross nowhere — they never report a frequency.
+
+    Two unrelated images stay below the count-dependent thresholds from the
+    innermost ring on, so there is no downward crossing to find. Reporting one
+    anyway extrapolated backwards past the first ring and produced negative
+    frequencies, i.e. negative resolutions, which the GUI printed verbatim.
+    """
+    rng = np.random.default_rng(seed)
+    curve = frc.frc_curve(rng.normal(size=(128, 128)), rng.normal(size=(128, 128)))
+    result = frc.resolve(curve, criterion)
+    if result.crossed:
+        assert curve.frequency[0] <= result.frequency <= curve.frequency[-1]
+        assert result.resolution > 0.0
+    else:
+        assert np.isnan(result.frequency)
 
 
 def test_a_stack_splits_into_two_independent_halves():
