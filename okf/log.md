@@ -2,6 +2,25 @@
 
 ## 2026-07-27
 
+* **Written down, not fixed: plugin names and menu categories never translate.**
+  Reported alongside the ribbon, and a different failure with a shared cause.
+  Everything else a `manifest.json` shows *is* translated — `description`,
+  `summary`, `experimental_message`, `deprecation_message`, plugin-level and per
+  RPC method, all run through `tr()` in `chisurf/core/plugin/manifest.py`. The
+  two fields the user reads in the menu, `display_name` and `categories`, are
+  excluded at both ends on the stated plan that they are "localized at the nav
+  seam" — and that seam was never built. The menu builder and the ribbon each
+  split `display_name` on `:` and render the parts verbatim, with no `tr()` in
+  the path, so `Spectroscopy:Single-Molecule:PCH` reads exactly like that under
+  `de`. The catalogues confirm nobody was ever asked: "Burst Analysis",
+  "Microtime Shifter" and "Spectroscopy" have zero entries in **both** `en` and
+  `de`. It compounds with the ribbon gap, whose plugin categories come from
+  these same paths. The reason it is not a matter of wrapping the field is the
+  point worth keeping: `display_name` **is** the identity key — menu path,
+  ribbon `plugin_order`, and `get_plugin_settings_path(plugin_name)` — so
+  translating it in place would move a plugin's settings directory and lose its
+  ordering when the user switches language. Identity and display have to be
+  separated before anything is translated.
 * **The stack-mean drift reference never measured the first frame** (RF-344).
   `estimate_drift` skipped `k = 0` in every mode — the right idiom for `'first'`
   and `'previous'`, where frame 0 *is* the reference, and wrong for `'mean'`,

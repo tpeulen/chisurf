@@ -124,6 +124,42 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Reported 2026-07-27. Plugin names and menu categories are never translated,
+in any locale.** Everything a plugin's `manifest.json` shows *except* its name
+is translated: `chisurf/core/plugin/manifest.py` runs `description`, `summary`,
+`experimental_message` and `deprecation_message` (plugin-level and per RPC
+method) through `tr()` at load time, and the extractor collects them. The two
+fields the user actually reads in the menu — `display_name` and `categories` —
+are excluded on purpose at *both* ends: `extract_strings.py` leaves them out of
+`TEXT_KEYS` and `manifest.py` keeps them canonical, each with a comment saying
+they double as menu-path / identity keys and are "localized at the nav seam".
+
+**That nav seam does not exist.** The plugin-menu builder in
+`chisurf/gui/__init__.py` (`parse_hierarchical_plugin_name`) splits
+`display_name` on `:` into hierarchy parts plus a leaf and uses both verbatim —
+there is no `tr()` call anywhere in that path — and the ribbon does the same via
+`ribbon_categories.py::_parse_hierarchical_plugin_name`. So a manifest naming
+`Spectroscopy:Single-Molecule:PCH` renders as those exact English words under
+`de` and `fr`. Verified: "Burst Analysis", "Microtime Shifter" and
+"Spectroscopy" have zero entries in `chisurf_en.ts` *and* `chisurf_de.ts` — the
+strings are not merely untranslated, they were never offered to a translator.
+
+This compounds with the ribbon entry below: the ribbon's plugin categories are
+built from these same paths, so wrapping the ribbon's own literals in `i18n.tr`
+would still leave every plugin-derived entry English until this seam is built.
+
+The reason it cannot be fixed by wrapping the field is worth stating, because it
+is the whole design problem: `display_name` **is** the identity key. It is the
+menu path, it keys `plugin_order` in the ribbon, and it feeds
+`get_plugin_settings_path(plugin_name)`. Translating it in place would move a
+plugin's settings directory and lose its ordering when the user switches
+language. A fix has to separate identity from display — keep the canonical path
+as the key, translate each path segment and the leaf only at render time, and
+teach the extractor to emit those segments (they are a small closed vocabulary:
+Spectroscopy, Single-Molecule, FRET, Tools, Structure, Simulation, …). The same
+anchoring rule as everywhere else then applies: any code re-deriving a key from
+display text must repeat the identical `i18n.tr(...)` call.
+
 **Reported 2026-07-27. The ribbon is not translated, and the mechanism that
 looks like it covers it does not.** Switch the language and the whole top
 navigation stays English. `chisurf/gui/widgets/ribbon/` contains **no**
