@@ -45,6 +45,12 @@ Alternatively press **📥 From ndXplorer** to take the columns of an open
 ndXplorer window, so the calibration runs on exactly the bursts currently
 selected there.
 
+Reached as the *Accurate FRET* step of the **Burst Analysis** workflow, the step
+arrives ready: it takes the first `.bur` the burst-selection step wrote *and* the
+detector setup that step selected, so neither has to be picked again. Anything
+you change afterwards stays — the workflow only re-applies a setup when the
+upstream one actually changes.
+
 ### 2. Check the channel mapping
 
 The four **Channels** combos are filled automatically from the column names

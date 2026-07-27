@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **The accurate-FRET step of the burst workflow inherits the detector setup,
+  not just the table** (RF-568). Step 2 picks a detector setup; the *Accurate
+  FRET* step used to receive only the first `.bur`, so its column mapping ran
+  without the setup's window names and the user was asked for the setup a second
+  time. `BurstWorkflowContext` now carries `setup_name` beside
+  `channel_settings` (the RPC-held definition does not name itself), and
+  `_apply_context_to_accurate_fret` calls the panel's own `apply_setup_settings`
+  hook before `set_filename`. The workflow's setup wins over the panel's own —
+  the selector otherwise restores whatever was last used anywhere — but only
+  when it differs, so a refresh does not re-map columns the user corrected.
+  Verified headlessly with a screenshot: the panel opened on `BS` and after the
+  hand-off showed `QA_LUT_TEST`, its windows and the mapped `det0_green` /
+  `det1_red` columns. Two tests in
+  `chisurf/plugins/burst/burst_analysis/tests/test_workflow.py`; 37 passed.
+  Guide [41](../docs/guides/41_accurate_fret.md) updated.
+
 * **GUI test: inter-frame drift correction, the step before every per-pixel map.**
   Drove `chisurf.plugins.microscopy.img_drift` headlessly — standalone and inside
   the Image Tools hub — on a real 100-frame N&B camera movie, a real 40-frame

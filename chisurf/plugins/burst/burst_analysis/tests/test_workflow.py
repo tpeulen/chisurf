@@ -703,6 +703,89 @@ def test_accurate_fret_receives_one_burst_table(tmp_path: Path) -> None:
     assert loaded == [str(files[0])], "a table already loaded here is not replaced"
 
 
+def test_accurate_fret_receives_the_detector_setup(tmp_path: Path) -> None:
+    """Step 2 already picked the setup; the calibration must not ask again.
+
+    The setup is what lets the panel recognise site-specific channel columns, so
+    this drives the real view model on a table whose columns *only* map when the
+    setup's window names are known.
+    """
+    from chisurf.plugins.burst.accurate_fret.gui.view_model import AccurateFretViewModel
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    table = tmp_path / "m000.bur"
+    table.write_text(
+        "det0_green\tdet1_red\n" + "".join(f"{10 + i}\t{5 + i}\n" for i in range(8))
+    )
+
+    class FakePanel:
+        model = AccurateFretViewModel()
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    tool.workflow_context = BurstWorkflowContext(
+        channel_settings={"detectors": {"green": {"chs": [0, 8]}, "red": {"chs": [1, 9]}}},
+        setup_name="MFD 2-colour",
+        bur_files=[table],
+    )
+
+    panel = FakePanel()
+    BurstAnalysisTool._apply_context_to_accurate_fret(tool, panel)
+
+    assert panel.model.setup_name == "MFD 2-colour", "the step asks for the setup twice"
+    assert set(panel.model.detectors) == {"green", "red"}
+    # The window names are what map these columns -- without the setup both stay "".
+    assert panel.model.column_i_dd == "det0_green"
+    assert panel.model.column_i_da == "det1_red"
+
+
+def test_accurate_fret_setup_hand_off_is_idempotent(tmp_path: Path) -> None:
+    """Re-propagating an unchanged setup must not re-map the columns.
+
+    The setup the panel's own selector restores is *not* the one step 2 chose, so
+    the workflow's setup wins (as it does for BVA and H2MM) — but only once, or
+    every downstream refresh would undo a column mapping the user corrected.
+    """
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    applied: list[dict] = []
+
+    class FakeModel:
+        filename = ""
+        setup_name = "last used somewhere else"
+        detectors = {"blue": {}}
+
+        def apply_setup_settings(self, payload):
+            applied.append(payload)
+            self.setup_name = payload["name"]
+            self.detectors = dict(payload["detectors"])
+
+        def set_filename(self, path):
+            self.filename = str(path)
+
+    class FakePanel:
+        model = FakeModel()
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    tool.workflow_context = BurstWorkflowContext(
+        channel_settings={"detectors": {"green": {}}},
+        setup_name="workflow setup",
+        bur_files=[tmp_path / "m000.bur"],
+    )
+
+    panel = FakePanel()
+    BurstAnalysisTool._apply_context_to_accurate_fret(tool, panel)
+    assert applied == [{"name": "workflow setup", "detectors": {"green": {}}}]
+
+    BurstAnalysisTool._apply_context_to_accurate_fret(tool, panel)
+    assert len(applied) == 1, "an unchanged setup is applied once, not on every refresh"
+
+
 def test_new_panels_are_wired_into_downstream_propagation() -> None:
     """A panel that is not in the role tuple only ever sees stale context."""
     import inspect

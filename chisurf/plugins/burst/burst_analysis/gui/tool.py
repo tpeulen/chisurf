@@ -22,6 +22,9 @@ class BurstWorkflowContext:
     """Shared state handed from earlier burst workflow steps to later steps."""
 
     channel_settings: dict[str, Any] = field(default_factory=dict)
+    #: Name of the detector setup ``channel_settings`` was read from — panels
+    #: that take a setup by name (rather than a detector table) need it.
+    setup_name: str = ""
     raw_files: list[Path] = field(default_factory=list)
     burst_folder: Path | None = None
     bur_files: list[Path] = field(default_factory=list)
@@ -35,6 +38,7 @@ class BurstWorkflowContext:
         """Return a JSON-compatible workflow context payload."""
         return {
             "channel_settings": self.channel_settings,
+            "setup_name": self.setup_name,
             "raw_files": [str(path) for path in self.raw_files],
             "burst_folder": str(self.burst_folder) if self.burst_folder else None,
             "bur_files": [str(path) for path in self.bur_files],
@@ -593,6 +597,14 @@ class BurstAnalysisTool(NavigationPanelTool):
         current = self._setup_client.get_current()
         if current:
             self.workflow_context.channel_settings = current
+        name = self._selected_setup_name()
+        if name:
+            self.workflow_context.setup_name = name
+
+    def _selected_setup_name(self) -> str:
+        """Name of the detector setup the Burst Selection step has selected."""
+        panel = self._workflow_panels.get("selection")
+        return str(getattr(panel, "_selected_setup_name", "") or "")
 
     def _channel_settings_from_selection(self) -> dict | None:
         """The detector setup the Burst Selection step has selected, if any.
@@ -601,8 +613,7 @@ class BurstAnalysisTool(NavigationPanelTool):
         that saved definition is the channel setup the rest of the workflow uses
         now that the standalone Channels step is gone.
         """
-        panel = self._workflow_panels.get("selection")
-        name = getattr(panel, "_selected_setup_name", None)
+        name = self._selected_setup_name()
         if not name:
             return None
         try:
@@ -970,18 +981,57 @@ class BurstAnalysisTool(NavigationPanelTool):
             pass
 
     def _apply_context_to_accurate_fret(self, widget: QtWidgets.QWidget) -> None:
-        """Load one burst table from upstream into the accurate-FRET panel.
+        """Give accurate-FRET the upstream detector setup and one burst table.
 
         The calibration reads a burst *table*, and a ``.bur`` is one — so the
         first burst file is what this step would otherwise ask the user to pick.
+        The setup goes first: its named windows are what lets the panel recognise
+        the table's channel columns, so it has to be in place before the table is
+        read, and it is also what names the detectors for the optical prior.
         """
         model = getattr(widget, "model", None)
-        if model is None or not self.workflow_context.bur_files:
+        if model is None:
+            return
+        self._apply_setup_to_accurate_fret(model)
+        if not self.workflow_context.bur_files:
             return
         if getattr(model, "filename", ""):
             return  # a table is already loaded here
         try:
             model.set_filename(str(self.workflow_context.bur_files[0]))
+        except Exception:
+            pass
+
+    def _apply_setup_to_accurate_fret(self, model: Any) -> None:
+        """Hand the workflow's detector setup to the accurate-FRET model.
+
+        Uses the panel's own setup hook — the same payload its setup selector
+        sends — rather than a detector table, because this panel consumes the
+        window *names*, not the routing channels.
+
+        Like the BVA and H2MM appliers, the workflow's setup wins: the panel's
+        selector otherwise restores whatever setup was last used anywhere, which
+        is not the one step 2 chose. Applying is idempotent, so re-propagating an
+        unchanged setup does not re-map columns the user has since corrected.
+        """
+        settings = self.workflow_context.channel_settings
+        payload = {
+            "name": self.workflow_context.setup_name,
+            "detectors": dict(settings.get("detectors") or {}),
+        }
+        if not payload["name"] and not payload["detectors"]:
+            return
+        current = {
+            "name": str(getattr(model, "setup_name", "") or ""),
+            "detectors": dict(getattr(model, "detectors", None) or {}),
+        }
+        if payload == current:
+            return
+        apply_setup = getattr(model, "apply_setup_settings", None)
+        if not callable(apply_setup):
+            return
+        try:
+            apply_setup(payload)
         except Exception:
             pass
 
