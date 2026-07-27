@@ -2,6 +2,22 @@
 
 ## 2026-07-27
 
+* **The l1/l2 half was the generator, not the correction.** `vm_rt_to_vv_vh`
+  built an ideal VV/VH pair and mixed it with a 2x2 matrix (Koshioka 1995) —
+  a different meaning for l1/l2 than the Schaffer correction the rest of the
+  stack applies, which is why a round trip with both a non-unit G and non-zero
+  mixing came back at 0.274 / 0.318 against 0.300. tttrlib states the right
+  forward model in `DecayFit23.cpp` (`x_vv[2] = r0(2 - 3 l1)`, `x_vh[0] = 1/g`,
+  `x_vh[2] = r0(-1 + 3 l2)/g`):
+
+      VV = vm (1 + (2 - 3 l1) r),   VH = vm (1 - (1 - 3 l2) r) / G
+
+  Substituted into the correction, numerator and denominator both collapse to
+  `3 vm (1 - l1 - l2)` times r and 1 — exact inversion for any l1, l2, G. The
+  generator now uses it and the round trip is 0.300000000 across every
+  combination tried. Last open item from the anisotropy work closed; the
+  known-issues entry is retired rather than amended.
+
 * **"While the bursts are processed, nothing should mutate" — made true in the
   MLE wizard, and it turned out to be the missing invariant rather than a
   missing thread.** Reported from use, after the previous entry recorded MLE as

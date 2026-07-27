@@ -107,13 +107,23 @@ def vm_rt_to_vv_vh(
         b = anisotropy_spectrum[2 * i]
         rho = anisotropy_spectrum[2 * i + 1]
         rt += b * np.exp(-times / rho)
-    vv = vm * (1 + 2.0 * rt)
-    # G is the parallel/perpendicular sensitivity ratio (Schaffer/Eggeling), so
-    # the perpendicular channel records 1/G of what an equally sensitive one
-    # would. This used to multiply, which is the reciprocal convention.
-    vh = vm * (1. - rt) / g_factor
-    vv_j = vv * (1. - l1) + vh * l1
-    vh_j = vv * l2 + vh * (1. - l2)
+    # Schaffer/Eggeling, the same forward model tttrlib fits (DecayFit23:
+    # x_vv[2] = r0 (2 - 3 l1), x_vh[0] = 1/g, x_vh[2] = r0 (-1 + 3 l2)/g):
+    #
+    #     VV = vm (1 + (2 - 3 l1) r),    VH = vm (1 - (1 - 3 l2) r) / G
+    #
+    # G is the parallel/perpendicular sensitivity ratio, so the perpendicular
+    # channel records 1/G of what an equally sensitive one would.
+    #
+    # This used to build an ideal pair and then mix it with a 2x2 matrix
+    # (`vv(1-l1) + vh l1`, Koshioka 1995). That is a *different* meaning for
+    # l1/l2, and it does not invert with the correction the rest of the stack
+    # applies: a round trip with both a non-unit G and non-zero l1/l2 came back
+    # at 0.274 and 0.318 against a truth of 0.300. In this parameterisation the
+    # round trip is exact -- numerator and denominator of the correction both
+    # collapse to 3 vm (1 - l1 - l2), for any l1, l2 and G.
+    vv_j = vm * (1.0 + (2.0 - 3.0 * l1) * rt)
+    vh_j = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g_factor
     return vv_j, vh_j
 
 

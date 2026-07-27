@@ -136,14 +136,22 @@ output feeds its own consumer, tttrlib's formula and the VM combination
 recorded here earlier — the cross-repo one and the VM one — without touching
 tttrlib or the five VM call sites.
 
-**Still open: the l1/l2 parameterisation.** The generator mixes with a 2x2
-matrix (`vv(1-l1) + vh*l1`, `vv*l2 + vh(1-l2)`, Koshioka 1995) while the
-correction uses Schaffer's `(1-3 l2)` / `(2-3 l1)` factors. Round-tripping with
-**both** a non-unit G and non-zero l1/l2 does not recover the input (0.274 at
-G = 0.65, 0.318 at G = 1.5, against 0.300); with either alone it is exact. The
-two are different parameterisations of the same nuisance, and which is canonical
-needs Koshioka read against Schaffer/Eggeling. Until then a fit with a
-calibrated G *and* polarisation mixing has an anisotropy off by a few percent.
+**The l1/l2 parameterisation is settled too (2026-07-27).** It was the
+generator that was out of step, not the correction. `vm_rt_to_vv_vh` built an
+ideal pair and mixed it with a 2x2 matrix (Koshioka 1995), which is a different
+meaning for l1/l2 and does not invert the Schaffer correction. tttrlib states
+the right one in its own forward model (`DecayFit23.cpp`:
+`x_vv[2] = r0 (2 - 3 l1)`, `x_vh[0] = 1/g`, `x_vh[2] = r0 (-1 + 3 l2)/g`):
+
+    VV = vm (1 + (2 - 3 l1) r),    VH = vm (1 - (1 - 3 l2) r) / G
+
+Substituting that into `(sp - G ss) / ((1 - 3 l2) sp + (2 - 3 l1) G ss)` makes
+numerator and denominator collapse to `3 vm (1 - l1 - l2) r` and
+`3 vm (1 - l1 - l2)`, so the round trip is exact for any l1, l2 and G. The
+generator now uses it, and the round-trip test covers a non-unit G and non-zero
+mixing together — the combination that exposed the old one (0.274 and 0.318
+against 0.300).
+
 
 
 **Found 2026-07-27, not fixed: the PCH settings panel is clipped at its right

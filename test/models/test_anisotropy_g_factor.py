@@ -131,18 +131,22 @@ def test_the_curve_agrees_with_the_integrals_module(qapp=None):
 def test_the_generator_round_trips_at_any_g():
     """chisurf's own forward model must invert to the anisotropy it was given.
 
-    ``vm_rt_to_vv_vh`` is where the convention is stated in code — it divides
-    the perpendicular channel by G — so a round trip through it is the check
-    that the whole chain agrees, not just that one formula matches another.
+    ``vm_rt_to_vv_vh`` is where the convention is stated in code, and it is the
+    same forward model tttrlib fits: ``VV = vm(1 + (2-3 l1) r)`` and
+    ``VH = vm(1 - (1-3 l2) r)/G``. A round trip through it checks the whole
+    chain, not just that one formula matches another — and it must hold with a
+    non-unit G *and* non-zero mixing at once, which is the combination that
+    exposed the previous parameterisation.
     """
     from chisurf.core.fluorescence.anisotropy.decay import vm_rt_to_vv_vh
     from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
     t, vm, r0 = np.array([0.0, 1.0, 2.0]), np.ones(3), 0.30
     for g in (0.65, 1.0, 1.5, 2.2):
-        vv, vh = vm_rt_to_vv_vh(t, vm, np.array([r0, 1e12]), g_factor=g, l1=0.0, l2=0.0)
-        _, _, r_cor = LifetimeModel._tcspc_rt_curves(t=t, vv=vv, vh=vh, g=g, l1=0.0, l2=0.0)
-        assert r_cor[0] == pytest.approx(r0, abs=1e-9), f"g = {g}"
+        for l1, l2 in ((0.0, 0.0), (0.03, 0.05), (0.08, 0.02)):
+            vv, vh = vm_rt_to_vv_vh(t, vm, np.array([r0, 1e12]), g_factor=g, l1=l1, l2=l2)
+            _, _, r_cor = LifetimeModel._tcspc_rt_curves(t=t, vv=vv, vh=vh, g=g, l1=l1, l2=l2)
+            assert r_cor[0] == pytest.approx(r0, abs=1e-9), f"g={g} l1={l1} l2={l2}"
 
 
 def test_the_calibration_returns_the_ratio_the_consumers_expect():
