@@ -2,6 +2,22 @@
 
 ## 2026-07-27
 
+* **PRD-57 voxel section grounded in the reference implementation's source.**
+  Rewritten after reading its `map`/`map_data` bundles rather than describing the
+  design from memory, and it settled several things the first pass had guessed.
+  The grid model carries `origin`, `step`, `cell_angles` **and a 3x3 rotation**,
+  and its docstring says outright that the data "need not come from a file" —
+  there is an array-backed subclass, which is exactly the seam an AV or a CLSM
+  stack needs. Big maps are **strided rather than drawn**: a 16-Mvoxel budget and
+  an automatic subsample step bound the display cost by a setting instead of by
+  the file. Three styles (`surface`/`mesh`/`image`), with `image` a 3D texture
+  where the driver allows it and a fall back to axis-aligned plane stacks where
+  it does not. The interface worth copying most directly is the **histogram with
+  draggable level markers** — click to add a level, click a marker to remove it,
+  separate marker sets for surface and image — because it makes choosing a
+  threshold an act of looking at the data, which is the actual difficulty for an
+  AV or a photon-count stack whose scale nobody knows in advance.
+
 * **An FRC crossing is now interpolated, never extrapolated (RF-408).**
   `resolve` took the first ring *below* its threshold and interpolated back to
   its predecessor without ever checking that the predecessor was above the line.

@@ -90,34 +90,67 @@ discarded. There is a marching-cubes implementation
 from atoms and is not reachable from a loaded map. There is no map object, no
 contour level to change, no second level to show at once, and no volume rendering.
 
+## How the reference tool does it
+
+Read from its `map` and `map_data` bundles rather than described from memory,
+because the design settles several questions that would otherwise be guessed at.
+
+**The grid** (`map_data/griddata.py`, `GridData`) is `size`, `value_type`,
+`origin`, `step`, `cell_angles` **and a 3x3 `rotation`** — so a skewed
+crystallographic cell and a rotated grid are both representable, not just an
+axis-aligned box. Its docstring is explicit that the data "need not come from a
+file", and `ArrayGridData` builds one straight from a 3D NumPy array. That is the
+seam an AV or a CLSM stack needs, and it is a *parameter* of the model rather
+than an afterthought.
+
+**Big maps are strided, not drawn.** `volume.py` carries a `voxel_limit` (default
+**16 Mvoxels**) and `ijk_step_for_voxel_limit()` raises the subsample step until
+the displayed region fits under it. So the display cost is bounded by a setting
+rather than by the file, and a 4 GB map opens. Region plus step, not "load it
+all", is the reason the interface stays usable.
+
+**Three display styles**, one switch: `surface`, `mesh`, `image` — where `image`
+is direct volume rendering. `image3d.py` uses a **3D texture** where the driver
+allows it (it checks `max_3d_texture_size` and warns, falling back to stacks of
+axis-aligned planes), and can keep the colormap on the GPU.
+
+**The interface is a histogram** (`volume_viewer.py`, `Histogram_Pane`). The
+data's value distribution is drawn, and contour levels are **markers dragged
+along it** — click the histogram to add a level, click a marker to delete it, with
+a `Level` box for typing an exact value and a colour per marker. Surface and
+image styles keep *separate* marker sets. This is the part worth copying most
+directly: it makes choosing a threshold an act of looking at the data rather than
+typing numbers and re-rendering, which is exactly the difficulty with an AV or a
+photon-count stack whose scale nobody knows in advance.
+
+Alongside it: a data list, a coordinates panel (origin, step, cell angles) and a
+precomputed-subsamples panel.
+
 ## What has to exist
 
-1. **A map object.** A voxel grid with its transform (voxel size, origin, and the
-   full 3x3 for a non-axis-aligned or anisotropic grid — a confocal stack's z step
-   is rarely its xy step, and treating it as cubic silently squashes the picture),
-   held as a real object in the scene with its own name, visibility and colour.
-   Independent of where it came from: a map read from a file, computed from atoms,
-   or handed over in memory by a chisurf plugin is the same object.
-2. **Reachable from memory, not only from a file.** AVs and CLSM stacks already
-   exist as arrays in this process. Requiring a round trip through a file on disk
+1. **A map object** on the grid model above — origin, step, cell angles and a
+   full 3x3 rotation. A confocal stack's z step is rarely its xy step, and
+   treating a grid as cubic silently squashes the picture. It is a real scene
+   object with its own name, visibility and colour, regardless of whether it was
+   read from a file, computed from atoms, or handed over in memory.
+2. **Constructible from an array in memory**, as `ArrayGridData` is. AVs and CLSM
+   stacks are already arrays in this process; a round trip through a file on disk
    to see them would be the wrong seam.
-3. **The display modes**, in this order of usefulness here:
-   * **isosurface** at a contour level the user can drag, with more than one level
-     shown at once and coloured separately (this is how an AV is read: a dense core
-     inside a diffuse shell);
-   * **mesh** — the same contour as a wireframe, so a structure inside it stays
-     visible;
-   * **direct volume rendering** — the mode with no PyMOL equivalent worth using,
-     and the one that suits microscopy and diffuse probability densities, where
-     there is no meaningful single threshold to pick.
-4. **Colour by value**, through a transfer function or a colour ramp, not one flat
-   colour per surface.
-5. **Commands.** `map_new`, `isomesh`, `isosurface`, `volume`, `map_trim` — PyMOL
-   names and semantics, per the compatibility contract, with ChiMOL's additions
-   after them rather than in place of them.
-6. **A level the eye can find.** A contour default derived from the data (a
-   quantile of occupied voxels, say) rather than a fixed number, since an AV, a
-   cryo-EM map and a photon-count stack do not share a scale.
+3. **A voxel budget with automatic striding.** The single most important thing for
+   keeping the viewer responsive, and cheap to implement.
+4. **The three styles**: isosurface, mesh, and direct volume rendering. Several
+   levels shown at once, coloured separately — this is how an AV is read, a dense
+   core inside a diffuse shell. Volume rendering is the mode with no PyMOL
+   equivalent worth using and the one that suits microscopy and diffuse
+   probability densities, where no single threshold is meaningful.
+5. **A histogram panel with draggable level markers**, per the interface above.
+6. **Colour by value** through a transfer function or ramp, not one flat colour.
+7. **Commands.** `map_new`, `isomesh`, `isosurface`, `volume`, `map_trim` — PyMOL
+   names and semantics per the compatibility contract, ChiMOL's additions after
+   them rather than in place of them.
+8. **A starting level the eye can find**, derived from the data (a quantile of
+   occupied voxels) rather than a fixed number, since an AV, a cryo-EM map and a
+   photon-count stack do not share a scale.
 
 ## Constraints
 
@@ -127,7 +160,9 @@ mostly static, so it uploads once and is not rebuilt per frame; changing a conto
 level re-meshes only the map, never the molecule beside it.
 
 No new dependency for reading MRC/CCP4 or for marching cubes: both are already
-here, and the file format is documented and short.
+here, and the format is documented and short. A 3D texture needs no library either
+— but it does need the GL path to cope with a driver that will not give it one,
+which the reference implementation handles by falling back to plane stacks.
 
 # Renderer migration (immediate-mode GUI backend)
 
