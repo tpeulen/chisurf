@@ -7,6 +7,8 @@ from typing import Dict, Callable, Iterator
 import numpy as np
 import tttrlib
 from qtpy import QtWidgets, QtCore, QtGui
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 
 class LazyTTTRDict(collections.abc.MutableMapping):
@@ -468,10 +470,53 @@ def optimize_hyperparameters(
 
     # ---- Progress dialog ----
     total_budget = int(max(1, n_iter))
-    progress = QtWidgets.QProgressDialog("Optimizing hyperparameters...", "Cancel", 0, total_budget, wizard.window())
+    progress = ChiSurfProgress(wizard.window(), "Optimizing hyperparameters...", total_budget)
     progress.setWindowModality(QtCore.Qt.WindowModal)
     progress.setAutoClose(True)
     progress.show()
+
+    # The search *is* a wizard driver: every trial writes the wizard's tunables
+    # and refits, then reads the answer back off it. Two things follow, and
+    # neither was handled.
+    #
+    # Nothing the user does may change the configuration mid-search. `evaluate`
+    # calls `processEvents()` after every trial, so today a click lands between
+    # trials and silently moves the ground the search is standing on -- the
+    # remaining trials explore a different configuration from the earlier ones,
+    # and the reported "best" was measured against neither.
+    #
+    # And the wizard must not be left holding a *trial* configuration. On cancel
+    # or failure the search stops wherever it happens to be, which is neither
+    # the user's original settings nor the best found -- so snapshot first and
+    # put it back unless a winner is applied.
+    _TUNABLES = (
+        "micro_time_range", "irf_threshold_vv", "irf_threshold_vh",
+        "shift", "shift_sp", "shift_ss", "irf_start", "irf_stop",
+    )
+    entry_state = {}
+    for _name in _TUNABLES:
+        try:
+            entry_state[_name] = getattr(wizard, _name)
+        except Exception:
+            pass
+
+    def _restore_entry_state() -> None:
+        """Put the wizard back the way the user left it."""
+        for _n, _v in entry_state.items():
+            try:
+                setattr(wizard, _n, _v)
+            except Exception:
+                pass
+        try:
+            wizard.update_decay_of_detector()
+            wizard._fit = None
+            wizard.update_fit()
+        except Exception:
+            pass
+
+    # (The freeze itself is the caller's -- `MLELifetimeAnalysisWizard.
+    # optimize_hyperparameters` wraps this call in try/finally, so a raise
+    # cannot leave the wizard disabled.)
 
     # ---- Utilities ----
     rng = np.random.default_rng(seed)
@@ -637,8 +682,15 @@ def optimize_hyperparameters(
 
     progress.close()
 
+    if progress.was_canceled():
+        # Stopped mid-search: the wizard is holding whatever trial ran last.
+        _restore_entry_state()
+        dialogs.information(wizard, "HPO", "Optimization cancelled; settings restored.")
+        return
+
     if best_cfg is None or not np.isfinite(best_loss):
-        QtWidgets.QMessageBox.information(wizard, "HPO", "Optimization could not find a valid configuration.")
+        _restore_entry_state()
+        dialogs.information(wizard, "HPO", "Optimization could not find a valid configuration.")
         return
 
     # ---- Apply best configuration to UI and refit once ----

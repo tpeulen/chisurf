@@ -3782,226 +3782,6 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 bg_cache[det] = raw_bg
         return irf_cache, bg_cache
 
-        if self.df_bursts is None or not self.tttrs:
-            self._set_status("No burst data loaded.")
-            return
-
-        # Reset stop flag
-        self.stop_processing = False
-
-        # Progress UI
-        total_bursts = len(self.df_bursts)
-        progress = _mle_progress(self, "Processing bursts...", total_bursts)
-        progress.setWindowTitle("Processing bursts")
-        progress.setWindowModality(QtCore.Qt.WindowModal)
-        progress.setAutoClose(False)
-        progress.setValue(0)
-        progress.show()
-
-        # ---- Per-detector static caches ----
-        irf_cache, bg_cache = self._build_irf_bg_cache()
-        settings_cache = {det: self._ensure_channel_state(det) for det in self.channel_definer.detectors.keys()}
-
-        # Single global micro-time binning
-        # (verify uniformity; if not, fall back to current UI value)
-        det_mbs = {int(st['micro_time_binning']) for st in settings_cache.values()}
-        if len(det_mbs) == 1:
-            global_mb = int(next(iter(det_mbs)))
-        else:
-            cs.logging.warning(
-                f"Detectors have differing micro_time_binning {det_mbs}; falling back to UI {self.micro_time_binning}"
-            )
-            global_mb = int(self.micro_time_binning)
-
-        # Windows (sb, eb) per detector (in *binned* indices)
-        window_cache = {}
-        for det, st in settings_cache.items():
-            sb = int(st['micro_time_start'])
-            eb = int(st['micro_time_stop'])
-            if eb <= sb:
-                sb_fix, eb_fix = self.micro_time_range
-                sb, eb = int(sb_fix), int(eb_fix)
-            window_cache[det] = (sb, eb)
-
-        # Per-detector routing-channel lists and LUTs
-        channels_cache = {}
-        rc_max_seen = 0
-        for det, info in self.channel_definer.detectors.items():
-            chs = info.get('chs', [])
-            if len(chs) >= 2:
-                pchs = chs[::2]
-                schs = chs[1::2]
-            else:
-                pchs = chs
-                schs = chs
-            channels_cache[det] = (np.asarray(pchs, dtype=int), np.asarray(schs, dtype=int))
-            if len(chs):
-                rc_max_seen = max(rc_max_seen, int(np.max(chs)))
-
-        # Pre-instantiate one fitter per detector (IRF/BG fixed for this run)
-        fitters = {}
-        for det, st in settings_cache.items():
-            fitters[det] = Fit2x(
-                Fit2xSettings(
-                    dt=st['dt'],
-                    period=st['excitation_period'],
-                    irf=irf_cache[det],
-                    background=bg_cache[det],
-                    g_factor=st['g_factor'],
-                    l1=st['l1'],
-                    l2=st['l2'],
-                    p2s_twoIstar=bool(st['p2s_twoIstar']),
-                    soft_bifl_scatter=bool(st['BIFL_scatter']),
-                ),
-                model=Fit2xModel.FIT23,
-            )
-
-        # Helper for default records
-        metrics = ['2I* ', 'Tau', 'gamma', 'r0', 'rho', 'BIFL scatter?', '2I*: P+2S?', 'r Scatter', 'r Experimental']
-        results = []
-
-        def default_record(fname, det, cp_sum=0, cs_sum=0):
-            color = det.lower()
-            rec = {
-                'First File': fname,
-                'Detector': det,
-                'Ng-p-all': int(cp_sum),
-                'Ng-s-all': int(cs_sum),
-                f'Number of Photons (fit window) ({color})': int(cp_sum + cs_sum)
-            }
-            for m in metrics:
-                rec[f'{m} ({color})'] = float('nan')
-            results.append(rec)
-
-        # ---- Per-file cache: one binned micro-time array + routing LUTs ----
-        file_cache = {}
-
-        def maybe_pump_ui(k: int) -> None:
-            if (k % 25) == 0:
-                QtWidgets.QApplication.processEvents()
-
-        for i, row in self.df_bursts.iterrows():
-            if self.stop_processing or progress.wasCanceled():
-                cs.logging.info("Burst processing stopped by user")
-                break
-            progress.setValue(i + 1)
-            maybe_pump_ui(i + 1)
-
-            fname = row['First File']
-            first_ph = int(row['First Photon'])
-            last_ph = int(row['Last Photon'])
-            key = Path(fname).stem
-
-            if first_ph < 0 or last_ph < 0:
-                for det in self.channel_definer.detectors.keys():
-                    default_record(fname, det, -1, -1)
-                continue
-
-            # Build file cache on first encounter
-            if key not in file_cache:
-                tttr = self.tttrs.get(key)
-                if tttr is None:
-                    for det in self.channel_definer.detectors.keys():
-                        default_record(fname, det, -1, -1)
-                    continue
-
-                rc_full = np.asarray(tttr.routing_channels)
-                mt_full = np.asarray(tttr.micro_times)
-
-                # One global binned micro-time array for this file
-                if global_mb <= 1:
-                    mt_bins_full = mt_full.astype(np.int32, copy=True)
-                else:
-                    mt_bins_full = (mt_full // global_mb).astype(np.int32, copy=False)
-
-                # LUTs per detector for channel membership
-                rc_max = int(rc_full.max()) if rc_full.size else rc_max_seen
-                det_luts = {}
-                for det, (pchs, schs) in channels_cache.items():
-                    is_p = np.zeros(rc_max + 1, dtype=bool)
-                    is_s = np.zeros(rc_max + 1, dtype=bool)
-                    if pchs.size:
-                        is_p[pchs] = True
-                    if schs.size:
-                        is_s[schs] = True
-                    det_luts[det] = (is_p, is_s)
-
-                file_cache[key] = {
-                    'rc_full': rc_full,
-                    'mt_bins_full': mt_bins_full,
-                    'det_luts': det_luts
-                }
-
-            fc = file_cache[key]
-            rc_slice = fc['rc_full'][first_ph:last_ph]
-            mt_bins = fc['mt_bins_full'][first_ph:last_ph]
-
-            for det in self.channel_definer.detectors.keys():
-                st = settings_cache[det]
-                sb, eb = window_cache[det]
-                irf_half_len = max(1, irf_cache[det].size // 2)
-
-                # Fast masks from LUTs
-                is_p_lut, is_s_lut = fc['det_luts'][det]
-                m_p = is_p_lut[rc_slice]
-                m_s = is_s_lut[rc_slice]
-
-                # Histograms per half (no TTTR slicing)
-                cp = np.bincount(mt_bins[m_p], minlength=irf_half_len).astype(np.float64, copy=False)
-                cs_hist = np.bincount(mt_bins[m_s], minlength=irf_half_len).astype(np.float64, copy=False)
-
-                # Photon threshold
-                cp_sum = float(cp.sum());
-                cs_sum = float(cs_hist.sum())
-                if (cp_sum + cs_sum) < st['min_photons']:
-                    default_record(fname, det, cp_sum, cs_sum)
-                    continue
-
-                # Integer VH shift then windowing
-                if self.shift != 0:
-                    cs_hist = np.roll(cs_hist, int(self.shift))
-                if sb > 0:
-                    cp[:sb] = 0.0;
-                    cs_hist[:sb] = 0.0
-                if eb < cp.size:
-                    cp[eb:] = 0.0;
-                    cs_hist[eb:] = 0.0
-
-                # Assemble decay
-                decay = np.empty(cp.size + cs_hist.size, dtype=np.float64)
-                decay[:cp.size] = cp
-                decay[cp.size:] = cs_hist
-
-                # Fit using pre-made fitter (shared fit2x harness)
-                fitter = fitters[det]
-                res = fitter.fit(decay, initial_values=st['initial_x0'], fixed=st['fixed_flags'])
-
-                color = det.lower()
-                results.append({
-                    'First File': fname,
-                    'Detector': det,
-                    'Ng-p-all': int(cp_sum),
-                    'Ng-s-all': int(cs_sum),
-                    f'Number of Photons (fit window) ({color})': int(cp_sum + cs_sum),
-                    f'2I*  ({color})': res.twoIstar,
-                    f'Tau ({color})': res.x[0],
-                    f'gamma ({color})': res.x[1],
-                    f'r0 ({color})': res.x[2],
-                    f'rho ({color})': res.x[3],
-                    f'BIFL scatter? ({color})': int(st['BIFL_scatter']),
-                    f'2I*: P+2S? ({color})': int(st['p2s_twoIstar']),
-                    f'r Scatter ({color})': res.r_scatter,
-                    f'r Experimental ({color})': res.r_experimental,
-                })
-
-        try:
-            progress.close()
-        except Exception:
-            pass
-
-        result_df = pd.DataFrame(results)
-        self._save_burst_results_fast(result_df)
-
     @staticmethod
     def _hist2_split(mt_bins: np.ndarray,
                      rc_slice: np.ndarray,
@@ -4029,6 +3809,40 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         h2 = np.bincount(b * 2 + c, minlength=2 * half_len)
         return (h2[0::2].astype(np.uint32, copy=False),
                 h2[1::2].astype(np.uint32, copy=False))
+
+    def _set_inputs_frozen(self, frozen: bool) -> None:
+        """Make the wizard read-only (or not) while a batch runs.
+
+        A batch reads its configuration once -- IRF and background caches, the
+        per-detector channel state, the start vector -- and hands it to the
+        worker processes. If the user can still edit a spin box while the run is
+        in flight, part of the table is computed under one configuration and
+        part under another, with nothing to show for it afterwards.
+
+        Freezing the central widget rather than each control keeps this honest
+        as the wizard grows: a control added later is frozen too, including the
+        action row at the top (Auto IRF, the IRF-shape choice, Opt) — which
+        lives *inside* the central widget here, not in a `QToolBar`. Measured:
+        79 tool buttons and 20 spin boxes go from enabled to disabled and back,
+        and the handful that were already disabled stay that way, because
+        disabling a parent does not touch its children's own flags. Any real
+        tool bar or menu bar a future layout adds is covered too. The progress
+        display is a child of none of them, so Cancel stays reachable.
+
+        Parameters
+        ----------
+        frozen : bool
+            ``True`` while the batch runs.
+        """
+        central = self.centralWidget()
+        if central is not None:
+            central.setEnabled(not frozen)
+        for bar in self.findChildren(QtWidgets.QToolBar):
+            bar.setEnabled(not frozen)
+        menu_bar = self.menuBar()
+        if menu_bar is not None:
+            menu_bar.setEnabled(not frozen)
+        self._inputs_frozen = bool(frozen)
 
     def process_bursts(self):
         import os
@@ -4226,7 +4040,18 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         max_workers = max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
         results = []
         processed = 0
+        # Nothing may change from here on: the configuration above was read
+        # *once* and is already inside the job payloads, so an edit made halfway
+        # through would apply to some bursts and not others, silently, and the
+        # result would be a table nobody could reproduce. The modal dialog used
+        # to provide this by accident -- a window-modal dialog blocks input to
+        # its parent -- but only when the progress *is* a dialog: embedded in
+        # the shell it renders in the status bar with no modality at all, while
+        # `ui_pump` below keeps delivering the user's clicks. Freeze explicitly
+        # rather than depending on where the bar happened to render, and do it
+        # inside the `try` so a failure cannot leave the wizard frozen.
         try:
+            self._set_inputs_frozen(True)
             with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
                 futs = [ex.submit(process_one_file_worker, j) for j in jobs]
                 for fut in as_completed(futs):
@@ -4244,6 +4069,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 progress.close()
             except Exception:
                 pass
+            self._set_inputs_frozen(False)
             # cleanup shared memory
             for block in shm_blocks:
                 try:
@@ -4640,13 +4466,24 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             seed: int | None = None,
             weights: dict | None = None
     ):
-        """Delegate to external HPO function to keep this file lean."""
+        """Delegate to external HPO function to keep this file lean.
+
+        The search drives this wizard -- every trial writes the tunables and
+        refits -- so the inputs are frozen for its duration: a click landing
+        between two trials would move the ground the search is standing on, and
+        the remaining trials would explore a different configuration from the
+        earlier ones. The ``finally`` matters as much as the freeze: a failed
+        search must not leave the wizard disabled.
+        """
         try:
             from chisurf.plugins.burst.burst_mle_analysis.utils import optimize_hyperparameters as _opt_hpo
+            self._set_inputs_frozen(True)
             return _opt_hpo(self, n_iter=n_iter, bounds=bounds, seed=seed, weights=weights)
         except Exception as e:
-            QMessageBox.critical(self, "HPO error", f"{e}")
+            dialogs.error(self, "HPO error", f"{e}")
             return None
+        finally:
+            self._set_inputs_frozen(False)
 
     def save_settings(self):
         """

@@ -2,6 +2,54 @@
 
 ## 2026-07-27
 
+* **"While the bursts are processed, nothing should mutate" — made true in the
+  MLE wizard, and it turned out to be the missing invariant rather than a
+  missing thread.** Reported from use, after the previous entry recorded MLE as
+  un-migratable because its loops drive the wizard.
+  Both long runs read their configuration **once** — the batch builds the IRF and
+  background caches, the per-detector channel state and the start vector, then
+  ships them to worker processes; the hyperparameter search writes the tunables
+  into the wizard per trial and refits — and **both pump the event loop while
+  they run**. So an edit landing mid-run applied to part of the work and not the
+  rest, silently, and the resulting table was one nobody could reproduce. The
+  window-modal progress dialog provided this by accident, since a window-modal
+  dialog blocks input to its parent — but only when the progress *is* a dialog.
+  Embedded in the shell it renders in the status bar with **no modality at
+  all**, and `ui_pump`/`processEvents` keeps delivering clicks. The invariant was
+  resting on where the bar happened to render.
+  `_set_inputs_frozen` now states it explicitly, and both runs hold it inside
+  their `try`/`finally` so a failure cannot leave the wizard disabled. Freezing
+  the *central widget* rather than each control keeps it true as the wizard
+  grows — measured, because eyeballing the screenshot was not enough: 79 tool
+  buttons and 20 spin boxes go enabled → disabled → enabled, and the five that
+  were already disabled stay disabled, since disabling a parent does not touch a
+  child's own flag. The check in the test counts controls rather than asking the
+  container, precisely because this wizard's action row (Auto IRF, the IRF-shape
+  choice, **Opt**, which would start a second search fighting the first) sits
+  *inside* the central widget rather than in a `QToolBar` — a container-only
+  assertion would have passed while those stayed clickable. I got that wrong in
+  the first draft and the count caught it.
+  Second defect in the same area: **cancelling the hyperparameter search left
+  the wizard holding whatever trial ran last** — neither the user's settings nor
+  the best found. The search now snapshots the eight tunables on entry and
+  restores them on cancel or on a failed search, so stopping it is a no-op
+  rather than a silent reconfiguration.
+  And **220 lines of unreachable code**: `_build_irf_bg_cache` returns at its
+  line 53 and was followed by an orphaned copy of a burst-processing routine —
+  progress dialog, per-file caches, the whole loop. Confirmed by AST (the
+  function's body ends `Return, If, Assign, …`) and deleted. One of the "two
+  burst-processing loops" the previous entry cited as blocking the migration was
+  this dead one, so that assessment was partly wrong: there is **one** live loop,
+  and its heavy compute is already in a `ProcessPoolExecutor` — the GUI thread
+  only waits on `as_completed`. With mutation now ruled out, moving that wait
+  onto the task layer is a small, safe follow-up rather than the wizard-state
+  refactor I described. The hyperparameter search still is that refactor: its
+  evaluation *is* a wizard driver, and making it pure means separating "fit with
+  this configuration" from "the wizard's current state".
+  5 tests in `test/gui/test_mle_frozen_inputs.py`, including a guard that the
+  unreachable tail does not come back. 23 passed with the plugin's own suite.
+
+
 * **The posterior factor graph recomputed its own structure on every
   question.** `markov_graph()` was cached; the greedy `min_fill` elimination and
   the cliques derived from it were not, so `treewidth`, `blocks`,
