@@ -5244,11 +5244,22 @@ the MaxEnt inversion under-fits the trace worse than a two-parameter Gaussian.
 Findings RF-432..RF-436.
 
 ### RF-432
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (parameter labels that are pure HTML entities are printed as their source text, in every model editor in the app)
 - **Location:** `chisurf/gui/widgets/chitable/delegates.py:34-36` (`RichTextDelegate.paint`: `if not text or "<" not in str(text): return super().paint(...)`), reached from `chisurf/gui/autoform/sections/parameter_table.py:434-435` (the `COL_NAME` delegate) with the display text from `:199` (`_display_value` returns `label_text` verbatim)
 - **Finding:** the delegate decides whether a cell needs HTML by testing for `<`, so a label made only of character entities never reaches `QTextDocument.setHtml` and is drawn as plain text. Verified headlessly on a `DeerRiceModel` editor: the two shape parameters of the model render as **`&nu;[&#8491;]`** and **`&sigma;[&#8491;]`**, the modulation depth as `&lambda;` and the regularisation weight as `&alpha;`, while `t<sub>0</sub>[µs]` and `k[µs<sup>-1</sup>]` in the same tables render correctly (they contain `<`) — screenshot `4R_editor.png`, and `m.data(m.index(i,0))` returns exactly those strings. The Rice model has only two distance parameters and *both* are unreadable. Not DEER-specific: `grep -rn 'label_text="&' chisurf/core/models/` finds entity-only labels in `deer/deer.py` (`&lambda;`, `&alpha;`, `&nu;[&#8491;]`, `&sigma;[&#8491;]`), `fcs/general.py` and `fcs/mdf.py` (`&epsilon;[kHz]`) and `pda2c/saw_nu.py` (`&nu;`). Fix in the delegate, not the labels: test for `<` **or** `&`, or simply always route through the text document (the fast path exists for cost, and a cheap `("<" in t or "&" in t)` keeps it).
-- **Fix note:**
+- **Fix note:** Fixed in the delegate, as the finding suggests: `RichTextDelegate.paint`
+  now takes the HTML path when the text holds `<` **or** `&`, which is the exact
+  test its sibling `RichTextHeaderView.paintSection` already made (`delegates.py:252`)
+  — the delegate had simply been left behind. The re-render of the `DeerRiceModel`
+  editor shows `ν[Å]`, `σ[Å]`, `λ` and `t₀[µs]`; every entity-only label in
+  `fcs/general.py`, `fcs/mdf.py` and `pda2c/saw_nu.py` is carried along, and the
+  plain-text fast path is unchanged. Pinned by
+  `test_rich_text_delegate_renders_entity_only_labels` in `test/gui/test_chitable.py`,
+  which measures the *painted ink* rather than the code path: `&nu;` through the rich
+  delegate must be under half the width the base `QStyledItemDelegate` paints for the
+  same string (one glyph, not four). Against the pre-fix delegate the test reports
+  `35px == 35px` and fails.
 
 ### RF-433
 - **Status:** OPEN

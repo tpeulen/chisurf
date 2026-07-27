@@ -2,6 +2,24 @@
 
 ## 2026-07-27
 
+* **Entity-only parameter labels are readable again (RF-432).**
+  `RichTextDelegate.paint` decided whether a cell needed HTML by testing for `<`,
+  so a label built purely from character entities never reached
+  `QTextDocument.setHtml` and every model editor in the app printed it as its
+  source text — the DEER Rice model showed *both* of its shape parameters as
+  `&nu;[&#8491;]` and `&sigma;[&#8491;]`, and `fcs/general.py`, `fcs/mdf.py` and
+  `pda2c/saw_nu.py` carry the same kind of label. The delegate's own sibling,
+  `RichTextHeaderView.paintSection`, already tested for `<` **or** `&` and even
+  carried the comment explaining why; the delegate had been left behind, so the
+  fix is to make the two agree. The regression test measures the painted ink
+  instead of the code path — `&nu;` rendered must be under half the width the base
+  delegate paints for the raw string — and the re-rendered Rice editor now reads
+  `ν[Å]`, `σ[Å]`, `λ`, `t₀[µs]`. RF-433 (every table budgets 18 px for 24 px rows,
+  so the last row is still sliced) is untouched and stays open. Note for whoever
+  renumbers: ids RF-432/RF-433 are each used twice in
+  [reviews/findings](/reviews/findings.md), by two instances writing the shared
+  tree at once; this is the delegate one, in the DEER QA block.
+
 * **A burst decay came back on an axis its own photons chose (RF-412).**
   `tcspc.from_bursts` sized the micro-time axis from the largest value that
   happened to occur in the file, so a gate spanning two files — the only reason

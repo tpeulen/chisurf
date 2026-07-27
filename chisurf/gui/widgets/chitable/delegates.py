@@ -26,13 +26,19 @@ from qtpy import QtCore, QtGui, QtWidgets
 class RichTextDelegate(QtWidgets.QStyledItemDelegate):
     """Render a cell's display text as HTML.
 
-    Keeps parameter labels' sub/superscripts legible (``n<sub>0</sub>`` → n₀,
-    ``&tau;<sub>0</sub>`` → τ₀) instead of printing the raw markup.
+    Keeps parameter labels' sub/superscripts and character entities legible
+    (``n<sub>0</sub>`` → n₀, ``&tau;<sub>0</sub>`` → τ₀, ``&nu;`` → ν) instead of
+    printing the raw markup.
     """
 
     def paint(self, painter, option, index):  # noqa: D102 (Qt override)
-        text = index.data(QtCore.Qt.DisplayRole)
-        if not text or "<" not in str(text):
+        data = index.data(QtCore.Qt.DisplayRole)
+        text = "" if data is None else str(data)
+        # Render as HTML for markup (``x<sub>l</sub>``) *and* bare entities
+        # (``&nu;`` → ν, ``&#8491;`` → Å), the same test
+        # :class:`RichTextHeaderView` makes: a label built only from entities has
+        # no ``<`` at all and was printed as its raw source text.
+        if "<" not in text and "&" not in text:
             return super().paint(painter, option, index)
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)

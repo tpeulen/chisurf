@@ -565,3 +565,79 @@ def test_status_line_follows_row_changes_in_a_wrapped_model(qtbot):
 
     model.setRowCount(0)
     assert widget.total_row_count() == 0
+
+
+def _paint_ink_width(delegate, text: str, width: int = 240, height: int = 24) -> int:
+    """Return the horizontal extent of the ink ``delegate`` paints for ``text``.
+
+    Paints a single cell holding ``text`` onto a white pixmap and measures the
+    distance between the first and last column carrying a non-white pixel. The
+    raw source ``&nu;`` is four glyphs wide; the entity rendered as ν is one, so
+    the width tells rendered from unrendered apart without pinning exact pixels.
+
+    Parameters
+    ----------
+    delegate : qtpy.QtWidgets.QStyledItemDelegate
+        Delegate whose ``paint`` is exercised.
+    text : str
+        Display text of the single cell.
+    width, height : int
+        Size of the painted cell.
+
+    Returns
+    -------
+    int
+        Ink width in pixels, ``0`` when nothing was painted.
+    """
+    from qtpy import QtGui
+
+    model = QtGui.QStandardItemModel(1, 1)
+    model.setItem(0, 0, QtGui.QStandardItem(text))
+    pixmap = QtGui.QPixmap(width, height)
+    pixmap.fill(QtGui.QColor("white"))
+    option = QtWidgets.QStyleOptionViewItem()
+    option.rect = QtCore.QRect(0, 0, width, height)
+    option.state = QtWidgets.QStyle.State_Enabled
+    painter = QtGui.QPainter(pixmap)
+    try:
+        delegate.paint(painter, option, model.index(0, 0))
+    finally:
+        painter.end()
+
+    image = pixmap.toImage()
+    columns = [
+        x
+        for x in range(width)
+        for y in range(height)
+        if QtGui.QColor(image.pixel(x, y)) != QtGui.QColor("white")
+    ]
+    return 0 if not columns else max(columns) - min(columns) + 1
+
+
+def test_rich_text_delegate_renders_entity_only_labels(qapp):
+    """Regression (RF-432): a label made only of entities was printed verbatim.
+
+    ``RichTextDelegate`` decided whether a cell needed HTML by testing for
+    ``<``, so ``&nu;`` / ``&#8491;`` never reached ``QTextDocument`` and the two
+    shape parameters of the DEER Rice model — and the FCS and SAW-ν brightness
+    labels — rendered as their source text in every model editor. The sibling
+    ``RichTextHeaderView`` already tested for ``<`` *or* ``&``.
+    """
+    from chisurf.gui.widgets.chitable.delegates import RichTextDelegate
+
+    rich = RichTextDelegate()
+    plain = QtWidgets.QStyledItemDelegate()
+
+    raw = _paint_ink_width(plain, "&nu;")
+    rendered = _paint_ink_width(rich, "&nu;")
+    assert raw > 0, "the plain delegate painted nothing — measurement is not valid"
+    assert rendered > 0, "the rich delegate painted nothing"
+    # One glyph, not four: entity-only labels must go through the HTML path.
+    assert rendered < raw / 2, f"&nu; rendered {rendered}px wide against {raw}px of raw source"
+
+    # Numeric entities too, and markup keeps working.
+    assert _paint_ink_width(rich, "&#8491;") < _paint_ink_width(plain, "&#8491;") / 2
+    assert _paint_ink_width(rich, "n<sub>0</sub>") < _paint_ink_width(plain, "n<sub>0</sub>") / 2
+
+    # Plain text still takes the cheap path: same ink as the base delegate.
+    assert _paint_ink_width(rich, "tau") == _paint_ink_width(plain, "tau")
