@@ -75,6 +75,97 @@ except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
 
+class _MleParameterRows:
+    """The estimator's parameters as rows, for the general ``state_table``.
+
+    Four parallel lists rather than a dictionary of widgets: the fit reads the
+    same lists the table edits, so there is nothing to keep in step. Bounds are
+    per row because the rows are not interchangeable — a lifetime and an
+    anisotropy fraction share a column but not a range.
+    """
+
+    def __init__(self):
+        """Start with no parameters; the schema fills them in."""
+        self.names: list = []
+        self.labels: list = []
+        self.descriptions: list = []
+        self.values: list = []
+        self.fixed: list = []
+        self.results: list = []
+        self.minimums: list = []
+        self.maximums: list = []
+        #: Called after any edit, so the wizard can refit.
+        self.changed = None
+
+    def append(self, name, label, description, value, fixed, minimum, maximum):
+        """Add one parameter row."""
+        self.names.append(str(name))
+        self.labels.append(str(label))
+        self.descriptions.append(str(description))
+        self.values.append(float(value))
+        self.fixed.append(float(bool(fixed)))
+        self.results.append(0.0)
+        self.minimums.append(float(minimum))
+        self.maximums.append(float(maximum))
+
+    def __len__(self):
+        """Return the number of parameters."""
+        return len(self.names)
+
+    @property
+    def n(self) -> int:
+        """Number of parameter rows."""
+        return len(self.names)
+
+    def index_of(self, name: str) -> int:
+        """Return the row of ``name``, or ``-1``."""
+        return self.names.index(name) if name in self.names else -1
+
+    def initial_values(self) -> list:
+        """Return the starting values, in schema order."""
+        return [float(v) for v in self.values]
+
+    def fixed_flags(self) -> list:
+        """Return the fix flags as ints, in schema order."""
+        return [int(bool(f)) for f in self.fixed]
+
+    def set_results(self, values) -> None:
+        """Write the fitted values back into the read-only column."""
+        for i, value in enumerate(values):
+            if i < len(self.results):
+                self.results[i] = float(value)
+
+    def columns(self) -> list:
+        """Return the three columns: start it, hold it, read it back."""
+        return [
+            {"attr": "values", "label": "Initial value", "decimals": 4,
+             "minimum_attr": "minimums", "maximum_attr": "maximums",
+             "description": "Starting value handed to the estimator."},
+            {"attr": "fixed", "label": "F", "kind": "bool",
+             "description": "Hold this parameter at its starting value."},
+            {"attr": "results", "label": "Fit", "kind": "readonly", "decimals": 4,
+             "minimum": -1e9, "maximum": 1e9,
+             "description": "Value the estimator returned."},
+        ]
+
+    def on_edit(self, *_args) -> None:
+        """Notify the wizard that a row changed."""
+        if callable(self.changed):
+            self.changed()
+
+    def view_spec(self):
+        """Return the declared table."""
+        from chisurf.core.dataspec import load_view_spec
+
+        return load_view_spec({
+            "sections": [
+                {"type": "custom", "key": "state_table",
+                 "options": {"size_attr": "n", "row_labels_attr": "labels",
+                             "columns_source": "columns"}},
+            ]
+        })
+
+
 @persist_plugin_state("burst_mle_analysis")
 class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     """
@@ -814,10 +905,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # fit23 keeps its authored spin boxes; other models read the
         # registry-driven editor built for them.
         if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
-            names = self._fit_param_names(self.fit_model)
-            x0 = [float(self._dyn_params[n]["spin"].value()) for n in names]
-            fixed = [int(self._dyn_params[n]["fix"].isChecked()) for n in names]
-            return np.array(x0), np.array(fixed)
+            rows = self._dyn_params
+            return np.array(rows.initial_values()), np.array(rows.fixed_flags())
         tau = self.tau
         gamma = self.gamma
         r0 = self.r0
@@ -2080,7 +2169,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self._dyn_grid = Q.QGridLayout(self.groupBox_dyn_params)
         self._dyn_grid.setContentsMargins(0, 0, 0, 0)
         self._dyn_grid.setSpacing(0)
-        self._dyn_params: dict = {}
+        self._dyn_params = None       # _MleParameterRows, built per model
+        self._dyn_form = None
         self.groupBox_dyn_params.setVisible(False)
 
         _params_box = CollapsibleBox("Fit parameters", expanded=True)
@@ -2732,10 +2822,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # Non-fit23 models write to the registry-driven editor, by schema order.
         if self.fit_model != "fit23" and getattr(self, "_dyn_params", None):
-            for i, name in enumerate(self._fit_param_names(self.fit_model)):
-                slot = self._dyn_params.get(name)
-                if slot is not None and i < len(x):
-                    slot["result"].setValue(float(x[i]))
+            self._dyn_params.set_results(x)
+            form = getattr(self, "_dyn_form", None)
+            if form is not None:
+                form.refresh_plots()
             if two is not None and hasattr(self, "doubleSpinBox_dyn_score"):
                 self.doubleSpinBox_dyn_score.setValue(two)
             return
@@ -2969,12 +3059,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         """
         from types import SimpleNamespace
 
-        names = self._fit_param_names("tail")           # tail_start, tau1, tau2, …
-        p = getattr(self, "_dyn_params", {}) or {}
-        tail_start = int(round(float(p["tail_start"]["spin"].value())))
-        tau_names = [nm for nm in names if nm != "tail_start"]
-        lifetimes = [float(p[nm]["spin"].value()) for nm in tau_names]
-        fixed = [1 if p[nm]["fix"].isChecked() else 0 for nm in tau_names]
+        rows = self._dyn_params
+        values, flags = rows.initial_values(), rows.fixed_flags()
+        start = rows.index_of("tail_start")
+        tail_start = int(round(values[start])) if start >= 0 else 0
+        keep = [i for i, nm in enumerate(rows.names) if nm != "tail_start"]
+        lifetimes = [values[i] for i in keep]
+        fixed = [flags[i] for i in keep]
         amps = [1.0 / len(lifetimes)] * len(lifetimes) if lifetimes else []
 
         d = np.asarray(d, dtype=np.float64)
@@ -3114,51 +3205,49 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         return ["tau", "gamma", "r0", "rho"]
 
     def _rebuild_dyn_params(self, model: str) -> None:
-        """(Re)build the schema-driven parameter rows for a non-fit23 model."""
-        # clear
+        """(Re)build the schema-driven parameter rows for a non-fit23 model.
+
+        Rows are the estimator's parameters and columns are the three things one
+        does with each — start it somewhere, hold it there, read what came back.
+        That is the shape of the general ``state_table`` section, so the rows are
+        *declared* here rather than built: forty lines of grid assembly became a
+        view-model holding four lists, which is also what the fit reads from, so
+        there is no longer a set of widgets standing between the schema and the
+        estimator.
+        """
+        from chisurf.gui.autoform import AutoForm
+
         while self._dyn_grid.count():
             item = self._dyn_grid.takeAt(0)
-            w = item.widget()
-            if w is not None:
-                w.setParent(None)
-                w.deleteLater()
-        self._dyn_params = {}
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+                widget.deleteLater()
 
         schema = self._model_schema(model)
         props = schema.get("properties") or {}
-        self._dyn_grid.addWidget(QtWidgets.QLabel("Initial value"), 0, 1)
-        _fh = QtWidgets.QLabel("F"); _fh.setToolTip("Fix parameter")
-        self._dyn_grid.addWidget(_fh, 0, 2)
-        self._dyn_grid.addWidget(QtWidgets.QLabel("Fit"), 0, 3)
-        row = 1
+        rows = _MleParameterRows()
         for name in self._fit_param_names(model):
             spec = props.get(name, {})
-            lbl = QtWidgets.QLabel(spec.get("title", name))
-            lbl.setToolTip(spec.get("description", ""))
-            spin = self._dsb(
-                decimals=4,
+            rows.append(
+                name=name,
+                label=spec.get("title", name),
+                description=spec.get("description", ""),
+                value=float(spec.get("default", 0.0)),
+                fixed=bool(spec.get("fixed_default", False)),
                 minimum=float(spec.get("minimum", -1e9)),
                 maximum=float(spec.get("maximum", 1e9)),
-                value=float(spec.get("default", 0.0)),
-                adaptive=True,
             )
-            spin.valueChanged.connect(self.update_variable_fit_parameters)
-            fix = QtWidgets.QCheckBox()
-            fix.setChecked(bool(spec.get("fixed_default", False)))
-            fix.toggled.connect(self.update_variable_fit_parameters)
-            result = self._dsb(decimals=4, readonly=True, nobuttons=True,
-                               minimum=-1e9, maximum=1e9)
-            self._dyn_grid.addWidget(lbl, row, 0)
-            self._dyn_grid.addWidget(spin, row, 1)
-            self._dyn_grid.addWidget(fix, row, 2)
-            self._dyn_grid.addWidget(result, row, 3)
-            self._dyn_params[name] = {"spin": spin, "fix": fix, "result": result}
-            row += 1
-        _sl = QtWidgets.QLabel("Score")
+        rows.changed = self.update_variable_fit_parameters
+        self._dyn_params = rows
+        self._dyn_form = AutoForm(rows)
+        self._dyn_grid.addWidget(self._dyn_form, 0, 0)
+
+        _score = QtWidgets.QLabel("Score")
         self.doubleSpinBox_dyn_score = self._dsb(
             decimals=3, minimum=-99999.0, maximum=99999.0, readonly=True, nobuttons=True)
-        self._dyn_grid.addWidget(_sl, row, 0)
-        self._dyn_grid.addWidget(self.doubleSpinBox_dyn_score, row, 1)
+        self._dyn_grid.addWidget(_score, 1, 0)
+        self._dyn_grid.addWidget(self.doubleSpinBox_dyn_score, 1, 1)
 
     def _on_fit_model_changed(self, _index: int = 0) -> None:
         """Switch the parameter editor and refit for the selected model.

@@ -33,6 +33,18 @@ Declare it in a view spec as a custom section::
 
 Column spec
 -----------
+``minimum_attr`` / ``maximum_attr`` on a column name model **lists** of bounds
+indexed by row, for the case where the rows are not interchangeable — a table of
+estimator parameters, where a lifetime and a fraction have nothing to do with
+each other's range. Without them a column's ``minimum``/``maximum`` applies to
+every row, which is right when the rows are the same kind of thing.
+
+A column's ``kind`` chooses the editor: ``"float"`` (the default) is a spin box,
+``"bool"`` a checkbox, and ``"readonly"`` a value the model writes and the user
+does not — a fitted result beside the initial value it started from. That last
+pair is why a *parameter* table is the same widget as a state table: rows are
+things, columns are aspects of them, and only the cell editor differs.
+
 A column with ``action`` instead of ``attr`` is a **button per row**, calling
 ``model.<action>(row)``. That is how a state gets a sub-editor — a decay
 spectrum, a spectrum file, anything too big for a cell — without a separate
@@ -174,16 +186,74 @@ class StateTableWidget(QtWidgets.QWidget):
 
     # -- build / refresh -----------------------------------------------
 
-    def _spin(self, column: dict, value: float) -> QtWidgets.QDoubleSpinBox:
-        """Return a spin box configured for one column."""
+    def _bound(self, column: dict, key: str, row: int, fallback: float) -> float:
+        """Return one bound of a cell, per row when the column names a list."""
+        listed = _resolve(self._model, column.get(f"{key}_attr", ""), None)
+        if isinstance(listed, (list, tuple)) and row < len(listed):
+            try:
+                return float(listed[row])
+            except (TypeError, ValueError):
+                pass
+        return float(column.get(key, fallback))
+
+    def _spin(self, column: dict, value: float, row: int = 0) -> QtWidgets.QDoubleSpinBox:
+        """Return a spin box configured for one cell."""
         spin = QtWidgets.QDoubleSpinBox()
-        spin.setRange(float(column.get("minimum", self._minimum)),
-                      float(column.get("maximum", self._maximum)))
+        spin.setRange(self._bound(column, "minimum", row, self._minimum),
+                      self._bound(column, "maximum", row, self._maximum))
         spin.setDecimals(int(column.get("decimals", self._decimals)))
         spin.setKeyboardTracking(False)
         spin.setMaximumWidth(96)
         spin.setValue(float(value))
         return spin
+
+    def _check(self, value: bool) -> QtWidgets.QWidget:
+        """Return a checkbox centred in its cell.
+
+        Wrapped in a container because a bare checkbox in a table cell sits hard
+        against the left edge, which reads as belonging to the column before it.
+        """
+        holder = QtWidgets.QWidget()
+        layout = QtWidgets.QHBoxLayout(holder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setAlignment(QtCore.Qt.AlignCenter)
+        box = QtWidgets.QCheckBox()
+        box.setChecked(bool(value))
+        layout.addWidget(box)
+        holder.checkbox = box
+        return holder
+
+    def _cell(self, column: dict, value: float, row: int = 0):
+        """Return the editor for one cell, by the column's ``kind``."""
+        kind = str(column.get("kind", "float"))
+        if kind == "bool":
+            return self._check(bool(value))
+        spin = self._spin(column, value, row)
+        if kind == "readonly" or column.get("readonly"):
+            spin.setReadOnly(True)
+            spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            spin.setFocusPolicy(QtCore.Qt.NoFocus)
+        return spin
+
+    @staticmethod
+    def _value_of(widget) -> float:
+        """Return a cell widget's value, whatever kind it is."""
+        box = getattr(widget, "checkbox", None)
+        if box is not None:
+            return float(box.isChecked())
+        return float(widget.value())
+
+    @staticmethod
+    def _set_value(widget, value: float) -> None:
+        """Write a value into a cell widget without echoing a change back."""
+        box = getattr(widget, "checkbox", None)
+        target = box if box is not None else widget
+        target.blockSignals(True)
+        if box is not None:
+            box.setChecked(bool(value))
+        else:
+            widget.setValue(float(value))
+        target.blockSignals(False)
 
     def _button(self, column: dict, row: int) -> QtWidgets.QToolButton:
         """Return the per-row button of an action column."""
@@ -234,12 +304,18 @@ class StateTableWidget(QtWidgets.QWidget):
                 store = self._store(column)
                 position = self._index(column, row)
                 value = store[position] if store is not None and position < len(store) else 0.0
-                spin = self._spin(column, value)
-                spin.valueChanged.connect(
-                    lambda v, c=column, r=row: self._write(c, r, v)
-                )
-                self._cells[(row, index)] = spin
-                self.table.setCellWidget(row, index, spin)
+                widget = self._cell(column, value, row)
+                box = getattr(widget, "checkbox", None)
+                if box is not None:
+                    box.toggled.connect(
+                        lambda v, c=column, r=row: self._write(c, r, float(v))
+                    )
+                elif not (column.get("kind") == "readonly" or column.get("readonly")):
+                    widget.valueChanged.connect(
+                        lambda v, c=column, r=row: self._write(c, r, v)
+                    )
+                self._cells[(row, index)] = widget
+                self.table.setCellWidget(row, index, widget)
 
         # Trailing rows address scalar attributes, so they are bound directly
         # rather than through a column's backing list.
@@ -254,12 +330,17 @@ class StateTableWidget(QtWidgets.QWidget):
                     self.table.setItem(row, index, item)
                     continue
                 attr = cell["attr"]
-                spin = self._spin({**column, **cell}, float(getattr(self._model, attr, 0.0)))
-                spin.valueChanged.connect(
-                    lambda v, a=attr: setattr(self._model, a, float(v))
-                )
-                self._cells[(row, index)] = spin
-                self.table.setCellWidget(row, index, spin)
+                merged = {**column, **cell}
+                widget = self._cell(merged, float(getattr(self._model, attr, 0.0)), row)
+                box = getattr(widget, "checkbox", None)
+                if box is not None:
+                    box.toggled.connect(lambda v, a=attr: setattr(self._model, a, bool(v)))
+                elif not (merged.get("kind") == "readonly" or merged.get("readonly")):
+                    widget.valueChanged.connect(
+                        lambda v, a=attr: setattr(self._model, a, float(v))
+                    )
+                self._cells[(row, index)] = widget
+                self.table.setCellWidget(row, index, widget)
 
         self.table.resizeColumnsToContents()
         self._fit_height()
@@ -293,19 +374,15 @@ class StateTableWidget(QtWidgets.QWidget):
             for index, column in enumerate(columns):
                 if column.get("action"):
                     continue
-                spin = self._cells.get((row, index))
+                widget = self._cells.get((row, index))
                 store = self._store(column)
-                if spin is None or store is None:
+                if widget is None or store is None:
                     continue
                 position = self._index(column, row)
-                spin.blockSignals(True)
-                spin.setValue(store[position] if position < len(store) else 0.0)
-                spin.blockSignals(False)
+                self._set_value(widget, store[position] if position < len(store) else 0.0)
         for offset, extra in enumerate(trailing):
             for index, cell in enumerate(extra.get("cells", [])):
-                spin = self._cells.get((rows + offset, index))
-                if spin is None or not isinstance(cell, dict) or not cell.get("attr"):
+                widget = self._cells.get((rows + offset, index))
+                if widget is None or not isinstance(cell, dict) or not cell.get("attr"):
                     continue
-                spin.blockSignals(True)
-                spin.setValue(float(getattr(self._model, cell["attr"], 0.0)))
-                spin.blockSignals(False)
+                self._set_value(widget, float(getattr(self._model, cell["attr"], 0.0)))

@@ -222,3 +222,70 @@ def test_an_action_column_is_a_button_per_row(qapp):
     assert model.opened == [1]
     # The table re-reads afterwards, because the action usually changes the row.
     assert table._cells[(1, 0)].value() == pytest.approx(42.0)
+
+
+def test_bool_readonly_and_per_row_bounds(qapp):
+    """The three things a parameter row needs: a value, a flag, a result.
+
+    Rows are not always interchangeable — a lifetime and a fraction share the
+    value column but not its range — so bounds may come per row. A read-only
+    column is the estimator's answer, which the user reads and does not type.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.core.dataspec import load_view_spec
+
+    class _Params:
+        def __init__(self):
+            self.labels = ["tau", "gamma"]
+            self.values = [3.2, 0.02]
+            self.fixed = [0.0, 1.0]
+            self.results = [3.15, 0.02]
+            self.lo = [0.01, -1.0]
+            self.hi = [20.0, 1.0]
+
+        @property
+        def n(self):
+            return len(self.labels)
+
+        def view_spec(self):
+            return load_view_spec({
+                "sections": [
+                    {"type": "custom", "key": "state_table",
+                     "options": {"size_attr": "n", "row_labels_attr": "labels",
+                                 "columns": [
+                                     {"attr": "values", "label": "v",
+                                      "minimum_attr": "lo", "maximum_attr": "hi"},
+                                     {"attr": "fixed", "label": "F", "kind": "bool"},
+                                     {"attr": "results", "label": "Fit",
+                                      "kind": "readonly", "minimum": -1e9, "maximum": 1e9},
+                                 ]}},
+                ]
+            })
+
+    model = _Params()
+    _, table = _table(model, qapp)
+
+    # Per-row bounds: each row gets its own range from the named lists.
+    assert table._cells[(0, 0)].minimum() == pytest.approx(0.01)
+    assert table._cells[(0, 0)].maximum() == pytest.approx(20.0)
+    assert table._cells[(1, 0)].minimum() == pytest.approx(-1.0)
+    assert table._cells[(1, 0)].maximum() == pytest.approx(1.0)
+
+    # A bool column is a checkbox, and it writes through as 0/1.
+    flag = table._cells[(0, 1)]
+    assert isinstance(flag.checkbox, QtWidgets.QCheckBox)
+    assert flag.checkbox.isChecked() is False
+    flag.checkbox.setChecked(True)
+    assert model.fixed[0] == pytest.approx(1.0)
+
+    # A read-only column shows a value and refuses to take one.
+    result = table._cells[(0, 2)]
+    assert result.isReadOnly()
+    assert result.value() == pytest.approx(3.15)
+
+    # The model writing a result reaches the table on refresh.
+    model.results[0] = 9.9
+    table.refresh()
+    assert table._cells[(0, 2)].value() == pytest.approx(9.9)
+    assert table._cells[(0, 1)].checkbox.isChecked() is True

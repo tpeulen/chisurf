@@ -2,41 +2,33 @@
 
 ## 2026-07-27
 
-* **Two burst tools carried a byte-identical copy of the threading the task
-  layer replaces; both are now on it.** The Gopich-Szabo photon-by-photon
-  kinetics fit and the accurate-FRET calibration each had their own
-  `_ComputeSignals` + `_ComputeTask` pair — the same 25 lines twice, differing
-  only in a docstring — and each had the three defects that come with rolling
-  your own. Every exception was **swallowed into `logger.debug`**, so a fit that
-  died on a singular matrix reported "The fit did not produce a result — see the
-  report" and the reason existed only at DEBUG level. There was **no
-  cancellation** at all, for a run whose own docstring says it "can take
-  minutes". And there was **no re-entrancy guard**, so a second click on ▶ Fit
-  started a second `QRunnable` against the same view model.
-  All three fall out of the migration rather than being fixed one at a time:
-  `on_error` routes the exception to a declared `Error.failed`, the layer's
-  one-run-per-owner rule supersedes the first run, and Cancel now reaches the
-  compute — which needed one change in each **view model**, since both wrapped
-  the whole fit in `except Exception` and would otherwise have reported the
-  user's own cancellation as a failure. They re-raise `CancelledError` and
-  swallow the rest as before. The `can_run()` refusal ("Load a burst table
-  first") also stops being an 8-second status message that scrolls away and
-  becomes the standing condition it always was.
-  Net: about 50 lines of duplicated Qt threading deleted, cancellation and real
-  error reporting gained.
-  Rendered both headlessly with a run in flight — determinate bar at 42 %,
-  "scanning transition time", ✕ beside it, form still live — and with the
-  condition shown, and inspected.
-  12 tests in `test/gui/test_burst_tool_tasks.py`, parametrised over both tools:
-  the hand-rolled classes are gone, a missing input is declared, a failure is
-  reported rather than logged, an empty result says so, the run is cancellable,
-  and a second click does not start a second run. The two plugins' own suites
-  still pass (33).
-  Left alone deliberately: burst-selection's batch, the burst-wise FCS wizard,
-  BVA and H2MM drive their loops **on the GUI thread** behind a window-modal
-  dialog. The same win is available, but each means splitting a loop that
-  interleaves with model state — a refactor, not a deletion.
+* **A parameter table is a state table.** The burst-MLE wizard built its
+  schema-driven parameter editor by hand — a QGridLayout of label / spin / fix /
+  result rows, kept in a `{name: {"spin": ..., "fix": ..., "result": ...}}` dict
+  that four call sites reached into for values. Rows are things and columns are
+  aspects of them, which is exactly `state_table`; it was missing three column
+  kinds to say so, and they are general:
 
+  - `kind: "bool"` — a checkbox (the fix flag);
+  - `kind: "readonly"` — a value the model writes and the user reads (the fitted
+    result, beside the initial value it started from);
+  - `minimum_attr` / `maximum_attr` — **per-row** bounds, because a lifetime and
+    an anisotropy fraction share a column but not a range.
+
+  The wizard now holds `_MleParameterRows`, four parallel lists that the *fit*
+  reads directly, so no widget stands between the schema and the estimator, and
+  the editor is declared rather than assembled. Verified by driving the real
+  wizard headlessly: `fit24` builds five rows with the schema's labels and
+  defaults, `fit_parameters` returns them in schema order, and the tail path
+  finds `tail_start` by name.
+
+  **A trap worth knowing:** inserting a class immediately above
+  `class MLELifetimeAnalysisWizard` put it between the wizard and its
+  `@persist_plugin_state` decorator, which then decorated the plain class and
+  failed at construction with `'…' object has no attribute 'setAttribute'`. A
+  decorated class is not the line it starts on.
+  `test/gui/test_state_table.py` (9). See
+  [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
 
 * **The convolution on/off switch now reaches the decay (RF-194).**
   `Convolve.do_convolution` was written from the settings key
