@@ -2,6 +2,26 @@
 
 ## 2026-07-27
 
+* **DEER is a first-class experiment nobody had driven end to end.** The hourly
+  GUI tester walked `Experiment = DEER` the way a user does — Bruker BES3T and
+  CSV traces from `test/data/deer/`, all four models, every tab — and recorded it
+  as [usecases/deer-distance-distribution](/usecases/deer-distance-distribution.md).
+  The physics holds: a clean CSV trace fits to χ²ᵣ = 1.206 with random residuals,
+  and on the two-state sample the Tikhonov inversion (χ²ᵣ = 6.84) resolves the
+  second population that a single Gaussian (8.97) and a Rice component (8.96)
+  cannot, with the L-curve showing where α landed. The surroundings do not:
+  the Rice model prints both of its shape parameters as `&nu;[&#8491;]` and
+  `&sigma;[&#8491;]` because the rich-text delegate tests for `<` and never sees
+  an entity-only label (RF-432); every parameter table budgets 18 px for rows
+  that render at 24, so the last row is sliced in half (RF-433); the DEER reader
+  is the only one with no `view.json`, so its phase-correction, normalisation and
+  experiment-type switches have no control at all and the failure is swallowed by
+  a bare `except: pass` (RF-434); every new fit opens on an unevaluated model
+  reporting χ²ᵣ = 30113.93 against a flat zero line — while the model-free models'
+  L-curve tab is already computed (RF-435); and the MaxEnt inversion under-fits
+  the trace worse than a two-parameter Gaussian (χ²ᵣ = 20.5) leaving a uniform
+  pedestal across the whole distance grid (RF-436). Findings RF-432..RF-436.
+
 * **The burst pipeline crashed on 2CDE: every status line pumped the event loop
   (RF-432, RF-433).** The crash report is five repetitions of
   ``notifyInternal2`` → ``PyQtSlotProxy::qt_metacall`` → Python →

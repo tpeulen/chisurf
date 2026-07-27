@@ -126,6 +126,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   assignment, and fit D (and optionally the anomalous exponent) from the
   ensemble MSD — checked against the tool's own ground-truth simulator, a real
   TIFF stack and a photon stream. *(last driven 2026-07-27; RF-418..RF-421)*
+- [DEER/PELDOR distance distribution](/usecases/deer-distance-distribution.md) —
+  the EPR counterpart of a FRET distance and a first-class experiment of its own:
+  load a Bruker BES3T or CSV dipolar trace, pick a Gaussian, Rice, Tikhonov or
+  MaxEnt model, fit the dipolar evolution and read `P(r)` with its bootstrap
+  band and the L-curve behind the chosen regularisation.
+  *(last driven 2026-07-27; RF-432..RF-436)*
 
 ## Per-workflow file format
 
