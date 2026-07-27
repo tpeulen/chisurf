@@ -1,0 +1,259 @@
+{
+  "_comment": "FRC resolution calculator. AutoForm over FrcViewModel. Left: a single-column Settings dock in workflow order — load the image, say how to split it into two independent halves, give the pixel size, pick the criterion. Right: the headline resolution, the FRC curve against its threshold, the two half images the curve came from, and the ring-by-ring numbers. Measure / export live in the host toolbar; long help sits behind the ? button.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "FRC resolution",
+      "split": "horizontal",
+      "persist": "img_frc",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_source",
+              "options": {
+                "attr": "filename",
+                "call": "set_filename",
+                "label": "Image",
+                "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                "mmfdb_kinds": [
+                  "raw_data",
+                  "raw_measurement"
+                ],
+                "description": "The acquisition to measure: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image. A single-frame image cannot be split into halves by frame — use a channel split or a second file."
+              }
+            },
+            {
+              "type": "choice",
+              "attr": "split",
+              "label": "Split into halves by",
+              "options": [
+                "even_odd",
+                "halves",
+                "channels",
+                "two_files"
+              ],
+              "labels": [
+                "Even / odd frames",
+                "First / second half",
+                "Two channels",
+                "Two files"
+              ],
+              "description": "How the one measurement is cut into two statistically independent halves. This is the choice the whole method rests on: correlating an image with itself, or with a filtered copy of itself, measures the filter and not the resolution. Even/odd is the default and is insensitive to slow drift because both halves span the whole acquisition; first/second half is for detectors whose consecutive frames are not independent; two channels correlates two detectors that saw the same object; two files correlates two repeated acquisitions."
+            },
+            {
+              "type": "choice",
+              "attr": "channel",
+              "label": "Channel",
+              "options_source": "channel_names",
+              "description": "Channel to measure. Pick the brightest, most structured one — a flat channel has no fine detail to correlate and reports the field of view as its resolution."
+            },
+            {
+              "type": "choice",
+              "attr": "channel_2",
+              "label": "Second channel",
+              "options_source": "channel_names",
+              "description": "Only for a two-channel split: the detector the first is correlated against. Both must have seen the same structure; two spectrally distinct labels on different structures correlate nowhere."
+            },
+            {
+              "type": "custom",
+              "key": "data_source",
+              "options": {
+                "attr": "second_filename",
+                "call": "set_second_filename",
+                "label": "Second file",
+                "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                "mmfdb_kinds": [
+                  "raw_data",
+                  "raw_measurement"
+                ],
+                "description": "Only for a two-file split: a second acquisition of the same field of view. It must be independent of the first — the same file twice returns a correlation of 1 at every frequency and no resolution at all."
+              }
+            },
+            {
+              "type": "value",
+              "attr": "pixel_size_nm",
+              "label": "Pixel size [nm]",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 100000.0,
+              "description": "Physical pixel size, which converts the answer from pixels into nanometres. Zero leaves it in pixels — still a resolution, just not one to quote in a figure. It scales the result linearly, so an uncertain pixel size is an uncertain resolution."
+            },
+            {
+              "type": "choice",
+              "attr": "criterion",
+              "label": "Criterion",
+              "options": [
+                "fixed_1/7",
+                "half_bit",
+                "two_sigma"
+              ],
+              "labels": [
+                "Fixed 1/7",
+                "½-bit",
+                "2σ"
+              ],
+              "description": "The threshold the correlation has to fall through. Fixed 1/7 (Nieuwenhuizen 2013) is the usual choice for fluorescence images and the only one independent of how the rings were binned. ½-bit (van Heel & Schatz 2005) is the frequency at which the accumulated information suffices to interpret the structure. 2σ is twice the correlation expected from pure noise. They disagree by tens of per cent on the same data, so the criterion belongs beside any number you quote."
+            },
+            {
+              "type": "panel",
+              "title": "Estimator",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "choice",
+                  "attr": "axis_order",
+                  "label": "TIFF axis order",
+                  "options": [
+                    "auto",
+                    "frames",
+                    "channels"
+                  ],
+                  "labels": [
+                    "Auto",
+                    "All planes are frames",
+                    "Leading axis is channels"
+                  ],
+                  "description": "How to read the leading axis of a 3-D TIFF. 'Auto' takes a short axis (up to four planes) as channels and a longer one as frames, which is right for an RGB image and wrong for a four-frame time series — and a frame split then finds a single frame. Set it explicitly when the file is short and the guess went the wrong way. Photon streams are unaffected: their frames and detector channels are declared in the file."
+                },
+                {
+                  "type": "value",
+                  "attr": "bin_width",
+                  "label": "Ring width [cyc/px]",
+                  "kind": "float",
+                  "decimals": 4,
+                  "minimum": 0.0,
+                  "maximum": 0.5,
+                  "description": "Width of the Fourier rings. Zero means one Fourier pixel of the longer axis, the finest binning the sampling supports. Wider rings average more pixels and give a smoother curve at the cost of frequency resolution."
+                },
+                {
+                  "type": "value",
+                  "attr": "smooth",
+                  "label": "Smoothing [rings]",
+                  "kind": "int",
+                  "minimum": 1,
+                  "maximum": 51,
+                  "description": "Rings averaged before the threshold crossing is read. The raw curve is noisy ring to ring, and an unsmoothed crossing can land early on a single dip. One disables it."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Result",
+          "sections": [
+            {
+              "type": "info",
+              "source": "summary_html",
+              "title": "Resolution",
+              "height": 0,
+              "max_height": 150,
+              "description": "The headline number, the criterion it was read against, and what the measurement was made from."
+            },
+            {
+              "type": "dock_area",
+              "title": "Curve and diagnostics",
+              "split": "horizontal",
+              "sections": [
+                {
+                  "type": "plot",
+                  "source": "frc_series",
+                  "title": "FRC",
+                  "x_label": "spatial frequency (1/nm or 1/px)",
+                  "y_label": "correlation",
+                  "description": "The correlation between the two halves, ring by ring, against the threshold curve. It starts at 1 — the coarse structure is perfectly reproducible — and decays into the noise. Where it falls through the threshold, marked with a diamond, is the finest detail the image supports; its inverse is the resolution.",
+                  "y_range": [
+                    -0.25,
+                    1.05
+                  ]
+                },
+                {
+                  "type": "dock_area",
+                  "title": "Diagnostics",
+                  "sections": [
+                    {
+                      "type": "dock_area",
+                      "title": "Halves",
+                      "split": "horizontal",
+                      "sections": [
+                        {
+                          "type": "custom",
+                          "key": "image",
+                          "target": "half_1_image",
+                          "title": "Half 1",
+                          "options": {
+                            "colormap": true,
+                            "colormap_attr": "colormap"
+                          },
+                          "description": "The first of the two independent halves the correlation was computed from. Both should show the same structure — if one is empty or shows something else, the split is wrong and the resolution is meaningless."
+                        },
+                        {
+                          "type": "custom",
+                          "key": "image",
+                          "target": "half_2_image",
+                          "title": "Half 2",
+                          "options": {
+                            "colormap": true,
+                            "colormap_attr": "colormap"
+                          },
+                          "description": "The second half. Noisier than the summed image by construction: each half holds only part of the photons, which is exactly why the FRC measures the resolution of the whole rather than of a single frame."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "table",
+                      "source": "ring_rows",
+                      "title": "Rings",
+                      "expand": true,
+                      "columns": [
+                        {
+                          "key": "frequency",
+                          "label": "Frequency",
+                          "width": 110,
+                          "description": "Ring frequency, in 1/nm when a pixel size was given."
+                        },
+                        {
+                          "key": "period",
+                          "label": "Period",
+                          "width": 110,
+                          "description": "The corresponding length scale — the detail size this ring reports on."
+                        },
+                        {
+                          "key": "correlation",
+                          "label": "FRC",
+                          "width": 100,
+                          "description": "Correlation between the two halves in this ring."
+                        },
+                        {
+                          "key": "threshold",
+                          "label": "Threshold",
+                          "width": 100,
+                          "description": "Threshold this ring is read against. For ½-bit and 2σ it depends on how many Fourier pixels the ring holds."
+                        },
+                        {
+                          "key": "pixels",
+                          "label": "Ring px",
+                          "width": 90,
+                          "description": "Fourier pixels contributing to the ring. Few pixels means a noisy estimate, which is why the innermost rings are skipped."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "split": "vertical"
+        }
+      ]
+    }
+  ]
+}

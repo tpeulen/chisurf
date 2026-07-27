@@ -60,10 +60,3 @@ class DecayResult:
     output_path: str = ""
 
 
-@dataclass
-class FrcResult:
-    """A Fourier-Ring-Correlation curve for an image."""
-
-    frequency: list[float]
-    correlation: list[float]
-    output_path: str = ""

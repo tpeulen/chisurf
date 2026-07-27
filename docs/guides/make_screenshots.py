@@ -281,6 +281,27 @@ def _grab_precision_tool():
     _grab(tool, "precision_workspace.png")
 
 
+def _grab_frc_tool():
+    """Grab the FRC resolution panel (guide 51).
+
+    Driven with the real confocal photon stream in the test data, so the figure
+    shows an honest curve on honest photons: a 256x256 scan of a cell whose
+    even/odd frame halves stop agreeing a few pixels in. The pixel size is the
+    80 nm of that acquisition, so the headline is in nanometres.
+    """
+    from chisurf.plugins.microscopy.img_frc.gui.tool import ImgFrcTool
+
+    tool = ImgFrcTool()
+    tool.model.set_filename("test/data/clsm/PQ_Olympus_MFIS.ht3")
+    tool.model.pixel_size_nm = 80.0
+    tool.model.compute()
+    tool.resize(1500, 850)
+    tool.show()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "frc_workspace.png")
+
+
 def _grab_burst_gs_tool():
     """Grab the photon-by-photon kinetics tool (guide 49).
 
@@ -704,6 +725,7 @@ def main():
         _grab_drift_tool,
         _grab_precision_tool,
         _grab_burst_gs_tool,
+        _grab_frc_tool,
         _grab_tracking_tool,
         _grab_accurate_fret_tool,
         _grab_chimol_viewer,

@@ -9,7 +9,6 @@ This plugin provides a graphical interface for analyzing and processing CLSM ima
 - Interactive pixel selection with adjustable brush tools
 - Region of interest (ROI) creation and management
 - Generation of fluorescence decay histograms from selected pixels
-- Fourier Ring Correlation (FRC) analysis for image resolution estimation
 - Export of decay histograms for further analysis in ChiSurf
 - Support for multiple frames and channels
 
@@ -26,17 +25,17 @@ AutoForm-driven GUI:
 
 | Path | Role |
 |------|------|
-| `core/` | Qt-free algorithms — FRC, image representations, decay extraction, setup presets. Safe to import headlessly. |
+| `core/` | Qt-free algorithms — image representations, decay extraction, setup presets. Safe to import headlessly. |
 | `api/` | `models.py` dataclasses, `contract.py` RPC contract, and `clsm.py` orchestration returning JSON-safe dicts. |
 | `backend/services.py` | `register_services(dispatcher)` wiring the `clsm.*` RPC methods. |
 | `client.py` | `ClsmClient`, transport-agnostic (in-process dispatcher or ZMQ). |
-| `cli/` | `csc clsm …` Click commands (`setups`, `info`, `representation`, `decay`, `frc`, `contract`). |
+| `cli/` | `csc clsm …` Click commands (`setups`, `info`, `representation`, `decay`, `contract`). |
 | `gui/` | `view_model.py` (Qt-free state + logic), `clsm.view.json` (AutoForm layout), `sections.py` (custom imaging widgets), `tool.py` (the tool). |
 | `manifest.json` | Plugin id, entrypoints (gui/cli/services) and `rpc_methods`. |
 
 The static settings render as AutoForm fields; the dynamic control bar, the
 image-brush canvas and the ROI list are registered AutoForm `custom` sections;
-the decay and FRC plots are declarative `plot` sections.
+the decay plot is a declarative `plot` section.
 
 ### Headless usage
 
@@ -44,7 +43,6 @@ the decay and FRC plots are declarative `plot` sections.
 csc clsm setups
 csc clsm info data.ptu --setup "Leica SP5" --channels 0,1
 csc clsm decay data.ptu --setup "Leica SP5" -c 0,1 --threshold 0.5 -o decay.txt
-csc clsm frc data.ptu --setup "Leica SP5" -c 0,1 -o frc.txt
 ```
 
 ## Requirements
@@ -86,7 +84,7 @@ csc clsm frc data.ptu --setup "Leica SP5" -c 0,1 -o frc.txt
 - Integrates spatial and temporal fluorescence information
 - Enables precise selection of regions of interest
 - Provides immediate feedback on fluorescence decay characteristics
-- Supports advanced analysis techniques like FRC for resolution estimation
+- Resolution estimation lives in the Image-Tools **Resolution** panel (`img_frc`)
 - Streamlines the workflow from image acquisition to decay analysis
 - Facilitates extraction of quantitative data from microscopy images
 

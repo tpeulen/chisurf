@@ -2,6 +2,62 @@
 
 ## 2026-07-27
 
+* **FRC left CLSM Draw and became a resolution measurement.** The drawing tool
+  carried a *Fourier ring correlation* panel, an RPC method and a `clsm frc`
+  command, and none of them produced a resolution: the panel plotted the
+  correlation against a bare ring index, with no threshold line, no crossing
+  readout and no length unit, so the one number FRC exists to produce could not
+  be read off it (a defect already recorded in the CLSM use case). All of it is
+  removed from `clsm`; resolution estimation is now `microscopy/img_frc`, the
+  **Resolution** step of Image Tools, directly after Drift — drift blurs the
+  image, so an uncorrected stack measures the stage rather than the microscope.
+  It is a full plugin stack: Qt-free core, `img_frc.*` RPC services with an
+  in-process client the GUI and the CLI share, a headless `img-frc` command that
+  exits non-zero when nothing crosses, and an AutoForm GUI. It reads **TIFF
+  stacks and photon streams alike** through the shared image-source seam, splits
+  one acquisition into two independent halves (even/odd frames, first/second
+  half, two detector channels, or two files), and reports the crossing against a
+  named criterion in nm.
+  **The maths existed three times and worked once.** `compute_frc` was forked in
+  `core/math/signal.py` *and* in `clsm/core/frc.py`, which also carried private
+  copies of `counting_noise` and `gaussian_kernel` that core already owned. All
+  four forks are gone; there is one implementation, `core/fluorescence/imaging/frc.py`,
+  and a guardrail test asserts the CLSM module reaches for the core helpers by
+  identity. Rewriting it fixed things the copies shared: rings are binned on the
+  **normalised** radius `sqrt((x/nx)² + (y/ny)²)`, so a non-square image is
+  binned by physical frequency rather than by array index (a 256×64 strip
+  otherwise reports a different resolution than the square it was cut from —
+  pinned by a test); rings past Nyquist, which exist only in the corners of the
+  Fourier square, are dropped; and the ring occupancies are returned, because the
+  ½-bit and σ thresholds are functions of them.
+  **Three findings from measuring rather than assuming.** (1) Both
+  count-dependent thresholds *exceed 1* on the innermost rings, where a ring
+  holds a handful of pixels — and since an FRC cannot exceed 1, every ring is
+  nominally "below threshold" and the σ criterion reported the field of view as
+  the resolution of any image at all. They are clipped at 1 and those rings are
+  skipped. (2) The docstring claim that 2σ is "the most permissive" criterion was
+  wrong, and the test that encoded it failed: 2σ sits *above* the fixed 1/7 until
+  a ring holds ~392 Fourier pixels and below it after, so which is stricter is a
+  property of the image, not of the convention. Both the text and the test now
+  say that. (3) `tifffile.imwrite` labels a `(4, y, x)` float array `"SYX"` —
+  sample planes — so an ordinary four-frame time series arrived as a one-frame
+  four-channel image and a frame split had nothing to split. `channel_axis`
+  could force a channel axis but had no way to say *there is none*, so
+  `load_image_stack` now accepts `channel_axis="none"` (guardrail tests in
+  `test/fluorescence/test_image_source_axes.py`) and the plugin exposes it as a
+  **TIFF axis order** control.
+  **Validated against a known answer**: a random field low-pass filtered at
+  0.15 cycles/px recovers 1/0.15 px within 15 %, halving the band limit halves
+  the reported resolution, and a pixel size scales it exactly. On the real
+  confocal photon stream in the test data it reports 372.5 nm at an 80 nm pixel.
+  Looking at the rendered panel moved the curve out from behind a tab (the four
+  result panels were stacked as tabs, so the plot the measurement exists for was
+  hidden behind an info box), capped the info box that was claiming 190 px for
+  three lines of text, and shortened an axis label that was clipped at both ends.
+  Documented in theory ({doc}`concepts/frc_resolution`) and application (guide 51).
+  Suites: 24 (`img_frc`) + 18 (`clsm`) + 12 (core FRC) + 6 (image axes) + 105
+  (`test_all_plugins`) + `test/microscopy` = 338 passed.
+
 * **The l1/l2 half was the generator, not the correction.** `vm_rt_to_vv_vh`
   built an ideal VV/VH pair and mixed it with a 2x2 matrix (Koshioka 1995) —
   a different meaning for l1/l2 than the Schaffer correction the rest of the

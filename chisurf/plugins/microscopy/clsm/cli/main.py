@@ -6,7 +6,6 @@ Examples
     csc clsm info data.ptu --setup "Leica SP5" --channels 0,1
     csc clsm representation data.ptu --setup "Leica SP5" -c 0,1 -o img.npy
     csc clsm decay data.ptu --setup "Leica SP5" -c 0,1 --threshold 0.5 -o decay.txt
-    csc clsm frc data.ptu --setup "Leica SP5" -c 0,1 -o frc.txt
     csc clsm contract --json
 """
 
@@ -226,41 +225,6 @@ def decay(
 
     def _human(d):
         click.echo(f"decay: {len(d['counts'])} bins, {d['n_photons']} photons")
-        if d["output_path"]:
-            click.echo(f"saved: {d['output_path']}")
-
-    _emit(data, json_output, _human)
-
-
-@cli.command()
-@click.argument("file", type=click.Path(exists=True))
-@click.option("--image-type", default="Intensity")
-@click.option("--n-ph-min", default=1, type=int)
-@click.option("--frame-mode", default="sum", type=click.Choice(["sum", "mean", "frame"]))
-@click.option("--frame-idx", default=0, type=int)
-@click.option("--bin-width", default=2.0, type=float, help="FRC ring width (Fourier pixels).")
-@click.option("--output", "-o", default=None, help="Write a frequency/correlation text file.")
-@setup_options
-@click.option("--json", "json_output", is_flag=True, help="Print as JSON.")
-def frc(
-    file, image_type, n_ph_min, frame_mode, frame_idx, bin_width, output, json_output, **setup_opts
-) -> None:
-    """Compute the Fourier Ring Correlation for FILE's image."""
-    from ..client import ClsmClient
-
-    data = ClsmClient().frc(
-        file,
-        image_type=image_type,
-        n_ph_min=n_ph_min,
-        frame_mode=frame_mode,
-        frame_idx=frame_idx,
-        bin_width=bin_width,
-        output_path=output,
-        **_setup_kwargs(**setup_opts),
-    )
-
-    def _human(d):
-        click.echo(f"frc: {len(d['correlation'])} rings")
         if d["output_path"]:
             click.echo(f"saved: {d['output_path']}")
 

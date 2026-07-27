@@ -7,7 +7,6 @@ CLI, the RPC services, and headless tests.
 
 from __future__ import annotations
 
-from .frc import compute_frc, counting_noise, gaussian_kernel
 from .imaging import (
     brush_kernel,
     build_clsm_image,
@@ -18,9 +17,6 @@ from .imaging import (
 from .setups import builtin_setups, read_clsm_markers
 
 __all__ = [
-    "compute_frc",
-    "counting_noise",
-    "gaussian_kernel",
     "brush_kernel",
     "build_clsm_image",
     "decay_of_selection",

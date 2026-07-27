@@ -1,0 +1,121 @@
+{
+  "id": "img_frc",
+  "version": "1.0.0",
+  "display_name": "Imaging:FRC Resolution",
+  "description": "Measure the resolution an image actually achieved by Fourier ring correlation — of a TIFF stack or a photon stream — and read it against the 1/7, ½-bit or 2σ criterion.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Imaging"
+  ],
+  "icon": "◎",
+  "state_namespace": "img_frc",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.microscopy.img_frc.gui.tool:ImgFrcTool",
+    "cli": "img-frc=chisurf.plugins.microscopy.img_frc.cli:cli",
+    "services": "chisurf.plugins.microscopy.img_frc.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "img_frc.resolution.compute",
+      "summary": "Measure image resolution by Fourier ring correlation.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "filename"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "TIFF stack or photon stream to measure."
+          },
+          "split": {
+            "type": "string",
+            "description": "How to cut the acquisition into two independent halves: even_odd, halves, channels or two_files."
+          },
+          "channel": {
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Channel to measure, by index or name."
+          },
+          "channel_2": {
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Second channel for a channel split."
+          },
+          "second_filename": {
+            "type": "string",
+            "description": "Second acquisition for a two-file split."
+          },
+          "pixel_size_nm": {
+            "type": "number",
+            "description": "Pixel size in nm; without it the resolution is in pixels."
+          },
+          "criterion": {
+            "type": "string",
+            "description": "Threshold convention: fixed_1/7, half_bit or two_sigma."
+          },
+          "bin_width": {
+            "type": "number",
+            "description": "Ring width in cycles per pixel."
+          },
+          "smooth": {
+            "type": "integer",
+            "description": "Rings averaged before the crossing is read."
+          },
+          "axis_order": {
+            "type": "string",
+            "description": "TIFF only: read a 3-D file's leading axis as auto, frames or channels."
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Optional CSV path for the curve."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": true,
+      "cancelable": false
+    },
+    {
+      "name": "img_frc.criteria.list",
+      "summary": "List the threshold criteria and the available splits.",
+      "params_schema": {
+        "type": "object"
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "img_frc.contract.describe",
+      "summary": "Return the RPC contract descriptor.",
+      "params_schema": {
+        "type": "object"
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    }
+  ],
+  "events": [],
+  "dependencies": {}
+}

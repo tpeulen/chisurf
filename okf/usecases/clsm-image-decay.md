@@ -54,11 +54,11 @@ aggregator, as `clsm.*` RPC methods, and as a `clsm` CLI.
 10. Back on **File**, click **Add decay → ChiSurf**. The decay is added to the
     dataset list as a TCSPC curve and can be fitted with a `Lifetime` model (see
     [TCSPC lifetime fit](/usecases/tcspc-lifetime-fit.md)).
-11. Optional: the **FRC** panel shows the Fourier ring correlation of the even
-    against the odd frames of the current representation — a resolution check.
+11. Optional: measure the resolution of the same image in the Image-Tools
+    **Resolution** panel (`img_frc`) — it no longer lives here.
 12. Optional headless equivalent:
     `clsm decay <file> --setup 'Leica SP5' --channels 0,1 --threshold 0.5`,
-    plus `clsm info|representation|frc|setups|contract`.
+    plus `clsm info|representation|setups|contract`.
 
 ## Expected
 
@@ -175,10 +175,13 @@ are rebuilt (harmless, but it lands in the console on ordinary clicks).
 - **The selection is painted opaque white**, hiding the very structure the user
   is trying to trace. A semi-transparent tint or an outline would let them see
   what they are including.
-- **The FRC panel gives no resolution.** It draws the correlation against a bare
-  ring index (`spatial frequency`, 0 … 180) with no 1/7 threshold line, no
-  crossing readout and no length unit — so the one number FRC exists to produce
-  cannot be read off it. The CLI is the same (`frc: 91 rings`).
+- ~~**The FRC panel gives no resolution.**~~ **Fixed** by moving it out: the
+  panel drew the correlation against a bare ring index with no threshold line,
+  no crossing readout and no length unit, so the one number FRC exists to
+  produce could not be read off it. Resolution estimation is now the Image-Tools
+  **Resolution** panel (`img_frc`), which reports the crossing in nm against a
+  named criterion; the CLSM panel, its `clsm.frc.compute` method and the
+  `clsm frc` command are gone.
 - **Every decay series is drawn in the same yellow.** The saved curves and
   *Current selection* differ only by line width, and the legend swatches are
   identical — with several ROI decays the plot is unreadable. Cycle colours per

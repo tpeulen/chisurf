@@ -175,7 +175,11 @@ def _stack_from_axes(arr: np.ndarray, axes: str, channel_axis) -> tuple[np.ndarr
     ``"Q…"`` for unlabelled). ``C``/``S`` axes become channels, ``T``/``Z``/``I``
     frames. A single unlabelled axis is ambiguous — it is taken as channels when
     it is short (≤ 4 planes, the usual two/three-colour image) and as frames
-    otherwise; *channel_axis* overrides that guess.
+    otherwise; *channel_axis* overrides that guess, and ``"none"`` says there is
+    no channel axis at all, so every non-YX axis is a frame. That last case is
+    not exotic: a four-frame time series written by a plain ``imwrite`` is
+    labelled ``"SYX"`` and would otherwise arrive as a four-channel single frame,
+    which any frame-wise analysis then rejects for having one frame.
     """
     axes = axes.upper()
     if len(axes) != arr.ndim:
@@ -186,7 +190,12 @@ def _stack_from_axes(arr: np.ndarray, axes: str, channel_axis) -> tuple[np.ndarr
     unlabelled = [i for i, a in enumerate(axes) if a in "QI"]
     channel_axes = [i for i, a in enumerate(axes) if a in "CS"]
     frame_axes = [i for i, a in enumerate(axes) if a in "TZ"]
-    if channel_axis is not None:
+    no_channels = isinstance(channel_axis, str) and channel_axis.lower() == "none"
+    if no_channels:
+        channel_axes = []
+        frame_axes = [i for i in range(arr.ndim) if axes[i] not in "YX"]
+        unlabelled = []
+    elif channel_axis is not None:
         forced = (
             axes.index(str(channel_axis).upper())
             if isinstance(channel_axis, str)
@@ -283,7 +292,9 @@ def load_image_stack(
         channels instead of raw routing channels.
     channel_axis : int or str, optional
         Images only: force which array axis holds the channels, overriding the
-        axis labels / the short-axis heuristic.
+        axis labels / the short-axis heuristic. Pass ``"none"`` when the file has
+        no channel axis and every plane is a frame — a short frame series is
+        otherwise read as a multi-channel single frame.
     channel_names : sequence of str, optional
         Override the generated channel names.
 

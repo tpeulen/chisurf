@@ -71,6 +71,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 48 | [Regions: selecting pixels, measuring what you selected](48_regions.md) | `chisurf.core.roi`, `regionprops`, `sm_image_mle --roi` |
 | 49 | [Photon-by-photon kinetics: rates without binning](49_photon_by_photon_kinetics.md) | `burst_gs` plugin, `core.fluorescence.burst.gopich_szabo` |
 | 50 | [Particle tracking: from spots to a diffusion coefficient](50_particle_tracking.md) | `img_tracking` plugin, `imaging.tracking` |
+| 51 | [Image resolution: measuring it from the image itself](51_frc_resolution.md) | `img_frc` plugin, `imaging.frc` |
 
 ## Running
 

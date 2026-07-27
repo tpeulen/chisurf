@@ -54,6 +54,12 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Frames | `frame_mode` | choice |  | choices: sum, mean, frame |  |
 | Frame | `frame_idx` | int |  | 0 … |  |
 
+### General
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| Regions | `regions` | region_list |  |  | Named regions. Tick to include, ~ to use everything outside one, and pick how the ticked ones combine into the selection the decay is built from. + keeps the current brush stroke. |
+
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |
@@ -62,7 +68,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `clsm.image.info` | yes | Load a TTTR file, build a CLSM image and report its dimensions. |
 | `clsm.image.representation` | yes | Compute an intensity / mean-micro-time image representation. |
 | `clsm.decay.extract` | yes | Extract a decay histogram from a pixel selection. |
-| `clsm.frc.compute` | yes | Compute the Fourier Ring Correlation of an image representation. |
 | `clsm.contract.describe` | no | Return the RPC contract descriptor. |
 
 ## Source

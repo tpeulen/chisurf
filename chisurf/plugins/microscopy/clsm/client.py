@@ -75,10 +75,6 @@ class ClsmClient:
         """Extract a decay histogram from a pixel selection."""
         return self._call(contract.METHOD_DECAY, {"filename": filename, **kwargs})
 
-    def frc(self, filename: str, **kwargs: Any) -> dict[str, Any]:
-        """Compute the Fourier Ring Correlation for an image representation."""
-        return self._call(contract.METHOD_FRC, {"filename": filename, **kwargs})
-
     def contract(self) -> dict[str, Any]:
         """Return the RPC contract descriptor."""
         return self._call(contract.METHOD_CONTRACT)

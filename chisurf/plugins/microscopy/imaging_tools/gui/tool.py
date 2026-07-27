@@ -106,6 +106,13 @@ def _drift(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _frc(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.img_frc.gui.tool import ImgFrcTool
+    widget = ImgFrcTool(parent=parent, embedded=True)
+    parent._register_panel("frc", widget)
+    return widget
+
+
 def _tracking(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
     widget = ImgTrackingTool(parent=parent, embedded=True)
@@ -216,6 +223,18 @@ IMAGING_PANELS: list[dict] = [
         "role": "drift",
     },
     {
+        "name": "Resolution",
+        "icon": "◎",
+        "description": (
+            "How fine a detail this acquisition actually resolves, by Fourier ring "
+            "correlation between two independent halves of it. Sits after Drift "
+            "because drift blurs the image and so lowers the measured resolution — "
+            "measure it on frames that are already aligned."
+        ),
+        "factory": _frc,
+        "role": "frc",
+    },
+    {
         "name": "Tracking",
         "icon": "\U0001F41C",
         "description": (
@@ -309,8 +328,8 @@ class ImagingToolsTool(NavigationPanelTool):
 
     #: Analysis steps in pipeline order for the "Next ▶" convenience.
     PIPELINE_ORDER = (
-        "browser", "drift", "tracking", "pixel_intensity", "pixel_nb", "pixel_micro_time",
-        "calibration", "pixel_phasor", "pixel_mle",
+        "browser", "drift", "frc", "tracking", "pixel_intensity", "pixel_nb",
+        "pixel_micro_time", "calibration", "pixel_phasor", "pixel_mle",
     )
     #: Roles whose (Qt-free) view-models the coordinator owns + pre-computes.
     ANALYSIS_ROLES = ("pixel_intensity", "pixel_nb", "pixel_micro_time", "pixel_phasor")

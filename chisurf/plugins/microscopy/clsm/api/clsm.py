@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 
 from ..core import imaging, setups
-from .models import ClsmSetup, DecayResult, FrcResult, RepresentationResult
+from .models import ClsmSetup, DecayResult, RepresentationResult
 
 # ── setup resolution ───────────────────────────────────────────────────────
 
@@ -130,7 +130,7 @@ def compute_representation(
     setup = _resolve_setup(filename, **setup_kwargs)
     tttr, clsm_image = _load(filename, setup)
     image = imaging.representation(clsm_image, tttr, image_type, n_ph_min)
-    current, _, _ = imaging.reduce_frames(image, frame_mode, frame_idx)
+    current = imaging.reduce_frames(image, frame_mode, frame_idx)
 
     saved = ""
     if output_path:
@@ -196,7 +196,7 @@ def _selection_region(
 
     if threshold is not None:
         image = imaging.representation(clsm_image, tttr, image_type, n_ph_min)
-        current, _, _ = imaging.reduce_frames(image, frame_mode, frame_idx)
+        current = imaging.reduce_frames(image, frame_mode, frame_idx)
         low = float(threshold) * float(current.max())
         # Strictly above, as before: a threshold of 0 must not select empty pixels.
         return ThresholdROI(low=np.nextafter(low, np.inf)), current
@@ -257,44 +257,6 @@ def extract_decay(
         counts=y.tolist(),
         noise=ey.tolist(),
         n_photons=int(y.sum()),
-        output_path=saved,
-    )
-    return vars(result)
-
-
-def compute_frc(
-    filename: str,
-    image_type: str = "Intensity",
-    n_ph_min: int = 1,
-    frame_mode: str = "sum",
-    frame_idx: int = 0,
-    bin_width: float = 2.0,
-    output_path: str | None = None,
-    **setup_kwargs: Any,
-) -> dict[str, Any]:
-    """Compute the Fourier Ring Correlation for a file's image representation."""
-    from ..core import frc as frc_mod
-
-    setup = _resolve_setup(filename, **setup_kwargs)
-    tttr, clsm_image = _load(filename, setup)
-    image = imaging.representation(clsm_image, tttr, image_type, n_ph_min)
-    _, subset_1, subset_2 = imaging.reduce_frames(image, frame_mode, frame_idx)
-    density, bins = frc_mod.compute_frc(subset_1, subset_2, bin_width)
-
-    saved = ""
-    if output_path:
-        np.savetxt(
-            output_path,
-            np.vstack([bins, density]).T,
-            delimiter="\t",
-            header="frequency\tcorrelation",
-            comments="",
-        )
-        saved = str(output_path)
-
-    result = FrcResult(
-        frequency=bins.tolist(),
-        correlation=np.nan_to_num(density).tolist(),
         output_path=saved,
     )
     return vars(result)

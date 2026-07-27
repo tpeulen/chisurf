@@ -11,7 +11,6 @@ METHOD_SETUPS = "clsm.setups.list"
 METHOD_INFO = "clsm.image.info"
 METHOD_REPRESENTATION = "clsm.image.representation"
 METHOD_DECAY = "clsm.decay.extract"
-METHOD_FRC = "clsm.frc.compute"
 METHOD_CONTRACT = "clsm.contract.describe"
 
 ALL_METHODS = (
@@ -19,7 +18,6 @@ ALL_METHODS = (
     METHOD_INFO,
     METHOD_REPRESENTATION,
     METHOD_DECAY,
-    METHOD_FRC,
     METHOD_CONTRACT,
 )
 

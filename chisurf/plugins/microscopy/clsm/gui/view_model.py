@@ -25,7 +25,6 @@ import numpy as np
 from chisurf.core.roi import RegionCollection
 
 from ..api.models import ClsmSetup
-from ..core import frc as frc_mod
 from ..core import imaging, setups
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "clsm.view.json"
@@ -86,8 +85,6 @@ class ClsmViewModel:
         self.current_clsm_name: str = ""
         self.current_representation_name: str = ""
         self.current_image: np.ndarray | None = None
-        self._subset_1: np.ndarray | None = None
-        self._subset_2: np.ndarray | None = None
         self.selection_mask: np.ndarray | None = None
         #: Saved regions — the shared, ordered, named list every ROI GUI edits.
         self.regions = RegionCollection(combine="or", name="selection")
@@ -251,11 +248,10 @@ class ClsmViewModel:
         if image is None:
             return
         self.current_representation_name = name
-        current, s1, s2 = imaging.reduce_frames(
+        current = imaging.reduce_frames(
             image, self.decay.frame_mode, int(self.decay.frame_idx)
         )
         self.current_image = current
-        self._subset_1, self._subset_2 = s1, s2
         self.selection_mask = np.zeros_like(current)
         self.notify("image")
 
@@ -465,9 +461,3 @@ class ClsmViewModel:
             )
         return series
 
-    def frc_series(self) -> list[dict[str, Any]]:
-        """Series for the FRC plot of the current representation."""
-        if self._subset_1 is None or self._subset_2 is None:
-            return []
-        density, bins = frc_mod.compute_frc(self._subset_1, self._subset_2)
-        return [{"x": bins, "y": np.nan_to_num(density), "name": "FRC"}]

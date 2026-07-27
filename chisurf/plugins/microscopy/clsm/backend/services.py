@@ -8,7 +8,6 @@ from typing import Any
 from ..api.contract import (
     METHOD_CONTRACT,
     METHOD_DECAY,
-    METHOD_FRC,
     METHOD_INFO,
     METHOD_REPRESENTATION,
     METHOD_SETUPS,
@@ -26,7 +25,6 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register(METHOD_INFO, _handle_info)
     dispatcher.register(METHOD_REPRESENTATION, _handle_representation)
     dispatcher.register(METHOD_DECAY, _handle_decay)
-    dispatcher.register(METHOD_FRC, _handle_frc)
     dispatcher.register(METHOD_CONTRACT, _handle_contract)
 
 
@@ -61,12 +59,6 @@ def _handle_decay(params: dict[str, Any]) -> dict[str, Any]:
     from ..api.clsm import extract_decay
 
     return _guard(METHOD_DECAY, extract_decay, params)
-
-
-def _handle_frc(params: dict[str, Any]) -> dict[str, Any]:
-    from ..api.clsm import compute_frc
-
-    return _guard(METHOD_FRC, compute_frc, params)
 
 
 def _handle_contract(params: dict[str, Any] | None = None) -> dict[str, Any]:

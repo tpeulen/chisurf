@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from .clsm import (
-    compute_frc,
     compute_representation,
     extract_decay,
     image_info,
@@ -14,7 +13,6 @@ from .contract import (
     CONTRACT_VERSION,
     METHOD_CONTRACT,
     METHOD_DECAY,
-    METHOD_FRC,
     METHOD_INFO,
     METHOD_REPRESENTATION,
     METHOD_SETUPS,
@@ -23,18 +21,16 @@ from .contract import (
     service_error,
     service_success,
 )
-from .models import ClsmSetup, DecayResult, FrcResult, RepresentationResult
+from .models import ClsmSetup, DecayResult, RepresentationResult
 
 __all__ = [
     "list_setups",
     "image_info",
     "compute_representation",
     "extract_decay",
-    "compute_frc",
     "ClsmSetup",
     "RepresentationResult",
     "DecayResult",
-    "FrcResult",
     "PLUGIN_ID",
     "CONTRACT_VERSION",
     "ALL_METHODS",
@@ -42,7 +38,6 @@ __all__ = [
     "METHOD_INFO",
     "METHOD_REPRESENTATION",
     "METHOD_DECAY",
-    "METHOD_FRC",
     "METHOD_CONTRACT",
     "contract_descriptor",
     "service_success",

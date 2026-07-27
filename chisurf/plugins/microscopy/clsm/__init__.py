@@ -6,14 +6,14 @@ export fluorescence-decay histograms for analysis in ChiSurf.
 
 Architecture (mirrors the other ``microscopy`` plugins):
 
-- ``core/``    — Qt-free algorithms (FRC, image representations, decay
+- ``core/``    — Qt-free algorithms (image representations, decay
   extraction, setup presets). Safe to import headlessly.
 - ``api/``     — dataclasses, RPC contract, and orchestration functions.
 - ``backend/`` — ``register_services`` wiring ``clsm.*`` RPC methods.
 - ``client.py``— transport-agnostic :class:`ClsmClient` (local or ZMQ).
 - ``cli/``     — ``csc clsm …`` Click commands.
 - ``gui/``     — AutoForm-driven settings panels plus the interactive
-  image/brush/decay/FRC canvas (registered as custom AutoForm sections).
+  image/brush/decay canvas (registered as custom AutoForm sections).
 
 Importing this package is intentionally light: nothing here pulls in Qt or
 ``tttrlib`` so the CLI and headless services stay fast. The GUI is loaded only

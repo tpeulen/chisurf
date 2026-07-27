@@ -26,15 +26,20 @@ def _require_data():
 # ── pure helpers (no data needed) ───────────────────────────────────────────
 
 
-def test_frc_and_noise_pure():
-    from chisurf.plugins.microscopy.clsm.core import frc
+def test_the_shared_helpers_are_the_core_ones_not_a_fork():
+    """The plugin had its own copies of two core helpers; it must not again.
 
-    rng = np.random.RandomState(0)
-    a, b = rng.rand(64, 64), rng.rand(64, 64)
-    density, bins = frc.compute_frc(a, b)
-    assert density.shape == bins.shape
-    assert np.isclose(frc.gaussian_kernel(7, 3).sum(), 1.0)
-    assert np.all(frc.counting_noise(np.array([0.0, 4.0, 9.0])) == np.array([1.0, 2.0, 3.0]))
+    ``counting_noise`` and ``gaussian_kernel`` exist once, in core, and the
+    imaging module reaches for those. A fork drifts silently.
+    """
+    from chisurf.core.fluorescence.tcspc import counting_noise
+    from chisurf.core.math.signal import gaussian_kernel
+    from chisurf.plugins.microscopy.clsm.core import imaging
+
+    assert imaging.counting_noise is counting_noise
+    assert imaging.gaussian_kernel is gaussian_kernel
+    assert np.isclose(gaussian_kernel(7, 3).sum(), 1.0)
+    assert np.all(counting_noise(np.array([0.0, 4.0, 9.0])) == np.array([1.0, 2.0, 3.0]))
 
 
 def test_brush_kernel_deselect_is_negative():
@@ -63,12 +68,12 @@ def test_contract_descriptor():
 # ── core / api with real data ───────────────────────────────────────────────
 
 
-def test_core_image_representation_decay_frc():
+def test_core_image_representation_and_decay():
     _require_data()
     import tttrlib
 
     from chisurf.plugins.microscopy.clsm.api.models import ClsmSetup
-    from chisurf.plugins.microscopy.clsm.core import frc, imaging, setups
+    from chisurf.plugins.microscopy.clsm.core import imaging, setups
 
     tttr = tttrlib.TTTR(str(SP5), "PTU")
     preset = setups.builtin_setups()["Leica SP5"]
@@ -82,16 +87,13 @@ def test_core_image_representation_decay_frc():
 
     image = imaging.representation(clsm, tttr, "Intensity", 1)
     assert image.ndim == 3
-    current, s1, s2 = imaging.reduce_frames(image, "sum")
-    assert current.shape == s1.shape == s2.shape
+    current = imaging.reduce_frames(image, "sum")
+    assert current.ndim == 2
 
     mask = (current > current.mean()).astype(np.uint8)
     t, y, ey = imaging.decay_of_selection(clsm, tttr, mask, tac_coarsening=4, stack_frames=True)
     assert t.shape == y.shape == ey.shape
     assert y.sum() > 0
-
-    density, bins = frc.compute_frc(s1, s2)
-    assert density.shape == bins.shape
 
 
 def test_mean_micro_time_is_in_ns_and_discriminates():
@@ -156,9 +158,6 @@ def test_api_orchestration_and_save(tmp_path):
     assert dec["n_photons"] > 0
     assert out.exists()
     assert len(dec["counts"]) == len(dec["time_ns"])
-
-    frc = api.compute_frc(str(SP5), setup_name="Leica SP5", channels=[0, 1])
-    assert len(frc["correlation"]) == len(frc["frequency"])
 
 
 # ── services / client ───────────────────────────────────────────────────────
@@ -235,7 +234,6 @@ def test_view_model_workflow():
     assert decay is not None and np.sum(decay["counts"]) > 0
     vm.add_decay_curve()
     assert len(vm.decay_series()) == 2  # saved curve + current selection
-    assert len(vm.frc_series()) == 1
     assert {"setup", "clsm", "image", "decay"} <= set(events)
 
 

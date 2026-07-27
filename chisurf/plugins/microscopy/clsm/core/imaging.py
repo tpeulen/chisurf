@@ -10,7 +10,8 @@ from typing import Any
 
 import numpy as np
 
-from .frc import counting_noise, gaussian_kernel
+from chisurf.core.fluorescence.tcspc import counting_noise
+from chisurf.core.math.signal import gaussian_kernel
 
 #: Supported image-representation names.
 IMAGE_TYPES = ("Intensity", "Mean micro time", "Intensity, Mean micro time")
@@ -167,34 +168,28 @@ def reduce_frames(
     image: np.ndarray,
     mode: str = "sum",
     frame_idx: int = 0,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Reduce a 3-D image stack to a display frame plus two FRC subsets.
+) -> np.ndarray:
+    """Reduce a 3-D image stack to the 2-D image to display.
 
     Parameters
     ----------
     image : numpy.ndarray
         3-D ``(frames, lines, pixel)`` stack.
     mode : str
-        ``"sum"`` / ``"mean"`` collapse all frames (the FRC subsets are the
-        even/odd frames); ``"frame"`` selects a single frame (the FRC subset is
-        that frame against its neighbour).
+        ``"sum"`` / ``"mean"`` collapse all frames; ``"frame"`` selects one.
     frame_idx : int
         Frame index used when *mode* is ``"frame"``.
 
     Returns
     -------
-    current, subset_1, subset_2 : numpy.ndarray
-        The 2-D image to display and the two 2-D subsets used for FRC.
+    numpy.ndarray
+        The 2-D image.
     """
     if mode == "sum":
-        return image.sum(axis=0), image[::2].sum(axis=0), image[1::2].sum(axis=0)
+        return image.sum(axis=0)
     if mode == "mean":
-        return image.mean(axis=0), image[::2].mean(axis=0), image[1::2].mean(axis=0)
-    # single frame
-    ref_idx = max(0, frame_idx - 1)
-    if ref_idx == 0 and frame_idx == 0:
-        ref_idx = min(1, image.shape[0] - 1)
-    return image[frame_idx], image[frame_idx], image[ref_idx]
+        return image.mean(axis=0)
+    return image[frame_idx]
 
 
 def selection_array(

@@ -3,7 +3,7 @@
 The whole tool is a single :class:`AutoForm` bound to a :class:`ClsmViewModel`
 and laid out from ``clsm.view.json`` as one dock area: the File/Acquisition/
 Brush&Decay settings are compact foldable dock panels, the image is AutoForm's
-reusable brush+colormap ``image`` section, and the decay/FRC are declarative
+reusable brush+colormap ``image`` section, and the decay is a declarative
 ``plot`` panels. All panels are draggable docks (no splitter). This class keeps
 the plots refreshed and the setting fields synced when the model changes, and
 exposes ``apply_setup_settings`` for the Imaging-Tools aggregator.
