@@ -82,13 +82,20 @@ shows the image, in the same scene, so a model can be looked at inside its data.
 
 ## Current state
 
-The gap is specific, and larger than the Tier 4 line above suggests. ChiMOL can
-*read* MRC/CCP4/MAP, but `io/mrc.py` turns the file into a **downsampled point
-cloud** (`load_mrc_as_points`, capped at 250k points) and the volume itself is
-discarded. There is a marching-cubes implementation
-(`_generate_surface_mesh_from_density`), but it serves molecular surfaces built
-from atoms and is not reachable from a loaded map. There is no map object, no
-contour level to change, no second level to show at once, and no volume rendering.
+**Landed.** `chimol/volume.py` holds `VolumeGrid` — values with `origin`, `step`
+and a 3x3 `rotation`, built primarily from an array in memory, with a voxel
+budget and automatic striding, a `mean + 1 sigma` default level, a histogram, and
+`isosurface()`. `io/mrc.py` now reads into one of those, honouring the
+`mapc/mapr/maps` axis permutation and the two origin conventions (it previously
+did neither, so a map loaded transposed and at the scene origin); the old
+point-cloud entry point is derived from the grid rather than parsing a second
+time. Maps are scene objects with per-level colour and `surface`/`mesh` styles,
+reachable as `load_map`, `isosurface`, `isomesh`, `volume_level` and `map_info`.
+
+**Still open:** direct volume rendering (`volume` is registered and declines),
+the histogram panel with draggable level markers, colour-by-value transfer
+functions, `map_new` from atoms, `map_trim`, and construction from a CLSM stack
+loaded in chisurf.
 
 ## How the reference tool does it
 

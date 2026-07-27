@@ -475,6 +475,18 @@ class RenderingMixin(BaseCmd):
         import numpy as _np
 
         if not int(_np.asarray(mask, dtype=bool).sum()):
+            # A voxel map has no atoms, so a selection cannot match it -- but
+            # `zoom all` on a scene holding one plainly means "fit that too".
+            # Refusing was how a loaded map ended up off screen with a message
+            # about atoms, which explains nothing to someone looking at a map.
+            has_map = any(
+                getattr(entry.state, "volume", None) is not None
+                for entry in viewer._objects.values()
+                if entry.visible
+            )
+            if has_map and selection in ("all", "*", "everything"):
+                viewer.zoom(buffer=float(buffer), complete=bool(complete))
+                return
             self._emit_error(f"zoom: '{selection}' matched no atoms")
             return
         viewer.zoom(

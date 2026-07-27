@@ -50,6 +50,60 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Voxel maps
+
+A great deal of what gets looked at here is a density rather than a structure:
+an accessible volume showing where a tethered dye can physically be, an
+occupancy density from an ensemble, an electron-density or cryo-EM map, a 3-D
+microscopy stack. ChiMOL loads these as **map objects** and contours them, so a
+model can be looked at inside its data.
+
+```text
+load_map density.mrc         # MRC / CCP4 / MAP, gzipped or not
+map_info                     # size, voxel step, origin, value range
+isosurface dens, density     # a solid contour at a level from the data
+isomesh dens, density, 0.08, skyblue
+volume_level density, 0.12   # move the contour
+```
+
+```{figure} figures/chimol_map_isomesh.png
+:name: fig-chimol-map
+:width: 640px
+
+A density contoured as an `isomesh` around the structure it belongs to. The
+wireframe leaves the model visible inside, which is the point of that mode; the
+same contour as `isosurface` is a solid envelope.
+```
+
+**A map lands where the file says it does.** The reader honours the voxel step,
+the origin, and the axis order — MRC files may store their axes in any order, and
+a map read as though it were `x, y, z` is silently transposed. It also honours
+anisotropy: a confocal stack whose z step differs from its xy step is not
+squashed into a cube.
+
+**Pick a level by looking at the range.** With no level given, the contour starts
+at `mean + 1σ`, the conventional opening contour for a density. That is the only
+scale-free choice available — an accessible volume runs 0 to 1, a photon-count
+stack to a few hundred, a cryo-EM map to whatever the reconstruction produced.
+`map_info` prints the range, and a level outside it is refused *with* the range
+rather than quietly drawing nothing.
+
+**More than one level at a time.** Repeated `isosurface`/`isomesh` calls add
+contours rather than replacing them, each with its own colour, which is how a
+dense core inside a diffuse shell is read. `volume_level` replaces them.
+
+**Large maps are strided, not refused.** Anything past a voxel budget is
+subsampled for display, so a big map opens and a contour change stays quick;
+`map_info` says when that is happening.
+
+:::{admonition} Direct volume rendering is not implemented yet
+:class: warning
+`volume` is registered but declines, and says to use `isosurface` or `isomesh`
+instead. Ray-cast volume rendering — the mode that suits microscopy and diffuse
+probability densities, where no single threshold is meaningful — is tracked in
+PRD-57 along with the histogram panel for dragging levels.
+:::
+
 ### Playing a trajectory
 
 ```text

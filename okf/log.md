@@ -2,6 +2,40 @@
 
 ## 2026-07-27
 
+* **chimol: voxel maps are objects now, and the MRC reader was wrong in two ways.**
+  `VolumeGrid` carries values with `origin`, `step` and a 3x3 `rotation`, is built
+  primarily **from an array in memory** (accessible volumes and CLSM stacks are
+  already arrays here; a round trip through disk would be the wrong seam), bounds
+  its own display cost with a voxel budget and automatic striding, and contours
+  itself through the in-tree marching cubes — no new dependency.
+
+  Reading the reference implementation's `map_data/mrc` first was what made the
+  gap specific. Our reader honoured **neither** the `mapc/mapr/maps` axis
+  permutation nor either origin convention, so a map loaded **transposed and at
+  the scene origin** — wrong in the way that looks like data. Both rules are now
+  carried, including the preference between the MRC2000 xyz origin and the older
+  start indices and the sanity limit that spots uninitialised ones. IMP.em reads
+  MRC too and was considered; the format is short and ChiMOL carries no IMP
+  dependency of its own, so the logic lives here and **the test suite
+  cross-checks it against IMP's reader**, which passes — carrying it costs no
+  confidence.
+
+  Two bugs the *picture* caught, not the tests. A map centred on itself: scene
+  coordinates are `(world - raw_center) * scale` per object, so a density that
+  wraps a structure was drawn as a small blob inside it; a map now adopts the
+  frame of whatever is already loaded. And `isomesh` drew a **solid surface** —
+  a `wireframe` flag on a triangle mesh is read by nothing downstream, so the
+  contour has to *become* line geometry to be one. Fixed on the way: `zoom all`
+  refused a scene containing only maps, with a message about atoms.
+
+  The default level is `mean + 1 sigma` rather than a quantile — the first
+  version contoured a Gaussian blob at 54 vertices. Nothing here shares a scale,
+  so a level outside the data is refused **with the range**, which is the part
+  that lets you pick the next one. Documented with a screenshot in
+  [guide 44](../docs/guides/44_molecular_viewer.md); PRD-57 records what landed
+  and what has not (volume rendering, the histogram panel with draggable
+  markers, `map_new`, CLSM construction).
+
 * **chimol cartoon: another 9.5 ms -> 7.5 ms, so 234 -> 7.5 overall.** Four more
   per-residue Python loops removed once the profile had flattened: the
   secondary-structure segmentation (a Python call per residue plus a scan, now

@@ -184,6 +184,24 @@ def _frame_blend(position, n_frames: int) -> tuple[int, float, int]:
     return index, blend, index + 1
 
 
+def _triangle_edges(faces: np.ndarray) -> np.ndarray:
+    """Unique undirected edges of a triangle list, as ``(M, 2)`` indices.
+
+    Every interior edge is shared by two triangles, so drawing all three edges of
+    each would send twice the lines needed -- on a contour with tens of thousands
+    of triangles that is worth removing rather than leaving to the GPU.
+    """
+    faces = np.asarray(faces, dtype=np.int64).reshape(-1, 3)
+    if faces.size == 0:
+        return np.zeros((0, 2), dtype=np.int32)
+    edges = np.concatenate(
+        [faces[:, [0, 1]], faces[:, [1, 2]], faces[:, [2, 0]]], axis=0
+    )
+    edges = np.sort(edges, axis=1)
+    edges = np.unique(edges, axis=0)
+    return edges.astype(np.int32)
+
+
 class MolView(QtWidgets.QWidget):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -230,6 +248,8 @@ class MolView(QtWidgets.QWidget):
     _representation_mode = _StateField("representation_mode")
     _trace_ups = _StateField("trace_ups")
     _backbone_map = _StateField("backbone_map")
+    _volume = _StateField("volume")
+    _volume_levels = _StateField("volume_levels")
     _show_cartoon = _StateField("show_cartoon")
     _show_trace = _StateField("show_trace")
     _show_atoms = _StateField("show_atoms")
@@ -3964,15 +3984,25 @@ class MolView(QtWidgets.QWidget):
             "5MC", "5HC", "OMC", "H2U", "PSU", "M2G", "1MA", "7MG",
             "D2A", "D2C", "D2G", "D2T", "R2A", "R2C", "R2G", "R2U",
         }
+        # Which residues are nucleic is a fact about the residue *names*, so it
+        # is the same in every frame of a trajectory -- but this walked all 570
+        # of them in Python, with a str/strip/upper each, on every redraw.
         is_nuc_residue = np.zeros(n_points, dtype=bool)
         if self._residue_names is not None and len(self._residue_names) == n_points:
-            for i, rname in enumerate(self._residue_names):
-                try:
-                    rname_str = str(rname).strip().upper()
-                except Exception:
-                    rname_str = ""
-                if rname_str in nucleic_names:
-                    is_nuc_residue[i] = True
+            try:
+                names = np.asarray(self._residue_names)
+                upper = np.char.upper(np.char.strip(names.astype(str)))
+                is_nuc_residue = np.isin(upper, tuple(nucleic_names))
+            except Exception:
+                # A name array NumPy cannot coerce; fall back per residue rather
+                # than treating everything as protein.
+                for i, rname in enumerate(self._residue_names):
+                    try:
+                        rname_str = str(rname).strip().upper()
+                    except Exception:
+                        rname_str = ""
+                    if rname_str in nucleic_names:
+                        is_nuc_residue[i] = True
 
         non_nuc_mask = ~is_nuc_residue
 
@@ -6587,8 +6617,15 @@ class MolView(QtWidgets.QWidget):
             entry
             for entry in self._objects.values()
             if entry.visible
-            and entry.state.coords is not None
-            and getattr(entry.state.coords, "size", 0) > 0
+            and (
+                (
+                    entry.state.coords is not None
+                    and getattr(entry.state.coords, "size", 0) > 0
+                )
+                # A voxel map has no coordinates at all. Testing only for those
+                # would drop it from the scene without a word.
+                or getattr(entry.state, "volume", None) is not None
+            )
         ]
 
         if not visible_entries:
@@ -6639,8 +6676,15 @@ class MolView(QtWidgets.QWidget):
             pass
 
     def _build_scene_for_current_object(self, object_prefix: str | None = None) -> list[SceneObject]:
+        volume_objects = self._update_volume(object_prefix)
         if self._coords is None or self._coords.size == 0:
-            return []
+            # A map on its own is a complete object; it does not need atoms.
+            # Its ids still have to be qualified -- the prefix loop below is not
+            # reached on this path, and two maps would both be "volume_0".
+            if object_prefix:
+                for obj in volume_objects:
+                    obj.id = f"{object_prefix}:{obj.id}"
+            return volume_objects
 
         coords = np.asarray(self._coords, dtype=float)
         if coords.ndim == 3:
@@ -6751,12 +6795,173 @@ class MolView(QtWidgets.QWidget):
         scene_objects += self._update_measurements() or []
         scene_objects += self._update_restraints(self._get_active_state()) or []
         scene_objects += self._update_selection_highlight(coords) or []
+        scene_objects += volume_objects
 
         if object_prefix:
             for obj in scene_objects:
                 obj.id = f"{object_prefix}:{obj.id}"
 
         return scene_objects
+
+    def add_volume(self, grid, *, name: str | None = None,
+                   levels=None, object_id: str | None = None) -> str:
+        """Put a voxel map into the scene as an object of its own.
+
+        Parameters
+        ----------
+        grid : chimol.volume.VolumeGrid
+            The map. It carries its own placement, so nothing here has to know
+            whether it came from a file, from atoms, or from an array a plugin
+            handed over.
+        name : str, optional
+            Object name; the grid's own name by default.
+        levels : list of dict, optional
+            Contours to draw. One derived from the data when omitted, because an
+            accessible volume, a cryo-EM map and a photon-count stack share no
+            scale and a fixed number would land off at least two of them.
+        object_id : str, optional
+            Reuse an existing object instead of creating one.
+
+        Returns
+        -------
+        str
+            The object id.
+        """
+        display_name = name or getattr(grid, "name", "map")
+        if object_id is None:
+            entry = self._create_object(name=display_name)
+            object_id = entry.object_id
+        self.set_active_object(object_id)
+
+        state = self._get_active_state()
+        state.volume = grid
+        state.volume_levels = list(levels) if levels else []
+
+        # Scene coordinates are `(world - raw_center) * scale`, per object. A map
+        # that centred on *itself* would therefore be drawn at the middle of the
+        # scene whatever its true position -- which is how the first version of
+        # this put a density that wraps a structure inside it as a small blob.
+        # Adopt an existing object's frame so the two land together; only define
+        # the frame when this map is the first thing in the scene.
+        low, high = grid.extent()
+        centre_world = (np.asarray(low, dtype=float) + np.asarray(high, dtype=float)) * 0.5
+        shared_centre = None
+        for other_id, other in self._objects.items():
+            if other_id == object_id:
+                continue
+            other_centre = getattr(other.state, "raw_center", None)
+            if other_centre is not None:
+                shared_centre = np.asarray(other_centre, dtype=float).reshape(3)
+                break
+        state.raw_center = centre_world if shared_centre is None else shared_centre
+
+        scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        state.center = (centre_world - state.raw_center) * scale
+        radius = float(np.linalg.norm(np.asarray(high, dtype=float) - centre_world))
+        state.radius = max(radius * scale, 1e-3)
+
+        self._update_view()
+        return object_id
+
+    def set_volume_levels(self, levels, object_id: str | None = None) -> bool:
+        """Replace the contours drawn on this object's map.
+
+        Returns ``False`` when the object has no map, rather than quietly doing
+        nothing -- a level set on the wrong object is otherwise invisible.
+        """
+        with self._activate_object(object_id):
+            state = self._get_active_state()
+            if getattr(state, "volume", None) is None:
+                return False
+            state.volume_levels = list(levels)
+            self._update_view(fit_camera=False)
+            return True
+
+    def get_volume_levels(self, object_id: str | None = None) -> list:
+        """The contours drawn on this object's map; empty when it has none."""
+        with self._activate_object(object_id):
+            return list(getattr(self._get_active_state(), "volume_levels", []) or [])
+
+    def get_volume(self, object_id: str | None = None):
+        """This object's voxel map, or ``None`` when it is not a map."""
+        with self._activate_object(object_id):
+            return getattr(self._get_active_state(), "volume", None)
+
+    def _update_volume(self, object_prefix: str | None = None) -> list[SceneObject]:
+        """Contour this object's voxel map, if it has one.
+
+        One scene object per level, so a dense core can be drawn inside a diffuse
+        shell in different colours -- which is how an accessible volume or an
+        occupancy density is actually read.
+        """
+        grid = getattr(self._get_active_state(), "volume", None) \
+            if self._objects else None
+        if grid is None:
+            return []
+        levels = list(getattr(self._get_active_state(), "volume_levels", []) or [])
+        if not levels:
+            levels = [{"level": grid.default_level(), "color": (0.5, 0.7, 1.0, 1.0),
+                       "style": "surface"}]
+
+        objects: list[SceneObject] = []
+        for index, entry in enumerate(levels):
+            try:
+                level = float(entry.get("level"))
+            except (TypeError, ValueError):
+                continue
+            try:
+                surface = grid.isosurface(level)
+            except Exception:
+                logger.warning(
+                    "chimol: could not contour %s at %g", grid.name, level,
+                    exc_info=True,
+                )
+                continue
+            if surface is None:
+                # The level sits outside the data; that is an answer, not a
+                # failure, and drawing nothing is the honest result.
+                continue
+            verts, faces, normals = surface
+            # Into the same scene frame the structure is drawn in. A uniform
+            # scale and a translation leave the normals alone.
+            verts = self._transform_world_coords_to_scene(
+                np.asarray(verts, dtype=float)
+            ).astype(np.float32)
+            color = np.asarray(entry.get("color", (0.5, 0.7, 1.0, 1.0)), dtype=float)
+            if color.size < 4:
+                color = np.concatenate([color.reshape(-1), np.ones(4)])[:4]
+            colors = np.tile(color.astype(np.float32), (verts.shape[0], 1))
+            style = str(entry.get("style", "surface")).lower()
+            if style == "mesh":
+                # A real wireframe, drawn as lines. Setting a "wireframe" flag on
+                # a triangle mesh looked right and drew a solid surface, because
+                # nothing downstream reads such a flag -- the contour has to
+                # become line geometry to be one.
+                geometry = Geometry(
+                    kind="line",
+                    positions=verts,
+                    indices=_triangle_edges(faces),
+                    normals=normals,
+                    colors=colors,
+                    meta={"mode": "lines", "width": 1.0, "map_level": level},
+                )
+            else:
+                geometry = Geometry(
+                    kind="mesh",
+                    positions=verts,
+                    indices=faces,
+                    normals=normals,
+                    colors=colors,
+                    meta={"map_level": level},
+                )
+            objects.append(
+                SceneObject(
+                    id=f"volume_{index}",
+                    geometry=geometry,
+                    render_mode="transparent" if color[3] < 1.0 else "opaque",
+                )
+            )
+        return objects
 
     def _fit_camera_to_radius(self, radius: float) -> None:
         if self._renderer is None:

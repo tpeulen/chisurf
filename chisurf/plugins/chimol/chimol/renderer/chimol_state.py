@@ -76,6 +76,14 @@ class _MolViewObjectState:
     backbone_map: Optional[np.ndarray] = None
     #: Frame position actually shown, which may sit between two stored frames.
     frame_position: float = 0.0
+    #: A voxel map, when this object is one -- see :mod:`chimol.volume`. A map
+    #: object has no ``coords``, so every path that assumes coordinates has to
+    #: ask about this too rather than skipping the object silently.
+    volume: Optional[object] = None
+    #: Contours to draw on ``volume``: ``[{"level": float, "color": (r,g,b,a),
+    #: "style": "surface"|"mesh"}]``. A list because reading a density means
+    #: seeing more than one level at once -- a dense core inside a diffuse shell.
+    volume_levels: list = field(default_factory=list)
     representation_mode: str = "cartoon"
     trace_ups: Optional[np.ndarray] = None
     show_cartoon: bool = True
