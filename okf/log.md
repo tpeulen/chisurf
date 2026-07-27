@@ -2,6 +2,31 @@
 
 ## 2026-07-27
 
+* **chimol reads mmCIF with `ihm`, and a bead model finally opens.** There was no
+  mmCIF reader at all — `.cif` was fed to the fixed-column PDB parser, so **every**
+  CIF load failed, `fetch_ihm` included. A hand-rolled loop parser was written
+  first and then deleted on instruction, correctly: `ihm` is the format authors'
+  own library, is what IMP uses, and reads one NPC spoke in **0.43 s** where the
+  hand-rolled one took **34 s**. Both shapes are handled — `_atom_site` atoms and
+  `_ihm_sphere_obj_site` **beads**, which is how an integrative model carries its
+  coordinates and why an atom-only reader reports "no coordinates" for a file
+  full of them.
+
+  Benchmarking then answered the question that mattered: **`ihm` was never the
+  slow part**. Of a 33-second spoke load, **24 s was baked ambient occlusion** —
+  1608 calls, one per chain segment, on a model made of thousands of short bead
+  chains. A vertex budget now skips the bake past 400k shaded vertices and says
+  so once, bounded by a setting rather than by the file, exactly as the map voxel
+  budget is. One spoke: **35 s → 8.7 s**.
+
+  The eight-spoke NPC (234k beads) still takes 430 s and is **not** fixed; the
+  remaining cost is a cartoon splined through beads that have no backbone to
+  trace. Switching them to the sphere representation is the right answer and is
+  what `set_rmf_data` already does, but it made that entry die *silently*, so it
+  is reverted with a comment at the site. Recorded with the measurements and the
+  plan — cull the interior, representation LOD, dynamic LOD, depth cue — in
+  [known-issues](../okf/references/known-issues.md).
+
 * **Step 5 of the burst workflow was a blank page, and the fit it hides ran
   fine (RF-468).** The MLE wizard replaces its `QTabWidget` with an AutoForm
   dock area. A `QTabWidget` *explicitly* hides every page that is not current,

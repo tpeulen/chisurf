@@ -1,3 +1,44 @@
+## chimol: large integrative models are slow, and one fix killed them
+
+**2026-07-27.** The nuclear pore complex is the case that shows it.
+
+| Entry | Beads | Load |
+| --- | --- | --- |
+| `PDBDEV_00000010` (one spoke) | 29,273 | **8.7 s** |
+| `PDBDEV_00000012` (eight spokes) | 234,184 | **430 s** |
+
+Measured, so the cause is not in doubt:
+
+* **`ihm` is not the bottleneck** — it reads the 6 MB spoke in **0.43 s** and the
+  31.5 MB file downloads in 3.8 s.
+* The cost is **geometry built for beads nobody can see**. chimol splines a
+  *cartoon* through the beads: 234k beads become thousands of short chains, each
+  fully splined, framed and extruded. An integrative model has no backbone to
+  trace, so the ribbon is meaningless as well as expensive.
+* Baked ambient occlusion was 24 s of the spoke's original 33 (1608 calls, one
+  per segment). A vertex budget now skips it past 400k shaded vertices, which is
+  what took the spoke from 35 s to 8.7 s. That budget is in place and working.
+
+**The trap.** Switching beads to the sphere representation at load -- which is
+what `set_rmf_data` already does, and is the *correct* depiction -- made the
+eight-spoke entry **die silently** rather than merely be slow: no output, no
+traceback. It is reverted, with a comment at the site. Whatever kills it is
+between 29k and 234k beads in the sphere/glyph path, and it needs diagnosing
+before that fix can land. It is the right fix; it just is not safe yet.
+
+**The plan, cheapest first**, none of it written:
+
+1. **Cull the interior.** `_get_surface_atom_mask` already exists. A packed model
+   never shows most of its beads; culling before geometry is the biggest win.
+2. **Representation LOD.** Beads as sphere glyphs above a budget (see the trap).
+3. **Dynamic LOD.** The rate-based draft/settle mechanism from the trajectory
+   work generalises from scrubbing to camera motion and to load.
+4. **Depth cue / fog.** On the roadmap in the spec already; cheap in the fragment
+   shader, and it would hide the far side of a structure this size.
+
+Also unstarted: **IMP RMF support**, and the **EMDB / PDB-IHM demos** that
+prompted all of this.
+
 ---
 type: Reference
 title: Known issues & recurring gotchas

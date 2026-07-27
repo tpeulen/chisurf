@@ -3927,6 +3927,8 @@ class MolView(QtWidgets.QWidget):
             # Mid-scrub: this frame is about to be replaced. `_note_frame_change`
             # schedules the full-quality redraw for when it stops.
             return cols, None
+        if not self._occlusion_within_budget(cols):
+            return cols, None
         cfg = _DISPLAY_CONFIG.get("occlusion") or {}
         if not bool(cfg.get("enabled", True)):
             return cols, None
@@ -3974,6 +3976,37 @@ class MolView(QtWidgets.QWidget):
             occ = np.clip(occ + (1.0 - occ) * shadow, 0.0, 1.0)
 
         return np.clip(shaded, 0.0, 1.0), occ
+
+    #: Vertices that may be shaded per object before baking is dropped. Baking
+    #: is per *segment*, and cost grows with segments times occluders -- so on a
+    #: model built of thousands of short chains it stops being the finishing
+    #: touch and becomes the load time. Measured on one NPC spoke: 1608 segments,
+    #: 24 seconds of a 33-second load, for shading nobody can see at that scale.
+    _OCCLUSION_VERTEX_BUDGET = 400_000
+
+    def _occlusion_within_budget(self, cols) -> bool:
+        """Whether this object is small enough to be worth shading.
+
+        Bounded by a setting rather than by the file, as the map voxel budget is.
+        Reported once per object, because silently dropping a visual is how a
+        renderer ends up with a look nobody can account for.
+        """
+        try:
+            per_segment = int(np.asarray(cols).shape[0])
+        except Exception:
+            return True
+        total = int(getattr(self, "_occlusion_vertices_this_build", 0)) + per_segment
+        self._occlusion_vertices_this_build = total
+        if total <= self._OCCLUSION_VERTEX_BUDGET:
+            return True
+        if not getattr(self, "_occlusion_budget_reported", False):
+            self._occlusion_budget_reported = True
+            logger.info(
+                "chimol: past %d shaded vertices; drawing without baked "
+                "occlusion. It costs more than it shows on a model this large.",
+                self._OCCLUSION_VERTEX_BUDGET,
+            )
+        return False
 
     def _directional_shadow(
         self,
@@ -6658,6 +6691,7 @@ class MolView(QtWidgets.QWidget):
         if self._renderer is None:
             return
 
+        self._occlusion_vertices_this_build = 0
         visible_entries = [
             entry
             for entry in self._objects.values()

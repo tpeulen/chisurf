@@ -1787,6 +1787,28 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 chain_ids=backbone.chain_ids if backbone is not None else None,
                 atoms=backbone.atoms if backbone is not None else None,
             )
+            # An integrative model is made of beads of differing size, and the
+            # sizes are the shape of the thing. Drawn at one default radius the
+            # picture is wrong in a way that still looks like a picture.
+            beads = getattr(backbone, "bead_radii", None) if backbone else None
+            if beads is not None:
+                try:
+                    with self.viewer._activate_object(object_id):
+                        state = self.viewer._get_active_state()
+                        state.bead_radii = np.asarray(beads, dtype=float)
+                        # Beads are drawn as beads. Splining a cartoon ribbon
+                        # through them is not only meaningless -- an integrative
+                        # model has no backbone to trace -- it is what made the
+                        # eight-spoke NPC take seven minutes: 234k beads become
+                        # thousands of short chains, each fully splined,
+                        # framed and extruded. Same rule the RMF path uses.
+                        # NOTE: switching to the sphere representation here --
+                        # which is what the RMF path does, and is the right
+                        # depiction for beads -- made the 234k-bead NPC die
+                        # silently instead of merely being slow. Left as-is
+                        # until that is diagnosed; see known-issues.md.
+                except Exception:
+                    logger.debug("could not attach bead radii", exc_info=True)
             n_atoms = 0 if coords_arr is None else coords_arr.shape[0]
         else:
             # No usable static structure/coords; try specialised trajectory

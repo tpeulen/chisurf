@@ -93,6 +93,133 @@ _ATOM_DTYPE = np.dtype([
 ])
 
 
+def _parse_mmcif_backbone(path: str) -> PdbBackbone:
+    """Read an mmCIF file with the format's own reference library.
+
+    Handled by ``ihm``, which is written by the people who define the IHM
+    dictionary and is what IMP itself uses. That matters more here than it might
+    elsewhere: an integrative entry carries its coordinates as **beads** in
+    ``_ihm_sphere_obj_site`` rather than atoms, alongside a large and evolving
+    set of categories describing how the model was made. A hand-rolled loop
+    parser was tried first and was a bad trade -- it read one NPC spoke in 34
+    seconds where this takes 0.2, and it silently ignored everything it had not
+    been taught.
+
+    Both shapes are read:
+
+    ``atoms``
+        Ordinary atomic models, as any PDB mmCIF entry has.
+    ``spheres``
+        The beads of an integrative model, each standing for a residue range and
+        carrying its own radius. The nuclear pore complex is published this way
+        -- tens of thousands of spheres and not one atom.
+    """
+    import ihm.reader
+
+    with open(path, encoding="utf-8", errors="ignore") as handle:
+        systems = ihm.reader.read(handle)
+    if not systems:
+        raise ValueError(f"No structure found in {path!r}")
+    system = systems[0]
+
+    models = [
+        model
+        for state_group in system.state_groups
+        for state in state_group
+        for model_group in state
+        for model in model_group
+    ]
+    if not models:
+        models = [
+            model for group in getattr(system, "orphan_model_groups", []) or []
+            for model in group
+        ]
+    if not models:
+        raise ValueError(f"No coordinates found in {path!r}")
+
+    # One model, not all of them: an entry commonly deposits an ensemble, and
+    # stacking every member would draw them on top of each other.
+    model = models[0]
+
+    coords: list[tuple[float, float, float]] = []
+    atom_rows: list[tuple] = []
+    radii: list[float] = []
+    trace: list[tuple[float, float, float]] = []
+    res_ids: list[int] = []
+    res_names: list[str] = []
+    chain_ids: list[str] = []
+    seen: set[tuple[str, int]] = set()
+
+    for atom in model._atoms:
+        xyz = (float(atom.x), float(atom.y), float(atom.z))
+        chain = str(getattr(atom.asym_unit, "id", "") or "")
+        try:
+            res_id = int(atom.seq_id)
+        except (TypeError, ValueError):
+            res_id = -1
+        res_name = ""
+        try:
+            comp = atom.asym_unit.sequence[atom.seq_id - 1]
+            res_name = str(getattr(comp, "id", "") or "")
+        except Exception:
+            pass
+        element = str(atom.type_symbol or atom.atom_id[:1] or "C").upper()
+        coords.append(xyz)
+        radii.append(0.0)
+        atom_rows.append(
+            (str(atom.atom_id), res_name, chain, res_id, element, xyz)
+        )
+        if atom.atom_id != "CA" or getattr(atom, "het", False) or res_id < 0:
+            continue
+        if (chain, res_id) in seen:
+            continue
+        seen.add((chain, res_id))
+        trace.append(xyz)
+        res_ids.append(res_id)
+        res_names.append(res_name)
+        chain_ids.append(chain)
+
+    for sphere in model._spheres:
+        xyz = (float(sphere.x), float(sphere.y), float(sphere.z))
+        chain = str(getattr(sphere.asym_unit, "id", "") or "")
+        try:
+            res_id = int(sphere.seq_id_range[0])
+        except (TypeError, ValueError, IndexError):
+            res_id = len(coords) + 1
+        try:
+            radius = float(sphere.radius)
+        except (TypeError, ValueError):
+            radius = 2.0
+        coords.append(xyz)
+        radii.append(radius)
+        # A bead is not an atom, but every per-atom path downstream wants a row.
+        # Named CA so the trace and cartoon follow the chain of beads.
+        atom_rows.append(("CA", "BEA", chain, res_id, "C", xyz))
+        if (chain, res_id) in seen:
+            continue
+        seen.add((chain, res_id))
+        trace.append(xyz)
+        res_ids.append(res_id)
+        res_names.append("BEA")
+        chain_ids.append(chain)
+
+    if not coords:
+        raise ValueError(f"No coordinates found in {path!r}")
+
+    has_trace = len(trace) >= 2
+    backbone = PdbBackbone(
+        coords=np.asarray(coords, dtype=float),
+        trace_coords=np.asarray(trace, dtype=float) if has_trace else None,
+        res_ids=np.asarray(res_ids, dtype=int) if has_trace else None,
+        res_names=np.asarray(res_names, dtype=object) if has_trace else None,
+        chain_ids=np.asarray(chain_ids, dtype=object) if has_trace else None,
+        atoms=np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None,
+    )
+    if any(value > 0.0 for value in radii):
+        backbone.bead_radii = np.asarray(radii, dtype=float)
+    return backbone
+
+
 def _parse_pdb_backbone(path: str) -> PdbBackbone:
     """Parse coordinates and the CA backbone out of a PDB file.
 
@@ -432,6 +559,12 @@ def load_structure_payload(
         ``(None, PdbBackbone)``.
     """
     structure = None
+    # An IHM mmCIF goes straight to `ihm`. The core reader has no idea what a
+    # bead model is: on one NPC spoke it ground for 34 seconds and then failed,
+    # and the fallback did the work anyway. Trying it first costs that every
+    # time for nothing.
+    if str(path).lower().endswith((".cif", ".mmcif", ".bcif")):
+        structure_factory = None
     if structure_factory is None:
         logger.warning(
             "No structure factory available for %s; falling back to the "
@@ -468,7 +601,13 @@ def load_structure_payload(
     if structure is not None:
         return structure, None
 
-    backbone = _parse_pdb_backbone(str(path))
+    # mmCIF needs its own reader: fed to the fixed-column PDB parser it yields
+    # nothing at all, which is what every `.cif` load did before -- including
+    # every `fetch_ihm`, whose files are mmCIF by definition.
+    if str(path).lower().endswith((".cif", ".mmcif", ".bcif")):
+        backbone = _parse_mmcif_backbone(str(path))
+    else:
+        backbone = _parse_pdb_backbone(str(path))
     coords = backbone.coords
     if coords.ndim != 2 or coords.shape[1] != 3 or coords.shape[0] == 0:
         raise ValueError(f"No valid coordinates in {path}")
