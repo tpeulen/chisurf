@@ -15,8 +15,9 @@ import pathlib
 
 import pytest
 
+from chisurf.core.cli import _discover_plugin_metadata
 from chisurf.core.cli import _read_plugin_metadata as _read_cli_metadata
-from chisurf.plugins import _read_plugin_metadata
+from chisurf.plugins import _read_manifest_metadata, _read_plugin_metadata
 
 #: A plugin declaring a non-UTF-8 source encoding, exactly as PEP 263 allows and
 #: as the interpreter would import it.
@@ -124,3 +125,84 @@ def test_cli_reader_returns_three_values_for_broken_sources(plugin_init, tmp_pat
     """Both failure modes of the ``csc`` scanner keep the tuple shape."""
     assert _read_cli_metadata(tmp_path / "absent" / "__init__.py") == (None, None, None)
     assert _read_cli_metadata(plugin_init(b"def (\n")) == (None, None, None)
+
+
+# --- The display name comes from the manifest, in ``csc`` as in the GUI --------
+#
+# ``manifest.json`` is the plugin contract; the module-level ``name`` literal is
+# the older convention. GUI discovery has always read the manifest first, while
+# ``csc`` preferred the literal, so a plugin whose manifest renamed it kept its
+# stale name on the command line.
+
+#: A user plugin whose manifest disagrees with its ``__init__.py`` literal.
+RENAMED_PLUGIN_INIT = (
+    b'"""A renamed tool."""\n'
+    b'name = "Tools:Old Name"\n'
+    b'cli_entrypoint = "renamed=chisurf.plugins.renamed.cli:main"\n'
+)
+
+RENAMED_PLUGIN_MANIFEST = (
+    '{"id": "renamed", "display_name": "Tools:New Name", "version": "1.0.0",'
+    ' "entrypoints": {"cli": "renamed=chisurf.plugins.renamed.cli:main"}}'
+)
+
+
+@pytest.fixture
+def user_plugin(tmp_path: pathlib.Path, monkeypatch):
+    """Return a factory writing a plugin into a throw-away user plugin directory.
+
+    :func:`_discover_plugin_metadata` scans ``~/.chisurf/plugins`` alongside the
+    built-in tree, so pointing ``Path.home()`` at ``tmp_path`` gives the scan a
+    plugin whose manifest and literal we control.
+    """
+    monkeypatch.setattr(pathlib.Path, "home", classmethod(lambda cls: tmp_path))
+
+    def _write(name: str, source: bytes, manifest: str | None = None) -> pathlib.Path:
+        plugin_dir = tmp_path / ".chisurf" / "plugins" / name
+        plugin_dir.mkdir(parents=True)
+        (plugin_dir / "__init__.py").write_bytes(source)
+        if manifest is not None:
+            (plugin_dir / "manifest.json").write_text(manifest, encoding="utf-8")
+        return plugin_dir
+
+    return _write
+
+
+def _discovered_user_plugins() -> dict[str, dict]:
+    """Return the discovered user-plugin metadata keyed by module name."""
+    return {
+        str(entry["module_name"]): entry
+        for entry in _discover_plugin_metadata()
+        if entry["source"] == "user"
+    }
+
+
+def test_cli_display_name_comes_from_the_manifest(user_plugin):
+    """A manifest ``display_name`` wins over a stale ``__init__.py`` literal."""
+    user_plugin("renamed", RENAMED_PLUGIN_INIT, RENAMED_PLUGIN_MANIFEST)
+    assert _discovered_user_plugins()["renamed"]["plugin_name"] == "Tools:New Name"
+
+
+def test_cli_display_name_falls_back_to_the_literal_without_a_manifest(user_plugin):
+    """A plugin shipping no manifest keeps the older AST-scanned convention."""
+    user_plugin("legacy", RENAMED_PLUGIN_INIT)
+    assert _discovered_user_plugins()["legacy"]["plugin_name"] == "Tools:Old Name"
+
+
+def test_cli_and_gui_agree_on_every_built_in_display_name():
+    """``csc`` and the menu must never label the same plugin differently.
+
+    Eleven shipped plugins declare a ``name`` literal their manifest has since
+    renamed (``Tools:mmfdb-admin`` vs ``Tools:MMFDB Admin``, ``Main:Tools:ndXplorer``
+    vs ``Main:Tools:ndX``, …). Both readers now resolve to the manifest.
+    """
+    mismatches = []
+    for entry in _discover_plugin_metadata():
+        if entry["source"] != "built-in":
+            continue
+        gui = _read_manifest_metadata(pathlib.Path(str(entry["package_dir"])))
+        if gui is None:
+            continue
+        if gui["plugin_name"] != entry["plugin_name"]:
+            mismatches.append((entry["module_path"], entry["plugin_name"], gui["plugin_name"]))
+    assert not mismatches

@@ -2,6 +2,26 @@
 
 ## 2026-07-27
 
+* **`csc` and the menu could call the same plugin two different names
+  (RF-467).** `manifest.json` is the plugin contract, and GUI discovery has
+  always read the display name from it; the `csc` scanner did the opposite —
+  `plugin_name = plugin_name or display_name` put the legacy `__init__.py`
+  literal first, in the very function whose docstring states the manifest wins.
+  The literal is usually the `else` branch of a `if _manifest is not None: …`
+  pair, i.e. the fallback rather than the value the module has at runtime, so it
+  goes stale silently: measured over the shipped tree, **11 of 104** plugins
+  disagree with their own manifest (`Main:Tools:ndXplorer` vs `Main:Tools:ndX`,
+  `Tools:mmfdb-admin` vs `Tools:MMFDB Admin`, `TTTR:LUT Tools` vs
+  `Tools:TTTR:LUT Tools` — a category the GUI menu does not even have). Reversed
+  the `or`, so the literal now only fills in for a plugin that ships no manifest.
+  No warning was added on disagreement: unlike two conflicting *entry points*,
+  which change what runs, a renamed plugin is the manifest working as intended,
+  and 11 warnings on every `csc` invocation would be noise at a user. Pinned by
+  three tests in `test/core/test_plugin_metadata_reader.py` — a synthetic user
+  plugin covers both directions of the precedence, and a real-tree cross-check
+  asserts `csc` and `chisurf.plugins._read_manifest_metadata` agree on the
+  display name of every built-in plugin; both fail against the previous order.
+
 * **tttrlib carried its own HDF5 into the process, and Photon-HDF5 writes
   aborted the interpreter (tttrlib c2334218).** Found while re-running the burst
   suite: `burst_h2mm`'s example test killed the whole pytest run with SIGABRT

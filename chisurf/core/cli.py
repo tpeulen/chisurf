@@ -168,10 +168,11 @@ def _read_plugin_metadata(init_py: pathlib.Path) -> Tuple[Optional[str], Optiona
 def _read_manifest_cli(plugin_dir: pathlib.Path) -> tuple[str | None, str | None, str | None]:
     """Return ``(cli_entrypoint, plugin_id, display_name)`` from a plugin manifest.
 
-    ``manifest.json`` is the plugin contract, so its ``entrypoints.cli`` is the
-    authoritative CLI declaration; the module-level ``cli_entrypoint`` assignment
-    is the older, AST-scanned convention kept as a fallback. Reading the manifest
-    is a plain filesystem read — no plugin package is imported.
+    ``manifest.json`` is the plugin contract, so its ``entrypoints.cli`` and
+    ``display_name`` are the authoritative declarations; the module-level
+    ``cli_entrypoint`` and ``name`` assignments are the older, AST-scanned
+    convention kept as a fallback for plugins that ship no manifest. Reading the
+    manifest is a plain filesystem read — no plugin package is imported.
     """
     manifest_path = plugin_dir / "manifest.json"
     if not manifest_path.exists():
@@ -264,7 +265,12 @@ def _discover_plugin_metadata() -> Iterable[Dict[str, object]]:
                         cli_entrypoint,
                     )
                 cli_entrypoint = manifest_cli
-            plugin_name = plugin_name or display_name
+            # The manifest is the contract for the display name too, exactly as it
+            # is for the entry point above and as GUI discovery already reads it
+            # (``chisurf.plugins._read_manifest_metadata``). The module-level
+            # ``name`` literal is the older convention and only fills in for a
+            # plugin that ships no manifest.
+            plugin_name = display_name or plugin_name
 
             # For CLI purposes we only care about packages that either
             # advertise a human-readable plugin name or explicitly opt into
