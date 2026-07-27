@@ -14,7 +14,6 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 
 class IrfNormalizationWidget(QtWidgets.QWidget):
@@ -68,10 +67,10 @@ class IrfNormalizationWidget(QtWidgets.QWidget):
         try:
             ok = self._model.load_data()
         except Exception as exc:
-            dialogs.warning(self, "Load failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Load failed", str(exc))
             return
         if not ok:
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self, "Load failed", "Could not load data — check the file paths and setup."
             )
             return

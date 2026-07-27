@@ -12,7 +12,6 @@ from mmfdb.models import (
     SampleDefinition,
 )
 from mmfdb.samples.sample_manager import create_sample, list_samples
-from chisurf.gui import dialogs
 
 
 class SamplePicker(QtWidgets.QWidget):
@@ -215,7 +214,7 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
     def _on_fetch_uniprot(self) -> None:
         accession = self.uniprot_edit.text().strip()
         if not accession:
-            dialogs.information(self, "Fetch", "Enter a UniProt accession first.")
+            QtWidgets.QMessageBox.information(self, "Fetch", "Enter a UniProt accession first.")
             return
         cache_dir = None
         if self._db is not None:
@@ -223,7 +222,7 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
             cache_dir = pathlib.Path(self._db.db_path).parent / "uniprot_cache"
         result = fetch_uniprot(accession, cache_dir=cache_dir)
         if result is None:
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self, "Fetch failed",
                 f"Could not fetch UniProt entry {accession}. "
                 "Check the accession and network connectivity.",
@@ -240,23 +239,23 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         construct = self.entity_sequence_edit.text().strip()
         reference = self.ref_sequence_edit.text().strip()
         if not construct:
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self, "Diff", "Enter an entity sequence first."
             )
             return
         if not reference:
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self, "Diff", "Enter a reference sequence first (or click Fetch)."
             )
             return
         try:
             mutations = diff_sequences(construct, reference)
         except ValueError as exc:
-            dialogs.warning(self, "Diff failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Diff failed", str(exc))
             return
 
         if not mutations:
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self, "Diff", "No differences found — construct matches reference."
             )
             return
@@ -264,7 +263,7 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
         self._populate_mutation_table(mutations)
 
         count = len(mutations)
-        dialogs.information(
+        QtWidgets.QMessageBox.information(
             self, "Diff complete",
             f"Found {count} mutation{'s' if count != 1 else ''}. "
             "Review the mutations table and edit if needed.",
@@ -326,7 +325,7 @@ class _SampleDefinitionDialog(QtWidgets.QDialog):
     def accept(self) -> None:
         name = self.name_edit.text().strip()
         if not name:
-            dialogs.warning(self, "Missing name", "Sample name is required.")
+            QtWidgets.QMessageBox.warning(self, "Missing name", "Sample name is required.")
             return
 
         entity = EntityDefinition(

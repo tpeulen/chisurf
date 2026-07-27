@@ -173,10 +173,7 @@ def test_processed_irf_is_cached_but_invalidates_on_in_place_edit():
     # repeated reads are served from the cache and must be identical
     np.testing.assert_array_equal(np.asarray(m.convolve.irf.y), before)
 
-    # an in-place write is exactly what the cache has to notice, so take the
-    # curve's explicit escape hatch rather than replacing the array
-    with m.convolve._irf.unlocked('y'):
-        m.convolve._irf.y[:] = np.roll(m.convolve._irf.y, 7)  # sum-preserving
+    m.convolve._irf.y[:] = np.roll(m.convolve._irf.y, 7)  # sum-preserving
     after = np.asarray(m.convolve.irf.y)
     assert not np.array_equal(before, after), "stale IRF served after in-place roll"
 

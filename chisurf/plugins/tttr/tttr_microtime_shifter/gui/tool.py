@@ -17,7 +17,6 @@ from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinB
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
 from .client import MicrotimeShifterClient
-from chisurf.gui import dialogs
 
 #: TTTR file extensions the shifter accepts (used by the unified file list).
 _TTTR_EXTENSIONS = [".spc", ".ht3", ".ptu", ".hdf", ".h5"]
@@ -381,7 +380,7 @@ class MicrotimeShifterTool(ChisurfDockTool):
             self.save_action.setEnabled(True)
             self.statusBar().showMessage(f"Loaded: {self._current_path}")
         except Exception as exc:
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 self, i18n.tr("Error"), f"{i18n.tr('Cannot load file:')}\n{exc}"
             )
 
@@ -687,24 +686,23 @@ class MicrotimeShifterTool(ChisurfDockTool):
 
         mode = "file"
         if has_mmfdb:
-            answer = dialogs.choice(
-                self,
-                i18n.tr("Save Shifted Files"),
-                i18n.tr("An active MMFDB database connection was found."),
-                {
-                    "db": i18n.tr("Register in DB"),
-                    "file": i18n.tr("Save to File/Folder..."),
-                    "cancel": i18n.tr("Cancel"),
-                },
-                default="file",
-                informative=i18n.tr(
-                    "Would you like to register the shifted files in the database, "
-                    "or save them to a local file/folder?"
-                ),
-            )
-            if not answer or answer.key == "cancel":
+            msg_box = QtWidgets.QMessageBox(self)
+            msg_box.setWindowTitle(i18n.tr("Save Shifted Files"))
+            msg_box.setText(i18n.tr("An active MMFDB database connection was found."))
+            msg_box.setInformativeText(i18n.tr("Would you like to register the shifted files in the database, or save them to a local file/folder?"))
+
+            btn_register = msg_box.addButton(i18n.tr("Register in DB"), QtWidgets.QMessageBox.ButtonRole.AcceptRole)
+            btn_save = msg_box.addButton(i18n.tr("Save to File/Folder..."), QtWidgets.QMessageBox.ButtonRole.ApplyRole)
+            btn_cancel = msg_box.addButton(i18n.tr("Cancel"), QtWidgets.QMessageBox.ButtonRole.RejectRole)
+            
+            msg_box.exec_()
+            clicked = msg_box.clickedButton()
+            if clicked == btn_cancel:
                 return
-            mode = answer.key
+            elif clicked == btn_register:
+                mode = "db"
+            else:
+                mode = "file"
 
         if mode == "db":
             from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
@@ -728,12 +726,12 @@ class MicrotimeShifterTool(ChisurfDockTool):
                 )
                 warnings = result.get("warnings", [])
                 warn_str = "\nWarnings:\n" + "\n".join(warnings) if warnings else ""
-                dialogs.information(
+                QtWidgets.QMessageBox.information(
                     self, i18n.tr("Success"), f"Successfully registered {len(paths_to_shift)} file(s) in MMFDB.{warn_str}"
                 )
                 self.statusBar().showMessage(f"Registered in MMFDB: {len(paths_to_shift)} file(s)")
             except Exception as exc:
-                dialogs.error(
+                QtWidgets.QMessageBox.critical(
                     self, i18n.tr("Error"), f"Failed to register in MMFDB:\n{exc}"
                 )
 
@@ -767,11 +765,11 @@ class MicrotimeShifterTool(ChisurfDockTool):
                         except Exception:
                             saved_path = shifted_generated
                     self.statusBar().showMessage(f"Saved to: {saved_path}")
-                    dialogs.information(
+                    QtWidgets.QMessageBox.information(
                         self, i18n.tr("Saved"), f"Saved to:\n{saved_path}"
                     )
                 except Exception as exc:
-                    dialogs.error(
+                    QtWidgets.QMessageBox.critical(
                         self, i18n.tr("Error"), f"Cannot save:\n{exc}"
                     )
             else:
@@ -789,11 +787,11 @@ class MicrotimeShifterTool(ChisurfDockTool):
                         mmfdb={"enabled": False},
                     )
                     self.statusBar().showMessage(f"Saved {len(paths_to_shift)} file(s) to: {output_dir}")
-                    dialogs.information(
+                    QtWidgets.QMessageBox.information(
                         self, i18n.tr("Saved"), f"Saved {len(paths_to_shift)} file(s) to:\n{output_dir}"
                     )
                 except Exception as exc:
-                    dialogs.error(
+                    QtWidgets.QMessageBox.critical(
                         self, i18n.tr("Error"), f"Cannot save:\n{exc}"
                     )
 

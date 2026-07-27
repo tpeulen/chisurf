@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 from qtpy import QtWidgets, QtGui
-from chisurf.gui import dialogs
 
 if TYPE_CHECKING:  # pragma: no cover - import cycle guard
     from ..renderer.view import MolView
@@ -70,7 +69,7 @@ class MolViewConfigEditor(QtWidgets.QDialog):
         try:
             text = package_path.read_text(encoding="utf-8")
         except Exception as exc:  # pragma: no cover - UI feedback
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "Failed to read the defaults",
                 f"Could not read {package_path}:\n{exc}",
@@ -79,7 +78,7 @@ class MolViewConfigEditor(QtWidgets.QDialog):
 
         self._edit.setReadOnly(False)
         self._edit.setPlainText(text)
-        dialogs.information(
+        QtWidgets.QMessageBox.information(
             self,
             "Defaults loaded",
             "The shipped configuration is now in the editor.\n\n"
@@ -113,7 +112,7 @@ class MolViewConfigEditor(QtWidgets.QDialog):
             # Validate JSON before writing.
             json.loads(text)
         except Exception as e:  # pragma: no cover - UI feedback
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "Invalid JSON",
                 f"The configuration is not valid JSON:\n{e}",
@@ -124,7 +123,7 @@ class MolViewConfigEditor(QtWidgets.QDialog):
             with self._json_path.open("w", encoding="utf-8") as fh:
                 fh.write(text)
         except Exception as e:  # pragma: no cover - UI feedback
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "Failed to save configuration",
                 f"Could not write to {self._json_path}:\n{e}",

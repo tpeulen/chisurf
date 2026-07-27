@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from unittest import mock
 
 import pytest
-from chisurf.gui import dialogs
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("qtpy")
@@ -185,6 +184,7 @@ def test_project_browser_gui_deletes_selected_version_with_confirmation(
     tmp_path,
     monkeypatch,
 ):
+    from qtpy import QtWidgets
     from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
     from chisurf.plugins.core.project_browser.backend.services import (
         save_project_handler,
@@ -216,12 +216,12 @@ def test_project_browser_gui_deletes_selected_version_with_confirmation(
 
         with (
             mock.patch.object(
-                dialogs.ChiSurfMessageBox,
+                QtWidgets.QMessageBox,
                 "question",
-                return_value=dialogs.ChiSurfMessageBox.Yes,
+                return_value=QtWidgets.QMessageBox.Yes,
             ),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "information"),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "warning"),
+            mock.patch.object(QtWidgets.QMessageBox, "information"),
+            mock.patch.object(QtWidgets.QMessageBox, "warning"),
         ):
             widget._on_delete()
         qapp.processEvents()
@@ -277,7 +277,7 @@ def test_project_browser_gui_imports_archive_with_collision_remap(
                 "exec",
                 return_value=QtWidgets.QDialog.Accepted,
             ),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "information"),
+            mock.patch.object(QtWidgets.QMessageBox, "information"),
         ):
             widget._on_import()
         qapp.processEvents()
@@ -298,7 +298,7 @@ def test_project_browser_gui_restores_selected_version_into_chisurf_context(
     import chisurf as cs
     import chisurf.macros.core_fit as core_fit
     from mmfdb.security.credentials import _RUNTIME_SESSION_TOKENS
-    from qtpy import QtCore
+    from qtpy import QtCore, QtWidgets
     from chisurf.plugins.core.project_browser.backend.services import (
         save_project_handler,
     )
@@ -346,8 +346,8 @@ def test_project_browser_gui_restores_selected_version_into_chisurf_context(
         widget._tree.setCurrentItem(version_item)
 
         with (
-            mock.patch.object(dialogs.ChiSurfMessageBox, "information"),
-            mock.patch.object(dialogs.ChiSurfMessageBox, "warning"),
+            mock.patch.object(QtWidgets.QMessageBox, "information"),
+            mock.patch.object(QtWidgets.QMessageBox, "warning"),
         ):
             widget._on_open()
         qapp.processEvents()

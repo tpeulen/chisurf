@@ -12,7 +12,6 @@ import chisurf.core.fluorescence.fcs
 import chisurf.gui.decorators
 from chisurf.gui import QtGui, QtWidgets, QtCore, uic
 from .fcs_merger_ui import setup_ui as _setup_ui
-from chisurf.gui import dialogs
 
 colors = cs.core.settings.gui['plot']['colors']
 
@@ -269,12 +268,13 @@ class WizardFcsMerger(QtWidgets.QWizardPage):
             self.save_mean_correlation(filename=cor_file)
 
         if not cor_file.exists():
-            dialogs.warning(
-                self,
-                "No Correlation File",
-                "No correlation file available. Please save correlation data "
-                "before adding to ChiSurf.",
-            )
+            # Display a message box to the user if file still doesn't exist
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Warning)
+            msg_box.setWindowTitle("No Correlation File")
+            msg_box.setText("No correlation file available. Please save correlation data before adding to ChiSurf.")
+            msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msg_box.exec_()
             return
 
         # Use the standard approach as specified in the issue description

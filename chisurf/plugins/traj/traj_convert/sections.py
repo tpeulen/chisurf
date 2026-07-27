@@ -24,7 +24,6 @@ import pathlib
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -204,16 +203,16 @@ class _RunSection(QtWidgets.QWidget):
 
     def _convert(self) -> None:
         if not self._model.trajectory:
-            dialogs.information(self, "No trajectory", "Choose a trajectory first.")
+            QtWidgets.QMessageBox.information(self, "No trajectory", "Choose a trajectory first.")
             return
         try:
             self._model.convert()
         except Exception as exc:  # noqa: BLE001
             self._refresh_host_form()
-            dialogs.error(self, "Conversion failed", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Conversion failed", str(exc))
             return
         self._refresh_host_form()
-        dialogs.information(self, "MC-Converter", "Conversion done!")
+        QtWidgets.QMessageBox.information(self, "MC-Converter", "Conversion done!")
 
 
 __all__ = ["traj_convert_io", "traj_convert_run"]

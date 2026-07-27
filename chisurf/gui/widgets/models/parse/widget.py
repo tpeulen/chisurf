@@ -28,7 +28,6 @@ from chisurf.gui.widgets.models.parse.latex import (
     convert_python_expression_to_latex,
     sanitize_latex_for_mathtext,
 )
-from chisurf.gui import dialogs
 
 
 class EquationDialog(QtWidgets.QDialog):
@@ -834,7 +833,7 @@ class ParseFormulaWidget(QtWidgets.QWidget):
         ok, msg = self._validate_equation(equation)
         if not ok:
             try:
-                dialogs.warning(
+                QtWidgets.QMessageBox.warning(
                     self,
                     "Equation error",
                     f"The equation could not be parsed or executed.\n\n{msg}",

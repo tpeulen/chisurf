@@ -107,9 +107,7 @@ class GraphEdge:
     weight : float
         Strength in ``[0, 1]``; a front end maps it to width and shade.
     kind : str
-        ``constrains``, ``correlation``, ``dependence`` (coupled, but not
-        linearly -- a correlation coefficient understates the pair) or
-        ``separator``.
+        ``constrains``, ``correlation`` or ``separator``.
     label : str
         Optional text drawn at the midpoint.
     """
@@ -268,12 +266,7 @@ def _orient(pos: typing.Dict) -> typing.Dict:
 
 
 def _rescale(pos: typing.Dict) -> typing.Dict[str, np.ndarray]:
-    """Rescale positions into ``[-1, 1]`` on both axes, preserving aspect.
-
-    Note that leaving a margin *here* would achieve nothing: the front end fits
-    its frame to the node extent, so scaling every position by a constant is
-    invisible. Room for labels is the painter's business.
-    """
+    """Rescale positions into ``[-1, 1]`` on both axes, preserving aspect."""
     if not pos:
         return pos
     points = np.array(list(pos.values()), dtype=float)
@@ -338,65 +331,6 @@ def posterior_correlation(
     corr = cov / np.outer(sd, sd)
     kept = [names[i] if i < len(names) else str(i) for i in used]
     return kept, corr
-
-
-def posterior_dependence(
-        fit,
-        model=None,
-        n_permutations: int = 32,
-) -> typing.Tuple[typing.List[str], typing.Optional[np.ndarray], typing.Optional[np.ndarray]]:
-    r"""Return ``(names, dependence, nonlinear)`` from a fit's stored draws.
-
-    The companion to :func:`posterior_correlation`, and the reason it is not
-    enough. A correlation coefficient is zero for two parameters lying on a
-    banana or a ring, which is the ordinary posterior shape when a lifetime
-    trades against an amplitude near a bound -- yet those two determine each
-    other almost completely. Mutual information is zero only for genuine
-    independence, and :mod:`chisurf.core.fitting.dependence` puts it on the
-    correlation scale so the two can be compared directly.
-
-    Parameters
-    ----------
-    fit : chisurf.core.fitting.fit.Fit
-        Fit to describe.
-    model : chisurf.core.models.Model, optional
-        Model whose parameters are meant.
-    n_permutations : int, optional
-        Permutations per pair used to measure the estimator's null. Lower than
-        the module default because this runs over every pair of a possibly wide
-        model on a path that draws a picture.
-
-    Returns
-    -------
-    tuple
-        Names, a ``(k, k)`` dependence matrix on the correlation scale, and a
-        boolean matrix flagging pairs a correlation coefficient understates.
-        The matrices are ``None`` when the fit carries no usable chain -- which
-        is not evidence of independence and must not be drawn as such.
-    """
-    from chisurf.core.fitting import dependence as dep
-    from chisurf.core.fitting import derived as _derived
-
-    if model is None:
-        model = getattr(fit, "model", None)
-
-    chain = getattr(fit, "sampling_chain", None)
-    if not isinstance(chain, dict) or chain.get("parameter_values") is None:
-        return [], None, None
-    # The same gate every other consumer of the draws applies. A chain R-hat or
-    # the effective sample size rejected cannot support a claim that two
-    # parameters are coupled along a curve -- an unmixed chain looks exactly
-    # like one, which is precisely why the claim must not be made from it.
-    if _derived.chain_verdict(fit) is False:
-        return [], None, None
-    draws = np.atleast_2d(np.asarray(chain["parameter_values"], dtype=np.float64))
-    names = [str(n) for n in chain.get("parameter_names", [])]
-    if draws.shape[0] < 64 or len(names) != draws.shape[1]:
-        return names, None, None
-
-    values, flags = dep.dependence_matrix(
-        draws, n_permutations=n_permutations)
-    return names, values, flags
 
 
 def _relative_uncertainty(model) -> typing.Dict[str, float]:
@@ -629,26 +563,14 @@ def correlation_view(
         model=None,
         threshold: float = 0.3,
 ) -> GraphView:
-    r"""Return the parameter-only view, edges weighted by dependence.
+    r"""Return the parameter-only view, edges weighted by ``|correlation|``.
 
     The analogue of a graphical-model tool shading its arcs by mutual
-    information. For a *Gaussian* posterior a correlation coefficient says the
-    same thing, since :math:`I = -\tfrac12\ln(1 - r^2)` is monotone in
-    :math:`|r|` -- but only then. On a banana or a ring, the ordinary shape when
-    a lifetime trades against an amplitude near a bound, :math:`r \approx 0`
-    while the two parameters determine each other almost completely, and an
-    edge drawn from :math:`|r|` alone is simply absent.
-
-    So whenever the fit carries draws, the mutual information is measured from
-    them (:func:`posterior_dependence`) and the stronger of the two is used. A
-    pair the correlation coefficient understates is drawn as its own kind of
-    edge and labelled with both numbers, because "coupled, but not along a
-    straight line" is a different fact about a fit than "correlated" and calls
-    for a different response.
-
-    This is the view that answers what a global fit is usually really being
-    asked: a pair at :math:`|r| \approx 1` is **one** measurement and a direction
-    the data does not constrain, not two parameters with independent error bars.
+    information -- and for a Gaussian posterior the two agree, since
+    :math:`I = -\tfrac12\ln(1 - r^2)` is monotone in :math:`|r|`. This is the
+    view that answers what a global fit is usually really being asked: a pair at
+    :math:`|r| \approx 1` is **one** measurement and a direction the data does
+    not constrain, not two parameters with independent error bars.
 
     Parameters
     ----------
@@ -673,23 +595,6 @@ def correlation_view(
     names, corr = posterior_correlation(fit, model=model)
     shade = _shade(_relative_uncertainty(model))
 
-    # Dependence measured from the draws, reindexed onto the order the
-    # correlation matrix uses. The two name the same parameters differently --
-    # a chain is written with the sampled model's plain names while this view
-    # uses the group's ``fit:``-prefixed ones -- so requiring the lists to match
-    # exactly silently disabled the measurement on every global fit. Matching on
-    # the short name is what actually lines them up; anything still unmatched is
-    # dropped rather than paired by position.
-    dep = nonlinear = None
-    dep_names, dep_raw, flags_raw = posterior_dependence(fit, model=model)
-    if dep_raw is not None:
-        short_of = {str(n).split(":")[-1]: i for i, n in enumerate(dep_names)}
-        index = [short_of.get(str(n).split(":")[-1]) for n in names]
-        if all(i is not None for i in index):
-            take = np.asarray(index, dtype=int)
-            dep = dep_raw[np.ix_(take, take)]
-            nonlinear = flags_raw[np.ix_(take, take)]
-
     labels = short_labels(names)
     nodes = []
     for name in names:
@@ -702,7 +607,6 @@ def correlation_view(
 
     edges = []
     notes = []
-    curved = []
     graph = cg.Graph()
     graph.add_nodes_from(str(n) for n in names)
     if corr is not None and corr.shape[0] == len(names):
@@ -710,31 +614,13 @@ def correlation_view(
         for i in range(len(names)):
             for j in range(i + 1, len(names)):
                 r = float(corr[i, j])
-                if not np.isfinite(r):
-                    continue
-                d = float(dep[i, j]) if dep is not None else float("nan")
-                # nan means the pair could not be measured, which is not a
-                # licence to treat it as unbent.
-                bent = bool(
-                    nonlinear is not None and np.isfinite(d) and nonlinear[i, j]
-                )
-                # The strength of the edge is whichever measure found more. An
-                # |r| below the threshold is not a reason to hide a pair the
-                # draws show to be tightly coupled -- that omission is the exact
-                # failure this view existed with.
-                strength = abs(r)
-                if bent and np.isfinite(d):
-                    strength = max(strength, d)
-                if strength < threshold:
+                if not np.isfinite(r) or abs(r) < threshold:
                     continue
                 edges.append(GraphEdge(
                     source=str(names[i]), target=str(names[j]),
-                    weight=float(min(1.0, strength)),
-                    kind="dependence" if bent else "correlation",
-                    label=(f"r={r:+.2f}  I={d:.2f}" if bent else f"{r:+.2f}"),
+                    weight=float(min(1.0, abs(r))), kind="correlation",
+                    label=f"{r:+.2f}",
                 ))
-                if bent:
-                    curved.append((names[i], names[j], r, d))
                 # Distance shrinks with |r|, so the layout places a strongly
                 # correlated pair together and the geometry says it too. The
                 # raw 1 - |r| is rescaled below: when every pair sits above 0.99
@@ -743,22 +629,13 @@ def correlation_view(
                 # collapses the whole graph onto a line -- true in spirit,
                 # unreadable in practice.
                 graph.add_edge(str(names[i]), str(names[j]),
-                               weight=max(1e-3, 1.0 - strength))
-                if strength >= STRONG_CORRELATION:
-                    strong.append((names[i], names[j], r, bent))
-        for a, b, r, bent in strong:
-            if bent:
-                continue    # said better by the note below
+                               weight=max(1e-3, 1.0 - abs(r)))
+                if abs(r) >= STRONG_CORRELATION:
+                    strong.append((names[i], names[j], r))
+        for a, b, r in strong:
             notes.append(
                 f"{labels.get(str(a), a)} and {labels.get(str(b), b)} are "
                 f"correlated at {r:+.3f} — one measurement, not two"
-            )
-        for a, b, r, d in curved:
-            notes.append(
-                f"{labels.get(str(a), a)} and {labels.get(str(b), b)} constrain "
-                f"each other at {d:.2f} while their correlation is only "
-                f"{r:+.2f} — coupled along a curve, so a correlation matrix "
-                f"and every error bar derived from one understate it"
             )
     else:
         notes.append(
@@ -792,15 +669,13 @@ def correlation_view(
         if n.key in pos:
             n.x, n.y = float(pos[n.key][0]), float(pos[n.key][1])
 
-    legend = (f"edge = dependence above {threshold:g}; "
-              f"close together = tightly coupled")
-    if curved:
-        legend += " — warm edges are coupled along a curve, where |r| understates"
+    legend = (f"edge = |r| above {threshold:g}; "
+              f"close together = strongly correlated")
     if crowded:
         legend += " — values omitted, too many edges to label"
     return GraphView(
         nodes=nodes, edges=edges,
-        title="Posterior dependence",
+        title="Posterior correlation",
         legend=legend,
         notes=notes,
     )

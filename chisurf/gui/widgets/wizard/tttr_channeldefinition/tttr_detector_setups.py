@@ -229,13 +229,10 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
 
     if not path.exists():
         is_default = (file_path is None) or (path == DETECTOR_SETUPS_FILE)
-        # A modal box blocks until a button is pressed, so "a QApplication
-        # exists" is not enough — offscreen there is nobody to press it and this
-        # loader would hang every headless run that has no setups file.
+        app_running = False
         try:
-            from chisurf.gui.dialogs import is_interactive
-
-            app_running = is_interactive()
+            from qtpy.QtWidgets import QApplication
+            app_running = QApplication.instance() is not None
         except Exception:
             app_running = False
 
@@ -251,26 +248,30 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
             pass
 
         if show_warning and is_default and app_running and not _module_warning_shown("detector_setups_file"):
-            from chisurf.gui import dialogs
+            from qtpy.QtWidgets import QCheckBox, QMessageBox
 
             _mark_warning_shown("detector_setups_file")
-            answer = dialogs.choice(
-                None,
-                "Detector setups file not found",
-                f"Detector setups file was not found:\n{str(path)}",
-                {"wizard": "Open Detector Wizard", "ok": "OK"},
-                default="ok",
-                kind="warning",
-                informative=(
-                    "You can create it by saving a setup from the Detector Wizard.\n"
-                    "Use the 'Save Settings' button to store your configuration.\n"
-                    "Alternatively, choose an existing JSON with the '...' button."
-                ),
-                checkbox="Don't show this warning again",
+            msg = QMessageBox()
+            msg.setWindowTitle("Detector setups file not found")
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText(f"Detector setups file was not found:\n{str(path)}")
+            msg.setInformativeText(
+                "You can create it by saving a setup from the Detector Wizard.\n"
+                "Use the 'Save Settings' button to store your configuration.\n"
+                "Alternatively, choose an existing JSON with the '...' button."
             )
+            try:
+                cb = QCheckBox("Don't show this warning again")
+                msg.setCheckBox(cb)
+            except Exception:
+                cb = None
+
+            open_btn = msg.addButton("Open Detector Wizard", QMessageBox.ActionRole)
+            msg.addButton(QMessageBox.Ok)
+            msg.exec_()
 
             try:
-                if answer.checked:
+                if cb is not None and cb.isChecked():
                     from chisurf.core.settings.settings_utils import set_warn_missing_detector_setups as _set_w
                     _set_w(False)
                     try:
@@ -282,7 +283,7 @@ def load_detector_setups(file_path=None, db_path=None, skip_migration=False, use
                 pass
 
             try:
-                if answer.key == "wizard":
+                if msg.clickedButton() is open_btn:
                     from .tttr_channel_definition import DetectorWizard
                     wiz = DetectorWizard()
                     wiz.exec_()

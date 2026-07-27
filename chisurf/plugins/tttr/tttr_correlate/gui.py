@@ -6,7 +6,6 @@ import sys
 
 from chisurf.gui import QtCore, QtWidgets
 from chisurf.gui import chiplot as cp
-from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
 # Now using qtpy compatibility layer through cs.gui import
 
 import numpy as np
@@ -348,9 +347,6 @@ class CorrelatorWidget(QtWidgets.QWidget):
         self.checkBox.toggled.connect(
             self.comboBox_micro_binning.setEnabled
         )
-        # The bar comes from the .ui file; swap in the shared one so a
-        # correlation looks like every other long run in ChiSurf.
-        adopt_progress_bar(self)
         self.progressBar.setValue(0)
 
         # connect widgets

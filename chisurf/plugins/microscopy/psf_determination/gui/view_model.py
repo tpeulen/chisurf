@@ -88,37 +88,8 @@ class PsfViewModel:
         return self.detected_beads
 
     def fit_circle(self) -> dict[str, float] | None:
-        """Return the fitted lateral-FWHM circle overlay descriptor, or ``None``.
-
-        A drawing descriptor, not a region: it carries the ``z`` slice the circle
-        belongs on so the overlay appears beside the bead the user picked, and a
-        region deliberately carries no third axis. :meth:`fit_region` is the same
-        circle as a region.
-        """
+        """Return the fitted lateral-FWHM circle overlay descriptor, or ``None``."""
         return self._fit_circle
-
-    def fit_region(self):
-        """Return the fitted lateral FWHM as a region of interest.
-
-        The measured width of the point-spread function, in the frame's own
-        coordinates — so it can be measured against an image, combined with
-        another region, or stored, like any region ChiSurf produces. The radius
-        is the lateral FWHM/2, which is what the circle on screen shows.
-
-        Returns
-        -------
-        chisurf.core.roi.EllipseROI or None
-            ``None`` until a bead has been fitted.
-        """
-        if self._fit_circle is None:
-            return None
-        from chisurf.core.roi import EllipseROI
-
-        circle = self._fit_circle
-        return EllipseROI(
-            float(circle["x"]), float(circle["y"]), float(circle["r"]),
-            name=f"PSF FWHM (z={int(circle['z'])})",
-        )
 
     def x_profile_series(self) -> list[dict[str, Any]]:
         """Return the x-profile data + fit overlay for the profile plot."""

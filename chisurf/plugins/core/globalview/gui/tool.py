@@ -26,7 +26,6 @@ from chisurf.plugins.core.globalview.gui.adapter import (
 )
 from chisurf.plugins.core.globalview.gui.graphplotwidget import GraphPlotWidget
 from chisurf.plugins.core.globalview.parameters_model import GlobalViewParametersModel
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -390,8 +389,8 @@ class GraphWizard(QtWidgets.QMainWindow):
                 "this would create a cyclic dependency between parameters."
             )
             cs.logging.log(0, "Cycle detected: " + msg)
-            dialogs.warning(
-                self, "Linking Error", msg
+            QtWidgets.QMessageBox.warning(
+                self, "Linking Error", msg, QtWidgets.QMessageBox.Ok
             )
             return False
         fc = get_fitting_client()

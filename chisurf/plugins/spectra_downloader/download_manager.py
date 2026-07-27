@@ -4,7 +4,6 @@ from pathlib import Path
 from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 
 class DownloadPanel(QtWidgets.QWidget):
@@ -71,7 +70,7 @@ class DownloadPanel(QtWidgets.QWidget):
     def run_script(self):
         """Run the selected scraper against the current database path."""
         if self.process is not None:
-            dialogs.warning(self, "Running", "A script is already running.")
+            QtWidgets.QMessageBox.warning(self, "Running", "A script is already running.")
             return
 
         module = self.source_combo.currentData()

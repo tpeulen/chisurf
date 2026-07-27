@@ -1,7 +1,6 @@
 """mmfdb-admin: Multiparametric Fluorescence Database management."""
 
 from __future__ import annotations
-from chisurf.gui import dialogs
 
 try:
     from qtpy import sip
@@ -39,8 +38,9 @@ if __name__ == "plugin":
         try:
             window = MMFDBWidget()
         except PermissionError as exc:
+            from qtpy import QtWidgets
 
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 None,
                 "mmfdb-admin — Access denied",
                 str(exc) or "Administrator privileges are required to open mmfdb-admin.",

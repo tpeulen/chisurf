@@ -24,11 +24,8 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.autoform.sections.registry import register_section
-from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.pdb import PDBSelector
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +236,10 @@ class _RunSection(QtWidgets.QWidget):
         self._btn.clicked.connect(self.run)
         layout.addWidget(self._btn)
 
-        self._progress = InlineProgressWidget()
+        self._progress = QtWidgets.QProgressBar()
+        self._progress.setRange(0, 0)
+        self._progress.setValue(0)
+        self._progress.setVisible(False)
         layout.addWidget(self._progress, 1)
 
     def run(self, output_file: str | None = None):
@@ -259,7 +259,7 @@ class _RunSection(QtWidgets.QWidget):
         if self._running:
             return None
         if not (self._model.filenames or self._model.trajectory_file):
-            dialogs.information(self, "No trajectory", "Open a trajectory first.")
+            QtWidgets.QMessageBox.information(self, "No trajectory", "Open a trajectory first.")
             return None
         if output_file is None:
             import chisurf.gui.widgets
@@ -274,19 +274,18 @@ class _RunSection(QtWidgets.QWidget):
 
         self._running = True
         self._btn.setEnabled(False)
+        self._progress.setVisible(True)
         result = None
-        # The frame count is not known up front, so the bar beside the button
-        # runs as a busy indicator until the computation returns.
-        with ChiSurfProgress(self._btn, "Computing FRET observables…", 0, cancellable=False):
-            try:
-                result = self._model.calc(output_file=output_file)
-            except Exception as exc:  # noqa: BLE001
-                self._model.append_log(f"Processing failed: {exc}")
-                dialogs.error(self, "Processing failed", str(exc))
-            finally:
-                self._running = False
-                self._btn.setEnabled(True)
-                self._refresh_host_form()
+        try:
+            result = self._model.calc(output_file=output_file)
+        except Exception as exc:  # noqa: BLE001
+            self._model.append_log(f"Processing failed: {exc}")
+            QtWidgets.QMessageBox.critical(self, "Processing failed", str(exc))
+        finally:
+            self._running = False
+            self._btn.setEnabled(True)
+            self._progress.setVisible(False)
+            self._refresh_host_form()
         return result
 
     def _refresh_host_form(self) -> None:

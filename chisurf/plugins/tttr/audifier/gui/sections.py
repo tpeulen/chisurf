@@ -17,7 +17,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -111,13 +110,13 @@ class _SetupSection(QtWidgets.QWidget):
             self._model.load(path)
             self._update()
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to load: {exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to load: {exc}")
 
     def _update(self) -> None:
         try:
             self._model.set_detectors_from_settings(self._page.get_settings())
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to read setup: {exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to read setup: {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -301,7 +300,7 @@ class _TransportSection(QtWidgets.QWidget):
         self._player.position_changed.connect(self._on_position)
         self._player.state_changed.connect(self._on_state)
         self._player.error_occurred.connect(
-            lambda msg: dialogs.warning(self, "Playback Error", msg)
+            lambda msg: QtWidgets.QMessageBox.warning(self, "Playback Error", msg)
         )
 
     # ── waterfall ───────────────────────────────────────────────────────
@@ -311,7 +310,7 @@ class _TransportSection(QtWidgets.QWidget):
         try:
             payload = self._model.compute_waterfall()
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to update: {exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to update: {exc}")
             return
         self._info.setText(payload["info"] if payload else "No detectors enabled")
         self._model.notify("waterfall")
@@ -320,12 +319,12 @@ class _TransportSection(QtWidgets.QWidget):
     def _play(self) -> None:
         reason = self._model.can_render()
         if reason is not None:
-            dialogs.warning(self, "Error", reason)
+            QtWidgets.QMessageBox.warning(self, "Error", reason)
             return
         try:
             wav, _duration = self._model.build_audio()
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to play: {exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to play: {exc}")
             return
         if self._player.load_audio(wav, self._model.sample_rate):
             self._player.play()
@@ -342,7 +341,7 @@ class _TransportSection(QtWidgets.QWidget):
     def _save_wav(self) -> None:
         reason = self._model.can_render()
         if reason is not None:
-            dialogs.warning(self, "Error", reason)
+            QtWidgets.QMessageBox.warning(self, "Error", reason)
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save WAV File", "", "WAV Files (*.wav)"
@@ -351,9 +350,9 @@ class _TransportSection(QtWidgets.QWidget):
             return
         try:
             self._model.save_wav(path)
-            dialogs.information(self, "Success", f"WAV saved to {path}")
+            QtWidgets.QMessageBox.information(self, "Success", f"WAV saved to {path}")
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to save: {exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to save: {exc}")
 
     def _on_position(self, current: float, duration: float) -> None:
         self._pos.setText(f"{_format_time(current)} / {_format_time(duration)}")

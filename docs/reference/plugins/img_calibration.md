@@ -21,7 +21,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Detector | `display_detector` | choice |  | choices: `window_names` | Detector to calibrate (settings are per detector). |
-| IRF files (this detector) | `sel_irf_files` | path_list |  |  | IRF TTTR file(s) for this detector (summed); carried to Phasor + pixel-wise MLE. Drag-drop to add. |
 | Conv start | `sel_conv_start` | int |  | 0 … 1000000 | Convolution/fit window start (micro-time channel). Drag the blue region. |
 | Conv stop | `sel_conv_stop` | int |  | 0 … 1000000 | Convolution/fit window stop (micro-time channel). Drag the blue region. |
 | IRF start | `sel_irf_start` | int |  | 0 … 1000000 | IRF window start (separate from the conv window). Drag the green region. |

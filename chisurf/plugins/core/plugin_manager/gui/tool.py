@@ -59,7 +59,6 @@ import chisurf.plugins
 from chisurf.core.plugin import load_manifest
 from chisurf.core.settings import ai_settings
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -920,9 +919,9 @@ class PluginManagerWidget(QWidget):
                         widget.load_toolbar_plugins()
                         break
 
-            dialogs.information(self, "Settings Saved", "Plugin settings have been saved successfully.")
+            QMessageBox.information(self, "Settings Saved", "Plugin settings have been saved successfully.")
         except Exception as e:
-            dialogs.error(self, "Error", f"Could not save settings: {e}")
+            QMessageBox.critical(self, "Error", f"Could not save settings: {e}")
 
     def is_admin(self):
         """Check if the application is running with administrator privileges."""
@@ -994,7 +993,7 @@ class PluginManagerWidget(QWidget):
         # Check if the selected directory is a valid plugin
         init_file = plugin_dir_path / "__init__.py"
         if not init_file.exists():
-            dialogs.error(self, "Error", "The selected directory is not a valid plugin. Missing __init__.py file.")
+            QMessageBox.critical(self, "Error", "The selected directory is not a valid plugin. Missing __init__.py file.")
             return
 
         # Determine the destination directory
@@ -1003,7 +1002,7 @@ class PluginManagerWidget(QWidget):
 
         # Check if plugin already exists
         if destination_dir.exists():
-            reply = dialogs.question(self, "Plugin Exists",
+            reply = QMessageBox.question(self, "Plugin Exists",
                                         f"A plugin named '{plugin_name}' already exists. Do you want to overwrite it?",
                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if reply == QMessageBox.No:
@@ -1046,7 +1045,7 @@ class PluginManagerWidget(QWidget):
             elevation_message = "The plugin directory is in a Linux system location and requires administrator privileges to modify."
 
         if needs_elevation and not self.is_admin():
-            reply = dialogs.question(self, "Elevation Required",
+            reply = QMessageBox.question(self, "Elevation Required",
                                         f"{elevation_message} "
                                         "Do you want to restart the application with administrator privileges?",
                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -1071,9 +1070,9 @@ class PluginManagerWidget(QWidget):
             # Refresh the plugin list
             self.load_plugins()
 
-            dialogs.information(self, "Plugin Imported", f"Plugin '{plugin_name}' has been imported successfully.")
+            QMessageBox.information(self, "Plugin Imported", f"Plugin '{plugin_name}' has been imported successfully.")
         except Exception as e:
-            dialogs.error(self, "Error", f"Could not import plugin: {e}")
+            QMessageBox.critical(self, "Error", f"Could not import plugin: {e}")
 
     def import_plugin_elevated(self, plugin_dir, plugin_name):
         """Import a plugin with elevated privileges (called after privilege elevation prompt)."""
@@ -1089,9 +1088,9 @@ class PluginManagerWidget(QWidget):
             # Copy the plugin directory
             shutil.copytree(plugin_dir_path, destination_dir)
 
-            dialogs.information(self, "Plugin Imported", f"Plugin '{plugin_name}' has been imported successfully.")
+            QMessageBox.information(self, "Plugin Imported", f"Plugin '{plugin_name}' has been imported successfully.")
         except Exception as e:
-            dialogs.error(self, "Error", f"Could not import plugin: {e}")
+            QMessageBox.critical(self, "Error", f"Could not import plugin: {e}")
 
     def on_rename_plugin(self):
         """Handle renaming a plugin."""
@@ -1119,7 +1118,7 @@ class PluginManagerWidget(QWidget):
 
         # Check if the file exists
         if not init_file.exists():
-            dialogs.error(self, "Error", f"Could not find __init__.py in {plugin_path}")
+            QMessageBox.critical(self, "Error", f"Could not find __init__.py in {plugin_path}")
             return
 
         # Check if we need elevated privileges based on the operating system
@@ -1159,7 +1158,7 @@ class PluginManagerWidget(QWidget):
             elevation_message = "The plugin directory is in a Linux system location and requires administrator privileges to modify."
 
         if needs_elevation and not self.is_admin():
-            reply = dialogs.question(self, "Elevation Required",
+            reply = QMessageBox.question(self, "Elevation Required",
                                         f"{elevation_message} "
                                         "Do you want to restart the application with administrator privileges?",
                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -1186,9 +1185,9 @@ class PluginManagerWidget(QWidget):
                     self.plugin_list.setCurrentItem(item)
                     break
 
-            dialogs.information(self, "Plugin Renamed", f"Plugin has been renamed from '{current_name}' to '{new_name}'.")
+            QMessageBox.information(self, "Plugin Renamed", f"Plugin has been renamed from '{current_name}' to '{new_name}'.")
         except Exception as e:
-            dialogs.error(self, "Error", f"Could not rename plugin: {e}")
+            QMessageBox.critical(self, "Error", f"Could not rename plugin: {e}")
 
     def rename_plugin_elevated(self, plugin_path, old_name, new_name):
         """Rename a plugin with elevated privileges (called after privilege elevation prompt)."""
@@ -1197,9 +1196,9 @@ class PluginManagerWidget(QWidget):
 
         try:
             self.rename_plugin_file(init_file, old_name, new_name)
-            dialogs.information(self, "Plugin Renamed", f"Plugin has been renamed from '{old_name}' to '{new_name}'.")
+            QMessageBox.information(self, "Plugin Renamed", f"Plugin has been renamed from '{old_name}' to '{new_name}'.")
         except Exception as e:
-            dialogs.error(self, "Error", f"Could not rename plugin: {e}")
+            QMessageBox.critical(self, "Error", f"Could not rename plugin: {e}")
 
     def rename_plugin_file(self, init_file, old_name, new_name):
         """Modify the __init__.py file to change the plugin name."""
@@ -1240,15 +1239,15 @@ class PluginManagerWidget(QWidget):
             return
         source = pathlib.Path(self.icon_path_edit.text()).expanduser()
         if not source.exists():
-            dialogs.error(self, "Icon Error", f"Image file does not exist: {source}")
+            QMessageBox.critical(self, "Icon Error", f"Image file does not exist: {source}")
             return
         try:
             path = self._write_icon_from_image(source)
             self._set_manifest_icon("icon.png")
             self._reload_icon_for_current_plugin(path)
-            dialogs.information(self, "Icon Updated", f"Plugin icon updated:\n{path}")
+            QMessageBox.information(self, "Icon Updated", f"Plugin icon updated:\n{path}")
         except Exception as e:
-            dialogs.error(self, "Icon Error", f"Could not update icon: {e}")
+            QMessageBox.critical(self, "Icon Error", f"Could not update icon: {e}")
 
     def on_generate_icon(self):
         """Generate an icon for the current plugin."""
@@ -1279,7 +1278,7 @@ class PluginManagerWidget(QWidget):
             return
         icon_path = pathlib.Path(self.plugins[self.current_plugin]['icon_path'])
         if not icon_path.exists():
-            dialogs.information(
+            QMessageBox.information(
                 self,
                 "No Icon",
                 "No editable icon.png exists for this plugin. Choose or generate an icon first.",
@@ -1294,7 +1293,7 @@ class PluginManagerWidget(QWidget):
         plugin_info = self.plugins[self.current_plugin]
         icon_path = pathlib.Path(plugin_info['icon_path'])
         if icon_path.exists():
-            reply = dialogs.question(
+            reply = QMessageBox.question(
                 self,
                 "Clear Icon",
                 f"Remove {icon_path.name} from this plugin?",

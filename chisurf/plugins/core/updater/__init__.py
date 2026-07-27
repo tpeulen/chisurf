@@ -30,8 +30,6 @@ from chisurf.gui.glyphs import Glyphs
 
 from .package_widget import PackageManagerDialog
 from .updater import ChiSurfUpdater, check_for_updates, update_chisurf
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -314,7 +312,7 @@ class UpdaterWidget(QtWidgets.QWidget):
             dlg.exec()
         except Exception as e:
             try:
-                dialogs.error(self, "Package Manager", f"Failed to open Package Manager:\n{e}")
+                QtWidgets.QMessageBox.critical(self, "Package Manager", f"Failed to open Package Manager:\n{e}")
             except Exception:
                 pass
 
@@ -451,10 +449,11 @@ class UpdaterWidget(QtWidgets.QWidget):
                 # Inform the user with a non-intrusive prompt unless suppressed
                 if not getattr(self, "_suppress_initial_notification", False):
                     try:
-                        dialogs.information(
+                        QtWidgets.QMessageBox.information(
                             self,
                             "Update Available",
-                            f"A new version of ChiSurf ({latest_version}) is available."
+                            f"A new version of ChiSurf ({latest_version}) is available.",
+                            QtWidgets.QMessageBox.Ok
                         )
                     except Exception:
                         pass
@@ -672,7 +671,7 @@ class UpdaterWidget(QtWidgets.QWidget):
         logging.debug(f"Selected version index: {selected_index}")
 
         # Create progress dialog
-        progress_dialog = ChiSurfProgress(self, "Updating ChiSurf...", 0)
+        progress_dialog = QtWidgets.QProgressDialog("Updating ChiSurf...", "Cancel", 0, 0, self)
         progress_dialog.setWindowTitle("Updating")
         progress_dialog.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         progress_dialog.setMinimumDuration(0)
@@ -690,15 +689,17 @@ class UpdaterWidget(QtWidgets.QWidget):
 
         # Show a warning message before starting the update
         logging.info("Showing update warning dialog")
-        proceed = dialogs.confirm(
+        warning_result = QtWidgets.QMessageBox.warning(
             self,
             "Update Warning",
             "The update process will close all ChiSurf windows and continue in a separate window.\n\n"
             "All unsaved work will be lost. After the update completes, you will need to restart ChiSurf manually.\n\n"
-            "Do you want to continue?"
+            "Do you want to continue?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No
         )
 
-        if not proceed:
+        if warning_result != QtWidgets.QMessageBox.Yes:
             # User cancelled the update
             logging.info("Update cancelled by user")
             progress_dialog.close()

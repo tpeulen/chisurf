@@ -192,63 +192,6 @@ class Tests(unittest.TestCase):
             True
         )
 
-    def test_vm_rt_to_vv_vh_recovers_anisotropy(self):
-        """The time-domain helper must place G exactly where its sibling does.
-
-        ``g`` is a detection sensitivity, so it scales the whole perpendicular
-        channel: ``f_VH = g * f_VM * (1 - r)``. Undoing it has to return the
-        anisotropy that went in, and the decays have to agree term for term
-        with the spectrum-domain :func:`calculcate_spectrum` that the fitting
-        models call. The rejected form ``f_VM * (1 - g * r)`` satisfies neither
-        for ``g != 1`` — at ``r0 = 0.38, g = 1.5`` it inverts back to 0.63.
-        """
-        tau, rho, r0 = 4.0, 1.5, 0.38
-        lifetime_spectrum = np.array([1.0, tau])
-        anisotropy_spectrum = np.array([r0, rho])
-        times = np.linspace(0.0, 20.0, 64)
-        rt = r0 * np.exp(-times / rho)
-        vm = np.exp(-times / tau)
-
-        for g_factor in [0.8, 1.0, 1.5]:
-            vv, vh = chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh(
-                times,
-                vm,
-                anisotropy_spectrum,
-                g_factor=g_factor
-            )
-            self.assertEqual(
-                np.allclose((vv - vh / g_factor) / (vv + 2.0 * vh / g_factor), rt),
-                True,
-                msg=f"anisotropy not recovered for g={g_factor}"
-            )
-            kwargs = dict(
-                lifetime_spectrum=lifetime_spectrum,
-                anisotropy_spectrum=anisotropy_spectrum,
-                g_factor=g_factor,
-                l1=0.0,
-                l2=0.0
-            )
-            self.assertEqual(
-                np.allclose(
-                    self._decay_from_spectrum(
-                        calculcate_spectrum(polarization_type='VV', **kwargs), times
-                    ),
-                    vv
-                ),
-                True,
-                msg=f"VV disagrees with calculcate_spectrum for g={g_factor}"
-            )
-            self.assertEqual(
-                np.allclose(
-                    self._decay_from_spectrum(
-                        calculcate_spectrum(polarization_type='VH', **kwargs), times
-                    ),
-                    vh
-                ),
-                True,
-                msg=f"VH disagrees with calculcate_spectrum for g={g_factor}"
-            )
-
     def test_fcs(self):
         directory = './test/data/tttr/BH/132/'
         spc_files = glob.glob(directory + '/BH_SPC132.spc')

@@ -8,7 +8,6 @@ import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ..io import RmfNotAvailableError, load_rmf_full
-from chisurf.gui import dialogs
 
 
 class RmfPlotWidget(QtWidgets.QWidget):
@@ -194,10 +193,10 @@ class RmfPanel(QtCore.QObject):
         try:
             data = load_rmf_full(Path(path))
         except RmfNotAvailableError as exc:
-            dialogs.warning(self._widget, "RMF Not Available", str(exc))
+            QtWidgets.QMessageBox.warning(self._widget, "RMF Not Available", str(exc))
             return
         except Exception as exc:
-            dialogs.warning(self._widget, "RMF Refresh Failed", f"{exc}")
+            QtWidgets.QMessageBox.warning(self._widget, "RMF Refresh Failed", f"{exc}")
             return
 
         try:
@@ -219,7 +218,7 @@ class RmfPanel(QtCore.QObject):
                 self.viewer.set_current_frame(min(old_frame, n_frames - 1))
             self.set_state(state)
         except Exception as exc:
-            dialogs.warning(self._widget, "RMF Refresh Failed", f"{exc}")
+            QtWidgets.QMessageBox.warning(self._widget, "RMF Refresh Failed", f"{exc}")
 
 
 def _active_state(viewer: object) -> object | None:

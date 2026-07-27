@@ -34,6 +34,8 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
+    QProgressDialog,
     QPushButton,
     QSizePolicy,
     QSplitter,
@@ -55,8 +57,6 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 # Reuse existing widgets/utilities
 from chisurf.plugins.tttr.intensity_trace.__init__ import IntensityPlotWidget, IntensityTrace
 from chisurf.plugins.tttr.trace_browser.gui.client import TraceBrowserClient
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -1261,7 +1261,7 @@ class TraceBrowser(QWidget):
                     pass
             logging.info(f"TraceBrowser: Cleared caches (memory + {removed_dirs} dir(s) removed)")
             try:
-                dialogs.information(self, "Caches cleared", "Trace caches have been cleared.")
+                QMessageBox.information(self, "Caches cleared", "Trace caches have been cleared.")
             except Exception:
                 pass
         except Exception as e:
@@ -1556,7 +1556,7 @@ class TraceBrowser(QWidget):
             return
         # Show progress dialog only for files we are going to process
         try:
-            dlg = ChiSurfProgress(self, "Precomputing traces...", len(files_to_process))
+            dlg = QProgressDialog("Precomputing traces...", "Cancel", 0, len(files_to_process), self)
             dlg.setWindowTitle("Precomputing traces")
             dlg.setAutoClose(True)
             dlg.setAutoReset(False)
@@ -1951,7 +1951,7 @@ class TraceBrowser(QWidget):
             )
             if exported_paths:
                 logging.info(f"TraceBrowser: CSV exported through RPC for {len(exported_paths)}/{len(paths)} files to: {out}")
-                dialogs.information(self, "CSV Export", f"Exported {len(exported_paths)}/{len(paths)} CSV files to: {out}")
+                QMessageBox.information(self, "CSV Export", f"Exported {len(exported_paths)}/{len(paths)} CSV files to: {out}")
                 return
         except Exception:
             logging.debug("TraceBrowser: RPC CSV export failed; falling back to local export")
@@ -2003,7 +2003,7 @@ class TraceBrowser(QWidget):
                 logging.warning(f"TraceBrowser: Failed to export CSV for {p}: {e}")
         logging.info(f"TraceBrowser: CSV exported for {exported}/{len(paths)} files to {out}; skipped {skipped}")
         try:
-            dialogs.information(self, "CSV Export", f"Exported {exported}/{len(paths)} CSV files to: {out}")
+            QMessageBox.information(self, "CSV Export", f"Exported {exported}/{len(paths)} CSV files to: {out}")
         except Exception:
             pass
 
@@ -2022,7 +2022,7 @@ class TraceBrowser(QWidget):
         # Check for python-docx availability
         if Document is None:
             try:
-                dialogs.warning(self, "DOCX Export", "python-docx is not installed. Please install 'python-docx' to enable DOCX export.")
+                QMessageBox.warning(self, "DOCX Export", "python-docx is not installed. Please install 'python-docx' to enable DOCX export.")
             except Exception:
                 pass
             return
@@ -2032,7 +2032,7 @@ class TraceBrowser(QWidget):
             folder = paths[0].parent
         if folder is None:
             try:
-                dialogs.error(self, "DOCX Export", "No folder context available to determine DOCX save location.")
+                QMessageBox.critical(self, "DOCX Export", "No folder context available to determine DOCX save location.")
             except Exception:
                 pass
             return
@@ -2101,13 +2101,13 @@ class TraceBrowser(QWidget):
             doc.save(str(save_path))
             logging.info(f"TraceBrowser: DOCX exported to {save_path}")
             try:
-                dialogs.information(self, "DOCX Export", f"Saved: {save_path}")
+                QMessageBox.information(self, "DOCX Export", f"Saved: {save_path}")
             except Exception:
                 pass
         except Exception as e:
             logging.exception(f"TraceBrowser: Failed to save DOCX {save_path}: {e}")
             try:
-                dialogs.error(self, "DOCX Export", f"Failed to save DOCX: {e}")
+                QMessageBox.critical(self, "DOCX Export", f"Failed to save DOCX: {e}")
             except Exception:
                 pass
         # Cleanup temp images
@@ -2131,7 +2131,7 @@ class TraceBrowser(QWidget):
         selected_paths = self._selected_paths()
         if not selected_paths:
             try:
-                dialogs.information(self, "Transfer to Analysis", "Please select a trace file first.")
+                QMessageBox.information(self, "Transfer to Analysis", "Please select a trace file first.")
             except Exception:
                 pass
             return
@@ -2218,7 +2218,7 @@ class TraceBrowser(QWidget):
         except Exception as e:
             logging.exception(f"TraceBrowser: Failed to transfer {selected_file} to analysis: {e}")
             try:
-                dialogs.error(self, "Transfer Failed", f"Failed to transfer trace to analysis:\n\n{str(e)}\n\nCheck the log for more details.")
+                QMessageBox.critical(self, "Transfer Failed", f"Failed to transfer trace to analysis:\n\n{str(e)}\n\nCheck the log for more details.")
             except Exception:
                 pass
 
@@ -2226,7 +2226,7 @@ class TraceBrowser(QWidget):
         """Transfer the currently selected trace to the TTTR Time Window plugin for BID generation."""
         paths = self._selected_paths()
         if not paths:
-            dialogs.warning(self, "No Selection", "Please select a trace file to transfer.")
+            QMessageBox.warning(self, "No Selection", "Please select a trace file to transfer.")
             return
 
         path = paths[0]
@@ -2281,7 +2281,7 @@ class TraceBrowser(QWidget):
             
         except Exception as e:
             logging.error(f"TraceBrowser: Failed to transfer {path} to time window plugin: {e}")
-            dialogs.error(self, "Transfer Failed", f"Could not open trace in time window plugin.\n\nError: {e}")
+            QMessageBox.critical(self, "Transfer Failed", f"Could not open trace in time window plugin.\n\nError: {e}")
 
 
     def _on_open_in_ndxplorer(self):
@@ -2294,19 +2294,19 @@ class TraceBrowser(QWidget):
         selected_paths = self._selected_paths()
         if not selected_paths:
             try:
-                dialogs.information(self, "NDXplorer", "Please select a trace file first.")
+                QMessageBox.information(self, "NDXplorer", "Please select a trace file first.")
             except Exception:
                 pass
             return
         if tttrlib is None:
             try:
-                dialogs.error(self, "NDXplorer", "tttrlib is not available.")
+                QMessageBox.critical(self, "NDXplorer", "tttrlib is not available.")
             except Exception:
                 pass
             return
         if NDXplorer is None or ndx_reader is None:
             try:
-                dialogs.error(self, "NDXplorer", "NDXplorer components are not available.")
+                QMessageBox.critical(self, "NDXplorer", "NDXplorer components are not available.")
             except Exception:
                 pass
             return
@@ -2342,7 +2342,7 @@ class TraceBrowser(QWidget):
 
             if bids is None or getattr(bids, 'size', 0) == 0:
                 try:
-                    dialogs.warning(self, "NDXplorer", "No data to compute burst IDs.")
+                    QMessageBox.warning(self, "NDXplorer", "No data to compute burst IDs.")
                 except Exception:
                     pass
                 return
@@ -2367,7 +2367,7 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Could not create analysis directories: {e}")
                 try:
-                    dialogs.error(self, "NDXplorer", f"Failed to create analysis folder:\n{e}")
+                    QMessageBox.critical(self, "NDXplorer", f"Failed to create analysis folder:\n{e}")
                 except Exception:
                     pass
                 return
@@ -2420,7 +2420,7 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Failed to write BUR: {e}")
                 try:
-                    dialogs.error(self, "NDXplorer", f"Failed to write .bur file:\n{e}")
+                    QMessageBox.critical(self, "NDXplorer", f"Failed to write .bur file:\n{e}")
                 except Exception:
                     pass
                 return
@@ -2484,14 +2484,14 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Failed to open NDXplorer: {e}")
                 try:
-                    dialogs.error(self, "NDXplorer", f"Failed to open NDXplorer:\n{e}")
+                    QMessageBox.critical(self, "NDXplorer", f"Failed to open NDXplorer:\n{e}")
                 except Exception:
                     pass
 
         except Exception as e:
             logging.exception(f"TraceBrowser: One-click NDX workflow failed: {e}")
             try:
-                dialogs.error(self, "NDXplorer", f"One-click workflow failed:\n{e}")
+                QMessageBox.critical(self, "NDXplorer", f"One-click workflow failed:\n{e}")
             except Exception:
                 pass
 

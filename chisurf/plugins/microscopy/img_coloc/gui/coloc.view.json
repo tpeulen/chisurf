@@ -68,13 +68,9 @@
                  "description": "Lower channel-B intensity of the gate rectangle."},
                 {"type": "value", "attr": "gate_b_max", "label": "B max", "kind": "float", "decimals": 4,
                  "description": "Upper channel-B intensity of the gate rectangle."},
-                {"type": "custom", "key": "region_list", "target": "gates", "title": "Gate regions",
-                 "options": {"image_attr": "gate_histogram", "extent_attr": "gate_extent",
-                             "refresh_on": ["gate", "done", "result"]},
-                 "description": "Every gate on the intensity scatter in one list: the typed box, a painted population, an ellipse or polygon drawn on the plane. Tick to include, ~ for everything outside, and pick how they combine — a cloud AND a threshold, not one overriding the other."},
                 {"type": "button_row", "buttons": [
                   {"label": "🧹 Clear gate", "action": "clear_gate",
-                   "description": "Drop every gate region and recompute the coefficients over all thresholded pixels."}
+                   "description": "Switch the gate off and recompute the coefficients over all thresholded pixels."}
                 ]}
               ]
             },
@@ -168,11 +164,10 @@
              "description": "Pixels above both thresholds; gated pixels are brighter when a scatter gate is active."},
             {"type": "custom", "key": "image", "target": "histogram_image", "title": "Intensity scatter",
              "options": {"colormap": true, "colormap_attr": "colormap", "invert_y": false,
-                         "extent_source": "gate_extent",
                          "region_call": "set_gate_region", "region_source": "gate_region",
                          "selection_attr": "gate_paint", "brush_kernel_source": "gate_brush_kernel",
                          "on_draw": "on_gate_painted"},
-             "description": "Joint histogram of the two channels (A horizontal, B vertical); the axes carry the intensities themselves. Drag the blue rectangle to gate a pixel population, paint one directly when it is not a box, or draw a shape in the Gate regions list — they combine rather than override one another."},
+             "description": "Joint histogram of the two channels (A horizontal, B vertical). Drag the blue rectangle to gate a pixel population, or paint the population directly when it is not a box — painting wins over the rectangle, and 🧽 Clear gate resets both."},
             {"type": "plot", "source": "ccf_series", "title": "van Steensel CCF",
              "x_label": "shift / px", "y_label": "PCC"},
             {"type": "custom", "key": "image", "target": "ccf_map_image", "title": "CCF map (2-D)",

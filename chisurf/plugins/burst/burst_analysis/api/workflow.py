@@ -167,7 +167,7 @@ class Setup:
 
     def stream_defs(self) -> list[Any]:
         """Return H2MM :class:`StreamDef` objects for every detector."""
-        from chisurf.core.fluorescence.burst.photons import StreamDef
+        from chisurf.plugins.burst.burst_h2mm.core.photons import StreamDef
 
         return [
             StreamDef(
@@ -1232,7 +1232,7 @@ class BurstWorkflow:
         Bursts
             The selected bursts; call ``.bva()`` or ``.h2mm()`` on the result.
         """
-        from chisurf.core.fluorescence.burst.photons import load_bur_dataframe
+        from chisurf.plugins.burst.burst_h2mm.core.photons import load_bur_dataframe
         from chisurf.plugins.burst.burst_selection.api.io import load_tttr
         from chisurf.plugins.burst.burst_selection.api.models import (
             AnalysisRequest,

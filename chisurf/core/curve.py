@@ -2,9 +2,6 @@ from __future__ import annotations
 from chisurf import typing
 
 import abc
-import contextlib
-import logging
-
 import numpy as np
 
 import chisurf.core.fio
@@ -13,8 +10,6 @@ import chisurf.core.base
 import chisurf.core.decorators
 import chisurf.core.math
 
-
-logger = logging.getLogger(__name__)
 
 T = typing.TypeVar('T', bound='Curve')
 
@@ -25,51 +20,7 @@ class NCurve(chisurf.core.base.Base):
     This class stores a single NumPy array ``d`` and provides basic
     slicing/serialization support. Subclasses such as :class:`Curve`
     interpret the array in more structured ways.
-
-    Notes
-    -----
-    **The sample arrays are write-locked.** A curve is routinely handed to
-    several consumers at once — a fit, a plot, a plugin, a node in a pipeline —
-    and any one of them writing into it in place changes everyone else's result
-    silently. Every array listed in :attr:`array_attributes` is therefore
-    flagged non-writeable when it is assigned, and so is every view taken from
-    it (``curve.x`` and ``curve.y`` are views into ``d``). Replacing an array
-    wholesale through its setter stays allowed — that rebinds the curve's own
-    state rather than the buffer a consumer is holding.
-
-    Writing in place is not forbidden, only made explicit:
-
-    >>> import numpy as np
-    >>> from chisurf.core.curve import Curve
-    >>> c = Curve(x=np.arange(3.0), y=np.zeros(3))
-    >>> c.y[0] = 1.0                                # doctest: +ELLIPSIS
-    Traceback (most recent call last):
-        ...
-    ValueError: assignment destination is read-only
-    >>> with c.unlocked():
-    ...     c.y[0] = 1.0
-    >>> float(c.y[0])
-    1.0
-
-    Assigning an array to a curve transfers ownership of that buffer: the curve
-    locks the object it was given, so a caller that keeps writing to the array
-    it passed in will now see the same error. An array that does **not** own its
-    data — a row of a larger array, which is what a CSV reader hands out — is
-    copied on the way in, because locking a view leaves the underlying buffer
-    writable and the guarantee would be empty.
     """
-
-    #: Names of the per-sample arrays this class write-locks. Subclasses that
-    #: carry further arrays beside ``d`` extend the tuple.
-    array_attributes: typing.Tuple[str, ...] = ("d",)
-
-    #: Friendly names accepted by :meth:`unlocked`, mapped to the array that
-    #: actually stores them.
-    _array_aliases: typing.Dict[str, str] = {"x": "d", "y": "d"}
-
-    #: Nesting depth of :meth:`unlocked`. A class attribute so that it is
-    #: readable before ``__init__`` has assigned anything.
-    _unlock_depth: int = 0
 
     def __init__(
             self,
@@ -94,134 +45,6 @@ class NCurve(chisurf.core.base.Base):
         else:
             self.d = d
         super().__init__(*args, **kwargs)
-
-    def __setattr__(self, key: str, value: object):
-        """Lock every per-sample array on its way into the curve.
-
-        Doing it here rather than at the handful of sites that currently assign
-        one is what makes the guarantee hold: a future assignment cannot forget
-        to lock, because there is nowhere else for an array to enter.
-        """
-        if key in self.array_attributes and isinstance(value, np.ndarray):
-            if not value.flags.owndata:
-                # A row of somebody else's array -- `self.ey = csv.data[3]` in
-                # `DataCurve.load`, or any caller passing a slice to `set_data`.
-                # `setflags` would lock the *view* and leave the buffer writable,
-                # so the caller who still holds the source could write straight
-                # through the "locked" curve; and the view could not be unlocked
-                # again, because writing it would reach data the curve does not
-                # own. A curve owns its arrays, exactly as it already owns the
-                # 2xN storage that every path rebuilds with `np.vstack`.
-                value = np.array(value)
-            if not self._unlock_depth:
-                value.setflags(write=False)
-        super().__setattr__(key, value)
-
-    def __setstate__(self, state: dict):
-        """Restore from pickle/deepcopy and re-lock the arrays.
-
-        Neither pickling nor :func:`copy.deepcopy` goes through
-        :meth:`__setattr__`, and NumPy's own copy comes back writeable — so the
-        restored curve would otherwise be the one unlocked object in the tree.
-        """
-        self.__dict__.update(state)
-        self.lock()
-
-    def __deepcopy__(self, memodict=None):
-        """Deep-copy the curve and re-lock the copy's arrays.
-
-        :meth:`chisurf.core.base.Base.__deepcopy__` rebuilds ``__dict__``
-        directly, and NumPy hands back a writeable array from its own deep copy.
-        """
-        c = super().__deepcopy__(memodict)
-        c.lock()
-        return c
-
-    def lock(self) -> None:
-        """Flag every per-sample array non-writeable."""
-        for name in self.array_attributes:
-            array = self.__dict__.get(name)
-            if isinstance(array, np.ndarray):
-                array.setflags(write=False)
-
-    @staticmethod
-    def _can_unlock(array: np.ndarray) -> bool:
-        """Whether ``array`` may be made writeable without corrupting a source.
-
-        A view into another array shares that array's buffer; writing through it
-        would silently modify data the curve does not own.
-        """
-        return bool(array.flags.writeable or array.flags.owndata or array.size == 0)
-
-    @contextlib.contextmanager
-    def unlocked(self, *names: str):
-        """Temporarily allow in-place writes to the curve's arrays.
-
-        Parameters
-        ----------
-        *names : str
-            Arrays to unlock, by attribute name (``'d'``, and on subclasses
-            ``'ex'``, ``'ey'``, ``'mask'``); ``'x'`` and ``'y'`` are accepted as
-            aliases for the storage that holds them. With no argument every
-            per-sample array is unlocked.
-
-        Raises
-        ------
-        KeyError
-            If a name is not one of the curve's arrays.
-        ValueError
-            If an array is a view into another array, where an in-place write
-            would reach through to data the curve does not own. Assignment
-            copies such an array, so this is a backstop for state that reached
-            ``__dict__`` some other way (an old pickle, say), not something a
-            caller can normally trip.
-
-        Examples
-        --------
-        >>> import numpy as np
-        >>> from chisurf.core.curve import Curve
-        >>> c = Curve(x=np.arange(3.0), y=np.zeros(3))
-        >>> with c.unlocked('y'):
-        ...     c.y[:] = 2.0
-        >>> c.y.flags.writeable
-        False
-        """
-        if names:
-            resolved = []
-            for name in names:
-                target = self._array_aliases.get(name, name)
-                if target not in self.array_attributes:
-                    raise KeyError(
-                        f"{type(self).__name__} has no per-sample array {name!r}; "
-                        f"expected one of {self.array_attributes + tuple(self._array_aliases)}"
-                    )
-                if target not in resolved:
-                    resolved.append(target)
-        else:
-            resolved = list(self.array_attributes)
-
-        arrays = []
-        for name in resolved:
-            array = self.__dict__.get(name)
-            if not isinstance(array, np.ndarray):
-                continue
-            if not self._can_unlock(array):
-                raise ValueError(
-                    f"{type(self).__name__}.{name} is a view into another array "
-                    "and cannot be unlocked; write to a copy instead"
-                )
-            arrays.append(array)
-
-        depth = self._unlock_depth
-        self._unlock_depth = depth + 1
-        for array in arrays:
-            array.setflags(write=True)
-        try:
-            yield self
-        finally:
-            self._unlock_depth = depth
-            if not depth:
-                self.lock()
 
     def __getstate__(self):
         """Return the instance ``__dict__`` for pickling."""
@@ -345,10 +168,7 @@ class Curve(NCurve):
         values = np.atleast_1d(np.asarray(values, dtype=np.float64))
         storage = self.d
         if storage.ndim == 2 and storage.shape[0] == 2 and storage.shape[1] == values.size:
-            # Replacing a whole axis through its setter is the sanctioned way to
-            # write a curve, so the lock is lifted for the assignment itself.
-            with self.unlocked('d'):
-                self.d[index] = values
+            storage[index] = values
             return
         other = np.zeros(values.size, dtype=np.float64)
         if storage.ndim == 2 and storage.shape[0] == 2:
@@ -534,40 +354,21 @@ class Curve(NCurve):
         :param inplace: if True the Curve object is modified in place. Otherwise, only the scaling parameter
         is returned
         :return: the parameter that scales the Curve object
-
-        An all-zero or empty curve has no scale to normalize against. Dividing
-        by the zero factor filled the curve with NaN behind a bare
-        ``RuntimeWarning`` and still reported success — reachable from the IRF
-        path, where a fittable ``lamp_background`` above the whole IRF clips it
-        to zero first, and the NaN then propagated into the model and χ² with
-        nothing raised or logged anywhere. Such a curve is left alone and ``1.0``
-        is returned.
         """
         factor = 1.0
-        if self.y.size:
-            # `sum`/`max` here are the *builtins* iterating a NumPy array
-            # element by element -- two orders of magnitude slower than the
-            # NumPy reductions on a 64k-point curve.
-            if not isinstance(curve, Curve):
-                if mode == "sum":
-                    factor = float(np.sum(self.y))
-                elif mode == "max":
-                    factor = float(np.max(self.y))
-            else:
-                if mode == "sum":
-                    factor = float(np.sum(self.y) * np.sum(curve.y))
-                elif mode == "max":
-                    factor = float(np.max(self.y) * np.max(curve.y))
-        if factor == 0.0 or not np.isfinite(factor):
-            logger.warning(
-                "Cannot normalize a curve whose %s is %s; leaving it unscaled.",
-                mode, factor
-            )
-            return 1.0
+        if not isinstance(curve, Curve):
+            if mode == "sum":
+                factor = sum(self.y)
+            elif mode == "max":
+                factor = max(self.y)
+        else:
+            if mode == "sum":
+                factor = sum(self.y) * sum(curve.y)
+            elif mode == "max":
+                if max(self.y) != 0:
+                    factor = max(self.y) * max(curve.y)
         if inplace:
-            # Not `self.y /= factor`: augmented assignment divides the view in
-            # place before the setter ever runs, which the lock rejects.
-            self.y = self.y / factor
+            self.y /= factor
         return factor
 
     def __add__(self, c: T) -> Curve:

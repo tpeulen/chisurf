@@ -34,9 +34,8 @@ from .filter_settings_form import (
 from .tttr_photon_filter_file_drop import install_file_drop
 from .tttr_photon_filter_plots import create_plots, place_plots
 from .tttr_photon_filter_connections import setup_connections as _setup_connections
-from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.progress import EnhancedProgressDialog
 from chisurf.core.fluorescence.burst.utils import create_array_with_ones
-from chisurf.gui import dialogs
 
 
 colors = chisurf.core.settings.gui['plot']['colors']
@@ -130,7 +129,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         setup_name = self.comboBox.currentText()
         if not setup_name or setup_name == "No setups available":
             # Display warning message if no setup is selected
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "No Setup Selected",
                 "Please define a setup first in the Detector Configuration page."
@@ -1175,7 +1174,7 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             except Exception as e:
                 # If there's an error accessing the TTTR object's properties,
                 # display an error message and exit early
-                dialogs.error(
+                QtWidgets.QMessageBox.critical(
                     self,
                     "Error Reading File",
                     f"Failed to read file '{p.name}' with the selected setup.\n\n"
@@ -1438,7 +1437,8 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
             logger.warning("remove_folder=True but zip_output=False; remove_folder will be ignored.")
 
         # Initialize progress dialog
-        progress = ChiSurfProgress(self, "Initializing...", total_tasks, title="Saving Selection")
+        progress = EnhancedProgressDialog("Saving Selection", "Initializing...", 0, total_tasks, self)
+        progress.show()
         current_task = 0
         all_dfs = []
 
@@ -1635,8 +1635,8 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
         -----------
         output_folder : pathlib.Path
             Path to the folder to be zipped.
-        existing_progress : ChiSurfProgress, optional
-            A running progress handle to reuse instead of starting a new one.
+        existing_progress : QtWidgets.QProgressDialog, optional
+            An existing progress dialog to use instead of creating a new one.
         add_timestamp : bool, optional
             Whether to add a timestamp to the zip filename. Default is False.
 
@@ -1671,14 +1671,15 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
 
         # Use existing progress dialog if provided, otherwise create a new one
         using_existing_progress = existing_progress is not None
-        if using_existing_progress:
+        if not using_existing_progress:
+            progress = EnhancedProgressDialog("Creating ZIP Archive", "Zipping output folder...", 0, 100, self)
+            progress.show()
+        else:
             progress = existing_progress
             progress.update_text("Zipping output folder...")
-        else:
-            progress = ChiSurfProgress(
-                self, "Zipping output folder...", 100, title="Creating ZIP Archive"
-            )
+
         progress.setValue(10)  # Show some initial progress
+        QtWidgets.QApplication.processEvents()
 
         try:
             # Create the zip file
@@ -1703,22 +1704,44 @@ class WizardTTTRPhotonFilter(QtWidgets.QWizardPage):
                         # Update progress based on files processed
                         processed_files += 1
                         progress_value = 10 + int(80 * processed_files / total_files) if total_files > 0 else 90
-                        progress.update_progress(progress_value, f"Zipping: {rel_path}")
+                        if isinstance(progress, EnhancedProgressDialog):
+                            progress.update_progress(progress_value, f"Zipping: {rel_path}")
+                        else:
+                            progress.setValue(progress_value)
+                            progress.setLabelText(f"Zipping: {rel_path}")
+                            QtWidgets.QApplication.processEvents()
 
                         if progress.wasCanceled():
                             return None
 
-            progress.update_progress(100, "ZIP archive completed")
+            # Final progress update
+            if isinstance(progress, EnhancedProgressDialog):
+                progress.update_progress(100, "ZIP archive completed")
+            else:
+                progress.setValue(100)
+                progress.setLabelText("ZIP archive completed")
+                QtWidgets.QApplication.processEvents()
+
             return zip_filename
 
         except Exception as e:
             # Update progress dialog instead of showing a message box
-            progress.update_text(f"Error creating ZIP: {str(e)}")
-            dialogs.error(
-                self,
-                "Error Creating ZIP",
-                f"Failed to create ZIP archive: {str(e)}"
-            )
+            error_message = f"Error creating ZIP: {str(e)}"
+            if isinstance(progress, EnhancedProgressDialog):
+                progress.update_text(error_message)
+                QtWidgets.QApplication.processEvents()
+                time.sleep(2)  # Give user time to see the error
+            elif using_existing_progress:
+                progress.setLabelText(error_message)
+                QtWidgets.QApplication.processEvents()
+                time.sleep(2)  # Give user time to see the error
+            else:
+                # Only show message box if we created our own progress dialog and it's not enhanced
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Error Creating ZIP",
+                    f"Failed to create ZIP archive: {str(e)}"
+                )
             return None
         finally:
             # Close the progress dialog only if we created it

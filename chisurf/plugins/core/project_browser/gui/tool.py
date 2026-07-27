@@ -8,7 +8,6 @@ from chisurf import logging
 from chisurf.gui.glyphs import Glyphs
 
 from .client import ProjectBrowserClient
-from chisurf.gui import dialogs
 
 
 class SaveProjectDialog(QtWidgets.QDialog):
@@ -260,7 +259,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
             self._populate_tree()
         except Exception as exc:
             logging.error("Failed to list projects: %s", exc)
-            dialogs.warning(self, "Error", f"Failed to list projects:\n{exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to list projects:\n{exc}")
 
     def _populate_tree(self) -> None:
         self._tree.clear()
@@ -336,14 +335,14 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
     def _on_open(self) -> None:
         ver = self._selected_restore_version()
         if not ver:
-            dialogs.information(self, "Select Project", "Please select a project or project version to restore.")
+            QtWidgets.QMessageBox.information(self, "Select Project", "Please select a project or project version to restore.")
             return
         version_id = ver.get("version_id", "")
         try:
             result = self.client.restore_project(version_id=version_id)
             payload = result.get("project_payload")
             if not payload:
-                dialogs.warning(self, "No Payload", "This version has no project payload.")
+                QtWidgets.QMessageBox.warning(self, "No Payload", "This version has no project payload.")
                 return
             import chisurf as cs
             from chisurf.core.project import Project as CSProject
@@ -360,7 +359,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
             self.close()
         except Exception as exc:
             logging.error("Failed to restore project: %s", exc)
-            dialogs.warning(self, "Restore Failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Restore Failed", str(exc))
 
     @staticmethod
     def _restore_gui_from_fits(proj: Any) -> None:
@@ -377,7 +376,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
         """Save the current project, prompting only for metadata when needed."""
         import chisurf as cs
         if not hasattr(cs, "cs") or cs.cs is None:
-            dialogs.warning(self, "No Project", "No project is currently open.")
+            QtWidgets.QMessageBox.warning(self, "No Project", "No project is currently open.")
             return
 
         current_project_id = getattr(cs.cs, "_current_project_id", None)
@@ -400,7 +399,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
         notes = dlg.notes
 
         if not project_name:
-            dialogs.warning(self, "No Project Name", "Project name is missing.")
+            QtWidgets.QMessageBox.warning(self, "No Project Name", "Project name is missing.")
             return
 
         from chisurf.macros.core_fit import get_project_payload
@@ -431,19 +430,19 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
                 project_name, result.get("version_number"),
                 result.get("project_id"), result.get("version_id"),
             )
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self, "Saved",
                 f"Project '{project_name}' saved as version {result.get('version_number')}.",
             )
             self.refresh()
         except Exception as exc:
             logging.error("Failed to save project: %s", exc)
-            dialogs.warning(self, "Save Failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Save Failed", str(exc))
 
     def _on_export(self) -> None:
         ver = self._selected_version()
         if not ver:
-            dialogs.information(self, "Select Version", "Please select a project version to export.")
+            QtWidgets.QMessageBox.information(self, "Select Version", "Please select a project version to export.")
             return
         version_id = ver.get("version_id", "")
         default_name = f"{ver.get('project_name', 'project')}_v{ver.get('version_number', 1)}.csp"
@@ -455,15 +454,15 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
         try:
             result = self.client.export_csp(version_id=version_id, target_path=target_path)
             if result.get("ok"):
-                dialogs.information(
+                QtWidgets.QMessageBox.information(
                     self, "Exported",
                     f"Project exported to:\n{target_path}",
                 )
             else:
-                dialogs.warning(self, "Export Failed", result.get("error", "Unknown error"))
+                QtWidgets.QMessageBox.warning(self, "Export Failed", result.get("error", "Unknown error"))
         except Exception as exc:
             logging.error("Failed to export project: %s", exc)
-            dialogs.warning(self, "Export Failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Export Failed", str(exc))
 
     def _on_import(self) -> None:
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -474,7 +473,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
         try:
             preview = self.client.import_preview(file_path=file_path)
             if not preview.get("ok", True):
-                dialogs.warning(
+                QtWidgets.QMessageBox.warning(
                     self, "Preview Failed",
                     preview.get("error", "Unknown error"),
                 )
@@ -486,7 +485,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
                 if dlg.exec() != QtWidgets.QDialog.Accepted:
                     return
             else:
-                ok = dialogs.question(
+                ok = QtWidgets.QMessageBox.question(
                     self, "Confirm Import",
                     f"No collisions detected.\n"
                     f"Original project: {preview.get('origin', {}).get('project_id', '?')}\n"
@@ -504,7 +503,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
                 resolve_collisions=has_collisions,
             )
             if result.get("ok"):
-                dialogs.information(
+                QtWidgets.QMessageBox.information(
                     self, "Imported",
                     f"Project imported.\n"
                     f"New project ID: {result.get('project_id', '?')}\n"
@@ -512,18 +511,18 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
                 )
                 self.refresh()
             else:
-                dialogs.warning(self, "Import Failed", result.get("error", "Unknown error"))
+                QtWidgets.QMessageBox.warning(self, "Import Failed", result.get("error", "Unknown error"))
         except Exception as exc:
             logging.error("Failed to import project: %s", exc)
-            dialogs.warning(self, "Import Failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Import Failed", str(exc))
 
     def _on_delete(self) -> None:
         ver = self._selected_version()
         if not ver:
-            dialogs.information(self, "Select Version", "Please select a project version to delete.")
+            QtWidgets.QMessageBox.information(self, "Select Version", "Please select a project version to delete.")
             return
         version_id = ver.get("version_id", "")
-        reply = dialogs.question(
+        reply = QtWidgets.QMessageBox.question(
             self, "Confirm Delete",
             f"Delete version {ver.get('version_number', '?')} of project '{ver.get('project_name', '')}'?\n"
             f"ID: {version_id}\n\nThis action soft-deletes the version.",
@@ -536,7 +535,7 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
             if result.get("ok"):
                 self.refresh()
             else:
-                dialogs.warning(self, "Delete Failed", result.get("error", "Unknown error"))
+                QtWidgets.QMessageBox.warning(self, "Delete Failed", result.get("error", "Unknown error"))
         except Exception as exc:
             logging.error("Failed to delete version: %s", exc)
-            dialogs.warning(self, "Delete Failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Delete Failed", str(exc))

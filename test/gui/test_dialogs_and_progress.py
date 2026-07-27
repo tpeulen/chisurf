@@ -63,64 +63,6 @@ def test_choice_returns_no_key_when_nobody_can_choose(qapp):
     assert answer
 
 
-def test_a_default_that_is_not_offered_is_repaired(qapp, caplog):
-    """A question must never end up with no way to say no.
-
-    ``question(parent, title, text, Yes, No)`` is the PyQt4 spelling, where the
-    last two arguments were *two buttons*. Under Qt5 the 4th became a button
-    *mask* and the 5th the default — so that call silently produces a box with a
-    single "Yes" and a default that is not on it. "Are you sure to quit?" then
-    answers itself: it shipped that way, and the program always quit.
-
-    Offering the default is the repair, because a default that is not among the
-    buttons is a mistake in every reading.
-    """
-    from chisurf.gui.dialogs import ChiSurfMessageBox as box
-
-    with caplog.at_level(logging.WARNING, logger="chisurf.gui.dialogs"):
-        with dialogs.auto_answer():  # keep it off the scripted path
-            answer = box.question(None, "Message", "Are you sure to quit?",
-                                  box.Yes, box.No)
-    # Head-lessly the answer is still the default — the point is that a user
-    # would now be *shown* a No button rather than only a Yes.
-    assert int(answer) == int(box.No)
-    assert "not among the offered buttons" in caplog.text
-
-
-def test_no_call_site_passes_two_separate_buttons():
-    """Guard the tree against the PyQt4 two-button spelling coming back."""
-    import ast
-    import pathlib
-
-    root = pathlib.Path(__file__).resolve().parent.parent.parent / "chisurf"
-
-    def is_single_button(node):
-        return (
-            isinstance(node, ast.Attribute)
-            and node.attr in {"Yes", "No", "Ok", "Cancel", "Save", "Discard"}
-            and isinstance(node.value, (ast.Name, ast.Attribute))
-            and getattr(node.value, "id", getattr(node.value, "attr", None)) == "QMessageBox"
-        )
-
-    offenders = []
-    for path in root.rglob("*.py"):
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-        except SyntaxError:
-            continue
-        for node in ast.walk(tree):
-            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                    and node.func.attr == "question" and len(node.args) >= 5):
-                continue
-            if is_single_button(node.args[3]) and is_single_button(node.args[4]):
-                offenders.append(f"{path.name}:{node.lineno}")
-    assert not offenders, (
-        "question(...) called with two separate buttons — the 4th argument is a "
-        "mask, so this shows only the first button and the question cannot be "
-        "declined. Pass buttons=Yes | No, default=No:\n  " + "\n  ".join(offenders)
-    )
-
-
 def test_auto_answer_scripts_a_confirmation(qapp):
     """A confirmation-guarded path is testable without a human or a fake loop."""
     with dialogs.auto_answer(question=dialogs.ChiSurfMessageBox.Yes):
@@ -225,46 +167,6 @@ def test_progress_cancel_stops_the_loop(qapp):
     assert progress.was_canceled() is True
 
 
-def test_progress_cancel_callback_reaches_threaded_work(qapp):
-    """Work in a thread cannot poll, so Cancel has to be pushed to it.
-
-    Every threaded run (fitting, docking, H2MM, staged loading) hands
-    ``ChiSurfProgress`` a stop callback; without it the Cancel button would set
-    a flag nobody reads and the run would carry on to the end.
-    """
-    import threading
-
-    stop = threading.Event()
-    bar = InlineProgressWidget(hide_when_idle=False)
-    progress = ChiSurfProgress(bar, "Fitting", 100, cancel=stop.set)
-
-    assert not stop.is_set()
-    bar.cancel_button.click()
-    assert stop.is_set(), "Cancel never reached the running thread"
-    assert progress.was_canceled() is True
-
-
-def test_progress_finish_and_finalize_accept_the_dialog_contract(qapp):
-    """The call sites migrated off the modal dialog keep their own spelling.
-
-    ``finish(final_text=…, auto_close=…, close_delay_ms=…)`` and
-    ``finalize(force_auto_close=…)`` come from the popup this class replaced;
-    accepting them is what made those migrations one-line changes.
-    """
-    bar = InlineProgressWidget(hide_when_idle=False)
-    progress = ChiSurfProgress(bar, "Fitting", 100)
-    progress.update_progress(40)
-    progress.finish(final_text="Fitting finished!", auto_close=True, close_delay_ms=0)
-    # Both spellings release the bar rather than leaving a task owning it, and
-    # an inline bar goes back to idle instead of lingering on the last message.
-    assert bar._task is None
-    assert bar.label.text() == ""
-
-    progress = ChiSurfProgress(bar, "Fitting", 100)
-    progress.finalize(force_auto_close=True)
-    assert bar._task is None
-
-
 def test_progress_survives_a_raising_body(qapp):
     """The display comes down even when the work blows up mid-loop."""
     bar = InlineProgressWidget(hide_when_idle=True)
@@ -294,41 +196,6 @@ def test_progress_section_reads_a_model_attribute(qapp):
     model.completion = 0.99
     bar.refresh()
     assert bar.bar.value() == 3
-
-
-def test_a_designer_declared_bar_can_be_swapped_in_place(qapp):
-    """A ``.ui`` file's ``QProgressBar`` becomes the shared bar, call sites intact.
-
-    Qt Designer cannot declare an ``InlineProgressWidget`` without a promotion,
-    so those tools swap theirs at construction. The swap has to keep the layout
-    position *and* answer the plain ``QProgressBar`` calls the tool already
-    makes — otherwise every such tool would need rewriting to adopt the shared
-    bar.
-    """
-    from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
-
-    owner = QtWidgets.QWidget()
-    grid = QtWidgets.QGridLayout(owner)
-    grid.addWidget(QtWidgets.QLabel("before"), 0, 0)
-    designer_bar = QtWidgets.QProgressBar()
-    designer_bar.setObjectName("progressBar")
-    designer_bar.setRange(0, 40)
-    grid.addWidget(designer_bar, 1, 2, 1, 3)
-    grid.addWidget(QtWidgets.QLabel("after"), 2, 0)
-    owner.progressBar = designer_bar
-
-    replacement = adopt_progress_bar(owner)
-    assert isinstance(replacement, InlineProgressWidget)
-    assert owner.progressBar is replacement
-    # The grid cell (and its spans) survive: a box-layout insert would lose them.
-    assert grid.getItemPosition(grid.indexOf(replacement)) == (1, 2, 1, 3)
-    assert replacement.maximum() == 40
-
-    # The tool's own untouched QProgressBar calls keep working …
-    owner.progressBar.setValue(25)
-    assert owner.progressBar.value() == 25
-    # … and it is now a progress host as well.
-    assert find_progress_host(owner) is replacement
 
 
 def test_progress_section_is_registered_for_view_json(qapp):

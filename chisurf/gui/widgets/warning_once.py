@@ -1,14 +1,12 @@
-"""Show a message box at most once per session.
+"""Utility to show a QMessageBox warning at most once per session.
 
-Use :func:`show_warning_once` to avoid raising the same dialog several times
-when it is triggered from multiple call sites during initialization (e.g.
-several widgets that independently check for a missing file).
-
-The box itself is :class:`~chisurf.gui.dialogs.ChiSurfMessageBox`, so the
-warning is logged even when it is not shown and never blocks a headless run.
+Use `show_warning_once` to avoid showing the same warning dialog
+multiple times when it is triggered from multiple call sites during
+initialization (e.g. several widgets that independently check for a
+missing file).
 """
 
-from chisurf.gui import dialogs
+from qtpy.QtWidgets import QMessageBox
 
 _shown_warnings: set[str] = set()
 
@@ -19,9 +17,10 @@ def show_warning_once(
     text: str,
     informative_text: str = "",
     details: str = "",
-    kind: str = "warning",
+    icon: QMessageBox.Icon = QMessageBox.Warning,
+    **kwargs,
 ) -> None:
-    """Show a message box only once per session for a given *key*.
+    """Show a QMessageBox warning only once per session for a given *key*.
 
     Parameters
     ----------
@@ -36,23 +35,32 @@ def show_warning_once(
         Additional descriptive text.
     details : str, optional
         Expandable details text.
-    kind : str, optional
-        ``"warning"`` (default), ``"information"`` or ``"critical"``.
+    icon : QMessageBox.Icon, optional
+        Icon to display (default ``QMessageBox.Warning``).
+    **kwargs
+        Additional keyword arguments forwarded to ``QMessageBox``.
     """
     if key in _shown_warnings:
         return
     _shown_warnings.add(key)
 
-    report = getattr(dialogs.ChiSurfMessageBox, kind, dialogs.ChiSurfMessageBox.warning)
-    report(None, title, text, informative=informative_text or None, detail=details or None)
+    msg = QMessageBox(**kwargs)
+    msg.setWindowTitle(title)
+    msg.setIcon(icon)
+    msg.setText(text)
+    if informative_text:
+        msg.setInformativeText(informative_text)
+    if details:
+        msg.setDetailedText(details)
+    msg.exec_()
 
 
 def mark_warning_shown(key: str) -> None:
     """Manually mark a warning key as already shown.
 
-    Use this when you need a box this helper cannot build (extra buttons, a
-    tick box — see :meth:`~chisurf.gui.dialogs.ChiSurfMessageBox.choice`) but
-    still want the once-per-session guarantee.
+    Use this when you need to build a custom ``QMessageBox`` (with extra
+    buttons, a checkbox, etc.) but still want the once-per-session
+    guarantee.
     """
     _shown_warnings.add(key)
 

@@ -7,7 +7,6 @@ These functions are referenced by JSON config files in
 from __future__ import annotations
 
 import chisurf as cs
-from chisurf.gui import dialogs
 
 
 def _get_window(context):
@@ -48,8 +47,8 @@ def startup_interface(context) -> object:
     cs.cs = window
     import chisurf.core.base
     cs.core.base.set_safe_import_notify(
-        lambda title, text: dialogs.information(
-            window, title, text
+        lambda title, text: cs.gui.QtWidgets.QMessageBox.information(
+            window, title, text, cs.gui.QtWidgets.QMessageBox.Ok
         )
     )
     return window

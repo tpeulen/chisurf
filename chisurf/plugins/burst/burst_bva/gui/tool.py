@@ -22,6 +22,8 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
+    QProgressBar,
     QSizePolicy,
     QSpinBox,
     QTextEdit,
@@ -42,8 +44,6 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups impo
     load_detector_setups,
 )
 from chisurf.plugins.burst.burst_bva.core import computation as core
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 
 class HelpDialog(QDialog):
@@ -133,6 +133,27 @@ class _FolderLineEdit(QLineEdit):
             if path:
                 self.setText(path)
                 self.folderDropped.emit(path)
+
+
+class _ProgressDialog(QDialog):
+    def __init__(self, title="Progress", message="Processing...", max_value=100, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(title)
+        self.setWindowModality(Qt.WindowModal)
+        layout = QVBoxLayout()
+        self.label = QLabel(message)
+        self.progress = QProgressBar()
+        self.progress.setRange(0, max_value)
+        layout.addWidget(self.label)
+        layout.addWidget(self.progress)
+        self.setLayout(layout)
+
+    def set_value(self, value: int):
+        self.progress.setValue(value)
+        QCoreApplication.processEvents()
+
+    def set_maximum(self, value: int):
+        self.progress.setMaximum(value)
 
 
 @persist_plugin_state("burst_bva")
@@ -565,28 +586,44 @@ class BVATool(QMainWindow):
     def _on_folder_dropped(self, path: str):
         self._set_folder(path)
 
+    def _reporter(self):
+        """Return the hosting shell's status bar when embedded, else ``None``."""
+        from chisurf.gui.widgets.navigation import find_status_reporter
+
+        return find_status_reporter(self)
+
     def _notify_error(self, title: str, msg: str) -> None:
         """Log the error (shown in the shell status bar when embedded); box if standalone."""
         logging.getLogger(__name__).error("%s: %s", title, msg)
         if not self._embedded:
-            dialogs.error(self, title, msg)
+            QMessageBox.critical(self, title, msg)
 
-    def _begin_progress(self, message: str, max_value: int) -> ChiSurfProgress:
+    def _begin_progress(self, message: str, max_value: int):
         """Return a single progress handle for a fresh phase.
 
-        Where it renders is decided by :class:`~chisurf.gui.progress.ChiSurfProgress`
-        from this widget: the Burst Analysis shell's status bar when embedded, a
-        modal dialog when standalone, the log when headless. All phases of one run
-        share **one** handle instead of flashing a surface per phase.
+        When embedded in the Burst Analysis shell this is a status-bar-backed
+        handle (no popup); standalone it is a modal ``_ProgressDialog``. Either way
+        it duck-types ``label`` / ``progress`` / ``set_value`` / ``close`` so all
+        phases of one run share **one** progress surface instead of flashing per
+        phase.
         """
-        return ChiSurfProgress(self, message, max_value, title="BVA Analysis")
+        reporter = self._reporter()
+        if reporter is not None:
+            return reporter.begin_task(message, max_value)
+        progress = _ProgressDialog(
+            title="BVA Analysis", message=message, max_value=max_value, parent=self,
+        )
+        progress.show()
+        QCoreApplication.processEvents()
+        return progress
 
     @staticmethod
     def _phase(progress, message: str, max_value: int):
-        """Retarget an existing progress handle to the next phase (label + range)."""
-        progress.set_text(message)
-        progress.set_range(0, max_value)
-        progress.set_value(0)
+        """Retarget an existing progress dialog to the next phase (label + range)."""
+        progress.label.setText(message)
+        progress.progress.setRange(0, max_value)
+        progress.progress.setValue(0)
+        QCoreApplication.processEvents()
 
     def _read_burst_data(self, progress=None) -> bool:
         """Read burst data from the analysis folder and store it.

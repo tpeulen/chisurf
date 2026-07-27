@@ -48,7 +48,6 @@ from chisurf.gui.main_helper import (
     StateMixin,
     DevMixin,
 )
-from chisurf.gui import dialogs
 
 class Main(
     QtWidgets.QMainWindow,
@@ -181,7 +180,11 @@ class Main(
                 setup_found = True
                 break
         if not setup_found:
-            dialogs.information(None, "Setup Not Found", f"Setup '{name}' does not exist in the current experiment.")
+            _gw.general.MyMessageBox(
+                label="Setup Not Found",
+                info=f"Setup '{name}' does not exist in the current experiment.",
+                show_fortune=False
+            )
             return
         if j != i:
             self.current_setup_idx = j
@@ -279,12 +282,12 @@ class Main(
         except Exception:
             pass
         if cs.core.settings.gui['confirm_close_program']:
-            reply = dialogs.question(
+            reply = _gw.general.MyMessageBox.question(
                 self,
                 'Message',
                 "Are you sure to quit?",
-                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                default=QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.Yes,
+                QtWidgets.QMessageBox.No
             )
             if reply != QtWidgets.QMessageBox.Yes:
                 event.ignore()
@@ -529,7 +532,11 @@ class Main(
         try:
             self.open_context_help_for_reader(None)
         except Exception as e:
-            dialogs.information(None, "Help Plugin Error", f"Error loading help plugin: {str(e)}")
+            _gw.general.MyMessageBox(
+                label="Help Plugin Error",
+                info=f"Error loading help plugin: {str(e)}",
+                show_fortune=False
+            )
 
     def open_context_help_for_reader(self, topic: str | None = None) -> None:
         """Open the help plugin, optionally with a filter for a given topic.
@@ -613,7 +620,11 @@ class Main(
             except Exception:
                 pass
         except Exception as e:
-            dialogs.information(None, "Help Plugin Error", f"Error loading help plugin: {str(e)}")
+            _gw.general.MyMessageBox(
+                label="Help Plugin Error",
+                info=f"Error loading help plugin: {str(e)}",
+                show_fortune=False
+            )
 
     def onOpenUpdate(self):
         """Open the updater plugin."""
@@ -629,7 +640,11 @@ class Main(
             window.show()
         except Exception as e:
             # Show error message if plugin can't be loaded
-            dialogs.information(None, "Updater Plugin Error", f"Error loading updater plugin: {str(e)}")
+            _gw.general.MyMessageBox(
+                label="Updater Plugin Error",
+                info=f"Error loading updater plugin: {str(e)}",
+                show_fortune=False
+            )
 
     def onOpenAbout(self):
         """Open the about plugin."""
@@ -643,7 +658,11 @@ class Main(
             window = about_plugin.AboutDialog(parent=self)
             window.show()
         except Exception as e:
-            dialogs.information(None, "About Plugin Error", f"Error opening About dialog: {str(e)}")
+            _gw.general.MyMessageBox(
+                label="About Plugin Error",
+                info=f"Error opening About dialog: {str(e)}",
+                show_fortune=False
+            )
 
     def onClearLocalSettings(self):
         """Reset local settings and show a confirmation popup."""
@@ -651,7 +670,11 @@ class Main(
         cs.core.settings.clear_settings_folder()
 
         # Show a confirmation popup
-        dialogs.information(None, "Settings Reset", "Local settings have been reset successfully.")
+        _gw.general.MyMessageBox(
+            label="Settings Reset",
+            info="Local settings have been reset successfully.",
+            show_fortune=False
+        )
 
     def onClearUserStyles(self):
         """Clear user style files (QSS) and show a confirmation popup."""
@@ -668,10 +691,18 @@ class Main(
                     cs.logging.warning(f"Could not delete style file {file}: {e}")
 
             # Show a confirmation popup
-            dialogs.information(None, "Styles Reset", "User style files have been cleared successfully. Restart the application to apply default styles.")
+            _gw.general.MyMessageBox(
+                label="Styles Reset",
+                info="User style files have been cleared successfully. Restart the application to apply default styles.",
+                show_fortune=False
+            )
         else:
             # Show a message if the folder doesn't exist
-            dialogs.information(None, "Styles Reset", "No user style files found.")
+            _gw.general.MyMessageBox(
+                label="Styles Reset",
+                info="No user style files found.",
+                show_fortune=False
+            )
 
     def onClearUserPlugins(self):
         """Clear user plugin folder and show a confirmation popup."""
@@ -679,7 +710,11 @@ class Main(
         cs.core.settings.clear_user_plugins_folder()
 
         # Show a confirmation popup
-        dialogs.information(None, "User Plugins Reset", "User plugins folder has been cleared successfully. Restart the application to apply changes.")
+        _gw.general.MyMessageBox(
+            label="User Plugins Reset",
+            info="User plugins folder has been cleared successfully. Restart the application to apply changes.",
+            show_fortune=False
+        )
 
     def onDockWidgetPlotVisibilityChanged(self, visible):
         """Update the Plot Controller when the dockWidgetPlot becomes visible.
@@ -1369,20 +1404,19 @@ class Main(
     def onOpenFretRdaAxisSettings(self):
         """Open a dialog for global FRET R_DA axis settings."""
         try:
-            from chisurf.gui.widgets.models.pda2c.widgets import FretRdaAxisSettingsWidget
+            from chisurf.gui.widgets.models.pda.widgets import FretRdaAxisSettingsWidget
         except Exception as e:
             try:
                 cs.logging.error(f"Could not load FretRdaAxisSettingsWidget: {e}")
             except Exception:
                 pass
             try:
-
-                dialogs.warning(
+                QtWidgets.QMessageBox.warning(
                     self,
                     "FRET RDA axis settings",
                     (
                         "The RDA axis settings widget could not be loaded.\n"
-                        "Please check that _gw.models.pda2c is available."
+                        "Please check that _gw.models.pda is available."
                     ),
                 )
             except Exception:
@@ -1715,18 +1749,8 @@ class Main(
             cb.blockSignals(True)
             cb.clear()
             import chisurf as cs
-            from chisurf.gui.widgets.tooltip_plot import (
-                TooltipStandardItem, dataset_tooltip_html,
-            )
-            model = cb.model()
             for ds in getattr(cs, "imported_datasets", []):
-                text = str(getattr(ds, "name", repr(ds)))
-                # Hovering an entry previews the curve (see tooltip_plot); falls
-                # back to a plain entry for non-standard combo models.
-                if hasattr(model, "appendRow"):
-                    model.appendRow(TooltipStandardItem(text, ds, dataset_tooltip_html))
-                else:
-                    cb.addItem(text)
+                cb.addItem(str(getattr(ds, "name", repr(ds))))
             cb.blockSignals(False)
         except Exception:
             pass

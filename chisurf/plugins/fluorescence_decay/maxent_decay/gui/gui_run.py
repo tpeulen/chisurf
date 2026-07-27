@@ -6,8 +6,6 @@ import numpy as np
 
 from chisurf.plugins.fluorescence_decay.maxent_decay.core.solver import solve_fret_mem, solve_lifetime_mem
 from .qt_stack import ensure_qt_stack
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 
 class _MaxentRunMixin:
@@ -16,7 +14,7 @@ class _MaxentRunMixin:
             self._run_lcurve()
         except Exception as exc:
             _, QtWidgets, _, _, _ = ensure_qt_stack()
-            dialogs.error(self, "L-curve error", str(exc))
+            QtWidgets.QMessageBox.critical(self, "L-curve error", str(exc))
 
     def _run_lcurve(self) -> None:
         _, QtWidgets, QtCore, chisurf, _ = ensure_qt_stack()
@@ -96,7 +94,7 @@ class _MaxentRunMixin:
         chi2_vals = np.empty_like(nu_grid, dtype=float)
         sol_vals = np.empty_like(nu_grid, dtype=float)
 
-        progress = ChiSurfProgress(self, "Computing L-curve...", int(n_nu))
+        progress = QtWidgets.QProgressDialog("Computing L-curve...", "Cancel", 0, int(n_nu), self)
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(True)
         progress.setAutoReset(True)
@@ -307,7 +305,7 @@ class _MaxentRunMixin:
             irf_bg_arg = None
         lamp_scatter_val = float(self.spin_lamp_scatter.value())
 
-        progress = ChiSurfProgress(self, "Running MEM...", max_iter)
+        progress = QtWidgets.QProgressDialog("Running MEM...", "Cancel", 0, max_iter, self)
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(True)
         progress.setAutoReset(True)

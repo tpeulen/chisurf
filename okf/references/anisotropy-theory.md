@@ -126,15 +126,8 @@ reconstructs the two polarized decays from the magic-angle decay $f_\mathrm{VM}$
 
 $$
 f_\parallel(t) = f_\mathrm{VM}(t)\,(1 + 2 r(t)), \qquad
-f_\perp(t)     = G\,f_\mathrm{VM}(t)\,(1 - r(t)).
+f_\perp(t)     = f_\mathrm{VM}(t)\,(1 - G\,r(t)).
 $$
-
-$G$ is a detection sensitivity and therefore scales the whole perpendicular
-channel, not only its depolarization term — that is the placement under which
-the pair inverts back to the anisotropy it was built from,
-$r = (f_\parallel - f_\perp/G)/(f_\parallel + 2 f_\perp/G)$. The alternative
-$f_\mathrm{VM}(1 - G r)$ agrees only at $G = 1$: at $r_0 = 0.38$, $G = 1.5$ it
-inverts back to 0.63.
 
 This is exactly `vm_rt_to_vv_vh` (time-domain) and `calculcate_spectrum`
 (spectrum-domain, used by `Anisotropy.get_decay`). Both channels are then

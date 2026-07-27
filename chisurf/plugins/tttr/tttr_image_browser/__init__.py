@@ -17,6 +17,7 @@ import numpy as np
 from qtpy.QtWidgets import (
     QFileDialog,
     QLabel,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -27,7 +28,6 @@ from chisurf.gui.autoform.sections.image_browser_section import ImageBrowserWidg
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 
 from .gui.view_model import ImageBrowserViewModel
-from chisurf.gui import dialogs
 
 try:
     from docx import Document
@@ -152,7 +152,7 @@ class TTTRImageBrowser(QWidget):
 
             for d in base.rglob(CACHE_DIR_NAME):
                 shutil.rmtree(str(d), ignore_errors=True)
-            dialogs.information(self, "Caches cleared", "Image caches have been cleared.")
+            QMessageBox.information(self, "Caches cleared", "Image caches have been cleared.")
 
     def _on_export(self):
         paths = self._selected_paths()
@@ -222,7 +222,7 @@ class TTTRImageBrowser(QWidget):
                 if qimg.save(str(img_path), "PNG"):
                     doc.add_picture(str(img_path), width=Inches(6) if Inches else None)
             doc.save(str(docx_path))
-            dialogs.information(self, "DOCX Export", f"Saved DOCX to {docx_path}")
+            QMessageBox.information(self, "DOCX Export", f"Saved DOCX to {docx_path}")
         except Exception as exc:
             _log.exception("DOCX export failed: %s", exc)
         finally:

@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 
 from .qt_stack import ensure_qt_stack
-from chisurf.gui import dialogs
 
 
 class _MaxentPriorsMixin:
@@ -45,7 +44,7 @@ class _MaxentPriorsMixin:
                 f"Prior: loaded {arr.size} values from '{Path(fn).name}'"
             )
         except Exception as exc:
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Error loading prior",
                 f"Failed to load prior from '{fn}':\n{exc}",
@@ -82,7 +81,7 @@ class _MaxentPriorsMixin:
             )
             self._update_donor_requirement_ui()
         except Exception as exc:
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Error loading donor spectrum",
                 f"Failed to load donor spectrum from '{fn}':\n{exc}",
@@ -130,7 +129,7 @@ class _MaxentPriorsMixin:
                 continue
 
         if not candidates:
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Load donor spectrum",
                 "No lifetime/FRET fits with a donor spectrum were found.",
@@ -166,7 +165,7 @@ class _MaxentPriorsMixin:
         except Exception:
             arr = np.zeros(0, dtype=float)
         if arr.size < 2 or arr.size % 2 != 0:
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self,
                 "Load donor spectrum",
                 "Selected fit does not provide a valid (amplitude, lifetime) donor spectrum.",
@@ -206,7 +205,7 @@ class _MaxentPriorsMixin:
                 f"Distance prior: loaded {arr.size} values from '{Path(fn).name}'"
             )
         except Exception as exc:
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Error loading distance prior",
                 f"Failed to load distance prior from '{fn}':\n{exc}",

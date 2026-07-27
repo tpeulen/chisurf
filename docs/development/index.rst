@@ -21,7 +21,6 @@ Architecture & API
    architecture
    architecture_client_server
    architecture_mvc_actions
-   dialogs_and_progress
    plugin_architecture
    proxy_rpc_design
    history_project_mcp

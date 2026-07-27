@@ -115,7 +115,7 @@ reaches the server, and the plot is unchanged (RF-020).
 `Failed to resolve class chisurf.core.experiments.rics.*` ERRORs appear at
 startup, and the Experiment combo offers `RICS` — selecting it leaves the reader
 list empty and raises `IndexError: No experiment readers defined for the current
-experiment`. Meanwhile the shipped `Image correlation` and `PDA3c (3-colour)`
+experiment`. Meanwhile the shipped `Image correlation` and `c3PDA (3-colour)`
 experiments are missing from the combo. Cause: the GUI never merges the shipped
 `experiment_configs.yaml` (RF-022); with a fresh settings dir all nine
 experiments are present, every one with readers, and there are zero ERRORs.
@@ -197,7 +197,7 @@ viewport — and each is now an explicit assertion).
   after a fit.
 - RF-022 — the GUI never merges the shipped `experiment_configs.yaml`, so an
   upgraded install offers a dead `RICS` experiment (IndexError on selection) and
-  hides `Image correlation` / `PDA3c (3-colour)`.
+  hides `Image correlation` / `c3PDA (3-colour)`.
 - RF-023 — `test/gui/test_gui_chisurf_main.py` (the load-data → add-fit tests,
   incl. FCS) failed on the renamed `pushButton_2`. **Fixed** — all three tests
   green and now fail loudly on reader/model/selection drift.

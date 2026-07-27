@@ -5,20 +5,20 @@ title: "PRD-50: Photon Distribution Analysis (PDA) Family"
 description: Wrap the existing PDA histogram engine in ChiSurf models and AutoForm view specs, covering static distance-distribution PDA, dynamic/N-state kinetic PDA, error surfaces, and a kinetic consistency check (three-color PDA is PRD-65).
 status: in-progress
 phase: "unassigned"
-resource: chisurf/core/models/pda2c/
+resource: chisurf/core/models/pda/
 tags: [prd, fret]
 timestamp: '2026-07-05T00:00:00Z'
 ---
 
 # Summary
-Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, and a kinetic consistency check; three-color PDA is split out into PRD-65. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test), and time-binned dynamic PDA is in: the reader can cut fixed-width bins, the models take their observation time from the data, and the exchange parameter is an absolute rate that a global fit shares across bin widths. Three-color PDA3c is now [PRD-65](prd-65.md).
+Photon Distribution Analysis fits the shot-noise-broadened FRET-efficiency histogram of single-molecule bursts to recover inter-dye distance distributions and, in its dynamic form, kinetic exchange between conformational states. The `tttrlib.Pda` C++ engine already computes the histograms, but no ChiSurf model, `view.json`, or plugin wraps it. This PRD adds the model + schema + AutoForm UI + fit integration in staged scope: static (single/multi-Gaussian, Lorentzian) PDA, dynamic/N-state kinetic PDA, Support-Plane/MCMC error surfaces, and a kinetic consistency check; three-color PDA is split out into PRD-65. Dual-color models are already ported to the PRD-38 model/view-spec split with headless coverage, both error-surface routes (support-plane and MCMC) are validated against each other, the dynamic two-state criterion is met end to end (exchange rate recovered, nested static model rejected by F-test), and time-binned dynamic PDA is in: the reader can cut fixed-width bins, the models take their observation time from the data, and the exchange parameter is an absolute rate that a global fit shares across bin widths. Three-color c3PDA is now [PRD-65](prd-65.md).
 
 # Status
 Draft / unassigned (STATUS TABLE authoritative). Dual-color static plus a dynamic
 two-state model done under AutoForm; error surfaces work via both support-plane and
 MCMC; the dynamic acceptance criterion (rate recovery + F-test rejection of the static
 model) is met. Follow-ups closed: light-path hook and the consistency-check GUI surface both
-land on a shared Diagnostics panel. PDA3c split out into [PRD-65](prd-65.md).
+land on a shared Diagnostics panel. c3PDA split out into [PRD-65](prd-65.md).
 
 Parent: [PRD-49](prd-49.md) (Phase 1, first target). Related: PRD-38
 (model/view-spec split), PRD-40 (declarative editors), PRD-04 (burst pipeline),
@@ -44,28 +44,28 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 **Done (dual-color, AutoForm + view.json):**
 - Ported the three existing PDA models to the PRD-38 model/view-spec split — pure
   models + `*.view.json`, registered directly in `experiment_configs.yaml`, rendered
-  by `build_model_editor` → AutoForm (no hand-built Qt): `Pda2cSimpleModel`
-  (`simple.view.json`), `Pda2cGaussianDistanceModel` (`pdagauss.view.json`),
-  `Pda2cAnisotropyModel` (`anisotropy.view.json`).
+  by `build_model_editor` → AutoForm (no hand-built Qt): `PdaSimpleModel`
+  (`simple.view.json`), `PdaGaussianDistanceModel` (`pdagauss.view.json`),
+  `PdaAnisotropyModel` (`anisotropy.view.json`).
 - Added a **dynamic two-state PDA model** (`dynamic.py` +
-  `Pda2cDynamicTwoStateModel` + `dynamic.view.json`): exact two-state occupation-time
+  `PdaDynamicTwoStateModel` + `dynamic.view.json`): exact two-state occupation-time
   distribution (Bessel form), reduces to static two-Gaussian (slow) and single
   averaged population (fast). Registered in the config.
-- Added **γ / α / δ** as read-only computed output parameters on `Pda2cFretNuisance`
+- Added **γ / α / δ** as read-only computed output parameters on `PdaFretNuisance`
   (`update_correction_factors`), plus a **light-path connection**:
-  `Pda2cFretNuisance.apply_lightpath_matrices(...)` and
+  `PdaFretNuisance.apply_lightpath_matrices(...)` and
   `common.apply_lightpath_to_nuisance(...)` ingest the light-path simulator's
   `crosstalk_matrices` (excitation → ExDG/ExAG, emission → cGD/cGA/cRD/cRA).
 - Qt-free distribution plot accessor `common.get_pda_distribution` (string-keyed
   axis) + generalized `resolve_distribution_options` to import dotted/`module:func`
   accessors, so the PDA E-histogram plot is authorable in JSON.
 - Added a **three-state Gillespie/MC dynamic model** (`dynamic_mc.py` +
-  `Pda2cDynamicThreeStateModel` + `dynamic_mc.view.json`), verified against the
+  `PdaDynamicThreeStateModel` + `dynamic_mc.view.json`), verified against the
   analytic equilibrium populations.
 - The **2D S1S2 weighted-residual image** is registered as a view-spec plot key:
   `common.get_pda_residual_image` + `gui.plots.residual_image.Residual2DPlot`,
   resolved from `pdagauss.view.json` (tested via `model_plot_specs`).
-- Headless coverage: `test/gui/test_pda2c_model_editor.py` — renders + computes for
+- Headless coverage: `test/gui/test_pda_model_editor.py` — renders + computes for
   all five PDA models; dynamic two-/three-state limit checks; correction-factor +
   light-path bridge; P(R) + 2D-residual plot resolution; and (2026-07-24) a
   **fit-recovery test** exercising the PRD's primary acceptance criterion:
@@ -136,7 +136,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   was determined rather than guessed.
 
 - **Kinetic consistency check (2026-07-25, scope item 5).** New
-  `chisurf/core/models/pda2c/consistency.py`. A PDA fit only ever answers "which
+  `chisurf/core/models/pda/consistency.py`. A PDA fit only ever answers "which
   parameters fit best", never "could this scheme have produced the histogram at
   all" — and χ²ᵣ cannot answer the second question either, because the 1D
   E-histogram bins are projections of a sparse S1S2 matrix and so are neither
@@ -161,7 +161,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   raw proximity ratio with 81 bins over [0,1] (each model's `kw_hist` — including
   the Gaussian model's log `S0/S1` range — was stored and then never read), and it
   always weighted by `1/sqrt(max(d,1))`, i.e. a Neyman chi-square. Both now live in
-  `common.py::Pda2cFitSettings` on every PDA model and are edited from a new
+  `common.py::PdaFitSettings` on every PDA model and are edited from a new
   "Fit histogram / statistic" panel in all six `*.view.json`. The axis
   (`S1/(S0+S1)` / `E` / `S0/S1` / `R`) is built by one shared
   `build_pda_histogram_function`, which the distribution plot also uses, so the
@@ -172,7 +172,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   Poisson realisations of an 800-count histogram the recovered Gaussian mean is
   biased by -0.02 A under the deviance versus +0.28 A under Neyman and -0.17 A
   under Pearson, against a 0.27 A per-fit scatter
-  (`test/models/test_pda2c_statistics.py`, 25 tests).
+  (`test/models/test_pda_statistics.py`, 25 tests).
 - **Component groups render as modern paired tables (2026-07-25).** Every PDA
   `dynamic_group` now sets `"style": "table"`, so species / Gaussian components
   are one row each with their value, fix and bounds columns side by side (the
@@ -186,7 +186,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   simulation of the telegraph process with a tilt that mirrors under
   `x1 -> 1 - x1`. Both errors vanish exactly at `x1 = 0.5` — which is very
   likely why it was not caught, since this PRD's own dynamic acceptance test
-  recovered `x1 = 0.503`. **`Pda2cDynamicTwoStateModel` is therefore biased for
+  recovered `x1 = 0.503`. **`PdaDynamicTwoStateModel` is therefore biased for
   unequal state populations**, and its reported `K_ex` at unequal occupancy
   should not be trusted until it is switched over.
   A correct replacement is available and verified:
@@ -194,7 +194,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   Feynman–Kac characteristic function (no closed form required), agrees with
   simulation to a total variation of 0.002, gives `sum(w) = 1` and `E[f] = x1`
   to ~1e-5 for every population and exchange rate tested, and costs 0.11 ms.
-  **Switched (2026-07-25, on request).** `Pda2cDynamicTwoStateModel` now
+  **Switched (2026-07-25, on request).** `PdaDynamicTwoStateModel` now
   integrates the exact law, and the broken density has been **deleted** rather
   than left available to be picked up again. `n_grid` went from 41 to 512: it is
   now the Fourier grid of the inversion, and the old value was sized for a direct
@@ -209,7 +209,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   regime, which the original acceptance test (at `x1 = 0.503`) could not.
 
 - **Szabo–Gopich multistate dynamics (2026-07-25).** Beyond two states there is
-  no closed occupation-time law, so `Pda2cDynamicThreeStateModel` had only
+  no closed occupation-time law, so `PdaDynamicThreeStateModel` had only
   Gillespie sampling — which makes the fit objective itself stochastic. New
   shared `chisurf/core/fluorescence/kinetics.py` implements Gopich & Szabo's
   route (JPC B 2010): the first two moments of the time-averaged observable are
@@ -240,7 +240,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `chisurf.core.fluorescence.kinetics.occupation_time_fractions` drives it —
   one immobile, dark molecule per observation window, started from the
   equilibrium populations, which is PAM's independent-window scheme. It replaces
-  the Gillespie loop in `dynamic_mc.py` **and** the copy the PDA3c multistate path
+  the Gillespie loop in `dynamic_mc.py` **and** the copy the c3PDA multistate path
   was using, and absorbs the duplicate `equilibrium_populations` that had grown in
   `dynamic_mc.py` alongside the one in `kinetics.py`.
   The Python loop survives as `occupation_time_fractions_reference`: the readable
@@ -254,7 +254,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Time-binned dynamic PDA (2026-07-25).** The dynamic models carried a
   dimensionless `K_ex`, so a fit reported transitions-per-observation and nothing
   more. Three things changed.
-  *The reader can cut fixed bins.* `Pda2cReader(segmentation="time-bins")` splits
+  *The reader can cut fixed bins.* `PdaReader(segmentation="time-bins")` splits
   the whole stream into abutting windows of exactly the requested length
   (`time_binned_histograms`), instead of the burst search whose durations vary
   with the local flux — a dynamic model needs a known constant observation time,
@@ -274,7 +274,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   falsify a kinetic model. Measured on synthetic data: one rate across bin widths
   differing by 4x is recovered at chi2r < 1; windows generated from *different*
   rates each fit alone (chi2r 0.92 and 1.01) and are rejected jointly at
-  chi2r ≈ 490. Covered by `test/models/test_pda2c_time_binned.py` (9 tests,
+  chi2r ≈ 490. Covered by `test/models/test_pda_time_binned.py` (9 tests,
   including the degeneracy itself and the reader's binning), and the acceptance
   test now asserts `transitions_per_window` since that is what one dataset
   determines.
@@ -282,7 +282,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Both diagnostics are reachable from the editor (2026-07-25).** The kinetic
   consistency check and the light-path bridge were headless APIs with no way to
   reach them from a model editor. Both are now methods on a shared
-  `common.Pda2cDiagnosticsMixin` that all five PDA models (plus SAW-ν) inherit, so a
+  `common.PdaDiagnosticsMixin` that all five PDA models (plus SAW-ν) inherit, so a
   `button_row` in each view spec is the entire user interface and the scripted and
   clicked paths are the same code.
   `run_consistency_check()` bootstraps from the fitted spectrum and reports the
@@ -302,7 +302,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   properties — as properties they rendered as two blank boxes, which is what the
   headless screenshot showed. And the light-path matrix payload keys are
   `rows`/`columns`, not the `row_labels`/`column_labels` of the builder's local
-  variables. `test/models/test_pda2c_diagnostics.py` (18 tests) covers both actions
+  variables. `test/models/test_pda_diagnostics.py` (18 tests) covers both actions
   on every model, including that each view spec's button actions and info sources
   name attributes that exist.
   Deliberate scope call: the hook takes a light-path **graph** rather than a
@@ -313,11 +313,11 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Arbitrary N-state schemes, and the rates are now actually fittable
   (2026-07-26).** Asked whether PDA could fit an arbitrary transition-rate
   matrix, the honest answer was no, and for a worse reason than a hardcoded state
-  count: `Pda2cDynamicThreeStates` kept its six rate parameters in a **dict**, and
+  count: `PdaDynamicThreeStates` kept its six rate parameters in a **dict**, and
   `base.find_objects` recurses into lists only. None of them was ever discovered
   by `find_parameters`, so no rate was ever offered to the optimiser regardless of
   its `fixed` flag — the scheme was a set of constants that looked like
-  parameters. `Pda2cDynamicNStates` replaces it: rates live in a list, `n_states` is
+  parameters. `PdaDynamicNStates` replaces it: rates live in a list, `n_states` is
   settable (>= 2) and resizing preserves the rates that survive.
   Every off-diagonal `k_ij` is an ordinary fitting parameter, so topology is data
   rather than code — a linear chain is the fully-connected scheme with `k13`/`k31`
@@ -326,7 +326,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `state_names` so the general `rate_matrix` AutoForm section (its first real
   consumer) renders an editable n×n grid with the diagonal disabled, above the
   parameter table that controls which entries are free.
-  Renamed to `Pda2cDynamicNStateModel` ("PDA2c-dynamic-N-state"); registration, view
+  Renamed to `PdaDynamicNStateModel` ("PDA-dynamic-N-state"); registration, view
   spec, tests and docs follow.
   **Validated against the one case with an exact answer.** At N=2 the two-state
   occupation law is closed-form, so the general path can be checked against truth
@@ -391,9 +391,9 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   to assert the absence of.
 
 **Follow-ups (not yet done):**
-- ~~PDA3c's rate matrix is a plain array attribute, not fitting parameters.~~
+- ~~c3PDA's rate matrix is a plain array attribute, not fitting parameters.~~
   Done — see [PRD-65](prd-65.md).
-- Three-color PDA3c — **split out into [PRD-65](prd-65.md)**; it shares neither
+- Three-color c3PDA — **split out into [PRD-65](prd-65.md)**; it shares neither
   the engine (`tttrlib.Pda` is two-channel by construction) nor the data object
   (burst table, not S1S2 matrix) nor the fit objective (burst likelihood, not a
   histogram statistic) with this PRD.
@@ -409,7 +409,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
    rates + state distances/populations.
 3. **Error surfaces.** Wire Support-Plane-Analysis, MCMC, and Hessian/covariance
    estimation to PDA parameters via `chisurf/core/fitting/sample.py`.
-4. ~~**Three-color PDA3c.**~~ Moved to [PRD-65](prd-65.md).
+4. ~~**Three-color c3PDA.**~~ Moved to [PRD-65](prd-65.md).
 5. **Kinetic consistency check.** Resample burst data from a fitted kinetic scheme and
    compare to the measured histogram (the incumbent's "consistency check"); reuses the
    dynamic-PDA simulator. *(Done — `consistency.py`, parametric bootstrap p-value.)*
@@ -420,7 +420,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
   `chisurf/core/fluorescence/pda/` module builds the `pF` spectrum from a P(R) model and
   drives `Pda.hist2d`/1D outputs; the fit objective compares model vs. measured
   histogram (MLE / χ²).
-- **Model + schema:** `chisurf/core/models/pda2c/` model class(es) + `chisurf/core/dataspec/`
+- **Model + schema:** `chisurf/core/models/pda/` model class(es) + `chisurf/core/dataspec/`
   schema, mirroring the structure of `chisurf/core/models/rics/` and `.../fcs/`.
 - **UI = AutoForm + `view.json`** (PRD-49 AutoForm mandate): parameters (distances,
   widths, populations, corrections, kinetic rates) via `parameter_table`; histogram/fit
@@ -449,7 +449,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Headless (primary):** a test builds the static PDA model, generates a synthetic
   2-Gaussian E-histogram via `tttrlib.Pda`, fits it, and asserts recovered mean
   distances/widths/populations within tolerance — runnable through the
-  `test-model-editor` skill pattern; added under `test/` or `chisurf/core/models/pda2c/test/`.
+  `test-model-editor` skill pattern; added under `test/` or `chisurf/core/models/pda/test/`.
 - **Dynamic PDA:** synthetic 2-state exchange at known rate is recovered; static-only
   fit is rejected by F-test (`f_test` plugin).
   *(Met — `K_ex` recovered to 0.4%, the nested static limit rejected at confidence ~1.)*
@@ -458,14 +458,14 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **UI:** model appears in the add-fit combobox, renders parameter groups and the
   histogram-overlay from `view.json` with no empty groups or crashes (model-editor
   headless checks).
-- PDA3c acceptance now lives in [PRD-65](prd-65.md).
+- c3PDA acceptance now lives in [PRD-65](prd-65.md).
 
 # Non-goals
 
 - No new bespoke Qt widgets (PRD-49 AutoForm mandate).
 - Not reimplementing PDA histogram math outside `tttrlib`.
 - Antibunching/nsFCS and FCCS models are PRD-54, not here.
-- Three-color PDA3c is [PRD-65](prd-65.md), not here.
+- Three-color c3PDA is [PRD-65](prd-65.md), not here.
 
 # Relationships
 - Child of [PRD-49](prd-49.md) (Phase 1, first target).

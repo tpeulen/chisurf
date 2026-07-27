@@ -14,7 +14,6 @@ from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.code_editor.context_retriever import retrieve_context
 from chisurf.plugins.core.code_editor.validation import validate_writes
 from chisurf.plugins.core.code_editor.wiki_indexer import build_api_index
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.widgets.general import EnterAwarePlainTextEdit
@@ -1107,7 +1106,7 @@ updated: 2026-06-09
             """Show the confirmation dialog and record the answer."""
             try:
                 detail = json.dumps(arguments, indent=2, default=str)[:4000]
-                reply = dialogs.question(
+                reply = QtWidgets.QMessageBox.question(
                     self,
                     "Allow agent action?",
                     f"The assistant wants to run <b>{tool}</b>:<br>"

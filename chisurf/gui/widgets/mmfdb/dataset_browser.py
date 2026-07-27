@@ -18,7 +18,6 @@ from typing import Any
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.widgets.general import apply_compact_table_style
-from chisurf.gui import dialogs
 
 
 @dataclass
@@ -464,7 +463,7 @@ class MmfdbDatasetPickerDialog(QtWidgets.QDialog):
 
     def _on_accept(self) -> None:
         if self._selection is None:
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self, "No Selection", "Please select a dataset."
             )
             return

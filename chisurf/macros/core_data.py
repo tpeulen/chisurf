@@ -351,11 +351,14 @@ def remove_datasets(
     gui = getattr(cs, 'cs', None)
     proceed = True
     if gui is not None:
-        # Imported here, not at module scope: macros run headless (server mode,
-        # CLI, action dispatch) and must not drag Qt in just to define them.
-        from chisurf.gui import dialogs
-
-        proceed = dialogs.confirm(gui, "Remove dataset(s)", message)
+        reply = cs.gui.QtWidgets.QMessageBox.question(
+            gui,
+            "Remove dataset(s)",
+            message,
+            cs.gui.QtWidgets.QMessageBox.Yes | cs.gui.QtWidgets.QMessageBox.No,
+            cs.gui.QtWidgets.QMessageBox.No,
+        )
+        proceed = reply == cs.gui.QtWidgets.QMessageBox.Yes
     else:
         logging.info("""Removing datasets without GUI confirmation: %s""", message)
 
@@ -547,14 +550,14 @@ def add_dataset(
                 else "No experiment reader available for the provided file."
             )
             cs.logging.error("add_dataset: no dataset read from %s. %s", filename, details)
+            # Same rule as the exception path below: a modal dialog needs a GUI
+            # to close it, and with no QApplication at all Qt aborts the whole
+            # process. Head-lessly the log is the report.
             if gui is not None:
-                from chisurf.gui import dialogs
-
-                dialogs.error(
-                    gui,
-                    "Error",
-                    "No data could be read. Check reading settings and file.",
-                    detail=details,
+                cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
+                    label="Error",
+                    info="No data could be read. Check reading settings and file.",
+                    details=details,
                 )
             return
 
@@ -602,13 +605,10 @@ def add_dataset(
             )
             cs.logging.error("add_dataset: the reader returned an empty group. %s", details)
             if gui is not None:
-                from chisurf.gui import dialogs
-
-                dialogs.error(
-                    gui,
-                    "Error",
-                    "No data entries found in the selected file using the current reader.",
-                    detail=details,
+                cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
+                    label="Error",
+                    info="No data entries found in the selected file using the current reader.",
+                    details=details,
                 )
             return
 
@@ -694,17 +694,17 @@ def add_dataset(
         error_trace = traceback.format_exc()
         cs.logging.error("add_dataset: could not read %s: %s", primary_filename, e)
         if gui is None:
-            # Without a GUI the caller is the one that must hear about it: a
-            # logged line alone would let a failed read look like a successful
-            # one to a script, the CLI or the assistant.
+            # A modal dialog needs someone to close it. Raised head-lessly —
+            # from the CLI, a script, a test or the assistant — `MyMessageBox`
+            # calls `exec_()` and blocks forever, and with no QApplication at
+            # all Qt aborts the process outright. Neither is a way to report
+            # that a file could not be read: without a GUI the caller is the
+            # one that must hear about it.
             raise
-        from chisurf.gui import dialogs
-
-        dialogs.error(
-            gui,
-            "Error",
-            "Error reading data. Check Reading settings and file.",
-            detail=error_trace,
+        cs.gui.widgets.msg_box = cs.gui.widgets.MyMessageBox(
+            label="Error",
+            info="Error reading data. Check Reading settings and file.",
+            details=error_trace
         )
 
 

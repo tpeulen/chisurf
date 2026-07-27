@@ -18,7 +18,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +163,7 @@ class _HeaderTableSection(QtWidgets.QWidget):
         try:
             self._model.load_file(path)
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to open file:\n{exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to open file:\n{exc}")
 
     def _add(self) -> None:
         name, ok = QtWidgets.QInputDialog.getText(self, "Add Tag", "Enter tag name:")
@@ -192,7 +191,7 @@ class _HeaderTableSection(QtWidgets.QWidget):
     def _remove(self) -> None:
         row = self.table.currentRow()
         if row < 0:
-            dialogs.warning(self, "Warning", "No tag selected to remove.")
+            QtWidgets.QMessageBox.warning(self, "Warning", "No tag selected to remove.")
             return
         self.table.removeRow(row)
         self._sync_to_model()
@@ -200,7 +199,7 @@ class _HeaderTableSection(QtWidgets.QWidget):
     def _save(self) -> None:
         reason = self._model.can_save()
         if reason is not None:
-            dialogs.warning(self, "Cannot save", reason)
+            QtWidgets.QMessageBox.warning(self, "Cannot save", reason)
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save edited header as PTU", "", "PTU Files (*.ptu);;All Files (*)"
@@ -209,9 +208,9 @@ class _HeaderTableSection(QtWidgets.QWidget):
             return
         try:
             self._model.save(path)
-            dialogs.information(self, "Success", "Edited header saved as PTU.")
+            QtWidgets.QMessageBox.information(self, "Success", "Edited header saved as PTU.")
         except Exception as exc:  # noqa: BLE001
-            dialogs.warning(self, "Error", f"Failed to save:\n{exc}")
+            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to save:\n{exc}")
 
 
 __all__ = ["header_table"]

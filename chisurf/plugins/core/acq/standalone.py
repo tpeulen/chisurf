@@ -9,7 +9,6 @@ or as a standalone application with its own MDI interface.
 import sys
 import os
 import logging
-from chisurf.gui import dialogs
 
 try:
     from qtpy.QtWidgets import (
@@ -171,7 +170,8 @@ class StandaloneMainWindow(QMainWindow):
 
     def show_about(self):
         """Show about dialog."""
-        dialogs.about(self, "About SM Acquisition",
+        from qtpy.QtWidgets import QMessageBox
+        QMessageBox.about(self, "About SM Acquisition",
                          "Single-Molecule Acquisition Plugin\n\n"
                          "Standalone version for testing and development.")
 

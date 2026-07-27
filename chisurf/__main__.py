@@ -34,24 +34,20 @@ class SimpleErrorDialog(QtWidgets.QDialog if QtWidgets is not None else object):
     def clear_settings(self):
         if QtWidgets is None:
             raise RuntimeError("Qt is not available for SimpleErrorDialog")
-        # Imported here, not at module scope: this entry point must stay
-        # importable without Qt (see the guarded qtpy import above).
-        from chisurf.gui import dialogs
-
         try:
             # Import settings functions directly
             from chisurf.core.settings import clear_settings_folder, clear_logging_files
 
             clear_settings_folder()
             clear_logging_files()
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Settings Cleared",
                 "User settings have been cleared. Please restart ChiSurf.",
             )
             self.accept()
         except Exception as e:
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 self,
                 "Error",
                 f"Failed to clear settings: {str(e)}",

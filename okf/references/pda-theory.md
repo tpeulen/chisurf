@@ -2,7 +2,7 @@
 type: Reference
 title: Photon Distribution Analysis (PDA) — theory and chisurf mapping
 description: The shot-noise / binomial forward model behind single-molecule FRET histograms, its background/crosstalk/gamma corrections, distance-distribution and dynamic (interconversion) extensions, and how each piece maps onto chisurf's PDA models and the tttrlib.Pda engine.
-resource: chisurf/core/models/pda2c/
+resource: chisurf/core/models/pda/
 tags: [pda, smfret, shot-noise, binomial, dynamic-pda, mfd, tttrlib, seidel]
 timestamp: '2026-07-24T00:00:00Z'
 ---
@@ -40,12 +40,12 @@ structural heterogeneity — this is the point of Antonik et al. 2006.
    In chisurf this is `fit.data.pda['ps']` (aka `pF`), passed to
    `tttrlib.Pda(pF=...)`; the photon-number window is
    `minimum/maximum_number_of_photons` → `hist2d_nmin`/`hist2d_nmax` and the
-   `Pda2cPhotonRange` group (`nPh_min`, `nPh_max`).
+   `PdaPhotonRange` group (`nPh_min`, `nPh_max`).
 
 2. **Per-photon green probability $p_G(E)$** — the ideal binomial parameter $E$
    is replaced by a realistic detection probability that folds in all
    corrections. Implemented in
-   `chisurf/core/models/pda2c/common.py::green_probability_from_efficiency`:
+   `chisurf/core/models/pda/common.py::green_probability_from_efficiency`:
    with donor/acceptor "quenched" signals $S_{DQ}=Q_D\,\mathrm{Ex}_{DG}(1-E)$ and
    $S_{AQ}=Q_A(\mathrm{Ex}_{DG}E+\mathrm{Ex}_{AG})$,
    $G=g_G(c_{GD}S_{DQ}+c_{GA}S_{AQ})$, $R=g_R(c_{RD}S_{DQ}+c_{RA}S_{AQ})$,
@@ -53,14 +53,14 @@ structural heterogeneity — this is the point of Antonik et al. 2006.
    (`ProbCh0.pch0_spectrum`, interleaved).
 
 3. **Background** — uncorrelated Poisson counts per channel ($B_D$/`bg0`,
-   $B_R$/`bg1` in `Background`; `BG`/`BR` in `Pda2cFretNuisance`). The signal
+   $B_R$/`bg1` in `Background`; `BG`/`BR` in `PdaFretNuisance`). The signal
    distribution is convolved channel-by-channel with a Poisson background:
    $P=\sum P_\text{sig}(s_D,s_A)\,\mathrm{Pois}(b_D\mid B_D)\,\mathrm{Pois}(b_A\mid B_R)$.
    `tttrlib.Pda.background_ch1/ch2`.
 
 4. **Crosstalk / gamma / direct excitation** — the MFD correction factors are
    *derived* (read-only outputs) from the more general detector/crosstalk
-   description in `Pda2cFretNuisance.update_correction_factors`:
+   description in `PdaFretNuisance.update_correction_factors`:
    $\alpha = g_R c_{RD}/(g_G c_{GD}+g_R c_{RD})$ (donor leakage),
    $\gamma = g_R c_{RA} Q_A/(g_G c_{GD} Q_D)$,
    $\delta = \mathrm{Ex}_{AG}/\mathrm{Ex}_{DG}$ (direct acceptor excitation).
@@ -75,15 +75,15 @@ collapsed to a 1-D proximity-ratio histogram by a named axis callback
 # Distance → efficiency and distance distributions
 
 Förster: $E(R)=1/(1+(R/R_0)^6)$, $R_0$ from `chisurf.core.models.tcspc.fret`.
-Model hierarchy under `chisurf/core/models/pda2c/`:
+Model hierarchy under `chisurf/core/models/pda/`:
 
-- **Discrete** (`simple.py::Pda2cSimpleModel`, `name="PDA2c-discrete"`) — species as
+- **Discrete** (`simple.py::PdaSimpleModel`, `name="PDA-discrete"`) — species as
   `(amplitude, pch0)`; minimal one-state / mixture test.
-- **Gaussian** (`pdagauss.py::Pda2cGaussianDistanceModel`, `Pda2cGaussianDistances`)
+- **Gaussian** (`pdagauss.py::PdaGaussianDistanceModel`, `PdaGaussianDistances`)
   — $p(R)$ = sum of Gaussians $(\bar R_i, \sigma_i, a_i)$ on `fret.rda_axis`;
   broadening beyond shot noise, $P=\int p(R)P(F_D,F_A\mid E(R))\,dR$. Optional
   `limited_width` mode reads $\sigma$ as a percentage of $\bar R$.
-- **SAW-ν polymer** (`saw_nu.py::Pda2cSawNuModel`) — reuses the Gaussian machinery
+- **SAW-ν polymer** (`saw_nu.py::PdaSawNuModel`) — reuses the Gaussian machinery
   but swaps $p(R)$ for a self-avoiding-walk distribution
   (`math.functions.rdf.saw_nu`, params `Rrms`, `nu`); for disordered/unfolded
   chains.
@@ -92,7 +92,7 @@ Model hierarchy under `chisurf/core/models/pda2c/`:
 
 The forward model is a 2-D **S1S2 count matrix**, but the fit runs on a 1-D
 projection of it. Both halves of that sentence are modelling choices, and both
-live in `common.py::Pda2cFitSettings` (one instance per model, `model.fit_settings`,
+live in `common.py::PdaFitSettings` (one instance per model, `model.fit_settings`,
 rendered by the "Fit histogram / statistic" panel of every `*.view.json`).
 
 **Which projection** — `PDA_AXES`, built by `build_pda_histogram_function`:
@@ -126,7 +126,7 @@ histogram is a projection of a *sparse* S1S2 matrix, so many bins hold a handful
 of bursts. There the Gaussian approximations are biased — a bin that fluctuated
 low is handed a small $\sigma$ and therefore a large weight, which drags the
 `neyman` estimate. Measured on twenty Poisson realisations of an 800-count
-histogram (`test/models/test_pda2c_statistics.py`), recovering one Gaussian mean
+histogram (`test/models/test_pda_statistics.py`), recovering one Gaussian mean
 distance: `poisson` $-0.02$ Å, `neyman` $+0.28$ Å, `pearson` $-0.17$ Å, against a
 per-fit scatter of $0.27$ Å — i.e. `neyman`'s offset is a full standard deviation
 of systematic error, and the deviance is unbiased. Prefer the default; select a

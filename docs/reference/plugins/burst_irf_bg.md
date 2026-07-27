@@ -20,7 +20,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| files | `files` | path_list |  |  |  |
 | Min photons/burst | `min_photons` | int |  | 2 … 100000 (step 5) | Burst-search minimum photons. Photons NOT in a burst are treated as background/scatter. |
 | Photon window | `photon_window` | int |  | 2 … 10000 (step 1) | Sliding photon window used by the burst search to estimate the local count rate. |
 | Time window (ms) | `time_window_ms` | float |  | 0.001 … 1000.0 (step 0.1) | Burst-search time window (ms). |

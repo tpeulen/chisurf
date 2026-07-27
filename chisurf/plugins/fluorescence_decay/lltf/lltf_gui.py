@@ -20,7 +20,6 @@ import chisurf.core.fio as io
 
 # Import matplotlib for plotting
 import matplotlib
-from chisurf.gui import dialogs
 matplotlib.use('QtAgg')
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -657,7 +656,7 @@ class LLTFGUIWizard(QtWidgets.QMainWindow):
         Run the LTF analysis.
         """
         if not self.decay_file or not self.irf_file:
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self, "Warning", "Please load decay and IRF data first."
             )
             return

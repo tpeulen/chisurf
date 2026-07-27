@@ -15,11 +15,8 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
-from chisurf.gui.progress import ChiSurfProgress
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +155,7 @@ class _IoSection(QtWidgets.QWidget):
             return
         p = pathlib.Path(path)
         if not p.is_file():
-            dialogs.warning(self, "Invalid file", f"'{path}' is not a valid file.")
+            QtWidgets.QMessageBox.warning(self, "Invalid file", f"'{path}' is not a valid file.")
             return
         import tttrlib
 
@@ -207,34 +204,31 @@ class _RunSection(QtWidgets.QWidget):
         )
         layout.addWidget(self._btn)
 
-        self._progress = InlineProgressWidget(hide_when_idle=False)
+        self._progress = QtWidgets.QProgressBar()
+        self._progress.setRange(0, 100)
+        self._progress.setValue(0)
         layout.addWidget(self._progress, 1)
-        self._task = None
 
     def _run(self) -> None:
         if self._running:
             return
         reason = self._model.can_split()
         if reason is not None:
-            dialogs.warning(self, "Cannot split", reason)
+            QtWidgets.QMessageBox.warning(self, "Cannot split", reason)
             return
         self._running = True
         self._btn.setEnabled(False)
-        # The bar lives in this section, so ChiSurfProgress finds it by walking
-        # up from the button and renders here instead of opening a popup.
-        with ChiSurfProgress(self._btn, "Splitting…", 100, cancellable=False) as self._task:
-            try:
-                self._model.do_split(progress_cb=self._on_progress)
-            except Exception as exc:  # noqa: BLE001
-                dialogs.error(self, "Split failed", str(exc))
-            finally:
-                self._running = False
-                self._btn.setEnabled(True)
-        self._task = None
+        try:
+            self._model.do_split(progress_cb=self._on_progress)
+        except Exception as exc:  # noqa: BLE001
+            QtWidgets.QMessageBox.critical(self, "Split failed", str(exc))
+        finally:
+            self._running = False
+            self._btn.setEnabled(True)
 
     def _on_progress(self, percent: int) -> None:
-        if self._task is not None:
-            self._task.set_value(int(percent))
+        self._progress.setValue(int(percent))
+        QtWidgets.QApplication.processEvents()
 
 
 # ---------------------------------------------------------------------------
@@ -267,39 +261,37 @@ class _BatchRunSection(QtWidgets.QWidget):
 
         row = QtWidgets.QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)
-        self._progress = InlineProgressWidget(hide_when_idle=False)
+        self._progress = QtWidgets.QProgressBar()
+        self._progress.setRange(0, 100)
+        self._progress.setValue(0)
         row.addWidget(self._progress, 1)
         self._btn_start = _tool_button(
             "▶ Start batch", self._start, "Process every file with the options above."
         )
         row.addWidget(self._btn_start)
         layout.addLayout(row)
-        self._task = None
 
     def _start(self) -> None:
         if self._running:
             return
         if not self._model.batch_files:
-            dialogs.information(self, "No files", "Add PTU files or folders first.")
+            QtWidgets.QMessageBox.information(self, "No files", "Add PTU files or folders first.")
             return
         self._running = True
         self._btn_start.setEnabled(False)
-        with ChiSurfProgress(
-            self._btn_start, "Processing files…", len(self._model.batch_files)
-        ) as self._task:
-            try:
-                count = self._model.run_batch(file_progress_cb=self._on_file)
-                dialogs.information(self, "Batch complete", f"Processed {count} file(s).")
-            except Exception as exc:  # noqa: BLE001
-                dialogs.error(self, "Batch failed", str(exc))
-            finally:
-                self._running = False
-                self._btn_start.setEnabled(True)
-        self._task = None
+        try:
+            count = self._model.run_batch(file_progress_cb=self._on_file)
+            self._progress.setValue(100)
+            QtWidgets.QMessageBox.information(self, "Batch complete", f"Processed {count} file(s).")
+        except Exception as exc:  # noqa: BLE001
+            QtWidgets.QMessageBox.critical(self, "Batch failed", str(exc))
+        finally:
+            self._running = False
+            self._btn_start.setEnabled(True)
 
     def _on_file(self, index: int, count: int, path: str) -> None:
-        if self._task is not None:
-            self._task.update_progress(index, f"{index}/{count}: {pathlib.Path(path).name}")
+        self._progress.setValue(int(index * 100 / max(1, count)))
+        QtWidgets.QApplication.processEvents()
 
 
 # ---------------------------------------------------------------------------

@@ -99,43 +99,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   decay side by side, link the donor lifetime spectrum across the two fits in
   the Global View graph, and run one global fit over both datasets.
   *(last driven 2026-07-26; RF-278..RF-285)*
-- [Accurate FRET calibration](/usecases/accurate-fret-calibration.md) — the step
-  between a burst search and a quotable number: let the tool find the burst
-  populations itself, determine the four Hellenkamp correction factors
-  (α, β, γ, δ) from them, and read the corrected E–S, E–lifetime and distance
-  with error bars. *(last driven 2026-07-26; RF-305..RF-310)*
 - [Light Path Simulator](/usecases/lightpath-crosstalk-r0.md) — the step before
   the measurement: assemble a two-colour detection path from catalogue spectra
   (lasers, excitation dichroic, emission splitter, bandpasses, detector QE) and a
   dye pair, and read the Förster radii and the excitation / emission / detected
   crosstalk matrices that prime the accurate-FRET correction factors.
   *(last driven 2026-07-26; RF-269..RF-277)*
-- [TAC linearization — micro-time LUT calibration](/usecases/tttr-lut-calibration.md)
-  — the instrument calibration underneath every micro-time analysis: compute a
-  per-routing-channel TAC-linearization LUT from a flat-light measurement in the
-  Channel Definition editor's LUT Tools, add it to the detector setup, and have
-  every later TTTR read linearized at the `staging.open_tttr` seam.
-  *(last driven 2026-07-26; RF-291..RF-299)*
-- [H2MM — dynamics inside the burst](/usecases/h2mm-burst-dynamics.md) — what a
-  FRET histogram cannot answer: point the photon-by-photon HMM at an existing
-  `.bur` folder, assign donor/acceptor (and optionally Aex) streams, scan state
-  counts with BIC/ICL, and read the dwell FRET states, transition rates, dwell
-  times, per-state decays and the per-burst Viterbi state path — plus the
-  bootstrap and likelihood-profile confidence intervals.
-  *(last driven 2026-07-26; RF-321..RF-327)*
-- [Two-channel colocalization](/usecases/image-colocalization.md) — the other
-  half of imaging: load a two-channel image, subtract background, derive Costes
-  thresholds, read the Pearson / Manders / Li coefficient set, check registration
-  with van Steensel and significance with the Costes randomization test, gate a
-  population in the intensity scatter, paint a region of interest, and count
-  objects when the signal is punctate.
-  *(last driven 2026-07-26; RF-336..RF-343)*
-- [Trace Browser — triaging a folder of measurements](/usecases/trace-browser-folder-triage.md)
-  — what happens before every other workflow: walk a folder of raw TTTR files,
-  preview each intensity trace, star-rate and annotate the keepers into a
-  per-folder metadata file, filter and sort on that judgement, then export the
-  survivors (raw / CSV / DOCX) or hand one to the time-window, HMM or ndXplorer
-  tools. *(last driven 2026-07-27; RF-349..RF-355)*
 
 ## Per-workflow file format
 

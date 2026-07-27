@@ -534,3 +534,34 @@ def test_edit_dataframe_readonly_columns_and_bool_delegate(qapp, frame, monkeypa
         "value_editable": True,
         "bool_delegate": True,
     }
+
+
+def test_status_line_follows_row_changes_in_a_wrapped_model(qtbot):
+    """A foreign model's row changes must reach the status line.
+
+    Only ``dataChanged`` was connected, and a model does not emit that when rows
+    are inserted or removed. A table wrapping an external model and filled after
+    construction therefore reported "0 rows" while plainly showing them — and
+    went on disagreeing with the view for the rest of the session.
+    """
+    from qtpy import QtGui
+
+    from chisurf.gui.widgets.chitable import ChiTableWidget
+
+    model = QtGui.QStandardItemModel(0, 2)
+    model.setHorizontalHeaderLabels(["a", "b"])
+    widget = ChiTableWidget(model=model)
+    qtbot.addWidget(widget)
+
+    assert widget.total_row_count() == 0
+
+    for row in range(3):
+        model.insertRow(row)
+        model.setItem(row, 0, QtGui.QStandardItem(str(row)))
+    assert widget.total_row_count() == 3, "row insertion did not reach the status line"
+
+    model.removeRow(0)
+    assert widget.total_row_count() == 2, "row removal did not reach the status line"
+
+    model.setRowCount(0)
+    assert widget.total_row_count() == 0

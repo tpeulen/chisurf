@@ -316,6 +316,19 @@ class ChiTableWidget(QtWidgets.QWidget):
 
     def _after_model_set(self) -> None:
         """Install delegates, widths and visibility for the current model."""
+        # Keep the row count honest when rows come and go. Only ``dataChanged``
+        # was wired, which a foreign model does not emit when rows are inserted
+        # or removed — so a table filled after construction went on reporting
+        # "0 rows" while showing them.
+        model = self._view.model()
+        if model is not None:
+            for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset):
+                try:
+                    signal.disconnect(self._on_rows_changed)
+                except (TypeError, RuntimeError):
+                    pass
+                signal.connect(self._on_rows_changed)
+
         for col in range(self._view.model().columnCount() if self._view.model() else 0):
             self._view.setColumnHidden(col, False)
         if self._chi_model is not None:
@@ -541,6 +554,10 @@ class ChiTableWidget(QtWidgets.QWidget):
             self._status.setText(f"{shown:,} / {total:,} rows × {n_cols} columns")
         else:
             self._status.setText(f"{total:,} rows × {n_cols} columns")
+
+    def _on_rows_changed(self, *_args) -> None:
+        """Refresh the status line after rows are added, removed or reset."""
+        self._update_status()
 
     def _on_data_changed(self, top_left, _bottom_right, *_roles) -> None:
         """Report an edit and refresh the status line.

@@ -21,7 +21,6 @@ Features
 
 This widget can run as a ChiSurf plugin (see chisurf.plugins.vv_vh_anisotropy.__plugin__) or standalone.
 """
-from chisurf.gui import dialogs
 
 # Plugin brand icon (unified emoji set)
 icon = "🎏"
@@ -33,7 +32,8 @@ from qtpy.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QFileDialog, QLabel, QDoubleSpinBox, QLineEdit, QCheckBox,
     QTableWidget, QTableWidgetItem,
-    QHeaderView, )
+    QHeaderView, QMessageBox,
+)
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QIcon
 
@@ -235,13 +235,13 @@ class VvVhAnisotropyBatchWindow(QWidget):
     def _on_run(self):
         paths = self.file_list.paths()
         if not paths:
-            dialogs.information(self, "Batch", "No files to process.")
+            QMessageBox.information(self, "Batch", "No files to process.")
             return
         self._clear_results()
         for p in paths:
             res = self._compute_rinf_for_file(p)
             self._append_result_row(res)
-        dialogs.information(self, "Batch", f"Processed {len(paths)} file(s).")
+        QMessageBox.information(self, "Batch", f"Processed {len(paths)} file(s).")
 
     def _append_result_row(self, res_tuple: tuple):
         row = self.table.rowCount()
@@ -254,7 +254,7 @@ class VvVhAnisotropyBatchWindow(QWidget):
 
     def _on_save(self):
         if not self.results:
-            dialogs.information(self, "Save CSV", "No results to save.")
+            QMessageBox.information(self, "Save CSV", "No results to save.")
             return
         out_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
         if not out_path:
@@ -264,9 +264,9 @@ class VvVhAnisotropyBatchWindow(QWidget):
                 f.write("filename,r_inf,region_min,region_max,bg_vv,bg_vh,g_factor\n")
                 for row in self.results:
                     f.write(",".join(str(x) for x in row) + "\n")
-            dialogs.information(self, "Save CSV", f"Saved: {out_path}")
+            QMessageBox.information(self, "Save CSV", f"Saved: {out_path}")
         except Exception as e:
-            dialogs.error(self, "Save CSV", f"Failed to save CSV: {e}")
+            QMessageBox.critical(self, "Save CSV", f"Failed to save CSV: {e}")
 
 
 @persist_plugin_state("vv_vh_anisotropy")

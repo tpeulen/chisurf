@@ -20,7 +20,6 @@ from chisurf.core.dataspec import load_view_spec
 
 from ..core import HydroProSettings, HydroResult, run_hydro
 from .dialogs import DownloadInfoDialog, OutputDialog
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -240,17 +239,17 @@ class HydroProTool(QtWidgets.QMainWindow):
     def _on_run(self) -> None:
         struct_files = self._model.struct_list()
         if not struct_files:
-            dialogs.warning(self, "No files", "Please select one or more files first.")
+            QtWidgets.QMessageBox.warning(self, "No files", "Please select one or more files first.")
             return
         try:
             settings = self._model.to_settings()
             settings.validate()
         except ValueError as exc:
-            dialogs.warning(self, "Invalid settings", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Invalid settings", str(exc))
             return
         exe = self._ensure_exe()
         if not exe:
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self, "Executable required", "Configure the HYDRO executable before running.")
             return
         self._save_persisted()
@@ -323,7 +322,7 @@ class HydroProTool(QtWidgets.QMainWindow):
 
     def _save_csv(self) -> None:
         if not self._results:
-            dialogs.warning(self, "No results", "There are no results to save.")
+            QtWidgets.QMessageBox.warning(self, "No results", "There are no results to save.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save CSV", str(Path.home() / "hydro_results.csv"), "CSV files (*.csv)")
@@ -337,9 +336,9 @@ class HydroProTool(QtWidgets.QMainWindow):
                     writer.writerow(
                         [r.struct_file,
                          f"{r.diffusion_coefficient:.3e}" if r.diffusion_coefficient is not None else ""])
-            dialogs.information(self, "Saved", f"Results saved to {path}")
+            QtWidgets.QMessageBox.information(self, "Saved", f"Results saved to {path}")
         except OSError as exc:
-            dialogs.error(self, "Error", f"Failed to save CSV: {exc}")
+            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save CSV: {exc}")
 
     def _clear(self) -> None:
         self._model.struct_files = ""

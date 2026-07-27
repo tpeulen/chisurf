@@ -8,7 +8,6 @@ import tttrlib
 import chisurf.gui.decorators
 import chisurf.core.settings
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
-from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -130,7 +129,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             
             return interleaved
         except ValueError:
-            dialogs.warning(self, "Invalid Input", "Channel input is not valid.")
+            QtWidgets.QMessageBox.warning(self, "Invalid Input", "Channel input is not valid.")
             return []
     
     def _is_polarization_resolved(self) -> bool:
@@ -434,7 +433,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
     def _warn_needs_type_selection(self, paths) -> None:
         """Warn that the given dropped files require a manual file-type selection."""
-        dialogs.warning(
+        QtWidgets.QMessageBox.warning(
             self, "File Type Requires Selection",
             "The following files require manual file type selection:\n"
             + "\n".join(str(p) for p in paths),
@@ -734,7 +733,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Check again after computation
         if self.cumulative_ps is None:
-            dialogs.warning(self, "No Data", "Failed to compute cumulative histogram before saving.")
+            QtWidgets.QMessageBox.warning(self, "No Data", "Failed to compute cumulative histogram before saving.")
             return
 
         try:
@@ -757,7 +756,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
             chisurf.logging.info(f"Histogram successfully saved to: {path_obj}")
 
         except Exception as e:
-            dialogs.error(self, "Save Error", f"An error occurred while saving:\n{str(e)}")
+            QtWidgets.QMessageBox.critical(self, "Save Error", f"An error occurred while saving:\n{str(e)}")
             chisurf.logging.error(f"Failed to save histogram: {str(e)}")
 
     def on_transfer_clicked(self):
@@ -783,12 +782,12 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         # Check again after computation
         if self.cumulative_ps is None:
-            dialogs.warning(self, "No Data", "Failed to compute microtime histogram.")
+            QtWidgets.QMessageBox.warning(self, "No Data", "Failed to compute microtime histogram.")
             return
 
         # Ensure we have selected files
         if not self.selected_files:
-            dialogs.warning(self, "No Files", "Please select a file before adding to ChiSurf.")
+            QtWidgets.QMessageBox.warning(self, "No Files", "Please select a file before adding to ChiSurf.")
             return
 
         # Get the full save path directly from lineEdit_5
@@ -801,7 +800,7 @@ class MicrotimeHistogram(QtWidgets.QWidget):
 
         if not save_path.exists():
             # Display a message box to the user if file still doesn't exist
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 self, 
                 "No Histogram File", 
                 "No histogram file available. Please save histogram data before adding to ChiSurf."
@@ -844,12 +843,12 @@ class MicrotimeHistogram(QtWidgets.QWidget):
         chisurf.logging.info(f"Added microtime histogram to ChiSurf: {save_path.name}")
 
         # Show a success message to the user
-        dialogs.information(self, "Success", "Microtime histogram added to ChiSurf successfully.")
+        QtWidgets.QMessageBox.information(self, "Success", "Microtime histogram added to ChiSurf successfully.")
 
     def open_save_dialog(self):
         """Open a save dialog using the full path from lineEdit_5 and save the cumulative histogram."""
         if not self.selected_files:
-            dialogs.warning(self, "No Files", "Please select a file before saving.")
+            QtWidgets.QMessageBox.warning(self, "No Files", "Please select a file before saving.")
             return
 
         # Get the full path from lineEdit_5

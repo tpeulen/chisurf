@@ -22,9 +22,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| CLSM imaging files | `sel_files` | path_list |  |  | Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add. |
-| IRF file | `sel_irf_files` | path_list |  |  | IRF TTTR measurement (the first file is used). |
-| Analysis region | `regions` | region_list |  |  | Confines the molecule search. Draw one, or load a saved region, a mask or a segmentation; several combine by the rule below. An automatic threshold is computed from these pixels alone, so the rest of the frame does not set it. Empty = whole frame. |
 | Detector channels | `detector_chs_text` | str |  |  | Space-separated routing channels; even = parallel (∥), odd = perpendicular (⊥). |
 | Fit start | `mtr_start` | int |  | 0 … 1000000 | Fit-window start on the binned micro-time axis. |
 | Fit stop | `mtr_stop` | int |  | 1 … 1000000 | Fit-window stop on the binned micro-time axis. |

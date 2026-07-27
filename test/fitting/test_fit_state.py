@@ -9,7 +9,7 @@ from chisurf.core.models.model import ModelCurve
 
 import chisurf.core.models.tcspc.lifetime as lifetime_mod
 import chisurf.core.models.tcspc.fret as fret_mod
-import chisurf.core.models.pda2c.simple as pda_simple_mod
+import chisurf.core.models.pda.simple as pda_simple_mod
 import chisurf.core.experiments
 import chisurf.core.fitting
 
@@ -283,12 +283,12 @@ def test_fret_gaussian_model_get_set_state_preserves_gaussians():
 
 
 def test_pda_probch0_length_preserved_via_model_state():
-    """Pda2cSimpleModel.get_state/set_state must preserve ProbCh0 count.
+    """PdaSimpleModel.get_state/set_state must preserve ProbCh0 count.
 
     Uses lightweight instances to avoid tttrlib dependencies.
     """
 
-    m1 = pda_simple_mod.Pda2cSimpleModel.__new__(pda_simple_mod.Pda2cSimpleModel)
+    m1 = pda_simple_mod.PdaSimpleModel.__new__(pda_simple_mod.PdaSimpleModel)
     m1.pch0 = pda_simple_mod.ProbCh0.__new__(pda_simple_mod.ProbCh0)
     m1.pch0._name = "pch0_stub"
     m1.parameters_all_dict = {}
@@ -301,7 +301,7 @@ def test_pda_probch0_length_preserved_via_model_state():
 
     state = m1.get_state()
 
-    m2 = pda_simple_mod.Pda2cSimpleModel.__new__(pda_simple_mod.Pda2cSimpleModel)
+    m2 = pda_simple_mod.PdaSimpleModel.__new__(pda_simple_mod.PdaSimpleModel)
     m2.pch0 = pda_simple_mod.ProbCh0.__new__(pda_simple_mod.ProbCh0)
     m2.pch0._name = "pch0_stub"
     m2.parameters_all_dict = {}
@@ -314,13 +314,13 @@ def test_pda_probch0_length_preserved_via_model_state():
 
 
 def test_pda_gaussian_distances_length_preserved_via_model_state():
-    """Pda2cGaussianDistanceModel.get_state/set_state must preserve count.
+    """PdaGaussianDistanceModel.get_state/set_state must preserve count.
 
     Uses lightweight instances to avoid tttrlib dependencies.
     """
 
-    m1 = pda_simple_mod.Pda2cGaussianDistanceModel.__new__(pda_simple_mod.Pda2cGaussianDistanceModel)
-    m1.distances = pda_simple_mod.Pda2cGaussianDistances.__new__(pda_simple_mod.Pda2cGaussianDistances)
+    m1 = pda_simple_mod.PdaGaussianDistanceModel.__new__(pda_simple_mod.PdaGaussianDistanceModel)
+    m1.distances = pda_simple_mod.PdaGaussianDistances.__new__(pda_simple_mod.PdaGaussianDistances)
     m1.distances._name = "pda_distances_stub"
     m1.parameters_all_dict = {}
 
@@ -331,8 +331,8 @@ def test_pda_gaussian_distances_length_preserved_via_model_state():
 
     state = m1.get_state()
 
-    m2 = pda_simple_mod.Pda2cGaussianDistanceModel.__new__(pda_simple_mod.Pda2cGaussianDistanceModel)
-    m2.distances = pda_simple_mod.Pda2cGaussianDistances.__new__(pda_simple_mod.Pda2cGaussianDistances)
+    m2 = pda_simple_mod.PdaGaussianDistanceModel.__new__(pda_simple_mod.PdaGaussianDistanceModel)
+    m2.distances = pda_simple_mod.PdaGaussianDistances.__new__(pda_simple_mod.PdaGaussianDistances)
     m2.distances._name = "pda_distances_stub"
     m2.parameters_all_dict = {}
 

@@ -12,7 +12,6 @@ import chisurf.core.fio as io
 from chisurf import logging
 import chisurf.core.settings
 from chisurf.core.settings import cs_settings
-from chisurf.gui import dialogs
 
 LIST_SEP = "|"
 
@@ -1306,7 +1305,7 @@ class SettingsEditor(QtWidgets.QWidget):
 
         except Exception as e:
             logging.log(1, f"Error saving settings to {self.filename}: {e}")
-            dialogs.error(
+            QtWidgets.QMessageBox.critical(
                 self, "Save Error", f"Error saving settings: {str(e)}"
             )
 
@@ -1424,7 +1423,7 @@ class SettingsEditor(QtWidgets.QWidget):
                 pass
         except Exception as e:
             try:
-                dialogs.error(self, "Help Error", f"Could not open help: {e}")
+                QtWidgets.QMessageBox.critical(self, "Help Error", f"Could not open help: {e}")
             except Exception:
                 logging.log(1, f"Could not open help: {e}")
 
@@ -1453,7 +1452,12 @@ class SettingsEditor(QtWidgets.QWidget):
         </ul>
         """
 
-        dialogs.information(self, "Settings Editor Help", help_text, text_format="rich")
+        msg_box = QtWidgets.QMessageBox(self)
+        msg_box.setWindowTitle("Settings Editor Help")
+        msg_box.setTextFormat(QtCore.Qt.RichText)
+        msg_box.setText(help_text)
+        msg_box.setIcon(QtWidgets.QMessageBox.Information)
+        msg_box.exec_()
 
 
 if __name__ == "__main__":

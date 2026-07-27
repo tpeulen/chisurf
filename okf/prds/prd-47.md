@@ -105,7 +105,7 @@ ChiSurf reimplements physics that the framework / its staging layer already prov
 |---|---|---|
 | `core/fluorescence/burst/*` (filter, background, cusum, bocpd, kalman, bva) | ⚪ tttrlib | stays — stream processing |
 | `plugins/burst/*` | 🟢 STAY | GUI + `tttrlib` |
-| `core/models/pda2c/*`, `core/fluorescence/pda` | ⚪ tttrlib | built on `tttrlib.Pda`; models are 🟢 glue |
+| `core/models/pda/*`, `core/fluorescence/pda` | ⚪ tttrlib | built on `tttrlib.Pda`; models are 🟢 glue |
 | `plugins/pch` (`compute_p1`, `pch_single_species`, `pch_open_system`, `pch_mixture`) | 🟡 MOVE | new framework staging `pch` |
 | `core/models/rics/models.py` (`rics_simple`, `rics_diffusion_triplet`) | 🟡 MOVE | framework staging `fcs` / `rics` |
 

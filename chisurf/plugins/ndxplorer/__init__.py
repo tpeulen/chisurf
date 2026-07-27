@@ -26,7 +26,6 @@ When working with image spectroscopy data, ndXplorer allows pixel-by-pixel analy
 of multiparameter fluorescence information, enabling spatial correlation of 
 spectroscopic properties.
 """
-from chisurf.gui import dialogs
 
 name = "Main:Tools:ndXplorer"
 
@@ -125,6 +124,7 @@ if __name__ == "plugin":
     # Calibrate the loaded measurement: the correction constants ndx applies
     # should follow from the data in the window, not from typed-in guesses.
     try:
+        from qtpy import QtWidgets
 
         from chisurf.plugins.ndxplorer.calibration_bridge import optimize_calibration_from_ndx
 
@@ -132,7 +132,7 @@ if __name__ == "plugin":
             """Determine alpha/beta/gamma/delta from the loaded bursts and apply them."""
             result = optimize_calibration_from_ndx(ndx)
             if not result.get("ok"):
-                dialogs.warning(
+                QtWidgets.QMessageBox.warning(
                     ndx, "Accurate FRET", str(result.get("error", "calibration failed"))
                 )
                 return
@@ -147,12 +147,11 @@ if __name__ == "plugin":
             ]
             if result["injected"]:
                 lines += ["", "New columns: " + ", ".join(result["injected"])]
-            dialogs.information(
-                ndx,
-                "Accurate FRET — calibration applied",
-                "The correction factors were optimized against the loaded data.",
-                detail="\n".join(lines),
-            )
+            box = QtWidgets.QMessageBox(ndx)
+            box.setWindowTitle("Accurate FRET — calibration applied")
+            box.setText("The correction factors were optimized against the loaded data.")
+            box.setDetailedText("\n".join(lines))
+            box.exec_() if hasattr(box, "exec_") else box.exec()
 
         calibration_toolbar = ndx.addToolBar("Accurate FRET")
         calibration_toolbar.setObjectName("ndxplorerAccurateFretToolbar")

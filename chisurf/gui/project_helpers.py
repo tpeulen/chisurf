@@ -7,7 +7,6 @@ import pathlib
 import chisurf as cs
 from chisurf import logging
 from chisurf.gui import QtCore, QtWidgets, run_on_gui_thread
-from chisurf.gui import dialogs
 
 
 def _recent_projects_file() -> pathlib.Path:
@@ -127,7 +126,7 @@ def open_recent_project(window, project_path: str) -> None:
         if path.is_dir():
             csp_path = path / "project.csp"
             if not csp_path.is_file():
-                dialogs.warning(
+                QtWidgets.QMessageBox.warning(
                     window,
                     "Invalid Project",
                     "The selected folder does not contain a project archive (project.csp).",
@@ -143,7 +142,7 @@ def open_recent_project(window, project_path: str) -> None:
                 return
             path = csp_path
         elif path.suffix.lower() != ".csp":
-            dialogs.warning(
+            QtWidgets.QMessageBox.warning(
                 window,
                 "Invalid Project",
                 "Please select a ChiSurf project archive (*.csp).",

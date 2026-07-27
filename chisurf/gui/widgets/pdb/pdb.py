@@ -1,4 +1,3 @@
-import logging
 import os
 
 import numpy as np
@@ -9,7 +8,6 @@ import chisurf.core.fio
 import chisurf.gui.decorators
 from chisurf.core.structure import Structure
 from chisurf.core.structure.trajectory import TrajectoryFile
-from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
 
 
 class PDBSelector(
@@ -210,29 +208,20 @@ class PDBSelector(
 
 
 class LoadThread(QtCore.QThread):
-    """Read a folder of structures off the GUI thread, reporting progress.
 
-    The two signals were commented out during the PyQt-to-qtpy move (their
-    ``pyqtSignal`` spelling did not survive), which left every construction of
-    :class:`PDBFolderLoad` raising ``AttributeError`` on the very next line —
-    the widget could not be opened at all.
-    """
-
-    #: emitted with ``True`` once every file has been read.
-    procDone = QtCore.Signal(bool)
-    #: emitted with the percentage of files read so far.
-    partDone = QtCore.Signal(float)
+    #procDone = pyqtSignal(bool)
+    #partDone = pyqtSignal(int)
 
     def run(self):
-        """Read every file in :attr:`filenames`, appending to :attr:`target`."""
         nFiles = len(self.filenames)
-        logging.info("File loading started (%s files)", nFiles)
+        print('File loading started')
+        print('#Files: %s' % nFiles)
         for i, fn in enumerate(self.filenames):
             f = self.read(fn, *self.read_parameter)
             self.target.append(f, *self.append_parameter)
             self.partDone.emit(float(i + 1) / nFiles * 100)
-        self.procDone.emit(True)
-        logging.info("Reading finished")
+        #self.procDone.emit(True)
+        print('reading finished')
 
 
 class PDBFolderLoad(
@@ -263,8 +252,6 @@ class PDBFolderLoad(
             self
         )
 
-        # The bar comes from the .ui file; swap in the shared one.
-        adopt_progress_bar(self)
         self.pushButton_12.clicked.connect(self.onLoadStructure)
         self.updatePBar(0)
         self.load_thread = LoadThread()
@@ -273,7 +260,7 @@ class PDBFolderLoad(
         self.trajectory = TrajectoryFile()
 
     def fin(self):
-        logging.info("Loading of structures finished")
+        print("Loading of structures finished")
         self.lineEdit.setText(str(self.nAtoms))
         self.lineEdit_2.setText(str(self.nResidues))
 

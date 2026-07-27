@@ -54,12 +54,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Frames | `frame_mode` | choice |  | choices: sum, mean, frame |  |
 | Frame | `frame_idx` | int |  | 0 … |  |
 
-### General
-
-| Parameter | Attribute | Type | Default | Range / options | Meaning |
-| --- | --- | --- | --- | --- | --- |
-| Regions | `regions` | region_list |  |  | Named regions. Tick to include, ~ to use everything outside one, and pick how the ticked ones combine into the selection the decay is built from. + keeps the current brush stroke. |
-
 ## JSON-RPC methods
 
 | Method | Long-running | Summary |

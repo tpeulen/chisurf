@@ -102,10 +102,7 @@ resolves dynamics faster than the mean burst duration.
 $\mathbf{A}^{\Delta t}$ and the associated transition-count tensors are computed
 once per unique $\Delta t$ and cached, so the cost scales with the number of
 photons, not the number of clock ticks. ChiSurf's plugin README calls this the
-`A^Δt` trick. $\Delta t = 0$ is one of those distinct values, not a special
-case: coarse macro-time scaling makes coincident arrival times common, and such
-a pair propagates with $\mathbf{A}^0 = \mathbf{I}$ and contributes no transition
-counts.)
+`A^Δt` trick.)
 
 ## Optimization — forward-backward and Baum-Welch
 

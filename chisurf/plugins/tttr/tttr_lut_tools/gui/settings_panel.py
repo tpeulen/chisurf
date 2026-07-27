@@ -12,7 +12,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 VALID_EXTS = {".spc", ".ht3", ".ptu", ".phu", ".photonhdf5"}
 EPS = 1e-12
@@ -600,13 +599,13 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
                     break
             self.btn_assign_lut_selected.setEnabled(True)
             self.btn_assign_lut_all.setEnabled(True)
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "LUT loaded",
                 f"Loaded LUT '{filename}' with {len(lut_array)} entries.",
             )
         except Exception as exc:
-            dialogs.error(self, "Error loading LUT", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Error loading LUT", str(exc))
 
     def _set_y_label(self) -> None:
         """Set the histogram y-axis label."""
@@ -625,7 +624,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         try:
             self._load_tttr_paths(paths)
         except Exception as exc:
-            dialogs.error(self, "Load error", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Load error", str(exc))
             self._unload_all()
 
     def _unload_all(self) -> None:
@@ -704,13 +703,13 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
                     break
             self.btn_assign_lut_selected.setEnabled(True)
             self.btn_assign_lut_all.setEnabled(True)
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "LUT loaded",
                 f"Loaded LUT '{filename}' with {len(lut_array)} entries.",
             )
         except Exception as exc:
-            dialogs.error(self, "Error loading LUT", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Error loading LUT", str(exc))
 
     def _clear_luts(self) -> None:
         """Clear loaded LUTs."""
@@ -750,14 +749,14 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         """Assign the selected LUT to the active channel."""
         lut_array = self._get_selected_lut()
         if lut_array is None:
-            dialogs.warning(self, "No LUT selected", "Select a LUT from the list.")
+            QtWidgets.QMessageBox.warning(self, "No LUT selected", "Select a LUT from the list.")
             return
         if not self.bundle:
-            dialogs.warning(self, "No data", "Load TTTR files first.")
+            QtWidgets.QMessageBox.warning(self, "No data", "Load TTTR files first.")
             return
         channel = self._active_channel()
         if channel is None:
-            dialogs.warning(self, "No channel selected", "Select a channel from the list.")
+            QtWidgets.QMessageBox.warning(self, "No channel selected", "Select a channel from the list.")
             return
         self.channel_luts[int(channel)] = np.array(lut_array, dtype=np.float64)
         self._update_all_curves_full()
@@ -770,10 +769,10 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         """Assign the selected LUT to all used channels."""
         lut_array = self._get_selected_lut()
         if lut_array is None:
-            dialogs.warning(self, "No LUT selected", "Select a LUT from the list.")
+            QtWidgets.QMessageBox.warning(self, "No LUT selected", "Select a LUT from the list.")
             return
         if not self.bundle:
-            dialogs.warning(self, "No data", "Load TTTR files first.")
+            QtWidgets.QMessageBox.warning(self, "No data", "Load TTTR files first.")
             return
         array = np.array(lut_array, dtype=np.float64)
         for channel in self.bundle.used_channels():
@@ -1043,7 +1042,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
 
             version = data.get("version", "1.0")
             if version != "1.0":
-                dialogs.warning(
+                QtWidgets.QMessageBox.warning(
                     self,
                     "Version Warning",
                     f"Settings file version {version} may not be fully compatible with this version.",
@@ -1075,7 +1074,7 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
             if self.json_dialog.isVisible():
                 self._refresh_json_preview()
 
-            dialogs.information(
+            QtWidgets.QMessageBox.information(
                 self,
                 "Settings Loaded",
                 "Successfully loaded settings from:\n"
@@ -1084,12 +1083,12 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
                 f"Shifts: {len(channel_shifts)} channels",
             )
         except Exception as exc:
-            dialogs.error(self, "Load error", f"Failed to load settings:\n{exc}")
+            QtWidgets.QMessageBox.critical(self, "Load error", f"Failed to load settings:\n{exc}")
 
     def _save_settings(self) -> None:
         """Save settings JSON."""
         if not self.bundle:
-            dialogs.warning(self, "No data", "Load TTTR files first.")
+            QtWidgets.QMessageBox.warning(self, "No data", "Load TTTR files first.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self,
@@ -1102,6 +1101,6 @@ class TTTRSettingsPanel(QtWidgets.QWidget):
         try:
             with open(path, "w", encoding="utf-8") as handle:
                 json.dump(json_safe(self._current_settings_dict()), handle, indent=2)
-            dialogs.information(self, "Saved", f"Settings saved to:\n{path}")
+            QtWidgets.QMessageBox.information(self, "Saved", f"Settings saved to:\n{path}")
         except Exception as exc:
-            dialogs.error(self, "Save error", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Save error", str(exc))

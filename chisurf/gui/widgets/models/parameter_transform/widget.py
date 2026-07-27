@@ -18,7 +18,6 @@ from chisurf.gui import plots
 from chisurf.core.models.parameter_transform.model import ParameterTransformModel
 from chisurf.gui.widgets.models import model_widget as model
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-from chisurf.gui import dialogs
 
 
 class ParameterTransformWidget(model.ModelWidget, ParameterTransformModel):
@@ -190,7 +189,8 @@ class ParameterTransformWidget(model.ModelWidget, ParameterTransformModel):
             import logging
             logging.error(f"Error changing code: {str(e)}")
             # Show error message to the user
-            dialogs.warning(
+            from qtpy import QtWidgets
+            QtWidgets.QMessageBox.warning(
                 self, 
                 "Code Error", 
                 f"Error loading code: {str(e)}\n\nPlease check the code definition in the YAML file."
@@ -207,7 +207,8 @@ class ParameterTransformWidget(model.ModelWidget, ParameterTransformModel):
             import logging
             logging.error(f"Error updating function: {str(e)}")
             # Show error message to the user
-            dialogs.warning(
+            from qtpy import QtWidgets
+            QtWidgets.QMessageBox.warning(
                 self, 
                 "Function Error", 
                 f"Error in function definition: {str(e)}\n\nPlease correct the function and try again."

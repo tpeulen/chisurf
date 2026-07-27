@@ -17,7 +17,6 @@ from __future__ import annotations
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui import dialogs
 
 
 class _SpectrumTable(QtWidgets.QWidget):
@@ -170,7 +169,7 @@ class ComponentsWidget(QtWidgets.QWidget):
 
     def _save(self) -> None:
         self._model.save_spectra()
-        dialogs.information(self, "Saved", f"Saved to:\n{self._model.spk_path}")
+        QtWidgets.QMessageBox.information(self, "Saved", f"Saved to:\n{self._model.spk_path}")
 
     def _load(self) -> None:
         path, _ = QtWidgets.QFileDialog.getOpenFileName(

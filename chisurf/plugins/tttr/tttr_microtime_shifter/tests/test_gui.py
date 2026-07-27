@@ -15,7 +15,6 @@ except ImportError:
     QtWidgets = None  # type: ignore[assignment]
 
 from chisurf.plugins.tttr.tttr_microtime_shifter.gui.tool import MicrotimeShifterTool
-from chisurf.gui import dialogs
 
 
 @pytest.mark.skipif(QtWidgets is None, reason="Qt bindings not available")
@@ -178,7 +177,7 @@ def test_save_dialog_always_processes_all_files(tmp_path: Path) -> None:
 
     # Mock QFileDialog.getExistingDirectory
     QtWidgets.QFileDialog.getExistingDirectory = MagicMock(return_value=str(tmp_path / "out"))
-    dialogs.ChiSurfMessageBox.information = MagicMock()
+    QtWidgets.QMessageBox.information = MagicMock()
 
     # Call save
     tool._open_save_dialog()

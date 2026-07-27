@@ -15,7 +15,6 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.gui import chiplot as cp
 from chisurf.gui.autoform.sections.registry import register_section
-from chisurf.gui import dialogs
 
 
 @register_section("lut_compute_plot")
@@ -164,7 +163,7 @@ class _ComputeActions(QtWidgets.QWidget):
 
     def _save(self):
         if self._model.current_table is None:
-            dialogs.warning(self, "No LUT", "Compute a LUT first.")
+            QtWidgets.QMessageBox.warning(self, "No LUT", "Compute a LUT first.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save LUT", "", "NumPy (*.npy);;NPZ (*.npz);;Text (*.txt);;CSV (*.csv)")
@@ -172,13 +171,13 @@ class _ComputeActions(QtWidgets.QWidget):
             return
         try:
             self._model.save_lut(path)
-            dialogs.information(self, "Saved", f"LUT saved to {path}")
+            QtWidgets.QMessageBox.information(self, "Saved", f"LUT saved to {path}")
         except Exception as exc:
-            dialogs.error(self, "Save failed", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Save failed", str(exc))
 
     def _export(self):
         if self._model.current_table is None:
-            dialogs.warning(self, "No LUT", "Compute a LUT first.")
+            QtWidgets.QMessageBox.warning(self, "No LUT", "Compute a LUT first.")
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Export corrected micro-times", "", "NumPy (*.npy);;NPZ (*.npz);;CSV (*.csv);;Text (*.txt)")
@@ -186,9 +185,9 @@ class _ComputeActions(QtWidgets.QWidget):
             return
         try:
             self._model.export_corrected(path)
-            dialogs.information(self, "Exported", f"Saved to {path}")
+            QtWidgets.QMessageBox.information(self, "Exported", f"Saved to {path}")
         except Exception as exc:
-            dialogs.error(self, "Export failed", str(exc))
+            QtWidgets.QMessageBox.critical(self, "Export failed", str(exc))
 
 
 @register_section("lut_info_label")

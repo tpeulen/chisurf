@@ -209,7 +209,6 @@ metadata, and plugin/action catalogue extras where supported.
 
 | Constraint | Rationale |
 |------------|-----------|
-| Curve sample arrays are write-locked; edit in place only inside `with curve.unlocked(...)` | A curve is shared by a fit, a plot and any number of plugins at once, so an in-place write changes everyone else's result silently |
 | `chisurf.server` must not import Qt or `chisurf.gui` | Server must run headless and in subprocesses |
 | Use ZMQ plus JSON-RPC 2.0 only for server communication | Keeps one transport/protocol contract |
 | Do not install transparent object proxies in normal GUI startup | The GUI still expects real Python objects in many paths |

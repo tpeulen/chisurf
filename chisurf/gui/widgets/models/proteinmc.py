@@ -26,8 +26,7 @@ from chisurf.core.models.structure.proteinmc import (
     load_json,
 )
 from chisurf.gui.plots.proteinMC import ProteinMCDistanceNetworkPlot, ProteinMCPlot, ProteinMCStructurePlot
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.widgets.progress import wrap_text
+from chisurf.gui.widgets.progress import EnhancedProgressDialog, wrap_text
 
 
 try:  # Chimol is preferred over PyMOL for ProteinMC visual feedback.
@@ -1405,14 +1404,17 @@ class ProteinMCModelWidget(ModelWidget):
             wrapped_name = fit_name
         base_label = f"Sampling ProteinMC for {wrapped_name}..." if wrapped_name else "Sampling ProteinMC..."
         try:
-            # Sampling runs in a thread, so Cancel is delivered as a callback
-            # rather than polled from the loop.
-            self._dialog = ChiSurfProgress(
-                self, base_label, 100,
+            self._dialog = EnhancedProgressDialog(
                 title="ProteinMC Sampling",
-                cancel=self.stop_proteinmc,
+                label_text=base_label,
+                min_value=0,
+                max_value=100,
+                parent=self,
+                window_modality=QtCore.Qt.NonModal
             )
+            self._dialog.show()
             self._dialog.update_progress(0)
+            self._dialog.canceled.connect(self.stop_proteinmc)
         except Exception:
             self._dialog = None
 

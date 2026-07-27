@@ -15,7 +15,6 @@ from chisurf.core.file_formats import FILE_FORMATS as _FILE_FORMATS
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.plots import plotbase
 from chisurf.gui.widgets.metadata_editor import MetadataEditor
-from chisurf.gui import dialogs
 
 
 def _configure_fill_table(table: QtWidgets.QTableWidget) -> None:
@@ -646,7 +645,7 @@ class FitInfo(plotbase.Plot):
         try:
             Path(path).write_text(self.cif_preview.toPlainText())
         except Exception as exc:
-            dialogs.warning(self, "Save failed", str(exc))
+            QtWidgets.QMessageBox.warning(self, "Save failed", str(exc))
 
     # ── Refresh ──────────────────────────────────────────────────
 

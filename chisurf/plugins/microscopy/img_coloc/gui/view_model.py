@@ -12,8 +12,6 @@ from collections.abc import Callable
 
 import numpy as np
 
-from chisurf.core.roi import RegionCollection
-
 from .. import core as _core
 
 logger = logging.getLogger(__name__)
@@ -45,11 +43,6 @@ class ColocViewModel:
         self.threshold_a: float = 0.0
         self.threshold_b: float = 0.0
         self.gate_enabled: bool = False
-        #: Gate regions on the intensity scatter — the typed box, a painted
-        #: population, anything drawn — combined by the collection's rule.
-        self.gates = RegionCollection(combine="or", name="gate")
-        #: Paint buffer over the histogram bins; the gate brush writes into it.
-        self.gate_paint = None
         self.gate_a_min: float = 0.0
         self.gate_a_max: float = 0.0
         self.gate_b_min: float = 0.0
@@ -187,64 +180,25 @@ class ColocViewModel:
     def _gate(self):
         """Return the scatter-plane gate, or ``None`` when disabled.
 
-        The rectangle, the painted population and anything else drawn are
-        entries in one :class:`~chisurf.core.roi.RegionCollection`, so they
-        *compose* by its rule. Before, a painted gate simply won over the
-        rectangle and there was no way to say "this cloud **and** above that
-        threshold".
+        A painted gate wins when there is one — a population in an intensity
+        scatter is rarely a rectangle. Otherwise the dragged rectangle is passed
+        as a plain tuple rather than a region, because it is inclusive at both
+        ends where a half-open :class:`~chisurf.core.roi.RectangleROI` is not,
+        and that difference is exactly the brightest pixel.
         """
+        if self.gate_enabled and self._painted_gate is not None:
+            return self._painted_gate
         if not self.gate_enabled:
             return None
-        self._sync_box_gate()
-        return self.gates.combined()
-
-    def gate_extent(self) -> tuple:
-        """Return ``(a0, a1, b0, b1)``: the intensity span the histogram covers.
-
-        The joint histogram is drawn on these axes, so a gate drawn on the plane
-        is already in the intensities the analysis works in — no bin conversion
-        at the call sites, and the axes read what the user is actually choosing.
-        """
-        if self._result is None:
-            return (0.0, 1.0, 0.0, 1.0)
-        edges_a = self._result.histogram.get("edges_a")
-        edges_b = self._result.histogram.get("edges_b")
-        if edges_a is None or edges_b is None or len(edges_a) < 2:
-            return (0.0, 1.0, 0.0, 1.0)
-        return (float(edges_a[0]), float(edges_a[-1]),
-                float(edges_b[0]), float(edges_b[-1]))
-
-    def _sync_box_gate(self) -> None:
-        """Keep the typed rectangle in step with the region list.
-
-        The four spin boxes are the way to type a box exactly; the list is the
-        way to see and combine it. One entry, named ``box``, is the same thing
-        in both.
-
-        The upper bounds are nudged to the next representable float because a
-        ``RectangleROI`` is half-open — ``[min, max)`` — while a typed range
-        means ``[min, max]``, and the difference is exactly the brightest pixel.
-        """
         if self.gate_a_max <= self.gate_a_min or self.gate_b_max <= self.gate_b_min:
-            self.gates.remove("box")
-            return
-        from chisurf.core.roi import RectangleROI
+            return None
+        return (self.gate_a_min, self.gate_a_max, self.gate_b_min, self.gate_b_max)
 
-        box = RectangleROI(
-            self.gate_a_min, self.gate_b_min,
-            float(np.nextafter(self.gate_a_max, np.inf)),
-            float(np.nextafter(self.gate_b_max, np.inf)),
-            name="box",
-        )
-        entry = self.gates.get("box")
-        if entry is None:
-            self.gates.add(box)
-        else:
-            entry.roi = box
-
-    def gate_histogram(self):
-        """The joint histogram, for measuring regions drawn on it."""
-        return self.histogram_image()
+    # ── scatter gate painted on the joint histogram ──
+    #: Paint buffer over the histogram bins; the brush writes into it.
+    gate_paint = None
+    #: The painted bins as a region, once a stroke has been adopted.
+    _painted_gate = None
 
     # ── spatial ROI (painted on the channel-A map) ──
     def _roi(self):
@@ -389,12 +343,11 @@ class ColocViewModel:
         self.compute()
 
     def clear_gate(self) -> None:
-        """Drop every gate region and recompute over the whole scatter."""
+        """Disable the scatter gate — rectangle and paint alike — and recompute."""
         self.gate_enabled = False
-        self.gates.clear()
+        self._painted_gate = None
         if self.gate_paint is not None:
             self.gate_paint = np.zeros_like(np.asarray(self.gate_paint))
-        self.notify("gate")
         self.compute()
 
     def on_gate_painted(self) -> None:
@@ -410,18 +363,18 @@ class ColocViewModel:
         edges_a = self._result.histogram.get("edges_a")
         edges_b = self._result.histogram.get("edges_b")
         painted = np.asarray(self.gate_paint) > 0
-        self.gates.remove("painted")
-        if edges_a is not None and edges_b is not None and painted.any():
+        if edges_a is None or edges_b is None or not painted.any():
+            self._painted_gate = None
+        else:
             from chisurf.core.roi import MaskROI
 
             # The histogram is indexed [a_bin, b_bin] and drawn with A
             # horizontal, so the region — which wants rows along y — takes the
             # transpose.
-            self.gates.add(
-                MaskROI.from_histogram(painted.T, edges_a, edges_b, name="painted")
+            self._painted_gate = MaskROI.from_histogram(
+                painted.T, edges_a, edges_b, name="painted gate"
             )
             self.gate_enabled = True
-        self.notify("gate")
         self.compute()
 
     def gate_brush_kernel(self):
@@ -551,39 +504,61 @@ class ColocViewModel:
 
     # ── scatter gate (driven by the histogram's rectangle ROI) ──
     def gate_region(self):
-        """Return the typed rectangle, for the draggable handle on the plane.
+        """Return the gate as a region in histogram-bin coordinates.
 
         Returns
         -------
         chisurf.core.roi.RectangleROI or None
-            In intensity coordinates — the axes the histogram is drawn on — or
-            ``None`` when gating is off.
+            Where to draw the rectangle on the joint histogram; ``None`` when
+            gating is off, a painted gate has superseded it, or no result has
+            been computed yet.
         """
         if self._result is None or not self.gate_enabled:
             return None
-        self._sync_box_gate()
-        return self.gates.roi("box")
+        if self._painted_gate is not None:
+            return None
+        edges_a = self._result.histogram.get("edges_a")
+        edges_b = self._result.histogram.get("edges_b")
+        if edges_a is None or edges_b is None or len(edges_a) < 2:
+            return None
+        from chisurf.core.roi import RectangleROI
+
+        return RectangleROI(
+            self._to_bin(self.gate_a_min, edges_a),
+            self._to_bin(self.gate_b_min, edges_b),
+            self._to_bin(self.gate_a_max, edges_a),
+            self._to_bin(self.gate_b_max, edges_b),
+            name="gate",
+        )
 
     def set_gate_region(self, roi) -> None:
-        """Adopt a rectangle dragged on the joint histogram as the typed box.
+        """Adopt a region drawn on the joint histogram as the gate.
 
-        The plane carries intensities now, so nothing has to be converted: what
-        was dragged is what the spin boxes read.
+        The rectangle arrives in bin coordinates; the intensities it stands for
+        are read off the histogram edges, which is the one thing the widget
+        cannot know.
 
         Parameters
         ----------
         roi : chisurf.core.roi.ROI
-            The drawn region; its bounding box is used.
+            The drawn region; its bounding box in bin coordinates is used.
         """
-        box = roi.bounds()
+        if self._result is None:
+            return
+        edges_a = self._result.histogram.get("edges_a")
+        edges_b = self._result.histogram.get("edges_b")
+        if edges_a is None or edges_b is None or len(edges_a) < 2:
+            return
+        bins = len(edges_a) - 1
+        box = roi.bounds((bins, bins))
         if box is None:
             return
-        a0, b0, a1, b1 = box
-        self.gate_a_min, self.gate_a_max = float(a0), float(a1)
-        self.gate_b_min, self.gate_b_max = float(b0), float(b1)
+        x0, y0, x1, y1 = box
+        self.gate_a_min = self._to_value(x0, edges_a)
+        self.gate_a_max = self._to_value(x1, edges_a)
+        self.gate_b_min = self._to_value(y0, edges_b)
+        self.gate_b_max = self._to_value(y1, edges_b)
         self.gate_enabled = True
-        self._sync_box_gate()
-        self.notify("gate")
         self.compute()
 
     @staticmethod

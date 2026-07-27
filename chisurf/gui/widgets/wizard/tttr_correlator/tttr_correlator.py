@@ -15,8 +15,6 @@ from chisurf.gui import QtCore, QtGui, QtWidgets, uic
 from chisurf.gui import chiplot as cp
 
 from .tttr_correlator_ui import setup_ui as _setup_ui
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui import dialogs
 
 colors = cs.core.settings.gui['plot']['colors']
 
@@ -295,11 +293,14 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         if self.tttr is None or len(self.tttr) == 0:
             cs.logging.log(1, "Warning: No TTTR data available for correlation.")
 
-            dialogs.warning(
-                self,
-                "No Photons Selected",
-                "No photons selected for correlation. Please load data before continuing.",
-            )
+            # **Display a message box to the user**
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setIcon(QtWidgets.QMessageBox.Warning)
+            msg_box.setWindowTitle("No Photons Selected")
+            msg_box.setText("No photons selected for correlation. Please load data before continuing.")
+            msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msg_box.exec_()
+
             return  # Stop execution
 
         correlation_settings = self.get_correlation_settings()
@@ -307,7 +308,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
         self.plot_item_fcs.clear()
 
         # Create a progress dialog
-        progress = ChiSurfProgress(self, "Computing correlations...", n_chunks)
+        progress = QtWidgets.QProgressDialog("Computing correlations...", "Cancel", 0, n_chunks, self)
         progress.setWindowTitle("Correlation Progress")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setWindowFlags(progress.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
