@@ -58,15 +58,30 @@ def main() -> int:
 
     prefix = os.environ.get("CONDA_PREFIX") or sys.prefix
 
-    # The environment prefix is all CMake needs: it finds HDF5, OpenMP and the
-    # rest there. This used to also inject `-L… -lomp -Wl,-rpath,…` on macOS,
+    # The environment prefix is where CMake looks for OpenMP and the rest.
+    # This used to also inject `-L… -lomp -Wl,-rpath,…` on macOS,
     # because tttrlib's Python extension compiled with OpenMP but never linked
     # it — and the module's flat-namespace flag let the missing symbols through
     # to fail at import time. That is fixed in tttrlib itself (the extension now
     # links `OpenMP::OpenMP_CXX` like the R and Java modules always did), so a
     # plain build produces an importable module.
+    # HDF5 must come from this environment, and pointing CMake at the prefix is
+    # not enough to guarantee it: ``find_package(HDF5)`` also searches for an
+    # installed HDF5 *CMake config package*, which on macOS finds Homebrew's
+    # (``/opt/homebrew/lib/cmake/hdf5``) and wins. The extension then links a
+    # second HDF5 into a process that already has this environment's — and
+    # whichever initialises first wins, so writing a Photon-HDF5 file aborted
+    # the whole process ("Bye...") unless something imported h5py/PyTables
+    # first. Forcing module mode with an explicit root keeps both out of the
+    # same process.
     env = dict(os.environ)
-    env["CMAKE_ARGS"] = f"-DCMAKE_PREFIX_PATH={prefix}"
+    env["CMAKE_ARGS"] = " ".join(
+        (
+            f"-DCMAKE_PREFIX_PATH={prefix}",
+            f"-DHDF5_ROOT={prefix}",
+            "-DHDF5_NO_FIND_PACKAGE_CONFIG_FILE=TRUE",
+        )
+    )
 
     shutil.rmtree(_BUILD_DIR, ignore_errors=True)
     cmd = [

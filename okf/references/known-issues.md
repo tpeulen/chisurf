@@ -124,23 +124,6 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**`tttrlib.write_hdf_file` aborts the process unless h5py/PyTables is imported
-first (open, 2026-07-27).** tttrlib links a *different* HDF5 than the
-environment does — the crash reports show both `libhdf5.310.dylib` (env) and
-`/opt/homebrew/.../libhdf5.320.1.1.dylib` (pulled in by `_tttrlib`) mapped into
-one process — and whichever initialises first wins. Minimal reproduction:
-
-```
-python -c "import tables, h5py; import tttrlib; ...; t.write_hdf_file(p)"   # OK
-python -c "import tttrlib; ...; t.write_hdf_file(p)"                        # HDF5 aborts ("Bye...")
-```
-
-So `chisurf/plugins/burst/burst_h2mm/tests/test_examples.py` passes when a GUI
-suite ran first (it imports PyTables) and aborts the whole pytest process when
-the burst suite runs alone — the failure follows import order, not the test.
-The root fix is in the tttrlib build (link it against the environment's HDF5,
-rebuild the editable install); nothing in chisurf can paper over it.
-
 **Anisotropy now follows Schaffer/Eggeling throughout (settled 2026-07-27).**
 `r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**,
 the ratio a paper quotes and the one tttrlib's estimators already took. Four
@@ -761,17 +744,21 @@ be, because three of them were defects in the code rather than in the tests.
   `D` = 0.02) instead of collapsing to its bound as the square region did. The
   scan-precision planner is the intended defence.
 
-- **`burst_h2mm/tests/test_examples.py` aborts the process in
-  `tttrlib.write_hdf_file`.** Found on 2026-07-27 while gating the RF-311 fix.
-  `test_generate_and_analyze_example_dataset` calls
-  `examples/generate_example_data.py:95`, whose HDF5 write raises `Fatal Python
-  error: Aborted` and takes the whole pytest run with it, so nothing after it in
-  the same session runs. Reproduced unchanged with `core/h2mm.py` restored to
-  `HEAD`, i.e. it is not the H2MM engine — it is the tttrlib/HDF5 pairing in this
-  environment (the abort is inside the extension, below Python). The rest of the
-  plugin suite is green (54 passed with this file ignored). Belongs in the
-  tttrlib repository; until then run the plugin suite with
-  `--ignore=chisurf/plugins/burst/burst_h2mm/tests/test_examples.py`.
+- **`burst_h2mm/tests/test_examples.py` aborted the process in
+  `tttrlib.write_hdf_file` — fixed 2026-07-27.** The abort was real but not the
+  H2MM engine's and not the test's: tttrlib linked a *second* HDF5. Its build
+  ran `find_package(HDF5)`, which also searches for an installed HDF5 **CMake
+  config package**; that config outranks `HDF5_ROOT`, and on macOS it is
+  Homebrew's — so the extension in the `arm64` env used `libhdf5.320` while the
+  environment (and h5py/PyTables) load `libhdf5.310`. Whichever initialises
+  first wins, which is why the same test passed after a GUI suite (it imports
+  PyTables) and aborted when the burst suite ran alone. Fixed at the root in
+  tttrlib (`c2334218`: module mode is forced when a caller names `HDF5_ROOT`),
+  the `arm64` extension was rebuilt against the environment's HDF5, and
+  `build_tools/build_tttrlib.py` now passes the same flags. The `--ignore`
+  workaround is no longer needed: `chisurf/plugins/burst` runs standalone (344
+  passed) and tttrlib's own suite is green on the rebuilt module. Guarded by
+  `test/test_tttrlib_hdf5_runtime.py`.
 
 - **Two red TCSPC tests that predate the RF-194 fix.** Met on 2026-07-27 while
   gating it, both unrelated to it (neither touches `nusiance.py`).

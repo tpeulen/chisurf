@@ -2,6 +2,30 @@
 
 ## 2026-07-27
 
+* **tttrlib carried its own HDF5 into the process, and Photon-HDF5 writes
+  aborted the interpreter (tttrlib c2334218).** Found while re-running the burst
+  suite: `burst_h2mm`'s example test killed the whole pytest run with SIGABRT
+  inside `tttrlib.write_hdf_file` — but only when that suite ran on its own.
+  `find_package(HDF5)` also searches for an installed HDF5 **CMake config
+  package**, which outranks `HDF5_ROOT`; on macOS that is Homebrew's, so the
+  extension in the `arm64` env linked `libhdf5.320` while the env (and
+  h5py/PyTables) load `libhdf5.310`. Whichever initialises first wins:
+
+      import tables, h5py; import tttrlib; t.write_hdf_file(p)   -> OK
+      import tttrlib;                      t.write_hdf_file(p)   -> abort
+
+  so the failure followed *import order* and read as flaky. Fixed at the root in
+  tttrlib (module mode is forced when a caller names `HDF5_ROOT`, and the chosen
+  library is echoed at configure time), rebuilt the `arm64` env's extension
+  against the environment's HDF5, and taught `build_tools/build_tttrlib.py` to
+  pass the same flags so the pixi build cannot regress. tttrlib's own suite is
+  green on the rebuilt module (829 passed, 20 skipped) and
+  `chisurf/plugins/burst` now runs standalone (344 passed) where it used to
+  abort. Pinned by `test/test_tttrlib_hdf5_runtime.py`, which writes a
+  Photon-HDF5 file in a fresh interpreter that imports *only* tttrlib (the abort
+  is native — no `pytest.raises` can see it) and checks the linked HDF5 lives in
+  this environment; both cases fail against the previous build.
+
 * **The shipped experiment configuration was read from a path that cannot exist,
   so upgraded installs never saw a new or renamed experiment (RF-022 / RF-264).**
   The GUI resolved the packaged `experiment_configs.yaml` through
