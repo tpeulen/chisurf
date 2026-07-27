@@ -95,7 +95,8 @@ scheme set it also strips whatever background the wrapped model paints.
   (`chisurf/gui/autoform/sections/global_parameter_table.py`) — via the foreign
   model path;
 * the burst selector's results editor;
-* ndXplorer's `DataFrameEditor`, through the optional-import arrangement below.
+* ndXplorer's `DataFrameEditor` and its item tables, through the optional-import
+  arrangement below.
 
 The AutoForm `table` section and its `TableWidget`
 (`chisurf/gui/autoform/sections/builtin.py`) are unchanged: they remain the
@@ -112,6 +113,26 @@ use. The public surface (`DataFrameEditor(df, parent)`, `.dataframe`,
 `.exec_()`, `edit_dataframe`) is identical on both branches, so call sites never
 branch. Changes to those files are committed in the ndXplorer repository, not
 in ChiSurf.
+
+`ndxplorer/ui/table.py` extends the same arrangement to the ordinary *item*
+tables: `ValueTable` is a `ChiTableWidget` wrapping a `QStandardItemModel` when
+chitable imports, and a plain `QTableWidget` when it does not, with `TableItem`
+resolving to the matching item class. Both branches present the `QTableWidget`
+item API the call sites are already written against.
+
+**The trap this arrangement introduces, and the rule that answers it.** Giving a
+table sorting and filtering means the row on screen is no longer the row the data
+is in. `selectionModel().selectedRows()` reports *view* rows; using one to index
+the underlying list reads — or deletes — a different record, silently, as soon as
+the user sorts a column. `ValueTable.source_row()` and
+`selected_source_rows()` are the only supported way across, and are correct on
+both branches (the identity where there is no proxy). Any table gaining chitable
+must have its selection-to-record call sites converted at the same time; this is
+the same hazard `DataFrameEditor` records for its own `_source_rows` list.
+
+Tables whose cells hold real widgets (`setCellWidget` — ndXplorer's selection
+table and report table) are **not** shim candidates: chitable expresses those
+with delegates, so they need their state handling rewritten rather than swapped.
 
 # Styling
 

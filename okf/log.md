@@ -220,6 +220,50 @@
   Reverted rather than left in as a plausible-looking no-op, and the real options
   are written down in [known-issues](/references/known-issues.md).
 
+* **Where a shared widget exists, the trap is not adopting it — it is the
+  assumption the adoption invalidates.** The exploration submodule's item tables
+  now use [chitable](/subsystems/gui-tables.md) whenever ChiSurf is importable,
+  behind `ndxplorer/ui/table.py`, matching the arrangement its dataframe and
+  parameter editors already used. The straightforward part was the API: both
+  branches present the same item surface, so no call site branches. The part
+  that mattered: giving a table sorting means the row on screen is no longer the
+  row the data is in, and the Gaussian-fit table read
+  `selectionModel().selectedRows()` as an index into the Gaussian list — to
+  highlight overlays and to *delete*. Sorting a column would have deleted the
+  wrong Gaussian, silently, because both rows exist and both look plausible.
+  `source_row()` / `selected_source_rows()` are now the only supported crossing
+  and the call sites use them. Fixed at the root in chitable while here: it
+  connected only `dataChanged` for a wrapped foreign model, so a table filled
+  after construction reported "0 rows" while showing them. Tables whose cells
+  hold real widgets are deliberately left alone — chitable answers those with
+  delegates, which is a rewrite of their state handling, not a swap.
+
+* **The four "what structure is in here?" methods now share one dialog.** PCA,
+  UMAP, HDBSCAN and K-means differ in what they return but not in how they are
+  used: pick columns, run, get columns back. They had been three unrelated
+  presentations — a two-entry clustering dropdown, a permanently expanded UMAP
+  box, and PCA with a complete tested API and no way in at all. One dropdown, one
+  stacked parameter page, one action row; projections add coordinate columns,
+  labellings add a cluster column and run on a worker. PCA reports its loadings,
+  because "these two parameters carry the separation" is the answer and the
+  component columns are only how you plot it. Two bugs fell out: the
+  backend-missing path set a widget that has never existed (AttributeError
+  instead of a clean refusal), and the "offer to install the backend" block
+  existed in three copies across two files that had already drifted, so the same
+  absent library behaved differently depending on which button reached it.
+
+* **Seven long-failing tests were all describing real defects.** Weighted scatter
+  sizes used min-max normalisation while alpha in the same module used
+  weight/max, so the smallest weight always drew at the base size whatever its
+  value — weights of [100, 101] rendered identically to [1, 100], and a size
+  meant to encode a quantity encoded only rank. The exporter built its frame
+  before validating the format, so a bad format raised `KeyError` rather than the
+  documented `ValueError`. And the HDF5 export wrote its single table under a
+  *nested* key, which makes pandas register the parent group as a second key —
+  so `pd.read_hdf(path)`, the obvious way to read our own export back, failed
+  with "key must be provided when HDF5 file contains multiple datasets". The
+  suite is green.
+
 * **A half-finished refactor is more dangerous than the mess it replaces.** The
   exploration submodule had moved data ownership into a `DataManager` but kept
   the window's old private field as a "backward compatible" copy, and left a
