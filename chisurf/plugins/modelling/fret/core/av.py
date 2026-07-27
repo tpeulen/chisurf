@@ -459,6 +459,15 @@ _ELEMENT_NUMBERS = {
 def _element_symbol_from_pdb_line(line: str) -> str:
     """Return an element symbol parsed from a PDB ATOM/HETATM line.
 
+    Columns 77-78 carry the element in a modern PDB and are used verbatim when
+    present. Older files (the shipped FPS screening structures are 66-character
+    records) leave them empty, so the element is read from the atom-name field
+    instead. There the element is *right-justified in columns 13-14*: a blank or
+    numeric column 13 means a one-letter element, so ``" CA "`` is an
+    α-carbon while ``"CA  "`` is calcium. A two-letter reading is additionally
+    rejected when columns 15-16 contain a digit, which is how a four-character
+    hydrogen name such as ``"HE21"`` is written — helium would otherwise win.
+
     Parameters
     ----------
     line : str
@@ -473,11 +482,18 @@ def _element_symbol_from_pdb_line(line: str) -> str:
     if symbol:
         return symbol
 
-    atom_name = line[12:16].strip().upper()
-    letters = "".join(ch for ch in atom_name if ch.isalpha())
-    if not letters:
-        return ""
-    if len(letters) >= 2 and letters[:2] in _ELEMENT_NUMBERS:
+    name_field = line[12:16].ljust(4).upper()
+    candidate = name_field[:2].strip()
+    if (
+        len(candidate) == 2
+        and candidate in _ELEMENT_NUMBERS
+        and not any(ch.isdigit() for ch in name_field[2:])
+    ):
+        return candidate
+    letters = "".join(ch for ch in name_field if ch.isalpha())
+    if letters[:1] not in _ELEMENT_NUMBERS and letters[:2] in _ELEMENT_NUMBERS:
+        # Left-padding a two-letter element (" ZN ") breaks the column rule, but
+        # here the strict reading is not an element at all, so take the pair.
         return letters[:2]
     return letters[:1]
 

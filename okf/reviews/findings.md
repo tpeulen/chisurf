@@ -5776,11 +5776,27 @@ Findings RF-476..RF-482.
 - **Fix note:**
 
 ### RF-477
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (every backbone Cα is given calcium's van-der-Waals radius in any PDB without an element column — 987 of 17 733 atoms in the plugin's own shipped screening library)
 - **Location:** `chisurf/plugins/modelling/fret/core/av.py:476-482` (`_element_symbol_from_pdb_line`, the atom-name fallback: `if len(letters) >= 2 and letters[:2] in _ELEMENT_NUMBERS: return letters[:2]`)
 - **Finding:** when columns 77-78 are empty the element is guessed from the atom name, and the guess takes the first two letters whenever they name an element — so ` CA ` (α-carbon) resolves to **CA = calcium, Z 20, vdW 1.97 Å** instead of carbon's 1.70 Å, and hydrogens named `HE1`/`HE21`/`HE` resolve to **helium, 1.40 Å** instead of 1.20 Å. Measured on `examples/4w_junction/fps_test_data/test_screening/hivrt_straight_allTraj04791.pdb` (66-character records, no element column — the shipped FPS screening input): **987/17733 atoms mis-radiused**, i.e. one per residue, and they are the atoms lining the backbone, so the obstacle surface every AV is grown against is systematically inflated. The PDB rule the fallback is missing: the element is right-justified in columns 13-14, so a blank column 13 (or a digit) means a one-letter element — ` CA ` is carbon, `CA  ` would be calcium. Note the default attachment atom name is also `CA`.
-- **Fix note:**
+- **Fix note:** ✅ **FIXED 2026-07-27.** `_element_symbol_from_pdb_line` now applies
+  the PDB column rule instead of a greedy two-letter prefix: the element is
+  right-justified in columns 13-14, so a blank or numeric column 13 means a
+  one-letter element (` CA ` → C, `CA  ` → Ca), and a two-letter reading is
+  rejected when columns 15-16 carry a digit (`HE21` → H, not helium). A
+  left-padded ` ZN ` still resolves to zinc, because there the strict reading
+  (`Z`) is not an element at all. On the shipped screening structure
+  `hivrt_straight_allTraj04791.pdb` the 987 calcium radii and 637 helium radii
+  are gone: 5691 atoms at 1.70 Å and 8710 at 1.20 Å. Test:
+  `chisurf/plugins/modelling/fret/test/test_element_symbols.py` — 16 parametrised
+  name/element cases (α-carbon, calcium ion, `HE`/`HE2`/`HE21`, `1HB`, `FE`,
+  `MG`), the explicit-element-column precedence, the left-padded-metal fallback,
+  a truncated record, and a radius census of the shipped structure. It fails at
+  `HEAD` (` CA ` → `CA`, ` HE ` → `HE`). The 16 pre-existing failures in the
+  plugin suite (missing `IMP.bff.restraints.AVNetworkRestraintWrapper`, absent
+  `~/dev/olga` data, no `fastapi`) are unchanged by this fix — verified by
+  re-running the suite with the pre-fix implementation monkeypatched back in.
 
 ### RF-478
 - **Status:** OPEN

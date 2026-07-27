@@ -2,6 +2,33 @@
 
 ## 2026-07-27
 
+* **Every backbone Cα was calcium, and every `HE` hydrogen was helium (RF-477).**
+  An accessible volume is grown against an obstacle surface built from per-atom
+  van-der-Waals radii, and those radii come from an element symbol. A PDB that
+  omits the optional element columns 77-78 — the shipped FPS screening
+  structures are 66-character records — had its element guessed from the first
+  two letters of the atom name, so ` CA ` resolved to **calcium, 1.97 Å**
+  instead of carbon's 1.70 Å and ` HE ` to **helium, 1.40 Å** instead of
+  hydrogen's 1.20 Å. On `hivrt_straight_allTraj04791.pdb` that was **987 + 637
+  of 17 733 atoms**, one mis-radiused Cα per residue — precisely the atoms
+  lining the backbone, so the surface the dye is grown against was
+  systematically inflated wherever it matters most.
+  `_element_symbol_from_pdb_line` now follows the PDB column rule instead: the
+  element is right-justified in columns 13-14, so a blank or numeric column 13
+  means a one-letter element (` CA ` → C, `CA  ` → Ca, `1HB ` → H), and a
+  two-letter reading is rejected when columns 15-16 carry a digit, which is how
+  a four-character hydrogen name such as `HE21` is written. A left-padded
+  ` ZN ` still resolves to zinc, because there the strict reading (`Z`) is not
+  an element at all. The structure above now loads as 5691 atoms at 1.70 Å and
+  8710 at 1.20 Å, with no calcium and no helium.
+  Pinned by `chisurf/plugins/modelling/fret/test/test_element_symbols.py`
+  (21 tests: the name/element cases, explicit-element-column precedence, the
+  left-padded-metal fallback, a truncated record, and a radius census of the
+  shipped structure) — it fails at `HEAD`. The 16 pre-existing failures in the
+  FRET plugin suite (missing `IMP.bff.restraints.AVNetworkRestraintWrapper`,
+  absent `~/dev/olga` data, no `fastapi`) are unchanged, verified by re-running
+  the suite with the pre-fix implementation monkeypatched back in.
+
 * **chimol reads mmCIF with `ihm`, and a bead model finally opens.** There was no
   mmCIF reader at all — `.cif` was fed to the fixed-column PDB parser, so **every**
   CIF load failed, `fetch_ihm` included. A hand-rolled loop parser was written
