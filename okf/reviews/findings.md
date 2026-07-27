@@ -5587,11 +5587,23 @@ no error handling at all. Everything below was reproduced against the real
 Findings RF-463..RF-467.
 
 ### RF-463
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a stale or hand-edited `global:` section raises out of the `init_setups` startup stage, and the six splash stages behind it — including `define_actions`, `load_tools` and `arrange_widgets` — never run)
 - **Location:** `chisurf/gui/main_helper.py:766-798` (the `global` branch of `init_setups`: `global_config = experiment_configs.get('global', {})`, `reader_config = global_config['readers'][0]`, `global_setup = reader_class(**reader_params)`) against `:460-519` (`_setup_experiment`, which guards every reader with `if reader_class is None: continue` and wraps each one in `try`) and `:521-563` (`_resolve_class` returns `None` on failure); propagation via `chisurf/startup/services.py:411-451` (the stage loop has no per-stage `try`) and `:666-678` (`_run_service` re-raises) to `chisurf/gui/__init__.py:1519-1525` (`except Exception: logging.exception("Splash startup failed")`)
 - **Finding:** every other experiment section survives a class path that no longer resolves; the `global` one does not. Reproduced headlessly with a user `experiment_configs.yaml` carrying a pre-`core/`-move reader (`chisurf.experiments.globalfit.GlobalFitSetup`, exactly the kind of stale copy `b4bedd1e7` was written for): `_resolve_class` logs *"Failed to resolve class … No module named 'chisurf.experiments'"*, returns `None`, and `reader_class(**reader_params)` raises `TypeError: 'NoneType' object is not callable`. A second, cheaper trigger: a user file with an empty `global:` key merges to `None`, and `global_config.get('name', 'Global')` raises `AttributeError: 'NoneType' object has no attribute 'get'` — both reproduced. `_read_plugin_metadata`-style resilience is not the issue; the issue is that the raise leaves the splash phase at stage 5 of 11, so `restore_setup_defaults`, `define_actions`, `load_tools`, `init_executors`, `arrange_widgets` and `setup_style` are skipped and the window comes up with no actions, no tools and no layout — the only trace being one `Splash startup failed` traceback in the log. Give the branch the same treatment `_setup_experiment` already has: `or {}` on the section, `.get('reader_class')`, skip on `None` and fall through to the built-in `GlobalFitSetup`.
-- **Fix note:**
+- **Fix note:** FIXED — the `global` branch of `init_setups` now carries the same
+  resilience as `_setup_experiment`: the section is read with `or {}` (plus a
+  `dict` check, so a scalar `global:` is logged and ignored), the reader entry is
+  read with `.get('reader_class')`, an unresolvable class or a reader that raises
+  on construction is logged and skipped, and the branch falls through to the
+  built-in `GlobalFitSetup` — the same fallback a section without readers already
+  took. Model paths that no longer resolve are already dropped by
+  `Experiment.add_model_class`. Pinned by
+  `test/gui/test_global_experiment_config.py`: six cases through the real
+  `init_setups` (stale class path, reader that raises, reader entry with no
+  class, empty section, non-mapping section, and the shipped section as a happy
+  path) each assert a usable global-fit experiment is registered instead of an
+  exception.
 
 ### RF-464
 - **Status:** OPEN

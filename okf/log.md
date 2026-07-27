@@ -2,6 +2,18 @@
 
 ## 2026-07-27
 
+* **A stale `global:` experiment section took the whole splash startup down
+  (RF-463).** Every other section of `experiment_configs.yaml` survives a class
+  path that no longer resolves — `_setup_experiment` skips a `None` class and
+  wraps each reader in `try`. The `global` branch of `init_setups` did neither,
+  so a user copy carrying a pre-`core/`-move reader raised `TypeError: 'NoneType'
+  object is not callable` out of stage 5 of 11, and `define_actions`,
+  `load_tools` and `arrange_widgets` never ran: a window with no actions, no
+  tools and no layout, its only trace one `Splash startup failed` traceback. The
+  branch now guards the section, the reader entry and the construction the same
+  way, and falls through to the built-in `GlobalFitSetup`. Pinned by
+  `test/gui/test_global_experiment_config.py`.
+
 * **chimol: an empty viewer answered as though it held a broken molecule, and
   `fetch` depended on the ambient CA store.** From one reported session. After
   `delete all` the viewer keeps a *placeholder* object so settings made before

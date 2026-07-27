@@ -765,29 +765,46 @@ class SetupMixin:
             for exp_type, experiment in cs.core.experiments.types.items():
                 cs.experiment[experiment.name] = experiment
 
-        global_config = experiment_configs.get('global', {})
+        # The 'global' section gets the same treatment as every other experiment
+        # (see _setup_experiment): a stale class path or a reader that fails to
+        # construct must not raise out of this startup stage — the six splash
+        # stages behind it (actions, tools, layout, style) would never run.
+        global_config = experiment_configs.get('global') or {}
+        if not isinstance(global_config, dict):
+            cs.logging.error("Ignoring malformed 'global' experiment configuration section")
+            global_config = {}
         global_fit = cs.core.experiments.core.Experiment(
             name=global_config.get('name', 'Global'),
             hidden=global_config.get('hidden', True)
         )
 
-        if 'readers' in global_config and global_config['readers']:
-            reader_config = global_config['readers'][0]
-            reader_class = self._resolve_class(reader_config['reader_class'])
-            reader_params = reader_config.get('reader_params', {})
-            reader_params['experiment'] = global_fit
-            global_setup = reader_class(**reader_params)
-            global_fit.add_reader(global_setup)
-        else:
+        global_setup = None
+        readers = global_config.get('readers') or []
+        if readers:
+            reader_config = readers[0] if isinstance(readers[0], dict) else {}
+            try:
+                reader_class = self._resolve_class(reader_config.get('reader_class'))
+                if reader_class is not None:
+                    reader_params = dict(reader_config.get('reader_params', {}))
+                    reader_params['experiment'] = global_fit
+                    global_setup = reader_class(**reader_params)
+            except Exception as e:
+                cs.logging.error(
+                    f"Failed to setup global reader {reader_config.get('reader_class')}: {e}"
+                )
+        if global_setup is None:
+            # Fall back to the built-in reader, as for a section without readers.
             global_setup = cs.core.experiments.globalfit.GlobalFitSetup(
                 name='Global-Fit',
                 experiment=global_fit
             )
-            global_fit.add_reader(global_setup)
+        global_fit.add_reader(global_setup)
 
-        if 'models' in global_config:
-            model_classes = [self._resolve_class(model_class) for model_class in global_config['models']]
-            global_fit.add_model_classes(models=model_classes)
+        model_classes = [
+            self._resolve_class(model_class)
+            for model_class in (global_config.get('models') or [])
+        ]
+        global_fit.add_model_classes(models=model_classes)
 
         cs.experiment[global_fit.name] = global_fit
 
