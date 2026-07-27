@@ -2,6 +2,39 @@
 
 ## 2026-07-27
 
+* **GUI test: photon-by-photon kinetics, the question a FRET histogram cannot
+  answer.** Drove `chisurf.plugins.burst.burst_gs` (Gopich–Szabo) headlessly —
+  learned it on its own two-state simulator with the scan, the Viterbi decode and
+  the H2MM cross-check all on, then ran it on the burst folder the
+  burst-selection plugin ships (`bh_spc132_sm_dna/burstwise_All 0.1000#15`,
+  10 `.bur` tables, 2 980 bursts, mean burst 1.33 ms) over the raw SPC-132
+  streams. New use case
+  [photon-by-photon kinetics](/usecases/photon-by-photon-kinetics.md); it opens
+  the *continuous-time* half of the burst-kinetics area next to the existing
+  [H2MM](/usecases/h2mm-burst-dynamics.md) entry. The likelihood is correct and
+  fast — the simulator's truth (3 000 / 1 000 /s, E = 0.25 / 0.75) returns as
+  2 879 / 1 017 /s and 0.2370 / 0.7493 in 0.1 s, and the independent H2MM
+  cross-check agrees to 1 % on the rates and 2 × 10⁻⁴ on the efficiencies — but
+  the layer between the user and it leaks: the documented "leave the macro-time
+  tick at 0" **cannot load any burst folder ChiSurf itself writes**, because the
+  tick is read from a placeholder TTTR built from the `.bur` padding rows whose
+  `First File` is the string `0` (RF-524); `.bur` files dropped on the window
+  never appear in the list and a second drop silently doubles every burst
+  (5 944 / 450 578 against 2 972 / 225 289 — RF-525); a dropped *folder* is a
+  no-op on the window and works on the list (RF-526); **Fix efficiencies** pins E
+  to a hard-coded `linspace(0.2, 0.8)` no control can change and prints it like a
+  fitted value (RF-527); **Scan transition time** with >2 states does nothing and
+  the explanation the code computes is read only by a unit test (RF-528); a
+  non-converged three-state fit — the default 2 000 iterations does not converge
+  it — is presented with the same tables, plots and status-bar summary as a
+  converged one (RF-529); the *State populations* axis SI-prefixes a 0–1 fraction
+  to "(×0.001)" and reads 0–700 (RF-530); and **Decode state path** computes a
+  per-photon Viterbi path that reaches no view, no CSV, no `to_dict()` and no CLI
+  (RF-531). Softer notes (warn when the fitted relaxation time exceeds the burst
+  duration — here 6 976 µs against 1 330 µs; show the simulator's truth next to
+  the fit; mark simulated results as simulated; put provenance in the CSV; adopt
+  the shared detector setup instead of raw routing channels) stay in the use case.
+
 * **A stale `global:` experiment section took the whole splash startup down
   (RF-463).** Every other section of `experiment_configs.yaml` survives a class
   path that no longer resolves — `_setup_experiment` skips a `None` class and

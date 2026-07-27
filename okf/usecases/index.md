@@ -156,6 +156,13 @@ The workflows a first pass should cover — expand as the tester discovers more:
   browse the per-burst correlations. Fast and correct in the middle, unusable at
   both ends — the pairs cannot be created in it and the τ_D values cannot leave
   it. *(last driven 2026-07-27; RF-509..RF-516)*
+- [Photon-by-photon kinetics (Gopich–Szabo)](/usecases/photon-by-photon-kinetics.md)
+  — the continuous-time sibling of H2MM: fit rate constants and per-state FRET
+  efficiencies directly to the arrival time and colour of every burst photon,
+  learn the method on the built-in simulator, then run it on a real burst
+  folder, with a transition-time scan and an independent H2MM cross-check. The
+  likelihood is right and fast; getting real data into it is not.
+  *(last driven 2026-07-27; RF-524..RF-531)*
 
 ## Per-workflow file format
 
