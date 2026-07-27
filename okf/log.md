@@ -2,6 +2,23 @@
 
 ## 2026-07-27
 
+* **The posterior factor graph recomputed its own structure on every
+  question.** `markov_graph()` was cached; the greedy `min_fill` elimination and
+  the cliques derived from it were not, so `treewidth`, `blocks`,
+  `junction_tree`, `separators`, `describe` and `__repr__` each re-ran the whole
+  elimination — printing the object in a debugger paid for it, and
+  `structure_report()` paid three times over. Both are now memoised beside the
+  moral graph and on the same lifetime, `invalidate()` clears all three, and each
+  hands out a copy so a caller cannot mutate the cache. The second half is the
+  bigger one: a *complete* Markov graph — which is every single-`Fit` graph, one
+  likelihood over all free parameters — gives the greedy loop nothing to decide,
+  every node costing the same at every step, so the order is just the tie-break
+  (variables by vector index) and there is one maximal clique. Short-circuiting
+  that takes one `treewidth` at 200 free parameters from 20.9 s to 17 ms, which
+  is what a 128-exponential model's structure report costs. Pinned by four tests
+  in `test/fitting/test_factor_graph.py`, one of them checking the shortcut
+  returns exactly what the greedy elimination returns. Closes RF-386.
+
 * **Anisotropy is Schaffer/Eggeling throughout, and the two G splits are gone.**
   `r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**
   — the ratio a paper quotes, and the one tttrlib's estimators already took

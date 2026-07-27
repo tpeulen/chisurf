@@ -516,6 +516,13 @@ class FactorGraph:
         self._incidence = {k: tuple(v) for k, v in incidence.items()}
 
         self._markov_graph: typing.Optional[cg.Graph] = None
+        #: elimination heuristic -> greedy order
+        self._elimination_order: typing.Dict[str, typing.List[str]] = {}
+        #: elimination order (``None`` for the default) -> maximal cliques
+        self._cliques: typing.Dict[
+            typing.Optional[typing.Tuple[str, ...]],
+            typing.List[typing.Tuple[str, ...]]
+        ] = {}
 
     # -- basic accessors --------------------------------------------------
 
@@ -583,8 +590,26 @@ class FactorGraph:
         return g
 
     def invalidate(self) -> None:
-        """Drop cached derived structures (currently the moral graph)."""
+        """Drop every cached derived structure.
+
+        The moral graph, the elimination orders and the cliques derived from
+        them are all cached for the lifetime of an unmutated graph; this drops
+        all of them together.
+        """
         self._markov_graph = None
+        self._elimination_order.clear()
+        self._cliques.clear()
+
+    def _is_complete(self) -> bool:
+        """Return whether every pair of variables is coupled by some factor.
+
+        A single dataset whose likelihood reads all its parameters gives exactly
+        this shape, and it is the one the greedy elimination is slowest on while
+        having nothing to decide: no elimination ever adds an edge.
+        """
+        g = self.markov_graph()
+        n = g.number_of_nodes()
+        return g.number_of_edges() == n * (n - 1) // 2
 
     def connected_components(self) -> typing.List[typing.Set[str]]:
         """Return the independent sub-problems of the fit.
@@ -620,7 +645,8 @@ class FactorGraph:
         Returns
         -------
         list of str
-            Variable keys in elimination order.
+            Variable keys in elimination order. Cached per heuristic; call
+            :meth:`invalidate` after mutating the graph.
 
         Raises
         ------
@@ -632,6 +658,18 @@ class FactorGraph:
                 f"unknown elimination heuristic {heuristic!r}; "
                 "expected 'min_fill' or 'min_degree'"
             )
+        cached = self._elimination_order.get(heuristic)
+        if cached is not None:
+            return list(cached)
+        if self._is_complete():
+            # Every node has the same cost at every step, so the greedy loop
+            # would spend O(n^3) deciding what the tie-break already decides.
+            order = sorted(
+                self.markov_graph().nodes(),
+                key=lambda node: self._index_of.get(node, 0)
+            )
+            self._elimination_order[heuristic] = order
+            return list(order)
         g = self.markov_graph().copy()
         order: typing.List[str] = []
         while g.number_of_nodes():
@@ -655,7 +693,8 @@ class FactorGraph:
                 g.add_edge(a, b)
             g.remove_node(best)
             order.append(best)
-        return order
+        self._elimination_order[heuristic] = order
+        return list(order)
 
     def cliques(
             self,
@@ -677,10 +716,20 @@ class FactorGraph:
         -------
         list of tuple of str
             Maximal cliques, each a sorted tuple of variable keys, largest
-            first.
+            first. Cached per order; call :meth:`invalidate` after mutating the
+            graph.
         """
+        cache_key = None if order is None else tuple(order)
+        cached = self._cliques.get(cache_key)
+        if cached is not None:
+            return list(cached)
         if order is None:
             order = self.elimination_order()
+        if self.variables and self._is_complete() and len(set(order)) == len(self.variables):
+            # A complete graph has a single maximal clique whatever the order.
+            maximal_cliques = [tuple(sorted(self.markov_graph().nodes()))]
+            self._cliques[cache_key] = maximal_cliques
+            return list(maximal_cliques)
         g = self.markov_graph().copy()
         raw: typing.List[typing.Set[str]] = []
         for node in order:
@@ -696,7 +745,9 @@ class FactorGraph:
         for clique in sorted(raw, key=len, reverse=True):
             if not any(clique <= kept for kept in maximal):
                 maximal.append(clique)
-        return [tuple(sorted(c)) for c in maximal]
+        out = [tuple(sorted(c)) for c in maximal]
+        self._cliques[cache_key] = out
+        return list(out)
 
     def junction_tree(
             self,

@@ -199,9 +199,23 @@ def test_likelihood_factor_size_is_the_dataset_length():
         assert f.size == fit[f.fit_index].model.n_points
 
 
-def test_single_fit_is_one_clique():
-    """A single dataset has no dataset-level structure, and says so."""
-    rng = np.random.default_rng(1)
+def _single_fit(seed: int = 1):
+    """Return a single-dataset fit of ``c + a*x**2``.
+
+    One likelihood over every free parameter, i.e. a complete Markov graph —
+    the shape the structural queries are slowest on.
+
+    Parameters
+    ----------
+    seed : int, optional
+        Seed of the random-number generator used to draw the noise.
+
+    Returns
+    -------
+    chisurf.core.fitting.fit.Fit
+        The fit, with parameters discovered but not yet optimised.
+    """
+    rng = np.random.default_rng(seed)
     x = np.linspace(0.0, 5.0, N_POINTS)
     y = 3.1 + 1.2 * x ** 2 + rng.normal(0.0, SIGMA, x.size)
     data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y) * SIGMA)
@@ -211,8 +225,12 @@ def test_single_fit_is_one_clique():
     fit.fit_range = 0, len(fit.model.y)
     fit.model.func = 'c+a*x**2'
     fit.model.find_parameters()
+    return fit
 
-    g = build_factor_graph(fit)
+
+def test_single_fit_is_one_clique():
+    """A single dataset has no dataset-level structure, and says so."""
+    g = build_factor_graph(_single_fit())
     assert len(g.likelihood_factors()) == 1
     assert g.treewidth == len(g) - 1
     assert len(g.blocks()) == 1
@@ -267,3 +285,105 @@ def test_describe_reports_the_identifiability_statement():
     assert 'treewidth' in text
     assert '1:a' in text
     assert 'components     : 1' in text
+
+
+def _count_copies(monkeypatch, graph):
+    """Count the moral-graph copies the greedy elimination makes.
+
+    Parameters
+    ----------
+    monkeypatch : pytest.MonkeyPatch
+        Fixture used to wrap the moral graph's ``copy``.
+    graph : chisurf.core.fitting.factorgraph.FactorGraph
+        Graph whose moral graph is instrumented.
+
+    Returns
+    -------
+    list
+        Appended to once per copy; only the greedy path copies.
+    """
+    calls = []
+    moral = graph.markov_graph()
+    original = moral.copy
+
+    def counting_copy():
+        calls.append(1)
+        return original()
+
+    monkeypatch.setattr(moral, 'copy', counting_copy)
+    return calls
+
+
+def test_structural_queries_are_computed_once_per_graph(monkeypatch):
+    """The greedy elimination must not re-run for every caller that asks."""
+    fit = _global_fit(3)
+    _link_across(fit, 'a')
+    g = build_factor_graph(fit)
+    calls = _count_copies(monkeypatch, g)
+
+    order = g.elimination_order()
+    cliques = g.cliques()
+    assert calls  # the first pair of calls does the work
+
+    n_after_first = len(calls)
+    assert g.elimination_order() == order
+    assert g.cliques() == cliques
+    assert g.treewidth == max(len(c) for c in cliques) - 1
+    assert g.blocks() == cliques
+    g.separators()
+    repr(g)
+    g.describe()
+    assert len(calls) == n_after_first
+
+    # ... but invalidating must drop them, so a mutated graph is recomputed.
+    g.invalidate()
+    recomputed = _count_copies(monkeypatch, g)
+    assert g.elimination_order() == order
+    assert recomputed
+
+
+def test_cached_structures_are_handed_out_as_copies():
+    """A caller that mutates a returned list must not corrupt the cache."""
+    fit = _global_fit(3)
+    _link_across(fit, 'a')
+    g = build_factor_graph(fit)
+
+    order = g.elimination_order()
+    order.append('bogus')
+    assert 'bogus' not in g.elimination_order()
+
+    cliques = g.cliques()
+    cliques.clear()
+    assert g.cliques()
+
+
+def test_a_complete_graph_skips_the_greedy_elimination(monkeypatch):
+    """A single dataset couples everything, so there is nothing to decide."""
+    g = build_factor_graph(_single_fit())
+    calls = _count_copies(monkeypatch, g)
+
+    assert g.treewidth == len(g) - 1
+    assert g.cliques() == [tuple(sorted(g.variables))]
+    assert g.elimination_order() == sorted(
+        g.variables, key=lambda key: g.index_of(key)
+    )
+    assert calls == []
+
+
+def test_the_complete_graph_shortcut_agrees_with_the_greedy_order():
+    """The shortcut is an optimisation: it must return what the greedy does."""
+    fit = _single_fit()
+    fast = build_factor_graph(fit)
+    slow = build_factor_graph(fit)
+    slow._is_complete = lambda: False
+
+    assert fast.elimination_order() == slow.elimination_order()
+    assert fast.cliques() == slow.cliques()
+    assert fast.treewidth == slow.treewidth
+
+
+def test_an_empty_graph_has_no_cliques():
+    """The complete-graph shortcut must not invent a clique out of nothing."""
+    g = factorgraph.FactorGraph([], [])
+    assert g.cliques() == []
+    assert g.treewidth == 0

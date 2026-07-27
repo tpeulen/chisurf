@@ -123,13 +123,22 @@ FactorNode(key, kind, scope, fit_index, size)  # kind ∈ {likelihood, prior}
 | `factors_of(var)` / `variables_of(factor)` | incidence |
 | `markov_graph()` | moralised undirected graph: a clique per factor scope |
 | `connected_components()` | independent sub-problems (separable fits) |
-| `elimination_order(heuristic)` | greedy `min_fill` (default) or `min_degree` |
-| `cliques(order)` | maximal cliques induced by elimination |
+| `elimination_order(heuristic)` | greedy `min_fill` (default) or `min_degree`; cached |
+| `cliques(order)` | maximal cliques induced by elimination; cached |
 | `junction_tree()` | clique tree via max-weight spanning tree on \|separator\| |
 | `treewidth` | `max clique size − 1` — the fit's structural difficulty |
 | `blocks()` | clique-derived sampling/scan blocks |
 | `affected_factors(changed_keys)` | relevance: factors whose scope intersects |
 | `affected_fits(changed_keys)` | the local fits that must be recomputed |
+
+`markov_graph()`, `elimination_order()` and `cliques()` are memoised for the
+lifetime of an unmutated graph and dropped together by `invalidate()`, because
+every other structural query is a wrapper over them: `treewidth`, `blocks`,
+`junction_tree`, `separators`, `describe` and `__repr__` would otherwise each
+re-run the greedy elimination. A *complete* Markov graph — every single-`Fit`
+graph — short-circuits both: with every node costing the same at every step the
+elimination has nothing to decide, so the order is the tie-break (variables by
+vector index) and there is a single maximal clique.
 
 `build_factor_graph(fit)` handles both `Fit` (one likelihood factor over all
 free variables — a single clique; single fits have no exploitable structure at
