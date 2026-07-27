@@ -5501,3 +5501,54 @@ the hot pixel. Everything below is around it. Use case:
 - **Location:** `chisurf/plugins/microscopy/psf_determination/README.md:14` and `:59` (*"Headless batch: `psf-determination fit-stack STACK.tif --csv out.csv`"*) and the module docstring `chisurf/plugins/microscopy/psf_determination/cli/main.py:3-6` (`Usage: psf-determination fit-stack …`) against `pyproject.toml:102-104` (`[project.scripts]` = `csc`, `chimol-cli` only)
 - **Finding:** no `psf-determination` console script is installed — `which psf-determination` finds nothing, and the manifest's `"cli": "psf-determination=…"` entry registers the plugin as a **sub-command of `csc`**, not as a standalone binary. The working invocation is `csc psf-determination fit-stack STACK.tif --csv out.csv`, which ran correctly end-to-end in this session. Two docstring lines; worth fixing because the README's headless path is the one an automation user copies first.
 - **Fix note:**
+
+## Review — the shared `level_histogram` section and its first consumer (2026-07-27)
+
+Reviewed the new shared level editor (`chisurf/gui/widgets/level_histogram.py`,
+`chisurf/gui/autoform/sections/level_histogram_section.py`, commit 4a485093b) and
+chimol's map panel, which is its only consumer today. The model-owns-the-levels
+design holds up and its test file pins it well; everything below was reproduced
+headlessly against the real widget (offscreen Qt, synthetic mouse events) or
+measured on a real `VolumeGrid`. Findings RF-457..RF-462.
+
+### RF-457
+- **Status:** OPEN
+- **Severity:** S2 (`allow_add` / `allow_remove` are honoured for the mouse and ignored by the buttons beside it, so a section that documents itself as read-only-plus-move can still be added to and emptied)
+- **Location:** `chisurf/gui/widgets/level_histogram.py:308-312` (the ➖ `QToolButton` is created unconditionally) and `:500-503` (`_remove_selected` → `_level_removed`, no `allow_remove` check) and `:505-515` (`_value_typed` → `_level_added`, no `allow_add` check), against `:192-210` (`mousePressEvent`, which does check both); the flags stop at `LevelHistogramView` (`:59-61`) and never reach `LevelHistogramWidget`
+- **Finding:** the two options are enforced only on the gestures the *view* handles. Measured with `allow_add=False, allow_remove=False`: a right-click on a marker is correctly refused (levels unchanged), but `_remove_selected()` — what the always-visible ➖ button calls — deleted the selected level (`[{1.0},{2.0}]` → `[{1.0}]`), and typing `0.5` into the level box of a model with **no** levels appended one (`[]` → `[{'level': 0.5, …}]`), because `_index()` returns `None` for an empty list and `_value_typed` then routes to `_level_added`. The hint label at `:327-336` also advertises "click to add one · right-click a marker to remove it" whatever the flags say. Either check the flags in the widget (hide/disable ➖, refuse the add in `_value_typed`, trim the hint) or drop the options; today the section's documented contract (*"whether the user may add or remove levels, as opposed to only moving the ones the model provides"*, `level_histogram_section.py:38-40`) is not the behaviour. `test_adding_and_removing_can_be_switched_off` asserts only that the flags reached the view, so the suite is green through this.
+- **Fix note:**
+
+### RF-458
+- **Status:** OPEN
+- **Severity:** S2 (with nothing selected the controls silently act on the first level, and repeated ➖ eats the list from the front)
+- **Location:** `chisurf/gui/widgets/level_histogram.py:440-445` (`_index` returns `0 if levels else None` when nothing is selected) with `:492-498` (`_level_removed` calls `self.view.select(None)`, i.e. clears the selection after every removal) and `:447-454` (`_sync_controls` shows level 0's value while no marker is drawn selected)
+- **Finding:** the fallback makes "no selection" indistinguishable from "level 0 selected" for every control, while the histogram draws no marker as selected — so the user has no way to see what the ➖ button and the value box point at. Measured on `[1.0, 2.0, 3.0]`: fresh widget, `view.selected_index()` is `None`, `_index()` is `0`, the value box already reads `1`, and pressing ➖ removed level 1.0. Worse in sequence: right-click-remove level 2.0 clears the selection, so the *next* ➖ press removed the first remaining level rather than a neighbour of what was just removed — two presses of the same button delete two unrelated levels. Either keep a selection after a removal (clamp to the previous index) or make `_index()` return `None` and disable the level box and ➖ until a marker is picked.
+- **Fix note:**
+
+### RF-459
+- **Status:** OPEN
+- **Severity:** S2 (the interaction the section exists for — dragging a level — issues one full model write and one full re-contour per mouse-move event, which on a real map is seconds of queued work per drag)
+- **Location:** `chisurf/gui/widgets/level_histogram.py:212-220` (`mouseMoveEvent` emits `levelMoved` on every move, no throttle) → `:472-478` / `:424-428` (`_level_moved` → `_apply`, which writes the attribute and calls `on_change` each time); consumer path `chisurf/plugins/chimol/chimol/app/volume_panel.py:120-127` → `chisurf/plugins/chimol/chimol/renderer/view.py:6917-6929` (`set_volume_levels` → `_update_view`) → `:6941-7014` (`_update_volume` → `grid.isosurface(level)`) → `chisurf/plugins/chimol/chimol/volume.py:326-357`
+- **Finding:** measured — 40 synthetic mouse-move events inside one drag produced **40** attribute writes and **40** `on_change` calls. In chimol each of those re-runs marching cubes over the whole map on the GUI thread: timed on a smooth (realistic) Gaussian map, `VolumeGrid.isosurface` takes **55 ms at 96³** and **184 ms at 160³** (3.4 s at 160³ for a noisy map), and `_clamped` additionally calls `value_range()` (a full finite-mask pass, 1–9 ms) per event. One second of dragging therefore queues 2–7 s of synchronous contouring, and the markers cannot keep up with the cursor — on a map big enough to need `stride_for_limit`, it is a freeze. The view has no "drag finished" signal (`mouseReleaseEvent`:222-223 only clears `_dragging`), so a consumer cannot opt into commit-on-release either. Add a release/commit signal (or a coalescing timer) so the drag paints locally and writes through once, at the seam that already owns the interaction.
+- **Fix note:**
+
+### RF-460
+- **Status:** OPEN
+- **Severity:** S3 (a level typed into the box and then clicked away from is silently discarded, and the next refresh puts the old number back)
+- **Location:** `chisurf/gui/widgets/level_histogram.py:286` (`self._value.returnPressed.connect(self._value_typed)` — the only connection; no `editingFinished`, and no validator on the `QLineEdit` at `:280-287`) with `:447-454` (`_sync_controls`, called from `refresh`, overwrites whatever is in the box)
+- **Finding:** measured — with `2.75` typed and the box losing focus, `editingFinished` has no receiver and the model still reads `1.0`; a subsequent `refresh()` (which AutoForm's `sync_fields`/`refresh_plots` calls routinely — the chimol panel calls both) restores the text to `1`, so the typed number vanishes without a message. The tooltip sells this box as *"exact value for the selected level"*, i.e. the precise-entry path for when dragging is not good enough, and it is the one input in this widget that can be lost. `editingFinished` instead of (or as well as) `returnPressed` is the fix the rest of this codebase already uses for range boxes.
+- **Fix note:**
+
+### RF-461
+- **Status:** OPEN
+- **Severity:** S3 (latent: the bars are laid out by bin *index* while the markers are placed by *value*, so any non-uniform binning draws the distribution somewhere else entirely — no consumer does this today)
+- **Location:** `chisurf/gui/widgets/level_histogram.py:146-163` (`paintEvent`: `columns = np.linspace(0, width, self._counts.size + 1)`) against `:109-124` (`value_to_x` / `x_to_value`, which interpolate linearly between `edges[0]` and `edges[-1]`), documented at `level_histogram_section.py:22-25` as taking *"``(counts, edges)``"* with no stated constraint
+- **Finding:** the two coordinate systems only agree when the bins are equal-width. Measured with `np.geomspace(1, 1000, 33)` edges (a perfectly ordinary log-binned distribution, and exactly what a photon-count or brightness distribution wants): bin boundary 8 is drawn at x = 80.0 px while its value 5.62 belongs at x = 1.5 px; boundary 16 is drawn at 160.0 px against 9.8 px. Every bar, and therefore the whole visual argument for dragging a level "where the data is", would be wrong, while the markers and the click-to-add mapping stay right — a silent disagreement with no error. Either place the bars from `edges` (the widget already has them) or say in the docstring that the bins must be uniform and check it in `set_histogram`.
+- **Fix note:**
+
+### RF-462
+- **Status:** OPEN
+- **Severity:** S2 (the Map panel is refreshed only when a map is *loaded*, so switching or closing objects leaves it describing a map that is no longer the one it edits)
+- **Location:** `chisurf/plugins/chimol/chimol/app/molview_main_window.py:2111-2142` (`_handle_active_object_change` refreshes the sequence view, system info, hierarchy and RMF panel — `volume_panel` is not among them) against `:1691-1696` (the only `panel.refresh()` in the file, on the map-load path) and `chisurf/plugins/chimol/chimol/app/volume_panel.py:56-73` (`_grid()` resolves the *active* object on every read)
+- **Finding:** the panel's drawn state (summary line, histogram, markers) is a snapshot taken at the last map load, but its writes resolve the active object live. Load map A, load map B, select A in the object list: the histogram, the value range in `summary()` and the marker positions are still B's, while a drag reads `levels` through the viewer (A's contours), clamps against `value_range()` (A's range) and writes to A — so the user is choosing a level by eye against the wrong distribution. If A has fewer levels than B, the `index >= len(levels)` guard in `_level_moved` drops the edit with no feedback at all. Closing the last map (`_handle_active_object_change(None)`) likewise leaves the panel showing a map that is gone. One `volume_panel.refresh()` in `_handle_active_object_change`, both branches.
+- **Fix note:**
