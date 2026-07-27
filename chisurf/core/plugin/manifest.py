@@ -84,8 +84,12 @@ class PluginManifest:
     experimental: bool = False
     experimental_message: str = ""
 
-    # Legacy fields for backward compat
+    #: Keep the tool out of the generated menus (registry.py builds menu entries
+    #: only for manifests that do not set this).
     menu_hidden: bool = False
+
+    #: Declared maturity flag from the plugin spec's "honest metadata" rule. Parsed
+    #: and round-tripped, but no host surfaces it yet (unlike ``experimental``).
     deprecated: bool = False
     deprecation_message: str = ""
 
@@ -113,6 +117,21 @@ class PluginManifest:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PluginManifest:
+        """Build a manifest from parsed ``manifest.json`` data.
+
+        Undeclared keys are ignored here; :func:`validate_manifest` reports them.
+
+        Parameters
+        ----------
+        data : dict
+            Parsed manifest JSON data. ``id`` and ``version`` are required.
+
+        Returns
+        -------
+        PluginManifest
+            The parsed manifest, with translatable text passed through ``tr()``.
+
+        """
         entrypoints_data = data.get("entrypoints", {})
         entrypoints = PluginEntrypoints(
             gui=entrypoints_data.get("gui"),
@@ -160,6 +179,15 @@ class PluginManifest:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialize the manifest back to plain JSON-compatible data.
+
+        Returns
+        -------
+        dict
+            One key per declared manifest field, so the result round-trips
+            through :meth:`from_dict`.
+
+        """
         return {
             "id": self.id,
             "version": self.version,
@@ -205,6 +233,19 @@ class PluginManifest:
         }
 
     def to_json(self, indent: int = 2) -> str:
+        """Serialize the manifest to a ``manifest.json`` string.
+
+        Parameters
+        ----------
+        indent : int, optional
+            JSON indentation width, by default 2.
+
+        Returns
+        -------
+        str
+            The serialized manifest.
+
+        """
         return json.dumps(self.to_dict(), indent=indent)
 
 
@@ -234,7 +275,10 @@ def load_manifest(path: pathlib.Path | str) -> PluginManifest | None:
         return None
 
 
-# Minimal JSON Schema draft-07 for validation
+# Minimal JSON Schema draft-07 for validation. ``properties`` is the **closed**
+# set of manifest keys: ``_validate_known_keys`` rejects anything else, and a
+# guardrail test pins it against the ``PluginManifest`` fields, so a key cannot
+# be declared without a parser or parsed without being declared.
 _MANIFEST_SCHEMA = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
@@ -317,6 +361,8 @@ _MANIFEST_SCHEMA = {
             "type": "object",
             "additionalProperties": {"type": "string"},
         },
+        "experimental": {"type": "boolean"},
+        "experimental_message": {"type": "string"},
         "menu_hidden": {"type": "boolean"},
         "deprecated": {"type": "boolean"},
         "deprecation_message": {"type": "string"},
@@ -396,6 +442,29 @@ def _validate_categories(data: dict[str, Any]) -> list[str]:
     return errors
 
 
+def _validate_known_keys(data: dict[str, Any]) -> list[str]:
+    """Report top-level manifest keys that the schema does not declare.
+
+    ``from_dict`` reads a fixed set of keys and ignores everything else, so a
+    misspelled flag (``"experimantal"``) is silently dropped and the plugin
+    ships unflagged. Declaring the key set closed turns that into a validation
+    error the tree-wide manifest test catches.
+
+    Parameters
+    ----------
+    data : dict
+        Parsed manifest JSON data.
+
+    Returns
+    -------
+    list of str
+        Validation errors. Empty list means valid.
+
+    """
+    known = _MANIFEST_SCHEMA["properties"]
+    return [f"unknown manifest field: {key!r}" for key in data if key not in known]
+
+
 def validate_manifest(data: dict[str, Any]) -> list[str]:
     """Validate manifest data against the standard schema.
 
@@ -431,6 +500,7 @@ def validate_manifest(data: dict[str, Any]) -> list[str]:
             if text_field in method and not isinstance(method[text_field], str):
                 errors.append(f"rpc_methods field {text_field!r} must be a string")
 
+    errors.extend(_validate_known_keys(data))
     errors.extend(_validate_categories(data))
     errors.extend(_validate_statefulness(data))
     return errors

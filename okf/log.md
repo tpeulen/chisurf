@@ -2,6 +2,28 @@
 
 ## 2026-07-27
 
+* **The plugin manifest schema stopped being dead documentation (INC-07).**
+  `_MANIFEST_SCHEMA` in `chisurf/core/plugin/manifest.py` says "for validation"
+  but nothing referenced it — `validate_manifest()` is hand-written — so it had
+  drifted from the parser in both directions: it declared the unread
+  `deprecated` / `deprecation_message` pair while omitting `experimental` /
+  `experimental_message`, the flags the navigation panel actually reads for its
+  warning banner and ⚠ selector label. Nothing pinned the key set either, and
+  `from_dict()` ignores what it does not know, so `"experimantal": true` shipped
+  an unflagged experimental tool without a word — the [BUG-13](/specs/assessment.md#bug-13)
+  failure mode again. The schema is now the **closed** set of manifest keys:
+  `_validate_known_keys()` reports any undeclared top-level key, and the two live
+  `experimental` keys are declared. A guardrail test pins
+  `_MANIFEST_SCHEMA["properties"]` against the `PluginManifest` fields in both
+  directions, so a key cannot be declared without a parser or parsed without
+  being declared. All 105 built-in manifests re-validate clean under the
+  stricter rule (`test_builtin_manifests_all_valid`). The `deprecated` flag stays
+  declared — [specs/plugins.md](/specs/plugins.md) asks for honest maturity
+  metadata — but nothing renders it yet; surfacing it, not deleting it, is the
+  open item. Tests: `test/core/test_plugin_manifest.py` (+4, 90 pass across the
+  manifest/registry/contract suites); three pre-existing `D102` misses in the
+  same module gained NumPy docstrings.
+
 * **chimol: no secondary-structure assignment for bead models.** A bead stands
   for a *range* of residues and has no backbone, so looking for hydrogen bonds in
   one is not merely wasted but meaningless — yet it was **4 of the 10 seconds**

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import pathlib
 import tempfile
@@ -9,6 +10,7 @@ import tempfile
 import pytest
 
 from chisurf.core.plugin.manifest import (
+    _MANIFEST_SCHEMA,
     PluginEntrypoints,
     PluginManifest,
     PluginStatefulness,
@@ -305,6 +307,42 @@ class TestValidateManifest:
         data = {"id": "test", "version": "1.0.0", "categories": "Tools"}
         errors = validate_manifest(data)
         assert any("categories" in e for e in errors)
+
+
+class TestManifestKeySchema:
+    """INC-16: the JSON Schema is the closed, parser-backed set of manifest keys."""
+
+    def test_schema_properties_match_dataclass_fields(self):
+        """Every declared key has a parser field, and every field is declared."""
+        declared = set(_MANIFEST_SCHEMA["properties"])
+        parsed = {f.name for f in dataclasses.fields(PluginManifest)}
+        assert declared == parsed
+
+    def test_live_experimental_flag_is_declared(self):
+        """`experimental`/`experimental_message` are read by hosts, so they are declared."""
+        declared = set(_MANIFEST_SCHEMA["properties"])
+        assert {"experimental", "experimental_message"} <= declared
+
+    def test_unknown_top_level_key_is_reported(self):
+        """A misspelled flag is silently ignored by from_dict — validation must catch it."""
+        data = {"id": "test", "version": "1.0.0", "experimantal": True}
+        errors = validate_manifest(data)
+        assert any("experimantal" in e for e in errors)
+        assert PluginManifest.from_dict(data).experimental is False
+
+    def test_declared_keys_are_accepted(self):
+        """A manifest using only declared keys validates clean."""
+        data = dict.fromkeys(_MANIFEST_SCHEMA["properties"])
+        data.update(
+            {
+                "id": "test",
+                "version": "1.0.0",
+                "categories": ["Tools"],
+                "statefulness": {"enabled": True},
+                "rpc_methods": [{"name": "test.ping"}],
+            }
+        )
+        assert validate_manifest(data) == []
 
 
 class TestRPCMethodSpec:
