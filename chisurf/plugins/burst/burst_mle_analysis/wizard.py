@@ -4,13 +4,15 @@ import faulthandler
 from chisurf.plugins.burst.burst_mle_analysis.utils import \
     LazyTTTRDict, NumpyEncoder, FileListWidget, random_search_hpo
 from chisurf.plugins.burst.burst_mle_analysis.interpolate import interpolate_shift
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 faulthandler.enable(all_threads=True)
 
 from typing import Union
 
 from qtpy import QtWidgets, QtCore
-from qtpy.QtWidgets import QFileDialog, QMessageBox, QProgressDialog
+from qtpy.QtWidgets import QFileDialog
 import pyqtgraph as pg
 import numpy as np
 import pandas as pd
@@ -19,26 +21,19 @@ import json
 
 import chisurf as cs
 
-from chisurf.gui import dialogs
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.widgets.tool_buttons import action_button
 
 
-def _mle_progress(widget, text: str, maximum: int):
+def _mle_progress(widget, text: str, maximum: int) -> ChiSurfProgress:
     """Return a progress handle for a long MLE loop.
 
-    Embedded in the Burst Analysis shell this drives the shared status bar (no
-    popup); standalone it is a modal ``QProgressDialog``. Both duck-type the
-    ``setValue`` / ``setLabelText`` / ``wasCanceled`` / ``close`` surface the loop
-    uses, so the call sites are otherwise unchanged.
+    Thin alias for :class:`~chisurf.gui.progress.ChiSurfProgress`, which decides
+    where the bar appears from *widget*: the Burst Analysis shell's status bar
+    when embedded, a modal dialog when standalone, the log when headless.
     """
-    from chisurf.gui.widgets.navigation import find_status_reporter
-
-    reporter = find_status_reporter(widget)
-    if reporter is not None:
-        return reporter.begin_task(text, maximum)
-    return QProgressDialog(text, "Cancel", 0, maximum, widget.window())
+    return ChiSurfProgress(widget, text, maximum)
 
 
 @register_section("host_widget")
@@ -4515,7 +4510,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if save_detector_setups(setups, setups_file):
             self._set_status(f"MLE settings for detector '{current_detector}' saved to setup '{setup_name}'.")
         else:
-            QMessageBox.critical(self, "Error", f"Could not save MLE settings to setup '{setup_name}'.")
+            dialogs.error(self, "Error", f"Could not save MLE settings to setup '{setup_name}'.")
 
     def optimize_hyperparameters(
             self,
@@ -4582,25 +4577,97 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self._set_status(f"All settings saved to:\n{path}")
 
     def load_settings(self):
+        """Pick a settings JSON and restore the wizard from it.
+
+        Starts in the last analysis folder rather than the home directory: the
+        settings you almost always want are the ones beside the data you just
+        analysed. A burst-analysis folder is accepted directly — see
+        :meth:`load_settings_from`.
         """
-        Read that JSON, restore:
-          - TTTR file‐type combo
-          - per‐channel UI state
-          - DetectorWizardPage windows + detectors
-        """
+        start = self._settings_start_directory()
         path, _ = QFileDialog.getOpenFileName(
             self,
             "Load All Settings",
-            str(Path.home()),
+            str(start),
             "JSON Files (*.json)"
         )
         if not path:
             return
+        self.load_settings_from(path)
 
-        # 1) load payload
-        with open(path, 'r') as f:
-            payload = json.load(f)
+    def _settings_start_directory(self) -> Path:
+        """Where the load/save dialogs should open.
 
+        The analysis folder in use, falling back to the home directory. Opening
+        in ``~`` when the settings live next to the data is a small thing that
+        turns a one-click restore into a hunt.
+        """
+        for attribute in ("analysis_folder", "output_folder", "working_directory"):
+            candidate = getattr(self, attribute, None)
+            if candidate:
+                try:
+                    resolved = Path(candidate)
+                except TypeError:
+                    continue
+                if resolved.is_dir():
+                    return resolved
+        return Path.home()
+
+    def load_settings_from(self, source) -> None:
+        """Restore the wizard from a settings JSON *or* a burst-analysis folder.
+
+        A burst folder records how its data was read and what it was analysed
+        with (``Info/analysis.json``), which is exactly what this wizard needs to
+        be put back into the state that produced it. Passing the folder — or any
+        `.bur` inside it — is therefore equivalent to picking the settings file,
+        and is what makes an analysis folder self-describing rather than merely
+        an output directory.
+
+        Parameters
+        ----------
+        source : path-like
+            A settings JSON, a burst-analysis folder, or a ``.bur`` in one.
+        """
+        from chisurf.core.fio.fluorescence.burst_manifest import (
+            read_analysis_manifest,
+        )
+
+        source = Path(source)
+        payload = None
+
+        if source.is_dir() or source.suffix.lower() != ".json":
+            manifest = read_analysis_manifest(source)
+            if manifest:
+                # The wizard's own payload if one was stored, else the settings
+                # the analysis ran with.
+                payload = manifest.get("mle_settings") or manifest.get("settings")
+            if not payload:
+                cs.logging.warning("no stored settings found under %s", source)
+                return
+        else:
+            try:
+                with open(source, "r") as fp:
+                    payload = json.load(fp)
+            except (OSError, ValueError) as exc:
+                cs.logging.error("could not read settings from %s: %s", source, exc)
+                return
+            # A settings file written by AutoForm or embedded in a manifest
+            # wraps the mapping; accept both shapes.
+            if isinstance(payload, dict):
+                payload = payload.get("state") or payload.get("mle_settings") or payload
+
+        if not isinstance(payload, dict):
+            cs.logging.error("settings in %s are not a mapping", source)
+            return
+        self.apply_settings_payload(payload)
+
+    def apply_settings_payload(self, payload: dict) -> None:
+        """Restore the wizard from an already-loaded settings mapping.
+
+        Split out from :meth:`load_settings` so the same restore runs whether the
+        settings came from a file dialog, a burst-analysis folder, or a caller
+        driving the wizard headlessly.
+        """
         # Micro time binning
         mtb = payload.get("micro_time_binning", None)
         if mtb is not None:

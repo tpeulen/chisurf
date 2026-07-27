@@ -161,6 +161,182 @@ def photon_filter_settings_from_wizard(wizard_filter: Any) -> PhotonFilterSettin
     )
 
 
+def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
+    """Repopulate the wizard from stored analysis settings — the inverse of
+    :func:`analysis_settings_from_wizard`.
+
+    A burst-analysis folder records the settings it ran with
+    (:mod:`chisurf.core.fio.fluorescence.burst_manifest`), which is only half a
+    reproducible result: reading them back into the tool is the other half.
+    Accepts either an :class:`AnalysisSettings` or the plain mapping the
+    manifest stores.
+
+    Lenient, for the same reason the AutoForm restore is: a folder written by an
+    older version should restore the fields it still shares rather than fail
+    whole. Anything not applied is returned rather than raised.
+
+    **One unit trap, handled here.** ``dT_max`` is read out twice with different
+    units — ``burst_detection.time_window`` is it in seconds, while
+    ``delta_macro_time_filter.dT_max`` is the raw widget value in milliseconds.
+    The raw one is authoritative on the way back; deriving the widget from
+    ``time_window`` would silently rescale the burst search by 1000 on every
+    round trip.
+
+    Parameters
+    ----------
+    wizard : BurstSelectionTool
+        The tool to repopulate.
+    settings : AnalysisSettings or mapping
+        Settings to apply.
+
+    Returns
+    -------
+    list of str
+        Human-readable notes about anything that could not be applied.
+    """
+    from dataclasses import asdict, is_dataclass
+
+    data = asdict(settings) if is_dataclass(settings) else dict(settings or {})
+    skipped: list[str] = []
+
+    def _check(widget_name: str, value: Any) -> None:
+        widget = getattr(wizard, widget_name, None)
+        if widget is None or value is None:
+            if value is not None:
+                skipped.append(widget_name)
+            return
+        try:
+            widget.setChecked(bool(value))
+        except Exception as exc:
+            skipped.append(f"{widget_name}: {exc}")
+
+    def _set(owner: Any, attr: str, value: Any, label: str) -> None:
+        if owner is None or value is None:
+            return
+        try:
+            setattr(owner, attr, value)
+        except Exception as exc:
+            skipped.append(f"{label}: {exc}")
+
+    formats = data.get("output_formats")
+    if formats is not None:
+        _check("checkBox_FileMFDHDF", "hdf5" in formats)
+    _check("checkBox_ZipOutput", data.get("zip_output"))
+    _check("checkBox_RemoveFolder", data.get("remove_folder"))
+
+    finder = getattr(wizard, "burst_finder", None)
+
+    detection = data.get("burst_detection") or {}
+    if finder is not None and detection:
+        _set(finder, "min_ph", detection.get("min_photons"), "burst_detection.min_photons")
+        _set(finder, "ph_window", detection.get("photon_window"),
+             "burst_detection.photon_window")
+
+    photon = data.get("photon_filter") or {}
+    if finder is not None and photon:
+        _set(finder, "channels", photon.get("channels"), "photon_filter.channels")
+        _set(finder, "microtime_ranges", photon.get("microtime_ranges"),
+             "photon_filter.microtime_ranges")
+        used = photon.get("used_filter")
+        if used is not None:
+            _set(finder, "used_filter",
+                 getattr(used, "value", used), "photon_filter.used_filter")
+        _set(finder, "max_gap", photon.get("max_gap"), "photon_filter.max_gap")
+        _set(finder, "use_gap_fill", photon.get("use_gap_fill"),
+             "photon_filter.use_gap_fill")
+
+        delta = photon.get("delta_macro_time_filter") or {}
+        # The raw widget values, in the widget's own units — see the docstring.
+        _set(finder, "dT_min", delta.get("dT_min"), "delta_macro_time_filter.dT_min")
+        _set(finder, "dT_max", delta.get("dT_max"), "delta_macro_time_filter.dT_max")
+        _set(finder, "use_lower", delta.get("dT_min_active"), "dT_min_active")
+        _set(finder, "use_upper", delta.get("dT_max_active"), "dT_max_active")
+
+        bocpd = photon.get("bocpd_filter") or {}
+        for attr, key in (
+            ("bocpd_prior_count", "prior_count"),
+            ("bocpd_prior_duration", "prior_duration"),
+            ("bocpd_changepoint_prob", "changepoint_prob"),
+        ):
+            _set(finder, attr, bocpd.get(key), f"bocpd_filter.{key}")
+        if bocpd.get("dt") is not None:
+            _set(finder, "trace_bin_width", float(bocpd["dt"]) * 1000.0,
+                 "bocpd_filter.dt")
+
+        kalman = photon.get("kalman_filter") or {}
+        for attr, key in (
+            ("kalman_q", "q"), ("kalman_r_scale", "r_scale"),
+            ("kalman_z_thresh", "z_thresh"), ("kalman_min_len", "min_len"),
+            ("kalman_merge_gap", "merge_gap"),
+        ):
+            _set(finder, attr, kalman.get(key), f"kalman_filter.{key}")
+
+        cusum = photon.get("cusum_filter") or {}
+        for attr, key in (
+            ("cusum_bg_rate", "background_rate"), ("cusum_sb_ratio", "sb_ratio"),
+            ("cusum_alpha", "alpha"), ("cusum_beta", "beta"),
+        ):
+            _set(finder, attr, cusum.get(key), f"cusum_filter.{key}")
+
+        search = photon.get("tttrlib_search") or {}
+        _set(finder, "tttrlib_algorithm", search.get("algorithm"),
+             "tttrlib_search.algorithm")
+        _set(finder, "tttrlib_parameters", search.get("parameters"),
+             "tttrlib_search.parameters")
+
+        finder_settings = getattr(finder, "settings", None)
+        if isinstance(finder_settings, dict):
+            if photon.get("filter_active") is not None:
+                finder_settings["filter_active"] = bool(photon["filter_active"])
+            if photon.get("invert_filter") is not None:
+                finder_settings["invert_filter"] = bool(photon["invert_filter"])
+            count_rate = photon.get("count_rate_filter") or {}
+            if count_rate:
+                block = finder_settings.setdefault("count_rate_filter", {})
+                if count_rate.get("n_ph_max") is not None:
+                    block["n_ph_max"] = int(count_rate["n_ph_max"])
+                if count_rate.get("time_window") is not None:
+                    block["time_window"] = float(count_rate["time_window"])
+
+    gmm = data.get("gmm") or {}
+    if gmm:
+        stored = getattr(wizard, "gmm_settings", None)
+        if isinstance(stored, dict):
+            for key in ("covariance_type", "random_state", "max_iter", "n_init",
+                        "tol", "max_components", "reg_covar"):
+                if gmm.get(key) is not None:
+                    stored[key] = gmm[key]
+        _check("checkBox_auto_components", gmm.get("auto_components"))
+
+    return skipped
+
+
+def apply_analysis_folder(wizard: Any, folder: Any) -> list[str]:
+    """Repopulate the wizard from a burst-analysis folder's manifest.
+
+    Parameters
+    ----------
+    wizard : BurstSelectionTool
+        The tool to repopulate.
+    folder : path-like
+        A ``.bur`` file, the folder holding it, or the analysis folder.
+
+    Returns
+    -------
+    list of str
+        Notes about anything that could not be applied. A folder with no
+        manifest -- one written before manifests existed -- returns a single
+        explanatory note rather than raising.
+    """
+    from chisurf.core.fio.fluorescence.burst_manifest import restore_settings
+
+    stored = restore_settings(folder)
+    if not stored:
+        return ["this analysis folder records no settings"]
+    return apply_analysis_settings_to_wizard(wizard, stored)
+
+
+
 def save_current_selection(
     wizard: Any,
     output_types: set[str],
