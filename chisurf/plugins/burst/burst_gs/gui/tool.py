@@ -8,6 +8,8 @@ import pathlib
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.autoform import AutoForm
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .view_model import BurstGsViewModel
@@ -15,39 +17,17 @@ from .view_model import BurstGsViewModel
 logger = logging.getLogger(__name__)
 
 
-class _ComputeSignals(QtCore.QObject):
-    """Cross-thread signals for the background fit."""
-
-    progress = QtCore.Signal(float, str)
-    finished = QtCore.Signal(bool)
-
-
-class _ComputeTask(QtCore.QRunnable):
-    """Run the Qt-free fit off the UI thread (it can take minutes)."""
-
-    def __init__(self, model):
-        super().__init__()
-        self._model = model
-        self.signals = _ComputeSignals()
-        self.setAutoDelete(True)
-
-    def run(self) -> None:  # noqa: N802 (Qt override)
-        ok = False
-        try:
-            ok = bool(
-                self._model.compute(
-                    progress=lambda f, t: self.signals.progress.emit(float(f), str(t))
-                )
-            )
-        except Exception:
-            logger.debug("background Gopich-Szabo fit failed", exc_info=True)
-        self.signals.finished.emit(ok)
-
-
 class BurstGsTool(ChisurfDockTool):
     """Photon-by-photon kinetics tool: action toolbar + ``AutoForm(view_model)``."""
 
     tool_settings_name = "BurstGsTool"
+
+    class Error(ChisurfDockTool.Error):
+        """Conditions that stop the fit from running or finishing."""
+
+        not_ready = Msg("{}")
+        failed = Msg("The fit failed: {}")
+        no_result = Msg("The fit did not produce a result — see the report.")
 
     #: Model events, re-emitted so they are always handled on the GUI thread.
     modelEvent = QtCore.Signal(str)
@@ -85,32 +65,46 @@ class BurstGsTool(ChisurfDockTool):
 
     # ── actions ──
     def run_with_progress(self) -> None:
-        """Fit in a worker thread so the UI stays responsive."""
+        """Fit off the GUI thread so the window stays usable.
+
+        The fit can take minutes; the progress, the Cancel and the delivery of
+        the result all come from the shared task layer rather than from a
+        per-tool ``QRunnable``.
+        """
         reason = self.model.can_run()
         if reason:
-            self.statusBar().showMessage(reason, 8000)
+            self.Error.not_ready(reason)
             return
-        self.statusBar().showMessage("Fitting…")
-        task = _ComputeTask(self.model)
-        task.signals.progress.connect(
-            lambda f, t: self.statusBar().showMessage(f"{t} ({int(f * 100)} %)")
+        self.Error.clear()
+        ChiSurfProgress.run(
+            self, "Fitting…", self._fit, maximum=100,
+            on_result=self._fitted,
+            on_error=self.Error.failed,
+            on_done=self._refresh,
+            title="Photon-by-photon kinetics",
         )
-        task.signals.finished.connect(self._on_finished)
-        QtCore.QThreadPool.globalInstance().start(task)
 
-    def _on_finished(self, ok: bool) -> None:
-        """Refresh the form once the background fit finished."""
+    def _fit(self, task) -> bool:
+        """Worker: run the Qt-free fit, reporting through *task*. No GUI here."""
+        def report(fraction: float, message: str) -> None:
+            task.raise_if_cancelled()
+            task.set_fraction(float(fraction), str(message))
+
+        return bool(self.model.compute(progress=report))
+
+    def _fitted(self, ok: bool) -> None:
+        """Back on the GUI thread with a fit (or with nothing)."""
         analysis = self.model.analysis
         if ok and analysis is not None:
             matrix = analysis.fit.rate_matrix
-            message = (
+            self.Error.no_result.clear()
+            self.statusBar().showMessage(
                 f"logL = {analysis.fit.log_likelihood:,.1f}, "
-                f"k(1→2) = {matrix[1, 0]:,.0f} /s, k(2→1) = {matrix[0, 1]:,.0f} /s"
+                f"k(1→2) = {matrix[1, 0]:,.0f} /s, k(2→1) = {matrix[0, 1]:,.0f} /s",
+                12000,
             )
         else:
-            message = "The fit did not produce a result — see the report."
-        self.statusBar().showMessage(message, 12000)
-        self._refresh()
+            self.Error.no_result()
 
     def _export_csv(self) -> None:
         """Ask for a path and write the fitted parameters to it."""

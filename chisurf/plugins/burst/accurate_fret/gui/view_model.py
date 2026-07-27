@@ -8,6 +8,7 @@ series that ``accurate_fret.view.json`` reads.
 from __future__ import annotations
 
 import logging
+from concurrent.futures import CancelledError
 import pathlib
 from collections.abc import Callable
 
@@ -423,6 +424,13 @@ class AccurateFretViewModel:
                 max_fret_populations=self.max_fret_populations,
                 min_population=self.min_population,
             )
+        except CancelledError:
+            # The user pressed Cancel: the progress callback raised through the
+            # calibration. Let it out rather than reporting it as a failure --
+            # a cancelled run has no result *and* nothing went wrong.
+            self._result = None
+            self.notify("error")
+            raise
         except Exception as exc:
             logger.debug("calibration failed", exc_info=True)
             self._result = None

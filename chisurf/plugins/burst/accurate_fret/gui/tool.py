@@ -8,6 +8,8 @@ import pathlib
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.autoform import AutoForm
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
 from .view_model import AccurateFretViewModel
@@ -15,39 +17,17 @@ from .view_model import AccurateFretViewModel
 logger = logging.getLogger(__name__)
 
 
-class _ComputeSignals(QtCore.QObject):
-    """Cross-thread signals for the background calibration run."""
-
-    progress = QtCore.Signal(float, str)
-    finished = QtCore.Signal(bool)
-
-
-class _ComputeTask(QtCore.QRunnable):
-    """Run the Qt-free calibration off the UI thread (bootstrapping is slow)."""
-
-    def __init__(self, model):
-        super().__init__()
-        self._model = model
-        self.signals = _ComputeSignals()
-        self.setAutoDelete(True)
-
-    def run(self) -> None:  # noqa: N802 (Qt override)
-        ok = False
-        try:
-            ok = bool(
-                self._model.compute(
-                    progress=lambda f, t: self.signals.progress.emit(float(f), str(t))
-                )
-            )
-        except Exception:
-            logger.debug("background calibration failed", exc_info=True)
-        self.signals.finished.emit(ok)
-
-
 class AccurateFretTool(ChisurfDockTool):
     """Accurate-FRET calibration tool: action toolbar + ``AutoForm(view_model)``."""
 
     tool_settings_name = "AccurateFretTool"
+
+    class Error(ChisurfDockTool.Error):
+        """Conditions that stop the calibration from running or finishing."""
+
+        not_ready = Msg("{}")
+        failed = Msg("Calibration failed: {}")
+        no_result = Msg("The calibration produced no result — see the report.")
 
     #: Model events, re-emitted so they are always handled on the GUI thread.
     modelEvent = QtCore.Signal(str)
@@ -103,31 +83,45 @@ class AccurateFretTool(ChisurfDockTool):
 
     # ── actions ──
     def run_with_progress(self) -> None:
-        """Calibrate in a worker thread so the UI stays responsive."""
+        """Calibrate off the GUI thread so the window stays usable.
+
+        Bootstrapping is slow; the progress, the Cancel and the delivery of the
+        result all come from the shared task layer rather than from a per-tool
+        ``QRunnable``.
+        """
         reason = self.model.can_run()
         if reason:
-            self.statusBar().showMessage(reason, 8000)
+            self.Error.not_ready(reason)
             return
-        self.statusBar().showMessage("Calibrating…")
-        task = _ComputeTask(self.model)
-        task.signals.progress.connect(
-            lambda f, t: self.statusBar().showMessage(f"{t} ({int(f * 100)} %)")
+        self.Error.clear()
+        ChiSurfProgress.run(
+            self, "Calibrating…", self._calibrate, maximum=100,
+            on_result=self._calibrated,
+            on_error=self.Error.failed,
+            on_done=self._refresh,
+            title="Accurate FRET",
         )
-        task.signals.finished.connect(self._on_finished)
-        QtCore.QThreadPool.globalInstance().start(task)
 
-    def _on_finished(self, ok: bool) -> None:
-        """Refresh the form once the background run finished."""
+    def _calibrate(self, task) -> bool:
+        """Worker: run the Qt-free calibration through *task*. No GUI here."""
+        def report(fraction: float, message: str) -> None:
+            task.raise_if_cancelled()
+            task.set_fraction(float(fraction), str(message))
+
+        return bool(self.model.compute(progress=report))
+
+    def _calibrated(self, ok: bool) -> None:
+        """Back on the GUI thread with the correction factors (or with nothing)."""
         if ok and self.model.result is not None:
             factors = self.model.result.factors
-            message = (
+            self.Error.no_result.clear()
+            self.statusBar().showMessage(
                 f"gamma = {factors['gamma']:.3f}, beta = {factors['beta']:.3f}, "
-                f"alpha = {factors['alpha']:.3f}, delta = {factors['delta']:.3f}"
+                f"alpha = {factors['alpha']:.3f}, delta = {factors['delta']:.3f}",
+                12000,
             )
         else:
-            message = "Calibration failed — see the report."
-        self.statusBar().showMessage(message, 12000)
-        self._refresh()
+            self.Error.no_result()
 
     def _load_from_ndx(self) -> None:
         """Pull the burst columns from an open ndXplorer window."""

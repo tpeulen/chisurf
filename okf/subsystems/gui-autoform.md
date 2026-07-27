@@ -211,8 +211,17 @@ firing — and a superseded task must have its *updates* disconnected but its
 standalone tool window renders the run in its own status bar
 (`StatusBarProgressHost`, attached lazily by `find_progress_host`) rather than
 falling through to the modal dialog, which would take back exactly what moving
-the work off the GUI thread bought. First consumer: the PCH tool's histogram
-computation. Pattern taken from an established visual dataflow toolkit — see
+the work off the GUI thread bought. Consumers so far: the PCH tool's histogram
+computation, and the two burst tools that each carried a **byte-identical** copy
+of the machinery this replaces — the Gopich-Szabo photon-by-photon kinetics fit
+and the accurate-FRET calibration, whose `_ComputeSignals`/`_ComputeTask` pair
+swallowed every exception into `logger.debug`, offered no cancellation for a run
+that takes minutes, and started a second run on a second click. The remaining
+burst candidates are a different shape and a bigger job: burst-selection's
+batch, the burst-wise FCS wizard, BVA and H2MM all drive their loop **on the GUI
+thread** behind a window-modal progress dialog, so moving them means splitting a
+loop that interleaves with model state, not deleting a worker class. Pattern
+taken from an established visual dataflow toolkit — see
 [Orange3 mining](/references/orange3-mining.md).
 
 The `progress` **AutoForm section** (`{"type": "custom", "key": "progress"}`) is
