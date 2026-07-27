@@ -2,6 +2,27 @@
 
 ## 2026-07-27
 
+* **The convolution on/off switch now reaches the decay (RF-194).**
+  `Convolve.do_convolution` was written from the settings key
+  `tcspc.convolution_on_by_default`, the checkbox of the Convolve panel and
+  `Convolve.set_state` on project load, and read by nobody — unticking the box
+  left the model convolved with the IRF and the state round-tripped through a
+  project save meaning nothing. `Convolve.convolve` reads it now and hands the
+  spectrum to the new `Convolve.decay_without_irf`: the ideal
+  `sum_i a_i exp(-t / tau_i)` on the data's own time axis, built with the shared
+  `calculate_fluorescence_decay` so no exponential mathematics is duplicated, and
+  in the `per` mode carrying the geometric inter-pulse factor
+  `1 / (1 - exp(-period / tau))` — the same tail the periodic kernel applies, so
+  switching the convolution off does not silently drop the preceding pulses. The
+  `full` mode convolves an already computed decay, so there the decay comes back
+  unchanged; the scatter term stays outside the branch, since scattered light
+  keeps the shape of the IRF either way. The panel's handler also applied the
+  checkbox to the first fit of a group only, while the mode went to all of them.
+  Pinned by `test/tcspc/test_convolve_do_convolution.py`, whose last test is the
+  finding itself: toggling the flag changes what `LifetimeModel.update_model`
+  computes. Documented in `docs/reference/settings.md` and guide 10.
+
+
 * **The RICS-precision predictor moved out of imaging and in with the calculators.**
   `microscopy/img_precision` is now `calculator/rics_precision` (plugin id
   `rics_precision`, `RicsPrecisionTool`, CLI `rics-precision`), registered in the

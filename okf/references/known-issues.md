@@ -725,3 +725,20 @@ be, because three of them were defects in the code rather than in the tests.
   plugin suite is green (54 passed with this file ignored). Belongs in the
   tttrlib repository; until then run the plugin suite with
   `--ignore=chisurf/plugins/burst/burst_h2mm/tests/test_examples.py`.
+
+- **Two red TCSPC tests that predate the RF-194 fix.** Met on 2026-07-27 while
+  gating it, both unrelated to it (neither touches `nusiance.py`).
+  `test/tcspc/test_tcspc_convolve.py::test_convolve_lifetime_spectrum` and
+  `::test_convolve_lifetime_spectrum_periodic` compare the kernels against
+  reference arrays that were never updated after the two deliberate kernel fixes
+  in `3dab3ded5` / `ede85ba3d`. The whole deviation is channel 0 — `5.9e-07`
+  where the array says `0.0`, every later channel agreeing to the printed digits
+  — so `np.allclose` (atol `1e-8`) trips on one number. Whether the kernel or the
+  reference is right at channel 0 is the open question; the C-versus-numba parity
+  test `test/test_periodic_convolution_reference.py` passes, which argues for the
+  kernel. Left for a finding of its own rather than re-baking the arrays from the
+  code under test. `test/tcspc/test_fit_tcspc.py::FitTests::test_data_group`
+  fails earlier still, in the test's own imports: it calls
+  `chisurf.core.fitting.fit.FitGroup` without importing
+  `chisurf.core.fitting.fit`, so it raises `AttributeError: module
+  'chisurf.core.fitting' has no attribute 'fit'` before any model is built.

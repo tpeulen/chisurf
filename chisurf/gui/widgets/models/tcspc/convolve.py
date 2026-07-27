@@ -164,7 +164,7 @@ class ConvolveWidget(Convolve, QtWidgets.QWidget):
             fit_objects = get_fitting_client().get_fit_objects()
             for f in fit_objects:
                 f.model.convolve.mode = self.gui_mode
-            fit_objects[0].model.convolve.do_convolution = self.checkBox.isChecked()
+                f.model.convolve.do_convolution = self.checkBox.isChecked()
             cs.core.actions.dispatch(
                 name="model.update",
                 payload={},

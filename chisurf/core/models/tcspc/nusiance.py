@@ -547,7 +547,7 @@ class Convolve(FittingParameterGroup):
             y = chisurf.core.math.functions.distributions.generalized_normal_distribution(x, loc, scale, shape, True)
             y *= np.sum(self.data.y)
             irf = chisurf.core.curve.Curve(x=x, y=y)
-            irf.y = np.where(irf.y < 1, 0.0, irf.y)
+            irf.y[irf.y < 1] = 0.0
 
         irf -= self.lamp_background
         irf.y = np.clip(irf.y, 0, None)
@@ -794,6 +794,68 @@ class Convolve(FittingParameterGroup):
         """
         self.__irf = None
 
+    def decay_without_irf(
+            self,
+            data: np.array,
+            decay: np.array,
+            rep_rate: float,
+            mode: str
+    ) -> np.array:
+        """Return the model decay used when the IRF convolution is switched off.
+
+        Parameters
+        ----------
+        data : numpy.array
+            Interleaved ``(amplitude, lifetime, ...)`` spectrum -- or, in the
+            ``full`` convolution mode, an already computed decay histogram,
+            which is returned unchanged.
+        decay : numpy.array
+            Pre-allocated output array, filled in place for the spectrum case.
+        rep_rate : float
+            Laser repetition rate in MHz, used for the periodic tail.
+        mode : str
+            Convolution mode the model would otherwise have used.
+
+        Returns
+        -------
+        numpy.array
+            The unconvolved model decay on the time axis of the data.
+
+        Notes
+        -----
+        Without an IRF the model is the ideal multi-exponential decay
+        ``sum_i a_i * exp(-t / tau_i)`` on the time axis of the data, with ``t``
+        measured from the first channel. In the periodic (``per``) mode the
+        unrelaxed decay of the preceding pulses is added as the geometric series
+        ``1 / (1 - exp(-period / tau))`` -- the same tail factor the periodic
+        convolution kernel applies. The absolute scale of the ideal decay differs
+        from the convolved one; ``scale`` re-scales the model by ``n0``, which is
+        autoscaled by default, so a fit does not see it.
+        """
+        if mode == "full":
+            # ``full`` convolves an already computed decay (see the parse
+            # model), so switching the convolution off returns it unchanged --
+            # as a copy, since the caller's decay must not be written to.
+            return np.array(data, dtype=float)[:decay.shape[0]]
+
+        spectrum = np.atleast_1d(np.asarray(data, dtype=float)).copy()
+        if mode == "per":
+            period = 1000. / rep_rate
+            amplitudes, lifetimes = spectrum[0::2], spectrum[1::2]
+            tail = np.ones_like(lifetimes)
+            relaxing = lifetimes > 0.0
+            tail[relaxing] = 1.0 / (1.0 - np.exp(-period / lifetimes[relaxing]))
+            amplitudes *= tail
+
+        t = np.asarray(self.data.x, dtype=float)[:decay.shape[0]]
+        _, ideal = chisurf.core.fluorescence.general.calculate_fluorescence_decay(
+            lifetime_spectrum=spectrum,
+            time_axis=t - t[0],
+            normalize=False
+        )
+        decay[:ideal.shape[0]] = ideal
+        return decay
+
     # TODO: needs docstring
     def convolve(
             self,
@@ -804,7 +866,8 @@ class Convolve(FittingParameterGroup):
             rep_rate: float = None,
             irf: chisurf.core.curve.Curve = None,
             scatter: float = 0.0,
-            decay: np.array = None
+            decay: np.array = None,
+            do_convolution: bool = None
     ) -> np.array:
         """Convolve a lifetime spectrum with the IRF."""
         if verbose is None:
@@ -819,6 +882,8 @@ class Convolve(FittingParameterGroup):
             irf = self.irf
         if decay is None:
             decay = np.zeros(self.data.y.shape)
+        if do_convolution is None:
+            do_convolution = self.do_convolution
 
         # Resize-to-data plus unit normalisation depends only on the IRF curve
         # and the data length, and `irf` is itself served from a cache, so the
@@ -841,7 +906,12 @@ class Convolve(FittingParameterGroup):
         stop = min(self.stop, n_points)
         start = min(0, self.start)
 
-        if mode == "per":
+        if not do_convolution:
+            # The convolution is switched off (checkbox in the Convolve panel,
+            # ``tcspc.convolution_on_by_default``): the model is the ideal decay
+            # and the IRF only contributes through the scatter term below.
+            decay = self.decay_without_irf(data, decay, rep_rate, mode)
+        elif mode == "per":
             period = 1000. / rep_rate
             # tttrlib's C kernel rather than the numba reimplementation: same
             # signature, agrees to 1e-15 across 1..128 lifetimes (see

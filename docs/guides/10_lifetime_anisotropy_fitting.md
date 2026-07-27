@@ -50,6 +50,9 @@ Each group in {numref}`fig-tcspc-lifetime-editor` corresponds to a factor in the
 reconvolution model of {ref}`concept-tcspc-lifetime`: the **Lifetimes** table is
 the $\sum_i a_i e^{-t/\tau_i}$ spectrum, **Convolution** applies the
 $\mathrm{IRF}\ast(\cdot)$, and **Generic** adds the scatter/background terms.
+Unticking the checkbox of the **Convolution** group drops the
+$\mathrm{IRF}\ast(\cdot)$ factor — the model is then the ideal decay itself (tail
+fitting), with the inter-pulse tail kept in the `per`iodic mode.
 
 ```python
 import numpy as np

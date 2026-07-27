@@ -2459,11 +2459,38 @@ Findings RF-193..RF-201.
   untouched here because it moves every corrected decay.
 
 ### RF-194
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the convolution on/off checkbox and the `convolution_on_by_default` setting have no effect)
 - **Location:** `chisurf/core/models/tcspc/nusiance.py:497-505` (`Convolve.do_convolution`), written at `:979`, `:1038` and `chisurf/gui/widgets/models/tcspc/convolve.py:167`
 - **Finding:** `do_convolution` is written from four places — the settings key `tcspc.convolution_on_by_default`, the GUI checkbox in `onConvolutionModeChanged`, `Convolve.set_state` on project load, and `fluorescence/decay_fit_model.py:135` — and **read by nobody**. `grep -rn do_convolution chisurf --include='*.py'` returns only the property, those writes, and a doc mention in `core/dataspec/__init__.py:328`; neither `Convolve.convolve` nor `Lifetime.update_model` consults it, and `update_model` calls `self.convolve.convolve(...)` unconditionally. So unticking the box in the Convolve panel leaves the model convolved with the IRF, and the state faithfully round-trips through a project save while meaning nothing. Either honour the flag in `Convolve.convolve` (return the raw decay when it is off) or remove the flag, the checkbox and the setting.
-- **Fix note:**
+- **Fix note:** The flag is honoured rather than removed — a decay without an IRF
+  is what tail fitting needs. `Convolve.convolve` now reads it (and takes it as
+  an optional argument, like every other nuisance it defaults from `self`) and
+  dispatches to the new `Convolve.decay_without_irf`: the ideal
+  `sum_i a_i exp(-t / tau_i)` on the time axis of the data, built by the shared
+  `calculate_fluorescence_decay` so no exponential mathematics is duplicated. In
+  the `per` mode the amplitudes carry the geometric inter-pulse factor
+  `1 / (1 - exp(-period / tau))` — the same tail the periodic kernel applies — so
+  switching the convolution off does not silently drop the unrelaxed decay of the
+  preceding pulses. The `full` mode convolves an already computed decay (the
+  parse model), so there it returns that decay unchanged, as a copy. The scatter
+  term stays outside the branch: scattered light keeps the shape of the IRF
+  whether or not the fluorescence is convolved. One GUI half-fix came with it —
+  `onConvolutionModeChanged` applied the mode to every fit of a group but the
+  checkbox only to `fit_objects[0]`. Pinned by
+  `test/tcspc/test_convolve_do_convolution.py` (5 tests): the ideal decay in the
+  `exp` mode, the periodic tail factor, the untouched `full`-mode decay, and —
+  the actual finding — that toggling the flag changes what
+  `LifetimeModel.update_model` computes, in both modes. `test/tcspc` convolve
+  suites, `test_decay_fit*.py`, `test_decay_conv.py`,
+  `test_periodic_convolution_*.py`, `test_tcspc_fit_convergence.py` and
+  `test_user_models.py` green (109 tests); `ruff check` reports exactly the same
+  pre-existing findings as `HEAD` on both touched files and the new test is clean
+  under `check` and `format`. Documented in `docs/reference/settings.md`
+  (`convolution_on_by_default`) and guide 10. Two pre-existing, unrelated
+  failures met on the way are recorded in `okf/references/known-issues.md`
+  (`test_tcspc_convolve.py` reference arrays, `test_fit_tcspc.py::test_data_group`
+  import).
 
 ### RF-195
 - **Status:** FIXED

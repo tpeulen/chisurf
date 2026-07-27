@@ -646,7 +646,10 @@ Used by: `chisurf.experiments.tcspc.TCSPCReader` and various TCSPC models.
   IRF convolution.
 
 - **`convolution_on_by_default`**  
-  If true, TCSPC models start with IRF convolution enabled.
+  If true, TCSPC models start with IRF convolution enabled. Switched off (here or
+  with the checkbox of the **Convolution** panel) the model is the ideal
+  multi-exponential decay — in the `per` mode still carrying the inter-pulse tail
+  — and the IRF only enters through the scatter term.
 
 - **`shift_bg_with_irf`**  
   Whether background components are shifted together with the IRF in certain
