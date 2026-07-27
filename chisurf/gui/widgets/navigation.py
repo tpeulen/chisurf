@@ -12,6 +12,8 @@ from typing import Any
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.event_pump import pump_ui
+
 
 class _StatusLogHandler(logging.Handler):
     """Logging handler that shows records in a shell's shared status bar.
@@ -450,6 +452,18 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
                 font-weight: bold;
                 font-size: 14px;
             }
+            /* Styling ``::item`` at all hands item painting to the stylesheet
+               style, which then draws no selection background — leaving the
+               current step's label as white-on-white (only its emoji visible).
+               Both states have to be spelled out, from the palette so the
+               light and dark themes each stay legible. */
+            QListWidget::item:selected {
+                background: palette(highlight);
+                color: palette(highlighted-text);
+            }
+            QListWidget::item:hover:!selected {
+                background: rgba(128, 128, 128, 0.18);
+            }
             """
         )
 
@@ -559,7 +573,21 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         """
         first = (msg or "").splitlines()[0][:200] if msg else ""
         self._status_message.setText(first)
-        QtCore.QCoreApplication.processEvents()
+        # Log lines arrive from anywhere, including worker threads and the
+        # middle of another status update, and none of them needs a click:
+        # repaint only.
+        self._pump_status(allow_input=False)
+
+    def _pump_status(self, *, allow_input: bool = True) -> None:
+        """Repaint the status bar mid-operation, via the shared guarded pump.
+
+        Task progress keeps user input (its Cancel button has to stay
+        clickable); the log-driven caption update does not, so a click cannot be
+        delivered into a running analysis and delete the widgets it is still
+        writing to. Nesting is prevented process-wide — see
+        :mod:`chisurf.gui.event_pump` for the crash this fixes.
+        """
+        pump_ui(allow_input=allow_input)
 
     # ── status-bar API (used by embedded tools via find_status_reporter) ────
     def begin_task(self, message: str, maximum: int = 0, cancel=None) -> _StatusTask:
@@ -579,7 +607,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             self._status_progress.setVisible(True)
         else:
             self._status_progress.setVisible(False)
-        QtCore.QCoreApplication.processEvents()
+        self._pump_status()
 
     def report_progress(self, value: int, maximum: int, message: str | None = None) -> None:
         """Show determinate progress (``value`` of ``maximum``)."""
@@ -588,7 +616,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._status_progress.setRange(0, int(maximum))
         self._status_progress.setValue(int(value))
         self._status_progress.setVisible(True)
-        QtCore.QCoreApplication.processEvents()
+        self._pump_status()
 
     def clear_status(self) -> None:
         """Reset the status bar to idle."""
@@ -611,25 +639,25 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._status_progress.setValue(0)
         self._status_progress.setVisible(True)
         self._status_cancel.setVisible(bool(has_cancel))
-        QtCore.QCoreApplication.processEvents()
+        self._pump_status()
 
     def _task_set_message(self, task: _StatusTask, message: str) -> None:
         if task is not self._active_task:
             return
         self._status_message.setText(message)
-        QtCore.QCoreApplication.processEvents()
+        self._pump_status()
 
     def _task_set_range(self, task: _StatusTask, a: int, b: int) -> None:
         if task is not self._active_task:
             return
         self._status_progress.setRange(a, b)
-        QtCore.QCoreApplication.processEvents()
+        self._pump_status()
 
     def _task_set_value(self, task: _StatusTask, v: int) -> None:
         if task is not self._active_task:
             return
         self._status_progress.setValue(v)
-        QtCore.QCoreApplication.processEvents()
+        self._pump_status()
 
     def _deactivate_task(self, task: _StatusTask) -> None:
         if task is not self._active_task:

@@ -5142,3 +5142,90 @@ click (RF-430); and the `name` every contour is given is stored and read nowhere
 - **Location:** `chisurf/plugins/chimol/chimol/cmd/volumes.py:113-121` (`_contour` writes `"name": name or f"{style}_{len(levels) + 1}"` into the level dict) against `chisurf/plugins/chimol/chimol/renderer/view.py:6903-6968` (`_update_volume`, which reads `level`, `color` and `style` only and ids its scene objects `f"volume_{index}"`) and `cmd/volumes.py:189-191` (`volume_level`, which rewrites the level list without the key)
 - **Finding:** `grep -rn` for the key shows it written in one place and read in none. In PyMOL `isomesh dens, map, 0.08` creates an *object* called `dens` that `color`, `disable`, `enable` and `delete` then address; here the name is a label on a dict that never leaves the state, the scene object is called `volume_0`/`volume_1` by position, and `volume_level` drops it on the first replacement — so there is no way to recolour or remove one contour of a multi-level map, which is the case the feature exists for ("*a dense core inside a diffuse shell*", `renderer/chimol_state.py:82-84`). The module docstring opens by claiming "PyMOL's names and argument order, per the compatibility contract", which makes the silence worse than a missing argument would be. Either use the name — id the scene object `f"{object_prefix}:{name}"` and let the existing object commands resolve it — or drop the parameter and say in the guide that contours are addressed by level.
 - **Fix note:**
+
+
+## Crash report — the burst pipeline died on 2CDE (2026-07-27)
+
+A user-supplied macOS crash report (SIGBUS, ``EXC_ARM_DA_ALIGN`` at 0x109, main
+thread) taken while stepping to *4. 2CDE* in the burst-analysis shell. The stack
+is five repetitions of ``QCoreApplication::notifyInternal2`` →
+``QObject::event`` → ``PyQtSlotProxy::qt_metacall`` → Python →
+``cfunction_call`` → ``notifyInternal2``, dying inside
+``QCoreApplication::postEvent``. RF-432, RF-433.
+
+### RF-432
+- **Status:** FIXED
+- **Severity:** S1 (the burst pipeline crashes the whole application, losing the session)
+- **Location:** `chisurf/gui/widgets/navigation.py` (`_on_log_status` and the six other bare `QCoreApplication.processEvents()` calls in the status-bar API), `chisurf/gui/progress.py` (`ChiSurfProgress._process_events`), `chisurf/plugins/burst/burst_bva/gui/tool.py:_status`, `chisurf/plugins/burst/burst_h2mm/gui/tool.py:_status`
+- **Finding:** Every status write pumped the event loop unguarded. `processEvents` *dispatches queued work*, and one of the things queued is the shell's own `status_logged` signal — emitted by `_StatusLogHandler` from whichever thread logged. So a status update delivers a log record, whose slot writes the status bar, which pumps again: each round adds a `PyQtSlotProxy::qt_metacall` → Python → `notifyInternal2` frame to the C stack, which is exactly the repeating pattern in the report. Reproduced headlessly: with the guard removed, one `logger.info` from a shell with a status logger nests **6** pumps deep before the harness stops it. Two consequences ride on the same defect — the pump also delivers *clicks*, so a user switching panel or closing the window mid-analysis destroys the widgets the running operation still writes to, which is the shape of a dangling receiver in `postEvent`.
+- **Fix note:** One shared, process-wide guarded pump — the new
+  `chisurf/gui/event_pump.py` (`pump_ui(allow_input=…)`) — replaces every bare
+  `processEvents` in the status/progress path. The guard has to be process-wide
+  because the hazard is the shared C stack, and the pumps sit in four different
+  objects. Callers that need a clickable Cancel keep input; the log-driven
+  caption update and the tools' own `_status` helpers pass
+  `allow_input=False`, so a click can no longer be delivered into a running
+  analysis. Verified by driving the burst shell headlessly to the 2CDE step on a
+  real 2495-burst folder: the step runs (2343 valid) and the pump depth stays
+  1. Pinned by `test/gui/test_event_pump.py` (nesting, guard release on error,
+  input policy) and two cases in `test/gui/test_navigation_statusbar.py`; the
+  nesting test reproduces "nested 6 deep" against the pre-fix behaviour.
+
+### RF-433
+- **Status:** FIXED
+- **Severity:** S2 (the selected workflow step has no visible label — the shell shows which step you are on only by its emoji)
+- **Location:** `chisurf/gui/widgets/navigation.py:440-456` (the `nav_list` style sheet: a `QListWidget::item` rule with no `:selected` counterpart)
+- **Finding:** Found by inspecting the render of the burst shell while verifying RF-432: the current step, *4. 2CDE*, showed its icon and no text. Styling `::item` at all hands item painting to the style-sheet style, which then draws no selection background, and the label is painted in the palette's `HighlightedText` — white — on the plain white viewport. Measured on a freshly built shell: the selected row is 5987 white pixels with no highlight colour anywhere in it. Every `NavigationPanelTool` shell is affected (burst analysis, FCS, TTTR, imaging).
+- **Fix note:** Added explicit `::item:selected` (palette highlight + highlighted
+  text) and `::item:hover:!selected` rules, so both themes stay legible. The same
+  measurement now reports 4172 highlight pixels and 1506 text pixels. Pinned by
+  `test_selected_step_stays_readable` in `test/gui/test_navigation_search.py`,
+  which grabs the list and asserts both colours are present in the selected row.
+
+## QA run 2026-07-27 (2) — DEER distance distribution, driven through the GUI
+
+Workflow: [DEER/PELDOR distance distribution](/usecases/deer-distance-distribution.md).
+Five headless passes over the real main window with the three `test/data/deer/`
+fixtures and all four DEER models. The science holds — a clean CSV trace fits to
+χ²ᵣ = 1.206 with random residuals, and Tikhonov resolves the second population of
+`deer_twostate` where a single Gaussian cannot. What surrounds it does not: two
+of the four models show their shape parameters as raw HTML entities, every
+parameter table slices its last row, the reader's three switches have no control
+at all, every new fit opens on an unevaluated model reporting χ²ᵣ = 30113, and
+the MaxEnt inversion under-fits the trace worse than a two-parameter Gaussian.
+Findings RF-432..RF-436.
+
+### RF-432
+- **Status:** OPEN
+- **Severity:** S2 (parameter labels that are pure HTML entities are printed as their source text, in every model editor in the app)
+- **Location:** `chisurf/gui/widgets/chitable/delegates.py:34-36` (`RichTextDelegate.paint`: `if not text or "<" not in str(text): return super().paint(...)`), reached from `chisurf/gui/autoform/sections/parameter_table.py:434-435` (the `COL_NAME` delegate) with the display text from `:199` (`_display_value` returns `label_text` verbatim)
+- **Finding:** the delegate decides whether a cell needs HTML by testing for `<`, so a label made only of character entities never reaches `QTextDocument.setHtml` and is drawn as plain text. Verified headlessly on a `DeerRiceModel` editor: the two shape parameters of the model render as **`&nu;[&#8491;]`** and **`&sigma;[&#8491;]`**, the modulation depth as `&lambda;` and the regularisation weight as `&alpha;`, while `t<sub>0</sub>[µs]` and `k[µs<sup>-1</sup>]` in the same tables render correctly (they contain `<`) — screenshot `4R_editor.png`, and `m.data(m.index(i,0))` returns exactly those strings. The Rice model has only two distance parameters and *both* are unreadable. Not DEER-specific: `grep -rn 'label_text="&' chisurf/core/models/` finds entity-only labels in `deer/deer.py` (`&lambda;`, `&alpha;`, `&nu;[&#8491;]`, `&sigma;[&#8491;]`), `fcs/general.py` and `fcs/mdf.py` (`&epsilon;[kHz]`) and `pda2c/saw_nu.py` (`&nu;`). Fix in the delegate, not the labels: test for `<` **or** `&`, or simply always route through the text document (the fast path exists for cost, and a cheap `("<" in t or "&" in t)` keeps it).
+- **Fix note:**
+
+### RF-433
+- **Status:** OPEN
+- **Severity:** S2 (every parameter-group table in every AutoForm model editor clips its last row; a two-row group shows the second parameter as a half-height smear)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:492-496` (`_size_to_content`: `setFixedHeight(header_h + self._row_h * max(1, n) + 2)`) and the identical copy at `:1109-1113` for the paired table; `self._row_h = table_row_height()` at `:385` / `:973`
+- **Finding:** the height is budgeted with the *nominal* row height while the rows are laid out at their real height, so the fixed height is short by `(actual - nominal) × n`. Measured headlessly on a `DeerRiceModel` editor (`build_model_editor`, 471 × 620): `_row_h = 18` and `_header_h = 18`, but `rowHeight(i) = 24` for every row and `horizontalHeader().height() = 21`. The 2-row *Distance (Rice)* table gets `setFixedHeight(21 + 36 + 2) = 59` where the content needs `21 + 48 + 2 = 71` — **12 px short**, and the 3-row *Modulation* and *Distance grid* tables get 77 against 95, **18 px short**. The clipping is plainly visible (`4R_editor.png`: `&sigma;` is cut at ~40 % height under `&nu;`) and there is no scrollbar and 275 px of unused dock underneath, so the space is available. Size from the view's own metrics — `horizontalHeader().height() + sum(rowHeight(i)) + 2 * frameWidth()` — or call `resizeRowsToContents()` first and read back.
+- **Fix note:**
+
+### RF-434
+- **Status:** OPEN
+- **Severity:** S2 (three reader settings that exist in the API have no control in the GUI; the controller silently swallows the failure)
+- **Location:** `chisurf/core/experiments/deer/reader.py:70-100` (`DeerReader.__init__` — `phase_correction`, `normalize`, `exp_type`) against `chisurf/gui/widgets/experiments/deer/__init__.py:36-42` (`if reader_obj is not None and hasattr(reader_obj, "view_spec"): … except Exception: pass`); no `chisurf/core/experiments/deer/*.view.json` exists
+- **Finding:** the controller's own docstring says it "renders the reader's AutoForm settings (phase correction, normalisation, experiment type) when available", but `chisurf/core/experiments/deer/` has no view spec — every other experiment reader ships one (`tcspc_csv.view.json`, `tcspc_tttr.view.json`, `fcs.view.json`, `pch.view.json`, `pda.view.json`, `ics.view.json`) — so `hasattr(reader_obj, "view_spec")` is False and the AutoForm is never built. Verified headlessly: with `Experiment = DEER` selected, `ctrl.findChildren(...)` for `QCheckBox | QComboBox | QLineEdit | QSpinBox | QDoubleSpinBox` returns **`[]`** and the controller's whole child list is `['QVBoxLayout', 'QLabel']`; the *File parameters* section shows one hint line above ~700 px of empty dock (`01_read_data_dock.png`). Consequence: a user cannot disable the automatic zero-order phasing on a trace it gets wrong, cannot keep an un-normalised trace un-normalised, and cannot record the experiment type — all three are constructor arguments that only a script can reach. Add `deer.view.json` with the three controls (each with a `description`) and let the existing branch render it; the bare `except: pass` should also log, since it is what hid this.
+- **Fix note:**
+
+### RF-435
+- **Status:** OPEN
+- **Severity:** S2 (every new DEER fit opens reporting χ²ᵣ = 30113.93 against a model curve of zeros, indistinguishable from a catastrophic mismatch)
+- **Location:** `chisurf/core/models/deer/deer.py:411-423` (`_DeerModelBase.update_model`, never called between fit creation and the first **Fit**) — the fit sub-window therefore renders `ModelCurve`'s zero-filled `y`
+- **Finding:** verified on the stock app (no RPC port override) for all four DEER models: immediately after **Add fit**, `np.asarray(fit.model.y)` is `min = max = 0` over all 588 points and the *Fit* tab annotation reads `chi2r=30113.9309, DW=0.0001` with the model drawn as a flat line at zero and weighted residuals of 150 … 340 (`30_new_fit_window.png`, `05_main_after_addfit.png`). The model is *not* mis-parameterised — `_DeerModelBase.__init__` seeds t₀ from the reader metadata and λ from the tail plateau, and a manual `model.update()` immediately gives `y ∈ [0.359, 1]` and χ²ᵣ = 560.9 — it has simply never been evaluated. The same window shows a fully computed **L-Curve** tab for the model-free models, so the α-scan runs at creation while the model curve does not, which makes the zero line read as a result rather than a placeholder. Evaluate the model once when the fit is created (or when its sub-window is first shown) so the opening χ²ᵣ is the start-value χ²ᵣ.
+- **Fix note:**
+
+### RF-436
+- **Status:** OPEN
+- **Severity:** S2 (the maximum-entropy inversion under-fits the data worse than a two-parameter model and returns an over-smoothed P(r))
+- **Location:** `chisurf/core/models/deer/maxent.py:143-175` (the α auto-selection: `alphas = np.logspace(-3, 1.3, n_alpha)` and the discrepancy rule "pick the LARGEST alpha whose misfit is acceptable") reached from `chisurf/core/models/deer/deer.py:612-621` (`DeerMaxEntModel._distribution`)
+- **Finding:** driven through the GUI on `test/data/deer/deer_twostate.DSC` (588 points, reader noise estimate σ = 3.00e-3, which `_noise_level()` does read — t₀ seeding from the same metadata works), with default settings and α = 0 (auto), the MaxEnt model stops at **χ²ᵣ = 20.5230** after 62 s, while the Tikhonov model on the identical trace reaches **6.8387** and a *single Gaussian* reaches **8.9672**. A model-free inversion being beaten by a two-parameter shape is the signature of too much smoothing, and the returned distribution confirms it: `P(r)` is one broad peak at ≈ 37.5 Å sitting on a **uniform 0.007 pedestal across the entire 15 … 65 Å grid** (`4M_distribution.png`) — the flat entropy prior, undamped — where Tikhonov resolves the peak at 36.5 Å plus a shoulder at ≈ 46 Å and a minor peak at ≈ 24 Å (`23_tab1_Distribution.png`). Either the discrepancy target is being computed against the wrong scale or the "largest acceptable α" rule needs the misfit criterion the Tikhonov side gets from GCV/L-curve; whichever it is, a user offered two model-free models has no way to tell that one of them is not converging.
+- **Fix note:**

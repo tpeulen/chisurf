@@ -43,6 +43,7 @@ from chisurf import logging
 from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.event_pump import pump_ui
 from chisurf.gui.widgets.messages import MessagesMixin, Msg
 from chisurf.gui.widgets.wizard import DetectorWizardPage
 
@@ -1300,7 +1301,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self._status_label.setText(msg)
         # Report via normal logging; the shell's status bar shows it when embedded.
         logging.getLogger(__name__).info(msg)
-        QCoreApplication.processEvents()
+        # Repaint through the shared guarded pump (see chisurf.gui.event_pump).
+        pump_ui(allow_input=False)
 
     def _save_settings(self):
         ini = QSettings(str(get_plugin_settings_path("burst_h2mm")), QSettings.IniFormat)

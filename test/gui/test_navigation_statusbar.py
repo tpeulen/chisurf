@@ -149,3 +149,75 @@ def test_logged_line_survives_active_task(qapp):
     task.close()
     assert w._status_message.text() == "Done – 42 items"
     w.close()
+
+
+def test_status_updates_never_re_enter_the_event_loop(qapp, monkeypatch):
+    """A status write must not pump while a pump is already running.
+
+    Every writer here can be reached *from* a pump: a worker thread's log record
+    arrives as a queued signal that the previous update's ``processEvents``
+    delivers. Unguarded, each line pushed another Python-slot frame onto the C
+    stack — the reported crash showed five nested
+    ``PyQtSlotProxy::qt_metacall`` → Python → ``notifyInternal2`` levels before
+    ``QCoreApplication::postEvent`` died with SIGBUS.
+    """
+    from qtpy import QtCore
+
+    name = "chisurf.test.navstatus_reentrancy"
+    lg = logging.getLogger(name)
+    w = NavigationPanelTool(title="t", panels=_panels(), status_logger=name)
+
+    depth = 0
+    max_depth = 0
+
+    def _fake_process_events(*_args):
+        # Stand in for the real loop: while it runs, more status traffic
+        # arrives — exactly what a logging worker thread and a progress loop do.
+        nonlocal depth, max_depth
+        depth += 1
+        max_depth = max(max_depth, depth)
+        try:
+            if depth < 6:
+                lg.info(f"nested line {depth}")
+                w.report_progress(depth, 10, f"step {depth}")
+        finally:
+            depth -= 1
+
+    monkeypatch.setattr(
+        QtCore.QCoreApplication, "processEvents", _fake_process_events
+    )
+    lg.info("first line")
+
+    assert max_depth == 1, f"status updates nested {max_depth} deep"
+    w.close()
+
+
+def test_log_driven_status_pump_excludes_user_input(qapp, monkeypatch):
+    """A logged caption update must not deliver clicks into a running operation.
+
+    A click delivered mid-analysis switches panel or closes the window, deleting
+    the widgets the operation is still writing to. Task progress keeps input —
+    its Cancel button has to stay clickable — but a passive caption repaint does
+    not need it.
+    """
+    from qtpy import QtCore
+
+    name = "chisurf.test.navstatus_input"
+    lg = logging.getLogger(name)
+    seen = []
+    monkeypatch.setattr(
+        QtCore.QCoreApplication, "processEvents", lambda *a: seen.append(a)
+    )
+
+    w = NavigationPanelTool(title="t", panels=_panels(), status_logger=name)
+
+    lg.info("working")
+    assert seen, "the status bar no longer repaints mid-operation"
+    assert all(
+        args and args[0] == QtCore.QEventLoop.ExcludeUserInputEvents for args in seen
+    ), seen
+
+    seen.clear()
+    w.report_progress(1, 10, "step")
+    assert seen == [()], f"task progress must stay clickable (Cancel): {seen}"
+    w.close()

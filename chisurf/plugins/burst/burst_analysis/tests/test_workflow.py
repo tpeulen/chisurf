@@ -502,11 +502,13 @@ def test_bva_progress_routes_to_shell_status_bar_when_embedded(qapp) -> None:
         assert tool.show_panel_by_role("bva")
         bva = tool._workflow_panels.get("bva")
         assert bva is not None
-        # Embedded: the reporter resolves to the shell and _begin_progress yields a
-        # status-bar handle (no modal dialog).
-        assert bva._reporter() is tool
-        prog = bva._begin_progress("Reading burst data...", 0)
-        assert isinstance(prog, _StatusTask)
+        # Embedded: the shell is the nearest progress host, so ChiSurfProgress
+        # renders in its status bar instead of a modal dialog.
+        from chisurf.gui.progress import ChiSurfProgress, find_progress_host
+
+        assert find_progress_host(bva) is tool
+        prog = ChiSurfProgress(bva, text="Reading burst data...", maximum=0)
+        assert isinstance(prog.backend, _StatusTask)
         assert tool._status_message.text() == "Reading burst data..."
         # A logged status message reaches the shell bar.
         bva._status("Done – 7 bursts")
@@ -534,7 +536,7 @@ def test_bva_param_changes_coalesce_into_one_recompute(qapp) -> None:
     tool = BVATool(embedded=True)
     tool._burst_df = object()  # non-None so _flush_recompute takes the compute path
     calls: list[int] = []
-    tool._compute_and_plot = lambda *a, **k: calls.append(1)
+    tool._start_analysis = lambda *a, **k: calls.append(1)
     tool._auto_update_cb.setChecked(True)
 
     # Batch of programmatic changes inside a suspend guard => one coalesced compute.

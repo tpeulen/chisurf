@@ -2,6 +2,29 @@
 
 ## 2026-07-27
 
+* **The burst pipeline crashed on 2CDE: every status line pumped the event loop
+  (RF-432, RF-433).** The crash report is five repetitions of
+  ``notifyInternal2`` → ``PyQtSlotProxy::qt_metacall`` → Python →
+  ``notifyInternal2``, dying in ``QCoreApplication::postEvent`` — a stack, not a
+  computation. `processEvents` *dispatches queued work*, and the shell's own
+  `status_logged` signal is queued: a status update delivered a log record, whose
+  slot wrote the status bar, which pumped again. Reproduced headlessly — one
+  `logger.info` nests **6** pumps deep without a guard. The same pump also
+  delivered *clicks*, so switching panel mid-analysis could destroy the widgets
+  the run was still writing to, which is how a dangling receiver reaches
+  `postEvent`. Replaced every bare `processEvents` in the status/progress path
+  with one process-wide guarded pump, `chisurf/gui/event_pump.py` — process-wide
+  because the hazard is the shared C stack and the pumps sat in four objects
+  (navigation shell, `ChiSurfProgress`, BVA, H2MM). Cancel-capable loops keep
+  input; passive repaints exclude it. Verified by driving the burst shell to the
+  2CDE step on a real 2495-burst folder: 2343 valid bursts, pump depth 1.
+  Inspecting that render caught a second defect — the **selected** workflow step
+  was drawn white-on-white (only its emoji visible) because the nav list styles
+  `QListWidget::item` without a `:selected` rule, which switches Qt to
+  style-sheet item painting and drops the highlight. Both fixed with tests, plus
+  two stale burst-workflow tests brought onto the current `ChiSurfProgress` API.
+
+
 * **Chimera is the authority for voxel maps, and the opening contour changed
   because of it.** Recorded as a carve-out in the target spec: everywhere else
   PyMOL is right by definition about *behaviour*, but for volumetric data PyMOL

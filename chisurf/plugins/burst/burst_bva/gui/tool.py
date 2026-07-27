@@ -44,6 +44,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups impo
 from chisurf.plugins.burst.burst_bva.core import computation as core
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.event_pump import pump_ui
 from chisurf.gui.widgets.messages import MessagesMixin, Msg
 
 
@@ -734,7 +735,10 @@ class BVATool(MessagesMixin, QMainWindow):
         self._status_label.setText(msg)
         # Report via normal logging; the shell's status bar shows it when embedded.
         logging.getLogger(__name__).info(msg)
-        QCoreApplication.processEvents()
+        # Repaint through the shared guarded pump: a bare processEvents here
+        # delivers the queued log signal back into another status update and
+        # nests the two (see chisurf.gui.event_pump).
+        pump_ui(allow_input=False)
 
     def _show_help(self):
         """Show the help dialog."""

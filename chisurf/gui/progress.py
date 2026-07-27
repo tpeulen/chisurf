@@ -494,17 +494,19 @@ class ChiSurfProgress:
 
     # ── ergonomics ──────────────────────────────────────────────────────────
     def _process_events(self) -> None:
-        """Let the display repaint during a busy loop, if there is one."""
+        """Let the display repaint during a busy loop, if there is one.
+
+        Never re-enters itself: a pump delivers queued work — a worker thread's
+        log record, another tool's progress update — which can call straight
+        back in here. Each nested pump adds a Python-slot frame to the C stack,
+        and a deep enough chain crashed inside ``QCoreApplication::postEvent``.
+        Input stays enabled so the Cancel button remains clickable.
+        """
         if isinstance(self.backend, _LoggingBackend):
             return
-        try:
-            from qtpy.QtWidgets import QApplication
+        from chisurf.gui.event_pump import pump_ui
 
-            app = QApplication.instance()
-            if app is not None:
-                app.processEvents()
-        except Exception:
-            pass
+        pump_ui()
 
     def iterate(self, iterable, text=None):
         """Yield from *iterable*, advancing the bar and stopping on Cancel.
