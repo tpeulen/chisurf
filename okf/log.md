@@ -2,6 +2,15 @@
 
 ## 2026-07-27
 
+* **Burst-wise FCS: the fine lag axis is scaled by the micro-time resolution
+  (RF-503).** `correlate_single_burst` built the "Fine grid" axis by *dividing*
+  the macro-time axis by the micro-time resolution, so every lag and every
+  fitted τ_D came back ~3×10¹⁹ too large (3.3 ps … 0.54 µs read as 4×10⁹ …
+  7×10¹⁴ ms). It now uses the sibling correlators' formula — one fine tick is
+  one micro-time unit — and a fine request whose micro-times cannot be read
+  raises instead of silently returning the coarse curve. Pinned by
+  `chisurf/plugins/burst/burst_fcs_correlator/test/test_fine_grid.py`.
+
 * **A deprecated tool now says so, and a tool declares its maturity once
   (INC-07).** `deprecated` / `deprecation_message` had been parsed, validated and
   round-tripped by the manifest layer while **no host rendered them** — the

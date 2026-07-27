@@ -265,15 +265,23 @@ def correlate_single_burst(
     correlator = tttrlib.Correlator(**settings)
     correlator.set_macrotimes(t, t)
     correlator.set_weights(w1, w2)
-    tau = correlator.x_axis * dT_ms
+    dt_ms = dT_ms
     if make_fine:
+        # A refined time is ``macro_time * n_micro_channels + micro_time``, so one
+        # fine tick is one micro-time unit: the lag axis is scaled by the micro-time
+        # resolution instead of the macro-time one. A fine correlation that cannot
+        # read the micro-times is an error, not a silently coarse curve.
         try:
-            n_mt = tttr.get_number_of_micro_time_channels()
+            n_mt = int(tttr.get_number_of_micro_time_channels())
             mt = tttr.micro_times
-            correlator.set_microtimes(mt, mt, n_mt)
-            tau = tau / (tttr.header.micro_time_resolution / 1000.0)
-        except Exception:
-            pass
+            dt_ms = tttr.header.micro_time_resolution * 1000.0
+        except Exception as e:
+            raise ValueError(
+                "fine correlation requested but the file exposes no micro-time "
+                f"information: {e}"
+            ) from e
+        correlator.set_microtimes(mt, mt, n_mt)
+    tau = correlator.x_axis * dt_ms
     g = correlator.correlation
     return np.asarray(tau, dtype=float), np.asarray(g, dtype=float)
 

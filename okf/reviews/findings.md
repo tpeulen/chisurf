@@ -6040,11 +6040,29 @@ resolution 31.25 ns, micro-time resolution 1 ps, 31250 micro-time channels).
 Findings RF-503..RF-508.
 
 ### RF-503
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (with "Fine grid" on, every lag time and every fitted diffusion time is wrong by ~3×10¹⁹ — the axis reads in units of billions of years)
 - **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:268-276` (`correlate_single_burst`, the `make_fine` branch) against the two sibling correlators that get it right, `chisurf/plugins/fcs/fcs_correlator/correlator_panel.py:373-383` and `chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.py:384-394`, with the user-facing toggle in `chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json:14` ("Fine grid")
 - **Finding:** the fine axis is built by taking the *macro*-time axis and **dividing** by the micro-time resolution: `tau = x_axis * macro_res_s * 1000` then `tau = tau / (micro_res_s / 1000.0)`, i.e. `x_axis * macro_res * 1e6 / micro_res` ms. Both siblings compute the same quantity as `dt = micro_time_resolution * b * 1000.0; x = x_axis * dt` — multiply, not divide — which is what `make_fine` means (`chisurf/core/fluorescence/fcs/correlate.py:234`: `refined_time = t * n_tac_channels + tac`, so one fine tick *is* one micro-time unit). Driven through `correlate_burst_file` with `make_fine=True` on the file above, the lag axis runs **3.1×10¹⁰ ms to 9.8×10¹⁶ ms** (≈ 3 billion years) where the correct axis is 1 ps … 98 µs, and the reported `td_mean` is **2.5×10¹⁵ ms**; the error factor is `macro_res * 1e6 / micro_res² = 3.1×10¹⁹`. The ordering is *not* the problem — `correlator.x_axis` is bit-identical before and after `set_microtimes` (verified), so only the conversion factor is wrong. Secondary defect in the same branch: it is wrapped in `try: … except Exception: pass`, so if `get_number_of_micro_time_channels`/`set_microtimes` raise, the coarse axis is returned as though the user's fine request had been honoured.
-- **Fix note:**
+- **Fix note:** `correlate_single_burst` now picks the lag-time scale *before*
+  reading `correlator.x_axis`: the fine branch sets `dt_ms =
+  micro_time_resolution * 1000.0` (the sibling correlators' formula, one fine
+  tick = one micro-time unit) instead of dividing the macro axis by it, and the
+  axis is scaled once at the end. Measured on `test/data/tttr/BH/132/BH_SPC132.spc`
+  (macro 13.5 ns, 4096 micro channels): the fine axis was `4.1×10⁹ … 6.7×10¹⁴ ms`
+  and is now `3.3×10⁻⁹ … 5.4×10⁻⁴ ms` (3.3 ps … 0.54 µs), i.e. exactly the coarse
+  axis divided by the micro-time channel count. The secondary defect is gone too —
+  the `except Exception: pass` was replaced by a `ValueError` naming the missing
+  micro-time information, so a fine request can no longer be answered with a
+  coarse curve. Pinned by three tests in
+  `chisurf/plugins/burst/burst_fcs_correlator/test/test_fine_grid.py`: the first
+  fine lag equals the micro-time resolution, the fine grid is finer than the
+  coarse one by exactly `n_micro_time_channels`, and a stream whose micro-time
+  channel count cannot be read raises instead of silently returning the coarse
+  axis. `chisurf/plugins/burst` green (354 passed, 20 skipped, 1 xfailed); `ruff
+  check` on `algorithms.py` reports findings identical to `HEAD` (all
+  pre-existing), the new test file is clean under `ruff check` and
+  `ruff format --check`.
 
 ### RF-504
 - **Status:** OPEN
