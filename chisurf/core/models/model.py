@@ -428,8 +428,13 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
 
     @x.setter
     def x(self, v: np.ndarray):
-        """Set the abscissa array of the model curve."""
-        self.__dict__['d'][0] = v
+        """Set the abscissa array of the model curve.
+
+        The storage is write-locked (see :class:`chisurf.core.curve.NCurve`), so
+        the axis write happens inside the curve's own unlock context.
+        """
+        with self.unlocked('d'):
+            self.__dict__['d'][0] = v
 
     @property
     def y(self) -> np.array:
@@ -438,8 +443,12 @@ class ModelCurve(Model, chisurf.core.curve.Curve):
 
     @y.setter
     def y(self, v: np.ndarray):
-        """Set the ordinate array of the model curve."""
-        self.__dict__['d'][1] = v
+        """Set the ordinate array of the model curve.
+
+        See :meth:`x` — the write goes through the curve's unlock context.
+        """
+        with self.unlocked('d'):
+            self.__dict__['d'][1] = v
 
     def __init__(self, fit: chisurf.core.fitting.fit.Fit, *args, **kwargs):
         """Create a new curve-based model attached to ``fit``.

@@ -2,6 +2,48 @@
 
 ## 2026-07-27
 
+* **A curve's sample arrays are now write-locked** — the first harvest from the
+  [mining note](/references/orange3-mining.md), and the invariant a dataflow
+  graph needs before [PRD-22](/prds/prd-22.md)/[PRD-29](/prds/prd-29.md) can be
+  trusted. A curve is held by a fit, a plot and any number of plugins at the same
+  time, so one of them writing into it in place changed everyone else's result
+  with **no error and no trace**. `NCurve` now flags every per-sample array
+  non-writeable — `d`, plus `ex`/`ey`/`mask` on `DataCurve` — and every view
+  taken from it, so `curve.y[0] = 1` raises instead of silently landing.
+  Where the lock is applied matters more than the flag: it happens in
+  `__setattr__` against a declared `array_attributes` tuple, on the way *in*, so
+  a future assignment site cannot forget to lock. `__setstate__` and
+  `__deepcopy__` re-lock, since neither pickle nor NumPy's own copy preserves the
+  flag — `Base.__deepcopy__` rebuilds `__dict__` directly and was the one path
+  that produced an unlocked curve.
+  In-place editing is scoped rather than forbidden: `with curve.unlocked('ey')`.
+  It takes names (`x`/`y` alias the storage `d` that holds them), nests, re-locks
+  after an exception, raises `KeyError` on a typo instead of silently unlocking
+  nothing, and **refuses** to unlock an array that is a view into another array,
+  where the write would reach data the curve does not own. Replacing an array
+  through its setter stays allowed throughout — that rebinds the curve's own
+  state, not a buffer someone else is holding.
+  The blast radius was three call sites, which is the useful part of the result:
+  `Curve.normalize` did `self.y /= factor`, and augmented assignment divides the
+  view *before* the setter ever runs (now `self.y = self.y / factor`); the
+  generated-IRF path in `nusiance.py` masked in place; and `ModelCurve.x`/`.y`
+  write straight into `__dict__['d']` rather than through `Curve._set_axis`, so
+  they take `unlocked('d')` — that is the fitting hot path and the only place
+  where the lock costs anything measurable (a flag flip per model update).
+  Two tests that deliberately mutate — the copy-avoidance test and the IRF-cache
+  invalidation test, which needs an in-place write to be the thing it tests — now
+  use the escape hatch, which is exactly what it is for.
+  Covered by `test/core/test_curve_locking.py` (24 tests: locked reads/writes per
+  array, augmented assignment, the sanctioned setter paths incl. resize,
+  `set_data`/`set_weights`/`normalize`/arithmetic, named + aliased + nested +
+  exception-safe unlock, the view refusal, and pickle/deepcopy/`from_dict` round
+  trips). Suites: `test/core` + `test/models` 1181 passed / 1 failed and
+  `test/fitting` + decay 786 passed / 9 failed — every failure also fails without
+  this change and belongs to other instances' in-flight edits in
+  `core/fitting/parameter.py` and the parse model (`FitGroup.save` names its
+  per-fit files from the data name, a `LifetimeModel` with no `data`, a
+  parameter-link round trip); none mention `read-only`.
+
 * **GUI-tester: the Trace Browser, and it lists nothing.** Drove the file-triage
   workflow that comes before every other one — walk a folder of raw TTTR
   measurements, preview each intensity trace, star-rate and annotate the keepers,

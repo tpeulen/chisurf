@@ -34,7 +34,7 @@ independently in ChiSurf's own code with attribution, never verbatim GPL copies.
 
 | Orange3 path | What it is | ChiSurf equivalent | Verdict | Value |
 |---|---|---|---|---|
-| `Orange/data/table.py:489,654-700` | Write-locked arrays; explicit `unlocked()` context to mutate | none — arrays are freely mutable and shared | **CLEAR-GAP** — the safety invariant a dataflow graph needs | **5** |
+| `Orange/data/table.py:489,654-700` | Write-locked arrays; explicit `unlocked()` context to mutate | ✅ **adopted** — `NCurve`/`DataCurve` lock their sample arrays | **DONE** — see [data model](/subsystems/data-model.md) | **5** |
 | `Orange/widgets/utils/concurrent.py:387,453,558` | `TaskState` / `ConcurrentMixin` / `ConcurrentWidgetMixin` — cancel, partial results, auto-wired progress | `ChiSurfProgress` + three ad-hoc threading sites | **CLEAR-GAP** — one background-task contract | **5** |
 | `Orange/widgets/tests/base.py:46,248,608,686` | Widget-contract test mixins + pathological-dataset battery + `ParameterMapping` | static manifest contract tests only | **CLEAR-GAP** — behavioural contract tests over 104 plugins | **5** |
 | `Orange/widgets/visualize/utils/__init__.py:40` | VizRank — score-ranked candidate views computed in the background | none | **CLEAR-GAP** — new capability for burst/parameter tables | **5** |
@@ -89,16 +89,20 @@ caller-asserts-safety case. The distinction between "I may write to my own
 buffer" and "I am about to write through a view into someone else's" is made
 explicit rather than left to reviewer vigilance.
 
-**ChiSurf today** has no equivalent: `chisurf/core/data.py` never calls
-`setflags`, so every dataset array passed between fits, plugins and node-editor
-nodes is writable by whoever holds a reference. The failure mode is silent —
-downstream results change because an unrelated tool normalized in place.
+**ChiSurf had no equivalent**: `chisurf/core/data.py` never called `setflags`,
+so every dataset array passed between fits, plugins and node-editor nodes was
+writable by whoever held a reference. The failure mode is silent — downstream
+results change because an unrelated tool normalized in place.
 
-**Do:** make `DataCurve`/dataset payloads hand out read-only views by default
-and add a scoped `unlocked()` on the data object, mirroring the view-refusal
-rule. Fold into [PRD-22](/prds/prd-22.md) (pipeline engine) and
-[PRD-29](/prds/prd-29.md) (node-graph canvas) — a visual pipeline without this
-invariant will produce irreproducible results that nobody can trace.
+**✅ Adopted.** `NCurve` declares the per-sample arrays it owns in
+`array_attributes` and locks them in `__setattr__`, so a future assignment
+cannot forget; `DataCurve` extends the tuple with `ex`/`ey`/`mask`;
+`unlocked(*names)` is the scoped escape hatch, nesting, re-locking after an
+exception and refusing a view into another array exactly as the reference does.
+Full description in the [data model](/subsystems/data-model.md) concept. The
+invariant now holds ahead of [PRD-22](/prds/prd-22.md) (pipeline engine) and
+[PRD-29](/prds/prd-29.md) (node-graph canvas) — a visual pipeline without it
+would produce irreproducible results that nobody can trace.
 
 ### 2. One background-task contract with cancel and partial results
 
@@ -350,9 +354,10 @@ superseded by MMFDB.
 
 ## Priority ordering
 
-1. **Write-locked data with an explicit `unlocked()` context** — the correctness
-   precondition for [PRD-22](/prds/prd-22.md)/[PRD-29](/prds/prd-29.md); cheap
-   to add, silently expensive to skip.
+1. ✅ **Write-locked data with an explicit `unlocked()` context** — the
+   correctness precondition for
+   [PRD-22](/prds/prd-22.md)/[PRD-29](/prds/prd-29.md); cheap to add, silently
+   expensive to skip. **Landed 2026-07-27.**
 2. **`ChiSurfTaskMixin`** — one cancellable background-task contract with partial
    results, wired to the existing progress seam ([PRD-23](/prds/prd-23.md)).
 3. **`PluginToolTestMixin` + degenerate-input battery + `WidgetPreview`-style
