@@ -5277,3 +5277,61 @@ Findings RF-432..RF-436.
 - **Location:** `chisurf/core/models/deer/maxent.py:143-175` (the α auto-selection: `alphas = np.logspace(-3, 1.3, n_alpha)` and the discrepancy rule "pick the LARGEST alpha whose misfit is acceptable") reached from `chisurf/core/models/deer/deer.py:612-621` (`DeerMaxEntModel._distribution`)
 - **Finding:** driven through the GUI on `test/data/deer/deer_twostate.DSC` (588 points, reader noise estimate σ = 3.00e-3, which `_noise_level()` does read — t₀ seeding from the same metadata works), with default settings and α = 0 (auto), the MaxEnt model stops at **χ²ᵣ = 20.5230** after 62 s, while the Tikhonov model on the identical trace reaches **6.8387** and a *single Gaussian* reaches **8.9672**. A model-free inversion being beaten by a two-parameter shape is the signature of too much smoothing, and the returned distribution confirms it: `P(r)` is one broad peak at ≈ 37.5 Å sitting on a **uniform 0.007 pedestal across the entire 15 … 65 Å grid** (`4M_distribution.png`) — the flat entropy prior, undamped — where Tikhonov resolves the peak at 36.5 Å plus a shoulder at ≈ 46 Å and a minor peak at ≈ 24 Å (`23_tab1_Distribution.png`). Either the discrepancy target is being computed against the wrong scale or the "largest acceptable α" rule needs the misfit criterion the Tikhonov side gets from GCV/L-curve; whichever it is, a user offered two model-free models has no way to tell that one of them is not converging.
 - **Fix note:**
+
+## Review 2026-07-27 (3) — chiplot's new colour bar, and what binding one costs the image
+
+Slice: `bf5a82788` (*a stale error-bar height crashed the BVA plot on every
+repaint*) — the `ColorBar` handle and `Grid.add_colorbar` it adds
+(`chiplot/canvas.py:824`, `backends/pyqtgraph_backend.py:362-383,1009-1018`,
+`handles.py:264-300`, `backends/base.py:330-349`), plus the RF-131..RF-137 sweep
+that rides along, against `test/gui/test_chiplot.py` and the one consumer,
+`burst_bva`.
+
+The error-bar fix itself is right and the mechanism is exactly as described:
+`ErrorBarItem.setData` merges into `self.opts` and `drawPath` lets a non-`None`
+`height` win over `top`/`bottom`, so passing `None` for the extents not given is
+the only way to switch modes. The sweep holds up too — `_contains` scopes mouse
+events to the panel's own viewbox, `to_color((1.0, 0, 0))` is now red (verified:
+`(255, 0, 0, 255)`), `background=None` really does reach a `NoBrush` widget
+(style 0) while the default stays opaque, and `Plot.remove` drops the handle
+from `_series`.
+
+What does not hold is the *binding* step of the new colour bar. `setImageItem`
+is not a passive attachment: it pushes the bar's own (default, grey) gradient
+onto the image and re-auto-levels it, so `Grid.add_colorbar` silently throws away
+the `colormap=` and `levels=` the caller passed to `Plot.image` a line earlier
+(RF-441). Once bound, the two halves drift apart in the other direction as well:
+`Image.set_image(data, levels=…)` sets the image's levels *after* the bar has
+already read the old ones, so the bar's handles and the image disagree (RF-443),
+and `set_levels` fires the "user dragged" callback on a programmatic set, which
+is precisely what `_Region.set_bounds` and `_Marker.set_value` block signals to
+prevent — and the new test pins the wrong side of it (RF-442). An unknown
+colormap name is swallowed everywhere it appears (RF-444). Findings RF-441..RF-444.
+
+### RF-441
+- **Status:** OPEN
+- **Severity:** S2 (attaching a colour bar discards the colormap and the levels the image was created with, with no diagnostic)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:1009-1018` (`_PgGrid.add_colorbar`: `item.setImageItem(image.native)` **before** `bar.set_colormap(colormap)`), reached from `chisurf/gui/chiplot/canvas.py:824-855` (`Grid.add_colorbar`)
+- **Finding:** `HistogramLUTItem.setImageItem` is not a passive bind — it calls `_setImageLookupTable()` and `imageChanged(autoLevel=True)`, so it overwrites the image's LUT with the bar's own gradient and resets its levels to the data range. Verified headlessly: `plot.image(data, colormap="viridis", levels=(0.2, 0.8))` gives the item a `(512, 4)` LUT and levels `[0.2, 0.8]`; `grid.add_colorbar(img)` — the documented signature, `colormap` defaults to `None` — leaves `img.native.lut is None` (the default grey gradient is "lookup-trivial", so `_setImageLookupTable` sets the image's LUT to `None`) and levels `[0.0, 0.998]`. Passing `colormap=` repairs the colormap but **not** the levels: with `colormap="CET-L4"` the same `(0.2, 0.8)` still comes back `[0.0, 0.998]`. Neither `Grid.add_colorbar`'s docstring ("*its gradient sets the colormap of both bar and image*") nor `handles.ColorBar` says the image's own colormap/levels are dropped, and `Plot.image(..., colormap=…, levels=…)` is the documented way to set them (`chisurf/gui/plots/sampling_diagnostics.py:180` does exactly that). Read the image's current LUT/levels before `setImageItem` and re-apply them when the caller passed no `colormap=`/no override, or document the seizure and make `Grid.add_colorbar` require the colormap. `test_grid_colorbar_binds_image` (`test/gui/test_chiplot.py:717`) builds its image with no colormap and no levels, so it cannot see either loss.
+- **Fix note:**
+
+### RF-442
+- **Status:** OPEN
+- **Severity:** S2 (a programmatic level set re-enters the user-drag callback — the one mutation contract the rest of chiplot's handles keep)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:371-373` (`_ColorBar.set_levels`) against `:394-406` and `:436-448` (`_Region.set_bounds` / `_Marker.set_value`, which both `blockSignals` and document why), and `chisurf/gui/chiplot/handles.py:292-300` (`ColorBar.on_levels_changed`: "*Called with the new (low, high) when the **user drags** the handles*")
+- **Finding:** `HistogramLUTItem.setLevels` moves its `LinearRegionItem`, whose `sigRegionChanged` runs `regionChanging` → `sigLevelsChanged.emit(self)`, so every programmatic `set_levels` calls back into the handler registered for user drags. Verified headlessly side by side: after `bar.on_levels_changed(cb)`, `bar.set_levels(0.1, 0.9)` fires `cb` with `(0.1, 0.9)`, while the same sequence on a `Region` (`on_change` then `set_bounds(0.2, 0.4)`) fires nothing. The other two handles carry an explicit docstring for this ("*the method-based-mutation contract that replaces the old manual blockSignals dance at call sites*"), so a consumer that recomputes and re-sets levels inside its own level-changed slot — the natural shape for an auto-contrast or a linked pair of images — silently recurses where it would not with a region or a marker. `test_grid_colorbar_binds_image` (`test/gui/test_chiplot.py:731-733`) asserts the callback *does* fire on `set_levels`, i.e. the test pins the behaviour that contradicts the protocol docstring; whichever way it is resolved, the two must agree.
+- **Fix note:**
+
+### RF-443
+- **Status:** OPEN
+- **Severity:** S2 (after a refresh the colour bar's handles and the image's mapped range disagree, so the legend lies and the next drag jumps the image)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:347-351` (`_Image.set_image`: `setImage(..., autoLevels=levels is None)` **then** `setLevels(levels)`) against `pg.HistogramLUTItem.imageChanged`, which is driven by `sigImageChanged` and copies the image's levels into the bar's region
+- **Finding:** `ImageItem.setImage` emits `sigImageChanged` from inside itself, so a bound bar reads the levels *before* `_Image.set_image` applies the caller's `levels=`; the explicit levels then never reach the bar. Verified headlessly on a bar bound to an 8×8 ramp over `0 … 10`: `img.set_image(data, levels=(2.0, 4.0))` leaves `img.native.getLevels() == [2, 4]` and `bar.get_levels() == (0.0, 10.0)` — the bar draws its handles at the full range while the image maps a quarter of it, and the user's next touch of the bar snaps the image to `(0, 10)`. The same call without `levels=` is the other half of the problem: it auto-levels, so a level window the user set by dragging the bar (`bar.set_levels(2.0, 4.0)`, verified applied to both) is silently discarded on the next plain `set_image(data)` refresh. Apply the levels before/with the image (`setImage(data, levels=levels)` in one call), or push them to the bound bar afterwards; and decide explicitly whether a data refresh keeps or resets a user's window — `burst_bva` refreshes on every parameter change (`gui/tool.py:490`).
+- **Fix note:**
+
+### RF-444
+- **Status:** OPEN
+- **Severity:** S3 (a misspelled or unavailable colormap name renders greyscale with no error, warning or return value)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:105-124` (`_colormap`: `except Exception: continue` over both sources, then `return None`), its callers `:127-138` (`_lut`, used by `add_image`/`add_overlay`) and `:365-369` (`_ColorBar.set_colormap`, `if cm is not None:`)
+- **Finding:** the resolution path has no failure channel at all. Verified headlessly: `plot.image(data, colormap="no-such-cmap")` and `bar.set_colormap("no-such-cmap")` both return normally and leave the image on the default grey ramp — indistinguishable from `colormap=None`, which `to_colormap`/`ColorBar.set_colormap` document as "*leave unchanged*". `style.to_colormap` (added in the same commit) raises `TypeError` for a wrong *type* but cannot check a name, so the one validation the API does have stops exactly short of the failure users actually hit (a colorcet name without colorcet installed, a matplotlib name typo). A `logger.warning` naming the colormap and the sources tried, at the single seam `_colormap`, is enough; the silent `continue` over `Exception` also hides an import error in the source module as a missing colormap.
+- **Fix note:**
