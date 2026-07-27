@@ -2,6 +2,20 @@
 
 ## 2026-07-27
 
+* **A `.bur`'s last column is data, not the writer's trailing tab (RF-470).**
+  The Paris burst tables end their header line with a tab, which the ndX reader
+  "corrected" by dropping the last column of every main table outright
+  (`_process_burst_analysis_dir`, `df_main.iloc[:, :-1]`). The parser already
+  resolves that tab, so the drop deleted a measured column —
+  `Red Count Rate (KHz)` in the MFD burst tables, `S delayed yellow (kHz)` in a
+  PIE one — and with it every quantity derived from it: `Sr`, `Fr`, the
+  proximity ratio and the FRET efficiency simply never appeared in the axis
+  picker, with no warning. The companion (`bg4`/`br4`/`bv4`/`2c4`) branch already
+  had the right rule and a comment explaining it; the main table now shares it,
+  so only empty/`Unnamed` placeholders are stripped. The repo's MFD folder loads
+  37 columns instead of 36. Pinned by `modules/ndxplorer/test/test_bur_columns.py`
+  (ndxplorer `4913cd6`).
+
 * **The tree's one deprecated plugin now declares it where hosts read (RF-518).**
   `vv_vh_anisotropy` carried `deprecated = True` plus a written-out replacement
   message as module-level variables in a directory with no `manifest.json` — and

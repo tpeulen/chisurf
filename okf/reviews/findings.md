@@ -5633,11 +5633,21 @@ analyses. Use case: [ndx-mfd-burst-gating](/usecases/ndx-mfd-burst-gating.md).
 Findings RF-470..RF-475.
 
 ### RF-470
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the last real column of every `.bur` is discarded, so the whole red / FRET half of the MFD parameter set silently never computes)
 - **Location:** `modules/ndxplorer/ndxplorer/io/reader.py:541-542` (`_process_burst_analysis_dir`: `if drop_last_column and df_main.shape[1] > 1: df_main = df_main.iloc[:, :-1]`), against `:559-563`, where the *companion* branch already uses `_drop_trailing_empty_columns` with a comment stating exactly why a blanket drop-last is wrong
 - **Finding:** the `.bur` header line carries a trailing tab, but the parser already resolves that — measured, `_read_text_table_auto` returns **16 real columns** for `bi4_bur/m000_0.bur` (last = `Red Count Rate (KHz)`, not all-NaN) and **32** for chisurf's own PIE dataset `chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/…/m000.bur` (last = `S delayed yellow (kHz) | 2048-4095`). The unconditional `iloc[:, :-1]` therefore throws away a real measurement column in both. Consequence, measured on the shipped equation set (54 equations, 15 constants from `~/.ndxplorer`): with the drop, `compute_columns` derives **3** columns (`Sg`, `Fg`, `Tg-Tr(ms)`); without it, **15** — `Sr`, `Sg/Sr`, `Proximity ratio` (median 0.067), `Fr`, `Fg/Fr`, `Fd/Fa`, `FRET efficiency` (median 0.429), `R_FRET`, `<tauD(A)>x`, … . `Sr` = `'Red Count Rate (KHz)'` is the head of that chain. In the GUI this shows as an axis combo with 39 entries and **no proximity ratio and no FRET efficiency to plot**, with no warning anywhere. (Corroborating symptom from the same trailing tab: `[read] PyArrow failed for m000_0.br4 (Expected 10 columns, got 9)` → a pandas fallback for every companion file.) Use `_drop_trailing_empty_columns` for the main table too.
-- **Fix note:**
+- **Fix note:** ✅ **FIXED 2026-07-27** (ndxplorer `4913cd6`). The main table now
+  goes through `_drop_trailing_empty_columns` like the companions, so only
+  empty/`Unnamed` placeholders are stripped and the writer's trailing tab costs
+  nothing. Re-measured: the shipped MFD folder loads 37 columns instead of 36,
+  with `Red Count Rate (KHz)` present and non-zero (median 2.64 kHz over 12 237
+  bursts). Pinned by `modules/ndxplorer/test/test_bur_columns.py` — a synthetic
+  `.bur` whose header ends in a tab keeps its last column, and the shipped MFD
+  folder yields a non-zero `Red Count Rate (KHz)`; both fail on the old code.
+  *(Queue note: this id collides with an earlier, unrelated `RF-470` in the
+  burst-H2MM section — the next free id should be taken from the maximum, not
+  from the section.)*
 
 ### RF-471
 - **Status:** OPEN
@@ -5707,11 +5717,21 @@ analyses. Use case: [ndx-mfd-burst-gating](/usecases/ndx-mfd-burst-gating.md).
 Findings RF-470..RF-475.
 
 ### RF-470
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the last real column of every `.bur` is discarded, so the whole red / FRET half of the MFD parameter set silently never computes)
 - **Location:** `modules/ndxplorer/ndxplorer/io/reader.py:541-542` (`_process_burst_analysis_dir`: `if drop_last_column and df_main.shape[1] > 1: df_main = df_main.iloc[:, :-1]`), against `:559-563`, where the *companion* branch already uses `_drop_trailing_empty_columns` with a comment stating exactly why a blanket drop-last is wrong
 - **Finding:** the `.bur` header line carries a trailing tab, but the parser already resolves that — measured, `_read_text_table_auto` returns **16 real columns** for `bi4_bur/m000_0.bur` (last = `Red Count Rate (KHz)`, not all-NaN) and **32** for chisurf's own PIE dataset `chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/…/m000.bur` (last = `S delayed yellow (kHz) | 2048-4095`). The unconditional `iloc[:, :-1]` therefore throws away a real measurement column in both. Consequence, measured on the shipped equation set (54 equations, 15 constants from `~/.ndxplorer`): with the drop, `compute_columns` derives **3** columns (`Sg`, `Fg`, `Tg-Tr(ms)`); without it, **15** — `Sr`, `Sg/Sr`, `Proximity ratio` (median 0.067), `Fr`, `Fg/Fr`, `Fd/Fa`, `FRET efficiency` (median 0.429), `R_FRET`, `<tauD(A)>x`, … . `Sr` = `'Red Count Rate (KHz)'` is the head of that chain. In the GUI this shows as an axis combo with 39 entries and **no proximity ratio and no FRET efficiency to plot**, with no warning anywhere. (Corroborating symptom from the same trailing tab: `[read] PyArrow failed for m000_0.br4 (Expected 10 columns, got 9)` → a pandas fallback for every companion file.) Use `_drop_trailing_empty_columns` for the main table too.
-- **Fix note:**
+- **Fix note:** ✅ **FIXED 2026-07-27** (ndxplorer `4913cd6`). The main table now
+  goes through `_drop_trailing_empty_columns` like the companions, so only
+  empty/`Unnamed` placeholders are stripped and the writer's trailing tab costs
+  nothing. Re-measured: the shipped MFD folder loads 37 columns instead of 36,
+  with `Red Count Rate (KHz)` present and non-zero (median 2.64 kHz over 12 237
+  bursts). Pinned by `modules/ndxplorer/test/test_bur_columns.py` — a synthetic
+  `.bur` whose header ends in a tab keeps its last column, and the shipped MFD
+  folder yields a non-zero `Red Count Rate (KHz)`; both fail on the old code.
+  *(Queue note: this id collides with an earlier, unrelated `RF-470` in the
+  burst-H2MM section — the next free id should be taken from the maximum, not
+  from the section.)*
 
 ### RF-471
 - **Status:** OPEN
