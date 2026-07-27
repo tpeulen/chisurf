@@ -31,7 +31,7 @@ that used to justify a custom list: `checkable` tick boxes, a `folder_expander`
 hook, a `path_filter` predicate, `replace_on_drop`, and `allow_duplicates` for
 ordered lists that may legitimately repeat an entry, such as a homodimer's per-body
 PDBs),
-`rate_matrix` (a reusable editable N×N transition-rate grid that tracks a
+`state_table` (the **rectangular sibling** of `rate_matrix`: one row per state, one column per property — molecules, diffusion, per-channel brightness, an efficiency. `rate_matrix` says how states *interconvert*; this says what each state *is*, and both track the same kind of count attribute. It is for **plain numeric lists** on a view-model, where `parameter_group_table`/`dynamic_group` cover rows of `FittingParameter`. Columns address `list[row * stride + slot]`, so several properties packed into one flat store each read their own slot; `columns_source` lets the model decide its own columns (which detection channels are enabled), and `trailing_rows_source` appends rows whose cells bind to *scalar* attributes — a background row is not a state but is read in the same columns. It replaced the acquisition simulator's bespoke 90-line species table), `rate_matrix` (a reusable editable N×N transition-rate grid that tracks a
 `size_attr` such as the species/state count, with the diagonal fixed at 0 — for
 kinetic interconversion matrices anywhere in ChiSurf; `"popup": true` puts the
 grid behind a button carrying a live summary — size and how many transitions are
@@ -420,6 +420,26 @@ side by side and controls must stay narrow. Therefore, for **all** UI (AutoForm
 
 This is a standing rule: when adding or editing any control, choose the
 space-efficient form by default and move detail into the tooltip.
+
+### Curve previews in tooltips
+
+Rows that stand for a curve say very little in their one elided line, so every
+curve list shows on hover the **full file name and a thumbnail of the curve
+itself**. The shared implementation is `chisurf/gui/widgets/tooltip_plot.py`: a
+`QPainter` mini-plot renderer (`render_series_thumbnail` /
+`render_curve_thumbnail`) embedded as a base64 `<img>`, the composed tooltip
+(`curve_tooltip_html`, `dataset_tooltip_html`, `fit_tooltip_html`), and
+tooltip items for every item-view flavour (`TooltipItem` for tables,
+`TooltipTreeItem`, `TooltipListItem`, `TooltipStandardItem` for combo models).
+Painting is **lazy** — an item renders only when Qt first asks for its tooltip
+and then caches it, so a list of hundreds of curves costs nothing to populate.
+Series spanning ≥ 2 decades are drawn logarithmically; data and model share one
+y scaling. The spectra tooltips of the light-path simulator are built on the same
+renderer. Whether previews are drawn at all, and how large, is configured under
+`gui.tooltip.curve_preview` (default on) and read via
+`chisurf.gui.tooltip.curve_preview_config`; disabled, the tooltip degrades to the
+plain file name. New list/tree/combo widgets that show curves use these items
+rather than an eager `setToolTip`.
 
 ## UI convention: write labels plain, let them be typeset
 

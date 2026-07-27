@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 
 def _model(**params):
     from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
@@ -93,11 +95,20 @@ def test_kinetics_matrix_tracks_species_widget(qapp, qtbot):
 
 
 def test_species_table_per_species_and_resizes_widget(qapp, qtbot):
+    """The per-species grid is the general ``state_table`` section now.
+
+    Same contract as the bespoke table it replaced: values are per species and
+    not replicated, the grid follows the Species count, and enabling a colour
+    adds its parallel/perpendicular brightness columns — the last one now
+    crossing a seam, since the switches and the grid are separate widgets that
+    agree only through ``species_columns()``.
+    """
     from qtpy import QtWidgets
 
     from chisurf.gui.autoform import AutoForm
+    from chisurf.gui.autoform.sections.state_table_section import StateTableWidget
     from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
-        _SpeciesTable,
+        _ChannelSwitches,
     )
 
     m = _model(N_species=2, green_enabled=True, red_enabled=True,
@@ -105,8 +116,9 @@ def test_species_table_per_species_and_resizes_widget(qapp, qtbot):
                species_q=[100, 90, 80, 70, 0, 0, 50, 40, 30, 20, 0, 0])
     form = AutoForm(m)
     qtbot.addWidget(form)
-    table = form.findChild(_SpeciesTable)
-    assert table is not None
+    table = form.findChild(StateTableWidget)
+    switches = form.findChild(_ChannelSwitches)
+    assert table is not None and switches is not None
     assert table.table.rowCount() == 3  # 2 species + Background row
     # Brightness/M/D are per-species (not replicated).
     out = m.to_parameters()
@@ -118,6 +130,10 @@ def test_species_table_per_species_and_resizes_widget(qapp, qtbot):
     n_field.findChild(QtWidgets.QSpinBox).setValue(3)
     assert table.table.rowCount() == 4  # 3 species + Background
     assert len(m.to_parameters()["M"]) == 3
-    # Enabling a colour adds its ∥/⊥ brightness columns.
-    table._checks["yellow"].setChecked(True)
-    assert table.table.columnCount() == 8  # M, D, G∥, G⊥, R∥, R⊥, Y∥, Y⊥
+    # Enabling a colour adds its parallel/perpendicular brightness columns.
+    switches._checks["yellow"].setChecked(True)
+    assert table.table.columnCount() == 8  # M, D, G, G, R, R, Y, Y
+    # The background row edits scalars, not the per-species store.
+    m.bg_green_p = 0.005
+    table.refresh()
+    assert table._cells[(3, 2)].value() == pytest.approx(0.005)

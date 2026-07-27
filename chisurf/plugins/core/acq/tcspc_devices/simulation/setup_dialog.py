@@ -8,7 +8,7 @@ import os
 from dataclasses import dataclass, field
 from typing import Any
 
-from qtpy import QtCore, QtWidgets
+from qtpy import QtWidgets
 
 from chisurf.core import dataspec as ds
 from chisurf.gui.autoform import AutoForm, register_section
@@ -17,210 +17,53 @@ from chisurf.gui import dialogs
 
 
 @register_section("acq_channels")
-class _ChannelsTable(QtWidgets.QWidget):
-    """Compact per-colour channel table (rows = colours; cols = enable/q/bg).
+class _ChannelSwitches(QtWidgets.QWidget):
+    """Which detection colours exist, as a row of checkboxes.
 
-    Replaces the ~14 flat q/background fields with one small grid: each colour is
-    a row with an enable checkbox and its parallel/perpendicular brightness (q)
-    and background, bound directly to the settings-model attributes.
-    """
-
-    AUTOFORM_REFRESH = True
-    _COLORS = ("green", "red", "yellow")
-    _LABELS = {"green": "Green", "red": "Red", "yellow": "Yellow"}
-
-    def __init__(self, model, target: str = "", **options):
-        super().__init__()
-        self._model = model
-        self._spins: dict[str, QtWidgets.QDoubleSpinBox] = {}
-        self._checks: dict[str, QtWidgets.QCheckBox] = {}
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.table = QtWidgets.QTableWidget(len(self._COLORS), 5)
-        self.table.setHorizontalHeaderLabels(["Ch", "q ∥", "q ⊥", "bg ∥", "bg ⊥"])
-        self.table.horizontalHeaderItem(1).setToolTip("Parallel-channel brightness q (photons/unit).")
-        self.table.horizontalHeaderItem(2).setToolTip("Perpendicular-channel brightness q.")
-        self.table.horizontalHeaderItem(3).setToolTip("Parallel-channel background (photons/macro-time unit).")
-        self.table.horizontalHeaderItem(4).setToolTip("Perpendicular-channel background.")
-        self.table.verticalHeader().setVisible(False)
-        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        hh = self.table.horizontalHeader()
-        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-        for c in range(1, 5):
-            hh.setSectionResizeMode(c, QtWidgets.QHeaderView.Stretch)
-        for r, color in enumerate(self._COLORS):
-            cb = QtWidgets.QCheckBox(self._LABELS[color])
-            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
-            cb.toggled.connect(lambda v, c=color: setattr(self._model, f"{c}_enabled", bool(v)))
-            self._checks[color] = cb
-            self.table.setCellWidget(r, 0, cb)
-            for col, (attr, dec) in enumerate(
-                ((f"q_{color}_p", 4), (f"q_{color}_s", 4),
-                 (f"bg_{color}_p", 6), (f"bg_{color}_s", 6)),
-                start=1,
-            ):
-                sp = QtWidgets.QDoubleSpinBox()
-                sp.setRange(0.0, 1_000_000.0)
-                sp.setDecimals(dec)
-                sp.setValue(float(getattr(self._model, attr, 0.0)))
-                sp.setKeyboardTracking(False)
-                sp.valueChanged.connect(lambda v, a=attr: setattr(self._model, a, float(v)))
-                self._spins[attr] = sp
-                self.table.setCellWidget(r, col, sp)
-        self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        row_h = 34
-        header_h = 28
-        self.table.setFixedHeight(header_h + row_h * len(self._COLORS) + 6)
-        layout.addWidget(self.table)
-
-    def refresh(self) -> None:
-        for color, cb in self._checks.items():
-            cb.blockSignals(True)
-            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
-            cb.blockSignals(False)
-        for attr, sp in self._spins.items():
-            sp.blockSignals(True)
-            sp.setValue(float(getattr(self._model, attr, 0.0)))
-            sp.blockSignals(False)
-
-
-@register_section("acq_species")
-class _SpeciesTable(QtWidgets.QWidget):
-    """Per-species sample table: molecules, diffusion and per-channel brightness.
-
-    Rows are the species (they grow/shrink with the Species count) plus a final
-    Background row; columns are M, D and the ∥/⊥ brightness (q) of each enabled
-    colour. This restores the pre-AutoForm per-species brightness UX, where each
-    species has its own molecules, diffusion and per-detector brightness.
+    Only the switches: the per-species grid they size is the general
+    ``state_table`` section, which reads its columns back from
+    :meth:`SimulationSettingsModel.species_columns`. Toggling a colour here
+    therefore adds or removes two columns there without either side knowing
+    about the other.
     """
 
     AUTOFORM_REFRESH = True
     is_form_field = False
     _COLORS = ("green", "red", "yellow")
-    _ABBR = {"green": "G", "red": "R", "yellow": "Y"}
 
     def __init__(self, model, target: str = "", **options):
+        """Build one checkbox per detection colour."""
         super().__init__()
         self._model = model
-        layout = QtWidgets.QVBoxLayout(self)
+        layout = QtWidgets.QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(3)
-        erow = QtWidgets.QHBoxLayout()
-        erow.setContentsMargins(0, 0, 0, 0)
-        erow.addWidget(QtWidgets.QLabel("Channels:"))
+        layout.addWidget(QtWidgets.QLabel("Channels:"))
         self._checks: dict[str, QtWidgets.QCheckBox] = {}
         for color in self._COLORS:
-            cb = QtWidgets.QCheckBox(color.capitalize())
-            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
-            cb.setToolTip(f"Enable the {color} detection channel (parallel + perpendicular).")
-            cb.toggled.connect(lambda v, c=color: self._on_enable(c, v))
-            self._checks[color] = cb
-            erow.addWidget(cb)
-        erow.addStretch(1)
-        layout.addLayout(erow)
-        self.table = QtWidgets.QTableWidget(0, 0)
-        self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
-        self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
-        layout.addWidget(self.table)
-        self._build()
+            box = QtWidgets.QCheckBox(color.capitalize())
+            box.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
+            box.setToolTip(f"Enable the {color} detection channel (parallel + perpendicular).")
+            box.toggled.connect(lambda v, c=color: self._toggle(c, v))
+            self._checks[color] = box
+            layout.addWidget(box)
+        layout.addStretch(1)
 
-    # -- helpers -------------------------------------------------------
-    def _n(self) -> int:
-        try:
-            return max(1, int(self._model.n_species))
-        except (TypeError, ValueError):
-            return 1
-
-    def _enabled(self) -> list[str]:
-        return [c for c in self._COLORS if getattr(self._model, f"{c}_enabled", False)] or ["green"]
-
-    def _q_cols(self) -> list[tuple]:
-        cols = []
-        for color in self._enabled():
-            cols.append((color, 0, f"{self._ABBR[color]} ∥"))
-            cols.append((color, 1, f"{self._ABBR[color]} ⊥"))
-        return cols
-
-    def _ensure_len(self) -> None:
-        n = self._n()
-        while len(self._model.species_M) < n:
-            self._model.species_M.append(50.0)
-        while len(self._model.species_D) < n:
-            self._model.species_D.append(3.0)
-        while len(self._model.species_q) < n * 6:
-            self._model.species_q.append(0.0)
-
-    @staticmethod
-    def _store_set(store: list, idx: int, value: float) -> None:
-        while len(store) <= idx:
-            store.append(0.0)
-        store[idx] = float(value)
-
-    def _spin(self, value: float, decimals: int, maximum: float) -> QtWidgets.QDoubleSpinBox:
-        sp = QtWidgets.QDoubleSpinBox()
-        sp.setRange(0.0, maximum)
-        sp.setDecimals(decimals)
-        sp.setKeyboardTracking(False)
-        sp.setMaximumWidth(92)
-        sp.setValue(float(value))
-        return sp
-
-    # -- build / react -------------------------------------------------
-    def _build(self) -> None:
-        self._ensure_len()
-        n = self._n()
-        qcols = self._q_cols()
-        self.table.blockSignals(True)
-        self.table.clear()
-        headers = ["M", "D"] + [lbl for (_, _, lbl) in qcols]
-        self.table.setColumnCount(len(headers))
-        self.table.setHorizontalHeaderLabels(headers)
-        self.table.horizontalHeaderItem(0).setToolTip("Molecules (mean number in the box) for this species.")
-        self.table.horizontalHeaderItem(1).setToolTip("Diffusion coefficient (µm²/ms) for this species.")
-        self.table.setRowCount(n + 1)
-        self.table.setVerticalHeaderLabels([str(i + 1) for i in range(n)] + ["BG"])
-        for r in range(n):
-            m = self._spin(self._model.species_M[r], 4, 1e12)
-            m.valueChanged.connect(lambda v, i=r: self._store_set(self._model.species_M, i, v))
-            self.table.setCellWidget(r, 0, m)
-            d = self._spin(self._model.species_D[r], 4, 1e12)
-            d.valueChanged.connect(lambda v, i=r: self._store_set(self._model.species_D, i, v))
-            self.table.setCellWidget(r, 1, d)
-            for col, (color, pol, _) in enumerate(qcols, start=2):
-                slot = r * 6 + self._COLORS.index(color) * 2 + pol
-                q = self._spin(self._model.species_q[slot] if slot < len(self._model.species_q) else 0.0, 4, 1e6)
-                q.valueChanged.connect(lambda v, i=slot: self._store_set(self._model.species_q, i, v))
-                self.table.setCellWidget(r, col, q)
-        # Background row (per-channel; M/D not applicable).
-        bg = n
-        for col in (0, 1):
-            item = QtWidgets.QTableWidgetItem("—")
-            item.setFlags(QtCore.Qt.ItemIsEnabled)
-            self.table.setItem(bg, col, item)
-        for col, (color, pol, _) in enumerate(qcols, start=2):
-            attr = f"bg_{color}_{'p' if pol == 0 else 's'}"
-            spin = self._spin(getattr(self._model, attr, 0.0), 6, 1e6)
-            spin.valueChanged.connect(lambda v, a=attr: setattr(self._model, a, float(v)))
-            self.table.setCellWidget(bg, col, spin)
-        self.table.resizeColumnsToContents()
-        row_h = 30
-        self.table.setMaximumHeight(self.table.horizontalHeader().height() + row_h * (n + 1) + 8)
-        self.table.blockSignals(False)
-
-    def _on_enable(self, color: str, value: bool) -> None:
+    def _toggle(self, color: str, value: bool) -> None:
+        """Enable or disable a colour and let the hosting form re-read."""
         setattr(self._model, f"{color}_enabled", bool(value))
-        self._build()
+        widget = self.parentWidget()
+        while widget is not None:
+            if hasattr(widget, "refresh_plots") and hasattr(widget, "sync_fields"):
+                widget.refresh_plots()
+                return
+            widget = widget.parentWidget()
 
     def refresh(self) -> None:
-        n = self._n()
-        qcols = self._q_cols()
-        if self.table.rowCount() != n + 1 or self.table.columnCount() != 2 + len(qcols):
-            self._build()
-        for color, cb in self._checks.items():
-            cb.blockSignals(True)
-            cb.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
-            cb.blockSignals(False)
+        """Re-read the enabled colours from the model."""
+        for color, box in self._checks.items():
+            box.blockSignals(True)
+            box.setChecked(bool(getattr(self._model, f"{color}_enabled", False)))
+            box.blockSignals(False)
 
 
 @functools.lru_cache(maxsize=1)
@@ -430,6 +273,55 @@ class SimulationSettingsModel:
     #: Per-species brightness q, flattened species×6 (G∥,G⊥,R∥,R⊥,Y∥,Y⊥ per species).
     species_q: list = field(default_factory=lambda: [50.0, 50.0, 0.0, 0.0, 0.0, 0.0])
 
+    #: Detection colours, in the order their brightness slots are stored.
+    _CHANNEL_COLORS = ("green", "red", "yellow")
+    _CHANNEL_ABBR = {"green": "G", "red": "R", "yellow": "Y"}
+
+    def enabled_colors(self) -> list:
+        """Return the enabled detection colours, green as the fallback."""
+        return [c for c in self._CHANNEL_COLORS
+                if getattr(self, f"{c}_enabled", False)] or ["green"]
+
+    def species_columns(self) -> list:
+        """Return the per-species columns for the ``state_table`` section.
+
+        Molecules and diffusion, then the parallel/perpendicular brightness of
+        every enabled colour. ``species_q`` keeps six slots per species
+        (three colours x two polarisations) whatever is enabled, so switching a
+        colour on does not renumber the ones already set — the column simply
+        addresses its slot.
+        """
+        columns = [
+            {"attr": "species_M", "label": "M", "default": 50.0,
+             "description": "Molecules (mean number in the box) for this species."},
+            {"attr": "species_D", "label": "D", "default": 3.0,
+             "description": "Diffusion coefficient (\u00b5m\u00b2/ms) for this species."},
+        ]
+        for color in self.enabled_colors():
+            base = self._CHANNEL_COLORS.index(color) * 2
+            for polarisation, mark in ((0, "\u2225"), (1, "\u22a5")):
+                columns.append({
+                    "attr": "species_q", "stride": 6, "slot": base + polarisation,
+                    "label": f"{self._CHANNEL_ABBR[color]} {mark}",
+                    "maximum": 1e6,
+                    "description": f"{color.capitalize()} {'parallel' if polarisation == 0 else 'perpendicular'} brightness q.",
+                })
+        return columns
+
+    def species_trailing_rows(self) -> list:
+        """Return the background row shown beneath the species.
+
+        Background is not a species — it has no molecules and no diffusion, so
+        those cells are blank — but it is read in the same detection channels,
+        which is why it belongs in the same grid rather than in fields
+        elsewhere.
+        """
+        cells = [None, None]
+        for color in self.enabled_colors():
+            for suffix in ("p", "s"):
+                cells.append({"attr": f"bg_{color}_{suffix}", "decimals": 6, "maximum": 1e6})
+        return [{"label": "BG", "cells": cells}]
+
     def species_changed(self, _value=None) -> None:
         """Re-sync the form so the kinetics matrix tracks the species count."""
         for name in ("_sync_fields", "_refresh_widgets"):
@@ -616,7 +508,13 @@ class SimulationSettingsModel:
                             call="species_changed",
                             description=_help("N_species"),
                         ),
-                        ds.CustomSection(key="acq_species"),
+                        ds.CustomSection(key="acq_channels"),
+                        ds.CustomSection(
+                            key="state_table",
+                            options={"size_attr": "n_species",
+                                     "columns_source": "species_columns",
+                                     "trailing_rows_source": "species_trailing_rows"},
+                        ),
                     ),
                 ),
                 ds.PanelSection(

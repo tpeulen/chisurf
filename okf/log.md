@@ -2,6 +2,39 @@
 
 ## 2026-07-27
 
+* **A general table for state *properties*, next to the one for state
+  *transitions*.** The acquisition simulator's per-species grid was a bespoke
+  90-line widget: rows that grow with the species count, columns that appear when
+  a detection colour is enabled, cells addressing a six-slot-per-species
+  brightness store, and a background row underneath. All of that is general —
+  `rate_matrix` already says how states interconvert, and nothing said what each
+  state *is*. New `state_table` section
+  (`chisurf/gui/autoform/sections/state_table_section.py`): rows from a
+  `size_attr`, columns addressing `list[row * stride + slot]` so several
+  properties packed into one flat store each read their own slot,
+  `columns_source` for columns the model decides (which channels are enabled),
+  and `trailing_rows_source` for rows whose cells bind to *scalar* attributes —
+  a background row is not a state but is read in the same columns. It is for
+  plain numeric lists on a view-model, where `parameter_group_table` /
+  `dynamic_group` already cover rows of `FittingParameter`.
+
+  The acq dialog keeps only the channel checkboxes (`acq_channels`, ~35 lines)
+  and declares the grid; the two now agree solely through
+  `SimulationSettingsModel.species_columns()`. Also removed `_ChannelsTable`, a
+  ~70-line registered section that **nothing rendered** — superseded by the
+  species table and never deleted.
+
+  **Rendering it caught what the tests could not:** the background row was
+  clipped off the bottom, because the height was computed from a *guessed* 30 px
+  row and ignored the horizontal scrollbar that appears once the columns
+  overflow. Losing the last row is the bad case — a trailing row is present in
+  the model and invisible on screen. Height is measured now, and
+  `test/gui/test_state_table.py` (7) asserts the last row is inside the viewport
+  at a width narrow enough to need the scrollbar. See
+  [subsystems/gui-autoform.md](/subsystems/gui-autoform.md).
+
+## 2026-07-27
+
 * **The curve write-lock did not reach the arrays that alias (RF-356, RF-357).**
   An automated review of the write-lock landed the same hour and found the hole:
   `x`/`y` are safe because every path rebuilds the 2×N storage with `np.vstack`,

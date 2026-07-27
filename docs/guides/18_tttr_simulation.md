@@ -37,7 +37,17 @@ FRET-docking / burst-workflow `simulate()` helpers wrap this for common cases,
 returning data registered in MMFDB so recovered states can be compared with the
 truth.
 
-### Setting up state kinetics in the GUI
+### Setting up species and kinetics in the GUI
+
+The **Sample & brightness** panel is one row per species: molecules *M*,
+diffusion coefficient *D*, and the parallel/perpendicular brightness *q* of each
+enabled detection colour. Rows follow the **Species** count and columns follow
+the channel checkboxes, so a species or a colour appears with its cells already
+there. The last row is **BG** — the per-channel background, which is not a
+species (its *M* and *D* read `—`) but is detected in the same channels, so it is
+edited in the same grid.
+
+#### State kinetics
 
 The acquisition simulator's setup dialog has a **Kinetics** panel with two
 buttons — *Radiative* (`k_rad`) and *Non-radiative* (`k_nrad`). Each opens an
