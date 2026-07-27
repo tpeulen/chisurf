@@ -6354,3 +6354,57 @@ Findings RF-524..RF-531.
 - **Location:** `chisurf/plugins/burst/burst_gs/core.py:386-390` (`result.state_path = gs.viterbi(...)`, guarded by `decode_states`) and `core.py:226-228` (the field), against `core.py:290-299` (`to_dict()` — returns `fit`, `info`, `transit_times`, `transit_delta`, `h2mm`, `report`, and **not** `state_path`), `gui/burst_gs.view.json` (no section reads it), `gui/view_model.py:326-354` (`export_csv` writes rates, efficiencies, logL, BIC, counts and the transit scan only) and `cli/main.py` (no decode option at all)
 - **Finding:** `grep -rn "state_path" chisurf/plugins/burst/burst_gs` matches only the docstring, the dataclass field and the assignment — nothing consumes it. Ticking **Decode state path** on the smoke run computes a 40 000-element per-photon path (with its own `decoding states` progress step) that is then unreachable from the GUI, from the CSV export, from `to_dict()` and therefore from the RPC service and the CLI. Either surface it (a per-burst state-path view, as the H2MM tool has, and/or a `state_path` column in the export) or remove the option; the H2MM plugin already shows what the useful form looks like.
 - **Fix note:**
+
+## Review 2026-07-27 (6) — self-starting burst steps and their Stop button
+
+Slice: `f2c43f9d1` ("2CDE and H2MM compute when you open them, and can be
+stopped") — the three burst panels that now start work from `showEvent` and hold
+a `Task` handle to cancel it (`burst_2cde/gui/tool.py`, `burst_bva/gui/tool.py`,
+`burst_h2mm/gui/tool.py`), read against the task layer they build on
+(`chisurf/gui/task.py`, `chisurf/gui/progress.py`) and the cores that receive the
+`progress_window` adapter. The threading shape itself is sound and the
+cancellation adapter is a good seam; everything below is the bookkeeping around
+it. The supersede ordering in RF-532 was reproduced headlessly, the rest are
+read off the source. Findings RF-532..RF-537.
+
+### RF-532
+- **Status:** OPEN
+- **Severity:** S2 (after one supersede the Stop button is dead and Run is live *while the analysis is still running*, in all three panels)
+- **Location:** `chisurf/plugins/burst/burst_2cde/gui/tool.py:217-221` (`_analysis_over`: `self._task = None` unconditionally), `chisurf/plugins/burst/burst_bva/gui/tool.py:669-672` (`_analysis_over`) and `chisurf/plugins/burst/burst_h2mm/gui/tool.py:778-782` (`_on_fit_done`), against the single-flight contract in `chisurf/gui/task.py:507-514` (`previous.cancel()` + `_disconnect_updates`) and `:416-424` (`_disconnect_updates`: *"its completion still has to run"*); BVA additionally never disables `btn_run` (`grep -n "btn_run" burst_bva/gui/tool.py` → only `269`, `290`, `430`) and reaches `_start_analysis` from `_on_param_changed` (`:763` → `:211`) on every spin-box/combo edit
+- **Finding:** starting a second run for the same `owner` cancels the first but leaves its `completed` connection alive by design, so the superseded task's `on_done` fires *later* — after the replacement is already running — and each panel's handler then sets `self._task = None`, `Run.setEnabled(True)`, `Stop.setEnabled(False)`. Reproduced headlessly with two `run_in_background` calls on one owner: when the superseded worker returns, the log reads `('on_done', 'A', 'live_task_is', 'B')` with `t2.is_running == True`, and the handle the tool would call `stop()` on is `None`. From then on `stop()` returns immediately, `_is_running()` reports `False` (so the next `showEvent` starts yet another run, cancelling the live one), and Run is clickable during a running analysis. The progress layer already solved exactly this for its own display — `chisurf/gui/widgets/progress.py:606-613`, *"A superseded task's `close` must not blank the bar of the one that replaced it"* — and the three tools do the thing that comment forbids. Guard each handler on identity (`if self._task is not task: return`, threading the task in through a closure or comparing against the handle) and disable BVA's Run for the duration like the other two do.
+- **Fix note:**
+
+### RF-533
+- **Status:** OPEN
+- **Severity:** S1 (unhandled `KeyError` on the GUI thread, from a combo box that stays editable during the run)
+- **Location:** `chisurf/plugins/burst/burst_2cde/gui/tool.py:277-284` (`_analysis_done`: `variant = self._variant.currentText()` → `column = core.COLUMN_ALEX_2CDE if variant == "alex" else core.COLUMN_FRET_2CDE` → `self._draw(df, column)`) against `:205-215` (the settings snapshot passed to the worker) and `chisurf/plugins/burst/burst_2cde/core/computation.py:170,216` (`column = …` then `df[column] = values` — the frame gets **only** the computed variant's column)
+- **Finding:** the run is parameterised by a snapshot (`settings()` taken in `run()`), but the completion callback re-reads the *live* `Variant` combo to decide which column to plot. The combo is never disabled during a run and changing it starts no new run, so switching `fret` → `alex` while the folder is being correlated makes `_analysis_done` ask a frame that has only `FRET-2CDE` for `ALEX-2CDE`; `_draw`'s `df[column].to_numpy(...)` raises `KeyError` inside an `on_result` callback, which has no handler. The same read is also wrong in the benign direction — with `alex` → `fret` it silently labels the plot with the other variant. Derive the column from `self._running_fingerprint`'s settings (or return `(df, column)` from the worker), and disable the settings form while a run is in flight.
+- **Fix note:**
+
+### RF-534
+- **Status:** OPEN
+- **Severity:** S2 (a `QLineEdit` is read from the worker thread, in a file whose worker docstring says "No GUI here")
+- **Location:** `chisurf/plugins/burst/burst_2cde/gui/tool.py:270` (`inputs=self.input_files()` inside `_analysis_worker`) → `:132-142` (`input_files`: `folder = self._folder_edit.text().strip()`), against the worker's own docstring at `:242` (*"Worker: read, compute, write. No GUI here."*) and the fact that every other input is passed in as an argument (`args=(folder, self.settings(), fingerprint)` at `:210`)
+- **Finding:** the whole point of snapshotting `folder`/`settings()` on the GUI thread is not to touch widgets from the worker, and the stamp write then does exactly that: `input_files()` calls `QLineEdit.text()` off the GUI thread. Qt widget access outside the GUI thread is undefined behaviour, and this is not a benign read — the same `QLineEdit` is writable at that moment (`set_folder`, `_browse`). The sibling BVA worker gets this right by accident: its `input_files()` reads the plain attribute `self.analysis_folder` (`burst_bva/gui/tool.py:598`). Compute the input list on the GUI thread in `run()` and pass it in with the other snapshot, or derive it from the `folder` argument the worker already has.
+- **Fix note:**
+
+### RF-535
+- **Status:** OPEN
+- **Severity:** S1 (a truncated `bv4/` output set is recorded on disk as the completed result of the run that was interrupted)
+- **Location:** `chisurf/plugins/burst/burst_bva/gui/tool.py:717-734` (`_analysis_worker`: `try: core.write_bv4_analysis(…, progress_window=task.progress_window(…)) except Exception as e: logging.error(…)`, followed **outside** the `try` by `analysis_cache.write_stamp(bv4_folder / "bva.stamp.json", fingerprint, …, outputs=sorted(bv4_folder.glob("*.bv4")))`), with the raising hook at `chisurf/plugins/burst/burst_bva/core/computation.py:266-267` (`progress_window.set_value(i)` after **each** file) → `chisurf/gui/task.py:238-241` (`_ProgressWindowAdapter.set_value` → `raise_if_cancelled`); `concurrent.futures.CancelledError` is a subclass of `Exception` (verified: `(CancelledError, Error, Exception, BaseException, object)`)
+- **Finding:** pressing **Stop** while the BV4 files are being written raises `CancelledError` between two files; `except Exception` swallows it as *"BV4 write failed"* and execution falls through to `write_stamp`, which records the fingerprint of the *full* request together with whatever `*.bv4` files happened to exist at that moment. `analysis_cache.is_current` then answers `True` for a half-written folder, because both halves of its test pass — the fingerprint matches and the named outputs are present. The same path stamps any genuine write failure (permissions, disk full, one bad group) as a complete run. `stop()` at `:673-687` clears only the in-memory `ResultCache`, which does not touch the stamp. Move the stamp inside the `try` (as `burst_2cde/gui/tool.py:265-274` already does), and let cancellation out rather than logging it as a write error.
+- **Fix note:**
+
+### RF-536
+- **Status:** OPEN
+- **Severity:** S3 (on a read-only or non-writable burst folder the panel silently recomputes the whole folder on **every** visit, now with no click to blame it on)
+- **Location:** `chisurf/plugins/burst/burst_2cde/gui/tool.py:196-204` (the skip requires `analysis_cache.is_current(stamp, fingerprint)`) against `:262-274` (the stamp write sits inside the best-effort `try` — *"best-effort; plotting still works if the folder is read-only"*) and `:160-178` (`showEvent` → `QTimer.singleShot(0, self._auto_run)` → `run()`), with `chisurf/core/analysis_cache.py:211-221` (`is_current` returns `False` when there is no stamp)
+- **Finding:** when `write_2cde_analysis`/`write_stamp` fails the run still succeeds — the frame is drawn and `_result_cache.remember(...)` is called — but no stamp lands, so the reuse test can never pass and the very next `showEvent` starts the full read-and-correlate again. Before this commit that cost the user a Run click they chose to make; now every arrival on step 4 silently spends minutes recomputing an answer already on screen, and the only trace is one `logging.warning("Could not write 2c4 companion: …")`. Either treat "result in hand, stamp unwritable" as reusable (the companion is an export, not the answer) or tell the user on the status bar that the folder is not writable so the result cannot be reused.
+- **Fix note:**
+
+### RF-537
+- **Status:** OPEN
+- **Severity:** S3 (Stop is caught by a fallback handler: the C++ backend is silently abandoned and the state-count fit restarts on the numba engine instead of stopping)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/engines.py:157-176` (`try: return _tttrlib_engine.fit_states(…, on_iter=on_iter) except Exception: pass` then `return fit_states(…, on_iter=on_iter)`) reached from `chisurf/plugins/burst/burst_h2mm/gui/tool.py:846-857` (`_progress` → `task.raise_if_cancelled()`) via `chisurf/plugins/burst/burst_h2mm/core/analysis.py:563-575` (`on_iter` → `progress(...)`), against the claim in `gui/tool.py:784-791` (`stop`: *"The worker checks for this between state counts and between iterations … so a stop lands within one iteration"*)
+- **Finding:** the stop is delivered by *raising* `CancelledError` out of the per-EM-map callback, and that exception is an ordinary `Exception`, so the backend-fallback `except Exception: pass` catches it. The user's Stop therefore does not stop the fit at that point: it silently downgrades the engine and re-runs the same state count from scratch on the numba path, which only stops at *its* first `on_iter` (`core/h2mm.py:748-749`, after a full EM map). The swallow is also indistinguishable from a real backend failure, so a stopped fit and a broken tttrlib build produce the same silent behaviour. Let cancellation through — catch a narrower exception, or re-raise when `isinstance(exc, concurrent.futures.CancelledError)` — and log the fallback when it is a genuine backend problem.
+- **Fix note:**
