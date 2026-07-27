@@ -144,6 +144,31 @@ rest. `auto_answer` scripts answers in tests. A guard test bans a raw
 `QMessageBox` anywhere outside that module; the former per-file allow-list is
 empty and the parallel `MyMessageBox` class is gone.
 
+`chisurf/gui/widgets/messages.py` — `Msg` / `MessagesMixin`, the *other* half of
+the dialog seam. A dialog is for a question or an event; most of what a tool has
+to say is a **condition** it is in — "load a file first", "compute the histogram
+first", "the last fit failed" — which arises, persists while its cause persists,
+and is retracted when it is fixed. A modal box says it once and leaves nothing
+behind, so the tool looks ready while still being unusable, and a test can only
+observe it by intercepting a dialog. A widget therefore *declares* its conditions
+as `Msg` attributes on nested `Error`/`Warning`/`Information` classes (which
+subclasses derive from, so declarations accumulate like class attributes) and
+raises them by name: `self.Error.no_file()`, `self.Error.no_file.clear()`,
+`self.Error.clear()`. Three properties follow from declaring rather than firing:
+the set of conditions is **enumerable** (reviewable and translatable — the
+extractor picks up `Msg("…")` alongside `i18n.tr("…")`, and the text is
+translated at render time so a language change re-renders what is on screen), a
+message can be **retracted**, and a test asserts on `is_shown`/`text` instead of
+on a patched dialog. Rendering is one line in the host's status bar, most severe
+first, the rest counted and in the tooltip, elided rather than widening the
+window, and added as a *permanent* widget so a standing condition is not hidden
+by the transient `showMessage` text tools already use; the bar hides itself when
+nothing is active. Any `QMainWindow` gets it lazily on its first message, so
+`ChisurfDockTool` subclasses opt in by declaring a message; a plain `QWidget`
+calls `install_message_bar(layout)`. First consumer: the PCH tool, whose six
+modal boxes became six declared conditions. Pattern taken from an established
+visual dataflow toolkit — see [Orange3 mining](/references/orange3-mining.md).
+
 `chisurf/gui/progress.py` — `ChiSurfProgress`. The constructor takes the widget
 the work was started from and resolves the display nearest-first: an inline
 `progress` section in the same panel → the navigation shell's shared status bar

@@ -100,6 +100,62 @@ without showing anything. Alternatively patch the method on
 `ChiSurfMessageBox`; the module-level functions delegate at call time, so
 patching the class also intercepts the `dialogs.warning(...)` spelling.
 
+## Conditions, not events — `chisurf.gui.widgets.messages`
+
+A dialog is the wrong shape for most of what a tool has to say. "Load a file
+first", "this dataset has no error column", "the fit did not converge" are
+*states the tool is in*: they arise, they persist while their cause persists,
+and they go away when it is fixed. A modal box stops the user's work, says the
+thing once, and leaves nothing behind — so the tool looks ready while still
+being unusable.
+
+Declare those conditions on the widget class and raise them by name:
+
+```python
+from chisurf.gui.widgets.messages import MessagesMixin, Msg
+
+class MyTool(ChisurfDockTool):              # the base already mixes it in
+
+    class Error(ChisurfDockTool.Error):
+        no_file = Msg("Load a TTTR file first.")
+        unreadable = Msg("Cannot read {}: {}")
+
+    class Warning(ChisurfDockTool.Warning):
+        no_irf = Msg("No IRF selected — the decay is fitted unconvolved.")
+
+    def compute(self):
+        if self.path is None:
+            self.Error.no_file()             # raise it
+            return
+        self.Error.no_file.clear()           # retract it
+        ...
+```
+
+The messages appear in the tool's own status bar — most severe first, the rest
+counted and listed in the tooltip — and the bar hides itself when nothing is
+active, so a tool with no complaints looks exactly as it did before. Any
+`QMainWindow` gets the bar automatically the first time it raises a message; a
+plain `QWidget` places it with `install_message_bar(layout)`.
+
+Three things follow from *declaring* a condition, and none of them are available
+to a dialog:
+
+* the set of things a tool can complain about is enumerable — reviewable, and
+  translatable (the extractor picks up `Msg("…")` the same way it picks up
+  `i18n.tr("…")`, and the text is translated when it is rendered, so a language
+  change re-renders what is already on screen);
+* a message can be **retracted** when its cause is fixed;
+* a test just looks:
+
+```python
+tool._on_compute()
+assert tool.Error.no_file.is_shown
+assert tool.Error.no_file.text == "Load a TTTR file first."
+```
+
+Use `dialogs` for the other kind of message: a **question**, or an event the
+user must acknowledge before anything else happens.
+
 ## Progress — `chisurf.gui.progress`
 
 ```python

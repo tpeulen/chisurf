@@ -2,6 +2,54 @@
 
 ## 2026-07-27
 
+* **What a tool has to say is usually a *condition*, and a modal box is the
+  wrong shape for one.** Second harvest from the
+  [mining note](/references/orange3-mining.md). "Load a TTTR file first",
+  "compute the histogram first", "the last fit failed" are states the tool is in:
+  they arise, they persist while their cause persists, and they end when it is
+  fixed. A dialog stops the user's work, says the thing once and leaves nothing
+  behind — so the tool looks ready while still being unusable — and the only way
+  to test one is to intercept it. `chisurf/gui/widgets/messages.py` adds the
+  other half of the dialog seam: a widget **declares** its conditions as `Msg`
+  attributes on nested `Error`/`Warning`/`Information` classes (a subclass
+  derives from its base's group, so declarations accumulate like ordinary class
+  attributes) and raises them by name — `self.Error.no_file()`,
+  `self.Error.no_file.clear()`, `self.Error.clear()`, `self.clear_messages()`.
+  The rendering is the small part; three properties of *declaring* rather than
+  firing are the point. The set of conditions is **enumerable**, so it can be
+  reviewed and translated — the extractor now picks up `Msg("…")` alongside
+  `i18n.tr("…")`, and the text is translated at *render* time, so a language
+  change re-renders what is already on screen (a catalogue with the wrong
+  placeholders falls back to the source string rather than raising inside a
+  repaint). A message can be **retracted** when its cause is met. And a test just
+  looks: `assert tool.Error.no_file.is_shown`.
+  Two rendering details came out of looking at the screenshot rather than
+  reasoning about it. The bar goes into the status bar as a **permanent** widget
+  — added with a stretch it squeezed the transient `showMessage` area
+  ("Loaded: …, 4.2M photons") down to nothing, so the tool lost its normal status
+  line the moment it had a complaint; permanent-with-no-stretch leaves both, and
+  long text elides instead of widening the window. And the first attempt rendered
+  nothing at all: the lazy install lived on `ChisurfDockTool`, while the tool I
+  migrated is a plain `QMainWindow`. It now lives in `MessagesMixin` and triggers
+  for any `QMainWindow`, so a tool opts in by declaring a message rather than by
+  remembering to call `install_message_bar`.
+  First consumer: the PCH tool, whose six modal boxes became six declared
+  conditions (`no_file`, `no_histogram`, and one per failing step), each cleared
+  on the success path. Also fixed there, found while migrating: `QDialogButtonBox`
+  was used but never imported, so the tool's **Help** button raised `NameError` —
+  swallowed by nothing, it simply crashed the handler.
+  Covered by `test/gui/test_widget_messages.py` (19 tests: raise/retract/re-raise,
+  positional and keyword formatting, group and widget-wide clear, severity
+  ordering, per-instance binding, inheritance, enumerability, bar visibility and
+  the "+N" summary, translation at render time and a broken catalogue, and the
+  lazy status-bar install) and 4 in the PCH plugin's own suite. Rendered
+  headlessly in all three states (condition shown, different condition, cleared)
+  and inspected. 19 + 7 + 26 (dock-tool + dialogs/progress) passed.
+  Noted while there, not fixed: the PCH settings panel is clipped at the right
+  edge — the form is wider than the splitter pane and its scroll area has the
+  horizontal bar switched off. Recorded in
+  [known issues](/references/known-issues.md).
+
 * **A curve's sample arrays are now write-locked** — the first harvest from the
   [mining note](/references/orange3-mining.md), and the invariant a dataflow
   graph needs before [PRD-22](/prds/prd-22.md)/[PRD-29](/prds/prd-29.md) can be

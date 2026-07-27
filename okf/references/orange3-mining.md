@@ -38,7 +38,7 @@ independently in ChiSurf's own code with attribution, never verbatim GPL copies.
 | `Orange/widgets/utils/concurrent.py:387,453,558` | `TaskState` / `ConcurrentMixin` / `ConcurrentWidgetMixin` — cancel, partial results, auto-wired progress | `ChiSurfProgress` + three ad-hoc threading sites | **CLEAR-GAP** — one background-task contract | **5** |
 | `Orange/widgets/tests/base.py:46,248,608,686` | Widget-contract test mixins + pathological-dataset battery + `ParameterMapping` | static manifest contract tests only | **CLEAR-GAP** — behavioural contract tests over 104 plugins | **5** |
 | `Orange/widgets/visualize/utils/__init__.py:40` | VizRank — score-ranked candidate views computed in the background | none | **CLEAR-GAP** — new capability for burst/parameter tables | **5** |
-| `orangewidget.widget.Msg` + `class Error/Warning/Information` | Declared, named, non-modal, testable widget messages | `ChiSurfMessageBox` (modal) + status labels | **CLEAR-GAP** — pairs with the modal-dialog unification | **4** |
+| `orangewidget.widget.Msg` + `class Error/Warning/Information` | Declared, named, non-modal, testable widget messages | ✅ **adopted** — `chisurf/gui/widgets/messages.py` | **DONE** — see [GUI/AutoForm](/subsystems/gui-autoform.md) | **4** |
 | `Orange/widgets/report/` (`report.py:14`, `owreport.py`) | Every node contributes `send_report()`; one aggregated HTML/PDF report | none | **CLEAR-GAP** — cross-plugin analysis report | **4** |
 | `Orange/widgets/settings.py:65,312` | `DomainContextHandler` — settings matched to the *data*, not just the widget | per-plugin `state_namespace` only | **CLEAR-GAP** — per-dataset setting recall | **4** |
 | `Orange/widgets/data/owfeatureconstructor.py:76,370,947` | `validate_exp` (AST whitelist), `freevars` (deps), `make_variable(compute_value)` | equation editor / calculator / parameter-transform, unvalidated | **Partial-gap** — safety + free dependency tracking | **4** |
@@ -208,11 +208,17 @@ messages are declared objects, tests assert `widget.Error.no_attributes.is_shown
 instead of patching a dialog. `MessageOverlayWidget` (`utils/overlay.py`) covers
 the transient in-place case.
 
-**ChiSurf today** has unified its popups behind `ChiSurfMessageBox` — a real
+**ChiSurf had** unified its popups behind `ChiSurfMessageBox` — a real
 improvement over raw `QMessageBox`, and the guard test keeps it that way — but
-the class of message is still *modal and imperative*: it blocks, it is not
-addressable after the fact, and in a node graph it cannot annotate the node.
-Declared message groups are the natural next step and reuse the same seam.
+the class of message was still *modal and imperative*: it blocked, it was not
+addressable after the fact, and in a node graph it could not annotate the node.
+
+**✅ Adopted** as `chisurf/gui/widgets/messages.py`: `Msg` declarations on nested
+`Error`/`Warning`/`Information` groups, bound per instance by `MessagesMixin`,
+rendered one line in the host's status bar and assertable in tests. The
+enumerable-and-retractable properties are the point; the rendering is the small
+part. The node-glyph use is a `messages_changed()` override away, which is what
+[PRD-29](/prds/prd-29.md) will need.
 
 ## Tier 2 — worth folding into existing work
 
@@ -363,8 +369,8 @@ superseded by MMFDB.
 3. **`PluginToolTestMixin` + degenerate-input battery + `WidgetPreview`-style
    `__main__`** — mechanical enforcement of the thin-widget and
    screenshot-the-GUI rules across 104 plugins.
-4. **Declared message groups** — non-modal, addressable, testable widget
-   messages layered on the existing dialog seam.
+4. ✅ **Declared message groups** — non-modal, addressable, testable widget
+   messages layered on the existing dialog seam. **Landed 2026-07-27.**
 5. **VizRank** — the one genuinely new user-facing capability; start with
    burst-parameter projection ranking in ndXplorer.
 6. **Report system** on the dockable-tool base, rendered from the view specs

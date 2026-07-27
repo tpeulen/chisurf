@@ -9,6 +9,7 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import (
     QApplication,
     QDialog,
+    QDialogButtonBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -32,7 +33,7 @@ from chisurf.gui.glyphs import Glyphs
 
 from ..api.models import FitResult, PchResult
 from .client import PCHClient
-from chisurf.gui import dialogs
+from chisurf.gui.widgets.messages import MessagesMixin, Msg
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +98,31 @@ class HelpDialog(QDialog):
         layout.addWidget(buttons)
 
 
-class PCHApp(QMainWindow):
+class PCHApp(MessagesMixin, QMainWindow):
+    """Photon-counting-histogram tool.
+
+    The conditions this tool can be in — nothing loaded, nothing computed, a step
+    that failed — are declared below and shown in the status bar rather than
+    raised as modal boxes: they persist while their cause persists, and they are
+    retracted when it is fixed. See :mod:`chisurf.gui.widgets.messages`.
+    """
+
     name = "Spectroscopy:Single-Molecule:PCH"
+
+    class Error(MessagesMixin.Error):
+        """Conditions that stop the tool from doing what was asked."""
+
+        no_file = Msg("Load a TTTR file first.")
+        no_histogram = Msg("Compute the histogram first.")
+        load_failed = Msg("Cannot load the file: {}")
+        compute_failed = Msg("Computing the histogram failed: {}")
+        fit_failed = Msg("The fit failed: {}")
+        save_failed = Msg("Saving failed: {}")
+
+    class Information(MessagesMixin.Information):
+        """Completed actions worth stating without interrupting."""
+
+        saved = Msg("Results saved as {}.npz / .csv / .txt and two PNGs.")
 
     def __init__(self):
         super().__init__()
@@ -337,16 +361,18 @@ class PCHApp(QMainWindow):
             self._fit_result = None
             self.action_compute.setEnabled(True)
             self.action_save.setEnabled(False)
+            self.clear_messages()
             self.statusBar().showMessage(
                 f"Loaded: {path} ({info.get('n_photons', 0):,} photons)"
             )
         except Exception as e:
-            dialogs.error(self, "Error", str(e))
+            self.Error.load_failed(e)
 
     def _on_compute(self):
         if not self._filename:
-            dialogs.warning(self, "No File", "Load a TTTR file first.")
+            self.Error.no_file()
             return
+        self.Error.no_file.clear()
         try:
             txt = self.le_ch.text().strip()
             channels = (
@@ -368,17 +394,20 @@ class PCHApp(QMainWindow):
             self.region.set_bounds(0, max(self._result.k_vals))
             self.action_fit.setEnabled(True)
             self.action_save.setEnabled(True)
+            self.Error.compute_failed.clear()
+            self.Error.no_histogram.clear()
             self.statusBar().showMessage(
                 f"Computed PCH: {self._result.total_bins:,} bins, "
                 f"{len(self._result.k_vals)} k-values"
             )
         except Exception as e:
-            dialogs.error(self, "Error", str(e))
+            self.Error.compute_failed(e)
 
     def _on_fit(self):
         if self._result is None:
-            dialogs.warning(self, "No Data", "Compute PCH first.")
+            self.Error.no_histogram()
             return
+        self.Error.no_histogram.clear()
         try:
             n_comp = self.spin_comp.value()
             init_eps = [b.value() for b in self.eps_boxes]
@@ -406,17 +435,19 @@ class PCHApp(QMainWindow):
 
             self._plot_fit()
             self._update_results_text()
+            self.Error.fit_failed.clear()
             self.statusBar().showMessage(
                 f"Fit complete: χ²={self._fit_result.chi2:.2f}, "
                 f"red. χ²={self._fit_result.reduced_chi2:.3f}"
             )
         except Exception as e:
-            dialogs.error(self, "Error", str(e))
+            self.Error.fit_failed(e)
 
     def _on_save(self):
         if self._result is None:
-            dialogs.warning(self, "No Data", "Compute PCH first.")
+            self.Error.no_histogram()
             return
+        self.Error.no_histogram.clear()
 
         fname_base, _ = QFileDialog.getSaveFileName(
             self, "Save Base Name", "results", "All Files (*)"
@@ -426,18 +457,11 @@ class PCHApp(QMainWindow):
 
         try:
             self._save_outputs(fname_base)
-            dialogs.information(
-                self,
-                "Saved",
-                f"Results saved as:\n{fname_base}.npz\n"
-                f"{fname_base}_window.png\n"
-                f"{fname_base}_histogram.png\n"
-                f"{fname_base}.csv\n"
-                f"{fname_base}.txt",
-            )
+            self.Error.save_failed.clear()
+            self.Information.saved(fname_base)
             self.statusBar().showMessage(f"Saved results to {fname_base}.*")
         except Exception as e:
-            dialogs.error(self, "Error", str(e))
+            self.Error.save_failed(e)
 
     def _on_region_changed(self, *args):
         if self._fit_result is not None and self._result is not None:

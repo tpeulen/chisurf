@@ -124,6 +124,16 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Found 2026-07-27, not fixed: the PCH settings panel is clipped at its right
+edge.** `chisurf/plugins/pch/gui/tool.py` puts the settings form in a
+`QScrollArea` with `setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)`, and the
+form is wider than the splitter gives it, so the File / Channels / Bin Time /
+Micro Time editors run past the window edge and their right-hand ends are
+unreachable — visible in any screenshot of the tool at its default 1000×650. The
+fix is a layout one (let the form shrink, or give the splitter a sensible initial
+size, or stop suppressing the scroll bar), not a one-liner, so it was left out of
+the message-groups change that surfaced it.
+
 **Reported 2026-07-27. Plugin names and menu categories are never translated,
 in any locale.** Everything a plugin's `manifest.json` shows *except* its name
 is translated: `chisurf/core/plugin/manifest.py` runs `description`, `summary`,
