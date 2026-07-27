@@ -12,17 +12,17 @@ from chisurf.core.math.statistics import durbin_watson
 
 
 def _reference(r):
-    """The original loop, verbatim."""
+    """The textbook statistic, written out as a loop."""
     n_res = len(r)
     nom = 0.0
     den = float(np.sum(np.asarray(r) ** 2))
     for i in range(1, n_res):
         nom += (r[i] - r[i - 1]) ** 2
-    return nom / max(1.0, den)
+    return nom / den if den > 0.0 else 0.0
 
 
 @pytest.mark.parametrize("n", [2, 3, 5, 64, 1024, 4096])
-def test_matches_the_original_formula(n):
+def test_matches_the_textbook_formula(n):
     r = np.random.default_rng(n).normal(size=n)
     assert durbin_watson(r) == pytest.approx(_reference(r), rel=0, abs=1e-12)
 
@@ -49,6 +49,36 @@ def test_alternating_residuals_approach_four():
 @pytest.mark.parametrize("r", [np.array([]), np.array([1.0])])
 def test_degenerate_inputs_do_not_raise(r):
     assert durbin_watson(r) == 0.0
+
+
+def test_an_all_zero_series_does_not_divide_by_zero():
+    assert durbin_watson(np.zeros(16)) == 0.0
+
+
+def test_small_residuals_are_not_rescaled():
+    """The denominator guard must cover the zero case, not clamp the value.
+
+    ``sum(r**2) < 1`` is ordinary -- a short fit range, or over-estimated
+    errors -- and the statistic is a ratio, so it must be invariant under a
+    rescaling of the residuals. Clamping the denominator to ``>= 1`` reported
+    this perfectly anti-correlated series (DW = 3) as 0.12, i.e. as strong
+    *positive* autocorrelation.
+    """
+    r = np.array([0.1, -0.1, 0.1, -0.1])
+    assert durbin_watson(r) == pytest.approx(3.0, rel=0, abs=1e-12)
+
+
+@pytest.mark.parametrize("scale", [1e-3, 1e-1, 1.0, 10.0, 1e3])
+def test_the_statistic_is_scale_invariant(scale):
+    r = np.random.default_rng(7).normal(size=257)
+    assert durbin_watson(scale * r) == pytest.approx(durbin_watson(r), rel=1e-12)
+
+
+@pytest.mark.parametrize("scale", [1e-2, 1.0, 1e2])
+def test_the_statistic_stays_within_its_range(scale):
+    """DW is bounded by [0, 4] for any input -- a ratio cannot leave it."""
+    r = scale * np.random.default_rng(11).normal(size=512)
+    assert 0.0 <= durbin_watson(r) <= 4.0
 
 
 def test_accepts_a_list():

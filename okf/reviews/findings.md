@@ -2843,11 +2843,29 @@ inversion in the tree (TCSPC MaxEnt, FCS MaxEnt, DEER Tikhonov/MaxEnt, the
 Findings RF-215..RF-227.
 
 ### RF-215
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the Durbin-Watson statistic is silently rescaled — perfect anti-correlation can be reported as strong positive correlation)
 - **Location:** `chisurf/core/math/statistics.py:256` (`durbin_watson`, `return nom / max(1.0, denomminator)`)
 - **Finding:** The denominator guard clamps the *value*, not the zero case: whenever `sum(r**2) < 1` the statistic is divided by `1.0` instead of by the sum, so the returned number is not a ratio at all and is not in `[0, 4]`. Verified: `durbin_watson([0.1, -0.1, 0.1, -0.1])` returns **0.12**, where the statistic is exactly **3.0** — a perfectly anti-correlated series reported as if it were strongly *positively* autocorrelated. The scaling is silent and magnitude-dependent (multiplying the same residuals by 10 changes the answer). This is consumed as a fit-quality verdict: `chisurf/core/fitting/fit.py:283` and `:1313` expose it as `Fit.durbin_watson`, `chisurf/gui/plots/residual_image.py:511` prints it, and `chisurf/core/agent/tools/decay.py:274` turns `durbin_watson < 1.5` into the sentence "the residuals are correlated" in an LLM-facing report. Reached whenever the weighted residual sum of squares is below one (a short fit range, over-estimated errors) or when the public helper is called on raw residuals. Guard the zero case instead (`return nom / den if den > 0 else 0.0`). `test/math/test_durbin_watson.py` pins the current behaviour via a `_reference` that copies the same clamp, so the fix must update that helper too.
-- **Fix note:**
+- **Fix note:** `durbin_watson` now guards the zero case only — `denominator <=
+  0.0` (an all-zero residual series, where the statistic is undefined) returns
+  `0.0` and everything else is the plain ratio `nom / denominator`, so the
+  result is scale-invariant and back inside `[0, 4]`. Reproduced against `HEAD`
+  first: `durbin_watson([0.1, -0.1, 0.1, -0.1])` returned `0.12` where the
+  statistic is exactly `3.0`. The docstring now states the range and what the
+  two undefined cases return. The test helper `_reference` carried the same
+  clamp and is corrected with it (and renamed `test_matches_the_textbook_formula`,
+  since the "original" it copied was the bug). Pinned by
+  `test/math/test_durbin_watson.py::test_small_residuals_are_not_rescaled`
+  (the exact reported case), `::test_the_statistic_is_scale_invariant`
+  (five decades of residual scale, which is the property the clamp broke),
+  `::test_the_statistic_stays_within_its_range` and
+  `::test_an_all_zero_series_does_not_divide_by_zero`. `test/math` (108) and
+  `test/agent/test_decay_tools.py` (28, the LLM-facing consumer of the verdict)
+  green; `ruff check` and `ruff format --check` on both touched files are
+  byte-identical to their `HEAD` baseline (a pre-existing `I001` in
+  `statistics.py` and a pre-existing `D401` on `_reference`, neither added by
+  this change).
 
 ### RF-216
 - **Status:** OPEN

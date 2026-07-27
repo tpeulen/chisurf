@@ -2,6 +2,20 @@
 
 ## 2026-07-28
 
+* **Durbin-Watson: guard the zero denominator, do not clamp it (RF-215).** The
+  statistic returned `nom / max(1.0, sum(r**2))`, which is a ratio only while
+  the weighted residual sum of squares exceeds one. Below that — a short fit
+  range, or over-estimated errors — it silently rescaled the answer out of
+  `[0, 4]` and made it depend on the magnitude of the residuals: the perfectly
+  anti-correlated series `[0.1, -0.1, 0.1, -0.1]` (DW = 3, strong *negative*
+  autocorrelation) came back as `0.12`, which every consumer reads as strong
+  *positive* autocorrelation — the plot overlays print it, and the agent's
+  decay report turns `< 1.5` into the sentence "the residuals are correlated".
+  Now `denominator <= 0` (an all-zero series, where the statistic is undefined)
+  returns `0.0` and every other input is the plain ratio. The test helper
+  `_reference` copied the same clamp and is corrected with it; the new cases pin
+  scale invariance over five decades, the `[0, 4]` bound and the reported case.
+
 * **Three-colour PDA: a negative probability is impossible, not certain
   (RF-542).** `ThreeColorSetup` enforced "the excitation row sums to one",
   which the unphysical case satisfies: `de(BG) + de(BR) > 1` — reachable inside

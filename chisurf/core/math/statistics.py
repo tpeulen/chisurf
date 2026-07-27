@@ -236,7 +236,9 @@ def durbin_watson(
     Returns
     -------
     float
-        The Durbin-Watson statistic.
+        The Durbin-Watson statistic, in ``[0, 4]``. ``0.0`` is returned for a
+        series of fewer than two residuals and for an all-zero series, where
+        the statistic is undefined.
 
     References
     ----------
@@ -252,8 +254,15 @@ def durbin_watson(
         return 0.0
     d = np.diff(residuals)
     nom = float(np.dot(d, d))
-    denomminator = float(np.dot(residuals, residuals))
-    return nom / max(1.0, denomminator)
+    # Guard the zero case only. Clamping the denominator to >= 1 instead would
+    # rescale the statistic whenever sum(r**2) < 1 (a short fit range, or
+    # over-estimated errors), so the result would no longer be a ratio and no
+    # longer lie in [0, 4] -- perfect anti-correlation (DW = 3) was reported as
+    # 0.12, i.e. as strong *positive* autocorrelation.
+    denominator = float(np.dot(residuals, residuals))
+    if denominator <= 0.0:
+        return 0.0
+    return nom / denominator
 
 
 @nb.jit(nopython=True)
