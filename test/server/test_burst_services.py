@@ -38,6 +38,7 @@ def photons():
         "macro": np.asarray(tttr.macro_times, dtype=np.float64),
         "routing": np.asarray(tttr.routing_channels),
         "macro_dt": float(tttr.header.macro_time_resolution),
+        "n_micro_time_channels": int(tttr.header.number_of_micro_time_channels),
     }
 
 
@@ -123,6 +124,87 @@ def test_coarsening_preserves_the_total(photons, slices):
 def test_decay_rejects_an_empty_gate():
     """An empty selection is a bad request, not an empty decay."""
     assert not bursts.from_bursts_decay(None, burst_slices={})["ok"]
+
+
+# ------------------------------------------------------------ micro-time axis
+#
+# The axis has to come from the instrument, not from the photons: an axis sized
+# by the highest occupied bin is shorter than the TAC range (so it does not line
+# up with an IRF measured on the same setup) and differs from file to file (so a
+# gate spanning files cannot be summed at all).
+
+
+def _synthetic(highest_micro_time: int, n_channels: int = 4096, n_photons: int = 2000):
+    """Build an in-memory photon stream with a chosen occupied maximum."""
+    rng = np.random.default_rng(highest_micro_time)
+    micro = rng.integers(0, highest_micro_time, n_photons).astype(np.uint16)
+    micro[-1] = highest_micro_time
+    tttr = tttrlib.TTTR()
+    tttr.append_events(
+        np.arange(n_photons, dtype=np.uint64) * 100,
+        micro,
+        np.zeros(n_photons, dtype=np.int8),
+        np.zeros(n_photons, dtype=np.int8),
+        shift_macro_time=False,
+    )
+    header = tttr.header
+    header.set_macro_time_resolution(1e-8)
+    header.set_micro_time_resolution(1e-11)
+    header.set_number_of_micro_time_channels(int(n_channels))
+    tttr.set_header(header)
+    return tttr
+
+
+@pytest.fixture
+def two_streams(monkeypatch):
+    """Two files of the same setup whose occupied micro-time maxima differ."""
+    files = {"a.ptu": _synthetic(2998), "b.ptu": _synthetic(4094)}
+    monkeypatch.setattr(bursts, "_open", lambda path, routine=None: files[path])
+    return files
+
+
+def test_the_decay_spans_the_tac_range_not_the_occupied_bins(photons, slices):
+    """The real file occupies fewer bins than its header declares."""
+    result = bursts.from_bursts_decay(None, burst_slices=slices)["result"]
+    declared = photons["n_micro_time_channels"]
+    assert int(photons["micro"].max()) + 1 < declared  # the premise of the test
+    assert len(result["decays"][0]["counts"]) == declared
+
+
+def test_a_gate_spanning_two_files_is_summed(two_streams):
+    """The whole point of ``burst_slices`` being a mapping."""
+    gate = {"a.ptu": [[0, 999]], "b.ptu": [[0, 999]]}
+    result = bursts.from_bursts_decay(None, burst_slices=gate)
+    assert result["ok"], result
+    decay = result["result"]["decays"][0]
+    assert len(decay["counts"]) == 4096
+    assert decay["n_photons"] == 2000
+    assert result["result"]["n_files"] == 2
+
+
+@pytest.mark.parametrize("coarsening", [1, 2, 3, 7, 8, 512])
+def test_every_coarsening_keeps_the_two_files_on_one_axis(two_streams, coarsening):
+    """Flooring ``n_bins // coarsening`` shortened the axis for some factors."""
+    gate = {"a.ptu": [[0, 999]], "b.ptu": [[0, 999]]}
+    result = bursts.from_bursts_decay(None, burst_slices=gate, coarsening=coarsening)
+    assert result["ok"], result
+    decay = result["result"]["decays"][0]
+    assert len(decay["counts"]) == -(-4096 // coarsening)
+    assert decay["n_photons"] == 2000
+
+
+def test_files_with_different_tac_ranges_are_refused_clearly(monkeypatch):
+    """Summing two setups is a bad request, not a NumPy broadcast error."""
+    files = {
+        "a.ptu": _synthetic(2998, n_channels=4096),
+        "b.ptu": _synthetic(2998, n_channels=32768),
+    }
+    monkeypatch.setattr(bursts, "_open", lambda path, routine=None: files[path])
+    gate = {"a.ptu": [[0, 999]], "b.ptu": [[0, 999]]}
+    result = bursts.from_bursts_decay(None, burst_slices=gate)
+    assert not result["ok"]
+    assert "micro-time axis" in result["error"]
+    assert "broadcast" not in result["error"]
 
 
 # ------------------------------------------------------------------------ PCH

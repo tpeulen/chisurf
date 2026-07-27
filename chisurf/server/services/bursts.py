@@ -134,6 +134,34 @@ def _selected_indices(
     return np.unique(np.concatenate(parts))
 
 
+def _micro_time_bins(tttr: Any, micro: np.ndarray) -> int:
+    """Length of the file's micro-time axis, in native TAC channels.
+
+    The axis is the instrument's TAC/ADC range as declared by the header
+    (``number_of_micro_time_channels``), **not** the highest micro-time value
+    that happens to be occupied. The occupied maximum is data-dependent: two
+    files of the same measurement essentially never agree on it, so decays built
+    from them could not be summed, and a single-file decay would be short of the
+    instrument axis an IRF or a background decay is measured on.
+
+    Parameters
+    ----------
+    tttr : tttrlib.TTTR
+        The open photon stream, read for its header.
+    micro : numpy.ndarray
+        The file's micro times, used only as a fallback for a header that does
+        not declare the range, and as a floor so no photon falls off the axis.
+
+    Returns
+    -------
+    int
+        Number of native micro-time bins, at least one.
+    """
+    adc = int(getattr(tttr.header, "number_of_micro_time_channels", 0) or 0)
+    occupied = int(micro.max()) + 1 if micro.size else 1
+    return max(adc, occupied, 1)
+
+
 def _channel_filter(channels: np.ndarray, wanted: Optional[Sequence[int]]) -> np.ndarray:
     """Boolean mask selecting *wanted* routing channels (all when ``None``)."""
     if wanted is None:
@@ -152,6 +180,13 @@ def from_bursts_decay(
     """Build micro-time decays from gated burst intervals.
 
     Registered as ``tcspc.from_bursts``.
+
+    The decay spans the instrument's whole TAC range (the header's
+    ``number_of_micro_time_channels``), not just the occupied bins, so the same
+    setup always yields the same axis — one that lines up with an IRF or a
+    background decay, and one that can be summed over the files a gate spans.
+    Gating several files measured with *different* TAC ranges is rejected rather
+    than summed.
 
     Parameters
     ----------
@@ -201,6 +236,8 @@ def from_bursts_decay(
         accum: List[Optional[np.ndarray]] = [None] * n_groups
         dt_ns = None
         used = 0
+        step_size = max(1, int(coarsening))
+        axis: tuple[int, int, str] | None = None
 
         for path, intervals in slices.items():
             tttr = _open(path, reading_routine)
@@ -215,15 +252,26 @@ def from_bursts_decay(
 
             sel_micro = micro[index]
             sel_routing = routing[index]
-            n_bins = int(micro.max()) + 1 if micro.size else 1
-            n_out = max(1, n_bins // max(1, int(coarsening)))
+            n_bins = _micro_time_bins(tttr, micro)
+            # Round the binned axis up: flooring would drop the last, partly
+            # filled coarse bin and shorten the axis by one for some factors.
+            n_out = -(-n_bins // step_size)
+            if axis is None:
+                axis = (n_out, n_bins, path)
+            elif n_out != axis[0]:
+                return service_error(
+                    f"the gated files disagree on the micro-time axis: {path} has "
+                    f"{n_bins} micro-time channels, {axis[2]} has {axis[1]}; a decay "
+                    "can only be summed over files measured with the same TAC range",
+                    error_code=INVALID_INPUT,
+                )
 
             for i in range(n_groups):
                 wanted = groups[i] if groups is not None else None
                 mask = _channel_filter(sel_routing, wanted)
                 if not mask.any():
                     continue
-                binned = sel_micro[mask] // max(1, int(coarsening))
+                binned = sel_micro[mask] // step_size
                 counts = np.bincount(binned, minlength=n_out).astype(float)
                 used += int(mask.sum())
                 accum[i] = counts if accum[i] is None else accum[i] + counts
@@ -232,7 +280,7 @@ def from_bursts_decay(
             f"decay read failed: {exc}", error_code=OPERATION_FAILED, exception=exc
         )
 
-    step = (dt_ns or 1.0) * max(1, int(coarsening))
+    step = (dt_ns or 1.0) * step_size
     decays = []
     for i, counts in enumerate(accum):
         if counts is None:

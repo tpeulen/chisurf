@@ -2,6 +2,20 @@
 
 ## 2026-07-27
 
+* **A burst decay came back on an axis its own photons chose (RF-412).**
+  `tcspc.from_bursts` sized the micro-time axis from the largest value that
+  happened to occur in the file, so a gate spanning two files — the only reason
+  `burst_slices` is a mapping at all — died in a NumPy broadcast error reported
+  as `OPERATION_FAILED`, and a single-file decay on `PQ_Olympus_MFIS.ht3` stopped
+  well short of the 32768 channels the header declares, lining up with no IRF or
+  background decay measured on that setup. The axis now comes from
+  `number_of_micro_time_channels` (floored at the occupied maximum, so a header
+  that under-declares still cannot drop a photon) and `coarsening` rounds the bin
+  count up rather than flooring it away. Files whose TAC ranges genuinely differ
+  are refused by name instead of summed. Pinned by four tests in
+  `test/server/test_burst_services.py`, including a parametrised sweep over
+  `coarsening` and a two-file gate over synthetic streams.
+
 * **DEER is a first-class experiment nobody had driven end to end.** The hourly
   GUI tester walked `Experiment = DEER` the way a user does — Bruker BES3T and
   CSV traces from `test/data/deer/`, all four models, every tab — and recorded it
