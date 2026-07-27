@@ -5914,3 +5914,34 @@ defects are. Findings RF-484..RF-492.
 - **Location:** `chisurf/plugins/chimol/chimol/cmd/volumes.py:136` (`"name": name or f"{style}_{len(levels) + 1}"`) against `chisurf/plugins/chimol/chimol/renderer/view.py:7043` (`_update_volume` names every contour `f"volume_{index}"` and reads only `level`, `color` and `style` off the entry)
 - **Finding:** the `name` argument is stored in the level dictionary and read by nobody — `grep` over the plugin finds no consumer of a level entry's `"name"`, and the scene object is identified positionally as `volume_{index}`, so a contour cannot be addressed, coloured, hidden or deleted by the name it was given. The shipped `emdb_map.pml` demo runs `isosurface dens, EMD-3061`, which reads as creating an object called `dens`; there is no `dens`. The restyle branch added in `bd6fd06c9` (`volumes.py:117-130`) makes it visible from a second angle: it rebuilds the entry without `name`, so re-contouring at an existing level would drop the name too, if it meant anything. Either carry the name through to the `SceneObject` id so the compatibility contract holds, or stop accepting an argument that is discarded.
 - **Fix note:**
+
+## GUI-tester 2026-07-27 — F-test model comparison (is the second lifetime justified?)
+
+Drove the workflow in [usecases/ftest-model-comparison.md](/usecases/ftest-model-comparison.md)
+headlessly: one decay (`test/data/tcspc/ibh_sample/Decay_577D.txt` + `Prompt.txt`)
+fitted with one exponential (χ²ᵣ 1.6259, ν 3267) and with two (χ²ᵣ 1.1340, ν 3265),
+then compared in **Tools ▸ Calculators ▸ F-test / χ²-max** through its own
+*From fit ▾* menu. The statistics are correct — confidence 1.00000000, equal χ²ᵣ
+gives exactly 0.5, a worse complex model gives 0, and χ²-max matches the
+support-plane formula by hand. Three findings around them, RF-493..RF-495.
+
+### RF-493
+- **Status:** OPEN
+- **Severity:** S2 (the answer depends on the order the two fits are loaded in: the same pair of fits reports confidence 1.00000000 one way and 0.43411 the other, with no warning)
+- **Location:** `chisurf/plugins/core/f_test/gui/tool.py:146-161` (`_load_fit`: the `target == "model1"` branch calls `m.recompute_chi2_2()`) and `:31-32` (`_CONF_ATTRS = {"chi2_2", "n1", "n2"}` vs `_CHI2_2_ATTRS = {"chi2_1", "conf_level"}`)
+- **Finding:** χ²(1) is wired as a *driver* of χ²(2), never of the confidence, so putting a measurement into slot 1 destroys the measurement in slot 2. Verified through the tool's own menu actions on two real fits of the same decay (1-exp: χ²ᵣ 1.62587, ν 3267; 2-exp: χ²ᵣ 1.13401, ν 3265). Loading model 1 then model 2 gives χ²(1) 1.62587 / χ²(2) 1.13401 / **confidence 1.00000000**. Loading model 2 then model 1 — an order nothing in the UI discourages, and the natural one for a user who has just finished the complex fit — leaves χ²(2) = **1.63534**, a value no fit produced (it is `χ²₁ / F.ppf(conf, ν₁, ν₂)` solved from the *stale* confidence, itself computed against the default χ²(1) = 1.1), and the panel reads **confidence 0.43411**: "the second lifetime is not justified" for a fit where it is justified beyond any threshold. The same overwrite fires on any later hand edit of χ²(1) or of the confidence, so a user who loads both fits correctly and then nudges χ²(1) also loses the loaded χ²(2). Loading a *measured* χ² into either slot should recompute the confidence; only an explicit edit of the confidence field should solve for the χ²(2) threshold.
+- **Fix note:**
+
+### RF-494
+- **Status:** OPEN
+- **Severity:** S2 (a NaN confidence is displayed as `1.00000` — the maximum — so an uncomputable comparison reads as certainty that the extra parameters are justified)
+- **Location:** `chisurf/plugins/core/f_test/gui/tool.py:59-66` (`recompute_conf`, `except (ZeroDivisionError, ValueError)`) with `chisurf/core/math/statistics.py:371` (`f_test_confidence`) and the `conf_level` spin box in `chisurf/plugins/core/f_test/gui/ftest.view.json` (`"minimum": 0.0, "maximum": 1.0`)
+- **Finding:** χ²(2) = 0 is inside the range of its spin box (`"minimum": 0.0`), so it is reachable by typing or by holding the down arrow. `f_test_confidence(1.0, 0.0, …)` then returns `nan` — scipy returns it rather than raising, so the guard catching `ZeroDivisionError`/`ValueError` never fires and `self.conf_level` is set to `nan`. `AutoForm.sync_fields` pushes that into a `QDoubleSpinBox`, which clamps `nan` to its maximum: the panel shows **confidence 1.00000** beside **χ²(2) 0.0000** (verified headlessly; model value `nan`, widget value `1.0`, screenshot in the use case run). The strongest possible claim is what a user sees at the moment the statistic is undefined. Guard on a non-finite result (and on χ² ≤ 0) and show the field as empty/`—` instead of clamping.
+- **Fix note:**
+
+### RF-495
+- **Status:** OPEN
+- **Severity:** S3 (the χ²-max panel displays a result its own displayed inputs cannot produce, and renders ∞ as a 309-digit number)
+- **Location:** `chisurf/plugins/core/f_test/gui/tool.py:77-85` (`recompute_chi2_max`: `number_of_parameters=max(1, int(self.npars))`, `nu=max(1, int(self.dof))`) against `chisurf/plugins/core/f_test/gui/ftest.view.json` (`npars` and `dof` declare `"minimum": 0`, `conf_level_2` declares `"maximum": 1.0`)
+- **Finding:** two mismatches between what the panel accepts and what it computes. (a) `params` and `ν (dof)` may be set to 0 while the computation silently substitutes 1, so with χ²min = 1.0, params = 0 and ν = 0 the panel reads **χ² max = 162.44764** — the p = 1, ν = 1 value — next to inputs that give no such number; the F-test panel's `n₁`/`n₂` correctly declare `"minimum": 1`, so the inconsistency is only in this panel. (b) confidence = 1.0 is the spin box's maximum and yields `F.isf(0, p, ν) = inf`, so χ² max becomes `inf` and the read-only field renders `1000000000000000010926…` (309 digits), overflowing its box. Give `npars`/`dof` a minimum of 1 and clamp the confidence below 1 (or format a non-finite result as `∞`).
+- **Fix note:**

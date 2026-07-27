@@ -144,6 +144,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   gate or a painted 2-D bitmap, and carry it out as Burst IDs or into an
   FCS / TCSPC / PDA / PCH analysis.
   *(last driven 2026-07-27; RF-470..RF-475)*
+- [F-test — is the second lifetime justified?](/usecases/ftest-model-comparison.md)
+  — the question every lifetime fit raises: fit one decay with one and then two
+  exponentials, pull both fits into the *F-test / χ²-max* calculator from its own
+  *From fit* menu, and read the confidence that the extra component is warranted
+  plus the χ² ceiling behind the accepted fit's error bars.
+  *(last driven 2026-07-27; RF-493..RF-495)*
 
 ## Per-workflow file format
 

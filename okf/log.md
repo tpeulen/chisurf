@@ -2,6 +2,23 @@
 
 ## 2026-07-27
 
+* **GUI-tester — F-test model comparison (RF-493..RF-495).** Drove
+  "is the second lifetime justified?" end to end headlessly: one IBH decay fitted
+  with one exponential (χ²ᵣ 1.6259, ν 3267) and with two (χ²ᵣ 1.1340, ν 3265),
+  then compared in *Tools ▸ Calculators ▸ F-test / χ²-max* through its own
+  *From fit ▾* menu. The statistics are right — confidence 1.00000000, equal χ²ᵣ
+  gives exactly 0.5, a worse complex model gives 0, χ²-max matches the
+  support-plane formula — and the help modal explains both. But the answer depends
+  on the order the two fits are loaded in: χ²(1) is wired as a driver of χ²(2)
+  rather than of the confidence, so loading the complex fit first and the simple
+  one second overwrites the measured χ²(2) with a fabricated 1.63534 and reports
+  0.43411 instead of 1.0, silently (RF-493). A NaN confidence (χ²(2) = 0, inside
+  the spin box range) is clamped by the widget and displayed as `1.00000`, the
+  maximum (RF-494), and the χ²-max panel accepts `params`/`ν` = 0 while computing
+  with 1, and renders ∞ as a 309-digit number at confidence 1.0 (RF-495).
+  Recorded as [usecases/ftest-model-comparison.md](/usecases/ftest-model-comparison.md)
+  with the UX notes.
+
 * **Every burst step recomputed results it already had (RF-483).** The workflow
   shell runs the current step on *Next* and re-applies the burst folder to a
   panel on every visit, which a panel reads as "a setting changed, recompute".
