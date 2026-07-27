@@ -1,49 +1,67 @@
-import sys
+"""A startup failure is reported through the simple error dialog.
+
+This replaces a manual script that, at *import* time, replaced
+``sys.modules["chisurf.gui"]`` with a stub module and monkeypatched
+``sys.exit`` — permanently, for the whole pytest process. Every GUI test module
+collected after it then failed with
+``ImportError: cannot import name 'chiplot' from 'mock_module'``, which is also
+what took the ``test/gui`` collection down. The behaviour it meant to check is
+kept here, with the patching scoped to the test.
+"""
+
+from __future__ import annotations
+
 import os
-
-# Add the current directory to the Python path
-sys.path.insert(0, os.path.abspath('.'))
-
-# Backup the original sys.exit function
-original_exit = sys.exit
-
-# Override sys.exit to print a message and not actually exit
-def mock_exit(code=0):
-    print(f"\nTest completed. Exit code: {code}")
-    if code != 0:
-        print("Error dialog should have been displayed.")
-    return code
-
-# Replace sys.exit with our mock function
-sys.exit = mock_exit
-
-# Create a module that will raise an exception when imported
+import sys
 import types
-mock_module = types.ModuleType('mock_module')
-mock_module.__file__ = 'mock_module.py'
 
-def raise_exception():
-    print("Raising test exception...")
-    raise Exception("This is a test exception to verify the error dialog")
+import pytest
 
-# Create a mock get_app function that raises an exception
-mock_module.get_app = raise_exception
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-# Add the mock module to sys.modules
-sys.modules['chisurf.gui'] = mock_module
+qtpy = pytest.importorskip("qtpy")
 
-# Now import and run the main function
-print("Importing main function...")
-from chisurf.__main__ import main
+from qtpy import QtWidgets  # noqa: E402
 
-if __name__ == "__main__":
-    print("Running main function...")
-    try:
-        main()
-        print("Main function completed without errors (unexpected)")
-    except Exception as e:
-        print(f"Main function raised an exception: {e}")
-        print("This means the error handling in __main__.py failed to catch the exception")
+import chisurf.__main__ as chisurf_main  # noqa: E402
 
-    # Restore original sys.exit
-    sys.exit = original_exit
+
+@pytest.fixture
+def qapp():
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+
+def test_startup_failure_shows_the_error_dialog(qapp, monkeypatch):
+    """``main`` catches a failing ``get_app`` and shows the dialog, exit code 1."""
+    stub = types.ModuleType("chisurf.gui")
+    stub.__file__ = "stub_chisurf_gui.py"
+
+    def _boom():
+        raise RuntimeError("startup exploded")
+
+    stub.get_app = _boom
+    monkeypatch.setitem(sys.modules, "chisurf.gui", stub)
+
+    shown: list[str] = []
+
+    class _Dialog:
+        def __init__(self, exception_text, parent=None):
+            shown.append(exception_text)
+
+        def exec(self):
+            return 0
+
+    monkeypatch.setattr(chisurf_main, "SimpleErrorDialog", _Dialog)
+
+    with pytest.raises(SystemExit) as excinfo:
+        chisurf_main.main()
+
+    assert excinfo.value.code == 1
+    assert shown and "startup exploded" in shown[0]
+
+
+def test_error_dialog_module_does_not_leak_a_stubbed_gui():
+    """The real ``chisurf.gui`` is intact after the test above."""
+    import chisurf.gui
+
+    assert getattr(chisurf.gui, "__file__", "").endswith("chisurf/gui/__init__.py")

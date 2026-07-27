@@ -2,6 +2,24 @@
 
 ## 2026-07-27
 
+* **`test/gui` could not be collected at all — one script poisoned the process.**
+  `test/gui/test_error_dialog.py` was a manual script that, at *import* time,
+  replaced `sys.modules["chisurf.gui"]` with a stub and monkeypatched
+  `sys.exit`, permanently, for the whole pytest run; every GUI module imported
+  after it died with `ImportError: cannot import name 'chiplot' from
+  'mock_module'`, and formatting that error inside the PyQt-loaded process
+  segfaulted the collector. Rewritten as a scoped `monkeypatch` test of the same
+  behaviour (a failing `get_app` reaches the simple error dialog and exits 1),
+  plus a guard that the real `chisurf.gui` survives. Two more stale modules went
+  with it: `test_update_ui.py` (assigned to the read-only module accessor
+  `chisurf.current_setup`, so it raised at import — now a real test of the main
+  window's name-based experiment/setup selection) and
+  `settings/test_ai_settings.py` (imported the retired
+  `chisurf.plugins.ai_settings.plugin` and asserted pre-AutoForm widget
+  attributes and `*_api` provider keys). `test/gui` now collects 1011 tests
+  cleanly, where before it collected none.
+
+
 * **The BVA error bars crashed every repaint; chiplot grew a colour bar and
   lost six defects (RF-055, RF-131..RF-137).** The BVA profile item was created
   with an empty `height` and thereafter updated with `top`/`bottom`; pyqtgraph's
