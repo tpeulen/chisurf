@@ -161,7 +161,59 @@ print(reply["result"]["burst_duty_cycle"], reply["provenance"])
 `send(..., record=False)` skips the provenance write for batch callers that
 record their own operation.
 
+## The folder remembers how it was made
+
+A burst-analysis folder writes `Info/analysis.json` beside the `.bur` tables and
+the `.mti` sidecar. It records two different things, and the difference matters:
+
+**How the data was read** — the container type actually used, the routing
+channels, the macro- and micro-time resolutions, per source file. This is what
+lets anything reopen those photons later. Without it every consumer had to guess
+the container from the file extension, and the guess for `.spc` was a type
+`tttrlib` does not have — which it answers not with an error but with an object
+holding **zero photons**, so an analysis ran on nothing and looked like a
+measurement without signal.
+
+**What the analysis ran with** — the burst-search settings, and optionally the
+tool's form state. This is what lets the folder repopulate the tool that made it.
+
+```python
+from chisurf.core.fio.fluorescence.burst_manifest import (
+    read_analysis_manifest, restore_settings, reading_settings_for,
+)
+
+manifest = read_analysis_manifest("…/analysis/bi4_bur/m000.bur")
+reading_settings_for("m000.spc", manifest)["container_type"]   # 'SPC-130'
+restore_settings(manifest_folder)["burst_detection"]           # what it ran with
+```
+
+Sources are matched by file *name* as well as full path, because analyses get
+copied off instruments and referenced through other mounts — a manifest that only
+matched absolute paths would be useless exactly when it is needed.
+
+Folders written before manifests existed simply have none; every reader falls
+back to detection rather than failing.
+
+### Restoring a tool from a folder
+
+**Burst selection**: `apply_analysis_folder(wizard, folder)` repopulates the
+wizard from a `.bur`, its directory, or the analysis folder.
+
+**Burst MLE**: `wizard.load_settings_from(folder)` accepts a burst folder as
+readily as a settings JSON, and its Load dialog now opens in the analysis folder
+rather than your home directory.
+
+**Anything built with AutoForm** gets this for free — a form knows which model
+attribute each control binds to, so `form.save_state(path)` /
+`form.load_state(path)` need no per-plugin code. See the
+[AutoForm concept](../../okf/subsystems/gui-autoform.md).
+
+Restores are lenient by design: a folder written by an older version restores the
+fields it still shares and tells you what it could not, rather than failing
+whole.
+
 ## Related
+
 
 - [ndX exploration workflow](46_ndxplorer.md)
 - [Photon distribution analysis](../concepts/pda.md)
