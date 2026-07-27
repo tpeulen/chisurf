@@ -2,6 +2,35 @@
 
 ## 2026-07-28
 
+* **GUI test: inter-frame drift correction, the step before every per-pixel map.**
+  Drove `chisurf.plugins.microscopy.img_drift` headlessly — standalone and inside
+  the Image Tools hub — on a real 100-frame N&B camera movie, a real 40-frame
+  5-channel HT3 photon stream, single-frame and unreadable files, and a
+  ground-truth control (the repo's RICS movie rolled by a known linear drift).
+  Every tab visited, every screenshot inspected, both exports written, the CLI
+  and the `?` help checked.
+  **The estimator is sound**: the injected drift came back to within a pixel on
+  every frame, photons are conserved exactly under wrapping (22 781 387 before
+  and after) and blanking loses only the 1.2 % that left the frame; 100 frames
+  measure in 1.2 s, the photon stream in 1.9 s. The default σ = 2 px smoothing is
+  well chosen — σ = 0 gets 15 of 20 frames wrong, by up to 2 px.
+  **The shell around it leaks.** New use case
+  [inter-frame drift correction](/usecases/image-drift-correction.md) (steps,
+  expected result, observations, UX suggestions), registered in the index;
+  findings RF-554..RF-562 appended to the review queue:
+  RF-554 a file the tool rejects silently discards the current measurement while
+  the window keeps showing it; RF-555 a failed run reports "Drift measurement
+  failed" without the reason the model already holds; RF-556 Measure and both
+  Export actions are silent no-ops when their precondition is unmet; RF-557
+  "Apply by" does not invalidate the shown result, so the exported stack can
+  differ from the approved projection; RF-558 the Before/After pair is drawn at
+  two zooms with two auto-scaled contrast windows, defeating the documented
+  visual check; RF-559 the panel never receives the Image Tools pipeline source;
+  RF-560 the correction is consumed by no downstream step, contradicting the
+  panel description, the help and guide 43; RF-561 guide 43's `img-drift`
+  console script does not exist (`csc img-drift` does); RF-562 closing Image
+  Tools during its background pre-compute raises `RuntimeError` from the worker
+  thread. No application source touched.
 * **The burst workflow stopped handing its files over halfway down the list
   (RF-552).** Browser, Background and IRF & Background were fed by the shell,
   but three burst plugins that consume exactly what the pipeline produces were

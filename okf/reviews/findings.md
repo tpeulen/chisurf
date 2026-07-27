@@ -6583,3 +6583,75 @@ dataset combo box is not showing the first curve. Findings RF-544..RF-551.
 - **Finding:** the raise/activate exists for a real macOS problem — a tool built as a `QMainWindow` is briefly a native window that can take activation while being embedded — but it fired whenever a task completed. With steps that now start work on their own and run for minutes, that is a window jumping to the front long after the user left it.
 - **Fix note:** ✅ **FIXED 2026-07-28.** Both passes are gated on `_may_take_activation`: this application must be frontmost, and the active window must be this window or a descendant of it. The descendant case is what keeps the original fix working — the transient tool window is a child — and the parent chain is walked by hand because `isAncestorOf` answers false for a child that is itself a window. Embedded tools also get `WA_ShowWithoutActivating`. Tests: four in `test/gui/test_navigation_statusbar.py`, with the application-state read behind a seam (`_application_is_frontmost`) because `QGuiApplication.applicationState` is C++ (patching is silently ignored) and offscreen always reports inactive.
 
+## QA 2026-07-28 — inter-frame drift correction, driven through the GUI
+
+Workflow: [inter-frame drift correction](/usecases/image-drift-correction.md).
+The estimator itself is sound — a known drift injected into a real confocal movie
+came back to within a pixel on every frame, photons are conserved exactly, and a
+100-frame stack measures in 1.2 s. Everything below is the shell around it: what
+the window shows after a file it cannot use, what the settings do after a result
+exists, and how the panel sits inside the Image Tools pipeline it is registered
+in. Findings RF-554..RF-562.
+
+### RF-554
+- **Status:** OPEN
+- **Severity:** S2 (a rejected file silently discards the current measurement while the window keeps showing it — the user reads a result that no longer exists, for a file that is no longer loaded)
+- **Location:** `chisurf/plugins/microscopy/img_drift/gui/view_model.py:92-118` (`set_filename`: `self.filename = …` and `self._result = None` happen *before* any validation; every `return False` path returns without `self.notify(...)`, which is only reached on success at `:117`) and `chisurf/plugins/microscopy/img_drift/gui/tool.py:153-156` (`on_paths_dropped` discards the return value)
+- **Finding:** the model commits to the new file and drops the old result first and validates second, and the failure paths never notify, so the view is never refreshed. Reproduced headlessly: measure `01_Venus_…_BB_stack3.tif` (100 frames → `Max drift 7.3 px over 100 frames`), then drop `test/data/clsm/Leica_SP8.ptu` (reconstructs to one frame). Afterwards `model.filename == 'Leica_SP8.ptu'` and `model.result is None`, while the window still shows the TIFF's name in the **Image** field, its drift trace, its 100-row shift table and its `Max drift 7.3 px over 100 frames` status message (screenshot `30_stale_after_rejected_drop.png`, identical to the pre-drop grab). The reason is in `model.status` (`1 frame(s): drift correction needs at least two`) and is displayed nowhere. The same holds for an unreadable file (`Could not read the image: …`). Both are ordinary user files — every Leica `.ptu` in `test/data/clsm/` reconstructs to a single frame. Validate before mutating (keep `filename`/`_result` when the source is unusable), and notify on every exit path so the view can show the failure.
+- **Fix note:**
+
+### RF-555
+- **Status:** OPEN
+- **Severity:** S3 (the failure message the model computed is thrown away and replaced with a generic one)
+- **Location:** `chisurf/plugins/microscopy/img_drift/gui/tool.py:97-102` (`_on_finished`: `self.statusBar().showMessage(self.model.status if ok else "Drift measurement failed", 8000)`) against `chisurf/plugins/microscopy/img_drift/gui/view_model.py:148-152`, which sets `self._status = f"Drift measurement failed: {exc}"`
+- **Finding:** `ok` is `False` exactly when the model has already written a *specific* status, and that branch is the one that discards it. Observed: pressing **▶ Measure** on a one-frame file shows `Drift measurement failed` in the status bar while `model.status` reads `Drift measurement failed: test/data/clsm/Leica_SP8.ptu has 1 frame(s); drift needs at least two`. Show `self.model.status` in both branches — it is already the failure sentence.
+- **Fix note:**
+
+### RF-556
+- **Status:** OPEN
+- **Severity:** S3 (three toolbar actions do nothing and say nothing when their precondition is unmet)
+- **Location:** `chisurf/plugins/microscopy/img_drift/gui/tool.py:85-88` (`run_with_progress`: `if not getattr(self.model, "filename", ""): return`), `:110-113` and `:123-126` (`_export_stack` / `_export_shifts`: `if self.model.result is None: return`)
+- **Finding:** each guard returns silently, and none of the actions is ever disabled, so on a freshly opened tool **▶ Measure**, **💾 Export stack** and **💾 Export shifts** are indistinguishable from broken buttons — verified: clicking all three on an empty tool leaves the status bar empty and the window unchanged. The sibling PSF panel raises a specific dialog in the same situation ("Load a stack first."), which is the house pattern. Either keep the actions disabled until their precondition holds (`filename` / `result`), or show the one-line reason.
+- **Fix note:**
+
+### RF-557
+- **Status:** OPEN
+- **Severity:** S2 (the exported stack can differ from the projection the user approved, with nothing on screen indicating it)
+- **Location:** `chisurf/plugins/microscopy/img_drift/gui/view_model.py:186-191` (`export`: `corrected_stack(…, shifts=self._result.shifts, mode=self.mode)` — the *current* mode against the *stored* shifts) and `:140-147` (`compute` stores `after` computed with the mode as it was at measure time); nothing invalidates `_result` when `mode` changes
+- **Finding:** `mode` (the **Apply by** combo: *Wrapping* / *Blanking*) is a plain attribute with no observer, so switching it after a measurement leaves the **After** projection byte-identical — verified: `after_image()` is unchanged across a wrap → constant switch, and only a re-measure changes it (photon sum 22 781 387 wrapped vs 22 508 251 blanked, a 1.2 % difference). **Export stack**, however, reads `self.mode` at export time, so the user can approve a wrapped projection and write a blanked file (or the reverse). The same staleness applies to *Reference*, *Smoothing* and *Sub-pixel*, which merely leave a stale result on screen; only *Apply by* changes what is written. Mark the result stale (or re-run) when any estimator/apply setting changes, and export the mode the displayed result was computed with.
+- **Fix note:**
+
+### RF-558
+- **Status:** OPEN
+- **Severity:** S3 (the tool's own documented visual check cannot be performed on the pair it draws)
+- **Location:** `chisurf/plugins/microscopy/img_drift/gui/drift.view.json:106-132` (the *Projection* `dock_area`, `split: horizontal`, two independent `image` custom sections each with their own `colormap_attr`), against the guidance in `docs/guides/43_drift_correction.md` ("If your 'after' looks no sharper than your 'before', the correction did not work — do not export it") and the docstring of `DriftResult.after` ("the quickest visual check there is")
+- **Finding:** the two image widgets are neither the same size nor on the same intensity scale, so the comparison is between two differently rendered pictures. Measured on the real 100-frame movie: the *Before* view is **349 px** wide and the *After* view **560 px** (the same 300 × 300 field drawn at two zooms — the horizontal split is not even), and each auto-scales its own contrast, giving `levels` **[0, 407]** on the left and **[86, 395]** on the right, so identical counts are painted different colours (screenshot `20_tab_Projection.png`). Split the dock evenly, drive both from one shared level window, and link the two view boxes.
+- **Fix note:**
+
+### RF-559
+- **Status:** OPEN
+- **Severity:** S2 (the pipeline's shared source reaches every panel except this one, so "Next ▶" lands on an empty step)
+- **Location:** `chisurf/plugins/microscopy/img_drift/gui/view_model.py` (`DriftViewModel` defines no `apply_pipeline_context` and no `apply_setup`) against `chisurf/plugins/microscopy/imaging_tools/gui/tool.py:499-518` (`set_pipeline` → `_apply_pipeline_to_panel` / `model.apply_pipeline_context(...)`) and `:330-333` (`PIPELINE_ORDER` contains `"drift"`)
+- **Finding:** the hub hands the picked measurement to every panel that accepts it; the drift panel accepts nothing. Verified: after `ImagingToolsTool.set_pipeline(source='test/data/clsm/PQ_Olympus_MFIS.ht3')` the intensity panel's model has `filename == 'test/data/clsm/PQ_Olympus_MFIS.ht3'` while the drift panel's model still has `filename == ''` and `status == 'No image loaded.'` — `hasattr(widget, 'apply_pipeline_context')` and `hasattr(model, 'apply_pipeline_context')` are both `False`. Since drift is ordered *before* the numbered steps, a user walking the pipeline with **Next ▶** reaches an empty panel and has to find and pick the same file again. Implement `apply_pipeline_context` on the view model (set `filename` from `context['source']`, refresh the channel list), as the neighbouring imaging view models do.
+- **Fix note:**
+
+### RF-560
+- **Status:** OPEN
+- **Severity:** S2 (three places tell the user the correction feeds the pipeline; nothing consumes it, so the numbered steps analyse the uncorrected data)
+- **Location:** `chisurf/plugins/microscopy/imaging_tools/gui/tool.py:213-224` (the Drift panel entry: *"Photon streams are corrected photon by photon, so the steps below still see real photons"*), `chisurf/plugins/microscopy/img_drift/gui/help.md` (*"Correct here first, then continue with Next ▶"*) and `docs/guides/43_drift_correction.md` (same), against the consumers of `chisurf/core/fluorescence/imaging/drift.py`
+- **Finding:** `grep -rln "estimate_drift\|correct_drift"` over `chisurf/` returns only the drift plugin itself and `chisurf/core/experiments/ics/__init__.py:19,440` — and the ICS reader re-measures the drift on its own (`correct_drift(images, reference=self.drift_correction, roi=roi)`), so it is not consuming this panel's result either. The panel's `DriftResult` (and, for a photon stream, the corrected `CLSMImage`) is never handed to the hub, so *1. Intensity*, *2. Number & Brightness*, *3. Mean Micro-Time*, *5. Phasor-FLIM* and *6. Pixel-wise MLE* all read the original file. Pressing **Next ▶** after a correction therefore produces exactly the maps the user pressed Measure to avoid. Either publish the corrected image into the pipeline context (the photon-level path already produces one, `core.correct_photon_image`), or remove the three claims and document the export → reload route instead.
+- **Fix note:**
+
+### RF-561
+- **Status:** OPEN
+- **Severity:** S3 (the documented headless command is not installed)
+- **Location:** `docs/guides/43_drift_correction.md` (*Headless* section: `img-drift movie.tif --channel 0 …`) against `pyproject.toml` `[project.scripts]`, which installs only `csc` and `chimol-cli`
+- **Finding:** `img-drift` is a plugin CLI entry point (`manifest.json` → `entrypoints.cli`), not a console script, so the command in the guide cannot be run. The working form is `csc img-drift …`, verified against the real file (`csc img-drift test/data/rics/RICS_EGFPGFP.tif --json` → 50 frames, `total_drift_px` 1.414). Same defect as RF-456 for `psf-determination`; a sweep over the guides for other bare plugin-CLI invocations is worth doing in the same pass.
+- **Fix note:**
+
+### RF-562
+- **Status:** OPEN
+- **Severity:** S3 (closing the Image Tools window during its automatic pre-compute raises from a worker thread)
+- **Location:** `chisurf/plugins/microscopy/imaging_tools/gui/tool.py:75` (`_PipelineComputeTask.run`: `self._signals.model_done.emit(role)`) with the owner reference at `:545` (`self._pipeline_signals = signals`), started from `_start_background_compute` (`:521-547`) on every new source
+- **Finding:** the `_PipelineSignals` object lives only on the hub, and the hub can be destroyed while the pooled task is still running, after which the emit hits a deleted C++ object. Reproduced: `set_pipeline(source='test/data/clsm/PQ_Olympus_MFIS.ht3')`, then close and delete the hub 0.3 s later → `RuntimeError: wrapped C/C++ object of type _PipelineSignals has been deleted` on stderr from the worker thread. Picking a source starts this compute automatically, so a user who picks a file and immediately closes the window hits it. Have the task hold its own reference to the signals object (or check `sip.isdeleted` / connect through a `QPointer`-guarded slot) and stop the pool in `closeEvent` before the owner goes away.
+- **Fix note:**

@@ -163,6 +163,13 @@ The workflows a first pass should cover — expand as the tester discovers more:
   folder, with a transition-time scan and an independent H2MM cross-check. The
   likelihood is right and fast; getting real data into it is not.
   *(last driven 2026-07-27; RF-524..RF-531)*
+- [Inter-frame drift correction](/usecases/image-drift-correction.md) — the step
+  before every per-pixel map: measure how far the sample moved between frames,
+  remove it (whole-pixel rolls for a camera stack, photon-by-photon for a
+  confocal stream), read the drift trace and the before/after projections, and
+  export the corrected stack and the shift table. The estimator is right; the
+  window around it shows the previous file's result after a file it cannot read.
+  *(last driven 2026-07-28; RF-554..RF-562)*
 
 ## Per-workflow file format
 
