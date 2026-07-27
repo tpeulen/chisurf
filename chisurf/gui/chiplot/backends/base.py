@@ -328,6 +328,19 @@ class GridCanvas(abc.ABC):
         """Add and return a panel at the given grid cell."""
 
     @abc.abstractmethod
+    def add_colorbar(
+        self,
+        image: H.Image,
+        *,
+        colormap: S.Colormap | None = None,
+        row: int | None = None,
+        col: int | None = None,
+        rowspan: int = 1,
+        colspan: int = 1,
+    ) -> H.ColorBar:
+        """Add a colour bar / level editor bound to ``image``; return its handle."""
+
+    @abc.abstractmethod
     def next_row(self) -> None:
         """Advance the implicit insertion cursor to the next row."""
 

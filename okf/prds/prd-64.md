@@ -607,6 +607,25 @@ screenshot/qtbot verification after each cluster.
   `test_region_set_limits_constrains_drag`, `test_anchored_text_is_screen_pinned`
   (chiplot); the alpha-contract test in `test_lineplot.py` now asserts
   `line.set_opacity(alpha)`.
+- **Batch 30** — the **colour bar** capability plus a seam-defect sweep. Added
+  `Grid.add_colorbar(image, colormap=…)` and the `ColorBar` handle
+  (`set_colormap` / `set_levels` / `get_levels` / `on_levels_changed`), closing
+  the `HistogramLUTItem` passthrough gap Batch 7 left open: `burst_bva` now
+  builds its LUT panel natively and no longer reaches for
+  `cp.get_backend().raw_module().colormap.get(...)`, so its plot is clean
+  chiplot end to end. Also added the `to_colormap` coercer (`Plot.image` uses it
+  too). Fixed six defects in the seam itself, each with a test:
+  error-bar extents are now *replaced* rather than merged (a stale `height` from
+  construction crashed every BVA repaint — RF-055), mouse events are scoped to
+  the panel they happened in (RF-131), `line(symbol=…)` falls back to the
+  renderer's default marker colours instead of "no brush/no pen" (RF-132),
+  `background=` paints the whole widget and an explicit `None` means transparent
+  (RF-133), `to_color` follows its documented 0–1 rule for mixed float/int
+  tuples (RF-134), `Plot.remove` drops the handle from the CSV-export series
+  (RF-136), and `ImageView.clear()` takes the overlays/ROIs with it (RF-137); a
+  contract test now asserts the pyqtgraph canvases accept every parameter
+  `backends/base.py` declares (RF-135). Verified by driving the BVA tool
+  headlessly on a real burst folder (2257/2495 bursts) and inspecting the render.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

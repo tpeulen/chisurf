@@ -896,12 +896,21 @@ Findings RF-052..RF-056.
 - **Fix note:**
 
 ### RF-055
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (an exception per repaint; error bars never drawn)
 - **Location:** `chisurf/plugins/burst/burst_bva/gui/tool.py:467-468` (`_setup_plot`, `plot.errorbars(..., height=np.array([]))`) with `:522` (`set_data(x_centers, mean, top=sd, bottom=sd)`)
 - **Finding:** The item is created with an empty `height` and thereafter only ever updated with `top`/`bottom`. `_ErrorBars.set_data` (`chisurf/gui/chiplot/backends/pyqtgraph_backend.py:288`) forwards only the keys it is given, and pyqtgraph's `ErrorBarItem.setData` merges into existing opts, so the stale `height=array([])` survives and `drawPath` takes the `height` branch: `y1 = y - height/2.` → `ValueError: operands could not be broadcast together with shapes (31,) (0,)`, raised from both `paint` and `boundingRect` on every repaint. Verified by opening the BVA panel on a 620-burst folder (`Done – 555 bursts with Std > 0 on 620 total`): the console fills with the traceback and the binned-mean curve is drawn with no uncertainties at all. Create the item without `height` (or pass `height=None` in `set_data` alongside `top`/`bottom`) and guard the empty-data case; a test that calls `_plot_2d_histogram` on a small array and asserts the item's opts carry no `height` would pin it.
-- **Fix note:**
-
+- **Fix note:** Fixed in the seam, not only at the call site: `_ErrorBars.set_data`
+  now *replaces* the extents — it passes `height`/`top`/`bottom` on every call,
+  `None` for the ones not given — so a handle can switch between symmetric and
+  asymmetric extents and a stale opt can never override the new data. The BVA
+  call site also creates the item with empty `top`/`bottom` instead of `height`,
+  matching how it is updated. Pinned by
+  `test_errorbars_set_data_replaces_extents` (chiplot), which switches modes both
+  ways and calls `drawPath` — it raises the reported `ValueError` against `HEAD`.
+  Verified end-to-end by driving the BVA tool headlessly on
+  `sliding_window_All 0.1500#60` (2257/2495 bursts): the profile now renders with
+  its uncertainties and no exception.
 ### RF-056
 - **Status:** OPEN
 - **Severity:** S3 (a primary button that is a no-op until an undiscoverable field is changed)
@@ -1818,54 +1827,77 @@ Every finding below was reproduced in the `arm64` env against pyqtgraph 0.14.0
 inspecting the PNG. RF-131..RF-137.
 
 ### RF-131
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (in a `Grid`, a click on one panel fires `clicked` on *every* panel, each with a coordinate mapped through its own unrelated viewbox)
 - **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:749-757` (`_PgCanvas.on_click`) and `:759-768` (`on_mouse_move`), reached from `chisurf/gui/chiplot/canvas.py:954` (`PanelPlot.__init__`) and `:70-71` (`Plot.__init__`)
 - **Finding:** Both handlers connect to `self._host.scene()`, and for a grid panel `_host` is the whole `GraphicsLayoutWidget` (`_PgGrid.add_panel:786-789` hands every panel the same widget), so the signal is scene-wide while the mapping (`vb.mapSceneToView`) is panel-local. Verified on a 2-panel grid: emitting a click at the centre of the *bottom* panel's `sceneBoundingRect` produced `[('p0', 4.50, -10.92), ('p1', 4.50, 448.03)]` — the top panel reported y = -10.9, outside its own view range (-0.83, 9.83), for a click it never received. The `on_mouse_move` guard `self._host.scene().sceneRect().contains(pos)` looks like a bounds check but is not one: `sceneRect` is the whole scene (measured 0,0,600×1135 for a 600×400 widget), so it is true for every position, including the axis margins outside any viewbox. Scope both to the panel — `self._pi.getViewBox().sceneBoundingRect().contains(pos)` before mapping — which also fixes the single-`Plot` case, where a click in the axis/title margin currently reports extrapolated data coordinates.
-- **Fix note:**
-
+- **Fix note:** Both handlers now filter the scene position against this panel's
+  own viewbox (`_PgCanvas._contains`, `getViewBox().sceneBoundingRect()`) before
+  mapping it, so a click reaches only the panel it happened in — and a click in a
+  single plot's axis margin no longer reports extrapolated data coordinates.
+  Pinned by `test_mouse_events_are_panel_scoped` (two-panel grid; a click in the
+  bottom panel's rect must arrive only there).
 ### RF-132
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (`plot.line(x, y, symbol="o")` documents "draw a marker at each point" and draws nothing at all)
 - **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:499-502` (`add_curve`: `kw["symbolBrush"] = _brush(symbol_brush) if symbol_brush is not None else None`, same for `symbolPen`) against the contract in `chisurf/gui/chiplot/canvas.py:114-121`
 - **Finding:** `Plot.line` defaults `symbol_brush`/`symbol_pen` to `None`, and the backend forwards that `None` verbatim to pyqtgraph, which means *no fill* and *no outline* rather than "use the default". pyqtgraph's own defaults are `symbolBrush=(50, 50, 150)` and `symbolPen=(200, 200, 200)`. Verified: the resulting `ScatterPlotItem` carries `QBrush.style() == NoBrush` and `QPen.style() == NoPen`, and a rendered PNG shows the curve's markers completely absent next to a `pg.PlotDataItem` reference drawn with the same arguments (`/tmp/chiplot_symbol.png`). Note `Plot.scatter` is unaffected — it defaults `brush="w"`. Live call site: `chisurf/plugins/burst/burst_fcs_correlator/wizard.py:274` draws the correlation data as `line([], [], pen="w", symbol="o", symbol_size=4)`, i.e. the markers it asks for never appear. Fall back to a sensible default brush/pen when `symbol` is given and neither is specified (or omit the keys so pyqtgraph applies its own).
-- **Fix note:**
-
+- **Fix note:** `add_curve` only sets `symbolBrush`/`symbolPen` when the caller
+  actually passed one, so an unspecified colour falls through to pyqtgraph's own
+  default instead of `None` = *no brush* / *no pen*. `line(..., symbol="o")` now
+  draws a visible marker (the burst-FCS correlation curve among others). Pinned by
+  `test_line_symbol_uses_renderer_default_colors`.
 ### RF-133
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a plot asked for a white background renders white inside the axes and black everywhere else — a visible regression against the pyqtgraph call site it replaced)
 - **Location:** `chisurf/gui/chiplot/canvas.py:68-69` (`Plot.__init__` routes `background` to `self._canvas.set_background`) and `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:683-686` (`set_background` → `vb.setBackgroundColor`), versus `:894-900` (`create_canvas`, which *does* have a widget-level `pw.setBackground` path that `Plot` can never reach because `background` is an explicit keyword and never lands in `backend_opts`)
 - **Finding:** `ViewBox.setBackgroundColor` paints only the plot rectangle; the axis strips, tick labels and title keep the process-wide pyqtgraph background, which ChiSurf sets to `k` (`chisurf/core/settings/settings_chisurf.yaml:120`). Verified by rendering `cp.Plot(background="w")` after `cp.configure(background="k")`: white data rectangle framed by black margins with grey text. The affected call site is `chisurf/plugins/fret_line/gui/tool.py:92`, whose pre-migration form was `pg.PlotWidget(parent=parent)` + `pw.setBackground("w")` — the whole widget white. Second half of the same defect: `background=None` is treated as "not given" (`if background is not None`), so the pyqtgraph idiom for a *transparent* panel is silently a no-op; `chisurf/gui/widgets/spectrum_view.py:121` and `chisurf/plugins/core/lightpath_simulator/gui/node_types.py:91` both pass it. Route the constructor's `background` (including an explicit `None`) into `create_canvas` so the widget is painted, and document that `set_background` on a live plot only reaches the viewbox.
-- **Fix note:**
-
+- **Fix note:** `set_background` now paints the host widget as well as the
+  viewbox when the canvas owns that widget (single `Plot`; a grid panel shares one
+  widget with its siblings and is excluded via the new `owns_host` flag), so
+  `background="w"` gives a white panel *including* axis strips and title. The
+  constructor distinguishes "not given" from an explicit `None` through a
+  `_UNSET` sentinel, so `Plot(background=None)` means transparent — the pyqtgraph
+  idiom the spectrum view and the lightpath node plots rely on. Pinned by
+  `test_background_paints_whole_widget` (white widget brush, transparent on
+  `None`, and a panel not repainting its shared grid widget).
 ### RF-134
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a colour spec the module docstring itself gives as an example silently produces near-black instead of red)
 - **Location:** `chisurf/gui/chiplot/style.py:136-143` (`to_color`: `is_float = all(isinstance(v, float) for v in vals) and all(v <= 1.0 for v in vals)`) against its own docstring at `:102-103` and the advertised example at `chisurf/gui/chiplot/canvas.py:12`
 - **Finding:** The docstring says 0–1 floats are "auto-detected: all values `<= 1` are treated as floats", but the code *additionally* requires every element to be a Python `float`, so any tuple mixing floats with integer literals falls into the 0–255 branch and is truncated by `int(v)`. Verified: `to_color((1.0, 0, 0))` — the exact spelling `canvas.py`'s module docstring offers as "pass `(1.0, 0, 0)`" — returns `Color(r=1, g=0, b=0)`, i.e. black; `to_color((0.5, 0.5, 1))` returns `Color(r=0, g=0, b=1)`, discarding both 0.5 channels. `(1.0, 0.0, 0.0)` is correctly red, so the failure depends only on how the caller happened to spell the zeros, and nothing raises. Either drop the `isinstance` requirement (match the documented rule, which is also what makes the docstring's `(1, 0, 0)`-style examples work) or reject mixed tuples explicitly; keep `to_color` and the two docstrings saying the same thing.
-- **Fix note:**
-
+- **Fix note:** `to_color` now applies the documented rule alone — every channel
+  `<= 1` is the 0–1 float scale — dropping the extra `isinstance(v, float)`
+  requirement that made the result depend on how the caller spelled its zeros.
+  `(1.0, 0, 0)` (the module docstring's own example) is red again. Pinned by
+  `test_to_color_float_tuple_detection`.
 ### RF-135
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (the abstract backend contract no longer matches what the wrapper actually calls — a second backend written to `base.py` raises `TypeError` on the first text label)
 - **Location:** `chisurf/gui/chiplot/backends/base.py:139-149` (`Canvas.add_text`, no `fill`/`border`) against `chisurf/gui/chiplot/canvas.py:389-397` (`Plot.text` always passes `fill=`/`border=`, `None` or not) and `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:595` (which grew the two parameters in `f06fa93a3`)
 - **Finding:** The `fill`/`border` feature was added to the concrete pyqtgraph canvas and to the public `Plot.text`, but the abstract method it implements was not updated: `inspect.signature(base.Canvas.add_text)` is `(self, text, pos, *, color, anchor, draggable)` while the pyqtgraph implementation is `(..., draggable, fill=None, border=None)`. `base.py` is the document a second renderer is written against ("Swapping to a different renderer means writing a sibling module with the same classes"), so it is exactly the thing that must not drift. Add the two keyword parameters to the abstract signature and its docstring. Worth checking the neighbours in the same commit while there — `link_x`/`link_y` were added to `base.py` correctly, as defaulted no-ops.
-- **Fix note:**
-
+- **Fix note:** Already carried by `base.Canvas.add_text` (it gained
+  `fill`/`border`/`anchored` with the anchored-text work). Locked against future
+  drift by `test_backend_contract_matches_implementation`, which walks every
+  abstract method of `Canvas`/`GridCanvas`/`ImageViewCanvas` and asserts the
+  pyqtgraph implementation accepts each parameter the contract declares.
 ### RF-136
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (CSV export includes series the user removed from the plot, and the plot keeps them alive)
 - **Location:** `chisurf/gui/chiplot/canvas.py:419-427` (`Plot.remove`, which touches only the canvas) against `:147`/`:181` (`self._series.append(...)`) and `:485-497` (`export_csv` iterating `self._series`)
 - **Finding:** `line()`/`scatter()` register their handle in `self._series` for the CSV export action; `clear()` empties that list but `remove(handle)` does not. Verified: drawing curves `gone` and `kept`, calling `plot.remove(gone)`, then `export_csv` writes the header `gone x,gone y,kept x,kept y` — the removed curve is exported with full data. The handle also stays referenced by the `Plot`, so the pyqtgraph item is never collected. Drop the matching entry in `remove()` (identity match on the handle).
-- **Fix note:**
-
+- **Fix note:** `Plot.remove` now drops the handle from `_series` (identity
+  match), so a removed curve leaves the CSV export and stops being kept alive by
+  the plot. Pinned by `test_remove_drops_series_from_export`.
 ### RF-137
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (a docstring promises overlays are cleared; they survive, so a stale overlay is drawn over the next image)
 - **Location:** `chisurf/gui/chiplot/canvas.py:833-835` (`ImageView.clear`, *"Clear the image and overlays."*), the same claim in `chisurf/gui/chiplot/backends/base.py:335-337`, implemented at `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:829-831` as a bare `self._iv.clear()`
 - **Finding:** `pg.ImageView.clear()` clears the image item only; items added to the view by `add_overlay` (`:849-857`) and `add_roi` (`:859-871`) are unaffected. Verified: after `set_image` + `add_overlay`, the view holds 4 added items; after `ImageView.clear()` it still holds 4 and the overlay handle's native item is still in `view.addedItems`. A caller following the docstring re-shows an image with the previous overlay still on top. Either track the items this canvas added and remove them in `clear()`, or correct both docstrings to say overlays and ROIs must be removed through their handles.
-- **Fix note:**
-
+- **Fix note:** `_PgImageView` tracks the items it adds (`add_overlay`/`add_roi`)
+  and removes them in `clear()`, so the docstring's promise holds and a stale
+  overlay is no longer drawn over the next image. Pinned by
+  `test_image_view_clear_removes_overlays`.
 ## Review run — the plugin contract layer (2026-07-26)
 
 Slice: `chisurf/core/plugin/` (`manifest.py`, `registry.py`, `client.py`, ~1 000

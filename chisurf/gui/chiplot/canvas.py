@@ -26,6 +26,11 @@ from chisurf.gui.chiplot import handles as H
 from chisurf.gui.chiplot import style as S
 from chisurf.gui.chiplot.backends import get_backend
 
+#: Sentinel for "argument not given", so an explicit ``None`` keeps its own
+#: meaning (a *transparent* background, pyqtgraph's idiom) instead of being
+#: indistinguishable from the default.
+_UNSET = object()
+
 
 class Plot(QtWidgets.QWidget):
     """A single plot panel with a verb-first drawing API.
@@ -37,7 +42,8 @@ class Plot(QtWidgets.QWidget):
     title : str, optional
         Panel title.
     background : color-like, optional
-        Background color.
+        Background color of the whole panel widget (data rectangle *and* axis
+        margins). An explicit ``None`` means transparent.
     **backend_opts
         Passed through to the backend canvas factory.
 
@@ -52,7 +58,9 @@ class Plot(QtWidgets.QWidget):
     clicked = QtCore.Signal(float, float)
     mouse_moved = QtCore.Signal(float, float)
 
-    def __init__(self, parent=None, *, title: str | None = None, background=None, **backend_opts):
+    def __init__(
+        self, parent=None, *, title: str | None = None, background=_UNSET, **backend_opts
+    ):
         super().__init__(parent)
         self._canvas = get_backend().create_canvas(**backend_opts)
         # (name, handle) of exportable x/y series, for the CSV context action.
@@ -65,8 +73,8 @@ class Plot(QtWidgets.QWidget):
         layout.addWidget(self._canvas.widget())
         if title is not None:
             self._canvas.set_title(title)
-        if background is not None:
-            self._canvas.set_background(S.to_color(background))
+        if background is not _UNSET:
+            self._canvas.set_background(None if background is None else S.to_color(background))
         self._canvas.on_click(lambda x, y, btn: self.clicked.emit(x, y) if btn == "left" else None)
         self._canvas.on_mouse_move(lambda x, y: self.mouse_moved.emit(x, y))
         # If the backend already ships a rich menu (pyqtgraph: Export/CSV/image),
@@ -286,9 +294,7 @@ class Plot(QtWidgets.QWidget):
         -------
         handles.Image
         """
-        cmap = colormap
-        if isinstance(cmap, str):
-            cmap = S.colormap(cmap)
+        cmap = S.to_colormap(colormap)
         return self._canvas.add_image(
             np.asarray(data), colormap=cmap, levels=levels, rect=rect, axis_order=axis_order
         )
@@ -490,12 +496,16 @@ class Plot(QtWidgets.QWidget):
     def remove(self, handle: H.Handle) -> None:
         """Remove a handle.
 
+        Also drops it from the exportable-series list, so a removed curve stops
+        showing up in the CSV export (and stops being kept alive by the plot).
+
         Parameters
         ----------
         handle : handles.Handle
             The handle to remove from the panel.
         """
         self._canvas.remove(handle)
+        self._series = [entry for entry in self._series if entry[1] is not handle]
 
     def clear(self) -> None:
         """Remove every drawn handle from the panel."""
@@ -808,6 +818,39 @@ class Grid(QtWidgets.QWidget):
             row=row, col=col, rowspan=rowspan, colspan=colspan, title=title
         )
         return PanelPlot(canvas)
+
+    def add_colorbar(
+        self, image: H.Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
+    ) -> H.ColorBar:
+        """Add a colour bar with interactive level handles, bound to ``image``.
+
+        Replaces pyqtgraph's ``HistogramLUTItem``: the bar shows the image's
+        intensity histogram, its handles set the mapped level range, and its
+        gradient sets the colormap of both bar and image.
+
+        Parameters
+        ----------
+        image : handles.Image
+            The image handle the bar drives (from :meth:`Plot.image`).
+        colormap : colormap-like, optional
+            Initial colormap (name or :class:`~chisurf.gui.chiplot.style.Colormap`).
+        row, col : int, optional
+            Target cell (implicit next cell if omitted).
+        rowspan, colspan : int
+            Cell span.
+
+        Returns
+        -------
+        handles.ColorBar
+        """
+        return self._grid.add_colorbar(
+            image,
+            colormap=S.to_colormap(colormap),
+            row=row,
+            col=col,
+            rowspan=rowspan,
+            colspan=colspan,
+        )
 
     def next_row(self) -> None:
         """Advance the implicit insertion cursor to the next row."""

@@ -102,8 +102,8 @@ def _brush(brush: S.Brush | None):
     return pg.mkBrush(brush.color.as_tuple())
 
 
-def _lut(cmap: S.Colormap | None):
-    """Resolve a chiplot :class:`~chisurf.gui.chiplot.style.Colormap` to a LUT.
+def _colormap(cmap: S.Colormap | None):
+    """Resolve a chiplot :class:`~chisurf.gui.chiplot.style.Colormap` to a ``pg.ColorMap``.
 
     Returns ``None`` if the colormap cannot be resolved by pyqtgraph.
 
@@ -118,10 +118,24 @@ def _lut(cmap: S.Colormap | None):
         try:
             cm = pg.colormap.get(cmap.name, source=source) if source else pg.colormap.get(cmap.name)
             if cm is not None:
-                return cm.getLookupTable(alpha=True)
+                return cm
         except Exception:
             continue
     return None
+
+
+def _lut(cmap: S.Colormap | None):
+    """Resolve a chiplot colormap to a lookup table.
+
+    Returns ``None`` if the colormap cannot be resolved by pyqtgraph.
+
+    Parameters
+    ----------
+    cmap : Colormap or None
+        The colormap reference to resolve; ``None`` yields ``None``.
+    """
+    cm = _colormap(cmap)
+    return None if cm is None else cm.getLookupTable(alpha=True)
 
 
 _QT_BUTTON = {
@@ -310,15 +324,21 @@ class _ErrorBars(_Item):
     """Handle for a pyqtgraph ``ErrorBarItem``."""
 
     def set_data(self, x, y, *, height=None, top=None, bottom=None) -> None:
-        """Replace error-bar geometry."""
-        kw = {"x": np.asarray(x), "y": np.asarray(y)}
-        if height is not None:
-            kw["height"] = np.asarray(height)
-        if top is not None:
-            kw["top"] = np.asarray(top)
-        if bottom is not None:
-            kw["bottom"] = np.asarray(bottom)
-        self._native.setData(**kw)
+        """Replace error-bar geometry.
+
+        The extents are *replaced*, not merged: an extent that is not passed is
+        cleared. ``ErrorBarItem.setData`` only updates the keys it is given and
+        lets a stale ``height`` override ``top``/``bottom``, so a handle created
+        with ``height`` and later updated with ``top``/``bottom`` would keep
+        drawing (or, with mismatched lengths, crash on) the old ``height``.
+        """
+        self._native.setData(
+            x=np.asarray(x),
+            y=np.asarray(y),
+            height=None if height is None else np.asarray(height),
+            top=None if top is None else np.asarray(top),
+            bottom=None if bottom is None else np.asarray(bottom),
+        )
 
 
 class _Image(_Item):
@@ -337,6 +357,30 @@ class _Image(_Item):
     def clear(self) -> None:
         """Clear the image data."""
         self._native.clear()
+
+
+class _ColorBar(_Item):
+    """Handle for a pyqtgraph ``HistogramLUTItem`` bound to an image."""
+
+    def set_colormap(self, colormap) -> None:
+        """Apply a colormap (name or :class:`~chisurf.gui.chiplot.style.Colormap`)."""
+        cm = _colormap(S.to_colormap(colormap))
+        if cm is not None:
+            self._native.gradient.setColorMap(cm)
+
+    def set_levels(self, low: float, high: float) -> None:
+        """Set the mapped intensity range."""
+        self._native.setLevels(float(low), float(high))
+
+    def get_levels(self) -> tuple[float, float]:
+        """Return the mapped ``(low, high)`` intensity range."""
+        return tuple(float(v) for v in self._native.getLevels())
+
+    def on_levels_changed(self, callback) -> None:
+        """Call ``callback(low, high)`` when the user drags the level handles."""
+        self._native.sigLevelsChanged.connect(
+            lambda item: callback(*(float(v) for v in item.getLevels()))
+        )
 
 
 class _Region(_Item):
@@ -565,9 +609,12 @@ def _roi_item(kind, pos, size, pen, movable, rotatable, points):
 class _PgCanvas(base.Canvas):
     """A pyqtgraph-backed single plot panel."""
 
-    def __init__(self, plot_item: pg.PlotItem, host: QtWidgets.QWidget):
+    def __init__(self, plot_item: pg.PlotItem, host: QtWidgets.QWidget, *, owns_host: bool = True):
         self._pi = plot_item
         self._host = host  # provides scene() and is the embeddable widget
+        # A grid panel shares one host widget with its siblings, so widget-level
+        # styling (background) must stay with the canvas that owns the widget.
+        self._owns_host = owns_host
 
     def widget(self) -> QtWidgets.QWidget:
         """Return the embeddable Qt widget."""
@@ -598,15 +645,24 @@ class _PgCanvas(base.Canvas):
         if name is not None:
             kw["name"] = name
         if step:
-            kw["stepMode"] = "center"
+            # A string picks the pyqtgraph step mode directly ("left"/"right"
+            # keep x/y equal length; "center" needs len(x) == len(y) + 1). A
+            # bare ``True`` defaults to centered bins.
+            kw["stepMode"] = step if isinstance(step, str) else "center"
         if fill is not None:
             kw["fillLevel"] = 0.0
             kw["brush"] = _brush(fill)
         if symbol is not None:
             kw["symbol"] = symbol.value
             kw["symbolSize"] = symbol_size
-            kw["symbolBrush"] = _brush(symbol_brush) if symbol_brush is not None else None
-            kw["symbolPen"] = _pen(symbol_pen) if symbol_pen is not None else None
+            # Only override the marker fill/outline when the caller asked for
+            # one: forwarding ``None`` means *no brush* / *no pen*, i.e. an
+            # invisible marker, where "not specified" must mean "the renderer's
+            # own default" (a curve with symbol="o" and no colours must show).
+            if symbol_brush is not None:
+                kw["symbolBrush"] = _brush(symbol_brush)
+            if symbol_pen is not None:
+                kw["symbolPen"] = _pen(symbol_pen)
         item = self._pi.plot(np.asarray(x), np.asarray(y), **kw)
         return _Curve(item, self._pi)
 
@@ -816,9 +872,20 @@ class _PgCanvas(base.Canvas):
         self._pi.showGrid(x=x, y=y, alpha=alpha)
 
     def set_background(self, color) -> None:
-        """Set the panel background color."""
-        vb = self._pi.getViewBox()
-        vb.setBackgroundColor(color.as_tuple() if color is not None else None)
+        """Set the background color of the panel — and of the whole widget.
+
+        ``ViewBox.setBackgroundColor`` paints only the data rectangle, leaving
+        the axis strips, tick labels and title on the process-wide pyqtgraph
+        background (black in ChiSurf). A canvas that owns its host widget
+        (single ``Plot``, not a grid panel sharing one layout widget) therefore
+        paints the widget too, which is what the ``pg.PlotWidget`` +
+        ``setBackground`` call sites this replaces did. ``None`` means
+        transparent, pyqtgraph's own idiom.
+        """
+        value = color.as_tuple() if color is not None else None
+        self._pi.getViewBox().setBackgroundColor(value)
+        if self._owns_host and hasattr(self._host, "setBackground"):
+            self._host.setBackground(value)
 
     def set_aspect_locked(self, lock, ratio=1.0) -> None:
         """Lock the x/y pixel aspect ratio."""
@@ -882,25 +949,41 @@ class _PgCanvas(base.Canvas):
 
     # -- events ---------------------------------------------------------
     def on_click(self, callback) -> None:
-        """Register ``callback(x, y, button)`` for clicks."""
+        """Register ``callback(x, y, button)`` for clicks **in this panel**.
+
+        pyqtgraph's mouse signals are scene-wide, and every panel of a grid
+        shares one scene, so the position is filtered against this panel's own
+        viewbox before it is mapped: otherwise a click on one panel fired on
+        all of them, each reporting a coordinate extrapolated through its own
+        unrelated view range (and a click in the axis margin of a single plot
+        reported data coordinates outside the view).
+        """
 
         def _handler(event):
-            vb = self._pi.getViewBox()
-            pt = vb.mapSceneToView(event.scenePos())
+            if not self._contains(event.scenePos()):
+                return
+            pt = self._pi.getViewBox().mapSceneToView(event.scenePos())
             callback(pt.x(), pt.y(), _QT_BUTTON.get(event.button(), "other"))
 
         self._host.scene().sigMouseClicked.connect(_handler)
 
     def on_mouse_move(self, callback) -> None:
-        """Register ``callback(x, y)`` for pointer motion."""
+        """Register ``callback(x, y)`` for pointer motion over this panel."""
 
         def _handler(pos):
-            vb = self._pi.getViewBox()
-            if self._host.scene().sceneRect().contains(pos):
-                pt = vb.mapSceneToView(pos)
-                callback(pt.x(), pt.y())
+            if not self._contains(pos):
+                return
+            pt = self._pi.getViewBox().mapSceneToView(pos)
+            callback(pt.x(), pt.y())
 
         self._host.scene().sigMouseMoved.connect(_handler)
+
+    def _contains(self, scene_pos) -> bool:
+        """Whether a scene position lies inside this panel's plotting area."""
+        try:
+            return bool(self._pi.getViewBox().sceneBoundingRect().contains(scene_pos))
+        except Exception:
+            return True
 
     @property
     def native(self):
@@ -921,7 +1004,18 @@ class _PgGrid(base.GridCanvas):
     def add_panel(self, *, row=None, col=None, rowspan=1, colspan=1, title=None) -> base.Canvas:
         """Add and return a panel at the given cell."""
         pi = self._w.addPlot(row=row, col=col, rowspan=rowspan, colspan=colspan, title=title)
-        return _PgCanvas(pi, self._w)
+        return _PgCanvas(pi, self._w, owns_host=False)
+
+    def add_colorbar(
+        self, image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1
+    ) -> H.ColorBar:
+        """Add an interactive colour bar / level editor bound to ``image``."""
+        item = pg.HistogramLUTItem()
+        item.setImageItem(image.native)
+        bar = _ColorBar(item, self._w)
+        bar.set_colormap(colormap)
+        self._w.addItem(item, row=row, col=col, rowspan=rowspan, colspan=colspan)
+        return bar
 
     def next_row(self) -> None:
         """Advance the implicit insertion cursor to the next row."""
@@ -938,6 +1032,9 @@ class _PgImageView(base.ImageViewCanvas):
 
     def __init__(self, **opts):
         self._iv = pg.ImageView(**opts)
+        # Items this canvas put on the view (overlays, ROIs) so ``clear`` can
+        # take them off again — ``pg.ImageView.clear`` only clears the image.
+        self._added: list = []
 
     def widget(self) -> QtWidgets.QWidget:
         """Return the embeddable image-view widget."""
@@ -962,7 +1059,19 @@ class _PgImageView(base.ImageViewCanvas):
                 continue
 
     def clear(self) -> None:
-        """Clear the image and overlays."""
+        """Clear the image, and the overlays/ROIs this canvas added.
+
+        ``pg.ImageView.clear`` drops the image only; anything added through
+        :meth:`add_overlay` / :meth:`add_roi` survived it and was drawn on top
+        of the *next* image.
+        """
+        view = self._iv.getView()
+        for item in self._added:
+            try:
+                view.removeItem(item)
+            except Exception:
+                pass
+        self._added.clear()
         self._iv.clear()
 
     def set_histogram_width(self, width) -> None:
@@ -989,6 +1098,7 @@ class _PgImageView(base.ImageViewCanvas):
             item.setLookupTable(lut)
         view = self._iv.getView()
         view.addItem(item)
+        self._added.append(item)
         return _Image(item, view)
 
     def add_roi(
@@ -999,6 +1109,7 @@ class _PgImageView(base.ImageViewCanvas):
         roi = _roi_item(kind, pos, size, pen, movable, rotatable, points)
         view = self._iv.getView()
         view.addItem(roi)
+        self._added.append(roi)
         return _Roi(roi, view)
 
     def on_click(self, callback) -> None:
@@ -1027,7 +1138,9 @@ class PyQtGraphBackend(base.Backend):
         background = opts.pop("background", None)
         pw = pg.PlotWidget(**opts)
         if background is not None:
-            pw.setBackground(background)
+            pw.setBackground(
+                background.as_tuple() if isinstance(background, S.Color) else background
+            )
         return _PgCanvas(pw.getPlotItem(), pw)
 
     def create_grid(self, **opts) -> base.GridCanvas:

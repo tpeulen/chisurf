@@ -20,7 +20,7 @@ Public surface
 - Widgets: :class:`Plot`, :class:`Grid`.
 - Styles: :class:`Color`, :class:`Pen`, :class:`Brush`, :class:`Colormap`,
   :class:`LineStyle`, and the coercers :func:`to_color` / :func:`to_pen` /
-  :func:`to_brush` / :func:`colormap` / :func:`int_color`.
+  :func:`to_brush` / :func:`colormap` / :func:`to_colormap` / :func:`int_color`.
 - Handle enums: :class:`Symbol`, :class:`Orientation`.
 - Backend control: :func:`configure`, :func:`set_backend`, :func:`get_backend`.
 """
@@ -46,6 +46,7 @@ from chisurf.gui.chiplot.style import (
     int_color,
     to_brush,
     to_color,
+    to_colormap,
     to_pen,
 )
 
@@ -107,6 +108,7 @@ __all__ = [
     "to_color",
     "to_pen",
     "to_brush",
+    "to_colormap",
     "colormap",
     "int_color",
     "configure",

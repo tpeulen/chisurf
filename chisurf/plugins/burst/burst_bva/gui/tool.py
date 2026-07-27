@@ -442,17 +442,14 @@ class BVATool(MessagesMixin, QMainWindow):
             [], [], pen=cp.to_pen("cyan", width=2),
             symbol='o', symbol_size=4, symbol_brush=(0, 255, 255, 150),
         )
+        # Asymmetric extents from the start: the profile is updated with
+        # top/bottom, and a handle created with `height` would keep that mode.
         self._profile_error_item = plot.errorbars(
-            np.array([]), np.array([]), height=np.array([]), beam=0.01,
+            np.array([]), np.array([]),
+            top=np.array([]), bottom=np.array([]), beam=0.01,
         )
 
-        # HistogramLUTItem is a pyqtgraph LUT composite chiplot does not model
-        # natively yet; created via passthrough and attached to the layout.
-        self._hist_lut = cp.HistogramLUTItem()
-        self._hist_lut.setImageItem(self._image_item.native)
-        cm = cp.get_backend().raw_module().colormap.get("CET-L4")
-        self._hist_lut.gradient.setColorMap(cm)
-        self.plot_widget.addItem(self._hist_lut)
+        self._hist_lut = self.plot_widget.add_colorbar(self._image_item, colormap="CET-L4")
         self._plot_ref = plot
 
     @staticmethod

@@ -2,6 +2,27 @@
 
 ## 2026-07-27
 
+* **The BVA error bars crashed every repaint; chiplot grew a colour bar and
+  lost six defects (RF-055, RF-131..RF-137).** The BVA profile item was created
+  with an empty `height` and thereafter updated with `top`/`bottom`; pyqtgraph's
+  `ErrorBarItem.setData` merges into existing opts and lets `height` win, so the
+  stale zero-length array met 31 points and raised
+  `ValueError: operands could not be broadcast together with shapes (31,) (0,)`
+  from `paint` *and* `boundingRect`, forever. Fixed in the seam:
+  `_ErrorBars.set_data` now replaces the extents instead of merging them. With
+  the crash gone the same panel's remaining pyqtgraph passthrough went too —
+  chiplot gained a native `Grid.add_colorbar` + `ColorBar` handle (the
+  `HistogramLUTItem` gap open since Batch 7) and a `to_colormap` coercer, so
+  `burst_bva` is clean chiplot end to end. Swept the seam's own review backlog
+  while there: panel-scoped mouse events, default marker colours for
+  `line(symbol=…)`, whole-widget backgrounds with transparent-on-`None`, the
+  documented 0–1 rule in `to_color`, `remove` dropping the export series, and
+  `ImageView.clear()` taking its overlays with it — plus a contract test that
+  pins the abstract canvas signatures against the pyqtgraph implementation.
+  Verified by driving the BVA tool headlessly on a real 2495-burst folder and
+  inspecting the render. See [PRD-64](/prds/prd-64.md) Batch 30.
+
+
 * **chimol: voxel maps are objects now, and the MRC reader was wrong in two ways.**
   `VolumeGrid` carries values with `origin`, `step` and a 3x3 `rotation`, is built
   primarily **from an array in memory** (accessible volumes and CLSM stacks are

@@ -133,7 +133,12 @@ def to_color(value) -> Color:
         vals = list(value)
         if not 3 <= len(vals) <= 4:
             raise TypeError(f"color tuple must have 3 or 4 items, got {value!r}")
-        is_float = all(isinstance(v, float) for v in vals) and all(v <= 1.0 for v in vals)
+        # The documented rule, and only that rule: every channel <= 1 is the
+        # 0–1 float scale. Requiring each item to *be* a ``float`` as well made
+        # the result depend on how the caller spelled its zeros — ``(1.0, 0, 0)``
+        # (the module docstring's own example) fell into the 0–255 branch and
+        # truncated to near-black instead of red.
+        is_float = all(v <= 1.0 for v in vals)
         if is_float:
             chans = [int(round(v * 255)) for v in vals]
         else:
@@ -305,6 +310,33 @@ class _ColormapProxy:
 
 
 colormap = _ColormapProxy()
+
+
+def to_colormap(value, source: str = "matplotlib") -> Colormap | None:
+    """Coerce a colormap-like value to a :class:`Colormap`.
+
+    Parameters
+    ----------
+    value : str, Colormap or None
+        A colormap name, an existing reference, or ``None``.
+    source : str
+        Namespace hint used when ``value`` is a name.
+
+    Returns
+    -------
+    Colormap or None
+        ``None`` is passed through so callers can mean "leave unchanged".
+
+    Raises
+    ------
+    TypeError
+        If ``value`` is neither a name, a :class:`Colormap`, nor ``None``.
+    """
+    if value is None or isinstance(value, Colormap):
+        return value
+    if isinstance(value, str):
+        return Colormap(name=value, source=source)
+    raise TypeError(f"cannot interpret {value!r} as a colormap")
 
 
 def int_color(index: int, count: int = 9) -> Color:

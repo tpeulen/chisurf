@@ -667,3 +667,209 @@ def test_anchored_text_is_screen_pinned(qapp):
     # The text property setter keeps working through the handle.
     anchored_txt.text = "updated"
     assert anchored_txt.native.toPlainText() == "updated"
+
+
+def test_line_step_string_modes(qapp):
+    """line(step=...) accepts the equal-length pyqtgraph step modes as strings.
+
+    ``step=True`` maps to centered bins (needs ``len(x) == len(y) + 1``) while
+    ``"left"``/``"right"``/``"center"`` keep x and y the same length — the mode
+    the DistributionPlot histograms (data/model) use, together with a fill.
+    """
+    plot = cp.Plot()
+    x = [0.0, 1.0, 2.0, 3.0]
+    y = [1.0, 3.0, 2.0, 0.0]
+    # Equal-length "right" step must not raise (a bare True would demand N+1).
+    c = plot.line(x, y, step="right", pen="b", fill=(0, 0, 255, 127))
+    assert c.native.opts["stepMode"] == "right"
+    # The fill brush survives to the backend item.
+    assert c.native.opts["fillLevel"] == 0.0
+    assert c.native.opts["fillBrush"].color().alpha() == 127
+
+
+def test_errorbars_set_data_replaces_extents(qapp):
+    """set_data replaces the extents rather than merging them.
+
+    pyqtgraph's ``ErrorBarItem.setData`` only updates the keys it is handed and
+    lets a stale ``height`` override ``top``/``bottom``. A handle created with
+    ``height`` and later updated with ``top``/``bottom`` therefore kept the old
+    ``height`` and — with a different point count — crashed while painting
+    (BVA proximity-ratio profile: ``height`` of length 0 vs. 31 points).
+    """
+    plot = cp.Plot()
+    eb = plot.errorbars(np.array([]), np.array([]), height=np.array([]), beam=0.01)
+
+    x = np.linspace(0.0, 1.0, 31)
+    y = np.sin(x)
+    sd = np.full(31, 0.05)
+    eb.set_data(x, y, top=sd, bottom=sd)
+
+    assert eb.native.opts["height"] is None
+    assert len(eb.native.opts["top"]) == 31
+    eb.native.drawPath()  # would raise a broadcast ValueError with a stale height
+
+    # ...and the other way round: switching back to symmetric clears top/bottom.
+    eb.set_data(x, y, height=np.full(31, 0.1))
+    assert eb.native.opts["top"] is None and eb.native.opts["bottom"] is None
+    eb.native.drawPath()
+
+
+def test_grid_colorbar_binds_image(qapp):
+    """Grid.add_colorbar replaces the pyqtgraph HistogramLUTItem passthrough."""
+    grid = cp.Grid()
+    plot = grid.add_plot(row=0, col=0)
+    img = plot.image(np.random.rand(8, 8), axis_order="col-major")
+
+    bar = grid.add_colorbar(img, colormap="CET-L4", row=0, col=1)
+    assert isinstance(bar, cp.handles.ColorBar)
+    assert bar.native.imageItem() is img.native
+
+    bar.set_levels(0.25, 0.75)
+    assert bar.get_levels() == pytest.approx((0.25, 0.75))
+
+    seen = []
+    bar.on_levels_changed(lambda lo, hi: seen.append((lo, hi)))
+    bar.set_levels(0.0, 1.0)
+    assert seen and seen[-1] == pytest.approx((0.0, 1.0))
+
+    bar.set_colormap("viridis")  # a name is accepted as well as a Colormap
+
+
+def test_to_colormap_coercion():
+    assert cp.to_colormap(None) is None
+    cm = cp.to_colormap("viridis")
+    assert isinstance(cm, cp.Colormap) and cm.name == "viridis"
+    assert cp.to_colormap(cm) is cm
+    with pytest.raises(TypeError):
+        cp.to_colormap(3.5)
+
+
+def test_mouse_events_are_panel_scoped(qapp):
+    """Clicks/motion only reach the panel they happened in (RF-131).
+
+    pyqtgraph's mouse signals are scene-wide and grid panels share one scene, so
+    an unscoped handler fired on every panel with a coordinate extrapolated
+    through that panel's own view range.
+    """
+    from qtpy import QtCore
+
+    class _Click:
+        """Minimal stand-in for pyqtgraph's MouseClickEvent."""
+
+        def __init__(self, scene_pos):
+            self._pos = scene_pos
+
+        def scenePos(self):  # noqa: N802 (Qt spelling)
+            return self._pos
+
+        def button(self):
+            return QtCore.Qt.LeftButton
+
+    grid = cp.Grid()
+    grid.resize(600, 400)
+    p0 = grid.add_plot(row=0, col=0)
+    p1 = grid.add_plot(row=1, col=0)
+    p0.line([0, 1, 2], [0, 1, 0])
+    p1.line([0, 1, 2], [0, 500, 0])
+    qapp.processEvents()
+
+    seen = []
+    p0.clicked.connect(lambda x, y: seen.append(("p0", x, y)))
+    p1.clicked.connect(lambda x, y: seen.append(("p1", x, y)))
+
+    target = p1.native.getViewBox().sceneBoundingRect().center()
+    grid.native.scene().sigMouseClicked.emit(_Click(target))
+
+    assert [name for name, _, _ in seen] == ["p1"]
+
+
+def test_line_symbol_uses_renderer_default_colors(qapp):
+    """line(symbol=...) with no colours draws a *visible* marker (RF-132)."""
+    from qtpy import QtCore
+
+    plot = cp.Plot()
+    c = plot.line([0, 1, 2], [0, 1, 0], pen="w", symbol="o", symbol_size=6)
+    scatter = c.native.scatter
+    assert scatter.opts["brush"].style() != QtCore.Qt.NoBrush
+    assert scatter.opts["pen"].style() != QtCore.Qt.NoPen
+    # An explicit colour still wins.
+    c2 = plot.line([0, 1], [1, 0], symbol="o", symbol_brush="#ff0000")
+    assert c2.native.scatter.opts["brush"].color().getRgb()[:3] == (255, 0, 0)
+
+
+def test_background_paints_whole_widget(qapp):
+    """background= paints the axis margins too, and None means transparent (RF-133)."""
+    from qtpy import QtCore
+
+    cp.configure(background="k")
+    plot = cp.Plot(background="w")
+    view = plot._canvas.widget()
+    assert view.backgroundBrush().color().getRgb()[:3] == (255, 255, 255)
+    assert plot.native.getViewBox().state["background"] == (255, 255, 255, 255)
+
+    transparent = cp.Plot(background=None)
+    assert transparent._canvas.widget().backgroundBrush().style() == QtCore.Qt.NoBrush
+
+    # A grid panel must not repaint the widget it shares with its siblings.
+    grid = cp.Grid()
+    p0 = grid.add_plot(row=0, col=0)
+    grid.add_plot(row=1, col=0)
+    p0.set_background("w")
+    assert grid.native.backgroundBrush().color().getRgb()[:3] != (255, 255, 255)
+
+
+def test_to_color_float_tuple_detection():
+    """Mixed float/int tuples follow the documented <= 1 rule (RF-134)."""
+    assert cp.to_color((1.0, 0, 0)).as_tuple() == (255, 0, 0, 255)
+    assert cp.to_color((0.5, 0.5, 1)).as_tuple() == (128, 128, 255, 255)
+    assert cp.to_color((1.0, 0.0, 0.0)).as_tuple() == (255, 0, 0, 255)
+    # Anything above 1 is still the 0-255 scale.
+    assert cp.to_color((255, 128, 0)).as_tuple() == (255, 128, 0, 255)
+
+
+def test_backend_contract_matches_implementation():
+    """The abstract Canvas signatures are what the wrapper actually calls (RF-135)."""
+    import inspect
+
+    from chisurf.gui.chiplot.backends import base
+    from chisurf.gui.chiplot.backends import pyqtgraph_backend as pgb
+
+    for abstract, concrete in (
+        (base.Canvas, pgb._PgCanvas),
+        (base.GridCanvas, pgb._PgGrid),
+        (base.ImageViewCanvas, pgb._PgImageView),
+    ):
+        for name, method in vars(abstract).items():
+            if not getattr(method, "__isabstractmethod__", False) or isinstance(method, property):
+                continue
+            expected = set(inspect.signature(method).parameters)
+            actual = set(inspect.signature(getattr(concrete, name)).parameters)
+            missing = expected - actual
+            assert not missing, f"{concrete.__name__}.{name} lacks {sorted(missing)}"
+
+
+def test_remove_drops_series_from_export(qapp, tmp_path):
+    """A removed curve is not exported any more (RF-136)."""
+    plot = cp.Plot()
+    gone = plot.line([0, 1], [0, 1], name="gone")
+    plot.line([0, 1], [1, 0], name="kept")
+    plot.remove(gone)
+
+    path = tmp_path / "export.csv"
+    plot.export_csv(str(path))
+    header = path.read_text().splitlines()[0]
+    assert "gone" not in header and "kept" in header
+
+
+def test_image_view_clear_removes_overlays(qapp):
+    """ImageView.clear() takes the overlays/ROIs with it (RF-137)."""
+    iv = cp.ImageView()
+    iv.set_image(np.random.rand(16, 16))
+    overlay = iv.add_overlay(np.zeros((8, 8, 4), dtype=np.uint8))
+    roi = iv.add_roi(kind="rect", pos=(1, 2), size=(3, 4), pen="y")
+    view = iv.native.getView()
+    assert overlay.native in view.addedItems and roi.native in view.addedItems
+
+    iv.clear()
+    assert overlay.native not in view.addedItems
+    assert roi.native not in view.addedItems

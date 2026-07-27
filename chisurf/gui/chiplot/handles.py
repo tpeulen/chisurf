@@ -261,6 +261,46 @@ class Image(Handle, Protocol):
 
 
 @runtime_checkable
+class ColorBar(Handle, Protocol):
+    """A colour bar with interactive level handles, bound to an image."""
+
+    def set_colormap(self, colormap) -> None:
+        """Apply a colormap to the bar and the image it drives.
+
+        Parameters
+        ----------
+        colormap : colormap-like
+            Name or :class:`~chisurf.gui.chiplot.style.Colormap`; ``None`` keeps
+            the current one.
+        """
+        ...
+
+    def set_levels(self, low: float, high: float) -> None:
+        """Set the intensity range mapped onto the colormap.
+
+        Parameters
+        ----------
+        low, high : float
+            Intensities mapped to the colormap ends.
+        """
+        ...
+
+    def get_levels(self) -> tuple[float, float]:
+        """Return the mapped ``(low, high)`` intensity range."""
+        ...
+
+    def on_levels_changed(self, callback) -> None:
+        """Register ``callback(low, high)`` for user level changes.
+
+        Parameters
+        ----------
+        callback : callable
+            Called with the new ``(low, high)`` when the user drags the handles.
+        """
+        ...
+
+
+@runtime_checkable
 class Region(Handle, Protocol):
     """A draggable interval selector (vertical or horizontal band)."""
 
