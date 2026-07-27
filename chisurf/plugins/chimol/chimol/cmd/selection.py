@@ -11,6 +11,12 @@ from .sele_keywords import split_keyword
 from .selection_types import Selection
 
 
+#: What an empty viewer says, once, instead of describing a molecule that is
+#: not there. It is phrased to carry the way out with it: the two commands that
+#: put something in the viewer are named in it.
+_NOTHING_LOADED = "nothing is loaded -- use 'load <file>' or 'fetch <id>' first"
+
+
 def _opens_with_keyword(token: str) -> bool:
     """Report whether an expression opens with a keyword rather than an object name.
 
@@ -576,6 +582,46 @@ class SelectionMixin(BaseCmd):
 
         raise ValueError(f"Usage: {cmd} {pattern}")
 
+    def _active_object_info(self, viewer) -> dict:
+        """The object a selection without an object name applies to.
+
+        Raises rather than returning the *placeholder* a viewer keeps when it
+        holds nothing. A placeholder exists so that settings made before
+        anything is loaded survive the first load; it is not a molecule, and
+        treating it as one is why an empty viewer answered ``zoom all`` with
+        "matched no atoms" and ``spectrum`` with "that object has no atoms to
+        colour" -- both describing a broken molecule where there is none.
+
+        Parameters
+        ----------
+        viewer : MolView
+            The viewer to look in.
+
+        Returns
+        -------
+        dict
+            ``{"id": ..., "name": ...}`` for the active object.
+
+        Raises
+        ------
+        ValueError
+            When nothing is loaded. Callers wrap it as ``<command>: <message>``,
+            so the whole line reads ``zoom: nothing is loaded ...``.
+        """
+        is_empty = getattr(viewer, "is_empty", None)
+        if callable(is_empty) and is_empty():
+            raise ValueError(_NOTHING_LOADED)
+        try:
+            active_id = viewer.get_active_object_id()
+        except Exception:
+            active_id = None
+        if active_id is None:
+            raise ValueError(_NOTHING_LOADED)
+        info = self._find_object_by_name(viewer, str(active_id))
+        if info is None:
+            info = {"id": active_id, "name": str(active_id)}
+        return info
+
     def _resolve_selection_to_atom_mask(
         self,
         viewer,
@@ -599,15 +645,7 @@ class SelectionMixin(BaseCmd):
             obj_info = self._find_object_by_name(viewer, first)
 
         if obj_info is None:
-            try:
-                active_id = viewer.get_active_object_id()
-            except Exception:
-                active_id = None
-            if active_id is None:
-                raise ValueError("No active object for selection")
-            obj_info = self._find_object_by_name(viewer, str(active_id))
-            if obj_info is None:
-                obj_info = {"id": active_id, "name": str(active_id)}
+            obj_info = self._active_object_info(viewer)
 
         obj_id = str(obj_info.get("id"))
         obj_name = str(obj_info.get("name") or obj_id)
@@ -648,15 +686,7 @@ class SelectionMixin(BaseCmd):
             obj_info = self._find_object_by_name(viewer, first)
 
         if obj_info is None:
-            try:
-                active_id = viewer.get_active_object_id()
-            except Exception:
-                active_id = None
-            if active_id is None:
-                raise ValueError("No active object for selection")
-            obj_info = self._find_object_by_name(viewer, str(active_id))
-            if obj_info is None:
-                obj_info = {"id": active_id, "name": str(active_id)}
+            obj_info = self._active_object_info(viewer)
 
         obj_id = str(obj_info.get("id"))
         obj_name = str(obj_info.get("name") or obj_id)
@@ -724,15 +754,7 @@ class SelectionMixin(BaseCmd):
             obj_info = self._find_object_by_name(viewer, first)
 
         if obj_info is None:
-            try:
-                active_id = viewer.get_active_object_id()
-            except Exception:
-                active_id = None
-            if active_id is None:
-                raise ValueError("No active object for selection")
-            obj_info = self._find_object_by_name(viewer, str(active_id))
-            if obj_info is None:
-                obj_info = {"id": active_id, "name": str(active_id)}
+            obj_info = self._active_object_info(viewer)
 
         obj_id = str(obj_info.get("id"))
         obj_name = str(obj_info.get("name") or obj_id)

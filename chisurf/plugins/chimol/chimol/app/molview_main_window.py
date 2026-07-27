@@ -1773,7 +1773,13 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             # bare CA spring with no secondary structure, no sequence and no
             # radius of gyration -- and silently, that reads as a rendering bug
             # rather than as a reader that gave up on this file.
-            self._report_degraded_load(path, primary_exc)
+            #
+            # An mmCIF is not that case: it is *routed* to the dedicated
+            # mmCIF/IHM reader, which then read it. Warning about it told every
+            # `fetch` of a `.cif` that it had fallen back to a parser it never
+            # touched, which is the reader lying about itself.
+            if getattr(backbone, "reader", "pdb") != "mmcif":
+                self._report_degraded_load(path, primary_exc)
             # Pass the parsed backbone through: without residue/chain ids the
             # trace cannot find segment boundaries and draws one polyline
             # through every atom in file order.

@@ -2,6 +2,34 @@
 
 ## 2026-07-27
 
+* **chimol: an empty viewer answered as though it held a broken molecule, and
+  `fetch` depended on the ambient CA store.** From one reported session. After
+  `delete all` the viewer keeps a *placeholder* object so settings made before
+  the first load survive it — and every command then reported on the
+  placeholder: `spectrum` said "that object has no atoms to colour", `zoom all`
+  said "'all' matched no atoms", `color red` named an internal `obj1` the user
+  never created. Three explanations, none of them true. The selection resolver
+  now raises "nothing is loaded — use `load <file>` or `fetch <id>` first" when
+  every entry is a placeholder, which all three surface through their existing
+  error handling; the three copies of the active-object lookup collapsed into
+  one. `MolView.is_empty()` is the predicate.
+
+  `fetch` failed with a raw `CERTIFICATE_VERIFY_FAILED`. `urlopen` with no
+  context trusts whatever CA path OpenSSL was built with, which is routinely
+  empty in a packaged interpreter; it now verifies against certifi's bundle,
+  keeps verification on, and explains a certificate failure instead of quoting
+  OpenSSL at someone who cannot act on it. A missing entry (404) and an
+  unreachable host are told apart from each other too.
+
+  Also: **an mmCIF is not a fallback.** A `.cif` is *routed* to the dedicated
+  mmCIF/IHM reader, but the router announced that as "No structure factory
+  available ... falling back to the built-in PDB parser", and the GUI raised a
+  degraded-load notice over the top — so every `fetch` of a `.cif` told the user
+  it had used a parser it never touched. `PdbBackbone.reader` records which
+  reader ran, and only a genuine fallback is reported as one. Pinned by
+  `test/test_empty_viewer_and_fetch.py`. `show`/`hide` are still silent on an
+  empty viewer, recorded in [references/known-issues.md](/references/known-issues.md).
+
 * **A `.bur`'s last column is data, not the writer's trailing tab (RF-470).**
   The Paris burst tables end their header line with a tab, which the ndX reader
   "corrected" by dropping the last column of every main table outright

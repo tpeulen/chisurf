@@ -75,6 +75,12 @@ class PdbBackbone:
         H/E/C, and the ribbon needs the carbonyl to know which way is up.
         Without it the viewer can only spline a thin tube through the CA
         positions, which is the bare-spring look that says "the reader gave up".
+    reader : str
+        Which reader produced this. ``"mmcif"`` means the dedicated mmCIF/IHM
+        reader read the file *on purpose* -- that is not a fallback and must not
+        be reported as one. ``"pdb"`` means the built-in PDB parser stood in for
+        a core reader that was missing or failed, which is worth telling the
+        user about.
     """
 
     coords: np.ndarray
@@ -83,6 +89,7 @@ class PdbBackbone:
     res_names: np.ndarray | None = None
     chain_ids: np.ndarray | None = None
     atoms: np.ndarray | None = None
+    reader: str = "pdb"
 
 
 _ATOM_DTYPE = np.dtype([
@@ -259,6 +266,7 @@ def _parse_mmcif_backbone(path: str) -> PdbBackbone:
         res_names=np.asarray(res_names, dtype=object) if has_trace else None,
         chain_ids=np.asarray(chain_ids, dtype=object) if has_trace else None,
         atoms=np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None,
+        reader="mmcif",
     )
     if any(value > 0.0 for value in radii):
         backbone.bead_radii = np.asarray(radii, dtype=float)
@@ -606,15 +614,22 @@ def load_structure_payload(
     # bead model is: on one NPC spoke it ground for 34 seconds and then failed,
     # and the fallback did the work anyway. Trying it first costs that every
     # time for nothing.
-    if str(path).lower().endswith((".cif", ".mmcif", ".bcif")):
+    #
+    # That is a *choice of reader*, not a failure of one, so it must not be
+    # announced as a missing factory: every `fetch` of an mmCIF warned that it
+    # had fallen back to "the built-in PDB parser" when the dedicated mmCIF
+    # reader had in fact read the file, and the GUI raised a degraded-load
+    # notice over the top of it.
+    is_mmcif = str(path).lower().endswith((".cif", ".mmcif", ".bcif"))
+    if is_mmcif:
         structure_factory = None
-    if structure_factory is None:
+    elif structure_factory is None:
         logger.warning(
             "No structure factory available for %s; falling back to the "
             "built-in PDB parser (no radius of gyration).",
             path,
         )
-    else:
+    if structure_factory is not None:
         try:
             structure = _read_full_model(structure_factory, path)
         except Exception:

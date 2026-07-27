@@ -1,12 +1,41 @@
 from __future__ import annotations
 
 import re
+import ssl
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 
 from .base import BaseCmd
 from .registry import command
+
+
+def _tls_context() -> ssl.SSLContext | None:
+    """A verifying TLS context that does not depend on the ambient CA store.
+
+    ``urlopen`` with no context trusts whatever OpenSSL was compiled to look at,
+    which on a machine running the app from a packaged or framework interpreter
+    is routinely a path with no certificates in it -- and then every ``fetch``
+    fails with ``CERTIFICATE_VERIFY_FAILED`` while the same URL downloads fine
+    in a browser. ``certifi`` ships the bundle the rest of the Python ecosystem
+    verifies against, so use it when it is installed.
+
+    Returns
+    -------
+    ssl.SSLContext or None
+        A context built from certifi's bundle, or ``None`` to let ``urlopen``
+        use its default when certifi is unavailable. Verification is never
+        turned off: a fetch that cannot be verified is a fetch that fails.
+    """
+    try:
+        import certifi
+    except Exception:  # pragma: no cover - certifi is a normal dependency
+        return None
+    try:
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:  # pragma: no cover - unreadable bundle
+        return None
 
 
 class LoaderCommands(BaseCmd):
@@ -157,8 +186,35 @@ class LoaderCommands(BaseCmd):
             / f"chimol_{name.replace('-', '_')}_{identifier}{spec['suffix']}"
         )
         try:
-            with urllib.request.urlopen(url) as response, destination.open("wb") as fh:
+            with urllib.request.urlopen(
+                url, timeout=60, context=_tls_context()
+            ) as response, destination.open("wb") as fh:
                 fh.write(response.read())
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                self._emit_error(
+                    f"fetch: {spec['label']} has no entry {display}"
+                )
+            else:
+                self._emit_error(
+                    f"fetch: {spec['label']} returned {exc.code} for {display}"
+                )
+            return
+        except urllib.error.URLError as exc:
+            # A certificate failure is not a missing entry and not a network
+            # outage, and the raw OpenSSL string says so to nobody. Name it.
+            reason = exc.reason
+            if isinstance(reason, ssl.SSLError):
+                self._emit_error(
+                    f"fetch: could not verify {spec['label']}'s certificate. "
+                    "This Python has no usable CA bundle -- installing "
+                    "'certifi' in the environment running ChiSurf fixes it."
+                )
+            else:
+                self._emit_error(
+                    f"fetch: could not reach {spec['label']} for {display}: {reason}"
+                )
+            return
         except Exception as exc:
             self._emit_error(
                 f"fetch: could not get {display} from {spec['label']}: {exc}"

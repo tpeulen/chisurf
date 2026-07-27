@@ -418,6 +418,25 @@ class MolView(QtWidgets.QWidget):
 
         self._update_view()
 
+    def is_empty(self) -> bool:
+        """Whether the viewer holds nothing a command could act on.
+
+        A fresh viewer -- and one just emptied by ``delete all`` -- keeps a
+        **placeholder** entry so that settings made before anything is loaded
+        survive the first load. It is not a molecule. Answering commands about
+        it as though it were is how an empty viewer came to report ``zoom all``
+        as "matched no atoms" and ``spectrum`` as "that object has no atoms to
+        colour": both describe a broken molecule, where in fact there is none.
+
+        Returns
+        -------
+        bool
+            True when every entry is a placeholder, or there are no entries.
+        """
+        return not any(
+            not entry.placeholder for entry in self._objects.values()
+        )
+
     def _prune_placeholders(self) -> None:
         """Drop any placeholder-only entries."""
         removed_any = False

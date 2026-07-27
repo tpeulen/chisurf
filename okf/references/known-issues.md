@@ -36,6 +36,21 @@ from the trajectory work generalises), depth-cue fog, and **IMP RMF support**.
 
 ---
 
+## chimol: `show` and `hide` say nothing on an empty viewer
+
+**2026-07-27.** `spectrum`, `zoom` and `color` now answer "nothing is loaded" on
+an empty viewer instead of describing a molecule that is not there, because they
+all resolve a selection first and the resolver raises. `show spheres` and `hide
+everything` do not go through the resolver — they go through
+`RenderingMixin._toggle_representation` — so on an empty viewer they still
+silently do nothing, which is the same class of wart one step quieter.
+
+Not fixed with the others only because `rendering.py` had concurrent edits from
+another working copy at the time; it is a two-line guard in
+`_toggle_representation`.
+
+---
+
 ## chimol: a point glyph's configured size never reaches the renderer
 
 **2026-07-27.** `QtGLRenderer._geometry_to_draw_data` computes `size` from
