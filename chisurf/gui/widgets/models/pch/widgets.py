@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import numpy as np
@@ -21,6 +22,12 @@ def _compute_p1(k_vals: np.ndarray, brightness: float, x_vals: np.ndarray, dx: f
     ``x**2``; dropping it would collapse the integral onto a *1-D* Gaussian and
     bias the recovered brightness low (see
     :func:`chisurf.plugins.pch.api.algorithms.compute_p1`).
+
+    The Poisson term is evaluated in log space, ``exp(k ln(lam) - lgamma(k+1) -
+    lam)``, because ``lam**k / k!`` overflows a ``double`` on both ends: ``k!``
+    passes ``DBL_MAX`` at ``k = 171`` (so ``p1[k]`` would be exactly zero above
+    it at any brightness) and the numerator overflows a little further out,
+    where ``inf/inf`` gives ``NaN``.
 
     Parameters
     ----------
@@ -44,14 +51,13 @@ def _compute_p1(k_vals: np.ndarray, brightness: float, x_vals: np.ndarray, dx: f
         k = int(k_vals[i])
         if k <= 0:
             continue
-        fact = 1.0
-        for j in range(1, k + 1):
-            fact *= j
+        log_fact = math.lgamma(k + 1.0)
         total = 0.0
         for xi in x_vals:
-            exp_term = np.exp(-2.0 * xi * xi)
-            lam = brightness * exp_term
-            total += xi * xi * (lam**k / fact) * np.exp(-lam)
+            lam = brightness * np.exp(-2.0 * xi * xi)
+            if lam <= 0.0:
+                continue
+            total += xi * xi * np.exp(k * np.log(lam) - log_fact - lam)
         p1[i] = total * dx
     s = p1[1:].sum()
     p1[0] = max(0.0, 1.0 - s)

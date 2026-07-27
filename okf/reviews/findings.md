@@ -3764,11 +3764,35 @@ RF-291..RF-295.
   touched files and the new lines are `ruff format`-clean.
 
 ### RF-292
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (`p^(1)(k)` is exactly 0 for every k ≥ 171 and NaN above a brightness-dependent k, and the NaN reaches the optimiser)
 - **Location:** `chisurf/plugins/pch/api/algorithms.py:15-21` (`fact = 1.0; for j in range(1, k+1): fact *= j` and `(brightness*exp_term)**k / fact`), with `p1[0] = 1.0 - p1[1:].sum()` at `:23`
 - **Finding:** the Poisson term is formed as a ratio of two `double`s that both overflow. `k!` exceeds `DBL_MAX` at k = 171, so **`p1[k] == 0.0` exactly for every k ≥ 171 at any brightness** — verified: `pch_single_species(arange(300.), 10.0)` has `last non-zero k = 170`, `p1[170] = 3.3e-143`, `p1[171] = 0.0`. Above `k > 308/log10(ε)` the numerator overflows too and `inf/inf` gives **NaN**, which `p1[0] = 1 - p1[1:].sum()` then smears over the whole array: `pch_single_species(arange(400.), 20.0)` returns 164 non-finite entries with `p1[0] = nan` and `sum = nan` (measured thresholds: ε = 20 → NaN once the axis reaches 250, ε = 40 and ε = 100 → at 200; theory 237/192/154). Because `_fit_handler` bounds ε only from below (`bounds=(0, np.inf)`, `:164`), the optimiser reaches that region on its own, and a legitimate starting point already does: `_fit_handler(k_vals=arange(300.), initial_epsilons=[40.0], initial_Ns=[2.0])` returns `{"ok": False, "error": "Residuals are not finite in the initial point."}` (scipy), while ε = 5.0 on the same axis fits. A 300-long k axis is ordinary at 1 ms binning — the real file in RF-211 gives 126 k-values at 100 µs. Compute the term in log space (`k*log(εPSF) − lgamma(k+1) − εPSF`, then `exp`), which removes both the ceiling and the NaN; pin with `assert isfinite(pch_single_species(arange(400.), 100.0)).all()` and a non-zero `p1[200]`.
-- **Fix note:**
+- **Fix note:** `compute_p1` now accumulates
+  `exp(k*log(lam) - lgamma(k+1) - lam)` instead of `lam**k / fact * exp(-lam)`,
+  so neither the factorial nor the power is ever materialised and both ceilings
+  are gone. Measured after the change: `pch_single_species(arange(400.), 100.0)`
+  is finite everywhere with `p1[200] = 7.26e-23` (was 246 non-finite entries and
+  `nan`), and `pch_single_species(arange(300.), 10.0)` continues past k = 171
+  (`p1[171] = 2.80e-147`) while `p1[170]` is unchanged to 12 significant digits,
+  i.e. the rewrite is an overflow fix and not a change of model. The exact
+  scenario in the finding — `_fit_handler` on `arange(300.)` from ε = 40 —
+  now converges instead of aborting on non-finite residuals, and recovers the
+  generating ε = 8 to 1e-9. The GUI model widget carries its own copy of the
+  kernel (`chisurf/gui/widgets/models/pch/widgets.py:_compute_p1`, the one the
+  PCH model in the main fit window uses) and had the identical defect, so it was
+  fixed the same way; the two kernels still agree to 1e-9. Pinned by
+  `test_p1_stays_finite_and_non_zero_on_a_long_photon_count_axis`,
+  `test_the_log_space_poisson_term_reproduces_the_plain_ratio` (the closed form
+  is exact below the overflow, so it catches an arithmetic slip in the log form)
+  and `test_the_fitted_model_is_finite_where_the_optimiser_can_walk` in
+  `chisurf/plugins/pch/tests/test_algorithms.py`, plus
+  `test_the_widget_pch_kernel_survives_a_long_photon_count_axis` in
+  `test/gui/test_pch_models_resolve.py`. 43 tests green
+  (`chisurf/plugins/pch`, `test/gui/test_pch_models_resolve.py`,
+  `test/models/test_fida.py`); `ruff check` on the four touched files reports
+  exactly the findings `HEAD` reports (all pre-existing) and no new
+  `ruff format` drift.
 
 ### RF-293
 - **Status:** OPEN

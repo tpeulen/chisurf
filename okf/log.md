@@ -2,6 +2,20 @@
 
 ## 2026-07-28
 
+* **PCH: the single-molecule Poisson term is evaluated in log space (RF-292).**
+  `compute_p1` formed `(eps*PSF)**k / k!` as a ratio of two doubles that both
+  overflow: `k!` passes `DBL_MAX` at k = 171, so `p1[k]` was exactly zero from
+  there on at *any* brightness, and further out `inf/inf` gave `NaN`, which
+  `p1[0] = 1 - p1[1:].sum()` spread over the whole array and handed to the
+  optimiser — `_fit_handler` bounds eps only from below, so an ordinary 300-long
+  k axis (1 ms binning) aborted with "residuals are not finite in the initial
+  point" from a legitimate start. The term is now
+  `exp(k*log(lam) - lgamma(k+1) - lam)`, which materialises neither factor;
+  values below the old ceiling are unchanged to 12 digits. The GUI model widget
+  keeps its own copy of the kernel and had the same defect, fixed identically.
+  Four pinning tests in `chisurf/plugins/pch/tests/test_algorithms.py` and
+  `test/gui/test_pch_models_resolve.py`; 43 green.
+
 * **The accurate-FRET step of the burst workflow inherits the detector setup,
   not just the table** (RF-568). Step 2 picks a detector setup; the *Accurate
   FRET* step used to receive only the first `.bur`, so its column mapping ran

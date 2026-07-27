@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import numpy as np
 from numba import njit
 from scipy.signal import fftconvolve
@@ -25,6 +27,16 @@ def compute_p1(k_vals, brightness, x_vals, dx):
     volume; the fitted mean occupancy ``avgN`` is therefore expressed in that
     reference volume, while the brightness is convention-free.
 
+    The Poisson term is evaluated in log space as
+    :math:`\exp(k\ln\lambda - \ln\Gamma(k+1) - \lambda)` rather than as the ratio
+    :math:`\lambda^k / k!`.  Both parts of that ratio overflow a ``double``:
+    ``k!`` passes ``DBL_MAX`` at ``k = 171``, which would make ``p1[k]`` exactly
+    zero from there on at *any* brightness, and above
+    :math:`k \gtrsim 308/\log_{10}\varepsilon` the numerator overflows too and
+    ``inf/inf`` yields ``NaN``, which ``p1[0]`` then spreads over the whole array
+    and hands to the optimiser.  A 300-long ``k`` axis is ordinary at 1 ms
+    binning, so neither ceiling is a corner case.
+
     Parameters
     ----------
     k_vals : numpy.ndarray
@@ -46,14 +58,14 @@ def compute_p1(k_vals, brightness, x_vals, dx):
     p1 = np.zeros(n, np.float64)
     for i in range(1, n):
         k = int(k_vals[i])
-        fact = 1.0
-        for j in range(1, k + 1):
-            fact *= j
+        log_fact = math.lgamma(k + 1.0)
         total = 0.0
         for xi in x_vals:
-            exp_term = np.exp(-2.0 * xi * xi)
+            lam = brightness * np.exp(-2.0 * xi * xi)
+            if lam <= 0.0:
+                continue
             shell = xi * xi  # dV = 4 pi w^3 x^2 dx
-            total += shell * (brightness * exp_term) ** k / fact * np.exp(-brightness * exp_term)
+            total += shell * np.exp(k * np.log(lam) - log_fact - lam)
         p1[i] = total * dx
     p1[0] = 1.0 - p1[1:].sum()
     return p1

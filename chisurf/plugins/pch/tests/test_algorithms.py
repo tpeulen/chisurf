@@ -72,6 +72,44 @@ def test_the_detection_volume_is_the_three_dimensional_gaussian():
             assert np.isclose(gamma_2, 2.0**-1.5, rtol=1e-6)
 
 
+def test_p1_stays_finite_and_non_zero_on_a_long_photon_count_axis():
+    # lam**k / k! overflowed a double on both ends: k! passes DBL_MAX at k = 171,
+    # so p1[k] was exactly 0 from there on at any brightness, and further out the
+    # numerator overflowed too and inf/inf gave NaN, which p1[0] = 1 - p1[1:].sum()
+    # then smeared over the whole array and handed to the optimiser.  A 300-long
+    # k axis is ordinary at 1 ms binning.
+    p1 = pch_single_species(np.arange(400, dtype=float), 100.0)
+    assert np.isfinite(p1).all()
+    assert p1[200] > 0.0
+    assert (pch_single_species(np.arange(300, dtype=float), 10.0)[171:] > 0.0).any()
+
+
+def test_the_log_space_poisson_term_reproduces_the_plain_ratio():
+    # Below the overflow the closed form lam**k / k! * exp(-lam) is exact, so it
+    # pins the log-space evaluation against an arithmetic slip.
+    x_vals = np.linspace(0, 5, 500)
+    dx = x_vals[1] - x_vals[0]
+    k_vals = np.arange(150, dtype=float)
+    brightness = 4.0
+    p1 = compute_p1(k_vals, brightness, x_vals, dx)
+    lam = brightness * np.exp(-2.0 * x_vals**2)
+    for k in (1, 5, 20, 60, 149):
+        fact = 1.0
+        for j in range(1, k + 1):
+            fact *= j
+        ref = float((x_vals**2 * lam**k / fact * np.exp(-lam)).sum()) * dx
+        assert np.isclose(p1[k], ref, rtol=1e-9, atol=0.0), k
+
+
+def test_the_fitted_model_is_finite_where_the_optimiser_can_walk():
+    # eps is bounded only from below in _fit_handler, so the optimiser reaches
+    # large brightness on its own; a NaN there aborts the fit with "Residuals are
+    # not finite in the initial point".
+    k_vals = np.arange(300, dtype=float)
+    for brightness in (5.0, 40.0, 100.0):
+        assert np.isfinite(pch_mixture(k_vals, [brightness], [2.0])).all(), brightness
+
+
 def test_brightness_matches_the_independent_three_dimensional_gaussian_route():
     # The FIDA generating function in chisurf.core.models.pch is a second, fully
     # independent 3DG implementation. Fitting a histogram it generates must give

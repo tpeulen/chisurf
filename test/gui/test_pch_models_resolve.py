@@ -77,6 +77,21 @@ def test_the_widget_pch_kernel_uses_the_three_dimensional_gaussian(qapp):
         assert np.isclose(gamma_2, 2.0**-1.5, rtol=1e-6)
 
 
+def test_the_widget_pch_kernel_survives_a_long_photon_count_axis(qapp):
+    """The widget kernel mirrors the plugin one — pin its Poisson term too.
+
+    ``lam**k / k!`` overflows a ``double`` at ``k = 171`` (zero from there on)
+    and yields ``NaN`` further out; the log-space form does neither.
+    """
+    import numpy as np
+
+    from chisurf.gui.widgets.models.pch.widgets import _pch_single_species
+
+    p1 = _pch_single_species(np.arange(400, dtype=float), 100.0)
+    assert np.isfinite(p1).all()
+    assert p1[200] > 0.0
+
+
 def test_fida_model_is_a_model_curve(qapp):
     from chisurf.core.models.model import ModelCurve
     from chisurf.gui.widgets.models.pch.fida_widget import FidaModel, FidaModelWidget
