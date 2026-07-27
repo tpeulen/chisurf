@@ -6408,3 +6408,59 @@ read off the source. Findings RF-532..RF-537.
 - **Location:** `chisurf/plugins/burst/burst_h2mm/core/engines.py:157-176` (`try: return _tttrlib_engine.fit_states(…, on_iter=on_iter) except Exception: pass` then `return fit_states(…, on_iter=on_iter)`) reached from `chisurf/plugins/burst/burst_h2mm/gui/tool.py:846-857` (`_progress` → `task.raise_if_cancelled()`) via `chisurf/plugins/burst/burst_h2mm/core/analysis.py:563-575` (`on_iter` → `progress(...)`), against the claim in `gui/tool.py:784-791` (`stop`: *"The worker checks for this between state counts and between iterations … so a stop lands within one iteration"*)
 - **Finding:** the stop is delivered by *raising* `CancelledError` out of the per-EM-map callback, and that exception is an ordinary `Exception`, so the backend-fallback `except Exception: pass` catches it. The user's Stop therefore does not stop the fit at that point: it silently downgrades the engine and re-runs the same state count from scratch on the numba path, which only stops at *its* first `on_iter` (`core/h2mm.py:748-749`, after a full EM map). The swallow is also indistinguishable from a real backend failure, so a stopped fit and a broken tttrlib build produce the same silent behaviour. Let cancellation through — catch a narrower exception, or re-raise when `isinstance(exc, concurrent.futures.CancelledError)` — and log the fallback when it is a genuine backend problem.
 - **Fix note:**
+
+## Review 2026-07-27 (7) — the three-colour PDA compute core
+
+Slice: `chisurf/core/fluorescence/pda3c/` (`physics.py`, `likelihood.py`,
+`species.py`, `model.py`, 1704 lines, PRD-65) — the Qt-free forward model and
+burst likelihood the `Pda3cModel` fits through (`chisurf/core/models/pda3c/pda3c.py:769,847,890`
+call `burst_log_likelihood` directly). The earlier review (2026-07-26 (10))
+covered the *model* wrapper; this one reads the core it stands on. The
+factorisation itself is correct and the reference implementation is a real
+independent check — every finding below was reproduced by running the module
+against `burst_log_likelihood_reference` or by hand-summing the definition, in
+the `arm64` env. What the module has no guard for is a channel probability that
+is very small, exactly zero, or negative, and all three are reachable inside the
+model's own parameter bounds. Findings RF-538..RF-543.
+
+### RF-538
+- **Status:** OPEN
+- **Severity:** S1 (the fast path returns `+inf` log-likelihood — a "perfect" fit — where the reference returns a finite value)
+- **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:497` (`model = np.exp(-(np.log(p) @ exponents.T))`) and `:510-513` (`correction = model @ kernel.T`, then `out + np.log(correction)`)
+- **Finding:** the burst/model split evaluates the model half as the *unscaled* product `prod_c p_c**-b_c`. That factor is huge by construction — it is cancelled only later by the burst factor's falling factorials — so it overflows to `inf` as soon as `b·log10(1/p_c) > 308`, and `out + log(inf)` is `+inf`. Verified: `burst_log_likelihood([[20, 6, 5]], [[1e-18, 0.5, 0.5-1e-18]], background=[0.5]*3)` returns **`inf`** while `burst_log_likelihood_reference` on the same input returns **`-58.1876`** (the fast path tracks the reference to 1e-6 at `p_blue = 1e-14` and then flips to `inf` at `1e-18`). Reachable in an ordinary fit: `pda3c.py:198-199` bounds mean distances at `lb=1.0` Å, so with `R0 = 52` Å a distance near the lower bound gives `p ≈ (R/R0)**6 ≈ 6e-11` and ~30 photons in that channel overflows; a broad species (`s` is bounded `ub=60` Å at `:202-203`) puts Gauss–Hermite nodes at `R ≈ 0` and produces `p ≈ 8e-18` directly — measured on a σ = 20 Å species, 2150 of 9400 (node × burst) cells came back non-finite where the per-burst path is finite. One `+inf` node makes the whole burst `+inf` through `logsumexp`, and the total log-likelihood with it. Do the product in log space and fold it into the burst factor before exponentiating (a per-column `log model + log kernel` peak shift), rather than exponentiating the two halves separately.
+- **Fix note:**
+
+### RF-539
+- **Status:** OPEN
+- **Severity:** S1 (an overflow inside the per-burst path is silently discarded, returning a finite log-likelihood that is ~109 nats wrong)
+- **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:335-339` (`finite = np.isfinite(terms)` → `peak = terms[finite].max()` → sum over `finite` only) with the overflow at `:271` (`background_series`: `return np.exp(log_u - log_u[0])`)
+- **Finding:** the `isfinite` mask is there to drop `-inf` terms, but it drops `+inf` ones too — and `+inf` is exactly what an overflowed series produces. `background_series(20, 0.5, 1e-18)` returns `[1, 1e19, 4.75e37, 1.43e56, …]` and is `inf` from `b = 18` on (three entries); those are the *dominant* terms, so `log_background_correction` silently returns a finite number computed from the sub-dominant tail alone. Verified on `counts = [20, 6, 5]`, `p = [1e-18, 0.5, 0.5-1e-18]`, `background = [0.5, 0.5, 0.5]`: the convolution path gives **`-166.720`** against the nested-sum reference's **`-58.188`**. There is no warning beyond a NumPy `RuntimeWarning: overflow encountered in exp` on stderr, and this is the path `burst_log_likelihood` deliberately falls back to (`:483-491`), so the "independent reference" and the fallback are wrong in the same regime. Keep the series in log space (return `log_u - log_u[0]` and convolve with a log-domain shift), or at minimum treat a non-finite term as an error instead of dropping it.
+- **Fix note:**
+
+### RF-540
+- **Status:** OPEN
+- **Severity:** S2 (a channel the model calls impossible but which collected photons returns `-inf` even when the background fully explains them — the documented fallback cannot recover)
+- **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:483-491` (`if np.any(p <= 0.0): … out[i, j] += log_background_correction(...)`, comment: *"that channel's photons must all be background. Rare and cheap enough to hand to the per-burst reference path"*) against `:144` (`log_multinomial_pmf` returns `-inf` for `p == 0` with a positive count) and `:249-260` (`background_series`' `p <= 0` branch)
+- **Finding:** the fallback adds a *correction factor* to a leading term that is already `-inf`, and `-inf + anything finite` is `-inf`, so the stated handling never happens. Verified: `burst_log_likelihood([[6, 2]], [[1.0, 0.0]], background=[0.5, 0.8])` returns **`-inf`**, while `burst_log_likelihood_reference` and a hand sum over the definition both return **`-1.9394`** (the two background photons in the impossible channel are simply background). The `p <= 0` branch of `background_series` is inconsistent with the rest on top of that: it returns `Pois(count; rate)` without dividing out `u(0) = Pois(0; rate)`, while `log_background_correction:316` adds `-rate` for *every* channel, so that channel's `exp(-rate)` is counted twice. Exactly-zero probabilities are reachable — a Gauss–Hermite node clipped to `R = 0` (`species.py:207`) gives transfer efficiency exactly 1 and hence `p_blue == 0.0` — so this is a live path, not a hypothetical. Handle `p_c == 0` by moving those photons out of the multinomial (score the reduced count vector over the surviving channels and multiply by `Pois(F_c; B_c)`), instead of correcting a zero.
+- **Fix note:**
+
+### RF-541
+- **Status:** OPEN
+- **Severity:** S2 (one impossible quadrature node out of 251 switches the entire likelihood from two GEMMs to a Python double loop — 73× slower, measured)
+- **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:483-491` (`for i in range(p.shape[0]): for j in range(counts.shape[0]): out[i, j] += log_background_correction(...)`), reached from `chisurf/core/fluorescence/pda3c/model.py:145-150` and `chisurf/core/models/pda3c/pda3c.py:769,847,890`
+- **Finding:** the guard is `np.any(p <= 0.0)` over the *whole* `(n_points, K)` array, so a single zero anywhere sends every model point and every burst through the per-burst Python path — including the overwhelming majority of cells that the GEMM handles fine. Measured with `total_log_likelihood` on 400 simulated bursts, one species, 7 nodes per axis (251 quadrature points) and background on both periods: σ = 6 Å (no clipped node) takes **0.28 s**; σ = 20 Å, which clips 63 of the 251 nodes to `R = 0` and so produces exact zeros, takes **20.39 s** — the same 100 400 cells, 73× the time. A real burst table is 10³–10⁵ bursts and an optimiser calls this per iteration, so a fit that was minutes becomes a fit that does not finish, with nothing in the log to say why. Restrict the slow path to the rows that actually contain a zero (`bad = np.any(p <= 0.0, axis=1)`) and keep the GEMM for the rest; the sensible fix for RF-540 removes most of the need for it.
+- **Fix note:**
+
+### RF-542
+- **Status:** OPEN
+- **Severity:** S1 (a negative channel probability is scored as probability 1, so the optimiser is rewarded for leaving the physical region)
+- **Location:** `chisurf/core/fluorescence/pda3c/physics.py:146-152` (`__post_init__` normalises the excitation rows by their **sum**) and `:205-210` (`from_scalars`: `[1.0 - de_bg - de_br, de_bg, de_br]`), against `chisurf/core/fluorescence/pda3c/likelihood.py:141-144` (`log_p = np.log(np.where(p > 0.0, p, 1.0))`; the `-inf` mask tests `p == 0.0` exactly) and the model's bounds at `chisurf/core/models/pda3c/pda3c.py:316-317` (`de(BG)` and `de(BR)`, each `lb=0.0, ub=0.9`, independently)
+- **Finding:** the invariant enforced on construction is "the excitation row sums to one", which is not the invariant that matters ("entries are non-negative *and* sum to one"). `de_bg + de_br > 1` makes the direct term negative while the row still sums to exactly 1.0, so the normalisation is a no-op and nothing complains. The two spin boxes are bounded independently at 0.9, so their sum reaches 1.8 — inside the GUI's own limits. Verified: `ThreeColorSetup.from_scalars(direct_excitation_blue=(0.6, 0.5))` gives `excitation[0] = [-0.1, 0.6, 0.5]` (sum 1.0) and `blue_channel_probabilities(60, 60, 60, setup) = [-0.0599, 0.4344, 0.6254]`. `log_multinomial_pmf` then floors the negative entry to 1.0 before taking the log — the `-inf` guard only fires on `p == 0.0` — so its photons contribute `count * log(1) = 0`, and the burst scores **+11.14** (a positive log-probability) against **-5.73** for the same data under a valid setup with `de = (0.3, 0.25)`. Freeing the direct-excitation parameters therefore points the optimiser straight at nonsense. Validate in `__post_init__` (reject or clip negative entries, and rescale only rows that do not sum to one), and make `log_multinomial_pmf` treat `p < 0` as invalid rather than as `p = 1`.
+- **Fix note:**
+
+### RF-543
+- **Status:** OPEN
+- **Severity:** S3 (a documented parameter that does not exist in the signature)
+- **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:274-305` (`log_background_correction(counts, background, p, photon_number_pmf=None)`; the docstring's Parameters block ends with `tolerance : float — Poisson tail mass to discard per channel` at `:297-298`)
+- **Finding:** the function takes no `tolerance` — it is deliberately untruncated (`background_series`: *"deliberately does not truncate"*), which is the whole point of it being the reference path. The stray entry was copied from `burst_log_likelihood`, whose `tolerance` at `:451-452` is real. A caller reading the docstring would pass a keyword that raises `TypeError`, and the entry contradicts the module's own argument for why this path is trustworthy. Drop the paragraph.
+- **Fix note:**
