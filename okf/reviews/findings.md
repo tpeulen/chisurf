@@ -6098,3 +6098,71 @@ Findings RF-503..RF-508.
 - **Location:** `chisurf/plugins/burst/burst_fcs_correlator/test/test_read_errors.py:70-75` (`test_a_readable_file_with_no_bursts_still_succeeds`, the only test that opens a real TTTR file) and `chisurf/plugins/burst/burst_fcs_correlator/test/test_core.py` (the whole file) against `core/algorithms.py:494-595` (`correlate_burst_file`)
 - **Finding:** the one test that reads a real TTTR file passes **no ranges and no pairs** and asserts `curves == []`; the rest of the suite fits synthetic curves, round-trips the settings dataclass and checks the manifest. So no test ever reaches the branch-heavy part of the plugin: the index clipping (`e = min(e, n_events - 1)`), the padding window (`searchsorted` on the macro times, `pad_ticks`), the fine/coarse axis, or the per-pair loop. A single test correlating one range with one pair on an in-tree TTTR file and asserting the first lag equals the macro-time resolution in ms — and the micro-time resolution in ms with `make_fine=True` — would have caught RF-503 the day it was written.
 - **Fix note:**
+
+## GUI walk — burst-wise FCS correlator (2026-07-27)
+
+Driven headlessly through `BurstFcsTool` on the burst-selection sample analysis
+(`bh_spc132_sm_dna/burstwise_All 0.1000#15`, 10 `.bur` tables, 2 980 bursts over
+BH SPC-132 streams) with the pairs defined first in **Setup ▸ FCS Definitions**.
+The correlator itself is fast and correct — 8 940 curves in 21.8 s, micro-time
+gating right, pair check-boxes and the filter honoured. What fails is everything
+around it: the pairs it needs cannot be made in it, nothing it computes can
+leave it, and with the shipped defaults the τ_D it reports is not a diffusion
+time. Findings RF-509..RF-516; use case
+[burst-wise FCS](/usecases/burst-wise-fcs.md).
+
+### RF-509
+- **Status:** OPEN
+- **Severity:** S2 (the window's central input cannot be created in it and is nowhere named; on a fresh profile the tool is unusable and says the opposite of what is wrong)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:216-241` (`_on_setup_changed`, which silently ends with an empty `list_pairs` when the setup has no FCS block) and `:315-320` (`_on_run`: `dialogs.warning(… "Select a detector setup and at least one FCS pair.")`); the store is `chisurf/core/fluorescence/fcs/channel_setups.py:140` (`load_fcs_channel_setups`), written only by the `menu_hidden` plugin `chisurf/plugins/fcs/fcs_channel_preset/manifest.json:10`
+- **Finding:** the pair list comes from a *second* store, keyed by detector-setup name, that is empty on a fresh profile (`{"version": 1, "setups": {}, "last_used_setup": null}` — verified on this machine). Selecting setup `BS`, whose detectors are perfectly well defined, leaves **FCS channel pairs** empty, and pressing **▶ Run** then answers "Select a detector setup and at least one FCS pair." with a setup plainly selected and no control in the window that could select a pair. The editor that fills the store is *Setup ▸ FCS Definitions* (`FCSChannelWidget`), a plugin marked `menu_hidden: true` and reachable only from the Setup hub, the boarding wizard or the FCS correlator — the burst-FCS window mentions it in no label, tooltip or message (the setup combo's tooltip names the *Detector Def* tool, which is the other store). Name the editor in the pairs-list label and tooltip, add a ✎ button that opens it and reloads, and make the empty state say "no FCS pairs defined for setup 'BS' — define them in Setup ▸ FCS Definitions" instead of blaming the selection.
+- **Fix note:**
+
+### RF-510
+- **Status:** OPEN
+- **Severity:** S1 (the tool's entire product is unreachable: 8 940 per-burst diffusion times are computed, shown one at a time, and discarded on close — the legacy tool it replaced wrote them to disk)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:132-152` (`_build_toolbar` — `▶ Run` plus a menu of *Load settings* / *Save settings* / *Show FCS pairs JSON*; grepping the class for save/export yields only `_on_save_settings`, `saveGeometry`, `saveState`) against `chisurf/plugins/burst/burst_fcs_correlator/wizard.py:1450-1563` (`_save_td4_results`, which wrote the per-burst `td_mean`/`td_peak` as Paris-style `.td4` tables) and the module docstring at `gui/tool.py:1-8` ("The legacy `wizard.py` remains available; this is its modern replacement")
+- **Finding:** burst-wise FCS exists to give each burst a τ_D that can be plotted against E/S in ndXplorer or the Burst Browser — that is what the `.td4` file is for, and the manifest entry point is the modern tool, so the wizard's export is not reachable from the menu at all. The modern window computes exactly those numbers (8 940 curves with `td_mean`/`td_peak` over the sample folder, 21.8 s) and offers no way to save curves, no way to save the fitted τ_D, and no push into ChiSurf; the only "save" in the toolbar writes the *settings* JSON. Closing the window throws the analysis away. Restore a `.td4` (or CSV) export of the per-burst τ_D — ideally written next to `bi4_bur/` where the burst stack looks for burst-parameter files — and, if the curves themselves are worth keeping, a correlation export alongside it.
+- **Fix note:**
+
+### RF-511
+- **Status:** OPEN
+- **Severity:** S1 (the shipped fit window starts inside the afterpulsing spike, so on real data the τ_D the tool reports is ~100× too small)
+- **Location:** the fit-window defaults at `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:42-44` (`tmin_fit = tmax_fit = 0.0`, mapped to `None` = "full" by `_opt` at `:53-54`) and their use in `core/algorithms.py:432-448` (`fit_curve`, which masks the curve only when a bound is set); the *consequences* inside the fit are already RF-505 (unconstrained amplitude, edge-pinned `td` returned as a measurement) and RF-504 (unmeasured lags anchoring the baseline)
+- **Finding:** this is the GUI-side half of RF-504/RF-505, measured on real bursts rather than a constructed one. Over 1 488 curves (2 files of the sample burst analysis, *Simple* mode, everything at defaults) the median fitted τ_D is **0.0075 ms**, with 31.7 % of the values below 1 µs and 4.6 % pinned exactly on the grid's lower rail. The same run with `t_min = 0.01 ms`, `t_max = 10 ms` — the only change being that the fit no longer starts in the lag range where detector afterpulsing and shot noise dominate the single-burst correlation — gives a median of **0.87 ms**, a plausible diffusion time for this DNA sample, and drops the fraction of unphysical *rising* fits (`g_fit[-1] > g_fit[0]`, the negative amplitude of RF-505) from **32.7 % to 13.0 %**. So the default is not a neutral "full range": it hands two orders of magnitude of the answer to the shortest lags, and the GUI draws the resulting rising red "fit" over the data (`m000.spc · b0 · GxR_CCF`) without a word. MaxEnt has the matching default problem: on a 0.33 ms burst the auto grid runs to 10³ ms and returns τ_D peak 8.8 ms, mean 352 ms. Start the default fit window (and the MaxEnt grid) at a lag the burst can actually measure, rather than at the first point of the multi-tau axis.
+- **Fix note:**
+
+### RF-512
+- **Status:** OPEN
+- **Severity:** S2 (the default padding makes 97 % of the correlated photons non-burst photons, so "burst-wise" FCS is mostly background FCS, and switching it off moves the answer 14×)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:38` (`self.padding_ms = 100.0`) with the padding block at `core/algorithms.py:538-575` and the control's description in `gui/burst_fcs.view.json` ("Photon time padding added around each burst before correlation")
+- **Finding:** the shipped default pads every burst by ±100 ms of surrounding photon stream, which for this sample is two orders of magnitude longer than a burst: burst 1 of `m000.spc` is 16 photons over 0.331 ms, and the padded window that is actually correlated holds 488 photons — **3.3 % of them from the burst**. The consequence is measurable: over one file the median fitted τ_D is 0.020 ms at the default and 0.288 ms with padding 0 (a 14× shift), and padding 0 also drops 78 of 609 curves for want of photons in one channel, silently. Nothing in the label, the tooltip or the docs warns that the number the tool reports is dominated by photons outside the burst. Default the padding to 0 (or to a small multiple of the burst duration), and state in the description what padded photons do to the result.
+- **Fix note:**
+
+### RF-513
+- **Status:** OPEN
+- **Severity:** S3 (the per-pair correlator settings stored with each preset are silently ignored, so the same named pair correlates differently here than in the FCS correlator)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:242-273` (`_selected_pairs` builds `PairConfig(pair_name, chs_a, chs_b, micro_a, micro_b)` and reads nothing else from the preset) and `core/algorithms.py:576-595` (every pair is correlated with the global `settings.n_bins` / `n_casc` / `make_fine`), against the preset written by `chisurf/plugins/fcs/fcs_channel_preset/gui/view_model.py:166-178` (`add_pair` stores `n_bins`, `n_casc`, `make_fine` per pair)
+- **Finding:** the FCS Definitions editor shows and stores **Bins**, **Cascades** and **Fine** per channel pair — for the pairs created in this run, 9 bins — and the burst-FCS window drops all three, correlating everything with its own panel values (3 bins by default). A user who tuned a pair in the editor gets a different correlation grid here, with no indication that the stored numbers were overridden. Either honour the per-pair values (falling back to the panel for pairs that carry none), or stop showing columns in the editor that this consumer ignores.
+- **Fix note:**
+
+### RF-514
+- **Status:** OPEN
+- **Severity:** S3 (the progress bar is never dismissed: the status bar reads "Computing burst-wise FCS… 100 %" for the rest of the session)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:331-351` (`progress = ChiSurfProgress(...)`, `progress.show()`, `progress.setValue(len(files))` — and no `close()`/`hide()` on any path, including the `wasCanceled()` break at `:338`)
+- **Finding:** after a completed run the status bar still holds the progress host with the label "Computing burst-wise FCS…", a full bar and a ✕ button — verified by inspecting the status bar's children after the run (`StatusBarProgressHost`, `QLabel('Computing burst-wise FCS…')`, `QProgressBar('100%')`, `QToolButton('✕')`, all visible) and visible in every screenshot taken after the run. The tool reads as still busy while it is idle, and the only way out is the ✕. Close the progress on completion and on cancellation.
+- **Fix note:**
+
+### RF-515
+- **Status:** OPEN
+- **Severity:** S3 (MaxEnt mode blocks the GUI for minutes behind a bar that ticks once per file — a single-file dataset shows one tick for the whole run)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py:336-349` (the run loop: `for i, f in enumerate(files): progress.setValue(i); QApplication.processEvents(); self._client.correlate_file(...)` — one repaint per *file*, with every burst of that file correlated and fitted inside the blocking call)
+- **Finding:** measured cost per curve on the sample: 1.3 ms in *None* mode, 2.4 ms in *Simple*, **48.1 ms in MaxEnt** — about 14 minutes for this small folder (2 980 bursts × 3 pairs), and a real measurement is much larger. Because the progress unit is the file, a user correlating one long file sees a bar that does not move for the entire run, cannot cancel between bursts (`wasCanceled()` is only polled between files), and the window is unresponsive throughout. Report progress per burst (or per chunk of bursts) and check cancellation there too; the per-file granularity was adequate only while fitting was free.
+- **Fix note:**
+
+### RF-516
+- **Status:** OPEN
+- **Severity:** S3 (a save that reports success while keeping data the caller removed: `save_fcs_channel_setups(cfg)` is an upsert, not a save)
+- **Location:** `chisurf/core/fluorescence/fcs/channel_setups.py:213-238` (`save_fcs_channel_setups` → `_save_setups(..., replace=False, ...)`, hard-coded) with the docstring "Save FCS channel-pair setups to MMFDB (preferred) or JSON file. Returns True on success."
+- **Finding:** loading the config, removing a setup from `setups` and saving returns `True` while the removed setup is still there on the next load — verified directly against the live store (a `BS` pair set removed from the payload survived a `True` save and reloads unchanged; only `last_used_setup` was updated, proving the write happened). The MMFDB path is `replace=False`, so absent keys are never deleted, while the JSON fallback path rewrites the file wholesale and *does* honour the deletion — the same call therefore means different things depending on which backend is active. No GUI path deletes a whole setup today, which is why nothing is red; the contract is still wrong for the next caller. Either implement deletion (pass through a `replace` flag and delete rows absent from the payload) or rename the function and its docstring to say it upserts.
+- **Fix note:**

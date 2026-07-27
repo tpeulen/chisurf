@@ -150,6 +150,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   *From fit* menu, and read the confidence that the extra component is warranted
   plus the χ² ceiling behind the accepted fit's error bars.
   *(last driven 2026-07-27; RF-493..RF-495)*
+- [Burst-wise FCS](/usecases/burst-wise-fcs.md) — one more observable per burst:
+  define the FCS channel pairs for a detector setup, correlate every burst of a
+  burst-analysis folder on its own, fit each curve for a diffusion time and
+  browse the per-burst correlations. Fast and correct in the middle, unusable at
+  both ends — the pairs cannot be created in it and the τ_D values cannot leave
+  it. *(last driven 2026-07-27; RF-509..RF-516)*
 
 ## Per-workflow file format
 

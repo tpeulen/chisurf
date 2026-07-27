@@ -2,6 +2,21 @@
 
 ## 2026-07-27
 
+* **GUI walk — burst-wise FCS: correct in the middle, unusable at both ends.**
+  Drove `BurstFcsTool` headlessly over the burst-selection sample analysis
+  (10 `.bur` tables, 2 980 bursts) after defining the channel pairs in *Setup ▸
+  FCS Definitions*, and recorded it as
+  [usecases/burst-wise-fcs.md](/usecases/burst-wise-fcs.md). The correlator is
+  fast and right — 8 940 curves in 21.8 s, micro-time gating correct, pair
+  check-boxes and filter honoured — but the pairs it requires cannot be created
+  in it (and it names no editor), nothing it computes can leave it (the wizard
+  it replaced wrote `.td4` per-burst tables), and with the shipped defaults the
+  reported τ_D is not a diffusion time: the fit window starts inside the
+  afterpulsing spike (median 0.0075 ms vs 0.87 ms with a sane window), a third
+  of the fits have a negative amplitude, and ±100 ms of default padding leaves
+  3 % of the correlated photons inside the burst. Findings RF-509..RF-516.
+
+
 * **Burst-wise FCS: the fine lag axis is scaled by the micro-time resolution
   (RF-503).** `correlate_single_burst` built the "Fine grid" axis by *dividing*
   the macro-time axis by the micro-time resolution, so every lag and every
