@@ -202,6 +202,51 @@ def _triangle_edges(faces: np.ndarray) -> np.ndarray:
     return edges.astype(np.int32)
 
 
+#: Colour a map opens in when nothing else is asked for.
+_DEFAULT_MAP_COLOR = (0.5, 0.7, 1.0, 1.0)
+
+
+def _negative_lobe_color(rgba):
+    """The complement of a map's colour, for its negative lobe.
+
+    Transcribed from the reference tool's ``_negative_color``: invert the
+    channels, then brighten the result if inverting left it dark, so the two
+    lobes of a difference map stay distinguishable whatever the positive colour
+    is. A colour that inverts to black becomes red rather than invisible.
+    """
+    inverted = [1.0 - c for c in rgba[:3]]
+    brightest = max(inverted)
+    if brightest == 0:
+        return (1.0, 0.0, 0.0, rgba[3])
+    if brightest < 0.7:
+        inverted = [c / brightest for c in inverted]
+    return (inverted[0], inverted[1], inverted[2], rgba[3])
+
+
+def _default_volume_levels(grid) -> list[dict]:
+    """The contours a map opens with, following the reference tool.
+
+    One level enclosing the densest one per cent, except that a binary map --
+    which an accessible volume is -- opens at 0.5, and a map signed both ways
+    opens with a symmetric pair so its negative lobe is not hidden.
+    """
+    try:
+        values = grid.default_levels()
+    except Exception:
+        values = [grid.default_level()]
+    if not values:
+        return []
+    negative = _negative_lobe_color(_DEFAULT_MAP_COLOR)
+    return [
+        {
+            "level": level,
+            "color": negative if level < 0 else _DEFAULT_MAP_COLOR,
+            "style": "surface",
+        }
+        for level in values
+    ]
+
+
 class MolView(QtWidgets.QWidget):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -6900,8 +6945,7 @@ class MolView(QtWidgets.QWidget):
             return []
         levels = list(getattr(self._get_active_state(), "volume_levels", []) or [])
         if not levels:
-            levels = [{"level": grid.default_level(), "color": (0.5, 0.7, 1.0, 1.0),
-                       "style": "surface"}]
+            levels = _default_volume_levels(grid)
 
         objects: list[SceneObject] = []
         for index, entry in enumerate(levels):

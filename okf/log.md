@@ -2,6 +2,34 @@
 
 ## 2026-07-27
 
+* **Chimera is the authority for voxel maps, and the opening contour changed
+  because of it.** Recorded as a carve-out in the target spec: everywhere else
+  PyMOL is right by definition about *behaviour*, but for volumetric data PyMOL
+  has no heritage worth preserving and densities are most of what this group
+  looks at, so Chimera's data model, defaults, terminology and interface are the
+  reference. PyMOL's command *names* are still kept where it has them.
+
+  Acting on that immediately replaced a rule I had derived rather than read.
+  `initial_surface_levels` picks the level enclosing the densest **one per cent**
+  of voxels -- a *rank*, free of both the scale and the shape of the
+  distribution, where my `mean + 1 sigma` was free of neither. It also carries
+  two special cases, and one of them matters here more than anywhere:
+
+  * a **binary** map contours at **0.5**. An accessible volume *is* a binary
+    mask, and a rank-based level on one lands inside the occupied region, drawing
+    a surface *within* the volume instead of around it. Measured on a mask
+    filling a third of its box, the old rule contoured at 0.16 and the new one
+    wraps the real boundary.
+  * a map signed both ways -- a difference map -- opens as a mirrored pair
+    ``[-v, v]`` with a complementary colour for the negative lobe (their
+    `_negative_color`, including its rescue for an inverse too dark to see).
+
+  Trap on the way: my first polar implementation ranked the *magnitudes*, which
+  splits the fraction across both lobes and encloses half of what was asked for.
+  The reference mirrors the **signed** level instead, so the positive lobe still
+  encloses exactly the requested fraction and the asymmetry between the lobes --
+  the thing a difference map is examined for -- survives.
+
 * **The FRET Calculator is the tenth tool on `ChisurfDockTool` (PRD-36), and the
   first with no file input at all.** `FretCalculatorTool` was a bare
   `QtWidgets.QMainWindow` re-implementing nothing the base offers, so migrating it

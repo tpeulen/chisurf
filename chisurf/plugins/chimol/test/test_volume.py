@@ -542,3 +542,95 @@ def test_map_info_reports_placement_and_range(shell):
     assert "8 x 8 x 8" in report
     assert "0.5" in report and "2" in report        # the anisotropic step
     assert "3" in report and "4" in report          # the origin
+
+
+# --------------------------------------------------------------------------- #
+# Opening contours: the reference tool is the authority for maps
+# --------------------------------------------------------------------------- #
+def test_the_default_level_encloses_the_densest_one_percent():
+    """`initial_surface_levels`' rule: a rank, not a mean and a sigma.
+
+    A rank is free of both the scale and the *shape* of the distribution, which
+    matters because none of the maps here share either.
+    """
+    rng = np.random.default_rng(5)
+    values = rng.normal(0.0, 1.0, (40, 40, 40)).astype(np.float32)
+    grid = VolumeGrid.from_array(values)
+    level = grid.default_level()
+    enclosed = float((values >= level).mean())
+    assert enclosed == pytest.approx(0.01, abs=0.003), enclosed
+
+
+def test_a_binary_map_contours_at_a_half():
+    """An accessible volume *is* a binary mask, and this is why the case exists.
+
+    A rank-based level on a mask that fills a third of its box lands at 1.0 --
+    inside the occupied region -- and draws a surface within the volume instead
+    of around it. The reference tool special-cases this and so does ChiMOL.
+    """
+    zz, yy, xx = np.mgrid[0:30, 0:30, 0:30]
+    occupied = (((xx - 15) ** 2 + (yy - 15) ** 2 + (zz - 15) ** 2) < 200)
+    grid = VolumeGrid.from_array(occupied.astype(np.float32), name="av")
+    assert grid.is_binary()
+    assert grid.default_levels() == [0.5]
+    # ...and the contour really does wrap the occupied region.
+    verts = grid.isosurface(0.5)[0]
+    filled = np.argwhere(occupied)
+    assert verts.min(axis=0) == pytest.approx(filled.min(axis=0), abs=2.0)
+    assert verts.max(axis=0) == pytest.approx(filled.max(axis=0), abs=2.0)
+
+
+def test_a_map_signed_both_ways_opens_with_a_symmetric_pair():
+    """A difference map's negative lobe is half of what it is for."""
+    zz, yy, xx = np.mgrid[0:30, 0:30, 0:30]
+    positive = np.exp(-(((xx - 12) ** 2 + (yy - 15) ** 2 + (zz - 15) ** 2) / 30.0))
+    negative = np.exp(-(((xx - 20) ** 2 + (yy - 15) ** 2 + (zz - 15) ** 2) / 30.0))
+    grid = VolumeGrid.from_array((positive - negative).astype(np.float32))
+    assert grid.is_polar()
+    levels = grid.default_levels()
+    assert len(levels) == 2
+    assert levels[0] == pytest.approx(-levels[1])
+
+
+def test_noise_around_zero_does_not_make_a_map_polar():
+    """Judged on both tails carrying weight, not on a negative minimum alone."""
+    rng = np.random.default_rng(9)
+    zz, yy, xx = np.mgrid[0:30, 0:30, 0:30]
+    blob = np.exp(-(((xx - 15) ** 2 + (yy - 15) ** 2 + (zz - 15) ** 2) / 30.0)) * 100
+    values = (blob + rng.normal(0.0, 1.0, blob.shape)).astype(np.float32)
+    grid = VolumeGrid.from_array(values)
+    assert values.min() < 0, "the fixture needs a negative tail to be meaningful"
+    assert not grid.is_polar()
+    assert len(grid.default_levels()) == 1
+
+
+def test_a_flat_map_offers_no_level_at_all():
+    grid = VolumeGrid.from_array(np.full((8, 8, 8), 3.0, dtype=np.float32))
+    assert grid.default_levels() == []
+
+
+def test_the_negative_lobe_gets_a_distinguishable_colour():
+    """Transcribed from `_negative_color`, including the too-dark rescue."""
+    from chisurf.plugins.chimol.chimol.renderer.view import _negative_lobe_color
+
+    # White inverts to black, which would be invisible; it becomes red.
+    assert _negative_lobe_color((1.0, 1.0, 1.0, 1.0)) == (1.0, 0.0, 0.0, 1.0)
+    # A dark inverse is brightened rather than left unreadable.
+    result = _negative_lobe_color((0.5, 0.7, 1.0, 1.0))
+    assert max(result[:3]) == pytest.approx(1.0)
+    assert result[3] == 1.0
+
+
+def test_a_polar_map_is_drawn_as_two_coloured_contours(shell):
+    view, _grid, _cmd, _msgs, _errs = shell
+    zz, yy, xx = np.mgrid[0:24, 0:24, 0:24]
+    positive = np.exp(-(((xx - 9) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 25.0))
+    negative = np.exp(-(((xx - 16) ** 2 + (yy - 12) ** 2 + (zz - 12) ** 2) / 25.0))
+    view.add_volume(
+        VolumeGrid.from_array((positive - negative).astype(np.float32), name="diff")
+    )
+    objects = view._scene.objects
+    assert len(objects) == 2, "both lobes should be drawn"
+    colours = {tuple(round(float(c), 3) for c in obj.geometry.colors[0])
+               for obj in objects}
+    assert len(colours) == 2, "the two lobes must be told apart by colour"

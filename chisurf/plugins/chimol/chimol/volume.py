@@ -40,14 +40,16 @@ from .geometry.marching_cubes import marching_cubes
 #: 250-cubed grid, past which nothing is gained that the eye can see.
 DEFAULT_VOXEL_LIMIT_M = 16.0
 
-#: Standard deviations above the mean for the default contour. One sigma is the
-#: usual starting contour for a density map, and it is scale-free -- an
-#: accessible volume, a cryo-EM map and a photon-count stack share no units and
-#: no order of magnitude, so any fixed number would land off at least two of
-#: them. It also behaves for a sparse map: a binary volume occupying 5% of its
-#: box has mean 0.05 and sigma 0.22, so one sigma falls neatly between empty and
-#: full.
-DEFAULT_LEVEL_SIGMA = 1.0
+#: Fraction of voxels the default contour encloses. The reference tool's
+#: ``initial_surface_levels`` uses ``vfrac = 0.01`` -- the level at which 1% of
+#: the voxels are above it -- and that is the rule followed here.
+#:
+#: A rank is the right basis rather than a mean and a standard deviation: it is
+#: free of both the *scale* and the *shape* of the distribution. An accessible
+#: volume runs 0 to 1, a photon-count stack to hundreds, a cryo-EM map to
+#: whatever the reconstruction produced, and none of their histograms look alike
+#: -- but "the densest one per cent" means the same thing in all of them.
+DEFAULT_LEVEL_VOXEL_FRACTION = 0.01
 
 
 @dataclass
@@ -204,36 +206,84 @@ class VolumeGrid:
             return np.zeros(bins, dtype=int), np.linspace(0.0, 1.0, bins + 1)
         return np.histogram(finite, bins=bins)
 
-    def default_level(self, sigma: float = DEFAULT_LEVEL_SIGMA) -> float:
-        """A contour level derived from the data rather than assumed.
+    def is_binary(self) -> bool:
+        """Whether the map takes only two values, as a mask or an AV does."""
+        finite = self.values[np.isfinite(self.values)]
+        if finite.size == 0:
+            return False
+        return np.unique(finite[: min(finite.size, 1_000_000)]).size <= 2
 
-        ``mean + sigma * std`` over the finite values, which is the conventional
-        starting contour for a density map and carries no assumption about units.
-        Clamped inside the data, so a map whose distribution puts that above its
-        maximum still opens showing something rather than nothing.
+    def is_polar(self) -> bool:
+        """Whether the map is signed either way, as a difference map is.
 
-        A flat map has no contour to give; ``(low + high) / 2`` is returned and
-        :meth:`isosurface` will decline it, which is the honest outcome.
+        Judged on both tails carrying real weight, not merely on a negative
+        minimum: noise around zero would otherwise make every map polar.
         """
         finite = self.values[np.isfinite(self.values)]
         if finite.size == 0:
-            return 0.0
+            return False
+        extreme = max(abs(float(finite.min())), abs(float(finite.max())))
+        if extreme <= 0.0:
+            return False
+        cut = 0.2 * extreme
+        return bool((finite < -cut).any() and (finite > cut).any())
+
+    def default_levels(
+        self, voxel_fraction: float = DEFAULT_LEVEL_VOXEL_FRACTION
+    ) -> list[float]:
+        """Opening contour level(s), by the reference tool's rule.
+
+        The level at which ``voxel_fraction`` of the voxels lie above it, with
+        two special cases taken from ``initial_surface_levels``:
+
+        * a **binary** map contours at ``0.5``. This matters here more than
+          anywhere: an accessible volume *is* a binary mask, and a rank-based
+          level would sit inside the occupied region and draw a surface within
+          the volume rather than around it.
+        * a **polar** map -- one signed both ways, such as a difference map --
+          gets a symmetric pair ``[-v, +v]``, since the negative lobe is half of
+          what such a map is for and a single positive level hides it.
+
+        Returns
+        -------
+        list of float
+            One level, or two for a polar map. Empty when the map is flat and
+            has no contour to give.
+        """
+        finite = self.values[np.isfinite(self.values)]
+        if finite.size == 0:
+            return []
         low, high = float(finite.min()), float(finite.max())
         if high <= low:
-            return float(high)
+            return []
 
-        level = float(finite.mean()) + float(sigma) * float(finite.std())
-        if not np.isfinite(level) or level <= low or level >= high:
-            # A distribution that puts one sigma outside its own range -- a
-            # near-binary map, usually. Fall back to a high quantile of the
-            # occupied half, which such a map always has.
-            occupied = finite[finite > low + 0.5 * (high - low)]
-            if occupied.size == 0:
-                occupied = finite
-            level = float(np.quantile(occupied, 0.5))
+        if self.is_binary():
+            return [0.5] if low <= 0.5 <= high else [low + 0.5 * (high - low)]
+
+        fraction = min(max(float(voxel_fraction), 0.0), 1.0)
+        level = float(np.quantile(finite, 1.0 - fraction))
         if not np.isfinite(level) or level <= low or level >= high:
             level = low + 0.5 * (high - low)
-        return level
+
+        if self.is_polar() and level > 0.0:
+            # The reference tool mirrors the *signed* level rather than ranking
+            # the magnitudes: `initial_surface_levels` computes one value and
+            # returns `[-v, v]`. So the positive lobe still encloses exactly the
+            # requested fraction, and the negative one encloses whatever the map
+            # happens to put below -v -- which is the asymmetry a difference map
+            # is being examined for in the first place.
+            return [-level, level]
+        return [level]
+
+    def default_level(
+        self, voxel_fraction: float = DEFAULT_LEVEL_VOXEL_FRACTION
+    ) -> float:
+        """The first of :meth:`default_levels`, for callers that want just one."""
+        levels = self.default_levels(voxel_fraction)
+        if not levels:
+            low, high = self.value_range()
+            return low + 0.5 * (high - low)
+        return levels[-1]
 
     # ------------------------------------------------------------------ #
     # Bounding the cost
@@ -325,7 +375,7 @@ class VolumeGrid:
 
 
 __all__ = [
-    "DEFAULT_LEVEL_SIGMA",
+    "DEFAULT_LEVEL_VOXEL_FRACTION",
     "DEFAULT_VOXEL_LIMIT_M",
     "VolumeGrid",
 ]

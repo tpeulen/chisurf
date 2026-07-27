@@ -35,6 +35,20 @@ The two sources are read, not guessed at:
   bundle system. It is not the compatibility authority and its command *language*
   is explicitly not a target — ChiMOL's commands stay PyMOL's.
 
+**One carve-out: voxel maps.** For volumetric data, Chimera/ChimeraX is the
+authority on *behaviour* as well, in the way PyMOL is everywhere else. PyMOL has
+no heritage here worth preserving — `isomesh` and `volume` are thin beside what
+this work needs — and volumes are most of what this group actually looks at. So
+the data model, the defaults, the terminology and the interface follow Chimera,
+and where the two disagree about what a map should do, Chimera is right by
+definition. PyMOL's *command names* are still used where it has them, since a
+script that says `isomesh` should keep working.
+
+Concretely, this is already what the opening contour does: a rank enclosing the
+densest one per cent, a binary map at 0.5 and a signed map mirrored to `[-v, v]`
+are all Chimera's `initial_surface_levels`, not something derived here. Deriving
+it here was tried first and was worse — see the log for 2026-07-27.
+
 ## Principles
 
 ### Read the source before implementing

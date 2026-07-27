@@ -81,16 +81,32 @@ a map read as though it were `x, y, z` is silently transposed. It also honours
 anisotropy: a confocal stack whose z step differs from its xy step is not
 squashed into a cube.
 
-**Pick a level by looking at the range.** With no level given, the contour starts
-at `mean + 1σ`, the conventional opening contour for a density. That is the only
-scale-free choice available — an accessible volume runs 0 to 1, a photon-count
-stack to a few hundred, a cryo-EM map to whatever the reconstruction produced.
-`map_info` prints the range, and a level outside it is refused *with* the range
-rather than quietly drawing nothing.
+**The opening contour is chosen by rank, not by value.** With no level given,
+the level enclosing the densest **one per cent** of voxels is used. A rank is
+free of both the scale and the shape of the distribution, and none of these maps
+share either — an accessible volume runs 0 to 1, a photon-count stack to a few
+hundred, a cryo-EM map to whatever the reconstruction produced.
+
+Two kinds of map are treated specially, and both matter here:
+
+| Map | Opens at | Why |
+| --- | --- | --- |
+| **binary** (a mask — an accessible volume *is* one) | `0.5` | a rank-based level lands *inside* the occupied region and draws a surface within the volume rather than around it |
+| **signed both ways** (a difference map) | `[-v, +v]`, two colours | the negative lobe is half of what such a map is for |
+
+`map_info` prints the value range, and a level outside it is refused *with* the
+range rather than quietly drawing nothing.
 
 **More than one level at a time.** Repeated `isosurface`/`isomesh` calls add
 contours rather than replacing them, each with its own colour, which is how a
 dense core inside a diffuse shell is read. `volume_level` replaces them.
+
+:::{note}
+For volumetric data ChiMOL follows **Chimera**, not PyMOL — the data model, the
+defaults and the terminology — while keeping PyMOL's command names where it has
+them. PyMOL's volume support is thin, and densities are most of what gets looked
+at here.
+:::
 
 **Large maps are strided, not refused.** Anything past a voxel budget is
 subsampled for display, so a big map opens and a contour change stays quick;

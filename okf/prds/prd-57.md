@@ -97,6 +97,14 @@ the histogram panel with draggable level markers, colour-by-value transfer
 functions, `map_new` from atoms, `map_trim`, and construction from a CLSM stack
 loaded in chisurf.
 
+## Chimera is the authority here
+
+For voxel maps specifically, Chimera/ChimeraX is the reference for **behaviour**,
+not merely for quality — see the carve-out in [the target spec](/specs/chimol.md).
+PyMOL's volume support is thin and this is most of what gets looked at here, so
+the data model, the defaults, the terminology and the interface follow Chimera's,
+while PyMOL's command *names* are kept where it has them.
+
 ## How the reference tool does it
 
 Read from its `map` and `map_data` bundles rather than described from memory,
