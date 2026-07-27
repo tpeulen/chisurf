@@ -6481,3 +6481,72 @@ model's own parameter bounds. Findings RF-538..RF-543.
 - **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:274-305` (`log_background_correction(counts, background, p, photon_number_pmf=None)`; the docstring's Parameters block ends with `tolerance : float — Poisson tail mass to discard per channel` at `:297-298`)
 - **Finding:** the function takes no `tolerance` — it is deliberately untruncated (`background_series`: *"deliberately does not truncate"*), which is the whole point of it being the reference path. The stray entry was copied from `burst_log_likelihood`, whose `tolerance` at `:451-452` is real. A caller reading the docstring would pass a keyword that raises `TypeError`, and the entry contradicts the module's own argument for why this path is trustworthy. Drop the paragraph.
 - **Fix note:**
+
+## Review 2026-07-28 — the project save/load core
+
+Slice: `chisurf/core/project/` (`archive.py`, `project.py`, `fit_state.py`,
+`registry.py`, `ui_state.py`, ~1470 lines) — the Qt-free layer under every
+`.csp` write and read (`chisurf/macros/core_fit.py:2090`, `:2606`, `:3215`) and
+under the MMFDB project-version restore (`chisurf/core/actions/project_actions.py:214`).
+An area with almost nothing on record so far. The archive container itself is
+sound (path traversal is blocked on both write and extract, and the `..` guard
+holds); what is not sound is what the layer *silently drops*. RF-544 is the
+serious one and is reproduced below in the `arm64` env: the link structure that
+makes a global fit global is written to `project.json` as `null` whenever the
+dataset combo box is not showing the first curve. Findings RF-544..RF-551.
+
+### RF-544
+- **Status:** OPEN
+- **Severity:** S1 (a global fit is saved with every parameter link dropped — silently, and only when a non-first curve is selected; the reloaded project is a runnable but *different* analysis)
+- **Location:** `chisurf/core/project/fit_state.py:96-105` (`_model_to_state`, cross-fit link discovery: `for other_fit in getattr(cs, "fits", []): for op in getattr(other_fit.model, "parameters_all", [])`) and the mirror at `:289-304` (`_apply_state_to_model`, `target_fit.model.parameters_all`), against `chisurf/core/fitting/fit.py:1361-1369` (`FitGroup.model` → *"Model of the currently selected grouped fit"* → `self.selected_fit.model`); the selection is user-driven at `chisurf/gui/widgets/fitting/fit_controller.py:441-447` (`onDatasetChanged`: `self.fit.selected_fit = index`), the links are created against `grouped_fits[0]` at `chisurf/macros/core_fit.py:224-271` (`_auto_link_non_nuisance_group_parameters`: `master_fit = grouped_fits[0]` … `follower_parameter.link = master_parameter`), and the saver walks members individually at `chisurf/macros/core_fit.py:1968-2001` (`for local_fit in grouped: … fit_to_state(local_fit)`)
+- **Finding:** a follower's link target lives in **another local fit of the same group**, so the intra-model test `target_uid in uid_to_obj` misses it and the code falls through to the cross-fit scan — which iterates `cs.fits` (a list of `FitGroup`s) and looks only at `other_fit.model`, i.e. the model of the *currently selected member*. Select any curve other than the first and the master's parameters are no longer in that model, no `link_target` is found, and `link_target` / `link_target_fit_uid` are written as `null` with no warning. Reproduced headlessly (3-member `FitGroup`, `_auto_link_non_nuisance_group_parameters`, then `fit_to_state` per member): `selected=0` → both followers save `link_target='e4071102-…'`; `selected=1` and `selected=2` → **`link_target=None` for every member** while the live object still reports `link is not None`. Since group creation auto-links every non-nuisance parameter, this loses the entire global structure of the analysis, and the reloaded project silently fits every curve independently. The restore side has the same defect for the same reason. Resolve the target by scanning `grouped_fits` (or `parameters_all` of every member) rather than the group's `.model`, and record the *member's* uid rather than the group's so the restore can find it too.
+- **Fix note:**
+
+### RF-545
+- **Status:** OPEN
+- **Severity:** S2 (a project is written to a filename the user did not type, and the loader looks for a third one)
+- **Location:** `chisurf/core/project/project.py:233-241` (`_archive_output_path`: `if path.suffix: return path.with_suffix(PROJECT_ARCHIVE_SUFFIX)`) against `:244-252` (`_archive_input_path`: `if path.suffix: return path` — no suffix rewrite), reached from `Project.save`/`Project.load` (`:140`, `:170`), both exported at `chisurf/core/project/__init__.py:13`
+- **Finding:** `pathlib.suffix` treats everything after the *last* dot as an extension, so any project name containing a dot — routine in this domain — is truncated on save. Measured: `sample_1.5uM_run` → **`sample_1.csp`**, `2026.07.28_experiment` → **`2026.07.csp`**, `my.project` → **`my.csp`**. The two helpers then disagree: `_archive_input_path('sample_1.5uM_run')` returns `sample_1.5uM_run` (unchanged, no suffix appended), so the file `save` just wrote is not the file `load` looks for, and the round trip fails on a path that never raised. Only the dot-free case (`untitled` → `untitled.csp` both ways) works. Append the suffix instead of replacing it (`path.with_name(path.name + PROJECT_ARCHIVE_SUFFIX)` when `path.suffix.lower() != '.csp'`), and make the input helper apply the identical rule.
+- **Fix note:**
+
+### RF-546
+- **Status:** OPEN
+- **Severity:** S2 (the node-graph session that MMFDB stored and reconstructed is dropped on the floor by the restore path)
+- **Location:** `chisurf/core/project/project.py:80-94` (`Project.from_dict` reads `datasets`, `experiments`, `fits`, `ui`, `extra`, `dependency_edges`, `parameters` — and nothing else) against the producer at `chisurf/plugins/core/project_browser/backend/services.py:385` (`"chinet_sessions": artifact_payload.get("chinet_sessions", [])`, built from `modules/mmfdb/src/mmfdb/project/project_archiver.py:859,908`) and the consumer at `chisurf/core/actions/project_actions.py:214-216` (`proj = CSProject.from_dict(payload)` → `load_project_payload(proj, project_path=None)`)
+- **Finding:** `restore_project` is the only reader of the v5 payload, and it funnels it through `Project.from_dict`, which has no `chinet_sessions` field — the key is not copied into `extra` either, so it is discarded at the dataclass boundary. `grep -rn chinet_sessions chisurf/ modules/mmfdb/src` confirms the key is *written* in three places and *read* nowhere. `load_project_payload` restores a chinet session only from a `.csp` temp dir (`chisurf/macros/core_fit.py:2833-2843`, `project_root = getattr(proj, "_archive_temp_dir", None)`), which is `None` on this path, so an MMFDB-restored project comes back with no node graph at all while the artifacts sit in the database. Carry the key through `from_dict`/`to_dict` and have `load_project_payload` fall back to it when there is no archive root, the same way it already falls back to `extra.history_events` at `:2845-2854`.
+- **Fix note:**
+
+### RF-547
+- **Status:** OPEN
+- **Severity:** S3 (a v5 payload is relabelled v4 on the way in, so the recorded format version cannot be trusted)
+- **Location:** `chisurf/core/project/project.py:67` (`version = int(data.get("project_format_version", 1))`, checked only for `< 4`) and `:84` (`project_format_version=4` — hard-coded, the parsed `version` is discarded), against `chisurf/plugins/core/project_browser/backend/services.py:371,390` which write `"project_format_version": 5`
+- **Finding:** `from_dict` validates the version and then throws it away, so every `Project` in memory claims v4 regardless of what it was loaded from, and `to_dict:47` re-emits that 4. A v5 MMFDB payload round-tripped through `Project` is written back as v4 while still carrying v5-only content, and any future `if version >= 5` branch will silently take the v4 path. Keep the parsed value (`project_format_version=version`) and let the writers decide what to emit.
+- **Fix note:**
+
+### RF-548
+- **Status:** OPEN
+- **Severity:** S2 (opening a project that was re-zipped by any ordinary archiver dies with a bare `KeyError` during load)
+- **Location:** `chisurf/core/project/archive.py:345-346` (`extract_to`: `for name in self.list_entries(): self.extract_entry_to(name, destination)`) → `:379` (`destination.write_bytes(self.read_bytes(name))`) → `:284` (`self._zip.read(self._normalize_name(name))`) with the trailing slash removed at `:434` (`PurePosixPath(archive_name).as_posix()`); reached on load from `chisurf/macros/core_fit.py:2606` and `:3215` (`archive.extract_to_temp()`)
+- **Finding:** `list_entries()` returns raw ZIP names including explicit directory entries (`"data/"`), but `_normalize_name` strips the trailing slash, so the lookup asks for `"data"` — a name that does not exist. Verified on an archive built with `writestr("project.json", …)`, `writestr("data/", "")`, `writestr("data/z.txt", …)`: `ProjectArchive.open_bytes` succeeds, `is_project_archive` returns `True`, and `extract_to` raises **`KeyError("There is no item named 'data' in the archive")`**. `ProjectArchive` never writes directory entries itself, but every general-purpose archiver does — Finder's *Compress*, `zip -r`, 7-Zip — so a `.csp` a user unpacked and repacked (to inspect it, to strip a large data file, to mail it) is accepted as valid and then fails to open. Skip entries whose normalised form is empty or whose raw name ends in `/`, and create the directory instead.
+- **Fix note:**
+
+### RF-549
+- **Status:** OPEN
+- **Severity:** S3 (`overwrite=True` does not overwrite — it appends a second entry with the same name and keeps the stale bytes in the file)
+- **Location:** `chisurf/core/project/archive.py:179-186` (`write_bytes`: the `if archive_name in self._written` branch calls the *same* `self._zip.writestr(...)` as the else branch) and `:211-223` (`write_file`, same shape), documented at `:170-177` as *"If True, overwrite an existing entry with the same name"*
+- **Finding:** `zipfile` has no replace operation; `writestr` on an existing name appends. Verified: writing `data/x.txt` twice with `overwrite=True` emits `UserWarning: Duplicate name: 'data/x.txt'`, and the finished archive's `namelist()` is `['project.json', 'data/x.txt', 'data/x.txt']` with both payloads stored (`read` happens to return the newer one only because the later central-directory entry wins). Same for `write_file`. The stale copy is dead weight in the file — for the embedded external-data entries (`_embed_external_file_refs`, `chisurf/macros/core_fit.py:2117`) that is a duplicated dataset — and anything that iterates `list_entries()` processes the name twice (see RF-548). No caller passes `overwrite=True` today, so this is latent, but the API promises something it does not do. Either buffer entries and write the ZIP once at `save`/`to_bytes` time, or make `overwrite=True` raise `NotImplementedError` rather than silently duplicating.
+- **Fix note:**
+
+### RF-550
+- **Status:** OPEN
+- **Severity:** S3 (128 lines of unreachable helpers, plus a docstring that promises three keys the function never returns)
+- **Location:** `chisurf/core/project/ui_state.py:128-255` (`get_dataset_selector_state`, `set_dataset_selector_state`, `get_fit_selector_state`, `set_fit_selector_state`, `get_active_tabs`, `set_active_tabs`) and the docstring at `:6-15`
+- **Finding:** each of the six functions has **zero** references anywhere in `chisurf/` or `test/` (`grep -rn` per name, excluding the defining file). Only `get_ui_state`/`set_ui_state` are used, from `chisurf/macros/core_fit.py:2044` and `:3177`. The docstring of `get_ui_state` describes a return dict with `main_window`, `mdi_area`, `dataset_selector`, `fit_selector` and `active_tabs`, but the body returns `geometry`, `dock_state`, `mdi_area` and `history_browser` — so three of the five documented keys are exactly the ones the dead helpers would have produced, and a caller following the docstring gets a `KeyError`. Delete the six helpers (the widget-side `get_selection_state`/`set_selection_state` they wrap is what callers actually use) and correct the docstring to the keys really emitted.
+- **Fix note:**
+
+### RF-551
+- **Status:** OPEN
+- **Severity:** S3 (a 244-line "central registry" that no production code calls, kept green by its own test)
+- **Location:** `chisurf/core/project/registry.py` in full (`Registry`, `get_registry`, `reset_registry`, the module-level `register_*`/`unregister_*`/`get_*` wrappers, `sync_from_runtime`), against `chisurf/core/project/__init__.py:13` (`__all__` does not include it) and its only consumer `test/core/test_registry.py`
+- **Finding:** `grep -rn "project.registry\|register_dataset\|register_fit\|register_parameter\|register_window\|get_registry()\|sync_from_runtime"` across `chisurf/` returns nothing outside the module itself — the hits are all `chisurf/core/parameter_group_registry.py` (a different, live registry) and the agent's `ToolRegistry`. Nothing ever registers an entity, nothing ever installs a hook, and `sync_from_runtime` — the only bridge to real state — is never called, so the six `except Exception: pass` hook dispatches (`:33-37`, `:42-46`, `:59-63`, `:70-72`, `:86-89`, `:94-98`) have never run. Lookup by UID is served by `chisurf.fits` / `chisurf.imported_datasets` and `ChiSurfAPI` instead. Either delete the module and its test, or wire it in as the O(1) index it claims to be — but do not leave a dead public API in `core/` that reads as if it were the one place UIDs resolve.
+- **Fix note:**
