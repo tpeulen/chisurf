@@ -33,6 +33,13 @@ Declare it in a view spec as a custom section::
 
 Column spec
 -----------
+A column with ``action`` instead of ``attr`` is a **button per row**, calling
+``model.<action>(row)``. That is how a state gets a sub-editor — a decay
+spectrum, a spectrum file, anything too big for a cell — without a separate
+"which state am I editing" selector beside the table: the row *is* the
+selector, and there is no second place for the two to disagree about which
+state is current.
+
 ``attr`` is the model attribute holding the values, and the cell for row *r* is
 ``getattr(model, attr)[r * stride + slot]`` — ``stride``/``slot`` default to
 ``1``/``0``, which is the plain one-value-per-state case. A strided store (six
@@ -145,6 +152,8 @@ class StateTableWidget(QtWidgets.QWidget):
         follow.
         """
         for column in self._columns():
+            if column.get("action"):
+                continue
             store = self._store(column)
             if store is None:
                 continue
@@ -176,6 +185,27 @@ class StateTableWidget(QtWidgets.QWidget):
         spin.setValue(float(value))
         return spin
 
+    def _button(self, column: dict, row: int) -> QtWidgets.QToolButton:
+        """Return the per-row button of an action column."""
+        button = QtWidgets.QToolButton()
+        button.setText(str(column.get("text", column.get("label", "\u2026"))))
+        if column.get("description"):
+            button.setToolTip(str(column["description"]))
+        button.clicked.connect(lambda _=False, r=row, a=column["action"]: self._invoke(a, r))
+        return button
+
+    def _invoke(self, action: str, row: int) -> None:
+        """Call the model's action for one row, then re-read the table.
+
+        The action may change what the row holds -- that is usually the point --
+        so the values are re-read afterwards rather than left showing what they
+        were before the editor opened.
+        """
+        method = getattr(self._model, action, None)
+        if callable(method):
+            method(row)
+            self.refresh()
+
     def _build(self) -> None:
         """Rebuild the whole grid from the model."""
         rows, columns = self._rows(), self._columns()
@@ -197,6 +227,10 @@ class StateTableWidget(QtWidgets.QWidget):
 
         for row in range(rows):
             for index, column in enumerate(columns):
+                action = column.get("action", "")
+                if action:
+                    self.table.setCellWidget(row, index, self._button(column, row))
+                    continue
                 store = self._store(column)
                 position = self._index(column, row)
                 value = store[position] if store is not None and position < len(store) else 0.0
@@ -257,6 +291,8 @@ class StateTableWidget(QtWidgets.QWidget):
             return
         for row in range(rows):
             for index, column in enumerate(columns):
+                if column.get("action"):
+                    continue
                 spin = self._cells.get((row, index))
                 store = self._store(column)
                 if spin is None or store is None:

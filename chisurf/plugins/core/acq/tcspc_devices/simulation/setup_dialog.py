@@ -306,6 +306,13 @@ class SimulationSettingsModel:
                     "maximum": 1e6,
                     "description": f"{color.capitalize()} {'parallel' if polarisation == 0 else 'perpendicular'} brightness q.",
                 })
+        # The decay is a whole spectrum, not a number, so the row opens an
+        # editor rather than holding a cell. Having it on the row removes the
+        # "which species am I editing" selector the dialog used to carry.
+        columns.append({
+            "action": "open_decay_dialog", "label": "Decay", "text": "\u2026",
+            "description": "Edit this species' lifetime spectrum, decay pattern and IRF.",
+        })
         return columns
 
     def species_trailing_rows(self) -> list:
@@ -847,9 +854,17 @@ class SimulationSettingsModel:
         fresh = self.from_parameters(params)
         self.__dict__.update(fresh.__dict__)
 
-    def open_decay_dialog(self) -> None:
-        """Open the modal per-species decay-settings dialog and apply the result."""
-        dialog = DecaySettingsDialog(self)
+    def open_decay_dialog(self, species: int = 0) -> None:
+        """Open the modal decay editor, starting at ``species``.
+
+        Parameters
+        ----------
+        species : int
+            Zero-based species index the editor opens on. The per-row button in
+            the species table passes its own row; the Tools entry opens at the
+            first species.
+        """
+        dialog = DecaySettingsDialog(self, start_species=species)
         if dialog.exec_():
             sync = getattr(self, "_sync_fields", None)
             if callable(sync):
@@ -903,7 +918,7 @@ class DecaySettingsDialog(QtWidgets.QDialog):
     are written back to the settings model.
     """
 
-    def __init__(self, model, parent=None):
+    def __init__(self, model, parent=None, start_species: int = 0):
         super().__init__(parent)
         self.setWindowTitle("Decay settings")
         self.setModal(True)
@@ -923,10 +938,15 @@ class DecaySettingsDialog(QtWidgets.QDialog):
             return out or [[1.0, 3.2]]
 
         # Per-species stores; the shared editor edits one species at a time.
-        self._lifetimes = [_pairs(base_lt[i % len(base_lt)]) for i in range(n)]
+        # Pad with the default rather than wrapping around: `base_lt[i % len]`
+        # gave a species added later a *copy of another species'* decay, with
+        # nothing on screen saying so. An unset species starts from the default.
+        self._lifetimes = [
+            _pairs(base_lt[i]) if i < len(base_lt) else _pairs(None) for i in range(n)
+        ]
         self._patterns = [str(base_pf[i]) if i < len(base_pf) else "" for i in range(n)]
         self._fwhm = float(getattr(model, "irf_fwhm_ns", 0.0) or 0.0)
-        self._cur = 0
+        self._cur = max(0, min(int(start_species), n - 1))
 
         from chisurf.gui.autoform import AutoForm
         from chisurf.gui.widgets.synthetic_decay_editor import SyntheticDecayEditorModel
@@ -938,7 +958,7 @@ class DecaySettingsDialog(QtWidgets.QDialog):
             bin_width=float(model.tac_dt),
         )
         self._build_ui(n, AutoForm)
-        self._push_editor(0)
+        self._push_editor(self._cur)
 
     def _build_ui(self, n: int, AutoForm) -> None:
         lay = QtWidgets.QVBoxLayout(self)
@@ -947,6 +967,7 @@ class DecaySettingsDialog(QtWidgets.QDialog):
             row.addWidget(QtWidgets.QLabel("Species:"))
             self.combo = QtWidgets.QComboBox()
             self.combo.addItems([str(i + 1) for i in range(n)])
+            self.combo.setCurrentIndex(self._cur)
             self.combo.currentIndexChanged.connect(self._on_species)
             row.addWidget(self.combo)
             row.addStretch(1)

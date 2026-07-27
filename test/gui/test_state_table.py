@@ -176,3 +176,49 @@ def test_columns_can_come_from_the_model(qapp):
     table.refresh()
     assert table.table.columnCount() == 2
     assert table._cells[(0, 1)].value() == pytest.approx(11.0)
+
+
+def test_an_action_column_is_a_button_per_row(qapp):
+    """A property too big for a cell becomes a per-row button.
+
+    The row is then the selector: a sub-editor opened this way already knows
+    which state it is editing, so there is no second control that can disagree
+    with the table about which one is current.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.core.dataspec import load_view_spec
+
+    class _WithAction(_Model):
+        def __init__(self):
+            super().__init__()
+            self.opened = []
+
+        def edit(self, row):
+            self.opened.append(int(row))
+            self.weight[row] = 42.0          # an action may change the row
+
+        def view_spec(self):
+            return load_view_spec({
+                "sections": [
+                    {"type": "custom", "key": "state_table",
+                     "options": {"size_attr": "n", "columns": [
+                         {"attr": "weight", "label": "w"},
+                         {"action": "edit", "label": "Edit", "text": "…",
+                          "description": "Open the editor for this state."},
+                     ]}},
+                ]
+            })
+
+    model = _WithAction()
+    _, table = _table(model, qapp)
+    button = table.table.cellWidget(1, 1)
+    assert isinstance(button, QtWidgets.QToolButton)
+    assert button.toolTip() == "Open the editor for this state."
+    # An action column has no backing store, so it must not be treated as one.
+    assert (1, 1) not in table._cells
+
+    button.click()
+    assert model.opened == [1]
+    # The table re-reads afterwards, because the action usually changes the row.
+    assert table._cells[(1, 0)].value() == pytest.approx(42.0)

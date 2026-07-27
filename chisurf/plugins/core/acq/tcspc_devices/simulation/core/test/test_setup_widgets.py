@@ -132,8 +132,50 @@ def test_species_table_per_species_and_resizes_widget(qapp, qtbot):
     assert len(m.to_parameters()["M"]) == 3
     # Enabling a colour adds its parallel/perpendicular brightness columns.
     switches._checks["yellow"].setChecked(True)
-    assert table.table.columnCount() == 8  # M, D, G, G, R, R, Y, Y
+    assert table.table.columnCount() == 9  # M, D, 3 colours x 2, and Decay
     # The background row edits scalars, not the per-species store.
     m.bg_green_p = 0.005
     table.refresh()
     assert table._cells[(3, 2)].value() == pytest.approx(0.005)
+    # The decay is a spectrum, so its column is a per-row button rather than a
+    # cell -- that is what removed the dialog's "which species" selector.
+    decay = table.table.cellWidget(0, 8)
+    assert isinstance(decay, QtWidgets.QToolButton)
+    assert "species" in decay.toolTip().lower()
+
+
+def test_a_new_species_does_not_inherit_another_species_decay(qapp, qtbot):
+    """Species added after the stored decays start from the default, not a copy.
+
+    The editor used to index ``decay_lifetimes[i % len(...)]``, so a third
+    species silently showed the *first* species' spectrum -- a copy nothing on
+    screen distinguished from a value someone had entered. Padding with the
+    default makes an unset species look unset.
+    """
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
+        DecaySettingsDialog,
+    )
+
+    m = _model(N_species=3, decay_lifetimes=[[[1.0, 4.5]], [[1.0, 0.8]]])
+    dialog = DecaySettingsDialog(m)
+    qtbot.addWidget(dialog)
+    assert dialog._lifetimes[0] == [[1.0, 4.5]]
+    assert dialog._lifetimes[1] == [[1.0, 0.8]]
+    assert dialog._lifetimes[2] == [[1.0, 3.2]]          # the default, not a copy
+
+
+def test_the_decay_editor_opens_on_the_species_it_was_asked_for(qapp, qtbot):
+    """The per-row button passes its row, so the editor opens on that species."""
+    from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
+        DecaySettingsDialog,
+    )
+
+    m = _model(N_species=3, decay_lifetimes=[[[1.0, 4.5]], [[1.0, 0.8]], [[1.0, 2.1]]])
+    dialog = DecaySettingsDialog(m, start_species=2)
+    qtbot.addWidget(dialog)
+    assert dialog._cur == 2
+    assert dialog.combo.currentIndex() == 2
+    assert dialog.editor_model.name == "Species 3"
+    # Out-of-range is clamped rather than raising: the row count can change
+    # between the table being built and the button being pressed.
+    assert DecaySettingsDialog(m, start_species=99)._cur == 2

@@ -47,6 +47,12 @@ there. The last row is **BG** — the per-channel background, which is not a
 species (its *M* and *D* read `—`) but is detected in the same channels, so it is
 edited in the same grid.
 
+The last column is **Decay**: a lifetime spectrum is not a number, so each
+species carries a `…` button that opens the decay editor on *that* species —
+its lifetime/amplitude table, an optional measured decay pattern, and the
+shared Gaussian IRF. A species added after the others starts from the default
+single 3.2 ns lifetime rather than inheriting a neighbour's spectrum.
+
 #### State kinetics
 
 The acquisition simulator's setup dialog has a **Kinetics** panel with two
