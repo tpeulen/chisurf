@@ -2,6 +2,29 @@
 
 ## 2026-07-27
 
+* **A half-finished refactor is more dangerous than the mess it replaces.** The
+  exploration submodule had moved data ownership into a `DataManager` but kept
+  the window's old private field as a "backward compatible" copy, and left a
+  second value cache beside the manager's own. Because the manager had taken
+  over, the copy stayed permanently empty and the two caches computed different
+  things — and *nothing raised*. Four user-visible features were silently dead:
+  appending a file merged into the empty copy and changed nothing; clustering
+  and UMAP saw zero rows; "disable NaN/Inf masking for image data" wrote to
+  flags no one read and logged success; and drawn selections did not narrow the
+  values every consumer reads, because the manager's mask ran a stub whose
+  "apply user selections" loop was a literal `pass` while the histograms went
+  through the real implementation. The root cause is worth naming: the mask
+  legitimately depends on GUI state (drawn gates, the z-slider, the cluster
+  spinner, single-frame mode), so it could not move into the data layer as-is —
+  and the "clean" version that went there anyway simply dropped every term it
+  could not reach. The fix is the seam, not the code: the window collects its
+  widget state into one plain Qt-free `MaskState` and hands it over, so the data
+  layer owns exactly one mask and never imports Qt. Ten tests pin it, including
+  the one that matters — a gate must actually remove points. Lesson for the
+  cleanup backlog: when a migration leaves both paths in place "for
+  compatibility", the dead path does not stay dead, it stays *reachable*, and a
+  stub that returns a plausible empty answer is indistinguishable from success.
+
 * **What a tool has to say is usually a *condition*, and a modal box is the
   wrong shape for one.** Second harvest from the
   [mining note](/references/orange3-mining.md). "Load a TTTR file first",
