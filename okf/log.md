@@ -1000,6 +1000,48 @@
   Reverted rather than left in as a plausible-looking no-op, and the real options
   are written down in [known-issues](/references/known-issues.md).
 
+* **Let the server advertise its consumers; do not let the client guess them.**
+  The exploration tool can now hand a gated burst population to FCS, a TCSPC
+  decay, PDA or PCH by right-clicking the gate — but the menu is not a list the
+  client keeps. ChiSurf answers `bursts.consumers` with what consumes bursts,
+  each entry carrying its label, RPC name, call shape, defaults, provenance
+  vocabulary and, where the analysis does not simply mean what it appears to
+  mean, a caveat. The explorer renders that. Consequences worth having: a new
+  burst analysis reaches the menu with no client release, a plugin advertises
+  its own by declaring `burst_consumers` in its manifest, and an older ChiSurf
+  produces a shorter menu instead of one with entries that fail at click time —
+  which a hard-coded client list cannot do. A guardrail asserts every advertised
+  RPC is actually registered, because an advertised name that does not resolve
+  is only discovered when a user clicks it.
+
+* **PCH from bursts is the case where the plumbing is easy and the meaning is
+  not.** A decay of chosen photons is their decay; correlating them correlates
+  them; PDA reads them directly. But P(k)'s usual meaning — brightness and
+  occupancy from its *shape* — assumes the counting bins fairly sample the
+  trace, empty stretches included, and bursts are by construction the bright
+  stretches. Binning only burst interiors truncates the low-k side, so a fitted
+  ε comes out too high and N too low, from a histogram that looks entirely
+  plausible. The service therefore offers both readings and refuses to hide
+  which one ran: `span` keeps the inter-burst background and keeps the usual
+  meaning; `interior` compares gated populations against each other. Every
+  result reports the mode and the burst duty cycle, and an `interior` result
+  carries the warning as a field, so it travels with the data instead of living
+  only in the guide. The general lesson: when a selection changes what a
+  statistic *means*, the honest interface is two named readings and a refusal to
+  default silently — not one function with a hidden assumption.
+
+* **A derived analysis is recorded with the gate that produced it.** "These
+  bursts are the high-FRET species" is the scientific claim; the decay is only
+  its consequence, and is uninterpretable alone. Each handoff writes an MMFDB
+  operation linking input product to output artifact with the gate, the burst
+  counts per file and the parameters used — and a *summary* of the result rather
+  than the result, because the store indexes provenance and is not a results
+  archive. Recording never fails a send: a failed write is reported while the
+  analysis is kept, since losing the record is bad and discarding a finished
+  computation over bookkeeping is worse. Added `pch_histogram` to the artifact
+  vocabulary in the dictionary, which had `pch_histogram_computation` as an
+  operation with no artifact for it to produce.
+
 * **Where a shared widget exists, the trap is not adopting it — it is the
   assumption the adoption invalidates.** The exploration submodule's item tables
   now use [chitable](/subsystems/gui-tables.md) whenever ChiSurf is importable,
