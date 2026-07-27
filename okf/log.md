@@ -2,6 +2,22 @@
 
 ## 2026-07-27
 
+* **The what-if plot no longer answers from a posterior that is gone (RF-103).**
+  `ConditionalScanPlot.update()` cleared its *Fix* combo box **outside** the
+  `blockSignals` pair, so `clear()` emitted `currentIndexChanged` and re-entered
+  `_rebuild` while the previous update's `_engine` and `_full_names` were still
+  in place — with `currentIndex() == -1` folded to `0` by `max(0, …)`. Fixing
+  parameters until fewer than two were free therefore left the *earlier* sweep on
+  screen (title, both curves and a table quoting means, correlations and "90 %
+  narrower" for parameters that were no longer free), overwriting the "needs a
+  converged fit with at least two free parameters" message in the same call.
+  Both degrade paths now share one `_degrade(message)` that drops
+  `_scan`/`_engine`/`_full_names`/`_exact`/`_validity`/`_marker`, clears the combo
+  with signals blocked, empties the held-value label, and calls `set_title(None)`
+  because `Plot.clear()` keeps the panel title. Reproduced at `HEAD` and
+  re-grabbed offscreen; pinned by `test/gui/test_conditional_scan_plot.py`, the
+  first widget test this plot has had. See
+  [reviews/findings.md](/reviews/findings.md) RF-103.
 * **The plugin manifest schema stopped being dead documentation (INC-07).**
   `_MANIFEST_SCHEMA` in `chisurf/core/plugin/manifest.py` says "for validation"
   but nothing referenced it — `validate_manifest()` is hand-written — so it had

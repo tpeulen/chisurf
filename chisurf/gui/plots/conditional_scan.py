@@ -46,6 +46,8 @@ class ConditionalScanPlot(Plot):
         super().__init__(fit)
         self.fit = fit
         self._scan = None
+        self._engine = None
+        self._full_names = []
 
         top = QtWidgets.QHBoxLayout()
         top.addWidget(QtWidgets.QLabel("Fix"))
@@ -100,6 +102,31 @@ class ConditionalScanPlot(Plot):
 
     # -- data ---------------------------------------------------------------
 
+    def _degrade(self, message: str) -> None:
+        """Drop every trace of the previous update and say why there is nothing.
+
+        The combo box is cleared with its signals blocked: a bare ``clear()``
+        emits ``currentIndexChanged``, which re-enters :meth:`_rebuild` and --
+        with the *previous* engine and parameter list still in place -- redraws
+        the old sweep on top of *message*, so a fit with one free parameter kept
+        showing a full what-if table for parameters that were no longer free.
+        """
+        self._scan = None
+        self._engine = None
+        self._full_names = []
+        self._exact = None
+        self._validity = None
+        self._marker = None
+        self.parameter_box.blockSignals(True)
+        self.parameter_box.clear()
+        self.parameter_box.blockSignals(False)
+        self.held_label.setText("")
+        self.plot.clear()
+        # ``clear()`` drops the curves but keeps the title, which would go on
+        # naming the parameter that is no longer being fixed.
+        self.plot.set_title(None)
+        self.readout.setText(message)
+
     def update(self, *args, **kwargs) -> None:
         """Rebuild the engine and the parameter list, then redraw."""
         super().update(*args, **kwargs)
@@ -107,17 +134,12 @@ class ConditionalScanPlot(Plot):
             engine = E.GaussianEngine(self.fit).add_all_targets().run()
             form = engine.form()
         except Exception as e:
-            self._scan = None
-            self.plot.clear()
-            self.readout.setText(f"<i>no usable curvature: {e}</i>")
+            self._degrade(f"<i>no usable curvature: {e}</i>")
             return
         if form is None or len(form.names) < 2:
-            self._scan = None
-            self.plot.clear()
-            self.readout.setText(
+            self._degrade(
                 "<i>needs a converged fit with at least two free parameters</i>"
             )
-            self.parameter_box.clear()
             return
 
         self._engine = engine
@@ -135,7 +157,7 @@ class ConditionalScanPlot(Plot):
 
     def _rebuild(self, *args) -> None:
         """Recompute the sweep for the selected parameter and redraw."""
-        if not getattr(self, "_full_names", None):
+        if self._engine is None or not self._full_names:
             return
         index = max(0, self.parameter_box.currentIndex())
         if index >= len(self._full_names):
