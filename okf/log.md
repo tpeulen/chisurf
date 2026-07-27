@@ -2,6 +2,34 @@
 
 ## 2026-07-27
 
+* **An isotropic sample was reading r = +0.167.** `LifetimeModel._tcspc_rt_curves`
+  — the r(t) curve shown for a VV/VH fit — computed `(VV - VH) / (g VV + 2 VH)`:
+  the denominator G-corrected, the numerator raw. That agrees with the truth only
+  at `g = 1`, which is the default, so every uncalibrated run was right and only
+  *calibrated* setups were wrong. At g = 2 an isotropic sample came out at
+  **+0.167**, an artefact indistinguishable from real slow tumbling; a true
+  r = 0.2 at g = 1.5 read 0.274. Now `(g VV - VH) / (g VV + 2 VH)`, which
+  recovers 0.000000 / 0.200000 / 0.380000 exactly.
+
+  **The convention had to be established, not assumed.** The textbook form puts
+  G on VH; chisurf's `compute_g_factor_perrin` returns **S_perp / S_par**, the
+  reciprocal, so here it belongs on VV — the denominator was right all along and
+  only the numerator was missing its factor. Settled by constructing a
+  measurement from known sensitivities and checking which form returns the input:
+  four candidate spellings, two exact (each under one convention), two wrong
+  under both.
+
+  That check also surfaced a **split in the tree**: the VM combination
+  `vv + 2 g vh` (five sites) and the `vv_vh_anisotropy` plugin assume the
+  *other* convention, so a G from `compute_g_factor_perrin` fed to them inverts
+  the correction — 2.076 against a true total intensity of 3.000. Both halves are
+  internally consistent, and choosing between them changes user-facing numbers
+  across readers and plugins, so it is filed in
+  [references/known-issues.md](/references/known-issues.md) rather than decided
+  unilaterally. `test/models/test_anisotropy_g_factor.py` (8) builds the
+  measurement rather than restating the formula, so it survives a rewrite of the
+  expression.
+
 * **A parameter table is a state table.** The burst-MLE wizard built its
   schema-driven parameter editor by hand — a QGridLayout of label / spin / fix /
   result rows, kept in a `{name: {"spin": ..., "fix": ..., "result": ...}}` dict

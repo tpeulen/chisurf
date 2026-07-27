@@ -655,14 +655,30 @@ class LifetimeModel(ModelCurve):
         det = (1.0 - l1) * (1.0 - l2) - l1 * l2
         if abs(det) < 1e-12:
             raise ValueError("anisotropy leakage correction is singular")
+        # r = (g VV - VH) / (g VV + 2 VH).
+        #
+        # G here is the **perpendicular/parallel** sensitivity ratio -- that is
+        # what `compute_g_factor_perrin` returns (S_s / S_p), and it is why the
+        # G-factor multiplies VV rather than VH. What matters is that it appears
+        # on the *same channel* in numerator and denominator: this used to read
+        # (VV - VH) / (g VV + 2 VH), correcting the denominator and leaving the
+        # numerator raw, which agrees only at g = 1 and otherwise invents
+        # anisotropy -- an isotropic sample came out at r = +0.167 for g = 2
+        # instead of zero. Checked against a constructed ground truth
+        # (S_p = 1, S_s = 0.65, r = 0.2): this form returns 0.200000, the old one
+        # 0.451282, and the textbook (VV - g VH)/(VV + 2 g VH) form 0.511561 --
+        # the last is right only under the reciprocal definition of G.
         den_unc = g * vv + 2.0 * vh
         with np.errstate(divide="ignore", invalid="ignore"):
-            r_unc = np.where(np.abs(den_unc) > 1e-12, (vv - vh) / den_unc, np.nan)
+            r_unc = np.where(np.abs(den_unc) > 1e-12, (g * vv - vh) / den_unc, np.nan)
+        # The l1/l2 unmixing removes polarisation leakage between the channels,
+        # which happens before detection efficiency is felt, so it acts on the
+        # raw pair and the G-factor is applied to its result.
         vv_u = ((1.0 - l2) * vv - l1 * vh) / det
         vh_u = (-l2 * vv + (1.0 - l1) * vh) / det
         den_cor = g * vv_u + 2.0 * vh_u
         with np.errstate(divide="ignore", invalid="ignore"):
-            r_cor = np.where(np.abs(den_cor) > 1e-12, (vv_u - vh_u) / den_cor, np.nan)
+            r_cor = np.where(np.abs(den_cor) > 1e-12, (g * vv_u - vh_u) / den_cor, np.nan)
         finite = np.isfinite(t) & np.isfinite(r_unc) & np.isfinite(r_cor)
         if np.any(finite):
             return t[finite], r_unc[finite], r_cor[finite]

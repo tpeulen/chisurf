@@ -124,6 +124,36 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**Two reciprocal G-factor conventions coexist (found 2026-07-27).** `G` is a
+ratio of detection sensitivities, and the tree uses it both ways round without
+saying which is meant:
+
+- `compute_g_factor_perrin` (`core/fluorescence/anisotropy/integrals.py`)
+  returns **S_perp / S_par** — 0.65 for a perpendicular channel 35% less
+  sensitive. `LifetimeModel._tcspc_rt_curves` now matches it.
+- The **VM / total-intensity** combination `vv + 2 * g * vh` — five sites:
+  `core/fio/fluorescence/tcspc.py` (x2), `core/fluorescence/tcspc/__init__.py`,
+  `gui/widgets/models/tcspc/anisotropy.py`, and
+  `plugins/tttr/microtime_histogram/wizard.py` — together with
+  `plugins/vv_vh_anisotropy` (`r = (VV - g VH)/(VV + 2 g VH)`) assume the
+  **reciprocal**, S_par / S_perp.
+
+Both are internally consistent; the hazard is a G measured by one and consumed
+by the other, which inverts the correction. Constructed check with S_par = 1,
+S_perp = 0.65 and a true total intensity of 3.0: `vv + 2*g*vh` gives **2.076**
+where `vv + 2*vh/g` gives **3.000**. Nobody noticed because a real G is near 1,
+where the two agree to first order. Deciding which convention wins is a
+user-facing change across readers and plugins, so it is recorded rather than
+made unilaterally.
+
+**Where the leakage correction sits relative to G is unsettled.**
+`_tcspc_rt_curves` unmixes the raw (VV, VH) with l1/l2 and applies G to the
+result. Whether the polarisation leakage happens before or after the detectors'
+sensitivity difference gives different answers, and only one ordering makes the
+implementation self-consistent. `test/models/test_anisotropy_g_factor.py`
+deliberately does not assert a constructed truth for the corrected branch, so
+the test does not freeze whichever order the code happens to use.
+
 **Found 2026-07-27, not fixed: the PCH settings panel is clipped at its right
 edge.** `chisurf/plugins/pch/gui/tool.py` puts the settings form in a
 `QScrollArea` with `setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)`, and the
