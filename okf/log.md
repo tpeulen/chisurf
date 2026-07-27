@@ -2,6 +2,31 @@
 
 ## 2026-07-26
 
+* **The last two region hold-outs: a fitted PSF, and painted classes.** Two
+  small closures of the region sweep, both of the same kind — a measurement that
+  was a bespoke shape and is now a region.
+
+  `PsfViewModel.fit_region()` returns the fitted lateral FWHM as an
+  `EllipseROI`, so a measured point-spread function can be gated with, combined
+  or stored like any region. The existing `fit_circle()` dict stays: it is a
+  *drawing* descriptor carrying the `z` slice the overlay belongs on, and a
+  region deliberately carries no third axis. A test pins the radius to
+  `FWHM/2` of the fitted Gaussian rather than to the dict it came from.
+
+  In ndXplorer (`11f385f`), `selections_from_label_mask` splits the brush's
+  **multi-class** paint into one gate per class. The brush paints integer class
+  ids, so one painted image carries several populations — and all of it became a
+  single `MaskDataSelection`, where the classes had no names, could not be
+  measured or inverted separately, and could not be combined. The multi-label
+  information existed and nothing downstream could reach it.
+  `label_mask_from_selections` rasterises region gates back for the brush; later
+  selections win where they overlap, since a pixel carries one class. 42 ndX
+  tests pass.
+
+  That closes the list in [roi](/subsystems/roi.md): what remains outside the
+  subsystem is only what should be — 1-D spans, crop *sizes*, and the
+  symmetry-forced residual rectangle.
+
 * **GUI test: two-channel colocalization — right numbers, wrong labels.**
   Drove *Imaging → Colocalization* (`chisurf/plugins/microscopy/img_coloc`)
   headlessly through its whole workflow — drop, channel pair, auto background,
