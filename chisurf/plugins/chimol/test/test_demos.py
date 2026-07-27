@@ -144,11 +144,44 @@ def test_each_demo_starts_from_a_clean_viewer(window):
         assert len(win.viewer.list_objects()) == 1, key
 
 
-def test_the_demo_menu_is_built(window):
+def test_the_demo_menu_is_on_the_menu_bar(window):
+    """On the *bar*, not merely constructed.
+
+    The first version built it before ``_install_menu_bar``, which begins with
+    ``bar.clear()`` -- so the menu was created and then silently wiped, and it
+    was missing in the running application. A test that inspected the child
+    widgets still found it, because the cleared menu object survives as a child
+    of the bar without being on it. Reading the bar's *actions* is what
+    distinguishes the two.
+    """
     win, _shared, _errors, _qapp = window
-    titles = [m.title() for m in win.menuBar().findChildren(type(win.menuBar().addMenu("x")))]
-    assert any("Demo" in t for t in titles if t)
-    assert len(getattr(win, "_demo_actions", [])) >= len(DEMOS)
+    titles = [action.text() for action in win.menuBar().actions()]
+    assert any("Demo" in title for title in titles), titles
+
+
+def test_every_demo_has_a_menu_entry(window):
+    win, _shared, _errors, _qapp = window
+    demo_action = next(
+        action for action in win.menuBar().actions() if "Demo" in action.text()
+    )
+    labels = [a.text() for a in demo_action.menu().actions() if a.text()]
+    for _key, title, _description in DEMOS:
+        assert title in labels, f"{title} is not in the Demo menu"
+    assert any("Edit" in label for label in labels)
+
+
+def test_the_demo_menu_survives_the_menu_bar_rebuild(window):
+    """`build_menu_bar` clears the bar, so order of construction matters."""
+    win, _shared, _errors, qapp = window
+    from chisurf.plugins.chimol.chimol.app.demos import build_demo_menu
+
+    win._install_menu_bar()
+
+    build_demo_menu(win, win.menuBar())
+    for _ in range(5):
+        qapp.processEvents()
+    titles = [action.text() for action in win.menuBar().actions()]
+    assert sum("Demo" in title for title in titles) == 1, titles
 
 
 def test_script_text_runs_line_by_line(window):

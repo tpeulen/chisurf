@@ -108,6 +108,37 @@ rotation must be an isometry, and each group must have exactly one identity —
 7658 operators verified.
 :::
 
+### Trying it out: the Demo menu
+
+The **Demo** menu runs a set of short scripts, so the viewer can be exercised
+without a lot of clicking:
+
+| Entry | What it shows |
+| --- | --- |
+| Cartoon and colour | A structure, coloured N to C |
+| Selections | The PyMOL selection grammar, in colour |
+| Every representation | Including the ones ChiMOL has and PyMOL does not |
+| Lighting presets | `simple`, `soft`, `flat`, `default` in turn |
+| Publication figure | Flat shading with silhouettes |
+| Trajectory + intra_fit | Why fitting makes a movie readable |
+| Measuring | Surface area, bonds, hydrogens |
+
+Each is a plain **ChiMOL script** — one command per line — living in
+`chimol/demos/` and run exactly as `@file.pml` runs one. So a demo is also
+documentation you can read, and a development harness: a demo that stops working
+is a command that stopped working.
+
+Run one from the command line instead:
+
+```text
+@demos/cartoon.pml
+```
+
+**Demo ▸ Edit a demo script…** opens it in a script editor — ChiSurf's code
+editor when ChiSurf is present, and a small built-in one when ChiMOL is running
+standalone — so a demo is a starting point to modify rather than a fixed recital.
+**New script…** opens an empty one.
+
 ### Making it look good
 
 The viewer's lighting follows ChimeraX's model — a key light, a fill light and an

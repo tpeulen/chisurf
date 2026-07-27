@@ -310,14 +310,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         # ── View menu (after DockArea creation) ───────────────────────
         self._build_view_menu()
-        try:
-            from .demos import build_demo_menu
-
-            build_demo_menu(self, self.menuBar())
-        except Exception:
-            logging.getLogger(__name__).warning(
-                "chimol: could not build the Demo menu", exc_info=True
-            )
 
         self._sequence_visible = True
         self._sequence_rows: dict[str, dict[str, Any]] = {}
@@ -418,6 +410,18 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         # After the command layer is wired: every menu entry runs through it.
         self._install_menu_bar()
+        # After, never before: `build_menu_bar` starts with `bar.clear()`, so a
+        # menu added earlier is silently wiped. That is why the Demo menu was
+        # missing in the running app while a test that never triggered the
+        # rebuild still saw it.
+        try:
+            from .demos import build_demo_menu
+
+            build_demo_menu(self, self.menuBar())
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "chimol: could not build the Demo menu", exc_info=True
+            )
 
         self._update_sequence_view()
         self._update_system_info()

@@ -2,6 +2,23 @@
 
 ## 2026-07-27
 
+* **chimol: the Demo menu was built and then wiped.** Reported as missing, and it
+  was: `_build_view_menu` (where I added it) runs at line 312, and
+  `_install_menu_bar` at 420 begins with **`bar.clear()`**. The menu was created
+  and then silently removed before the window was ever shown.
+
+  **My test still passed**, which is the part worth recording. It looked for the
+  menu among the bar's *child widgets*, and a cleared menu survives as a child
+  without being on the bar. Reading `menuBar().actions()` is what distinguishes
+  "constructed" from "reachable" — the same distinction as `orient` running
+  without error while doing nothing. The guard test now reads the actions, checks
+  every demo has an entry, and rebuilds the bar to prove the menu survives it.
+
+  Built after the bar instead, so it sits at the end where PyMOL's own menus stop.
+  Verified in a real window: **Demo ▸ Cartoon and colour** loads and draws.
+  Documented in [guide 44](../docs/guides/44_molecular_viewer.md), including
+  running the same scripts as `@demos/cartoon.pml`.
+
 * **Nine thousand metadata keys reached a completer that had been offering thirty-seven.**
   Both metadata editors — the shared `MetadataEditor` and the burst-selection flrCIF export —
   build their key list from `get_pdbx_metadata_keys()` behind a bare
