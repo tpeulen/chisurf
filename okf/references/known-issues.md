@@ -124,6 +124,23 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**`tttrlib.write_hdf_file` aborts the process unless h5py/PyTables is imported
+first (open, 2026-07-27).** tttrlib links a *different* HDF5 than the
+environment does — the crash reports show both `libhdf5.310.dylib` (env) and
+`/opt/homebrew/.../libhdf5.320.1.1.dylib` (pulled in by `_tttrlib`) mapped into
+one process — and whichever initialises first wins. Minimal reproduction:
+
+```
+python -c "import tables, h5py; import tttrlib; ...; t.write_hdf_file(p)"   # OK
+python -c "import tttrlib; ...; t.write_hdf_file(p)"                        # HDF5 aborts ("Bye...")
+```
+
+So `chisurf/plugins/burst/burst_h2mm/tests/test_examples.py` passes when a GUI
+suite ran first (it imports PyTables) and aborts the whole pytest process when
+the burst suite runs alone — the failure follows import order, not the test.
+The root fix is in the tttrlib build (link it against the environment's HDF5,
+rebuild the editable install); nothing in chisurf can paper over it.
+
 **Anisotropy now follows Schaffer/Eggeling throughout (settled 2026-07-27).**
 `r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**,
 the ratio a paper quotes and the one tttrlib's estimators already took. Four
