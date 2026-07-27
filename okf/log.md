@@ -2,6 +2,15 @@
 
 ## 2026-07-27
 
+* **chimol: no secondary-structure assignment for bead models.** A bead stands
+  for a *range* of residues and has no backbone, so looking for hydrogen bonds in
+  one is not merely wasted but meaningless — yet it was **4 of the 10 seconds**
+  it took to open one spoke of the nuclear pore, run over 29,273 beads. Skipped
+  when the residue names are all `BEA`. The NPC demo went **12.0 s → 7.5 s**.
+
+  Still the largest remaining cost there: a cartoon splined through those beads
+  (402 scene objects for one spoke). See known-issues for the LOD plan.
+
 * **chimol: iron stopped being fluorine (RF-487).** In a PDB without an element
   column the built-in backbone parser took the *first letter* of the atom name,
   so `FE` came out as `F`, `CL` as `C`, and `MG`/`ZN` as `M`/`Z` — symbols no

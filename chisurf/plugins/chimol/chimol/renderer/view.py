@@ -247,6 +247,27 @@ def _default_volume_levels(grid) -> list[dict]:
     ]
 
 
+def _is_bead_model(atoms) -> bool:
+    """Whether these "atoms" are really the beads of a coarse-grained model.
+
+    A bead stands for a range of residues and has no backbone, so every
+    backbone-derived analysis is not merely wasted on it but meaningless.
+    Secondary-structure assignment was 4 of the 10 seconds it took to open one
+    spoke of the nuclear pore -- computed over 29,273 beads that have no
+    hydrogen bonds to find.
+    """
+    if atoms is None:
+        return False
+    try:
+        names = np.asarray(atoms["res_name"])
+    except Exception:
+        return False
+    if names.size == 0:
+        return False
+    sample = names[: min(names.size, 256)]
+    return bool(np.all(np.char.strip(sample.astype(str)) == "BEA"))
+
+
 class MolView(QtWidgets.QWidget):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -2223,7 +2244,10 @@ class MolView(QtWidgets.QWidget):
                 n_res = 0
             if atoms is not None and n_res > 0:
                 try:
-                    ss_codes = assign_ss_c3_from_atoms(atoms, n_res, verbose=False)
+                    ss_codes = (
+                        None if _is_bead_model(atoms)
+                        else assign_ss_c3_from_atoms(atoms, n_res, verbose=False)
+                    )
                 except Exception:
                     ss_codes = None
                 if ss_codes:
@@ -2377,7 +2401,10 @@ class MolView(QtWidgets.QWidget):
             )
             try:
                 n_res = int(self._coords.shape[0])
-                ss_codes = assign_ss_c3_from_atoms(self._atoms, n_res, verbose=False)
+                ss_codes = (
+                    None if _is_bead_model(self._atoms)
+                    else assign_ss_c3_from_atoms(self._atoms, n_res, verbose=False)
+                )
             except Exception:
                 logger.warning("Secondary-structure assignment failed for raw "
                                "coordinates", exc_info=True)
