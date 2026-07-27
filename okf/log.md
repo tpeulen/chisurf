@@ -2,6 +2,29 @@
 
 ## 2026-07-27
 
+* **GUI-tester: 2D-FLCS, where the maths lands and the window does not.** Drove
+  *Spectroscopy → FCS → 2D-FLCS* headlessly against the plugin's own two-state
+  exchange simulator, whose answer is known by construction (τ = 1/3 ns, 25 ms
+  relaxation), plus a real CLSM `.ptu`. The analysis chain is fast and correct —
+  1.2 M photons simulated in 1.5 s, 2D-FDC → inversion → species correlation in
+  2.7–5.4 s, lifetimes back as 0.90/2.91 ns and the relaxation as 25.1 ms
+  (k₁₂+k₂₁ = 39.9 vs 40 s⁻¹). The GUI on top of it is where the run went: the
+  headline 2D map is drawn with **no lifetime axes** at all, the *Kinetics
+  (advanced)* panel is **dead** (`gMEM`/`lags` are never read although
+  `fit/global_mem.py` implements them), the `tmin`/`tmax` gate reaches only the
+  2D correlation and not the lifetime inversion, an **inverted** gate is accepted
+  and yields an all-NaN map under a success message, the **NNLS** default is
+  silently mapped to Tikhonov for the 2D fit (and the grid capped at 32), the
+  dynamics stage no-ops in silence whenever fewer than two peaks are resolved
+  (with none, the status line reads `tau =  ns`), and the 2D fit's χ² and λ are
+  returned by the backend and thrown away — so a residual spanning −289 234 …
+  +39 802 reads as a flat green square. The bundled simulator also clips
+  overflowing micro-times into the last TCSPC channel (1.41 % of photons, χ² 6.48
+  vs 1.08 when gated out), which undermines the validation loop it exists for.
+  Recorded as [2D-FLCS lifetime exchange](/usecases/flc-2d-lifetime-exchange.md);
+  twelve findings RF-396..RF-407 filed in the
+  [findings queue](/reviews/findings.md). No application code touched.
+
 * **Five review findings on the two MLE runs, all fixed (RF-391..RF-395).** The
   freeze held; what the review found was on the other side of its Cancel and
   inside the search it wraps.

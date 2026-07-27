@@ -114,6 +114,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   the sites into distance restraints with R₀ and asymmetric errors, group them
   into scoring sets and save the `fps.json` that drives FRET docking and
   screening. *(last driven 2026-07-27; RF-379..RF-385)*
+- [2D-FLCS lifetime exchange](/usecases/flc-2d-lifetime-exchange.md) — what a
+  lifetime fit and an FCS curve cannot answer apart: build the 2D
+  fluorescence-decay correlation of a photon stream at a macro-time lag, invert
+  it into a lifetime–lifetime distribution, and correlate the resolved species
+  against each other for the interconversion rates — validated against the
+  plugin's own two-state simulator. *(last driven 2026-07-27; RF-396..RF-407)*
 
 ## Per-workflow file format
 
