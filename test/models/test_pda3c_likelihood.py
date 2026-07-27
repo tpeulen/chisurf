@@ -45,6 +45,44 @@ def test_impossible_channel_is_finite_when_it_saw_nothing():
     assert log_multinomial_pmf([4, 1], [1.0, 0.0]) == -np.inf
 
 
+def test_a_negative_probability_is_impossible_not_certain():
+    """A row that left the simplex must not outscore one that stayed on it.
+
+    Flooring a negative entry to one would score its photons for free, which
+    lifts the "log probability" above zero — an optimiser handed that is being
+    paid to leave the physical region.
+    """
+    from chisurf.core.fluorescence.pda3c import log_multinomial_pmf
+
+    counts = [6, 2, 3]
+    assert log_multinomial_pmf(counts, [-0.1, 0.6, 0.5]) == -np.inf
+    # ... and the whole row goes, not just the offending channel: with one
+    # entry negative the rest no longer sums to one either.
+    assert log_multinomial_pmf([0, 2, 3], [-0.1, 0.6, 0.5]) == -np.inf
+    # a valid row is a log probability, i.e. never positive
+    assert log_multinomial_pmf(counts, [0.2, 0.3, 0.5]) < 0.0
+
+
+def test_a_negative_probability_only_kills_its_own_row():
+    """Rejection is per model point, not per call."""
+    from chisurf.core.fluorescence.pda3c import log_multinomial_pmf
+
+    counts = np.array([[6, 2, 3]])
+    p = np.array([[-0.1, 0.6, 0.5], [0.2, 0.3, 0.5]])
+    grid = log_multinomial_pmf(counts[None, :, :], p[:, None, :])
+    assert grid[0, 0] == -np.inf
+    assert np.isfinite(grid[1, 0])
+    assert grid[1, 0] == pytest.approx(log_multinomial_pmf(counts[0], p[1]))
+
+
+def test_the_burst_path_also_rejects_a_negative_probability():
+    """The background path must not resurrect what the multinomial rejected."""
+    from chisurf.core.fluorescence.pda3c import burst_log_likelihood
+
+    out = burst_log_likelihood([[6, 2, 3]], [[-0.1, 0.6, 0.5]], background=[0.2, 0.2, 0.2])
+    assert out[0, 0] == -np.inf
+
+
 # ── the background factorisation ───────────────────────────────────────────
 
 

@@ -96,6 +96,39 @@ def test_detection_crosstalk_moves_counts_between_channels():
     )
 
 
+def test_over_subscribed_direct_excitation_stays_a_probability():
+    """de(BG) + de(BR) > 1 must not leave the direct term negative.
+
+    The two spin boxes are bounded independently at 0.9, so their sum reaches
+    1.8 inside the GUI's own limits. Normalising by the row sum alone is a
+    no-op there — the row sums to exactly one *with* a negative entry — and the
+    negative probability then propagates into the channel probabilities.
+    """
+    from chisurf.core.fluorescence.pda3c import ThreeColorSetup, blue_channel_probabilities
+
+    setup = ThreeColorSetup.from_scalars(direct_excitation_blue=(0.6, 0.5))
+    row = setup.excitation[0]
+    assert (row >= 0.0).all()
+    assert row.sum() == pytest.approx(1.0)
+    # the ratio the user asked for survives the projection
+    assert row[1] / row[2] == pytest.approx(0.6 / 0.5)
+
+    p = blue_channel_probabilities(60.0, 60.0, 60.0, setup)
+    assert (p >= 0.0).all()
+    assert p.sum() == pytest.approx(1.0)
+
+
+def test_a_valid_excitation_row_is_left_untouched():
+    """The clip must not perturb the ordinary case."""
+    from chisurf.core.fluorescence.pda3c import ThreeColorSetup
+
+    setup = ThreeColorSetup.from_scalars(
+        direct_excitation_blue=(0.3, 0.25), direct_excitation_green=0.1
+    )
+    assert setup.excitation[0] == pytest.approx([0.45, 0.3, 0.25])
+    assert setup.excitation[1] == pytest.approx([0.0, 0.9, 0.1])
+
+
 # ── species: covariance handling ───────────────────────────────────────────
 
 

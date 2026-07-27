@@ -125,7 +125,8 @@ def log_multinomial_pmf(counts, p) -> np.ndarray:
         Per-channel probabilities, shape ``(..., K)``; each row should sum to
         one. A zero probability is allowed as long as the matching count is
         zero (an impossible channel that saw nothing), and yields ``-inf``
-        otherwise.
+        otherwise. A row carrying a **negative** entry is not a probability
+        vector at all and yields ``-inf`` whatever the counts.
 
     Returns
     -------
@@ -135,16 +136,26 @@ def log_multinomial_pmf(counts, p) -> np.ndarray:
     counts = np.asarray(counts, dtype=float)
     p = np.asarray(p, dtype=float)
 
+    # A negative entry would be floored to 1 below and so score its photons for
+    # free (count * log 1 = 0), which can push the "log probability" above zero
+    # and make an unphysical model point outscore every valid one. Reject the
+    # whole row: with one entry negative the remaining channels no longer sum
+    # to one either, so nothing about the row is a multinomial.
+    invalid = np.any(p < 0.0, axis=-1)
+
     # 0 * log(0) is 0 here (an impossible channel that saw no photons). Take the
     # log of a floored p so the product never forms -inf * 0 (a nan), then put
     # the -inf back only where a photon actually landed in a p=0 channel.
     with np.errstate(divide="ignore"):
         log_p = np.log(np.where(p > 0.0, p, 1.0))
     term = counts * log_p
-    term = np.where((p == 0.0) & (counts > 0.0), -np.inf, term)
+    term = np.where((p <= 0.0) & (counts > 0.0), -np.inf, term)
 
     n = counts.sum(axis=-1)
-    return gammaln(n + 1.0) - gammaln(counts + 1.0).sum(axis=-1) + term.sum(axis=-1)
+    out = gammaln(n + 1.0) - gammaln(counts + 1.0).sum(axis=-1) + term.sum(axis=-1)
+    if np.any(invalid):
+        out = np.where(invalid, -np.inf, out)
+    return out
 
 
 #: Hard ceiling for :func:`_tail_cutoff`, so a pathological rate cannot spin.

@@ -1,5 +1,19 @@
 # Update Log
 
+## 2026-07-28
+
+* **Three-colour PDA: a negative probability is impossible, not certain
+  (RF-542).** `ThreeColorSetup` enforced "the excitation row sums to one",
+  which the unphysical case satisfies: `de(BG) + de(BR) > 1` — reachable inside
+  the GUI's own box bounds, each capped at 0.9 independently — leaves the
+  direct term negative while the row still sums to exactly 1.0, so the
+  normalisation was a no-op over a negative probability. `log_multinomial_pmf`
+  then floored that entry to 1 and scored its photons for free, so the burst
+  returned a *positive* log-probability and the optimiser was paid to leave the
+  physical region. The row is now projected onto the simplex (clip, then
+  normalise) rather than merely rescaled, and a row carrying a negative entry
+  is `-inf` whatever the counts. The valid path is unchanged.
+
 ## 2026-07-27
 
 * **Sampling diagnostics: an undefined R̂ now says which failure it is (RF-101).**

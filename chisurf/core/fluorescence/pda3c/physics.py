@@ -121,8 +121,9 @@ class ThreeColorSetup:
         strictly upper triangle is read (a pair, not a direction).
     excitation : numpy.ndarray
         ``(n_lasers, n_dyes)``; row ``ℓ`` is how laser ``ℓ`` distributes its
-        excitation over the dyes. Rows are normalised on construction, because a
-        pulse excites exactly one dye.
+        excitation over the dyes. Rows are projected onto the probability
+        simplex on construction — clipped non-negative, then normalised —
+        because a pulse excites exactly one dye.
     emission : numpy.ndarray
         ``(n_dyes, n_channels)``; ``emission[d, c]`` is the probability that a
         photon emitted by dye ``d`` is counted in channel ``c``.
@@ -135,7 +136,7 @@ class ThreeColorSetup:
     emission: np.ndarray = dataclasses.field(default_factory=lambda: np.eye(3))
 
     def __post_init__(self):
-        """Coerce the matrices to arrays and row-normalise the excitation."""
+        """Coerce the matrices to arrays and project the excitation rows onto the simplex."""
         self.forster_radii = _symmetric_radii(self.forster_radii)
         self.excitation = np.atleast_2d(np.asarray(self.excitation, dtype=float))
         self.emission = np.atleast_2d(np.asarray(self.emission, dtype=float))
@@ -143,6 +144,15 @@ class ThreeColorSetup:
         # A pulse excites exactly one dye. Normalising here is what makes direct
         # excitation partition rather than top up -- getting this wrong is
         # invisible at zero direct excitation and grows with it.
+        #
+        # Normalising by the sum enforces only half of what a probability row
+        # is: an over-subscribed direct excitation (de_BG + de_BR > 1) leaves
+        # the direct term *negative* while the row still sums to exactly one,
+        # so the normalisation is a silent no-op over a negative probability.
+        # Clip first -- with the rescale below that projects the row back onto
+        # the simplex rather than shipping an entry no downstream formula can
+        # interpret.
+        self.excitation = np.clip(self.excitation, 0.0, None)
         totals = self.excitation.sum(axis=1, keepdims=True)
         self.excitation = np.divide(
             self.excitation,

@@ -172,7 +172,7 @@ The physics is expressed as a composition of three linear maps in the
 
 | matrix | shape | meaning |
 |---|---|---|
-| `excitation` | (lasers, dyes) | how a laser pulse distributes its excitation over the dyes. **Rows sum to one** — direct excitation is an off-diagonal, and the partition that the A/B caught is now structural rather than a special case. |
+| `excitation` | (lasers, dyes) | how a laser pulse distributes its excitation over the dyes. **Rows are non-negative and sum to one** — direct excitation is an off-diagonal, and the partition that the A/B caught is now structural rather than a special case. Both halves are enforced (rows are clipped, then normalised): summing to one alone is satisfied by an over-subscribed direct excitation that leaves the direct term negative, which is what RF-542 was. |
 | `transfer` | (dyes, dyes) | probability that an excitation on dye *i* is finally emitted by dye *j*; built from the distances, upper triangular, accumulating relays. |
 | `emission` | (dyes, channels) | probability that a photon from dye *d* is counted in channel *c*; quantum yield, filters, detector efficiency and bleed-through in one object. |
 
