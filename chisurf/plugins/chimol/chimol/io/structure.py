@@ -299,6 +299,82 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
     return arr
 
 
+#: The atom dtype the rest of ChiMOL expects, matching what every reader
+#: produces (``keys_formats`` in ``chisurf/core/fio/structure/coordinates.py``).
+_MDTRAJ_ATOM_DTYPE = np.dtype([
+    ("i", "i4"), ("chain", "|U1"), ("res_id", "i4"), ("res_name", "|U5"),
+    ("atom_id", "i4"), ("atom_name", "|U5"), ("element", "|U2"),
+    ("xyz", "3f8"), ("charge", "f8"), ("radius", "f8"),
+    ("bfactor", "f8"), ("mass", "f8"),
+])
+
+#: Van-der-Waals radii, in Angstrom, for the elements a trajectory carries.
+_VDW = {"H": 1.20, "C": 1.70, "N": 1.55, "O": 1.52, "S": 1.80, "P": 1.80}
+
+
+def load_trajectory_atoms(path: Path, first_frame: np.ndarray):
+    """Build an atom array from an MDTraj file's **topology**.
+
+    Returns ``None`` when the file carries no topology.
+
+    Why this exists
+    ---------------
+    :func:`load_trajectory_frames` returned coordinates and dropped
+    ``traj.topology`` on the floor, so an all-atom trajectory arrived with no
+    residues, no chains and no atom names. Everything keyed on that identity then
+    degraded silently: the cartoon builder had no CA atoms to spline through and
+    treated all 5235 atoms as trace points, drawing ~340 disconnected fragments;
+    ``intra_fit polymer`` could not resolve a selection; the sequence view was
+    empty.
+
+    None of it errored, which is why it read as "cartoons do not work on
+    trajectories". They do -- the identity was being discarded at load.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The trajectory file.
+    first_frame : numpy.ndarray
+        ``(N, 3)`` coordinates in Angstrom, used to fill the ``xyz`` field.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        A structured atom array, or None when there is no topology to read.
+    """
+    try:
+        import mdtraj as md  # type: ignore[import]
+
+        topology = md.load(str(path)).topology
+    except Exception:
+        return None
+    if topology is None:
+        return None
+
+    atoms = list(topology.atoms)
+    if not atoms or len(atoms) != int(np.asarray(first_frame).shape[0]):
+        return None
+
+    array = np.zeros(len(atoms), dtype=_MDTRAJ_ATOM_DTYPE)
+    for index, atom in enumerate(atoms):
+        residue = atom.residue
+        element = getattr(atom.element, "symbol", "") or ""
+        array["i"][index] = index
+        array["atom_id"][index] = index + 1
+        array["atom_name"][index] = str(atom.name)[:5]
+        array["element"][index] = str(element).upper()[:2]
+        array["res_name"][index] = str(residue.name)[:5]
+        # resSeq, not the 0-based index: it is what the file says the residue is
+        # called, and what a `resi 42` selection has to match.
+        array["res_id"][index] = int(getattr(residue, "resSeq", residue.index))
+        chain_index = int(getattr(residue.chain, "index", 0))
+        array["chain"][index] = chr(ord("A") + chain_index % 26)
+        array["radius"][index] = _VDW.get(str(element).upper(), 1.70)
+        array["mass"][index] = float(getattr(atom.element, "mass", 0.0) or 0.0)
+    array["xyz"] = np.asarray(first_frame, dtype=float)
+    return array
+
+
 def _read_full_model(structure_factory: Callable[..., object], path: Path) -> object:
     """Build a structure that keeps waters, ligands and modified residues.
 

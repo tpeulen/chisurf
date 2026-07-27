@@ -641,33 +641,32 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
-- **`cartoon` on a coarse-grained trajectory is the wrong representation, and
-  says nothing about it.** Asked whether trajectory views work for cartoon. On an
-  **all-atom** multi-state structure they do: the ribbon follows the frames
-  exactly. On a **coarse-grained** model — which is what chisurf's modelling
-  produces, and the case that matters here — the cartoon comes out as hundreds of
-  disconnected fragments in roughly the right overall shape.
+- **An MDTraj trajectory loads without its topology, so the cartoon fragments.**
+  `hgbp1_transition.h5` is **all-atom** — 2 chains, 151 residues, real atom names
+  (N, CA, CB, CG, SD…), coordinates in nanometres. `load_trajectory_frames`
+  converts nm→Å correctly but returns **coordinates only**, dropping
+  `traj.topology` on the floor.
 
-  Measured rather than guessed: `hgbp1_transition.h5` has 5235 points with a
-  **median spacing of 15.3 Å** and no residue or chain identity. These are domain
-  beads, not a CA chain, so there is no backbone for a ribbon to follow — the
-  cartoon builder is not misbehaving, it is being asked for something that does
-  not exist at that resolution. `trace`, `lines` and `spheres` all render and
-  animate correctly, and `trace` is what the trajectory demo now uses.
+  Everything keyed on atom identity then degrades *silently*: the cartoon builder
+  has no CA atoms to spline through and treats all 5235 atoms as trace points,
+  drawing ~340 disconnected fragments; `intra_fit polymer` cannot resolve a
+  selection; the sequence view is empty. Nothing errors.
 
-  Worth recording that a first fix was **wrong**: segmenting the ribbon by
-  distance, on the theory that consecutive beads within a threshold are one
-  chain. It changed nothing, because the fragmentation is not a segmentation
-  error. Reverted rather than left in as a plausible-looking no-op.
+  **`load_trajectory_atoms` is written and verified** — it returns 5235 atoms with
+  correct names and residues from the file's topology — but **wiring it into the
+  loader is unfinished**. Attaching the atom array before `set_frames` is
+  discarded (that call rebuilds state from the coordinates); attaching it after,
+  with a `set_coordinates` to refresh, destroyed the frames instead. The
+  interaction between `add_coordinates`, `set_frames` and `set_coordinates` needs
+  to be understood before the attachment point can be chosen — that is the next
+  step, and it is a small one once that ordering is clear.
 
-  The real options, when someone wants this: refuse `cartoon` on an object with
-  no residue identity and say why (cheap, honest); or infer a chain and spline
-  through the beads at bead resolution, which is a different representation
-  wearing the cartoon's name. The second is what a user probably wants and is not
-  a small change.
-
-
-
+  **A previous revision of this entry said the file was coarse-grained and the
+  cartoon was therefore the wrong representation. That was wrong.** The median
+  15.3 Å "bead spacing" I measured was scene units — 1.53 Å in the file, an
+  ordinary covalent bond. The user corrected it. The lesson is the one this
+  effort keeps relearning: check which unit a number is in before drawing a
+  conclusion from it.
 
 - **A chimol dock's widgets were reported deleted, and the cause is not pinned
   down.** The report: closing/moving a dock left

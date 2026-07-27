@@ -4,10 +4,9 @@
 # it the movie shows the model tumbling and the conformational change is buried
 # under rigid-body drift.
 #
-# `trace` rather than `cartoon`: this is a bead model whose points are ~15 A
-# apart, so there is no backbone for a ribbon to follow and a cartoon comes out
-# as hundreds of disconnected fragments. On an all-atom trajectory the cartoon
-# does animate -- see okf/references/known-issues.md.
+# `trace` rather than `cartoon`: the H5 loader does not yet read the file's
+# topology, so the residues a ribbon needs are missing and a cartoon comes out
+# fragmented. The file *is* all-atom -- see okf/references/known-issues.md.
 load hgbp1_transition.h5
 bg_color white
 hide everything
