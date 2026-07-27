@@ -4152,3 +4152,42 @@ Findings RF-349..RF-355.
 - **Location:** `chisurf/plugins/tttr/trace_browser/api/io.py:16` (`DEFAULT_EXTENSIONS = {".ptu", ".phu", ".ht2", ".ht3", ".pt3", ".t3r"}`, used by `iter_trace_files`/`list_files`, i.e. by `trace_browser.files.list` and the `trace-browser list` CLI) versus `chisurf/plugins/tttr/trace_browser/__init__.py:118-136,1185-1225` (`get_tttr_supported_exts()` → `['.ptu', '.ht3', '.pt3', '.spc', '.sm', '.h5', '.hdf5', '.raw', '.photons']`, then narrowed by the setup's file type)
 - **Finding:** on the same folder the two halves disagree: `list_files('/…/traces')` returns **12** `.ptu` files while the GUI table shows **0**; and `list_files` returns **0** for a folder of `.spc` files, because its hardcoded set omits `.spc`, `.h5`/`.hdf5`, `.sm`, `.raw` and `.photons` — every Becker & Hickl and Photon-HDF5 measurement is invisible to the CLI even though the GUI's *File Type* combo offers `SPC-130`, `SPC-600_*` and `PHOTON-HDF5`. Neither side asks the reader what it supports. Derive both from `tttrlib`'s supported types (plus the setup filter where one is chosen) so the CLI, the RPC service and the GUI list the same files.
 - **Fix note:**
+
+### Review 2026-07-27 — the new curve write-lock, and the curve/CSV seam around it
+
+Slice: `a0471ad1` (`NCurve` write-locks its per-sample arrays) plus the code it
+now governs — `chisurf/core/curve.py`, `chisurf/core/data.py` and the ASCII
+reader they load through. The lock itself is sound where a curve owns its
+storage (`x`/`y` always do: every path goes through `np.vstack`), no in-place
+write to a curve array survives anywhere in `chisurf/` or `test/` (checked by
+pattern), and the deepcopy/pickle re-lock works as claimed (verified: both come
+back `owndata=True, writeable=False`). The hole is the *companion* arrays, which
+never go through a vstack. Findings RF-356..RF-359.
+
+### RF-356
+- **Status:** OPEN
+- **Severity:** S2 (the new write-lock does not hold for `ex`/`ey`/`mask` on the two paths that produce them, and its documented escape hatch raises there instead)
+- **Location:** `chisurf/core/data.py:428-440` (`DataCurve.load`: `self.ey = csv.data[2]`, `self.ex = csv.data[2]`, `self.mask = csv.data[4]`) and `:517-525` (`set_data`, reached by the `data` setter at `:199-207` as `set_data(*v)`), against `chisurf/core/curve.py:130-137` (`_can_unlock`) and the `DataCurve` docstring at `chisurf/core/data.py:174-178`
+- **Finding:** `x`/`y` are safe because every assignment rebuilds the 2×N storage with `np.vstack`, but the companions are stored as whatever object they were handed — and on both of these paths that is a **row of somebody else's array**, so `owndata` is `False` and `setflags(write=False)` locks only the view, not the buffer. Two consequences, both verified this run. (1) The invariant the commit is for does not hold: `dc.data = src; src[3, 0] = 999.0` leaves `dc.ey[0] == 999.0` — the caller still holds `src` and writes straight through the "locked" curve, silently, exactly the failure the lock was added to stop. (2) The documented escape hatch is unusable on real data: for a DataCurve loaded from any 3-, 4- or 5-column CSV, `with dc.unlocked('ey'): ...` raises `ValueError: DataCurve.ey is a view into another array and cannot be unlocked; write to a copy instead` — and the advice is wrong there, because `Csv.data` hands back a throwaway copy no one else owns. That is the *only* example the `DataCurve` docstring gives. Copy on the way in (`np.array(value)` for a non-owning array in `NCurve.__setattr__`, or explicitly in `set_data`/`load`), so a companion is owned like the storage is.
+- **Fix note:**
+
+### RF-357
+- **Status:** OPEN
+- **Severity:** S2 (a normalisation with a zero factor fills the curve with NaN and reports success; on the IRF path a fittable parameter can reach it)
+- **Location:** `chisurf/core/curve.py:502-534` (`Curve.normalize`) — `factor = max(self.y)` / `sum(self.y)` with no zero or empty guard, then `self.y = self.y / factor`; reached from `chisurf/core/models/tcspc/nusiance.py:585` (`irf.normalize(mode="sum", inplace=True)`) after `:552-553` (`irf -= self.lamp_background; irf.y = np.clip(irf.y, 0, None)`)
+- **Finding:** verified: `Curve(x=arange(4.), y=zeros(4)).normalize()` returns `0.0` and leaves `y == [nan, nan, nan, nan]` behind a bare `RuntimeWarning`, in both `max` and `sum` mode; on an empty curve it raises `ValueError: max() iterable argument is empty` out of the builtin. The reference-curve branch already guards this (`if max(self.y) != 0`) and the plain branch does not, so the guard exists and is simply on the wrong side. It is reachable: `lamp_background` is a fitting parameter, and `_get_irf` subtracts it and clips at zero — a background above the whole IRF yields an all-zero IRF, then an all-NaN IRF, then a NaN model and a NaN χ², with nothing raised or logged anywhere along the way. Return `1.0` (or raise) for a zero/empty factor. While there: `sum(self.y)`/`max(self.y)` are the *builtins* over a NumPy array — measured 105× slower than `np.sum` on a 65 536-point curve (9.2 ms vs 0.09 ms per three calls) — so the fix should also switch to `np.sum`/`np.max`.
+- **Fix note:**
+
+### RF-358
+- **Status:** OPEN
+- **Severity:** S3 (a base-class method that cannot run, documenting a contract it could not satisfy)
+- **Location:** `chisurf/core/curve.py:211-227` (`NCurve.__getitem__`)
+- **Finding:** `NCurve` defines only `d`; the method's second line is `x = np.arange(0, len(self.y))` and `y` exists only from `Curve` downwards. Verified: `NCurve(d=np.arange(6.0))[0:3]` raises `AttributeError: NCurve object has no attribute 'y'`. Even with a `y`, the contract in the docstring is unsatisfiable: it returns `self.d.flatten()[key]` alongside an index array sized `len(self.y)`, i.e. 2N vs N for a `Curve`. Every concrete subclass overrides it (`Curve` at `:591`, `DataCurve` at `chisurf/core/data.py:537`), so nothing reaches it and no test notices. Delete it, or make it return `np.arange(self.d.size)[key], self.d.flatten()[key]` so a bare `NCurve` can be indexed at all.
+- **Fix note:**
+
+### RF-359
+- **Status:** OPEN
+- **Severity:** S3 (a public property returns one entry per *row* where it promises one per column, and materialises a full copy of the table to do it)
+- **Location:** `chisurf/core/fio/ascii.py:695-703` (`Csv.header`: `range(self.data.shape[1])`) and `:689-693` (`Csv.data`, which rebuilds `np.array(self._data, dtype=np.float64).T` on every access), against `:679-686` (`n_cols`/`n_rows`, which read `_data` directly)
+- **Finding:** `data` is transposed, so `data.shape[1]` is the number of **rows**. Verified on a 3-column × 7-row file with no detected header: `n_cols == 3` but `header` returns `['0'…'6']`, seven entries — the index fallback is wrong by the whole shape of the file, and it pays for a full float64 copy of the table to get there when `n_cols` is one attribute lookup away. Nothing in the tree consumes `Csv.header` today, which is why it has never surfaced; the docstring nevertheless promises "a list of the column headers". The same `data`-copies-per-access behaviour costs `DataCurve.load` six full copies of the file for a 5-column CSV (`chisurf/core/data.py:413,436-440` — measured 6 ms and 48 MB of churn for a 200 000-row file), and is what makes the companion arrays in RF-356 views into a throwaway buffer. Use `n_cols` in `header`, and let `data` reuse a cached transposed view instead of rebuilding it — noting that a stable buffer makes fixing RF-356 (copy on the way in) a prerequisite, not an optional extra.
+- **Fix note:**
