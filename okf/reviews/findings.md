@@ -4055,3 +4055,55 @@ they are.
 - **Location:** `chisurf/core/fitting/factorgraph.py:1100-1122` (the `owner` dict and `dataclasses.replace(v, fit_index=owner.get(v.key))`) and `:420-441` (`VariableNode.fit_index`)
 - **Finding:** the comment claims "globals and cross-linked masters keep None", but a cross-linked master *is* a free parameter of the fit that owns it and therefore appears in that local model's `parameters`, so `owner.setdefault(key, i)` stamps it with that fit's index — only genuine globals keep `None`. The behaviour is the defensible half and the comment is the wrong one. The field is also unread: nothing in the tree consumes `VariableNode.fit_index` (`graphview.py` and `sample.py:1160-1162` all read `FactorNode.fit_index`), so the extra pass over every local model's parameter list on every rebuild buys nothing. Either drop the field and the pass, or correct the comment and give `fit_index` the reader it was meant to have — grouping variable nodes by dataset in the graph views is the obvious one.
 - **Fix note:**
+
+## Review 2026-07-27 — the burst-MLE wizard's two long runs
+
+Slice: the newest landing, `a970e438` ("nothing may mutate while the bursts are
+processed") and the code it froze — `chisurf/plugins/burst/burst_mle_analysis/
+utils.py::optimize_hyperparameters` and `wizard.py::process_bursts` — read
+against `chisurf/gui/progress.py` (`ChiSurfProgress`, the handle both now use)
+and `test/gui/test_mle_frozen_inputs.py`. Zero findings on record for this plugin
+before today. The freeze itself holds: `_set_inputs_frozen` disables the central
+widget, both runs hold it inside a `try`/`finally`, and the progress display is a
+child of the *status bar*, not of the frozen widget, so its Cancel really does
+stay clickable (`StatusBarProgressHost.__init__` → `window.statusBar().
+addPermanentWidget`). What the review found is on the other side of that Cancel
+and inside the search it wraps. Findings RF-391..RF-395, each reproduced in the
+`arm64` env against the real module (`utils.py` and `wizard.py` carry a peer's
+uncommitted `QMessageBox` → `dialogs` conversion; it does not touch any line
+cited below, and the line numbers hold in both the working tree and `a970e438`).
+
+### RF-391
+- **Status:** OPEN
+- **Severity:** S2 (the local refinement's `improved` flag can never be `True`, so it always shrinks its step and always stops after three rounds — however well the search is doing)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/utils.py:659-661` (`if loss < best_loss: improved = True`, under the comment "update best immediately (evaluate() already does)") against `evaluate` at `:597-610` (`nonlocal best_loss`; `if loss < best_loss: best_cfg, best_loss, best_info = c, loss, info` **before** it returns `loss`), with the consumers at `:663-668` (per-dimension shrink), `:670-679` (global shrink) and `:680-681` (`no_improve_rounds >= max_no_improve_rounds`)
+- **Finding:** `evaluate()` has already lowered `best_loss` to `loss` by the time it returns, so the caller's `loss < best_loss` is `loss < loss` on an improvement and `loss > best_loss` otherwise — false either way. Verified by executing the module source with one recording line inserted after the evaluation (n_iter=200, seed 7, a deterministic surrogate loss): over **54 refinement decisions the shipped test was `True` 0 times, while the intended test — the best *before* that evaluation — was `True` 19 times**. Three things follow, all silent: the per-dimension branch at `:663` shrinks the step of a dimension that just improved (its comment says "shrink step if we didn't move on this dim"); the global shrink at `:675` fires every round, so a float step is quartered per round; and `no_improve_rounds` increments unconditionally, so the refinement always exits on the three-round break rather than on the budget — the same run stopped at 194 of its 200 evaluations. Fix by capturing `best_loss` before the call and comparing against that.
+- **Fix note:**
+
+### RF-392
+- **Status:** OPEN
+- **Severity:** S2 (Cancel on the batch progress bar does nothing at all; the documented replacement for the Stop button is dead code)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:4049-4062` (the `try` → `ProcessPoolExecutor` → `for fut in as_completed(futs)` loop, which polls neither `progress.wasCanceled()` nor `self.stop_processing`), against `:4077` (`if self.stop_processing or (processed < total_bursts and progress.wasCanceled())`), `:2435-2440` ("Stop button functionality is deprecated in favor of modal progress dialog cancel", `pushButton_stop.hide()` + `setEnabled(False)`) and `:2875-2880` (`stop_burst_processing`, whose `self.stop_processing = True` is the only writer and is connected to nothing)
+- **Finding:** the batch's only cancellation check runs **after** the executor's `with` block has joined every future, so pressing ✕ cannot shorten a run — it is read once the work it was meant to stop is finished. The two paths it then takes are both wrong: when every worker succeeds, `processed == total_bursts`, the condition is `False` and the table is saved as if nothing had been clicked; when any worker raised (`:4056-4058` yields `[], 0`), `processed < total_bursts` and **all** completed results are discarded with "Burst processing was canceled." Meanwhile the Stop button the comment defers to is hidden and disabled and `stop_burst_processing` is unreachable — grep confirms no `connect` to it — so `self.stop_processing` is permanently `False`. Poll `progress.wasCanceled()` inside the `as_completed` loop (cancel the pending futures and keep what finished), and delete the dead stop path or wire it to the same flag.
+- **Fix note:**
+
+### RF-393
+- **Status:** OPEN
+- **Severity:** S2 (named shared-memory segments and the progress bar are created outside the `try` that releases them, so a failure while building the jobs leaks both for the life of the process)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:3958-3986` (`shm_blocks = []` then, per file, two `shared_memory.SharedMemory(create=True, …)` appended to it) and `:3881-3886` (`progress = _mle_progress(…)`, `progress.show()`), against `:4049` (`try:`) and `:4063-4075` (the `finally` that calls `progress.close()` and `block.close(); block.unlink()`)
+- **Finding:** every allocation happens before the only `try` that frees it. The whole job-building stretch between them can raise — a lazily opened TTTR file that turns out to be unreadable (`self.tttrs.get(key)`, `:3961`), a `MemoryError` or an out-of-space `SharedMemory(create=True)` on a later file, a bad `initial_x0` / `fixed_flags` (`:4002-4006`) — and nothing unlinks what was already created. These are *named* POSIX segments: `SharedMemory.__del__` calls `close()` but never `unlink()`, and the resource tracker only cleans up at interpreter shutdown, so for a long-lived GUI session the memory (two blocks per file, the full routing-channel and micro-time arrays) is held until ChiSurf exits, and every retry of the batch adds another set. The same raise also leaves the progress bar running forever, since `progress.close()` is likewise only in that `finally` — the pattern already on record as RF-382. Open the `try` immediately after `progress.show()`, or give the allocation loop its own `except` that unlinks `shm_blocks` before re-raising.
+- **Fix note:**
+
+### RF-394
+- **Status:** OPEN
+- **Severity:** S2 (a worker that raises drops one whole file's bursts from the exported table, and only the log says so)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:4056-4058` (`except Exception as e: cs.logging.error(f"Worker failed: {e}"); out, nbursts = [], 0`) against the diagnostics at `:4083-4112` and `_save_burst_results_fast(result_df)` at `:4118`
+- **Finding:** one job is one *file*, so a worker exception silently removes every burst of that file from `results` while the batch continues, and the table is saved as if it were complete. Nothing surfaces it: `_set_status` is not called on this path, the per-detector summary that *is* put on the status bar (`:4115-4116`) counts non-NaN τ over the rows that are present, so a file that contributed no rows at all cannot show up in it, and the cancel check at `:4077` swallows the same signal (`processed < total_bursts`) into a "canceled" message that only appears if the user also clicked ✕. The failure is not exotic — the worker runs in a spawned process, so anything unpicklable in `perdet_cfg`, a shared-memory block that could not be attached, or a fit2x error takes out the file. Collect the failed file names and report them on the status bar (and in the saved table's provenance), rather than exporting a short table quietly.
+- **Fix note:**
+
+### RF-395
+- **Status:** OPEN
+- **Severity:** S3 (the hyperparameter search evaluates a minimum of eight configurations whatever budget the caller asked for)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/utils.py:563-564` (`lhs_budget = max(8, int(0.7 * total_budget))`, `ref_budget = max(0, total_budget - lhs_budget)`) with `:472` (`total_budget = int(max(1, n_iter))`) and `:608` (`progress.setValue(min(eval_count, total_budget))`)
+- **Finding:** the `max(8, …)` floor is applied to the exploration stage alone and is never subtracted from the total, so any `n_iter` below 8 silently becomes 8. Measured through the real function with a surrogate loss: `n_iter=1 → 8` configurations evaluated, `n_iter=5 → 8`, `n_iter=11 → 11`, `n_iter=20 → 20`. Each of those extra evaluations is a full wizard refit, and `setValue(min(eval_count, total_budget))` pins the bar at 100 % while they run, so a short run looks finished long before it is. Not reachable from the wizard, whose spin box floors `n_iter` at 20 (`wizard.py:2048`, `_isb(20, 999, 50, 5)`), but `optimize_hyperparameters(n_iter=…)` is a public method and the plugin's own test calls it with `n_iter=1`. Clamp the LHS stage to the budget (`min(total_budget, max(8, …))`) so the count the caller passes is the count it gets.
+- **Fix note:**
