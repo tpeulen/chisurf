@@ -32,6 +32,11 @@ FRETBursts reference, parallel over bursts). It is wrapped by the `burst_2cde`
 plugin, exposed as a `2cde compute` CLI, the `burst_2cde.jobs.compute` RPC
 service, and the guided-workflow one-liner `Bursts.two_cde(...)`.
 
+In the burst workflow, **step 4 computes as soon as you open it** — everything
+it needs was decided upstream. It runs off the GUI thread, so the window stays
+usable, and **Stop** in the toolbar interrupts it. Opening the step again does
+not recompute; see [53 — Reusing results](53_reusing_results.md).
+
 ```python
 import numpy as np
 import tttrlib

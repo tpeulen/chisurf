@@ -165,6 +165,7 @@ class BVATool(MessagesMixin, QMainWindow):
         # (a panel revisit, another Next) does not recompute it.
         self._result_cache = analysis_cache.ResultCache()
         self._running_fingerprint: str | None = None
+        self._task = None
         self._static_line_item: cp.handles.Curve | None = None
         # Coalesce parameter-change bursts (e.g. applying workflow context loads the
         # detector table, refreshes the donor/acceptor combos and sets the folder in
@@ -266,6 +267,11 @@ class BVATool(MessagesMixin, QMainWindow):
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = action_button("run", tooltip="Run BVA on all loaded data")
+        # BVA recomputes on its own whenever the folder or a setting changes, so
+        # stopping a long run must be one click away.
+        self.btn_stop = action_button("stop", tooltip="Stop the running BVA analysis")
+        self.btn_stop.setEnabled(False)
+        self.btn_stop.clicked.connect(self.stop)
         self.btn_clear = action_button("clear", tooltip="Clear loaded data")
         self.btn_save = action_button("save", tooltip="Save BVA results")
         self.btn_save_settings = action_button("settings", tooltip="Save current settings as default")
@@ -282,6 +288,7 @@ class BVATool(MessagesMixin, QMainWindow):
         # Left cluster: source, then the primary action group in canonical order.
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
+        self.toolbar.addWidget(self.btn_stop)
         self.toolbar.addWidget(self.btn_clear)
         self.toolbar.addWidget(self.btn_save)
         self.toolbar.addWidget(self._folder_field)
@@ -649,13 +656,34 @@ class BVATool(MessagesMixin, QMainWindow):
             return
 
         self._running_fingerprint = fingerprint
-        ChiSurfProgress.run(
+        self.btn_stop.setEnabled(True)
+        self._task = ChiSurfProgress.run(
             self, "Reading burst data...", self._analysis_worker,
             args=(dict(self.bva_settings), bool(write_output), fingerprint),
             maximum=0, title="BVA Analysis", owner=self,
             on_result=self._analysis_done,
             on_error=self._analysis_failed,
+            on_done=self._analysis_over,
         )
+
+    def _analysis_over(self) -> None:
+        """Whatever the outcome: there is nothing left to stop."""
+        self._task = None
+        self.btn_stop.setEnabled(False)
+
+    def stop(self) -> None:
+        """Stop the running analysis.
+
+        The read and the per-burst loop both check for this through the progress
+        window, so a stop lands within a burst rather than at the end of the
+        folder. A stopped run leaves nothing to reuse.
+        """
+        task = self._task
+        if task is None:
+            return
+        task.cancel()
+        self._result_cache.invalidate()
+        self._status("Stopping the BVA analysis …")
 
     def _analysis_failed(self, exc) -> None:
         """A failed run leaves no result to reuse."""

@@ -9,6 +9,7 @@ from typing import Any
 
 import numpy as np
 import pyqtgraph as pg
+from qtpy import QtCore
 from qtpy.QtCore import (
     QCoreApplication,
     QObject,
@@ -222,6 +223,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
         # (another Next, a revisit of this step) does not refit.
         self._result_cache = analysis_cache.ResultCache()
         self._running_fingerprint: str | None = None
+        self._fit_task = None
         self._uncertainty = None
         self._build_ui()
 
@@ -285,6 +287,12 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = action_button("run", tooltip="Fit H2MM on all loaded bursts")
+        # The fit starts on its own when this step is opened, and a state scan
+        # with restarts runs for minutes: stopping it has to be one click away,
+        # not buried in a progress bar the shell may render as a status line.
+        self.btn_stop = action_button("stop", tooltip="Stop the running H2MM fit")
+        self.btn_stop.setEnabled(False)
+        self.btn_stop.clicked.connect(self.stop)
         # Tool-specific follow-ups (styled consistently, distinct from Run).
         self.btn_uncert = styled_tool_button("±", kind="toggle", tooltip=(
             "Uncertainty — bootstrap the selected model over bursts to put "
@@ -301,6 +309,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
 
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
+        self.toolbar.addWidget(self.btn_stop)
         self.toolbar.addWidget(self.btn_uncert)
         self.toolbar.addWidget(self.btn_llscan)
         self.toolbar.addWidget(self.btn_save)
@@ -754,15 +763,61 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self._running_fingerprint = fingerprint
         self._fit_t0 = time.perf_counter()
         self.btn_run.setEnabled(False)
+        self.btn_stop.setEnabled(True)
         self._status("Fitting H2MM models \u2026")
-        ChiSurfProgress.run(
+        self._fit_task = ChiSurfProgress.run(
             self, "Loading bursts \u2026", self._fit_worker, args=(settings,),
             maximum=100, title="H2MM", owner=self.btn_run,
             on_partial=self._plot_scan_live,
             on_result=self._on_fit_result,
             on_error=self.Error.fit_failed,
-            on_done=lambda: self.btn_run.setEnabled(True),
+            on_done=self._on_fit_done,
         )
+
+    def _on_fit_done(self) -> None:
+        """Whatever the outcome, the fit is over: Run is available, Stop is not."""
+        self._fit_task = None
+        self.btn_run.setEnabled(True)
+        self.btn_stop.setEnabled(False)
+
+    def stop(self) -> None:
+        """Stop the running fit.
+
+        The worker checks for this between state counts and between iterations
+        (``task.raise_if_cancelled``), so a stop lands within one iteration
+        rather than at the end of the scan. A stopped fit leaves no result to
+        reuse — the next run starts over rather than reporting the partial scan
+        as finished.
+        """
+        task = self._fit_task
+        if task is None:
+            return
+        task.cancel()
+        self._result_cache.invalidate()
+        self._status("Stopping the H2MM fit \u2026")
+
+    def showEvent(self, event) -> None:
+        """Start fitting for the folder this panel was given, once it is shown.
+
+        Landing on the H2MM step should start the fit the upstream steps set it
+        up for. Deferred by one event-loop turn so the panel paints first and so
+        it sees the burst folder — the shell shows a panel and then applies the
+        workflow context to it, in that order. Arriving again does not refit: the
+        run is gated on the fingerprint (see :meth:`_run_analysis`), and Stop is
+        there for the fit you did not want.
+        """
+        super().showEvent(event)
+        QtCore.QTimer.singleShot(0, self._auto_run)
+
+    def _auto_run(self) -> None:
+        """Fit for the current folder, quietly doing nothing when there is none."""
+        if self.data_folder and not self._fit_is_running():
+            self._run_analysis()
+
+    def _fit_is_running(self) -> bool:
+        """Whether a fit started by this panel is still going."""
+        task = self._fit_task
+        return task is not None and task.is_running()
 
     def _fit_worker(self, settings, task):
         """Worker: fit every state count, reporting through *task*. No GUI here.

@@ -34,6 +34,12 @@ From the guided workflow: `bursts.h2mm(states=(1, 2, 3))`. Optional ALEX/PIE
 stoichiometry, nanotime divisors (lifetime-resolved states) and bootstrap
 uncertainties are supported.
 
+In the burst workflow, **step 6 starts fitting as soon as you open it**. A state
+scan with restarts runs for minutes, so it runs off the GUI thread and **Stop**
+in the toolbar ends it — a stopped scan is discarded rather than reported as the
+answer. Opening the step again does not refit; see
+[53 — Reusing results](53_reusing_results.md).
+
 ## Result
 
 A two-state Viterbi state path and the resulting per-dwell FRET-efficiency

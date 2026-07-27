@@ -44,6 +44,19 @@ Steps 5 and 6 differ in *where* they keep the answer, which is why step 5 can
 reuse across sessions and step 6 cannot: the MLE batch's product is the exported
 files, while an H2MM fit lives only in the panel.
 
+## Steps that start themselves
+
+Two steps do not wait for a Run click at all: **2CDE (4)** and **H2MM (6)**
+compute as soon as you open them, because by then everything they need has been
+decided upstream. Both run off the GUI thread and both carry a **Stop** button
+in their toolbar — BVA, which has always recomputed on its own when the folder
+or a setting changes, has one now too.
+
+Stopping is not a pause: a stopped run computed part of an answer, not an
+answer, so nothing is remembered and the next run starts over. Arriving at a
+step whose result is already there costs nothing — that is the rule above doing
+its job, and it is what makes starting on arrival reasonable in the first place.
+
 ## The stamp files
 
 Each step that writes results writes a small JSON file next to them —

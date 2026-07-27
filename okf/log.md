@@ -2,6 +2,27 @@
 
 ## 2026-07-27
 
+* **2CDE and H2MM wait for a Run click they have no reason to wait for
+  (RF-519).** Landing on step 4 or 6 of the burst workflow showed an empty plot
+  and a button, although everything those steps need was decided upstream and
+  handed over by the shell. Both now compute when the panel is shown (deferred
+  one event-loop turn, because the shell shows a panel and *then* applies the
+  workflow context to it). That is only reasonable because two other things are
+  true: the run is gated on the fingerprint, so arriving again costs nothing, and
+  the work is off the GUI thread — which 2CDE's was not. Its `run()` blocked the
+  window for the whole folder; it is now the same threaded shape as BVA (worker
+  reads/computes/writes, GUI draws), which also gives it progress and
+  cancellation. Every step that can start work on its own now carries a **Stop**
+  button (2CDE, H2MM, and BVA, which has always recomputed on a folder or
+  setting change): a fit that starts by itself must be stoppable without hunting
+  for a Cancel in a progress bar the shell may render as a status line. A stopped
+  run invalidates the cache — it computed part of an answer, not an answer — so
+  the next run starts over rather than reporting a partial scan as finished.
+  Measured: landing on 2CDE computes in 2.2 s (2 343/2 495 bursts) and on H2MM in
+  64 s (4 states from 2 495 bursts / 275 973 photons), and a revisit of either
+  costs 0.9 s with no recomputation. Pinned by five tests in
+  `test/gui/test_burst_reuse.py`.
+
 * **chimol: a bead model is drawn as beads, and the eight-spoke nuclear pore
   opens in 1.6 s instead of 430 s.** The cost was a cartoon splined through beads
   that have no backbone — 234,184 of them, in thousands of short chains, each

@@ -43,6 +43,29 @@ def _runs(monkeypatch, module_or_obj, name="run", returns=None):
     return calls
 
 
+class _RunningTask:
+    """A task that is still going, as ``ChiSurfProgress.run`` returns one."""
+
+    def __init__(self) -> None:
+        self.cancelled = False
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+    def is_running(self) -> bool:
+        return not self.cancelled
+
+
+def _drain_timers(ms: int = 20) -> None:
+    """Let deferred (singleShot) work run — that is how arrival starts a run."""
+    from qtpy import QtCore, QtWidgets
+
+    app = QtWidgets.QApplication.instance()
+    deadline = QtCore.QTime.currentTime().addMSecs(ms)
+    while QtCore.QTime.currentTime() < deadline:
+        app.processEvents(QtCore.QEventLoop.AllEvents, 5)
+
+
 # ── BVA ──────────────────────────────────────────────────────────────
 
 
@@ -140,22 +163,23 @@ def test_2cde_skips_only_when_its_companion_files_are_current(
     two_cde, burst_folder, monkeypatch
 ):
     from chisurf.core import analysis_cache
-    from chisurf.plugins.burst.burst_2cde.core import computation as core
+    from chisurf.gui.progress import ChiSurfProgress
 
-    # A result object, so the tool holds "a result" the way a real run leaves it.
-    computed = _runs(monkeypatch, core, "compute_2cde", returns=object())
-    monkeypatch.setattr(core, "read_burst_analysis", lambda *a, **k: (None, None))
-    monkeypatch.setattr(two_cde, "_draw", lambda *a, **k: None)
+    started = _runs(monkeypatch, ChiSurfProgress, "run")
 
     two_cde.run()
-    assert len(computed) == 1
+    assert len(started) == 1
+
+    # As if that run had come back.
+    two_cde._df = object()
+    two_cde._result_cache.remember(two_cde._running_fingerprint)
 
     # A result in memory is not enough — the 2c4 companions must exist for this
     # fingerprint, else a downstream reader would find nothing.
-    two_cde._df = object()
-    two_cde._result_cache.remember(two_cde.analysis_fingerprint())
     two_cde.run()
-    assert len(computed) == 2, "no stamp on disk means the companions are not there"
+    assert len(started) == 2, "no stamp on disk means the companions are not there"
+    two_cde._df = object()
+    two_cde._result_cache.remember(two_cde._running_fingerprint)
 
     out = burst_folder / "2c4"
     out.mkdir(exist_ok=True)
@@ -165,11 +189,48 @@ def test_2cde_skips_only_when_its_companion_files_are_current(
         outputs=[out / "m000.2c4"], tool="2cde",
     )
     two_cde.run()
-    assert len(computed) == 2, "with results on disk and nothing changed, do not recompute"
+    assert len(started) == 2, "with results on disk and nothing changed, do not recompute"
 
     two_cde._tau.setValue(two_cde._tau.value() * 2)
     two_cde.run()
-    assert len(computed) == 3, "a changed tau must recompute"
+    assert len(started) == 3, "a changed tau must recompute"
+
+
+def test_2cde_computes_when_the_step_is_opened(two_cde, monkeypatch):
+    """Landing on the step shows the result, not an empty plot and a button."""
+    from chisurf.gui.progress import ChiSurfProgress
+
+    started = _runs(monkeypatch, ChiSurfProgress, "run")
+    two_cde.show()
+    _drain_timers()
+    assert len(started) == 1, "being shown with a folder must start the computation"
+
+
+def test_2cde_does_not_start_a_second_run_on_top_of_a_running_one(two_cde, monkeypatch):
+    from chisurf.gui.progress import ChiSurfProgress
+
+    started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
+    two_cde.run()
+    two_cde.show()
+    _drain_timers()
+    assert len(started) == 1, "a run in flight must not be doubled by arriving"
+
+
+def test_2cde_stop_cancels_and_leaves_nothing_to_reuse(two_cde, monkeypatch):
+    from chisurf.gui.progress import ChiSurfProgress
+
+    task = _RunningTask()
+    _runs(monkeypatch, ChiSurfProgress, "run", returns=task)
+    two_cde.run()
+    assert two_cde._stop.isEnabled(), "Stop is offered while the run is going"
+
+    two_cde._df = object()
+    two_cde._result_cache.remember(two_cde._running_fingerprint)
+    two_cde.stop()
+    assert task.cancelled, "Stop must reach the running task"
+    assert not two_cde._result_cache.matches(two_cde.analysis_fingerprint()), (
+        "a stopped run computed part of an answer, not an answer"
+    )
 
 
 # ── H2MM ─────────────────────────────────────────────────────────────
@@ -289,3 +350,72 @@ def test_burst_search_is_not_repeated_for_an_identical_request(qapp, tmp_path):
     assert not cache.matches(
         analysis_cache.fingerprint([raw], request, extra="burst_selection")
     ), "re-recorded data must search again"
+
+
+def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(
+    qapp, burst_folder, monkeypatch
+):
+    """Arriving starts the fit; Stop reaches it.
+
+    An H2MM scan with restarts runs for minutes, so a fit that starts on its own
+    is only reasonable if stopping it is one click away — and a stopped scan must
+    not be remembered as the answer for these settings.
+    """
+    from chisurf.gui.progress import ChiSurfProgress
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+    tool = H2mmTool(embedded=True)
+    try:
+        tool._set_folder(str(burst_folder))
+        task = _RunningTask()
+        started = _runs(monkeypatch, ChiSurfProgress, "run", returns=task)
+
+        assert not tool.btn_stop.isEnabled(), "nothing to stop before a fit"
+        tool.show()
+        _drain_timers()
+        assert len(started) == 1, "being shown with a folder must start the fit"
+        assert tool.btn_stop.isEnabled(), "Stop is offered while the fit runs"
+        assert not tool.btn_run.isEnabled(), "Run is not offered twice over"
+
+        tool.show()
+        _drain_timers()
+        assert len(started) == 1, "a fit in flight must not be doubled by arriving"
+
+        tool._result = object()
+        tool._result_cache.remember(tool._running_fingerprint)
+        tool.stop()
+        assert task.cancelled, "Stop must reach the running fit"
+        assert not tool._result_cache.matches(
+            tool.analysis_fingerprint(tool._gather_settings())
+        ), "a stopped scan is not the answer for these settings"
+
+        tool._on_fit_done()
+        assert tool.btn_run.isEnabled() and not tool.btn_stop.isEnabled()
+    finally:
+        tool.close()
+
+
+def test_h2mm_does_not_refit_when_arriving_at_a_finished_step(
+    qapp, burst_folder, monkeypatch
+):
+    from chisurf.gui.progress import ChiSurfProgress
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+    tool = H2mmTool(embedded=True)
+    try:
+        tool._set_folder(str(burst_folder))
+        started = _runs(monkeypatch, ChiSurfProgress, "run")
+        tool.show()
+        _drain_timers()
+        assert len(started) == 1
+
+        tool._result = object()  # as if the fit had come back
+        tool._result_cache.remember(tool._running_fingerprint)
+        tool._on_fit_done()
+
+        tool.hide()
+        tool.show()
+        _drain_timers()
+        assert len(started) == 1, "coming back to a fitted step must not refit"
+    finally:
+        tool.close()
