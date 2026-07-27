@@ -1092,6 +1092,31 @@
   Reverted rather than left in as a plausible-looking no-op, and the real options
   are written down in [known-issues](/references/known-issues.md).
 
+* **A widget pool relabelled per mode is two settings pretending to be one.**
+  Replacing the burst filter's hand-written restore with the generic AutoForm
+  one surfaced why part of it could never have worked: the page's
+  `bocpd_prior_count` *getter* read `filter_settings.background_rate` — CUSUM's
+  parameter — while its *setter* wrote `doubleSpinBox_5`, one of the spin boxes
+  the legacy Designer page relabelled and re-ranged whenever the mode changed.
+  So two filters stored one number: reading a BOCPD parameter back returned a
+  CUSUM one, and writing either moved the other. Nothing raised, because every
+  value on screen looked plausible for whichever mode was showing. Giving BOCPD
+  its own fields fixed it and let it restore like everything else. The general
+  lesson matches the shared-widget cleanups elsewhere this week: reusing one
+  widget for several meanings makes the *meaning* implicit in mode state, and
+  implicit meaning is what silently diverges.
+
+* **Where a declarative form exists, delete the hand-mapping — and state what is
+  left.** The filter page is a *partial* AutoForm port: the settings common to
+  every search come from a view spec, while the search parameters are rendered
+  from the JSON Schema tttrlib publishes and have no field in that spec. The
+  restore now uses the generic path for what the form owns, so a control added
+  to the spec is restored without being named anywhere, and keeps an explicit
+  `_UNPORTED_FILTER_SETTINGS` table for the rest — which shrinks to nothing as
+  they are ported, and is visible rather than implied. Anything the form
+  unexpectedly rejects is reported instead of dropped. A partial port that says
+  which half is which is far safer than one that reads as complete.
+
 * **Restorability belongs to the form framework, not to the plugin author.** A
   view spec already names, per control, the model attribute it binds to — which
   is a complete description of where a form's state lives. So reading it out and
