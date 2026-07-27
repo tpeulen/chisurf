@@ -106,8 +106,16 @@ the moment they could go stale — `sort` and `remove` renumber the atoms, so th
 backbone lookup is dropped and rebuilt.
 
 Together with drawing the mesh indexed rather than expanding it into a flat
-triangle list, a cartoon frame change on a 5235-atom, 570-residue trajectory
-went from about 240 ms to about 16 ms — 4 frames a second to 60.
+triangle list, a cartoon frame change on a 5235-atom, 570-residue trajectory went
+from about **240 ms to under 10 ms** — 4 frames a second to over 100. Playing that
+trajectory in a real window runs at ~30 fps while the interface answers the mouse
+on its normal 20 ms beat.
+
+Where the arithmetic is genuinely sequential and cannot be expressed as array
+operations — carrying the ribbon's up-vector along the chain, and placing the
+vertices of each cross-section — it is compiled with numba where numba is
+installed, and falls back to the NumPy form where it is not. Both produce the
+same ribbon; a test compares them.
 
 If you want the full-quality ribbon while scrubbing, the draft settings are
 tessellation values in the `cartoon` display config; raising them trades frame

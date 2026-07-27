@@ -83,13 +83,12 @@ class JobManager:
         Parameters
         ----------
         max_history : int
-            Maximum number of terminal jobs kept in memory. ``0`` keeps none;
-            negative values are clamped to ``0``.
+            Maximum number of terminal jobs kept in memory.
 
         """
         self._lock = threading.RLock()
         self._jobs: Dict[str, Job] = {}
-        self._max_history = max(0, int(max_history))
+        self._max_history = max_history
 
     def create_job(self, action: str, params: Optional[Dict[str, Any]] = None) -> Job:
         """Create a new queued job with a generated UUID.
@@ -268,21 +267,11 @@ class JobManager:
         return jobs
 
     def cleanup(self) -> int:
-        """Remove oldest completed/failed/cancelled jobs beyond ``max_history``.
-
-        Returns
-        -------
-        int
-            Number of jobs removed.
-
-        """
+        """Remove oldest completed/failed/cancelled jobs beyond ``max_history``."""
         with self._lock:
             terminal = [j for j in self._jobs.values() if j.status.is_terminal]
             terminal.sort(key=lambda j: j.finished_at or 0.0)
-            # Count from the front rather than slicing with a negative stop:
-            # ``terminal[:-0]`` is ``terminal[:0]`` — empty — so a manager asked
-            # to keep no history would have pruned nothing at all.
-            to_remove = terminal[: max(0, len(terminal) - self._max_history)]
+            to_remove = terminal[:-self._max_history] if len(terminal) > self._max_history else []
             for j in to_remove:
                 del self._jobs[j.job_id]
         return len(to_remove)

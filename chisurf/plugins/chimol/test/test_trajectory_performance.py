@@ -400,3 +400,76 @@ def test_playback_reschedules_itself_instead_of_repeating(qapp):
         assert timer.isSingleShot(), "playback must not repeat on a fixed interval"
     finally:
         view.deleteLater()
+
+
+# --------------------------------------------------------------------------- #
+# The numba kernels and the NumPy fallback must be the same function
+# --------------------------------------------------------------------------- #
+def _ring_shape(s: int):
+    """A circular cross-section: vertices and their outward normals."""
+    angle = np.linspace(0.0, 2.0 * np.pi, s, endpoint=False)
+    verts = np.zeros((s, 3))
+    norms = np.zeros((s, 3))
+    verts[:, 1] = norms[:, 1] = np.cos(angle)
+    verts[:, 2] = norms[:, 2] = np.sin(angle)
+    return verts, norms
+
+
+@pytest.mark.parametrize("n_path,s", [(40, 12), (3, 6), (2, 4)])
+def test_the_compiled_and_plain_paths_agree(monkeypatch, n_path, s):
+    """Installs without numba must draw the same ribbon, not a similar one.
+
+    Only one of these runs in any given process, so without this the fallback is
+    never exercised and could rot unnoticed -- which is worse than it sounds,
+    because it would not raise: it would quietly draw something else.
+
+    The input is drawn **once** and shared. Drawing it separately for each path
+    compares different molecules and reads as a disagreement between the kernels;
+    that is a bug in the test, and it was made here first.
+    """
+    from chisurf.plugins.chimol.chimol.geometry import cartoon
+
+    if not cartoon._HAVE_NUMBA:
+        pytest.skip("numba not installed; there is only one path to compare")
+
+    rng = np.random.default_rng(20260727)
+    path = np.cumsum(rng.normal(size=(n_path, 3)), axis=0)
+    shape_verts, shape_norms = _ring_shape(s)
+    colors = np.ones((n_path, 4))
+
+    def build():
+        tangents, ups = cartoon._propagate_ups(path, None)
+        frames = cartoon._build_frames(tangents, ups)
+        return ups, cartoon._extrude_shape(
+            path, frames, shape_verts, shape_norms, colors
+        )
+
+    compiled_ups, compiled = build()
+    monkeypatch.setattr(cartoon, "_HAVE_NUMBA", False)
+    plain_ups, plain = build()
+
+    assert compiled_ups == pytest.approx(plain_ups, abs=1e-12)
+    if compiled is None or plain is None:
+        assert compiled is None and plain is None
+        return
+    verts_c, norms_c, faces_c, cols_c = compiled
+    verts_p, norms_p, faces_p, cols_p = plain
+    assert verts_c == pytest.approx(verts_p, abs=1e-12)
+    assert norms_c == pytest.approx(norms_p, abs=1e-12)
+    assert np.array_equal(faces_c, faces_p)
+    assert cols_c == pytest.approx(cols_p, abs=0)
+
+
+def test_the_plain_path_still_runs_when_numba_is_absent(monkeypatch):
+    """Guard the import-time branch too, not just the arithmetic."""
+    from chisurf.plugins.chimol.chimol.geometry import cartoon
+
+    monkeypatch.setattr(cartoon, "_HAVE_NUMBA", False)
+    monkeypatch.setattr(cartoon, "nb", None)
+    rng = np.random.default_rng(7)
+    path = np.cumsum(rng.normal(size=(20, 3)), axis=0)
+    tangents, ups = cartoon._propagate_ups(path, None)
+    assert ups.shape == (20, 3)
+    assert np.allclose(np.linalg.norm(ups, axis=1), 1.0)
+    # ...and perpendicular to the tangent, which is the point of the transport.
+    assert np.abs(np.einsum("ij,ij->i", ups, tangents)).max() < 1e-9

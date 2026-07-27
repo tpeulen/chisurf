@@ -129,14 +129,22 @@ def differences_and_normals(
     differences[:-1][same] = step[same]
     lengths[:-1][same] = np.linalg.norm(step[same], axis=1)
 
-    for a in range(n - 1):
-        if not same[a]:
-            continue
-        if lengths[a] > _R_SMALL4:
-            normals[a] = differences[a] / lengths[a]
-        elif a:
-            # PyMOL copies the previous direction rather than leaving a hole.
-            normals[a] = normals[a - 1]
+    # Three cases per step: a well-defined direction, a degenerate one that
+    # copies its predecessor, and a segment break that stays zero. Only the
+    # middle one depends on the step before it -- and copying a predecessor that
+    # itself copied is a *forward fill*, which is a running maximum over the
+    # indices that were not copies.
+    m = n - 1
+    span = lengths[:m]
+    assigned = same & (span > _R_SMALL4)
+    copied = same & ~assigned
+    copied[0] = False  # nothing before the first step to copy
+
+    base = np.zeros((m, 3), dtype=float)
+    if np.any(assigned):
+        base[assigned] = differences[:m][assigned] / span[assigned][:, None]
+    source = np.maximum.accumulate(np.where(~copied, np.arange(m), -1))
+    normals[:m] = base[source]
     return differences, normals, lengths
 
 
@@ -170,15 +178,21 @@ def tangents_from_normals(
     if n > 1:
         tangents[-1] = normals[-2]
 
-    for a in range(1, n - 1):
-        before = segments[a] == segments[a - 1]
-        after = segments[a] == segments[a + 1]
-        if before and after:
-            tangents[a] = normals[a] + normals[a - 1]
-        elif before:
-            tangents[a] = normals[a - 1]
-        elif after:
-            tangents[a] = normals[a]
+    if n > 2:
+        # No dependence between residues here, so the whole interior at once.
+        before = segments[1:-1] == segments[:-2]
+        after = segments[1:-1] == segments[2:]
+        inside = normals[1:-1]
+        preceding = normals[:-2]
+        tangents[1:-1] = np.where(
+            (before & after)[:, None],
+            inside + preceding,
+            np.where(
+                before[:, None],
+                preceding,
+                np.where(after[:, None], inside, 0.0),
+            ),
+        )
     return _unit(tangents)
 
 

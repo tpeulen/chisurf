@@ -51,6 +51,125 @@ _ARROW_BREADTH_SCALE = 2.2
 # Sampler  (unchanged from Chimol original)
 # ---------------------------------------------------------------------------
 
+try:  # Optional acceleration via numba, exactly as the occlusion kernels do.
+    import numba as nb  # type: ignore
+    _HAVE_NUMBA = True
+except Exception:  # pragma: no cover - run-time availability
+    nb = None  # type: ignore
+    _HAVE_NUMBA = False
+
+
+if _HAVE_NUMBA and nb is not None:
+
+    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    def _extrude_rings_nb(path, side, up, scale, shape_verts, shape_norms,
+                          verts, norms):
+        """Place every ring vertex and its normal, with no temporaries.
+
+        The NumPy form of this broadcasts to ``(m, s, 3)``, which is the right
+        shape for the arithmetic and the wrong one for the sizes involved: a
+        cartoon extrudes about sixty segments per frame, each a handful of rings
+        of a dozen vertices, so the per-call dispatch and the intermediate
+        allocations cost more than the multiplications do.
+        """
+        m = path.shape[0]
+        s = shape_verts.shape[0]
+        for i in range(m):
+            px, py, pz = path[i, 0], path[i, 1], path[i, 2]
+            sx, sy, sz = side[i, 0], side[i, 1], side[i, 2]
+            ux, uy, uz = up[i, 0], up[i, 1], up[i, 2]
+            ks, ku = scale[i, 0], scale[i, 1]
+            # Normals transform by the inverse transpose, i.e. the reciprocal of
+            # each axis scale -- without it a flared arrowhead is lit as if it
+            # were still the un-flared rectangle.
+            inv_s = 1.0 / ks if abs(ks) > 1e-9 else 1.0
+            inv_u = 1.0 / ku if abs(ku) > 1e-9 else 1.0
+            base = i * s
+            for j in range(s):
+                a = shape_verts[j, 1] * ks
+                b = shape_verts[j, 2] * ku
+                row = base + j
+                verts[row, 0] = px + a * sx + b * ux
+                verts[row, 1] = py + a * sy + b * uy
+                verts[row, 2] = pz + a * sz + b * uz
+                na = shape_norms[j, 1] * inv_s
+                nb_ = shape_norms[j, 2] * inv_u
+                nx = na * sx + nb_ * ux
+                ny = na * sy + nb_ * uy
+                nz = na * sz + nb_ * uz
+                length = math.sqrt(nx * nx + ny * ny + nz * nz)
+                if length > 1e-10:
+                    nx /= length
+                    ny /= length
+                    nz /= length
+                norms[row, 0] = nx
+                norms[row, 1] = ny
+                norms[row, 2] = nz
+
+    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    def _propagate_ups_nb(tangents, hint, has_hint, ups):
+        """Parallel transport along the path: genuinely sequential, so a loop.
+
+        Each up vector is carried from the one before it, which is the whole
+        point of parallel transport and the reason this cannot be vectorised.
+        Compiled instead.
+        """
+        m = tangents.shape[0]
+        have_prev = False
+        px = py = pz = 0.0
+        for i in range(m):
+            tx, ty, tz = tangents[i, 0], tangents[i, 1], tangents[i, 2]
+            ox = oy = oz = 0.0
+            found = False
+            for source in range(2):
+                if source == 0:
+                    if not has_hint:
+                        continue
+                    vx, vy, vz = hint[i, 0], hint[i, 1], hint[i, 2]
+                else:
+                    if not have_prev:
+                        continue
+                    vx, vy, vz = px, py, pz
+                d = vx * tx + vy * ty + vz * tz
+                cx, cy, cz = vx - d * tx, vy - d * ty, vz - d * tz
+                length = math.sqrt(cx * cx + cy * cy + cz * cz)
+                if length > 1e-8:
+                    ox, oy, oz = cx / length, cy / length, cz / length
+                    found = True
+                    break
+            if not found:
+                # Whichever axis is least parallel to the tangent, projected and
+                # then projected again -- the second pass is what the helper pair
+                # did, kept so the arithmetic matches to the last bit.
+                fx, fy, fz = 0.0, 1.0, 0.0
+                for axis in range(3):
+                    if axis == 0:
+                        ax, ay, az = 0.0, 0.0, 1.0
+                    elif axis == 1:
+                        ax, ay, az = 0.0, 1.0, 0.0
+                    else:
+                        ax, ay, az = 1.0, 0.0, 0.0
+                    d = ax * tx + ay * ty + az * tz
+                    cx, cy, cz = ax - d * tx, ay - d * ty, az - d * tz
+                    if math.sqrt(cx * cx + cy * cy + cz * cz) > 1e-6:
+                        fx, fy, fz = cx, cy, cz
+                        break
+                d = fx * tx + fy * ty + fz * tz
+                cx, cy, cz = fx - d * tx, fy - d * ty, fz - d * tz
+                length = math.sqrt(cx * cx + cy * cy + cz * cz)
+                if length > 1e-8:
+                    ox, oy, oz = cx / length, cy / length, cz / length
+                else:
+                    ox, oy, oz = 0.0, 1.0, 0.0
+            if have_prev and (px * ox + py * oy + pz * oz) < 0.0:
+                ox, oy, oz = -ox, -oy, -oz
+            ups[i, 0] = ox
+            ups[i, 1] = oy
+            ups[i, 2] = oz
+            px, py, pz = ox, oy, oz
+            have_prev = True
+
+
 def _batch_cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Row-wise 3-vector cross product for ``(N, 3)`` arrays.
 
@@ -336,9 +455,18 @@ def _propagate_ups(
         except Exception:
             hint = None
 
+    ups = np.empty((m, 3), dtype=float)
+    if _HAVE_NUMBA and nb is not None:
+        _propagate_ups_nb(
+            np.ascontiguousarray(tangents),
+            np.ascontiguousarray(hint if hint is not None else tangents),
+            hint is not None,
+            ups,
+        )
+        return tangents, ups
+
     t_list = tangents.tolist()
     hint_list = hint.tolist() if hint is not None else None
-    ups = np.empty((m, 3), dtype=float)
     ups_list: list[tuple[float, float, float]] = []
     prev: Optional[tuple[float, float, float]] = None
 
@@ -656,6 +784,23 @@ def _extrude_shape(
     scale_side = scale[:, 0][:, None, None]  # (m, 1, 1)
     scale_up = scale[:, 1][:, None, None]
 
+    if _HAVE_NUMBA and nb is not None:
+        _extrude_rings_nb(
+            np.ascontiguousarray(path, dtype=float),
+            np.ascontiguousarray(side, dtype=float),
+            np.ascontiguousarray(up, dtype=float),
+            np.ascontiguousarray(scale, dtype=float),
+            np.ascontiguousarray(shape_verts, dtype=float),
+            np.ascontiguousarray(shape_norms, dtype=float),
+            verts,
+            norms,
+        )
+        if cols_arr is not None and colors is not None:
+            cols_arr[:m * s] = np.repeat(colors[:m], s, axis=0)
+        return _finish_extrusion(
+            verts, norms, cols_arr, colors, frames, m, s, cap_first, cap_last
+        )
+
     sv1 = shape_verts[:, 1][None, :, None]  # (1, s, 1)
     sv2 = shape_verts[:, 2][None, :, None]
     sn1 = shape_norms[:, 1][None, :, None]
@@ -679,19 +824,18 @@ def _extrude_shape(
     if cols_arr is not None and colors is not None:
         cols_arr[:m * s] = np.repeat(colors[:m], s, axis=0)
 
-    # Faces (triangle strips between consecutive rings), built by broadcasting the
-    # per-quad index pattern over all (m-1, s) quads. Two triangles per quad, kept
-    # in the original interleaved order so the winding matches the loop version.
-    ii = np.arange(m - 1)[:, None]  # (m-1, 1)
-    jj = np.arange(s)[None, :]      # (1, s)
-    i0 = ii * s
-    i1 = (ii + 1) * s
-    k0 = i0 + jj
-    k1 = i0 + (jj + 1) % s
-    k2 = i1 + jj
-    k3 = i1 + (jj + 1) % s
-    # End cap centres. Which vertices a cap fans over is topology; where the
-    # centre sits is geometry, so only the latter is computed here.
+    return _finish_extrusion(
+        verts, norms, cols_arr, colors, frames, m, s, cap_first, cap_last
+    )
+
+
+def _finish_extrusion(verts, norms, cols_arr, colors, frames, m, s,
+                      cap_first, cap_last):
+    """Cap centres and connectivity, shared by both extrusion paths.
+
+    Which vertices a cap fans over is topology and comes from the memoised
+    table; where the centre sits is geometry and is computed here.
+    """
     next_offset = m * s
     for ring_idx, reverse in ((0, True), (m - 1, False)):
         if not (cap_first if reverse else cap_last):
@@ -906,22 +1050,25 @@ def _segment_ss(
     if ss_codes is None or ss_codes.size < 1:
         return []
 
-    def _ss_type(c) -> str:
-        c = str(c).strip().upper()[:1]
-        return "H" if c == "H" else ("E" if c == "E" else "C")
+    codes = np.asarray(ss_codes)
+    if codes.dtype.kind in "US":
+        first = np.char.upper(np.char.strip(codes.astype(str)).astype("U1"))
+    else:
+        first = np.array(
+            [str(code).strip().upper()[:1] for code in codes], dtype="U1"
+        )
+    types = np.where(first == "H", "H", np.where(first == "E", "E", "C"))
 
-    types = np.array([_ss_type(c) for c in ss_codes])
-    n = len(types)
-    segments = []
-    start = 0
-    while start < n:
-        ss_t = types[start]
-        end = start + 1
-        while end < n and types[end] == ss_t:
-            end += 1
-        segments.append({"start": start, "end": end, "ss_type": ss_t})
-        start = end
-    return segments
+    # Block boundaries are wherever the type changes -- one comparison over the
+    # whole array rather than a scan that visits every residue in Python.
+    n = types.shape[0]
+    breaks = np.flatnonzero(types[1:] != types[:-1]) + 1
+    starts = np.concatenate(([0], breaks))
+    ends = np.concatenate((breaks, [n]))
+    return [
+        {"start": int(a), "end": int(b), "ss_type": str(types[a])}
+        for a, b in zip(starts, ends)
+    ]
 
 
 def _residue_to_path_index(
@@ -952,6 +1099,30 @@ def _rotate_about(vec: np.ndarray, axis: np.ndarray, angle: float) -> np.ndarray
     out = vec * c + np.cross(axis, vec) * s + axis * float(np.dot(axis, vec)) * (1.0 - c)
     n = float(np.linalg.norm(out))
     return out / n if n > 1e-12 else vec
+
+
+def _rotate_about_batch(
+    vectors: np.ndarray, axis: np.ndarray, angles: np.ndarray
+) -> np.ndarray:
+    """Rotate each row about one shared unit ``axis``, by its own angle.
+
+    The row-wise form of :func:`_rotate_about`. Used to extrapolate a helix run's
+    radials past the residues that could be measured -- once per missing residue,
+    which at a single 3-vector a time is all NumPy dispatch overhead.
+    """
+    c = np.cos(angles)[:, None]
+    s = np.sin(angles)[:, None]
+    axis = np.asarray(axis, dtype=float).reshape(3)
+    out = (
+        vectors * c
+        + _batch_cross(np.broadcast_to(axis, vectors.shape), vectors) * s
+        + axis[None, :] * (vectors @ axis)[:, None] * (1.0 - c)
+    )
+    lengths = np.sqrt(np.einsum("ij,ij->i", out, out))
+    good = lengths > 1e-12
+    result = np.array(vectors, dtype=float, copy=True)
+    result[good] = out[good] / lengths[good][:, None]
+    return result
 
 
 def _helix_twist(
@@ -1072,16 +1243,19 @@ def _helix_radials(
         if valid.size == 0:
             continue
         axis_u, twist = _helix_twist(radial, valid)
-        for i in idx:
-            i = int(i)
-            if has_radial[i]:
-                continue
-            j = int(valid[np.argmin(np.abs(valid - i))])
-            if axis_u is None:
-                radial[i] = radial[j]
-            else:
-                radial[i] = _rotate_about(radial[j], axis_u, twist * float(i - j))
-            has_radial[i] = True
+        need = idx[~has_radial[idx]]
+        if need.size == 0:
+            continue
+        # Nearest measured residue for each one still missing; `argmin` takes the
+        # first minimum, so a tie goes to the lower index as the loop did.
+        nearest = valid[np.argmin(np.abs(valid[None, :] - need[:, None]), axis=1)]
+        if axis_u is None:
+            radial[need] = radial[nearest]
+        else:
+            radial[need] = _rotate_about_batch(
+                radial[nearest], axis_u, twist * (need - nearest).astype(float)
+            )
+        has_radial[need] = True
 
     return radial, has_radial
 

@@ -2,19 +2,36 @@
 
 ## 2026-07-27
 
-* **"Keep no job history" kept everything (RF-118).** `JobManager.cleanup`
-  pruned with a negative slice stop, and `-0` is not a negative index:
-  `terminal[:-0]` is `terminal[:0]`, the empty list, so a manager configured
-  with `max_history=0` — the setting that asks for the least memory — removed
-  nothing and grew without bound. Counting the drops from the front instead
-  (`terminal[: max(0, len(terminal) - self._max_history)]`) is correct for every
-  value, so the `if` guard around it is gone. A negative `max_history`, which
-  the old slice read as "keep that many", is now clamped to 0 once at
-  construction rather than given a second meaning. No production caller changes
-  behaviour: both live managers take the default 100. Three tests in
-  `test/server/test_jobs.py` pin it; the negative-history one completes eight
-  jobs on purpose, because a sample smaller than `abs(max_history)` cannot tell
-  the old reading from the new one.
+* **chimol cartoon: 15 ms -> 9.5 ms, and 234 ms -> 9.5 ms against where this
+  started.** A second pass after the profile went flat, so the wins came from
+  several places rather than one.
+
+  Four more per-residue Python loops vectorised: the secondary-structure
+  segmentation (a Python call per residue, 570 a frame, plus a scan — now a
+  single comparison over the array), the helix-radial extrapolation (a Rodrigues
+  rotation per residue — now batched), and both loops in the guide-frame builder.
+  The second of those is worth recording: `differences_and_normals` copies its
+  predecessor's direction where a step is degenerate, and copying a predecessor
+  that itself copied is a **forward fill**, which is a running maximum over the
+  indices that were not copies — so it vectorises despite looking sequential.
+
+  **Dead code was costing real time.** `_extrude_shape` still built the eight
+  index arrays for its triangle strips on every call after that work moved into
+  the memoised table — sixty-odd calls a frame, all discarded.
+
+  **numba where the recurrence is genuine.** Parallel transport of the ribbon's
+  up-vector and the cross-section placement are compiled; the NumPy forms remain
+  and a test asserts the two produce the same ribbon, because only one path runs
+  in any given process and an unexercised fallback would not raise — it would
+  quietly draw something else.
+
+  Trap, caught by that test failing first: the harness drew fresh random
+  coordinates for each path, so it compared **different molecules** and read as a
+  kernel disagreement. The input has to be drawn once and shared.
+
+  Measured in a real window at ordinary load: playback runs ~30 fps while the
+  event loop keeps its 20 ms beat (195 of an ideal 200 turns in four seconds,
+  against 15 before any of this).
 
 * **PRD-57 voxel section grounded in the reference implementation's source.**
   Rewritten after reading its `map`/`map_data` bundles rather than describing the
