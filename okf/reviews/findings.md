@@ -4208,3 +4208,48 @@ Findings RF-396..RF-407.
 - **Location:** `chisurf/plugins/fcs/flc_2d/fit/ilt.py:364-366` (`chosen = _lcurve_reg(Wd, wy)` then nearest-in-log lookup) against the shared `chisurf/core/math/regularization.py:350-424` (`discrete_lcurve_corner`, curvature + distance-to-chord over the sampled polyline), surfaced by `chisurf/plugins/fcs/flc_2d/gui/tool.py:505-523` and the `lcurve` panel
 - **Finding:** on the default simulated decay the closed-form `_lcurve_reg` picks index 2 of the 24 sampled weights (λ = 5.8·10⁻⁴), which is the **lowest-scoring** interior point under the shared corner criterion (0.025, against 0.535 at index 7 and 0.516 at index 16) and sits on the flat under-regularised branch where the residual norm barely moves (142.19 → 142.29 across indices 0–2). The panel labels it *"chosen"*, so the diagnostic that exists to justify the regularisation weight instead advertises a point the user can see is not the knee. Either mark the discrete corner (`discrete_lcurve_corner`, index 7 here) or reconcile the closed-form selection with it. Related, in the same solver: `ilt_1d`'s docstring (`ilt.py:187-192`) states that the default penalises the **second derivative** (`reg_order=2`) while the signature is `reg_order: int = 0` — the identity penalty its own text says produces "the spiky spectra a plain identity penalty produces".
 - **Fix note:**
+
+## Review 2026-07-27 — Fourier ring correlation (`imaging/frc.py` + `img_frc`)
+
+Slice: `e2d7ee0c0` (*FRC leaves CLSM Draw and becomes a resolution measurement*),
+the freshest large landing and one with no findings on record — the shared kernel
+`chisurf/core/fluorescence/imaging/frc.py`, the plugin `core.py`/`api`, the view
+model and the tool. The maths that is written down is right: the ½-bit and 2σ
+formulae match van Heel & Schatz, the rings are binned on normalised frequency so
+a strip resolves like a square, and the pixel-size scaling carries through. What
+does not hold is what happens at the *edges* of that maths — the threshold
+crossing is extrapolated rather than interpolated whenever the curve starts below
+its own threshold (S1, wrong and even negative resolutions on real dim data), the
+FFT is taken on the raw halves so every non-periodic image reads ~1.4–2.7× finer
+than it is, and an odd-sized image silently loses a row and a column of Fourier
+space. All three are invisible to the test suite because every test image is
+even-sized and exactly periodic (built with `ifft2`) and every crossing test uses
+the default criterion. Findings RF-408..RF-411.
+
+### RF-408
+- **Status:** OPEN
+- **Severity:** S1 (the threshold crossing is extrapolated outside the two rings it claims to interpolate between — the reported resolution can be an order of magnitude off, or negative)
+- **Location:** `chisurf/core/fluorescence/imaging/frc.py:300-322` (`resolve`: the `start` skip loop, the first-`below` search, then `previous = index - 1` and `weight = gap_before / (gap_before - gap_now)`)
+- **Finding:** the interpolation assumes ring `previous` sits *above* its threshold, and nothing ever checks it. Two routes violate that. (a) `start` is advanced past every ring whose count-clipped threshold is `>= 1.0`, so `previous = start - 1` is a ring the search deliberately excluded. (b) Even with `start = 1`, ring 0 can be below its threshold. Either way `gap_before < 0`, the weight is no longer in `[0, 1]`, and the "crossing" lands anywhere. Verified on a dim but perfectly ordinary image — a field band-limited at 0.15 cycles/px (true limit 6.67 px), 128×128, ~0.3 counts/px, two independent Poisson draws: `half_bit` reports **52.6 px** (photon seed 2) and **84.0 px** (seed 4) where `fixed_1/7` reports 6.36–6.53 px on the same data; the returned crossing 0.01903 lies *outside* the bracket `[0.00391, 0.01172]` it was computed from, because `below[0..3]` are all True. Worse on data that resolves nothing: two independent white-noise 128×128 images under `two_sigma`, 30 seeds → **12 give a negative crossing frequency and a negative resolution** (down to −268.7 px) and 15 of 30 report a "resolution" finer than 10 px for halves that share nothing at all. The GUI prints the number verbatim (`gui/view_model.py:346`, `f"<h3>{result.resolution:.4g} {unit}</h3>"`), so a user sees `-40.86 px` as a headline. Take the first crossing *after* the curve has been above its threshold (require `values[previous] >= threshold[previous]`, else keep searching) and clamp the interpolated frequency into `[frequency[previous], frequency[index]]`. `test/fluorescence/test_frc.py:45` only exercises the default criterion, which is why this is green.
+- **Fix note:**
+
+### RF-409
+- **Status:** OPEN
+- **Severity:** S2 (no apodization, so every non-periodic image — i.e. every real one — reports a resolution 1.4–2.7× finer than it is)
+- **Location:** `chisurf/core/fluorescence/imaging/frc.py:173-176` (`f1 = np.fft.fft2(a)`, `f2 = np.fft.fft2(b)` on the raw halves), and the absence of any window in `chisurf/plugins/microscopy/img_frc/core.py:286-299` (`analyse`)
+- **Finding:** the two halves are Fourier-transformed as they come. A real image does not wrap, so the discontinuity at its border leaks a cross-shaped pattern across the whole spectrum — and that pattern is *the same in both halves* (it is set by the object and the field of view, not by the noise), so it correlates perfectly and holds the FRC up in the band where the halves genuinely share nothing. Measured: band-limited object (cut-off 0.15 cycles/px, true limit 6.67 px), 256×256, shot noise, with a smooth left-to-right illumination ramp so the edges do not match — reported resolution **2.50 px** (crossing 0.400 cycles/px, i.e. nearly Nyquist); the same two halves multiplied by a Tukey(0.25) window give **5.90 px** (crossing 0.170). At 0.30 cycles/px, inside the pure-noise band, the unwindowed FRC still reads 0.256 against 1/7 = 0.143, while the windowed one reads −0.019; at 0.45 cycles/px, 0.143 vs −0.010. A plain non-periodic crop without any ramp shows the same in miniature: 4.67 px unwindowed vs 5.99 px windowed. Nieuwenhuizen et al. 2013 — the reference this module cites for the 1/7 criterion — apply a Tukey window for exactly this reason; neither `docs/concepts/frc_resolution.md` nor `chisurf/plugins/microscopy/img_frc/gui/help.md` mentions windowing at all. Apply a Tukey (or Hann) window to both halves before the FFT, ideally as a documented option that is on by default. The test suite cannot see this: `test/fluorescence/test_frc.py:16` builds its pairs with `ifft2`, so every test image is exactly periodic and leaks nothing.
+- **Fix note:**
+
+### RF-410
+- **Status:** OPEN
+- **Severity:** S2 (on an odd-sized image the highest positive frequency row and column are never accumulated, so the outer ring occupancies — which set the ½-bit and 2σ thresholds — are wrong)
+- **Location:** `chisurf/core/fluorescence/imaging/frc.py:111-113` (`for xi in range(-(nx // 2), nx // 2)` / `for yi in range(-(ny // 2), ny // 2)` in `_ring_sums`)
+- **Finding:** `range(-(n // 2), n // 2)` enumerates all `n` FFT frequencies only when `n` is even. For odd `n` it visits `n - 1` of them: it keeps `-n//2` and drops `+n//2`, the highest positive frequency, so the loop is not even conjugate-symmetric. Verified by summing the visited pixels: **4096 of 4225** for a 65×65 image (129 = 2·65−1 missing) and **15876 of 16129** for 127×127; nothing is dropped at 64×64 or 128×128. The loss is concentrated in the outermost rings, which is where the crossing lives: against a full-coverage reference the ring counts are off by 34 of 200 (17 %) in the last ring at 65×65 and by 46 of 388 at 129×129, and `counts` is exactly the input of `threshold_curve` for `half_bit` and `two_sigma`; the correlation values themselves differ by up to 0.046 (65×65) and 0.025 (129×129). Odd sizes are not exotic — a cropped ROI or an odd CLSM line count lands there — and no test in `test/fluorescence/test_frc.py` uses one. Iterate `range(-(nx // 2), (nx + 1) // 2)` on both axes (or bin from `np.fft.fftfreq`, which is what a reference implementation does).
+- **Fix note:**
+
+### RF-411
+- **Status:** OPEN
+- **Severity:** S3 (the view model composes a specific failure message and the tool throws it away for a constant one)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/tool.py:91-95` (`_on_finished`: `self.model.status if ok else "Measurement failed"`) against `chisurf/plugins/microscopy/img_frc/gui/view_model.py:237-241` (`self._status = f"FRC failed: {exc}"`, and `:218-220` `"No image loaded."`)
+- **Finding:** every way a measurement can fail carries a message that names the cause and the way out — `core.halves` raises "a frame split needs at least two frames; this source has 1 — use a channel split or a second file" (`core.py:210-214`), "the two channels of a channel split must differ", "split='two_files' needs a second file", `frc_curve` raises "the two halves differ in shape: … vs …" — `compute()` catches each of them into `self._status`, and `_on_finished` then discards it in favour of the constant "Measurement failed". The traceback goes to `logger.debug`, so nothing reaches the user at all: they see a two-word failure and no hint that the fix is a different split. Show `self.model.status` on the failure branch as well (it is always set before `compute` returns `False`). The sibling tools `img_drift` and `img_coloc` share the pattern, so fix them together.
+- **Fix note:**
