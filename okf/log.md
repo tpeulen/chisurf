@@ -2,6 +2,41 @@
 
 ## 2026-07-27
 
+* **chimol: every button swept; three representations were menu-unreachable and
+  the plane was a grey sheet.** Asked to check all the GUI buttons and to look at
+  the representations chimol has beyond PyMOL's.
+
+  Clicking all 17 named buttons on the main window, watching the scene after
+  each: **`trace`, `nonbonded` and `metaball` were reachable only from the
+  toolbar.** A menu-driven session could not get at them, which defeats the point
+  of the menus, and `metaball` is the clearest case — PyMOL has no equivalent, so
+  a PyMOL user has no reason to go looking for it. All three now appear in the S
+  and H menus with a note saying what they are, and each is checked to actually
+  draw.
+
+  That collided with a test asserting the menus are **exactly** PyMOL's. The
+  target settles it — extensions are *additive* — so the test now asserts PyMOL's
+  entries are a **prefix**, in PyMOL's order, with additions after them and no
+  duplication. The familiar part of the menu stays where a PyMOL user expects it.
+
+  **The reference plane was unusable.** `_grid_spacing` is 1.0 in *scene* units
+  while a protein's radius is a couple of hundred, so `show plane` drew ~415 lines
+  each way: an aliased grey sheet that buried the molecule. The spacing now
+  follows the extent, bounded to a line count, and the grid is translucent — it is
+  a reference, not a subject.
+
+  **The sweep misled me twice, both times because the probe was wrong rather than
+  the button.** A scene signature counting only *vertices* reported every colour
+  button as having no effect, because a recolour changes no geometry — adding a
+  colour digest showed all three working. And `button_plane` reported no effect
+  under offscreen Qt, where there is no GL context at all; with a real window it
+  drew, far too much of it. Same lesson as the rest of the day: offscreen proves
+  geometry, not pictures.
+
+  11 tests. `button_open` is skipped in the sweep — it opens a native file dialog
+  that no stub intercepts and that blocks a headless run; it is covered by the
+  load/fetch tests.
+
 * **Second mining pass over the vendored dataflow toolkit checkout
   (`junk/orange3`), beyond the data model already recorded.** The first pass
   ([node/workflow-toolkit lessons](/references/orange3-lessons.md), 2026-07-06)

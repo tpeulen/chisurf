@@ -1385,9 +1385,22 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             return GL_POINTS
         return None
 
+    #: How many grid lines to draw across the scene, each way. A *count*, not a
+    #: spacing: the spacing has to follow the molecule's size, or the same
+    #: setting gives four lines on a peptide and four hundred on a ribosome.
+    GRID_LINES_ACROSS = 20
+
     def _build_grid_draw_data(self, radius: float) -> Optional[_DrawData]:
         half = max(self._grid_size, radius * 1.2)
-        spacing = self._grid_spacing
+        # Spacing derived from the extent rather than taken as an absolute.
+        # `_grid_spacing` is 1.0 in *scene* units while a protein's radius is a
+        # couple of hundred, so a fixed spacing drew ~415 lines each way: an
+        # aliased grey sheet that buried the molecule instead of a reference
+        # plane behind it.
+        spacing = max(
+            float(self._grid_spacing),
+            2.0 * half / float(max(1, self.GRID_LINES_ACROSS)),
+        )
         if spacing <= 0.0:
             return None
         lines = []
@@ -1399,7 +1412,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if not lines:
             return None
         positions = np.asarray(lines, dtype=np.float32).reshape(-1, 3)
-        color = np.array([0.4, 0.4, 0.4, 1.0], dtype=np.float32)
+        # Faint: it is a reference, not a subject. At full strength a grid drawn
+        # across the molecule competes with it for attention.
+        color = np.array([0.55, 0.55, 0.55, 0.5], dtype=np.float32)
         colors = np.tile(color, (positions.shape[0], 1))
         normals = np.zeros_like(positions, dtype=np.float32)
         normals[:, 2] = 1.0

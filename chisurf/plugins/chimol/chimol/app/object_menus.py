@@ -190,6 +190,30 @@ def _rep_action(action: str) -> tuple[MenuEntry, ...]:
     )
 
 
+def _chimol_extra_reps(action: str) -> tuple[MenuEntry, ...]:
+    """Representations ChiMOL has that PyMOL's menus do not name.
+
+    They were reachable only from the toolbar, so a menu-driven session could not
+    get at them at all -- which is the whole reason the menus exist. ``metaball``
+    is the clearest case: PyMOL has no equivalent, so a PyMOL user has no reason
+    to go looking for it.
+
+    Appended **after** PyMOL's entries, never among them: the target's rule is
+    that extensions are additive, so the familiar part of the menu stays exactly
+    where a PyMOL user expects it.
+    """
+    return (
+        SEP,
+        MenuEntry("trace", f"{action} trace, {{sele}}",
+                  "The CA trace on its own -- PyMOL's ribbon_trace."),
+        MenuEntry("nonbonded", f"{action} nonbonded, {{sele}}",
+                  "Crosses on atoms that draw no bond: waters and free ions."),
+        MenuEntry("metaball", f"{action} metaball, {{sele}}",
+                  "A blended isosurface over the atoms. ChiMOL only; PyMOL has "
+                  "no equivalent."),
+    )
+
+
 SHOW_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("as", None, "", children=(
         MenuEntry("cartoon", "as cartoon"),
@@ -205,7 +229,7 @@ SHOW_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("disulfides", None, "Chimol cannot find disulfides yet."),
     SEP,
     MenuEntry("valence", None, _NO_VALENCE),
-)
+) + _chimol_extra_reps("show")
 
 
 HIDE_MENU: tuple[MenuEntry, ...] = (
@@ -222,7 +246,7 @@ HIDE_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("unselected", "hide everything, not {sele}"),
     SEP,
     MenuEntry("valence", None, _NO_VALENCE),
-)
+) + _chimol_extra_reps("hide")
 
 
 # --------------------------------------------------------------------------- #

@@ -95,7 +95,32 @@ def _labels(entries) -> list[str]:
 
 @pytest.mark.parametrize("key", list("ASHLC"))
 def test_labels_and_order_match_pymol(key):
-    assert _labels(_MENUS[key]) == _REFERENCE[key]
+    """PyMOL's menu is a **prefix** of ChiMOL's, in PyMOL's own order.
+
+    Exact equality was the original rule and it is the wrong one: ChiMOL has
+    representations PyMOL does not -- `metaball` has no PyMOL equivalent at all,
+    and `trace` and `nonbonded` are spelled differently -- and until they were
+    added to the menus they were reachable only from the toolbar. A menu-driven
+    session could not get at them, which defeats the point of having menus.
+
+    The target ([specs/chimol](okf/specs/chimol.md)) settles the tension:
+    extensions are **additive**. Everything PyMOL has must be present, in PyMOL's
+    order, so muscle memory works; anything extra goes *after* it, so the
+    familiar part of the menu is where a PyMOL user expects to find it.
+    """
+    labels = _labels(_MENUS[key])
+    reference = _REFERENCE[key]
+    assert labels[:len(reference)] == reference, (
+        "PyMOL's entries must come first, in PyMOL's order"
+    )
+    extra = [label for label in labels[len(reference):] if label]
+    if extra:
+        # Additions are allowed, but they must be genuinely new rather than a
+        # PyMOL entry accidentally duplicated further down.
+        assert not (set(extra) & set(reference)), (
+            f"{key} menu repeats PyMOL entries after the end: "
+            f"{sorted(set(extra) & set(reference))}"
+        )
 
 
 def test_the_five_buttons_are_in_pymol_order():
