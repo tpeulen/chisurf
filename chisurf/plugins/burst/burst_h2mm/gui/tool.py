@@ -46,6 +46,7 @@ from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.event_pump import pump_ui
 from chisurf.gui.widgets.messages import MessagesMixin, Msg
 from chisurf.gui.widgets.wizard import DetectorWizardPage
+from chisurf.core import analysis_cache
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis
@@ -217,6 +218,10 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self.file_type = "SPC-130"
         self._result = None
         self._bundle = None
+        # What the displayed fit was computed from, so an identical request
+        # (another Next, a revisit of this step) does not refit.
+        self._result_cache = analysis_cache.ResultCache()
+        self._running_fingerprint: str | None = None
         self._uncertainty = None
         self._build_ui()
 
@@ -711,14 +716,42 @@ class H2mmTool(MessagesMixin, QMainWindow):
         """
         return ChiSurfProgress(self, label, maxv, title=title, cancel=cancel_cb)
 
-    def _run_analysis(self):
-        """Fit H2MM models off the GUI thread, streaming the scan into the plots."""
+    def input_files(self) -> list:
+        """The burst files this fit reads."""
+        if not self.data_folder:
+            return []
+        return sorted(pathlib.Path(self.data_folder).glob("**/*.bur"))
+
+    def analysis_fingerprint(self, settings) -> str:
+        """Fingerprint of the burst files plus every fit setting."""
+        return analysis_cache.fingerprint(
+            self.input_files(), {"settings": settings}, extra="h2mm"
+        )
+
+    def _run_analysis(self, *, force: bool = False):
+        """Fit H2MM models off the GUI thread, streaming the scan into the plots.
+
+        A fit whose burst files and settings are identical to the one already
+        displayed is skipped — the workflow asks for a run on every *Next*, and
+        scanning state counts with restarts is minutes of work on real data.
+        ``force=True`` refits regardless (the fit is stochastic, so a forced
+        refit is a genuinely different sample, not a no-op).
+        """
         if not self.data_folder:
             self.Error.no_folder()
             return
         self.Error.no_folder.clear()
         self.Error.fit_failed.clear()
         settings = self._gather_settings()
+        fingerprint = self.analysis_fingerprint(settings)
+        if (
+            not force
+            and self._result is not None
+            and self._result_cache.matches(fingerprint)
+        ):
+            self._status("Unchanged — kept the previous H2MM fit")
+            return
+        self._running_fingerprint = fingerprint
         self._fit_t0 = time.perf_counter()
         self.btn_run.setEnabled(False)
         self._status("Fitting H2MM models \u2026")
@@ -775,6 +808,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
         result, bundle = payload
         self._result = result
         self._bundle = bundle
+        if self._running_fingerprint is not None:
+            self._result_cache.remember(self._running_fingerprint)
         self._uncertainty = None  # bootstrap CIs are stale after a new fit
         self._update_plots()
         self._status(

@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **Every burst step recomputed results it already had (RF-483).** The workflow
+  shell runs the current step on *Next* and re-applies the burst folder to a
+  panel on every visit, which a panel reads as "a setting changed, recompute".
+  Walking back through six steps therefore recomputed BVA over every burst, 2CDE
+  over every photon pair, a burst-wise MLE fit of every burst and an H2MM state
+  scan — each producing exactly the numbers already on screen. New shared module
+  `chisurf/core/analysis_cache.py` fingerprints the two things that can change an
+  answer: the input files (path, size, mtime — one `stat` each, not a re-read of
+  gigabytes of photon data) and every setting the computation is given, including
+  detector definitions and the IRF/background arrays handed over from *IRF &
+  Background*. A step whose fingerprint matches the result it is holding skips
+  the run and says so ("Unchanged — kept the previous BVA result"); anything
+  different recomputes, with no invalidation for anyone to remember. Steps that
+  write results also stamp them (`bv4/bva.stamp.json`, `2c4/2cde.stamp.json`,
+  `burst_mle.stamp.json`), which records what an output folder is the result of
+  and lets the MLE export be reused across sessions — its product is the files,
+  so files that are current are the answer. One subtlety cost a wasted refit
+  until it was found: reading the burst data settles per-detector state the MLE
+  panel had not derived yet (micro-time binning comes from the TTTR header, and
+  `dt` with it), so the export is stamped with the settings *as used*, not as
+  they were when the run started. Measured on a real burst folder (11 files,
+  2 495 bursts): second run of BVA, 2CDE and the MLE export do no work at all,
+  and a changed setting still recomputes. Documented in
+  [guide 53](../docs/guides/53_reusing_results.md); pinned by
+  `test/core/test_analysis_cache.py` (13) and `test/gui/test_burst_reuse.py` (9).
+
 * **Two demos for the repositories, and a duplicate-contour bug the screenshot
   caught.** `emdb_map` fetches EMD-3061 (180 cubed, 5.8M voxels) and contours it;
   `npc_integrative` fetches one spoke of the nuclear pore (29,273 **beads**, no

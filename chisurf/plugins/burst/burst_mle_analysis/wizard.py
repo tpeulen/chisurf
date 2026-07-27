@@ -257,6 +257,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         current_task = 0
         written_dirs = set()
         wrote_settings_for = set()
+        written_files: list[Path] = []
 
         def maybe_pump_ui(k: int) -> None:
             # Throttle UI event processing
@@ -300,6 +301,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             out[1::2] = arr  # fill odd rows with data
 
             out_file = out_dir / f"{stem}.b{letter}4"
+            written_files.append(out_file)
             with open(out_file, 'w', newline='') as f:
                 f.write('\t'.join(cols) + '\t\n')  # keep trailing tab + newline
                 np.savetxt(f, out, delimiter='\t', fmt='%.6f')
@@ -322,6 +324,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         progress.close()
         folder_list = ", ".join(sorted(written_dirs)) if written_dirs else "(no data)"
         self._set_status(f"Burst-fit results saved in folders: {folder_list}")
+        return written_files
 
     @property
     def scatter_count_rate(self) -> float:
@@ -3850,7 +3853,57 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             menu_bar.setEnabled(not frozen)
         self._inputs_frozen = bool(frozen)
 
-    def process_bursts(self):
+    def batch_input_files(self) -> list:
+        """The burst files the batch export fits."""
+        try:
+            return [Path(p) for p in self.burst_files_list.get_selected_files()]
+        except Exception:
+            return []
+
+    def batch_settings(self) -> dict:
+        """Everything the batch fit is given, in one mapping.
+
+        ``channel_settings`` carries the per-detector state — micro-time range,
+        shifts, thresholds, g/l1/l2, min photons and the IRF/background arrays
+        themselves — so an IRF sent over from the IRF & Background step counts as
+        a change, as it must.
+        """
+        # Normalise first: the batch itself fills in per-detector defaults
+        # (``_ensure_channel_state``), so fingerprinting the raw mapping before a
+        # run and the filled one after it would never agree, and nothing would
+        # ever be reused.
+        try:
+            for det in self.channel_definer.detectors:
+                self._ensure_channel_state(det)
+        except Exception:
+            pass
+        x0, fixed = self.fit_parameters
+        return {
+            "model": self.fit_model,
+            "x0": list(x0) if x0 is not None else [],
+            "fixed": list(fixed) if fixed is not None else [],
+            "min_photons": float(self.min_photons),
+            "channels": self.channel_settings,
+        }
+
+    def batch_fingerprint(self) -> str:
+        """Fingerprint of the selected burst files plus the batch settings."""
+        from chisurf.core import analysis_cache
+
+        return analysis_cache.fingerprint(
+            self.batch_input_files(), self.batch_settings(), extra="burst_mle"
+        )
+
+    def batch_stamp_path(self):
+        """Where the exported burst fits record what produced them."""
+        files = self.batch_input_files()
+        if not files:
+            return None
+        # The b{g,r,y}4 folders are siblings of the burst folder; the stamp sits
+        # with them rather than inside any one detector's folder.
+        return files[0].parent.parent / "burst_mle.stamp.json"
+
+    def process_bursts(self, *, force: bool = False):
         import os
         import numpy as np
         from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -3860,6 +3913,24 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         if self.df_bursts is None or not self.tttrs:
             self._set_status("No burst data loaded.")
+            return
+
+        # Fitting every burst of every file is the most expensive step in the
+        # workflow, and the shell asks for it on every Next. Its product is the
+        # b{g,r,y}4 files, so results that are already on disk for exactly these
+        # burst files and settings are the answer -- do not fit them again.
+        from chisurf.core import analysis_cache
+
+        fingerprint = self.batch_fingerprint()
+        stamp_path = self.batch_stamp_path()
+        if (
+            not force
+            and stamp_path is not None
+            and analysis_cache.is_current(stamp_path, fingerprint)
+        ):
+            self._set_status(
+                "Unchanged — the exported burst fits are current (nothing refitted)"
+            )
             return
 
         # The batch export runs every fit2x model (fit23/24/25) through the same
@@ -4182,7 +4253,20 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if summary_bits:
             self._set_status("MLE fitted τ: " + " · ".join(summary_bits))
 
-        self._save_burst_results_fast(result_df)
+        written = self._save_burst_results_fast(result_df)
+        if written and stamp_path is not None:
+            # Stamp with the settings *as the batch used them*, not as they were
+            # when it started: reading the burst data settles per-detector state
+            # the panel had not derived yet (micro-time binning comes from the
+            # TTTR header, and dt with it). Stamping the pre-run guess would
+            # describe the results wrongly, and would never match the fingerprint
+            # of the settled panel — so the next run would refit every burst
+            # again for nothing.
+            settled = self.batch_settings()
+            analysis_cache.write_stamp(
+                stamp_path, self.batch_fingerprint(), params=settled,
+                inputs=self.batch_input_files(), outputs=written, tool="burst_mle",
+            )
 
     def make_vv_vh(
             self,

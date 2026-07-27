@@ -112,6 +112,8 @@ from chisurf.gui.widgets.tool_buttons import (
     action_button,
 )
 
+from chisurf.core import analysis_cache  # noqa: E402
+
 
 class _FolderLineEdit(QLineEdit):
     """QLineEdit that accepts folder drops from the file manager."""
@@ -159,6 +161,10 @@ class BVATool(MessagesMixin, QMainWindow):
         self._df: pd.DataFrame | None = None
         self._burst_df: pd.DataFrame | None = None
         self._tttrs: list | None = None
+        # What the displayed result was computed from, so an identical request
+        # (a panel revisit, another Next) does not recompute it.
+        self._result_cache = analysis_cache.ResultCache()
+        self._running_fingerprint: str | None = None
         self._static_line_item: cp.handles.Curve | None = None
         # Coalesce parameter-change bursts (e.g. applying workflow context loads the
         # detector table, refreshes the donor/acceptor combos and sets the folder in
@@ -572,13 +578,49 @@ class BVATool(MessagesMixin, QMainWindow):
         """Run the full analysis and write the BV4 output."""
         self._start_analysis(write_output=True)
 
-    def _start_analysis(self, *, write_output: bool) -> None:
+    # ── reuse instead of recompute ───────────────────────────────────
+
+    def input_files(self) -> list[pathlib.Path]:
+        """The burst files this analysis reads (``bi4_bur/*``).
+
+        These are what identifies the input: they are themselves the product of
+        the raw TTTR files, so raw data that changed under them means step 2 has
+        to run again anyway, and stat-ing a burst folder is far cheaper than
+        stat-ing gigabytes of photon data.
+        """
+        folder = self.analysis_folder
+        if folder is None:
+            return []
+        return [
+            f
+            for d in sorted(pathlib.Path(folder).glob("bi4_bur"))
+            for f in sorted(d.glob("*"))
+            if f.is_file()
+        ]
+
+    def _stamp_path(self) -> pathlib.Path | None:
+        """Where the BV4 outputs record what produced them."""
+        if self.analysis_folder is None:
+            return None
+        return pathlib.Path(self.analysis_folder) / "bv4" / "bva.stamp.json"
+
+    def analysis_fingerprint(self, settings: dict) -> str:
+        """Fingerprint of the burst files plus *settings* (see analysis_cache)."""
+        return analysis_cache.fingerprint(self.input_files(), settings, extra="bva")
+
+    def _start_analysis(self, *, write_output: bool, force: bool = False) -> None:
         """Read, compute and (optionally) write BVA off the GUI thread.
 
         Reading a folder of burst files and correlating every burst are both
         long; running them here froze the window for the whole batch behind a
         modal bar. Only the plotting stays on the GUI thread, in
         :meth:`_analysis_done`.
+
+        A run whose inputs and settings are identical to the result already on
+        screen is skipped: the workflow shell re-applies the burst folder on
+        every visit to this step and clicks Run on every *Next*, so without this
+        the same correlation was computed again each time the user looked at the
+        plot. Pass ``force=True`` to recompute regardless.
         """
         if not self.data_folder:
             self.Error.no_folder()
@@ -590,15 +632,37 @@ class BVATool(MessagesMixin, QMainWindow):
             self.Error.bad_settings(exc)
             return
         self.Error.bad_settings.clear()
+
+        fingerprint = self.analysis_fingerprint(self.bva_settings)
+        stamp = self._stamp_path()
+        # Writing is a second obligation: a preview run (write_output=False) can
+        # satisfy a later preview but not a later Run, unless the BV4 files on
+        # disk were written for exactly this fingerprint.
+        outputs_current = bool(stamp) and analysis_cache.is_current(stamp, fingerprint)
+        if (
+            not force
+            and self._df is not None
+            and self._result_cache.matches(fingerprint)
+            and (not write_output or outputs_current)
+        ):
+            self._status("Unchanged — kept the previous BVA result")
+            return
+
+        self._running_fingerprint = fingerprint
         ChiSurfProgress.run(
             self, "Reading burst data...", self._analysis_worker,
-            args=(dict(self.bva_settings), bool(write_output)),
+            args=(dict(self.bva_settings), bool(write_output), fingerprint),
             maximum=0, title="BVA Analysis", owner=self,
             on_result=self._analysis_done,
-            on_error=self.Error.failed,
+            on_error=self._analysis_failed,
         )
 
-    def _analysis_worker(self, settings, write_output, task):
+    def _analysis_failed(self, exc) -> None:
+        """A failed run leaves no result to reuse."""
+        self._result_cache.invalidate()
+        self.Error.failed(exc)
+
+    def _analysis_worker(self, settings, write_output, fingerprint, task):
         """Worker: read (if needed), compute, write. No GUI here.
 
         Each phase announces its own length through ``task.set_range`` rather
@@ -636,12 +700,21 @@ class BVATool(MessagesMixin, QMainWindow):
             bv4_folder.mkdir(parents=True, exist_ok=True)
             with open(bv4_folder / "bva_settings.json", "w") as f:
                 json.dump(settings, f, indent=4)
+            # Record what these BV4 files are the result of, so a later run with
+            # the same burst files and settings can leave them alone.
+            analysis_cache.write_stamp(
+                bv4_folder / "bva.stamp.json", fingerprint,
+                params=settings, inputs=self.input_files(),
+                outputs=sorted(bv4_folder.glob("*.bv4")), tool="bva",
+            )
         return burst_df, tttrs, df_v
 
     def _analysis_done(self, payload) -> None:
         """Back on the GUI thread with the BVA table: draw it."""
         self._burst_df, self._tttrs, df_v = payload
         self._df = df_v
+        if self._running_fingerprint is not None:
+            self._result_cache.remember(self._running_fingerprint)
 
         df_selected = df_v[df_v["Proximity Ratio Std"] > 0.0]
         n_photons = self.bva_settings.get("number_of_photons_per_slice", 10)
@@ -728,6 +801,7 @@ class BVATool(MessagesMixin, QMainWindow):
         self._image_item.clear()
         self._static_line_item.clear()
         self._df = None
+        self._result_cache.invalidate()
         self._tb_info.setText("No data loaded")
         self._status("Plot cleared")
 

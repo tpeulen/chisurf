@@ -15,6 +15,7 @@ import pandas as pd
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.core import analysis_cache
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
@@ -428,6 +429,10 @@ class BurstSelectionTool(ChisurfDockTool):
         self._building_ui = True
         self._metadata: dict[str, str] = {}
         self._has_processed: bool = False
+        # What the displayed burst search was run with, so an identical request
+        # (another Next, a revisit of this step) is not searched again.
+        self._result_cache = analysis_cache.ResultCache()
+        self._running_fingerprint: str | None = None
         self._create_plot_widgets()
         self._setup_statusbar()
         self._build_ui()
@@ -1856,8 +1861,11 @@ class BurstSelectionTool(ChisurfDockTool):
             self._status_bar.showMessage(f"Error updating plots after filter change: {exc}")
             _LOG.error("error updating plots after filter change", error=str(exc))
 
-    def analyze_files(self) -> None:
+    def analyze_files(self, *, force: bool = False) -> None:
         """Run the burst selection over every selected file, off the GUI thread.
+
+        Skipped when the files and every setting are identical to the search
+        whose result is already displayed; ``force=True`` searches regardless.
 
         The whole batch is one backend call, so the window used to freeze for its
         entire duration behind a bar that went 0 % then 100 %. Everything the
@@ -1890,6 +1898,25 @@ class BurstSelectionTool(ChisurfDockTool):
             legacy_parameters=legacy_parameters,
             mmfdb=mmfdb_context,
         )
+        # Searching bursts in every photon of every file is the longest single
+        # operation in the workflow, and the shell asks for it on every Next.
+        # A request identical to the one that produced what is on screen is
+        # answered by what is on screen.
+        fingerprint = analysis_cache.fingerprint(
+            self._file_paths, request, extra="burst_selection"
+        )
+        if (
+            not force
+            and self._has_processed
+            and self._result_cache.matches(fingerprint)
+        ):
+            self.summary.setPlainText(
+                "Unchanged — kept the previous burst search "
+                "(same files, same settings; nothing re-searched)."
+            )
+            return
+        self._running_fingerprint = fingerprint
+
         self.Error.clear()
         ChiSurfProgress.run(
             self, f"Processing {len(self._file_paths)} file(s)...",
@@ -1941,6 +1968,8 @@ class BurstSelectionTool(ChisurfDockTool):
             self._load_tttr_for_plots(selected_paths if selected_paths else self._file_paths[:1], settings)
             self.update_burst_plots()
             self._has_processed = True
+            if self._running_fingerprint is not None:
+                self._result_cache.remember(self._running_fingerprint)
         else:
             self.table.setRowCount(0)
             self._last_frame = None
@@ -1954,6 +1983,7 @@ class BurstSelectionTool(ChisurfDockTool):
             self._last_diagnostics.clear()
             self._clear_plots()
             self._has_processed = False
+            self._result_cache.invalidate()
 
         self._last_result = {"metadata": metadata, "settings": settings}
         self.summary.setPlainText(json.dumps(metadata | {"settings": asdict(settings)}, indent=2, default=str))
@@ -2026,6 +2056,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self._last_diagnostic_path = None
         self._last_diagnostics.clear()
         self._has_processed = False
+        self._result_cache.invalidate()
         self._refresh_file_list()
         self.table.setRowCount(0)
         self._clear_plots()

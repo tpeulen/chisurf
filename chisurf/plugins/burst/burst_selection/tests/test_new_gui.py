@@ -16,6 +16,7 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups impo
     _resolve_active_user_id,
     setup_id_for_name,
 )
+from chisurf.core import analysis_cache
 from chisurf.plugins.burst.burst_selection import USE_LEGACY_GUI
 from chisurf.plugins.burst.burst_selection.api.models import BurstFilterMode
 from chisurf.plugins.burst.burst_selection.gui import tool as tool_module
@@ -458,6 +459,12 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
     tool._selected_filetype = "SPC-130"
     tool._settings_from_controls = lambda: settings
     tool._mmfdb_output_selected = lambda: True
+    # The batch reuses a previous search when nothing changed; a tool built with
+    # ``__new__`` has neither piece of that state, and on a QObject a missing
+    # attribute raises rather than returning a default.
+    tool._has_processed = False
+    tool._result_cache = analysis_cache.ResultCache()
+    tool._running_fingerprint = None
     tool._prepare_mmfdb_context_for_paths = lambda paths: mmfdb_context
     tool._legacy_parameters = lambda: {}
     tool._selected_file_paths_from_list = lambda: paths

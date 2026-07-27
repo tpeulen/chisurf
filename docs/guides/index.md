@@ -73,6 +73,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 50 | [Particle tracking: from spots to a diffusion coefficient](50_particle_tracking.md) | `img_tracking` plugin, `imaging.tracking` |
 | 51 | [Image resolution: measuring it from the image itself](51_frc_resolution.md) | `img_frc` plugin, `imaging.frc` |
 | 52 | [Sending a gated burst population to FCS, TCSPC, PDA or PCH](52_send_bursts_to_analysis.md) | ndX bridge, `*.from_bursts` services |
+| 53 | [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.analysis_cache`, burst workflow steps |
 
 ## Running
 

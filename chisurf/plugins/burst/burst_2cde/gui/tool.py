@@ -17,6 +17,7 @@ from qtpy import QtWidgets
 
 from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button
 from chisurf.plugins.burst.burst_2cde.core import computation as core
+from chisurf.core import analysis_cache
 
 try:
     from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
@@ -34,6 +35,10 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self.setWindowTitle("FRET-2CDE / ALEX-2CDE")
         self._embedded = embedded
         self._folder: pathlib.Path | None = None
+        self._df = None
+        # What the plotted result was computed from: an identical request (a
+        # panel revisit, another Next) reuses it instead of recomputing.
+        self._result_cache = analysis_cache.ResultCache()
 
         central = QtWidgets.QWidget(self)
         self.setCentralWidget(central)
@@ -113,14 +118,58 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         """Set the analysis folder (used by the workflow context)."""
         self._folder_edit.setText(str(folder))
 
-    def run(self) -> None:
-        """Read the burst folder, compute 2CDE and update the plot."""
+    def input_files(self) -> list[pathlib.Path]:
+        """The burst files this analysis reads (``bi4_bur/*``)."""
+        folder = self._folder_edit.text().strip()
+        if not folder:
+            return []
+        return [
+            f
+            for d in sorted(pathlib.Path(folder).glob("bi4_bur"))
+            for f in sorted(d.glob("*"))
+            if f.is_file()
+        ]
+
+    def settings(self) -> dict:
+        """Everything the computation is given, in one mapping."""
+        return {
+            "variant": self._variant.currentText(),
+            "kernel": self._kernel.currentText(),
+            "tau_us": float(self._tau.value()),
+            "donor_channels": self._channels(self._donor.text()),
+            "acceptor_channels": self._channels(self._acceptor.text()),
+            "file_type": self._file_type.text().strip(),
+        }
+
+    def analysis_fingerprint(self) -> str:
+        """Fingerprint of the burst files plus the current settings."""
+        return analysis_cache.fingerprint(self.input_files(), self.settings(),
+                                          extra="2cde")
+
+    def run(self, *, force: bool = False) -> None:
+        """Read the burst folder, compute 2CDE and update the plot.
+
+        A request identical to the result already plotted is skipped: the
+        workflow clicks Run on every *Next* and hands this panel its folder on
+        every visit, and 2CDE over a full burst folder is minutes of work.
+        ``force=True`` recomputes regardless.
+        """
         folder = self._folder_edit.text().strip()
         if not folder or not pathlib.Path(folder).is_dir():
             self._set_status("Select a valid burstwise analysis folder.")
             return
         variant = self._variant.currentText()
         column = core.COLUMN_ALEX_2CDE if variant == "alex" else core.COLUMN_FRET_2CDE
+        fingerprint = self.analysis_fingerprint()
+        stamp = pathlib.Path(folder) / "2c4" / "2cde.stamp.json"
+        if (
+            not force
+            and self._df is not None
+            and self._result_cache.matches(fingerprint)
+            and analysis_cache.is_current(stamp, fingerprint)
+        ):
+            self._set_status("Unchanged — kept the previous 2CDE result")
+            return
         try:
             # Read only the burst tables (bi4_bur). The default ``b*4*`` glob also
             # matches sibling result folders like ``bv4/`` (and reads BVA's
@@ -137,6 +186,8 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
                 variant=variant,
             )
         except Exception as exc:  # pragma: no cover - GUI error path
+            self._df = None
+            self._result_cache.invalidate()
             self._set_status(f"Error: {exc}")
             return
         # Write the ``2c4/`` companion so the browser and ndXplorer can join the
@@ -144,8 +195,16 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         # works if the folder is read-only).
         try:
             core.write_2cde_analysis(df, folder, variant=variant)
+            out = pathlib.Path(folder) / "2c4"
+            analysis_cache.write_stamp(
+                stamp, fingerprint, params=self.settings(),
+                inputs=self.input_files(), outputs=sorted(out.glob("*.2c4")),
+                tool="2cde",
+            )
         except Exception as exc:  # pragma: no cover - GUI error path
             logging.getLogger(__name__).warning("Could not write 2c4 companion: %s", exc)
+        self._df = df
+        self._result_cache.remember(fingerprint)
         self._draw(df, column)
 
     def _draw(self, df, column) -> None:
