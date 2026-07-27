@@ -116,6 +116,8 @@ requirements:
     - python-docx
     - qtconsole
     - hmmlearn
+    - scikit-learn
+    - hdbscan
     - ${{ "libcxx" if osx }}
     - micromamba
     - pygments

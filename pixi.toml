@@ -57,6 +57,14 @@ pytables = "*"
 python-docx = "*"
 qtconsole = "*"
 hmmlearn = "*"
+# scikit-learn was only ever present transitively (via hmmlearn). It is used
+# directly -- k-means and GMM for burst selection and ndXplorer clustering, PCA
+# for the parameter decomposition, and the H2MM surrogate -- so it is declared.
+scikit-learn = "*"
+# HDBSCAN: density-based clustering in ndXplorer. scikit-learn has shipped its
+# own implementation since 1.3 and the code falls back to it, but the standalone
+# package is faster and supports prediction data, so ship it.
+hdbscan = "*"
 pygments = "*"
 # pyarrow-core: only arrays + compute + csv are used (ndxplorer); avoids the
 # heavy libarrow-all components. Keep in sync with rattler-recipe/recipe.yaml.
