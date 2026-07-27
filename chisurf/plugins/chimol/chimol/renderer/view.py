@@ -1795,6 +1795,7 @@ class MolView(QtWidgets.QWidget):
         res_names: np.ndarray | None = None,
         chain_ids: np.ndarray | None = None,
         atoms: np.ndarray | None = None,
+        atom_radii: np.ndarray | None = None,
     ) -> str:
         entry = self._create_object(name=name, source_path=source_path)
         self.set_coordinates(
@@ -1804,6 +1805,7 @@ class MolView(QtWidgets.QWidget):
             res_names=res_names,
             chain_ids=chain_ids,
             atoms=atoms,
+            atom_radii=atom_radii,
         )
         self._apply_deposited_secondary_structure(source_path)
         return entry.object_id
@@ -2303,6 +2305,7 @@ class MolView(QtWidgets.QWidget):
         res_names: np.ndarray | None = None,
         chain_ids: np.ndarray | None = None,
         atoms: np.ndarray | None = None,
+        atom_radii: np.ndarray | None = None,
     ) -> None:
         """Set raw coordinates for visualization.
 
@@ -2324,6 +2327,12 @@ class MolView(QtWidgets.QWidget):
             separates a *cartoon* from a bare spring: secondary structure is
             assigned from N/CA/C/O, and the ribbon takes its up-vector from the
             backbone carbonyl. Without it the viewer can only tube the CA trace.
+        atom_radii:
+            Optional per-atom radii in the same (unscaled) units as ``xyz``.
+            An integrative model's beads differ in size by an order of
+            magnitude and the sizes *are* the shape of the thing, so a single
+            default radius does not describe it. Scaled here with the
+            coordinates so every downstream renderer stays in one frame.
         """
         arr = np.asarray(xyz, dtype=float)
         if arr.ndim != 2 or arr.shape[1] != 3:
@@ -2358,12 +2367,33 @@ class MolView(QtWidgets.QWidget):
         self._all_atom_radii = np.full(
             arr.shape[0], _DEFAULT_ATOM_RADIUS_A * scale, dtype=float
         )
+        if atom_radii is not None:
+            radii_arr = np.asarray(atom_radii, dtype=float).ravel()
+            if radii_arr.shape[0] == arr.shape[0]:
+                good = np.isfinite(radii_arr) & (radii_arr > 0.0)
+                self._all_atom_radii[good] = radii_arr[good] * scale
+            else:
+                logger.warning(
+                    "atom_radii has %d entries for %d coordinates; ignoring them.",
+                    radii_arr.shape[0],
+                    arr.shape[0],
+                )
+
+        is_beads = _is_bead_model(self._atoms)
 
         # Replay any manual bond/unbond over the fresh inference: a hand-made
         # bond stored only in bond_pairs vanishes the moment coordinates change.
-        self._bond_pairs = self._apply_bond_edits(
-            self._infer_bonds(raw_all, self._atoms)
-        )
+        #
+        # A bead model has no bonds to infer. A bead stands for a *range* of
+        # residues, so no interatomic distance cutoff means anything on it, and
+        # the search is not free: it is 0.7 s of the 4.3 s one nuclear-pore
+        # spoke takes to open, for pairs that would be wrong if it found any.
+        if is_beads:
+            self._bond_pairs = self._apply_bond_edits(np.zeros((0, 2), dtype=int))
+        else:
+            self._bond_pairs = self._apply_bond_edits(
+                self._infer_bonds(raw_all, self._atoms)
+            )
 
         trace_arr = None
         if trace_coords is not None:
@@ -2414,6 +2444,25 @@ class MolView(QtWidgets.QWidget):
                     self._secondary_structure = np.asarray(ss_codes, dtype="U1")
                 except Exception:
                     self._secondary_structure = None
+
+        # A bead model is drawn as beads. This is the same rule `set_rmf_data`
+        # applies, and it has to be applied here too or the two readers of the
+        # same kind of model disagree about how to draw it: an integrative
+        # mmCIF came out as a cartoon splined through beads that have no
+        # backbone -- meaningless as a depiction, and the reason the eight-spoke
+        # nuclear pore took seven minutes to open. The masks are set *before*
+        # the first `_update_view` so the cartoon is never built at all, and
+        # they survive the `_fits` defaults below because they fit.
+        if is_beads:
+            self._ball_mask = np.ones(arr.shape[0], dtype=bool)
+            self._sticks_mask = np.zeros(arr.shape[0], dtype=bool)
+            n_res_beads = (
+                len(self._residue_ids) if self._residue_ids is not None else 0
+            )
+            self._cartoon_mask = np.zeros(n_res_beads, dtype=bool)
+            self._show_atoms = True
+            self._show_cartoon = False
+            self._show_trace = False
 
         self._update_view()
 
@@ -4438,6 +4487,102 @@ class MolView(QtWidgets.QWidget):
         )
         return SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")
 
+    def _bead_scene_object(
+        self,
+        balls_cfg: dict,
+        colors_per_ca: np.ndarray | None,
+    ) -> SceneObject | None:
+        """Draw an integrative model's beads, or return ``None`` if it is not one.
+
+        Two depictions, chosen by count. Up to ``impostor_min_atoms`` beads the
+        merged sphere mesh is used, which is what every other sphere in chimol
+        is. Past it the beads are drawn as **sphere impostors**: one vertex each,
+        shaded in the fragment shader as a sphere. That is not a degraded
+        picture -- an impostor is a mathematically exact sphere where a
+        tessellation is a polyhedron -- but it costs one vertex instead of the
+        ~160 a mesh sphere costs. At 234,184 beads the difference is 234k
+        vertices against 37 million, which is the difference between opening the
+        eight-spoke nuclear pore and running the machine out of memory.
+
+        Parameters
+        ----------
+        balls_cfg : dict
+            The ``balls`` section of the display config.
+        colors_per_ca : numpy.ndarray or None
+            Per-residue RGBA colours. For a bead model one bead is one residue,
+            so these are per-bead and need no residue lookup.
+
+        Returns
+        -------
+        SceneObject or None
+            The beads, or ``None`` when the active object is not a bead model
+            (or carries no usable bead mask).
+        """
+        atoms = self._atoms
+        if atoms is None or not _is_bead_model(atoms):
+            return None
+        pts_all = self._all_atom_coords
+        if pts_all is None:
+            return None
+        pts_all = np.asarray(pts_all, dtype=float)
+        n_beads = pts_all.shape[0]
+        if n_beads == 0:
+            return None
+
+        mask = self._ball_mask
+        if mask is not None and len(mask) == n_beads:
+            sel = np.asarray(mask, dtype=bool)
+        else:
+            sel = np.ones(n_beads, dtype=bool)
+        if not sel.any():
+            return None
+
+        pts = pts_all[sel]
+        radii = self._all_atom_radii
+        if radii is not None and len(radii) == n_beads:
+            radii_sel = np.asarray(radii, dtype=float)[sel]
+        else:
+            radii_sel = np.full(
+                pts.shape[0],
+                max(self._radius * float(balls_cfg.get("size_scale", 0.04)),
+                    float(balls_cfg.get("min_size", 3.0))),
+                dtype=float,
+            )
+        radii_sel = radii_sel * float(balls_cfg.get("radius_multiplier", 1.0))
+        bad = (~np.isfinite(radii_sel)) | (radii_sel <= 0.0)
+        if bad.any():
+            radii_sel[bad] = float(np.median(radii_sel[~bad])) if (~bad).any() else 1.0
+
+        # One bead is one residue, so the per-residue colours are already
+        # per-bead: no residue-id lookup, and no Python loop over 234k rows.
+        rgb = np.tile(
+            np.asarray(self._base_color_single, dtype=float)[:3], (pts.shape[0], 1)
+        )
+        if colors_per_ca is not None and len(colors_per_ca) == n_beads:
+            rgb = np.asarray(colors_per_ca, dtype=float)[sel][:, :3]
+        override = getattr(self, "_colors_per_atom_override", None)
+        if override is not None and len(override) == n_beads:
+            ov = np.asarray(override, dtype=float)[sel]
+            good = np.isfinite(ov).all(axis=1)
+            rgb = rgb.copy()
+            rgb[good] = ov[good, :3]
+        rgb = np.clip(rgb, 0.0, 1.0)
+
+        impostor_min = int(balls_cfg.get("impostor_min_atoms", 20000))
+        if impostor_min > 0 and pts.shape[0] >= impostor_min:
+            rgba = np.ones((pts.shape[0], 4), dtype=float)
+            rgba[:, :3] = rgb
+            geom = Geometry(
+                kind="points",
+                positions=pts,
+                colors=rgba,
+                radii=radii_sel,
+                meta={"glyph": "sphere", "world_radius": True},
+            )
+            return SceneObject(id="atoms_points", geometry=geom, render_mode="opaque")
+
+        return self._build_balls_mesh(pts, rgb, radii_sel)
+
     def _update_atoms(
         self,
         coords: np.ndarray,
@@ -4457,6 +4602,16 @@ class MolView(QtWidgets.QWidget):
         balls_ao_strength = float(balls_cfg.get("ao_strength", 0.5))
         balls_max_atoms = int(balls_cfg.get("max_atoms", 8000))
         base_global_radius = max(self._radius * balls_size_scale, balls_min_size)
+
+        # A bead model is its beads: one bead per row, its own radius, and no
+        # atoms underneath to fall back on. It gets its own path because the
+        # generic one below would subsample it to `max_atoms` -- which for the
+        # nuclear pore means drawing 8,000 of 234,184 beads and calling that
+        # the model.
+        beads = self._bead_scene_object(balls_cfg, colors_per_ca)
+        if beads is not None:
+            scene_objects.append(beads)
+            return scene_objects
 
         # Raw-coordinate objects (the PDB fallback) have no structured ``_atoms``
         # array, so the per-residue ball path below is skipped and only a sparse

@@ -73,6 +73,10 @@ class _DrawData:
     occlusion: Optional[np.ndarray] = None
     material: Any = None
     two_sided: bool = False
+    #: Whether ``radii`` are distances in the model rather than pixel counts.
+    #: Sphere impostors (an integrative model's beads) are the case that needs
+    #: it: their size has to follow the camera.
+    world_radius: bool = False
     #: Triangle indices, when the mesh can be drawn indexed. ``None`` means the
     #: vertices were already expanded into a flat triangle list.
     indices: Optional[np.ndarray] = None
@@ -111,6 +115,7 @@ class _GpuDrawCall:
     occlusion_vbo: Optional[QtGui.QOpenGLBuffer] = None
     material: Any = None
     two_sided: bool = False
+    world_radius: bool = False
     index_vbo: Optional[QtGui.QOpenGLBuffer] = None
     index_count: int = 0
 
@@ -156,6 +161,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._glyph_mode_uniform = -1
         self._two_sided_uniform = -1
         self._point_size_uniform = -1
+        self._point_scale_uniform = -1
         self._radius_attr = -1
         self._occlusion_attr = -1
         self._background = (0.0, 0.0, 0.0, 1.0)
@@ -854,6 +860,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 else:
                     gl.glEnable(GL_CULL_FACE)
                 self._program.setUniformValue(self._point_size_uniform, float(call.size))
+                if self._point_scale_uniform != -1:
+                    self._program.setUniformValue(
+                        self._point_scale_uniform,
+                        self._point_scale() if call.world_radius else 0.0,
+                    )
 
                 mat = call.material
                 self._program.setUniformValue(self._spec_strength_uniform, _material_val(mat, "specular_strength", self._specular_strength))
@@ -993,6 +1004,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         varying float v_occ;
         uniform int glyphMode;
         uniform float pointSize;
+        // A sphere impostor's radius is a distance in the model, not a number
+        // of pixels: a bead has to grow when the camera comes closer, the way
+        // a mesh sphere does. `pointScale` is half the viewport height over
+        // tan(fov/2), so radius * 2 * pointScale / depth is the sprite's
+        // diameter in pixels. Zero leaves the radius a pixel count, which is
+        // what every other point glyph means by it.
+        uniform float pointScale;
         void main() {
             v_occ = clamp(occlusion, 0.0, 1.0);
             vec4 worldPos = vec4(position, 1.0);
@@ -1002,7 +1020,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             vec4 viewPos = viewMatrix * worldPos;
             v_viewPos = viewPos.xyz;
             if (glyphMode != 0) {
-                gl_PointSize = (radius > 0.0) ? radius : pointSize;
+                if (radius > 0.0) {
+                    gl_PointSize = (pointScale > 0.0)
+                        ? (2.0 * radius * pointScale / max(-viewPos.z, 1e-3))
+                        : radius;
+                } else {
+                    gl_PointSize = pointSize;
+                }
             }
         }
         """
@@ -1153,6 +1177,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._glyph_mode_uniform = program.uniformLocation("glyphMode")
         self._two_sided_uniform = program.uniformLocation("twoSided")
         self._point_size_uniform = program.uniformLocation("pointSize")
+        self._point_scale_uniform = program.uniformLocation("pointScale")
         self._radius_attr = program.attributeLocation("radius")
         self._occlusion_attr = program.attributeLocation("occlusion")
 
@@ -1194,6 +1219,25 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             painter.drawText(int(win_x), int(win_y), label.text)
 
         painter.end()
+
+    def _point_scale(self) -> float:
+        """Pixels per unit of model size at unit camera distance.
+
+        Half the framebuffer height over ``tan(fov / 2)``: the vertex shader
+        divides it by the camera-space depth to turn a sphere impostor's world
+        radius into a sprite size in pixels. It is in *framebuffer* pixels, so
+        a Retina display gets a sprite twice as wide, exactly as a mesh sphere
+        covering the same solid angle does.
+
+        Returns
+        -------
+        float
+            The scale factor, always positive.
+        """
+        ratio = float(self.devicePixelRatioF()) if hasattr(self, "devicePixelRatioF") else 1.0
+        height = max(1.0, float(self.height()) * ratio)
+        half_fov = math.radians(max(1e-3, float(self._fov)) * 0.5)
+        return 0.5 * height / max(math.tan(half_fov), 1e-6)
 
     def _build_matrices(self) -> tuple[QtGui.QMatrix4x4, QtGui.QMatrix4x4]:
         width = max(self.width(), 1)
@@ -1408,9 +1452,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         depth_test = obj.render_mode != "overlay"
         glyph = None
         two_sided = False
+        world_radius = False
         if geom.meta:
             glyph = geom.meta.get("glyph")
             two_sided = bool(geom.meta.get("two_sided", False))
+            world_radius = bool(geom.meta.get("world_radius", False))
 
         return _DrawData(
             primitive=primitive,
@@ -1430,6 +1476,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             ),
             material=obj.material,
             two_sided=two_sided,
+            world_radius=world_radius,
         )
 
     def _primitive_for_geometry(self, geom: Geometry) -> Optional[int]:
@@ -1529,6 +1576,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 glyph=draw.glyph,
                 material=draw.material,
                 two_sided=draw.two_sided,
+                world_radius=draw.world_radius,
             )
             self._gpu_calls.append(gpu_call)
 

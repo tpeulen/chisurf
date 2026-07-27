@@ -49,6 +49,23 @@ densest one per cent, a binary map at 0.5 and a signed map mirrored to `[-v, v]`
 are all Chimera's `initial_surface_levels`, not something derived here. Deriving
 it here was tried first and was worse — see the log for 2026-07-27.
 
+**A second carve-out: integrative models.** PyMOL has no notion of a bead that
+stands for a range of residues, so there is nothing to be compatible *with*. The
+rule ChiMOL follows instead is the one the field's own tools follow: a bead model
+is drawn as **beads, each at its own radius**, and never as a cartoon or a trace.
+A bead has no backbone, so a ribbon splined through beads depicts a chain path
+that was never determined — it is a wrong picture before it is a slow one. Every
+reader applies the rule, not just the one that happens to know what it loaded:
+recognising the model belongs in the viewer, beside the data, rather than in each
+file format's loader.
+
+The size at which the depiction changes is a rendering decision, not a modelling
+one. Past a budget the beads are drawn as **sphere impostors** — a point shaded
+as a sphere by the fragment shader — which is an exact sphere where a mesh is a
+polyhedron, at one vertex instead of a hundred and sixty. Nothing is dropped and
+nothing is subsampled: a model is not allowed to be quietly shown as a fraction
+of itself.
+
 ## Principles
 
 ### Read the source before implementing

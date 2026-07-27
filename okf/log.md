@@ -2,6 +2,41 @@
 
 ## 2026-07-27
 
+* **chimol: a bead model is drawn as beads, and the eight-spoke nuclear pore
+  opens in 1.6 s instead of 430 s.** The cost was a cartoon splined through beads
+  that have no backbone — 234,184 of them, in thousands of short chains, each
+  fully splined, framed and extruded, for a ribbon that depicts a chain path
+  nobody determined. Recognising a bead model now happens in the viewer, so every
+  reader agrees: all beads selected, spheres on, cartoon and trace off, no bond
+  inference (0.7 s a spoke for pairs that would be wrong), and per-bead radii
+  carried through `set_coordinates` and scaled with the coordinates.
+
+  Past 20,000 beads the depiction switches to **sphere impostors** — one vertex
+  each, shaded as a sphere in the fragment shader — against ~160 vertices of
+  merged mesh per bead, with the world radius projected to a sprite size so it
+  follows the camera. Nothing is subsampled: the generic ball path would have
+  drawn 8,000 of the 234,184 and called it the nuclear pore.
+
+  The earlier "switching to spheres kills it silently" was diagnosed and is not a
+  crash: the mmCIF path left `ball_mask` all-false, and the sphere branch's
+  no-selection fallback draws a **sparse sampling of 50 points**. It drew fifty
+  dots. One spoke 4.3 s → 0.36 s, eight spokes 430 s / ~11 GB → 1.6 s / 0.7 GB.
+  Recorded in [specs/chimol.md](/specs/chimol.md) as a second carve-out from
+  PyMOL authority, and closed in
+  [references/known-issues.md](/references/known-issues.md).
+
+* **chimol: the test suite poisoned numba's on-disk cache and broke ordinary
+  structure loading.** `test_nucleic_cartoon_render` loads `cartoon.py` and
+  `ambient.py` by file path, so their module name is synthetic. Numba records the
+  defining module in each cache entry and *re-imports* it when loading the entry
+  back — but the cache key does not include the module name, so the entry that
+  load wrote was handed to ordinary runs, where `add_structure` on any protein
+  died inside numba's own cache loader with `ModuleNotFoundError: No module named
+  '<dynamic>'`. This is the "import-bootstrap artifact" noted in the previous
+  chimol commit; it was never confined to the test. Both modules now cache only
+  under a real package name (`cache=bool(__package__)`), with a guardrail test.
+  Existing trees need `rm chimol/geometry/__pycache__/*.nb[ic]` once.
+
 * **GUI walk — burst-wise FCS: correct in the middle, unusable at both ends.**
   Drove `BurstFcsTool` headlessly over the burst-selection sample analysis
   (10 `.bur` tables, 2 980 bursts) after defining the channel pairs in *Setup ▸

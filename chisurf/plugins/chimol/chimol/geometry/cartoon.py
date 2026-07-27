@@ -59,9 +59,24 @@ except Exception:  # pragma: no cover - run-time availability
     _HAVE_NUMBA = False
 
 
+#: Whether it is safe to write numba's on-disk cache from this module.
+#:
+#: A cached entry records the name of the module that compiled it, and numba
+#: re-*imports* that name when it loads the entry back. This file is also loaded
+#: by path (``spec_from_file_location``) by the standalone render tests, where
+#: the name is a synthetic one no import can resolve. The cache key does not
+#: include the module name, so the entry that load wrote was then handed to
+#: ordinary runs -- and ``add_structure`` on any protein died in numba's own
+#: cache loader with ``ModuleNotFoundError: No module named '<dynamic>'``.
+#:
+#: ``__package__`` is the parent package on a real import and empty on a
+#: by-path load, which is exactly the distinction that matters here.
+_NB_CACHE = bool(__package__)
+
+
 if _HAVE_NUMBA and nb is not None:
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    @nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
     def _extrude_rings_nb(path, side, up, scale, shape_verts, shape_norms,
                           verts, norms):
         """Place every ring vertex and its normal, with no temporaries.
@@ -106,7 +121,7 @@ if _HAVE_NUMBA and nb is not None:
                 norms[row, 1] = ny
                 norms[row, 2] = nz
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    @nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
     def _propagate_ups_nb(tangents, hint, has_hint, ups):
         """Parallel transport along the path: genuinely sequential, so a loop.
 

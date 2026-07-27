@@ -177,6 +177,10 @@ def _load_display_config() -> dict:
             # merged mesh light for both the CPU build and the GPU.
             "sphere_lat": 10,
             "sphere_lon": 16,
+            # Past this many beads an integrative model is drawn as sphere
+            # impostors -- one vertex each, shaded as a sphere in the fragment
+            # shader -- instead of a merged mesh of ~160 vertices per bead.
+            "impostor_min_atoms": 20000,
         },
         "overlay": {
             # Cap on rendered points for transparent point-cloud overlays (AV

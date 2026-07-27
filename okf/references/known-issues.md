@@ -1,43 +1,53 @@
-## chimol: large integrative models are slow, and one fix killed them
+## RESOLVED — chimol: large integrative models, and the "fix" that killed them
 
-**2026-07-27.** The nuclear pore complex is the case that shows it.
+**Opened and closed 2026-07-27.** The nuclear pore complex was the case that
+showed it.
 
-| Entry | Beads | Load |
-| --- | --- | --- |
-| `PDBDEV_00000010` (one spoke) | 29,273 | **8.7 s** |
-| `PDBDEV_00000012` (eight spokes) | 234,184 | **430 s** |
+| Entry | Beads | Load before | Load after |
+| --- | --- | --- | --- |
+| `PDBDEV_00000010` (one spoke) | 29,273 | 8.7 s → 4.3 s | **0.36 s** |
+| `PDBDEV_00000012` (eight spokes) | 234,184 | **430 s**, ~11 GB | **1.6 s**, 0.7 GB |
 
-Measured, so the cause is not in doubt:
+The cost was never the reader — `ihm` reads the 31.5 MB file in well under a
+second. It was **a cartoon splined through beads that have no backbone**: 234k
+beads become thousands of short chains, each fully splined, framed and extruded.
+A bead stands for a *range* of residues, so the ribbon was meaningless as well as
+expensive.
 
-* **`ihm` is not the bottleneck** — it reads the 6 MB spoke in **0.43 s** and the
-  31.5 MB file downloads in 3.8 s.
-* The cost is **geometry built for beads nobody can see**. chimol splines a
-  *cartoon* through the beads: 234k beads become thousands of short chains, each
-  fully splined, framed and extruded. An integrative model has no backbone to
-  trace, so the ribbon is meaningless as well as expensive.
-* Baked ambient occlusion was 24 s of the spoke's original 33 (1608 calls, one
-  per segment). A vertex budget now skips it past 400k shaded vertices, which is
-  what took the spoke from 35 s to 8.7 s. That budget is in place and working.
+**The trap, explained.** Switching beads to the sphere representation — the
+correct depiction, and what `set_rmf_data` already did — appeared to make the
+entry *die silently*. It did not die. `ball_mask` was left all-**false** by the
+mmCIF path (only the RMF path set it), and the sphere branch's fallback for "no
+selection" is a **sparse sampling of 50 points along the chain**. The viewer drew
+fifty dots and called it a nuclear pore. Nothing raised, because nothing was
+wrong as far as any single line of it was concerned.
 
-**The trap.** Switching beads to the sphere representation at load -- which is
-what `set_rmf_data` already does, and is the *correct* depiction -- made the
-eight-spoke entry **die silently** rather than merely be slow: no output, no
-traceback. It is reverted, with a comment at the site. Whatever kills it is
-between 29k and 234k beads in the sphere/glyph path, and it needs diagnosing
-before that fix can land. It is the right fix; it just is not safe yet.
+**What landed.** A bead model is now recognised in the viewer, so every reader
+agrees on it: all beads selected, spheres on, cartoon and trace off, no bond
+inference, per-bead radii carried through `set_coordinates` and scaled with the
+coordinates. Past 20,000 beads the depiction is **sphere impostors** — one vertex
+each, shaded as a sphere in the fragment shader — instead of ~160 vertices of
+merged mesh per bead, with the impostor's world radius projected to a sprite size
+so it follows the camera. Pinned by `test/test_bead_model.py`.
 
-**The plan, cheapest first**, none of it written:
+**Still open from that thread:** interior culling (`_get_surface_atom_mask`
+exists and is unused), dynamic LOD on camera motion (the draft/settle mechanism
+from the trajectory work generalises), depth-cue fog, and **IMP RMF support**.
 
-1. **Cull the interior.** `_get_surface_atom_mask` already exists. A packed model
-   never shows most of its beads; culling before geometry is the biggest win.
-2. **Representation LOD.** Beads as sphere glyphs above a budget (see the trap).
-3. **Dynamic LOD.** The rate-based draft/settle mechanism from the trajectory
-   work generalises from scrubbing to camera motion and to load.
-4. **Depth cue / fog.** On the roadmap in the spec already; cheap in the fragment
-   shader, and it would hide the far side of a structure this size.
+---
 
-Also unstarted: **IMP RMF support**, and the **EMDB / PDB-IHM demos** that
-prompted all of this.
+## chimol: a point glyph's configured size never reaches the renderer
+
+**2026-07-27.** `QtGLRenderer._geometry_to_draw_data` computes `size` from
+`geom.meta["size"]` and then does not pass it to `_DrawData`, so every point
+glyph draws at the 4-pixel default: `dots.size_px`, the overlay sizes, and the
+`px_mode` flag that distinguishes a pixel size from a world one are all dead
+configuration. Sphere impostors are unaffected — they carry a per-vertex radius,
+which does reach the shader.
+
+Not fixed in the change that found it because the fix changes the size of every
+point glyph in the application at once, and the render fixtures would all need
+re-inspecting; that is its own change, with its own before/after images.
 
 ---
 type: Reference

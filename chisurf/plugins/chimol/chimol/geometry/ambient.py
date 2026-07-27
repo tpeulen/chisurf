@@ -33,9 +33,16 @@ except Exception:  # pragma: no cover - run-time availability
     _HAVE_NUMBA = False
 
 
+#: Whether it is safe to write numba's on-disk cache from this module. See the
+#: same constant in ``cartoon.py`` for what goes wrong when it is not: this file
+#: is loaded by path as well, and a cache entry keyed to a name nothing can
+#: import breaks the *next ordinary run*, not the one that wrote it.
+_NB_CACHE = bool(__package__)
+
+
 if _HAVE_NUMBA and nb is not None:
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    @nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
     def _estimate_ambient_occlusion_nb(
         pts: np.ndarray,
         radius: float,
@@ -75,7 +82,7 @@ if _HAVE_NUMBA and nb is not None:
 
         return occ
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    @nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
     def _estimate_ambient_occlusion_grid_nb(
         pts: np.ndarray,
         radius: float,
@@ -173,7 +180,7 @@ if _HAVE_NUMBA and nb is not None:
         return occ
 
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    @nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
     def _occlusion_from_spheres_nb(
         points: np.ndarray,
         normals: np.ndarray,
@@ -289,7 +296,7 @@ if _HAVE_NUMBA and nb is not None:
         return occ
 
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+    @nb.jit(nopython=True, nogil=True, cache=_NB_CACHE)  # type: ignore[misc]
     def _directional_occlusion_nb(
         points: np.ndarray,
         normals: np.ndarray,

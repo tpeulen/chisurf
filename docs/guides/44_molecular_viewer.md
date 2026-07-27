@@ -63,6 +63,30 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Integrative (bead) models
+
+An entry from PDB-IHM is not a list of atoms. It is a list of **beads**, each
+standing for a *range* of residues and carrying its own radius — tens of
+ångström for a domain, a couple for a well-determined loop. The sizes are the
+shape of the thing, so the viewer keeps them and draws each bead at its own.
+
+Such an object opens in the **sphere** representation, and there is nothing to
+switch it to: a bead has no backbone, so a cartoon through one traces a ribbon
+that does not exist, and no interbead distance is a bond. Colouring, selecting,
+measuring and superposing work as they do anywhere else — one bead behaves as
+one residue, so `spectrum count` runs over beads and `resi 40-60` selects them.
+
+```text
+fetch PDBDEV_00000012, pdb-ihm   # the nuclear pore, all eight spokes
+spectrum chain                   # 234,184 beads, one colour per chain
+```
+
+Past **20,000 beads** the viewer switches from a mesh sphere per bead to a
+*sphere impostor*: one point, shaded as a sphere by the graphics card. The
+picture is the same — an impostor is an exact sphere where a mesh is a
+polyhedron — and it is what makes a model of this size open at all. The
+threshold is `balls.impostor_min_atoms` in the display configuration.
+
 ### Voxel maps
 
 A great deal of what gets looked at here is a density rather than a structure:

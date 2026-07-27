@@ -95,7 +95,8 @@
     "ao_strength": 0.5,
     "max_atoms": 8000,
     "sphere_lat": 10,
-    "sphere_lon": 16
+    "sphere_lon": 16,
+    "impostor_min_atoms": 20000
   },
   "overlay": {
     "max_points": 30000
