@@ -5386,3 +5386,58 @@ headlessly and bisected. RF-446.
   plot being updated while the stacked widget switches; it needs a fix in the
   chiplot/pyqtgraph update path, not in the shell. Recorded in
   [known issues](/references/known-issues.md).
+
+## Review 2026-07-27 (4) — the shared UI pump, and the pumps that never reach it
+
+Slice: `d9805bd8` (*every status line pumped the event loop, and the burst run
+crashed*) — the new `chisurf/gui/event_pump.py`, the call sites it replaced in
+`chisurf/gui/progress.py` and `chisurf/gui/widgets/navigation.py`, the two burst
+tools' `_status` helpers, and the stepper stylesheet, against
+`test/gui/test_event_pump.py` and `test/gui/test_navigation_statusbar.py`.
+
+The diagnosis and the guard itself are right, and both hold up under
+measurement: a queued slot dispatched inside `pump_ui` sees `is_pumping() ==
+True`, its own `pump_ui()` returns `False`, and `processEvents` stays **1 deep**
+on the C stack, where the same slot inside a bare `processEvents()` nests to
+**2**. The stylesheet fix is real too, and its fractional alpha is not the trap
+it looks like — Qt reads `rgba(128, 128, 128, 0.18)` as a *fraction*, rendering
+`#e9e9e9` over white (identical to `18%` and to `46`), and the `:selected` rule
+paints the row `#308cc6` with legible text.
+
+What does not hold is the word **process-wide**. `pump_ui` can only guard pumps
+that go through it, and `ChiSurfProgress`'s own two GUI backends — the AutoForm
+inline bar and the modal dialog — still call `processEvents()` directly, one
+line *before* the guarded pump their driver issues (RF-447). Reviewing the same
+seam turned up two more: a message-only progress update repaints in the
+status-bar host and in neither of the other two, so `iterate()`'s label lags an
+item behind (RF-448), and the shell's status log handler outlives any shell that
+is not `close()`d, keeping it alive and pumping the loop on every later log line
+(RF-449). Findings RF-447..RF-450.
+
+### RF-447
+- **Status:** OPEN
+- **Severity:** S2 (the nesting the guard exists to prevent is still reachable through the *primary* progress backend, one line before the guarded pump)
+- **Location:** `chisurf/gui/autoform/sections/progress_section.py:253-257` (`InlineProgressWidget._repaint`, reached from `_activate` / `_set_value` / `_deactivate` and the `QProgressBar`-compatible setters) and `chisurf/gui/widgets/progress.py:272,281,310,341` (`EnhancedProgressDialog.update_text` / `update_progress` / `finish` / `_finalize`), both driven from `chisurf/gui/progress.py:337-341` (`ChiSurfProgress.set_value` → `_call("setValue")` → backend, *then* `_process_events()`); also `chisurf/gui/task.py:286,290` (`Task.wait`)
+- **Finding:** `_pumping` is set inside `pump_ui`, so a bare `processEvents()` neither sets the flag nor observes it — a guard that covers only its own call sites. Verified headlessly against the real host: a button beside an `InlineProgressWidget` resolves that widget as its progress host (`find_progress_host` → `InlineProgressWidget`, backend `_InlineTask`), and a single `ChiSurfProgress.set_value(1)` issues **two** pumps — the widget's unguarded `_repaint()` first, `_process_events()` second. A queued slot dispatched during the first one (which is exactly what the shell's `status_logged` → `_on_log_status` is) reports `is_pumping() == False`, its `pump_ui()` returns `True`, and `QCoreApplication.processEvents` is measured **2 deep on the C stack** — the same shape as the reported crash. The dialog backend behaves identically: `ChiSurfProgress.close()` → `_call("finish")` → `EnhancedProgressDialog.finish` issues 4 unguarded pumps, one of them measured running *inside* an engaged guard (bare → guarded → bare, depth 2); Qt's own `QProgressDialog::setValue` documents this re-entrancy hazard for a modal dialog, and this one is constructed `WindowModal`. Route both backends' repaints (and `Task.wait`'s drain loop) through `pump_ui` — three call sites — so that "process-wide" is true; today the crash path is closed for the status bar only.
+- **Fix note:**
+
+### RF-448
+- **Status:** OPEN
+- **Severity:** S2 (the same `ChiSurfProgress` call repaints in one host and not in the other two; `iterate()`'s caption is always one item stale)
+- **Location:** `chisurf/gui/progress.py:323-327` (`set_text` calls the backend and nothing else — unlike `set_value`:337-341) with `chisurf/gui/autoform/sections/progress_section.py:216-229` (`_set_message` has no `_repaint()`, while `_set_value` ten lines below has one), against `chisurf/gui/widgets/navigation.py:645-649` (`_task_set_message`, which *does* pump)
+- **Finding:** measured on the inline host, `ChiSurfProgress.set_value` issues 2 pumps and `set_text` issues **0**, so a message-only update never reaches the screen until the next `set_value` — and in a GUI-thread loop there is no event loop to deliver it later. `ChiSurfProgress.iterate` (`progress.py:540-548`) sets the text for the item it is *about* to yield and calls `set_value` only after the caller returns, so in an inline or dialog host the caption shown while item *i* is processed is item *i−1*'s, while in the status-bar host it is correct — and the three hosts are documented as interchangeable (`_InlineTask`: "*so it is interchangeable with the status-bar task and the modal dialog*"). Phase captions have the same hole: a `set_range` + `set_text` announcing "Computing BVA…" appears only once that phase's first step has completed. One `self._process_events()` at the end of `ChiSurfProgress.set_text` makes the three hosts agree, at the seam that already owns the pump policy.
+- **Fix note:**
+
+### RF-449
+- **Status:** OPEN
+- **Severity:** S2 (a process-global logging handler keeps a whole shell — and every panel it built — alive, and makes every later log line write into an invisible window and pump the event loop)
+- **Location:** `chisurf/gui/widgets/navigation.py:553-566` (`_install_status_log_handler` adds the handler to `logging.getLogger(name)`; `_remove_status_log_handler` is called **only** from `closeEvent`:398-402) with `:19-38` (`_StatusLogHandler` holds `self._shell` strongly)
+- **Finding:** a `NavigationPanelTool` created with `status_logger=` and then dropped without `close()` — a tool torn down by its parent, a `deleteLater`, a test or script that simply lets the reference go — leaves its handler attached to the module-level logger forever, and the handler's strong reference keeps the shell (and its panels) from ever being collected. Verified headlessly: after `del shell; gc.collect()` the logger still reports `[<_StatusLogHandler (INFO)>]`; four unclosed shells accumulate **4 handlers**; and one later `log.info("hello from a plugin")` still lands in the dropped shell (`_status_message.text() == "hello from a plugin"` with `isVisible() == False`) *and* pumps the event loop — measured 1 pump per log line per stale shell. That is a hidden `processEvents` on every INFO record in the plugin's logger tree, in a process that may have no shell on screen at all — the exact ingredient the crash needed. Hold the shell by `weakref` in the handler and detach on `QObject.destroyed` (or in `__del__`) rather than only in `closeEvent`, and drop the record when the referent is gone.
+- **Fix note:**
+
+### RF-450
+- **Status:** OPEN
+- **Severity:** S3 (one return value for three different outcomes, one of them a swallowed exception with no log line)
+- **Location:** `chisurf/gui/event_pump.py:60-72` (`except Exception: return False` around the `qtpy` import and again around `processEvents`); the module defines no logger
+- **Finding:** `pump_ui` returns `False` when a pump is already running (normal and expected), when Qt is absent or there is no `QCoreApplication` (headless — also normal), and when `processEvents` itself raised (not normal, and the only one anybody would want to know about) — with nothing written anywhere. The docstring documents only the first two. `test_guard_is_released_when_qt_raises` pins the swallow, so the behaviour is deliberate, but a `logger.debug`/`warning` in the raising branch costs nothing and is the difference between "the pump was skipped" and "event dispatch is broken", which today read the same to a caller and leave no trace in the log at all.
+- **Fix note:**
