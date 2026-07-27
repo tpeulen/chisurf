@@ -4289,3 +4289,58 @@ transform leaves `frames_raw` behind. Plus the "edit a demo" path, which opens a
 - **Location:** `chisurf/plugins/chimol/chimol/io/structure.py:442-451` (`load_structure_payload` calls the structure factory before looking at the extension) via `:401` (`_read_full_model`) → `chisurf/core/structure/structure.py:146` → `chisurf/core/fio/structure/coordinates.py:601` (`string = f.read()` on a text-mode handle)
 - **Finding:** `load hgbp1_transition.h5` — the file the shipped `trajectory.pml` demo uses — hands a binary HDF5 file to the PDB text reader, which raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0x89 in position 0` (0x89 is the leading byte of the HDF5 signature) and is logged at WARNING with `exc_info=True`: *"Structure reader failed for …hgbp1_transition.h5; falling back to the built-in PDB parser (no radius of gyration)."* The load then succeeds — a 464×5235×3 bead trajectory arrives through the trajectory loader, not through any PDB parser — so a normal, fully working operation prints a stack trace and a message that is wrong about both the cause and the remedy. Dispatch known non-PDB containers (`.h5`/`.hdf5`/`.dcd`/`.xtc`/`.trr`) by extension before trying the structure factory, and word the fallback for what it actually falls back to.
 - **Fix note:**
+
+### Review 2026-07-27 — declared widget messages and their first consumer
+
+Slice: `85d6e1ff` (`chisurf/gui/widgets/messages.py`, the `ChisurfDockTool` base,
+and the PCH tool that was migrated onto it). The message machinery itself holds up
+— per-instance binding, MRO accumulation, severity ordering and render-time
+translation all do what the docstring claims, verified against the module in a real
+`QApplication`. Two gaps are in the seam's own edge handling (RF-368, RF-369), one
+is an unguarded declaration invariant (RF-370). The larger finds are in the
+migrated tool, which the commit rewrote without exercising its component control:
+its multi-species path has never worked (RF-366), a failed load leaves the tool
+armed on the previous file (RF-367), and the one `Information` message is an event
+declared as a condition (RF-371). Findings RF-366..RF-371.
+
+### RF-366
+- **Status:** OPEN
+- **Severity:** S1 (`len()` of an `int` — the *Components* spin box raises out of its `valueChanged` slot, and multi-component PCH fitting is unreachable)
+- **Location:** `chisurf/plugins/pch/gui/tool.py:327` (`_update_species_inputs`: `for _ in range(len(self.species_layout.count()), 0, -1)`), reached from `:271` (`self.spin_comp.valueChanged.connect(self._update_species_inputs)`)
+- **Finding:** `QFormLayout.count()` returns an `int`, so `len(...)` raises. Verified offscreen on a constructed `PCHApp`: `_update_species_inputs(2)` → `TypeError: object of type 'int' has no len()`, raised *before* any row is rebuilt, so `eps_boxes` still has 1 entry and the layout still has its 2 original items. Since the call arrives from a Qt signal, the traceback escapes into the slot rather than into any handler the tool controls. The consequence is worse than the exception: `spin_comp.value()` is now `2` while `eps_boxes`/`N_boxes` still describe one species, so `_on_fit` (`:412-414`) sends `n_components=2` with a length-1 `initial_epsilons`, and the write-back loop `for i in range(n_comp): self.eps_boxes[i]...` (`:432-434`) raises `IndexError` — swallowed by `except Exception` into the `fit_failed` message. A PCH fit with more than one species has therefore never been possible from this GUI. Two bugs in one line: use `self.species_layout.rowCount()` (rows, not items — `count()` is 2 per row, so even the un-`len`ed form would over-remove and hit `removeRow` on an empty layout), and rebuild the boxes before anything reads `spin_comp`. A test that sets `spin_comp` to 3 and asserts `len(widget.eps_boxes) == 3` and `species_layout.rowCount() == 6` fails on the current tree.
+- **Fix note:**
+
+### RF-367
+- **Status:** OPEN
+- **Severity:** S2 (after a failed load the tool stays armed on the previously loaded file, so *Compute* silently analyses the old data under a "Cannot load the file" line)
+- **Location:** `chisurf/plugins/pch/gui/tool.py:356-369` (`_on_load`: every state write sits *after* `self._client.load_tttr(path)`, and the `except` branch only raises `self.Error.load_failed(e)`)
+- **Finding:** on the failure path nothing is rolled back: `_filename`, `_result`, `_fit_result`, `le_file` and the enabled state of `action_compute`/`action_fit`/`action_save` all keep the *previous* file's values, because they are only assigned on the success path. The tool then shows a standing `Cannot load the file: …` error while `_on_compute` (`:384`) happily recomputes from the stale `self._filename`, and the read-only *File:* field still names the old path — so the numbers on screen belong to a file the user believes failed to load. This is a regression in kind from the modal it replaced: a dialog at least forced an acknowledgement before the user could press *Compute*. A non-modal error must be paired with a state that matches it — clear `_filename`/`_result`/`_fit_result`, blank `le_file` and disable the three actions in the `except` branch (or load into locals and commit only on success).
+- **Fix note:**
+
+### RF-368
+- **Status:** OPEN
+- **Severity:** S2 (contract: an unsupported `host` is silently ignored, and the parentless bar it leaves behind opens as a top-level window the moment a message is raised)
+- **Location:** `chisurf/gui/widgets/messages.py:363-371` (`install_message_bar`: `bar = MessageBar()` with no parent, then `if isinstance(host, QStatusBar) … elif isinstance(host, QLayout) …` and no `else`) with `:288` (`set_messages` → `self.setVisible(True)`)
+- **Finding:** the bar is constructed parentless and is only reparented by `addPermanentWidget`/`addWidget`. Anything else — the documented `host=None` call ("creates the bar without placing it"), or the natural mistake of passing the container *widget* rather than its layout — leaves a parentless `QWidget`, i.e. a top-level window. Verified in a real `QApplication`: `install_message_bar(QtWidgets.QWidget())` returns a bar with `parent() is None` and `isWindow() == True`, and the first `self.Error.boom(...)` makes it `isVisible() == True` — on a desktop that is a stray borderless window floating over the application, carrying the tool's error text, with no way to close it. No caller hits this today (the only in-tree calls pass a layout or a status bar), so this is latent rather than live, but the failure is silent in both directions: a mis-typed host neither raises nor logs, and the message *looks* delivered. Reject a host that is neither (`TypeError`), or parent the bar to the mixin's widget so an unplaced bar can never become a window.
+- **Fix note:**
+
+### RF-369
+- **Status:** OPEN
+- **Severity:** S3 (the guard that exists so a bad catalogue cannot raise inside a repaint misses two of the exceptions `str.format` throws)
+- **Location:** `chisurf/gui/widgets/messages.py:136-145` (`BoundMsg.text`: both `try` blocks catch `(IndexError, KeyError, ValueError)`)
+- **Finding:** `str.format` also raises `TypeError` (`"{:d}".format(None)` → *unsupported format string passed to NoneType.__format__*) and `AttributeError` (`"{0.x}"` against an object without `x`), neither of which is caught — so the fallback to the untranslated string is skipped and the exception escapes from a property that the docstring at `:130-134` and the test `test_a_broken_catalogue_does_not_take_the_tool_down` both promise cannot fail. Verified: with a translation backend returning `"zahl {:d}"`, `BoundMsg.text` for a message raised with `None` raises `TypeError` instead of falling back. This is reachable in practice because message arguments are frequently not strings — `PCHApp` passes an exception object (`self.Error.load_failed(e)`, `tool.py:369`), and a translator writing a numeric format spec for what the source string left as `{}` is exactly the catalogue error the guard is for. Catch `Exception` here (a message text is never worth an exception) or add `TypeError`/`AttributeError`.
+- **Fix note:**
+
+### RF-370
+- **Status:** OPEN
+- **Severity:** S3 (a declared message whose name collides with the group's own API silently replaces it — `self.Error.clear()` then *raises* a message instead of clearing the group)
+- **Location:** `chisurf/gui/widgets/messages.py:191-192` (`MessageGroup.__init__`: `for name, bound in self._messages.items(): setattr(self, name, bound)`) against the group's public surface at `:194-216` (`messages`, `active`, `clear`, `notify_changed`, `severity`, `widget`)
+- **Finding:** binding writes each `Msg` name straight onto the group instance with no check, so a declaration named after a group member shadows it. Verified: a group declaring `clear = Msg("shadowed")` makes `self.Error.clear` a `BoundMsg`, and `self.Error.clear()` — the documented way to retract a whole group, used in the module docstring at `:29` — instead *raises* the `clear` message; the two already-active messages stay active and nothing reports a problem. `widget` is the dangerous one (`notify_changed` would then fail on a `BoundMsg`), and `active`/`messages` would break the renderer. The whole point of declaring conditions is that the set is inspectable, so the collision is cheap to reject at bind time: raise a `TypeError` naming the offending declaration when `name` is already an attribute of `MessageGroup`.
+- **Fix note:**
+
+### RF-371
+- **Status:** OPEN
+- **Severity:** S3 (the one `Information` message is an event, not a condition — it is never retracted, so a stale "Results saved" line outlives the save for the rest of the session)
+- **Location:** `chisurf/plugins/pch/gui/tool.py:122-125` (`Information.saved`) raised at `:461`, next to the transient `statusBar().showMessage(f"Saved results to {fname_base}.*")` at `:462`; the only thing that ever retracts it is `clear_messages()` in `_on_load` (`:364`)
+- **Finding:** the module this tool was migrated onto draws the line explicitly — a *dialog* is for an event, a *message* is for a condition that "goes away when the cause is fixed" (`messages.py:1-13`) — and a completed save has no persisting cause. Nothing clears `Information.saved` except loading a new file, so the line sits in the status bar for the rest of the session naming files that may since have been overwritten, and once any real condition arrives the bar shows that condition with a `(+1)` counter whose extra entry is the stale save. The same fact is already reported in the correct shape one line below, as a transient `showMessage`, so the declared message is both permanent and duplicative. Either drop `Information.saved` in favour of the transient line, or retract it as soon as anything else happens (the start of the next compute/fit/save).
+- **Fix note:**
