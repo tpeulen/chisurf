@@ -177,6 +177,15 @@ against scikit-image property by property, so a number reported here is directly
 comparable to one computed in any other image-analysis pipeline, and code
 written for one transfers to the other.
 
+The compatible surface is the whole of it: every property scikit-image defines,
+`regionprops_table` with the same `centroid-0`/`centroid-1` splitting,
+`extra_properties`, item access, `spacing=`, `offset=`, and the 61 historical
+property names (`Area`, `max_intensity`, `major_axis_length`, …) that older code
+still asks for. One behaviour differs on purpose: a **negative label** is
+refused here, where scikit-image accepts it and then silently drops that region
+from the results — losing an object without a word is worse than refusing the
+input.
+
 **Anisotropic pixels.** A confocal voxel is rarely square, and a scan is often
 sampled differently along the two axes. Pass `spacing=` — a scalar, or one value
 per axis — and every length, area, centroid and moment is reported in those

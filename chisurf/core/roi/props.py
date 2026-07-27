@@ -73,6 +73,8 @@ __all__ = [
     "regionprops_table",
     "PROPERTIES",
     "INTENSITY_PROPERTIES",
+    "LEGACY_PROPERTY_NAMES",
+    "normalize_spacing",
 ]
 
 #: Geometric properties, a convenient bundle to hand to :func:`regionprops_table`.
@@ -146,6 +148,75 @@ _EULER_WEIGHTS_4 = np.array([0, 1, 0, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0], d
 _HULL_OFFSETS = np.array([[-0.5, 0.0], [0.0, -0.5], [0.0, 0.5], [0.5, 0.0]])
 
 
+#: scikit-image's historical property names, mapped to the modern ones. Code
+#: written against older releases — and there is a lot of it — asks for
+#: ``max_intensity`` or ``BoundingBox``; answering is a dict lookup, and
+#: refusing only makes that code fail for no reason.
+LEGACY_PROPERTY_NAMES: dict[str, str] = {
+    'Area': 'area',
+    'BoundingBox': 'bbox',
+    'BoundingBoxArea': 'area_bbox',
+    'CentralMoments': 'moments_central',
+    'Centroid': 'centroid',
+    'ConvexArea': 'area_convex',
+    'ConvexImage': 'image_convex',
+    'Coordinates': 'coords',
+    'CroftonPerimeter': 'perimeter_crofton',
+    'Eccentricity': 'eccentricity',
+    'EquivDiameter': 'equivalent_diameter_area',
+    'EulerNumber': 'euler_number',
+    'Extent': 'extent',
+    'FeretDiameter': 'feret_diameter_max',
+    'FeretDiameterMax': 'feret_diameter_max',
+    'FilledArea': 'area_filled',
+    'FilledImage': 'image_filled',
+    'HuMoments': 'moments_hu',
+    'Image': 'image',
+    'InertiaTensor': 'inertia_tensor',
+    'InertiaTensorEigvals': 'inertia_tensor_eigvals',
+    'IntensityImage': 'image_intensity',
+    'Label': 'label',
+    'LocalCentroid': 'centroid_local',
+    'MajorAxisLength': 'axis_major_length',
+    'MaxIntensity': 'intensity_max',
+    'MeanIntensity': 'intensity_mean',
+    'MinIntensity': 'intensity_min',
+    'MinorAxisLength': 'axis_minor_length',
+    'Moments': 'moments',
+    'NormalizedMoments': 'moments_normalized',
+    'Orientation': 'orientation',
+    'Perimeter': 'perimeter',
+    'Slice': 'slice',
+    'Solidity': 'solidity',
+    'WeightedCentralMoments': 'moments_weighted_central',
+    'WeightedCentroid': 'centroid_weighted',
+    'WeightedHuMoments': 'moments_weighted_hu',
+    'WeightedLocalCentroid': 'centroid_weighted_local',
+    'WeightedMoments': 'moments_weighted',
+    'WeightedNormalizedMoments': 'moments_weighted_normalized',
+    'bbox_area': 'area_bbox',
+    'convex_area': 'area_convex',
+    'convex_image': 'image_convex',
+    'equivalent_diameter': 'equivalent_diameter_area',
+    'filled_area': 'area_filled',
+    'filled_image': 'image_filled',
+    'intensity_image': 'image_intensity',
+    'local_centroid': 'centroid_local',
+    'major_axis_length': 'axis_major_length',
+    'max_intensity': 'intensity_max',
+    'mean_intensity': 'intensity_mean',
+    'min_intensity': 'intensity_min',
+    'minor_axis_length': 'axis_minor_length',
+    'std_intensity': 'intensity_std',
+    'weighted_centroid': 'centroid_weighted',
+    'weighted_local_centroid': 'centroid_weighted_local',
+    'weighted_moments': 'moments_weighted',
+    'weighted_moments_central': 'moments_weighted_central',
+    'weighted_moments_hu': 'moments_weighted_hu',
+    'weighted_moments_normalized': 'moments_weighted_normalized',
+}
+
+
 def _raw_moments(image: np.ndarray, order: int = 3, spacing=(1.0, 1.0)) -> np.ndarray:
     """Return the raw image moments ``M[p, q] = sum(image * r**p * c**q)``.
 
@@ -174,6 +245,49 @@ def _central_moments(image: np.ndarray, centre: tuple[float, float], order: int 
     row_powers = np.stack([rows ** p for p in range(order + 1)])
     col_powers = np.stack([cols ** q for q in range(order + 1)])
     return row_powers @ np.asarray(image, dtype=float) @ col_powers.T
+
+
+def _normalized_moments(mu: np.ndarray, order: int = 3, spacing=(1.0, 1.0)) -> np.ndarray:
+    """Return the scale-invariant normalised central moments of *mu*.
+
+    ``nu[p, q] = mu[p, q] / scale**(p+q) / mu[0, 0]**((p+q)/2 + 1)``, with the
+    entries below second order left as ``nan`` — they are identically zero or
+    one and carry no shape information, and scikit-image marks them the same way
+    rather than inviting them into a comparison.
+    """
+    nu = np.full_like(np.asarray(mu, dtype=float), np.nan)
+    mu0 = float(np.asarray(mu, dtype=float).ravel()[0])
+    scale = float(min(spacing))
+    for p_ in range(order + 1):
+        for q_ in range(order + 1):
+            total = p_ + q_
+            if total < 2:
+                continue
+            nu[p_, q_] = (mu[p_, q_] / scale ** total) / (mu0 ** (total / 2.0 + 1.0))
+    return nu
+
+
+def _hu_moments(nu: np.ndarray) -> np.ndarray:
+    """Return Hu's seven moment invariants from normalised central moments.
+
+    Invariant to translation, scale and rotation (the seventh flips sign under
+    reflection), which is what makes them a shape *signature* rather than a
+    measurement: two objects of different size and angle compare directly.
+    """
+    n = np.asarray(nu, dtype=float)
+    n20, n02, n11 = n[2, 0], n[0, 2], n[1, 1]
+    n30, n03, n21, n12 = n[3, 0], n[0, 3], n[2, 1], n[1, 2]
+    a, b = n30 + n12, n21 + n03
+    c, d = n30 - 3.0 * n12, 3.0 * n21 - n03
+    out = np.empty(7, dtype=float)
+    out[0] = n20 + n02
+    out[1] = (n20 - n02) ** 2 + 4.0 * n11 ** 2
+    out[2] = c ** 2 + d ** 2
+    out[3] = a ** 2 + b ** 2
+    out[4] = c * a * (a * a - 3.0 * b * b) + d * b * (3.0 * a * a - b * b)
+    out[5] = (n20 - n02) * (a * a - b * b) + 4.0 * n11 * a * b
+    out[6] = d * a * (a * a - 3.0 * b * b) - c * b * (3.0 * a * a - b * b)
+    return out
 
 
 def normalize_spacing(spacing, ndim: int = 2) -> tuple:
@@ -262,6 +376,7 @@ class RegionProperties:
         name: str = "",
         extra_properties: Sequence[Callable] | None = None,
         spacing=None,
+        coordinate_offset: tuple[float, float] = (0.0, 0.0),
     ) -> None:
         """Initialize from a cropped mask and its offset in the full frame."""
         m = np.asarray(mask, dtype=bool)
@@ -278,6 +393,11 @@ class RegionProperties:
                 f"region mask {m.shape}"
             )
         self.spacing = normalize_spacing(spacing, 2)
+        #: Extra shift applied to *coordinates* only — the position of the
+        #: analysed crop inside a larger image. It moves the centroid and the
+        #: pixel coordinates and deliberately leaves the bounding box, the
+        #: slice and every area alone, exactly as scikit-image's ``offset``.
+        self.coordinate_offset = (float(coordinate_offset[0]), float(coordinate_offset[1]))
         #: Physical area of one pixel — the product of the spacings.
         self._pixel_area = float(self.spacing[0] * self.spacing[1])
         self._extra = tuple(extra_properties or ())
@@ -317,7 +437,10 @@ class RegionProperties:
     def coords(self) -> np.ndarray:
         """``(N, 2)`` array of the ``(row, col)`` index of every pixel."""
         rr, cc = np.nonzero(self.image)
-        return np.column_stack([rr + self.offset[0], cc + self.offset[1]])
+        return np.column_stack([
+            rr + self.offset[0] + self.coordinate_offset[0],
+            cc + self.offset[1] + self.coordinate_offset[1],
+        ])
 
     @cached_property
     def bbox(self) -> tuple[int, int, int, int]:
@@ -359,8 +482,8 @@ class RegionProperties:
     def centroid(self) -> tuple[float, float]:
         """Centre of mass of the pixels, as ``(row, col)`` in the full frame."""
         row, col = self.centroid_local
-        return (row + self.offset[0] * self.spacing[0],
-                col + self.offset[1] * self.spacing[1])
+        return (row + self.offset[0] * self.spacing[0] + self.coordinate_offset[0],
+                col + self.offset[1] * self.spacing[1] + self.coordinate_offset[1])
 
     @property
     def centroid_xy(self) -> tuple[float, float]:
@@ -390,6 +513,41 @@ class RegionProperties:
         """Central moments weighted by the intensity image."""
         return _central_moments(self._weights, self.centroid_weighted_local,
                                 spacing=self.spacing)
+
+    @cached_property
+    def moments_normalized(self) -> np.ndarray:
+        """Scale-invariant normalised central moments of the mask."""
+        return _normalized_moments(self.moments_central, spacing=self.spacing)
+
+    @cached_property
+    def moments_weighted_normalized(self) -> np.ndarray:
+        """Normalised central moments weighted by the intensity image."""
+        return _normalized_moments(self.moments_weighted_central, spacing=self.spacing)
+
+    @cached_property
+    def moments_hu(self) -> np.ndarray:
+        """Hu's seven moment invariants of the mask.
+
+        Invariant to translation, scale and rotation, so two objects of
+        different size and angle compare directly. Only defined at unit
+        spacing — the normalisation divides by a single scale, which is not
+        what an anisotropic pixel does — and scikit-image refuses the same case.
+        """
+        self._require_unit_spacing("moments_hu")
+        return _hu_moments(self.moments_normalized)
+
+    @cached_property
+    def moments_weighted_hu(self) -> np.ndarray:
+        """Hu's seven invariants of the intensity-weighted moments."""
+        self._require_unit_spacing("moments_weighted_hu")
+        return _hu_moments(self.moments_weighted_normalized)
+
+    def _require_unit_spacing(self, what: str) -> None:
+        """Refuse a scaled Hu invariant rather than return a meaningless one."""
+        if self.spacing != (1.0, 1.0):
+            raise NotImplementedError(
+                f"`{what}` supports spacing = (1, 1) only; got {self.spacing}."
+            )
 
     @cached_property
     def inertia_tensor(self) -> np.ndarray:
@@ -723,8 +881,8 @@ class RegionProperties:
     def centroid_weighted(self) -> tuple[float, float]:
         """Intensity-weighted centre of mass, as ``(row, col)`` in the full frame."""
         row, col = self.centroid_weighted_local
-        return (row + self.offset[0] * self.spacing[0],
-                col + self.offset[1] * self.spacing[1])
+        return (row + self.offset[0] * self.spacing[0] + self.coordinate_offset[0],
+                col + self.offset[1] * self.spacing[1] + self.coordinate_offset[1])
 
     # --- interoperability --------------------------------------------------
     def to_roi(self) -> MaskROI:
@@ -737,11 +895,32 @@ class RegionProperties:
         return MaskROI(self.image, offset=self.offset, name=self.name or str(self.label))
 
     def __getitem__(self, key: str) -> Any:
-        """Return a property by name, as scikit-image's region objects allow."""
+        """Return a property by name, as scikit-image's region objects allow.
+
+        scikit-image's historical names work too, so code written against an
+        older release keeps running.
+        """
         try:
-            return getattr(self, key)
+            return getattr(self, LEGACY_PROPERTY_NAMES.get(key, key))
         except AttributeError as exc:
             raise KeyError(key) from exc
+
+    def __getattr__(self, name: str) -> Any:
+        """Resolve a historical scikit-image property name to its modern one.
+
+        Private and dunder lookups are refused immediately. ``__getattr__`` runs
+        for *every* miss, including the ones Python, copy, pickle and Qt make
+        behind the scenes (``__deepcopy__``, ``__getstate__``, ``__len__``), and
+        answering those through a lookup table — or worse, touching a module
+        global that interpreter shutdown has already set to ``None`` — turns a
+        routine probe into an error from somewhere unrelated.
+        """
+        if name.startswith("_"):
+            raise AttributeError(name)
+        modern = LEGACY_PROPERTY_NAMES.get(name) if LEGACY_PROPERTY_NAMES else None
+        if modern is None or modern == name:
+            raise AttributeError(name)
+        return getattr(self, modern)
 
     def to_dict(
         self, properties: Sequence[str] | None = None, separator: str = "-"
@@ -809,6 +988,7 @@ def _measure(
     name: str,
     extra_properties: Sequence[Callable] | None,
     spacing=None,
+    coordinate_offset=(0.0, 0.0),
 ) -> RegionProperties | None:
     """Crop a full-frame mask to its region and measure it; ``None`` if empty."""
     rows = np.flatnonzero(mask.any(axis=1))
@@ -825,6 +1005,7 @@ def _measure(
         name=name,
         extra_properties=extra_properties,
         spacing=spacing,
+        coordinate_offset=coordinate_offset,
     )
 
 
@@ -838,6 +1019,7 @@ def regionprops(
     extent: Extent = None,
     background: int = 0,
     spacing=None,
+    offset=None,
 ) -> list[RegionProperties]:
     """Measure every labelled region, as ``skimage.measure.regionprops`` does.
 
@@ -921,6 +1103,7 @@ def regionprops(
             props = _measure(
                 roi.to_mask(grid, extent, intensity), intensity, i,
                 getattr(roi, "name", ""), extra_properties, spacing,
+                offset or (0.0, 0.0),
             )
             if props is not None:
                 out.append(props)
@@ -935,7 +1118,8 @@ def regionprops(
             f"{labels.shape}"
         )
     if labels.dtype == bool:
-        props = _measure(labels, intensity, 1, "", extra_properties, spacing)
+        props = _measure(labels, intensity, 1, "", extra_properties, spacing,
+                         offset or (0.0, 0.0))
         return [props] if props is not None else []
 
     # ``find_objects`` gives every label's bounding box in one pass, so each
@@ -948,14 +1132,19 @@ def regionprops(
         # A float label image is ambiguous — 1.0 and 1.0000001 are different
         # objects or the same one depending on who you ask — and casting it
         # silently would merge or split regions. scikit-image refuses it too.
-        raise ValueError(
+        raise TypeError(
             f"a label image must have an integer dtype; got {labels.dtype}. "
             "Pass a boolean mask for a single region, or round the labels."
         )
     if labels.min() < 0:
+        # The one deliberate difference from scikit-image, which accepts a
+        # negative label and then *silently drops* that region: it never appears
+        # in the results and nothing says so. Losing an object without a word is
+        # worse than refusing the input, so this refuses.
         raise ValueError(
             "label images must not hold negative values; got "
-            f"{int(labels.min())}. Use `background=` to nominate a different "
+            f"{int(labels.min())}. scikit-image accepts these and silently "
+            "discards the region. Use `background=` to nominate a different "
             "background label."
         )
 
@@ -975,6 +1164,7 @@ def regionprops(
             name=str(value),
             extra_properties=extra_properties,
             spacing=spacing,
+            coordinate_offset=offset or (0.0, 0.0),
         )
         if props.area:
             out.append(props)

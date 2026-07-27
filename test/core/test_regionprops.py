@@ -103,10 +103,13 @@ def test_negative_labels_are_refused_rather_than_dropped():
 
 
 def test_a_float_label_image_is_refused():
-    """Casting it silently would merge or split objects, depending on rounding."""
+    """Casting it silently would merge or split objects, depending on rounding.
+
+    ``TypeError`` is what scikit-image raises, so code that catches it ports.
+    """
     labels = np.zeros((4, 4), dtype=float)
     labels[0, 0] = 1.0
-    with pytest.raises(ValueError, match="integer dtype"):
+    with pytest.raises(TypeError, match="integer dtype"):
         regionprops(labels)
 
 
@@ -570,3 +573,121 @@ def test_a_symmetric_region_has_no_orientation_to_agree_on():
         assert ours.axis_minor_length == pytest.approx(theirs.axis_minor_length)
         # Degenerate: equal principal moments, so no axis is preferred.
         assert ours.inertia_tensor[0, 0] == pytest.approx(ours.inertia_tensor[1, 1])
+
+
+# --- full scikit-image parity ------------------------------------------------
+def test_every_scikit_image_property_exists_here(blobs):
+    """The compatibility claim, checked against scikit-image's own registry.
+
+    ``skimage.measure._regionprops.PROPS`` maps every name the library answers
+    to — historical and modern — onto its canonical one. Nothing in the modern
+    set may be missing, or ported code fails on an attribute that reads as
+    supported everywhere else.
+    """
+    from skimage.measure._regionprops import PROPS
+
+    labels, intensity = blobs
+    props = regionprops(labels, intensity_image=intensity)[0]
+    missing = sorted(n for n in set(PROPS.values()) if not hasattr(props, n))
+    assert not missing, f"scikit-image properties with no counterpart: {missing}"
+
+
+@pytest.mark.parametrize("name", ["moments_normalized", "moments_weighted_normalized",
+                                  "moments_hu", "moments_weighted_hu"])
+def test_the_moment_invariants_match_skimage(blobs, name):
+    """Hu's invariants are a shape *signature*: same object, different size and
+    angle, same numbers. They are only useful if they are the same numbers
+    everyone else computes."""
+    labels, intensity = blobs
+    theirs = {p.label: p for p in skimage_measure.regionprops(
+        labels, intensity_image=intensity)}
+    ours = {p.label: p for p in regionprops(labels, intensity_image=intensity)}
+    for key in theirs:
+        a = np.asarray(getattr(ours[key], name), dtype=float)
+        b = np.asarray(getattr(theirs[key], name), dtype=float)
+        np.testing.assert_array_equal(np.isnan(a), np.isnan(b))
+        finite = ~np.isnan(b)
+        np.testing.assert_allclose(a[finite], b[finite], rtol=1e-10, atol=1e-12)
+
+
+def test_hu_invariants_are_refused_under_a_spacing():
+    """The normalisation divides by one scale, which is not what an anisotropic
+    pixel does; scikit-image refuses the same case."""
+    labels = np.zeros((20, 20), dtype=int)
+    labels[4:10, 5:14] = 1
+    props = regionprops(labels, spacing=(1.0, 2.0))[0]
+    with pytest.raises(NotImplementedError, match="spacing"):
+        _ = props.moments_hu
+
+
+def test_an_offset_moves_the_coordinates_and_nothing_else():
+    """`offset` says where an analysed crop sat in a larger image."""
+    labels = np.zeros((20, 20), dtype=int)
+    labels[3:9, 4:12] = 1
+
+    plain = regionprops(labels)[0]
+    shifted = regionprops(labels, offset=(100, 200))[0]
+    theirs = skimage_measure.regionprops(labels, offset=(100, 200))[0]
+
+    assert shifted.centroid == pytest.approx(theirs.centroid)
+    np.testing.assert_array_equal(shifted.coords, theirs.coords)
+    # The box, the slice and the area describe the crop, not where it came from.
+    assert shifted.bbox == plain.bbox == theirs.bbox
+    assert shifted.area == plain.area
+
+
+@pytest.mark.parametrize(
+    "old, modern",
+    [("Area", "area"), ("BoundingBox", "bbox"), ("max_intensity", "intensity_max"),
+     ("weighted_centroid", "centroid_weighted"), ("equivalent_diameter",
+      "equivalent_diameter_area"), ("major_axis_length", "axis_major_length")],
+)
+def test_a_historical_scikit_image_name_still_answers(blobs, old, modern):
+    """There is a lot of code written against older releases; refusing its
+    property names only makes it fail for no reason."""
+    labels, intensity = blobs
+    props = regionprops(labels, intensity_image=intensity)[0]
+    assert props[old] is not None
+    np.testing.assert_allclose(
+        np.asarray(props[old], dtype=float),
+        np.asarray(getattr(props, modern), dtype=float),
+    )
+    assert np.allclose(np.asarray(getattr(props, old), dtype=float),
+                       np.asarray(getattr(props, modern), dtype=float))
+
+
+def test_every_historical_name_resolves(blobs):
+    from chisurf.core.roi.props import LEGACY_PROPERTY_NAMES
+
+    labels, intensity = blobs
+    props = regionprops(labels, intensity_image=intensity)[0]
+    unresolved = sorted(n for n in LEGACY_PROPERTY_NAMES if not hasattr(props, n))
+    assert not unresolved, unresolved
+
+
+def test_a_historical_name_works_in_the_table(blobs):
+    labels, intensity = blobs
+    table = regionprops_table(labels, intensity_image=intensity,
+                              properties=("label", "Area", "max_intensity"))
+    modern = regionprops_table(labels, intensity_image=intensity,
+                               properties=("label", "area", "intensity_max"))
+    np.testing.assert_allclose(table["Area"], modern["area"])
+    np.testing.assert_allclose(table["max_intensity"], modern["intensity_max"])
+
+
+def test_a_negative_label_is_refused_where_skimage_loses_it():
+    """The one deliberate divergence, and the reason for it.
+
+    scikit-image accepts a negative label and then never reports that region —
+    it is dropped with no warning, so an object disappears from the results
+    while the analysis reads as complete.
+    """
+    labels = np.zeros((10, 10), dtype=int)
+    labels[2:5, 2:5] = 1
+    labels[7:9, 7:9] = -3
+
+    found = skimage_measure.regionprops(labels)
+    assert [p.label for p in found] == [1], "skimage's behaviour has changed"
+
+    with pytest.raises(ValueError, match="negative"):
+        regionprops(labels)

@@ -2,6 +2,39 @@
 
 ## 2026-07-27
 
+* **Full scikit-image parity for region properties.** The remaining gaps were
+  four moment families, `offset=`, and the historical property names. All in:
+  `moments_normalized`, `moments_weighted_normalized`, `moments_hu` and
+  `moments_weighted_hu` (Hu's seven invariants, agreeing to 7e-24); `offset=`,
+  which shifts *coordinates* only and deliberately leaves the bounding box,
+  the slice and every area alone, exactly as scikit-image does; and the **61
+  historical names** — `Area`, `BoundingBox`, `max_intensity`,
+  `major_axis_length` — resolved on attribute access, item access and in
+  `regionprops_table`, because there is a lot of code written against older
+  releases and refusing its property names only makes it fail for no reason.
+  A test asserts against scikit-image's own `PROPS` registry that nothing in
+  the modern set is missing, so this cannot drift.
+
+  Two behaviours were aligned rather than left different: a float label image
+  now raises `TypeError` as scikit-image does, and the Hu invariants refuse a
+  spacing (their normalisation divides by one scale, which is not what an
+  anisotropic pixel does).
+
+  **One deliberate divergence**, now tested and explained: a negative label is
+  refused here, where scikit-image accepts it and then *silently drops* that
+  region — measured, not assumed: a frame with labels `{1, -3}` comes back from
+  scikit-image reporting only label 1, with the second object gone and nothing
+  said. Losing an object without a word is worse than refusing the input.
+
+  Writing the alias resolver also produced a lesson worth keeping: a
+  `__getattr__` must refuse private and dunder names immediately. It runs for
+  *every* miss, including the probes Python, copy, pickle and Qt make behind the
+  scenes, and answering those through a lookup table — or touching a module
+  global that interpreter shutdown has set to `None` — turns a routine probe
+  into an error from somewhere unrelated.
+
+  16 more tests; `test_regionprops` is 90 green, microscopy 228.
+
 * **chimol: every button swept; three representations were menu-unreachable and
   the plane was a grey sheet.** Asked to check all the GUI buttons and to look at
   the representations chimol has beyond PyMOL's.
