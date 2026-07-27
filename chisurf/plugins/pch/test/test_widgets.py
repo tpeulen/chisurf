@@ -1,3 +1,5 @@
+import unittest.mock
+
 class TestPCHApp:
     def test_creation(self, qapp):
         from chisurf.plugins.pch.gui.tool import PCHApp
@@ -165,3 +167,57 @@ class TestPCHBackgroundCompute:
         widget._on_compute()
         assert widget.Error.compute_failed.is_shown
         assert called == []
+
+
+class TestPCHReviewFixes:
+    """Defects found by review of the migrated tool (RF-366, RF-367, RF-371)."""
+
+    def test_more_than_one_species_can_be_configured(self, qapp):
+        """`len()` of an int raised out of the spin box's slot, so multi-species
+        PCH fitting had never been reachable from this GUI."""
+        from chisurf.plugins.pch.gui.tool import PCHApp
+
+        widget = PCHApp()
+        widget.spin_comp.setValue(3)
+        assert len(widget.eps_boxes) == 3
+        assert len(widget.N_boxes) == 3
+        assert widget.species_layout.rowCount() == 6
+
+    def test_shrinking_the_species_count_keeps_the_layout_consistent(self, qapp):
+        from chisurf.plugins.pch.gui.tool import PCHApp
+
+        widget = PCHApp()
+        widget.spin_comp.setValue(3)
+        widget.spin_comp.setValue(2)
+        assert len(widget.eps_boxes) == 2
+        assert widget.species_layout.rowCount() == 4
+
+    def test_a_failed_load_disarms_the_tool(self, qapp):
+        """A non-modal error must be paired with a state that matches it.
+
+        Otherwise Compute quietly re-analyses the previous file underneath a
+        standing "Cannot load the file" line.
+        """
+        from chisurf.plugins.pch.gui.tool import PCHApp
+
+        widget = PCHApp()
+        widget._filename = "good.ptu"
+        widget.le_file.setText("good.ptu")
+        widget.action_compute.setEnabled(True)
+        widget._client.load_tttr = lambda path: (_ for _ in ()).throw(OSError("nope"))
+        with unittest.mock.patch(
+            "chisurf.plugins.pch.gui.tool.QFileDialog.getOpenFileName",
+            return_value=("bad.ptu", ""),
+        ):
+            widget._on_load()
+        assert widget.Error.load_failed.is_shown
+        assert widget._filename == ""
+        assert widget.le_file.text() == ""
+        assert not widget.action_compute.isEnabled()
+
+    def test_a_completed_save_is_not_a_standing_condition(self, qapp):
+        """An event has no persisting cause, so it belongs in the transient line."""
+        from chisurf.plugins.pch.gui.tool import PCHApp
+
+        widget = PCHApp()
+        assert not hasattr(widget.Information, "saved")

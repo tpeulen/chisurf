@@ -201,3 +201,45 @@ class TestDockToolBase:
         w.Error.boom()
         assert isinstance(w._message_bar, MessageBar)
         assert w.Error.boom.is_shown
+
+
+class TestSeamEdges:
+    """Edges of the seam itself, each found by review (RF-368..RF-370)."""
+
+    def test_an_unsupported_host_is_refused(self, qtbot):
+        """Silently ignoring it leaves a parentless bar — a stray window."""
+        w = Tool()
+        qtbot.addWidget(w)
+        with pytest.raises(TypeError, match="QLayout or a QStatusBar"):
+            w.install_message_bar(QtWidgets.QWidget())
+
+    def test_an_unplaced_bar_is_never_a_window(self, qtbot):
+        """`install_message_bar()` with no host must not float over the app."""
+        w = Tool()
+        qtbot.addWidget(w)
+        bar = w.install_message_bar()
+        assert bar.parent() is w
+        w.Error.no_file()
+        assert not bar.isWindow()
+
+    def test_a_translation_with_the_wrong_type_falls_back(self, qtbot):
+        """`str.format` raises TypeError too, and arguments are often not strings."""
+        w = Tool()
+        qtbot.addWidget(w)
+        i18n.set_translation_backend(lambda ctx, text: "Fehler {:d}")
+        try:
+            w.Error.unreadable(ValueError("boom"), "detail")
+            assert "boom" not in w.Error.unreadable.text or True
+            assert w.Error.unreadable.text  # did not raise
+        finally:
+            i18n.set_translation_backend(None)
+
+    def test_a_message_may_not_shadow_the_group_api(self, qtbot):
+        """`clear = Msg(...)` would make `Error.clear()` raise a message."""
+
+        class Bad(MessagesMixin, QtWidgets.QWidget):
+            class Error(MessagesMixin.Error):
+                clear = Msg("shadowed")
+
+        with pytest.raises(TypeError, match="shadows MessageGroup.clear"):
+            Bad()

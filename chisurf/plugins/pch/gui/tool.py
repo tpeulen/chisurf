@@ -120,11 +120,6 @@ class PCHApp(MessagesMixin, QMainWindow):
         fit_failed = Msg("The fit failed: {}")
         save_failed = Msg("Saving failed: {}")
 
-    class Information(MessagesMixin.Information):
-        """Completed actions worth stating without interrupting."""
-
-        saved = Msg("Results saved as {}.npz / .csv / .txt and two PNGs.")
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Photon Counting Histogram (PCH)")
@@ -325,7 +320,13 @@ class PCHApp(MessagesMixin, QMainWindow):
     def _update_species_inputs(self, count: int):
         old_eps = [b.value() for b in getattr(self, "eps_boxes", [])]
         old_Ns = [b.value() for b in getattr(self, "N_boxes", [])]
-        for _ in range(len(self.species_layout.count()), 0, -1):
+        # `QFormLayout.count()` is an int, so `len()` of it raised out of this
+        # slot before a single row was rebuilt — leaving the spin box saying two
+        # species while the boxes still described one, which then sent a
+        # length-1 epsilon list with n_components=2 and failed in the write-back
+        # loop. Multi-species PCH fitting has never worked from this GUI.
+        # `rowCount()`, not `count()`: the latter counts *items*, two per row.
+        for _ in range(self.species_layout.rowCount(), 0, -1):
             self.species_layout.removeRow(0)
         self.eps_boxes = []
         self.N_boxes = []
@@ -367,6 +368,18 @@ class PCHApp(MessagesMixin, QMainWindow):
                 f"Loaded: {path} ({info.get('n_photons', 0):,} photons)"
             )
         except Exception as e:
+            # A non-modal error has to be paired with a state that matches it.
+            # The modal this replaced forced an acknowledgement; a message in
+            # the status bar does not, so leaving the previous file's name,
+            # results and enabled actions in place would let Compute quietly
+            # re-analyse the old data underneath a "Cannot load the file" line.
+            self._filename = ""
+            self._result = None
+            self._fit_result = None
+            self.le_file.clear()
+            self.action_compute.setEnabled(False)
+            self.action_fit.setEnabled(False)
+            self.action_save.setEnabled(False)
             self.Error.load_failed(e)
 
     def _on_compute(self):
@@ -478,8 +491,12 @@ class PCHApp(MessagesMixin, QMainWindow):
         try:
             self._save_outputs(fname_base)
             self.Error.save_failed.clear()
-            self.Information.saved(fname_base)
-            self.statusBar().showMessage(f"Saved results to {fname_base}.*")
+            # A completed save is an *event*: it has no persisting cause, so it
+            # is reported by the transient status line and not as a declared
+            # condition that would outlive it for the rest of the session.
+            self.statusBar().showMessage(
+                f"Saved {fname_base}.npz / .csv / .txt and two PNGs"
+            )
         except Exception as e:
             self.Error.save_failed(e)
 

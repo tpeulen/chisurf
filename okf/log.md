@@ -2,6 +2,51 @@
 
 ## 2026-07-27
 
+* **Six review findings on the declared-messages work, all fixed (RF-366..RF-371).**
+  Three are in the seam itself. `install_message_bar` built the bar **parentless**
+  and only reparented it when the host was a layout or a status bar, so the
+  documented `host=None` call — or the natural mistake of passing the container
+  *widget* instead of its layout — left a top-level window that appeared,
+  borderless and uncloseable, over the application the moment a message was
+  raised; the bar is now parented to the mixin's widget *and* an unsupported
+  host raises rather than being silently ignored. `BoundMsg.text` caught
+  `(IndexError, KeyError, ValueError)` where `str.format` also raises
+  `TypeError` and `AttributeError` — reachable precisely because message
+  arguments are routinely not strings (the first consumer passes an exception
+  object), so the guard whose whole job is "a bad catalogue cannot raise inside
+  a repaint" had a hole in it; it now catches `Exception`, because a message
+  text is never worth an exception. And a declaration named after the group's
+  own API silently replaced it: `clear = Msg(...)` made `self.Error.clear()`
+  *raise* a message instead of retracting the group. Binding now refuses the
+  collision by name — cheap, given that the point of declaring conditions is
+  that the set is inspectable.
+  Two are in the migrated tool and one of them is the more interesting result.
+  A failed load left `_filename`, the *File:* field and the enabled actions on
+  the **previous** file, so Compute would quietly re-analyse the old data under
+  a standing "Cannot load the file" line. The review's framing is the lesson:
+  this is a regression *in kind* from the modal it replaced, because a dialog at
+  least forced an acknowledgement before the user could press anything — a
+  non-modal message has to be paired with a state that cannot act on the stale
+  file. The other: `Information.saved` was an **event** declared as a condition.
+  Nothing ever retracted it, so a "Results saved" line outlived the save for the
+  rest of the session and then rode along as the `(+1)` on every real condition
+  — and the transient `showMessage` one line below already said the same thing
+  in the right shape. Dropped; the tool declares no `Information` group at all.
+  Also fixed while there, pre-existing and S1: `_update_species_inputs` called
+  `len()` on `QFormLayout.count()`, which is an `int`. It raised out of the spin
+  box's own slot before a single row was rebuilt, leaving the box saying two
+  species while `eps_boxes` still described one — so the fit then sent
+  `n_components=2` with a length-1 epsilon list and died in the write-back loop,
+  swallowed into `fit_failed`. **Multi-species PCH fitting has never worked from
+  this GUI.** `rowCount()` (rows, not items — `count()` is 2 per row, so even
+  the un-`len`ed form would have over-removed) fixes it.
+  Six new tests; 14 in the PCH suite and 23 in the messages suite pass.
+  Note: the status flips and fix notes are written into
+  [findings](/reviews/findings.md) in the working tree but are **not** in this
+  commit — the blocks they live in are the review job's own uncommitted
+  content, and committing them would sweep its work into mine.
+
+
 * **The progress seam grew the half that actually runs the work.** Third harvest
   from the [mining note](/references/orange3-mining.md), and the cheap one,
   because the *display* half was already unified: `ChiSurfProgress` resolves

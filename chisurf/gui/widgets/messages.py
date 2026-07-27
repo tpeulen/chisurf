@@ -135,13 +135,17 @@ class BoundMsg:
         template = i18n.tr(self._unbound.format_string)
         try:
             return template.format(*self._args, **self._kwargs)
-        except (IndexError, KeyError, ValueError):
+        except Exception:
             # A catalogue with the wrong placeholders must not take the tool
             # down; show the untranslated text rather than raising from a
-            # repaint.
+            # repaint. `Exception`, not a list: `str.format` raises `TypeError`
+            # for a numeric spec against a non-number and `AttributeError` for
+            # an attribute lookup, and message arguments are routinely not
+            # strings — an exception object, most often. A message text is never
+            # worth an exception.
             try:
                 return self._unbound.format_string.format(*self._args, **self._kwargs)
-            except (IndexError, KeyError, ValueError):
+            except Exception:
                 return self._unbound.format_string
 
     def __call__(self, *args, **kwargs) -> "BoundMsg":
@@ -189,6 +193,17 @@ class MessageGroup:
                     value.name = name
                     self._messages[name] = BoundMsg(value, self, name)
         for name, bound in self._messages.items():
+            if hasattr(MessageGroup, name):
+                # A declaration named after the group's own API would silently
+                # replace it: `clear = Msg(...)` makes `self.Error.clear()`
+                # *raise* a message instead of retracting the group, and
+                # `widget` would break `notify_changed`. The point of declaring
+                # conditions is that the set is inspectable, so a collision is
+                # cheap to reject here rather than to debug later.
+                raise TypeError(
+                    f"{type(self).__name__}.{name} shadows MessageGroup.{name}; "
+                    "rename the declared message"
+                )
             setattr(self, name, bound)
 
     @property
@@ -349,8 +364,8 @@ class MessagesMixin:
         ----------
         host : QLayout or QStatusBar, optional
             Where to put the bar. A layout gets it appended; a status bar gets it
-            as a stretched **permanent** widget — a standing condition must not
-            be hidden by the transient ``showMessage`` text tools already use for
+            as a **permanent** widget — a standing condition must not be hidden
+            by the transient ``showMessage`` text tools already use for
             "Loaded: …". Passing nothing creates the bar without placing it,
             which is what a caller does when it wants to position the widget
             itself.
@@ -359,9 +374,27 @@ class MessagesMixin:
         -------
         MessageBar
             The bar, also stored as ``self._message_bar``.
+
+        Raises
+        ------
+        TypeError
+            If *host* is neither a layout nor a status bar. Ignoring it would be
+            worse than refusing: an unplaced bar stays parentless, so the first
+            message turns it into a **stray top-level window** carrying the
+            tool's error text.
         """
-        bar = MessageBar()
+        # Parented to the host widget when there is one, so an unplaced bar is
+        # never a window of its own; the layout/status-bar calls below reparent
+        # it anyway.
+        bar = MessageBar(self if isinstance(self, QtWidgets.QWidget) else None)
+        bar.setVisible(False)
         self._message_bar = bar
+        if host is not None and not isinstance(
+                host, (QtWidgets.QLayout, QtWidgets.QStatusBar)):
+            raise TypeError(
+                f"message bar host must be a QLayout or a QStatusBar, "
+                f"not {type(host).__name__}"
+            )
         if isinstance(host, QtWidgets.QStatusBar):
             # No stretch: a stretched permanent widget squeezes the transient
             # `showMessage` area to nothing, and tools use that area for "Loaded:
