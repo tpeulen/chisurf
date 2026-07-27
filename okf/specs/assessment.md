@@ -55,7 +55,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
 | [DATA-04](#data-04) | S2 | DATA | MMFDB | `add_processing_run` partial-write; MD5 mislabeled as checksum | ~~REPORTED~~ ✅ FIXED |
 | [DATA-05](#data-05) | S2 | DATA | MMFDB | External-tool runs not first-class in provenance (no `command_line`/`exit_code` cols, no `external_tool` op type, inconsistent op_type validators) | 🚧 PARTIAL (op_type validators reconciled onto the extensible vocabulary; columns + op type + actor flag open) |
-| [DATA-06](#data-06) | S3 | DATA | MMFDB | Deposition is one-way: `archive.zip.export` exists but no importer; bundler reads `file_path` not object store; mmCIF export is FLR-only | VERIFIED |
+| [DATA-06](#data-06) | S3 | DATA | MMFDB | Deposition is one-way: `archive.zip.export` exists but no importer; bundler reads `file_path` not object store; mmCIF export is FLR-only | 🚧 PARTIAL (CIF export exposed on `api.py` + `cli.py`; importer, object-store bundler, general CIF path open) |
 | [INC-01](#inc-01) | S2 | INC | Core | Three overlapping instance registries with different lifetimes | REPORTED |
 | [INC-02](#inc-02) | S2 | INC | Core | `@register` renames classes → fragile name-based `isinstance` | REPORTED |
 | [INC-03](#inc-03) | S3 | INC | Server/MMFDB | Legacy flat/`mmfdb.*` aliases coexist with namespaced/`mmfdb.v1.*` | 🚧 PARTIAL (ChiSurf server surface is namespaced-only; `mmfdb.*` vs `mmfdb.v1.*` open) |
@@ -74,7 +74,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-13](#bug-13) | S3 | BUG | Plugins | The plugin-metadata AST reader returns 3 values where every caller unpacks 5 when the source will not decode as UTF-8, so a plugin declaring another source encoding disappears from the menu and from `csc` without a word | ~~VERIFIED~~ ✅ FIXED |
 
-40 findings (28 FIXED): 3 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
+40 findings (28 FIXED): 2 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 5 PARTIAL, 1 OPEN.
 Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
@@ -340,6 +340,7 @@ The single largest source of non-uniformity across the codebase (see [core steer
 
 ### DATA-06
 **S3 · Deposition is export-only (no round-trip importer).** [mmfdb steering](mmfdb.md#steering-notes). `archive.zip.export` (`admin/backend/measurement_services.py:1906`) packs a self-contained deposition ZIP — DB snapshot + `provenance_graph.json` + manifest + native `external_data/` files — and a second instance can adopt the snapshot wholesale (verified round-trip in `modules/mmfdb/examples/mmfdb_07_deposition.ipynb`). But there is **no `archive.zip.import` handler** to merge a deposition into an existing instance or restore its object-store blobs from `external_data/`; the bundler copies native files from `node.file_path` rather than from the content-addressed object store; and mmCIF record export (`repository.export_flr_cif`) is **FLR-domain-only** and not exposed via `api.py`/`cli.py` — there is no general dictionary-driven metadata→mmCIF path. → Add an object-store-aware bundle importer and a general CIF export path.
+- 🚧 **CIF export reaches the public boundary** (2026-07-28, mmfdb `1cf7a44`): `mmfdb.api.export_cif` resolves the analysis (the first recorded one when none is named), checks read access on the sample that owns it — no ACL means admin-only, the same rule the rest of `api.py` applies — and returns either the CIF text or the path it wrote. `mmfdb export cif` wraps it, taking a session token from `--token` / `MMFDB_TOKEN`, so the export is reachable headlessly without driving `MFDatabase` directly. The export is still FLR-domain-only; a general dictionary-driven metadata→mmCIF path and the object-store-aware bundle importer remain open. Tests: `modules/mmfdb/tests/test_api_cif_export.py` (+10).
 
 ## Inconsistencies / legacy overhang (INC)
 

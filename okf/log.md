@@ -2,6 +2,19 @@
 
 ## 2026-07-28
 
+* **DATA-06 (partial): mmCIF record export reaches the public API and the CLI.**
+  Exporting a flrCIF record was possible only through `MFDatabase.export_flr_cif`
+  or the admin-only `sample.export` RPC handler, so a standalone consumer had to
+  drive the repository directly. Added `mmfdb.api.export_cif` — it resolves the
+  analysis (the first recorded one when none is named), checks read access on the
+  owning sample, and returns the CIF text or the path it wrote — plus an
+  `mmfdb export cif` command that takes a session token from `--token` /
+  `MMFDB_TOKEN`. The export is still FLR-domain-only; the object-store-aware
+  bundle importer and a general dictionary-driven metadata→mmCIF path remain
+  open. mmfdb `1cf7a44`, 10 tests in
+  `modules/mmfdb/tests/test_api_cif_export.py`; backlog row updated in
+  [assessment](/specs/assessment.md#data-06).
+
 * **GUI test: molecule-wise MLE, a lifetime per segmented object.** Drove
   `chisurf.plugins.microscopy.sm_image_mle` headlessly on a real confocal HT3
   (15.6 M photons, 31 250 micro-time channels) with a mirror-scan IRF — files
