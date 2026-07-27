@@ -351,7 +351,20 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._settings_key = settings_key
         self._status_logger_name = status_logger
         self._status_log_handler: _StatusLogHandler | None = None
+        #: Set by a Next click that had to wait for the step's run to finish.
+        self._pending_advance = False
+        #: True while the current step has background work in flight.
+        self._steps_blocked = False
+        #: Row currently shown, so a refused switch can be snapped back.
+        self._shown_index = -1
         self._build_ui(navigation_width)
+        # Bound methods of a QObject: PyQt drops these connections when this
+        # window is destroyed, so a late task cannot call into a dead shell.
+        from chisurf.gui.task import task_events
+
+        events = task_events()
+        events.started.connect(self._on_task_started)
+        events.finished.connect(self._on_task_finished)
         if status_logger:
             self._install_status_log_handler(status_logger)
         if settings_key:
@@ -695,43 +708,87 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         return False
 
     def _on_next_clicked(self) -> None:
-        """Next button: process all loaded files in this step, then advance."""
+        """Next button: process all loaded files in this step, then advance.
+
+        "Then" is literal. Starting the step's run and switching panel in the
+        same turn left the finished analysis plotting into a panel the shell had
+        already left while the next one was being built, which crashes the
+        application (SIGSEGV inside ``QCoreApplication::postEvent``, reached
+        through pyqtgraph's Python-level signals). So the click starts the run
+        and *arms* the advance; :meth:`_on_task_finished` performs it when the
+        work is done. The GUI is never blocked — the step's own progress and
+        Cancel keep working — but step changes are.
+        """
+        if self._step_is_busy():
+            # Already working (a panel re-computes on its own when settings or
+            # the folder change, so this is the common case for a quick click):
+            # take the click as "go on when this finishes" rather than dropping
+            # it, and do not start a second run on top of the first.
+            self._pending_advance = True
+            return
         self.process_current_step()
-        self._wait_for_current_step()
-        # Re-assert activation after any processing dialog/embed churn (macOS
-        # can drop the window behind others when a panel is (re)shown).
+        if self._step_is_busy():
+            self._pending_advance = True
+            return
+        # Nothing to wait for. Re-assert activation after any processing
+        # dialog/embed churn (macOS can drop the window behind others when a
+        # panel is (re)shown).
         self._restore_active_window()
         self.goto_next_step()
 
-    def _wait_for_current_step(self, timeout: float = 600.0) -> None:
-        """Block (pumping events) until the step's background work is done.
-
-        Advancing while the run is still in flight left the finished analysis
-        plotting into a panel the shell had already switched away from, with the
-        next panel being constructed at the same time — a reliable crash: with
-        both halves overlapping, a burst run reproduces a SIGSEGV inside
-        ``QCoreApplication::postEvent`` within a few Next clicks, and neither
-        half alone ever does. Waiting also matches what the button says it does
-        ("process all loaded files in this step, *then* go to the next step").
-
-        Parameters
-        ----------
-        timeout : float
-            Seconds to wait before advancing anyway, so a wedged task cannot
-            trap the user in a step.
-        """
+    # ── busy gating ─────────────────────────────────────────────────────────
+    def _step_is_busy(self) -> bool:
+        """Whether the current step has background work in flight."""
         from chisurf.gui.task import running_tasks_under
 
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            tasks = running_tasks_under(self._current_panel_instance())
-            if not tasks:
-                return
-            for task in tasks:
-                task.wait(timeout=max(0.0, deadline - time.monotonic()))
+        return bool(running_tasks_under(self._current_panel_instance()))
+
+    def _on_task_started(self, task) -> None:
+        """Block step changes while this shell's panel is working."""
+        if self._step_is_busy():
+            self._set_steps_blocked(True)
+
+    def _on_task_finished(self, task) -> None:
+        """Unblock, and perform the advance a Next click armed."""
+        if self._step_is_busy():
+            return  # something else in this step is still going
+        self._set_steps_blocked(False)
+        if self._pending_advance:
+            self._pending_advance = False
+            self._restore_active_window()
+            self.goto_next_step()
+
+    def _set_steps_blocked(self, blocked: bool) -> None:
+        """Enable/disable the step selector and the stepper buttons.
+
+        Switching step *while a run is in flight* is the crash above, and the
+        user can reach it by hand as easily as by clicking Next — so the shell
+        simply refuses it for the duration, rather than leaving a way to walk
+        into it. Everything else (the panel, its Cancel button, the status bar)
+        stays live.
+        """
+        self._steps_blocked = bool(blocked)
+        enabled = not blocked
+        for widget in (getattr(self, "nav_list", None),
+                       getattr(self, "_btn_prev", None),
+                       getattr(self, "_btn_next", None)):
+            if widget is not None:
+                widget.setEnabled(enabled)
+        if blocked:
+            self._btn_next.setToolTip("Working — the next step unlocks when this one finishes")
+        else:
+            self._btn_next.setToolTip(
+                "Process all loaded files in this step, then go to the next step"
+            )
+            self._update_stepper()
 
     def goto_next_step(self) -> bool:
-        """Select the next non-separator panel; return ``True`` if one exists."""
+        """Select the next non-separator panel; return ``True`` if one exists.
+
+        Refused while the current step is working — see :meth:`_on_nav_changed`.
+        """
+        if self._steps_blocked:
+            return False
         cur = self.nav_list.currentRow()
         for i in range(cur + 1, len(self.panels)):
             if not self.panels[i].get("separator"):
@@ -740,7 +797,12 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         return False
 
     def goto_prev_step(self) -> bool:
-        """Select the previous non-separator panel; return ``True`` if one exists."""
+        """Select the previous non-separator panel; return ``True`` if one exists.
+
+        Refused while the current step is working — see :meth:`_on_nav_changed`.
+        """
+        if self._steps_blocked:
+            return False
         cur = self.nav_list.currentRow()
         for i in range(cur - 1, -1, -1):
             if not self.panels[i].get("separator"):
@@ -831,8 +893,18 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         return False
 
     def _on_nav_changed(self, index: int) -> None:
-        """Load and show the selected panel."""
+        """Load and show the selected panel, unless the step is still working."""
         if index < 0 or index >= len(self.panels):
+            return
+        if self._steps_blocked and index != self._shown_index:
+            # Disabling the widgets is not enough: a programmatic
+            # ``setCurrentRow`` (the stepper, a workflow handoff) still gets
+            # here, and switching panel while a run is in flight is the crash
+            # this gate exists for. Snap the selection back instead.
+            blocker = QtCore.QSignalBlocker(self.nav_list)
+            self.nav_list.setCurrentRow(self._shown_index)
+            del blocker
+            self.report_status("Working — the step changes when this run finishes")
             return
 
         was_active = self.window().isActiveWindow()
@@ -843,6 +915,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             panel["instance"] = self._load_panel(panel, index)
 
         self.stacked_widget.setCurrentWidget(panel["instance"])
+        self._shown_index = index
         self._update_stepper()
         if was_active:
             QtCore.QTimer.singleShot(0, self._restore_active_window)

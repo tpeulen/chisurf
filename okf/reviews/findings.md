@@ -5380,12 +5380,21 @@ headlessly and bisected. RF-446.
   Pinned by `test_next_waits_for_the_step_it_started`
   (test/gui/test_navigation_statusbar.py) and two lifetime tests in
   test/gui/test_background_task.py.
-  **Residual hazard, not fixed:** forcing the overlap by hand — switching panel
-  while a run is in flight, which a *user* can still do by clicking another step
-  — still crashes (2/2 in the harness). The underlying fault is a pyqtgraph
-  plot being updated while the stacked widget switches; it needs a fix in the
-  chiplot/pyqtgraph update path, not in the shell. Recorded in
-  [known issues](/references/known-issues.md).
+  **Follow-up (same day): the overlap is now impossible, not merely avoided.**
+  The first fix blocked the GUI thread in a wait loop and only covered the Next
+  button, so a user clicking another step by hand still reproduced the crash
+  (2/2). Replaced by a gate: the task layer announces start/finish
+  (`task.task_events()`), the shell disables the step selector and the stepper
+  for the duration **and refuses programmatic switches** in `_on_nav_changed` —
+  disabling widgets is not enough, since the stepper and workflow handoffs call
+  `setCurrentRow` directly, which reached the crash just as well. Next no longer
+  waits: it *arms* the advance (a click during a run means "go on when this
+  finishes" rather than being dropped, which is the common case because panels
+  re-compute on their own) and `_on_task_finished` performs it. The forced
+  mid-run switch now survives 3/3 × 8 rounds where it crashed 2/2, the reported
+  gesture survives 3 × 10 rounds, and the run stays cancellable throughout —
+  only step changes are blocked. Pinned by four cases in
+  `test/gui/test_navigation_statusbar.py`.
 
 ## Review 2026-07-27 (4) — the shared UI pump, and the pumps that never reach it
 

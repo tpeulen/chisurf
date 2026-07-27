@@ -2,6 +2,24 @@
 
 ## 2026-07-27
 
+* **Step changes are now blocked while a step is working — the crash needs that
+  overlap and can no longer have it (RF-446 follow-up).** The first fix made
+  **Next** wait for the run it started, which closed the reported gesture but
+  left the same crash one click away: a user selecting another step by hand
+  still reproduced it (2/2), and the wait blocked the GUI thread. Replaced with
+  a gate. The task layer announces start/finish (`task.task_events()`); the
+  shell disables the selector and the stepper for the duration **and refuses
+  programmatic switches** in `_on_nav_changed` — disabling widgets is not
+  enough, because the stepper and workflow handoffs call `setCurrentRow`
+  directly and reached the crash just as well. Next no longer blocks anything:
+  it *arms* the advance and `_on_task_finished` performs it, so a click landing
+  during a run (the common case, since panels re-compute on their own when the
+  folder or a setting changes) means "go on when this finishes" instead of
+  being silently dropped. Verified headlessly: the forced mid-run switch
+  survives 3/3 × 8 rounds where it crashed 2/2, the reported gesture survives
+  3 × 10 rounds, and a screenshot of the working state shows the steps greyed
+  out with the run's own **Cancel** still live — only navigation is blocked.
+
 * **GUI tester — PSF determination from a bead scan (RF-451..RF-456).** Drove the
   Imaging Tools hub's PSF panel headlessly on a 7-bead scan with known ground
   truth. The fit is excellent (FWHM 306.1 / 801.5 nm against 306.2 / 800.7, axial

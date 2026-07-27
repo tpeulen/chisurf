@@ -124,18 +124,6 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**Switching a workflow panel while a run is in flight can still crash the app
-(open, 2026-07-27).** A pyqtgraph plot updated by a finishing background task
-while the shell's stacked widget switches panels crashes inside
-``QCoreApplication::postEvent``, reached from ``PyQtSlotProxy::qt_metacall`` —
-i.e. through pyqtgraph's own Python-level signals. The **Next** button no longer
-creates that overlap (it waits for the step it started; RF-446), so the reported
-gesture is fixed, but a *user* clicking another step while a run is going still
-can. Reproduces in a headless harness that forces the overlap under GC pressure
-(2/2 attempts, ~8 rounds). The fix belongs in the chiplot/pyqtgraph update path —
-a plot that is not the current widget should not be driving scene updates from a
-completion callback — not in the shell.
-
 **Anisotropy now follows Schaffer/Eggeling throughout (settled 2026-07-27).**
 `r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**,
 the ratio a paper quotes and the one tttrlib's estimators already took. Four

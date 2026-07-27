@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import os
 
 import pytest
@@ -223,13 +224,14 @@ def test_log_driven_status_pump_excludes_user_input(qapp, monkeypatch):
     w.close()
 
 
-def test_next_waits_for_the_step_it_started(qapp):
-    """Next must not advance while the step's background work is in flight.
+def test_next_advances_only_when_the_step_has_finished(qapp):
+    """Next arms the advance; the shell performs it when the run ends.
 
     Advancing mid-run left the finished analysis plotting into a panel the shell
     had already switched away from, while the next panel was being constructed —
-    a reproducible SIGSEGV inside ``QCoreApplication::postEvent``. It is also
-    what the button promises: process this step, *then* go to the next one.
+    a reproducible SIGSEGV inside ``QCoreApplication::postEvent``. The click must
+    not block the GUI either: it returns immediately, and the step changes only
+    once the work is done.
     """
     from qtpy import QtWidgets
 
@@ -246,10 +248,62 @@ def test_next_waits_for_the_step_it_started(qapp):
 
         def _run(self):
             def work(task):
+                time.sleep(0.05)  # still running when _on_next_clicked returns
                 order.append("work")
                 return "done"
 
-            run_in_background(self, "Working", work, on_result=lambda v: order.append("result"))
+            run_in_background(self, "Working", work,
+                              on_result=lambda v: order.append("result"))
+
+    step = _Step()
+    w = NavigationPanelTool(
+        title="t",
+        panels=[
+            {"name": "one", "role": "one", "factory": lambda p: step},
+            {"name": "two", "role": "two", "factory": lambda p: QtWidgets.QLabel("2")},
+        ],
+    )
+    w.nav_list.setCurrentRow(0)
+    qapp.processEvents()
+    w.nav_list.currentRowChanged.connect(lambda *_: order.append("advanced"))
+
+    w._on_next_clicked()
+    assert "advanced" not in order, "the shell advanced while the step was running"
+    assert not w.nav_list.isEnabled(), "step changes must be blocked while working"
+
+    deadline = time.monotonic() + 5.0
+    while "advanced" not in order and time.monotonic() < deadline:
+        qapp.processEvents()
+
+    assert order.index("result") < order.index("advanced"), order
+    assert w.nav_list.isEnabled(), "the selector must unlock when the work ends"
+    assert w.nav_list.currentRow() == 1
+    w.close()
+
+
+def test_a_second_next_click_while_working_is_ignored(qapp):
+    """The button is inert during the run — no double-advance, no second run."""
+    from qtpy import QtWidgets
+
+    from chisurf.gui.task import run_in_background
+
+    runs: list[int] = []
+
+    class _Step(QtWidgets.QWidget):
+        def __init__(self):
+            super().__init__()
+            self.button = QtWidgets.QToolButton(self)
+            self.button.setObjectName("toolAction_run")
+            self.button.clicked.connect(self._run)
+
+        def _run(self):
+            runs.append(1)
+
+            def work(task):
+                time.sleep(0.05)
+                return None
+
+            run_in_background(self, "Working", work)
 
     step = _Step()
     w = NavigationPanelTool(
@@ -262,11 +316,113 @@ def test_next_waits_for_the_step_it_started(qapp):
     w.nav_list.setCurrentRow(0)
     qapp.processEvents()
 
-    w.nav_list.currentRowChanged.connect(lambda *_: order.append("advanced"))
     w._on_next_clicked()
+    w._on_next_clicked()          # ignored: the first run is still going
+    assert runs == [1]
 
-    assert "result" in order, f"the run never completed: {order}"
-    assert order.index("result") < order.index("advanced"), (
-        f"advanced while the step was still running: {order}"
+    deadline = time.monotonic() + 5.0
+    while w.nav_list.currentRow() != 1 and time.monotonic() < deadline:
+        qapp.processEvents()
+    assert w.nav_list.currentRow() == 1
+    assert runs == [1], "the ignored click must not have started a second run"
+    w.close()
+
+
+def test_next_clicked_while_already_working_still_advances(qapp):
+    """A click during a run means "go on when this finishes", not nothing.
+
+    Panels re-compute on their own when a setting or the folder changes, so a
+    quick Next lands while the step is already busy. Dropping the click there
+    made the button look dead; it now arms the same pending advance without
+    starting a second run on top of the first.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.gui.task import run_in_background
+
+    runs: list[int] = []
+
+    class _Step(QtWidgets.QWidget):
+        def __init__(self):
+            super().__init__()
+            self.button = QtWidgets.QToolButton(self)
+            self.button.setObjectName("toolAction_run")
+            self.button.clicked.connect(self.start)
+
+        def start(self):
+            runs.append(1)
+
+            def work(task):
+                time.sleep(0.05)
+                return None
+
+            run_in_background(self, "Working", work)
+
+    step = _Step()
+    w = NavigationPanelTool(
+        title="t",
+        panels=[
+            {"name": "one", "role": "one", "factory": lambda p: step},
+            {"name": "two", "role": "two", "factory": lambda p: QtWidgets.QLabel("2")},
+        ],
     )
+    w.nav_list.setCurrentRow(0)
+    qapp.processEvents()
+
+    step.start()                 # the panel starts its own recompute
+    qapp.processEvents()
+    assert w._step_is_busy()
+
+    w._on_next_clicked()         # clicked while that run is in flight
+    assert runs == [1], "a second run must not be started on top of the first"
+
+    deadline = time.monotonic() + 5.0
+    while w.nav_list.currentRow() != 1 and time.monotonic() < deadline:
+        qapp.processEvents()
+    assert w.nav_list.currentRow() == 1, "the armed advance never fired"
+    w.close()
+
+
+def test_the_step_selector_refuses_to_switch_while_working(qapp):
+    """Switching step mid-run is the crash; a programmatic switch is refused too.
+
+    Disabling the widgets is not enough — the stepper and workflow handoffs call
+    ``setCurrentRow`` directly, and that path reached the crash just as well.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.gui.task import run_in_background
+
+    class _Step(QtWidgets.QWidget):
+        def start(self):
+            def work(task):
+                time.sleep(0.05)
+                return None
+
+            run_in_background(self, "Working", work)
+
+    step = _Step()
+    w = NavigationPanelTool(
+        title="t",
+        panels=[
+            {"name": "one", "role": "one", "factory": lambda p: step},
+            {"name": "two", "role": "two", "factory": lambda p: QtWidgets.QLabel("2")},
+        ],
+    )
+    w.nav_list.setCurrentRow(0)
+    qapp.processEvents()
+
+    step.start()
+    qapp.processEvents()
+
+    w.nav_list.setCurrentRow(1)          # what a click (or a handoff) does
+    qapp.processEvents()
+    assert w.nav_list.currentRow() == 0, "the shell switched step mid-run"
+    assert w.goto_next_step() is False
+
+    deadline = time.monotonic() + 5.0
+    while w._step_is_busy() and time.monotonic() < deadline:
+        qapp.processEvents()
+    qapp.processEvents()
+    assert w.goto_next_step() is True, "the selector must unlock when work ends"
     w.close()

@@ -80,6 +80,42 @@ _EXECUTOR = concurrent.futures.ThreadPoolExecutor(
 #: owner widget -> its running task, so a new run supersedes the old one.
 _RUNNING: "weakref.WeakKeyDictionary[object, Task]" = weakref.WeakKeyDictionary()
 
+class _TaskEvents(QtCore.QObject):
+    """Process-wide "a task started / finished" notifications.
+
+    Lets a shell gate its UI on background work without polling: the navigation
+    shell blocks step changes while a run is in flight and advances when it
+    ends. Both signals carry the :class:`Task`.
+    """
+
+    started = QtCore.Signal(object)
+    finished = QtCore.Signal(object)
+
+
+_TASK_EVENTS: "_TaskEvents | None" = None
+
+
+def task_events() -> _TaskEvents:
+    """The process-wide task notifier, created on first use.
+
+    A module-level ``QObject`` does not survive its ``QApplication`` (Qt tears
+    the wrapper down with the app, and touching it afterwards raises
+    ``RuntimeError: wrapped C/C++ object ... has been deleted``), so the
+    instance is created lazily and replaced if that has happened — which is what
+    a test session, with one application per file, does routinely.
+    """
+    global _TASK_EVENTS
+    events = _TASK_EVENTS
+    if events is not None:
+        try:
+            events.objectName()  # cheap liveness probe
+            return events
+        except RuntimeError:
+            pass
+    events = _TaskEvents()
+    _TASK_EVENTS = events
+    return events
+
 #: Every live task, held **strongly**.
 #:
 #: Most callers discard the returned :class:`Task` (``ChiSurfProgress.run(...)``
@@ -368,6 +404,7 @@ def _release_after_return(task: "Task") -> None:
         except RuntimeError:  # already gone
             pass
         _ALIVE.discard(task)
+        task_events().finished.emit(task)
 
     app = QtWidgets.QApplication.instance()
     if app is None:  # synchronous/headless: no loop to defer to
@@ -546,6 +583,7 @@ def run_in_background(
             _RUNNING[owner] = task
         except TypeError:  # an owner that cannot be weak-referenced
             pass
+    task_events().started.emit(task)
 
     def _work():
         try:
