@@ -641,6 +641,33 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
+- **`cartoon` on a coarse-grained trajectory is the wrong representation, and
+  says nothing about it.** Asked whether trajectory views work for cartoon. On an
+  **all-atom** multi-state structure they do: the ribbon follows the frames
+  exactly. On a **coarse-grained** model — which is what chisurf's modelling
+  produces, and the case that matters here — the cartoon comes out as hundreds of
+  disconnected fragments in roughly the right overall shape.
+
+  Measured rather than guessed: `hgbp1_transition.h5` has 5235 points with a
+  **median spacing of 15.3 Å** and no residue or chain identity. These are domain
+  beads, not a CA chain, so there is no backbone for a ribbon to follow — the
+  cartoon builder is not misbehaving, it is being asked for something that does
+  not exist at that resolution. `trace`, `lines` and `spheres` all render and
+  animate correctly, and `trace` is what the trajectory demo now uses.
+
+  Worth recording that a first fix was **wrong**: segmenting the ribbon by
+  distance, on the theory that consecutive beads within a threshold are one
+  chain. It changed nothing, because the fragmentation is not a segmentation
+  error. Reverted rather than left in as a plausible-looking no-op.
+
+  The real options, when someone wants this: refuse `cartoon` on an object with
+  no residue identity and say why (cheap, honest); or infer a chain and spline
+  through the beads at bead resolution, which is a different representation
+  wearing the cartoon's name. The second is what a user probably wants and is not
+  a small change.
+
+
+
 
 - **A chimol dock's widgets were reported deleted, and the cause is not pinned
   down.** The report: closing/moving a dock left

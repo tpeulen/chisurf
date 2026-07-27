@@ -2,6 +2,45 @@
 
 ## 2026-07-27
 
+* **chimol: trajectory commands, a Demo menu of scripts, and a script editor.**
+  Trajectory views matter here because chisurf's modelling uses them.
+
+  Six commands were missing outright — `load_traj`, `split_states`,
+  `count_states`, `get_state`, `intra_fit`, `intra_rms`. Added the four that
+  matter for viewing. **`intra_fit` is the one that makes a trajectory
+  watchable**: on the real `hgbp1_transition.h5` it takes centroid drift from
+  **5.73 Å to 0.00 Å**, so the movie shows the conformational change instead of
+  the model tumbling through the box. The RMS is unchanged by fitting (20.69 Å
+  either way) because it is a superposition, not a deformation, and a test pins
+  that — if fitting changed the RMS, one of the two would be wrong.
+
+  A real finding on the way: the H5 trajectory has **no atom array**. It is bead
+  coordinates, which is exactly what coarse-grained modelling produces, so the
+  first version — which resolved a selection to atoms — refused the case the
+  commands are most wanted for. They now fall back to "every point".
+
+  **The Demo menu** runs seven shipped scripts: cartoon, selections, every
+  representation, lighting presets, the publication look, the trajectory, and
+  measuring. They are **ChiMOL scripts, not Python**, one command per line, run
+  exactly as `@file.pml` does — which makes them a test of *language parity with
+  PyMOL* rather than of the internals, and documentation that runs. Each starts
+  with `delete all`, or the seventh demo shows a pile of seven molecules.
+  "Edit a demo" opens chisurf's code editor when chisurf is there and a small
+  shipped editor when it is not, so the entry is never dead in a standalone
+  ChiMOL.
+
+  **Asked whether trajectories work for cartoon: on all-atom yes, on
+  coarse-grained no** — and that is a representation mismatch rather than a bug.
+  Measured: 5235 points at a **median 15.3 Å** spacing with no residue identity.
+  Those are domain beads, not a backbone, so there is nothing for a ribbon to
+  follow and the cartoon comes out as ~340 fragments. `trace`, `lines` and
+  `spheres` all render and animate correctly, and the demo uses `trace`.
+
+  My first fix for it was **wrong** — segmenting the ribbon by distance, on the
+  theory that the fragmentation was a segmentation error. It changed nothing.
+  Reverted rather than left in as a plausible-looking no-op, and the real options
+  are written down in [known-issues](/references/known-issues.md).
+
 * **A half-finished refactor is more dangerous than the mess it replaces.** The
   exploration submodule had moved data ownership into a `DataManager` but kept
   the window's old private field as a "backward compatible" copy, and left a

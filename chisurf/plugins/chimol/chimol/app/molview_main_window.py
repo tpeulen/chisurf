@@ -11,6 +11,7 @@ from typing import Optional, Any, Sequence
 import numpy as np
 
 from qtpy import QtWidgets, QtCore, QtGui
+from chisurf.gui import dialogs
 
 # These are imported independently on purpose: the structure reader is pure
 # core code, while `open_files` drags in the whole Qt widget stack. Sharing one
@@ -309,6 +310,14 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         # ── View menu (after DockArea creation) ───────────────────────
         self._build_view_menu()
+        try:
+            from .demos import build_demo_menu
+
+            build_demo_menu(self, self.menuBar())
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "chimol: could not build the Demo menu", exc_info=True
+            )
 
         self._sequence_visible = True
         self._sequence_rows: dict[str, dict[str, Any]] = {}
@@ -414,6 +423,57 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         self._update_system_info()
 
     # ── View menu ─────────────────────────────────────────────────────
+
+    # ------------------------------------------------------------------ #
+    # Demos and scripts
+    # ------------------------------------------------------------------ #
+    def run_script_text(self, text: str) -> None:
+        """Run ChiMOL script text, one command per line.
+
+        The same rule ``@file`` uses: blank lines and ``#`` comments skipped, and
+        every other line handed to the command layer. Kept here rather than in
+        the editor so the editor, the Demo menu and ``@`` all execute a script
+        exactly the same way.
+        """
+        for line in str(text).splitlines():
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            self._run_object_menu_command(stripped)
+
+    def run_demo(self, key: str) -> None:
+        """Run a shipped demo script by name."""
+        from .demos import read_demo, resolve_structure
+
+        text = read_demo(key)
+        if not text:
+            logging.getLogger(__name__).warning("chimol: no demo named %r", key)
+            return
+        # Start from an empty viewer. Without this each demo adds its structure
+        # to the last one's, so by the seventh the scene is a pile of seven
+        # molecules and nothing demonstrates anything. A demo is a *scene*, not
+        # an increment.
+        # A demo says `load 148l.pdb` so it reads like something a person would
+        # type. Resolving the name here is what lets that work from any working
+        # directory without the script carrying a machine-specific path.
+        lines = []
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("load ") and "," not in stripped:
+                lines.append("load " + resolve_structure(stripped[5:].strip()))
+            else:
+                lines.append(line)
+        self.run_script_text("delete all\n" + "\n".join(lines))
+
+    def edit_demo_script(self, blank: bool = False) -> None:
+        """Open a demo in the script editor, or a blank one."""
+        from .demos import DEMOS, open_script_editor, demo_path, read_demo
+
+        if blank:
+            open_script_editor(self, text="# ChiMOL script\n")
+            return
+        key = DEMOS[0][0]
+        open_script_editor(self, text=read_demo(key), path=demo_path(key))
 
     def _build_view_menu(self) -> None:
         menu_bar = self.menuBar()
@@ -613,7 +673,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 except Exception:
                     pass
                 try:
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,
                         "Failed to load structure",
                         f"Could not load structure from:\n{path}\n\n{e}",
@@ -1653,10 +1713,10 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 self.hierarchy.set_hierarchy(hierarchy)
                 return object_id
             except RmfNotAvailableError as e:
-                QtWidgets.QMessageBox.warning(self, "RMF Not Available", str(e))
+                dialogs.warning(self, "RMF Not Available", str(e))
                 raise
             except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
+                dialogs.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
                 raise
 
         # First try the standard IMP/Structure-based loader for static files.
