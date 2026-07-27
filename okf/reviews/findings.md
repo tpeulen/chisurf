@@ -4107,3 +4107,104 @@ cited below, and the line numbers hold in both the working tree and `a970e438`).
 - **Location:** `chisurf/plugins/burst/burst_mle_analysis/utils.py:563-564` (`lhs_budget = max(8, int(0.7 * total_budget))`, `ref_budget = max(0, total_budget - lhs_budget)`) with `:472` (`total_budget = int(max(1, n_iter))`) and `:608` (`progress.setValue(min(eval_count, total_budget))`)
 - **Finding:** the `max(8, …)` floor is applied to the exploration stage alone and is never subtracted from the total, so any `n_iter` below 8 silently becomes 8. Measured through the real function with a surrogate loss: `n_iter=1 → 8` configurations evaluated, `n_iter=5 → 8`, `n_iter=11 → 11`, `n_iter=20 → 20`. Each of those extra evaluations is a full wizard refit, and `setValue(min(eval_count, total_budget))` pins the bar at 100 % while they run, so a short run looks finished long before it is. Not reachable from the wizard, whose spin box floors `n_iter` at 20 (`wizard.py:2048`, `_isb(20, 999, 50, 5)`), but `optimize_hyperparameters(n_iter=…)` is a public method and the plugin's own test calls it with `n_iter=1`. Clamp the LHS stage to the budget (`min(total_budget, max(8, …))`) so the count the caller passes is the count it gets.
 - **Fix note:**
+
+## GUI-tester run — 2D-FLCS lifetime exchange (`flc-2d`) (2026-07-27)
+
+Drove *Spectroscopy → FCS → 2D-FLCS* headlessly end to end — toolbar actions,
+the collapsed panels, the method radio, every IRF source, ten setting
+combinations and a real `Leica_SP8.ptu` — against the plugin's own two-state
+exchange simulator, whose answer is known by construction (τ₁ = 1 ns, τ₂ = 3 ns,
+k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹, so 25 ms relaxation). **The analysis is right and
+quick**: 1.2 M simulated photons in 1.5 s, the whole 2D-FDC → inversion →
+species-correlation chain in 2.7–5.4 s, lifetimes recovered as 0.90 / 2.91 ns and
+the relaxation as 25.1 ms (k₁₂+k₂₁ = 39.9 vs 40 s⁻¹); a 12.6 MB CLSM `.ptu` loads
+in 0.7 s and analyses in 2.6 s. What does not hold up is the window on top of it:
+the headline 2D map has no axes, the two most advanced controls do nothing, the
+micro-time gate reaches only half the analysis, and every way the run can fail —
+a NaN map, a one-peak inversion, a grid-edge lifetime — is reported as success.
+Use case: [2D-FLCS lifetime exchange](/usecases/flc-2d-lifetime-exchange.md).
+Findings RF-396..RF-407.
+
+### RF-396
+- **Status:** OPEN
+- **Severity:** S2 (an entire settings panel is wired to nothing: the toggle and the spin box change no output and no runtime)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/flc_2d.view.json:30-33` (panel *"Kinetics (advanced)"*: `run_global_mem`, `n_lags`) and `chisurf/plugins/fcs/flc_2d/gui/tool.py:105-106` (the only assignments), against `tool.py:542-639` (`_on_run`) and `:695-741` (`_run_optional_mem`), neither of which mentions either attribute; the feature itself exists in `chisurf/plugins/fcs/flc_2d/fit/global_mem.py`
+- **Finding:** the *gMEM* toggle promises to "build 2D-FDCs at several lags and jointly invert them with one shared lifetime distribution", and `lags` sets how many — but a grep of the whole plugin finds `run_global_mem` only in the model constructor and the view spec, and `n_lags` only there plus inside the unrelated backend modules. Verified on the 30 s simulated stream: `run_global_mem=True, n_lags=4` ran in 0.5 s (identical to the toggle off) and produced the same status line, the same 32×32 map and the same lifetime distribution. Either call `global_mem` from `_on_run` when the toggle is set — the module is complete and takes the lag count — or remove the panel until it is wired.
+- **Fix note:**
+
+### RF-397
+- **Status:** OPEN
+- **Severity:** S2 (a labelled micro-time gate silently applies to one of the four things it appears to gate)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:555-556` (`t_min`/`t_max` from `tmin_ns`/`tmax_ns`) — consumed only by `self._client.correlate(...)` at `:565-574`; `lifetime_spectrum` at `:605-615`, `_run_lcurve` at `:505-523` and `_update_irf_preview` at `:525-540` are all called without a gate, although `chisurf/plugins/fcs/flc_2d/api.py:151-202` (`lifetime_spectrum`) takes a `gate=(lo, hi)` argument for exactly this
+- **Finding:** the *2D-FDC* panel's `tmin`/`tmax` read as the decay-axis gate for the analysis (the view spec calls them "Lower/Upper micro-time gate (ns) for the decay axis"), but they reach only the 2D correlation. The lifetime distribution, the L-curve and the IRF preview always run over the full micro-time window. Verified: setting `tmin=10 ns, tmax=2 ns` changed the 2D-FDC call to `tMin=2500 tMax=2501` while the status line still read the unchanged `tau = 0.90, 2.91 ns; relaxation 25.1 ms` — bit-identical to the ungated run. A user narrowing the gate to exclude a scattered-light peak or a wrapped tail therefore fixes the map and not the lifetimes. Thread the same `(t_min, t_max)` into `lifetime_spectrum`/`lifetime_lcurve` and into the preview slice.
+- **Fix note:**
+
+### RF-398
+- **Status:** OPEN
+- **Severity:** S2 (an inverted gate yields an all-NaN result that the GUI presents as a completed analysis)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:555-556` (`t_max = max(t_min + 1, …)` — the only guard, and it repairs the ordering by keeping a **one-channel-wide** window) → `chisurf/plugins/fcs/flc_2d/fit/ilt.py:462` (`Pt = Bt / denom`, `RuntimeWarning: invalid value encountered in divide`)
+- **Finding:** nothing validates `tmin < tmax`. Entering `tmin = 10` ns with `tmax = 2` ns is accepted by both spin boxes; the 2D-FDC is then built over a single micro-time channel (`tMin=2500 tMax=2501`), the 2D inversion divides by zero and the spectrum comes back **entirely NaN** — the *2D-FLCS map* tab renders as a blank black panel — while the status bar reports `tau = 0.90, 2.91 ns; relaxation 25.1 ms (k12+k21=39.9/s)`, because the 1D path ignores the gate (RF-397). Verified with `np.all(np.isnan(spectrum_img)) == True` and the screenshot. Reject (or swap) an inverted gate in the form, and make an all-NaN inversion an error message rather than an empty image.
+- **Fix note:**
+
+### RF-399
+- **Status:** OPEN
+- **Severity:** S2 (the default choice in a three-way radio does not reach the inversion it labels, and the grid size is silently capped)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:584` (`mode=("mem" if model.fit_mode == "mem" else "tikhonov")`) and `:586` (`n_components=min(model.n_components, 32)`), against `chisurf/plugins/fcs/flc_2d/gui/flc_2d.view.json:14-15` (the `fit_mode` radio and the `grid` spin box, described as "Inverse-Laplace solver … NNLS (strict non-negativity, default)" and "Number of log-spaced trial lifetimes in the inversion basis")
+- **Finding:** the 2D inversion knows only `mem` and `tikhonov`, so choosing **NNLS** — the shipped default, and the only option that promises non-negativity — silently runs Tikhonov for the 2D map while the 1D distribution beside it really does use NNLS. Two panels in the same window are then solved by different methods with no indication. The same call caps the basis at 32 components: with `grid = 40` the returned spectrum is 32×32, verified from the payload. Give the 2D path a real `nnls` mode (or drop the option for it), and surface the cap — a `grid` above 32 should either be honoured or be clamped visibly in the form.
+- **Fix note:**
+
+### RF-400
+- **Status:** OPEN
+- **Severity:** S2 (the validation simulator injects a 1.4 % delta spike into the last TCSPC channel, inflating χ² sixfold on every synthetic run)
+- **Location:** `chisurf/plugins/fcs/flc_2d/simulate.py:120-121` (`micro = np.rint((life_ns + offset) / tstep_ns); np.clip(micro, 0, n_microtime_channels - 1, out=micro)`), against `chisurf/plugins/fcs/flc_2d/api.py:143-148` (`_decay_histogram`, whose comment states the opposite policy: "Drop micro-times outside `[0, n_bins)` … clipping would pile tail photons into the edge bin")
+- **Finding:** every simulated photon whose lifetime sample plus IRF offset exceeds the 12.5 ns window is clipped into the last channel instead of being dropped or wrapped into the next laser period. Measured on the toolbar **Sim** defaults (τ = 1/3 ns, 60 s, seed 1, 1 201 098 photons): bin 3126 holds **16 921 counts = 1.41 % of the stream**, against ~24 counts in each of its five neighbours (705×) and 2 201 counts at the true decay maximum (7.7×). Consequences a user sees: the reduced χ² of the 1D inversion is **6.48** with the spike and **1.08** with the last 20 channels gated out (same peaks, 0.896/2.913 ns either way), and the IRF panel normalises the decay by that one bin, so the real decay tops out at 13 % of the plot. The stream is documented as "closing the loop for validation" (`api.py:799-830`), which is exactly what the spike undermines.
+- **Fix note:**
+
+### RF-401
+- **Status:** OPEN
+- **Severity:** S2 (the whole dynamics stage no-ops in silence, and with zero peaks the status line degenerates to `tau =  ns`)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:631-636` (`if model.compute_dynamics and peaks.size >= 2: …` followed by `if not self._model._correlation: peaks_txt = ", ".join(…)`)
+- **Finding:** when the inversion resolves fewer than two peaks the species correlation and the rate-matrix fit are skipped without a word: the `corr` checkbox stays ticked, `_correlation` is reset to `[]` so the *Species correlation* tab goes blank, and the status bar reports the single lifetime as if that were the whole result. Verified by halving the simulated acquisition to 30 s (601 088 photons, everything else default): one peak, zero correlation series, an empty plot and `Resolved lifetimes: tau = 2.68 ns`. With `source = Detect` the inversion finds **no** peak at all and the same line renders the empty join as `Resolved lifetimes: tau =  ns`. Say why the step was skipped ("only 1 lifetime resolved — dynamics needs 2"), and never print an empty lifetime list.
+- **Fix note:**
+
+### RF-402
+- **Status:** OPEN
+- **Severity:** S3 (after a successful run with the 1D-MEM enabled the status bar is left showing the in-progress message forever)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:634-639` (the final `showMessage` is written *before* `self._run_optional_mem(...)`) against `:709` (`showMessage("Building 1D-FDC + 1D-MEM...")`, never replaced on completion)
+- **Finding:** ticking *1D-MEM + Gaussian → run* moves the last status update into `_run_optional_mem`, which announces the step and then returns without a closing message, so the window sits at `Building 1D-FDC + 1D-MEM...` with the finished distribution already drawn behind it. Verified: after `_on_run()` returned and the MEM and Gaussian curves were on the plot, `statusBar().currentMessage()` was still `'Building 1D-FDC + 1D-MEM...'`. Move the result line after the optional step, or have `_run_optional_mem` restore it.
+- **Fix note:**
+
+### RF-403
+- **Status:** OPEN
+- **Severity:** S3 (the plugin's headline output is a picture with no coordinates — a peak can be seen but not read)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/flc_2d.view.json:47-48` (the two `custom`/`image` sections `spectrum_image` and `residual_image`) and `chisurf/plugins/fcs/flc_2d/gui/tool.py:128-134` (both return a bare `np.ndarray`, discarding `spec2d["tau_grid"]`)
+- **Finding:** the *2D-FLCS map* is rendered as raw pixels: no τ₁/τ₂ axes, no tick labels, no colour-bar label or units, so the only way to learn which lifetime a peak sits at is to count pixels and re-derive the log-spaced grid by hand. The information is already in the payload — `fit()` returns `tau_grid` alongside `spectrum` — and the axis is not even linear, so the guess a user would make is wrong. The *2D residual* has the same problem in the time domain (80×80 rebinned micro-time bins). Pass the grids as image scale/offset (or switch to an axis-carrying image widget) so both maps read in ns.
+- **Fix note:**
+
+### RF-404
+- **Status:** OPEN
+- **Severity:** S2 (goodness of fit is computed, returned and thrown away; a 2D inversion that resolves the wrong number of species looks exactly like one that works)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:581-600` (`spec2d = self._client.fit(...)`; only `spectrum` and `residual` are read, `chi2`, `reg`, `offset` and `peak_lifetimes` are dropped) and `flc_2d.view.json:48` (the residual panel's description, "should be structureless noise for a good fit")
+- **Finding:** the backend returns `chi2` and the auto-selected `reg` for the 2D fit and the GUI displays neither, so the panel that asks the user to judge the residual gives them nothing to judge it against — and the residual it shows is unnormalised counts, whose colour scale is set by a single corner pixel. Measured on the default 60 s run: `chi2 = 2021.8`, `reg = 54.0`, residual range **−289 234 … +39 802** with 6.9 % of pixels past ±10⁴ and a clear structure (diagonal mean +7 622 vs off-diagonal −2 596) that renders as a flat green square. In the same run the 2D fit's own `peak_lifetimes` was a **single** 1.07 ns while the 1D inversion resolved 0.90 and 2.91 ns — a disagreement that is invisible in the GUI. Show χ² and λ beside the map, plot a weighted (or symmetric-scaled) residual, and warn when the 2D and 1D peak counts differ.
+- **Fix note:**
+
+### RF-405
+- **Status:** OPEN
+- **Severity:** S3 (the species correlation is drawn out to lags 4.5× longer than the measurement, and the meaningless tail sets the axis)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:663-671` (`n_casc=int(model.n_casc)`, default 25 from `:99`) and `:672-677` (every returned lag is plotted, untruncated)
+- **Finding:** 25 multi-tau cascades on a 1 µs macro-time clock reach **268 s** of lag; the simulated acquisition is 60 s. Verified on the default run: all three series span `0 … 268.4 s`, and beyond ~60 s they are noise — G swings between −0.68 and 5.46, against an amplitude of ~5 in the real part of the curve. Because the x-axis is logarithmic and auto-ranged, that garbage decade takes a third of the panel and compresses the diffusion/exchange decades the user came for. Truncate the plotted (or computed) lags at a fraction of the acquisition time — the usual choice is `T/10` — or cap `n_casc` from the stream duration.
+- **Fix note:**
+
+### RF-406
+- **Status:** OPEN
+- **Severity:** S3 (two different species curves are drawn in the same colour, and neither is named by the lifetime it belongs to)
+- **Location:** `chisurf/plugins/fcs/flc_2d/gui/tool.py:673-676` (`{"color": "c", "name": f"auto {index}"}` for every autocorrelation; `"m"` for every cross term)
+- **Finding:** the species autocorrelations — the curves whose *difference* carries the species-resolved information — are both cyan, so on the canvas *auto 0* and *auto 1* are indistinguishable and the legend cannot be matched to a trace; with three or more species every auto curve collapses into one colour. Verified: the plotted series carry colours `['c', 'c', 'm']`. Their names are indices too, although the lifetimes are known at that point (`peaks[:2]`), so `auto 0.90 ns` / `cross 0.90–2.91 ns` costs nothing and makes the panel self-describing.
+- **Fix note:**
+
+### RF-407
+- **Status:** OPEN
+- **Severity:** S3 (the L-curve panel highlights the least corner-like of the sampled points, and the weight it advertises is effectively "no regularisation")
+- **Location:** `chisurf/plugins/fcs/flc_2d/fit/ilt.py:364-366` (`chosen = _lcurve_reg(Wd, wy)` then nearest-in-log lookup) against the shared `chisurf/core/math/regularization.py:350-424` (`discrete_lcurve_corner`, curvature + distance-to-chord over the sampled polyline), surfaced by `chisurf/plugins/fcs/flc_2d/gui/tool.py:505-523` and the `lcurve` panel
+- **Finding:** on the default simulated decay the closed-form `_lcurve_reg` picks index 2 of the 24 sampled weights (λ = 5.8·10⁻⁴), which is the **lowest-scoring** interior point under the shared corner criterion (0.025, against 0.535 at index 7 and 0.516 at index 16) and sits on the flat under-regularised branch where the residual norm barely moves (142.19 → 142.29 across indices 0–2). The panel labels it *"chosen"*, so the diagnostic that exists to justify the regularisation weight instead advertises a point the user can see is not the knee. Either mark the discrete corner (`discrete_lcurve_corner`, index 7 here) or reconcile the closed-form selection with it. Related, in the same solver: `ilt_1d`'s docstring (`ilt.py:187-192`) states that the default penalises the **second derivative** (`reg_order=2`) while the signature is `reg_order: int = 0` — the identity penalty its own text says produces "the spiky spectra a plain identity penalty produces".
+- **Fix note:**
