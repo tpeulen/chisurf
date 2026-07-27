@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **DATA-05: an external tool run is typed, and its command line is a column.**
+  A CLI or script recorded in MMFDB had nowhere honest to go — the constrained
+  `operation_type` vocabulary had no generic value for it (the shipped example
+  reused `burst_selection`), and the invocation plus the process exit status had
+  to be buried in the free-form `settings_json` blob, where no query reaches
+  them. "Which runs failed?" was not an answerable question about a provenance
+  store whose whole point is answering it.
+
+  The dictionary is the schema authority, so all three go into
+  `mmfdb_flr_ext.dic`: an `external_tool` enumeration value plus new
+  `command_line` and `exit_code` items. `exit_code` is deliberately distinct
+  from `status` — one is the process result, the other the provenance lifecycle
+  state. Schema **v45** reconciles an existing database (columns added,
+  vocabulary re-seeded), and both fields are threaded through `record_operation`,
+  `record_operation_with_artifacts` and the `api.py` boundary the versioned
+  `mmfdb.v1.operations.*` RPC methods dispatch to.
+
+  The **workflow runner** was the in-tree offender and is now the
+  demonstration: it wrote both into `settings`, and it claimed exit code `0` for
+  an in-process `python:` step that never spawned a process. It now stamps the
+  columns and leaves `exit_code` NULL where there is no process. mmfdb commit
+  `a853295`; 709 tests green there, plus the 87 chisurf-side MMFDB consumers.
+  Still open on DATA-05: the software-vs-human actor flag and a
+  container/environment schema. See
+  [assessment DATA-05](/specs/assessment.md#data-05).
+
 * **chimol: trajectory commands, a Demo menu of scripts, and a script editor.**
   Trajectory views matter here because chisurf's modelling uses them.
 
