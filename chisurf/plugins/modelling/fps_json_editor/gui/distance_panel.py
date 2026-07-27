@@ -380,7 +380,8 @@ class DistancePanel(QtWidgets.QWidget):
         reply = dialogs.question(
             self, "Remove Scoring Group?",
             f"Are you sure you want to remove scoring group '{name}'?",
-            QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.score_set_removed.emit(name)
@@ -581,7 +582,8 @@ class DistancePanel(QtWidgets.QWidget):
             reply = dialogs.question(
                 self, "Remove Restraints?",
                 f"Are you sure you want to remove the {len(rows_to_delete)} selected restraint(s)?",
-                QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                default=QtWidgets.QMessageBox.No
             )
             if reply == QtWidgets.QMessageBox.Yes:
                 self.distances_table.blockSignals(True)
@@ -616,7 +618,8 @@ class DistancePanel(QtWidgets.QWidget):
         reply = dialogs.question(
             self, "Remove Restraint?",
             "Are you sure you want to remove this restraint?",
-            QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.distances_table.blockSignals(True)

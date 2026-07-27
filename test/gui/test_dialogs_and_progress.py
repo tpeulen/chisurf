@@ -63,6 +63,64 @@ def test_choice_returns_no_key_when_nobody_can_choose(qapp):
     assert answer
 
 
+def test_a_default_that_is_not_offered_is_repaired(qapp, caplog):
+    """A question must never end up with no way to say no.
+
+    ``question(parent, title, text, Yes, No)`` is the PyQt4 spelling, where the
+    last two arguments were *two buttons*. Under Qt5 the 4th became a button
+    *mask* and the 5th the default — so that call silently produces a box with a
+    single "Yes" and a default that is not on it. "Are you sure to quit?" then
+    answers itself: it shipped that way, and the program always quit.
+
+    Offering the default is the repair, because a default that is not among the
+    buttons is a mistake in every reading.
+    """
+    from chisurf.gui.dialogs import ChiSurfMessageBox as box
+
+    with caplog.at_level(logging.WARNING, logger="chisurf.gui.dialogs"):
+        with dialogs.auto_answer():  # keep it off the scripted path
+            answer = box.question(None, "Message", "Are you sure to quit?",
+                                  box.Yes, box.No)
+    # Head-lessly the answer is still the default — the point is that a user
+    # would now be *shown* a No button rather than only a Yes.
+    assert int(answer) == int(box.No)
+    assert "not among the offered buttons" in caplog.text
+
+
+def test_no_call_site_passes_two_separate_buttons():
+    """Guard the tree against the PyQt4 two-button spelling coming back."""
+    import ast
+    import pathlib
+
+    root = pathlib.Path(__file__).resolve().parent.parent.parent / "chisurf"
+
+    def is_single_button(node):
+        return (
+            isinstance(node, ast.Attribute)
+            and node.attr in {"Yes", "No", "Ok", "Cancel", "Save", "Discard"}
+            and isinstance(node.value, (ast.Name, ast.Attribute))
+            and getattr(node.value, "id", getattr(node.value, "attr", None)) == "QMessageBox"
+        )
+
+    offenders = []
+    for path in root.rglob("*.py"):
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr == "question" and len(node.args) >= 5):
+                continue
+            if is_single_button(node.args[3]) and is_single_button(node.args[4]):
+                offenders.append(f"{path.name}:{node.lineno}")
+    assert not offenders, (
+        "question(...) called with two separate buttons — the 4th argument is a "
+        "mask, so this shows only the first button and the question cannot be "
+        "declined. Pass buttons=Yes | No, default=No:\n  " + "\n  ".join(offenders)
+    )
+
+
 def test_auto_answer_scripts_a_confirmation(qapp):
     """A confirmation-guarded path is testable without a human or a fake loop."""
     with dialogs.auto_answer(question=dialogs.ChiSurfMessageBox.Yes):

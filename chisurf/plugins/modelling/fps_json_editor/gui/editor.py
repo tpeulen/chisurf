@@ -288,8 +288,8 @@ class FpsJsonEditor(QtWidgets.QWidget):
             self,
             "Clear Configuration",
             "Are you sure you want to clear all parameters?",
-            QtWidgets.QMessageBox.Yes,
-            QtWidgets.QMessageBox.No,
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No,
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.position_panel.clear_all()

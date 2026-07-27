@@ -594,7 +594,8 @@ class FitSubWindow(CustomMdiSubWindow):
                 self,
                 'Message',
                 "Are you sure to close this fit?:\n%s" % self.fit.name,
-                QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                default=QtWidgets.QMessageBox.No
             )
             if reply == QtWidgets.QMessageBox.Yes:
                 try:

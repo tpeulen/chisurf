@@ -283,8 +283,8 @@ class Main(
                 self,
                 'Message',
                 "Are you sure to quit?",
-                QtWidgets.QMessageBox.Yes,
-                QtWidgets.QMessageBox.No
+                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                default=QtWidgets.QMessageBox.No
             )
             if reply != QtWidgets.QMessageBox.Yes:
                 event.ignore()

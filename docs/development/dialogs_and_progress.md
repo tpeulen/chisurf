@@ -66,6 +66,28 @@ if answer.checked:
 **Choose the default carefully.** It is what an unattended run does. Name the
 answer that declines — skip rather than overwrite, keep rather than delete.
 
+**`buttons` is a mask, not a button.** Under PyQt4 the last two arguments of
+`question` were *two buttons*; under Qt5 the 4th became a button mask and the
+5th the default. So the old spelling
+
+```python
+dialogs.question(self, "Message", "Are you sure to quit?",
+                 QMessageBox.Yes, QMessageBox.No)      # WRONG
+```
+
+asks for a box offering **only Yes**, with a default that is not on it — the
+question answers itself, and the program quits whatever the user clicks. Write
+
+```python
+dialogs.question(self, "Message", "Are you sure to quit?",
+                 buttons=QMessageBox.Yes | QMessageBox.No,
+                 default=QMessageBox.No)
+```
+
+or just `confirm(...)`, which takes no buttons at all. A default that is not
+among the offered buttons is repaired (it gets offered) and logged as a warning,
+and a test rejects the two-button spelling anywhere in the tree.
+
 ### Testing a path guarded by a dialog
 
 ```python

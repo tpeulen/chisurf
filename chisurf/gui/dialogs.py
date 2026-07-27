@@ -445,6 +445,21 @@ class ChiSurfMessageBox:
             buttons = cls.Yes | cls.No
         if default is None:
             default = cls.No if int(buttons) & int(cls.No) else int(buttons) & -int(buttons)
+        elif not int(buttons) & int(default):
+            # A default that is not on offer is always a mistake, and a silent
+            # one: Qt just draws the buttons it was given, so an "are you sure?"
+            # ends up with a single Yes and no way to decline — the question
+            # answers itself. This is what the PyQt4 spelling
+            # ``question(parent, title, text, Yes, No)`` degrades to under Qt5,
+            # where the 4th argument became a button *mask* and the 5th the
+            # default. Offer the default rather than dropping it.
+            logger.warning(
+                "%s: the default button is not among the offered buttons; "
+                "offering it too, so the question can still be declined. Pass "
+                "buttons=Yes | No (a mask), not two separate buttons.",
+                title,
+            )
+            buttons = int(buttons) | int(default)
         logger.info("%s: %s", title, "\n".join(
             str(part) for part in (message, informative, detail) if part
         ))

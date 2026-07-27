@@ -1,5 +1,30 @@
 # Update Log
 
+## 2026-07-27
+
+* **"Are you sure to quit?" had no No button, so it always quit.** Reported from
+  use, and true: the box offered a single *Yes*, and clicking it — or closing the
+  box — ended the session either way. The cause is a signature that changed
+  under everyone's feet. Under PyQt4, `question(parent, title, text, b0, b1)`
+  took *two buttons*; under Qt5 the fourth argument became a button **mask** and
+  the fifth the **default**. The old spelling therefore asks for a box offering
+  only `Yes`, with a default (`No`) that is not on it — and Qt draws exactly
+  what it was told, silently. Six call sites still carried it, every one a
+  destructive confirmation: quit the program, close a fit, clear a configuration,
+  remove a restraint (×2), remove a scoring group. All are now
+  `buttons=Yes | No, default=No`.
+* **The class refuses to build that box at all now.** A default that is not among
+  the offered buttons is a mistake in every reading, so
+  `ChiSurfMessageBox.question` folds it into the offered set and logs a warning
+  rather than producing a question that cannot be declined — the repair produces
+  exactly the box the modern spelling does, verified by rendering both. A test
+  additionally rejects the two-button spelling anywhere in the tree, since the
+  next person to copy an old call site would otherwise reintroduce it silently.
+  Worth noting the unification is what made this findable: one `question`
+  entry point is greppable and can hold a guard, six hand-rolled `QMessageBox`
+  statics were neither.
+
+
 ## 2026-07-26
 
 * **The last two region hold-outs: a fitted PSF, and painted classes.** Two
