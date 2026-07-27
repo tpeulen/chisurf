@@ -1,0 +1,16 @@
+{
+  "id": "vv_vh_anisotropy",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Fluorescence decay:VV/VH Anisotropy Decay",
+  "description": "Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Fluorescence decay"],
+  "icon": "🎏",
+  "state_namespace": "vv_vh_anisotropy",
+  "entrypoints": {
+    "gui": "chisurf.plugins.vv_vh_anisotropy:VvVhAnisotropyCalculator"
+  },
+  "menu_hidden": true,
+  "deprecated": true,
+  "deprecation_message": "VV/VH Anisotropy Decay is deprecated/obsolete. Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
+}

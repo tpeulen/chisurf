@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **The tree's one deprecated plugin now declares it where hosts read (RF-518).**
+  `vv_vh_anisotropy` carried `deprecated = True` plus a written-out replacement
+  message as module-level variables in a directory with no `manifest.json` — and
+  the legacy AST scan (`chisurf/plugins/__init__.py:_read_plugin_metadata`) reads
+  only `name`, `cli_entrypoint`, `cli_only` and `menu_hidden`, so both the flag
+  and its message were dead text. The plugin gained a manifest declaring
+  `deprecated` + `deprecation_message`, and the module now reads the wording back
+  from it (`load_manifest`) instead of keeping a copy: the same one-source rule
+  the maturity seam applied to the Decay Analysis hub. Its in-window banner was a
+  *third* wording of the same sentence and now shows the manifest's, with the
+  `⛔` marker the navigation shell uses. Guardrail: a module-level maturity flag
+  that no manifest mirrors now fails `test/plugins/test_plugin_maturity_metadata.py`,
+  as does a deprecation that names no successor. This also corrects the claim in
+  `c4715a2a9` and in [assessment INC-07](/specs/assessment.md#inc-07) that no
+  built-in plugin declares `deprecated`, and the plugin-architecture doc, which
+  promised a deprecation warning for legacy variables that is emitted nowhere and
+  listed `deprecated` among the variables the fallback reads, which it never did.
+  RF-517 — carrying the flags into the discovery record so a *menu-launched* tool
+  is marked at all — stays open. Found and fixed in the same change:
+  `test_trajectory_manifests_drive_plugin_discovery` had been red since
+  `0289fabcc` hid `traj_tools` from the menu (an unexplained edit swept into an
+  unrelated commit, but correct — the tool is reached as a panel of the Structure
+  Tools hub), while the test still expected it visible. Not regenerated here:
+  `docs/reference/plugins/` is generated output another instance has mid-flight;
+  the new manifest appears there on the next `docs-plugins` run.
+
 * **2CDE and H2MM wait for a Run click they have no reason to wait for
   (RF-519).** Landing on step 4 or 6 of the burst workflow showed an empty plot
   and a button, although everything those steps need was decided upstream and

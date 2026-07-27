@@ -268,7 +268,9 @@ burst_selection/
 
 ### 3.3 Backward compatibility
 
-Existing `__init__.py` variables (`name`, `cli_entrypoint`, `cli_only`, `menu_hidden`, `deprecated`) still work but produce a deprecation warning when `manifest.json` is absent. The new `PluginRegistry` reads `manifest.json` first; falls back to AST parsing of `__init__.py` only if no manifest exists.
+`PluginRegistry` reads `manifest.json` first and falls back to AST parsing of `__init__.py` only if no manifest exists. That fallback reads exactly four module-level variables — `name`, `cli_entrypoint`, `cli_only`, `menu_hidden` — plus the module docstring as the description; no deprecation warning is emitted for using them.
+
+The maturity flags (`experimental` / `deprecated`) are **manifest-only**: a module-level `deprecated` / `deprecation_message` in `__init__.py` is read by nothing and surfaced nowhere, so a manifest-less plugin cannot declare itself deprecated. Declare the flag in `manifest.json`, and let the module read the wording back from the manifest (`load_manifest`) rather than restating it.
 
 ---
 

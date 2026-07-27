@@ -21,9 +21,7 @@ Features
 
 This widget can run as a ChiSurf plugin (see chisurf.plugins.vv_vh_anisotropy.__plugin__) or standalone.
 """
-
-# Plugin brand icon (unified emoji set)
-icon = "🎏"
+from chisurf.gui import dialogs
 
 import numpy as np
 import warnings
@@ -32,11 +30,11 @@ from qtpy.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QFileDialog, QLabel, QDoubleSpinBox, QLineEdit, QCheckBox,
     QTableWidget, QTableWidgetItem,
-    QHeaderView, QMessageBox,
-)
+    QHeaderView, )
 from qtpy.QtCore import Qt
 from qtpy.QtGui import QIcon
 
+from chisurf.core.plugin.manifest import load_manifest
 from chisurf.gui import chiplot as cp
 
 try:
@@ -57,10 +55,19 @@ except Exception:
     _write_vv_vh = None
 
 
+# Plugin brand icon (unified emoji set)
+icon = "🎏"
+
 name = "Spectroscopy:Fluorescence decay:VV/VH Anisotropy Decay"
 menu_hidden = True
-deprecated = True
-deprecation_message = (
+
+# The maturity flag and its wording live in ``manifest.json`` — the one place
+# hosts read them from (``navigation.apply_manifest_flags``). Repeating them here
+# is how a message drifts from the manifest, so they are read back instead of
+# restated; the fallbacks apply only if the manifest is missing from an install.
+_MANIFEST = load_manifest(Path(__file__).parent / "manifest.json")
+deprecated = bool(_MANIFEST.deprecated) if _MANIFEST is not None else True
+deprecation_message = (_MANIFEST.deprecation_message if _MANIFEST is not None else "") or (
     "VV/VH Anisotropy Decay is deprecated/obsolete. "
     "Use the VV/VH G-Factor plugin and reader-integrated anisotropy workflow instead."
 )
@@ -235,13 +242,13 @@ class VvVhAnisotropyBatchWindow(QWidget):
     def _on_run(self):
         paths = self.file_list.paths()
         if not paths:
-            QMessageBox.information(self, "Batch", "No files to process.")
+            dialogs.information(self, "Batch", "No files to process.")
             return
         self._clear_results()
         for p in paths:
             res = self._compute_rinf_for_file(p)
             self._append_result_row(res)
-        QMessageBox.information(self, "Batch", f"Processed {len(paths)} file(s).")
+        dialogs.information(self, "Batch", f"Processed {len(paths)} file(s).")
 
     def _append_result_row(self, res_tuple: tuple):
         row = self.table.rowCount()
@@ -254,7 +261,7 @@ class VvVhAnisotropyBatchWindow(QWidget):
 
     def _on_save(self):
         if not self.results:
-            QMessageBox.information(self, "Save CSV", "No results to save.")
+            dialogs.information(self, "Save CSV", "No results to save.")
             return
         out_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
         if not out_path:
@@ -264,9 +271,9 @@ class VvVhAnisotropyBatchWindow(QWidget):
                 f.write("filename,r_inf,region_min,region_max,bg_vv,bg_vh,g_factor\n")
                 for row in self.results:
                     f.write(",".join(str(x) for x in row) + "\n")
-            QMessageBox.information(self, "Save CSV", f"Saved: {out_path}")
+            dialogs.information(self, "Save CSV", f"Saved: {out_path}")
         except Exception as e:
-            QMessageBox.critical(self, "Save CSV", f"Failed to save CSV: {e}")
+            dialogs.error(self, "Save CSV", f"Failed to save CSV: {e}")
 
 
 @persist_plugin_state("vv_vh_anisotropy")
@@ -312,10 +319,7 @@ class VvVhAnisotropyCalculator(QWidget):
     def _init_ui(self):
         main_layout = QVBoxLayout()
 
-        deprecation_label = QLabel(
-            "Deprecated: VV/VH Anisotropy Decay is obsolete. "
-            "Prefer VV/VH G-Factor + reader anisotropy pipeline."
-        )
+        deprecation_label = QLabel(f"⛔ {deprecation_message}")
         deprecation_label.setWordWrap(True)
         deprecation_label.setStyleSheet("color: #b45309; font-weight: 600;")
         main_layout.addWidget(deprecation_label)
