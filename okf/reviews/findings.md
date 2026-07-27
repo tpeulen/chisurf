@@ -1674,12 +1674,17 @@ from `test/server/test_fit_jobs_use_job_manager.py`). RF-113..RF-119.
   completed jobs returned `cleanup() == 0` and still held 3, while
   `max_history=1` correctly removed 2. Pinned by three new tests in
   `test/server/test_jobs.py`: `test_cleanup_keeping_no_history_removes_every_terminal_job`
-  (also asserts a still-`RUNNING` job survives, since it is not terminal),
-  `test_cleanup_treats_a_negative_history_as_zero`, and
-  `test_cleanup_keeps_history_below_the_limit` (the below-limit branch the
-  dropped `if` used to serve). All three fail at `HEAD`. `test/server/` green;
-  `ruff check` on the two touched files reports findings identical to `HEAD`
-  (all pre-existing), and `ruff format --check` is clean.
+  (also asserts a still-`RUNNING` job survives, since it is not terminal) and
+  `test_cleanup_treats_a_negative_history_as_zero` both fail at `HEAD`;
+  `test_cleanup_keeps_history_below_the_limit` passes there and is a regression
+  guard for the branch the dropped `if` used to serve. The negative test
+  deliberately completes 8 jobs, not 2: at `HEAD` the slice reads `-(-5)` as
+  "keep the newest 5", so a sample smaller than `abs(max_history)` cannot tell
+  the two readings apart — the first draft of the test used two jobs and passed
+  at `HEAD`. `test/server/test_jobs.py`, `test_fit_jobs_use_job_manager.py` and
+  `test_app.py` green (32 passed); `ruff check` on the two touched files reports
+  findings identical to `HEAD` (all pre-existing), and `ruff format --check` is
+  clean.
 
 ### RF-119
 - **Status:** OPEN

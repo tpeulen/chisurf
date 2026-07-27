@@ -2,6 +2,20 @@
 
 ## 2026-07-27
 
+* **"Keep no job history" kept everything (RF-118).** `JobManager.cleanup`
+  pruned with a negative slice stop, and `-0` is not a negative index:
+  `terminal[:-0]` is `terminal[:0]`, the empty list, so a manager configured
+  with `max_history=0` — the setting that asks for the least memory — removed
+  nothing and grew without bound. Counting the drops from the front instead
+  (`terminal[: max(0, len(terminal) - self._max_history)]`) is correct for every
+  value, so the `if` guard around it is gone. A negative `max_history`, which
+  the old slice read as "keep that many", is now clamped to 0 once at
+  construction rather than given a second meaning. No production caller changes
+  behaviour: both live managers take the default 100. Three tests in
+  `test/server/test_jobs.py` pin it; the negative-history one completes eight
+  jobs on purpose, because a sample smaller than `abs(max_history)` cannot tell
+  the old reading from the new one.
+
 * **PRD-57 voxel section grounded in the reference implementation's source.**
   Rewritten after reading its `map`/`map_data` bundles rather than describing the
   design from memory, and it settled several things the first pass had guessed.

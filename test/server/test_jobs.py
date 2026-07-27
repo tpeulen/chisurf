@@ -123,6 +123,51 @@ class TestJobManager:
         # Oldest completed (j1) should be removed
         assert mgr.get_job(j1.job_id) is None
 
+    def test_cleanup_keeping_no_history_removes_every_terminal_job(self):
+        """``max_history=0`` must prune all terminal jobs, not none of them.
+
+        The pruning used to slice with a negative stop, and ``-0`` is not a
+        negative index: ``terminal[:-0]`` is the empty list, so the one setting
+        that asks for the least memory kept everything.
+        """
+        mgr = JobManager(max_history=0)
+        running = mgr.create_job("running", {})
+        mgr.start_job(running.job_id)
+        for action in ("a", "b", "c"):
+            job = mgr.create_job(action, {})
+            mgr.start_job(job.job_id)
+            mgr.complete_job(job.job_id, {})
+
+        assert mgr.cleanup() == 3
+        # Only the still-running job survives; it is not terminal.
+        assert [j.job_id for j in mgr.list_jobs()] == [running.job_id]
+
+    def test_cleanup_treats_a_negative_history_as_zero(self):
+        """A negative ``max_history`` is clamped, not read as a slice offset.
+
+        More jobs than ``abs(max_history)`` are completed on purpose: the old
+        negative-stop slice read ``-(-5)`` as "keep the newest 5", so a smaller
+        sample would not tell the two readings apart.
+        """
+        mgr = JobManager(max_history=-5)
+        for action in "abcdefgh":
+            job = mgr.create_job(action, {})
+            mgr.start_job(job.job_id)
+            mgr.complete_job(job.job_id, {})
+
+        assert mgr.cleanup() == 8
+        assert mgr.list_jobs() == []
+
+    def test_cleanup_keeps_history_below_the_limit(self):
+        """Fewer terminal jobs than ``max_history`` are left untouched."""
+        mgr = JobManager(max_history=5)
+        job = mgr.create_job("a", {})
+        mgr.start_job(job.job_id)
+        mgr.complete_job(job.job_id, {})
+
+        assert mgr.cleanup() == 0
+        assert mgr.get_job(job.job_id) is not None
+
     def test_run_fn_queues_and_completes(self):
         """run_fn should create a job, execute fn, and mark completed."""
         mgr = JobManager()
