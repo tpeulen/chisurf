@@ -5050,3 +5050,63 @@ reports success after writing nothing (RF-426). Findings RF-422..RF-426.
 - **Location:** `chisurf/gui/autoform/state.py:288-313` (`_spec_of`, whose `except Exception: continue` swallows a `view_spec` that cannot be called), `:164-167` (`collect_state` returns `{}` when the spec is `None`) and `:240-262` (`save_state` writes that and returns the path)
 - **Finding:** the apply direction reports an unresolvable spec (everything lands in `unknown`, `result.ok` is `False`); the capture direction reports nothing at all. Verified with a model whose `view_spec` takes a required argument — the case `_spec_of`'s own comment anticipates ("a model may need arguments") — `save_state` writes `{"format": "chisurf-autoform-state", "state": {}, "version": 1}` and returns the path, with no log line at any level. The same silence covers a caller that passes something that is not a form at all (`form: Any`; `restore_form(object(), …)` is already exercised in `test/core/test_burst_manifest.py`). A settings file that stores nothing is discovered only later, when restoring it changes nothing. Distinguish "no bound controls" from "no spec" — log a warning in `collect_state` when `_spec_of` returns `None`, and record the reason `_spec_of` discarded each candidate rather than dropping the exception.
 - **Fix note:**
+
+## Review 2026-07-27 (2) — chimol voxel maps: a first-class object the GUI never makes
+
+Slice: `b773f96ff` (*voxel maps as first-class objects, and an MRC reader that
+places them correctly*) — `chimol/volume.py`, `chimol/io/mrc.py`,
+`chimol/cmd/volumes.py` and the `MolView` half of `renderer/view.py`, against
+`chimol/test/test_volume.py` (37 tests) and the new guide-44 section.
+
+The MRC reader itself holds up: the `mapc/mapr/maps` permutation is applied the
+right way round (`samples` is `[s, r, c]`, so spatial axis `a` really does sit on
+array axis `2 - ijk_to_crs[a]`), the origin preference matches the reference
+reader, `step` needs no permutation because `mx`/`xlen` are already in xyz, and
+`strided()` scales the step with the stride so a subsampled map stays in place.
+`index_to_world` and `isosurface` apply the same `R·(idx·step) + origin`, so
+there is one placement rule rather than two.
+
+What does not hold is everything around the object. The frame-sharing fix works
+in one order only — load the map *first* and it is drawn on top of the model
+again (RF-427) — and the GUI's own *File → Open* never makes a map object at all,
+so none of `isosurface`/`isomesh`/`volume_level`/`map_info` can see a map a user
+opened (RF-428). The level check and the drawing disagree about which grid they
+are checking against, so a big map answers "at 50" and draws nothing (RF-429);
+the contour is re-run by marching cubes on every redraw, 0.34–0.6 s per unrelated
+click (RF-430); and the `name` every contour is given is stored and read nowhere
+(RF-431). Findings RF-427..RF-431.
+
+### RF-427
+- **Status:** OPEN
+- **Severity:** S1 (a density is drawn centred on the model instead of where the file puts it, whenever the map is loaded before the structure)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:6845-6856` (`add_volume`, the `shared_centre` loop and `state.raw_center = centre_world if shared_centre is None else shared_centre`) against `:2160-2162` and `:2318-2319` (`set_structure` / `set_coordinates`, each of which sets its own object's `_raw_center` from its own centroid and reframes nothing)
+- **Finding:** the fix the commit describes ("a map now adopts the frame of whatever is already loaded") only runs inside `add_volume`, so it covers `load model.pdb` → `load_map density.mrc` and not the reverse. Nothing reframes a map when a structure is loaded *after* it: `add_structure`/`add_coordinates` set the new object's `raw_center` to its own centroid, and the only reframing seam, `_reframe_to` (`:1538`), is called from `create_from_selection` and `_remove_atoms` only. Verified headlessly with a 24³ map (centre 11.5, 11.5, 11.5) and a 4-atom structure sitting in one corner of it (centre 4, 4, 4), scale 10: loading the structure first puts the contour's centroid at scene `(80, 80, 80)` and the atoms at `(0, 3.03, 1.51)` — 8 Å apart, correct — while loading the **map first** puts the contour's centroid at `(5, 5, 5)`, i.e. on top of the atoms, which is exactly the "density that wraps a structure appears as a small blob inside it" failure the commit says it fixed. `load_map density.mrc` then `load model.pdb` is an ordinary session opening, and the guide's own example order (`load_map` first, `isomesh` second) invites it. Either reframe every existing map to the new structure's centre when one is loaded (`_reframe_to` already exists, but only shifts `_coords`/`_all_atom_coords`, so a map needs its `raw_center` moved and the contour rebuilt), or give the scene one frame instead of a per-object one. `test_a_map_adopts_the_frame_of_what_is_already_loaded` (`test/test_volume.py:439`) pins only the working order.
+- **Fix note:**
+
+### RF-428
+- **Status:** OPEN
+- **Severity:** S2 (a map opened the only way the GUI offers is not a map object, so every command the commit adds reports that no maps are loaded)
+- **Location:** `chisurf/plugins/chimol/chimol/app/molview_main_window.py:1636-1677` (the `is_map` branch: `points, meta = load_mrc_as_points(path)` → `self.viewer.add_coordinates(...)` → `set_dots_visible(True)`), reachable from the open dialog's filter at `:658` (`*.mrc *.map *.ccp4 *.mrc.gz *.map.gz *.ccp4.gz`)
+- **Finding:** `add_volume` has exactly one caller in the tree, `cmd/volumes.py:69` (`load_map`); `grep -rn 'load_map\|add_volume' chimol/app/` returns nothing. *File → Open* on an MRC therefore still takes the legacy point-cloud path and creates an ordinary **coordinates** object of up to 250 000 fake atoms rendered as dots — `entry.state.volume` stays `None`, so `_resolve_map_object` (`cmd/volumes.py:242-250`) finds no maps and `isosurface`, `isomesh`, `volume_level` and `map_info` all answer "*no maps are loaded; `load_map file.mrc` reads one*" for a map that is plainly on screen. Two further consequences follow from it being a coordinates object: it carries its own `raw_center` and so is misplaced exactly as in [RF-427], and it is thinned to a point cloud at one hard-coded contour with no way to move the level. Guide 44's new section documents only the command-line form, so the GUI opener and the documented behaviour have silently forked. Route the `is_map` branch through `load_mrc_grid` + `viewer.add_volume`, and keep `load_mrc_as_points` for callers that genuinely want points.
+- **Fix note:**
+
+### RF-429
+- **Status:** OPEN
+- **Severity:** S2 (the command validates the level against the full map and the renderer against the strided one, so a level the command accepts and reports can draw nothing at all)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/volumes.py:105-126` (`_contour`: `low, high = grid.value_range()` on the full grid, then the success message) and `:179-184` (`volume_level`, the same check) against `chisurf/plugins/chimol/chimol/volume.py:298-304` (`isosurface`: `grid = self.strided(voxel_limit_m)` **then** `low, high = grid.value_range()`)
+- **Finding:** striding drops the peaks, so the strided grid's range is a subset of the full one and the two checks disagree for every map over the 16 M-voxel budget. Verified headlessly on a 260³ map (17.6 M voxels, stride 2) holding a sharp peak on odd indices: full range `0 … 100`, strided range `0 … 9.60`. `isosurface mymesh, sharp, 50` passes the command's `low < 50 < high`, prints `isosurface: sharp at 50 (0.0% of voxels)` on the **message** callback with the error callback empty, stores the level, and then `_update_volume` gets `None` back from `grid.isosurface(50.0)` and `continue`s — `view._scene.objects` is `[]`. That is precisely the "quietly drawing nothing" the commit and the guide say cannot happen ("*a level outside it is refused **with** the range rather than quietly drawing nothing*", `docs/guides/44_molecular_viewer.md`). The reported voxel fraction is computed on the full grid too, so it describes a surface that was never drawn. Check the level against the grid that will actually be contoured — `grid.strided(voxel_limit_m).value_range()` — and say so in the refusal ("*at the stride this map is drawn at, values only reach 9.6*"), since the honest answer is about the display budget, not the data.
+- **Fix note:**
+
+### RF-430
+- **Status:** OPEN
+- **Severity:** S2 (every unrelated redraw re-runs marching cubes over the whole map; 0.34–0.6 s per click with one 8 M-voxel map loaded)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:6889-6970` (`_update_volume`, which calls `grid.isosurface(level)` unconditionally) called from `:6678` (`_build_scene_for_current_object`) inside the per-object loop of `_update_view` (`:6612-6673`)
+- **Finding:** nothing memoises the contour: the mesh is rebuilt from the voxels on every `_update_view`, although neither the grid nor the level changed. Measured headlessly on a 200³ Gaussian map (8.0 M voxels, stride 1, 48 030 contour vertices) with numba warm: three successive bare `_update_view()` calls took 0.534 s, 0.511 s and 0.603 s. With a small structure alongside it, ordinary interactions that touch no map at all cost the same — `set_active_object` 0.345 s, `set_selected_residues` 0.342 s, `set_object_visible` 0.418 s. `MolView` has **54** `self._update_view(` call sites, including `handle_mouse_click` (`:3484`), `set_frame_position` (`:1181`) and `set_active_frame` (`:2475`), so every pick and every trajectory frame pays it; a map at the 16 M ceiling costs roughly twice as much. The guide claims the voxel budget is what keeps "*a contour change quick*" — the budget bounds one contour, not the number of times it is recomputed. Cache `(verts, faces, normals)` per `(id(grid), level, voxel_limit_m, style)` on the object state and invalidate it in `add_volume`/`set_volume_levels`, which are the only two places either input changes.
+- **Fix note:**
+
+### RF-431
+- **Status:** OPEN
+- **Severity:** S3 (the first positional argument of `isosurface`/`isomesh` is stored and read nowhere, so a contour cannot be addressed by the name PyMOL's contract gives it)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/volumes.py:113-121` (`_contour` writes `"name": name or f"{style}_{len(levels) + 1}"` into the level dict) against `chisurf/plugins/chimol/chimol/renderer/view.py:6903-6968` (`_update_volume`, which reads `level`, `color` and `style` only and ids its scene objects `f"volume_{index}"`) and `cmd/volumes.py:189-191` (`volume_level`, which rewrites the level list without the key)
+- **Finding:** `grep -rn` for the key shows it written in one place and read in none. In PyMOL `isomesh dens, map, 0.08` creates an *object* called `dens` that `color`, `disable`, `enable` and `delete` then address; here the name is a label on a dict that never leaves the state, the scene object is called `volume_0`/`volume_1` by position, and `volume_level` drops it on the first replacement — so there is no way to recolour or remove one contour of a multi-level map, which is the case the feature exists for ("*a dense core inside a diffuse shell*", `renderer/chimol_state.py:82-84`). The module docstring opens by claiming "PyMOL's names and argument order, per the compatibility contract", which makes the silence worse than a missing argument would be. Either use the name — id the scene object `f"{object_prefix}:{name}"` and let the existing object commands resolve it — or drop the parameter and say in the guide that contours are addressed by level.
+- **Fix note:**
