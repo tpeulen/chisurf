@@ -166,6 +166,7 @@ def list_lightpaths(db_path: str | None = None) -> list[dict]:
 def lightpath_prior(operation_id: str, *, donor: str | None = None,
                     acceptor: str | None = None, green_detector: str | None = None,
                     red_detector: str | None = None, green_laser: str | None = None,
+                    red_laser: str | None = None,
                     quantum_yields: dict | None = None,
                     detection_efficiencies: dict | None = None,
                     db_path: str | None = None) -> dict:
@@ -185,6 +186,9 @@ def lightpath_prior(operation_id: str, *, donor: str | None = None,
         Detector labels; default to the first two columns of the emission matrix.
     green_laser : str, optional
         Donor-excitation laser; defaults to the first excitation row.
+    red_laser : str, optional
+        Acceptor-excitation laser (``delta`` is referenced to it); defaults to
+        the second excitation row.
     quantum_yields : dict, optional
         ``{dye: QY}`` — the donor and acceptor quantum yields entering ``gamma``.
     detection_efficiencies : dict, optional
@@ -226,6 +230,7 @@ def lightpath_prior(operation_id: str, *, donor: str | None = None,
         "green_detector": green_detector,
         "red_detector": red_detector,
         "green_laser": green_laser or (lasers[0] if lasers else None),
+        "red_laser": red_laser or (lasers[1] if len(lasers) > 1 else None),
         "qy_d": float(qy.get(donor, 1.0)),
         "qy_a": float(qy.get(acceptor, 1.0)),
         "gG": float(det.get(green_detector, 1.0)),

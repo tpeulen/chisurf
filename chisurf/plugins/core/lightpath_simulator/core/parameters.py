@@ -213,7 +213,8 @@ class LightPathParameters(FittingParameterGroup):
 
     def update_factors(self, *, donor: str | None = None, acceptor: str | None = None,
                        green_detector: str | None = None, red_detector: str | None = None,
-                       green_laser: str | None = None) -> dict:
+                       green_laser: str | None = None,
+                       red_laser: str | None = None) -> dict:
         """Recompute ``gamma``/``alpha``/``delta`` from the current parameters.
 
         Parameters
@@ -224,6 +225,9 @@ class LightPathParameters(FittingParameterGroup):
             Detector labels; default to the first two detectors.
         green_laser : str, optional
             Donor-excitation laser; defaults to the first one.
+        red_laser : str, optional
+            Acceptor-excitation laser (``delta`` is referenced to it); defaults
+            to the second one.
 
         Returns
         -------
@@ -241,6 +245,7 @@ class LightPathParameters(FittingParameterGroup):
         factors = lightpath_correction_factors(
             self.as_matrices(), donor, acceptor, green_detector, red_detector,
             green_laser=green_laser or (self.lasers[0] if self.lasers else None),
+            red_laser=red_laser or (self.lasers[1] if len(self.lasers) > 1 else None),
             gG=self.value("g", green_detector, default=1.0),
             gR=self.value("g", red_detector, default=1.0),
             qy_d=self.value("qy", donor, default=1.0),
@@ -284,6 +289,7 @@ class LightPathParameters(FittingParameterGroup):
             "donor": donor, "acceptor": acceptor,
             "green_detector": green, "red_detector": red,
             "green_laser": self.lasers[0] if self.lasers else None,
+            "red_laser": self.lasers[1] if len(self.lasers) > 1 else None,
             "gG": self.value("g", green, default=1.0),
             "gR": self.value("g", red, default=1.0),
             "qy_d": self.value("qy", donor, default=1.0),

@@ -182,7 +182,9 @@ def test_static_populations_sit_on_the_static_line():
 
 LIGHTPATH = {
     "matrices": {
-        "excitation": {"rows": ["green"], "columns": ["D", "A"], "values": [[1.0, 0.055]]},
+        # ALEX: delta = I_DA/I_AA = ex[green, A] / ex[red, A]
+        "excitation": {"rows": ["green", "red"], "columns": ["D", "A"],
+                       "values": [[1.0, 0.055], [0.001, 1.0]]},
         "emission": {"rows": ["D", "A"], "columns": ["green_det", "red_det"],
                      "values": [[0.92, 0.075], [0.02, 0.90]]},
     },

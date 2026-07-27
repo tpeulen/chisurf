@@ -40,7 +40,8 @@ back to the physically-motivated light-path prior.
   (≡ `I_11`/`I_12`/`I_22`) aliases in the user-facing API.
 - **Light-path → prior bridge** — `lightpath_correction_factors(...)` computes
   `gamma = (gR·cRA·QYA)/(gG·cGD·QYD)`, `alpha = (gR·cRD)/(gG·cGD)` (leakage) and
-  `delta` (direct excitation) from a light-path `get_crosstalk_matrices()` payload
+  `delta = ex[green, A]/ex[red, A]` (direct excitation) from a light-path
+  `get_crosstalk_matrices()` payload
   (reusing
   `crosstalk.matrix_from_payload` and the MFD algebra from `pda/nusiance.py`);
   `set_priors_from_lightpath(...)` attaches a `NormalPrior` on `gamma`/`R0` and a

@@ -2,6 +2,34 @@
 
 ## 2026-07-27
 
+* **The light-path `delta` prior is referenced to the acceptor-excitation laser
+  (RF-240).** `lightpath_correction_factors` computed `delta` as
+  `ex[green, A]/ex[green, D]` — direct acceptor excitation relative to the *donor's*
+  excitation by the same laser. Every consumer applies `delta` to `I_AA`:
+  `es.corrected_es` forms `F_DA = (I_DA−B) − α·F_DD − δ·F_AA`, `global_es_correction`
+  subtracts `delta*i_aa`, and this module's own data estimator
+  `direct_excitation_from_acceptor_only` returns `<F_DA>/<F_AA>`. The two ratios
+  differ by the excitation-flux factor `beta`, so the prior mean and the data
+  estimate `_combine_with_optics_priors` precision-averages were of different
+  quantities — the same class of convention mismatch as RF-239 (`alpha`).
+  The function now takes a `red_laser` keyword (defaulting to the first excitation
+  row that is not `green_laser`) and returns Hellenkamp's
+  `delta = I_DA/I_AA = ex[green, A]/ex[red, A]`, in which the acceptor emission, its
+  quantum yield and `gR` cancel. A single-laser (non-ALEX) light path has no `I_AA`
+  to subtract and so yields `delta = 0` instead of a `beta`-scaled donor ratio. The
+  keyword is threaded through `set_priors_from_lightpath`,
+  `LightPathParameters.update_factors`/`as_prior_arguments` and
+  `accurate_fret.core.lightpath_prior`. Pinned by two tests in
+  `test/fitting/test_fret_calibration.py` (the light-path `delta` equals
+  `direct_excitation_from_acceptor_only` on acceptor-only counts synthesised from the
+  same matrices, is *not* the donor-referenced ratio, and does not move when the
+  donor's excitation does; plus the single-laser zero case). The single-laser
+  fixtures in `test_fret_calibration.py` and `test_accurate_fret.py` became the
+  two-laser ALEX payloads they always described. Documented in
+  [references/fret-calibration.md](/references/fret-calibration.md) and
+  `docs/guides/fret_calibration.md`. En route: a dead `pol` local in
+  `fret_correction_matrix` (a standing `ruff F841`) removed.
+
 * **DATA-05: an external tool run is typed, and its command line is a column.**
   A CLI or script recorded in MMFDB had nowhere honest to go — the constrained
   `operation_type` vocabulary had no generic value for it (the shipped example

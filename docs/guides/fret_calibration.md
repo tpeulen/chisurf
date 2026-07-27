@@ -101,6 +101,14 @@ set_priors_from_lightpath(calib, matrices, donor="Alexa488", acceptor="Alexa647"
 post = refine_calibration(calib, i_dd, i_da, i_aa, labels)
 ```
 
+The light-path priors use the same conventions as the data estimators above:
+$\alpha$ is referenced to the green channel alone and $\delta$ to the
+acceptor-excitation channel, i.e. $\delta = \mathrm{ex}[\text{green}, A] /
+\mathrm{ex}[\text{red}, A]$. The donor-excitation and acceptor-excitation lasers
+default to the first and second excitation rows of the payload; name them with
+`green_laser=` / `red_laser=` when the setup has more than two. A single-laser
+(non-ALEX) light path has no $I_{22}$ to subtract, so its $\delta$ prior is 0.
+
 `refine_calibration` returns the **posterior** `gamma` as the precision-weighted
 combination of the data estimate (from the E-S population fit, with an
 uncertainty bootstrapped over bursts) and the light-path prior: strong data

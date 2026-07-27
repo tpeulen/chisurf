@@ -2992,13 +2992,31 @@ RF-239..RF-248 below.
   `calibration` or `alpha`.
 
 ### RF-240
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the light-path `delta` is referenced to the donor, the consumed `delta` to the acceptor-excitation channel; they differ by the factor `beta`)
 - **Location:** `chisurf/core/fluorescence/fret/calibration.py:284,291` (`lightpath_correction_factors`: `ex_ag = _cell(exc, laser, acceptor)`, `delta = ex_ag / ex_dg`)
 - **Note (2026-07-26):** RF-239 is now `FIXED`; this one is untouched and still live —
   the `den_a` change does not affect the `delta` expression.
 - **Finding:** `delta` is computed as `exc[green_laser, acceptor] / exc[green_laser, donor]` — direct acceptor excitation relative to **donor** excitation by the same laser. Every consumer treats `delta` as the coefficient of the acceptor-excitation signal: `es.corrected_es` forms `F_DA = (I_DA−B) − alpha·F_DD − delta·F_AA`, `global_es_correction:505` subtracts `delta*y` (`y = i_aa`), and this module's data estimator `direct_excitation_from_acceptor_only:972-977` returns `<F_DA>/<F_AA>`. Those two ratios differ by exactly the excitation-flux ratio `beta` (the light-path `excitation` payload holds per-`(laser, dye)` excitation *probabilities* including the laser's own flux — `lightpath_simulator/backend/simulator.py:196-213`), so they agree only when `beta = 1`. The acceptor-excitation laser row that the correct expression needs — `exc[red_laser, acceptor]` — is present in the payload and never read; the function only ever consults the single `laser` row. As in RF-239, `_combine_with_optics_priors` precision-averages this prior mean with the acceptor-only data estimate of a different quantity, and `set_priors_from_lightpath:463` makes it the `TruncatedNormalPrior` mean. Take the acceptor-excitation laser as a second argument and return `exc[green, acceptor]/exc[red, acceptor]`, or state the convention and convert by `beta` at the seam.
-- **Fix note:**
+- **Fix note:** `lightpath_correction_factors` now takes a `red_laser` keyword (the
+  acceptor-excitation/ALEX laser, defaulting to the first excitation row that is not
+  `green_laser`) and returns `delta = ex[green, A] / ex[red, A]` — Hellenkamp's
+  `I_DA/I_AA`, the quantity every consumer applies; the acceptor emission, its QY and
+  `gR` cancel between the two rows. A payload with no acceptor-excitation row has no
+  `I_AA` to subtract, so `delta` is 0 rather than a `beta`-scaled donor ratio. The
+  keyword is threaded through `set_priors_from_lightpath`,
+  `LightPathParameters.update_factors`/`as_prior_arguments` and
+  `accurate_fret.core.lightpath_prior` (all defaulting to the second excitation row).
+  Pinned by `test/fitting/test_fret_calibration.py::test_lightpath_delta_matches_the_acceptor_only_data_estimator`
+  (light-path `delta` == `direct_excitation_from_acceptor_only` on acceptor-only counts
+  synthesised from the same matrices, != the `ex[green, A]/ex[green, D]` ratio, and
+  unchanged when the donor's excitation moves) and
+  `::test_lightpath_delta_is_zero_without_an_acceptor_excitation_laser`; the
+  single-laser fixtures in `test_fret_calibration.py` and `test_accurate_fret.py`
+  became the two-laser ALEX payloads they were always meant to describe. Also removed
+  a dead `pol` local in `fret_correction_matrix` (pre-existing `ruff F841` in the same
+  file). Docs: `docs/guides/fret_calibration.md` states the two conventions and the
+  laser-row defaults; OKF `references/fret-calibration.md` updated.
 
 ### RF-241
 - **Status:** OPEN

@@ -241,6 +241,7 @@ def lightpath_correction_factors(
     red_detector: str,
     *,
     green_laser: str | None = None,
+    red_laser: str | None = None,
     gG: float = 1.0,
     gR: float = 1.0,
     qy_d: float = 1.0,
@@ -264,6 +265,9 @@ def lightpath_correction_factors(
         Detector labels for the donor (green) and acceptor (red) channels.
     green_laser : str, optional
         Donor-excitation laser label. Defaults to the first excitation row.
+    red_laser : str, optional
+        Acceptor-excitation (ALEX/PIE) laser label. Defaults to the first
+        excitation row that is not ``green_laser``.
     gG, gR : float, optional
         Green / red detection efficiencies.
     qy_d, qy_a : float, optional
@@ -277,17 +281,26 @@ def lightpath_correction_factors(
         consume — in particular ``alpha = I_DA/I_DD = (gR·cRD)/(gG·cGD)``, the donor
         leakage *relative to the green channel*, matching
         :func:`leakage_from_donor_only`. This is **not** the legacy MFD fraction
-        ``R_D0/(G_D0 + R_D0)`` of ``pda/nusiance.py``.
+        ``R_D0/(G_D0 + R_D0)`` of ``pda/nusiance.py``. Likewise
+        ``delta = I_DA/I_AA = ex[green, A]/ex[red, A]``, the direct acceptor
+        excitation *relative to the acceptor-excitation channel*, matching
+        :func:`direct_excitation_from_acceptor_only` — not the ratio to the
+        donor's own excitation, which differs from it by ``beta``. Without an
+        acceptor-excitation laser there is no ``I_AA`` to subtract and ``delta``
+        is 0.
     """
     exc = matrices.get("excitation", {}) if isinstance(matrices, dict) else {}
     emi = matrices.get("emission", {}) if isinstance(matrices, dict) else {}
-    laser = green_laser if green_laser is not None else (exc.get("rows", [None]) or [None])[0]
+    lasers = list(exc.get("rows", []) or [])
+    laser = green_laser if green_laser is not None else (lasers[0] if lasers else None)
+    if red_laser is None:
+        red_laser = next((row for row in lasers if row != laser), None)
 
     c_gd = _cell(emi, donor, green_detector, 1.0)
     c_rd = _cell(emi, donor, red_detector, 0.0)
     c_ra = _cell(emi, acceptor, red_detector, 1.0)
-    ex_dg = _cell(exc, laser, donor, 1.0) if laser is not None else 1.0
     ex_ag = _cell(exc, laser, acceptor, 0.0) if laser is not None else 0.0
+    ex_ar = _cell(exc, red_laser, acceptor, 0.0) if red_laser is not None else 0.0
 
     eps = 1e-12
     den_g = gG * c_gd * qy_d
@@ -298,7 +311,11 @@ def lightpath_correction_factors(
     # see the same donor emission.
     den_a = gG * c_gd
     alpha = (gR * c_rd) / den_a if den_a > eps else 0.0
-    delta = ex_ag / ex_dg if abs(ex_dg) > eps else 0.0
+    # delta in the same convention: I_DA/I_AA, i.e. the direct acceptor excitation
+    # by the green laser referenced to the acceptor-excitation channel (the
+    # acceptor emission, its QY and gR cancel between numerator and denominator).
+    # Referencing it to the donor's own excitation instead is off by beta.
+    delta = ex_ag / ex_ar if abs(ex_ar) > eps else 0.0
     return {"gamma": float(gamma), "alpha": float(alpha), "delta": float(delta)}
 
 
@@ -423,6 +440,7 @@ def set_priors_from_lightpath(
     red_detector: str,
     *,
     green_laser: str | None = None,
+    red_laser: str | None = None,
     gG: float = 1.0,
     gR: float = 1.0,
     qy_d: float = 1.0,
@@ -447,7 +465,7 @@ def set_priors_from_lightpath(
     matrices : dict
         Light-path crosstalk matrices (see
         :func:`lightpath_correction_factors`).
-    donor, acceptor, green_detector, red_detector, green_laser, gG, gR, qy_d, qy_a
+    donor, acceptor, green_detector, red_detector, green_laser, red_laser, gG, gR, qy_d, qy_a
         Forwarded to :func:`lightpath_correction_factors`.
     gamma_sigma, alpha_sigma, delta_sigma : float, optional
         Prior standard deviations (the light-path model uncertainty).
@@ -466,7 +484,7 @@ def set_priors_from_lightpath(
     """
     factors = lightpath_correction_factors(
         matrices, donor, acceptor, green_detector, red_detector,
-        green_laser=green_laser, gG=gG, gR=gR, qy_d=qy_d, qy_a=qy_a,
+        green_laser=green_laser, red_laser=red_laser, gG=gG, gR=gR, qy_d=qy_d, qy_a=qy_a,
     )
     calib._gamma.prior = NormalPrior(mu=factors["gamma"], sigma=gamma_sigma)
     calib._alpha.prior = TruncatedNormalPrior(mu=factors["alpha"], sigma=alpha_sigma, lb=0.0, ub=1.0)
@@ -1164,8 +1182,9 @@ def rcm_from_dye_solutions(
     if donor_sample_rates.size != nchtot or acceptor_sample_rates.size != nchtot:
         raise ValueError("rate vectors must match the number of detector channels")
 
+    # the polarisation entry of each assignment is implicit in the channel order
+    # below (a_idx/d_idx) together with `anisotropy`, so only the species is read
     species = [d[0] for d in detector_assignment]
-    pol = [d[1] if len(d) > 1 else None for d in detector_assignment]
     nchA = species.count("A")
     nchD = species.count("D")
     if nchA != nchD or nchA == 0 or nchA > 2:

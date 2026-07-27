@@ -9,6 +9,7 @@ from chisurf.core.fitting.priors import NormalPrior, TruncatedNormalPrior
 from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
 from chisurf.core.fluorescence.fret.calibration import (
     CalibrationParameters,
+    direct_excitation_from_acceptor_only,
     global_es_correction,
     leakage_from_donor_only,
     lightpath_correction_factors,
@@ -18,12 +19,14 @@ from chisurf.core.fluorescence.fret.calibration import (
 
 
 def _lightpath(gamma_via_cgd=0.85, alpha=0.066, delta=0.03):
-    """Build a synthetic light-path payload with a chosen gamma/alpha/delta."""
+    """Build a synthetic ALEX light-path payload with a chosen gamma/alpha/delta."""
     c_gd = gamma_via_cgd
     c_rd = alpha * c_gd  # so alpha = I_DA/I_DD = gR*cRD/(gG*cGD)  (Hellenkamp)
     return {
-        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"],
-                       "values": [[1.0, delta]]},
+        # two excitation rows: delta = I_DA/I_AA = ex[532, A]/ex[640, A] is
+        # referenced to the acceptor-excitation laser, not to ex[532, donor]
+        "excitation": {"rows": ["532", "640"], "columns": ["donor", "acceptor"],
+                       "values": [[1.0, delta], [0.0, 1.0]]},
         "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
                      "values": [[c_gd, c_rd], [0.02, 1.0]]},
     }
@@ -90,6 +93,57 @@ def test_lightpath_alpha_matches_the_donor_only_data_estimator():
     # and is *not* the legacy fraction-of-all-donor-photons convention
     legacy = gR * c_rd / (gG * c_gd + gR * c_rd)
     assert f["alpha"] > legacy
+
+
+def test_lightpath_delta_matches_the_acceptor_only_data_estimator():
+    """The light-path prior mean for ``delta`` is the quantity consumers apply.
+
+    ``delta`` is Hellenkamp's ``I_DA/I_AA``, so the light path must return exactly
+    what :func:`direct_excitation_from_acceptor_only` measures on acceptor-only
+    counts synthesised from the *same* matrices — the ratio of the two excitation
+    rows for the acceptor, **not** the acceptor/donor ratio within the green row,
+    which differs from it by ``beta`` (RF-240).
+    """
+    ex_ag, ex_ar, ex_dg = 0.03, 0.8, 0.9
+    c_ra, gR, qy_a = 0.9, 0.7, 0.6
+    matrices = {
+        "excitation": {"rows": ["532", "640"], "columns": ["donor", "acceptor"],
+                       "values": [[ex_dg, ex_ag], [0.0, ex_ar]]},
+        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
+                     "values": [[0.85, 0.06], [0.02, c_ra]]},
+    }
+    f = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet",
+                                     gG=1.3, gR=gR, qy_d=0.4, qy_a=qy_a)
+
+    # acceptor-only counts produced by those same matrices: the acceptor emission,
+    # its quantum yield and gR cancel, leaving the excitation ratio
+    detected = 2.0e5 * c_ra * qy_a * gR
+    data_delta = direct_excitation_from_acceptor_only([detected * ex_ag], [detected * ex_ar])
+    assert f["delta"] == pytest.approx(data_delta, rel=1e-9)
+    assert f["delta"] == pytest.approx(ex_ag / ex_ar, rel=1e-9)
+    # and is *not* referenced to the donor's own excitation by the green laser
+    assert f["delta"] != pytest.approx(ex_ag / ex_dg, rel=1e-3)
+
+    # naming the acceptor-excitation laser explicitly gives the same answer, and
+    # the donor's excitation cannot influence delta
+    named = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet",
+                                         green_laser="532", red_laser="640")
+    assert named["delta"] == pytest.approx(f["delta"], rel=1e-12)
+    matrices["excitation"]["values"][0][0] = 0.1
+    moved = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet")
+    assert moved["delta"] == pytest.approx(f["delta"], rel=1e-12)
+
+
+def test_lightpath_delta_is_zero_without_an_acceptor_excitation_laser():
+    """Single-laser optics have no ``I_AA``, so there is nothing for delta to scale."""
+    matrices = {
+        "excitation": {"rows": ["532"], "columns": ["donor", "acceptor"],
+                       "values": [[0.9, 0.03]]},
+        "emission": {"rows": ["donor", "acceptor"], "columns": ["gdet", "rdet"],
+                     "values": [[0.85, 0.06], [0.02, 1.0]]},
+    }
+    f = lightpath_correction_factors(matrices, "donor", "acceptor", "gdet", "rdet")
+    assert f["delta"] == 0.0
 
 
 def test_set_priors_from_lightpath_attaches_priors():
