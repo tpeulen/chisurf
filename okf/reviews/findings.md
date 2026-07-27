@@ -3999,3 +3999,59 @@ as a successful calculation. Findings RF-379..RF-385.
 - **Location:** `chisurf/plugins/modelling/fps_json_editor/gui/position_panel.py:532-540` (`onAddRowTriggered` → `_add_empty_row`) against `:592-601` (`_ensure_trailing_empty_row`, called from `_set_auto_name_for_row` at `:630`)
 - **Finding:** the table already keeps one empty row at the bottom and appends a fresh one as soon as that row gets a label, so **➕ Add Row** — the obvious affordance, and the only one the toolbar advertises — is redundant and additive. Verified: starting from the one blank row, clicking *Add Row* and filling the new row for each of two positions ends with **five rows, three of them blank** (screenshot: rows 1, 3 and 5 empty, each still carrying a `Custom`/`AV1` combo pair, a *Details…* button and a delete button). The blanks are harmless to the payload — `_trigger_row_av` skips unnamed rows — but they triple the visual size of the table and the log fills with *"AV: Not computed (labeling site Name is empty)"*. Either drop the button or have it jump to (and start editing) the existing trailing blank instead of inserting another.
 - **Fix note:**
+
+## Review 2026-07-27 — the posterior factor graph
+
+Slice: `chisurf/core/fitting/factorgraph.py` — the explicit factor structure of a
+fit's posterior (PRD-68) and its `frozen_structure` freeze — read against its
+consumers: the selective update in
+`chisurf/core/models/global_model/globalfit.py`, the blocked and
+component-wise samplers in `chisurf/core/fitting/sample.py`, and the one
+`frozen_epoch` cache in `chisurf/core/models/tcspc/nusiance.py`. Zero findings on
+record for this module before today. `graphview.py` and `nusiance.py` are being
+edited by another instance, so they were read (the latter at `HEAD`) and are
+cited as consumers, but nothing is anchored to a line in them. Every claim below
+was reproduced in the `arm64` env against the real module. Findings
+RF-386..RF-390.
+
+The module is careful where it matters — the relevance query is correct, and
+`GlobalFitModel._dirty_fits_for` refuses to skip work whenever the graph cannot
+prove it safe. What is wrong sits either side of that: the structural queries are
+recomputed from scratch every time they are asked, and the variables the graph
+*cannot* explain are handled as if they were free rather than as the worst case
+they are.
+
+### RF-386
+- **Status:** OPEN
+- **Severity:** S2 (every structural query re-runs the greedy elimination from scratch; `repr()` of a large fit's graph costs seconds)
+- **Location:** `chisurf/core/fitting/factorgraph.py:605-658` (`elimination_order`) and `:660-699` (`cliques`) — neither result is memoised, unlike `markov_graph` at `:561-583` — re-entered from `treewidth` (`:736-749`), `blocks` (`:751-758`), `junction_tree` (`:701-734`), `separators` (`:830-842`), `describe` (`:936-963`) and `__repr__` (`:526-534`)
+- **Finding:** measured on a plain single `Fit`'s graph — one likelihood over all free parameters, hence a complete Markov graph, the shape the module docstring itself calls out as `treewidth = n_free − 1`: one `treewidth` call costs 0.04 s at 40 variables, 0.56 s at 80, 2.7 s at 120, 9.5 s at 160 and **20.9 s at 200**, and nothing is retained, so the next caller pays it again. `__repr__` calls `treewidth`, so merely printing the object in a debugger or interpolating it into a log line pays that (0.19 s at 60 variables). `describe()` — reached from `GlobalFitModel.structure_report()` at `globalfit.py:417` — pays it three times over (`treewidth`, then `separators` → `junction_tree` → `cliques`, then `connected_components`): 0.38 s at 60 variables. `graphview.junction_tree_view` also pays three times, calling `junction_tree()` once and then `graph.treewidth` **twice** inside a single f-string. A 128-exponential FRET model carries ~256 free parameters, which puts a single structure report well past a minute. The graph is immutable between `invalidate()` calls and `_markov_graph` is already cached on exactly that lifetime, so memoise `elimination_order` and `cliques` beside it and clear them in `invalidate()`; a complete Markov graph can additionally short-circuit to `n − 1` without eliminating anything.
+- **Fix note:**
+
+### RF-387
+- **Status:** OPEN
+- **Severity:** S2 (independent-component sampling silently switches itself off as soon as two global parameters are declared but not yet linked)
+- **Location:** `chisurf/core/fitting/factorgraph.py:760-813` (`sampling_blocks`: every variable with an empty likelihood neighbourhood lands in one shared block) against `chisurf/core/fitting/sample.py:1539-1577` (`_component_blocks`, which refuses the whole decomposition when a block is not contained in a component)
+- **Finding:** a variable no likelihood touches (`unexplained_variables`) is an isolated node of the Markov graph — a prior factor has a singleton scope and adds no edge — so each such variable is its **own** connected component. `sampling_blocks` nevertheless groups all of them under the single `frozenset()` neighbourhood key, producing one block that spans several components. `_component_blocks` keeps only blocks with `set(b) <= component`, finds the component then uncovered (`covered != indices`) and `return []`, which disables component-wise sampling for the *entire* fit — and quietly, because that `return []` is not the logged branch. Verified on a graph of two datasets (`a0`, `a1`) sharing one global `g` plus two likelihood-free variables `u1`, `u2`: components `[{a0,a1,g}, {u1}, {u2}]`, `sampling_blocks()` → `[('a0',), ('a1',), ('g',), ('u1','u2')]`, and the replicated `_component_blocks` body refuses at component `{u1}` with `covered=[] != indices=[3]`. The trigger is ordinary usage, not a corner case: `GlobalFitModel.append_global_parameter` (`globalfit.py:523-534`) puts a new global straight into the free-parameter vector, where it stays likelihood-free until the user links it to a local model. Split the empty-neighbourhood group by connected component — or emit one block per likelihood-free variable — so a block can never straddle components.
+- **Fix note:**
+
+### RF-388
+- **Status:** OPEN
+- **Severity:** S3 (the cost model is inverted for exactly the variables that force a full recompute: `block_cost` reports the most expensive block in the fit as free)
+- **Location:** `chisurf/core/fitting/factorgraph.py:800-809` (the `sampling_blocks` sort comment — "An empty neighbourhood costs nothing to evaluate but explains nothing either, so it sorts last") and `:815-828` (`block_cost`, `len(self.affected_fits(block))`), against `chisurf/core/models/global_model/globalfit.py:375-383` (`_dirty_fits_for`: `if set(keys) & graph.unexplained_variables(): return None`, i.e. recompute every dataset)
+- **Finding:** the two modules disagree about what a likelihood-free variable costs. `block_cost` returns **0** for a block of them (verified: `block_cost(('u1','u2')) == 0`, against 1, 1 and 2 for the dataset blocks of the same graph), because no likelihood factor has them in scope. The only consumer that acts on such a move — the global model's selective update — reads the same emptiness as "the graph cannot prove what this reaches" and recomputes **all N** local models. So the graph advertises the single most expensive move as costing nothing, and the sort comment asserts it as fact rather than as the artefact of an empty scope. Either have `block_cost` return the full likelihood-factor count when the block intersects `unexplained_variables()`, or rename/redocument it as "datasets the graph can *prove* are affected" and correct the comment. `test/fitting/test_blocked_sampler.py:87` is the only `block_cost` caller and does not cover a likelihood-free variable, so a test pinning the two modules' agreement belongs with the fix.
+- **Fix note:**
+
+### RF-389
+- **Status:** OPEN
+- **Severity:** S3 (a token documented as stable for the duration of a run changes whenever that run nests another freeze, silently dropping the one cache built on it)
+- **Location:** `chisurf/core/fitting/factorgraph.py:167-181` (`frozen_epoch` — "the token is stable for exactly as long as the freeze lasts") and `:232-234` / `:278-279` (`_FROZEN_EPOCH += 1` on entry **and** on exit), against the same context manager's "Re-entrant" promise at `:207-209`; the sole consumer is `_array_fingerprint` in `chisurf/core/models/tcspc/nusiance.py` (`cached[0] == epoch`)
+- **Finding:** nesting is the normal case here — `Fit.run` freezes at `fit.py:1053`, the engine freezes again at `engine.py:535` and `:645`, and every sampler in `sample.py` is wrapped in `@frozen('fit', 'model')` — and each nested *exit* bumps the counter, so an outer run's token changes underneath it. Verified: outer enter → `1`, inner enter → `2`, inner exit → the outer context now reads `3`. Nothing goes stale (the counter only ever increases, so a token is never reused and a cache can never outlive its contract) but every `_array_fingerprint` entry cached before a nested freeze is discarded, which is exactly the O(n) `hash(y.tobytes())` per model evaluation that the cache exists to avoid — the docstring there puts it at 14 % of a decay evaluation. Bump the epoch only on the *outermost* transitions (when `_FROZEN_DEPTH` goes 0 → 1 and back to 0), or state in the docstring that the token identifies a freeze *region* rather than a run.
+- **Fix note:**
+
+### RF-390
+- **Status:** OPEN
+- **Severity:** S3 (a per-variable owner pass runs on every graph build, its result has no reader, and the comment describing it is wrong)
+- **Location:** `chisurf/core/fitting/factorgraph.py:1100-1122` (the `owner` dict and `dataclasses.replace(v, fit_index=owner.get(v.key))`) and `:420-441` (`VariableNode.fit_index`)
+- **Finding:** the comment claims "globals and cross-linked masters keep None", but a cross-linked master *is* a free parameter of the fit that owns it and therefore appears in that local model's `parameters`, so `owner.setdefault(key, i)` stamps it with that fit's index — only genuine globals keep `None`. The behaviour is the defensible half and the comment is the wrong one. The field is also unread: nothing in the tree consumes `VariableNode.fit_index` (`graphview.py` and `sample.py:1160-1162` all read `FactorNode.fit_index`), so the extra pass over every local model's parameter list on every rebuild buys nothing. Either drop the field and the pass, or correct the comment and give `fit_index` the reader it was meant to have — grouping variable nodes by dataset in the graph views is the obvious one.
+- **Fix note:**
