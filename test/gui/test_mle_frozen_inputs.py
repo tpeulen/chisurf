@@ -99,3 +99,59 @@ class TestDeadCodeStaysGone:
         returns = [i for i, st in enumerate(body) if isinstance(st, ast.Return)]
         assert returns, "expected a return"
         assert returns[-1] == len(body) - 1, "statements after the final return are unreachable"
+
+
+class TestHyperparameterSearchBudget:
+    """Review findings on the search the freeze wraps (RF-391, RF-395)."""
+
+    @staticmethod
+    def _surrogate(monkeypatch, losses):
+        """Replace the wizard-driving evaluation with a deterministic loss.
+
+        The real one writes the wizard's tunables and refits for every trial;
+        these tests are about the search's own arithmetic.
+        """
+        from chisurf.plugins.burst.burst_mle_analysis import utils
+
+        calls = []
+
+        def evaluate(wizard, cfg, weights=None):
+            calls.append(dict(cfg))
+            return losses(cfg, len(calls)), {}
+
+        monkeypatch.setattr(utils, "evaluate_hpo_configuration", evaluate)
+        return calls
+
+    def test_the_budget_the_caller_asks_for_is_the_budget_it_gets(
+            self, wizard, monkeypatch):
+        """`max(8, …)` on the exploration stage silently inflated small budgets.
+
+        Every extra evaluation is a full wizard refit, and the bar sits at 100 %
+        while they run.
+        """
+        from chisurf.plugins.burst.burst_mle_analysis import utils
+
+        monkeypatch.setattr(
+            "chisurf.plugins.burst.burst_mle_analysis.utils.dialogs.information",
+            lambda *a, **k: None,
+        )
+        for budget in (1, 5, 11):
+            calls = self._surrogate(monkeypatch, lambda cfg, n: float(n))
+            wizard.optimize_hyperparameters(n_iter=budget)
+            assert len(calls) <= budget, f"n_iter={budget} evaluated {len(calls)}"
+
+    def test_an_improvement_is_recognised_as_one(self, wizard, monkeypatch):
+        """`evaluate` lowers `best_loss` itself, so the caller compared loss<loss.
+
+        Every refinement decision therefore read "no improvement": the step of a
+        dimension that had just improved was shrunk anyway and the search always
+        exited on the three-round break instead of on its budget.
+        """
+        import inspect
+
+        from chisurf.plugins.burst.burst_mle_analysis import utils
+
+        source = inspect.getsource(utils.optimize_hyperparameters)
+        assert "previous_best = best_loss" in source
+        assert "if loss < previous_best:" in source
+        assert "if loss < best_loss:\n                        improved" not in source

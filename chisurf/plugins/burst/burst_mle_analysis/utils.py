@@ -560,7 +560,12 @@ def optimize_hyperparameters(
 
     # ---- Latin Hypercube Sampling (exploration) ----
     # Allocate ~70% of budget to LHS, rest to local refinement.
-    lhs_budget = max(8, int(0.7 * total_budget))
+    # The floor of 8 is for the *exploration* stage, so it must still fit inside
+    # the budget: applied on its own it silently turned any n_iter below 8 into
+    # 8 (measured: n_iter=1 and n_iter=5 both evaluated 8 configurations), each
+    # one a full wizard refit, while `setValue(min(eval_count, total_budget))`
+    # pinned the bar at 100 % for the extra ones.
+    lhs_budget = min(total_budget, max(8, int(0.7 * total_budget)))
     ref_budget = max(0, total_budget - lhs_budget)
 
     D = len(keys)
@@ -654,11 +659,21 @@ def optimize_hyperparameters(
                     # If nothing changed after constraints, skip
                     if cfg_to_key(trial) == cfg_to_key(best_cfg):
                         continue
+                    # Capture the incumbent *before* evaluating: `evaluate`
+                    # updates `best_loss` itself, so comparing against it
+                    # afterwards asks `loss < loss` on an improvement and
+                    # `loss > best_loss` otherwise -- false either way. Measured
+                    # over 54 refinement decisions the shipped test was True 0
+                    # times where the intended one was True 19, so the step of a
+                    # dimension that had just improved was shrunk anyway, the
+                    # global shrink fired every round, and the refinement always
+                    # exited on the three-round break instead of on its budget.
+                    previous_best = best_loss
                     loss, _, _ = evaluate(trial)
                     remain -= 1
-                    if loss < best_loss:
+                    if loss < previous_best:
                         improved = True
-                        # update best immediately (evaluate() already does)
+                        # `evaluate` has already recorded it as the new best
                 # shrink step if we didn't move on this dim
                 if not improved:
                     if typ == 'int':

@@ -19,6 +19,7 @@ import json
 
 import chisurf as cs
 
+from chisurf.gui import dialogs
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.widgets.tool_buttons import action_button
@@ -3889,155 +3890,182 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         progress.setValue(0)
         progress.show()
 
-        def ui_pump(k: int):
-            if (k % 20) == 0:
-                QtWidgets.QApplication.processEvents()
+        # Everything below allocates: the progress bar is already showing and
+        # the loop further down creates two *named* POSIX shared-memory blocks
+        # per file. Neither was covered by a `try` -- the only one started after
+        # the last allocation -- so an unreadable TTTR file, a MemoryError or an
+        # out-of-space `SharedMemory(create=True)` on a later file left the bar
+        # running forever and leaked every block already created. These are
+        # named segments: `__del__` closes but never unlinks, and the resource
+        # tracker only cleans up at interpreter shutdown, so a long-lived GUI
+        # session held them until ChiSurf exited and every retry added a set.
+        # Bound *before* the guard: a failure ahead of the assignment inside it
+        # would otherwise raise NameError out of the handler and lose the real
+        # exception.
+        shm_blocks = []
+        try:
+            def ui_pump(k: int):
+                if (k % 20) == 0:
+                    QtWidgets.QApplication.processEvents()
 
-        # Per-detector constants
-        irf_cache, bg_cache = self._build_irf_bg_cache()
-        settings_cache = {det: self._ensure_channel_state(det) for det in self.channel_definer.detectors.keys()}
-        det_order = list(self.channel_definer.detectors.keys())
+            # Per-detector constants
+            irf_cache, bg_cache = self._build_irf_bg_cache()
+            settings_cache = {det: self._ensure_channel_state(det) for det in self.channel_definer.detectors.keys()}
+            det_order = list(self.channel_definer.detectors.keys())
 
-        # Diagnostics: a detector whose whole batch column comes back NaN (while the
-        # live single-burst fit works) is almost always an empty IRF or a
-        # too-high min-photons threshold — surface both up front, per detector.
-        for det in det_order:
-            irf_arr = np.asarray(irf_cache.get(det, []), dtype=float)
-            irf_sz = int(irf_arr.size)
-            irf_sum = float(irf_arr.sum()) if irf_sz else 0.0
-            # NB: not ``mp`` — that name is ``import multiprocessing as mp`` here.
-            min_ph = int(settings_cache[det].get('min_photons', 0))
-            cs.logging.info(
-                f"MLE batch: detector '{det}' IRF size={irf_sz} sum={irf_sum:.3g}, "
-                f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={min_ph}"
-            )
-            # An empty *or all-zero* IRF (e.g. over-aggressive IRF range/threshold
-            # zeroing) makes every burst's τ NaN — the live fit may still work if it
-            # processes the IRF differently, so call this out explicitly.
-            if model != "tail" and (irf_sz == 0 or irf_sum <= 0.0):
-                cs.logging.warning(
-                    f"MLE batch: detector '{det}' IRF is empty/all-zero (size={irf_sz}, "
-                    f"sum={irf_sum:.3g}) — every burst's τ will be NaN. Check the IRF "
-                    f"range/threshold, or run 'Auto IRF' / load an IRF for '{det}'."
-                )
-
-        # Bin the per-burst data at the SAME binning the IRF/background were built
-        # at (``irf_np``/``bg_np`` are always at ``self.micro_time_binning``).
-        # Deriving the binning from the per-detector cache instead was a bug: Auto
-        # IRF's ``_auto_select_binning`` changes ``self.micro_time_binning`` while
-        # the cache keeps the pre-Auto value, so the data histogram and the IRF
-        # ended up at different binnings — their peaks landed on different bins and
-        # Fit23 diverged to τ = period (13.5 ns) for every burst. Force both the
-        # data binning and ``dt`` to the current (IRF) values, overriding stale
-        # cache, so batch and live fits agree.
-        global_mb = int(self.micro_time_binning)
-        cur_dt = float(self.dt_effective)
-        for _st in settings_cache.values():
-            _st['micro_time_binning'] = global_mb
-            _st['dt'] = cur_dt
-
-        # windows, channels, rc max
-        window_cache = {}
-        channels_cache = {}
-        rc_max_seen = 0
-        for det, info in self.channel_definer.detectors.items():
-            st = settings_cache[det]
-            sb = int(st['micro_time_start']);
-            eb = int(st['micro_time_stop'])
-            if eb <= sb:
-                sb, eb = map(int, self.micro_time_range)
-            window_cache[det] = (sb, eb)
-
-            chs = info.get('chs', [])
-            pchs = chs[::2] if len(chs) >= 2 else chs
-            schs = chs[1::2] if len(chs) >= 2 else chs
-            pchs = np.asarray(pchs, dtype=int);
-            schs = np.asarray(schs, dtype=int)
-            channels_cache[det] = (pchs, schs)
-            if len(chs):
-                rc_max_seen = max(rc_max_seen, int(np.max(chs)))
-
-        # Build per-file jobs with shared memory
-        jobs = []
-        shm_blocks = []  # to unlink at end
-        for fname, df_file in self.df_bursts.groupby('First File', sort=False):
-            key = Path(fname).stem
-            tttr = self.tttrs.get(key)
-
-            if tttr is None:
-                jobs.append((fname,
-                             list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None)),
-                             None, None, None, None, None, None,
-                             det_order, {}, int(self.shift or 0)))
-                continue
-
-            rc_full = np.asarray(tttr.routing_channels)
-            mt_full = np.asarray(tttr.micro_times)
-            mt_bins_full = (mt_full // global_mb).astype(np.int32, copy=False) if global_mb > 1 else mt_full.astype(
-                np.int32, copy=True)
-
-            # compact dtypes to reduce bandwidth
-            if rc_full.dtype != np.uint16 and int(rc_full.max(initial=0)) <= 65535:
-                rc_full = rc_full.astype(np.uint16, copy=False)
-            if mt_bins_full.dtype != np.uint16 and int(mt_bins_full.max(initial=0)) <= 65535:
-                mt_bins_full = mt_bins_full.astype(np.uint16, copy=False)
-
-            # Shared memory blocks (parent owns lifecycle)
-            rc_shm = shared_memory.SharedMemory(create=True, size=rc_full.nbytes)
-            np.ndarray(rc_full.shape, dtype=rc_full.dtype, buffer=rc_shm.buf)[:] = rc_full
-            mt_shm = shared_memory.SharedMemory(create=True, size=mt_bins_full.nbytes)
-            np.ndarray(mt_bins_full.shape, dtype=mt_bins_full.dtype, buffer=mt_shm.buf)[:] = mt_bins_full
-            shm_blocks.extend([rc_shm, mt_shm])
-
-            # Per-detector config (use class LUT: -1 ignore, 0=P, 1=S)
-            rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
-            perdet_cfg = {}
+            # Diagnostics: a detector whose whole batch column comes back NaN (while the
+            # live single-burst fit works) is almost always an empty IRF or a
+            # too-high min-photons threshold — surface both up front, per detector.
             for det in det_order:
+                irf_arr = np.asarray(irf_cache.get(det, []), dtype=float)
+                irf_sz = int(irf_arr.size)
+                irf_sum = float(irf_arr.sum()) if irf_sz else 0.0
+                # NB: not ``mp`` — that name is ``import multiprocessing as mp`` here.
+                min_ph = int(settings_cache[det].get('min_photons', 0))
+                cs.logging.info(
+                    f"MLE batch: detector '{det}' IRF size={irf_sz} sum={irf_sum:.3g}, "
+                    f"bg size={int(np.asarray(bg_cache.get(det, [])).size)}, min_photons={min_ph}"
+                )
+                # An empty *or all-zero* IRF (e.g. over-aggressive IRF range/threshold
+                # zeroing) makes every burst's τ NaN — the live fit may still work if it
+                # processes the IRF differently, so call this out explicitly.
+                if model != "tail" and (irf_sz == 0 or irf_sum <= 0.0):
+                    cs.logging.warning(
+                        f"MLE batch: detector '{det}' IRF is empty/all-zero (size={irf_sz}, "
+                        f"sum={irf_sum:.3g}) — every burst's τ will be NaN. Check the IRF "
+                        f"range/threshold, or run 'Auto IRF' / load an IRF for '{det}'."
+                    )
+
+            # Bin the per-burst data at the SAME binning the IRF/background were built
+            # at (``irf_np``/``bg_np`` are always at ``self.micro_time_binning``).
+            # Deriving the binning from the per-detector cache instead was a bug: Auto
+            # IRF's ``_auto_select_binning`` changes ``self.micro_time_binning`` while
+            # the cache keeps the pre-Auto value, so the data histogram and the IRF
+            # ended up at different binnings — their peaks landed on different bins and
+            # Fit23 diverged to τ = period (13.5 ns) for every burst. Force both the
+            # data binning and ``dt`` to the current (IRF) values, overriding stale
+            # cache, so batch and live fits agree.
+            global_mb = int(self.micro_time_binning)
+            cur_dt = float(self.dt_effective)
+            for _st in settings_cache.values():
+                _st['micro_time_binning'] = global_mb
+                _st['dt'] = cur_dt
+
+            # windows, channels, rc max
+            window_cache = {}
+            channels_cache = {}
+            rc_max_seen = 0
+            for det, info in self.channel_definer.detectors.items():
                 st = settings_cache[det]
-                pchs, schs = channels_cache[det]
-                class_lut = np.full(rc_max + 1, -1, dtype=np.int8)
-                if pchs.size: class_lut[pchs] = 0
-                if schs.size: class_lut[schs] = 1
-                half_len = max(1, irf_cache[det].size // 2)
-                # fit23 keeps its per-detector authored start vector; every other
-                # fit2x model shares the one start vector from the registry-driven
-                # editor (the editor is not per-detector).
-                if model == "fit23":
-                    x0 = np.asarray(st['initial_x0'], dtype=np.float64)
-                    fixed = np.asarray(st['fixed_flags'], dtype=np.int32)
-                else:
-                    x0 = np.asarray(batch_x0, dtype=np.float64)
-                    fixed = np.asarray(batch_fixed, dtype=np.int32)
-                perdet_cfg[det] = {
-                    'sb': int(window_cache[det][0]),
-                    'eb': int(window_cache[det][1]),
-                    'half_len': half_len,
-                    'dt': float(st['dt']),
-                    'period': float(st['excitation_period']),
-                    'g_factor': float(st['g_factor']),
-                    'l1': float(st['l1']), 'l2': float(st['l2']),
-                    'p2s_twoIstar': bool(st['p2s_twoIstar']),
-                    'BIFL_scatter': bool(st['BIFL_scatter']),
-                    'min_photons': int(st['min_photons']),
-                    'x0': x0,
-                    'fixed': fixed,
-                    'irf': np.asarray(irf_cache[det], dtype=np.float64),
-                    'bg': np.asarray(bg_cache[det], dtype=np.float64),
-                    'class_lut': class_lut,
-                    'model': model,
-                    'method': method,
-                    'param_names': list(param_names),
-                }
+                sb = int(st['micro_time_start']);
+                eb = int(st['micro_time_stop'])
+                if eb <= sb:
+                    sb, eb = map(int, self.micro_time_range)
+                window_cache[det] = (sb, eb)
 
-            bursts = list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None))
-            jobs.append((fname, bursts,
-                         rc_shm.name, rc_full.shape, str(rc_full.dtype),
-                         mt_shm.name, mt_bins_full.shape, str(mt_bins_full.dtype),
-                         det_order, perdet_cfg, int(self.shift or 0)))
+                chs = info.get('chs', [])
+                pchs = chs[::2] if len(chs) >= 2 else chs
+                schs = chs[1::2] if len(chs) >= 2 else chs
+                pchs = np.asarray(pchs, dtype=int);
+                schs = np.asarray(schs, dtype=int)
+                channels_cache[det] = (pchs, schs)
+                if len(chs):
+                    rc_max_seen = max(rc_max_seen, int(np.max(chs)))
 
-        # Processes (leave one core for UI; cap by #files)
-        ctx = mp.get_context('spawn')
-        max_workers = max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
+            # Build per-file jobs with shared memory
+            jobs = []
+            shm_blocks = []  # to unlink at end
+            for fname, df_file in self.df_bursts.groupby('First File', sort=False):
+                key = Path(fname).stem
+                tttr = self.tttrs.get(key)
+
+                if tttr is None:
+                    jobs.append((fname,
+                                 list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None)),
+                                 None, None, None, None, None, None,
+                                 det_order, {}, int(self.shift or 0)))
+                    continue
+
+                rc_full = np.asarray(tttr.routing_channels)
+                mt_full = np.asarray(tttr.micro_times)
+                mt_bins_full = (mt_full // global_mb).astype(np.int32, copy=False) if global_mb > 1 else mt_full.astype(
+                    np.int32, copy=True)
+
+                # compact dtypes to reduce bandwidth
+                if rc_full.dtype != np.uint16 and int(rc_full.max(initial=0)) <= 65535:
+                    rc_full = rc_full.astype(np.uint16, copy=False)
+                if mt_bins_full.dtype != np.uint16 and int(mt_bins_full.max(initial=0)) <= 65535:
+                    mt_bins_full = mt_bins_full.astype(np.uint16, copy=False)
+
+                # Shared memory blocks (parent owns lifecycle)
+                rc_shm = shared_memory.SharedMemory(create=True, size=rc_full.nbytes)
+                np.ndarray(rc_full.shape, dtype=rc_full.dtype, buffer=rc_shm.buf)[:] = rc_full
+                mt_shm = shared_memory.SharedMemory(create=True, size=mt_bins_full.nbytes)
+                np.ndarray(mt_bins_full.shape, dtype=mt_bins_full.dtype, buffer=mt_shm.buf)[:] = mt_bins_full
+                shm_blocks.extend([rc_shm, mt_shm])
+
+                # Per-detector config (use class LUT: -1 ignore, 0=P, 1=S)
+                rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
+                perdet_cfg = {}
+                for det in det_order:
+                    st = settings_cache[det]
+                    pchs, schs = channels_cache[det]
+                    class_lut = np.full(rc_max + 1, -1, dtype=np.int8)
+                    if pchs.size: class_lut[pchs] = 0
+                    if schs.size: class_lut[schs] = 1
+                    half_len = max(1, irf_cache[det].size // 2)
+                    # fit23 keeps its per-detector authored start vector; every other
+                    # fit2x model shares the one start vector from the registry-driven
+                    # editor (the editor is not per-detector).
+                    if model == "fit23":
+                        x0 = np.asarray(st['initial_x0'], dtype=np.float64)
+                        fixed = np.asarray(st['fixed_flags'], dtype=np.int32)
+                    else:
+                        x0 = np.asarray(batch_x0, dtype=np.float64)
+                        fixed = np.asarray(batch_fixed, dtype=np.int32)
+                    perdet_cfg[det] = {
+                        'sb': int(window_cache[det][0]),
+                        'eb': int(window_cache[det][1]),
+                        'half_len': half_len,
+                        'dt': float(st['dt']),
+                        'period': float(st['excitation_period']),
+                        'g_factor': float(st['g_factor']),
+                        'l1': float(st['l1']), 'l2': float(st['l2']),
+                        'p2s_twoIstar': bool(st['p2s_twoIstar']),
+                        'BIFL_scatter': bool(st['BIFL_scatter']),
+                        'min_photons': int(st['min_photons']),
+                        'x0': x0,
+                        'fixed': fixed,
+                        'irf': np.asarray(irf_cache[det], dtype=np.float64),
+                        'bg': np.asarray(bg_cache[det], dtype=np.float64),
+                        'class_lut': class_lut,
+                        'model': model,
+                        'method': method,
+                        'param_names': list(param_names),
+                    }
+
+                bursts = list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None))
+                jobs.append((fname, bursts,
+                             rc_shm.name, rc_full.shape, str(rc_full.dtype),
+                             mt_shm.name, mt_bins_full.shape, str(mt_bins_full.dtype),
+                             det_order, perdet_cfg, int(self.shift or 0)))
+
+            # Processes (leave one core for UI; cap by #files)
+            ctx = mp.get_context('spawn')
+            max_workers = max(1, min(os.cpu_count() or 8, len(jobs)) - 1)
+        except BaseException:
+            try:
+                progress.close()
+            except Exception:
+                pass
+            for block in shm_blocks:
+                try:
+                    block.close()
+                    block.unlink()
+                except Exception:
+                    pass
+            raise
+
         results = []
         processed = 0
         # Nothing may change from here on: the configuration above was read
@@ -4050,15 +4078,36 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # `ui_pump` below keeps delivering the user's clicks. Freeze explicitly
         # rather than depending on where the bar happened to render, and do it
         # inside the `try` so a failure cannot leave the wizard frozen.
+        cancelled = False
+        failed_files: list[str] = []
         try:
             self._set_inputs_frozen(True)
             with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
-                futs = [ex.submit(process_one_file_worker, j) for j in jobs]
-                for fut in as_completed(futs):
+                # One job is one file; keep the mapping so a worker that dies can
+                # be named rather than silently subtracted from the table.
+                fut_file = {
+                    ex.submit(process_one_file_worker, j): str(j[0]) for j in jobs
+                }
+                for fut in as_completed(fut_file):
+                    # Cancel has to be read *here*. Checked after the `with`
+                    # block it is read once every future has already been joined,
+                    # so pressing it could not shorten a run at all -- and the
+                    # check it fed then either did nothing (every worker
+                    # succeeded, so `processed == total_bursts`) or threw away
+                    # every completed result as "canceled" (any worker raised, so
+                    # `processed < total_bursts`).
+                    if self.stop_processing or progress.wasCanceled():
+                        cancelled = True
+                        for pending in fut_file:
+                            pending.cancel()
+                        break
                     try:
                         out, nbursts = fut.result()
                     except Exception as e:
-                        cs.logging.error(f"Worker failed: {e}")
+                        # A job is a whole file: dropping it silently exported a
+                        # short table that looked complete.
+                        failed_files.append(fut_file[fut])
+                        cs.logging.error(f"Worker failed on {fut_file[fut]}: {e}")
                         out, nbursts = [], 0
                     results.extend(out)
                     processed += nbursts
@@ -4078,8 +4127,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 except Exception:
                     pass
 
-        if self.stop_processing or (processed < total_bursts and progress.wasCanceled()):
-            self._set_status("Burst processing was canceled.")
+        if cancelled:
+            self._set_status(
+                f"Burst processing was cancelled after {processed}/{total_bursts} bursts."
+            )
             return
 
         result_df = pd.DataFrame(results)
@@ -4116,6 +4167,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             pass
         # Surface the per-detector yield on the status bar too — an all-NaN column
         # (e.g. "green 0/938") is then visible without digging through the log.
+        if failed_files:
+            # Reported here because nothing else can: the per-detector summary
+            # counts non-NaN tau over the rows that are *present*, so a file that
+            # contributed no rows at all cannot appear in it.
+            names = ", ".join(sorted({pathlib.Path(f).name for f in failed_files}))
+            summary_bits.append(f"{len(failed_files)} file(s) failed: {names}")
+            cs.logging.warning(f"MLE batch: no rows exported for {names}")
         if summary_bits:
             self._set_status("MLE fitted τ: " + " · ".join(summary_bits))
 

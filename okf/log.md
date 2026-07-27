@@ -2,28 +2,48 @@
 
 ## 2026-07-27
 
-* **GUI-tester: 2D-FLCS, where the maths lands and the window does not.** Drove
-  *Spectroscopy → FCS → 2D-FLCS* headlessly against the plugin's own two-state
-  exchange simulator, whose answer is known by construction (τ = 1/3 ns, 25 ms
-  relaxation), plus a real CLSM `.ptu`. The analysis chain is fast and correct —
-  1.2 M photons simulated in 1.5 s, 2D-FDC → inversion → species correlation in
-  2.7–5.4 s, lifetimes back as 0.90/2.91 ns and the relaxation as 25.1 ms
-  (k₁₂+k₂₁ = 39.9 vs 40 s⁻¹). The GUI on top of it is where the run went: the
-  headline 2D map is drawn with **no lifetime axes** at all, the *Kinetics
-  (advanced)* panel is **dead** (`gMEM`/`lags` are never read although
-  `fit/global_mem.py` implements them), the `tmin`/`tmax` gate reaches only the
-  2D correlation and not the lifetime inversion, an **inverted** gate is accepted
-  and yields an all-NaN map under a success message, the **NNLS** default is
-  silently mapped to Tikhonov for the 2D fit (and the grid capped at 32), the
-  dynamics stage no-ops in silence whenever fewer than two peaks are resolved
-  (with none, the status line reads `tau =  ns`), and the 2D fit's χ² and λ are
-  returned by the backend and thrown away — so a residual spanning −289 234 …
-  +39 802 reads as a flat green square. The bundled simulator also clips
-  overflowing micro-times into the last TCSPC channel (1.41 % of photons, χ² 6.48
-  vs 1.08 when gated out), which undermines the validation loop it exists for.
-  Recorded as [2D-FLCS lifetime exchange](/usecases/flc-2d-lifetime-exchange.md);
-  twelve findings RF-396..RF-407 filed in the
-  [findings queue](/reviews/findings.md). No application code touched.
+* **Five review findings on the two MLE runs, all fixed (RF-391..RF-395).** The
+  freeze held; what the review found was on the other side of its Cancel and
+  inside the search it wraps.
+  **Cancel on the batch did nothing.** The only check ran *after* the executor's
+  `with` block had joined every future, so pressing ✕ could not shorten a run —
+  it was read once the work it was meant to stop had finished. Worse, the two
+  branches it then took were both wrong: with every worker succeeding
+  `processed == total_bursts` and the click was ignored; with any worker raising
+  `processed < total_bursts` and **every completed result was discarded** as
+  "Burst processing was canceled". The loop now reads the flag on each completed
+  future, cancels the pending ones and keeps what finished, and the post-loop
+  decision reads an explicit `cancelled` flag instead of inferring cancellation
+  from a count.
+  **A worker that raised took a whole file out of the exported table, silently.**
+  One job is one file, so its bursts simply vanished while the batch carried on
+  and the table was saved as if complete — and nothing could surface it, since
+  the per-detector summary counts non-NaN τ over the rows that are *present*.
+  Failures are now named on the status bar beside that summary.
+  **The allocations sat outside the only `try` that frees them**: two *named*
+  POSIX shared-memory blocks per file plus the progress bar, with a long stretch
+  of job building in between that can raise on an unreadable TTTR file or a
+  `MemoryError`. Named segments are not cleaned by `__del__` (it closes, never
+  unlinks) and the resource tracker only runs at interpreter shutdown, so a
+  long-lived GUI session held them until ChiSurf exited and every retry added
+  another set. Took the review's second option — a guard around the allocation
+  stretch — rather than its first, since moving the `try` up would have
+  re-indented ~150 lines of job building to no extra effect. `shm_blocks` is
+  bound *before* the guard: a failure ahead of its assignment would otherwise
+  raise `NameError` out of the handler and lose the real exception.
+  **The refinement could never see an improvement.** `evaluate()` lowers
+  `best_loss` itself, so the caller's `loss < best_loss` asks `loss < loss` on an
+  improvement — false either way. The reviewer measured 0 `True` out of 54
+  decisions where the intended test gave 19. Three silent consequences: the step
+  of a dimension that had just improved was shrunk anyway, the global shrink
+  fired every round, and the search always exited on the three-round break
+  instead of on its budget. Fixed by capturing the incumbent before the call.
+  **And a budget floor that inflated small budgets**: `max(8, …)` applied to the
+  exploration stage alone, never subtracted from the total, so `n_iter=1` and
+  `n_iter=5` both ran 8 configurations — each a full wizard refit, with the bar
+  pinned at 100 % while they ran.
+  7 tests in `test/gui/test_mle_frozen_inputs.py`; the plugin's own suite passes.
+
 
 * **The curated sample database now actually reaches a first-run user** ([INC-15](specs/assessment.md#inc-15)).
   815 KB of curated reference data — 7 probes, 14 spectra, 27 optical properties,
