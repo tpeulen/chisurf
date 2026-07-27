@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **The anisotropy curve now *is* the published equation.** Follow-up to the
+  G-factor fix: `_tcspc_rt_curves` applied the l1/l2 leakage correction by
+  unmixing the raw (VV, VH) pair *before* the sensitivity correction. It belongs
+  after — as factors on the already-G-corrected signals — which is what
+  Schaffer/Eggeling/Seidel, J. Phys. Chem. A 103 (1999) 331 writes and what
+  `anisotropy_from_integrals` already did:
+
+      r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)
+
+  The curve and the integrals module now agree to nine decimals on every case
+  tried, l1/l2 included — one equation, two call sites.
+
+  **chisurf's `g` is 1/G of the paper.** Established rather than assumed:
+  solving the code's form for `g` reproduces exactly what
+  `compute_g_factor_perrin` returns, and substituting g = 1/G turns the code's
+  expression into the published one term for term (checked over G = 0.8…1.9).
+  So the two differ only in which ratio the stored number is — but **a G quoted
+  from a paper must be inverted before it is typed into chisurf**, and nothing
+  in the UI says so. Filed in
+  [references/known-issues.md](/references/known-issues.md) along with the
+  consequence: the VM combination `vv + 2 g vh` (five sites) and the
+  `vv_vh_anisotropy` plugin use the *published* convention, so under chisurf's
+  own `g` they invert the correction. `test/models/test_anisotropy_g_factor.py`
+  (9) pins the curve against the published equation directly, so the two cannot
+  drift.
+
 * **H2MM's three run paths move onto the task layer, and the throttle
   disappears into it.** Unlike the two tools before it, H2MM already threaded
   properly — but with its own `Worker`, two signal classes, a `threading.Event`

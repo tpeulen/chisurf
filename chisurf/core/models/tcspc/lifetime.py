@@ -652,33 +652,39 @@ class LifetimeModel(ModelCurve):
         t = np.asarray(t, dtype=float)
         vv = np.asarray(vv, dtype=float)
         vh = np.asarray(vh, dtype=float)
-        det = (1.0 - l1) * (1.0 - l2) - l1 * l2
-        if abs(det) < 1e-12:
-            raise ValueError("anisotropy leakage correction is singular")
-        # r = (g VV - VH) / (g VV + 2 VH).
+        # Schaffer, Volkmer, Eggeling, Subramaniam, Striker & Seidel,
+        # J. Phys. Chem. A 103 (1999) 331 -- the anisotropy with the detection
+        # corrections, also Eq. (2.4-22) of the Seidel-group treatment, and the
+        # same expression `anisotropy_from_integrals` uses:
         #
-        # G here is the **perpendicular/parallel** sensitivity ratio -- that is
-        # what `compute_g_factor_perrin` returns (S_s / S_p), and it is why the
-        # G-factor multiplies VV rather than VH. What matters is that it appears
-        # on the *same channel* in numerator and denominator: this used to read
-        # (VV - VH) / (g VV + 2 VH), correcting the denominator and leaving the
-        # numerator raw, which agrees only at g = 1 and otherwise invents
-        # anisotropy -- an isotropic sample came out at r = +0.167 for g = 2
-        # instead of zero. Checked against a constructed ground truth
-        # (S_p = 1, S_s = 0.65, r = 0.2): this form returns 0.200000, the old one
-        # 0.451282, and the textbook (VV - g VH)/(VV + 2 g VH) form 0.511561 --
-        # the last is right only under the reciprocal definition of G.
-        den_unc = g * vv + 2.0 * vh
+        #     r = (G Sp - Ss) / ((1 - 3 l2) G Sp + (2 - 3 l1) Ss)
+        #
+        # Two things this pins down, both of which were wrong here before.
+        #
+        # *Which channel G corrects.* The published equation reads
+        # `(Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)`, with G on the
+        # perpendicular channel. chisurf's `g` is its **reciprocal** -- that is
+        # what `compute_g_factor_perrin` returns, and solving the form below for
+        # g reproduces it exactly -- so here g multiplies the *parallel* channel.
+        # The two are the same estimator, verified to nine decimals for
+        # g = 1/G; the trap is that a G quoted from the literature is not this
+        # number, it is one over it. It must appear in numerator and
+        # denominator alike: this read `(Sp - Ss) / (G Sp + 2 Ss)`, correcting
+        # only the denominator, which agrees with the truth at G = 1 (the
+        # default, hence unnoticed) and otherwise invents anisotropy -- an
+        # isotropic sample came out at +0.167 for G = 2 instead of zero.
+        #
+        # *Where the leakage correction sits.* l1/l2 are applied **after** the
+        # sensitivity correction, as factors on the already-G-corrected signals,
+        # not by unmixing the raw pair beforehand. Same order as the integrals
+        # module, so the two agree term for term.
+        gp = g * vv
+        den_unc = gp + 2.0 * vh
         with np.errstate(divide="ignore", invalid="ignore"):
-            r_unc = np.where(np.abs(den_unc) > 1e-12, (g * vv - vh) / den_unc, np.nan)
-        # The l1/l2 unmixing removes polarisation leakage between the channels,
-        # which happens before detection efficiency is felt, so it acts on the
-        # raw pair and the G-factor is applied to its result.
-        vv_u = ((1.0 - l2) * vv - l1 * vh) / det
-        vh_u = (-l2 * vv + (1.0 - l1) * vh) / det
-        den_cor = g * vv_u + 2.0 * vh_u
+            r_unc = np.where(np.abs(den_unc) > 1e-12, (gp - vh) / den_unc, np.nan)
+        den_cor = (1.0 - 3.0 * l2) * gp + (2.0 - 3.0 * l1) * vh
         with np.errstate(divide="ignore", invalid="ignore"):
-            r_cor = np.where(np.abs(den_cor) > 1e-12, (g * vv_u - vh_u) / den_cor, np.nan)
+            r_cor = np.where(np.abs(den_cor) > 1e-12, (gp - vh) / den_cor, np.nan)
         finite = np.isfinite(t) & np.isfinite(r_unc) & np.isfinite(r_cor)
         if np.any(finite):
             return t[finite], r_unc[finite], r_cor[finite]

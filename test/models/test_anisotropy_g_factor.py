@@ -84,24 +84,46 @@ def test_g_of_one_is_unchanged():
     assert r_unc[0] == pytest.approx((1.4 - 0.8) / (1.4 + 2 * 0.8))
 
 
-def test_the_leakage_correction_changes_the_curve_and_stays_finite():
-    """With l1/l2 non-zero the corrected branch must differ, and be usable.
+def test_it_is_the_published_equation_with_the_reciprocal_g():
+    """Agrees term for term with Schaffer/Eggeling/Seidel, JPCA 103 (1999) 331.
 
-    Deliberately *not* asserted against a constructed truth: doing so requires
-    committing to an order — whether the polarisation leakage happens before or
-    after the detectors' sensitivity difference — and the two give different
-    answers. The code unmixes the raw pair and applies G afterwards, which is
-    self-consistent only under one of those readings. That question is recorded
-    in known-issues rather than frozen here by a test that would simply restate
-    whichever order the implementation happens to use.
+    ``r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)``, with chisurf's
+    ``g`` the reciprocal of the paper's ``G``. Pinning this is what stops the
+    two drifting apart, and what documents that a G quoted from the literature
+    must be inverted before it is typed in here.
     """
     from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
-    vv, vh = _measured(0.25)
-    _, r_unc, r_cor = LifetimeModel._tcspc_rt_curves(
-        t=np.array([1.0, 2.0, 3.0]), vv=np.full(3, vv), vh=np.full(3, vh),
-        g=G_FACTOR, l1=0.03, l2=0.05,
-    )
-    assert np.all(np.isfinite(r_cor))
-    assert r_cor[0] != pytest.approx(r_unc[0])
-    assert r_unc[0] == pytest.approx(0.25, abs=1e-9)     # no leakage in the input
+    fp, fs = 1.4, 0.52
+    t = np.array([1.0, 2.0])
+    for G in (0.8, 1.0, 1.3, 1.9):
+        for l1, l2 in ((0.0, 0.0), (0.03, 0.05), (0.02, 0.01)):
+            published = (fp - G * fs) / ((1 - 3 * l2) * fp + (2 - 3 * l1) * G * fs)
+            _, _, r_cor = LifetimeModel._tcspc_rt_curves(
+                t=t, vv=np.full(2, fp), vh=np.full(2, fs),
+                g=1.0 / G, l1=l1, l2=l2,
+            )
+            assert r_cor[0] == pytest.approx(published, abs=1e-12), f"G={G} l1={l1} l2={l2}"
+
+
+def test_the_curve_agrees_with_the_integrals_module(qapp=None):
+    """One anisotropy equation, two call sites, the same number.
+
+    ``anisotropy_from_integrals`` is the other implementation; a difference
+    between them would mean the curve on screen and the reported steady-state
+    value disagree about the same measurement.
+    """
+    from chisurf.core.fluorescence.anisotropy.integrals import anisotropy_from_integrals
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    for r_true, l1, l2 in ((0.0, 0.0, 0.0), (0.2, 0.0, 0.0),
+                           (0.25, 0.03, 0.05), (0.38, 0.02, 0.01)):
+        vv, vh = _measured(r_true)
+        _, _, r_cor = LifetimeModel._tcspc_rt_curves(
+            t=np.array([1.0, 2.0]), vv=np.full(2, vv), vh=np.full(2, vh),
+            g=G_FACTOR, l1=l1, l2=l2,
+        )
+        reference = anisotropy_from_integrals(
+            s_p=np.full(2, vv), s_s=np.full(2, vh), G=G_FACTOR, l1=l1, l2=l2
+        )
+        assert r_cor[0] == pytest.approx(reference.r_e, abs=1e-12)

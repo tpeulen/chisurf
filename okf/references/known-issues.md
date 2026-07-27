@@ -124,35 +124,31 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**Two reciprocal G-factor conventions coexist (found 2026-07-27).** `G` is a
-ratio of detection sensitivities, and the tree uses it both ways round without
-saying which is meant:
+**chisurf's `g` is the reciprocal of the published G (2026-07-27).** The
+anisotropy equation in Schaffer/Eggeling/Seidel, J. Phys. Chem. A 103 (1999)
+331, reads
 
-- `compute_g_factor_perrin` (`core/fluorescence/anisotropy/integrals.py`)
-  returns **S_perp / S_par** — 0.65 for a perpendicular channel 35% less
-  sensitive. `LifetimeModel._tcspc_rt_curves` now matches it.
-- The **VM / total-intensity** combination `vv + 2 * g * vh` — five sites:
-  `core/fio/fluorescence/tcspc.py` (x2), `core/fluorescence/tcspc/__init__.py`,
-  `gui/widgets/models/tcspc/anisotropy.py`, and
-  `plugins/tttr/microtime_histogram/wizard.py` — together with
-  `plugins/vv_vh_anisotropy` (`r = (VV - g VH)/(VV + 2 g VH)`) assume the
-  **reciprocal**, S_par / S_perp.
+    r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)
 
-Both are internally consistent; the hazard is a G measured by one and consumed
-by the other, which inverts the correction. Constructed check with S_par = 1,
-S_perp = 0.65 and a true total intensity of 3.0: `vv + 2*g*vh` gives **2.076**
-where `vv + 2*vh/g` gives **3.000**. Nobody noticed because a real G is near 1,
-where the two agree to first order. Deciding which convention wins is a
-user-facing change across readers and plugins, so it is recorded rather than
-made unilaterally.
+with G on the *perpendicular* channel. chisurf's `g` is **1/G**: that is what
+`compute_g_factor_perrin` returns, and it is what `anisotropy_from_integrals`
+and `LifetimeModel._tcspc_rt_curves` consume, both putting `g` on the parallel
+channel. The two are the same estimator — verified to nine decimals across
+G = 0.8…1.9 and several l1/l2 — but **a G quoted from the literature must be
+inverted before it is entered here**, and nothing in the UI says so. Worth a
+label or a conversion at the input; recorded because renaming or inverting the
+stored quantity is a user-facing decision.
 
-**Where the leakage correction sits relative to G is unsettled.**
-`_tcspc_rt_curves` unmixes the raw (VV, VH) with l1/l2 and applies G to the
-result. Whether the polarisation leakage happens before or after the detectors'
-sensitivity difference gives different answers, and only one ordering makes the
-implementation self-consistent. `test/models/test_anisotropy_g_factor.py`
-deliberately does not assert a constructed truth for the corrected branch, so
-the test does not freeze whichever order the code happens to use.
+The same split explains the **VM / total-intensity** combination
+`vv + 2 * g * vh` — five sites: `core/fio/fluorescence/tcspc.py` (x2),
+`core/fluorescence/tcspc/__init__.py`, `gui/widgets/models/tcspc/anisotropy.py`,
+`plugins/tttr/microtime_histogram/wizard.py` — plus the `vv_vh_anisotropy`
+plugin, which all use the *published* G convention. Under chisurf's `g` the
+total intensity is `g * vv + 2 * vh`. Constructed check with S_par = 1,
+S_perp = 0.65 and a true total of 3.0: the current expression gives **2.076**.
+Nobody noticed because a real G sits near 1, where the two agree to first order.
+Deciding which convention wins changes numbers across readers and plugins, so it
+is recorded rather than made unilaterally.
 
 **Found 2026-07-27, not fixed: the PCH settings panel is clipped at its right
 edge.** `chisurf/plugins/pch/gui/tool.py` puts the settings form in a
@@ -772,3 +768,15 @@ be, because three of them were defects in the code rather than in the tests.
   `chisurf.core.fitting.fit.FitGroup` without importing
   `chisurf.core.fitting.fit`, so it raises `AttributeError: module
   'chisurf.core.fitting' has no attribute 'fit'` before any model is built.
+
+- **`examples/notebooks/fdb_burst_selection_roundtrip.ipynb` cannot run.** Found
+  on 2026-07-27 while closing [INC-14](../specs/assessment.md#inc-14). Its first
+  code cell does `from chisurf.core.mmfdb import FluorescenceDatabase,
+  BurstPipeline`; `chisurf/core/mmfdb/` was deleted in the MMFDB extraction and
+  neither name survives anywhere in the tree (`FluorescenceDatabase` was a
+  deprecation shim over `mmfdb.repository.MFDatabase`, and `BurstPipeline` has no
+  definition at all). Its prose also still describes the curated database as the
+  storage default, which [INC-15](../specs/assessment.md#inc-15) shows it is not.
+  Porting it means rewriting the notebook onto `mmfdb.repository.MFDatabase` plus
+  the `burst_analysis` `BurstWorkflow` facade and re-running every cell — more
+  than a path fix, so it is recorded here rather than half-corrected.
