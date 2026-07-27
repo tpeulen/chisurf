@@ -2,6 +2,43 @@
 
 ## 2026-07-27
 
+* **GUI-tester: the Trace Browser, and it lists nothing.** Drove the file-triage
+  workflow that comes before every other one — walk a folder of raw TTTR
+  measurements, preview each intensity trace, star-rate and annotate the keepers,
+  filter and sort on that judgement, export or hand off — and recorded it as
+  [Trace Browser — triaging a folder of measurements](/usecases/trace-browser-folder-triage.md).
+  The workflow is well built and fast once it has rows: 12 confocal-spot `.ptu`
+  files listed and pre-computed in 0.1 s, a re-bin in 0.08 s, ratings and
+  annotations round-tripping through a per-folder `.trace_browser_meta.json`,
+  the rating filter and header sorting keeping each ☆-widget on its own file, and
+  a CSV export whose 1647 rows match the plotted trace. But **it never has rows**:
+  `_is_clsm_compatible` decides "this is an image" from whether a `CLSMImage` can
+  be constructed, and the reader salvages a geometry out of any stream
+  (*"no complete frames; salvaging 61 frame(s) with 200 line(s)"*), so all twelve
+  `.ptu` point measurements *and* both shipped `test/data/tttr/BH/**.spc` files
+  are skipped as image data and the window is indistinguishable from an empty
+  folder (RF-349). A second filter would empty it anyway: the browser accepts the
+  last-used detector setup in `__init__` and hides the page, so `BS` → `SPC-130`
+  silently narrows the listing to `.spc` — and names the preview panels and CSV
+  columns `green/red/yellow` after that setup's micro-time windows even for a PTU
+  they do not fit (RF-350). The plugin's own RPC/CLI half lists the 12 files the
+  GUI calls empty, and can never list `.spc` or Photon-HDF5 at all (RF-355). With
+  the heuristic bypassed, three more defects surfaced: **📤 Export** and **CSV**
+  write every row in the table — 12 files with one row selected and 11 hidden by
+  the `≥ 3★` filter — under a button labelled *"Export selected…"* (RF-351); the
+  **⏱️ TW** hand-off still calls `addItem` on the time-window tool's
+  `PathListWidget` and dies in an error dialog (RF-354); the *Size (MB)* and
+  *Rating* columns print their numeric sort keys (`0.387741`, a bare `0` beside
+  the stars) because `setData(Qt.EditRole, …)` overwrites the formatted text
+  (RF-352); and the *Include subfolders* checkbox was never added to a layout, so
+  it sits at (0,0) clipped under the *← Select setup* button and duplicates the
+  toolbar's own (RF-353). Softer items — no found/skipped count anywhere, one
+  fixed Y range across four panels whose count rates differ ~10× (the weakest
+  channel is a flat line at the default), colliding rotated axis titles, a stale
+  plot after the filter empties the list, a `.tttr_trace_cache` dropped into the
+  user's export folder, and empty annotation records written just by clicking
+  through the list — stay in the use case.
+
 * **Written down, not fixed: plugin names and menu categories never translate.**
   Reported alongside the ribbon, and a different failure with a shared cause.
   Everything else a `manifest.json` shows *is* translated — `description`,

@@ -130,6 +130,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   population in the intensity scatter, paint a region of interest, and count
   objects when the signal is punctate.
   *(last driven 2026-07-26; RF-336..RF-343)*
+- [Trace Browser — triaging a folder of measurements](/usecases/trace-browser-folder-triage.md)
+  — what happens before every other workflow: walk a folder of raw TTTR files,
+  preview each intensity trace, star-rate and annotate the keepers into a
+  per-folder metadata file, filter and sort on that judgement, then export the
+  survivors (raw / CSV / DOCX) or hand one to the time-window, HMM or ndXplorer
+  tools. *(last driven 2026-07-27; RF-349..RF-355)*
 
 ## Per-workflow file format
 

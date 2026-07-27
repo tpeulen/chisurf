@@ -4092,3 +4092,63 @@ first frame at all. Findings RF-344..RF-348.
 - **Location:** `chisurf/core/fluorescence/imaging/frap.py:99-110` (`FrapResult.to_dict`, *"a JSON-friendly dictionary"*) against `:77-97` (`half_time`, which reads the non-field attribute `_mean_length`) and `:424` (`result._mean_length = ...`, set on the dataclass after construction)
 - **Finding:** `half_time` is derived from a bleach geometry that lives outside the dataclass fields, so it survives nothing that goes through `to_dict`. Verified: an in-process fit reports `D = 0.350000`, `half_time = 4.1143`; `FrapResult(**result.to_dict())` reports `half_time = nan`, and `to_dict()`'s eight keys contain neither `half_time` nor `lx`/`ly`. `test_result_serialises` (`test/core/test_frap.py:168`) calls this form *"JSON-friendly for the CLI and RPC paths"* and checks only `success` and `D`, and `test_half_time_needs_a_fit_to_be_meaningful` (`:263`) asserts the `nan` as intended behaviour for a hand-built result — so nothing notices. Make the bleach length a real dataclass field (defaulting to `nan`) and emit `half_time` in `to_dict`, so the number the classic curve analysis quotes crosses a serialisation boundary. Worth doing before the module grows a plugin: `frap.py` currently has no GUI, CLI or RPC consumer at all, so `to_dict` is the whole of its future external surface.
 - **Fix note:**
+
+### GUI-tester 2026-07-27 — Trace Browser folder triage
+
+Drove *Spectroscopy:Single-Molecule:Trace Browser* headlessly over two folders of
+real TTTR measurements (shipped `test/data/tttr/BH/**.spc`, and twelve confocal
+point-measurement `.ptu` files). The workflow — preview, star-rate, annotate,
+filter, sort, export, hand off — is well built and fast, but **the tool lists no
+files at all** for either folder, and two of the exports and one hand-off do not
+do what they say. Use case:
+[trace-browser-folder-triage](/usecases/trace-browser-folder-triage.md).
+Findings RF-349..RF-355.
+
+### RF-349
+- **Status:** OPEN
+- **Severity:** S1 (the plugin's core function is dead: every TTTR file is dropped from the listing as "image data", with no message)
+- **Location:** `chisurf/plugins/tttr/trace_browser/__init__.py:1380-1409` (`_is_clsm_compatible` / `_is_image_tttr`), used as a skip filter in `_scan_and_fill` (`:938-943`) and again in `_precompute_all_traces` (`:1529-1535`)
+- **Finding:** `_is_clsm_compatible()` decides "this is an image" by whether `tttrlib.CLSMImage(tttr_data=tt)` can be constructed and exposes an `intensity` attribute — but the reader *salvages* a geometry from any stream (`WARNING: no complete frames; salvaging 61 frame(s) with 200 line(s) as n_lines`), so the probe succeeds on point measurements too. Measured this run: `_is_image_tttr` returned `True` for **all twelve** `allOverview_Pos_*_spot_*.ptu` confocal point measurements *and* for the shipped `test/data/tttr/BH/132/BH_SPC132.spc` and `.../630_256/BH_SPC630_256.spc`. Consequence: `_open_folder()` on either folder leaves `table.rowCount() == 0` — the window is indistinguishable from "empty folder", since nothing reports how many files were found or why they were skipped. Forcing `_is_image_tttr` to `False` lists all 12 (and both `.spc`) and the whole rest of the workflow works. Decide image-ness from the file's own markers (frame/line markers present, `n_frames`/`n_lines` actually derived rather than salvaged, or the CLSM plugin's own setup presets) instead of "the constructor did not raise"; the same probe also segfaults (`SIGSEGV`, exit 139) when the identical call is made outside the chisurf import, which is a second reason not to use construction as a test.
+- **Fix note:**
+
+### RF-350
+- **Status:** OPEN
+- **Severity:** S2 (a detector setup the user never chose in this window silently decides which files are listed and what the trace channels are called)
+- **Location:** `chisurf/plugins/tttr/trace_browser/__init__.py:1185-1225` (`_allowed_exts_for_setup`) fed by `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py:396-399,746-757` (the setup page restores `last_used` on construction), with `chisurf/plugins/tttr/trace_browser/__init__.py:830` (`self._on_continue()` at the end of `__init__`, which accepts that setup and hides the setup page)
+- **Finding:** the browser opens on page 1 with the last-used detector setup already accepted, so the user never sees it. That setup's *File Type* is mapped to a single extension: here `BS` → `SPC-130` → `{'.spc'}`, which alone empties a folder of `.ptu` files (`_scan_and_fill` keeps only matching suffixes). The same silent adoption also names the analysis: `selected_channels` became `[0, 1, 2, 3, 8, 9]` and the preview panels and CSV columns were labelled `green, red, yellow` — the BS windows (`green` = ch 8,0,3 µT 0:4095; `red` = 9,1,2 µT 0:2048; `yellow` = 9,1,2 µT 2048:4095) — even for a PTU whose routing channels are 0–4 with 32 768 micro-time channels, where those µT gates mean something entirely different. Nothing on the browser page states the setup, its file type or its channel windows. Show the setup and its file-type filter on the browser page (and offer "all supported types"), and warn when a detector window resolves to no photons in the loaded file.
+- **Fix note:**
+
+### RF-351
+- **Status:** OPEN
+- **Severity:** S2 (a button labelled "Export selected…" exports everything, including rows hidden by the active filter, with no confirmation)
+- **Location:** `chisurf/plugins/tttr/trace_browser/__init__.py:1901-1924` (`_on_export`) and `:1926-1935` (`_on_export_csv`) — both iterate `range(self.table.rowCount())` and never consult `_selected_paths()` (`:1634`) or `table.isRowHidden()`; the buttons are `btn_export` "Export selected…" / tooltip *"Export selected raw trace files"* (`:591-597`) and the toolbar action *"📤 Export — copy selected raw trace files"* (`gui/tool.py:72`)
+- **Finding:** measured with 12 files listed, the `≥ 3★` filter active (11 rows hidden, 1 visible) and exactly one row selected: **📤 Export copied 12 raw files** and **CSV wrote 12 CSV files**. The code comment claims the export respects the active filter, but `_refresh_list` implements filtering with `setRowHidden()`, so the hidden rows are still in `rowCount()`. The user gets 12 files where they asked for 1 and there is no confirmation, no count and no summary — only a log line. Either honour the selection (falling back to the visible rows when nothing is selected) or relabel the buttons and report what was written.
+- **Fix note:**
+
+### RF-352
+- **Status:** OPEN
+- **Severity:** S3 (two of the three table columns display their internal sort keys)
+- **Location:** `chisurf/plugins/tttr/trace_browser/__init__.py:993-1000` (`size_item.setText(self._human_size(sz))` followed by `size_item.setData(Qt.EditRole, float(sz) / (1024.0 * 1024.0))`) and `:986-989` (`rating_item.setData(Qt.EditRole, int(rating))`)
+- **Finding:** `QTableWidgetItem.setData(Qt.EditRole, …)` also replaces the display text, so the formatted `"0.4 MB"` produced one line earlier is thrown away and the *Size (MB)* column renders `0.387741`, `1.14441`, `0.463894` — full float noise under a header that already says MB. The plugin's own RPC layer returns the correct `size_text` `"0.4 MB"` for the same file (`api/io.py:41`), so the GUI is the odd one out. The *Rating* column has the mirror problem: the numeric sort key is drawn as a bare `0` / `2` immediately left of the ☆☆☆ widget, so every row reads "0 ☆☆☆". Keep the sort key in a non-display role (`Qt.UserRole`, or a `QTableWidgetItem` subclass overriding `__lt__`).
+- **Fix note:**
+
+### RF-353
+- **Status:** OPEN
+- **Severity:** S3 (a control is drawn on top of another control and clipped to half its label)
+- **Location:** `chisurf/plugins/tttr/trace_browser/__init__.py:480-484` (`self.chk_subfolders = QCheckBox("Include subfolders", self.page1)`) — created with `page1` as parent but never added to `ctrl_row` or any other layout (`:519-570` add `btn_back`, `folder_label`, `filter_combo`, `window_ms_spin`, the Y group; `chk_subfolders` is absent)
+- **Finding:** an unlaid-out child keeps its default geometry, so the checkbox sits at `QRect(0, 0, 100, 30)` while `btn_back` occupies `QRect(0, 22, 129, 26)` — verified this run, plus `in page1 layout tree: False`. On screen the top-left corner shows a clipped *"Include su"* with the yellow *← Select setup* button drawn across it (every screenshot of the browser page). It is also redundant: `TraceBrowserTool._setup_toolbar` adds its own **Subfolders** checkbox that proxies to the same slot. Delete the orphan and keep the toolbar copy (or lay it out and drop the toolbar one).
+- **Fix note:**
+
+### RF-354
+- **Status:** OPEN
+- **Severity:** S2 (a toolbar hand-off always fails with an error dialog — a stale call site left behind by the path-list unification)
+- **Location:** `chisurf/plugins/tttr/trace_browser/__init__.py:2249` (`time_window_wizard.file_list.addItem(str(path))`) against `chisurf/plugins/tttr/tttr_time_windows/gui/tool.py:221` (`self.file_list = PathListWidget(...)`) and `chisurf/gui/autoform/sections/path_list_section.py:317` (`add_paths`)
+- **Finding:** pressing **⏱️ TW** with a trace selected raises `'PathListWidget' object has no attribute 'addItem'`, which `_on_transfer_to_tw` catches and reports as *"Transfer Failed — Could not open trace in time window plugin."* — reproduced this run on `allOverview_Pos_y-0.00287604_spot_0_x_188.0_y_62.0.ptu`. The time-window tool's file list was migrated to the unified AutoForm `path_list` widget and this caller was not updated; the replacement is `file_list.add_paths([str(path)])`. The only other `file_list.addItem` in the tree (`chisurf/plugins/burst/burst_selection/gui/tool.py:2557`) is fine — that one is a `DropListWidget`.
+- **Fix note:**
+
+### RF-355
+- **Status:** OPEN
+- **Severity:** S3 (the GUI and the CLI/RPC of the same plugin apply different, and both incomplete, file-type rules to the same folder)
+- **Location:** `chisurf/plugins/tttr/trace_browser/api/io.py:16` (`DEFAULT_EXTENSIONS = {".ptu", ".phu", ".ht2", ".ht3", ".pt3", ".t3r"}`, used by `iter_trace_files`/`list_files`, i.e. by `trace_browser.files.list` and the `trace-browser list` CLI) versus `chisurf/plugins/tttr/trace_browser/__init__.py:118-136,1185-1225` (`get_tttr_supported_exts()` → `['.ptu', '.ht3', '.pt3', '.spc', '.sm', '.h5', '.hdf5', '.raw', '.photons']`, then narrowed by the setup's file type)
+- **Finding:** on the same folder the two halves disagree: `list_files('/…/traces')` returns **12** `.ptu` files while the GUI table shows **0**; and `list_files` returns **0** for a folder of `.spc` files, because its hardcoded set omits `.spc`, `.h5`/`.hdf5`, `.sm`, `.raw` and `.photons` — every Becker & Hickl and Photon-HDF5 measurement is invisible to the CLI even though the GUI's *File Type* combo offers `SPC-130`, `SPC-600_*` and `PHOTON-HDF5`. Neither side asks the reader what it supports. Derive both from `tttrlib`'s supported types (plus the setup filter where one is chosen) so the CLI, the RPC service and the GUI list the same files.
+- **Fix note:**
