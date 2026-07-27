@@ -4031,3 +4031,51 @@ is what the window *says* is being measured. Use case:
 - **Location:** `chisurf/plugins/microscopy/img_coloc/gui/coloc.view.json:151-165` (the *Channels* `dock_area`, `"split": "horizontal"`, no size hint or `persist` key on the two child image sections)
 - **Finding:** at the tool's own default window size the *Channel A* pane is roughly half the width of the *Channel B* pane, so two identically-shaped maps (160 × 160 for the TIFF, 256 × 256 for the HT3) are rendered at about twice the scale on the right as on the left — reproduced on a fresh instance for both files (`05_channels`, `31_ht3_channels`, `50_roi_channels`). Since each pane also auto-scales its own colour range, neither the size nor the brightness of a feature can be compared between the two panes by eye, which is the entire point of the tab. Split the horizontal dock area evenly (and consider an optional shared colour scale).
 - **Fix note:**
+
+### Review 2026-07-27 — inter-frame drift and rectangle FRAP
+
+Slice: `chisurf/core/fluorescence/imaging/drift.py` and `frap.py` — two MIA-port
+modules with **zero** findings on record and no overlap with the files other
+instances are editing right now. **The mathematics of both holds up.** Checked
+rather than assumed: the FFT cross-correlation recovers a known translation
+exactly in all three reference modes; the rFRAP model is mass-conserving
+(`∫ deficit dx dy = K0 F0 Lx Ly` for every `t`, so the `1/4` amplitude and
+`N(t) = sqrt(4Dt + r²)` are the right pair) and `fit_rfrap` returns all four
+parameters to 1e-6 from noiseless data and to a few percent under 2 % noise.
+What does not hold up is the `'mean'` reference mode, which never measures the
+first frame at all. Findings RF-344..RF-348.
+
+### RF-344
+- **Status:** OPEN
+- **Severity:** S1 (`reference='mean'` returns a corrected stack in which frame 0 is misaligned from every other frame by its full displacement, and says nothing)
+- **Location:** `chisurf/core/fluorescence/imaging/drift.py:159-160` (`shifts = np.zeros(...)` then `for k in range(1, n_frames)`) against the `'mean'` branch at `:49-50`; documented as intended at `:124` (*"Row 0 is always ``(0, 0)``"*) and pinned by `test/core/test_drift.py:36-40` (`test_the_first_frame_never_drifts`, which asserts it *"in every reference mode"*)
+- **Finding:** the loop skipping `k = 0` is the `'first'`/`'previous'` idiom, where frame 0 is the origin by construction. Under `'mean'` the reference is the stack average, and frame 0 has a real, measurable displacement from it — which the code never computes. Verified on a 9-frame stack drifting 0→8 px in y: `estimate_drift(..., reference='mean')` returns `[0, -3, -2, -1, 0, 1, 2, 3, 4]` where the true offsets from the mean position are `[-4, -3, …, 4]`; rows 1–8 are exact and row 0 is wrong by the whole 4 px. Correlating frame 0 against the stack mean by hand gives `-4`, so the number is available and simply not taken. The consequence is not a cosmetic trace error: after `correct_drift(..., reference='mean')` frames 1–8 are mutually identical (`allclose` → True for all) and frame 0 matches **none** of them (max abs difference 0.99 on data in `[0, 1]`). `'Stack mean'` is a first-class choice in the GUI (`img_drift/gui/drift.view.json:45-52`, *"a compromise for noisy data"*), in the CLI (`--reference mean`) and in `measure_drift`, and it reaches `correct_clsm_drift`, which rearranges photons **in place** — so on a confocal image the damage is not reversible. Frame 0 participates in every frame lag of an ICS carpet, which is the analysis the module docstring says it exists to protect. Measure frame 0 like every other frame when the reference does not contain it (start the loop at 0 for `'mean'`), and change the test, which currently pins the defect.
+- **Fix note:**
+
+### RF-345
+- **Status:** OPEN
+- **Severity:** S2 (`subpixel=True` can never change the corrected stack, and only the plugin's docs page says so)
+- **Location:** `chisurf/core/fluorescence/imaging/drift.py:235` (`iy, ix = int(round(-dy)), int(round(-dx))`) against the parabolic refinement at `:74-87` and what `estimate_drift`/`correct_drift` promise at `:117-118` and `:264`; `apply_drift`'s Notes at `:215-218` mention the sign convention but not the rounding
+- **Finding:** the parabolic offset is bounded by `|0.5 (a - c) / (a - 2b + c)| < 0.5` whenever the peak is a strict maximum (which `argmax` guarantees up to ties), so `round()` of the refined shift is **identically** the integer peak — `subpixel=True` is not merely usually ineffective on the correction, it is provably ineffective for `reference='first'` and `'mean'`. Verified on a stack shifted by a true 2.4 / 4.8 px: the integer estimate is `[0, 2, 5]`, the refined estimate `[0, 2.409, 4.853]` (a genuine improvement in the *reported* trace, and the 4.8 case is corrected in the right direction), and `correct_drift(subpixel=True)` returns a stack **bit-identical** (`np.array_equal` → True) to `subpixel=False`. Only `reference='previous'` can escape, because `cumsum` lets fractions accumulate past a half pixel. The `img_drift` docs page states the limitation (*"the correction itself is still applied in whole pixels"*, `docs/reference/plugins/img_drift.md:35`), but neither the core docstrings nor the CLI help do, so anyone calling `correct_drift(subpixel=True)` from a script or the API reasonably expects a sub-pixel-corrected stack. Say it in `apply_drift`/`correct_drift`, or interpolate (`scipy.ndimage.shift`) when the shift is fractional and `mode` is not the photon-level path.
+- **Fix note:**
+
+### RF-346
+- **Status:** OPEN
+- **Severity:** S3 (the reference stack is materialised as `n_frames` identical copies of one frame, so peak memory scales with the stack for no reason)
+- **Location:** `chisurf/core/fluorescence/imaging/drift.py:45-50` (`_reference_stack`: `np.repeat(images[:1], len(images), axis=0)` for `'first'`, `np.repeat(images.mean(...), len(images), axis=0)` for `'mean'`), consumed one frame at a time at `:161`
+- **Finding:** `'first'` and `'mean'` need exactly one reference frame, and the helper builds `n_frames` copies of it. Measured on a 200 × 256 × 256 stack: `refs` is 104.9 MB holding **1** distinct frame (`np.unique(refs.reshape(n, -1), axis=0)` → 1 row), with a 209.7 MB peak during the `np.repeat`, where 0.5 MB suffices. `estimate_drift` peaks at 2.5× the float64 stack. Drift correction is applied to *long* stacks by definition — a routine 1000-frame 512×512 series costs ~2.1 GB of duplicated frames plus a same-sized transient, on top of the float64 promotion of a uint16 camera stack. Return the single reference frame (or a `np.broadcast_to` view) and index it, keeping the real per-frame stack only for `'previous'` — where `np.concatenate` could equally be replaced by indexing.
+- **Fix note:**
+
+### RF-347
+- **Status:** OPEN
+- **Severity:** S3 (the docstring promises a geometry check that is not performed, and the mismatch it would catch is applied to photons in place)
+- **Location:** `chisurf/core/fluorescence/imaging/drift.py:393-396` (`if source.shape[0] != n_frames`) against the `Raises` section at `:384-387` (*"If the estimation stack does not match the image's frame **geometry**"*)
+- **Finding:** only the frame **count** is validated. A `channel_image` with the same number of frames but a different `(n_lines, n_pixels)` — a binned, cropped or differently rendered view, which is exactly the kind of array a caller reaches for when the point of the argument is *"let a bright, structured channel drive the correction of all channels"* — yields shifts measured in that array's pixel units and then applied verbatim to the CLSM grid by `clsm_transform_pairs`, silently off by the binning factor. `clsm.transform` clears the image before redistributing (`tttrlib CLSMImage::transform`), so the wrong correction is not recoverable from the corrected object. Compare the full `(n_frames, n_lines, n_pixels)` shape, as the docstring already claims.
+- **Fix note:**
+
+### RF-348
+- **Status:** OPEN
+- **Severity:** S3 (the documented JSON form of a FRAP fit silently drops the half-time and the geometry needed to recompute it)
+- **Location:** `chisurf/core/fluorescence/imaging/frap.py:99-110` (`FrapResult.to_dict`, *"a JSON-friendly dictionary"*) against `:77-97` (`half_time`, which reads the non-field attribute `_mean_length`) and `:424` (`result._mean_length = ...`, set on the dataclass after construction)
+- **Finding:** `half_time` is derived from a bleach geometry that lives outside the dataclass fields, so it survives nothing that goes through `to_dict`. Verified: an in-process fit reports `D = 0.350000`, `half_time = 4.1143`; `FrapResult(**result.to_dict())` reports `half_time = nan`, and `to_dict()`'s eight keys contain neither `half_time` nor `lx`/`ly`. `test_result_serialises` (`test/core/test_frap.py:168`) calls this form *"JSON-friendly for the CLI and RPC paths"* and checks only `success` and `D`, and `test_half_time_needs_a_fit_to_be_meaningful` (`:263`) asserts the `nan` as intended behaviour for a hand-built result — so nothing notices. Make the bleach length a real dataclass field (defaulting to `nan`) and emit `half_time` in `to_dict`, so the number the classic curve analysis quotes crosses a serialisation boundary. Worth doing before the module grows a plugin: `frap.py` currently has no GUI, CLI or RPC consumer at all, so `to_dict` is the whole of its future external surface.
+- **Fix note:**
