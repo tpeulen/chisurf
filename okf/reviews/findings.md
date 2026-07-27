@@ -6023,3 +6023,60 @@ micro-time binning — cannot invalidate an export. Findings RF-496..RF-502.
 - **Location:** `chisurf/plugins/burst/burst_selection/gui/tool.py:1882-1886` (`self._prepare_mmfdb_context_for_paths(self._file_paths)`, whose body at `:1643-1688` acquires a session, may `show_sample_picker_dialog`, and raises `RuntimeError` when no sample is selected) ahead of the reuse check at `:1901-1917`
 - **Finding:** every workflow *Next* over a completed burst-selection step still pays the MMFDB preamble: a session acquisition, one `_sample_id_for_raw_path` lookup per file, `_ensure_selected_setup_in_mmfdb`, and — when the sample cannot be resolved — a modal picker or an early `return` that replaces the summary with "MMFDB output requires a registered sample for the raw data." on a step that had already produced its result and was about to skip. The ordering is not gratuitous (the context is itself part of the fingerprint, so it cannot simply be moved below the comparison), which is the point: an identifier lookup that is a pure function of the file list does not belong in the fingerprint of a *computation*. Fingerprint the files and the analysis settings, keep the MMFDB context out of it, and build the context only on the path that actually runs.
 - **Fix note:**
+
+## Review 2026-07-27 (6) — burst-wise FCS: the lag axis, and what the fit is fitted to
+
+Slice: `chisurf/plugins/burst/burst_fcs_correlator/` — the Qt-free
+`core/algorithms.py`, its `backend/services.py` RPC surface and the tests, last
+touched by `8160734e1` (*a file that could not be opened is no longer reported as
+a successful run*). That commit's read-error split is sound and its parsing
+helpers are properly defensive. The computation is not: the "Fine grid" toggle
+produces a lag axis off by nineteen orders of magnitude, the multi-tau grid runs
+far past the burst so a third of the points fed to the fit are lags at which no
+photon pair exists, and the fitted diffusion time is returned without any sign
+that it is pinned to the edge of its own grid. Verified end-to-end through
+`correlate_burst_file` on `test/data/clsm/PQ_Olympus_MFIS.ht3` (macro-time
+resolution 31.25 ns, micro-time resolution 1 ps, 31250 micro-time channels).
+Findings RF-503..RF-508.
+
+### RF-503
+- **Status:** OPEN
+- **Severity:** S1 (with "Fine grid" on, every lag time and every fitted diffusion time is wrong by ~3×10¹⁹ — the axis reads in units of billions of years)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:268-276` (`correlate_single_burst`, the `make_fine` branch) against the two sibling correlators that get it right, `chisurf/plugins/fcs/fcs_correlator/correlator_panel.py:373-383` and `chisurf/gui/widgets/wizard/tttr_correlator/tttr_correlator.py:384-394`, with the user-facing toggle in `chisurf/plugins/burst/burst_fcs_correlator/gui/burst_fcs.view.json:14` ("Fine grid")
+- **Finding:** the fine axis is built by taking the *macro*-time axis and **dividing** by the micro-time resolution: `tau = x_axis * macro_res_s * 1000` then `tau = tau / (micro_res_s / 1000.0)`, i.e. `x_axis * macro_res * 1e6 / micro_res` ms. Both siblings compute the same quantity as `dt = micro_time_resolution * b * 1000.0; x = x_axis * dt` — multiply, not divide — which is what `make_fine` means (`chisurf/core/fluorescence/fcs/correlate.py:234`: `refined_time = t * n_tac_channels + tac`, so one fine tick *is* one micro-time unit). Driven through `correlate_burst_file` with `make_fine=True` on the file above, the lag axis runs **3.1×10¹⁰ ms to 9.8×10¹⁶ ms** (≈ 3 billion years) where the correct axis is 1 ps … 98 µs, and the reported `td_mean` is **2.5×10¹⁵ ms**; the error factor is `macro_res * 1e6 / micro_res² = 3.1×10¹⁹`. The ordering is *not* the problem — `correlator.x_axis` is bit-identical before and after `set_microtimes` (verified), so only the conversion factor is wrong. Secondary defect in the same branch: it is wrapped in `try: … except Exception: pass`, so if `get_number_of_micro_time_channels`/`set_microtimes` raise, the coarse axis is returned as though the user's fine request had been honoured.
+- **Fix note:**
+
+### RF-504
+- **Status:** OPEN
+- **Severity:** S2 (a third of the points fed to the per-burst fit are lags at which the burst has no photon pairs; they anchor the baseline and set the answer)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:264-278` (the multi-tau grid is fixed by `n_casc`/`n_bins`, never by the data) and `:585` (`fit_curve(tau, g, settings)` on the full grid) against `chisurf/plugins/fcs/fcs_correlator/correlator_panel.py:384-391`, which flattens exactly these points (`y[x > dur] = 1.0`, "Correlation values at lags beyond the duration are meaningless")
+- **Finding:** the defaults `n_bins=3`, `n_casc=20` give 61 lags out to **98.3 ms** on a 31.25 ns macro clock, while a burst is ~1 ms; nothing clips, weights or flags lags beyond the correlated window. Measured on a 1500-photon, **1.19 ms** burst with `padding_ms=0`: **20 of the 61 lags lie past the burst**, and every one of them is exactly `0.0`/`-0.0` (no photon pairs at that lag) apart from one at `-1.08`. Those unmeasured points enter `fit_simple_diffusion`'s *unweighted* least squares, where they hold the baseline: the reported diffusion time is **1.294 ms** with them and **3.1×10⁻⁶ ms** without — i.e. the "per-burst diffusion time" is set by where the burst runs out of photons, not by diffusion. The default `padding_ms=100` happens to stretch the window past 98 ms, so the defect is invisible at the defaults and appears the moment a user lowers the padding or raises `n_casc` — both plain spin boxes in `burst_fcs.view.json`. Truncate the curve at the correlated duration (or weight by pair count) before fitting, as the sibling correlator already does.
+- **Fix note:**
+
+### RF-505
+- **Status:** OPEN
+- **Severity:** S2 (a diffusion time pinned to the edge of its own search grid is returned as a measurement, indistinguishable from a real fit)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:347-379` (`fit_simple_diffusion`: `td_min`/`td_max`, the 60-point grid scan, the `best_td` return) with `:483-489` (`fit_curve` copying it into both `td_mean` and `td_peak`)
+- **Finding:** the function returns the grid point with the lowest SSE and nothing else — no goodness of fit, no flag when the optimum sits on the boundary. When the curve carries no decay in range the scan simply stops at an end of the grid and that end is reported as a diffusion time: verified on the burst above (truncated at its duration) the return is `3.1250045898504903e-06`, which is *exactly* `td_min = tau_min * 0.1`, the value the grid starts at. `fit_curve` then writes it into `td_mean` **and** `td_peak`, so the per-burst table cannot tell "1 µs diffusion" from "the fit hit the wall", and the grid's other end is no better — `td_max = tau_max * 10` is ~983 ms for a 1.2 ms burst, a time 800× longer than anything the burst could measure. Two smaller defects in the same block: `np.linalg.lstsq` is unconstrained, so a *rising* curve is fitted as happily as a decaying one and yields a `td` for it (the amplitude `beta[1]` is never required to be positive); and `td_min = max(tau_min * 0.1, tau_min * 1e-2, 1e-6)` has a dead middle term, since `tau_min * 0.1 >= tau_min * 1e-2` always. Return NaN (or an explicit flag) for an edge-pinned or negative-amplitude fit.
+- **Fix note:**
+
+### RF-506
+- **Status:** OPEN
+- **Severity:** S3 (a MaxEnt inversion that produced no distribution answers with the smallest grid point as its "peak")
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:299-304` (`fit_diffusion_time`, the `if not np.any(p > 0.0)` branch) reached through `backend/services.py:60-63` (`burst_fcs.fit_diffusion`) and `gui/client.py:38-39`
+- **Finding:** when the MaxEnt distribution clips to all zeros the function returns `(nan, td_grid[np.argmax(p)])` — `argmax` over an all-zero array is index 0, so `td_peak` is the *lower bound of the grid*, handed back as a plain float beside a NaN mean. A caller that reads `td_peak` (the whole point of a "peak") gets the grid's minimum as the diffusion time of a curve that yielded no distribution at all; both values should be NaN. Same function, second mismatch: `fit_diffusion_time` calls `fcs_maxent(tau=tau, g=g)` with library defaults and ignores `BurstFcsSettings.maxent_reg` / `maxent_td_min` / `maxent_td_max` entirely, while `fit_curve`'s maxent branch (`:462-482`) passes all three — so the two entry points answer differently for the same curve and the same configured settings.
+- **Fix note:**
+
+### RF-507
+- **Status:** OPEN
+- **Severity:** S3 (a burst table spanning more than one raw file is read as if all its photon indices belonged to the first file — wrong photons, plausible curves, no error)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:131-166` (`parse_bur_file`: `if first_file_name is None and f_txt: first_file_name = f_txt`, then one `tttr_path` for every row) against `chisurf/core/fluorescence/burst/photons.py:193` and `:294`, where the same table is keyed per row (`for ff in df["First File"].unique()`)
+- **Finding:** the parser takes the `First File` value of the first data row, resolves one TTTR path from it, and returns *every* row's `(first photon, last photon)` pair against that single path — it never checks that the remaining rows name the same file, and the column it read is dropped after the first row. ChiSurf's own burst-table reader treats `First File` as a per-row key and loads one TTTR per unique value, so a multi-file `.bur` is a shape this codebase explicitly supports; here it silently slices file 2's photon indices out of file 1's stream and correlates them, producing curves that look exactly like good ones. (The in-tree writer at `chisurf/core/fio/fluorescence/burst.py:454` emits one file per table, which is why nothing is red today.) Either reject a table whose `First File` values differ, with a clear error, or return the ranges grouped per file.
+- **Fix note:**
+
+### RF-508
+- **Status:** OPEN
+- **Severity:** S3 (nothing tests the orchestrator that actually produces a curve — index clipping, padding and the fine axis are all uncovered, which is how RF-503 shipped)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/test/test_read_errors.py:70-75` (`test_a_readable_file_with_no_bursts_still_succeeds`, the only test that opens a real TTTR file) and `chisurf/plugins/burst/burst_fcs_correlator/test/test_core.py` (the whole file) against `core/algorithms.py:494-595` (`correlate_burst_file`)
+- **Finding:** the one test that reads a real TTTR file passes **no ranges and no pairs** and asserts `curves == []`; the rest of the suite fits synthetic curves, round-trips the settings dataclass and checks the manifest. So no test ever reaches the branch-heavy part of the plugin: the index clipping (`e = min(e, n_events - 1)`), the padding window (`searchsorted` on the macro times, `pad_ticks`), the fine/coarse axis, or the per-pair loop. A single test correlating one range with one pair on an in-tree TTTR file and asserting the first lag equals the macro-time resolution in ms — and the micro-time resolution in ms with `make_fine=True` — would have caught RF-503 the day it was written.
+- **Fix note:**
