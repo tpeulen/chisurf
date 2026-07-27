@@ -138,6 +138,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   z-stack, set pixel size and z step, detect the beads, fit a 3-D Gaussian and
   read the lateral/axial FWHM and the axial ratio, then export the per-bead
   table. *(last driven 2026-07-27; RF-451..RF-456)*
+- [ndXplorer — gating a multiparameter burst space](/usecases/ndx-mfd-burst-gating.md)
+  — what a burst search is *for*: load a Paris burstwise MFD folder, plot any
+  burst parameter against any other, cut out a sub-population with a 1-D range
+  gate or a painted 2-D bitmap, and carry it out as Burst IDs or into an
+  FCS / TCSPC / PDA / PCH analysis.
+  *(last driven 2026-07-27; RF-470..RF-475)*
 
 ## Per-workflow file format
 

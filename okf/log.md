@@ -2,6 +2,21 @@
 
 ## 2026-07-27
 
+* **GUI tester — ndXplorer, gating a multiparameter burst space (RF-470..RF-475).**
+  Drove the real ndX window headlessly on the repo's Paris burstwise MFD folder
+  (45 `.bur` + `bg4`/`br4`, 12 237 bursts): loaded it, plotted lifetime vs
+  anisotropy, gated with a z-range and with a painted 2-D bitmap, exported the
+  Burst IDs and sent the gated population to all four advertised burst analyses.
+  Gating is sound — the bitmap grid maps to the data with no flip, and the counts
+  match the table — but the reader drops the last real column of every `.bur`
+  (`Red Count Rate (KHz)`), so `Sr` and with it *proximity ratio and FRET
+  efficiency* silently never compute (3 derived columns instead of 15); the z
+  range handle is never rescaled to the chosen parameter, so the first gate a
+  user adds excludes all 12 237 bursts; and the burst bridge hands the analyses a
+  bare file name, which FCS and PDA then report as a **successful** send of 7 312
+  bursts with zero photons read. Recorded as
+  [ndXplorer — gating a multiparameter burst space](/usecases/ndx-mfd-burst-gating.md).
+
 * **A labelling site that does not exist got a dye anyway (RF-379).**
   `av._find_attachment_point` resolved chain / residue / atom against the PDB
   records, but any miss fell through to `atoms[resseq - 1]` — *the resseq-th
