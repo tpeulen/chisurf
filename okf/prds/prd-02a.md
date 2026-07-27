@@ -141,7 +141,10 @@ latest from wwPDB); the JSON cache auto-regenerates when any `.dic` is newer.
 
 # Definition of Done
 - [ ] PRD-020 complete enough that sample/probe/FRET persistence has one ORM-backed boundary
-- [ ] `MmcifDictionary` parses all 7 bundled `.dic` files
+- [x] `MmcifDictionary` parses every dictionary in `BUNDLED_DICTS` (the 7 upstream
+  files plus the local `mmfdb_flr_ext.dic`). `mmfdb_workflow_ext.dic` is
+  deliberately **not** bundled — it is a serialization-only deposit dictionary,
+  listed in `EXPORT_ONLY_DICTS`; see [MMFDB](/architecture/mmfdb.md#bundled-vs-export-only-dictionaries)
 - [ ] Item blocks without `loop_` retained (`_flr_sample.id` exists)
 - [ ] Multi-line `;`-delimited descriptions parsed
 - [ ] Enumerations extracted for all `_item_enumeration` fields

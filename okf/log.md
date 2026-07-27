@@ -2,6 +2,25 @@
 
 ## 2026-07-27
 
+* **A shipped dictionary was invisible to the vocabulary, and the omission was
+  load-bearing.** `data/mmfdb_workflow_ext.dic` defines the seven categories a
+  deposit CIF writes and travels inside the bundle so the deposit is
+  self-describing — but it appeared in no list, so `load_bundled()` never parsed
+  it and none of its items could be looked up, validated, searched, or
+  documented.
+
+  Adding it to `BUNDLED_DICTS` is not the fix: those categories are an export
+  projection of the live provenance tables, and loading them makes
+  `reconcile_schema` materialise seven duplicate tables — verified against an
+  in-memory database. So the split is now stated rather than closed. A new
+  `EXPORT_ONLY_DICTS` names the serialization-only dictionaries and why they
+  stay out, and a guardrail test requires every shipped `.dic`/`.dic.gz` to
+  appear in exactly one of the two lists, so the next dictionary dropped into
+  the tree fails a test instead of disappearing. Committed in the MMFDB repo
+  (`907c4fb`); 705 mmfdb tests green. Recorded in
+  [MMFDB](/architecture/mmfdb.md#bundled-vs-export-only-dictionaries) and
+  [PRD-02a](/prds/prd-02a.md).
+
 * **Full scikit-image parity for region properties.** The remaining gaps were
   four moment families, `offset=`, and the historical property names. All in:
   `moments_normalized`, `moments_weighted_normalized`, `moments_hu` and

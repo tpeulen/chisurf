@@ -50,6 +50,20 @@ the wwPDB/PDB-IHM family plus the local `mmfdb_flr_ext.dic`) by
 `schema_from_dictionary.py`. Treat the `.dic` dictionaries as the schema
 authority: change them and regenerate; do **not** hand-edit generated DDL.
 
+## Bundled vs export-only dictionaries
+
+A shipped `.dic` is not automatically part of the vocabulary. `MmcifDictionary`
+declares two lists: `BUNDLED_DICTS`, parsed by `load_bundled()` — and therefore
+reconciled into live tables for every `mmfdb_*` category it defines — and
+`EXPORT_ONLY_DICTS`, which describe a **serialization** vocabulary only. The
+deposit dictionary `mmfdb_workflow_ext.dic` is export-only: its categories
+(`mmfdb_workflow`/`_step`, `mmfdb_provenance_operation`/`_artifact`/`_edge`,
+`mmfdb_bundle_file`/`_document`) are an export projection of the live provenance
+tables, and it travels inside the deposit bundle so the CIF is self-describing.
+A guardrail test requires every shipped `.dic` to appear in exactly one list, so
+a new dictionary cannot be silently invisible to validation, autocomplete,
+search, and the generated docs.
+
 ## Dictionary programming rules
 
 For flrCIF/PDBx fields the bundled `.dic` files are the source of truth; Python may
