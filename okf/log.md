@@ -2,6 +2,61 @@
 
 ## 2026-07-27
 
+* **Second mining pass over the vendored dataflow toolkit checkout
+  (`junk/orange3`), beyond the data model already recorded.** The first pass
+  ([node/workflow-toolkit lessons](/references/orange3-lessons.md), 2026-07-06)
+  took the *data* layer — compute values, typed ports, transformer-as-value,
+  schema objects, data-only settings migration. What was left unmined was the
+  larger half: the widget framework, the concurrency and messaging contracts,
+  the testing harness, and the presentation conventions. Recorded as
+  [Orange3 mining](/references/orange3-mining.md) — a path index of ~30 areas
+  with a chisurf equivalent, verdict and 1–5 value for each, following the
+  [QuickFit3 mining](/references/quickfit3-mining.md) format; patterns are
+  documented prior art for independent reimplementation, never GPL code copies.
+  The five findings ranked highest:
+  **(1) write-locked data** — table arrays are read-only by default and mutation
+  needs a scoped `unlocked()` that *refuses* to unlock a view into another
+  table, which is the invariant a node graph needs and which chisurf does not
+  have at all (`chisurf/core/data.py` never calls `setflags`, so any downstream
+  consumer can normalize in place and silently change someone else's result);
+  **(2) one background-task contract** — `TaskState`/`ConcurrentMixin` gives
+  cancel, streamed *partial* results, auto-wired progress/status/invalidated
+  state, cancellation of the previous run on restart, and an assertion
+  forbidding a new task from `on_done` (the usual deadlock); chisurf has the
+  display side (`ChiSurfProgress`, AutoForm `progress`) but three ad-hoc
+  execution sites; **(3) widget-contract test mixins** — a degenerate-dataset
+  battery (all-NaN, zero rows, zero columns), per-category mixins contributing
+  whole test families, and a `ParameterMapping` that iterates every value of
+  every control and asserts the parameter moved, versus chisurf's purely static
+  manifest contract tests; **(4) VizRank** — a small framework
+  (`iterate_states`/`compute_score`/`row_for_state`) that ranks candidate views
+  in the background into a sortable table where a click applies the winner, the
+  one genuinely new *capability* in the tree and a direct fit for ranking burst-
+  parameter projections; **(5) declared message groups** — `Msg` class
+  attributes rendered non-modally in the widget bar *and* on the canvas node,
+  assertable in tests, which is the next step past chisurf's now-unified but
+  still modal `ChiSurfMessageBox`.
+  Tier 2 folds into existing tracks: a `send_report()` on the dockable-tool base
+  ([PRD-36](/prds/prd-36.md)) rendered from the view specs that already carry
+  every control's `description`; data-matched settings contexts (settings keyed
+  to the *dataset*, scored partial matches) versus chisurf's one global set per
+  `state_namespace`; an AST-whitelist expression validator whose free-variable
+  walk yields the dependency set for free; the "Selected Data + full data with a
+  `Selected`/`Group` column" output convention that the region/burst-selection
+  work needs; `Reprable` (auto `__repr__` as a valid constructor call, only
+  non-default args) for macro/provenance strings; and three one-line manifest
+  additions chisurf lacks — `keywords` for launcher search, `replaces=` so
+  renaming a port does not break saved workflows, and `settings_version` +
+  migrators for the versionless `state_schema`. Also two concrete
+  [PRD-63](/prds/prd-63.md) i18n rules with citations: never persist a
+  translated string as a setting value, and mark each catalogue string
+  translated / fine-as-is / must-not-be-translated so the extractor can re-run
+  without re-reviewing everything. Explicitly *not* worth harvesting: the whole
+  supervised-learning half and the classifier visualizations (chisurf fits
+  physical models with priors), the clustering/projection wrappers (thin over an
+  already-shipped dependency), and the SQL/remote-embedding backends
+  (superseded by MMFDB).
+
 * **Written down, not fixed: the ribbon is not translated.** Reported from use.
   `chisurf/gui/widgets/ribbon/` holds no `i18n.tr` call and no `.ui` file, so its
   category/panel titles (Main, Edit, Analysis, Tools, Setup, View, Help, …) and

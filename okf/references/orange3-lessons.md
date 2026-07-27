@@ -20,6 +20,12 @@ content-addressed store. ChiSurf takes its *concepts*, not its storage model:
 flrCIF-authoritative `mmfdb` schema are all out of that toolkit's scope. What
 follows are the abstractions worth adopting, each linked to the PRD it informs.
 
+This concept covers the toolkit's **data model and provenance** layer only. A
+second pass over everything else — the widget framework, concurrency and
+messaging contracts, the testing harness, and the ranking/report/annotation
+conventions — is in
+[Orange3 mining — dataflow, widget-framework & testing patterns](orange3-mining.md).
+
 ## Replayable lineage: provenance baked into the data model
 
 The toolkit's highest-leverage idea. Every derived column can carry a
