@@ -2,6 +2,38 @@
 
 ## 2026-07-27
 
+* **Recorded what was actually taken from the dataflow toolkit, as opposed to
+  what was surveyed.** The two existing concepts are both *surveys* — the
+  2026-07-06 [lessons](/references/orange3-lessons.md) over its data model and
+  the [mining note](/references/orange3-mining.md) over everything else — and
+  neither answers the question that will be asked later: *why does ChiSurf do it
+  this way?* [What ChiSurf took from Orange3](/references/orange3-adopted.md) is
+  that record. Three ideas: data that cannot be written by accident, one contract
+  for work that runs off the GUI thread, and conditions declared rather than
+  fired. For each: what was borrowed, where it lives now, why it was worth
+  taking, and — the part worth writing down — **where ChiSurf deliberately
+  departs**, because all three ended up different from their origin.
+  The departures are the useful content. The lock **copies** a non-owning array
+  on the way in where the reference merely refuses to unlock one, because the
+  CSV reader hands out rows of a throwaway buffer and the refusal made the
+  documented escape hatch raise on every file-loaded curve. The task layer is
+  built *on* the existing progress seam rather than beside it (which is what made
+  the migration cheap), runs **inline** with no `QApplication` so a CLI or test
+  exercises the real call site, renders a standalone tool's run in its own status
+  bar rather than a modal, and adds `set_range` and a `progress_window()` adapter
+  for the multi-phase runs and the `set_value(i)` cores ChiSurf already has.
+  Declared messages translate at *render* time through the ChiSurf i18n seam and
+  render as one elided status-bar line, since ChiSurf tools are windows rather
+  than canvas nodes.
+  Attribution is explicit: GPL-3.0, patterns and API shape only, every line
+  written independently — the same standing the [PAM port](/references/fcs-pam-port.md)
+  and [QuickFit3 mining](/references/quickfit3-mining.md) established. Both survey
+  concepts now point at it, and it points back at the mining note for what
+  remains unharvested (the widget-contract test mixins, VizRank, the report
+  system, data-matched settings contexts and the safe-expression layer are the
+  highest-rated of those).
+
+
 * **`match_2d` did the opposite of what it said, in six shipped image panels.**
   The AutoForm `image` section took a `match_2d` flag documented as "render a 3D
   stack with the same axis mapping as the 2D map (no 90° transpose)". Rendering a

@@ -30,6 +30,11 @@ the presentation layer**. Reuse policy follows the
 precedent: patterns and algorithms are documented prior art, reimplemented
 independently in ChiSurf's own code with attribution, never verbatim GPL copies.
 
+What was **actually adopted** — and how each idea was translated, including
+where ChiSurf deliberately departs from the original — is recorded separately
+in [What ChiSurf took from Orange3](orange3-adopted.md). This document stays
+the survey and the backlog.
+
 ## Path index
 
 | Orange3 path | What it is | ChiSurf equivalent | Verdict | Value |

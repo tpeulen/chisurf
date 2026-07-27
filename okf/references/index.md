@@ -7,6 +7,8 @@
 * [MMFDB architecture ideas](mmfdb-architecture-ideas.md) - The observed-problem → design-decision rationale behind the MMFDB architecture PRDs (17–27).
 * [MMFDB LIMS diagnosis](mmfdb-lims-diagnosis.md) - LIMS gap analysis and prior-art comparison behind the provenance/LIMS PRDs (12–15).
 * [Node/workflow-toolkit lessons](orange3-lessons.md) - Architecture lessons from an established visual node/workflow analysis toolkit, mapped to PRDs.
+* [Orange3 mining — dataflow, widget-framework & testing patterns](orange3-mining.md) - Second pass over the same toolkit beyond its data model: write-locked data, the background-task mixin, declared widget messages, contract test mixins, VizRank, the report system, data-matched settings and the safe-expression layer, ranked against what chisurf has today.
+* [What ChiSurf took from Orange3](orange3-adopted.md) - The three ideas actually harvested — write-locked data, the background-task contract, declared widget messages — where each lives now, how it was translated, and where ChiSurf deliberately departs from the original.
 * [ELN crosslinking & info-management lessons](eln-crosslinking-lessons.md) - What a mature ELN's auth/linking/tagging/metadata model teaches MMFDB; adopted metadata→edge materialization + resolvable audit labels, deferred a tags layer.
 * [Modelling / ProteinMC roadmap](modelling-roadmap.md) - Durable modelling/simulation roadmap notes salvaged from a personal worklist.
 * [Image correlation: RICS, STICS, TICS and iMSD are one method](image-correlation-theory.md) - The single spatiotemporal carpet G(xi, psi, Delta), the lag-time identity tau = |xi*t_pixel + psi*t_line + Delta*t_frame| that unifies the family, and ChiSurf's one-correlator/one-model implementation.
