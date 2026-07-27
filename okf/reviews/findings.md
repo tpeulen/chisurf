@@ -5754,3 +5754,65 @@ Findings RF-470..RF-475.
 - **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py`, `apply_settings_payload` (referenced `path` and `lineEdit_settings_file`, neither of which exists there)
 - **Finding:** the method was split out of the loader and kept referring to the loader's local `path`, so every real restore died at step 3 — channel settings, detector definitions and the per-detector UI state were never applied, and the analysis folder stopped being self-describing. Behind it sat a second break: `lineEdit_settings_file` went with the `.ui` file and no longer exists, so fixing only the name would have swapped `NameError` for `AttributeError`. Both were invisible because the four tests around the loader monkeypatch `apply_settings_payload` away and its two call sites sit behind a file dialog. Found by `ruff --select F821` on a file being edited for RF-468/469.
 - **Fix note:** ✅ **FIXED 2026-07-27.** `apply_settings_payload(payload, source=None)` takes the source from the loader and reports it on the status line; a caller that built the payload itself passes nothing and the status line says so. The dead line-edit write is gone. Tests: `test/gui/test_burst_settings_restore.py::test_mle_restore_actually_runs` drives a real wizard through `load_settings_from` and through a source-less payload (it fails at `HEAD` with the `NameError`), and the three monkeypatched stubs now assert the source is forwarded.
+
+## Review 2026-07-27 — the FRET accessible-volume core (`plugins/modelling/fret/core/av.py`)
+
+Slice: the newest landing `e8d285415` (*"a labelling site that does not exist no
+longer gets a dye anyway"*) and the module it changed — attachment-atom lookup,
+the direct PDB reader that feeds every AV, the two AV backends behind
+`compute_av`, and the second, independent AV path in `core/trajectory.py`. The
+committed fix itself checks out (a miss now returns `None` and the worker raises
+a named error). What it sits on does not: on this machine the IMP.bff backend it
+advertises has not run at all — every AV silently comes from LabelLib.
+Measured against `test/data/atomic_coordinates/pdb_files/148l.pdb` and the
+shipped screening library `examples/4w_junction/fps_test_data/test_screening/`.
+Findings RF-476..RF-482.
+
+### RF-476
+- **Status:** OPEN
+- **Severity:** S1 (the AV backend the module documents as the default on macOS/Linux raises on every call and is silently replaced by the other one; the two disagree by ~2× on the same site)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:222-224` (`_av_imp_bff`: `path_map.get_path_map_header().get_max_path_length()`) swallowed by `:337-347` (`except Exception:` → `return _av_labellib(...)`)
+- **Finding:** measured in the `arm64` env (IMP 2.24.0, `_HAS_IMP_BFF` **True**, `_active_backend_name()` → `"imp-bff"`): `_av_imp_bff` always raises `AttributeError: module '_IMP_bff' has no attribute 'DensityMap_get_path_map_header'` — `av.get_map()` returns an `IMP.bff.PathMap` whose `get_path_map_header()` dispatches to a C symbol that the installed wrapper does not export (`IMP.bff.PathMap.get_from(...)` fails identically). `compute_av`'s bare `except Exception:` then returns the LabelLib result instead, so nothing is logged and nothing fails. Consequences, all verified: (a) `select_backend("imp-bff")` does not select IMP.bff — the AV still comes from LabelLib, and if LabelLib were absent the user would see the `AttributeError` rather than "your IMP.bff is too old"; (b) the numbers differ — site `E:18:CA` on 148L, linker 20/1.0, r1 3.5, grid 1.5, gives **1589** accessible points through IMP.bff (reached by hand, bypassing the broken accessor) against **3015** through the LabelLib fallback; (c) every AV first pays a full `IMP.atom.read_pdb` + `AV.resample()` that is then thrown away — the CHARMM warning block for 148L's HETATM residues is printed on each call, which is the only visible trace. Everything else on the IMP path works: `path_map.get_tile_values(PM_TILE_ACCESSIBLE_DENSITY, (0.0, linker_length))` and `get_xyz_density()` both return 1589 points, and `IMP.bff.AV.create_path_map_header` exists — so the bound can be obtained without the broken accessor. Fix the call, and make the fallback report which backend actually produced the result instead of catching `Exception` blind.
+- **Fix note:**
+
+### RF-477
+- **Status:** OPEN
+- **Severity:** S2 (every backbone Cα is given calcium's van-der-Waals radius in any PDB without an element column — 987 of 17 733 atoms in the plugin's own shipped screening library)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:476-482` (`_element_symbol_from_pdb_line`, the atom-name fallback: `if len(letters) >= 2 and letters[:2] in _ELEMENT_NUMBERS: return letters[:2]`)
+- **Finding:** when columns 77-78 are empty the element is guessed from the atom name, and the guess takes the first two letters whenever they name an element — so ` CA ` (α-carbon) resolves to **CA = calcium, Z 20, vdW 1.97 Å** instead of carbon's 1.70 Å, and hydrogens named `HE1`/`HE21`/`HE` resolve to **helium, 1.40 Å** instead of 1.20 Å. Measured on `examples/4w_junction/fps_test_data/test_screening/hivrt_straight_allTraj04791.pdb` (66-character records, no element column — the shipped FPS screening input): **987/17733 atoms mis-radiused**, i.e. one per residue, and they are the atoms lining the backbone, so the obstacle surface every AV is grown against is systematically inflated. The PDB rule the fallback is missing: the element is right-justified in columns 13-14, so a blank column 13 (or a digit) means a one-letter element — ` CA ` is carbon, `CA  ` would be calcium. Note the default attachment atom name is also `CA`.
+- **Fix note:**
+
+### RF-478
+- **Status:** OPEN
+- **Severity:** S2 (a multi-model PDB is flattened into one structure, so an NMR/MD ensemble becomes a superposition of every model used as the AV's obstacles)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:527-551` (`_load_pdb_records_cached` keeps every `ATOM  `/`HETATM` line and never looks at `MODEL`/`ENDMDL`)
+- **Finding:** verified — a two-model file built from 148L's 1385 atom records loads as **(2770, 4)** through `load_structure_with_vdw`; `_strip_residue_atoms("E", 18)` removes 24 atoms, i.e. the residue from both models. For a genuine ensemble (models with *different* coordinates) that means the dye is grown inside the union of all conformers, which over-occludes the volume and, for a 20-model NMR entry, can collapse it to nothing — silently, since a zero-point AV is what `compute_avs_for_structure:396-406` produces for "no volume" too. The other backend disagrees again: `IMP.atom.read_pdb` reads only the first model, so the same file gives two different obstacle sets depending on which path runs (see RF-476, RF-479). Stop at the first `ENDMDL` (or take the model the caller asks for) and say which model was used.
+- **Fix note:**
+
+### RF-479
+- **Status:** OPEN
+- **Severity:** S3 (`compute_av`'s two backends do not compute the same thing: the IMP path ignores the `atoms` and `source_xyz` it is given and re-reads the file, so residue stripping and any caller-supplied geometry are dropped)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:328-336` (`compute_av` calls `_av_imp_bff(pdb_path, source_info, linker_length, linker_width, radii, disc_step)` — `atoms` and `source_xyz` are not passed) against the docstring at `:299-303` (*"atoms : (N, 4) float64 — columns: x, y, z, vdw_radius; source_xyz : (3,) float64 — attachment point coordinates"*), and `:183` (`IMP.atom.read_pdb(pdb_path, model, IMP.atom.NonWaterPDBSelector())`)
+- **Finding:** on the IMP.bff path the obstacle set and the attachment point are re-derived from the file on disk, so (a) `_strip_residue_atoms` — which every caller runs first (`av.py:408`, `av_worker.py:68`) — is a no-op there, and the labelled residue's own side chain stays in the way; (b) waters are excluded by `NonWaterPDBSelector` but *included* by the direct reader that feeds LabelLib (verified: `solvated_fragment.pdb` loads 39 atoms of which 8 are HOH), so crystallographic water blocks the dye on one backend and not the other; (c) a caller that hands `compute_av` modified coordinates or an attachment point that is not a PDB atom gets the on-disk answer instead, with no error. Currently masked by RF-476 (the IMP path never completes) — which is exactly why it must be fixed together with it: repairing RF-476 alone silently changes every AV in the application. Either pass the caller's atoms/source through to IMP, or make the argument contract explicit and drop the ignored parameters.
+- **Fix note:**
+
+### RF-480
+- **Status:** OPEN
+- **Severity:** S3 (dead branch — a guard on `radius2 <= 0` that assigns exactly what it replaces)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:201-203` (`radii_list = [r1, r2, r3]` / `if r2 <= 0: radii_list = [r1, r2, r3]`)
+- **Finding:** both branches are the same expression, so the guard does nothing. It marks a real asymmetry that was meant to be handled and is not: `_av_labellib:137-141` switches to the single-radius `dyeDensityAV1` when `r2 <= 0 or r3 <= 0`, while the IMP path always passes the three-radius list `[r1, 0.0, 0.0]` for an AV1 position. Decide what an AV1 position means for IMP.bff and write it once, rather than leaving a no-op that reads as if it were handled.
+- **Fix note:**
+
+### RF-481
+- **Status:** OPEN
+- **Severity:** S2 (the trajectory AV path probes for IMP.bff through a module that does not exist, so its IMP branch is unreachable and a machine with IMP.bff but no LabelLib is told no backend is available)
+- **Location:** `chisurf/plugins/modelling/fret/core/trajectory.py:167-191` (`_select_av_backend`: `from quest.lib.imp_av import HAS_IMP_BFF` … `except Exception: HAS_IMP_BFF = False`) and the branch it gates at `:249-251` (`from quest.lib.imp_av import build_imp_accessible_volume`)
+- **Finding:** verified — the importable `quest` package (`/Users/tpeulen/dev/quest/quest`) has no `lib` subpackage, so `import quest.lib.imp_av` raises `ModuleNotFoundError` and `HAS_IMP_BFF` is **always** `False`; the path only exists in the older un-installed copy under `modules/quest/quest/lib/imp_av.py`. Two consequences: the entire `backend == 'imp'` branch of `compute_efficiencies_from_fps_av` is dead code, and on a machine with IMP.bff but without LabelLib the function raises `RuntimeError('Neither IMP.bff nor LabelLib are available to compute accessible volumes.')` — untrue, `core/av.py` detects IMP.bff on the same interpreter (`_HAS_IMP_BFF` is `True` here). The probe should ask the same question `core/av.py` already answers, not a module path from a previous layout.
+- **Fix note:**
+
+### RF-482
+- **Status:** OPEN
+- **Severity:** S3 (the same fps.json produces different accessible volumes depending on which of the two AV paths reads it — `simulation_type` is honoured by one and ignored by the other, and their defaults differ)
+- **Location:** `chisurf/plugins/modelling/fret/core/av.py:384-393` (`compute_avs_for_structure` reads `linker_length`, `linker_width`, `radius1..3`, `simulation_grid_resolution` — never `simulation_type`) with `:137-141` (`_av_labellib` picks AV3 vs AV1 from `r2 > 0 and r3 > 0`), against `chisurf/plugins/modelling/fret/core/trajectory.py:288-300` (`simulation_type=str(cfg.get('simulation_type', 'AV1'))`, `linker_width` default `0.5`, `radius2` default `4.5`, `radius3` default `3.5`)
+- **Finding:** `simulation_type` is a first-class field of every position in the shipped `hiv_rt.fps.json` (8 × `AV1`, 3 × `AV3`) and the main AV path never reads it — the AV1/AV3 decision is inferred from whether `radius2`/`radius3` happen to be non-zero, so a position declaring `AV1` while still carrying the radii of a previous AV3 setting is silently simulated as AV3. The defaults for a position that omits a key also disagree between the two paths: `linker_width` 1.0 vs 0.5, `radius2` 0.0 vs 4.5, `radius3` 0.0 vs 3.5. One reader of the fps.json Positions schema, one set of defaults, and `simulation_type` either honoured or rejected — not ignored.
+- **Fix note:**
