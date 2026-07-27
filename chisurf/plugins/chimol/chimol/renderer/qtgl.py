@@ -1229,6 +1229,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         a Retina display gets a sprite twice as wide, exactly as a mesh sphere
         covering the same solid angle does.
 
+        This is the *perspective* formula, which is what :meth:`_build_matrices`
+        builds unconditionally. Under a parallel projection a sprite must not
+        shrink with depth, so whoever makes the ``orthoscopic`` flag reach the
+        projection has to make it reach here too.
+
         Returns
         -------
         float

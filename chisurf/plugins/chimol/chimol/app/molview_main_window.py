@@ -244,6 +244,9 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         )
 
         self.hierarchy = HierarchyDock(self)
+        # Un-checking a node in the tree hides its particles. The panel knows
+        # which rows a node owns; the viewer knows how to not draw them.
+        self.hierarchy.hidden_rows_changed.connect(self._apply_hidden_rows)
         self.volume_panel = VolumeDock(
             self, self.viewer, margins=dock_margins, spacing=spacing
         )
@@ -1585,6 +1588,34 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 except Exception:
                     pass
 
+    def _apply_hidden_rows(self, rows) -> None:
+        """Hide exactly the coordinate rows the hierarchy panel has switched off.
+
+        The whole set is applied each time rather than the difference, so the
+        picture always matches the check boxes: a partial update would drift out
+        of step the first time a signal was missed or a node was re-checked from
+        a parent.
+
+        Parameters
+        ----------
+        rows : sequence of int
+            Rows to leave undrawn. Everything else is shown.
+        """
+        viewer = getattr(self, "viewer", None)
+        if viewer is None:
+            return
+        try:
+            coords = viewer._all_atom_coords
+            n = 0 if coords is None else int(coords.shape[0])
+            if n == 0:
+                return
+            hidden = set(int(r) for r in rows)
+            viewer.set_rows_hidden(range(n), False)
+            if hidden:
+                viewer.set_rows_hidden(sorted(hidden), True)
+        except Exception:
+            logger.debug("could not apply hierarchy visibility", exc_info=True)
+
     def _report_degraded_load(self, path: Path, exc: Optional[BaseException]) -> None:
         """Tell the user the structure reader gave up, and name the reason.
 
@@ -1800,6 +1831,16 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 # what the RMF path already did.
                 atom_radii=(
                     getattr(backbone, "bead_radii", None)
+                    if backbone is not None
+                    else None
+                ),
+                # An integrative mmCIF describes its own organisation --
+                # molecules and the copies of them this model places -- in the
+                # same shape the RMF reader builds. Passing it through is what
+                # turns 234,184 anonymous beads into 31 nucleoporins in 544
+                # copies in the hierarchy panel.
+                hierarchy=(
+                    getattr(backbone, "hierarchy", None)
                     if backbone is not None
                     else None
                 ),

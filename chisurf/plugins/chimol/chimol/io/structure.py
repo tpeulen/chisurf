@@ -75,6 +75,10 @@ class PdbBackbone:
         H/E/C, and the ribbon needs the carbonyl to know which way is up.
         Without it the viewer can only spline a thin tube through the CA
         positions, which is the bare-spring look that says "the reader gave up".
+    hierarchy : HierarchyNode or None
+        The tree the file describes -- molecules, and the copies of them this
+        model places -- when the format carries one. An integrative mmCIF does;
+        a PDB file does not, beyond its chains.
     reader : str
         Which reader produced this. ``"mmcif"`` means the dedicated mmCIF/IHM
         reader read the file *on purpose* -- that is not a fallback and must not
@@ -90,6 +94,7 @@ class PdbBackbone:
     chain_ids: np.ndarray | None = None
     atoms: np.ndarray | None = None
     reader: str = "pdb"
+    hierarchy: object | None = None
 
 
 _ATOM_DTYPE = np.dtype([
@@ -144,6 +149,88 @@ def _element_symbol_from_pdb_line(line: str) -> str:
         return letters[:2]
     return letters[:1]
 
+
+def _mmcif_hierarchy(system, row_asym: list) -> "HierarchyNode | None":
+    """Build the tree an integrative mmCIF describes, from the rows just read.
+
+    The vocabularies line up with IMP's, which is what the hierarchy panel was
+    written against: an ``entity`` is the **molecule** (``Nup84``), a
+    ``struct_asym`` is the **copy** of it that appears in this assembly (chain
+    ``A``), and each row of the coordinate array belongs to exactly one of
+    those copies. The eight-spoke nuclear pore is 31 molecules in 544 copies, so
+    the tree is small and the picture it gives -- which nucleoporin is which,
+    and how many of each -- is the thing the flat bead cloud cannot show.
+
+    The tree stops at the copy rather than descending to one node per bead: a
+    node per bead would be 234,184 of them, and a list that long is not a
+    hierarchy anyone reads. The copy carries the row indices of all its beads,
+    which is what a click on it needs.
+
+    Parameters
+    ----------
+    system : ihm.System
+        The system just read.
+    row_asym : list
+        The asym unit each coordinate row came from, in row order.
+
+    Returns
+    -------
+    HierarchyNode or None
+        The root, or ``None`` when the file describes no asym units.
+    """
+    from .hierarchy import HierarchyNode
+
+    if not row_asym:
+        return None
+
+    rows_by_asym: dict[int, list[int]] = {}
+    for index, asym in enumerate(row_asym):
+        rows_by_asym.setdefault(id(asym), []).append(index)
+
+    title = str(getattr(system, "title", "") or "")
+    entry_id = str(getattr(system, "id", "") or "structure")
+    root = HierarchyNode(
+        name=f"{entry_id} - {title}" if title else entry_id,
+        node_type="ROOT",
+        atom_indices=list(range(len(row_asym))),
+    )
+
+    # Group the copies under the molecule they are copies *of*, in first-seen
+    # order, so the tree reads in the order the file lists things.
+    by_entity: dict[int, HierarchyNode] = {}
+    for asym in getattr(system, "asym_units", []) or []:
+        rows = rows_by_asym.get(id(asym))
+        if not rows:
+            continue  # a chain this model does not place
+        entity = getattr(asym, "entity", None)
+        key = id(entity) if entity is not None else 0
+        molecule = by_entity.get(key)
+        if molecule is None:
+            label = str(
+                getattr(entity, "description", None)
+                or getattr(entity, "id", None)
+                or "unnamed"
+            )
+            molecule = root.add_child(
+                HierarchyNode(name=label, node_type="MOLECULE")
+            )
+            by_entity[key] = molecule
+        chain_id = str(getattr(asym, "id", "") or "?")
+        details = str(getattr(asym, "details", "") or "")
+        molecule.add_child(
+            HierarchyNode(
+                name=f"{chain_id} ({details})" if details else chain_id,
+                node_type="CHAIN",
+                chain_id=chain_id,
+                copy_index=len(molecule.children),
+                atom_indices=rows,
+            )
+        )
+        molecule.atom_indices.extend(rows)
+
+    if not root.children:
+        return None
+    return root
 
 def _parse_mmcif_backbone(path: str) -> PdbBackbone:
     """Read an mmCIF file with the format's own reference library.
@@ -202,9 +289,12 @@ def _parse_mmcif_backbone(path: str) -> PdbBackbone:
     chain_ids: list[str] = []
     seen: set[tuple[str, int]] = set()
 
+    row_asym: list[object] = []
+
     for atom in model._atoms:
         xyz = (float(atom.x), float(atom.y), float(atom.z))
         chain = str(getattr(atom.asym_unit, "id", "") or "")
+        row_asym.append(atom.asym_unit)
         try:
             res_id = int(atom.seq_id)
         except (TypeError, ValueError):
@@ -234,6 +324,7 @@ def _parse_mmcif_backbone(path: str) -> PdbBackbone:
     for sphere in model._spheres:
         xyz = (float(sphere.x), float(sphere.y), float(sphere.z))
         chain = str(getattr(sphere.asym_unit, "id", "") or "")
+        row_asym.append(sphere.asym_unit)
         try:
             res_id = int(sphere.seq_id_range[0])
         except (TypeError, ValueError, IndexError):
@@ -267,6 +358,7 @@ def _parse_mmcif_backbone(path: str) -> PdbBackbone:
         chain_ids=np.asarray(chain_ids, dtype=object) if has_trace else None,
         atoms=np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None,
         reader="mmcif",
+        hierarchy=_mmcif_hierarchy(system, row_asym),
     )
     if any(value > 0.0 for value in radii):
         backbone.bead_radii = np.asarray(radii, dtype=float)

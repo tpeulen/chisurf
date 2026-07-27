@@ -247,25 +247,55 @@ def _default_volume_levels(grid) -> list[dict]:
     ]
 
 
+def _bead_mask(atoms) -> np.ndarray | None:
+    """Which rows are beads rather than atoms, one entry per row.
+
+    Per row, and over the *whole* array, because an integrative entry is
+    routinely a mixture: the mmCIF reader writes every atomic row before every
+    sphere row, so a model with one resolved subunit and 200,000 beads opens
+    with an atom at the head of the array. Judging the array by a sample of its
+    first rows classified that model as a protein and put the whole
+    cartoon-through-beads pathology back; judging a bead-first array the same
+    way stripped a resolved subunit of its cartoon. Neither is a rare shape --
+    it is what depositing both `atom_site` and `ihm_sphere_obj_site` records
+    produces, which is the normal shape of an integrative model.
+
+    Parameters
+    ----------
+    atoms : numpy.ndarray or None
+        Structured per-atom array carrying ``res_name``.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        Boolean mask of length ``len(atoms)``, or ``None`` when there is no
+        usable atom array.
+    """
+    if atoms is None:
+        return None
+    try:
+        names = np.asarray(atoms["res_name"])
+    except Exception:
+        return None
+    if names.size == 0:
+        return None
+    return np.char.strip(names.astype(str)) == "BEA"
+
+
 def _is_bead_model(atoms) -> bool:
-    """Whether these "atoms" are really the beads of a coarse-grained model.
+    """Whether these "atoms" are *entirely* the beads of a coarse-grained model.
 
     A bead stands for a range of residues and has no backbone, so every
     backbone-derived analysis is not merely wasted on it but meaningless.
     Secondary-structure assignment was 4 of the 10 seconds it took to open one
     spoke of the nuclear pore -- computed over 29,273 beads that have no
     hydrogen bonds to find.
+
+    For a model that mixes beads with resolved atoms, ask :func:`_bead_mask`
+    instead and treat each part as what it is.
     """
-    if atoms is None:
-        return False
-    try:
-        names = np.asarray(atoms["res_name"])
-    except Exception:
-        return False
-    if names.size == 0:
-        return False
-    sample = names[: min(names.size, 256)]
-    return bool(np.all(np.char.strip(sample.astype(str)) == "BEA"))
+    mask = _bead_mask(atoms)
+    return bool(mask is not None and mask.all())
 
 
 class MolView(QtWidgets.QWidget):
@@ -341,6 +371,7 @@ class MolView(QtWidgets.QWidget):
     _measurements = _StateField("measurements")
     _bead_radii = _StateField("bead_radii")
     _rmf_hierarchy = _StateField("rmf_hierarchy")
+    _hidden_mask = _StateField("hidden_mask")
     _restraints = _StateField("restraints")
     _rmf_provenance = _StateField("rmf_provenance")
 
@@ -417,6 +448,32 @@ class MolView(QtWidgets.QWidget):
                 state.show_trace = False
 
         self._update_view()
+
+    @staticmethod
+    def _residue_bead_mask(res_names) -> np.ndarray | None:
+        """Which *traced residues* are beads, one entry per trace point.
+
+        The atom-level mask says which rows are beads; the cartoon is built per
+        residue, so it needs the same question asked of the trace. In an
+        integrative entry one bead contributes exactly one trace point, which is
+        what makes the two masks line up with each other.
+
+        Parameters
+        ----------
+        res_names : sequence or None
+            Per-trace-point residue names, as handed to ``set_coordinates``.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Boolean mask over trace points, or ``None`` when there are no names.
+        """
+        if res_names is None:
+            return None
+        names = np.asarray(res_names)
+        if names.size == 0:
+            return None
+        return np.char.strip(names.astype(str)) == "BEA"
 
     def is_empty(self) -> bool:
         """Whether the viewer holds nothing a command could act on.
@@ -1815,6 +1872,7 @@ class MolView(QtWidgets.QWidget):
         chain_ids: np.ndarray | None = None,
         atoms: np.ndarray | None = None,
         atom_radii: np.ndarray | None = None,
+        hierarchy: object | None = None,
     ) -> str:
         entry = self._create_object(name=name, source_path=source_path)
         self.set_coordinates(
@@ -1825,6 +1883,7 @@ class MolView(QtWidgets.QWidget):
             chain_ids=chain_ids,
             atoms=atoms,
             atom_radii=atom_radii,
+            hierarchy=hierarchy,
         )
         self._apply_deposited_secondary_structure(source_path)
         return entry.object_id
@@ -2325,6 +2384,7 @@ class MolView(QtWidgets.QWidget):
         chain_ids: np.ndarray | None = None,
         atoms: np.ndarray | None = None,
         atom_radii: np.ndarray | None = None,
+        hierarchy: object | None = None,
     ) -> None:
         """Set raw coordinates for visualization.
 
@@ -2352,12 +2412,21 @@ class MolView(QtWidgets.QWidget):
             magnitude and the sizes *are* the shape of the thing, so a single
             default radius does not describe it. Scaled here with the
             coordinates so every downstream renderer stays in one frame.
+        hierarchy:
+            The tree the file describes -- molecules, and the copies of them
+            this model places -- as a
+            :class:`~chisurf.plugins.chimol.chimol.io.hierarchy.HierarchyNode`.
+            An integrative mmCIF carries one, in the same shape the RMF reader
+            builds, and it feeds the same panel.
         """
         arr = np.asarray(xyz, dtype=float)
         if arr.ndim != 2 or arr.shape[1] != 3:
             raise ValueError("xyz must have shape (N, 3)")
 
         self._atoms = atoms if isinstance(atoms, np.ndarray) else None
+        # The same field the RMF reader fills: one hierarchy per object, however
+        # it was read, so the panel does not have to know which reader ran.
+        self._rmf_hierarchy = hierarchy
         self._all_atom_res_ids = None
         self._atom_features = {}
         self._atom_feature_meta = {}
@@ -2398,17 +2467,28 @@ class MolView(QtWidgets.QWidget):
                     arr.shape[0],
                 )
 
-        is_beads = _is_bead_model(self._atoms)
+        bead_mask = _bead_mask(self._atoms)
+        has_beads = bead_mask is not None and bool(bead_mask.any())
+        all_beads = bead_mask is not None and bool(bead_mask.all())
 
         # Replay any manual bond/unbond over the fresh inference: a hand-made
         # bond stored only in bond_pairs vanishes the moment coordinates change.
         #
-        # A bead model has no bonds to infer. A bead stands for a *range* of
-        # residues, so no interatomic distance cutoff means anything on it, and
-        # the search is not free: it is 0.7 s of the 4.3 s one nuclear-pore
-        # spoke takes to open, for pairs that would be wrong if it found any.
-        if is_beads:
+        # A bead has no bonds to infer. It stands for a *range* of residues, so
+        # no interatomic distance cutoff means anything on it, and the search is
+        # not free: it is 0.7 s of the 4.3 s one nuclear-pore spoke takes to
+        # open, for pairs that would be wrong if it found any. A model that
+        # mixes beads with resolved atoms is bonded over the atoms alone, with
+        # the pair indices mapped back to the full array.
+        if all_beads:
             self._bond_pairs = self._apply_bond_edits(np.zeros((0, 2), dtype=int))
+        elif has_beads:
+            atomic = np.nonzero(~bead_mask)[0]
+            pairs = self._infer_bonds(raw_all[atomic], self._atoms[atomic])
+            pairs = np.asarray(pairs, dtype=int).reshape(-1, 2)
+            self._bond_pairs = self._apply_bond_edits(
+                atomic[pairs] if pairs.size else pairs
+            )
         else:
             self._bond_pairs = self._apply_bond_edits(
                 self._infer_bonds(raw_all, self._atoms)
@@ -2450,10 +2530,39 @@ class MolView(QtWidgets.QWidget):
             )
             try:
                 n_res = int(self._coords.shape[0])
-                ss_codes = (
-                    None if _is_bead_model(self._atoms)
-                    else assign_ss_c3_from_atoms(self._atoms, n_res, verbose=False)
-                )
+                if all_beads:
+                    # Nothing to find: no bead has a backbone.
+                    ss_codes = None
+                elif has_beads:
+                    # Search the resolved atoms only, then scatter the answer
+                    # back over the full residue list. Running it over the
+                    # beads as well is the 4-seconds-a-spoke cost, spent on
+                    # rows that cannot contribute a hydrogen bond.
+                    atomic = np.nonzero(~bead_mask)[0]
+                    res_beads = self._residue_bead_mask(self._residue_names)
+                    # Only when the residue-level mask really describes this
+                    # trace: without one there is no way to say which code
+                    # belongs to which residue, and a mis-scattered assignment
+                    # is worse than none.
+                    if res_beads is not None and res_beads.shape[0] == n_res:
+                        n_atomic_res = int((~res_beads).sum())
+                        codes = assign_ss_c3_from_atoms(
+                            self._atoms[atomic], n_atomic_res, verbose=False
+                        )
+                        if codes:
+                            full = np.full(n_res, "C", dtype="U1")
+                            full[~res_beads] = np.asarray(codes, dtype="U1")[
+                                :n_atomic_res
+                            ]
+                            ss_codes = full.tolist()
+                        else:
+                            ss_codes = None
+                    else:
+                        ss_codes = None
+                else:
+                    ss_codes = assign_ss_c3_from_atoms(
+                        self._atoms, n_res, verbose=False
+                    )
             except Exception:
                 logger.warning("Secondary-structure assignment failed for raw "
                                "coordinates", exc_info=True)
@@ -2464,23 +2573,43 @@ class MolView(QtWidgets.QWidget):
                 except Exception:
                     self._secondary_structure = None
 
-        # A bead model is drawn as beads. This is the same rule `set_rmf_data`
-        # applies, and it has to be applied here too or the two readers of the
-        # same kind of model disagree about how to draw it: an integrative
-        # mmCIF came out as a cartoon splined through beads that have no
-        # backbone -- meaningless as a depiction, and the reason the eight-spoke
-        # nuclear pore took seven minutes to open. The masks are set *before*
-        # the first `_update_view` so the cartoon is never built at all, and
-        # they survive the `_fits` defaults below because they fit.
-        if is_beads:
-            self._ball_mask = np.ones(arr.shape[0], dtype=bool)
-            self._sticks_mask = np.zeros(arr.shape[0], dtype=bool)
-            n_res_beads = (
+        # A bead is drawn as a bead, and an atom is not. This is the same rule
+        # `set_rmf_data` applies, and it has to be applied here too or the two
+        # readers of the same kind of model disagree about how to draw it: an
+        # integrative mmCIF came out as a cartoon splined through beads that
+        # have no backbone -- meaningless as a depiction, and the reason the
+        # eight-spoke nuclear pore took seven minutes to open.
+        #
+        # The two depictions coexist in one object, because an integrative entry
+        # routinely holds both: the beads take the ball mask, the resolved
+        # residues keep their cartoon. The masks are set *before* the first
+        # `_update_view` so no cartoon is ever built through a bead, and they
+        # survive the `_fits` defaults below because they fit.
+        if has_beads:
+            # `self._residue_names`, not the argument: with no usable trace the
+            # viewer clears them, and the mask has to describe the trace the
+            # cartoon is actually built from.
+            res_beads = self._residue_bead_mask(self._residue_names)
+            n_res_total = (
                 len(self._residue_ids) if self._residue_ids is not None else 0
             )
-            self._cartoon_mask = np.zeros(n_res_beads, dtype=bool)
+            # Beads, plus whatever the atomic part would have shown as balls on
+            # its own -- a hybrid entry's waters and ligands are not forfeited
+            # because the entry also contains beads.
+            self._ball_mask = bead_mask.copy()
+            if not all_beads:
+                hetero = self._hetero_atom_mask(self._atoms, arr.shape[0])
+                if hetero is not None and len(hetero) == arr.shape[0]:
+                    self._ball_mask |= np.asarray(hetero, dtype=bool)
+            self._sticks_mask = np.zeros(arr.shape[0], dtype=bool)
+            if res_beads is not None and res_beads.shape[0] == n_res_total:
+                self._cartoon_mask = ~res_beads
+                atomic_residues = bool((~res_beads).any())
+            else:
+                self._cartoon_mask = np.zeros(n_res_total, dtype=bool)
+                atomic_residues = False
             self._show_atoms = True
-            self._show_cartoon = False
+            self._show_cartoon = atomic_residues
             self._show_trace = False
 
         self._update_view()
@@ -3420,6 +3549,68 @@ class MolView(QtWidgets.QWidget):
                     self._ball_mask[:] = False
 
         self._update_view()
+
+    def set_rows_hidden(
+        self,
+        indices,
+        hidden: bool,
+        *,
+        object_id: str | None = None,
+    ) -> None:
+        """Hide or show rows of the coordinate array.
+
+        This is *visibility*, not representation: a row switched off here is not
+        drawn by anything. It is what the hierarchy panel's check boxes act on,
+        so that switching off ``Nup84`` removes its 10,560 beads from the picture
+        without changing how anything else is depicted.
+
+        Parameters
+        ----------
+        indices : iterable of int
+            Rows to act on. Out-of-range entries are ignored rather than
+            raising, because a tree built by one reader can outlive the
+            coordinates set by another.
+        hidden : bool
+            True to hide them, False to show them again.
+        object_id : str, optional
+            Which object; the active one by default.
+        """
+        with self._activate_object(object_id):
+            coords = self._all_atom_coords
+            if coords is None:
+                return
+            n = int(np.asarray(coords).shape[0])
+            if n == 0:
+                return
+            mask = self._hidden_mask
+            if mask is None or len(mask) != n:
+                mask = np.zeros(n, dtype=bool)
+            else:
+                mask = np.asarray(mask, dtype=bool).copy()
+            idx = np.asarray(list(indices), dtype=int)
+            idx = idx[(idx >= 0) & (idx < n)]
+            if idx.size == 0:
+                return
+            mask[idx] = bool(hidden)
+            self._hidden_mask = mask
+        self._update_view()
+
+    def visible_row_mask(self, n_rows: int) -> np.ndarray | None:
+        """The complement of the hidden mask, when it fits ``n_rows``.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            A boolean mask of rows that may be drawn, or ``None`` when nothing
+            is hidden -- which lets callers skip the work entirely.
+        """
+        mask = self._hidden_mask
+        if mask is None or len(mask) != n_rows:
+            return None
+        arr = np.asarray(mask, dtype=bool)
+        if not arr.any():
+            return None
+        return ~arr
 
     def set_cartoon_visible(self, visible: bool) -> None:
         """Enable or disable the cartoon tube globally."""
@@ -4534,25 +4725,31 @@ class MolView(QtWidgets.QWidget):
         Returns
         -------
         SceneObject or None
-            The beads, or ``None`` when the active object is not a bead model
-            (or carries no usable bead mask).
+            The bead rows, or ``None`` when the object holds no beads (or none
+            of them are selected).
         """
         atoms = self._atoms
-        if atoms is None or not _is_bead_model(atoms):
+        beads = _bead_mask(atoms)
+        if beads is None or not beads.any():
             return None
         pts_all = self._all_atom_coords
         if pts_all is None:
             return None
         pts_all = np.asarray(pts_all, dtype=float)
         n_beads = pts_all.shape[0]
-        if n_beads == 0:
+        if n_beads == 0 or beads.shape[0] != n_beads:
             return None
 
+        # Only the bead rows, and only the selected ones. An entry that also
+        # holds resolved atoms keeps them out of here: they are drawn by the
+        # generic ball path, which knows about elements, waters and ligands.
+        sel = beads.copy()
         mask = self._ball_mask
         if mask is not None and len(mask) == n_beads:
-            sel = np.asarray(mask, dtype=bool)
-        else:
-            sel = np.ones(n_beads, dtype=bool)
+            sel &= np.asarray(mask, dtype=bool)
+        visible = self.visible_row_mask(n_beads)
+        if visible is not None:
+            sel &= visible
         if not sel.any():
             return None
 
@@ -4579,6 +4776,17 @@ class MolView(QtWidgets.QWidget):
         )
         if colors_per_ca is not None and len(colors_per_ca) == n_beads:
             rgb = np.asarray(colors_per_ca, dtype=float)[sel][:, :3]
+        elif colors_per_ca is not None:
+            # A model that also holds resolved atoms has more rows than trace
+            # points, so the identity above does not hold. Each bead is still
+            # exactly one trace point: take them in order.
+            res_beads = self._residue_bead_mask(self._residue_names)
+            if res_beads is not None and len(colors_per_ca) == res_beads.shape[0]:
+                bead_res = np.nonzero(res_beads)[0]
+                if bead_res.shape[0] == int(beads.sum()):
+                    per_row = np.zeros(n_beads, dtype=int)
+                    per_row[beads] = bead_res
+                    rgb = np.asarray(colors_per_ca, dtype=float)[per_row[sel]][:, :3]
         override = getattr(self, "_colors_per_atom_override", None)
         if override is not None and len(override) == n_beads:
             ov = np.asarray(override, dtype=float)[sel]
@@ -4622,15 +4830,36 @@ class MolView(QtWidgets.QWidget):
         balls_max_atoms = int(balls_cfg.get("max_atoms", 8000))
         base_global_radius = max(self._radius * balls_size_scale, balls_min_size)
 
-        # A bead model is its beads: one bead per row, its own radius, and no
-        # atoms underneath to fall back on. It gets its own path because the
-        # generic one below would subsample it to `max_atoms` -- which for the
-        # nuclear pore means drawing 8,000 of 234,184 beads and calling that
-        # the model.
+        # Beads get their own path: one row each, their own radius, and no atoms
+        # underneath to fall back on. The generic path below would subsample
+        # them to `max_atoms` -- for the nuclear pore, 8,000 of 234,184 beads
+        # presented as the model. It draws only the bead rows, so an entry that
+        # also holds resolved atoms falls through and has them drawn too.
+        ball_mask = self._ball_mask
+        # Rows switched off in the hierarchy panel are not drawn by anything.
+        visible_rows = (
+            self.visible_row_mask(len(ball_mask)) if ball_mask is not None else None
+        )
+        if visible_rows is not None:
+            ball_mask = np.asarray(ball_mask, dtype=bool) & visible_rows
         beads = self._bead_scene_object(balls_cfg, colors_per_ca)
         if beads is not None:
             scene_objects.append(beads)
-            return scene_objects
+            if _is_bead_model(self._atoms):
+                return scene_objects
+            # A hybrid entry continues into the generic path for its resolved
+            # atoms -- with the beads taken out of the mask, or they would be
+            # drawn a second time as a merged mesh on top of their own
+            # impostors.
+            bead_rows = _bead_mask(self._atoms)
+            if (
+                bead_rows is not None
+                and ball_mask is not None
+                and len(ball_mask) == bead_rows.shape[0]
+            ):
+                ball_mask = np.asarray(ball_mask, dtype=bool) & ~bead_rows
+                if not ball_mask.any():
+                    return scene_objects
 
         # Raw-coordinate objects (the PDB fallback) have no structured ``_atoms``
         # array, so the per-residue ball path below is skipped and only a sparse
@@ -4643,11 +4872,11 @@ class MolView(QtWidgets.QWidget):
             # Honour an explicit per-atom selection mask when one is present and
             # matches the atom count; otherwise show the whole molecule.
             if (
-                self._ball_mask is not None
-                and len(self._ball_mask) == pts.shape[0]
-                and self._ball_mask.any()
+                ball_mask is not None
+                and len(ball_mask) == pts.shape[0]
+                and ball_mask.any()
             ):
-                sel = np.asarray(self._ball_mask, dtype=bool)
+                sel = np.asarray(ball_mask, dtype=bool)
                 pts = pts[sel]
                 colors_rgb = colors_rgb[sel]
                 radii = radii[sel]
@@ -4672,9 +4901,9 @@ class MolView(QtWidgets.QWidget):
             else -1
         )
         if (
-            self._ball_mask is not None
-            and len(self._ball_mask) in (n_points, n_all_atoms)
-            and self._ball_mask.any()
+            ball_mask is not None
+            and len(ball_mask) in (n_points, n_all_atoms)
+            and ball_mask.any()
             and self._atoms is not None
             and self._residue_ids is not None
         ):
@@ -4710,12 +4939,12 @@ class MolView(QtWidgets.QWidget):
             if atom_xyz is not None and atom_res_id is not None:
                 n_atoms_total = atom_xyz.shape[0]
 
-                if self._ball_mask is not None and len(self._ball_mask) == n_atoms_total:
+                if ball_mask is not None and len(ball_mask) == n_atoms_total:
                     # Per-atom mask
-                    atom_mask = self._ball_mask.astype(bool)
-                elif self._ball_mask is not None and len(self._ball_mask) == n_points:
+                    atom_mask = ball_mask.astype(bool)
+                elif ball_mask is not None and len(ball_mask) == n_points:
                     # Legacy: residue-level mask
-                    sel_idx = np.nonzero(self._ball_mask)[0]
+                    sel_idx = np.nonzero(ball_mask)[0]
                     sel_res_ids = np.unique(self._residue_ids[sel_idx])
                     atom_mask = np.isin(atom_res_id, sel_res_ids)
                 else:
@@ -4944,11 +5173,11 @@ class MolView(QtWidgets.QWidget):
             sphere_radius = max(self._radius * balls_size_scale * 0.5, balls_min_size * 0.1)
             sphere = _build_sphere_mesh(radius=sphere_radius)
             if (
-                self._ball_mask is not None
-                and len(self._ball_mask) == n_points
-                and self._ball_mask.any()
+                ball_mask is not None
+                and len(ball_mask) == n_points
+                and ball_mask.any()
             ):
-                indices = np.nonzero(self._ball_mask)[0]
+                indices = np.nonzero(ball_mask)[0]
             else:
                 # Default: sparse sampling along the chain
                 step = max(1, n_points // 50)
@@ -4972,15 +5201,28 @@ class MolView(QtWidgets.QWidget):
             if point_positions:
                 radii_vals = None
                 beads = getattr(self, "_bead_radii", None)
-                if beads is not None and len(beads) == len(indices):
-                    radii_vals = np.asarray(beads[indices], dtype=float)
+                # The radii cover the *coordinates*, and `indices` selects into
+                # them. Comparing the array against the length of the selection
+                # only held when everything was selected, so any narrower
+                # selection silently lost the per-bead sizes and drew one size
+                # for all of them.
+                if beads is not None and len(beads) == n_points:
+                    radii_vals = np.asarray(beads, dtype=float)[indices]
 
                 geom = Geometry(
                     kind="points",
                     positions=np.asarray(point_positions, dtype=float),
                     colors=np.asarray(point_colors, dtype=float),
                     radii=radii_vals,
-                    meta={"glyph": "sphere", "radius": sphere_radius},
+                    # `set_rmf_data` has already multiplied these by
+                    # `_scale_factor`, so they are distances in the scene, not
+                    # pixel counts. Without saying so a 20 A bead was drawn as a
+                    # 200-pixel dot that did not change when you zoomed.
+                    meta={
+                        "glyph": "sphere",
+                        "radius": sphere_radius,
+                        "world_radius": radii_vals is not None,
+                    },
                 )
                 scene_objects.append(
                     SceneObject(id="atoms_points", geometry=geom, render_mode="opaque")

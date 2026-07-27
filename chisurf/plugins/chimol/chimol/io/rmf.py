@@ -5,6 +5,8 @@ from typing import Optional, Sequence, List, Dict, Any, Tuple
 import numpy as np
 import copy
 
+from .hierarchy import HierarchyNode
+
 try:
     import RMF
 except ImportError:
@@ -13,24 +15,11 @@ except ImportError:
 class RmfNotAvailableError(RuntimeError):
     pass
 
-@dataclass
-class RmfHierarchyNode:
-    name: str
-    rmf_index: int
-    node_type: str  # e.g., 'STATE', 'CHAIN', 'RESIDUE', 'PARTICLE'
-    children: List["RmfHierarchyNode"] = field(default_factory=list)
-    parent: Optional["RmfHierarchyNode"] = field(default=None, repr=False)
-    parent_index: Optional[int] = None
-    
-    # Structural metadata
-    chain_id: Optional[str] = None
-    res_num: Optional[int] = None
-    res_type: Optional[str] = None
-    copy_index: Optional[int] = None
-    radius: Optional[float] = None
-    
-    # Indices in the flat coordinate array (for the viewer)
-    atom_indices: List[int] = field(default_factory=list)
+#: The hierarchy node is not RMF's -- an integrative mmCIF describes the same
+#: tree in its own vocabulary, and the panel that shows it does not care which
+#: reader filled it. It lives in ``io/hierarchy.py``; this name is kept because
+#: RMF is where the tree is richest and most of the call sites are here.
+RmfHierarchyNode = HierarchyNode
 
 class _RmfHierarchyInfo:
     """Track structural information encountered through the RMF hierarchy."""

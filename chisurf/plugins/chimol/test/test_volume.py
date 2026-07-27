@@ -726,15 +726,17 @@ def test_all_three_repositories_are_reachable():
         assert spec["suffix"].startswith(".")
 
 
-def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch):
+def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch, tmp_path):
     """The EMDB fetch never worked: its pattern matched a literal backslash.
 
     Every identifier failed to parse, so the command reported "could not parse"
     for correct input -- which reads as the user's mistake rather than the
     command's. This pins both that a real id parses and that a bad one is named.
     """
+    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
     from chisurf.plugins.chimol.chimol.cmd.command import Cmd
 
+    monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
     cmd = Cmd()
     errors = []
     cmd.set_error_callback(errors.append)
@@ -759,9 +761,13 @@ def test_an_emdb_id_that_carries_no_number_is_refused_clearly(monkeypatch):
     assert "EMDB number" in errors[-1]
 
 
-def test_each_repository_builds_the_url_it_should(monkeypatch):
+def test_each_repository_builds_the_url_it_should(monkeypatch, tmp_path):
+    # An empty download directory: `fetch` re-uses an entry it already has, so a
+    # test about *which URL is requested* has to start from one it does not.
+    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
     from chisurf.plugins.chimol.chimol.cmd.command import Cmd
 
+    monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
     cmd = Cmd()
     cmd.set_error_callback(lambda _m: None)
     cmd.set_window(type("W", (), {"viewer": object()})())

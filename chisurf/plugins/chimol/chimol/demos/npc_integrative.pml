@@ -5,10 +5,12 @@
 # own radius -- so a reader that knows only about atoms reports "no coordinates"
 # for a file that is full of them.
 #
-# This is one spoke of the yeast NPC: about 29,000 beads. The whole eight-spoke
-# pore is PDBDEV_00000012, which loads but is slow enough to be unpleasant --
-# see okf/references/known-issues.md.
+# This is the whole eight-spoke yeast pore: 234,184 beads, the eight-fold
+# symmetry and the open central channel. It used to take seven minutes to open,
+# because the viewer splined a cartoon ribbon through beads that have no
+# backbone; drawn as what they are it takes about two seconds. One spoke on its
+# own is PDBDEV_00000010.
 delete all
-fetch PDBDEV_00000010, pdb-ihm
+fetch PDBDEV_00000012, pdb-ihm
 spectrum count, rainbow
 zoom all

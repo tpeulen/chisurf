@@ -152,7 +152,11 @@ class _MolViewObjectState:
     active_frame: int = 0
     measurements: dict[str, dict] = field(default_factory=dict)
     bead_radii: Optional[np.ndarray] = None
-    rmf_hierarchy: Optional[object] = None  # RmfHierarchyNode
+    rmf_hierarchy: Optional[object] = None  # HierarchyNode, whoever built it
+    #: Rows of the coordinate array to leave undrawn, one flag each. This is
+    #: *visibility*, not representation: the hierarchy panel switches whole
+    #: molecules and chains off with it, and every representation honours it.
+    hidden_mask: Optional[np.ndarray] = None
     restraints: list[dict] = field(default_factory=list)
     rmf_provenance: list[dict] = field(default_factory=list)
     rmf_frame_series: dict[str, object] = field(default_factory=dict)

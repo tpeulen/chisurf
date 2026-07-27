@@ -133,7 +133,21 @@ def test_the_tls_context_verifies_and_has_certificates():
     assert context.cert_store_stats()["x509_ca"] > 0
 
 
-def test_a_certificate_failure_is_explained(session, monkeypatch):
+@pytest.fixture
+def scratch_downloads(tmp_path, monkeypatch):
+    """Point `fetch` at an empty directory.
+
+    `fetch` re-uses a copy it has already downloaded, so a test that expects the
+    download to fail has to start from a directory where the entry is absent --
+    otherwise it exercises the cache and never reaches the network at all.
+    """
+    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
+
+    monkeypatch.setattr(loader_mod, "_download_dir", lambda: tmp_path)
+    return tmp_path
+
+
+def test_a_certificate_failure_is_explained(session, scratch_downloads, monkeypatch):
     """Not by quoting OpenSSL at someone who cannot act on it."""
     from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
 
@@ -151,7 +165,9 @@ def test_a_certificate_failure_is_explained(session, monkeypatch):
     assert "certifi" in errors[0]
 
 
-def test_a_missing_entry_is_not_reported_as_a_network_problem(session, monkeypatch):
+def test_a_missing_entry_is_not_reported_as_a_network_problem(
+    session, scratch_downloads, monkeypatch
+):
     from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
 
     def _missing(*_args, **_kwargs):
@@ -239,3 +255,75 @@ def test_the_repository_url_is_the_one_that_serves_the_file():
     assert ihm["url"].format(id="pdbdev_00000010", num="") == (
         "https://pdb-ihm.org/cif/pdbdev_00000010.cif"
     )
+
+
+def test_a_downloaded_entry_is_not_downloaded_again(session, scratch_downloads,
+                                                    monkeypatch, tmp_path):
+    """The eight-spoke pore is 31.5 MB; the demo should not re-fetch it each run."""
+    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
+
+    cached = tmp_path / "chimol_pdb_ihm_pdbdev_00000010.cif"
+    cached.write_text(_MINIMAL_MMCIF)
+
+    def _must_not_be_called(*_args, **_kwargs):
+        raise AssertionError("fetch went to the network for a file it already had")
+
+    monkeypatch.setattr(loader_mod.urllib.request, "urlopen", _must_not_be_called)
+    _win, shared, errors, messages = session
+    errors.clear()
+    messages.clear()
+    shared.do("fetch PDBDEV_00000010, pdb-ihm")
+    assert errors == []
+    assert any("cached" in m for m in messages), messages
+
+
+def test_an_empty_cached_file_is_not_trusted(session, scratch_downloads, tmp_path):
+    """A zero-byte leftover from an interrupted download is not a cache hit."""
+    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
+
+    (tmp_path / "chimol_pdb_ihm_pdbdev_00000010.cif").write_bytes(b"")
+    calls: list = []
+
+    def _record(*args, **kwargs):
+        calls.append(args)
+        raise urllib.error.URLError("no network in this test")
+
+    original = loader_mod.urllib.request.urlopen
+    loader_mod.urllib.request.urlopen = _record
+    try:
+        _win, shared, errors, _messages = session
+        errors.clear()
+        shared.do("fetch PDBDEV_00000010, pdb-ihm")
+    finally:
+        loader_mod.urllib.request.urlopen = original
+    assert calls, "an empty file must not stand in for the entry"
+
+
+def test_a_failed_download_leaves_nothing_behind(session, scratch_downloads,
+                                                 monkeypatch, tmp_path):
+    """A half-written entry in the cache is worse than no cache at all.
+
+    Writing straight to the destination left a zero-byte file wherever a
+    download failed part-way -- in the user's own cache directory, where the
+    next run would find it sitting where the entry should be.
+    """
+    from chisurf.plugins.chimol.chimol.cmd import loader as loader_mod
+
+    class _HalfResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def read(self, *_args):
+            raise OSError("connection reset half way through")
+
+    monkeypatch.setattr(
+        loader_mod.urllib.request, "urlopen", lambda *a, **k: _HalfResponse()
+    )
+    _win, shared, errors, _messages = session
+    errors.clear()
+    shared.do("fetch PDBDEV_00000010, pdb-ihm")
+    assert errors, "the failure must be reported"
+    assert list(tmp_path.iterdir()) == [], "no debris, not even an empty file"

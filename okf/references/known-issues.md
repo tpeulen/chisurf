@@ -36,6 +36,26 @@ from the trajectory work generalises), depth-cue fog, and **IMP RMF support**.
 
 ---
 
+## chimol: a sphere impostor occludes as a flat disc (RF-522)
+
+**2026-07-27.** The impostor is exact in silhouette and in shading, but every
+fragment is written at the depth of the bead *centre*, because the fragment
+shader assigns no `gl_FragDepth`. Where beads overlap each other or other
+geometry, the nearer centre takes the whole disc instead of the two surfaces
+intersecting — by up to one bead radius, which on the nuclear pore is tens of
+ångström. Below `balls.impostor_min_atoms` the same beads are meshes and
+intersect correctly, so the two depictions do not match across the threshold.
+
+**Why it is not simply fixed.** Writing `gl_FragDepth` in *any* branch of a
+GLSL 1.20 shader disables early-Z for every draw that shader serves — and this
+one serves the cartoon and every mesh in the scene, which is the path a lot of
+work has gone into keeping fast. The correct fix is a **separate shader program
+for impostors** (its own vertex/fragment pair, the depth write confined to it),
+not a branch in the shared one. Documented as a limitation in the viewer guide
+in the meantime.
+
+---
+
 ## chimol: `show` and `hide` say nothing on an empty viewer
 
 **2026-07-27.** `spectrum`, `zoom` and `color` now answer "nothing is loaded" on

@@ -170,6 +170,7 @@ ATOM_INDEXED_FIELDS = (
     "sticks_mask",
     "protected_mask",
     "masked_mask",
+    "hidden_mask",
 )
 
 #: Array fields that are *not* atom-indexed, listed so the guardrail can tell

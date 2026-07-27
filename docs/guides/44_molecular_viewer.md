@@ -81,10 +81,42 @@ fetch PDBDEV_00000012, pdb-ihm   # the nuclear pore, all eight spokes
 spectrum chain                   # 234,184 beads, one colour per chain
 ```
 
+An entry that deposits both resolved atoms and beads — the common case — gets
+both depictions at once: the beads are spheres, the resolved residues keep their
+cartoon and their bonds, and secondary structure is assigned over the atoms
+alone.
+
+**The Hierarchy panel shows how the model is organised.** An integrative entry
+describes its own composition — which molecule each chain is a copy of — and the
+viewer reads it into the same tree an RMF from IMP produces:
+
+```text
+8ZZC — Integrative structure … of eight spokes of a nuclear pore complex
+├── Nup84 [MOLECULE]
+│   ├── A (Nup84) [CHAIN]
+│   ├── H (Nup84@11) [CHAIN]
+│   └── … 16 copies
+├── Nup85 [MOLECULE]
+└── … 31 nucleoporins in 544 copies
+```
+
+That is the eight-fold symmetry of the pore stated as composition rather than
+inferred from the picture, and it is what a flat cloud of 234,184 beads cannot
+tell you.
+
+Each node knows which particles belong to it — the count is shown after the name
+— so **un-checking a node hides them**. Switch off `Nup84` and its 10,560 beads
+leave the picture; switch one copy back on and the molecule shows as partially
+checked. This is visibility, not representation: nothing else about how the
+structure is drawn changes, and re-checking brings it back exactly as it was.
+
 Past **20,000 beads** the viewer switches from a mesh sphere per bead to a
-*sphere impostor*: one point, shaded as a sphere by the graphics card. The
-picture is the same — an impostor is an exact sphere where a mesh is a
-polyhedron — and it is what makes a model of this size open at all. The
+*sphere impostor*: one point, shaded as a sphere by the graphics card. In outline
+and in shading it is an exact sphere where a mesh is a polyhedron, and it is what
+makes a model of this size open at all. One limitation: an impostor is drawn at
+the depth of its centre, so where beads overlap each other or other geometry the
+nearer centre wins the whole disc rather than the two surfaces intersecting.
+Below the threshold, where the beads are meshes, they intersect properly. The
 threshold is `balls.impostor_min_atoms` in the display configuration.
 
 ### Voxel maps

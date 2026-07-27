@@ -30,6 +30,85 @@
 
 ## 2026-07-27
 
+* **chimol: the hierarchy panel can switch parts of a model off.** Each node
+  knows which rows of the coordinate array belong to it, which is what makes a
+  check box meaningful: un-checking `Nup84` removes its 10,560 beads from the
+  picture and nothing else changes. Visibility is a per-row mask on the object
+  (`hidden_mask`), honoured by the bead and ball paths, not a change of
+  representation -- so re-checking restores exactly what was there. Parents
+  cascade to their children and read their own state back from the leaves, so a
+  molecule with one copy re-enabled shows as partially checked rather than
+  drifting out of step with what is drawn. The window applies the whole hidden
+  set on each change rather than the difference, for the same reason.
+
+  Two existing guardrails caught the cost of getting this wrong, which is what
+  they are for. `hidden_mask` is atom-indexed, so `sort` has to permute it with
+  the coordinates -- left off the list, hiding a molecule and then sorting would
+  have hidden an arbitrary set of beads instead. And re-using a download broke
+  two tests that assert `fetch` goes to the network, because an earlier test in
+  the same run had already downloaded the file; the downloads moved out of the
+  shared temp directory into `~/.chisurf/structures/chimol`, which is a cache the
+  user owns rather than a scratch path anything may write, and the tests point it
+  at an empty directory.
+
+* **chimol: an integrative model's own hierarchy, and the panel that could not
+  show it.** An IHM mmCIF describes how the model is *composed* -- which molecule
+  each chain is a copy of -- in the same shape an RMF from IMP carries, and
+  chimol already had a hierarchy panel fed only by the RMF reader. The mmCIF
+  reader now builds the same tree: for the eight-spoke nuclear pore, 31
+  nucleoporins in 544 copies, every one of the 234,184 rows attributed to exactly
+  one copy. The node type moved to `io/hierarchy.py` as `HierarchyNode` (the RMF
+  name is kept as an alias) because it was never RMF's -- one tree, whichever
+  reader filled it.
+
+  The panel then turned out not to render a tree deeper than two levels: its
+  `parent()` returned row 0 for every parent and called the root's children
+  top-level while row 0 of the top level was the root itself, so the view drew
+  the root twice and dropped the whole molecule level -- the pore's 544 chains
+  came out as one flat list. Only a three-level tree reveals it, which is why it
+  survived the RMF path. Fixed and pinned; nodes also compare by identity now,
+  since a dataclass `__eq__` answered "same node?" by walking two subtrees and
+  called two distinct copies of one molecule equal.
+
+* **chimol: a bead model that is only *partly* beads (RF-520, RF-521).** The
+  review of the depiction commit found the recogniser judging the array by its
+  first 256 rows and demanding all of them be beads -- while the mmCIF reader
+  writes every atomic row *before* every sphere row. One resolved residue at the
+  head of a 234k-bead entry therefore classified the whole thing as a protein and
+  restored the cartoon-through-beads pathology outright; a bead-first array
+  stripped a resolved subunit of its cartoon. Both directions verified.
+
+  Classification is now **per row, over the whole array**, and the two depictions
+  coexist in one object: beads take the ball mask, resolved residues keep their
+  cartoon, bonds are inferred over the atomic subset with the indices mapped
+  back, and secondary structure is assigned over the atomic rows and scattered
+  across the full residue list. Fixing that exposed a second defect of my own --
+  falling through to the generic ball path drew every bead a second time as a
+  merged mesh on top of its own impostor -- so the generic path now runs with the
+  beads removed from its mask.
+
+  RF-521: the RMF bead path -- cited at the call site as the precedent the mmCIF
+  path was following -- was the one path the projection never reached. Its radii
+  are already in scene units and were used verbatim as a pixel count, so a 20 A
+  bead drew as a 200-pixel dot that did not change on zoom. It sets
+  `world_radius` now, and the guard beside it (RF-485) went too: it compared the
+  radius array against the length of the *selection*, so any narrower selection
+  silently lost the per-bead sizes.
+
+  RF-522 (an impostor occludes as a flat disc at its centre's depth) is taken as
+  a documented limitation, not a branch in the shared shader: writing
+  `gl_FragDepth` anywhere in a GLSL 1.20 program disables early-Z for every draw
+  that program serves, and this one serves the cartoon and every mesh in the
+  scene. The fix is a separate impostor program. Recorded in the viewer guide and
+  [references/known-issues.md](/references/known-issues.md).
+
+* **chimol: the NPC demo shows all eight spokes.** It loaded one spoke, with a
+  comment saying the whole pore "loads but is slow enough to be unpleasant".
+  That is no longer true -- it opens in about two seconds -- so the demo is now
+  `PDBDEV_00000012`: 234,184 beads, the eight-fold symmetry and the open central
+  channel. `fetch` also re-uses a copy it has already downloaded rather than
+  pulling 31.5 MB again on every run.
+
 * **Sampling diagnostics: an undefined R̂ now says which failure it is (RF-101).**
   One line — *"never moved or disagree completely between chains"* — was emitted
   for every non-finite R̂, and only `inf` means that. `nan` arrives from two other

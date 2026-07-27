@@ -22,7 +22,11 @@ import math
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.renderer.view import MolView, _is_bead_model
+from chisurf.plugins.chimol.chimol.renderer.view import (
+    MolView,
+    _bead_mask,
+    _is_bead_model,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -179,6 +183,143 @@ def test_a_protein_does_not_take_the_bead_path(qapp_chimol):
                          res_names=atoms["res_name"], chain_ids=atoms["chain"],
                          atoms=atoms)
     assert view._bead_scene_object({"impostor_min_atoms": 1}, None) is None
+
+
+# --------------------------------------------------------------------------- #
+# A model that is part atoms and part beads -- the normal shape of one
+# --------------------------------------------------------------------------- #
+def _hybrid(n_atomic: int = 8, n_beads: int = 40):
+    """One resolved residue's atoms first, then beads, as the mmCIF reader writes them."""
+    atoms, xyz, radii = _bead_atoms(n=n_atomic + n_beads, seed=3)
+    atoms["res_name"][:n_atomic] = "ALA"
+    atoms["atom_name"][:n_atomic] = ["N", "CA", "C", "O"] * (n_atomic // 4)
+    atoms["res_id"][:n_atomic] = np.repeat(np.arange(1, n_atomic // 4 + 1), 4)
+    radii[:n_atomic] = 1.7
+    # Real backbone spacing, or nothing is within a bonding cutoff and the
+    # "bonded over its atoms" check would pass for the wrong reason.
+    backbone = np.array(
+        [[0.0, 0.0, 0.0], [1.46, 0.0, 0.0], [2.01, 1.42, 0.0], [1.25, 2.39, 0.0]]
+    )
+    for res in range(n_atomic // 4):
+        xyz[res * 4 : res * 4 + 4] = backbone + np.array([res * 3.3, 0.0, 0.0])
+    atoms["xyz"][:n_atomic] = xyz[:n_atomic]
+    # The trace: one point per resolved residue, then one per bead.
+    n_res = n_atomic // 4 + n_beads
+    res_names = np.array(["ALA"] * (n_atomic // 4) + ["BEA"] * n_beads)
+    res_ids = np.arange(1, n_res + 1)
+    trace = np.vstack([xyz[1:n_atomic:4], xyz[n_atomic:]])
+    return atoms, xyz, radii, trace, res_ids, res_names
+
+
+@pytest.fixture
+def hybrid_view(qapp_chimol):
+    atoms, xyz, radii, trace, res_ids, res_names = _hybrid()
+    view = MolView()
+    view.set_coordinates(
+        xyz,
+        trace_coords=trace,
+        res_ids=res_ids,
+        res_names=res_names,
+        chain_ids=np.array(["A"] * len(res_ids)),
+        atoms=atoms,
+        atom_radii=radii,
+    )
+    return view, atoms, res_names
+
+
+def test_one_atom_ahead_of_the_beads_does_not_make_it_a_protein(hybrid_view):
+    """The recogniser sampled the first 256 rows, and the atoms come first.
+
+    A single resolved residue at the head of a 200k-bead entry restored the
+    whole cartoon-through-beads pathology the sphere depiction exists to remove.
+    """
+    _view, atoms, _res_names = hybrid_view
+    mask = _bead_mask(atoms)
+    assert mask is not None
+    assert mask.any() and not mask.all()
+    assert not _is_bead_model(atoms), "it is not *wholly* beads"
+
+
+def test_a_bead_first_array_does_not_swallow_its_atoms(qapp_chimol):
+    """The converse: beads at the head used to strip the atomic part's cartoon."""
+    atoms, _xyz, _r = _bead_atoms(n=1000)
+    atoms["res_name"][900:] = "ALA"
+    mask = _bead_mask(atoms)
+    assert mask[:900].all() and not mask[900:].any()
+    assert not _is_bead_model(atoms)
+
+
+def test_the_beads_are_spheres_and_the_atoms_keep_their_cartoon(hybrid_view):
+    view, atoms, _res_names = hybrid_view
+    beads = _bead_mask(atoms)
+    assert view._show_atoms is True
+    assert view._show_cartoon is True, "the resolved residues still have one"
+    assert np.array_equal(view._ball_mask, beads)
+    # The cartoon covers exactly the residues that are not beads.
+    res_beads = np.char.strip(_res_names.astype(str)) == "BEA"
+    assert np.array_equal(view._cartoon_mask, ~res_beads)
+
+
+def test_only_the_beads_go_down_the_bead_path(hybrid_view):
+    view, atoms, _res_names = hybrid_view
+    beads = _bead_mask(atoms)
+    obj = view._bead_scene_object({"impostor_min_atoms": 1}, None)
+    assert obj is not None
+    assert obj.geometry.positions.shape[0] == int(beads.sum())
+
+
+def test_a_hybrid_is_bonded_over_its_atoms_only(hybrid_view):
+    """A distance cutoff between beads means nothing; between atoms it does."""
+    view, atoms, _res_names = hybrid_view
+    beads = _bead_mask(atoms)
+    pairs = np.asarray(view._bond_pairs).reshape(-1, 2)
+    assert pairs.size, "the resolved residues should still be bonded"
+    assert not beads[pairs].any(), "no bond may touch a bead"
+
+
+def test_the_atomic_balls_are_still_drawn(hybrid_view):
+    """`_bead_scene_object` must not short-circuit the generic ball path."""
+    view, atoms, _res_names = hybrid_view
+    beads = _bead_mask(atoms)
+    view._ball_mask = np.ones(len(atoms), dtype=bool)
+    view._show_atoms = True
+    objects = view._update_atoms(
+        view._coords, view._coords.shape[0], {"impostor_min_atoms": 1}, None
+    )
+    ids = [o.id for o in objects]
+    assert "atoms_points" in ids, "the beads"
+    assert "atoms_mesh" in ids, "and the resolved atoms, drawn as themselves"
+
+
+def test_a_bead_is_not_drawn_twice(hybrid_view):
+    """Falling through to the generic path must not re-draw the beads as a mesh.
+
+    The generic path builds a merged sphere mesh from the ball mask. With the
+    beads still in that mask they came out a second time, on top of their own
+    impostors and at whatever size the generic path chose.
+    """
+    view, atoms, _res_names = hybrid_view
+    beads = _bead_mask(atoms)
+    n_atomic = int((~beads).sum())
+    view._ball_mask = np.ones(len(atoms), dtype=bool)
+    view._show_atoms = True
+    objects = view._update_atoms(
+        view._coords, view._coords.shape[0], {"impostor_min_atoms": 1}, None
+    )
+    points = [o for o in objects if o.id == "atoms_points"]
+    meshes = [o for o in objects if o.id == "atoms_mesh"]
+    assert len(points) == 1
+    assert points[0].geometry.positions.shape[0] == int(beads.sum())
+    # A merged sphere mesh has a fixed vertex count per sphere, so the mesh must
+    # account for the atomic rows and no more.
+    assert meshes, "the atomic rows still need drawing"
+    from chisurf.plugins.chimol.chimol.renderer.view import _build_sphere_mesh
+
+    lat, lon = MolView._balls_sphere_segments()
+    per_sphere = _build_sphere_mesh(1.0, lat, lon)["vertices"].shape[0]
+    assert meshes[0].geometry.positions.shape[0] == n_atomic * per_sphere, (
+        "the merged mesh must cover the atomic rows and nothing else"
+    )
 
 
 # --------------------------------------------------------------------------- #

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shutil
 import ssl
 import tempfile
 import urllib.error
@@ -11,8 +12,32 @@ from .base import BaseCmd
 from .registry import command
 
 
+def _download_dir() -> Path:
+    """Return the directory where fetched entries are kept.
+
+    A real cache directory, not the shared temp dir. ``fetch`` re-uses what it
+    has already downloaded, and a *scratch* path is the wrong place to do that:
+    the name is guessable, anything may write it, and a leftover from an
+    unrelated program or an interrupted download would be handed to the reader
+    as though it were the entry. Under the user's own ``.chisurf`` it is a cache
+    they own and can clear.
+
+    Returns
+    -------
+    pathlib.Path
+        The directory, created if it does not exist. Falls back to the temp
+        directory when the home directory cannot be written.
+    """
+    try:
+        directory = Path.home() / ".chisurf" / "structures" / "chimol"
+        directory.mkdir(parents=True, exist_ok=True)
+        return directory
+    except Exception:  # pragma: no cover - unwritable home
+        return Path(tempfile.gettempdir())
+
+
 def _tls_context() -> ssl.SSLContext | None:
-    """A verifying TLS context that does not depend on the ambient CA store.
+    """Build a verifying TLS context that ignores the ambient CA store.
 
     ``urlopen`` with no context trusts whatever OpenSSL was compiled to look at,
     which on a machine running the app from a packaged or framework interpreter
@@ -182,15 +207,40 @@ class LoaderCommands(BaseCmd):
             display = identifier
 
         destination = (
-            Path(tempfile.gettempdir())
+            _download_dir()
             / f"chimol_{name.replace('-', '_')}_{identifier}{spec['suffix']}"
         )
+        # Re-use a copy already downloaded. `fetch` is what the demos and the
+        # docs tell people to type, and the eight-spoke nuclear pore is 31.5 MB:
+        # fetching it again on every run costs the download and gains nothing,
+        # since an entry at a given accession does not change under you.
+        if destination.is_file() and destination.stat().st_size > 0:
+            try:
+                window._load_structure_from_path(destination, name=display)
+            except Exception as exc:
+                self._emit_error(
+                    f"fetch: the cached {display} would not load ({exc}); "
+                    "delete it and try again."
+                )
+                return
+            self._emit_message(f"fetch: loaded {display} (cached)")
+            return
+
+        # Downloaded beside the destination and moved into place only once it is
+        # complete. Writing straight to the cache path left a **zero-byte file**
+        # behind whenever a download failed part-way -- in the user's own cache
+        # directory, where the next run would find it sitting where the entry
+        # should be. A cache that can contain half an entry is worse than no
+        # cache.
+        partial = destination.with_name(destination.name + ".part")
         try:
             with urllib.request.urlopen(
                 url, timeout=60, context=_tls_context()
-            ) as response, destination.open("wb") as fh:
-                fh.write(response.read())
+            ) as response, partial.open("wb") as fh:
+                shutil.copyfileobj(response, fh)
+            partial.replace(destination)
         except urllib.error.HTTPError as exc:
+            partial.unlink(missing_ok=True)
             if exc.code == 404:
                 self._emit_error(
                     f"fetch: {spec['label']} has no entry {display}"
@@ -201,6 +251,7 @@ class LoaderCommands(BaseCmd):
                 )
             return
         except urllib.error.URLError as exc:
+            partial.unlink(missing_ok=True)
             # A certificate failure is not a missing entry and not a network
             # outage, and the raw OpenSSL string says so to nobody. Name it.
             reason = exc.reason
@@ -216,6 +267,7 @@ class LoaderCommands(BaseCmd):
                 )
             return
         except Exception as exc:
+            partial.unlink(missing_ok=True)
             self._emit_error(
                 f"fetch: could not get {display} from {spec['label']}: {exc}"
             )
