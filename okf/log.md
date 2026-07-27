@@ -2,6 +2,37 @@
 
 ## 2026-07-27
 
+* **"Drop files, click Next" killed the app — the shell advanced while the run
+  was still going (RF-446).** Second crash report from the burst shell, same
+  frame as the first (``PyQtSlotProxy::qt_metacall`` → ``postEvent``), but a
+  shallow stack this time: no recursion, just a dangling receiver. Reproduced
+  headlessly with the reported gesture and bisected, which is what made it
+  specific: a run alone never crashes (8 rounds), a panel switch alone never
+  crashes (8 rounds), the two **overlapping** crash 3/3 — and stubbing the BVA
+  plot update makes the overlap survive while stubbing the BV4 write does not.
+  **Next** was starting the step's Run action and advancing in the same turn, so
+  the finished analysis plotted into a panel the shell had already left while
+  the next panel was being built. It now waits for the step it started (a 600 s
+  cap keeps a wedged task from trapping the user), which is what the button's
+  own tooltip always promised: the gesture survives 4 × 10 rounds where it used
+  to die within three. Hardened the task layer on the way past — the completion
+  callback no longer disconnects the bridge or drops the task from *inside* the
+  delivery of its own signal, and a discarded task is held strongly until one
+  event-loop turn later, so the cyclic collector cannot reclaim the bridge
+  mid-dispatch. A **residual hazard is recorded, not fixed**: a user switching
+  panels by hand during a run still reproduces the crash, and that one belongs
+  in the chiplot/pyqtgraph update path — see
+  [known issues](/references/known-issues.md).
+
+* **A repaired MMFDB was missing whole tables, not just a column (mmfdb
+  0d313e8).** The v46 reconciliation re-added the canonical *columns* a
+  stamped-but-incomplete database lacked, and the very next object write failed
+  one line further on with *"no such table: mmfdb_object_reference"* — the same
+  databases never ran v44 at all, so its tables are missing too. v47 runs the
+  full reconciliation (absent tables, missing columns, indices). Verified
+  against a copy of the affected database: a plain open now creates the table
+  and stores the object *and* its reference row.
+
 * **A shared `level_histogram` AutoForm section, and the map panel built on it.**
   Picking a threshold is an act of *looking at the data* -- the scales differ by
   orders of magnitude between a density, a burst brightness and a photon count,

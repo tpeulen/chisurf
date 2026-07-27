@@ -80,6 +80,19 @@ _EXECUTOR = concurrent.futures.ThreadPoolExecutor(
 #: owner widget -> its running task, so a new run supersedes the old one.
 _RUNNING: "weakref.WeakKeyDictionary[object, Task]" = weakref.WeakKeyDictionary()
 
+#: Every live task, held **strongly**.
+#:
+#: Most callers discard the returned :class:`Task` (``ChiSurfProgress.run(...)``
+#: as a statement), and ``_RUNNING`` is keyed weakly *and* cleared inside the
+#: completion callback — so without this the task, and with it the ``_Bridge``
+#: QObject whose queued signal is currently being delivered, became garbage
+#: *during its own slot*. PyQt then tore down the connection's slot proxies from
+#: inside the proxy's own metacall and the next event-loop turn crashed in
+#: ``QCoreApplication::postEvent`` on freed memory (SIGSEGV at a tiny address,
+#: reported from a burst run). Entries are released one event-loop turn after
+#: the callbacks finish — see ``_release_after_return``.
+_ALIVE: "set[Task]" = set()
+
 
 class _Bridge(QtCore.QObject):
     """Carries a worker's updates to the GUI thread.
@@ -297,6 +310,72 @@ def _disconnect(bridge: _Bridge, *signals) -> None:
             pass
 
 
+def running_tasks_under(widget) -> "list[Task]":
+    """Every running task owned by *widget* or by a widget inside it.
+
+    The shell needs this to know whether a step it just started is still busy:
+    the owner a panel passes to :func:`run_in_background` is the tool itself,
+    which sits several widgets below the panel wrapper.
+
+    Parameters
+    ----------
+    widget : QWidget or None
+        Root of the subtree to look under.
+
+    Returns
+    -------
+    list of Task
+        The running tasks, outermost owner first.
+    """
+    if widget is None:
+        return []
+    owners = {widget}
+    try:
+        owners.update(widget.findChildren(QtCore.QObject))
+    except (AttributeError, RuntimeError):
+        pass
+    return [
+        task
+        for owner, task in list(_RUNNING.items())
+        if owner in owners and task.is_running
+    ]
+
+
+def _release_after_return(task: "Task") -> None:
+    """Tear the task's Qt plumbing down once control is back in the event loop.
+
+    Everything here — dropping the connections, deleting the ``_Bridge``,
+    releasing the last Python reference — used to happen in the completion
+    callback, which is itself running *inside* the delivery of
+    ``bridge.completed``. Disconnecting a signal from within its own slot
+    destroys the proxy that is currently executing: PyQt then defers that
+    proxy's own deletion with ``QCoreApplication::postEvent``, and if the
+    bridge is being torn down in the same breath (or the cyclic collector
+    reclaims it first) that post lands on freed memory. That is the reported
+    crash — ``PyQtSlotProxy::qt_metacall`` → ``postEvent`` → SIGSEGV/SIGBUS at
+    a tiny address — which reproduces when a run is still in flight while the
+    workflow advances to the next step.
+
+    Deferring the whole teardown by one event-loop turn lets the dispatch
+    unwind first, so nothing is deleted while it is running.
+    """
+    bridge = task._bridge
+
+    def _release() -> None:
+        _disconnect(bridge)
+        try:
+            bridge.deleteLater()
+        except RuntimeError:  # already gone
+            pass
+        _ALIVE.discard(task)
+
+    app = QtWidgets.QApplication.instance()
+    if app is None:  # synchronous/headless: no loop to defer to
+        _release()
+        return
+    QtCore.QTimer.singleShot(0, _release)
+
+
 def _disconnect_updates(bridge: _Bridge) -> None:
     """Silence a superseded task's updates but leave its completion connected.
 
@@ -451,7 +530,8 @@ def run_in_background(
             except TypeError:
                 pass
             task._done.set()
-            _disconnect(bridge)
+            # The connections are NOT dropped here: see _release_after_return.
+            _release_after_return(task)
 
     connection = QtCore.Qt.QueuedConnection
     bridge.progressed.connect(_on_progressed, connection)
@@ -460,6 +540,7 @@ def run_in_background(
     bridge.partial.connect(_on_partial, connection)
     bridge.completed.connect(_on_completed, connection)
 
+    _ALIVE.add(task)
     if owner is not None:
         try:
             _RUNNING[owner] = task

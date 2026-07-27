@@ -6,6 +6,7 @@ import importlib
 import json
 import logging
 import pathlib
+import time
 import traceback
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -696,10 +697,38 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
     def _on_next_clicked(self) -> None:
         """Next button: process all loaded files in this step, then advance."""
         self.process_current_step()
+        self._wait_for_current_step()
         # Re-assert activation after any processing dialog/embed churn (macOS
         # can drop the window behind others when a panel is (re)shown).
         self._restore_active_window()
         self.goto_next_step()
+
+    def _wait_for_current_step(self, timeout: float = 600.0) -> None:
+        """Block (pumping events) until the step's background work is done.
+
+        Advancing while the run is still in flight left the finished analysis
+        plotting into a panel the shell had already switched away from, with the
+        next panel being constructed at the same time — a reliable crash: with
+        both halves overlapping, a burst run reproduces a SIGSEGV inside
+        ``QCoreApplication::postEvent`` within a few Next clicks, and neither
+        half alone ever does. Waiting also matches what the button says it does
+        ("process all loaded files in this step, *then* go to the next step").
+
+        Parameters
+        ----------
+        timeout : float
+            Seconds to wait before advancing anyway, so a wedged task cannot
+            trap the user in a step.
+        """
+        from chisurf.gui.task import running_tasks_under
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            tasks = running_tasks_under(self._current_panel_instance())
+            if not tasks:
+                return
+            for task in tasks:
+                task.wait(timeout=max(0.0, deadline - time.monotonic()))
 
     def goto_next_step(self) -> bool:
         """Select the next non-separator panel; return ``True`` if one exists."""

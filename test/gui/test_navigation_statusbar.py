@@ -221,3 +221,52 @@ def test_log_driven_status_pump_excludes_user_input(qapp, monkeypatch):
     w.report_progress(1, 10, "step")
     assert seen == [()], f"task progress must stay clickable (Cancel): {seen}"
     w.close()
+
+
+def test_next_waits_for_the_step_it_started(qapp):
+    """Next must not advance while the step's background work is in flight.
+
+    Advancing mid-run left the finished analysis plotting into a panel the shell
+    had already switched away from, while the next panel was being constructed —
+    a reproducible SIGSEGV inside ``QCoreApplication::postEvent``. It is also
+    what the button promises: process this step, *then* go to the next one.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.gui.task import run_in_background
+
+    order: list[str] = []
+
+    class _Step(QtWidgets.QWidget):
+        def __init__(self):
+            super().__init__()
+            self.button = QtWidgets.QToolButton(self)
+            self.button.setObjectName("toolAction_run")
+            self.button.clicked.connect(self._run)
+
+        def _run(self):
+            def work(task):
+                order.append("work")
+                return "done"
+
+            run_in_background(self, "Working", work, on_result=lambda v: order.append("result"))
+
+    step = _Step()
+    w = NavigationPanelTool(
+        title="t",
+        panels=[
+            {"name": "one", "role": "one", "factory": lambda p: step},
+            {"name": "two", "role": "two", "factory": lambda p: QtWidgets.QLabel("2")},
+        ],
+    )
+    w.nav_list.setCurrentRow(0)
+    qapp.processEvents()
+
+    w.nav_list.currentRowChanged.connect(lambda *_: order.append("advanced"))
+    w._on_next_clicked()
+
+    assert "result" in order, f"the run never completed: {order}"
+    assert order.index("result") < order.index("advanced"), (
+        f"advanced while the step was still running: {order}"
+    )
+    w.close()

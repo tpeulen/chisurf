@@ -358,3 +358,63 @@ class TestExecutionMode:
         ChiSurfProgress.run(owner, "Adding", _adder, args=(4, 4),
                             on_result=got.append).wait()
         assert got == [8]
+
+
+class TestLifetime:
+    """The bridge must outlive the delivery of its own completion signal.
+
+    Most callers discard the returned ``Task`` (``ChiSurfProgress.run(...)`` as a
+    statement) and the owner map is weak, so the task became garbage *inside*
+    its own queued callback. PyQt then destroyed the connection's slot proxies
+    from within the proxy's metacall, and the next event-loop turn crashed in
+    ``QCoreApplication::postEvent`` on freed memory (SIGSEGV during a burst run).
+    """
+
+    def test_a_discarded_task_is_not_destroyed_inside_its_own_dispatch(self, owner, qtbot):
+        """The bridge must not be destroyed while its signal is being delivered.
+
+        Pre-fix, the last reference died when the completion callback's frame
+        went away — i.e. still inside ``PyQtSlotProxy::unislot`` — so PyQt tore
+        down the live connection's proxies from within their own metacall, and
+        the next event-loop turn crashed in ``QCoreApplication::postEvent``.
+        """
+        import gc
+
+        from chisurf.gui import QtCore
+
+        events: list[str] = []
+
+        def _on_result(value):
+            events.append("dispatch-start")
+            # Appended one event-loop turn later, i.e. once this delivery (and
+            # the C++ frames beneath it) have unwound.
+            QtCore.QTimer.singleShot(0, lambda: events.append("dispatch-end"))
+
+        task = run_in_background(owner, "Adding", _adder, args=(1, 2),
+                                 on_result=_on_result)
+        task._bridge.destroyed.connect(lambda *_: events.append("destroyed"))
+        del task  # exactly what ChiSurfProgress.run(...) as a statement does
+
+        qtbot.waitUntil(lambda: "dispatch-end" in events, timeout=5000)
+        gc.collect()
+        qtbot.wait(50)
+
+        if "destroyed" in events:
+            assert events.index("destroyed") > events.index("dispatch-end"), (
+                f"the bridge died inside the delivery of its own signal: {events}"
+            )
+
+    def test_the_task_is_released_after_the_loop_turns(self, owner, qtbot):
+        import gc
+
+        from chisurf.gui.task import _ALIVE
+
+        before = len(_ALIVE)
+        done = []
+        run_in_background(owner, "Adding", _adder, args=(1, 2), on_done=lambda: done.append(1))
+
+        qtbot.waitUntil(lambda: bool(done), timeout=5000)
+        # The release is deferred by one event-loop turn, then the registry
+        # must be back where it started — no leak per task.
+        qtbot.waitUntil(lambda: len(_ALIVE) == before, timeout=5000)
+        gc.collect()

@@ -5346,3 +5346,43 @@ colormap name is swallowed everywhere it appears (RF-444). Findings RF-441..RF-4
 - **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:105-124` (`_colormap`: `except Exception: continue` over both sources, then `return None`), its callers `:127-138` (`_lut`, used by `add_image`/`add_overlay`) and `:365-369` (`_ColorBar.set_colormap`, `if cm is not None:`)
 - **Finding:** the resolution path has no failure channel at all. Verified headlessly: `plot.image(data, colormap="no-such-cmap")` and `bar.set_colormap("no-such-cmap")` both return normally and leave the image on the default grey ramp — indistinguishable from `colormap=None`, which `to_colormap`/`ColorBar.set_colormap` document as "*leave unchanged*". `style.to_colormap` (added in the same commit) raises `TypeError` for a wrong *type* but cannot check a name, so the one validation the API does have stops exactly short of the failure users actually hit (a colorcet name without colorcet installed, a matplotlib name typo). A `logger.warning` naming the colormap and the sources tried, at the single seam `_colormap`, is enough; the silent `continue` over `Exception` also hides an import error in the source module as a missing colormap.
 - **Fix note:**
+
+
+## Crash report — "drop files, click Next" killed the app (2026-07-27)
+
+A second user crash report from the burst-analysis shell: SIGSEGV,
+``KERN_INVALID_ADDRESS at 0xe2``, main thread, the whole stack being
+``__CFRunLoopDoSource0`` → ``notifyInternal2`` → ``QObject::event`` →
+``PyQtSlotProxy::qt_metacall`` → ``QCoreApplication::postEvent``. Reproduced
+headlessly and bisected. RF-446.
+
+### RF-446
+- **Status:** FIXED (the reported interaction; a narrower hazard remains — see the fix note)
+- **Severity:** S1 (the app dies mid-workflow, losing the session)
+- **Location:** `chisurf/gui/widgets/navigation.py:_on_next_clicked` (started the step's run and advanced in the same turn) with `chisurf/gui/task.py:_on_completed` (dropped the connections and the task from inside the delivery of `bridge.completed`)
+- **Finding:** **Next** triggers the step's Run action — which starts a background task — and immediately switches panel, so the analysis finishes into a panel the shell has already navigated away from *while the next panel is being constructed*. Reproduced headlessly with the reported gesture (set the burst folder, click Next, repeat) under GC pressure: **crashes within ~3 clicks**, every attempt. Bisected: a run alone, 8 rounds, never crashes; a panel switch alone, 8 rounds, never crashes; the two overlapping crash 3/3. Narrowed further inside the overlap: stubbing BVA's `_analysis_done` (the plot update) makes it survive 3/3, while stubbing only the BV4 write still crashes 3/3 — so the fault is the plot update racing the panel switch, not the file writing. Inside `_plot_2d_histogram` no *single* item update is responsible (skipping the image, the mean curve or the error bars each still crashes) — it is the repaint/scene churn of the whole update, which reaches Qt through pyqtgraph's Python-level signals, i.e. through PyQt slot proxies, exactly the frame the report names.
+- **Fix note:** **Next now waits for the step it just started** before advancing
+  (`_wait_for_current_step`, backed by the new `task.running_tasks_under`,
+  which finds the running tasks owned by anything inside the panel). That is
+  also what the button's own tooltip promises — "process all loaded files in
+  this step, **then** go to the next step" — and it removes the overlap the
+  crash needs; a 600 s cap means a wedged task cannot trap the user in a step.
+  The reported gesture now survives **4 × 10 rounds** where it used to die
+  within three. Hardened the task teardown while in here: `_on_completed` no
+  longer disconnects the bridge and drops the task from *inside* the delivery
+  of `bridge.completed` — disconnecting a signal within its own slot destroys
+  the proxy that is executing, and PyQt then defers that proxy's own deletion
+  through the very `postEvent` the crash dies in; the whole teardown is now
+  deferred by one event-loop turn and the bridge is handed to Qt via
+  `deleteLater`. A strong registry (`_ALIVE`) also keeps a discarded task —
+  `ChiSurfProgress.run(...)` as a statement, which is how every caller uses it —
+  from being reclaimed by the cyclic collector mid-dispatch.
+  Pinned by `test_next_waits_for_the_step_it_started`
+  (test/gui/test_navigation_statusbar.py) and two lifetime tests in
+  test/gui/test_background_task.py.
+  **Residual hazard, not fixed:** forcing the overlap by hand — switching panel
+  while a run is in flight, which a *user* can still do by clicking another step
+  — still crashes (2/2 in the harness). The underlying fault is a pyqtgraph
+  plot being updated while the stacked widget switches; it needs a fix in the
+  chiplot/pyqtgraph update path, not in the shell. Recorded in
+  [known issues](/references/known-issues.md).
