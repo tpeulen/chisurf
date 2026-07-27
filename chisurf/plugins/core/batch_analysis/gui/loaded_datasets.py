@@ -11,6 +11,7 @@ from __future__ import annotations
 from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.tooltip_plot import TooltipListItem, dataset_tooltip_html
 
 
 class LoadedDatasetSelector(QtWidgets.QWidget):
@@ -52,7 +53,8 @@ class LoadedDatasetSelector(QtWidgets.QWidget):
             name = (
                 getattr(ds, "name", None) or getattr(ds, "filename", None) or f"Dataset {idx + 1}"
             )
-            item = QtWidgets.QListWidgetItem(f"{idx + 1}. {name}")
+            # Hovering shows the full file name and a preview of the curve.
+            item = TooltipListItem(f"{idx + 1}. {name}", ds, dataset_tooltip_html)
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
             item.setData(QtCore.Qt.UserRole, idx)
             item.setCheckState(QtCore.Qt.Checked if idx in checked else QtCore.Qt.Unchecked)

@@ -1715,8 +1715,18 @@ class Main(
             cb.blockSignals(True)
             cb.clear()
             import chisurf as cs
+            from chisurf.gui.widgets.tooltip_plot import (
+                TooltipStandardItem, dataset_tooltip_html,
+            )
+            model = cb.model()
             for ds in getattr(cs, "imported_datasets", []):
-                cb.addItem(str(getattr(ds, "name", repr(ds))))
+                text = str(getattr(ds, "name", repr(ds)))
+                # Hovering an entry previews the curve (see tooltip_plot); falls
+                # back to a plain entry for non-standard combo models.
+                if hasattr(model, "appendRow"):
+                    model.appendRow(TooltipStandardItem(text, ds, dataset_tooltip_html))
+                else:
+                    cb.addItem(text)
             cb.blockSignals(False)
         except Exception:
             pass

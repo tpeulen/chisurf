@@ -15,9 +15,11 @@ import chisurf.core.decorators
 import chisurf.gui.decorators
 import chisurf.core.settings
 
+import chisurf.gui.tooltip
 import chisurf.gui.widgets
 import chisurf.gui.widgets.experiments.widgets
 from chisurf.core.math.optimization.leastsqbound import OptimizationCancelled
+from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, fit_tooltip_html
 
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 
@@ -135,6 +137,26 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
             menu.addAction("Update").triggered.connect(self.update)
             menu.exec_(event.globalPos())
 
+    @staticmethod
+    def _fit_tooltip(fit_dto: dict) -> str:
+        """Return the hover tooltip of a fit row (name plus data/model preview).
+
+        The row is populated from a transport DTO that carries no curve data, so
+        the fit object is looked up by uid in the process-local fit list. In
+        server mode no such object exists and the plain fit name is shown.
+        """
+        title = fit_dto.get("name") or fit_dto.get("dataset_name", "")
+        uid = str(fit_dto.get("uid", ""))
+        fit = None
+        if uid:
+            for f in getattr(chisurf, "fits", []):
+                if str(getattr(f, "unique_identifier", "")) == uid:
+                    fit = f
+                    break
+        if fit is None:
+            return chisurf.gui.tooltip.wrap_tooltip(title)
+        return fit_tooltip_html(fit, title=title)
+
     def update(self, *args, update_others=True, **kwargs):
         try:
             self.blockSignals(True)
@@ -147,8 +169,12 @@ class ModelDataRepresentationSelector(QtWidgets.QTreeWidget):
                 for nbr, fit_dto in enumerate(fc.list_fits()):
                     widget_name = fit_dto.get("dataset_name", "Unknown")
                     model_name = fit_dto.get("model_name", "Model")
-                    item = QtWidgets.QTreeWidgetItem(self, [str(nbr), widget_name, model_name])
-                    item.setToolTip(1, fit_dto.get("name", widget_name))
+                    # Hovering shows the fit name and, when the fit lives in this
+                    # process, a preview of its data and model curves.
+                    item = TooltipTreeItem(
+                        self, [str(nbr), widget_name, model_name],
+                        key=fit_dto, render_fn=self._fit_tooltip
+                    )
                     item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
         finally:
             self.setUpdatesEnabled(True)

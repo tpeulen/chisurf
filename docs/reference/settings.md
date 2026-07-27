@@ -312,7 +312,30 @@ Fields under `gui.editor` control the integrated text editor:
 - **`fit_models.n_columns`**  
   Number of columns used to arrange fit models in the model‑selection dialog.
 
-#### 1.8.5 Plotting defaults (`gui.plot`)
+#### 1.8.5 Tooltips (`gui.tooltip`)
+
+- **`enabled`**  
+  Install the application‑wide tooltip folding filter
+  (`chisurf/gui/tooltip.py`). With it on, every tooltip in ChiSurf is word‑wrapped
+  instead of rendering as one very wide line.
+
+- **`wrap_width`**  
+  Column at which plain tooltips are folded (default `72` characters).
+  Rich‑text/HTML tooltips are left untouched.
+
+- **`curve_preview.enabled`**  
+  Show a small plot of the curve underneath the file name when hovering a row in
+  a curve list — the dataset list, the IRF / background / linearization
+  selectors, the batch‑analysis dataset list, the dataset combo box, and the fit
+  list (which previews data *and* model). Set to `false` for plain‑text tooltips
+  with the file name only. Previews are painted lazily, on first hover of a row.
+
+- **`curve_preview.width`**, **`curve_preview.height`**  
+  Size of the preview image in pixels (defaults `300` × `140`). Decays spanning
+  more than two decades are drawn on a logarithmic y‑axis (marked `log` in the
+  corner of the thumbnail).
+
+#### 1.8.6 Plotting defaults (`gui.plot`)
 
 Used across the plotting layer (`plots.*`, FCS/PDA widgets, PDA widgets,
 protein MC plots, etc.).

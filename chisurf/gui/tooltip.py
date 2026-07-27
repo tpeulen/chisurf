@@ -14,6 +14,10 @@ Configuration lives in the ChiSurf settings YAML under ``gui.tooltip``::
       tooltip:
         enabled: true      # install the global folding filter
         wrap_width: 72      # fold plain tooltips longer than this many chars
+        curve_preview:
+          enabled: true    # draw a curve thumbnail in dataset/curve tooltips
+          width: 300
+          height: 140
 
 Explicitly multi-line tooltips (already containing newlines) and rich-text/HTML
 tooltips (starting with ``<``) are left untouched — Qt wraps those itself.
@@ -51,6 +55,35 @@ def tooltip_wrap_width() -> int:
 def tooltip_wrapping_enabled() -> bool:
     """Return whether the global tooltip-folding filter should be installed."""
     return bool(_tooltip_cfg().get("enabled", True))
+
+
+def curve_preview_config() -> dict:
+    """Return the ``gui.tooltip.curve_preview`` settings (with defaults filled in).
+
+    Returns
+    -------
+    dict
+        ``{"enabled": bool, "width": int, "height": int}``. Callers that render a
+        curve thumbnail into a tooltip check ``enabled`` first and fall back to a
+        plain-text tooltip when it is ``False``.
+    """
+    cfg = _tooltip_cfg().get("curve_preview", {})
+    if not isinstance(cfg, dict):
+        cfg = {}
+    out = {"enabled": bool(cfg.get("enabled", True)), "width": 300, "height": 140}
+    for key in ("width", "height"):
+        try:
+            value = int(cfg.get(key, out[key]))
+        except (TypeError, ValueError):
+            continue
+        if value > 0:
+            out[key] = value
+    return out
+
+
+def curve_preview_enabled() -> bool:
+    """Return whether curve thumbnails are drawn into tooltips."""
+    return curve_preview_config()["enabled"]
 
 
 def wrap_tooltip(text: str, width: int | None = None) -> str:

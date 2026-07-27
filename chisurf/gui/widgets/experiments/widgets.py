@@ -14,6 +14,7 @@ import chisurf.gui.widgets
 import chisurf.gui.widgets.fio
 from chisurf import typing
 from chisurf.core.experiments.core import reader
+from chisurf.gui.widgets.tooltip_plot import TooltipTreeItem, dataset_tooltip_html
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
 from .fcs import FCSController
@@ -154,6 +155,9 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
             self.setWindowTitle("")
         self.clear()
 
+        # Hovering a row shows the full file name and a preview of the curve; the
+        # preview is painted only when the tooltip is first requested (see
+        # chisurf.gui.widgets.tooltip_plot).
         for nbr, d in enumerate(self.datasets):
             # If group of curves
             if isinstance(d, chisurf.core.data.ExperimentDataGroup):
@@ -161,43 +165,35 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
                     di = d[0]
                     widget_name = pathlib.Path(di.name).name
                     experiment_type = di.experiment.name
-                    item = QtWidgets.QTreeWidgetItem(self, [str(nbr), widget_name, experiment_type])
-                    tooltip = di.filename
-                    if tooltip == "None" or tooltip == "No file":
-                        tooltip = di.name
-                    if hasattr(di, 'meta_data') and di.meta_data and 'filename' in di.meta_data:
-                        tooltip = di.meta_data['filename']
-                    item.setToolTip(1, tooltip)
+                    item = TooltipTreeItem(
+                        self, [str(nbr), widget_name, experiment_type],
+                        key=di, render_fn=dataset_tooltip_html
+                    )
                     item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
                 else:
                     experiment_type = d[0].experiment.name
                     widget_name = pathlib.Path(d[0].name).name
-                    item = QtWidgets.QTreeWidgetItem(self, [str(nbr), widget_name, experiment_type])
+                    item = TooltipTreeItem(
+                        self, [str(nbr), widget_name, experiment_type],
+                        key=d, render_fn=dataset_tooltip_html
+                    )
                     for di in d:
                         fn = di.name
                         experiment_type = di.experiment.name
                         widget_name = pathlib.Path(fn).name
-                        i2 = QtWidgets.QTreeWidgetItem(item, [str(nbr), widget_name, experiment_type])
-                        tooltip = di.filename
-                        if tooltip == "None" or tooltip == "No file":
-                            tooltip = fn
-                        # Check if meta_data contains a filename
-                        if hasattr(di, 'meta_data') and di.meta_data and 'filename' in di.meta_data:
-                            tooltip = di.meta_data['filename']
-                        i2.setToolTip(1, tooltip)
+                        i2 = TooltipTreeItem(
+                            item, [str(nbr), widget_name, experiment_type],
+                            key=di, render_fn=dataset_tooltip_html
+                        )
                         i2.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
             else:
                 fn = d.name
                 widget_name = pathlib.Path(fn).name
                 experiment_type = d.experiment.name
-                item = QtWidgets.QTreeWidgetItem(self, [str(nbr), widget_name, experiment_type])
-                tooltip = d.filename
-                if tooltip == "None" or tooltip == "No file":
-                    tooltip = fn
-                # Check if meta_data contains a filename
-                if hasattr(d, 'meta_data') and d.meta_data and 'filename' in d.meta_data:
-                    tooltip = d.meta_data['filename']
-                item.setToolTip(1, tooltip)
+                item = TooltipTreeItem(
+                    self, [str(nbr), widget_name, experiment_type],
+                    key=d, render_fn=dataset_tooltip_html
+                )
                 item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
 
         # update other instances

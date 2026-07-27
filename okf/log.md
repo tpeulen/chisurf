@@ -2,6 +2,31 @@
 
 ## 2026-07-27
 
+* **A curve list should show its curves.** Hovering a row in the dataset list
+  gave the file name and nothing else — the one thing that distinguishes two
+  similarly named decays is their shape. New
+  `chisurf/gui/widgets/tooltip_plot.py` is the shared implementation: a
+  `QPainter` mini-plot (`render_series_thumbnail`, min/max decimation so a
+  narrow rise is not strided away, automatic log y for ≥ 2 decades, optional
+  shared y for data-vs-model) embedded as a base64 `<img>` under a bold file
+  name, plus lazily-rendering tooltip items for every item-view flavour
+  (`TooltipTreeItem`, `TooltipListItem`, `TooltipStandardItem`, and the existing
+  table `TooltipItem`, moved here). Nothing is painted until Qt first asks for a
+  row's tooltip, so populating a long list stays free.
+
+  Wired into every place that lists curves: `ExperimentalDataSelector` — which
+  is one widget behind ~10 call sites (dataset list, IRF / background /
+  linearization selectors, AutoForm `data` section, several plugins) — the fit
+  list (data + model, resolved from the process-local fits by uid; plain name in
+  server mode), the batch-analysis dataset check-list, and the main-window
+  dataset combo box. `spectra_tooltip.py` now only holds the spectra-specific
+  renderer and builds on the same painter. Configurable and on by default under
+  `gui.tooltip.curve_preview` (`enabled`/`width`/`height`) in
+  `settings_chisurf.yaml`; disabled it degrades to the plain file name.
+  Guardrails in `test/gui/test_tooltip_plot.py`; documented in
+  [subsystems/gui-autoform.md](/subsystems/gui-autoform.md) and
+  `docs/reference/settings.md`.
+
 * **A general table for state *properties*, next to the one for state
   *transitions*.** The acquisition simulator's per-species grid was a bespoke
   90-line widget: rows that grow with the species count, columns that appear when

@@ -61,6 +61,12 @@ gui:
     # Fold long tooltips app-wide so they don't render as one very wide line.
     enabled: true
     wrap_width: 72
+    curve_preview:
+      # Show a small plot of the curve below the file name in the tooltips of
+      # the dataset/curve lists. Set enabled to false for plain-text tooltips.
+      enabled: true
+      width: 300
+      height: 140
   console_init: "%matplotlib inline
 
     %config Completer.use_jedi = False
