@@ -569,10 +569,13 @@ def summarize(
     list of dict
         Per parameter: ``name``, ``mean``, ``sd``, ``quantiles`` (a dict keyed by
         the requested probabilities), ``ess``, ``rhat``, ``tau``, ``mcse``,
-        ``frozen``, ``n_chains``, ``n_draws`` and the applied ``burn_in``.
-        ``frozen`` is ``True`` when every kept draw is identical, which is the
-        one state in which the sample-size statistics are ``nan`` while
-        :math:`\\hat{R}` is a comfortable ``1.0``.
+        ``frozen``, ``n_nonfinite``, ``n_chains``, ``n_draws`` and the applied
+        ``burn_in``. ``frozen`` is ``True`` when every kept draw is identical,
+        which is the one state in which the sample-size statistics are ``nan``
+        while :math:`\\hat{R}` is a comfortable ``1.0``. ``n_nonfinite`` counts
+        the kept draws that are not finite; it is what tells a ``nan``
+        :math:`\\hat{R}` caused by a contaminated chain apart from one caused by
+        too few draws.
     """
     chains = as_chains(samples)
     if burn_in is None:
@@ -620,6 +623,7 @@ def summarize(
             "tau": float(tau[k]),
             "mcse": float(err[k]),
             "frozen": bool(finite.size > 0 and np.ptp(finite) == 0.0),
+            "n_nonfinite": int(column.size - finite.size),
             "n_chains": int(kept.shape[0]),
             "n_draws": int(kept.shape[1]),
             "burn_in": burn_in,
@@ -703,11 +707,37 @@ def convergence_warnings(
             "parameter pinned at a bound, or one the proposal never reaches, "
             "looks like this."
         )
-    stuck = [e for e in summary if not np.isfinite(e.get("rhat", np.nan))]
+    # A non-finite R-hat is three different failures wearing one face, and only
+    # the infinite one is "the chains disagree". Reporting them together points
+    # a reader at the wrong diagnosis for the other two, so each says which it
+    # is; see :func:`rank_normalized_rhat` for where each value comes from.
+    stuck = [e for e in summary if e.get("rhat", np.nan) == np.inf]
     if stuck:
         messages.append(
-            f"{len(stuck)} parameter(s) never moved or disagree completely "
-            f"between chains (e.g. {stuck[0]['name']})."
+            f"{len(stuck)} parameter(s) disagree completely between chains "
+            f"(e.g. {stuck[0]['name']}): R-hat is infinite -- every chain is "
+            "constant on its own while the chains sit at different values, so "
+            "there is no within-chain spread to compare the disagreement to."
+        )
+    undefined = [e for e in summary if np.isnan(e.get("rhat", np.nan))]
+    contaminated = [e for e in undefined if e.get("n_nonfinite", 0) > 0]
+    if contaminated:
+        worst = max(contaminated, key=lambda e: e["n_nonfinite"])
+        messages.append(
+            f"{len(contaminated)} parameter(s) contain non-finite draws "
+            f"(e.g. {worst['name']}, {worst['n_nonfinite']} of "
+            f"{worst['n_chains'] * worst['n_draws']}) -- R-hat and the "
+            "sample-size statistics are undefined for them, not merely poor; "
+            "the location and spread above describe the finite draws only."
+        )
+    too_short = [e for e in undefined if e.get("n_nonfinite", 0) == 0]
+    if too_short:
+        e = too_short[0]
+        messages.append(
+            f"{len(too_short)} parameter(s) have too few draws for R-hat "
+            f"(e.g. {e['name']}: {e['n_chains']} chain(s) x {e['n_draws']} "
+            "draw(s) after burn-in) -- a split half needs two draws, and a "
+            "single chain needs four before its halves can be compared."
         )
     return messages
 

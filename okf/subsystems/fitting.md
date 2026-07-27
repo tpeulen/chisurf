@@ -273,6 +273,13 @@ against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
   perfect — and because R̂ is a comfortable `1.0` here, `summarize` carries a
   `frozen` flag and `convergence_warnings` says so out loud. A parameter pinned
   at a bound, or one the proposal never reaches, is exactly this case.
+- **An undefined R̂ names its own cause.** A non-finite R̂ is three different
+  failures: `inf` (every chain constant on its own, the chains at different
+  values — the only one that means *disagreement*), `nan` from a chain carrying a
+  non-finite draw, and `nan` from too few draws to split. `convergence_warnings`
+  emits one line per cause rather than one line for "not finite", and `summarize`
+  carries `n_nonfinite` — the count of kept draws that are not finite — which is
+  what tells the second apart from the third.
 - All samplers return `chains` (per-chain, not only flattened) and
   `acceptance_rate`. `sample_fit` pools the `n_runs` **independent** runs, writes
   `diagnostics.json` beside `chains/`, logs the warnings and returns the report.

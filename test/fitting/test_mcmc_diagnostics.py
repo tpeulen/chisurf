@@ -234,6 +234,57 @@ def test_a_moving_parameter_is_not_reported_as_frozen():
     assert dg.convergence_warnings([e]) == []
 
 
+def test_an_undefined_rhat_says_which_failure_it_is():
+    """The three non-finite R-hat causes must not share one message.
+
+    ``rank_normalized_rhat`` returns ``inf`` only for chains that genuinely
+    disagree; it returns ``nan`` both for a chain with a non-finite draw and for
+    one that is simply too short to split. Reporting them with a single line
+    ("never moved or disagree completely") named the wrong diagnosis for two of
+    the three, and nothing anywhere said that a chain was contaminated.
+    """
+    disagreeing = np.concatenate(
+        [np.full((1, 5, 1), v) for v in (0.0, 1.0, 2.0, 3.0)], axis=0
+    )
+    contaminated = _ar1(0.5, n=1000, n_chains=4, seed=17).copy()
+    contaminated[0, 10, 0] = np.nan
+    too_short = np.arange(4, dtype=np.float64).reshape(4, 1, 1)
+
+    def _message(chains, name):
+        e = dg.summarize(chains, names=[name], burn_in=0)[0]
+        assert not np.isfinite(e['rhat'])
+        hits = [
+            m for m in dg.convergence_warnings([e])
+            if name in m and 'effective sample size' not in m
+        ]
+        assert len(hits) == 1, hits
+        return hits[0]
+
+    stuck = _message(disagreeing, 'stuck')
+    assert 'disagree completely between chains' in stuck
+    assert 'R-hat is infinite' in stuck
+
+    bad_draw = _message(contaminated, 'bad_draw')
+    assert 'non-finite draws' in bad_draw
+    assert '1 of 4000' in bad_draw
+    assert 'disagree' not in bad_draw
+
+    short = _message(too_short, 'short')
+    assert 'too few draws for R-hat' in short
+    assert '4 chain(s) x 1 draw(s)' in short
+    assert 'disagree' not in short and 'non-finite' not in short
+
+
+def test_summarize_counts_the_non_finite_draws_it_dropped():
+    """``n_nonfinite`` is what separates a contaminated chain from a short one."""
+    chains = _ar1(0.5, n=500, n_chains=2, seed=19).copy()
+    chains[1, 3, 0] = np.inf
+    chains[1, 4, 0] = np.nan
+    e = dg.summarize(chains, names=['x'], burn_in=0)[0]
+    assert e['n_nonfinite'] == 2
+    assert dg.summarize(_ar1(0.5, n=500, n_chains=2, seed=19))[0]['n_nonfinite'] == 0
+
+
 def test_short_chains_degrade_instead_of_raising():
     """Two draws are not enough to diagnose anything, and must not crash."""
     tiny = np.zeros((1, 2, 2))

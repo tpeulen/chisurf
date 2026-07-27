@@ -2,6 +2,16 @@
 
 ## 2026-07-27
 
+* **Sampling diagnostics: an undefined R̂ now says which failure it is (RF-101).**
+  One line — *"never moved or disagree completely between chains"* — was emitted
+  for every non-finite R̂, and only `inf` means that. `nan` arrives from two other
+  places: a chain carrying a non-finite draw, and a chain too short to split. The
+  three are now separate messages, each quoting the number that identifies it (how
+  many of how many draws are non-finite; the actual chains × draws after burn-in).
+  `summarize` carries a new `n_nonfinite` field, which is what makes the
+  contaminated case distinguishable at all — the failure mode RF-100 fixed in the
+  estimators had, until now, no message anywhere that reported it.
+
 * **GUI test: photon-by-photon kinetics, the question a FRET histogram cannot
   answer.** Drove `chisurf.plugins.burst.burst_gs` (Gopich–Szabo) headlessly —
   learned it on its own two-state simulator with the scan, the Viterbi decode and

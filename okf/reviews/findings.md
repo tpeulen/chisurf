@@ -1476,11 +1476,28 @@ forms. Findings RF-098..RF-102.
   [subsystems/fitting.md](/subsystems/fitting.md).
 
 ### RF-101
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (three unrelated conditions are all reported to the user as "never moved or disagree completely between chains")
 - **Location:** `chisurf/core/fitting/diagnostics.py:659-664` (`convergence_warnings`, `stuck = [... not np.isfinite(e["rhat"])]`) against `:358-363` (`rank_normalized_rhat`, which returns `nan` for two different reasons and `inf` for a third)
 - **Finding:** The message is keyed off `rhat` merely being non-finite, but `rank_normalized_rhat` returns `nan` for a chain that is too short (`block.shape[1] < 2`), `nan` for a chain containing any non-finite draw, `nan` for a single chain of fewer than four draws (via `np.var(..., ddof=1)` on one element), and `inf` only for the genuinely stuck case. Verified — all four produce the identical line `1 parameter(s) never moved or disagree completely between chains (e.g. p)`: a 4×1 chain, a 4×1000 chain with one `nan`, a 1×3 chain, and four constant chains at different values. Only the last is what the text describes; for the `nan`-draw case (RF-100) it actively points the reader at the wrong diagnosis, and **no** message anywhere reports that the chain contains non-finite draws. Separate the cases and say which one fired.
-- **Fix note:**
+- **Fix note:** `convergence_warnings` no longer keys one message off "R-hat is
+  not finite". `inf` — the only value that means the chains genuinely disagree —
+  keeps its own line and now says *why* it is infinite (zero within-chain spread
+  against a non-zero between-chain one). `nan` is split in two: `summarize` gained
+  an `n_nonfinite` field (the count of kept draws that are not finite), so a
+  contaminated parameter is reported as such — with how many of how many draws are
+  bad, and the note that the location/spread beside it describe only the finite
+  ones — which is the message RF-100's failure mode had no way to produce before.
+  Everything else undefined is reported as too few draws, quoting the actual
+  `n_chains × n_draws` after burn-in. Pinned by
+  `test/fitting/test_mcmc_diagnostics.py::test_an_undefined_rhat_says_which_failure_it_is`
+  (all three causes, each asserting the other two verdicts are *absent*) and
+  `::test_summarize_counts_the_non_finite_draws_it_dropped`. `test/fitting/`
+  test_mcmc_diagnostics.py (47), test_sampling_diagnostics_report.py and
+  test_sampling_job_reports_convergence.py all green (59 tests); the 9 failures
+  elsewhere in `test/fitting/` (model state, parameter equality, model
+  regression) are pre-existing and untouched by this change. `ruff check` clean
+  on both files.
 
 ### RF-102
 - **Status:** OPEN
