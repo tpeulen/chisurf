@@ -5874,11 +5874,26 @@ defects are. Findings RF-484..RF-492.
 - **Fix note:**
 
 ### RF-487
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (in a PDB without an element column every two-letter element is truncated to one letter: iron becomes fluorine, and magnesium and zinc become `M` and `Z`, which are not elements at all)
 - **Location:** `chisurf/plugins/chimol/chimol/io/structure.py:287` (`_parse_pdb_backbone`: `element = "".join(c for c in atom_name[:2] if c.isalpha()).upper()[:1]`)
 - **Finding:** when columns 77-78 are absent the element is taken as the *first letter* of the atom name. Verified on an eight-record legacy PDB written for the purpose: `[('N','N'), ('CA','C'), ('C','C'), ('O','O'), ('FE','F'), ('MG','M'), ('ZN','Z'), ('CL','C')]` — the `[:1]` is what makes ` CA ` come out as carbon, and it is also what makes `FE` come out as fluorine, `CL` as carbon, and `MG`/`ZN` as symbols that no element table contains. Consumers take the field at face value: `chisurf/plugins/chimol/chimol/cmd/sele_parser.py:891` lowercases `atoms["element"]` and compares, so `select elem fe` matches nothing on such a file while `select elem f` selects the iron; `chisurf/plugins/chimol/chimol/analysis/atom_classes.py:186` classifies from the same field. This is RF-477 with the opposite sign — that one read two letters and turned a backbone Cα into calcium, this one reads one and turns iron into fluorine — and the correct rule is already implemented in-tree by that fix: the element is right-justified in columns 13-14, so a blank or numeric column 13 means a one-letter element (` CA ` → C, `CA  ` → Ca). Port `_element_symbol_from_pdb_line` from `chisurf/plugins/modelling/fret/core/av.py:476` rather than writing a third guess.
-- **Fix note:**
+- **Fix note:** ✅ **FIXED 2026-07-27.** `_parse_pdb_backbone` now calls a new
+  `chimol/io/structure.py::_element_symbol_from_pdb_line`, the rule ported from
+  the RF-477 fix: columns 77-78 verbatim when present, else the atom-name field
+  read by the column rule — a blank or numeric column 13 means a one-letter
+  element (` CA ` → C, `CA  ` → CA, `FE  ` → FE), a two-letter reading is
+  rejected when columns 15-16 carry a digit (`HE21` → H, not helium), and a
+  left-padded metal (` ZN `, ` MG `) still resolves to the pair because there the
+  strict reading is not an element at all. It reads chimol's own periodic table
+  rather than a second copy: `analysis/atom_classes.py::_ATOMIC_NUMBER` is now
+  the public `ATOMIC_NUMBER`, which covers the whole table instead of `av.py`'s
+  17 entries. Test:
+  `chisurf/plugins/chimol/test/test_pdb_element_fallback.py` — 27 cases (22
+  parametrised name/element pairs, the left-padded metals, element-column
+  precedence, a truncated record, and an end-to-end legacy file whose
+  `FE`/`MG`/`ZN`/`CL` come back selectable). Nine of them fail at `HEAD`. The
+  full chimol suite (1532 tests) is green.
 
 ### RF-488
 - **Status:** OPEN

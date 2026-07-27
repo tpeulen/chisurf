@@ -2,6 +2,19 @@
 
 ## 2026-07-27
 
+* **chimol: iron stopped being fluorine (RF-487).** In a PDB without an element
+  column the built-in backbone parser took the *first letter* of the atom name,
+  so `FE` came out as `F`, `CL` as `C`, and `MG`/`ZN` as `M`/`Z` — symbols no
+  element table contains, which is why `select elem fe` matched nothing and the
+  metal class was empty on such a file. `chimol/io/structure.py` now has
+  `_element_symbol_from_pdb_line`, the same column rule the RF-477 fix put into
+  the FRET AV reader (element right-justified in columns 13-14, a digit in
+  columns 15-16 vetoing a two-letter reading), reading chimol's own
+  `analysis/atom_classes.ATOMIC_NUMBER` — promoted from private, and a fuller
+  table than the AV reader's 17 entries. Pinned by
+  `chisurf/plugins/chimol/test/test_pdb_element_fallback.py` (27 cases, 9 of
+  which fail at `HEAD`); the chimol suite (1532 tests) is green.
+
 * **GUI-tester — F-test model comparison (RF-493..RF-495).** Drove
   "is the second lifetime justified?" end to end headlessly: one IBH decay fitted
   with one exponential (χ²ᵣ 1.6259, ν 3267) and with two (χ²ᵣ 1.1340, ν 3265),

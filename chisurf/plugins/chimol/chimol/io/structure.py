@@ -8,6 +8,8 @@ from typing import Callable, Optional, Sequence, Tuple
 import numpy as np
 from qtpy import QtWidgets
 
+from ..analysis.atom_classes import ATOMIC_NUMBER
+
 logger = logging.getLogger(__name__)
 
 StructureFactory = Optional[Callable[[str], object]]
@@ -91,6 +93,49 @@ _ATOM_DTYPE = np.dtype([
     ("element", "U2"),
     ("xyz", float, (3,)),
 ])
+
+
+def _element_symbol_from_pdb_line(line: str) -> str:
+    """Return the element symbol of a PDB ATOM/HETATM record.
+
+    Columns 77-78 carry the element in a modern PDB and are used verbatim when
+    present. Older files leave them empty, and then the element has to come from
+    the atom-name field -- where it is *right-justified in columns 13-14*. A
+    blank or numeric column 13 therefore means a one-letter element, so ``" CA "``
+    is an alpha carbon while ``"CA  "`` is calcium and ``"FE  "`` is iron. A
+    two-letter reading is additionally rejected when columns 15-16 carry a digit,
+    which is how a four-character hydrogen name such as ``"HE21"`` is written --
+    helium would otherwise win.
+
+    Parameters
+    ----------
+    line : str
+        PDB ATOM or HETATM record.
+
+    Returns
+    -------
+    str
+        Upper-case element symbol, or an empty string when the record carries no
+        atom name at all.
+    """
+    symbol = line[76:78].strip().upper()
+    if symbol:
+        return symbol
+
+    name_field = line[12:16].ljust(4).upper()
+    candidate = name_field[:2].strip()
+    if (
+        len(candidate) == 2
+        and candidate in ATOMIC_NUMBER
+        and not any(ch.isdigit() for ch in name_field[2:])
+    ):
+        return candidate
+    letters = "".join(ch for ch in name_field if ch.isalpha())
+    if letters[:1] not in ATOMIC_NUMBER and letters[:2] in ATOMIC_NUMBER:
+        # Left-padding a two-letter element (" ZN ") breaks the column rule, but
+        # here the strict reading is not an element at all, so take the pair.
+        return letters[:2]
+    return letters[:1]
 
 
 def _parse_mmcif_backbone(path: str) -> PdbBackbone:
@@ -279,12 +324,10 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
             except ValueError:
                 res_id = -1
 
-            # Element from columns 77-78 when present, else the leading letters
-            # of the atom name -- enough for CPK colouring and for telling a
-            # backbone carbonyl from anything else.
-            element = line[76:78].strip().upper()
-            if not element:
-                element = "".join(c for c in atom_name[:2] if c.isalpha()).upper()[:1]
+            # Element from columns 77-78 when present, else from the atom-name
+            # columns -- CPK colouring, ``elem`` selections and the metal/solvent
+            # classes all read this field at face value.
+            element = _element_symbol_from_pdb_line(line)
 
             atom_rows.append((atom_name, res_name, chain, res_id, element, xyz))
 

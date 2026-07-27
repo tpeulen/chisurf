@@ -37,6 +37,7 @@ import numpy as np
 
 __all__ = [
     "AtomClasses",
+    "ATOMIC_NUMBER",
     "BACKBONE_NAMES",
     "classify_atoms",
     "is_metal",
@@ -57,8 +58,10 @@ BACKBONE_NAMES: tuple[str, ...] = (
 )
 
 #: Atomic numbers by element symbol, upper-cased. Enough of the table to decide
-#: :func:`is_metal`, which is defined by proton count rather than by symbol.
-_ATOMIC_NUMBER: dict[str, int] = {
+#: :func:`is_metal`, which is defined by proton count rather than by symbol, and
+#: to tell an element symbol from an atom-name prefix when a PDB record carries
+#: no element column (see ``io.structure._element_symbol_from_pdb_line``).
+ATOMIC_NUMBER: dict[str, int] = {
     sym: z
     for z, sym in enumerate(
         """H HE LI BE B C N O F NE NA MG AL SI P S CL AR K CA SC TI V CR MN FE
@@ -122,7 +125,7 @@ def is_metal(elements: np.ndarray) -> np.ndarray:
     ``86``. Expressed as proton counts it needs no periodic-table bookkeeping.
     """
     symbols = np.char.upper(np.char.strip(np.asarray(elements).astype(str)))
-    protons = np.array([_ATOMIC_NUMBER.get(s, 0) for s in symbols], dtype=int)
+    protons = np.array([ATOMIC_NUMBER.get(s, 0) for s in symbols], dtype=int)
     return (
         ((protons > 2) & (protons < 5))
         | ((protons > 10) & (protons < 14))
