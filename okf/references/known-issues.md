@@ -784,3 +784,21 @@ be, because three of them were defects in the code rather than in the tests.
   Porting it means rewriting the notebook onto `mmfdb.repository.MFDatabase` plus
   the `burst_analysis` `BurstWorkflow` facade and re-running every cell — more
   than a path fix, so it is recorded here rather than half-corrected.
+
+- **`test_trajectory_manifests_drive_plugin_discovery` is red against committed
+  state.** Met on 2026-07-27 while migrating the FRET Calculator onto
+  `ChisurfDockTool`. `test/plugins/test_plugin_contracts.py:139` asserts
+  `info["menu_hidden"] == (manifest_id != "traj_tools")` — i.e. the Traj Tools hub
+  must be *visible* in the menu and its child trajectory plugins hidden — but
+  `chisurf/plugins/traj/traj_tools/manifest.json` carries `"menu_hidden": true` at
+  `HEAD`, so the hub hides itself and the assertion trips. Neither file is touched
+  by the migration and both are unmodified in the working tree, so this is
+  committed breakage, not an in-flight edit. Which side is wrong is the open
+  question, and it is exactly the undocumented hub/child `menu_hidden` pattern
+  that [INC-07](../specs/assessment.md#inc-07) still lists as open — deciding it
+  belongs with that finding rather than inside an unrelated dock-base migration.
+  (The sibling failure in the same file,
+  `test_plugin_direct_loadui_string_targets_exist` on a missing
+  `vv_vh_g_factor/gui/wizard.ui`, is *not* committed breakage: that tool is
+  mid-edit in the working tree by a concurrent `.ui`-to-AutoForm port, and the
+  `.ui` never existed at `HEAD`.)

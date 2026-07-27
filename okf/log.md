@@ -2,6 +2,43 @@
 
 ## 2026-07-27
 
+* **The FRET Calculator is the tenth tool on `ChisurfDockTool` (PRD-36), and the
+  first with no file input at all.** `FretCalculatorTool` was a bare
+  `QtWidgets.QMainWindow` re-implementing nothing the base offers, so migrating it
+  is mostly subtraction: it now subclasses `ChisurfDockTool`, sets
+  `tool_settings_name`, and inherits the lazy MMFDB accessors and the
+  declared-message status bar. Geometry deliberately stays owned by the
+  manifest-declared window statefulness (`apply_manifest_statefulness`, which the
+  tool already wired) and the base's `save/restore_window_geometry` helpers are
+  left uncalled — two mechanisms writing one geometry key is worse than either.
+  **The interesting part is the drop.** The base enables window-level path
+  drag-drop for *every* dock tool, and a calculator computes from typed-in
+  parameters, so inheriting it verbatim would accept a dropped file and silently
+  do nothing — a regression the base introduces rather than removes.
+  `on_paths_dropped` is therefore overridden to raise a declared `Information`
+  message ("The FRET Calculator takes no dropped files."), following the
+  `traj_tools` precedent that a panel which cannot take a drop says so.
+  The plugin root also resolves its Qt tool through PEP 562 `__getattr__` now, so
+  `api`/`core`/`backend` import with no Qt binding while the historical
+  `from ...fret_calculator import FretCalculatorTool` keeps working — pinned by a
+  clean-subprocess check, because the GUI tests in the same file legitimately
+  import `gui.tool` into the session and would mask the boundary.
+  Covered by `fret_calculator/tests/test_construction_smoke.py` (4 tests:
+  constructs offscreen as a `ChisurfDockTool` with both tabs and no MMFDB
+  connection on init, the drop is reported and an empty drop stays silent, the
+  lazy attribute resolves and unknown ones still raise, and the headless import
+  boundary). Verified visually: offscreen grabs of both tabs render the AutoForm
+  parameter grid and the two distribution plots, with the info message in the
+  status bar the base creates on first use.
+  Suites: 226 passed (`chisurf/plugins/calculator/`, `test/gui/test_chisurf_dock_tool.py`,
+  `test/test_no_db_writes_in_widget_init.py`, `test/core/test_plugin_registry.py`,
+  `test/core/test_plugin_manifest.py`, `test/plugins/test_all_plugins.py`,
+  `test/plugins/test_plugin_ui_paths_contract.py`). Two failures met in
+  `test/plugins/test_plugin_contracts.py` are unrelated and recorded in
+  [known-issues](references/known-issues.md) — one is a peer's in-flight `.ui`
+  port, the other is `traj_tools`' `menu_hidden` contradicting the hub/child
+  expectation at `HEAD`, which belongs with [INC-07](specs/assessment.md#inc-07).
+
 * **`test/gui` could not be collected at all — one script poisoned the process.**
   `test/gui/test_error_dialog.py` was a manual script that, at *import* time,
   replaced `sys.modules["chisurf.gui"]` with a stub and monkeypatched

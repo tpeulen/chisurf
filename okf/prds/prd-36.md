@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; nine tools are on the base and a backlog of ~15 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; thirteen tools are on the base and a backlog of ~14 tools remains.
 
 # Goal
 
@@ -55,7 +55,8 @@ read-only-construction guard already exist.
 - [x] `tttr/tttr_microtime_shifter` — reference transformer.
 - [x] `tttr/tttr_time_windows` — first rollout; drove the `path_filter` generalization
       (extension-filtered drop list).
-- [x] `burst/accurate_fret`, `microscopy/img_coloc`, `microscopy/img_drift`,
+- [x] `burst/accurate_fret`, `burst/burst_gs`, `microscopy/img_coloc`,
+      `microscopy/img_drift`, `microscopy/img_frc`, `microscopy/img_tracking`,
       `calculator/rics_precision` — born on the base (new tools, never forked the
       boilerplate); they were never on the backlog below.
 - [x] `modelling/fps_json_editor` — priority-B rollout; the base's window-level drop is
@@ -70,6 +71,17 @@ read-only-construction guard already exist.
       trajectory panels share (panels without it say so in the status bar rather than
       swallowing the drop). The tab bar also tracks the active panel now, and the
       duplicated `PotentialEnergyWidget` tab was removed.
+- [x] `calculator/fret_calculator` — priority-B rollout; the first migration of a tool
+      with **no file input at all**. Geometry stays owned by the manifest-declared
+      window statefulness (`apply_manifest_statefulness`) and the base's
+      `save/restore_window_geometry` helpers are deliberately left uncalled, so the
+      two mechanisms do not both write a geometry key; `tool_settings_name` is set
+      per the recipe. Because the base enables window-level drops for every dock
+      tool, `on_paths_dropped` is overridden to raise a declared `Information`
+      message ("takes no dropped files") instead of accepting a drop and doing
+      nothing. The plugin root now resolves its Qt tool through PEP 562
+      `__getattr__`, so `api`/`core`/`backend` import with no Qt binding — pinned by
+      a clean-subprocess boundary check alongside the construction smoke test.
 
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
@@ -91,7 +103,6 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `tttr/tttr_image_browser/gui/tool.py`
 - [ ] `tttr/tttr_lut_tools/gui/tool.py`
 - [ ] `pch/gui/tool.py`
-- [ ] `calculator/fret_calculator/gui/tool.py`
 - [ ] `fluorescence_decay/irf_estimator/gui/tool.py`
 - [ ] `fluorescence_decay/lltf/lltf_gui.py`
 - [ ] `modelling/hydropro/gui/tool.py` (`HydroProTool`; the old top-level

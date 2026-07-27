@@ -1,22 +1,26 @@
 """Combined FRET / HomoFRET Calculator GUI.
 
-Provides a tabbed QMainWindow with two calculator tabs, both backed by the
-new backend services via :class:`FretCalculatorClient`.
+Provides a tabbed window with two calculator tabs, both backed by the new
+backend services via :class:`FretCalculatorClient`. The window itself is a
+:class:`~chisurf.gui.widgets.tools.ChisurfDockTool` (PRD-23 / PRD-36) so
+geometry persistence, the lazy MMFDB accessors, and the declared-message status
+bar come from the shared base rather than being re-implemented here.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.widgets.messages import Msg
+from chisurf.gui.widgets.tools import ChisurfDockTool
+
 from .client import FretCalculatorClient
 
-
-import pathlib
-
-_GUI_DIR = pathlib.Path(__file__).parent
+_GUI_DIR = Path(__file__).parent
 
 
 def _distribution_series(mean, sigma, chi_active, xform=None, wide=False, trim=False):
@@ -147,7 +151,7 @@ def _build_autoform(model, parent):
     directly (``.value()`` / ``.isChecked()``).
     """
     from chisurf.gui.autoform import AutoForm
-    from chisurf.gui.autoform.sections.builtin import ValueWidget, ToggleWidget
+    from chisurf.gui.autoform.sections.builtin import ToggleWidget, ValueWidget
 
     form = AutoForm(model, parent=parent)
     editors: dict[str, QtWidgets.QWidget] = {}
@@ -426,11 +430,21 @@ class _HomoFretTab(QtWidgets.QWidget):
         self.spin_tRM.blockSignals(False)
 
 
-class FretCalculatorTool(QtWidgets.QMainWindow):
+class FretCalculatorTool(ChisurfDockTool):
     """Combined FRET / HomoFRET Calculator.
 
-    Appears in the Plugins menu as ``Main:Tools:FRET-Calculator``.
+    Appears in the Plugins menu as ``Main:Tools:FRET-Calculator``. A calculator
+    has no file inputs, so the base's window-level drop is answered with a
+    standing message instead of being silently swallowed.
     """
+
+    #: QSettings key for the base's geometry helpers (PRD-36 recipe step 1).
+    tool_settings_name: str = "FretCalculatorTool"
+
+    class Information(ChisurfDockTool.Information):
+        """Conditions this tool can report."""
+
+        no_file_input = Msg("The FRET Calculator takes no dropped files.")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -450,17 +464,26 @@ class FretCalculatorTool(QtWidgets.QMainWindow):
 
         # Remember window position/size across sessions. The manifest declares
         # window statefulness; wire it here too so it applies however the plugin
-        # is launched (the helper is idempotent).
+        # is launched (the helper is idempotent). This is the mechanism that owns
+        # geometry for this tool — the base's save/restore_window_geometry
+        # helpers are left uncalled so the two do not both write a geometry key.
         try:
-            import pathlib
-
             from chisurf.core.plugin import load_manifest
             from chisurf.core.plugin.registry import apply_manifest_statefulness
 
-            _manifest = load_manifest(
-                pathlib.Path(__file__).parents[1] / "manifest.json"
-            )
+            _manifest = load_manifest(Path(__file__).parents[1] / "manifest.json")
             if _manifest is not None:
                 apply_manifest_statefulness(self, _manifest)
         except Exception:
             pass
+
+    def on_paths_dropped(self, paths: list[Path]) -> None:
+        """Report that the calculator has no file input.
+
+        The base enables window-level path drag-drop for every dock tool. This
+        tool computes from typed-in parameters, so a dropped path has nowhere to
+        go; say so in the status bar rather than accepting the drop and doing
+        nothing.
+        """
+        if paths:
+            self.Information.no_file_input()
