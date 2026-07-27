@@ -2,6 +2,52 @@
 
 ## 2026-07-27
 
+* **The curve write-lock did not reach the arrays that alias (RF-356, RF-357).**
+  An automated review of the write-lock landed the same hour and found the hole:
+  `x`/`y` are safe because every path rebuilds the 2×N storage with `np.vstack`,
+  but `ex`/`ey`/`mask` never go through that vstack — both paths that produce
+  them (`DataCurve.load` of a 3-, 4- or 5-column CSV, and `set_data`, reached by
+  the `data` setter) store **a row of somebody else's array**. `setflags` then
+  locks the *view* and leaves the buffer writable, so the caller who still holds
+  the source writes straight through the "locked" curve — precisely the failure
+  the lock was added to stop — and, worse, `unlocked('ey')` *raised* on every
+  CSV-loaded curve, because a view cannot be unlocked. That is the only example
+  the `DataCurve` docstring gives.
+  Fixed where the reviewer suggested and where the guarantee belongs: in
+  `NCurve.__setattr__`, an array that does not own its data is copied on the way
+  in. A curve now owns every per-sample array exactly as it already owned its
+  storage, which is also what makes the whole design coherent — the lock only
+  means something on a buffer nobody else holds. No hot path pays for it: the
+  fitting loop writes through `ModelCurve.x`/`.y` and `Curve._set_axis`, neither
+  of which assigns a fresh array, and `np.vstack` results own their data.
+  `_can_unlock` stays as a backstop for an array that reaches `__dict__` some
+  other way (an old pickle), now tested through that path rather than through a
+  constructor that no longer produces one.
+  **RF-357** came out of the same slice, on a line the lock change had touched:
+  `Curve.normalize` divided by a zero factor and left an all-NaN curve behind a
+  bare `RuntimeWarning` while reporting success — reachable from the IRF path,
+  where `lamp_background` is a *fitting parameter* and a background above the
+  whole IRF clips it to zero first, after which the NaN propagates into the model
+  and χ² with nothing raised or logged. The guard already existed on the
+  reference-curve branch and was simply on the wrong side. A zero/non-finite
+  factor (and an empty curve, which used to raise out of the builtin `max()`) now
+  leaves the curve unscaled, logs, and returns `1.0`. Also switched to
+  `np.sum`/`np.max` per the review — the builtins were iterating the array
+  element by element, two orders of magnitude slower on a 64k-point curve.
+  Nine tests added to `test/core/test_curve_locking.py` (`TestOwnership`,
+  `TestNormalize`). `test/core` 905 passed, `test/core` + `test/models` 1189
+  passed / 1 unrelated failure.
+  **One failure investigated and cleared, not mine:** `test_curve.py::test_reading`
+  fails when `test/core` and `test/fitting` run in one process, and passes alone,
+  in `test/core` whole, and in `test/core` + `test/models`. Re-running the exact
+  failing combination with the write-lock neutralised by a pytest plugin
+  (`NCurve.__setattr__` restored to `Base`'s, `lock()` a no-op) reproduces it
+  identically, so it is cross-test pollution in `test/fitting` — where nine other
+  failures already reproduce without any of this work — and not the lock.
+  RF-358 (`NCurve.__getitem__` cannot run) and RF-359 (`Csv.header` counts rows)
+  are left OPEN in the queue: both are pre-existing S3 issues outside this change.
+
+
 * **The light-path `delta` prior is referenced to the acceptor-excitation laser
   (RF-240).** `lightpath_correction_factors` computed `delta` as
   `ex[green, A]/ex[green, D]` — direct acceptor excitation relative to the *donor's*

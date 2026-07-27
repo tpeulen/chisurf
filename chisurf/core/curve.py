@@ -3,6 +3,8 @@ from chisurf import typing
 
 import abc
 import contextlib
+import logging
+
 import numpy as np
 
 import chisurf.core.fio
@@ -11,6 +13,8 @@ import chisurf.core.base
 import chisurf.core.decorators
 import chisurf.core.math
 
+
+logger = logging.getLogger(__name__)
 
 T = typing.TypeVar('T', bound='Curve')
 
@@ -49,7 +53,10 @@ class NCurve(chisurf.core.base.Base):
 
     Assigning an array to a curve transfers ownership of that buffer: the curve
     locks the object it was given, so a caller that keeps writing to the array
-    it passed in will now see the same error.
+    it passed in will now see the same error. An array that does **not** own its
+    data — a row of a larger array, which is what a CSV reader hands out — is
+    copied on the way in, because locking a view leaves the underlying buffer
+    writable and the guarantee would be empty.
     """
 
     #: Names of the per-sample arrays this class write-locks. Subclasses that
@@ -96,6 +103,16 @@ class NCurve(chisurf.core.base.Base):
         to lock, because there is nowhere else for an array to enter.
         """
         if key in self.array_attributes and isinstance(value, np.ndarray):
+            if not value.flags.owndata:
+                # A row of somebody else's array -- `self.ey = csv.data[3]` in
+                # `DataCurve.load`, or any caller passing a slice to `set_data`.
+                # `setflags` would lock the *view* and leave the buffer writable,
+                # so the caller who still holds the source could write straight
+                # through the "locked" curve; and the view could not be unlocked
+                # again, because writing it would reach data the curve does not
+                # own. A curve owns its arrays, exactly as it already owns the
+                # 2xN storage that every path rebuilds with `np.vstack`.
+                value = np.array(value)
             if not self._unlock_depth:
                 value.setflags(write=False)
         super().__setattr__(key, value)
@@ -154,7 +171,10 @@ class NCurve(chisurf.core.base.Base):
             If a name is not one of the curve's arrays.
         ValueError
             If an array is a view into another array, where an in-place write
-            would reach through to data the curve does not own.
+            would reach through to data the curve does not own. Assignment
+            copies such an array, so this is a backstop for state that reached
+            ``__dict__`` some other way (an old pickle, say), not something a
+            caller can normally trip.
 
         Examples
         --------
@@ -514,19 +534,36 @@ class Curve(NCurve):
         :param inplace: if True the Curve object is modified in place. Otherwise, only the scaling parameter
         is returned
         :return: the parameter that scales the Curve object
+
+        An all-zero or empty curve has no scale to normalize against. Dividing
+        by the zero factor filled the curve with NaN behind a bare
+        ``RuntimeWarning`` and still reported success — reachable from the IRF
+        path, where a fittable ``lamp_background`` above the whole IRF clips it
+        to zero first, and the NaN then propagated into the model and χ² with
+        nothing raised or logged anywhere. Such a curve is left alone and ``1.0``
+        is returned.
         """
         factor = 1.0
-        if not isinstance(curve, Curve):
-            if mode == "sum":
-                factor = sum(self.y)
-            elif mode == "max":
-                factor = max(self.y)
-        else:
-            if mode == "sum":
-                factor = sum(self.y) * sum(curve.y)
-            elif mode == "max":
-                if max(self.y) != 0:
-                    factor = max(self.y) * max(curve.y)
+        if self.y.size:
+            # `sum`/`max` here are the *builtins* iterating a NumPy array
+            # element by element -- two orders of magnitude slower than the
+            # NumPy reductions on a 64k-point curve.
+            if not isinstance(curve, Curve):
+                if mode == "sum":
+                    factor = float(np.sum(self.y))
+                elif mode == "max":
+                    factor = float(np.max(self.y))
+            else:
+                if mode == "sum":
+                    factor = float(np.sum(self.y) * np.sum(curve.y))
+                elif mode == "max":
+                    factor = float(np.max(self.y) * np.max(curve.y))
+        if factor == 0.0 or not np.isfinite(factor):
+            logger.warning(
+                "Cannot normalize a curve whose %s is %s; leaving it unscaled.",
+                mode, factor
+            )
+            return 1.0
         if inplace:
             # Not `self.y /= factor`: augmented assignment divides the view in
             # place before the setter ever runs, which the lock rejects.
