@@ -419,6 +419,12 @@ def detect_particles(
             for i in range(n_labels)
             if areas[i] >= min_area and np.isfinite(centres[i][0]) and np.isfinite(centres[i][1])
         ]
+        # Every region can fail ``min_area`` — a frame of hot pixels is exactly
+        # what that cut is for. It contributes nothing rather than reaching the
+        # KD-tree with an empty, one-dimensional point array.
+        if not candidates:
+            continue
+
         # Brightest first, so the survivor of a too-close pair is the brighter.
         candidates.sort(key=lambda c: -c[0])
 

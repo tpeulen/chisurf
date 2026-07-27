@@ -147,6 +147,36 @@ def test_a_flat_frame_yields_nothing_rather_than_one_huge_blob():
     assert len(tk.detect_particles(flat, method="wavelet")) == 0
 
 
+@pytest.mark.parametrize("method", ["wavelet", "quantile"])
+def test_a_frame_whose_regions_are_all_too_small_yields_nothing(method):
+    """Rejecting every region by ``min_area`` must be quiet, not fatal.
+
+    A frame of hot pixels is precisely what ``min_area`` exists to throw away,
+    but with no candidate left the point array handed to the KD-tree had shape
+    ``(0,)`` instead of ``(0, 2)`` and ``cKDTree`` raised ``data must be of
+    shape (n, m)`` — a whole run lost to the one frame the cut was meant to
+    silently discard.
+    """
+    rng = np.random.default_rng(0)
+    image = rng.poisson(np.full((64, 64), 50.0)).astype(float)
+    for y, x in [(10, 10), (30, 30), (50, 50)]:
+        image[y, x] = 5000.0  # one pixel wide each — no region survives min_area
+
+    assert len(tk.detect_particles(image, method=method, min_area=2)) == 0
+
+
+def test_a_dim_movie_is_tracked_rather_than_crashing_on_its_empty_frames():
+    """The same hole on a realistic stack: dim frames must just contribute none."""
+    movie, _ = tk.simulate_particle_movie(
+        n_frames=20, shape=(128, 128), n_particles=8,
+        amplitude=8.0, background=10.0, seed=3,
+    )
+    for threshold in (3.0, 4.0, 5.0):
+        found = tk.detect_particles(movie, method="wavelet", threshold=threshold)
+        assert len(found) >= 0
+        assert np.all(np.isfinite(found.y)) and np.all(np.isfinite(found.x))
+
+
 def test_two_spots_closer_than_the_psf_yield_one_detection():
     """Admitting both would invent a particle for the linker to mis-assign."""
     grid_y = np.arange(64)[:, None]

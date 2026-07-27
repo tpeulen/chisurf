@@ -2,6 +2,19 @@
 
 ## 2026-07-27
 
+* **A frame the particle detector was meant to discard killed the whole run
+  instead (RF-332).** `detect_particles` drops every labelled region smaller than
+  `min_area` — that cut exists precisely for frames of hot pixels — but when it
+  dropped *all* of them the empty candidate list became an `np.array([])` of
+  shape `(0,)`, and `cKDTree` refused it with `data must be of shape (n, m)`.
+  The guard above it only covered the no-region case. It is not an exotic input:
+  a realistic dim movie raises at every threshold the GUI offers, and the
+  exception escapes `detect_particles` entirely, so the CLI dies with a traceback
+  and the GUI reports a scipy shape error. One `if not candidates: continue`
+  before the tree restores the documented behaviour — a frame with nothing in it
+  contributes nothing. Pinned by two tests in
+  `test/microscopy/test_tracking.py` (the hot-pixel frame for both detection
+  methods, and the finding's own dim movie at thresholds 3/4/5).
 * **"Are you sure to quit?" had no No button, so it always quit.** Reported from
   use, and true: the box offered a single *Yes*, and clicking it — or closing the
   box — ended the session either way. The cause is a signature that changed

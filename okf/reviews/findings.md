@@ -3930,11 +3930,16 @@ hold up is the detector's empty-frame path, the meaning of `max_frame_gap`, and
 the simulation's own units. Findings RF-332..RF-335.
 
 ### RF-332
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a frame whose only regions are smaller than `min_area` aborts the whole run with an opaque `scipy` error — that is exactly the hot-pixel / dim-particle frame `min_area` exists to reject)
 - **Location:** `chisurf/core/fluorescence/imaging/tracking.py:430-431` (`points = np.array([[c[1], c[2]] for c in candidates], dtype=float)`; `tree = cKDTree(points)`) — reached from `:417-421`, where every labelled region can be dropped by `areas[i] >= min_area`
 - **Finding:** when the `candidates` list comes out empty the list comprehension yields `np.array([])` of shape `(0,)`, not `(0, 2)`, and `cKDTree` raises `ValueError: data must be of shape (n, m), where there are n points of dimension m`. The branch above it (`if n_labels == 0: continue`) guards the no-region case but not the all-regions-rejected case. Verified two ways: a 64×64 frame carrying three isolated hot pixels raises for **both** methods (`detect_particles(img, method='wavelet', min_area=2)` and `method='quantile'`), and — the case that matters — a realistic dim movie, `simulate_particle_movie(n_frames=20, shape=(128,128), n_particles=8, amplitude=8.0, background=10.0, seed=3)`, raises at `threshold=3, 4` **and** `5`, i.e. at every setting the GUI offers. Nothing downstream softens it: `analyse` catches only `ValueError` *from `fit_msd`*, so the exception escapes `detect_particles` and the CLI dies with a traceback while the GUI shows `Tracking failed: data must be of shape (n, m)…`. One `if not candidates: continue` before the tree restores the documented behaviour (a frame with nothing in it contributes nothing). No test covers it — `test/microscopy/test_tracking.py` only ever detects on frames with real spots.
-- **Fix note:**
+- **Fix note:** FIXED — `detect_particles` now `continue`s the frame when `candidates`
+  is empty, before the KD-tree is built (`chisurf/core/fluorescence/imaging/tracking.py`).
+  Pinned by `test/microscopy/test_tracking.py::test_a_frame_whose_regions_are_all_too_small_yields_nothing`
+  (parametrised over both methods) and
+  `::test_a_dim_movie_is_tracked_rather_than_crashing_on_its_empty_frames`
+  (the finding's dim-movie case at thresholds 3/4/5); all three fail without the guard.
 
 ### RF-333
 - **Status:** OPEN
