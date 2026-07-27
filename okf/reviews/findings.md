@@ -6655,3 +6655,56 @@ in. Findings RF-554..RF-562.
 - **Location:** `chisurf/plugins/microscopy/imaging_tools/gui/tool.py:75` (`_PipelineComputeTask.run`: `self._signals.model_done.emit(role)`) with the owner reference at `:545` (`self._pipeline_signals = signals`), started from `_start_background_compute` (`:521-547`) on every new source
 - **Finding:** the `_PipelineSignals` object lives only on the hub, and the hub can be destroyed while the pooled task is still running, after which the emit hits a deleted C++ object. Reproduced: `set_pipeline(source='test/data/clsm/PQ_Olympus_MFIS.ht3')`, then close and delete the hub 0.3 s later → `RuntimeError: wrapped C/C++ object of type _PipelineSignals has been deleted` on stderr from the worker thread. Picking a source starts this compute automatically, so a user who picks a file and immediately closes the window hits it. Have the task hold its own reference to the signals object (or check `sip.isdeleted` / connect through a `QPointer`-guarded slot) and stop the pool in `closeEvent` before the owner goes away.
 - **Fix note:**
+
+## Review 2026-07-28 — the burst workflow's new panels, and what the kinetics step reads
+
+Slice: `b0576db97` (*the workflow hands its files to every panel*) and the code
+the three new panels reach into. The hand-off itself does what the commit says —
+the appliers match the real panel APIs (`file_list.checked_paths`/`add_paths`,
+`model.bur_files`, `model.set_filename`) and none of them overwrites a user's own
+selection. What they hand the files *to* is the problem: the Gopich–Szabo path
+cannot read a real Seidel/PARIS burst analysis at all, and two of the three
+panels are given files without the settings that say how to read them.
+Findings RF-563..RF-568.
+
+### RF-563
+- **Status:** OPEN
+- **Severity:** S1 (photon-by-photon kinetics cannot load *any* real `.bur` burst analysis — GUI panel, workflow panel and CLI alike — and always fails with a message about the macro-time resolution)
+- **Location:** `chisurf/plugins/burst/burst_gs/core.py:106-115` (`load_photons`: `tttrs = load_tttrs_for_dataframe(table, data_dir, …)` then `first = next(iter(tttrs.values()))` / `macro_time_resolution = float(getattr(first.header, "macro_time_resolution", 0.0))`)
+- **Finding:** a Seidel/PARIS `.bur` is a `2n+1` interleaved table — every other row is an all-zero sentinel whose `First File` cell is the string `"0"` — and `read_bur_file` keeps those rows on purpose, because the `…4` companions align to them by position (documented at `chisurf/core/fio/fluorescence/burst.py:696-712`). So `"0"` is the **first** unique `First File` value, `load_tttrs_for_dataframe` dutifully builds an entry for it, `tttrlib` does not raise on the missing path (it prints `File …/0 not supported.` and returns an empty object), and `next(iter(tttrs.values()))` reads *that* object's header. Verified on the repo's own fixture (`chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All 0.1000#15`, 10 `.bur`, 5970 rows): `unique First File = ['0', 'm000.spc', …]`; `'0' → macro_time_resolution -1.0, 0 photons` against `'m000.spc' → 1.35e-08, 174 438 photons`; every load ends in `ValueError: the macro-time resolution is unknown`. The shipped CLI fails identically *with the correct* `--data-dir`: `burst-gs …/bi4_bur/m000.bur --data-dir …/bh_spc132_sm_dna` → `Could not load the photons: the macro-time resolution is unknown`. Dropping the sentinel rows (`Last Photon > First Photon`) before the TTTR lookup makes the very same call succeed: **2972 bursts, 225 289 photons, resolution 1.35e-08**. Filter the sentinel rows in `load_photons` (or take the resolution from the first entry with a positive one). The suite cannot see this: `chisurf/plugins/burst/burst_gs/test/test_burst_gs.py:162,183` monkeypatch `load_tttrs_for_dataframe` with a one-entry fake, so the guardrail has to run on a real `.bur`.
+- **Fix note:**
+
+### RF-564
+- **Status:** OPEN
+- **Severity:** S2 (a TTTR file that could not be opened is returned as a loaded file, so a wrong data directory reads zero photons and reports something else entirely)
+- **Location:** `chisurf/core/fluorescence/burst/photons.py:292-303` (`load_tttrs_for_dataframe`: `tttrs[ff] = tttrlib.TTTR(str(path), ftype)`, stored unconditionally)
+- **Finding:** the helper's contract is "load the TTTR object referenced by each unique `First File` value", but `tttrlib.TTTR` reports a bad path on stderr and returns an **empty** object rather than raising — verified: an entry for a non-existent file comes back with `len(macro_times) == 0` and `header.macro_time_resolution == -1.0`, and it is stored like any other. Consequently a wrong `data_dir` produces a full dict of empty files, `load_photons`'s own `if not tttrs:` guard ("none of the TTTR files referenced by the burst table could be loaded") never fires, and the user is told the macro-time resolution is unknown instead of which file was not found. Check what came back (photon count / resolution) or `path.exists()` first, and raise — or skip and report — naming the path that failed.
+- **Fix note:**
+
+### RF-565
+- **Status:** OPEN
+- **Severity:** S2 (the documented default for "where the raw TTTR files are" can never be correct for the standard burst-analysis layout, and the workflow hand-off relies on it)
+- **Location:** `chisurf/plugins/burst/burst_gs/gui/view_model.py:160` (`data_dir = self.data_dir or str(pathlib.Path(self.bur_files[0]).parent)`), the same expression in `chisurf/plugins/burst/burst_gs/cli/main.py:88`, its description in `chisurf/plugins/burst/burst_gs/gui/burst_gs.view.json:38` ("Left empty, the burst table's own folder is used"), and `chisurf/plugins/burst/burst_analysis/gui/tool.py:959-970` (`_apply_context_to_burst_gs` sets `bur_files` and nothing else)
+- **Finding:** burst tables live at `<analysis>/bi4_bur/<stem>.bur` while the raw files they name live two levels up, beside the analysis folder — the convention `_companion_base` (`chisurf/core/fio/fluorescence/burst.py:685-693`) already encodes and `_materialize_burst_handoff` (`tool.py:667-669`) itself writes. The fallback therefore resolves to `…/burstwise_All 0.1000#15/bi4_bur`, where no `.spc` exists: verified, every file open fails (`Error opening file: …/bi4_bur/m000.spc`) and, because of RF-564, silently. The workflow makes that the *default* path — it hands over `bur_files` but not `data_dir`, although `workflow_context.raw_files` holds exactly the right folder. Make the fallback layout-aware (`_companion_base(bur).parent` when the table sits in `bi4_bur`/`bur`, its own folder otherwise) and set `model.data_dir` from `raw_files[0].parent` at hand-off.
+- **Fix note:**
+
+### RF-566
+- **Status:** OPEN
+- **Severity:** S2 (the kinetics panel is handed the workflow's files but not its channels, so it reads them with hard-coded routing channels)
+- **Location:** `chisurf/plugins/burst/burst_analysis/gui/tool.py:959-970` (`_apply_context_to_burst_gs`) against `:745-798` (`_apply_context_to_bva` / `_apply_context_to_h2mm`, both `load_data_into_tables(settings)` + `_refresh_detector_combos()`) and `:800-841` (`_apply_context_to_mle`), with the defaults at `chisurf/plugins/burst/burst_gs/gui/view_model.py:35-36` (`donor_channels = "0, 8"`, `acceptor_channels = "1, 9"`)
+- **Finding:** every other analysis panel receives `workflow_context.channel_settings` — the canonical detector setup pulled back from the RPC store — and the new kinetics panel receives only the file list, so it reads the workflow's photons with two literal channel lists nobody chose. `burst_gs.view.json:56-60` states the consequence itself ("Photons in neither list … are dropped"), and a stream that ends up empty is not an error anywhere: measured on the fixture with the acceptor list set to channels the setup does not use, `load_photons` returns 2534 bursts and `photons_per_stream = [157773, 0]`, and `analyse` then reports `success=True` with efficiencies pinned at their bounds (1e-9 / ~1.0) and a rate matrix at 1e6 / 1 — a confident two-state answer fitted to donor-only data. Map the setup's green/red windows onto the two streams at hand-off, as the BVA and H2MM appliers do.
+- **Fix note:**
+
+### RF-567
+- **Status:** OPEN
+- **Severity:** S2 (a colour with zero photons is fitted and reported as a successful kinetic fit)
+- **Location:** `chisurf/plugins/burst/burst_gs/core.py:126-139` (`load_photons` computes `counts = np.bincount(bursts.colors, …)` into `info["photons_per_stream"]` and returns without inspecting it) and `:302-…` (`analyse`, which never checks the per-colour counts either)
+- **Finding:** the two guards that exist are "no burst survived" and "the macro-time resolution is unknown"; a burst set in which one colour is entirely absent passes both, because `min_photons` counts a burst's photons regardless of colour. Measured on the repo fixture with an acceptor channel list that matches nothing: `photons_per_stream = [157773, 0]` over 2534 bursts, and the fit returns `success=True`, `efficiencies = [1e-9, 0.999999999]`, `rate_matrix = [[0, 1e6], [1, 0]]`, `relaxation_times = [1e-6]` — every free parameter driven to a bound, reported like a result. This is what turns a channel mistake (RF-566), a wrong `data_dir` (RF-565) or a mis-set micro-time range into a plausible-looking number instead of a message. Refuse (or loudly warn) when any stream is empty; `info["photons_per_stream"]` is already computed one line above the return.
+- **Fix note:**
+
+### RF-568
+- **Status:** OPEN
+- **Severity:** S3 (the accurate-FRET panel is handed the burst table but not the detector setup the workflow already chose, so its column mapping runs blind and the user is asked for the setup twice)
+- **Location:** `chisurf/plugins/burst/burst_analysis/gui/tool.py:972-986` (`_apply_context_to_accurate_fret` calls only `model.set_filename`) against `chisurf/plugins/burst/accurate_fret/gui/view_model.py:179-198` (`apply_setup_settings`, "the shared setup hook") and `chisurf/plugins/burst/accurate_fret/gui/accurate_fret.view.json:16-19` (the `setup_selector` whose `call` is that method)
+- **Finding:** the model documents the setup as doing two things the calibration needs — its named windows help recognise burst-table columns "even when the table uses site-specific names", and they name the detectors when the optical model supplies the γ/α/δ prior — and the workflow holds exactly that payload in `workflow_context.channel_settings` (`{"windows", "detectors", …}`, read back from the canonical RPC store at `tool.py:580-595`). The hand-off ignores it, so the panel opens with `setup_name == ""` and `detectors == {}`, `_map_columns` runs without the window names, and the step asks the user to pick the setup that step 2 already selected. Call `apply_setup_settings({"name": …, "detectors": settings.get("detectors")})` before `set_filename` so the mapping and the prior see the setup.
+- **Fix note:**
