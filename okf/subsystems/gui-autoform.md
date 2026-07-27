@@ -186,6 +186,35 @@ pins work to a popup even when embedded or headless, so the guard test rejects
 it, and the two further duplicates (a `ProgressWindow` in the photon-filter
 wizard and a dead Qt-free stand-in in the BVA core) are gone.
 
+`chisurf/gui/task.py` — `run_in_background`, also reachable as
+`ChiSurfProgress.run`, is the **execution** half of that seam. `ChiSurfProgress`
+answers "where does this show up" and carries cancellation, but runs nothing, so
+every operation that wanted to stay responsive grew its own executor, cancel
+flag and result-delivery scheme and none of them agreed. The caller now says
+what to run and what to do with the answer; the worker takes a `TaskHandle` as
+its **last positional argument** and reports through it
+(`set_progress`/`set_text`/`set_partial`, `is_cancelled`,
+`raise_if_cancelled`). What that buys, each clause earning its place: every
+callback is delivered **on the GUI thread** (a queued signal bridge), so the
+worker may touch neither widgets nor plots and the caller need not care;
+**partial results** let a plot fill in progressively instead of freezing then
+jumping; **one run per owner** cancels and drops the previous run's result, so a
+double-clicked Compute cannot let the older answer win; cancellation is
+**pushed** to the flag the worker polls; and with no `QApplication` the work
+runs **inline**, so a CLI or a headless test exercises the real call site rather
+than a mock. Starting a task from a completion callback raises, because the
+teardown still running would cancel it. Two teardown paths are easy to get
+wrong and are pinned by tests: a future cancelled while still queued never runs
+and so never emits — the task would stay "running" forever, `on_done` never
+firing — and a superseded task must have its *updates* disconnected but its
+*completion* left connected, or it never finishes its own bookkeeping. A
+standalone tool window renders the run in its own status bar
+(`StatusBarProgressHost`, attached lazily by `find_progress_host`) rather than
+falling through to the modal dialog, which would take back exactly what moving
+the work off the GUI thread bought. First consumer: the PCH tool's histogram
+computation. Pattern taken from an established visual dataflow toolkit — see
+[Orange3 mining](/references/orange3-mining.md).
+
 The `progress` **AutoForm section** (`{"type": "custom", "key": "progress"}`) is
 what makes this wiring-free: the widget itself is a progress host, so a run
 button in the same form is found by walking up from it. Note the bar is normally

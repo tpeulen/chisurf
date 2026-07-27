@@ -471,3 +471,145 @@ class ProgressDialog:
         
         # Start the worker
         self.thread_pool.start(worker)
+
+
+class _StatusBarTask:
+    """One operation's slice of a window's status bar.
+
+    Duck-types the surface :class:`chisurf.gui.progress.ChiSurfProgress` drives
+    (``setLabelText`` / ``setRange`` / ``setValue`` / ``wasCanceled`` /
+    ``finish`` / ``close``), so it is interchangeable with the modal dialog and
+    the inline AutoForm bar.
+    """
+
+    def __init__(self, host: "StatusBarProgressHost", message: str, maximum: int, cancel=None):
+        self._host = host
+        self._cancel = cancel
+        self._cancelled = False
+        self._value = 0
+        self._maximum = int(maximum)
+        host._begin(self, message, self._maximum, cancel is not None)
+
+    # -- the QProgressDialog surface -----------------------------------------
+
+    def setLabelText(self, text: str) -> None:  # noqa: N802 (Qt-style)
+        """Change the message beside the bar."""
+        self._host._set_text(self, str(text))
+
+    def setRange(self, minimum: int, maximum: int) -> None:  # noqa: N802
+        """Set the step range; ``(0, 0)`` renders a busy indicator."""
+        self._maximum = int(maximum)
+        self._host._set_range(self, int(minimum), int(maximum))
+
+    def setValue(self, value: int) -> None:  # noqa: N802
+        """Report that *value* steps are done."""
+        self._value = int(value)
+        self._host._set_value(self, self._value)
+
+    def value(self) -> int:
+        """Steps reported so far."""
+        return self._value
+
+    def maximum(self) -> int:
+        """Steps the operation declared."""
+        return self._maximum
+
+    def wasCanceled(self) -> bool:  # noqa: N802
+        """Whether the user pressed Cancel."""
+        return self._cancelled
+
+    def finish(self, *_args, **_kwargs) -> None:
+        """Release the status bar."""
+        self._host._end(self)
+
+    def close(self) -> None:
+        """Release the status bar."""
+        self._host._end(self)
+
+    # -- from the Cancel button ----------------------------------------------
+
+    def _request_cancel(self) -> None:
+        """Record the request and push it to the work, if it asked to know."""
+        self._cancelled = True
+        if callable(self._cancel):
+            self._cancel()
+
+
+class StatusBarProgressHost(QtWidgets.QWidget):
+    """Renders a tool window's running operation in its own status bar.
+
+    Attached lazily to any ``QMainWindow`` that starts progress without an
+    inline ``progress`` section — see
+    :func:`chisurf.gui.progress.find_progress_host`. A standalone tool would
+    otherwise get a **modal** dialog, which is the wrong answer for work that
+    was moved off the GUI thread to keep the window usable.
+
+    Only the most recent operation is shown; the widget hides itself when none
+    is running, so a tool that never starts one looks unchanged.
+    """
+
+    def __init__(self, window: QtWidgets.QMainWindow):
+        super().__init__()
+        self._task = None
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.setContentsMargins(4, 0, 4, 0)
+        layout.setSpacing(6)
+
+        self._label = QtWidgets.QLabel(self)
+        layout.addWidget(self._label)
+
+        self._bar = QtWidgets.QProgressBar(self)
+        self._bar.setMaximumWidth(140)
+        self._bar.setFixedHeight(12)
+        self._bar.setTextVisible(False)
+        layout.addWidget(self._bar)
+
+        self._cancel_button = QtWidgets.QToolButton(self)
+        self._cancel_button.setText("✕")
+        self._cancel_button.setAutoRaise(True)
+        self._cancel_button.setToolTip("Cancel")
+        self._cancel_button.clicked.connect(self._on_cancel)
+        layout.addWidget(self._cancel_button)
+
+        window.statusBar().addPermanentWidget(self)
+        self.setVisible(False)
+
+    # -- the host contract ----------------------------------------------------
+
+    def begin_task(self, message: str, maximum: int = 0, cancel=None) -> _StatusBarTask:
+        """Start showing an operation. Returns its handle."""
+        return _StatusBarTask(self, message, maximum, cancel)
+
+    # -- driven by the task ---------------------------------------------------
+
+    def _begin(self, task, message: str, maximum: int, cancellable: bool) -> None:
+        self._task = task
+        self._label.setText(message)
+        self._bar.setRange(0, int(maximum))
+        self._bar.setValue(0)
+        self._cancel_button.setVisible(bool(cancellable))
+        self.setVisible(True)
+
+    def _set_text(self, task, text: str) -> None:
+        if task is self._task:
+            self._label.setText(text)
+
+    def _set_range(self, task, minimum: int, maximum: int) -> None:
+        if task is self._task:
+            self._bar.setRange(int(minimum), int(maximum))
+
+    def _set_value(self, task, value: int) -> None:
+        if task is self._task:
+            self._bar.setValue(int(value))
+
+    def _end(self, task) -> None:
+        # A superseded task's `close` must not blank the bar of the one that
+        # replaced it.
+        if task is self._task:
+            self._task = None
+            self._label.clear()
+            self.setVisible(False)
+
+    def _on_cancel(self) -> None:
+        if self._task is not None:
+            self._task._request_cancel()

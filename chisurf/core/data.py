@@ -170,7 +170,17 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
     >>> dc = DataCurve(x=np.array([0.0, 1.0]), y=np.array([1.0, 2.0]))
     >>> dc.data.shape
     (5, 2)
+
+    Notes
+    -----
+    ``ex``, ``ey`` and ``mask`` are per-sample arrays and are write-locked
+    alongside ``x`` and ``y``; see :class:`chisurf.core.curve.NCurve`. Use
+    ``with curve.unlocked('ey'): ...`` to edit one in place.
     """
+
+    array_attributes = chisurf.core.curve.Curve.array_attributes + (
+        "ex", "ey", "mask"
+    )
 
     @property
     def data(self) -> np.ndarray:

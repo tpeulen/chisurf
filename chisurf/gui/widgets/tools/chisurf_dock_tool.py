@@ -18,6 +18,8 @@ from typing import Any, Callable
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.widgets.messages import MessagesMixin, Msg  # noqa: F401 (re-exported)
+
 #: A predicate over a local path string deciding whether a dropped path is accepted.
 PathFilter = Callable[[str], bool]
 
@@ -124,15 +126,36 @@ class PathDropListWidget(QtWidgets.QListWidget):
         return QtCore.Qt.DropAction.CopyAction
 
 
-class ChisurfDockTool(QtWidgets.QMainWindow):
+class ChisurfDockTool(MessagesMixin, QtWidgets.QMainWindow):
     """Base for dockable transformer tools (drag-drop, docks, MMFDB status).
 
     Subclasses build their own widgets/docks/toolbar in ``__init__`` as before;
     this base adds window-level path drag-drop (dispatched to
-    :meth:`on_paths_dropped`), window-geometry persistence helpers, and lazy
-    MMFDB-connectivity accessors. It accepts and forwards ``*args``/``**kwargs`` to
-    ``QMainWindow`` so existing ``super().__init__(*args, **kwargs)`` calls keep
-    working.
+    :meth:`on_paths_dropped`), window-geometry persistence helpers, lazy
+    MMFDB-connectivity accessors, and declared non-modal messages. It accepts and
+    forwards ``*args``/``**kwargs`` to ``QMainWindow`` so existing
+    ``super().__init__(*args, **kwargs)`` calls keep working.
+
+    Messages
+    --------
+    A tool declares the conditions it can be in as :class:`~chisurf.gui.widgets.messages.Msg`
+    attributes on nested ``Error``/``Warning``/``Information`` classes, and raises
+    or retracts them by name::
+
+        class MyTool(ChisurfDockTool):
+            class Error(ChisurfDockTool.Error):
+                no_file = Msg("Load a TTTR file first.")
+
+            def compute(self):
+                if self.path is None:
+                    self.Error.no_file()
+                    return
+                self.Error.no_file.clear()
+
+    The messages appear in the tool's own status bar, which is created on first
+    use, and stay there until retracted. Use :mod:`chisurf.gui.dialogs` for the
+    other kind of message — a question, or an event the user must acknowledge
+    now. See :mod:`chisurf.gui.widgets.messages`.
     """
 
     #: QSettings application key for window-geometry persistence; override per tool.

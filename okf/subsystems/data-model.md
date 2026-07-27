@@ -25,6 +25,50 @@ Numeric data build on the curve stack in `chisurf/core/curve.py`:
 | `ExperimentalData` | `data.py` | `Data` + `data_reader` + `experiment` links |
 | `DataCurve` | `data.py` | `Curve` + `ExperimentalData` + errors/mask |
 
+# Sample arrays are write-locked
+
+A curve is routinely held by several consumers at once — a fit, a plot, a
+plugin, a node in a pipeline — so one of them writing into it in place changes
+everyone else's result with no trace and no error. Every per-sample array a
+curve owns (`d`, and on `DataCurve` also `ex`, `ey`, `mask`) is therefore
+flagged non-writeable, and so is every view taken from it: `curve.y[0] = 1`
+raises `ValueError: assignment destination is read-only`.
+
+Locking happens in `NCurve.__setattr__`, on the way *in* — the names to lock are
+declared in the class attribute `array_attributes`, which subclasses extend, so
+a future assignment cannot forget. `__setstate__` and `__deepcopy__` re-lock,
+because neither pickle nor NumPy's own copy preserves the flag.
+
+Replacing an array wholesale through its setter stays allowed: that rebinds the
+curve's own state rather than the buffer a consumer is holding. What is no
+longer allowed is writing *through* a shared array. In-place editing is not
+forbidden, only made explicit and scoped:
+
+```python
+with curve.unlocked('ey'):
+    curve.ey[:] = 3.0
+```
+
+`unlocked()` takes array names (`'x'` and `'y'` are accepted as aliases for the
+storage `d` that holds them), defaults to all of them, nests, re-locks on the
+way out including after an exception, and **refuses** to unlock an array that is
+a view into another array — writing through such a view would reach data the
+curve does not own. An unknown name is a `KeyError` rather than a silent no-op.
+
+Assigning an array to a curve transfers ownership of that buffer: the curve
+locks the object it was given, so a caller that keeps writing to the array it
+passed in sees the same error.
+
+Two consequences for callers. Augmented assignment on an axis
+(`curve.y /= factor`) divides the view in place before the setter ever runs and
+is rejected — write `curve.y = curve.y / factor`. And the two setters that write
+straight into the storage rather than through `Curve._set_axis`
+(`ModelCurve.x`/`ModelCurve.y`, on the fitting hot path) do so inside
+`unlocked('d')`.
+
+The pattern is taken from the write-locked table of an established visual
+dataflow toolkit — see [Orange3 mining](/references/orange3-mining.md).
+
 # DataCurve — the fittable dataset
 
 `DataCurve` (`chisurf/core/data.py`) is the workhorse experimental dataset:

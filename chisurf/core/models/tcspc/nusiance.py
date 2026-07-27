@@ -547,7 +547,7 @@ class Convolve(FittingParameterGroup):
             y = chisurf.core.math.functions.distributions.generalized_normal_distribution(x, loc, scale, shape, True)
             y *= np.sum(self.data.y)
             irf = chisurf.core.curve.Curve(x=x, y=y)
-            irf.y[irf.y < 1] = 0.0
+            irf.y = np.where(irf.y < 1, 0.0, irf.y)
 
         irf -= self.lamp_background
         irf.y = np.clip(irf.y, 0, None)

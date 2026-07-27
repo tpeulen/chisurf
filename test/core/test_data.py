@@ -142,8 +142,9 @@ class TestDataCurve:
         ``ey`` and ``mask`` have to follow, or ``data``, ``__getitem__`` and
         ``to_dict`` report a dataset whose columns disagree about how long it is.
         """
-        sample_curve.ey[:] = 3.0
-        sample_curve.mask[:] = 0.0
+        with sample_curve.unlocked('ey', 'mask'):
+            sample_curve.ey[:] = 3.0
+            sample_curve.mask[:] = 0.0
         sample_curve.y = np.ones(4)
         assert len(sample_curve.x) == 4
         assert [len(column) for column in sample_curve[:]] == [4] * 5

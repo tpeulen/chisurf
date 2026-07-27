@@ -78,7 +78,8 @@ class Tests(unittest.TestCase):
             y=y,
             copy_array=False
         )
-        c4.x[0] = 11
+        with c4.unlocked():
+            c4.x[0] = 11
         self.assertEqual(c4.x[0], 11)
         self.assertEqual(x[0], 0.0)
 

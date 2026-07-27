@@ -128,7 +128,12 @@ def _collect_from_python(strings: set[str]) -> None:
     Matched call shapes (first argument a string literal):
 
     * ``i18n.tr("…")`` — the canonical form (receiver named ``i18n``);
-    * a bare ``tr("…")`` where ``tr`` is the imported function.
+    * a bare ``tr("…")`` where ``tr`` is the imported function;
+    * ``Msg("…")`` — a declared widget message
+      (:class:`chisurf.gui.widgets.messages.Msg`). Declarations are evaluated at
+      import, long before a translator exists, so the text is translated when the
+      message is rendered; the literal still has to reach the catalogue, and this
+      is the only place it appears.
 
     ``self.tr(...)`` is deliberately **not** matched: Qt resolves it under the
     enclosing class's context, not ``chisurf``, so it would not round-trip
@@ -148,7 +153,7 @@ def _collect_from_python(strings: set[str]) -> None:
                 and func.attr == "tr"
                 and isinstance(func.value, ast.Name)
                 and func.value.id == "i18n"
-            ) or (isinstance(func, ast.Name) and func.id == "tr")
+            ) or (isinstance(func, ast.Name) and func.id in ("tr", "Msg"))
             if not is_tr:
                 continue
             first = node.args[0]

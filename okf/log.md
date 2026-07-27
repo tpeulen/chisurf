@@ -2,6 +2,66 @@
 
 ## 2026-07-27
 
+* **The progress seam grew the half that actually runs the work.** Third harvest
+  from the [mining note](/references/orange3-mining.md), and the cheap one,
+  because the *display* half was already unified: `ChiSurfProgress` resolves
+  where progress shows up (inline AutoForm section → shell status bar → modal →
+  log) and already carries cancellation, but it runs nothing. So every operation
+  that wanted to stay responsive grew its own executor, its own cancel flag and
+  its own way of getting results back, and none of them agreed —
+  `ThreadPoolExecutor`/`QThreadPool` in three unrelated places. Putting the
+  execution half *on top of* that seam instead of beside it is what makes this
+  land without a refactor: all four display backends keep working unchanged and
+  call sites migrate one at a time.
+  `chisurf/gui/task.py` adds `run_in_background`, aliased `ChiSurfProgress.run`
+  so it is discoverable from the class that reports it. The worker takes a
+  `TaskHandle` as its **last positional argument** and reports through it
+  (`set_progress`/`set_fraction`/`set_text`/`set_partial`, `is_cancelled`,
+  `raise_if_cancelled`); the caller passes `on_partial`/`on_result`/`on_error`/
+  `on_done`, all delivered **on the GUI thread** through a queued signal bridge,
+  so the worker may touch neither widgets nor plots and the caller need not care
+  that it is on another thread. `on_error` takes a declared message —
+  `self.Error.compute_failed` — which is exactly the shape it wants, so the two
+  harvests compose. Partial results let a plot fill in progressively instead of
+  freezing then jumping; a repeated progress value is dropped rather than
+  emitted, since a tight loop reporting the same number floods the event queue
+  and makes the GUI *less* responsive than reporting nothing.
+  Two departures from the reference, both because ChiSurf is not canvas-only.
+  With no `QApplication` the work runs **inline** and the callbacks fire in
+  order, so a CLI or a headless test exercises the real call site rather than a
+  mock of it. And a standalone tool window renders the run in **its own status
+  bar** — message, bar, and a ✕ that cancels (`StatusBarProgressHost`, attached
+  lazily by `find_progress_host`) — instead of falling through to the modal
+  dialog, which would take back exactly what moving the work off the GUI thread
+  just bought. That one only became obvious from the screenshot.
+  **Three defects the tests caught, two of which only showed as *slowness*.**
+  A future cancelled while still queued never runs, so it never emits: the task
+  stayed "running" for ever, `on_done` never fired, and anything awaiting it
+  blocked — visible only as two tests taking exactly the 30 s `wait()` timeout
+  and still passing. A superseded task must have its *updates* disconnected but
+  its *completion* left connected; disconnecting the whole bridge (the obvious
+  reading of "drop the stale run") stops the stale result reaching the GUI and
+  also stops the task ever finishing its own bookkeeping, so the owner's button
+  stays disabled for ever. And an owner that cannot be weak-referenced raised
+  `TypeError` out of the `WeakKeyDictionary` lookup at the call site instead of
+  simply going without single-flight. Both hang paths now have named regression
+  tests, because a hang that passes is the kind of thing that silently returns.
+  First consumer: the PCH tool's histogram computation, which called the backend
+  inline — a long file froze the window with no sign of life and no way to stop.
+  Every widget is read on the GUI thread and only plain values cross into the
+  worker, which is the discipline the contract asks for; a malformed channel
+  list is now reported before any work starts rather than as a backend failure.
+  Rendered headlessly running and finished, and inspected: the window repaints
+  while the worker runs, Compute greys out and comes back, the status bar shows
+  "Binning photons…" with a busy bar and a ✕ beside the tool's own transient
+  message, and releases it on completion.
+  25 tests in `test/gui/test_background_task.py`, 3 more in the PCH suite; 32
+  passed with the PCH suite, 51 with the messages suite.
+  Not done: the existing ad-hoc threading sites (fitting, FRET docking, H2MM,
+  staged loading) are **not** migrated — each has its own cancellation story to
+  unpick, and that is the rest of the work.
+
+
 * **chimol: the Demo menu was built and then wiped.** Reported as missing, and it
   was: `_build_view_menu` (where I added it) runs at line 312, and
   `_install_menu_bar` at 420 begins with **`bar.clear()`**. The menu was created

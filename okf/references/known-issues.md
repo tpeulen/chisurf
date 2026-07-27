@@ -641,6 +641,7 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
+
 - **A chimol dock's widgets were reported deleted, and the cause is not pinned
   down.** The report: closing/moving a dock left
   `_update_sequence_view` raising `RuntimeError: wrapped C/C++ object of type
