@@ -1,4 +1,4 @@
-"""GUI entry point for the scan-precision planner (toolbar + AutoForm)."""
+"""GUI entry point for the RICS-precision calculator (toolbar + AutoForm)."""
 
 from __future__ import annotations
 
@@ -43,10 +43,10 @@ class _ComputeTask(QtCore.QRunnable):
         self.signals.finished.emit(ok)
 
 
-class ImgPrecisionTool(ChisurfDockTool):
-    """Drift-correction tool: action toolbar + ``AutoForm(view_model)``."""
+class RicsPrecisionTool(ChisurfDockTool):
+    """RICS-precision calculator: action toolbar + ``AutoForm(view_model)``."""
 
-    tool_settings_name = "ImgPrecisionTool"
+    tool_settings_name = "RicsPrecisionTool"
 
     #: Model events, re-emitted so they are always handled on the GUI thread.
     modelEvent = QtCore.Signal(str)
@@ -55,7 +55,7 @@ class ImgPrecisionTool(ChisurfDockTool):
         super().__init__(parent)
         self._embedded = bool(embedded)
         self.model = view_model or PrecisionViewModel()
-        self.setWindowTitle("Scan precision")
+        self.setWindowTitle("RICS precision")
         self.setMinimumSize(900, 600)
 
         toolbar = QtWidgets.QToolBar()
@@ -67,7 +67,7 @@ class ImgPrecisionTool(ChisurfDockTool):
         a_csv.setToolTip("Write the predicted error against dwell time to a CSV file.")
         a_csv.triggered.connect(self._export_csv)
         # Long help behind a ? at the far right of the toolbar — never inline text.
-        self.add_toolbar_help(toolbar, resource="help.md", title="Scan precision — help")
+        self.add_toolbar_help(toolbar, resource="help.md", title="RICS precision — help")
         self.toolbar = toolbar
         self.addToolBar(toolbar)
 
@@ -100,7 +100,7 @@ class ImgPrecisionTool(ChisurfDockTool):
         if self.model.sweep is None:
             return
         path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "Export precision sweep", "scan_precision.csv", "CSV (*.csv)"
+            self, "Export precision sweep", "rics_precision.csv", "CSV (*.csv)"
         )
         if not path:
             return
@@ -135,4 +135,4 @@ class ImgPrecisionTool(ChisurfDockTool):
         super().closeEvent(event)
 
 
-__all__ = ["ImgPrecisionTool"]
+__all__ = ["RicsPrecisionTool"]

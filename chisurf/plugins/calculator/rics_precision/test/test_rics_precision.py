@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from chisurf.plugins.microscopy.img_precision import core
+from chisurf.plugins.calculator.rics_precision import core
 
 # Small settings throughout: the estimator costs O(n_lags**4) per realisation.
 # Not arbitrarily small, though -- below about three lags the fast end of the
@@ -144,7 +144,7 @@ def test_summary_is_json_friendly():
 # --- the view model --------------------------------------------------------
 def _view_model():
     """Return a view model configured for a fast test run."""
-    from chisurf.plugins.microscopy.img_precision.gui.view_model import (
+    from chisurf.plugins.calculator.rics_precision.gui.view_model import (
         PrecisionViewModel,
     )
 
@@ -237,7 +237,7 @@ def test_cli_predicts_and_exports(tmp_path):
     """The headless path produces the same curve and writes it out."""
     from click.testing import CliRunner
 
-    from chisurf.plugins.microscopy.img_precision.cli import cli
+    from chisurf.plugins.calculator.rics_precision.cli import cli
 
     out = tmp_path / "sweep.csv"
     result = CliRunner().invoke(cli, [
@@ -259,7 +259,7 @@ def test_cli_json_is_machine_readable(tmp_path):
 
     from click.testing import CliRunner
 
-    from chisurf.plugins.microscopy.img_precision.cli import cli
+    from chisurf.plugins.calculator.rics_precision.cli import cli
 
     result = CliRunner().invoke(cli, [
         "10", "--points", "3", "--nx", "32", "--ny", "32", "--frames", "50",
@@ -281,7 +281,7 @@ def test_cli_json_reports_a_total_failure_instead_of_a_curve_of_nulls():
 
     from click.testing import CliRunner
 
-    from chisurf.plugins.microscopy.img_precision.cli import cli
+    from chisurf.plugins.calculator.rics_precision.cli import cli
 
     # no focus at all, so every point in the sweep is unevaluable
     args = ["10", "--points", "3", "--nx", "32", "--ny", "32", "--frames", "50",
@@ -295,26 +295,35 @@ def test_cli_json_reports_a_total_failure_instead_of_a_curve_of_nulls():
     assert CliRunner().invoke(cli, args).exit_code == 1
 
 
-# --- toolbox integration ---------------------------------------------------
-def test_precision_is_registered_in_the_imaging_toolbox():
-    """The planner is the first thing in Image Tools, and outside the pipeline.
+# --- hub integration -------------------------------------------------------
+def test_precision_is_registered_with_the_calculators():
+    """The predictor is a calculator, and is reachable as one.
 
-    Planning precedes acquisition, so the panel sits ahead of the Browser. It
-    is deliberately *not* in ``PIPELINE_ORDER``: the Back/Next walk threads one
-    dataset through the numbered steps, and this tool consumes no data at all.
+    It belongs beside the FRET and FCS calculators because it shares their
+    defining property: it consumes no dataset, and turns typed-in settings into
+    a derived quantity. The entry must point at a widget that actually exists —
+    the hub resolves it lazily, so a wrong path fails only when a user clicks.
+    """
+    import importlib
+
+    from chisurf.plugins.calculator.hub.core.registry import default_calculators
+
+    entry = next(e for e in default_calculators() if e.id == "rics_precision")
+    module_name, attr = entry.widget.split(":", 1)
+    assert hasattr(importlib.import_module(module_name), attr)
+    assert entry.description.strip()
+
+
+def test_precision_is_not_a_panel_of_the_imaging_pipeline():
+    """It is *not* in Image Tools: that toolbox threads one dataset through steps.
+
+    The Back/Next walk carries a recorded dataset from panel to panel, and this
+    tool takes none — it answers before the recording exists.
     """
     from chisurf.plugins.microscopy.imaging_tools.gui.tool import (
         IMAGING_PANELS,
         ImagingToolsTool,
     )
 
-    names = [p["name"] for p in IMAGING_PANELS]
-    roles = [p.get("role") for p in IMAGING_PANELS]
-    assert "precision" in roles, "the planner is not registered in the toolbox"
-
-    assert names.index("Plan") < names.index("Browser")
+    assert "precision" not in [p.get("role") for p in IMAGING_PANELS]
     assert "precision" not in ImagingToolsTool.PIPELINE_ORDER
-
-    panel = IMAGING_PANELS[roles.index("precision")]
-    assert callable(panel["factory"])
-    assert panel["description"].strip()

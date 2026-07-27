@@ -9,17 +9,18 @@ see {ref}`concept-scan-precision`.
 
 ## Open the tool
 
-It lives in **Spectroscopy → Image Tools**, as the **Plan** panel at the top,
-above *Browser*. It sits there because planning comes before acquiring: the
-numbered pipeline below it analyses data you have already recorded, and this
-panel is about the recording you have not made yet. It is deliberately outside
-the **Next ▶** walk for the same reason — it takes no dataset and hands none on.
+It lives in **Main → Tools → Calculators**, as the **📐 RICS precision** entry
+in the calculator list (or standalone as *Main → Tools → RICS-Precision*). It
+sits with the calculators rather than in the imaging pipeline because it is one:
+it consumes no dataset, opens no file and produces no analysis — it turns the
+settings you type in into a predicted error, exactly like the FRET and FCS
+calculators beside it.
 
 ```{figure} figures/precision_workspace.png
 :name: fig-precision-workspace
 :width: 100%
 
-The scan-precision planner. Left: what you are measuring and how you intend to
+The RICS-precision calculator. Left: what you are measuring and how you intend to
 scan it. Right: predicted relative error against pixel dwell time, on log axes,
 with your own setting marked as a diamond. Here the default 8 µs sits just left
 of the minimum near 16 µs — about 1.4× worse, which is not worth changing the
@@ -107,10 +108,10 @@ The same prediction runs from the command line, which is the practical way to
 sweep $D$ rather than the dwell time:
 
 ```bash
-img-precision 10 --pixel-time 8 --nx 64 --ny 64 --frames 100 \
-              --pixel-size 50 --w-r 0.25 --w-z 1.25 \
-              --brightness 100 --n-particles 50 \
-              --out-csv sweep.csv
+rics-precision 10 --pixel-time 8 --nx 64 --ny 64 --frames 100 \
+               --pixel-size 50 --w-r 0.25 --w-z 1.25 \
+               --brightness 100 --n-particles 50 \
+               --out-csv sweep.csv
 ```
 
 It prints the swept table, the best dwell and where your own setting sits;

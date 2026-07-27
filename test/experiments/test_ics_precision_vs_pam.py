@@ -270,7 +270,7 @@ def test_the_deviation_does_not_change_the_advice(scalars, monkeypatch):
     so a large relative change in it moves the predicted error by well under
     the Monte-Carlo uncertainty the prediction already carries.
     """
-    from chisurf.plugins.microscopy.img_precision import core as pc
+    from chisurf.plugins.calculator.rics_precision import core as pc
 
     common = dict(nx=32, ny=32, pixel_size=PS, n_particles=N_PARTICLES,
                   w_r=WR, w_z=WZ, brightness=BRIGHTNESS, n_images=100,

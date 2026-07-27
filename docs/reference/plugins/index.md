@@ -39,7 +39,6 @@ Of the **104 plugins**, **46** build their interface from declarative AutoForm s
 | [Number & Brightness](img_pixel_nb.md) *(hidden)* | Per-pixel Number (N) and Brightness (B) maps from TTTR imaging data. |
 | [PSF Determination](psf_determination.md) *(hidden)* | 3D Gaussian PSF fitting and bead detection for confocal microscopy. |
 | [Phasor-FLIM](img_pixel_phasor.md) *(hidden)* | Per-pixel phasor (g, s) maps and phasor plot from TTTR imaging data. |
-| [Scan Precision](img_precision.md) | Predict how precisely a raster scan will measure a diffusion coefficient, and find the dwell time that measures it best — before the microscope time is spent. |
 
 ## Imaging → Lifetime
 
@@ -71,6 +70,7 @@ Of the **104 plugins**, **46** build their interface from declarative AutoForm s
 | [FRET-Calculator](fret_calculator.md) *(hidden)* | Combined heteroFRET and homoFRET parameter calculator. |
 | [Global View](globalview.md) | Interactive network graph for visualizing and managing parameter relationships across fits in global analysis. |
 | [Phasor-Calculator](phasor_calculator.md) *(hidden)* | Interactive phasor plot: universal semicircle with reference-lifetime grid/ticks, a FRET trajectory and a two-component mixing line. Declarative AutoForm view. |
+| [RICS-Precision](rics_precision.md) | Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent. |
 | [Wizards](wizards.md) | Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view. |
 | [ndXplorer](ndxplorer.md) | Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data. |
 

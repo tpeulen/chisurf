@@ -2,6 +2,36 @@
 
 ## 2026-07-27
 
+* **The RICS-precision predictor moved out of imaging and in with the calculators.**
+  `microscopy/img_precision` is now `calculator/rics_precision` (plugin id
+  `rics_precision`, `RicsPrecisionTool`, CLI `rics-precision`), registered in the
+  Calculators hub and reachable as *Main → Tools → Calculators → 📐 RICS precision*.
+  It was the odd one out where it sat: the Image-Tools toolbox threads **one
+  dataset** from panel to panel along `PIPELINE_ORDER`, and this tool consumes no
+  dataset at all — it turns typed-in acquisition settings into a predicted error,
+  which is the defining property of the calculator group. The **Plan** panel and its
+  factory are gone from `imaging_tools`; the compute (`core/experiments/ics/precision.py`,
+  the MIA `RICSPE` port) did not move. The hub entry points across plugin trees, as
+  the FRET-line, FCS and F-test entries already do, so nothing else has to know
+  where the package lives. The toolbox-placement test became two: one pinning the
+  hub registration, one pinning that it is *not* a pipeline panel.
+  **Two defects that only the rendered widget could show.** Selecting an entry in
+  the hub made its label **vanish**: the stylesheet defines no `::item:selected`,
+  so Qt paints the row in `HighlightedText` — white on this palette's near-white
+  highlight — and the one label the user could not read was the one they had just
+  clicked. Fixed in both hubs (calculators *and* wizards, which share the
+  stylesheet) with a tinted row that keeps the ordinary text colour, legible in
+  either theme, focused or not. Second, the settings form was laid out in the
+  global two-column default and did not fit its dock at any realistic width: the
+  right-hand editor of every row was clipped and the panel grew a horizontal
+  scrollbar — standalone as well as embedded, so the shipped guide figure had it
+  too. The four settings panels now declare `n_col: 1`, which fits with vertical
+  room to spare; `docs/guides/figures/precision_workspace.png` regenerated.
+  Docs: guide 45 rewritten to open the tool in the hub, `rics-precision` in the
+  headless section, plugin reference regenerated (`rics_precision.md`), and the OKF
+  row carried from [imaging](/plugins/imaging.md) to [calculator](/plugins/calculator.md).
+  Suites: 37 (plugin + hub) + 104 (`test_all_plugins`) = 141 passed.
+
 * **Six review findings on the declared-messages work, all fixed (RF-366..RF-371).**
   Three are in the seam itself. `install_message_bar` built the bar **parentless**
   and only reparented it when the host was a layout or a status bar, so the

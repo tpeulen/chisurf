@@ -1,4 +1,4 @@
-"""Qt-free view model for the scan-precision planner."""
+"""Qt-free view model for the RICS-precision calculator."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ _VIEW_JSON = pathlib.Path(__file__).parent / "precision.view.json"
 
 
 class PrecisionViewModel:
-    """Settings and results for one scan-precision prediction."""
+    """Settings and results for one RICS-precision prediction."""
 
     def __init__(self) -> None:
         """Initialize with a typical confocal acquisition."""

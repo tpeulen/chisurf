@@ -56,7 +56,7 @@ read-only-construction guard already exist.
 - [x] `tttr/tttr_time_windows` — first rollout; drove the `path_filter` generalization
       (extension-filtered drop list).
 - [x] `burst/accurate_fret`, `microscopy/img_coloc`, `microscopy/img_drift`,
-      `microscopy/img_precision` — born on the base (new tools, never forked the
+      `calculator/rics_precision` — born on the base (new tools, never forked the
       boilerplate); they were never on the backlog below.
 - [x] `modelling/fps_json_editor` — priority-B rollout; the base's window-level drop is
       overridden to load the first dropped `*.fps.json` into the editor, geometry is

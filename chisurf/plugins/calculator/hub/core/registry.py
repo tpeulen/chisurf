@@ -73,6 +73,17 @@ def default_calculators() -> list[CalculatorEntry]:
             icon="🌀",
         ),
         CalculatorEntry(
+            id="rics_precision",
+            label="RICS precision",
+            description=(
+                "Predict how precisely a raster scan would measure a diffusion "
+                "coefficient, and sweep the pixel dwell time to find the one that "
+                "measures it best — from the intended settings, before acquiring."
+            ),
+            widget="chisurf.plugins.calculator.rics_precision.gui.tool:RicsPrecisionTool",
+            icon="📐",
+        ),
+        CalculatorEntry(
             id="phasor",
             label="Phasor plot",
             description=(

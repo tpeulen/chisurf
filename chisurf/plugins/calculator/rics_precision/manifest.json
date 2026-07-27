@@ -1,0 +1,15 @@
+{
+  "id": "rics_precision",
+  "version": "1.0.0",
+  "display_name": "Main:Tools:RICS-Precision",
+  "description": "Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Main", "Tools"],
+  "icon": "📐",
+  "state_namespace": "rics_precision",
+  "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},
+  "entrypoints": {
+    "gui": "chisurf.plugins.calculator.rics_precision.gui.tool:RicsPrecisionTool",
+    "cli": "rics-precision=chisurf.plugins.calculator.rics_precision.cli:cli"
+  }
+}

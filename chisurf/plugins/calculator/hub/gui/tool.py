@@ -80,6 +80,18 @@ class CalculatorHub(QtWidgets.QWidget):
                 font-weight: bold;
                 font-size: 14px;
             }
+            /* Qt paints the selected row in HighlightedText, which this palette
+               renders white on an almost-white highlight -- the label of the
+               entry the user just picked was the one label they could not read.
+               Tint the row instead and keep the ordinary text colour, so it
+               stays legible in both the light and the dark theme, focused or
+               not. */
+            QListWidget::item:selected,
+            QListWidget::item:selected:active,
+            QListWidget::item:selected:!active {
+                background: rgba(128, 160, 210, 0.35);
+                color: palette(text);
+            }
             """
         )
         for entry in self._entries:

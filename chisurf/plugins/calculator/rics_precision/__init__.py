@@ -1,4 +1,4 @@
-"""Scan-precision planner: how well a planned acquisition would measure D."""
+"""RICS-precision calculator: how well a planned raster scan would measure D."""
 
 from .core import (
     PrecisionSweep,

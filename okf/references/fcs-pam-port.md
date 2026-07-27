@@ -107,7 +107,7 @@ lag-time identity.
 | `Do_FLIM` and friends | `img_pixel_phasor`, `img_pixel_mle`, `sm_image_mle` |
 | `MIA_Drift` | `img_drift` — and photon streams are corrected photon-by-photon |
 | freehand / arbitrary-region / Cellpose ROI | `core/roi/` (`arbitrary_region`, `rois_from_cellpose`) |
-| `RICSPE` | `core/experiments/ics/precision.py` + the `img_precision` planner |
+| `RICSPE` | `core/experiments/ics/precision.py` + the `rics_precision` calculator |
 | `rFRAP` | `core/fluorescence/imaging/frap.py` |
 | `Do_FRET` (ratiometric) | `core/fluorescence/imaging/ratio_fret.py` |
 

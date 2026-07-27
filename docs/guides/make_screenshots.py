@@ -263,16 +263,16 @@ def _grab_drift_tool():
 
 
 def _grab_precision_tool():
-    """Grab the scan-precision planner (guide 45).
+    """Grab the RICS-precision calculator (guide 45).
 
     The tool needs no data at all -- it answers from the settings alone -- so
     this is simply the default acquisition, predicted. The default deliberately
     sits *beside* the optimum rather than on it, so the figure shows the marker
     off the minimum, which is the thing the tool exists to tell you.
     """
-    from chisurf.plugins.microscopy.img_precision.gui.tool import ImgPrecisionTool
+    from chisurf.plugins.calculator.rics_precision.gui.tool import RicsPrecisionTool
 
-    tool = ImgPrecisionTool()
+    tool = RicsPrecisionTool()
     tool.model.compute()
     tool.resize(1400, 760)
     tool.show()

@@ -1,18 +1,18 @@
-(plugin-img_precision)=
-# Scan Precision
+(plugin-rics_precision)=
+# RICS-Precision
 
-Predict how precisely a raster scan will measure a diffusion coefficient, and find the dwell time that measures it best — before the microscope time is spent.
+Predict how precisely a raster scan (RICS) will measure a diffusion coefficient, and find the dwell time that measures it best — from the intended settings alone, before the microscope time is spent.
 
 ## Identity
 
 | Field | Value |
 | --- | --- |
-| Plugin id | `img_precision` |
-| Menu path | Imaging → **Scan Precision** |
-| Categories | Imaging |
+| Plugin id | `rics_precision` |
+| Menu path | Main → Tools → **RICS-Precision** |
+| Categories | Main, Tools |
 | Version | 1.0.0 |
 | Surfaces | cli, gui |
-| State namespace | `img_precision` |
+| State namespace | `rics_precision` |
 
 ## Parameters
 
@@ -55,6 +55,6 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 ## Source
 
-- Plugin package: `chisurf/plugins/microscopy/img_precision/`
-- Manifest: `chisurf/plugins/microscopy/img_precision/manifest.json`
-- UI spec: `chisurf/plugins/microscopy/img_precision/gui/precision.view.json`
+- Plugin package: `chisurf/plugins/calculator/rics_precision/`
+- Manifest: `chisurf/plugins/calculator/rics_precision/manifest.json`
+- UI spec: `chisurf/plugins/calculator/rics_precision/gui/precision.view.json`

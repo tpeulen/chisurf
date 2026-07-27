@@ -1,4 +1,4 @@
-# Scan precision
+# RICS precision
 
 How well will this scan measure a diffusion coefficient? Answered before the
 microscope time is spent, rather than after.

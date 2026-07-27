@@ -3,9 +3,9 @@
   "sections": [
     {
       "type": "dock_area",
-      "title": "Scan precision",
+      "title": "RICS precision",
       "split": "horizontal",
-      "persist": "img_precision",
+      "persist": "rics_precision",
       "sections": [
         {
           "type": "panel",
@@ -17,6 +17,7 @@
               "type": "panel",
               "title": "Sample",
               "collapsed": false,
+              "n_col": 1,
               "sections": [
                 {
                   "type": "value",
@@ -45,6 +46,7 @@
               "type": "panel",
               "title": "Optics",
               "collapsed": false,
+              "n_col": 1,
               "sections": [
                 {
                   "type": "value", "attr": "w_r", "label": "w_r [µm]",
@@ -71,6 +73,7 @@
               "type": "panel",
               "title": "Scan",
               "collapsed": false,
+              "n_col": 1,
               "sections": [
                 {
                   "type": "value", "attr": "pixel_time_us", "label": "Pixel dwell [µs]",
@@ -103,6 +106,7 @@
               "type": "panel",
               "title": "Estimator",
               "collapsed": true,
+              "n_col": 1,
               "sections": [
                 {
                   "type": "value", "attr": "n_lags", "label": "Lags fitted",
