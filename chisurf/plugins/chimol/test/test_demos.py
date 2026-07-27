@@ -188,15 +188,48 @@ def test_count_states_reports_the_trajectory_length(trajectory):
     assert shared.count_states("all") == _frames(win.viewer).shape[0] > 1
 
 
-def test_count_states_works_without_an_atom_array(trajectory):
-    """A coarse-grained model has coordinates and no atoms.
+def test_the_trajectory_topology_is_read(trajectory):
+    """An MDTraj file carries atom names and residues; they must arrive.
 
-    That is exactly what chisurf's modelling produces, so refusing it would make
-    these commands useless for the case they are most wanted for.
+    This test used to assert the opposite -- that the fixture had *no* atoms,
+    "because it is coarse-grained". That was my wrong reading: the file is
+    all-atom, and the 15.3 A "bead spacing" I measured was in scene units
+    (1.53 A in the file, an ordinary bond). The loader was dropping
+    ``traj.topology``, so every feature keyed on atom identity degraded silently.
     """
-    win, shared, _errors, _qapp = trajectory
+    win, _shared, _errors, _qapp = trajectory
     state = win.viewer._objects[win.viewer.get_active_object_id()].state
-    assert state.atoms is None, "the fixture should be coarse-grained"
+    assert state.atoms is not None, "the topology was dropped at load"
+    assert len(state.atoms) == np.asarray(state.frames_raw).shape[1]
+    names = {str(n).strip() for n in state.atoms["atom_name"][:40]}
+    assert "CA" in names, "no alpha carbons: the topology is not real"
+    assert state.residue_ids is not None and len(state.residue_ids) > 100
+
+
+def test_the_cartoon_is_whole_rather_than_fragmented(trajectory):
+    """Without residues the builder splines through every atom.
+
+    That drew ~340 disconnected pieces instead of one ribbon per chain, and is
+    what "cartoons do not work on trajectories" actually was.
+    """
+    win, shared, _errors, qapp = trajectory
+    shared.do("hide everything")
+    shared.do("show cartoon, polymer")
+    for _ in range(20):
+        qapp.processEvents()
+    pieces = len(win.viewer.get_current_scene().objects)
+    assert 0 < pieces <= 10, f"{pieces} cartoon pieces: the ribbon is fragmented"
+
+
+def test_a_selection_resolves_on_a_trajectory(trajectory):
+    """`intra_fit polymer` needs this, and it silently matched nothing before."""
+    win, shared, _errors, _qapp = trajectory
+    _obj, _name, mask = shared._resolve_selection_to_atom_mask(win.viewer, "polymer")
+    assert int(np.asarray(mask, dtype=bool).sum()) > 1000
+
+
+def test_count_states_reports_the_length(trajectory):
+    win, shared, _errors, _qapp = trajectory
     assert shared.count_states("all") > 1
 
 

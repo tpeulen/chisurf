@@ -641,33 +641,6 @@ be, because three of them were defects in the code rather than in the tests.
   another instance's uncommitted work.
 
 # Deferred enhancements
-- **An MDTraj trajectory loads without its topology, so the cartoon fragments.**
-  `hgbp1_transition.h5` is **all-atom** — 2 chains, 151 residues, real atom names
-  (N, CA, CB, CG, SD…), coordinates in nanometres. `load_trajectory_frames`
-  converts nm→Å correctly but returns **coordinates only**, dropping
-  `traj.topology` on the floor.
-
-  Everything keyed on atom identity then degrades *silently*: the cartoon builder
-  has no CA atoms to spline through and treats all 5235 atoms as trace points,
-  drawing ~340 disconnected fragments; `intra_fit polymer` cannot resolve a
-  selection; the sequence view is empty. Nothing errors.
-
-  **`load_trajectory_atoms` is written and verified** — it returns 5235 atoms with
-  correct names and residues from the file's topology — but **wiring it into the
-  loader is unfinished**. Attaching the atom array before `set_frames` is
-  discarded (that call rebuilds state from the coordinates); attaching it after,
-  with a `set_coordinates` to refresh, destroyed the frames instead. The
-  interaction between `add_coordinates`, `set_frames` and `set_coordinates` needs
-  to be understood before the attachment point can be chosen — that is the next
-  step, and it is a small one once that ordering is clear.
-
-  **A previous revision of this entry said the file was coarse-grained and the
-  cartoon was therefore the wrong representation. That was wrong.** The median
-  15.3 Å "bead spacing" I measured was scene units — 1.53 Å in the file, an
-  ordinary covalent bond. The user corrected it. The lesson is the one this
-  effort keeps relearning: check which unit a number is in before drawing a
-  conclusion from it.
-
 - **A chimol dock's widgets were reported deleted, and the cause is not pinned
   down.** The report: closing/moving a dock left
   `_update_sequence_view` raising `RuntimeError: wrapped C/C++ object of type

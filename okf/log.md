@@ -2,6 +2,41 @@
 
 ## 2026-07-27
 
+* **chimol: an MDTraj trajectory now arrives with its topology — cartoons on
+  trajectories work.** The user said `hgbp1_transition.h5` is all-atom and
+  suspected a scale issue. Both correct.
+
+  I had called it coarse-grained and concluded the cartoon was simply the wrong
+  representation. **The mistake was a unit error**: the "median 15.3 Å bead
+  spacing" I measured was in *scene* units. In the file it is 0.153 nm — 1.53 Å,
+  an ordinary covalent bond. The file has 2 chains, 151 residues per chain and
+  real atom names.
+
+  The real cause: `load_trajectory_frames` converts nm→Å correctly but returns
+  **coordinates only**, dropping `traj.topology`. Everything keyed on atom
+  identity then degraded *silently* — the cartoon builder splined through all
+  5235 atoms instead of the CAs and drew ~340 disconnected fragments,
+  `intra_fit polymer` matched nothing, the sequence view was empty. Nothing
+  errored.
+
+  Fixed by going in through **`set_structure`** — the path a PDB load takes,
+  which builds the residues, the CA trace and the secondary structure — rather
+  than `add_coordinates`. Now: **5235 atoms, 570 residues, 2 cartoon pieces**
+  (one per chain), `polymer` selects all of them, and the ribbon animates. The
+  render shows hGBP1 properly: the globular GTPase domain with its β-sheet and
+  the long helical stalk.
+
+  Two earlier attempts failed and are worth recording, because both were
+  *plausible*: attaching the atom array before `set_frames`, and attaching it
+  after with a `set_coordinates` refresh. The first was discarded, the second
+  destroyed the frames. Neither was the right seam; `set_structure` was, and it
+  already existed.
+
+  A test of mine asserted `state.atoms is None` with the comment "the fixture
+  should be coarse-grained" — encoding my wrong belief. Replaced with four tests
+  that assert what is true: the topology arrives, the cartoon is whole rather
+  than fragmented, a selection resolves, and the states are counted.
+
 * **A curve list should show its curves.** Hovering a row in the dataset list
   gave the file name and nothing else — the one thing that distinguishes two
   similarly named decays is their shape. New

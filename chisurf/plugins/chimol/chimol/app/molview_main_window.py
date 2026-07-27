@@ -1837,11 +1837,52 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     )
 
                 first = arr[0]
-                object_id = self.viewer.add_coordinates(
-                    np.asarray(first, dtype=float),
-                    name=display_name,
-                    source_path=source_path,
-                )
+
+                # If the file carries a topology, go in through `set_structure`
+                # -- the same path a PDB takes -- rather than `add_coordinates`.
+                # That is what builds the residues, the CA trace and the
+                # secondary structure a cartoon needs. Without it an all-atom
+                # trajectory arrives as bare points, and every feature keyed on
+                # atom identity degrades *silently*: the cartoon splines through
+                # all 5235 atoms instead of the CAs, `intra_fit polymer` cannot
+                # resolve a selection, the sequence view is empty. Nothing
+                # errors, which is why it read as "cartoons do not work on
+                # trajectories".
+                object_id = None
+                try:
+                    from ..io.structure import load_trajectory_atoms
+
+                    traj_atoms = load_trajectory_atoms(path, first)
+                except Exception:
+                    traj_atoms = None
+
+                if traj_atoms is not None:
+                    class _TrajectoryStructure:
+                        """The shape :meth:`set_structure` reads."""
+
+                    structure = _TrajectoryStructure()
+                    structure.atoms = traj_atoms
+                    structure.xyz = np.asarray(traj_atoms["xyz"], dtype=float)
+                    structure.n_atoms = int(len(traj_atoms))
+                    try:
+                        entry = self.viewer._create_object(name=display_name)
+                        entry.source_path = source_path
+                        object_id = entry.object_id
+                        self.viewer.set_active_object(object_id)
+                        self.viewer.set_structure(structure)
+                    except Exception:
+                        logging.getLogger(__name__).warning(
+                            "chimol: could not build the trajectory topology; "
+                            "falling back to bare coordinates", exc_info=True,
+                        )
+                        object_id = None
+
+                if object_id is None:
+                    object_id = self.viewer.add_coordinates(
+                        np.asarray(first, dtype=float),
+                        name=display_name,
+                        source_path=source_path,
+                    )
 
                 try:
                     self.viewer.set_frames(arr, object_id=object_id)
@@ -1849,6 +1890,8 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     # If anything goes wrong, we still keep the first frame as a
                     # static coordinate set.
                     pass
+
+
 
                 n_atoms = int(first.shape[0])
 

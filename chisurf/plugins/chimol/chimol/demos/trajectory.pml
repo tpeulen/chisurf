@@ -4,13 +4,12 @@
 # it the movie shows the model tumbling and the conformational change is buried
 # under rigid-body drift.
 #
-# `trace` rather than `cartoon`: the H5 loader does not yet read the file's
-# topology, so the residues a ribbon needs are missing and a cartoon comes out
-# fragmented. The file *is* all-atom -- see okf/references/known-issues.md.
+# The file is all-atom and its topology is read, so `cartoon` works: the
+# globular GTPase domain and the long helical stalk are both drawn as a ribbon.
 load hgbp1_transition.h5
 bg_color white
 hide everything
-show trace
+show cartoon, polymer
 count_states
 intra_rms all, 1
 intra_fit all, 1
