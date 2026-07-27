@@ -70,9 +70,10 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — one of the two warnings in an otherwise clean build | ~~VERIFIED~~ ✅ FIXED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
-| [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | VERIFIED |
+| [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | ~~VERIFIED~~ ✅ FIXED |
+| [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | VERIFIED |
 
-38 findings (25 FIXED): 4 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
+39 findings (26 FIXED): 4 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
 Of the 13 open: 1×S1 (BUG-10), 4×S2, 8×S3.
 
 ---
@@ -620,3 +621,30 @@ live, and importing it executes the package `__init__`, which pulls in the shims
 `DeprecationWarning` on every ChiSurf start. → Delete the six dead modules, port
 `regenerate_curated_db.py` onto `mmfdb.repository` or retire it, and give `pdbx_metadata.py`
 a home outside the deprecated package.
+
+**✅ Fixed 2026-07-27.** The `db/` package is gone: the six dead modules and the shim
+`__init__` are deleted, `pdbx_metadata.py` moved up to `chisurf/core/fio/mmcif/` (its two
+GUI callers retargeted), and `sample_management.db` moved beside it (`MANIFEST.in` updated).
+`build_tools/regenerate_curated_db.py` is ported onto `mmfdb.repository` /
+`mmfdb.provenance.result_registry` and now runs end-to-end again — 139 rows across 19 tables,
+`register_raw_measurement` round trip, 0 FK violations. Nothing imports a deprecation shim at
+ChiSurf start any more. Six new parametrised tests in `test/core/test_pdbx_metadata_keys.py`
+pin every removed module as unimportable so the package cannot come back. What the finding
+noticed about the curated DB but did not name is now [INC-15](#inc-15).
+
+### INC-15
+**S3 · The shipped curated sample database is orphaned.** Found 2026-07-27 while fixing
+[INC-14](#inc-14). `chisurf/core/fio/mmcif/sample_management.db` is 815 KB of real curated
+reference data — 173 vocabulary rows, 27 optical properties, 14 spectra, 7 probes, 3 samples,
+4 experiments — and it is committed and shipped (`MANIFEST.in`, `package-data`). Nothing
+reads it. The one live resolver, `mmfdb.store.database_resolver.source_database_path()`,
+returns `configured_source_database_path()` when set and otherwise looks for
+`sample_management.db` under `mmfdb/data/`; that file does not exist there, and no chisurf
+setting configures the path, so every caller falls through to `mmfdb/data/example.db` — a
+**0-byte** file. The curated seed therefore never reaches a user database; first run gets an
+empty schema instead. The only tool that still touches the curated file is
+`build_tools/regenerate_curated_db.py`, which regenerates it but has nowhere to install it
+that the runtime would consult. → Decide the owner: either ship the curated DB from
+`mmfdb/data/` (it is mmfdb's seed, not chisurf's) or have chisurf configure
+`source_database_path` at startup; either way delete the 0-byte `example.db` fallback so a
+missing seed fails loudly.

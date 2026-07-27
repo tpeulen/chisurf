@@ -15,7 +15,7 @@ import pandas as pd
 import pyqtgraph as pg
 from qtpy import QtCore, QtGui, QtWidgets
 
-from chisurf.core.fio.mmcif.db.pdbx_metadata import get_pdbx_metadata_keys
+from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.widgets.progress import EnhancedProgressDialog

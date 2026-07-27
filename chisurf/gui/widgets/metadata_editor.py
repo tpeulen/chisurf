@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Qt
 
-from chisurf.core.fio.mmcif.db.pdbx_metadata import get_pdbx_metadata_keys, get_pdbx_metadata_descriptions
+from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys, get_pdbx_metadata_descriptions
 
 
 # ---------------------------------------------------------------------------

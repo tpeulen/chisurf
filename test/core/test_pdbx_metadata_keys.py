@@ -6,12 +6,18 @@ file was answered with an empty result, so every metadata completer in the GUI
 silently offered no keys at all. These tests pin that the facade reads the one
 dictionary authority (``mmfdb.schema.pdbx_metadata.MmcifDictionary``) and that
 its answer is non-empty.
+
+They also pin that the deprecated ``chisurf.core.fio.mmcif.db`` package — six
+dead modules re-exporting ``mmfdb`` around this one live facade — stays deleted
+(INC-14).
 """
+
+import importlib
 
 import pytest
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
-from chisurf.core.fio.mmcif.db import pdbx_metadata
+from chisurf.core.fio.mmcif import pdbx_metadata
 
 
 @pytest.fixture(autouse=True)
@@ -66,3 +72,26 @@ def test_an_empty_dictionary_is_reported_not_swallowed(monkeypatch, caplog):
     with caplog.at_level("WARNING", logger=pdbx_metadata.logger.name):
         assert pdbx_metadata.get_pdbx_metadata_keys() == []
     assert any("no metadata keys" in record.message for record in caplog.records)
+
+
+@pytest.mark.parametrize(
+    "module",
+    [
+        "chisurf.core.fio.mmcif.db",
+        "chisurf.core.fio.mmcif.db.schema",
+        "chisurf.core.fio.mmcif.db.repository",
+        "chisurf.core.fio.mmcif.db.models",
+        "chisurf.core.fio.mmcif.db.database_resolver",
+        "chisurf.core.fio.mmcif.db.zmq_client",
+        "chisurf.core.fio.mmcif.db.zmq_server",
+    ],
+)
+def test_the_deprecated_db_package_stays_deleted(module):
+    """Reaching for a shim must fail loudly instead of resurrecting the package."""
+    with pytest.raises(ModuleNotFoundError):
+        importlib.import_module(module)
+
+
+def test_the_facade_lives_beside_the_mmcif_package_not_under_db():
+    """Importing the facade must not go through a deprecated package init."""
+    assert pdbx_metadata.__name__ == "chisurf.core.fio.mmcif.pdbx_metadata"

@@ -28,6 +28,33 @@
   (9) pins the curve against the published equation directly, so the two cannot
   drift.
 
+* **A deprecation shim was being imported on every ChiSurf start to reach one
+  live module.** [INC-14](/specs/assessment.md#inc-14) is closed.
+  `chisurf/core/fio/mmcif/db/` held seven modules; six were dead —
+  `schema.py`/`repository.py` re-exported `mmfdb.schema.schema`/`mmfdb.repository`
+  behind a module-level `DeprecationWarning`, `models.py` was superseded by
+  `mmfdb.models`, `database_resolver.py` duplicated `mmfdb.store.database_resolver`
+  (the one every live call site uses), and the two ZMQ modules had no caller at
+  all. Only `pdbx_metadata.py` was live, and importing it ran the package
+  `__init__`, which dragged the shims in. All six are deleted, the package is
+  gone, and the facade moved up to `chisurf/core/fio/mmcif/pdbx_metadata.py` with
+  its two GUI callers retargeted.
+  `build_tools/regenerate_curated_db.py` — the only tool that reads the curated
+  database, and dead since it imported the deleted `chisurf.core.mmfdb.repository`
+  — is ported onto `mmfdb.repository` / `mmfdb.provenance.result_registry` and
+  runs end-to-end again: 139 rows across 19 tables, a real
+  `register_raw_measurement` round trip, 0 FK violations.
+  Six parametrised tests pin every removed module as unimportable so the package
+  cannot come back (`test/core/test_pdbx_metadata_keys.py`, now 14).
+  Two things surfaced on the way and are recorded rather than half-fixed: the
+  curated 815 KB `sample_management.db` is **orphaned** — the live resolver looks
+  for it under `mmfdb/data/` and falls through to a 0-byte `example.db`, so no
+  user has ever received the curated seed (new finding
+  [INC-15](/specs/assessment.md#inc-15)) — and
+  `examples/notebooks/fdb_burst_selection_roundtrip.ipynb` cannot run at all, as
+  it imports two names (`FluorescenceDatabase`, `BurstPipeline`) that no longer
+  exist ([known issues](/references/known-issues.md)).
+
 * **H2MM's three run paths move onto the task layer, and the throttle
   disappears into it.** Unlike the two tools before it, H2MM already threaded
   properly — but with its own `Worker`, two signal classes, a `threading.Event`

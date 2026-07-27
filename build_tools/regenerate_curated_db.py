@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Regenerate the shipped curated MMFDB on the current schema.
 
-The curated source database (``chisurf/core/fio/mmCIF/db/sample_management.db``)
-is copied to each user's settings dir on first run. After PRD-19 removed the
+The curated source database (``chisurf/core/fio/mmcif/sample_management.db``)
+is copied to a user's settings dir on first run when ``source_database_path`` is
+configured to point at it (see INC-15). After PRD-19 removed the
 versioned migration waterfall (option B), a pre-PRD-19 curated DB is no longer
 fully migrated forward: missing *columns* are added by ``_ensure_canonical_columns``
 but stale *table structure* (e.g. a missing ``flr_sample_users.user_uuid`` UNIQUE
@@ -29,7 +30,7 @@ import tempfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-SHIPPED_DB = REPO / "chisurf" / "core" / "fio" / "mmcif" / "db" / "sample_management.db"
+SHIPPED_DB = REPO / "chisurf" / "core" / "fio" / "mmcif" / "sample_management.db"
 
 
 def _common_columns(old: sqlite3.Connection, new: sqlite3.Connection, table: str) -> list[str]:
@@ -45,7 +46,7 @@ def regenerate(source_db: Path, out_db: Path) -> dict[str, int]:
     out_db.parent.mkdir(parents=True, exist_ok=True)
 
     # 1. Fresh current-schema database (triggers migrate_schema + bootstrap).
-    from chisurf.core.mmfdb.repository import MFDatabase
+    from mmfdb.repository import MFDatabase
 
     MFDatabase(str(out_db)).close()
 
@@ -99,8 +100,8 @@ def verify(db_path: Path) -> None:
 
     # Real round trip: register a raw measurement against a COPY (so we don't
     # mutate the regenerated artifact), which exercises put_object's FK path.
-    from chisurf.core.mmfdb.repository import MFDatabase
-    from chisurf.core.mmfdb.result_registry import register_raw_measurement, set_global_db
+    from mmfdb.provenance.result_registry import register_raw_measurement, set_global_db
+    from mmfdb.repository import MFDatabase
 
     tmp = Path(tempfile.mkdtemp()) / "verify.db"
     shutil.copy(db_path, tmp)
@@ -118,6 +119,13 @@ def verify(db_path: Path) -> None:
 
 
 def main() -> int:
+    """Regenerate the curated database, verify it, and optionally install it.
+
+    Returns
+    -------
+    int
+        Process exit code; ``0`` on success. Failures raise ``SystemExit``.
+    """
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--replace", action="store_true", help="overwrite the shipped DB (with backup)")
     ap.add_argument("--source", type=Path, default=SHIPPED_DB)
