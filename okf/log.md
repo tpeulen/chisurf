@@ -2,6 +2,17 @@
 
 ## 2026-07-27
 
+* **chimol cartoon: another 9.5 ms -> 7.5 ms, so 234 -> 7.5 overall.** Four more
+  per-residue Python loops removed once the profile had flattened: the
+  secondary-structure segmentation (a Python call per residue plus a scan, now
+  one comparison over the array), the helix-run axis fit and its extrapolation
+  (batched across all runs rather than two tiny NumPy calls per run, about twenty
+  times a frame), and the nucleic-acid check in `_update_cartoon`, which walked
+  570 residue names with a `str/strip/upper` each on every redraw for an answer
+  fixed by the topology. `refine_normals`' flip-consistency sweep is genuinely
+  sequential and is now compiled, with the NumPy form kept and a test comparing
+  the two.
+
 * **GUI tester — particle tracking.** Drove *Microscopy → Imaging → Particle
   Tracking* headlessly against its own ground-truth simulator, a real TIFF stack
   and a `.ht3` photon stream, and recorded it as

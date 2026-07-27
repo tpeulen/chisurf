@@ -1237,27 +1237,157 @@ def _helix_radials(
                     radial[rows] = -bisector[good] / bl[good][:, None]
                     has_radial[rows] = True
 
-    for run_lo, run_hi in _contiguous_runs(is_helix):
+    # Every helix run's axis and twist in one pass, then one rotation for all
+    # the residues that need extrapolating. Per run this was two NumPy calls on
+    # a handful of vectors each, about twenty times a frame, which is all
+    # dispatch: `_helix_twist` and the rotation were the largest remaining pair
+    # in the profile once the sequential loops had been compiled.
+    runs = list(_contiguous_runs(is_helix))
+    if not runs:
+        return radial, has_radial
+
+    axes, twists = _helix_twist_per_run(radial, has_radial, runs)
+
+    need_rows: list[np.ndarray] = []
+    from_rows: list[np.ndarray] = []
+    axis_rows: list[np.ndarray] = []
+    angle_rows: list[np.ndarray] = []
+    copy_need: list[np.ndarray] = []
+    copy_from: list[np.ndarray] = []
+    for run_index, (run_lo, run_hi) in enumerate(runs):
         idx = np.arange(run_lo, run_hi)
-        valid = idx[has_radial[idx]]
+        inside = has_radial[idx]
+        valid = idx[inside]
         if valid.size == 0:
             continue
-        axis_u, twist = _helix_twist(radial, valid)
-        need = idx[~has_radial[idx]]
+        need = idx[~inside]
         if need.size == 0:
             continue
         # Nearest measured residue for each one still missing; `argmin` takes the
         # first minimum, so a tie goes to the lower index as the loop did.
         nearest = valid[np.argmin(np.abs(valid[None, :] - need[:, None]), axis=1)]
+        axis_u = axes[run_index]
         if axis_u is None:
-            radial[need] = radial[nearest]
+            copy_need.append(need)
+            copy_from.append(nearest)
         else:
-            radial[need] = _rotate_about_batch(
-                radial[nearest], axis_u, twist * (need - nearest).astype(float)
-            )
+            need_rows.append(need)
+            from_rows.append(nearest)
+            axis_rows.append(np.broadcast_to(axis_u, (need.shape[0], 3)))
+            angle_rows.append(twists[run_index] * (need - nearest).astype(float))
         has_radial[need] = True
 
+    if copy_need:
+        radial[np.concatenate(copy_need)] = radial[np.concatenate(copy_from)]
+    if need_rows:
+        rows = np.concatenate(need_rows)
+        radial[rows] = _rotate_about_rows(
+            radial[np.concatenate(from_rows)],
+            np.concatenate(axis_rows),
+            np.concatenate(angle_rows),
+        )
+
     return radial, has_radial
+
+
+def _helix_twist_per_run(
+    radial: np.ndarray,
+    has_radial: np.ndarray,
+    runs: list[tuple[int, int]],
+) -> tuple[list[Optional[np.ndarray]], list[float]]:
+    """Rotation axis and per-residue twist for every helix run at once.
+
+    The batched form of :func:`_helix_twist`. Each run's axis is the mean of
+    ``cross(r[k], r[k+1])`` over its adjacent measured residues and its twist the
+    mean angle between them; doing every run's crosses in one call and reducing
+    per run afterwards replaces a handful of tiny NumPy calls per run.
+
+    Returns
+    -------
+    tuple
+        ``(axes, twists)``, one entry per run, with ``None`` for a run too short
+        or too degenerate to tell -- exactly what :func:`_helix_twist` returns.
+    """
+    n_runs = len(runs)
+    axes: list[Optional[np.ndarray]] = [None] * n_runs
+    twists: list[float] = [0.0] * n_runs
+
+    first_rows: list[np.ndarray] = []
+    second_rows: list[np.ndarray] = []
+    owner_rows: list[np.ndarray] = []
+    for run_index, (run_lo, run_hi) in enumerate(runs):
+        idx = np.arange(run_lo, run_hi)
+        valid = idx[has_radial[idx]]
+        if valid.size < 2:
+            continue
+        first = valid[:-1]
+        second = valid[1:]
+        adjacent = (second - first) == 1
+        if not np.any(adjacent):
+            continue
+        first_rows.append(first[adjacent])
+        second_rows.append(second[adjacent])
+        owner_rows.append(np.full(int(adjacent.sum()), run_index, dtype=np.int64))
+    if not first_rows:
+        return axes, twists
+
+    first = np.concatenate(first_rows)
+    second = np.concatenate(second_rows)
+    owner = np.concatenate(owner_rows)
+    r0 = radial[first]
+    r1 = radial[second]
+    crossed = _batch_cross(r0, r1)
+    lengths = np.sqrt(np.einsum("ij,ij->i", crossed, crossed))
+    usable = lengths > 1e-9
+    if not np.any(usable):
+        return axes, twists
+
+    owner = owner[usable]
+    unit_axes = crossed[usable] / lengths[usable][:, None]
+    angles = np.arctan2(
+        lengths[usable], np.einsum("ij,ij->i", r0[usable], r1[usable])
+    )
+
+    counts = np.bincount(owner, minlength=n_runs)
+    summed = np.zeros((n_runs, 3), dtype=float)
+    for axis in range(3):
+        summed[:, axis] = np.bincount(
+            owner, weights=unit_axes[:, axis], minlength=n_runs
+        )
+    angle_sum = np.bincount(owner, weights=angles, minlength=n_runs)
+
+    present = counts > 0
+    mean_axes = np.zeros((n_runs, 3), dtype=float)
+    mean_axes[present] = summed[present] / counts[present][:, None]
+    norms = np.sqrt(np.einsum("ij,ij->i", mean_axes, mean_axes))
+    for run_index in np.nonzero(present)[0]:
+        if norms[run_index] <= 1e-9:
+            continue
+        axes[run_index] = mean_axes[run_index] / norms[run_index]
+        twists[run_index] = float(angle_sum[run_index] / counts[run_index])
+    return axes, twists
+
+
+def _rotate_about_rows(
+    vectors: np.ndarray, axes: np.ndarray, angles: np.ndarray
+) -> np.ndarray:
+    """Rotate each row about *its own* unit axis, by its own angle.
+
+    The per-row-axis generalisation of :func:`_rotate_about_batch`, so that every
+    helix run's extrapolation can go through a single call.
+    """
+    c = np.cos(angles)[:, None]
+    s = np.sin(angles)[:, None]
+    out = (
+        vectors * c
+        + _batch_cross(axes, vectors) * s
+        + axes * np.einsum("ij,ij->i", vectors, axes)[:, None] * (1.0 - c)
+    )
+    lengths = np.sqrt(np.einsum("ij,ij->i", out, out))
+    good = lengths > 1e-12
+    result = np.array(vectors, dtype=float, copy=True)
+    result[good] = out[good] / lengths[good][:, None]
+    return result
 
 
 def _helix_cylinder_radii(
