@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+* **GUI test: molecule-wise MLE, a lifetime per segmented object.** Drove
+  `chisurf.plugins.microscopy.sm_image_mle` headlessly on a real confocal HT3
+  (15.6 M photons, 31 250 micro-time channels) with a mirror-scan IRF — files
+  dropped on both path lists, settings typed into the AutoForm bindings,
+  `Preview` / `Run` / `Export` clicked, all three docks visited and every
+  screenshot inspected, then the same analysis repeated through the CLI (same 9
+  molecules, 2.60–3.00 ns). Recorded as
+  [molecule-wise MLE](/usecases/molecule-wise-lifetime-mle.md); four findings
+  RF-576..RF-579: the shared AutoForm image widget builds its backend with
+  `__new__` so *every* region drawn on an image raises after the shape is on the
+  scene (one untracked, unclearable ellipse per refresh, error swallowed); the
+  shipped fit window covers 0.8 % of the period, so the defaults fit molecules
+  on 2–26 photons and report τ = 23.5 ns and a median; the G factor is absent
+  from the GUI while the fit silently uses an auto-estimate of 0.601; and
+  `handle_event` is dispatched before the UI-thread guard, so the worker paints
+  into the Qt scene and its per-file progress message never reaches the panel.
+
 * **PCH: the single-molecule Poisson term is evaluated in log space (RF-292).**
   `compute_p1` formed `(eps*PSF)**k / k!` as a ratio of two doubles that both
   overflow: `k!` passes `DBL_MAX` at k = 171, so `p1[k]` was exactly zero from

@@ -170,6 +170,14 @@ The workflows a first pass should cover — expand as the tester discovers more:
   export the corrected stack and the shift table. The estimator is right; the
   window around it shows the previous file's result after a file it cannot read.
   *(last driven 2026-07-28; RF-554..RF-562)*
+- [Molecule-wise MLE](/usecases/molecule-wise-lifetime-mle.md) — a lifetime per
+  *object* rather than per region or per pixel: segment a confocal TTTR image
+  into discrete emitters, pool each one's photons into a VV/VH micro-time
+  histogram, fit every molecule by single-lifetime Poisson MLE (Fit23), and
+  browse the per-molecule decays before exporting the table. Right and quick in
+  the middle; the measured outlines never reach the canvas and the shipped fit
+  window turns a handful of photons into a confident lifetime.
+  *(last driven 2026-07-28; RF-576..RF-579)*
 
 ## Per-workflow file format
 
