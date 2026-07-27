@@ -66,17 +66,17 @@ menu_hidden = True
 icon = "🔗"
 
 # Supported TTTR extensions mapped to tttrlib file types
-_TTTR_EXT2TYPE: Dict[str, str] = {
-    ".ptu": "PTU",
-    ".phu": "PHU",
-    ".ht3": "HT3",
-    ".ht2": "HT2",
-    ".pt3": "PT3",
-    ".t3r": "T3R",
-    ".spc": "SPC",   # may require HDF pathway depending on source
-    ".h5": "HDF5",
-    ".hdf5": "HDF5",
-}
+#: TTTR extensions this tool recognises when hunting for a measurement file.
+#:
+#: These are *extensions*, not container types. They used to be a
+#: ``{extension: container_type}`` map whose values -- "SPC", "PHU", "HT2",
+#: "PT3", "T3R", "HDF5" -- are not names ``tttrlib`` accepts, and passing one
+#: does not raise: the library prints to stderr and hands back an object with
+#: zero photons. The container is detected from the file instead, which is what
+#: ``tttrlib`` is good at, so nothing needs to be guessed from a suffix.
+_TTTR_EXTENSIONS: Tuple[str, ...] = (
+    ".ptu", ".phu", ".ht3", ".ht2", ".pt3", ".t3r", ".spc", ".h5", ".hdf5",
+)
 
 
 def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> Optional[pathlib.Path]:
@@ -114,7 +114,7 @@ def _find_tttr_by_stem(start_dir: pathlib.Path, bid_stem: str) -> Optional[pathl
 
         # Collect all TTTR files in this base folder
         files: List[pathlib.Path] = []
-        for ext in _TTTR_EXT2TYPE.keys():
+        for ext in _TTTR_EXTENSIONS:
             files.extend(current_dir.glob(f"*{ext}"))
 
         if files:
@@ -138,10 +138,13 @@ def _load_tttr(tttr_path: pathlib.Path) -> tttrlib.TTTR:
     if tttrlib is None:
         raise RuntimeError("tttrlib is not available; cannot load TTTR files")
     ext = tttr_path.suffix.lower()
-    ftype = _TTTR_EXT2TYPE.get(ext)
-    if ftype is None:
+    if ext not in _TTTR_EXTENSIONS:
         raise ValueError(f"Unsupported TTTR file extension: {ext}")
-    return tttrlib.TTTR(str(tttr_path), ftype)
+    # Through the shared seam, which detects the container and applies staging
+    # and any channel LUTs.
+    from chisurf.core.fio.staging import open_tttr
+
+    return open_tttr(tttr_path)
 
 
 def _default_windows_detectors(tttr: "tttrlib.TTTR") -> Tuple[dict, dict]:
@@ -423,7 +426,7 @@ def _per_file_process(bid_path: pathlib.Path, output_dir: pathlib.Path, windows:
     if "sl5" in output_types:
         n = len(tttr)
         selected = create_array_with_ones(np.array(start_stop, dtype=int), n).astype(np.uint8)
-        _write_sl5(output_dir, tttr_path, _TTTR_EXT2TYPE.get(tttr_path.suffix.lower(), ""), selected)
+        _write_sl5(output_dir, tttr_path, tttr_path.suffix.lower().lstrip("."), selected)
 
     # For HDF5 collection
     if df is not None:

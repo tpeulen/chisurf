@@ -209,10 +209,7 @@ class CorrelatorPage(QtWidgets.QWizardPage):
                                 return tttrlib.TTTR(p_str, ft_int)
                         except Exception:
                             pass
-                        try:
-                            return tttrlib.TTTR(p_str, 'SPC')
-                        except Exception:
-                            return tttrlib.TTTR(p_str)
+                        return tttrlib.TTTR(p_str)
                     if isinstance(global_type, str) and global_type.strip():
                         try:
                             return tttrlib.TTTR(p_str, global_type)

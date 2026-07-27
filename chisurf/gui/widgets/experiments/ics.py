@@ -9,6 +9,7 @@ import chisurf as cs
 import chisurf.core.actions
 import chisurf.gui.widgets
 from chisurf.core.experiments.core import reader
+from chisurf.core.fio.staging import supported_container_types
 from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
@@ -42,10 +43,10 @@ class _IcsDetectorWidget(QtWidgets.QWidget):
             import tttrlib
             supported = list(tttrlib.TTTR.get_supported_container_names())
             if not supported:
-                supported = ["PTU", "HT3", "SPC"]
+                supported = list(supported_container_types())
             self.combo_routine.addItems([str(s) for s in supported])
         except Exception:
-            self.combo_routine.addItems(["PTU", "HT3", "SPC"])
+            self.combo_routine.addItems(list(supported_container_types()))
         grid.addWidget(self.combo_routine, 1, 1)
 
         grid.addWidget(QtWidgets.QLabel("Routing chs:"), 1, 2)

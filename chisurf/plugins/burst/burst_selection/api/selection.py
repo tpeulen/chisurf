@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import time
 from collections.abc import Iterable
@@ -14,7 +15,13 @@ import numpy as np
 import pandas as pd
 import tttrlib
 
+import chisurf
+
 from chisurf.core.fio.fluorescence.burst import generate_burst_dataframe, write_mti_summary
+from chisurf.core.fio.fluorescence.burst_manifest import (
+    describe_tttr_source,
+    write_analysis_manifest,
+)
 from chisurf.core.fluorescence.burst import burst_filter, count_rate_filter, cusum_filter
 from chisurf.core.fluorescence.burst import tttrlib_search
 from chisurf.core.fluorescence.burst.tttrlib_search import tttrlib_burst_filter
@@ -32,6 +39,18 @@ from .models import (
     BurstFilterMode,
     PhotonFilterSettings,
 )
+
+
+
+def _manifest_settings(analysis_settings) -> dict:
+    """The burst-search settings, in a JSON-safe shape for the manifest."""
+    try:
+        return {
+            k: v for k, v in asdict(analysis_settings).items()
+            if isinstance(v, (bool, int, float, str, list, dict, type(None)))
+        }
+    except Exception:
+        return {}
 
 
 def _delta_macro_time_ms(tttr: tttrlib.TTTR) -> np.ndarray:
@@ -495,6 +514,31 @@ def analyze_file(
             max_macro_time = float(tttr.macro_times[-1]) * output_resolution
             write_mti_summary(Path(path), Path(mti_output_dir), max_macro_time, append=True)
             output_paths["mti_dir"] = str(Path(mti_output_dir) / "Info")
+
+            # Record *how* the source was read, not only that it was. A burst
+            # table is a set of pointers back into a photon stream, so anything
+            # that later wants those photons has to reopen the file — and with
+            # nothing written down it has to guess the container type, which is
+            # how ".spc" came to be opened as a type tttrlib does not have.
+            try:
+                write_analysis_manifest(
+                    Path(mti_output_dir),
+                    [
+                        describe_tttr_source(
+                            path,
+                            tttr,
+                            settings={
+                                "windows": dict(windows or {}),
+                                "detectors": dict(detectors or {}),
+                                "macro_time_resolution": output_resolution,
+                            },
+                        )
+                    ],
+                    settings=_manifest_settings(analysis_settings),
+                    software_version=getattr(chisurf, "__version__", None),
+                )
+            except Exception:
+                logging.exception("could not write the burst reading manifest")
 
     return AnalysisResult(
         files=[str(path)],

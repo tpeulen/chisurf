@@ -573,10 +573,7 @@ class WizardTTTRCorrelator(QtWidgets.QWizardPage):
                             return tttrlib.TTTR(p_posix, ft_int)
                     except Exception:
                         pass
-                    try:
-                        return tttrlib.TTTR(p_posix, 'SPC')
-                    except Exception:
-                        return tttrlib.TTTR(p_posix)
+                    return tttrlib.TTTR(p_posix)
                 if isinstance(filetype, str) and filetype.strip():
                     try:
                         return tttrlib.TTTR(p_posix, filetype)

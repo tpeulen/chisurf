@@ -34,6 +34,7 @@ on slow storage, parses, and deletes the temp in one call.
 from __future__ import annotations
 
 import contextlib
+import logging
 import shutil
 import tempfile
 from collections.abc import Callable
@@ -334,8 +335,11 @@ def open_tttr(
     src : str or pathlib.Path
         File to read.
     routine : str or int, optional
-        ``tttrlib`` container/reading-routine argument. ``None``/empty means
-        auto-detect from the filename (which staging preserves).
+        ``tttrlib`` container type. **Prefer ``None``**: the library identifies
+        the container from the file, so guessing one from an extension is
+        unnecessary and gets it wrong. Legacy and misspelled names are resolved
+        by :func:`resolve_container_type` rather than reaching ``tttrlib``,
+        which answers an unknown type with an empty object rather than an error.
     channel_luts : dict, optional
         Mapping ``{routing_channel: NTAC_fract}`` of cumulative TAC-linearization
         LUTs (see :mod:`chisurf.plugins.tttr.tttr_lut_tools.core.tac_lut`). Only
@@ -370,16 +374,108 @@ def open_tttr(
         if channel_shifts is None:
             channel_shifts = ctx_shifts
 
+    # A container type the library does not know is not an error it reports: it
+    # prints to stderr and returns an object with zero photons, which reads
+    # downstream as an empty measurement. Resolve it to something accepted, or
+    # to auto-detection, before it gets that far.
+    container = resolve_container_type(routine)
+
     with staged_source(src, progress_cb=progress_cb, cancel_cb=cancel_cb, **stage_kwargs) as local:
-        if routine is None or routine == "":
+        if container is None:
             tttr = tttrlib.TTTR(str(local))
         else:
-            tttr = tttrlib.TTTR(str(local), routine)
+            tttr = tttrlib.TTTR(str(local), container)
 
     apply_setup_lut(
         tttr, channel_luts, channel_shifts, apply_lut=bool(apply_lut), lut_seed=lut_seed
     )
     return tttr
+
+
+#: Names that were once used as container types but that ``tttrlib`` has never
+#: accepted. ``"SPC"`` in particular was written by hand in a dozen call sites
+#: (and in an extension→routine table), where it produced
+#: "Container type SPC not supported" and an unreadable file — for a format
+#: ``tttrlib`` detects perfectly well on its own.
+_CONTAINER_ALIASES = {
+    "SPC": None,        # ambiguous between SPC-130 and SPC-600: let it detect
+    "BH": None,
+    "SPC130": "SPC-130",
+    "SPC-132": "SPC-130",
+    "HDF5": "PHOTON-HDF5",
+    "PHOTONHDF5": "PHOTON-HDF5",
+}
+
+
+def supported_container_types() -> tuple:
+    """Container types this ``tttrlib`` build accepts.
+
+    Asked of the library rather than hard-coded, because a list written down
+    here goes stale silently: the previous one omitted ``CZ-RAW``, ``SM`` and
+    ``PHOTONS`` and would have rejected them as unknown.
+    """
+    import tttrlib
+
+    try:
+        return tuple(tttrlib.TTTR.get_supported_container_names())
+    except Exception:  # pragma: no cover - very old tttrlib
+        return ("PTU", "HT3", "SPC-130", "SPC-600_256", "SPC-600_4096", "PHOTON-HDF5")
+
+
+def resolve_container_type(routine=None):
+    """Turn a caller's container-type argument into one ``tttrlib`` accepts.
+
+    **Auto-detection is the right default and is what most callers should pass.**
+    ``tttrlib`` identifies the container from the file itself, so guessing one
+    from a file extension — the mistake that produced ``"SPC"`` — is both
+    unnecessary and wrong. A routine should only be given when it is *known*:
+    recorded with the measurement, or chosen by the user for a format the file
+    cannot distinguish (SPC-130 against SPC-600, which differ in record layout).
+
+    Parameters
+    ----------
+    routine : str or int, optional
+        Requested container type. ``None``, empty, or an unrecognised name
+        yields ``None`` (auto-detect); a known legacy alias is translated.
+
+    Returns
+    -------
+    str or int or None
+        A value safe to hand to ``tttrlib``, or ``None`` to auto-detect.
+
+    Notes
+    -----
+    This never raises. ``tttrlib`` does not raise either on a bad container
+    type — it prints to stderr and hands back an object with **zero photons**,
+    which downstream looks like an empty measurement rather than a failed read.
+    Silently degrading to auto-detection is strictly better than that.
+    """
+    if routine is None or isinstance(routine, int):
+        return routine
+    name = str(routine).strip()
+    if not name:
+        return None
+    supported = supported_container_types()
+    if name in supported:
+        return name
+    upper = name.upper()
+    if upper in _CONTAINER_ALIASES:
+        mapped = _CONTAINER_ALIASES[upper]
+        logging.info(
+            "container type %r is not a tttrlib type; %s",
+            name,
+            f"reading as {mapped}" if mapped else "detecting it from the file",
+        )
+        return mapped
+    for candidate in supported:
+        if candidate.upper() == upper:
+            return candidate
+    logging.warning(
+        "unknown container type %r (tttrlib offers %s); detecting from the file",
+        name,
+        ", ".join(supported),
+    )
+    return None
 
 
 def apply_setup_lut(

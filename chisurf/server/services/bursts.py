@@ -55,13 +55,6 @@ import numpy as np
 from chisurf.server.services import INVALID_INPUT, OPERATION_FAILED, ServiceResult, service_error
 from chisurf.server.session import SessionState
 
-#: Container types ``tttrlib`` accepts. Anything else is rejected before it
-#: reaches the library, which crashes the process on an unknown type instead of
-#: raising — see :func:`_open`.
-KNOWN_ROUTINES = frozenset({
-    "PTU", "HT3", "SPC-130", "SPC-600_256", "SPC-600_4096", "PHOTON-HDF5",
-})
-
 #: Warning attached to an ``interior``-mode PCH result.
 INTERIOR_BIAS_NOTE = (
     "Counted only inside burst intervals: the inter-burst background is absent, "
@@ -75,28 +68,41 @@ def _as_intervals(ranges: Sequence[Sequence[int]]) -> List[Tuple[int, int]]:
     return [(int(a), int(b)) for a, b in ranges]
 
 
-def _open(path: str, reading_routine: Optional[str]):
-    """Open a TTTR file through the project's single TTTR-opening seam.
+def _open(path: str, reading_routine: Optional[str] = None):
+    """Reopen a source measurement the way the burst analysis originally read it.
 
-    Goes through :func:`chisurf.core.fio.staging.open_tttr` rather than calling
-    ``tttrlib`` directly, so these services inherit slow-storage staging and the
-    per-channel TAC-linearisation LUTs like every other reader.
+    A burst table is a set of pointers back into a photon stream, so these
+    services have to reopen files someone else analysed. **How** they were read
+    is recorded in the analysis folder's manifest
+    (:mod:`chisurf.core.fio.fluorescence.burst_manifest`), and that recorded
+    container type is what is used — in preference to anything the caller passed
+    and instead of anything inferred from the file extension.
 
-    ``reading_routine`` is passed straight to ``tttrlib``, which **segfaults** on
-    an unrecognised container type rather than raising — so an empty or unknown
-    value becomes ``None`` (auto-detect) instead of being forwarded. The routine
-    arrives over RPC from a caller we do not control, which makes that the
-    difference between a bad request and a dead server.
+    Extension-based inference is what this replaces. It produced a container
+    type called ``"SPC"`` for ``.spc`` files, which ``tttrlib`` does not accept
+    and does not report as an error: it prints to stderr and returns an object
+    with **zero photons**, so an analysis ran on nothing and looked like a
+    measurement without signal.
+
+    Order of preference: the manifest, then an explicit argument, then letting
+    ``tttrlib`` identify the container itself. Everything goes through
+    :func:`chisurf.core.fio.staging.open_tttr`, which resolves the type and adds
+    staging and LUT-awareness.
     """
+    from chisurf.core.fio.fluorescence.burst_manifest import (
+        read_analysis_manifest,
+        reading_settings_for,
+    )
     from chisurf.core.fio.staging import open_tttr
 
-    routine = (reading_routine or "").strip() or None
-    if routine is not None and routine not in KNOWN_ROUTINES:
-        raise ValueError(
-            f"unknown reading_routine {routine!r}; use one of "
-            f"{sorted(KNOWN_ROUTINES)} or omit it to auto-detect"
+    recorded = reading_settings_for(path, read_analysis_manifest(path))
+    container = recorded.get("container_type") or reading_routine
+    if recorded.get("container_type"):
+        logging.debug(
+            "reading %s as %s, as recorded by the burst analysis",
+            path, recorded["container_type"],
         )
-    return open_tttr(path, routine)
+    return open_tttr(path, container)
 
 
 def _selected_indices(

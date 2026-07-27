@@ -18,13 +18,17 @@ def _guess_tttr_type(path: pathlib.Path) -> Optional[str]:
     Returns values understood by :class:`tttrlib.TTTR`, e.g. "PTU" or "HT3".
     """
 
+    # Only where the extension genuinely names a container tttrlib accepts.
+    # ``.t3r``/``.t2r`` used to map to "SPC", which is not a tttrlib container
+    # type at all (and would not be the right one even if it were). An unknown
+    # type is not reported as an error -- the library returns an object with no
+    # photons -- so returning None and letting it detect the container is both
+    # safer and more accurate.
     suffix = path.suffix.lower()
     if suffix == ".ptu":
         return "PTU"
     if suffix in (".ht3", ".ht2"):
         return "HT3"
-    if suffix in (".t3r", ".t2r"):
-        return "SPC"
     return None
 
 

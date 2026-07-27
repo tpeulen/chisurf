@@ -7,6 +7,7 @@ from qtpy import QtCore, QtGui
 
 import chisurf as cs
 from chisurf.core.experiments.core import reader
+from chisurf.core.fio.staging import supported_container_types
 from chisurf.gui import QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
@@ -43,10 +44,10 @@ class _TcspcTttrDetectorWidget(QtWidgets.QWidget):
         self.combo_routine = QtWidgets.QComboBox()
         try:
             import tttrlib  # type: ignore[import]
-            supported = list(tttrlib.TTTR.get_supported_container_names()) or ["PTU", "HT3", "SPC"]
+            supported = list(tttrlib.TTTR.get_supported_container_names()) or list(supported_container_types())
             self.combo_routine.addItems([str(s) for s in supported])
         except Exception:
-            self.combo_routine.addItems(["PTU", "HT3", "SPC"])
+            self.combo_routine.addItems(list(supported_container_types()))
         grid.addWidget(self.combo_routine, 1, 1)
 
         grid.addWidget(QtWidgets.QLabel("Routing chs:"), 1, 2)

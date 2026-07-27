@@ -10,6 +10,7 @@ from here) and wrapped with declarative settings and a file-level orchestrator.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import pathlib
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -166,35 +167,26 @@ def parse_bur_file(
 
 
 def open_tttr(path: pathlib.Path, filetype=None) -> Optional["tttrlib.TTTR"]:
-    """Open a TTTR file with simple, extension-aware fallback logic."""
-    path = pathlib.Path(path)
-    p_str = path.as_posix()
-    ext = path.suffix.lower()
+    """Open a TTTR file through the project's single TTTR-opening seam.
+
+    This used to be a private opener with extension-aware fallbacks, including
+    ``tttrlib.TTTR(path, "SPC")`` for ``.spc`` files. ``"SPC"`` is not a
+    container type ``tttrlib`` accepts — the real names are ``SPC-130`` and
+    ``SPC-600_*`` — and, worse, passing an unknown one does not raise. The
+    library prints "Container type SPC not supported" to stderr and returns an
+    object with **zero photons**, so the ``except`` never fired, the fallback
+    never ran, and the correlator silently received empty measurements.
+
+    :func:`chisurf.core.fio.staging.open_tttr` resolves the container type (or
+    lets ``tttrlib`` detect it, which works on ``.spc``) and adds staging and
+    LUT-awareness that this opener never had.
+    """
+    from chisurf.core.fio.staging import open_tttr as _open
+
     try:
-        if ext == ".spc":
-            try:
-                ft_int = tttrlib.inferTTTRFileType(p_str)
-                if ft_int is not None and ft_int >= 0:
-                    return tttrlib.TTTR(p_str, ft_int)
-            except Exception:
-                pass
-            try:
-                return tttrlib.TTTR(p_str, "SPC")
-            except Exception:
-                return tttrlib.TTTR(p_str)
-        if isinstance(filetype, str) and filetype.strip():
-            try:
-                return tttrlib.TTTR(p_str, filetype)
-            except Exception:
-                pass
-        try:
-            ft_int = tttrlib.inferTTTRFileType(p_str)
-            if ft_int is not None and ft_int >= 0:
-                return tttrlib.TTTR(p_str, ft_int)
-        except Exception:
-            pass
-        return tttrlib.TTTR(p_str)
+        return _open(pathlib.Path(path), filetype)
     except Exception:
+        logging.exception("could not open %s", path)
         return None
 
 

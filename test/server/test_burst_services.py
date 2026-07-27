@@ -216,18 +216,49 @@ def test_bin_shorter_than_a_macro_tick_is_refused(slices, photons):
 # -------------------------------------------------------------- reading routine
 
 
-def test_an_unknown_container_type_is_refused_not_forwarded(slices):
-    """tttrlib *crashes the process* on an unknown container type.
+def test_a_wrong_container_type_still_reads_the_file(slices, photons):
+    """A bad routine must not cost the read; the file identifies itself.
 
-    It does not raise — it segfaults. The routine arrives over RPC from a caller
-    we do not control, so it has to be checked here; forwarding it would turn a
-    malformed request into a dead server.
+    ``tttrlib`` does not report an unknown container type as an error — it
+    prints to stderr and returns an object with **zero photons**, which reads
+    downstream as an empty measurement rather than a failed one. Callers pass
+    routines derived from file extensions all over this codebase (``"SPC"`` for
+    ``.spc`` being the one that bit), so the seam resolves the value instead of
+    forwarding it, and falls back to detection.
     """
-    result = bursts.from_bursts_decay(
+    detected = bursts.from_bursts_decay(
+        None, burst_slices=slices, channels=[[0]]
+    )
+    wrong = bursts.from_bursts_decay(
         None, burst_slices=slices, channels=[[0]], reading_routine="NOT-A-FORMAT"
     )
-    assert not result["ok"]
-    assert "unknown reading_routine" in result["error"]
+    assert wrong["ok"], wrong
+    assert (
+        wrong["result"]["decays"][0]["n_photons"]
+        == detected["result"]["decays"][0]["n_photons"]
+    )
+
+
+def test_the_spc_alias_reads_a_bh_file(photons):
+    """The exact failure reported: "Container type SPC not supported".
+
+    ``"SPC"`` is not a ``tttrlib`` container type — the real ones are
+    ``SPC-130`` and ``SPC-600_*`` — but it was written by hand in a dozen call
+    sites and in an extension→routine table. Every one of them produced an
+    empty read on Becker & Hickl data.
+    """
+    spc = pathlib.Path(__file__).parents[1] / "data" / "tttr" / "BH" / "132" / "BH_SPC132.spc"
+    if not spc.exists():
+        pytest.skip(f"missing test data: {spc}")
+
+    result = bursts.from_bursts_decay(
+        None,
+        burst_slices={str(spc): [[0, 4999]]},
+        channels=[[0], [1]],
+        reading_routine="SPC",
+    )
+    assert result["ok"], result
+    assert sum(d["n_photons"] for d in result["result"]["decays"]) > 0
 
 
 def test_an_empty_routine_means_auto_detect(slices):
