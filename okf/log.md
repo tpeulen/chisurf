@@ -1033,6 +1033,28 @@
   Reverted rather than left in as a plausible-looking no-op, and the real options
   are written down in [known-issues](/references/known-issues.md).
 
+* **If a later step must reopen the data, record how it was opened — do not let
+  it infer.** Sending a gated burst population to FCS failed on every Becker &
+  Hickl file with "Container type SPC not supported". `"SPC"` is not a
+  ``tttrlib`` container type (the real ones are `SPC-130`, `SPC-600_*`), and it
+  had been written by hand in eight call sites plus an extension→routine table
+  that also emitted the equally invalid `PHU`, `HT2`, `PT3`, `T3R` and `HDF5`.
+  What made it *silent* is the part worth remembering: the library does not
+  raise on an unknown container type — it prints and returns an object with zero
+  photons — so every `try/except` fallback wrapped around it never ran, and the
+  analysis proceeded on an empty measurement that looked like a measurement with
+  no signal. The real defect was upstream of all of it: a burst-analysis folder
+  recorded the source file and its length but never how the source was *read*,
+  and a burst table is nothing but pointers back into photon streams, so
+  reopening them is the normal case. `Info/analysis.json` now records the
+  container type actually used (read off the live object, since a rejected
+  request degrades to detection), the routing channels, the resolutions and the
+  search settings, written at the one moment the answer is certain — while the
+  file is open. Consumers read it and stop guessing; folders without one fall
+  back to detection. The general shape: an inference that is *usually* right is
+  worse than a recorded fact, because the cases where it is wrong are the ones
+  nobody checks.
+
 * **Let the server advertise its consumers; do not let the client guess them.**
   The exploration tool can now hand a gated burst population to FCS, a TCSPC
   decay, PDA or PCH by right-clicking the gate — but the menu is not a list the
