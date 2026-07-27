@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **Anisotropy is Schaffer/Eggeling throughout, and the two G splits are gone.**
+  `r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**
+  — the ratio a paper quotes, and the one tttrlib's estimators already took
+  (`src/DecayFit23.cpp`, schema: "ratio between the parallel and perpendicular
+  channels"). Four sites moved together, because moving fewer would only have
+  relocated the inconsistency: `compute_g_factor_perrin` (was returning the
+  reciprocal), `anisotropy_from_integrals`, `LifetimeModel._tcspc_rt_curves`,
+  and the `vm_rt_to_vv_vh` generator, which now divides the perpendicular
+  channel by G instead of multiplying.
+
+  The chain closes end to end: the generator round-trips exactly at G = 0.65,
+  1.0, 1.5, 2.2; the calibration returns 1.538462 for S_par/S_perp = 1.538462;
+  and that number recovers the truth through its own consumer, through tttrlib's
+  formula, and through the VM combination `vv + 2 G vh` (3.000000 against a true
+  total of 3.000000). Both splits recorded earlier — chisurf against tttrlib, and
+  the anisotropy island against the five VM sites — are retired without touching
+  tttrlib or the VM call sites.
+
+  **Still open, and now isolated:** the l1/l2 parameterisation. The generator
+  mixes with a 2x2 matrix (Koshioka 1995) while the correction uses Schaffer's
+  `(1-3 l2)`/`(2-3 l1)` factors; with *both* a non-unit G and non-zero l1/l2 the
+  round trip gives 0.274 (G=0.65) and 0.318 (G=1.5) against 0.300, exact with
+  either alone. In [references/known-issues.md](/references/known-issues.md).
+  `test/models/test_anisotropy_g_factor.py` (11) pins the published equation, the
+  generator round trip, and agreement with tttrlib's form and the VM combination.
+
 * **BVA and burst selection off the GUI thread; MLE cannot follow, and the
   reason is worth recording.** Both were the "loop on the GUI thread behind a
   window-modal dialog" shape, and both are now background runs.

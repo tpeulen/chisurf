@@ -106,7 +106,14 @@ def compute_g_factor_perrin(
     if den == 0.0:
         raise ZeroDivisionError("Cannot compute G: denominator is zero")
     num = ss * (1.0 + r * (2.0 - 3.0 * float(l1)))
-    return float(num / den)
+    if num == 0.0:
+        raise ZeroDivisionError("Cannot compute G: numerator is zero")
+    # G is the **parallel/perpendicular** sensitivity ratio, the convention of
+    # Schaffer, Volkmer, Eggeling, Subramaniam, Striker & Seidel, J. Phys. Chem.
+    # A 103 (1999) 331, and the one tttrlib's estimators take. This used to
+    # return its reciprocal, so a G measured here and handed to tttrlib (or to
+    # the VM combination `vv + 2 G vh`) inverted the correction.
+    return float(den / num)
 
 
 def anisotropy_from_integrals(
@@ -165,8 +172,9 @@ def anisotropy_from_integrals(
     sp = float(np.sum(np.asarray(s_p, dtype=float), axis=axis))
     ss = float(np.sum(np.asarray(s_s, dtype=float), axis=axis))
 
-    num_e = g * sp - ss
-    den_e = (1.0 - 3.0 * float(l2)) * g * sp + (2.0 - 3.0 * float(l1)) * ss
+    # r = (Sp - G Ss) / ((1 - 3 l2) Sp + (2 - 3 l1) G Ss)  -- Schaffer/Eggeling.
+    num_e = sp - g * ss
+    den_e = (1.0 - 3.0 * float(l2)) * sp + (2.0 - 3.0 * float(l1)) * g * ss
     if den_e == 0.0:
         raise ZeroDivisionError("Denominator in r_E is zero")
     r_e = num_e / den_e

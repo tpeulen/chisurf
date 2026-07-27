@@ -124,31 +124,27 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
-**chisurf's `g` is the reciprocal of the published G (2026-07-27).** The
-anisotropy equation in Schaffer/Eggeling/Seidel, J. Phys. Chem. A 103 (1999)
-331, reads
+**Anisotropy now follows Schaffer/Eggeling throughout (settled 2026-07-27).**
+`r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**,
+the ratio a paper quotes and the one tttrlib's estimators already took. Four
+sites moved together — `compute_g_factor_perrin` (was returning the reciprocal),
+`anisotropy_from_integrals`, `LifetimeModel._tcspc_rt_curves`, and the
+`vm_rt_to_vv_vh` generator (now divides the perpendicular channel by G). The
+chain closes: the generator round-trips exactly at every G, the calibration's
+output feeds its own consumer, tttrlib's formula and the VM combination
+`vv + 2 G vh` and all three return the truth. That also retires the two splits
+recorded here earlier — the cross-repo one and the VM one — without touching
+tttrlib or the five VM call sites.
 
-    r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)
+**Still open: the l1/l2 parameterisation.** The generator mixes with a 2x2
+matrix (`vv(1-l1) + vh*l1`, `vv*l2 + vh(1-l2)`, Koshioka 1995) while the
+correction uses Schaffer's `(1-3 l2)` / `(2-3 l1)` factors. Round-tripping with
+**both** a non-unit G and non-zero l1/l2 does not recover the input (0.274 at
+G = 0.65, 0.318 at G = 1.5, against 0.300); with either alone it is exact. The
+two are different parameterisations of the same nuisance, and which is canonical
+needs Koshioka read against Schaffer/Eggeling. Until then a fit with a
+calibrated G *and* polarisation mixing has an anisotropy off by a few percent.
 
-with G on the *perpendicular* channel. chisurf's `g` is **1/G**: that is what
-`compute_g_factor_perrin` returns, and it is what `anisotropy_from_integrals`
-and `LifetimeModel._tcspc_rt_curves` consume, both putting `g` on the parallel
-channel. The two are the same estimator — verified to nine decimals across
-G = 0.8…1.9 and several l1/l2 — but **a G quoted from the literature must be
-inverted before it is entered here**, and nothing in the UI says so. Worth a
-label or a conversion at the input; recorded because renaming or inverting the
-stored quantity is a user-facing decision.
-
-The same split explains the **VM / total-intensity** combination
-`vv + 2 * g * vh` — five sites: `core/fio/fluorescence/tcspc.py` (x2),
-`core/fluorescence/tcspc/__init__.py`, `gui/widgets/models/tcspc/anisotropy.py`,
-`plugins/tttr/microtime_histogram/wizard.py` — plus the `vv_vh_anisotropy`
-plugin, which all use the *published* G convention. Under chisurf's `g` the
-total intensity is `g * vv + 2 * vh`. Constructed check with S_par = 1,
-S_perp = 0.65 and a true total of 3.0: the current expression gives **2.076**.
-Nobody noticed because a real G sits near 1, where the two agree to first order.
-Deciding which convention wins changes numbers across readers and plugins, so it
-is recorded rather than made unilaterally.
 
 **Found 2026-07-27, not fixed: the PCH settings panel is clipped at its right
 edge.** `chisurf/plugins/pch/gui/tool.py` puts the settings form in a

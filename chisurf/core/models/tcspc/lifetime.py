@@ -678,13 +678,13 @@ class LifetimeModel(ModelCurve):
         # sensitivity correction, as factors on the already-G-corrected signals,
         # not by unmixing the raw pair beforehand. Same order as the integrals
         # module, so the two agree term for term.
-        gp = g * vv
-        den_unc = gp + 2.0 * vh
+        gs = g * vh
+        den_unc = vv + 2.0 * gs
         with np.errstate(divide="ignore", invalid="ignore"):
-            r_unc = np.where(np.abs(den_unc) > 1e-12, (gp - vh) / den_unc, np.nan)
-        den_cor = (1.0 - 3.0 * l2) * gp + (2.0 - 3.0 * l1) * vh
+            r_unc = np.where(np.abs(den_unc) > 1e-12, (vv - gs) / den_unc, np.nan)
+        den_cor = (1.0 - 3.0 * l2) * vv + (2.0 - 3.0 * l1) * gs
         with np.errstate(divide="ignore", invalid="ignore"):
-            r_cor = np.where(np.abs(den_cor) > 1e-12, (gp - vh) / den_cor, np.nan)
+            r_cor = np.where(np.abs(den_cor) > 1e-12, (vv - gs) / den_cor, np.nan)
         finite = np.isfinite(t) & np.isfinite(r_unc) & np.isfinite(r_cor)
         if np.any(finite):
             return t[finite], r_unc[finite], r_cor[finite]

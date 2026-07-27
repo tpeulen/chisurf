@@ -1,9 +1,9 @@
 """The G-factor has to correct the same channel in numerator and denominator.
 
-``LifetimeModel._tcspc_rt_curves`` turns a measured VV/VH pair into r(t). It
-used to compute ``(VV - VH) / (g VV + 2 VH)`` — the denominator corrected, the
-numerator raw — which agrees with the truth only at ``g = 1`` and otherwise
-reports anisotropy where there is none.
+``LifetimeModel._tcspc_rt_curves`` turns a measured VV/VH pair into r(t) with
+the Schaffer/Eggeling equation. It used to compute ``(VV - VH) / (g VV + 2 VH)``
+— the denominator corrected, the numerator raw — which agrees with the truth
+only at ``g = 1`` and otherwise reports anisotropy where there is none.
 
 The tests build the measurement instead of asserting a formula: pick a true
 anisotropy, split it into parallel and perpendicular intensities, scale each by
@@ -18,9 +18,9 @@ import pytest
 #: Detection sensitivities of the parallel and perpendicular channels.
 S_PARALLEL, S_PERPENDICULAR = 1.0, 0.65
 
-#: chisurf's G is the perpendicular/parallel ratio — the convention
-#: ``compute_g_factor_perrin`` returns.
-G_FACTOR = S_PERPENDICULAR / S_PARALLEL
+#: G is the parallel/perpendicular ratio — Schaffer/Eggeling, and the
+#: convention tttrlib's estimators and ``compute_g_factor_perrin`` share.
+G_FACTOR = S_PARALLEL / S_PERPENDICULAR
 
 
 def _measured(r_true):
@@ -63,7 +63,7 @@ def test_an_isotropic_sample_reads_zero_whatever_the_g_factor():
     t = np.array([1.0, 2.0])
     for sensitivity in (0.5, 0.65, 1.0, 1.4, 2.0):
         vv = np.full(2, 1.0)                       # isotropic: equal true intensities
-        vh = np.full(2, sensitivity * 1.0)
+        vh = np.full(2, 1.0 / sensitivity)
         _, r_unc, _ = LifetimeModel._tcspc_rt_curves(
             t=t, vv=vv, vh=vh, g=sensitivity, l1=0.0, l2=0.0
         )
@@ -87,10 +87,9 @@ def test_g_of_one_is_unchanged():
 def test_it_is_the_published_equation_with_the_reciprocal_g():
     """Agrees term for term with Schaffer/Eggeling/Seidel, JPCA 103 (1999) 331.
 
-    ``r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)``, with chisurf's
-    ``g`` the reciprocal of the paper's ``G``. Pinning this is what stops the
-    two drifting apart, and what documents that a G quoted from the literature
-    must be inverted before it is typed in here.
+    ``r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)``, term for term and
+    with the *same* G — the ratio a paper quotes can be typed straight in, and
+    is the number tttrlib's estimators take.
     """
     from chisurf.core.models.tcspc.lifetime import LifetimeModel
 
@@ -101,7 +100,7 @@ def test_it_is_the_published_equation_with_the_reciprocal_g():
             published = (fp - G * fs) / ((1 - 3 * l2) * fp + (2 - 3 * l1) * G * fs)
             _, _, r_cor = LifetimeModel._tcspc_rt_curves(
                 t=t, vv=np.full(2, fp), vh=np.full(2, fs),
-                g=1.0 / G, l1=l1, l2=l2,
+                g=G, l1=l1, l2=l2,
             )
             assert r_cor[0] == pytest.approx(published, abs=1e-12), f"G={G} l1={l1} l2={l2}"
 
@@ -127,3 +126,49 @@ def test_the_curve_agrees_with_the_integrals_module(qapp=None):
             s_p=np.full(2, vv), s_s=np.full(2, vh), G=G_FACTOR, l1=l1, l2=l2
         )
         assert r_cor[0] == pytest.approx(reference.r_e, abs=1e-12)
+
+
+def test_the_generator_round_trips_at_any_g():
+    """chisurf's own forward model must invert to the anisotropy it was given.
+
+    ``vm_rt_to_vv_vh`` is where the convention is stated in code — it divides
+    the perpendicular channel by G — so a round trip through it is the check
+    that the whole chain agrees, not just that one formula matches another.
+    """
+    from chisurf.core.fluorescence.anisotropy.decay import vm_rt_to_vv_vh
+    from chisurf.core.models.tcspc.lifetime import LifetimeModel
+
+    t, vm, r0 = np.array([0.0, 1.0, 2.0]), np.ones(3), 0.30
+    for g in (0.65, 1.0, 1.5, 2.2):
+        vv, vh = vm_rt_to_vv_vh(t, vm, np.array([r0, 1e12]), g_factor=g, l1=0.0, l2=0.0)
+        _, _, r_cor = LifetimeModel._tcspc_rt_curves(t=t, vv=vv, vh=vh, g=g, l1=0.0, l2=0.0)
+        assert r_cor[0] == pytest.approx(r0, abs=1e-9), f"g = {g}"
+
+
+def test_the_calibration_returns_the_ratio_the_consumers_expect():
+    """``compute_g_factor_perrin`` must return S_par/S_perp, not its reciprocal.
+
+    The same stored number reaches tttrlib's estimators and the VM combination
+    `vv + 2 G vh`; returning the inverse silently inverted the correction for
+    every one of them.
+    """
+    from chisurf.core.fluorescence.anisotropy.integrals import (
+        anisotropy_from_integrals,
+        compute_g_factor_perrin,
+        perrin_steady_state_anisotropy,
+    )
+
+    tau, rho, r0 = 3.2, 6.8, 0.38
+    r_true = perrin_steady_state_anisotropy(tau=tau, rho=rho, r0=r0)
+    sp = S_PARALLEL * (1 + 2 * r_true)
+    ss = S_PERPENDICULAR * (1 - r_true)
+
+    g = compute_g_factor_perrin(sp, ss, tau=tau, rho=rho, r0=r0)
+    assert g == pytest.approx(S_PARALLEL / S_PERPENDICULAR)
+
+    # It closes the loop with its own consumer ...
+    assert anisotropy_from_integrals(sp, ss, G=g).r_e == pytest.approx(r_true)
+    # ... with tttrlib's estimator, which takes the same ratio ...
+    assert (sp - g * ss) / (sp + 2 * g * ss) == pytest.approx(r_true)
+    # ... and with the VM / total-intensity combination used across the readers.
+    assert sp + 2 * g * ss == pytest.approx((1 + 2 * r_true) + 2 * (1 - r_true))
