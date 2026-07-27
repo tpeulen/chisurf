@@ -2,6 +2,29 @@
 
 ## 2026-07-27
 
+* **The shipped experiment configuration was read from a path that cannot exist,
+  so upgraded installs never saw a new or renamed experiment (RF-022 / RF-264).**
+  The GUI resolved the packaged `experiment_configs.yaml` through
+  `get_path('cs')` — not a valid `path_type`, so the old catch-all branch handed
+  back `~/.chisurf` and the file simply was not there. Nothing raised: the
+  startup update prompt was guarded by `source_config_file.exists()` and could
+  never fire, the first-run copy was never seeded, and the merge with the
+  shipped defaults degenerated to the user's own copy — which on a long-lived
+  profile still offered experiments whose readers and models had since been
+  renamed or removed (a dead `RICS` entry logging resolve errors at every start,
+  no `Image correlation`, no `c3pda`), while a fresh `CHISURF_SETTINGS_DIR`
+  showed the correct list. The packaged/user pair is now resolved in exactly one
+  place, `chisurf.core.experiments.get_experiment_config_files()`, shared by the
+  experiment-type registry, the agent bootstrap and the GUI's `init_setups`, so
+  a renamed experiment cannot reach one consumer and not another. The silence is
+  gone too: `get_path` raises `ValueError` on an unknown `path_type` instead of
+  quietly returning the settings directory. Pinned by
+  `test/settings/test_experiment_config_paths.py` and by
+  `test/gui/test_experiment_config_merge.py`, which drives the real
+  `init_setups` against a **stale** user copy — the only state in which the
+  defect is visible, because importing `chisurf` seeds an *empty* settings
+  directory from the packaged files, which is why a clean profile looked fine.
+
 * **A plugin could disappear from the menu and from `csc` without a word
   (BUG-13).** Plugin discovery and the `csc` command both read a plugin's
   `__init__.py` with `ast` instead of importing it — that is what keeps startup

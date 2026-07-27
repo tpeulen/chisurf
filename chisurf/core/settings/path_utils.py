@@ -43,6 +43,16 @@ def get_path(path_type: str = 'settings') -> pathlib.Path:
       Ensures it exists and marks it hidden on Windows (only when newly created).
     - For path_type == 'chisurf': returns the installed chisurf package directory.
       Never modifies attributes of the installed package directory.
+
+    Any other ``path_type`` is a programming error and raises: the former
+    catch-all silently returned the user settings directory, which turned a
+    typo (``get_path('cs')``) into a path that merely never exists — the
+    packaged experiment configuration was read from it and quietly ignored.
+
+    Raises
+    ------
+    ValueError
+        If ``path_type`` is neither ``'settings'`` nor ``'chisurf'``.
     """
     if path_type == 'settings':
         # Allow overriding the settings directory via the environment. This is the
@@ -70,7 +80,6 @@ def get_path(path_type: str = 'settings') -> pathlib.Path:
         # Return the chisurf package root directory
         return pathlib.Path(__file__).parent.parent.parent
     else:
-        # Fallback: return settings dir behavior for unknown types, without risking hiding other paths
-        path = pathlib.Path.home() / '.chisurf'
-        path.mkdir(parents=True, exist_ok=True)
-        return path
+        raise ValueError(
+            f"Unknown path_type {path_type!r}; expected 'settings' or 'chisurf'."
+        )

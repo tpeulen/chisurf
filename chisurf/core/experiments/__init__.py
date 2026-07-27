@@ -46,12 +46,32 @@ def _deep_merge_dicts(base: dict, override: dict) -> dict:
     return result
 
 
+def get_experiment_config_files() -> tuple[pathlib.Path, pathlib.Path]:
+    """Locate the packaged and the per-user experiment configuration file.
+
+    Both files are named ``experiment_configs.yaml``. The packaged one is the
+    read-only default shipped inside ``chisurf/core/settings``; the user one
+    lives in the writable settings directory and overrides it. This is the one
+    place the pair is resolved — the GUI, the agent bootstrap and
+    :func:`load_experiment_types` all go through it so that a renamed or added
+    experiment cannot reach some consumers and not others.
+
+    Returns
+    -------
+    tuple of pathlib.Path
+        ``(packaged, user)``. The user file need not exist.
+    """
+    packaged = pathlib.Path(__file__).parent.parent / 'settings' / 'experiment_configs.yaml'
+    user = pathlib.Path(get_path('settings')) / 'experiment_configs.yaml'
+    return packaged, user
+
+
 def load_experiment_types():
     """Load experiment type registry from experiment_configs.yaml.
 
     The primary source is the user settings file
     ``get_path('settings') / 'experiment_configs.yaml'``; if that file does
-    not exist, the packaged default under ``chisurf/settings`` is used.
+    not exist, the packaged default under ``chisurf/core/settings`` is used.
 
     In addition to entries under the top-level ``experiment_types`` mapping,
     this function ensures that every top-level experiment section (except
@@ -62,10 +82,7 @@ def load_experiment_types():
     entry.
     """
 
-    settings_path = get_path('settings')
-    user_config_file = settings_path / 'experiment_configs.yaml'
-    package_path = pathlib.Path(__file__).parent.parent / 'settings'
-    default_config_file = package_path / 'experiment_configs.yaml'
+    default_config_file, user_config_file = get_experiment_config_files()
 
     # Load packaged defaults and merge user overrides on top so that
     # previously hidden experiments (like "structure") become visible

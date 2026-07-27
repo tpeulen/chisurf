@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import importlib
 import logging
-import pathlib
 from typing import Any
 
 import chisurf as cs
@@ -142,11 +141,13 @@ def resolve_class(class_path: str | None) -> type | None:
 
 def _experiment_config() -> dict[str, Any]:
     """Return the merged packaged/user experiment configuration mapping."""
-    from chisurf.core.experiments import _deep_merge_dicts, _load_yaml_config
-    from chisurf.core.settings import get_path
+    from chisurf.core.experiments import (
+        _deep_merge_dicts,
+        _load_yaml_config,
+        get_experiment_config_files,
+    )
 
-    package_config = pathlib.Path(__file__).parent.parent / "settings" / "experiment_configs.yaml"
-    user_config = pathlib.Path(get_path("settings")) / "experiment_configs.yaml"
+    package_config, user_config = get_experiment_config_files()
     config = _load_yaml_config(package_config)
     if user_config.is_file():
         config = _deep_merge_dicts(config, _load_yaml_config(user_config))

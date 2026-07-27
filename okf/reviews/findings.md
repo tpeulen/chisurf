@@ -361,11 +361,16 @@ RF-018..RF-025 below.
 - **Fix note:**
 
 ### RF-022
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (upgraded installs get a crashing experiment and lose new ones)
 - **Location:** `chisurf/gui/main_helper.py:664` (`source_config_file = pathlib.Path(cs.core.settings.get_path('cs')) / "settings" / "experiment_configs.yaml"`)
 - **Finding:** The GUI builds the experiment registry from the **user's** `experiment_configs.yaml` alone, because the path it uses for the shipped defaults never exists: `get_path('cs')` returns the *settings* directory (`~/.chisurf`), so `source_config_file` resolves to `~/.chisurf/settings/experiment_configs.yaml` (the packaged file lives at `chisurf/core/settings/experiment_configs.yaml`, which `chisurf/core/experiments/bootstrap.py:148` locates correctly). Two failure modes follow from `source_config_file.exists() == False`: the "Experiment configuration update available" prompt can never fire, and `default_configs` loads empty so `experiment_configs = user_configs` — no merge with the shipped defaults ever happens. Verified on this (upgraded) install: startup logs 7 `Failed to resolve class chisurf.core.experiments.rics.RICSReader / chisurf.core.models.rics.rics.Rics*Model` ERRORs; the Experiment combo offers `['TCSPC','PDA','DEER','FCS','PCF','RICS','PCH','Modelling']` — a **dead `RICS` entry** (the section was renamed to `ics` in the shipped file) whose selection leaves the reader combo empty and raises `IndexError: No experiment readers defined for the current experiment` from `Main.current_setup` (`chisurf/gui/main.py:156`) — while the shipped `Image correlation` and `tcPDA (3-colour)` experiments are absent. Re-run with `CHISURF_SETTINGS_DIR` pointing at an empty directory: 9 experiments, every one with readers (`Image correlation (RICS/STICS/TICS/iMSD)`, tcPDA's three readers, …), zero ERRORs — which isolates the cause to the missing merge. Also worth a guard: an experiment whose reader classes all fail to resolve should not be offered in the combo, and `current_setup` should not raise a bare `IndexError`.
-- **Fix note:**
+- **Fix note:** Fixed together with the duplicate RF-264 — see that entry. The
+  merge now happens because `init_setups` resolves the shipped file through
+  `chisurf.core.experiments.get_experiment_config_files()`. The two secondary
+  guards suggested here (hiding an experiment whose readers all fail to resolve,
+  and `current_setup` raising a bare `IndexError`) are *not* covered and remain
+  open work.
 
 ### RF-023
 - **Status:** FIXED
@@ -3418,11 +3423,25 @@ RF-263..RF-268.
 - **Fix note:**
 
 ### RF-264
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the shipped experiment configuration is never merged on an existing installation, so renamed/added readers and models silently disappear and the update prompt is dead code)
 - **Location:** `chisurf/gui/main_helper.py:666` (`source_config_file = pathlib.Path(cs.core.settings.get_path('cs')) / "settings" / "experiment_configs.yaml"`) against `chisurf/core/settings/path_utils.py:39-76` (`get_path` accepts only `'settings'` and `'chisurf'`)
 - **Finding:** `'cs'` is not a valid `path_type`, so `get_path('cs')` falls into the catch-all branch and returns `~/.chisurf`; `source_config_file` becomes `~/.chisurf/settings/experiment_configs.yaml`, which does not exist. Verified: `get_path('cs')/'settings'/'experiment_configs.yaml'` → `exists() == False`. Three consequences, all live in this run: (1) the startup *"Experiment configuration update available"* prompt at `:673` is guarded by `source_config_file.exists()` and therefore **can never fire**; (2) `default_configs` at `:746` loads nothing, so `experiment_configs` degenerates to the user's copy alone and the shipped defaults never merge; (3) `if not user_config_file.exists()` at `:738` cannot seed a first-run copy either. On this installation the user copy is a stale snapshot, so the GUI offered a `RICS` experiment whose reader and six models no longer exist (`Failed to resolve class chisurf.core.experiments.rics.RICSReader: No module named …`, plus `chisurf.core.models.rics.rics.Rics{Simple,Triplet,Immobile,Flow,Full}Model` and `IcsGaussian2DModel`, all logged as ERROR at every start), the PDA model list offered a removed `PdaDynamicThreeStateModel` and was **missing** `PdaDynamicNStateModel`, and the shipped `c3pda` experiment was absent entirely. Cross-check: with `CHISURF_SETTINGS_DIR` pointed at a fresh directory the experiment list is correct (`TCSPC, PDA, c3PDA (3-colour), DEER, FCS, PCF, Image correlation, PCH, Modelling`) — i.e. the bug is invisible on a clean profile and permanent on a real one. The correct spelling is already used at `chisurf/core/experiments/bootstrap.py:148` and `chisurf/core/experiments/__init__.py:67` (`pathlib.Path(__file__).parent.parent / 'settings'`); use `get_path('chisurf')` (or the same package-relative path) here, and pin it with a test asserting the resolved source file exists.
-- **Fix note:**
+- **Fix note:** Same defect as RF-022 — both closed here. The packaged/user pair is
+  now resolved in one place, `chisurf.core.experiments.get_experiment_config_files()`,
+  and used by `load_experiment_types`, the agent bootstrap `_experiment_config`
+  and the GUI's `init_setups` (which no longer calls `get_path('cs')`), so a
+  renamed experiment cannot reach one consumer and not another. Root cause of
+  the silence removed as well: `get_path` now raises `ValueError` on an unknown
+  `path_type` instead of falling back to `~/.chisurf`. Pinned by
+  `test/settings/test_experiment_config_paths.py` (packaged file exists and
+  parses, user file follows `CHISURF_SETTINGS_DIR`, both consumers resolve the
+  same packaged path, `get_path('cs')` raises) and by
+  `test/gui/test_experiment_config_merge.py`, which drives the real
+  `init_setups` against a **stale** user copy — the only state that shows the
+  defect, since importing `chisurf` seeds an empty settings directory from the
+  packaged files — and carries a negative control reproducing the pre-fix
+  registry.
 
 ### RF-265
 - **Status:** OPEN

@@ -661,8 +661,9 @@ class SetupMixin:
 
             return "\n".join(lines)
 
-        source_config_file = pathlib.Path(cs.core.settings.get_path('cs')) / "settings" / "experiment_configs.yaml"
-        user_config_file = pathlib.Path(cs.core.settings.get_path('settings')) / "experiment_configs.yaml"
+        source_config_file, user_config_file = (
+            chisurf.core.experiments.get_experiment_config_files()
+        )
 
         check_updates = True
         try:
