@@ -433,3 +433,140 @@ def test_properties_are_computed_once():
     assert prop.area == 16
     prop.image[:] = False  # invalidating the source must not change a cached answer
     assert prop.area == 16
+
+
+# --- anisotropic pixels -------------------------------------------------------
+#: Properties whose value must track a physical pixel spacing, and which
+#: scikit-image also defines under one. The perimeters are excluded on purpose:
+#: they are counted from pixel-border configurations whose weights assume square
+#: pixels, so both libraries refuse an anisotropic spacing rather than return a
+#: number that looks plausible.
+SPACING_PROPERTIES = (
+    "area", "area_bbox", "area_convex", "area_filled", "num_pixels",
+    "centroid", "centroid_local", "centroid_weighted", "centroid_weighted_local",
+    "axis_major_length", "axis_minor_length", "eccentricity",
+    "equivalent_diameter_area", "extent", "feret_diameter_max",
+    "inertia_tensor", "inertia_tensor_eigvals", "solidity", "euler_number",
+    "moments", "moments_central", "moments_weighted", "moments_weighted_central",
+)
+
+
+@pytest.mark.parametrize("spacing", [(1.0, 1.0), 0.25, (0.65, 0.65), (0.2, 0.05), (3.0, 1.0)])
+def test_every_scaled_property_matches_skimage_under_a_spacing(blobs, spacing):
+    """A confocal voxel is rarely square; the numbers must be in real units.
+
+    ``orientation`` is left out: it is undefined for a rotationally symmetric
+    region, and the two libraries then differ by floating-point dust — see
+    :func:`test_a_symmetric_region_has_no_orientation_to_agree_on`.
+    """
+    labels, intensity = blobs
+    theirs = {p.label: p for p in skimage_measure.regionprops(
+        labels, intensity_image=intensity, spacing=spacing)}
+    ours = {p.label: p for p in regionprops(
+        labels, intensity_image=intensity, spacing=spacing)}
+    assert set(ours) == set(theirs)
+
+    for name in SPACING_PROPERTIES:
+        for key in theirs:
+            np.testing.assert_allclose(
+                np.asarray(getattr(ours[key], name), dtype=float),
+                np.asarray(getattr(theirs[key], name), dtype=float),
+                rtol=1e-8, atol=1e-8,
+                err_msg=f"{name} of region {key} at spacing {spacing}",
+            )
+
+
+def test_area_becomes_physical_but_a_pixel_count_never_does():
+    """``area`` carries units under a spacing; ``num_pixels`` is always a count."""
+    labels = np.zeros((30, 30), dtype=int)
+    labels[5:15, 8:20] = 1                      # 10 x 12 = 120 pixels
+
+    plain = regionprops(labels)[0]
+    assert plain.area == 120 and plain.num_pixels == 120
+
+    scaled = regionprops(labels, spacing=(2.0, 3.0))[0]
+    assert scaled.area == pytest.approx(120 * 6.0)
+    assert scaled.num_pixels == 120
+
+
+def test_a_spacing_moves_the_centroid_into_the_same_units():
+    labels = np.zeros((30, 30), dtype=int)
+    labels[5:15, 8:20] = 1
+    plain = regionprops(labels)[0]
+    scaled = regionprops(labels, spacing=(2.0, 0.5))[0]
+    assert scaled.centroid == pytest.approx(
+        (plain.centroid[0] * 2.0, plain.centroid[1] * 0.5)
+    )
+
+
+def test_a_ratio_is_unchanged_by_an_isotropic_spacing():
+    """`extent` and `solidity` are areas over areas, so the units cancel."""
+    labels = np.zeros((40, 40), dtype=int)
+    labels[5:25, 8:30] = 1
+    labels[10:14, 12:16] = 0                     # a hole, so solidity < 1
+    plain = regionprops(labels)[0]
+    scaled = regionprops(labels, spacing=0.37)[0]
+    assert scaled.extent == pytest.approx(plain.extent)
+    assert scaled.solidity == pytest.approx(plain.solidity)
+
+
+def test_an_isotropic_spacing_scales_the_perimeter():
+    labels = np.zeros((30, 30), dtype=int)
+    labels[5:15, 8:20] = 1
+    plain = regionprops(labels)[0]
+    scaled = regionprops(labels, spacing=0.5)[0]
+    assert scaled.perimeter == pytest.approx(plain.perimeter * 0.5)
+    assert scaled.perimeter_crofton == pytest.approx(plain.perimeter_crofton * 0.5)
+
+
+def test_an_anisotropic_perimeter_is_refused_rather_than_guessed():
+    """The border weights assume square pixels; scikit-image refuses it too."""
+    labels = np.zeros((30, 30), dtype=int)
+    labels[5:15, 8:20] = 1
+    props = regionprops(labels, spacing=(1.0, 2.0))[0]
+    with pytest.raises(NotImplementedError, match="isotropic"):
+        _ = props.perimeter
+    with pytest.raises(NotImplementedError, match="isotropic"):
+        _ = props.perimeter_crofton
+
+
+def test_the_table_takes_a_spacing_too():
+    labels = np.zeros((30, 30), dtype=int)
+    labels[5:15, 8:20] = 1
+    table = regionprops_table(
+        labels, properties=("label", "area", "centroid"), spacing=(2.0, 3.0)
+    )
+    assert table["area"][0] == pytest.approx(720.0)
+    assert table["centroid-0"][0] == pytest.approx(19.0)
+
+
+@pytest.mark.parametrize("bad", [(1.0, 0.0), (1.0, -2.0), (np.inf, 1.0), (1.0, 2.0, 3.0)])
+def test_an_impossible_spacing_is_refused(bad):
+    """A silently dropped spacing turns physical units back into pixels."""
+    labels = np.zeros((8, 8), dtype=int)
+    labels[2:4, 2:4] = 1
+    with pytest.raises(ValueError):
+        regionprops(labels, spacing=bad)
+
+
+def test_a_symmetric_region_has_no_orientation_to_agree_on():
+    """An annulus is rotationally symmetric, so its orientation is a convention.
+
+    Both libraries fall back on the sign of a cross-moment that is exactly zero
+    in exact arithmetic, and pick their branch on floating-point dust — under a
+    scaling scikit-image's inertia tensor keeps ~1e-15 of asymmetry where this
+    one is exactly symmetric, so the two can differ by pi/4. The axis lengths,
+    which are what a symmetric region actually determines, agree.
+    """
+    labels = np.zeros((80, 80), dtype=int)
+    yy, xx = np.mgrid[0:80, 0:80]
+    radius = np.hypot(yy - 40, xx - 40)
+    labels[(radius <= 20) & (radius > 9)] = 1
+
+    for spacing in (1.0, 0.65):
+        ours = regionprops(labels, spacing=spacing)[0]
+        theirs = skimage_measure.regionprops(labels, spacing=spacing)[0]
+        assert ours.axis_major_length == pytest.approx(theirs.axis_major_length)
+        assert ours.axis_minor_length == pytest.approx(theirs.axis_minor_length)
+        # Degenerate: equal principal moments, so no axis is preferred.
+        assert ours.inertia_tensor[0, 0] == pytest.approx(ours.inertia_tensor[1, 1])

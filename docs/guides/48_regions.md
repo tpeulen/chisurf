@@ -215,6 +215,9 @@ table = regionprops_table(
     properties=("label", "area", "centroid", "intensity_mean"),
 )                                             # dict of arrays; centroid-0/-1
 
+# anisotropic pixels: areas, lengths and centroids come out in real units
+regionprops(label_image, spacing=(0.08, 0.04))   # µm per pixel, y then x
+
 # a measurement converts back into a selection
 rois = labels_to_rois(label_image)            # one region per label
 ```

@@ -19,6 +19,22 @@ inertia-tensor axes, the sign convention of ``orientation`` — the same choice 
 made, so the numbers agree to floating-point noise. Code and habits transfer in
 both directions, and a number printed here is the number the literature means.
 
+Anisotropic pixels are supported the same way: pass ``spacing=`` (a scalar, or
+one value per axis) and every length, area, centroid and moment comes out in
+those units instead of in pixels, matching scikit-image property for property.
+Two corners are worth knowing, and both are shared with scikit-image:
+
+* the **perimeters** are counted from pixel-border configurations whose weights
+  assume square pixels, so an *anisotropic* spacing raises
+  ``NotImplementedError`` rather than returning a plausible-looking number;
+* ``orientation`` is undefined for a rotationally symmetric region — equal
+  principal moments mean no axis is preferred — so both libraries fall back on
+  a convention and can differ by ``pi/4`` there. The axis lengths, which such a
+  region does determine, agree.
+
+``num_pixels`` stays a count under any spacing; ``area`` is the one that carries
+units.
+
 Three things are added on top, none of which change an existing name:
 
 * the source can be **anything the ROI system produces** — a label image, a bare
@@ -130,26 +146,74 @@ _EULER_WEIGHTS_4 = np.array([0, 1, 0, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0], d
 _HULL_OFFSETS = np.array([[-0.5, 0.0], [0.0, -0.5], [0.0, 0.5], [0.5, 0.0]])
 
 
-def _raw_moments(image: np.ndarray, order: int = 3) -> np.ndarray:
-    """Return the raw image moments ``M[p, q] = sum(image * r**p * c**q)``."""
+def _raw_moments(image: np.ndarray, order: int = 3, spacing=(1.0, 1.0)) -> np.ndarray:
+    """Return the raw image moments ``M[p, q] = sum(image * r**p * c**q)``.
+
+    With anisotropic *spacing* the coordinates are physical rather than pixel
+    indices, which is what makes every moment-derived quantity — the inertia
+    tensor, the axis lengths, the orientation — come out in real units.
+    """
     h, w = image.shape
-    rows = np.arange(h, dtype=float)
-    cols = np.arange(w, dtype=float)
+    rows = np.arange(h, dtype=float) * spacing[0]
+    cols = np.arange(w, dtype=float) * spacing[1]
     row_powers = np.stack([rows ** p for p in range(order + 1)])
     col_powers = np.stack([cols ** q for q in range(order + 1)])
     # (order+1, h) @ (h, w) @ (w, order+1)
     return row_powers @ np.asarray(image, dtype=float) @ col_powers.T
 
 
-def _central_moments(image: np.ndarray, centre: tuple[float, float], order: int = 3
-                     ) -> np.ndarray:
-    """Return the moments of *image* about *centre*."""
+def _central_moments(image: np.ndarray, centre: tuple[float, float], order: int = 3,
+                     spacing=(1.0, 1.0)) -> np.ndarray:
+    """Return the moments of *image* about *centre*.
+
+    *centre* is in the same (physical) coordinates the spacing produces.
+    """
     h, w = image.shape
-    rows = np.arange(h, dtype=float) - centre[0]
-    cols = np.arange(w, dtype=float) - centre[1]
+    rows = np.arange(h, dtype=float) * spacing[0] - centre[0]
+    cols = np.arange(w, dtype=float) * spacing[1] - centre[1]
     row_powers = np.stack([rows ** p for p in range(order + 1)])
     col_powers = np.stack([cols ** q for q in range(order + 1)])
     return row_powers @ np.asarray(image, dtype=float) @ col_powers.T
+
+
+def normalize_spacing(spacing, ndim: int = 2) -> tuple:
+    """Return *spacing* as a length-*ndim* tuple of finite positive floats.
+
+    A scalar means the same spacing on every axis. Matching scikit-image, a
+    wrong shape or a non-finite value is refused rather than quietly ignored —
+    a silently dropped spacing turns physical units back into pixels without
+    saying so.
+
+    Parameters
+    ----------
+    spacing : float or sequence of float or None
+        ``None`` means unit spacing.
+    ndim : int
+        Number of image dimensions.
+
+    Returns
+    -------
+    tuple of float
+
+    Raises
+    ------
+    ValueError
+        If the shape is wrong, or a value is non-finite or not positive.
+    """
+    if spacing is None:
+        return (1.0,) * ndim
+    values = np.atleast_1d(np.asarray(spacing, dtype=float))
+    if values.size == 1:
+        values = np.repeat(values, ndim)
+    if values.shape != (ndim,):
+        raise ValueError(
+            f"spacing must be a scalar or a sequence of length {ndim}; got {spacing!r}"
+        )
+    if not np.all(np.isfinite(values)):
+        raise ValueError(f"spacing must be finite; got {spacing!r}")
+    if np.any(values <= 0.0):
+        raise ValueError(f"spacing must be positive; got {spacing!r}")
+    return tuple(float(v) for v in values)
 
 
 class RegionProperties:
@@ -197,6 +261,7 @@ class RegionProperties:
         intensity: np.ndarray | None = None,
         name: str = "",
         extra_properties: Sequence[Callable] | None = None,
+        spacing=None,
     ) -> None:
         """Initialize from a cropped mask and its offset in the full frame."""
         m = np.asarray(mask, dtype=bool)
@@ -212,6 +277,9 @@ class RegionProperties:
                 f"intensity image shape {self.image_intensity.shape} does not match the "
                 f"region mask {m.shape}"
             )
+        self.spacing = normalize_spacing(spacing, 2)
+        #: Physical area of one pixel — the product of the spacings.
+        self._pixel_area = float(self.spacing[0] * self.spacing[1])
         self._extra = tuple(extra_properties or ())
         for func in self._extra:
             setattr(self, func.__name__, self._call_extra(func))
@@ -225,14 +293,25 @@ class RegionProperties:
 
     # --- size and position -------------------------------------------------
     @cached_property
-    def area(self) -> int:
-        """Number of pixels in the region."""
-        return int(self.image.sum())
+    def area(self) -> float:
+        """Area of the region.
 
-    @property
+        A pixel count with unit spacing; with a physical :attr:`spacing` it is
+        the area in those units, as in scikit-image. Use :attr:`num_pixels` for
+        the count itself.
+        """
+        count = int(self.image.sum())
+        return count if self._pixel_area == 1.0 else count * self._pixel_area
+
+    @cached_property
     def num_pixels(self) -> int:
-        """Number of pixels in the region (scikit-image's alias for :attr:`area`)."""
-        return self.area
+        """Number of pixels in the region — always a count.
+
+        Equal to :attr:`area` at unit spacing and *not* otherwise: an area
+        carries physical units once a spacing is given, a pixel count never
+        does. scikit-image draws the same line.
+        """
+        return int(self.image.sum())
 
     @cached_property
     def coords(self) -> np.ndarray:
@@ -254,9 +333,10 @@ class RegionProperties:
         return (slice(r0, r1), slice(c0, c1))
 
     @cached_property
-    def area_bbox(self) -> int:
-        """Number of pixels in the bounding box."""
-        return int(self.image.size)
+    def area_bbox(self) -> float:
+        """Area of the bounding box, in the same units as :attr:`area`."""
+        size = int(self.image.size)
+        return size if self._pixel_area == 1.0 else size * self._pixel_area
 
     @cached_property
     def extent(self) -> float:
@@ -273,13 +353,14 @@ class RegionProperties:
         rr, cc = np.nonzero(self.image)
         if rr.size == 0:
             return (float("nan"), float("nan"))
-        return (float(rr.mean()), float(cc.mean()))
+        return (float(rr.mean()) * self.spacing[0], float(cc.mean()) * self.spacing[1])
 
     @cached_property
     def centroid(self) -> tuple[float, float]:
         """Centre of mass of the pixels, as ``(row, col)`` in the full frame."""
         row, col = self.centroid_local
-        return (row + self.offset[0], col + self.offset[1])
+        return (row + self.offset[0] * self.spacing[0],
+                col + self.offset[1] * self.spacing[1])
 
     @property
     def centroid_xy(self) -> tuple[float, float]:
@@ -291,22 +372,24 @@ class RegionProperties:
     @cached_property
     def moments(self) -> np.ndarray:
         """Raw spatial moments of the mask, up to order 3."""
-        return _raw_moments(self.image.astype(float))
+        return _raw_moments(self.image.astype(float), spacing=self.spacing)
 
     @cached_property
     def moments_central(self) -> np.ndarray:
         """Central moments of the mask, up to order 3."""
-        return _central_moments(self.image.astype(float), self.centroid_local)
+        return _central_moments(self.image.astype(float), self.centroid_local,
+                                spacing=self.spacing)
 
     @cached_property
     def moments_weighted(self) -> np.ndarray:
         """Raw spatial moments weighted by the intensity image."""
-        return _raw_moments(self._weights)
+        return _raw_moments(self._weights, spacing=self.spacing)
 
     @cached_property
     def moments_weighted_central(self) -> np.ndarray:
         """Central moments weighted by the intensity image."""
-        return _central_moments(self._weights, self.centroid_weighted_local)
+        return _central_moments(self._weights, self.centroid_weighted_local,
+                                spacing=self.spacing)
 
     @cached_property
     def inertia_tensor(self) -> np.ndarray:
@@ -427,7 +510,7 @@ class RegionProperties:
         """
         codes = self._border_codes()
         histogram = np.bincount(codes.ravel(), minlength=len(_PERIMETER_WEIGHTS))
-        return float(histogram @ _PERIMETER_WEIGHTS)
+        return self._scale_length(float(histogram @ _PERIMETER_WEIGHTS))
 
     @cached_property
     def perimeter_crofton(self) -> float:
@@ -441,7 +524,7 @@ class RegionProperties:
         padded = np.pad(self.image.astype(np.uint8), 1, mode="constant")
         codes = ndi.convolve(padded, _CROFTON_KERNEL, mode="constant", cval=0)
         histogram = np.bincount(codes.ravel(), minlength=16)
-        return float(histogram @ _CROFTON_WEIGHTS)
+        return self._scale_length(float(histogram @ _CROFTON_WEIGHTS))
 
     @cached_property
     def circularity(self) -> float:
@@ -454,6 +537,22 @@ class RegionProperties:
         """
         p = self.perimeter
         return float(4.0 * math.pi * self.area / (p * p)) if p > 0 else 0.0
+
+    def _scale_length(self, value: float) -> float:
+        """Scale a boundary length by the spacing, refusing an anisotropic one.
+
+        A perimeter is counted from pixel-border configurations, and those
+        weights assume square pixels: with different spacings along the two axes
+        each configuration would contribute a different length and the estimate
+        is simply not defined. scikit-image refuses the same case rather than
+        returning a number that looks plausible.
+        """
+        if self.spacing[0] == self.spacing[1]:
+            return value * self.spacing[0]
+        raise NotImplementedError(
+            "perimeter is defined for isotropic spacing only; got "
+            f"{self.spacing}. Measure area-based shape descriptors instead."
+        )
 
     # --- hull, holes and topology ------------------------------------------
     @cached_property
@@ -480,9 +579,10 @@ class RegionProperties:
         return inside.reshape(ny, nx)
 
     @cached_property
-    def area_convex(self) -> int:
-        """Number of pixels in the convex hull."""
-        return int(self.image_convex.sum())
+    def area_convex(self) -> float:
+        """Area of the convex hull, in the same units as :attr:`area`."""
+        count = int(self.image_convex.sum())
+        return count if self._pixel_area == 1.0 else count * self._pixel_area
 
     @cached_property
     def solidity(self) -> float:
@@ -498,9 +598,10 @@ class RegionProperties:
         return ndi.binary_fill_holes(self.image)
 
     @cached_property
-    def area_filled(self) -> int:
-        """Number of pixels in the region once its holes are filled."""
-        return int(self.image_filled.sum())
+    def area_filled(self) -> float:
+        """Area of the region once its holes are filled, as for :attr:`area`."""
+        count = int(self.image_filled.sum())
+        return count if self._pixel_area == 1.0 else count * self._pixel_area
 
     @cached_property
     def euler_number(self) -> int:
@@ -543,6 +644,7 @@ class RegionProperties:
             return 0.0
         points = np.column_stack([rr, cc]).astype(float)
         points = (points[:, None, :] + _HULL_OFFSETS[None, :, :]).reshape(-1, 2)
+        points = points * np.asarray(self.spacing, dtype=float)
         try:
             from scipy.spatial import ConvexHull
             from scipy.spatial.distance import pdist
@@ -610,8 +712,8 @@ class RegionProperties:
         if total <= 0.0:
             return self.centroid_local
         ny, nx = self.image.shape
-        rows = np.arange(ny, dtype=float)[:, None]
-        cols = np.arange(nx, dtype=float)[None, :]
+        rows = (np.arange(ny, dtype=float) * self.spacing[0])[:, None]
+        cols = (np.arange(nx, dtype=float) * self.spacing[1])[None, :]
         return (
             float((weights * rows).sum() / total),
             float((weights * cols).sum() / total),
@@ -621,7 +723,8 @@ class RegionProperties:
     def centroid_weighted(self) -> tuple[float, float]:
         """Intensity-weighted centre of mass, as ``(row, col)`` in the full frame."""
         row, col = self.centroid_weighted_local
-        return (row + self.offset[0], col + self.offset[1])
+        return (row + self.offset[0] * self.spacing[0],
+                col + self.offset[1] * self.spacing[1])
 
     # --- interoperability --------------------------------------------------
     def to_roi(self) -> MaskROI:
@@ -705,6 +808,7 @@ def _measure(
     label: int,
     name: str,
     extra_properties: Sequence[Callable] | None,
+    spacing=None,
 ) -> RegionProperties | None:
     """Crop a full-frame mask to its region and measure it; ``None`` if empty."""
     rows = np.flatnonzero(mask.any(axis=1))
@@ -720,6 +824,7 @@ def _measure(
         intensity=None if intensity is None else intensity[r0:r1, c0:c1],
         name=name,
         extra_properties=extra_properties,
+        spacing=spacing,
     )
 
 
@@ -732,6 +837,7 @@ def regionprops(
     shape: Sequence[int] | None = None,
     extent: Extent = None,
     background: int = 0,
+    spacing=None,
 ) -> list[RegionProperties]:
     """Measure every labelled region, as ``skimage.measure.regionprops`` does.
 
@@ -814,7 +920,7 @@ def regionprops(
         for i, roi in enumerate(rois, start=1):
             props = _measure(
                 roi.to_mask(grid, extent, intensity), intensity, i,
-                getattr(roi, "name", ""), extra_properties,
+                getattr(roi, "name", ""), extra_properties, spacing,
             )
             if props is not None:
                 out.append(props)
@@ -829,7 +935,7 @@ def regionprops(
             f"{labels.shape}"
         )
     if labels.dtype == bool:
-        props = _measure(labels, intensity, 1, "", extra_properties)
+        props = _measure(labels, intensity, 1, "", extra_properties, spacing)
         return [props] if props is not None else []
 
     # ``find_objects`` gives every label's bounding box in one pass, so each
@@ -868,6 +974,7 @@ def regionprops(
             intensity=None if intensity is None else intensity[box],
             name=str(value),
             extra_properties=extra_properties,
+            spacing=spacing,
         )
         if props.area:
             out.append(props)

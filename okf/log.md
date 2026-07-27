@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **regionprops takes an anisotropic pixel spacing.** A confocal voxel is rarely
+  square and a scan is often sampled differently along the two axes, so
+  scikit-image's `spacing=` was the one real gap left in the compatibility
+  surface. Every length, area, centroid and moment now comes out in physical
+  units, checked against scikit-image property by property at five spacings
+  (isotropic, scalar, and two anisotropic): worst deviation 1.2e-9.
+
+  Two corners, both shared with scikit-image and both now stated rather than
+  discovered. The **perimeters** are counted from pixel-border configurations
+  whose weights assume square pixels, so an anisotropic spacing raises
+  `NotImplementedError` instead of returning a plausible-looking number.
+  **`orientation`** is undefined for a rotationally symmetric region — equal
+  principal moments mean no axis is preferred — so both libraries fall back on
+  a convention and can differ by pi/4; measured on an annulus, scikit-image's
+  scaling leaves ~7e-15 of asymmetry in the inertia tensor where this one is
+  exactly symmetric, so they take different branches of a case that has no
+  answer. The axis lengths, which such a region does determine, agree.
+
+  One distinction the work forced: `num_pixels` is always a count and `area` is
+  the property that carries units. Aliasing them was harmless at unit spacing
+  and wrong the moment a spacing existed — the comparison caught it. `area`
+  still returns the plain integer when the spacing is unity, so every existing
+  display ("216 px") is unchanged.
+
+  13 tests; `test_regionprops` is 74 green, microscopy 228.
+
 * **A frame the particle detector was meant to discard killed the whole run
   instead (RF-332).** `detect_particles` drops every labelled region smaller than
   `min_area` — that cut exists precisely for frames of hot pixels — but when it
