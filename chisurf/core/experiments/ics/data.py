@@ -255,9 +255,11 @@ class IcsCarpet:
     error : numpy.ndarray
         Standard error of the mean over the averaged frame pairs, same shape.
     pixel_shift : numpy.ndarray
-        Fast-axis lag :math:`\\xi` of every carpet point, shape ``(ny, nx)``.
+        Fast-axis lag :math:`\\xi` of every carpet point, shape ``(ny, nx)``,
+        in the same order as the maps (centred or FFT order).
     line_shift : numpy.ndarray
-        Slow-axis lag :math:`\\psi` of every carpet point, shape ``(ny, nx)``.
+        Slow-axis lag :math:`\\psi` of every carpet point, shape ``(ny, nx)``,
+        in the same order as the maps (centred or FFT order).
     frame_lags : numpy.ndarray
         The frame lags :math:`\\Delta`, shape ``(n_lags,)``.
     timing : IcsTiming

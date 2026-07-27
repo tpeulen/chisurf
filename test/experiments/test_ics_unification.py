@@ -106,6 +106,42 @@ def test_more_lags_than_frames_is_rejected_not_silently_truncated():
         compute_ics_carpet(tiny, IcsSettings(frame_lags=(5, 6)))
 
 
+def test_lag_grids_follow_the_map_order(stack):
+    """Declining the fftshift moves the maps *and* their lag grids together.
+
+    The grids are the coordinates of the carpet: every consumer pairs a map
+    element with the lag at the same index. If the maps stay in FFT order while
+    the grids describe a centred map, ``zero_lag_index`` points at a lag that is
+    not zero and the TICS decay is read off the wrong carpet column.
+    """
+    settings = IcsSettings(frame_lags=(0, 1))
+    shifted = compute_ics_carpet(stack, settings, use_fftshift=True)
+    unshifted = compute_ics_carpet(stack, settings, use_fftshift=False)
+
+    # Unshifted: the zero lag sits at [0, 0] and the grids say so.
+    assert unshifted.zero_lag_index() == (0, 0)
+    assert unshifted.pixel_shift[0, 0] == 0.0
+    assert unshifted.line_shift[0, 0] == 0.0
+    # Shifted: the zero lag sits at the centre and the grids say so.
+    iy, ix = shifted.zero_lag_index()
+    assert (iy, ix) == (shifted.shape[1] // 2, shifted.shape[2] // 2)
+
+    # Same carpet either way: the value at the zero lag, and the whole map up to
+    # the shift, agree.
+    np.testing.assert_allclose(unshifted.correlation[:, 0, 0], shifted.correlation[:, iy, ix])
+    np.testing.assert_allclose(
+        np.fft.fftshift(unshifted.correlation, axes=(1, 2)), shifted.correlation
+    )
+    np.testing.assert_allclose(np.fft.fftshift(unshifted.pixel_shift), shifted.pixel_shift)
+    np.testing.assert_allclose(np.fft.fftshift(unshifted.line_shift), shifted.line_shift)
+    # ... and so do the two readings that consume the grids.
+    np.testing.assert_allclose(unshifted.tics_curve()[1], shifted.tics_curve()[1])
+    np.testing.assert_allclose(
+        np.fft.fftshift(unshifted.lag_time_grid(), axes=(1, 2)),
+        shifted.lag_time_grid(),
+    )
+
+
 def test_non_contiguous_roi_slice_is_handled(stack):
     """An ROI view of a larger stack correlates without corrupting memory."""
     view = stack[:, 4:20, 4:20]

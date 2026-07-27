@@ -195,7 +195,9 @@ def compute_ics_carpet(
         input. A region that is not its own bounding box additionally zeroes the
         remaining corners, which biases ``G`` slightly (see Notes).
     use_fftshift : bool
-        Centre the zero lag in each spatial map.
+        Centre the zero lag in each spatial map. When false the maps are left in
+        FFT order, with the zero lag at ``[0, 0]``, and the returned lag grids
+        are built in that same order so that map and grids stay paired.
     **kwargs
         Extra keyword arguments forwarded to the low-level correlator.
 
@@ -321,6 +323,14 @@ def compute_ics_carpet(
     line_shift, pixel_shift = np.indices((ny_out, nx_out))
     line_shift = (line_shift - ny_out // 2).astype(float)
     pixel_shift = (pixel_shift - nx_out // 2).astype(float)
+    if not use_fftshift:
+        # The maps were left in FFT order, so the grids have to follow them: the
+        # centred grids above describe a shifted map only. Every consumer pairs a
+        # carpet element with the lag at the same index — zero_lag_index, the TICS
+        # decay, lag_time_grid and the model fit — so a centred grid over an
+        # unshifted map reads the wrong point at every position.
+        line_shift = np.fft.ifftshift(line_shift, axes=0)
+        pixel_shift = np.fft.ifftshift(pixel_shift, axes=1)
 
     timing = settings.timing.resolved(n_lines=ny)
 

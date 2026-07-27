@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **ICS: the lag grids follow the maps (RF-583).** `compute_ics_carpet` applied
+  the `fftshift` to the correlation maps only when asked, but always built
+  `pixel_shift`/`line_shift` as `index - n//2` — the coordinates of a *centred*
+  map. With "Center zero lag" off the carpet therefore disagreed with its own
+  coordinates at every index: `zero_lag_index()` pointed at the middle of a map
+  whose zero lag sits at `[0, 0]` (measured `G = 0.6940` against `0.7036`), so
+  the TICS decay, `lag_time_grid` and the model fit all read a permuted lag
+  assignment. The grids are now moved into FFT order with `np.fft.ifftshift`
+  whenever the maps are, and both `use_fftshift` and the `IcsCarpet` attribute
+  docs state which order they are in. Pinned by
+  `test_lag_grids_follow_the_map_order`. While verifying it, a separate upstream
+  defect surfaced — a non-square image stack correlates to `NaN`/`inf` in the
+  backend, which is what makes
+  `test_a_region_does_not_change_the_particle_number` flaky — recorded in
+  [known issues](/references/known-issues.md).
+
 * **DATA-06 (partial): mmCIF record export reaches the public API and the CLI.**
   Exporting a flrCIF record was possible only through `MFDatabase.export_flr_cif`
   or the admin-only `sample.export` RPC handler, so a standalone consumer had to

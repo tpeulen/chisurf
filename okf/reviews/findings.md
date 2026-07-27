@@ -6874,11 +6874,21 @@ geometry it reconstructs from a Leica file. Findings RF-580..RF-587.
 - **Fix note:**
 
 ### RF-583
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (with "Center zero lag" off, the lag grids still describe a centred map, so the carpet and its coordinates disagree — the fit and the TICS decay read the wrong points)
 - **Location:** `chisurf/core/experiments/ics/ics_core.py:305-307` (`if use_fftshift: mean = np.fft.fftshift(mean)`) against `:320-323`, which builds `line_shift`/`pixel_shift` as `index − n//2` **unconditionally**, and `data.py:341-351` (`zero_lag_index`, `argmin(|ξ| + |ψ|)`)
 - **Finding:** the shift grids are only correct for a shifted map; when the caller declines the shift the maps stay in FFT order (zero lag at `[0, 0]`) while the grids keep claiming the zero lag sits at the centre. Verified on a 6×32×32 stack: with `use_fftshift=False`, `zero_lag_index()` returns `(16, 16)` holding `G = 0.6959`, while the true zero lag `G = 0.7998` sits at `[0, 0]` (the map's argmax); the shifted carpet gets both right. Everything downstream pairs the two: `tics_curve` (`data.py:326-339`) reads its whole decay at that index, `lag_time_grid` mislabels every point, and the model fit broadcasts `meta['pixel_shift']` against `meta['correlation']` element-by-element (`core/models/ics/ics.py:74-79`, `:428-437`), so the fit is performed against a permuted lag assignment. The switch is user-facing ("Center zero lag", `ics.view.json`, reader flag `fftshift`), and `meta['fftshifted']` (`ics_core.py:329`) already records the state nobody consults. Either build the grids in FFT order when `use_fftshift` is false, or apply the shift always and drop the flag.
-- **Fix note:**
+- **Fix note:** the grids now follow the maps: `compute_ics_carpet` builds the
+  centred grids as before and, when `use_fftshift` is false, moves them into FFT
+  order with `np.fft.ifftshift` along their own axis, so map and coordinates are
+  paired at every index either way. The flag is kept — it is user-facing — and
+  both it and the `IcsCarpet` attribute docs now state which order the grids are
+  in. Pinned by `test/experiments/test_ics_unification.py::test_lag_grids_follow_the_map_order`:
+  unshifted `zero_lag_index() == (0, 0)` with both grids zero there, shifted at
+  the centre, the same `G` at the zero lag either way, and carpet, grids,
+  `tics_curve` and `lag_time_grid` agreeing up to one `fftshift`. Reproduced
+  before the fix (`zero_lag_index()` returned `(16, 16)`, `G = 0.6940`, against
+  `G = 0.7036` at the true zero lag `[0, 0]`).
 
 ### RF-584
 - **Status:** OPEN

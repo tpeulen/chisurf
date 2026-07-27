@@ -892,3 +892,21 @@ be, because three of them were defects in the code rather than in the tests.
   `vv_vh_g_factor/gui/wizard.ui`, is *not* committed breakage: that tool is
   mid-edit in the working tree by a concurrent `.ui`-to-AutoForm port, and the
   `.ui` never existed at `HEAD`.)
+
+- **A non-square image stack correlates to `NaN`/`inf`.** Met on 2026-07-28 while
+  closing [RF-583](../reviews/findings.md#rf-583). `test/experiments/
+  test_ics_unification.py::test_a_region_does_not_change_the_particle_number`
+  fails intermittently (4 of 10 runs) with *"left half region moved G(0) from
+  0.8494 to inf"* — the "left half" ROI crops the 32x32 fixture to `(12, 32, 16)`,
+  and the correlation backend returns 512 non-finite entries for that shape while
+  the same data cropped square (`(12, 16, 16)`) comes back clean. Reduced to the
+  backend call itself: `tttrlib.CLSMImage.compute_ics(images=stack[:, :, :16],
+  x_range=[0, -1], y_range=[0, -1], subtract_average='frame')` on the fixture
+  gives `nonfinite == 512` against `0` for the square crop, so the defect is
+  upstream of ChiSurf and not in `normalise_ics` or the region cropping. That it
+  is intermittent across processes but repeated 4 of 4 times inside one points at
+  uninitialised memory rather than at the arithmetic. Any ROI whose bounding box
+  is taller than it is wide is affected, which is most of them. The root
+  fix belongs in the companion correlator repository (a C++ change), so it is
+  recorded here rather than patched around in `compute_ics_carpet`; the flaky
+  test is the symptom, not the bug.
