@@ -2,6 +2,19 @@
 
 ## 2026-07-27
 
+* **GUI tester — PSF determination from a bead scan (RF-451..RF-456).** Drove the
+  Imaging Tools hub's PSF panel headlessly on a 7-bead scan with known ground
+  truth. The fit is excellent (FWHM 306.1 / 801.5 nm against 306.2 / 800.7, axial
+  ratio 2.62, hot pixel rejected, everything sub-second), but the tool around it
+  is not: detection reports each bead **once per scanned plane** (7 beads →
+  "Detected 21 bead(s)", and the CSV a user averages is therefore weighted by
+  bead brightness), the image panel never follows the selection so every marker
+  and the fitted FWHM circle are invisible on the slice it opens at, the fit
+  report is clamped to ~7 lines so the FWHM block sits below the fold, and the
+  CLI documents `--roi-xy` as a half-size while the code uses it as a full size.
+  Recorded as [psf-bead-scan](/usecases/psf-bead-scan.md); the plugin has neither
+  a concept page nor a guide, unlike its neighbours in the hub.
+
 * **chimol `fetch`: PDB, EMDB and PDB-IHM behind one command, and the EMDB one
   had never worked.** Its identifier pattern was `r"(\\d+)"` — in a raw string
   that matches a literal backslash followed by "d"s, so **no EMDB id ever

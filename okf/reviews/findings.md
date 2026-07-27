@@ -5441,3 +5441,54 @@ is not `close()`d, keeping it alive and pumping the loop on every later log line
 - **Location:** `chisurf/gui/event_pump.py:60-72` (`except Exception: return False` around the `qtpy` import and again around `processEvents`); the module defines no logger
 - **Finding:** `pump_ui` returns `False` when a pump is already running (normal and expected), when Qt is absent or there is no `QCoreApplication` (headless — also normal), and when `processEvents` itself raised (not normal, and the only one anybody would want to know about) — with nothing written anywhere. The docstring documents only the first two. `test_guard_is_released_when_qt_raises` pins the swallow, so the behaviour is deliberate, but a `logger.debug`/`warning` in the raising branch costs nothing and is the difference between "the pump was skipped" and "event dispatch is broken", which today read the same to a caller and leave no trace in the log at all.
 - **Fix note:**
+
+## GUI tester — PSF determination from a bead scan (2026-07-27)
+
+Drove the **PSF Determination** panel headlessly, standalone and through the
+Imaging Tools hub, on a 7-bead synthetic confocal scan with known ground truth
+(σ_xy = 2.6 px, σ_z = 3.4 px at 50 nm / 100 nm → FWHM 306.2 / 800.7 nm). The fit
+itself is excellent — it recovered 306.1 nm / 801.5 nm / axial 2.62 and rejected
+the hot pixel. Everything below is around it. Use case:
+[psf-bead-scan](/usecases/psf-bead-scan.md).
+
+### RF-451
+- **Status:** OPEN
+- **Severity:** S2 (the bead count, the navigator, the batch table and the exported CSV all multiply each bead by the number of scan planes it crosses)
+- **Location:** `chisurf/plugins/microscopy/psf_determination/api/psf.py:252-278` (`detect_beads`: the `accepted` de-duplication list is created *inside* the `for z in range(...)` loop at :265, and :278 appends a candidate per plane)
+- **Finding:** detection walks every `step_z`-th slice (`max(4, roi_z // 4)`, so every 4th by default) and re-runs its `min_distance` rejection from scratch on each one, so a bead that is above threshold on four planes is reported four times. Measured on a stack containing exactly **7 beads**: `Detected 21 bead(s)`, at 8 distinct lateral positions (one bead's weighted centroid rounds to `(30,30)` on one plane and `(31,30)` on another, so even an exact-position `set()` cannot collapse them). The multiplicity is uneven — 2 to 4 rows per bead, and it is the *brightest* beads that cross the most planes — so the mean over the exported CSV, which is the entire purpose of a bead scan, is weighted by bead brightness rather than by the bead population. The same 21 rows come out of the headless path (`csc psf-determination fit-stack`) and out of `psf_determination.fit.run`. Merge candidates across planes (they are already within `min_distance` of each other laterally) and keep the plane where the bead is brightest.
+- **Fix note:**
+
+### RF-452
+- **Status:** OPEN
+- **Severity:** S2 (after *Detect* and *Fit* the image panel shows a black frame with no markers, so the tool looks like it did nothing)
+- **Location:** `chisurf/gui/autoform/sections/builtin.py:2306-2319` (`_refresh` deliberately preserves `currentIndex` and nothing ever sets it from the selection) against `:2057-2116` (bead markers and the red pick marker are drawn only `if lz == z` / `int(sel[0]) == z`) and `:2122-2139` (the yellow FWHM circle only `if int(roi.get("z", z)) == z`); consumer `chisurf/plugins/microscopy/psf_determination/gui/psf.view.json` (the `image` section with `select_attr: selected_bead`, `markers_source`, `roi_source`)
+- **Finding:** the `select_attr` binding is one-way — the image writes the picked `(z, y, x)` into the model, but a selection made *by the model* never moves the display. Verified headlessly: after **Load → Detect → Fit Selected**, `ImageView.currentIndex == 0` while `model.selected_bead == (9, 100, 60)` and `fit_circle()["z"] == 9`, so every overlay is filtered out and the Stack tab shows an empty frame (screenshot `01_empty`/`tab_1_Stack`); calling `setCurrentIndex(9)` by hand makes five green bead markers, the red pick marker and the yellow FWHM circle appear at once (`hub_03_stack_on_bead`). Detection also always auto-selects the *first* bead, which is on the lowest scanned plane, so this bites on the very first click of every session. Moving the displayed slice to the selection when the model changes it (and leaving it alone when the user picked it) fixes it for every consumer of the shared `image` section, not just the PSF tool.
+- **Fix note:**
+
+### RF-453
+- **Status:** OPEN
+- **Severity:** S2 (the CLI help documents the ROI options as half-sizes; the code uses them as full sizes, so a headless run silently fits a cut-out half the size the user asked for)
+- **Location:** `chisurf/plugins/microscopy/psf_determination/cli/main.py:32-37` (`--roi-xy` / `--roi-z`, *"ROI half-size in x/y (pixels)"*) and the docstrings at `api/psf.py:98-125` (`extract_roi`: *"Half-size of the ROI in x and y (total = 2 * roi_xy + 1)"*) and `:194-232` (`detect_beads`) against the implementation at `api/psf.py:128-133` and `:242-244` (`half_xy = roi_xy // 2`)
+- **Finding:** `extract_roi(stack, …, roi_xy=15, roi_z=15)` returns a **15×15×15** ROI, not the 31×31×31 its own docstring promises. The GUI is the correct reading — the tooltip says *"Lateral ROI size (pixels)"* and the report prints `ROI size: 15×15×15 (xy×z)`, confirmed against a 15-point x-profile — so it is the CLI `--help` text and the API docstrings that are wrong, and they are what a headless user reads: `--roi-xy 7` intending a 15-px window actually fits a 7-px one, which for the default 100 nm pixel is barely wider than the PSF. One wording, in all four places; the same text also reaches `psf_determination.fit.run` consumers through `contract.describe`.
+- **Fix note:**
+
+### RF-454
+- **Status:** OPEN
+- **Severity:** S3 (the panel's only output is cut off after six lines inside an otherwise empty full-height dock)
+- **Location:** `chisurf/plugins/microscopy/psf_determination/gui/psf.view.json` (the *Fit Results* panel's `{"type": "value", "attr": "results_text", "kind": "text", "read_only": true}` carries no `"expand"`) against `chisurf/gui/autoform/sections/builtin.py:1021-1023` (`kind="text"` → `setMinimumHeight(54)`) and `:1069-1075` (the `expand` flag that exists exactly for this)
+- **Finding:** the fit report is 18 lines and the box shows ~7 of them, so the `--- Physical (nm) ---` block — `FWHMx / FWHMy / FWHMz`, the axial ratio, i.e. the number the user opened the tool for — sits below the fold and needs scrolling, while ~85 % of the dock is empty grey (screenshot `tab_5_Fit_Results`). A *Fit All* summary of 21 rows shows 6. AutoForm already supports `"expand": true` for exactly this case (a text field flagged `expand` takes the spare vertical space); the section just does not set it.
+- **Fix note:**
+
+### RF-455
+- **Status:** OPEN
+- **Severity:** S3 (the axial ROI is systematically off-centre, so the z-profile shown to the user is truncated and the FWHM circle lands on a slice where the bead is dim)
+- **Location:** `chisurf/plugins/microscopy/psf_determination/api/psf.py:252-278` (`detect_beads` returns the scan plane `z` as the bead's axial position) with `gui/view_model.py:203-208` (`detect_beads` auto-selects `detected_beads[0]`, which is the lowest scanned plane) and `:262-268` (`_fit_circle["z"] = int(z0)`, the same scan plane)
+- **Finding:** a bead's reported `z` is the plane detection happened to sample, not where the bead is brightest. Measured: beads centred at z = 14/15 were all reported at **z = 9**, and because bead #0 is auto-selected and fitted, the default ROI (`z0 ± roi_z//2` = 2…16) puts the bead's axial maximum at index 12 of 15 — the z-profile plot peaks two points from its right edge with no falling flank (screenshot `tab_4_z_profile`), which reads as a failed fit. The 3-D Gaussian is robust enough to recover σ_z anyway (3.40 px vs 3.40 truth; still 3.38 with a deliberately tight `ROI z = 9`, where the peak sat on the ROI's last slice), so this is not a wrong number *today* — but half the axial ROI is spent on empty background, a bead further from the sampled plane than `roi_z//2` would have its peak outside the ROI entirely, and the yellow FWHM circle is drawn on a slice where the bead is barely visible. Report each bead at its brightest plane (see RF-451, same loop).
+- **Fix note:**
+
+### RF-456
+- **Status:** OPEN
+- **Severity:** S3 (the documented headless command does not exist)
+- **Location:** `chisurf/plugins/microscopy/psf_determination/README.md:14` and `:59` (*"Headless batch: `psf-determination fit-stack STACK.tif --csv out.csv`"*) and the module docstring `chisurf/plugins/microscopy/psf_determination/cli/main.py:3-6` (`Usage: psf-determination fit-stack …`) against `pyproject.toml:102-104` (`[project.scripts]` = `csc`, `chimol-cli` only)
+- **Finding:** no `psf-determination` console script is installed — `which psf-determination` finds nothing, and the manifest's `"cli": "psf-determination=…"` entry registers the plugin as a **sub-command of `csc`**, not as a standalone binary. The working invocation is `csc psf-determination fit-stack STACK.tif --csv out.csv`, which ran correctly end-to-end in this session. Two docstring lines; worth fixing because the README's headless path is the one an automation user copies first.
+- **Fix note:**

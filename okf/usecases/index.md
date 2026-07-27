@@ -133,6 +133,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   band and the L-curve behind the chosen regularisation.
   *(last driven 2026-07-27; RF-432..RF-436)*
 
+- [PSF determination from a bead scan](/usecases/psf-bead-scan.md) — the
+  instrument calibration behind every image and every FCS volume: load a bead
+  z-stack, set pixel size and z step, detect the beads, fit a 3-D Gaussian and
+  read the lateral/axial FWHM and the axial ratio, then export the per-bead
+  table. *(last driven 2026-07-27; RF-451..RF-456)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
