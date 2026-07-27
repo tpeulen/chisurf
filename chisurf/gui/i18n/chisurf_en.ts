@@ -2708,7 +2708,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../gui.ui" line="1381"/>
-        <source>NDXplorer</source>
+        <source>ndX</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

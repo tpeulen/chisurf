@@ -5849,7 +5849,7 @@ class MMFDBWidget(NavigationPanelTool):
             f"{Glyphs.OPEN} Open", QtWidgets.QStyle.SP_DialogOpenButton, "Open processed product", self._on_prod_open_clicked
         )
         ndx_button = self._text_icon_button(
-            f"{Glyphs.SCIENCE} Open in NDXplorer",
+            f"{Glyphs.SCIENCE} Open in ndX",
             QtWidgets.QStyle.SP_FileDialogContentsView,
             "Open the selected product in NDXplorer",
             self.open_in_ndxplorer,

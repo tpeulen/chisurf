@@ -641,7 +641,7 @@ class TraceBrowser(QWidget):
         # One-click NDXplorer button
         self.btn_ndx_oneclick = QToolButton(self.page1)
         self.btn_ndx_oneclick.setText("to NDX")
-        self.btn_ndx_oneclick.setToolTip("Compute burst analysis (from current TW) and open in NDXplorer")
+        self.btn_ndx_oneclick.setToolTip("Compute burst analysis (from current TW) and open in ndX")
         self.btn_ndx_oneclick.clicked.connect(self._on_open_in_ndxplorer)
         try:
             self.btn_ndx_oneclick.setAutoRaise(True)
@@ -2294,19 +2294,19 @@ class TraceBrowser(QWidget):
         selected_paths = self._selected_paths()
         if not selected_paths:
             try:
-                QMessageBox.information(self, "NDXplorer", "Please select a trace file first.")
+                QMessageBox.information(self, "ndX", "Please select a trace file first.")
             except Exception:
                 pass
             return
         if tttrlib is None:
             try:
-                QMessageBox.critical(self, "NDXplorer", "tttrlib is not available.")
+                QMessageBox.critical(self, "ndX", "tttrlib is not available.")
             except Exception:
                 pass
             return
         if NDXplorer is None or ndx_reader is None:
             try:
-                QMessageBox.critical(self, "NDXplorer", "NDXplorer components are not available.")
+                QMessageBox.critical(self, "ndX", "ndX components are not available.")
             except Exception:
                 pass
             return
@@ -2342,7 +2342,7 @@ class TraceBrowser(QWidget):
 
             if bids is None or getattr(bids, 'size', 0) == 0:
                 try:
-                    QMessageBox.warning(self, "NDXplorer", "No data to compute burst IDs.")
+                    QMessageBox.warning(self, "ndX", "No data to compute burst IDs.")
                 except Exception:
                     pass
                 return
@@ -2367,7 +2367,7 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Could not create analysis directories: {e}")
                 try:
-                    QMessageBox.critical(self, "NDXplorer", f"Failed to create analysis folder:\n{e}")
+                    QMessageBox.critical(self, "ndX", f"Failed to create analysis folder:\n{e}")
                 except Exception:
                     pass
                 return
@@ -2420,7 +2420,7 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Failed to write BUR: {e}")
                 try:
-                    QMessageBox.critical(self, "NDXplorer", f"Failed to write .bur file:\n{e}")
+                    QMessageBox.critical(self, "ndX", f"Failed to write .bur file:\n{e}")
                 except Exception:
                     pass
                 return
@@ -2452,7 +2452,7 @@ class TraceBrowser(QWidget):
                     ndx.working_path = str(analysis_dir)
                 except Exception:
                     pass
-                ndx.setWindowTitle(f"NDXplorer - {src.stem} (TW {tw_ms:.0f} ms)")
+                ndx.setWindowTitle(f"ndX - {src.stem} (TW {tw_ms:.0f} ms)")
                 ndx.show()
                 ndx.raise_()
                 ndx.activateWindow()
@@ -2484,14 +2484,14 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Failed to open NDXplorer: {e}")
                 try:
-                    QMessageBox.critical(self, "NDXplorer", f"Failed to open NDXplorer:\n{e}")
+                    QMessageBox.critical(self, "ndX", f"Failed to open ndX:\n{e}")
                 except Exception:
                     pass
 
         except Exception as e:
             logging.exception(f"TraceBrowser: One-click NDX workflow failed: {e}")
             try:
-                QMessageBox.critical(self, "NDXplorer", f"One-click workflow failed:\n{e}")
+                QMessageBox.critical(self, "ndX", f"One-click workflow failed:\n{e}")
             except Exception:
                 pass
 

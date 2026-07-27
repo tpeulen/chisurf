@@ -74,7 +74,7 @@ class TraceBrowserTool(QMainWindow):
             ("DOCX", self._workspace._on_export_docx, "Export selected traces as DOCX"),
             (f"{Glyphs.BRAIN} HMM", self._workspace._on_transfer_to_analysis, "Open in Intensity Trace Analysis"),
             (f"{Glyphs.TIMER} TW", self._workspace._on_transfer_to_tw, "Open in TTTR Time Window"),
-            (f"{Glyphs.CHART} NDX", self._workspace._on_open_in_ndxplorer, "Open in NDXplorer"),
+            (f"{Glyphs.CHART} NDX", self._workspace._on_open_in_ndxplorer, "Open in ndX"),
         ]
         for text, slot, tooltip in actions:
             action = QAction(text, self)
@@ -116,7 +116,7 @@ class TraceBrowserTool(QMainWindow):
             "• DOCX: export selected traces and annotations as a DOCX report\n"
             "• 🧠 HMM: open the selected trace in Intensity Trace Analysis\n"
             "• ⏱️ TW: open the selected trace in TTTR Time Window\n"
-            "• 📊 NDX: compute burst analysis from the current time window and open NDXplorer\n\n"
+            "• 📊 NDX: compute burst analysis from the current time window and open ndX\n\n"
             "The GUI talks to the Trace Browser backend through RPC for file listing, metadata, trace loading, "
             "and CSV export. The command line interface is the same plugin entry point and uses Click:\n\n"
             "  trace-browser list FOLDER [--recursive]\n"

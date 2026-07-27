@@ -2708,7 +2708,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../gui.ui" line="1381"/>
-        <source>NDXplorer</source>
+        <source>ndX</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -13911,8 +13911,8 @@ The GUI talks to the TTTR Image Browser backend through RPC for file listing, me
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1323"/>
-        <source>Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar&apos;s ndXplorer button instead to calibrate exactly the bursts currently open there.</source>
-        <translation>Zu kalibrierende Tabelle pro Burst: eine beliebige getrennte Textdatei (.csv/.tsv/.txt/.bur) oder ein .npz-Archiv, mit einer Zeile pro Burst und einer Spalte pro Signal. Dateien können auch auf das Fenster gezogen werden. Über die ndXplorer-Schaltfläche der Werkzeugleiste lassen sich stattdessen genau die dort geöffneten Bursts kalibrieren.</translation>
+        <source>Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar&apos;s ndX button instead to calibrate exactly the bursts currently open there.</source>
+        <translation>Zu kalibrierende Tabelle pro Burst: eine beliebige getrennte Textdatei (.csv/.tsv/.txt/.bur) oder ein .npz-Archiv, mit einer Zeile pro Burst und einer Spalte pro Signal. Dateien können auch auf das Fenster gezogen werden. Über die ndX-Schaltfläche der Werkzeugleiste lassen sich stattdessen genau die dort geöffneten Bursts kalibrieren.</translation>
     </message>
     <message>
         <location filename="../../../build_tools/i18n/_i18n_autogen.py" line="1355"/>

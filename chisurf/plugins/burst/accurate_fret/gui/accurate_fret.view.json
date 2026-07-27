@@ -18,7 +18,7 @@
                          "placeholder": "— no detector setup —"},
              "description": "Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior."},
             {"type": "value", "attr": "filename", "label": "Burst table", "kind": "file", "call": "set_filename",
-             "description": "Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndXplorer button instead to calibrate exactly the bursts currently open there."},
+             "description": "Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndX button instead to calibrate exactly the bursts currently open there."},
             {
               "type": "panel",
               "title": "Channels",
