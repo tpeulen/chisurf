@@ -4046,11 +4046,24 @@ What does not hold up is the `'mean'` reference mode, which never measures the
 first frame at all. Findings RF-344..RF-348.
 
 ### RF-344
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`reference='mean'` returns a corrected stack in which frame 0 is misaligned from every other frame by its full displacement, and says nothing)
 - **Location:** `chisurf/core/fluorescence/imaging/drift.py:159-160` (`shifts = np.zeros(...)` then `for k in range(1, n_frames)`) against the `'mean'` branch at `:49-50`; documented as intended at `:124` (*"Row 0 is always ``(0, 0)``"*) and pinned by `test/core/test_drift.py:36-40` (`test_the_first_frame_never_drifts`, which asserts it *"in every reference mode"*)
 - **Finding:** the loop skipping `k = 0` is the `'first'`/`'previous'` idiom, where frame 0 is the origin by construction. Under `'mean'` the reference is the stack average, and frame 0 has a real, measurable displacement from it — which the code never computes. Verified on a 9-frame stack drifting 0→8 px in y: `estimate_drift(..., reference='mean')` returns `[0, -3, -2, -1, 0, 1, 2, 3, 4]` where the true offsets from the mean position are `[-4, -3, …, 4]`; rows 1–8 are exact and row 0 is wrong by the whole 4 px. Correlating frame 0 against the stack mean by hand gives `-4`, so the number is available and simply not taken. The consequence is not a cosmetic trace error: after `correct_drift(..., reference='mean')` frames 1–8 are mutually identical (`allclose` → True for all) and frame 0 matches **none** of them (max abs difference 0.99 on data in `[0, 1]`). `'Stack mean'` is a first-class choice in the GUI (`img_drift/gui/drift.view.json:45-52`, *"a compromise for noisy data"*), in the CLI (`--reference mean`) and in `measure_drift`, and it reaches `correct_clsm_drift`, which rearranges photons **in place** — so on a confocal image the damage is not reversible. Frame 0 participates in every frame lag of an ICS carpet, which is the analysis the module docstring says it exists to protect. Measure frame 0 like every other frame when the reference does not contain it (start the loop at 0 for `'mean'`), and change the test, which currently pins the defect.
-- **Fix note:**
+- **Fix note:** `estimate_drift` now starts its measurement loop at frame 0 when
+  the reference is `'mean'` (`first = 0 if reference == "mean" else 1`), so the
+  stack average is treated as what it is — a position no single frame occupies.
+  `'first'` and `'previous'` keep the `range(1, …)` shortcut, where frame 0 *is*
+  the reference and measuring it would only spend an FFT on a known zero. The
+  `Returns` docstring no longer promises `(0, 0)` in row 0 unconditionally.
+  Pinned by `test/core/test_drift.py::test_the_stack_mean_reference_measures_the_first_frame_too`,
+  which asserts the whole 9-row trace equals the true displacements referenced to
+  the mean position (`truth - truth.mean(0)`, frame 0 included) and that after
+  `correct_drift(..., reference='mean')` *every* frame matches frame 0. The
+  defect-pinning `test_the_first_frame_never_drifts` was narrowed to the two
+  modes where the claim holds and renamed `…_from_itself`. User-visible
+  consequence — the `'mean'` trace is now centred on zero instead of starting
+  there — documented in `docs/concepts/drift_correction.md`.
 
 ### RF-345
 - **Status:** OPEN

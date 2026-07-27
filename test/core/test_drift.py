@@ -33,11 +33,31 @@ def test_estimate_recovers_a_known_drift():
     np.testing.assert_allclose(est, np.array(truth, dtype=float))
 
 
-def test_the_first_frame_never_drifts():
-    """Frame 0 is the origin by construction, in every reference mode."""
+def test_the_first_frame_never_drifts_from_itself():
+    """Frame 0 is the origin by construction where it *is* the reference."""
     stack = _drifting_stack([(0, 0), (3, 1), (5, 2)])
-    for reference in ("first", "previous", "mean"):
+    for reference in ("first", "previous"):
         np.testing.assert_allclose(estimate_drift(stack, reference=reference)[0], [0, 0])
+
+
+def test_the_stack_mean_reference_measures_the_first_frame_too():
+    """Under ``'mean'`` frame 0 is displaced from the reference like any other.
+
+    The reference is the stack average, which frame 0 is not. Leaving its row
+    at ``(0, 0)`` would misalign it from the whole corrected stack by its full
+    displacement — silently, since nothing else in the trace looks wrong.
+    """
+    truth = [(k, 0) for k in range(9)]
+    stack = _drifting_stack(truth)
+    shifts = estimate_drift(stack, reference="mean")
+
+    # Displacements measured from the mean position, frame 0 included.
+    expected = np.array(truth, dtype=float) - np.array(truth, dtype=float).mean(axis=0)
+    np.testing.assert_allclose(shifts, expected, atol=1e-9)
+
+    corrected, _ = correct_drift(stack, reference="mean")
+    for frame in corrected:
+        np.testing.assert_allclose(frame, corrected[0])
 
 
 def test_previous_frame_referencing_accumulates_to_the_same_answer():

@@ -78,6 +78,14 @@ For slow monotonic stage drift over a stable sample, *first frame* is right. For
 a long series that bleaches, *previous frame* usually wins despite the drift of
 its own.
 
+The reference also fixes where the zero of the trace sits. With *first frame* or
+*previous frame*, frame 0 **is** the reference, so its shift is zero by
+construction and the trace starts at the origin. With *stack mean* the reference
+is the average, which no single frame occupies: frame 0 is displaced from it like
+any other, so its shift is measured too and the trace is centred on zero rather
+than starting there. Only the differences between rows are physical in either
+case — the same drift, read against a different origin.
+
 ## Applying it
 
 The measured displacement is removed by moving each frame back. What happens at

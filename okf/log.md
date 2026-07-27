@@ -2,6 +2,28 @@
 
 ## 2026-07-27
 
+* **The stack-mean drift reference never measured the first frame** (RF-344).
+  `estimate_drift` skipped `k = 0` in every mode — the right idiom for `'first'`
+  and `'previous'`, where frame 0 *is* the reference, and wrong for `'mean'`,
+  where the reference is an average no single frame occupies. Frame 0 therefore
+  kept a hard-coded `(0, 0)` while having a real, measurable displacement, and
+  `correct_drift(..., reference='mean')` returned a stack in which frames 1..n
+  were mutually aligned and frame 0 matched none of them. On a 9-frame stack
+  drifting 0→8 px the trace read `[0, -3, -2, -1, 0, 1, 2, 3, 4]` against a truth
+  of `[-4, …, 4]`. The loop now starts at 0 for `'mean'` only; the two
+  self-referencing modes keep the shortcut rather than spending an FFT on a
+  known zero. `'Stack mean'` is a first-class choice in the drift GUI, the
+  `img-drift` CLI and the ICS reader's own `drift_correction`, and it reaches
+  `correct_clsm_drift`, which rearranges photons **in place** — so on a confocal
+  image the misalignment was not reversible. Pinned by
+  `test_the_stack_mean_reference_measures_the_first_frame_too`, which asserts the
+  full trace equals `truth - truth.mean(0)` and that every corrected frame
+  matches frame 0; the old `test_the_first_frame_never_drifts`, which asserted
+  the defect *"in every reference mode"*, is narrowed to the modes where the
+  claim is true. `docs/concepts/drift_correction.md` now states that the
+  `'mean'` trace is centred on zero rather than starting there. 26 drift +
+  44 ICS/RICS tests green.
+
 * **A shipped dictionary was invisible to the vocabulary, and the omission was
   load-bearing.** `data/mmfdb_workflow_ext.dic` defines the seven categories a
   deposit CIF writes and travels inside the bundle so the deposit is

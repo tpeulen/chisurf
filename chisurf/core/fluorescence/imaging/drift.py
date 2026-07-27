@@ -121,7 +121,10 @@ def estimate_drift(
     -------
     numpy.ndarray
         Array of shape ``(n_frames, 2)`` holding the ``(dy, dx)`` shift of each
-        frame relative to the reference. Row 0 is always ``(0, 0)``.
+        frame relative to the reference. Row 0 is ``(0, 0)`` for ``'first'``
+        and ``'previous'``, where frame 0 is the reference itself; under
+        ``'mean'`` it is measured like every other frame, because the stack
+        average is not frame 0.
 
     Examples
     --------
@@ -157,7 +160,13 @@ def estimate_drift(
             gaussian_filter = None
 
     shifts = np.zeros((n_frames, 2), dtype=float)
-    for k in range(1, n_frames):
+    # Frame 0 *is* the reference under 'first' and 'previous', so its shift is
+    # zero by construction and measuring it would only spend an FFT. Under
+    # 'mean' the reference is the stack average, from which frame 0 is
+    # displaced like any other frame — leaving it at zero would misalign it
+    # from the whole corrected stack.
+    first = 0 if reference == "mean" else 1
+    for k in range(first, n_frames):
         a = refs[k] - refs[k].mean()
         b = stack[k] - stack[k].mean()
         corr = np.fft.fftshift(
