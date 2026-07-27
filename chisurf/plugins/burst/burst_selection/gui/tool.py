@@ -18,7 +18,8 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf.core.fio.mmcif.pdbx_metadata import get_pdbx_metadata_keys
 from mmfdb.security.base import MMFDBClientBase
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.widgets.progress import EnhancedProgressDialog
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
 from chisurf.gui.widgets.tool_buttons import action_button
 from chisurf.gui.widgets.tools import ChisurfDockTool
@@ -366,6 +367,11 @@ class BatchProcessingDialog(QtWidgets.QDialog):
 
 class BurstSelectionTool(ChisurfDockTool):
     """Migrated Burst Selection GUI with legacy-style controls and plots."""
+
+    class Error(ChisurfDockTool.Error):
+        """Conditions a burst-selection run can end in."""
+
+        analysis_failed = Msg("Burst selection failed: {}")
 
     tool_settings_name = "BurstSelectionTool"
 
@@ -1851,7 +1857,13 @@ class BurstSelectionTool(ChisurfDockTool):
             _LOG.error("error updating plots after filter change", error=str(exc))
 
     def analyze_files(self) -> None:
-        """Analyze queued files through the Burst Selection API."""
+        """Run the burst selection over every selected file, off the GUI thread.
+
+        The whole batch is one backend call, so the window used to freeze for its
+        entire duration behind a bar that went 0 % then 100 %. Everything the
+        call needs is read here, on the GUI thread; the result is turned into
+        frames and plots in :meth:`_analysis_finished`.
+        """
         if not self._file_paths:
             self.summary.setPlainText("No TTTR files selected.")
             return
@@ -1864,67 +1876,52 @@ class BurstSelectionTool(ChisurfDockTool):
         except RuntimeError as exc:
             self.summary.setPlainText(str(exc))
             return
+
+        legacy_parameters = self._legacy_parameters()
+        if hasattr(self.wizard, "decay_coarse"):
+            legacy_parameters.setdefault("decay_coarse", self.wizard.decay_coarse)
+        request = dict(
+            settings=asdict(settings) if settings else {},
+            windows=getattr(self.wizard, "windows", None),
+            detectors=getattr(self.wizard, "detectors", None),
+            filetype=self._selected_filetype,
+            legacy_output=True,
+            selected_setup=self.wizard.comboBox.currentText(),
+            legacy_parameters=legacy_parameters,
+            mmfdb=mmfdb_context,
+        )
+        self.Error.clear()
+        ChiSurfProgress.run(
+            self, f"Processing {len(self._file_paths)} file(s)...",
+            self._analysis_worker, args=(list(self._file_paths), request),
+            maximum=0, title="Burst Selection", owner=self,
+            on_result=lambda result: self._analysis_finished(result, settings),
+            on_error=self.Error.analysis_failed,
+        )
+
+    def _analysis_worker(self, paths, request, task):
+        """Worker: one backend call for the whole batch. No GUI here."""
+        return self._client.analyze_files(paths, **request)
+
+    def _analysis_finished(self, result: dict, settings: AnalysisSettings) -> None:
+        """Back on the GUI thread with the batch result: build frames and plots."""
+        self._last_service_result = result
         frames: list[pd.DataFrame] = []
         frames_by_file: dict[Path, pd.DataFrame] = {}
-        metadata: dict[str, Any] = {"n_files": len(self._file_paths), "n_bursts": 0, "n_photons": 0, "n_selected": 0}
-        dialog = EnhancedProgressDialog(
-            title="Burst Selection",
-            label_text="Processing files...",
-            min_value=0,
-            max_value=100,
-            parent=self,
-        )
-        dialog.show()
-        dialog.update_progress(0, "Processing files...")
-        cancelled = False
-        try:
-            settings_dict = asdict(settings) if settings else {}
-            windows = getattr(self.wizard, "windows", None)
-            detectors = getattr(self.wizard, "detectors", None)
-            legacy_parameters = self._legacy_parameters()
-            if hasattr(self.wizard, "decay_coarse"):
-                legacy_parameters.setdefault("decay_coarse", self.wizard.decay_coarse)
-            try:
-                result = self._client.analyze_files(
-                    self._file_paths,
-                    settings=settings_dict,
-                    windows=windows,
-                    detectors=detectors,
-                    filetype=self._selected_filetype,
-                    legacy_output=True,
-                    selected_setup=self.wizard.comboBox.currentText(),
-                    legacy_parameters=legacy_parameters,
-                    mmfdb=mmfdb_context,
-                )
-                self._last_service_result = result
-            except RuntimeError as rpc_err:
-                dialog.finish(
-                    final_text=f"RPC error: {rpc_err}",
-                    auto_close=False,
-                    close_delay_ms=5000,
-                )
-                self.summary.setPlainText(f"RPC error: {rpc_err}")
-                cancelled = True
-                result = {}
-            if not cancelled:
-                dataframes = result.get("dataframes", {})
-                for path in self._file_paths:
-                    frame = self._frame_from_result(path, dataframes)
-                    frames.append(frame)
-                    frames_by_file[path.resolve()] = frame
-                metadata.update(result.get("metadata", {}))
-                if result.get("warnings"):
-                    metadata["warnings"] = result["warnings"]
-                    _LOG.warning("MMFDB registration warnings", warnings=result["warnings"])
-                dialog.update_progress(100, "Processing files...")
-        finally:
-            final_text = "Burst selection cancelled." if cancelled else "Burst selection finished."
-            dialog.finish(final_text=final_text, auto_close=True, close_delay_ms=0)
-
+        metadata: dict[str, Any] = {
+            "n_files": len(self._file_paths), "n_bursts": 0,
+            "n_photons": 0, "n_selected": 0,
+        }
+        dataframes = result.get("dataframes", {})
+        for path in self._file_paths:
+            frame = self._frame_from_result(path, dataframes)
+            frames.append(frame)
+            frames_by_file[path.resolve()] = frame
+        metadata.update(result.get("metadata", {}))
+        if result.get("warnings"):
+            metadata["warnings"] = result["warnings"]
+            _LOG.warning("MMFDB registration warnings", warnings=result["warnings"])
         metadata["n_files"] = len(frames)
-        if cancelled:
-            self.summary.setPlainText("Burst selection cancelled.")
-            return
 
         if frames:
             combined = pd.concat(frames, ignore_index=True)

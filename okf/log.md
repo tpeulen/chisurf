@@ -2,6 +2,48 @@
 
 ## 2026-07-27
 
+* **BVA and burst selection off the GUI thread; MLE cannot follow, and the
+  reason is worth recording.** Both were the "loop on the GUI thread behind a
+  window-modal dialog" shape, and both are now background runs.
+  **BVA** read a folder of burst files, correlated every burst and wrote the BV4
+  output in one blocking pass, so the window was dead for the whole batch; only
+  the plotting needed the GUI thread and it now happens in the result handler.
+  Two things came out of it. The phases have genuinely different lengths — read
+  (no incremental hook), compute (one step per burst), write (one per file
+  group) — which the old code handled with a `_phase()` helper that re-ranged a
+  shared dialog, so `TaskHandle` grew `set_range`. And the BVA core takes a
+  `progress_window` and calls `set_value(i)` on it, a shape several Qt-free cores
+  share because they were written when the caller was a `QProgressDialog`; rather
+  than change the core, `TaskHandle.progress_window()` returns an adapter with
+  that surface whose every `set_value` **also checks for cancellation**, which
+  this analysis never had. The auto-recompute-on-parameter-change path goes
+  through the same entry, so a settings change no longer freezes the window
+  either.
+  **Burst selection** is one backend call for the whole batch, with the progress
+  faked as 0 % then 100 % around it — the tool froze for the entire run and the
+  bar told the user nothing. Everything the call needs is now read on the GUI
+  thread, the call itself runs in the worker, and the frames/plots/summary
+  epilogue became the result handler. Its own batch test constructed the tool
+  with `__new__`, which skips the message binding and the task layer, so it now
+  binds the groups and runs the worker inline — the same test, one layer down.
+  **MLE is not migrated, and should not be until something else changes.** Its
+  hyperparameter search looks like an ideal candidate — a budgeted loop whose
+  only GUI contact is `setValue`/`wasCanceled` — but the *evaluation inside the
+  loop* mutates wizard properties (`micro_time_range`, `irf_threshold_*`,
+  `shift`, …) and calls `wizard.update_fit()` for every trial, and the tail
+  applies the winner to the widgets. The loop is not compute-with-a-progress-hook;
+  it is a GUI driver. Moving it off the GUI thread means first separating "fit
+  with this configuration" from "the wizard's current state" — a refactor of the
+  wizard's state model, not a migration. The same is true of its two
+  burst-processing loops, which reach into `channel_definer` and the per-detector
+  UI caches per burst. Recorded here so the next person does not rediscover it by
+  starting the migration.
+  Rendered both migrated tools headlessly mid-run — BVA "Computing BVA…" with a
+  bar and a ✕, burst selection "Processing 2 file(s)…" — windows fully
+  interactive, and inspected. 240 passed across the task layer, the burst-tool
+  contract tests and both plugins' own suites.
+
+
 * **A labelling site that says residue 1 while pointing at residue 134.** Drove
   the FPS JSON Editor end to end on T4 Lysozyme (148L) as the "Structure /
   modelling" use case — two labelling sites, their accessible volumes, one FRET

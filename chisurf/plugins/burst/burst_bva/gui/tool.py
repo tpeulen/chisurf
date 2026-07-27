@@ -22,8 +22,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
-    QProgressBar,
     QSizePolicy,
     QSpinBox,
     QTextEdit,
@@ -44,6 +42,9 @@ from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_detector_setups impo
     load_detector_setups,
 )
 from chisurf.plugins.burst.burst_bva.core import computation as core
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.messages import MessagesMixin, Msg
 
 
 class HelpDialog(QDialog):
@@ -135,30 +136,16 @@ class _FolderLineEdit(QLineEdit):
                 self.folderDropped.emit(path)
 
 
-class _ProgressDialog(QDialog):
-    def __init__(self, title="Progress", message="Processing...", max_value=100, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.setWindowModality(Qt.WindowModal)
-        layout = QVBoxLayout()
-        self.label = QLabel(message)
-        self.progress = QProgressBar()
-        self.progress.setRange(0, max_value)
-        layout.addWidget(self.label)
-        layout.addWidget(self.progress)
-        self.setLayout(layout)
-
-    def set_value(self, value: int):
-        self.progress.setValue(value)
-        QCoreApplication.processEvents()
-
-    def set_maximum(self, value: int):
-        self.progress.setMaximum(value)
-
-
 @persist_plugin_state("burst_bva")
-class BVATool(QMainWindow):
+class BVATool(MessagesMixin, QMainWindow):
     """BVA analysis widget with toolbar, tabbed settings, and pyqtgraph plot."""
+
+    class Error(MessagesMixin.Error):
+        """Conditions that stop a BVA run, or that a run ended in."""
+
+        no_folder = Msg("Select a data folder first.")
+        bad_settings = Msg("BVA settings: {}")
+        failed = Msg("BVA failed: {}")
 
     def __init__(self, parent=None, *, embedded: bool = False):
         super().__init__(parent)
@@ -213,16 +200,7 @@ class BVATool(QMainWindow):
         if not self._recompute_pending:
             return
         self._recompute_pending = False
-        if self._burst_df is not None:
-            self._compute_and_plot(write_output=False)
-        elif self.data_folder is not None:
-            # Read + compute share one progress dialog (no per-phase flashing).
-            progress = self._begin_progress("Reading burst data...", 0)
-            try:
-                if self._read_burst_data(progress=progress):
-                    self._compute_and_plot(write_output=False, progress=progress)
-            finally:
-                progress.close()
+        self._start_analysis(write_output=False)
 
     # ── UI Build ──────────────────────────────────────────────────────
 
@@ -586,159 +564,102 @@ class BVATool(QMainWindow):
     def _on_folder_dropped(self, path: str):
         self._set_folder(path)
 
-    def _reporter(self):
-        """Return the hosting shell's status bar when embedded, else ``None``."""
-        from chisurf.gui.widgets.navigation import find_status_reporter
-
-        return find_status_reporter(self)
-
     def _notify_error(self, title: str, msg: str) -> None:
         """Log the error (shown in the shell status bar when embedded); box if standalone."""
         logging.getLogger(__name__).error("%s: %s", title, msg)
         if not self._embedded:
-            QMessageBox.critical(self, title, msg)
+            dialogs.error(self, title, msg)
 
-    def _begin_progress(self, message: str, max_value: int):
-        """Return a single progress handle for a fresh phase.
+    def _run_analysis(self):
+        """Run the full analysis and write the BV4 output."""
+        self._start_analysis(write_output=True)
 
-        When embedded in the Burst Analysis shell this is a status-bar-backed
-        handle (no popup); standalone it is a modal ``_ProgressDialog``. Either way
-        it duck-types ``label`` / ``progress`` / ``set_value`` / ``close`` so all
-        phases of one run share **one** progress surface instead of flashing per
-        phase.
-        """
-        reporter = self._reporter()
-        if reporter is not None:
-            return reporter.begin_task(message, max_value)
-        progress = _ProgressDialog(
-            title="BVA Analysis", message=message, max_value=max_value, parent=self,
-        )
-        progress.show()
-        QCoreApplication.processEvents()
-        return progress
+    def _start_analysis(self, *, write_output: bool) -> None:
+        """Read, compute and (optionally) write BVA off the GUI thread.
 
-    @staticmethod
-    def _phase(progress, message: str, max_value: int):
-        """Retarget an existing progress dialog to the next phase (label + range)."""
-        progress.label.setText(message)
-        progress.progress.setRange(0, max_value)
-        progress.progress.setValue(0)
-        QCoreApplication.processEvents()
-
-    def _read_burst_data(self, progress=None) -> bool:
-        """Read burst data from the analysis folder and store it.
-
-        When *progress* is given the phase reuses that shared dialog; otherwise a
-        transient one is created and closed here.
+        Reading a folder of burst files and correlating every burst are both
+        long; running them here froze the window for the whole batch behind a
+        modal bar. Only the plotting stays on the GUI thread, in
+        :meth:`_analysis_done`.
         """
         if not self.data_folder:
-            return False
-        own = progress is None
-        # Reading has no incremental hook, so show a busy (indeterminate) bar.
-        if own:
-            progress = self._begin_progress("Reading burst data...", 0)
-        else:
-            self._phase(progress, "Reading burst data...", 0)
-        try:
-            self._burst_df, self._tttrs = core.read_burst_analysis(
-                self.analysis_folder, self.file_type, pattern="bi4_bur",
-            )
-            if own:
-                progress.close()
-            return True
-        except Exception as e:
-            if own:
-                progress.close()
-            self._notify_error("Read Error", f"Could not read burst data: {e}")
-            return False
-
-    def _compute_and_plot(self, write_output: bool = False, progress=None):
-        """Compute BVA from stored burst data and update the plot.
-
-        When *progress* is given the compute/write phases reuse that shared dialog;
-        otherwise a transient one is created and closed here.
-        """
-        if self._burst_df is None or self._tttrs is None:
+            self.Error.no_folder()
             return
+        self.Error.no_folder.clear()
         try:
             self.bva_settings = self._get_bva_settings()
-        except Exception as e:
-            self._notify_error("BVA Settings Error", str(e))
+        except Exception as exc:
+            self.Error.bad_settings(exc)
             return
+        self.Error.bad_settings.clear()
+        ChiSurfProgress.run(
+            self, "Reading burst data...", self._analysis_worker,
+            args=(dict(self.bva_settings), bool(write_output)),
+            maximum=0, title="BVA Analysis", owner=self,
+            on_result=self._analysis_done,
+            on_error=self.Error.failed,
+        )
 
-        own = progress is None
-        if own:
-            progress = self._begin_progress("Computing BVA...", len(self._burst_df))
-        else:
-            self._phase(progress, "Computing BVA...", len(self._burst_df))
+    def _analysis_worker(self, settings, write_output, task):
+        """Worker: read (if needed), compute, write. No GUI here.
 
-        try:
-            df_v = core.compute_bva(
-                self._burst_df, self._tttrs, progress_window=progress, **self.bva_settings,
+        Each phase announces its own length through ``task.set_range`` rather
+        than sharing one invented scale, and the core keeps its
+        ``progress_window`` argument — the adapter also turns every ``set_value``
+        into a cancellation check, which this analysis never had.
+        """
+        burst_df, tttrs = self._burst_df, self._tttrs
+        if burst_df is None or tttrs is None:
+            task.set_range(0, 0)          # reading has no incremental hook
+            task.set_text("Reading burst data...")
+            burst_df, tttrs = core.read_burst_analysis(
+                self.analysis_folder, self.file_type, pattern="bi4_bur",
             )
-        except Exception as e:
-            if own:
-                progress.close()
-            self._notify_error("BVA Error", str(e))
-            return
 
+        task.set_range(0, len(burst_df))
+        task.set_text("Computing BVA...")
+        df_v = core.compute_bva(
+            burst_df, tttrs,
+            progress_window=task.progress_window("Computing BVA..."),
+            **settings,
+        )
+
+        if write_output:
+            task.set_range(0, len(df_v.groupby("First File")))
+            task.set_text("Writing BV4 files...")
+            try:
+                core.write_bv4_analysis(
+                    df_v, str(self.analysis_folder),
+                    progress_window=task.progress_window("Writing BV4 files..."),
+                )
+            except Exception as e:
+                logging.error(f"BV4 write failed: {e}")
+            bv4_folder = self.analysis_folder / "bv4"
+            bv4_folder.mkdir(parents=True, exist_ok=True)
+            with open(bv4_folder / "bva_settings.json", "w") as f:
+                json.dump(settings, f, indent=4)
+        return burst_df, tttrs, df_v
+
+    def _analysis_done(self, payload) -> None:
+        """Back on the GUI thread with the BVA table: draw it."""
+        self._burst_df, self._tttrs, df_v = payload
         self._df = df_v
 
         df_selected = df_v[df_v["Proximity Ratio Std"] > 0.0]
-        x = df_selected["Proximity Ratio Mean"].values
-        y = df_selected["Proximity Ratio Std"].values
-
         n_photons = self.bva_settings.get("number_of_photons_per_slice", 10)
         if n_photons < 0:
             n_photons = 100
-
         self._plot_2d_histogram(
-            x, y,
+            df_selected["Proximity Ratio Mean"].values,
+            df_selected["Proximity Ratio Std"].values,
             bins_x=self.sb_bins_x.value(),
             bins_y=self.sb_bins_y.value(),
         )
         self._plot_static_line(n_photons)
-
-        if write_output:
-            # Reuse the same progress dialog for the write phase so a single run
-            # shows one window through compute → write.
-            self._phase(
-                progress, "Writing BV4 files...", len(df_v.groupby("First File"))
-            )
-            try:
-                core.write_bv4_analysis(
-                    df_v, str(self.analysis_folder), progress_window=progress,
-                )
-            except Exception as e:
-                logging.error(f"BV4 write failed: {e}")
-
-            bv4_folder = self.analysis_folder / "bv4"
-            bv4_folder.mkdir(parents=True, exist_ok=True)
-            settings_path = bv4_folder / "bva_settings.json"
-            with open(settings_path, "w") as f:
-                json.dump(self.bva_settings, f, indent=4)
-            logging.info(f"BVA settings saved to {settings_path}")
-
-        if own:
-            progress.close()
-
         self._tb_info.setText(f"{len(df_selected)} / {len(df_v)} bursts")
         self._status(
             f"Done \u2013 {len(df_selected)} bursts with Std > 0 on {len(df_v)} total"
         )
-
-    def _run_analysis(self):
-        if not self.data_folder:
-            self._notify_error("Error", "Please select a data folder first.")
-            return
-        # One shared progress dialog spans read \u2192 compute \u2192 write.
-        progress = self._begin_progress("Reading burst data...", 0)
-        try:
-            if not self._read_burst_data(progress=progress):
-                return
-            self._compute_and_plot(write_output=True, progress=progress)
-        finally:
-            progress.close()
 
     def _on_param_changed(self):
         if not self._auto_update_cb.isChecked():

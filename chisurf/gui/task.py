@@ -90,6 +90,7 @@ class _Bridge(QtCore.QObject):
     """
 
     progressed = QtCore.Signal(int, object)
+    ranged = QtCore.Signal(int, int)
     texted = QtCore.Signal(str)
     partial = QtCore.Signal(object)
     completed = QtCore.Signal(object, object)  # (result, exception)
@@ -147,6 +148,17 @@ class TaskHandle:
         elif text is not None:
             self.set_text(text)
 
+    def set_range(self, minimum: int, maximum: int) -> None:
+        """Re-scale the bar, for work that runs in phases of different length.
+
+        ``(0, 0)`` is a busy indicator. A multi-phase run — read, then compute,
+        then write — announces each phase's own length rather than inventing a
+        common scale for all three.
+        """
+        self._maximum = int(maximum)
+        self._last_value = -1
+        self._bridge.ranged.emit(int(minimum), int(maximum))
+
     def set_text(self, text: str) -> None:
         """Change the message beside the bar without moving it."""
         self._bridge.texted.emit(str(text))
@@ -154,6 +166,44 @@ class TaskHandle:
     def set_partial(self, value: typing.Any) -> None:
         """Hand an intermediate result to ``on_partial`` on the GUI thread."""
         self._bridge.partial.emit(value)
+
+    def progress_window(self, label: str = "") -> "_ProgressWindowAdapter":
+        """Return an object with the ``progress_window`` surface some cores take.
+
+        Several Qt-free computation cores accept a "progress window" and call
+        ``set_value(i)`` on it — written when the caller was a `QProgressDialog`
+        on the GUI thread. Handing them this adapter moves the loop into a worker
+        with no change to the core, and gives it cancellation it did not have:
+        each ``set_value`` also checks whether the user asked to stop.
+        """
+        return _ProgressWindowAdapter(self, label)
+
+
+class _ProgressWindowAdapter:
+    """The ``set_value``/``setValue`` surface a core's ``progress_window`` needs."""
+
+    def __init__(self, task: TaskHandle, label: str = ""):
+        self._task = task
+        self._label = label
+
+    def set_value(self, value: int) -> None:
+        """Report progress and check for cancellation."""
+        self._task.raise_if_cancelled()
+        self._task.set_progress(int(value), self._label or None)
+
+    #: `QProgressDialog` spelling, for a core that uses it instead.
+    setValue = set_value  # noqa: N815
+
+    def set_text(self, text: str) -> None:
+        """Change the message."""
+        self._label = str(text)
+        self._task.set_text(self._label)
+
+    setLabelText = set_text  # noqa: N815
+
+    def wasCanceled(self) -> bool:  # noqa: N802
+        """Whether the user asked to stop (for a core that polls instead)."""
+        return self._task.is_cancelled
 
 
 class Task:
@@ -239,7 +289,8 @@ def _disconnect(bridge: _Bridge, *signals) -> None:
     With no *signals* every connection goes.
     """
     for signal in signals or (
-            bridge.progressed, bridge.texted, bridge.partial, bridge.completed):
+            bridge.progressed, bridge.ranged, bridge.texted, bridge.partial,
+            bridge.completed):
         try:
             signal.disconnect()
         except (TypeError, RuntimeError):
@@ -255,7 +306,7 @@ def _disconnect_updates(bridge: _Bridge) -> None:
     forever. The completion handler drops the *result* itself, because the task
     is cancelled.
     """
-    _disconnect(bridge, bridge.progressed, bridge.texted, bridge.partial)
+    _disconnect(bridge, bridge.progressed, bridge.ranged, bridge.texted, bridge.partial)
 
 
 def run_in_background(
@@ -360,6 +411,9 @@ def run_in_background(
             progress.set_text(str(message))
         progress.set_value(int(value))
 
+    def _on_ranged(minimum, maximum):
+        progress.set_range(int(minimum), int(maximum))
+
     def _on_texted(message):
         progress.set_text(message)
 
@@ -401,6 +455,7 @@ def run_in_background(
 
     connection = QtCore.Qt.QueuedConnection
     bridge.progressed.connect(_on_progressed, connection)
+    bridge.ranged.connect(_on_ranged, connection)
     bridge.texted.connect(_on_texted, connection)
     bridge.partial.connect(_on_partial, connection)
     bridge.completed.connect(_on_completed, connection)
@@ -426,6 +481,7 @@ def run_in_background(
         # still fire, in order, on this thread.
         _disconnect(bridge)
         bridge.progressed.connect(_on_progressed)
+        bridge.ranged.connect(_on_ranged)
         bridge.texted.connect(_on_texted)
         bridge.partial.connect(_on_partial)
         bridge.completed.connect(_on_completed)

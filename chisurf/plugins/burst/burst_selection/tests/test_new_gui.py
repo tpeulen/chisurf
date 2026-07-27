@@ -385,9 +385,14 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
             }
 
     class FakeDialog:
-        """Progress-dialog stand-in for headless batch tests."""
+        """Progress stand-in for headless batch tests.
 
-        def __init__(self, **_kwargs: object) -> None:
+        ``ChiSurfProgress`` would already be harmless here (head-lessly it writes
+        to the log), but the test asserts on the closing message, so it stands in
+        to capture it.
+        """
+
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             self.finished: list[str] = []
 
         def show(self) -> None:
@@ -398,6 +403,29 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
 
         def finish(self, final_text: str, **_kwargs: object) -> None:
             self.finished.append(final_text)
+
+        @staticmethod
+        def run(_parent, _text, func, *, args=(), kwargs=None, on_result=None, **_kw):
+            """Run the worker inline and deliver its result.
+
+            The batch now goes through the shared task layer; this test is about
+            what reaches the backend, so the worker runs here rather than in a
+            thread.
+            """
+
+            class _Handle:
+                """Minimal `TaskHandle` stand-in."""
+
+                def set_progress(self, *_a, **_k): return None
+                def set_range(self, *_a, **_k): return None
+                def set_text(self, *_a, **_k): return None
+                def set_partial(self, *_a, **_k): return None
+                def raise_if_cancelled(self): return None
+                is_cancelled = False
+
+            result = func(*args, _Handle(), **(kwargs or {}))
+            if on_result is not None:
+                on_result(result)
 
     class FakeWizard:
         """Minimal wizard stand-in for batch RPC context."""
@@ -416,8 +444,14 @@ def test_mmfdb_only_output_runs_batch_analysis(tmp_path: Path, monkeypatch: obje
 
     client = FakeClient()
     summary_text: list[str] = []
-    monkeypatch.setattr(tool_module, "EnhancedProgressDialog", FakeDialog)
+    monkeypatch.setattr(tool_module, "ChiSurfProgress", FakeDialog)
     tool = BurstSelectionTool.__new__(BurstSelectionTool)
+    # The tool declares message conditions; `__new__` skips the binding that
+    # `MessagesMixin.__init__` normally does.
+    tool._message_bar = None
+    tool.Error = BurstSelectionTool.Error(tool)
+    tool.Warning = BurstSelectionTool.Warning(tool)
+    tool.Information = BurstSelectionTool.Information(tool)
     tool._file_paths = paths
     tool._client = client
     tool.wizard = FakeWizard()
