@@ -2,6 +2,44 @@
 
 ## 2026-07-28
 
+* **The burst workflow stopped handing its files over halfway down the list
+  (RF-552).** Browser, Background and IRF & Background were fed by the shell,
+  but three burst plugins that consume exactly what the pipeline produces were
+  not in it at all: Accurate FRET (reads a burst table), Burst-wise FCS (reads
+  burst folders / BUR files) and photon-by-photon kinetics (reads `.bur`
+  tables). They are now panels below the separator, each handed what it needs —
+  the folder for FCS (its list expands a folder itself, so the panel keeps
+  pointing at the analysis rather than at a snapshot of its files), every `.bur`
+  for kinetics, the first burst table for Accurate FRET, whose channel columns
+  then auto-map. A panel where the user already chose files is left alone.
+  `BurstFcsTool` gained the `embedded` flag every other burst tool takes.
+  A guardrail test now fails if a panel is added without a hand-off.
+  **Found on the way, and general:** `AutoForm.sync_fields()` never refreshed a
+  `path_list` section, because the widget exposed neither `sync()` nor
+  `AUTOFORM_REFRESH` — so a list filled programmatically (a workflow hand-off, a
+  restored project) held the paths in the model while the panel showed an empty
+  list, which reads as "the hand-off did not happen". Fixed in the section, so
+  every plugin using it benefits. Pinned by six tests in
+  `chisurf/plugins/burst/burst_analysis/tests/test_workflow.py` and two in
+  `test/gui/test_path_list_section.py`.
+
+* **Finished background work pulled the window back in front of whatever the
+  user had moved to (RF-553).** The shell re-asserts activation after embedding
+  a panel — a tool built as a `QMainWindow` is briefly a native window that can
+  take activation on macOS — but it did so unconditionally, including from
+  `_on_task_finished`. Steps now start work on their own and finish minutes
+  later, so "raise when done" became "the windows do not stay where I put them":
+  alt-tab away during an H2MM fit and the tool jumped in front when it landed.
+  Activation is now only taken back while this application is frontmost *and*
+  the active window is this one or a descendant of it — the transient tool
+  window it exists for is a descendant, another window of ours is not. Embedded
+  tools also get `WA_ShowWithoutActivating`, so the window they briefly are
+  cannot take activation in the first place. Pinned by four tests in
+  `test/gui/test_navigation_statusbar.py`; the application-state read is behind
+  a seam because `QGuiApplication.applicationState` ignores patching and
+  offscreen always reports inactive.
+
+
 * **Durbin-Watson: guard the zero denominator, do not clamp it (RF-215).** The
   statistic returned `nom / max(1.0, sum(r**2))`, which is a ratio only while
   the weighted residual sum of squares exceeds one. Below that — a short fit

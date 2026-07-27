@@ -279,6 +279,33 @@ def _burst_h2mm(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
+def _burst_fcs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the burst-wise FCS panel."""
+    from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
+
+    widget = BurstFcsTool(parent=parent, embedded=True)
+    _bind(parent, "burst_fcs", widget)
+    return widget
+
+
+def _burst_gs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the photon-by-photon kinetics (Gopich-Szabo) panel."""
+    from chisurf.plugins.burst.burst_gs.gui.tool import BurstGsTool
+
+    widget = BurstGsTool(parent=parent, embedded=True)
+    _bind(parent, "burst_gs", widget)
+    return widget
+
+
+def _burst_accurate_fret(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the accurate-FRET (correction factors) panel."""
+    from chisurf.plugins.burst.accurate_fret.gui.tool import AccurateFretTool
+
+    widget = AccurateFretTool(parent=parent, embedded=True)
+    _bind(parent, "accurate_fret", widget)
+    return widget
+
+
 def _burst_browser(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the burst browser panel."""
     from chisurf.plugins.burst.burst_browser import BurstBrowserWidget
@@ -398,6 +425,32 @@ BURST_PANELS = [
         "description": "Inspect the current burst workflow result.",
         "factory": _burst_browser,
         "role": "browser",
+    },
+    {
+        "name": "Accurate FRET",
+        "icon": Glyphs.TARGET,
+        "description": (
+            "Correction factors (alpha/beta/gamma/delta) for the bursts this "
+            "workflow produced."
+        ),
+        "factory": _burst_accurate_fret,
+        "role": "accurate_fret",
+    },
+    {
+        "name": "Burst FCS",
+        "icon": Glyphs.CHART,
+        "description": "Correlate the photons of the selected bursts.",
+        "factory": _burst_fcs,
+        "role": "burst_fcs",
+    },
+    {
+        "name": "Kinetics (GS)",
+        "icon": Glyphs.SHUFFLE,
+        "description": (
+            "Photon-by-photon kinetics (Gopich-Szabo) on the selected bursts."
+        ),
+        "factory": _burst_gs,
+        "role": "burst_gs",
     },
     {
         "name": "Background",
@@ -634,7 +687,9 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "browser", "background", "irf_bg"):
+        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "browser",
+                     "burst_fcs", "burst_gs", "accurate_fret",
+                     "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
             if widget is not None:
                 self._apply_context_to_panel(role, widget)
@@ -653,6 +708,12 @@ class BurstAnalysisTool(NavigationPanelTool):
             self._apply_context_to_h2mm(widget)
         elif role == "browser":
             self._apply_context_to_browser(widget)
+        elif role == "burst_fcs":
+            self._apply_context_to_burst_fcs(widget)
+        elif role == "burst_gs":
+            self._apply_context_to_burst_gs(widget)
+        elif role == "accurate_fret":
+            self._apply_context_to_accurate_fret(widget)
         elif role == "background":
             self._apply_context_to_background(widget)
         elif role == "irf_bg":
@@ -874,6 +935,53 @@ class BurstAnalysisTool(NavigationPanelTool):
             return
         try:
             widget.load_folder(self.workflow_context.burst_folder)
+        except Exception:
+            pass
+
+    def _apply_context_to_burst_fcs(self, widget: QtWidgets.QWidget) -> None:
+        """Put the burst files this workflow produced into the FCS file list.
+
+        The correlator takes burst folders *or* BUR/BST files, and its list
+        expands a folder itself — so the folder is the smaller, more faithful
+        hand-off: it keeps the panel pointing at the analysis rather than at a
+        snapshot of its files.
+        """
+        folder = self.workflow_context.burst_folder
+        file_list = getattr(widget, "file_list", None)
+        if folder is None or file_list is None:
+            return
+        try:
+            if not file_list.checked_paths():
+                file_list.add_paths([str(folder)])
+        except Exception:
+            pass
+
+    def _apply_context_to_burst_gs(self, widget: QtWidgets.QWidget) -> None:
+        """Give photon-by-photon kinetics the .bur files from upstream."""
+        model = getattr(widget, "model", None)
+        if model is None or not self.workflow_context.bur_files:
+            return
+        if getattr(model, "bur_files", None):
+            return  # the user already chose files here
+        try:
+            model.bur_files = [str(path) for path in self.workflow_context.bur_files]
+            model.notify("changed")
+        except Exception:
+            pass
+
+    def _apply_context_to_accurate_fret(self, widget: QtWidgets.QWidget) -> None:
+        """Load one burst table from upstream into the accurate-FRET panel.
+
+        The calibration reads a burst *table*, and a ``.bur`` is one — so the
+        first burst file is what this step would otherwise ask the user to pick.
+        """
+        model = getattr(widget, "model", None)
+        if model is None or not self.workflow_context.bur_files:
+            return
+        if getattr(model, "filename", ""):
+            return  # a table is already loaded here
+        try:
+            model.set_filename(str(self.workflow_context.bur_files[0]))
         except Exception:
             pass
 

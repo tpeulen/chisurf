@@ -1082,8 +1082,70 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         """Force lazily-loaded tools to behave as child widgets."""
         widget.setAttribute(QtCore.Qt.WA_QuitOnClose, False)
         widget.setAttribute(QtCore.Qt.WA_DontCreateNativeAncestors, True)
+        # A tool built as a QMainWindow is a window until these flags are
+        # changed, and on macOS the window it briefly is can take activation on
+        # the way to becoming a child. Then it must at least not take activation
+        # with it — this attribute is what the raise/activate dance below has
+        # been racing against.
+        widget.setAttribute(QtCore.Qt.WA_ShowWithoutActivating, True)
         widget.setWindowFlags(QtCore.Qt.Widget)
         widget.setParent(parent)
+
+    def _may_take_activation(self) -> bool:
+        """Whether raising this window now would *restore* focus rather than steal it.
+
+        Restoring activation is only ever right while the user is still here.
+        Two cases where it is not, and where raising is exactly the "windows do
+        not stay where I put them" behaviour:
+
+        * **another application is in front** — the user alt-tabbed away while a
+          fit ran, and a run finishing must not pull them back;
+        * **another window of ours is active** — they moved to the main window,
+          or to a second tool, and a background task completing here must not
+          jump in front of it.
+
+        ``activeWindow()`` alone cannot tell "the user left" from "activation is
+        in flight while a panel is being embedded" — both read as ``None`` — so
+        the application state answers the first question and the active window
+        the second. A window *of ours* holding activation is not a reason to
+        stop: the case this whole dance exists for is a tool that is briefly its
+        own native window on the way to becoming a child, and that window is a
+        descendant of ours.
+        """
+        app = QtWidgets.QApplication.instance()
+        if app is None:
+            return False
+        if not self._application_is_frontmost():
+            return False
+        active = app.activeWindow()
+        window = self.window()
+        if active is None:
+            return True
+        # Walk the parent chain rather than asking ``isAncestorOf``: that answers
+        # false for a child that is *itself* a window, which is precisely the
+        # transient tool window this exists to take activation back from.
+        node = active
+        while node is not None:
+            if node is window:
+                return True
+            node = node.parentWidget()
+        return False
+
+    @staticmethod
+    def _application_is_frontmost() -> bool:
+        """Whether this application is the one the user is currently in.
+
+        Separated out because it is the only part of the activation rule that
+        cannot be arranged in a test: ``QGuiApplication.applicationState`` is
+        implemented in C++ and ignores patching, and offscreen reports the
+        application as inactive whatever it does.
+        """
+        try:
+            from qtpy.QtGui import QGuiApplication
+
+            return QGuiApplication.applicationState() == QtCore.Qt.ApplicationActive
+        except Exception:
+            return True  # no state to consult: behave as before
 
     def _restore_active_window(self) -> None:
         """Keep the hosting tool active/foreground after a page is (re)shown.
@@ -1094,7 +1156,14 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         when I click Next" bug. Raising + activating once often loses the race with
         that late native window, so re-assert once more on the next event-loop
         turn.
+
+        Both passes are conditional on :meth:`_may_take_activation`: this is a
+        *restore*, and steps now start work on their own and finish minutes
+        later, so an unconditional raise would drag the user back out of
+        whatever they moved on to.
         """
+        if not self._may_take_activation():
+            return
         window = self.window()
         window.raise_()
         window.activateWindow()
@@ -1105,7 +1174,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
     def _reassert_active_window(self) -> None:
         """Second, delayed activation pass (see :meth:`_restore_active_window`)."""
         window = self.window()
-        if window is not None and window.isVisible():
+        if window is not None and window.isVisible() and self._may_take_activation():
             window.raise_()
             window.activateWindow()
 

@@ -140,8 +140,10 @@ def test_burst_workflow_panel_order() -> None:
 
     labels = [f"{panel.get('icon', '')} {panel['name']}".strip() for panel in BURST_PANELS]
     # No standalone Channels step (channels come from the Burst Selection setup);
-    # the numbered pipeline (Data → H2MM) is the main flow, with the utility steps
-    # (Browser, Background, IRF & Background) below the separator, unnumbered.
+    # the numbered pipeline (Data → H2MM) is the main flow, with the unnumbered
+    # steps below the separator: first what you do *with* the bursts (Browser,
+    # Accurate FRET, Burst FCS, Kinetics), then the two that feed the pipeline
+    # from the raw files (Background, IRF & Background).
     assert labels == [
         "📂 1. Data Selection",
         "🔍 2. Burst Selection",
@@ -151,6 +153,9 @@ def test_burst_workflow_panel_order() -> None:
         "🔀 6. H2MM",
         "────────",
         "📋 Browser",
+        "🎯 Accurate FRET",
+        "📊 Burst FCS",
+        "🔀 Kinetics (GS)",
         "🌙 Background",
         "✨ IRF & Background",
     ]
@@ -578,3 +583,149 @@ def test_data_selection_uses_the_shared_path_list_widget() -> None:
     assert not hasattr(widget, "add_files_button")
     widget.close()
     app.processEvents()
+
+
+def test_burst_fcs_adopts_the_upstream_burst_folder(tmp_path: Path) -> None:
+    """Burst-wise FCS is handed the analysis folder, not a snapshot of its files.
+
+    Its list expands a folder itself, so the folder keeps the panel pointing at
+    the analysis rather than at whichever files existed at hand-off time.
+    """
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    added: list[list[str]] = []
+
+    class FakeList:
+        def checked_paths(self):
+            return []
+
+        def add_paths(self, paths):
+            added.append([str(p) for p in paths])
+
+    class FakeFcs:
+        file_list = FakeList()
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    folder = tmp_path / "burstwise"
+    tool.workflow_context = BurstWorkflowContext(burst_folder=folder)
+
+    BurstAnalysisTool._apply_context_to_burst_fcs(tool, FakeFcs())
+    assert added == [[str(folder)]]
+
+
+def test_burst_fcs_keeps_a_selection_the_user_made(tmp_path: Path) -> None:
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    added: list[list[str]] = []
+
+    class FakeList:
+        def checked_paths(self):
+            return ["/somewhere/else.bur"]
+
+        def add_paths(self, paths):
+            added.append(list(paths))
+
+    class FakeFcs:
+        file_list = FakeList()
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    tool.workflow_context = BurstWorkflowContext(burst_folder=tmp_path / "burstwise")
+    BurstAnalysisTool._apply_context_to_burst_fcs(tool, FakeFcs())
+    assert added == [], "the workflow must not overwrite files the user chose"
+
+
+def test_kinetics_receives_the_bur_files(tmp_path: Path) -> None:
+    """Photon-by-photon kinetics reads .bur tables — hand it the ones upstream made."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    events: list[str] = []
+
+    class FakeModel:
+        bur_files: list = []
+
+        def notify(self, event):
+            events.append(event)
+
+    class FakeGs:
+        model = FakeModel()
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    files = [tmp_path / "m000.bur", tmp_path / "m001.bur"]
+    tool.workflow_context = BurstWorkflowContext(bur_files=files)
+
+    gs = FakeGs()
+    BurstAnalysisTool._apply_context_to_burst_gs(tool, gs)
+    assert gs.model.bur_files == [str(p) for p in files]
+    assert events == ["changed"], "the view has to be told, or the list looks empty"
+
+    # A second application must not append the same files again.
+    BurstAnalysisTool._apply_context_to_burst_gs(tool, gs)
+    assert gs.model.bur_files == [str(p) for p in files]
+
+
+def test_accurate_fret_receives_one_burst_table(tmp_path: Path) -> None:
+    """The calibration reads a burst table, and a .bur is one."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstAnalysisTool,
+        BurstWorkflowContext,
+    )
+
+    loaded: list[str] = []
+
+    class FakeModel:
+        filename = ""
+
+        def set_filename(self, path):
+            loaded.append(str(path))
+            self.filename = str(path)
+
+    class FakeAccurateFret:
+        model = FakeModel()
+
+    tool = BurstAnalysisTool.__new__(BurstAnalysisTool)
+    files = [tmp_path / "m000.bur", tmp_path / "m001.bur"]
+    tool.workflow_context = BurstWorkflowContext(bur_files=files)
+
+    panel = FakeAccurateFret()
+    BurstAnalysisTool._apply_context_to_accurate_fret(tool, panel)
+    assert loaded == [str(files[0])]
+
+    BurstAnalysisTool._apply_context_to_accurate_fret(tool, panel)
+    assert loaded == [str(files[0])], "a table already loaded here is not replaced"
+
+
+def test_new_panels_are_wired_into_downstream_propagation() -> None:
+    """A panel that is not in the role tuple only ever sees stale context."""
+    import inspect
+
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BurstAnalysisTool
+
+    src = inspect.getsource(BurstAnalysisTool._apply_context_to_downstream)
+    for role in ('"burst_fcs"', '"burst_gs"', '"accurate_fret"'):
+        assert role in src, f"{role} misses upstream changes"
+
+
+def test_every_panel_role_has_an_applier() -> None:
+    """Adding a panel without a hand-off leaves the user re-picking files by hand."""
+    import inspect
+
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BURST_PANELS,
+        BurstAnalysisTool,
+    )
+
+    src = inspect.getsource(BurstAnalysisTool._apply_context_to_panel)
+    for panel in BURST_PANELS:
+        role = panel.get("role") or ""
+        if not role or role in {"separator", "data"}:
+            continue
+        assert f'"{role}"' in src, f"panel {panel['name']!r} gets no workflow context"

@@ -426,3 +426,100 @@ def test_the_step_selector_refuses_to_switch_while_working(qapp):
     qapp.processEvents()
     assert w.goto_next_step() is True, "the selector must unlock when work ends"
     w.close()
+
+
+# ── activation: restore, never steal ─────────────────────────────────
+
+
+def _shell_for_activation(qapp, monkeypatch, *, frontmost=True):
+    """A shell, with the one thing a test cannot arrange pinned down.
+
+    ``QGuiApplication.applicationState`` is implemented in C++ (patching it is
+    silently ignored) and offscreen always reports the application as inactive,
+    so the shell reads it through a seam these tests can set.
+    """
+    shell = NavigationPanelTool(title="t", panels=_panels())
+    monkeypatch.setattr(shell, "_application_is_frontmost", lambda: frontmost)
+    return shell
+
+
+def test_activation_is_not_taken_while_the_user_is_in_another_application(
+    qapp, monkeypatch
+):
+    """A run that finishes minutes later must not pull the user back.
+
+    Steps start work on their own now, so "raise when done" would drag the user
+    out of whatever they moved on to — which is exactly the "windows do not stay
+    where I put them" complaint.
+    """
+    shell = _shell_for_activation(qapp, monkeypatch, frontmost=False)
+    try:
+        raised = []
+        monkeypatch.setattr(shell, "raise_", lambda: raised.append(1))
+        shell._restore_active_window()
+        assert raised == [], "another application is in front; do not jump forward"
+    finally:
+        shell.close()
+
+
+def test_activation_is_not_taken_from_another_window_of_ours(qapp, monkeypatch):
+    from qtpy import QtWidgets
+
+    shell = _shell_for_activation(qapp, monkeypatch)
+    other = QtWidgets.QWidget()
+    try:
+        raised = []
+        monkeypatch.setattr(shell, "raise_", lambda: raised.append(1))
+        monkeypatch.setattr(
+            QtWidgets.QApplication, "activeWindow", staticmethod(lambda: other)
+        )
+        shell._restore_active_window()
+        assert raised == [], "the main window has focus; a finished task must not steal it"
+
+        # …but when this window is the active one, the restore still happens:
+        # that is what it is for.
+        monkeypatch.setattr(
+            QtWidgets.QApplication, "activeWindow", staticmethod(lambda: shell)
+        )
+        shell._restore_active_window()
+        assert raised == [1], "the user is here; restoring activation is right"
+    finally:
+        other.close()
+        shell.close()
+
+
+def test_activation_is_restored_from_our_own_transient_child_window(qapp, monkeypatch):
+    """The case the raise/activate exists for must keep working.
+
+    A tool built as a QMainWindow is briefly its own native window on the way to
+    becoming a child, and on macOS that window can take activation. It is ours,
+    so taking activation back is a restore, not a theft.
+    """
+    from qtpy import QtWidgets
+
+    shell = _shell_for_activation(qapp, monkeypatch)
+    try:
+        transient = QtWidgets.QMainWindow(shell)  # a child that is still a window
+        raised = []
+        monkeypatch.setattr(shell, "raise_", lambda: raised.append(1))
+        monkeypatch.setattr(
+            QtWidgets.QApplication, "activeWindow", staticmethod(lambda: transient)
+        )
+        shell._restore_active_window()
+        assert raised == [1], "a tool window of ours holding focus is the bug, not the user"
+    finally:
+        shell.close()
+
+
+def test_embedded_tools_do_not_take_activation_when_shown(qapp, monkeypatch):
+    """A tool that is briefly a window must not activate itself on the way in."""
+    from qtpy import QtCore, QtWidgets
+
+    shell = _shell_for_activation(qapp, monkeypatch)
+    try:
+        tool = QtWidgets.QMainWindow()
+        shell._prepare_embedded_widget(tool, shell)
+        assert tool.testAttribute(QtCore.Qt.WA_ShowWithoutActivating)
+        assert not (tool.windowFlags() & QtCore.Qt.Window)
+    finally:
+        shell.close()

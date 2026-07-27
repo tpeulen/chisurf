@@ -71,6 +71,12 @@ class PathListWidget(QtWidgets.QWidget):
     #: marker so a hosting dock panel gives this section the spare vertical space.
     _autoform_expanding = True
 
+    #: ``AutoForm.sync_fields()`` re-reads this widget from its model. Without it
+    #: a list filled programmatically -- a workflow handing a panel the files it
+    #: produced, a restored project -- stayed empty on screen while the model
+    #: held the paths, which reads as "the hand-off did not happen".
+    AUTOFORM_REFRESH = True
+
     #: emitted with the list of currently-selected path strings on any change.
     selectionChanged = QtCore.Signal(list)
     #: emitted (checkable mode) with the list of checked path strings when a tick changes.
@@ -210,6 +216,10 @@ class PathListWidget(QtWidgets.QWidget):
 
     def _add(self, paths: list[str]) -> None:
         self._commit(self._current() + self._expand(paths))
+
+    def sync(self) -> None:
+        """Re-read the bound list from the model (see ``AUTOFORM_REFRESH``)."""
+        self._refresh_from_model()
 
     def _refresh_from_model(self) -> None:
         self._refresh_list(self._current())

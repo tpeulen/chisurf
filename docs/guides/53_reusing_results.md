@@ -57,6 +57,22 @@ answer, so nothing is remembered and the next run starts over. Arriving at a
 step whose result is already there costs nothing — that is the rule above doing
 its job, and it is what makes starting on arrival reasonable in the first place.
 
+## Everything downstream is handed the same files
+
+The steps below the separator do not ask you to find the analysis again — the
+workflow gives each of them what it needs from the run you just did:
+
+| Panel | Receives |
+|---|---|
+| Browser | the burst folder, loaded as a table |
+| Accurate FRET | the first `.bur` as its burst table, channel columns auto-mapped |
+| Burst FCS | the burst folder (its list expands the folder itself) |
+| Kinetics (GS) | every `.bur` the search produced |
+| Background, IRF & Background | the raw TTTR files and the channel setup |
+
+A panel where you already chose files yourself is left alone — the hand-off
+fills an empty panel, it does not overwrite your selection.
+
 ## The stamp files
 
 Each step that writes results writes a small JSON file next to them —

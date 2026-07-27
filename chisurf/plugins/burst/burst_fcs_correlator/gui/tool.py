@@ -107,10 +107,23 @@ class _PlotsProxy:
 class BurstFcsTool(QtWidgets.QMainWindow):
     """Modern burst-wise FCS correlator (declarative AutoForm + dockable plots)."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, *, embedded: bool = False):
+        """Build the correlator.
+
+        Parameters
+        ----------
+        parent : QWidget, optional
+            Host widget.
+        embedded : bool, optional
+            Hosted inside another tool (the burst workflow shell), which owns the
+            window and its size. Every burst tool takes this flag; here it only
+            means "do not impose a window size on a panel".
+        """
         super().__init__(parent)
+        self._embedded = embedded
         self.setWindowTitle(f"{Glyphs.SCIENCE} Burst-wise FCS Correlator")
-        self.resize(960, 620)
+        if not embedded:
+            self.resize(960, 620)
 
         self._client = BurstFcsClient()
         self._model = _BurstFcsModel()

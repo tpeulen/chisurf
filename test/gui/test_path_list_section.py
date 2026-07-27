@@ -66,6 +66,7 @@ def test_add_from_mmfdb_without_database_is_quiet(qapp, monkeypatch):
     # No database available -> nothing added, no crash (the info dialog is
     # suppressed so the test does not block on a modal).
     from qtpy import QtWidgets
+
     from chisurf.gui.widgets.mmfdb import picker
 
     monkeypatch.setattr(picker, "inprocess_client", lambda: None)
@@ -229,3 +230,35 @@ def test_rejected_paths_signal(qapp, tmp_path):
     inner.pathsRejected.emit([bad])
     assert w.paths() == [str(good)]
     assert seen and seen[-1] == [str(bad)]
+
+
+def test_a_list_filled_programmatically_reaches_the_widget(qapp, tmp_path):
+    """``AutoForm.sync_fields()`` must re-read this section from its model.
+
+    A workflow handing a panel the files it produced, or a restored project,
+    writes the model attribute directly. Without a sync the model held the paths
+    while the list on screen stayed empty — which reads as "the hand-off did not
+    happen", and sent the user off to pick the files again by hand.
+    """
+    a = tmp_path / "m000.bur"
+    a.write_bytes(b"x")
+    model = _Model()
+    w = PathListWidget(model, "files")
+    assert w.paths() == []
+
+    model.files = [str(a)]          # exactly what a hand-off does
+    # ``paths()`` reads the model, so it is already right; the *visible* list is
+    # the thing that was left behind, and it is the only thing the user sees.
+    assert w._list.count() == 0, "nothing has told the widget yet"
+
+    w.sync()
+    assert w._list.count() == 1
+    assert w._list.item(0).text() == str(a)
+
+
+def test_the_section_advertises_itself_for_sync(qapp):
+    """``sync_fields()`` only visits widgets that mark themselves refreshable."""
+    model = _Model()
+    w = PathListWidget(model, "files")
+    assert getattr(w, "AUTOFORM_REFRESH", False) is True
+    assert callable(getattr(w, "sync", None))
