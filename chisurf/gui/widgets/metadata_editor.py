@@ -104,6 +104,32 @@ class MetadataKeyComboBox(QtWidgets.QComboBox):
             view.setMouseTracking(True)
             view.setItemDelegate(TooltipDelegate(view))
 
+    #: Cached ``(item count, pixel width)`` of the widest entry, so thousands of
+    #: keys are measured on the first popup only and not on every one after it.
+    _popup_width: tuple = (-1, 0)
+
+    def showPopup(self):
+        """Widen the dropdown so the long dictionary keys are not elided.
+
+        The popup is only as wide as the combobox by default, which truncates
+        an mmCIF key in the middle (``_flr_reference_measu...lifetime``) — and
+        the keys differ precisely in the part that gets cut out.
+        """
+        view = self.view()
+        if view is not None:
+            view.setTextElideMode(Qt.ElideNone)
+            count, width = self._popup_width
+            if count != self.count():
+                metrics = QtGui.QFontMetrics(view.font())
+                width = max(
+                    (metrics.horizontalAdvance(self.itemText(i)) for i in range(self.count())),
+                    default=0,
+                )
+                self._popup_width = (self.count(), width)
+            frame = view.frameWidth() * 2 + view.verticalScrollBar().sizeHint().width()
+            view.setMinimumWidth(min(width + frame + 12, 900))
+        super().showPopup()
+
     def event(self, event):
         if event.type() == QtCore.QEvent.ToolTip:
             view = self.view()
@@ -145,6 +171,8 @@ class MetadataEditor(QtWidgets.QWidget):
             raise ValueError("columns must be 2 or 3")
         self._columns = columns
         self._suppress_change = False
+        self._key_model_cache: QtGui.QStandardItemModel | None = None
+        self._key_model_keys: list[str] = []
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setSpacing(2)
@@ -256,14 +284,34 @@ class MetadataEditor(QtWidgets.QWidget):
         item = self.table.item(row, 2)
         return item.text().strip() if item is not None else ""
 
+    def _key_model(self) -> QtGui.QStandardItemModel:
+        """Return the key list model shared by every row's combobox.
+
+        The list holds the whole mmCIF dictionary (thousands of keys), so it is
+        built once per editor rather than once per row. It is rebuilt whenever
+        :meth:`set_data` brings in keys the dictionary does not know.
+        """
+        extra = getattr(self, "_extra_keys", [])
+        if self._key_model_cache is not None and self._key_model_keys == extra:
+            return self._key_model_cache
+        model = QtGui.QStandardItemModel(self)
+        for key in ALL_METADATA_KEYS + list(extra):
+            item = QtGui.QStandardItem(key)
+            item.setData(key_description(key), Qt.UserRole + 1)
+            model.appendRow(item)
+        self._key_model_cache = model
+        self._key_model_keys = list(extra)
+        return model
+
     def _make_key_combo(self, row: int) -> MetadataKeyComboBox:
         """Create a populated MetadataKeyComboBox for a table row."""
         combo = MetadataKeyComboBox()
         combo.setEditable(True)
-        all_keys = ALL_METADATA_KEYS + getattr(self, "_extra_keys", [])
-        combo.addItems(all_keys)
-        for idx, key in enumerate(ALL_METADATA_KEYS):
-            combo.setItemData(idx, key_description(key), Qt.UserRole + 1)
+        # NoInsert: the model is shared, so a key typed into one row must not
+        # append itself to every other row's list.
+        combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+        combo.setModel(self._key_model())
+        combo.setCurrentIndex(-1)
         comp = combo.completer()
         if comp is not None:
             comp.setFilterMode(Qt.MatchContains)

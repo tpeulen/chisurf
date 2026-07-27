@@ -2,6 +2,38 @@
 
 ## 2026-07-27
 
+* **Nine thousand metadata keys reached a completer that had been offering thirty-seven.**
+  Both metadata editors — the shared `MetadataEditor` and the burst-selection flrCIF export —
+  build their key list from `get_pdbx_metadata_keys()` behind a bare
+  `try/except Exception: []`. The guard was never the problem: the function did not raise, it
+  returned `[]`. Its `DICT_PATH` pointed at `chisurf/core/fio/mmcif/db/data/mmcif_pdbx_v50.dic`
+  — a **directory that does not exist** — and the hand-rolled parser answered a missing file
+  with an empty result, so every user silently got the 37 hard-coded fall-backs and no
+  dictionary at all. `MANIFEST.in` shipped the absent file, which is how the path survived a
+  move. Filed as [BUG-12](/specs/assessment.md#bug-12).
+  **The parser is deleted, not repaired.** `mmfdb.schema.pdbx_metadata.MmcifDictionary` is
+  already the one dictionary authority — it parses the eight bundled `.dic` files behind a
+  process-level cache and a JSON cache on disk — so the chisurf module is now a ~60-line facade
+  over `load_bundled()`. Keys **37 → 9,366**, descriptions **0 → 4,065**, and the flrCIF
+  extension items (`_flr_sample.*`, `_flr_fret_forster_radius.*`, …) reach the GUI for the
+  first time. An empty parse now logs a warning instead of being swallowed. mmfdb gained the
+  two accessors this needed, `item_names()` and `item_descriptions()` (committed there).
+  **Two things the real list broke, found by rendering it and looking.** Each row built its
+  *own* copy of 9,366 items with 9,366 `setItemData` calls — 18 ms per row, 0.36 s for twenty
+  — so the rows now share one `QStandardItemModel`; that needs `NoInsert`, or a key typed into
+  one row appends itself to every other row's list. Twenty rows: **0.36 s → 0.026 s**, faster
+  than the broken 37-key version. And the popup, only as wide as the combo box, elided an
+  mmCIF key **in the middle** (`_flr_reference_measu...nt_lifetime.lifetime`) — precisely the
+  part that tells two keys apart — so it is now measured once and sized to its widest entry.
+  **Found while reading the neighbours**: `chisurf/core/fio/mmcif/db/` is otherwise dead —
+  six of its seven modules have no importer left, and `build_tools/regenerate_curated_db.py`,
+  the only reader of the committed 815 KB `sample_management.db`, imports a `chisurf.core.mmfdb`
+  that no longer exists. Logged as [INC-14](/specs/assessment.md#inc-14) rather than swept into
+  this change. Tests: `test/core/test_pdbx_metadata_keys.py` (6), `test/gui/test_metadata_editor.py`
+  (8), `modules/mmfdb/tests/test_pdbx_metadata.py` (+2); regressions green across
+  `test/architecture`, `mmfdb_admin` and `burst_selection` (33 + 299 + 95).
+
+
 * **A state can now carry a property too big for a cell.** `state_table` gained
   an **action column**: a column declaring `action` instead of `attr` renders a
   button per row and calls `model.<action>(row)`. The acquisition simulator's

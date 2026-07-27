@@ -49,6 +49,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [BUG-07](#bug-07) | S1 | BUG | Packaging | `csc` console script points at a non-existent `chisurf.cli` module — every invocation fails at import | ✅ FIXED |
 | [BUG-08](#bug-08) | S2 | BUG | Plugins | No image ever rendered in the Help browser: relative sources passed to Qt unresolved (`setSearchPaths` missing) | ✅ FIXED |
 | [BUG-09](#bug-09) | S2 | BUG | Tests | `test_fcs` dead since NumPy removed `np.float`; `…calculcate_spectrum` asserts a stale mixing expectation (`-0.3` vs `-0.15`) | ~~VERIFIED~~ ✅ FIXED |
+| [BUG-12](#bug-12) | S2 | BUG | GUI | Metadata-key completers were empty for every user: the PDBx dictionary was read from a `data/` directory that does not exist, and a missing file returned no keys | ✅ FIXED |
 | [DATA-01](#data-01) | S1 | DATA | Plugins | **3** manifests fail validation and are silently dropped by `load_manifest()` | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-02](#data-02) | S2 | DATA | MMFDB | `SCHEMA_VERSION = 40` is a stamp with no migration waterfall | ~~VERIFIED~~ ✅ FIXED |
 | [DATA-03](#data-03) | S2 | DATA | MMFDB | Core `mmfdb_*` DDL is hand-written and defined twice (must be hand-synced) | ~~REPORTED~~ ✅ FIXED |
@@ -69,9 +70,10 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — one of the two warnings in an otherwise clean build | ~~VERIFIED~~ ✅ FIXED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
+| [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | VERIFIED |
 
-36 findings (24 FIXED): 3 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
-Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
+38 findings (25 FIXED): 4 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
+Of the 13 open: 1×S1 (BUG-10), 4×S2, 8×S3.
 
 ---
 
@@ -578,3 +580,43 @@ form on the `retranslate_from_ui` path so language switching keeps working meanw
 - Not fixed here: this is shared fitting code under concurrent edit, and the
   threshold change is a design decision about how objectives declare themselves.
   Evidence and the reproduction are in the PDA3c model docstring.
+
+### BUG-12
+**S2 · The metadata-key completer was empty for every user.** Both metadata editors —
+`chisurf/gui/widgets/metadata_editor.py` and the burst-selection export dialog — seed their
+key completer from `get_pdbx_metadata_keys()`, and both wrap that call in a bare
+`try/except Exception: []`. They did not need it: the function never raised, it returned
+`[]`. Its `DICT_PATH` pointed at `chisurf/core/fio/mmcif/db/data/mmcif_pdbx_v50.dic`, a
+**directory that does not exist in the tree**, and the parser answered a missing file with
+an empty result — so every user got the 37 hard-coded fall-back keys and no dictionary at
+all, silently. `MANIFEST.in` shipped the absent file, which is how the path survived.
+- ✅ **FIXED** (2026-07-27): the hand-rolled 100-line `.dic` parser is deleted and the module
+  is now a thin facade over `mmfdb.schema.pdbx_metadata.MmcifDictionary.load_bundled()` —
+  the one dictionary authority, which already parses the eight bundled dictionaries behind a
+  process cache. The editors go from 37 keys to **9,366**, descriptions from 0 to 4,065, and
+  the flrCIF extension keys (`_flr_*`) reach the GUI for the first time. An empty parse now
+  logs a warning instead of being swallowed. mmfdb gained the two accessors this needs
+  (`item_names()`, `item_descriptions()`).
+- Two consequences of the real list were fixed with it, both verified in an offscreen render:
+  every row built its **own** copy of the 9,366 items (18 ms per row, 0.36 s for 20 rows) —
+  the rows now share one `QStandardItemModel` with `NoInsert`, so a key typed into one row
+  cannot leak into the others (20 rows: 26 ms); and the popup, only as wide as the combo box,
+  elided an mmCIF key **in the middle** (`_flr_reference_measu...nt_lifetime.lifetime`) —
+  exactly the part that distinguishes it — so it is now sized to its widest entry.
+- Tests: `test/core/test_pdbx_metadata_keys.py` (6), `test/gui/test_metadata_editor.py` (8),
+  `modules/mmfdb/tests/test_pdbx_metadata.py` (+2).
+
+### INC-14
+**S3 · `chisurf/core/fio/mmcif/db/` is a dead compatibility package.** Found 2026-07-27 while
+fixing [BUG-12](#bug-12). Six of its seven modules have **no importer anywhere** in the tree:
+`schema.py` and `repository.py` are pure deprecation shims re-exporting `mmfdb.schema.schema`
+/ `mmfdb.repository`, `models.py` is superseded by `mmfdb.models`, `database_resolver.py`
+duplicates `mmfdb.store.database_resolver` (which is what every live call site uses), and
+`zmq_client.py` / `zmq_server.py` have no callers at all. The package also carries a
+committed 815 KB `sample_management.db` whose only reader is
+`build_tools/regenerate_curated_db.py` — which imports `chisurf.core.mmfdb.repository`, a
+module that was **deleted**, so that script cannot run either. Only `pdbx_metadata.py` is
+live, and importing it executes the package `__init__`, which pulls in the shims and emits a
+`DeprecationWarning` on every ChiSurf start. → Delete the six dead modules, port
+`regenerate_curated_db.py` onto `mmfdb.repository` or retire it, and give `pdbx_metadata.py`
+a home outside the deprecated package.
