@@ -1,0 +1,69 @@
+{
+  "$comment": [
+    "What a burst explorer can hand a gated population to.",
+    "",
+    "ChiSurf advertises this list over `bursts.consumers`; ndXplorer (or any",
+    "other explorer) discovers it and builds its 'Send selection to' menu from",
+    "what it is told. The explorer therefore knows no ChiSurf method names, and",
+    "adding an analysis is a row here plus a service - no change on the client.",
+    "",
+    "Plugins extend the list by declaring a `burst_consumers` array in their",
+    "manifest.json with the same field names.",
+    "",
+    "Fields:",
+    "  key             stable identifier the client sends back to dispatch",
+    "  title           menu label",
+    "  summary         one line on what comes back (menu tooltip)",
+    "  rpc             the method that does the work",
+    "  per_file        true  -> one call per file, with tttr_path + ranges",
+    "                  false -> one call carrying the whole burst_slices mapping",
+    "  operation_type  mmCIF operation vocabulary term for the provenance record",
+    "  product_type    mmCIF artifact vocabulary term for what it produces",
+    "  defaults        parameters sent when the caller supplies none",
+    "  caveat          shown to the user before the result is trusted; omit when",
+    "                  the analysis means what it appears to mean"
+  ],
+  "consumers": [
+    {
+      "key": "fcs",
+      "title": "FCS",
+      "summary": "Correlate the gated bursts; returns correlation curves per file.",
+      "rpc": "burst_fcs.correlate_file",
+      "per_file": true,
+      "operation_type": "fcs_correlation",
+      "product_type": "fcs_correlation",
+      "defaults": {"pairs": [{"ch1": [0], "ch2": [1]}], "settings": {}}
+    },
+    {
+      "key": "tcspc",
+      "title": "TCSPC decay",
+      "summary": "Micro-time decay of the gated photons, one per detector group.",
+      "rpc": "tcspc.from_bursts",
+      "per_file": false,
+      "operation_type": "tcspc_histogram_computation",
+      "product_type": "tcspc_decay",
+      "defaults": {"channels": [[0], [1]], "stream_names": ["green", "red"]}
+    },
+    {
+      "key": "pda",
+      "title": "PDA",
+      "summary": "Experimental S1/S2 photon-distribution histogram, ready to fit.",
+      "rpc": "pda.from_bursts",
+      "per_file": false,
+      "operation_type": "pda_histogram_computation",
+      "product_type": "pda_histogram",
+      "defaults": {"channels": [[0], [1]]}
+    },
+    {
+      "key": "pch",
+      "title": "PCH",
+      "summary": "Photon-counting histogram P(k) over the gated span.",
+      "rpc": "pch.from_bursts",
+      "per_file": false,
+      "operation_type": "pch_histogram_computation",
+      "product_type": "pch_histogram",
+      "defaults": {"bin_time_us": 50.0, "mode": "span"},
+      "caveat": "P(k) from bursts only means brightness in 'span' mode, which keeps the inter-burst background. In 'interior' mode the low-k side is truncated: comparable between gated populations, not an absolute brightness."
+    }
+  ]
+}

@@ -56,6 +56,9 @@
     {"rpc": "graph.build_fits", "service": "graph.build_fit_graph"},
     {"rpc": "graph.build", "service": "graph.build_fit_graph"},
     {"rpc": "pda.from_bursts", "service": "pda.from_bursts"},
+    {"rpc": "bursts.consumers", "service": "bursts.consumers"},
+    {"rpc": "tcspc.from_bursts", "service": "bursts.from_bursts_decay"},
+    {"rpc": "pch.from_bursts", "service": "bursts.from_bursts_pch"},
     {"rpc": "log.write", "service": "log_svc.write_log"},
 
     {"rpc": "editor.document.list", "service": "code_editor.list_documents"},
