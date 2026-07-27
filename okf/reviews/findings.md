@@ -4872,11 +4872,11 @@ the default criterion. Findings RF-408..RF-411.
 - **Fix note:**
 
 ### RF-410
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (on an odd-sized image the highest positive frequency row and column are never accumulated, so the outer ring occupancies — which set the ½-bit and 2σ thresholds — are wrong)
 - **Location:** `chisurf/core/fluorescence/imaging/frc.py:111-113` (`for xi in range(-(nx // 2), nx // 2)` / `for yi in range(-(ny // 2), ny // 2)` in `_ring_sums`)
 - **Finding:** `range(-(n // 2), n // 2)` enumerates all `n` FFT frequencies only when `n` is even. For odd `n` it visits `n - 1` of them: it keeps `-n//2` and drops `+n//2`, the highest positive frequency, so the loop is not even conjugate-symmetric. Verified by summing the visited pixels: **4096 of 4225** for a 65×65 image (129 = 2·65−1 missing) and **15876 of 16129** for 127×127; nothing is dropped at 64×64 or 128×128. The loss is concentrated in the outermost rings, which is where the crossing lives: against a full-coverage reference the ring counts are off by 34 of 200 (17 %) in the last ring at 65×65 and by 46 of 388 at 129×129, and `counts` is exactly the input of `threshold_curve` for `half_bit` and `two_sigma`; the correlation values themselves differ by up to 0.046 (65×65) and 0.025 (129×129). Odd sizes are not exotic — a cropped ROI or an odd CLSM line count lands there — and no test in `test/fluorescence/test_frc.py` uses one. Iterate `range(-(nx // 2), (nx + 1) // 2)` on both axes (or bin from `np.fft.fftfreq`, which is what a reference implementation does).
-- **Fix note:**
+- **Fix note:** both loops in `_ring_sums` now run `range(-(n // 2), (n + 1) // 2)`, the `n` indices `numpy.fft.fftfreq` enumerates — identical to the old bound for even `n`, one frequency longer for odd `n`. Measured coverage went from 4096 to 4225 of 4225 pixels at 65×65, 4032 → 4191 at 127×33 and 2048 → 2080 at 32×65; 64×64 is unchanged. The docstring records why the bound is `(n + 1) // 2`. Pinned by `test_every_fourier_pixel_lands_in_a_ring` in `test/fluorescence/test_frc.py`, parametrised over (65, 65), (64, 64), (127, 33) and (32, 65): the ring occupancies must sum to `nx * ny` *and* match, ring for ring, a reference built by binning the frequency grid directly with `numpy.bincount`, with the public `frc_curve` counts checked against the same reference over the rings it keeps. It fails on the old bound for all three odd shapes.
 
 ### RF-411
 - **Status:** OPEN

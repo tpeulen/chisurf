@@ -2,6 +2,19 @@
 
 ## 2026-07-27
 
+* **An odd-sized image lost a row and a column of its spectrum (RF-410).**
+  `_ring_sums` walked `range(-(n // 2), n // 2)` on both axes, which enumerates
+  all `n` FFT frequencies only for even `n`; for odd `n` it kept `-n//2` and
+  dropped the highest positive frequency, so a 65x65 spectrum contributed 4096
+  of its 4225 pixels — and the loss sits in the outermost rings, which is both
+  where the crossing lives and the `counts` the ½-bit and 2σ thresholds are
+  built from. Both loops now run to `(n + 1) // 2`, the bound
+  `numpy.fft.fftfreq` uses: unchanged for even sizes, complete for odd ones
+  (127x33 went from 4032 to 4191 pixels, 32x65 from 2048 to 2080). Pinned by
+  `test_every_fourier_pixel_lands_in_a_ring` in `test/fluorescence/test_frc.py`
+  over four shapes — the occupancies must sum to `nx * ny` and match a
+  `numpy.bincount` reference ring for ring.
+
 * **chimol cartoon: 15 ms -> 9.5 ms, and 234 ms -> 9.5 ms against where this
   started.** A second pass after the profile went flat, so the wins came from
   several places rather than one.

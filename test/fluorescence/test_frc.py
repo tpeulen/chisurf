@@ -154,6 +154,36 @@ def test_the_crossing_is_interpolated_not_extrapolated(criterion):
     assert result.resolution == pytest.approx(1 / 0.15, rel=0.3)
 
 
+@pytest.mark.parametrize("shape", [(65, 65), (64, 64), (127, 33), (32, 65)])
+def test_every_fourier_pixel_lands_in_a_ring(shape):
+    """No frequency is left out of the ring sums, odd axis lengths included.
+
+    Every pixel of the spectrum is inside the outermost ring, so the occupancies
+    must add up to the size of the image. Running the axes to ``n // 2`` instead
+    of ``(n + 1) // 2`` dropped the highest positive frequency of an odd axis —
+    4096 of 4225 pixels at 65x65 — and the loss falls in the outer rings, which
+    are exactly the ``counts`` the 1/2-bit and 2-sigma thresholds are built from.
+    """
+    nx, ny = shape
+    bin_width = 1.0 / max(shape)
+    n_bins = int(np.sqrt(0.5**2 + 0.5**2) / bin_width) + 1
+    empty = np.zeros(shape)
+    *_, counts = frc._ring_sums(empty, empty, empty, nx, ny, n_bins, bin_width)
+    assert counts.sum() == nx * ny
+
+    # And they land in the *right* rings: bin the same frequencies directly.
+    axes = [(np.arange(n) - n * (np.arange(n) > (n - 1) // 2)) / n for n in shape]
+    radius = np.sqrt(axes[0][:, None] ** 2 + axes[1][None, :] ** 2)
+    reference = np.bincount((radius / bin_width).astype(int).ravel(), minlength=n_bins)
+    assert np.array_equal(counts, reference)
+
+    # The public curve keeps the rings the sampling can report, unchanged.
+    rng = np.random.default_rng(0)
+    curve = frc.frc_curve(rng.normal(size=shape), rng.normal(size=shape))
+    frequency = (np.arange(n_bins) + 0.5) * bin_width
+    assert np.array_equal(curve.counts, reference[(reference > 0) & (frequency <= 0.5)])
+
+
 @pytest.mark.parametrize("criterion", frc.CRITERIA)
 @pytest.mark.parametrize("seed", range(6))
 def test_a_crossing_is_never_reported_outside_the_frequency_axis(criterion, seed):

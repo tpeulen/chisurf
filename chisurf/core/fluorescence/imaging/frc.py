@@ -103,14 +103,20 @@ def _ring_sums(f1f2, f12, f22, nx, ny, n_bins, bin_width):
     in cycles per pixel, so a non-square image is binned by physical frequency
     rather than by array index — on a 512x64 stack the two axes reach their
     Nyquist limit at completely different index radii.
+
+    The frequency runs are ``-(n // 2) .. (n + 1) // 2``, i.e. the ``n`` indices
+    :func:`numpy.fft.fftfreq` enumerates. Stopping at ``n // 2`` instead would
+    drop the highest *positive* frequency of every odd axis — 129 of the 4225
+    pixels of a 65x65 spectrum, concentrated in the outermost rings, which is
+    where the crossing lives.
     """
     s12 = np.zeros(n_bins, np.float64)
     s11 = np.zeros(n_bins, np.float64)
     s22 = np.zeros(n_bins, np.float64)
     counts = np.zeros(n_bins, np.int64)
-    for xi in range(-(nx // 2), nx // 2):
+    for xi in range(-(nx // 2), (nx + 1) // 2):
         fx = xi / nx
-        for yi in range(-(ny // 2), ny // 2):
+        for yi in range(-(ny // 2), (ny + 1) // 2):
             fy = yi / ny
             index = int(np.sqrt(fx * fx + fy * fy) / bin_width)
             if index < n_bins:
