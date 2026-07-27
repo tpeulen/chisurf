@@ -69,6 +69,7 @@ from .state_control_panel import StateControlDock
 from .objects_panel import ObjectsDock
 from .sequence_dock import SequenceDock
 from .hierarchy_panel import HierarchyDock
+from .volume_panel import VolumeDock
 from .rmf_panel import RmfPanel
 from .config_editor import MolViewConfigEditor
 from .menu_bar import build_menu_bar
@@ -125,6 +126,7 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
                             {"widget_key": "Hierarchy", "tab_name": "Hierarchy", "tab_text": "Hierarchy"},
                             {"widget_key": "RMF", "tab_name": "RMF", "tab_text": "RMF"},
                             {"widget_key": "State", "tab_name": "State", "tab_text": "State"},
+                            {"widget_key": "Map", "tab_name": "Map", "tab_text": "Map"},
                             {"widget_key": "Command", "tab_name": "Command", "tab_text": "Command"},
                         ],
                         "current_index": 0,
@@ -242,6 +244,9 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         )
 
         self.hierarchy = HierarchyDock(self)
+        self.volume_panel = VolumeDock(
+            self, self.viewer, margins=dock_margins, spacing=spacing
+        )
         self.rmf_panel = RmfPanel(self, self.viewer)
         self.state_control = StateControlDock(
             self,
@@ -295,6 +300,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self.dock_area.addTab(self.hierarchy, "Hierarchy", close_mode="hide")
             self.dock_area.addTab(self.rmf_panel.widget, "RMF", close_mode="hide")
             self.dock_area.addTab(self.state_control.widget, "State", close_mode="hide")
+            self.dock_area.addTab(self.volume_panel, "Map", close_mode="hide")
             self.dock_area.addTab(self.sequence.widget, "Sequence", close_mode="hide")
             self.dock_area.addTab(self.command_panel.widget, "Command", close_mode="hide")
             self.dock_area.addTab(self.timeline.widget, "Timeline", close_mode="hide")

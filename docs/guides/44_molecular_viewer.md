@@ -81,6 +81,30 @@ a map read as though it were `x, y, z` is silently transposed. It also honours
 anisotropy: a confocal stack whose z step differs from its xy step is not
 squashed into a cube.
 
+### The Map panel
+
+The **Map** tab shows the map's value distribution with each contour as a marker
+on it, so a level is chosen by *looking* rather than by typing a number and
+re-rendering:
+
+```{figure} figures/chimol_map_panel.png
+:name: fig-chimol-map-panel
+:width: 620px
+
+The Map panel. Each contour is a marker on the histogram — here a filled surface
+(blue) and a wireframe (orange) on the same map. Drag a marker to move that
+level, click empty histogram to add one, right-click a marker to remove it.
+```
+
+The counts are on a log scale: a density is overwhelmingly background, and on a
+linear axis the fraction of a per cent worth contouring is a flat line at zero.
+The `Level` box still takes an exact value when one is known, and the style and
+colour controls act on the selected marker.
+
+This editor is not specific to maps — it is chisurf's shared `level_histogram`
+section, so any tool that has to ask for a threshold over a distribution (a
+burst gate, a photon-count cut) gets the same one from its `.view.json`.
+
 **The opening contour is chosen by rank, not by value.** With no level given,
 the level enclosing the densest **one per cent** of voxels is used. A rank is
 free of both the scale and the shape of the distribution, and none of these maps

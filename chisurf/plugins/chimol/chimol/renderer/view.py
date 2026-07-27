@@ -6880,7 +6880,13 @@ class MolView(QtWidgets.QWidget):
 
         state = self._get_active_state()
         state.volume = grid
-        state.volume_levels = list(levels) if levels else []
+        # Materialise the opening contours rather than deriving them at draw
+        # time. Leaving the list empty meant the map was *drawn* with levels the
+        # object did not *have*, so the panel and every `get_volume_levels`
+        # caller saw none -- two answers to one question.
+        state.volume_levels = (
+            list(levels) if levels else _default_volume_levels(grid)
+        )
 
         # Scene coordinates are `(world - raw_center) * scale`, per object. A map
         # that centred on *itself* would therefore be drawn at the middle of the

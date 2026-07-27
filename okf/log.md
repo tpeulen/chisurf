@@ -2,6 +2,32 @@
 
 ## 2026-07-27
 
+* **A shared `level_histogram` AutoForm section, and the map panel built on it.**
+  Picking a threshold is an act of *looking at the data* -- the scales differ by
+  orders of magnitude between a density, a burst brightness and a photon count,
+  so a number typed blind is a guess followed by a re-render. The distribution is
+  drawn and the level dragged along it instead.
+
+  Built **in chisurf, not in the plugin**, per the rule that panels are AutoForm
+  and a missing capability is added generally. `region_list` was the closest
+  existing section and does not fit (it is spatial, over an image; a contour is a
+  1-D threshold over a distribution), so this is new — but new *shared*: any tool
+  gets it from its `.view.json`, and a burst gate or a photon-count cut wants the
+  same widget. The `info` section already had `max_height` for exactly the
+  "short live status line" case, so no second thing was invented for that.
+
+  Two things the wiring exposed. `AutoForm.sync_fields` looks for `sync`/`refresh`
+  on widgets flagged `AUTOFORM_REFRESH`; a widget named `update_widget` is simply
+  never refreshed, with no error. And a map was being **drawn with contours the
+  object did not have** — `_update_volume` derived the opening levels at draw
+  time and stored nothing, so the panel and every `get_volume_levels` caller saw
+  an empty list while a surface was plainly on screen. The defaults are
+  materialised on the object now, which is the one-truth version.
+
+  The section refuses a `@property` as its `source` **and says so**, because
+  resolving sources by call means a property renders the section blank with no
+  error — a trap this codebase has paid for before.
+
 * **Entity-only parameter labels are readable again (RF-432).**
   `RichTextDelegate.paint` decided whether a cell needed HTML by testing for `<`,
   so a label built purely from character entities never reached

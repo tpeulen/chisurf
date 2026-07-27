@@ -634,3 +634,69 @@ def test_a_polar_map_is_drawn_as_two_coloured_contours(shell):
     colours = {tuple(round(float(c), 3) for c in obj.geometry.colors[0])
                for obj in objects}
     assert len(colours) == 2, "the two lobes must be told apart by colour"
+
+
+# --------------------------------------------------------------------------- #
+# The map panel
+# --------------------------------------------------------------------------- #
+def test_the_panel_is_a_view_of_the_map_not_a_copy(shell):
+    """Levels live on the map object; the panel reads and writes them there.
+
+    A panel that cached what it displayed would drift from what is drawn -- the
+    failure this codebase keeps finding -- so the view model holds no list.
+    """
+    view, grid, _cmd, _msgs, _errs = shell
+    from chisurf.plugins.chimol.chimol.app.volume_panel import VolumeViewModel
+
+    view.add_volume(grid, name="blob")
+    model = VolumeViewModel(view)
+    assert [round(entry["level"], 6) for entry in model.levels] == [
+        round(entry["level"], 6) for entry in view.get_volume_levels()
+    ]
+
+    model.levels = [{"level": 0.3, "color": (1.0, 0.0, 0.0, 1.0), "style": "mesh"}]
+    assert [round(e["level"], 6) for e in view.get_volume_levels()] == [0.3]
+
+
+def test_the_opening_contours_are_stored_not_only_drawn(shell):
+    """A map was drawn with levels the object did not have.
+
+    `_update_volume` derived defaults at draw time and stored nothing, so the
+    panel -- and every `get_volume_levels` caller -- saw an empty list while a
+    contour was plainly on screen. Two answers to one question.
+    """
+    view, grid, _cmd, _msgs, _errs = shell
+    view.add_volume(grid, name="blob")
+    stored = view.get_volume_levels()
+    assert stored, "the opening contour has to be on the object"
+    drawn = [obj.geometry.meta.get("map_level") for obj in view._scene.objects]
+    assert [round(float(e["level"]), 6) for e in stored] == [
+        round(float(level), 6) for level in drawn
+    ]
+
+
+def test_the_panel_summarises_the_map_and_says_when_there_is_none(shell):
+    view, grid, _cmd, _msgs, _errs = shell
+    from chisurf.plugins.chimol.chimol.app.volume_panel import VolumeViewModel
+
+    model = VolumeViewModel(view)
+    assert "no map" in model.summary().lower()
+    assert model.level_histogram_data() is None
+    assert model.value_range() is None
+
+    view.add_volume(grid, name="blob")
+    summary = model.summary()
+    assert "blob" in summary and "24×24×24" in summary
+    counts, edges = model.level_histogram_data()
+    assert counts.sum() > 0 and edges.shape[0] == counts.shape[0] + 1
+    assert model.value_range() == grid.value_range()
+
+
+def test_the_panel_view_spec_uses_the_shared_section(shell):
+    """The panel is AutoForm over a view spec, not a hand-rolled layout."""
+    from chisurf.plugins.chimol.chimol.app.volume_panel import VolumeViewModel
+
+    view, _grid, _cmd, _msgs, _errs = shell
+    spec = VolumeViewModel(view).view_spec()
+    keys = [getattr(section, "key", "") for section in spec.sections]
+    assert "level_histogram" in keys, keys
