@@ -173,3 +173,98 @@ def test_a_decay_from_spc_bursts_is_not_empty(tmp_path, spc_tttr):
     )
     assert result["ok"], result
     assert result["result"]["n_photons"] == 10000
+
+
+# --------------------------------------------------- restoring the analysis
+
+
+def test_the_folder_carries_the_settings_it_ran_with(tmp_path, spc_tttr):
+    """A folder must be able to repopulate the tool that produced it.
+
+    Without this the numbers survive and the question they answer does not: an
+    archive rather than a reproducible result.
+    """
+    from chisurf.core.fio.fluorescence.burst_manifest import restore_settings
+
+    write_analysis_manifest(
+        tmp_path,
+        [describe_tttr_source(SPC, spc_tttr)],
+        settings={"threshold": 5, "min_photons": 60, "method": "sliding"},
+    )
+
+    restored = restore_settings(tmp_path)
+    assert restored["threshold"] == 5
+    assert restored["min_photons"] == 60
+    assert restored["method"] == "sliding"
+
+
+def test_a_real_analysis_records_settings_that_can_be_read_back(tmp_path):
+    """End to end: run an analysis, then restore what it ran with."""
+    from chisurf.core.fio.fluorescence.burst_manifest import restore_settings
+    from chisurf.plugins.burst.burst_selection.api import selection as sel
+
+    staged = tmp_path / "m000.spc"
+    staged.write_bytes(SPC.read_bytes())
+    analysis = tmp_path / "analysis"
+    analysis.mkdir()
+
+    sel.analyze_file(str(staged), output_dir=str(analysis),
+                     mti_output_dir=str(analysis))
+
+    restored = restore_settings(analysis)
+    assert restored, "the analysis recorded no settings"
+    # The burst-search parameters someone would need to repeat the run.
+    assert "output_formats" in restored
+    assert any(k in restored for k in ("photon_filter", "burst_filter", "gmm"))
+
+
+def test_a_form_is_repopulated_from_the_folder(tmp_path, spc_tttr, qt_app_for_forms):
+    """The AutoForm path: a folder restores the tool's controls, key for key."""
+    from chisurf.core.dataspec import ModelView, ValueSection
+    from chisurf.core.fio.fluorescence.burst_manifest import restore_form
+    from chisurf.gui.autoform.auto_form import AutoForm
+
+    class Tool:
+        def __init__(self):
+            self.threshold = 1
+            self.min_photons = 1
+
+        def view_spec(self):
+            return ModelView(sections=(
+                ValueSection(label="Threshold", kind="int", attr="threshold"),
+                ValueSection(label="Min photons", kind="int", attr="min_photons"),
+            ))
+
+    write_analysis_manifest(
+        tmp_path,
+        [describe_tttr_source(SPC, spc_tttr)],
+        view_state={"threshold": 5, "min_photons": 60},
+    )
+
+    form = AutoForm(Tool())
+    try:
+        result = restore_form(form, tmp_path)
+        assert result is not None and result.ok, result
+        assert form.model.threshold == 5
+        assert form.model.min_photons == 60
+    finally:
+        form.close()
+
+
+def test_restoring_from_a_folder_without_a_manifest_is_not_an_error(tmp_path):
+    """Older folders must not raise; they simply have nothing to restore."""
+    from chisurf.core.fio.fluorescence.burst_manifest import (
+        restore_form,
+        restore_settings,
+    )
+
+    assert restore_settings(tmp_path) == {}
+    assert restore_form(object(), tmp_path) is None
+
+
+@pytest.fixture(scope="module")
+def qt_app_for_forms():
+    """A QApplication for the AutoForm case (offscreen)."""
+    from qtpy import QtWidgets
+
+    return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])

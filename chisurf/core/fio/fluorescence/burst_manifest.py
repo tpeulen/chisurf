@@ -38,6 +38,8 @@ __all__ = [
     "read_analysis_manifest",
     "describe_tttr_source",
     "reading_settings_for",
+    "restore_settings",
+    "restore_form",
 ]
 
 #: File name inside the analysis folder's ``Info`` directory.
@@ -122,6 +124,7 @@ def write_analysis_manifest(
     *,
     settings: Optional[Dict[str, Any]] = None,
     software_version: Optional[str] = None,
+    view_state: Optional[Dict[str, Any]] = None,
 ) -> pathlib.Path:
     """Write (or extend) the reading manifest of a burst-analysis folder.
 
@@ -140,6 +143,12 @@ def write_analysis_manifest(
         Burst-search settings, merged into the manifest's own ``settings``.
     software_version : str, optional
         Version that produced the analysis.
+    view_state : dict, optional
+        An AutoForm state (see :mod:`chisurf.gui.autoform.state`) captured from
+        the tool that ran the analysis. Stored separately from ``settings``
+        because it restores *the form*, key for key, where ``settings`` records
+        what the analysis actually used — the two agree in the ordinary case and
+        must not be conflated when they do not.
 
     Returns
     -------
@@ -175,6 +184,8 @@ def write_analysis_manifest(
 
     if settings:
         manifest["settings"].update(settings)
+    if view_state:
+        manifest.setdefault("view_state", {}).update(view_state)
     if software_version:
         manifest["software"] = {"package": "chisurf", "version": str(software_version)}
 
@@ -254,3 +265,58 @@ def reading_settings_for(
         if recorded == wanted or recorded.name == wanted.name:
             return dict(entry)
     return {}
+
+
+def restore_settings(start: pathlib.Path | str) -> Dict[str, Any]:
+    """The analysis settings recorded in a burst folder, ready to restore.
+
+    The manifest is not only a record of *how the data was read*; it carries the
+    settings the analysis ran with, so a folder can repopulate the tool that
+    produced it. That is the difference between an archive and a reproducible
+    result: without it the numbers survive and the question they answer does not.
+
+    Parameters
+    ----------
+    start : path-like
+        A ``.bur`` file, the folder holding it, or the analysis folder.
+
+    Returns
+    -------
+    dict
+        The stored settings, or ``{}`` for a folder with no manifest.
+    """
+    manifest = read_analysis_manifest(start)
+    if not manifest:
+        return {}
+    return dict(manifest.get("settings") or {})
+
+
+def restore_form(form: Any, start: pathlib.Path | str):
+    """Repopulate an AutoForm from the settings a burst folder recorded.
+
+    The generic path: an AutoForm knows which model attribute each of its
+    controls binds to, so a stored mapping restores it with no per-plugin code
+    (see :mod:`chisurf.gui.autoform.state`). A folder written by an older
+    version restores the fields it still shares and reports the rest.
+
+    Parameters
+    ----------
+    form : AutoForm
+        The form to repopulate.
+    start : path-like
+        A ``.bur`` file, its folder, or the analysis folder.
+
+    Returns
+    -------
+    StateResult or None
+        What was applied, or ``None`` when the folder records no form state.
+    """
+    manifest = read_analysis_manifest(start)
+    if not manifest:
+        return None
+    stored = manifest.get("view_state") or manifest.get("settings")
+    if not isinstance(stored, dict) or not stored:
+        return None
+    from chisurf.gui.autoform.state import apply_state
+
+    return apply_state(form, stored)

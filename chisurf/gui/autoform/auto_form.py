@@ -161,6 +161,41 @@ class AutoForm(QtWidgets.QWidget):
         self.rebuild()
 
     # -- public API ---------------------------------------------------------
+
+    def state(self) -> dict:
+        """The current value of every control bound to a model attribute.
+
+        A form generated from a view spec already knows where its state lives,
+        so capturing it needs no per-plugin code. See
+        :mod:`chisurf.gui.autoform.state`.
+        """
+        from chisurf.gui.autoform import state as _state
+
+        return _state.collect_state(self)
+
+    def apply_state(self, values: dict, *, sync: bool = True):
+        """Restore controls from a mapping produced by :meth:`state`.
+
+        Lenient: unknown keys and rejected values are reported in the returned
+        :class:`~chisurf.gui.autoform.state.StateResult` rather than raised, so
+        a settings file from an older version restores what it still shares.
+        """
+        from chisurf.gui.autoform import state as _state
+
+        return _state.apply_state(self, values, sync=sync)
+
+    def save_state(self, path, **extra):
+        """Write this form's settings to a JSON file."""
+        from chisurf.gui.autoform import state as _state
+
+        return _state.save_state(self, path, **extra)
+
+    def load_state(self, path):
+        """Restore this form's settings from a JSON file."""
+        from chisurf.gui.autoform import state as _state
+
+        return _state.load_state(self, path)
+
     def rebuild(self):
         """(Re)build the whole panel from the current view-spec."""
         while self._layout.count():
