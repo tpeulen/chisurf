@@ -2,6 +2,55 @@
 
 ## 2026-07-27
 
+* **Step 5 of the burst workflow was a blank page, and the fit it hides ran
+  fine (RF-468).** The MLE wizard replaces its `QTabWidget` with an AutoForm
+  dock area. A `QTabWidget` *explicitly* hides every page that is not current,
+  and an explicit hide survives reparenting: inside its dock the page stayed
+  hidden while the dock's own stack dutifully showed the empty wrapper around
+  it. Every page except whichever tab happened to be current therefore rendered
+  as a dock title with nothing under it — standalone that cost the Burst-MLE
+  workspace (decay, residuals, fit parameters), and in the burst-analysis
+  workflow, where the upstream-duplicate file docks are dropped and Burst-MLE is
+  the only page left, it cost the *entire* panel. Nothing errored: the batch fit
+  still ran from the pinned toolbar and wrote its `.bg4`/`.br4`/`.by4`. The
+  conversion now hands the pages to the dock area unhidden; which dock is on top
+  is still the dock tab bar's decision. Pinned by two tests in
+  `chisurf/plugins/burst/burst_mle_analysis/tests/test_dock_shell.py` (no hosted
+  page keeps the explicit hide; the embedded panel really renders its fit
+  controls), and the comment in `test_dock_shell_replaces_tabwidget` that
+  described the blankness as correct is gone.
+
+* **The MLE batch's report of which files failed crashed on the way out
+  (RF-469).** `process_bursts` catches a dead worker, collects `failed_files`,
+  and then formats their names with `pathlib.Path` — but the module imports
+  `Path`, not `pathlib`, so the only branch that tells the user *which* file
+  produced no rows died with `NameError` in the handler. The batch's remaining
+  results were then never saved. It is the classic never-exercised failure path:
+  it only runs when something else has already gone wrong (here a worker process
+  that died under a spawn-unsafe driver), which is exactly when the message
+  matters.
+
+* **Restoring MLE settings applied the first field and then died (RF-471).**
+  `apply_settings_payload` was split out of the loader and kept referring to the
+  loader's local `path`, so every real restore raised `NameError` right after the
+  micro-time binning — channel settings, detector definitions and the
+  per-detector UI state never arrived, and a burst folder stopped being able to
+  put the wizard back into the state that produced it. Behind that sat a second
+  break: `lineEdit_settings_file` went with the `.ui` file, so repairing only the
+  name would have swapped `NameError` for `AttributeError`. Both were invisible
+  because the four tests around the loader monkeypatch the method away and its
+  call sites sit behind a file dialog; `ruff --select F821` on the file found it.
+  The method now takes the `source` it reports, and the dead field write is gone.
+  Pinned by `test/gui/test_burst_settings_restore.py::test_mle_restore_actually_runs`,
+  which drives a real wizard rather than a stub.
+
+* **H2MM transition rates overprinted each other (RF-470).** The rate matrix
+  annotates each cell with a `pg.TextItem` at a fixed point size while the cells
+  scale with the dock, so in the workflow's narrow right-hand column a 4×4
+  matrix drew `7.4e-05` over its neighbour and the panel became unreadable. The
+  labels are now sized to their cell and re-sized on every view resize; below
+  ~5 pt the number is hidden rather than smeared across the cell next to it.
+
 * **GUI tester — ndXplorer, gating a multiparameter burst space (RF-470..RF-475).**
   Drove the real ndX window headlessly on the repo's Paris burstwise MFD folder
   (45 `.bur` + `bg4`/`br4`, 12 237 bursts): loaded it, plotted lifetime vs

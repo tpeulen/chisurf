@@ -39,11 +39,47 @@ def test_dock_shell_replaces_tabwidget(qapp):
     # tab widget itself is gone.)
     assert not w.tabWidget.isVisible()
     assert w.tabWidget.parent() is None
-    # The hosted pages are reparented out of the tab widget into the dock area.
-    # (The dock area shows only the current tab, so non-current pages are hidden
-    # by its tab widget — that is correct, not a regression.)
+    # The hosted pages are reparented out of the tab widget into the dock area,
+    # which owns visibility from then on (see the explicit-hide test below).
     assert w.groupBox_burst_files.parent() is not w.tab_files
     assert w.tab_parameters.parent() is not w.tabWidget
+
+
+def test_hosted_pages_are_not_left_explicitly_hidden(qapp):
+    """No page may carry the QTabWidget's explicit hide into its dock.
+
+    A QTabWidget hides every page that is not current, and an explicit hide
+    survives reparenting. The dock stack then shows its content wrapper while the
+    page inside stays hidden, so the dock renders as an empty shell — which is
+    how the whole Burst-MLE workspace (and, in the embedded workflow where the
+    file docks are dropped, the entire panel) came up blank.
+    """
+    w = _make_wizard(qapp)
+    blank = [attr for attr, _title in w._dock_pages if getattr(w, attr).isHidden()]
+    assert not blank, f"pages handed to the dock area still explicitly hidden: {blank}"
+
+
+def test_embedded_panel_shows_the_fit_workspace(qapp):
+    """The workflow panel must render the fit controls, not just a dock title."""
+    from qtpy import QtWidgets
+
+    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
+
+    host = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(host)
+    embedded = tool_mod._burst_mle(host)
+    layout.addWidget(embedded)
+    host.resize(1200, 800)
+    host.show()
+    try:
+        QtWidgets.QApplication.processEvents()
+        QtWidgets.QApplication.processEvents()
+        wizard = getattr(embedded, "_mle_wizard", embedded)
+        tau = wizard.doubleSpinBox_tau
+        assert embedded.isAncestorOf(tau), "the fit controls are not in the panel"
+        assert tau.isVisible(), "the Burst-MLE workspace renders as an empty dock"
+    finally:
+        host.close()
 
 
 def test_wizard_builds_without_ui_file(qapp):

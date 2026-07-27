@@ -17,7 +17,7 @@ from qtpy.QtCore import (
     Qt,
     Signal,
 )
-from qtpy.QtGui import QDragEnterEvent, QDropEvent
+from qtpy.QtGui import QDragEnterEvent, QDropEvent, QFont
 from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -1087,6 +1087,42 @@ class H2mmTool(MessagesMixin, QMainWindow):
                 t.setPos(j + 0.5, i + 0.5)
                 p.addItem(t)
         p.setRange(xRange=(0, n), yRange=(0, n), padding=0)
+        # The labels are drawn at a fixed point size while the cells scale with
+        # the dock, so in a narrow panel neighbouring rates ran into each other
+        # and the matrix became unreadable. Size them to their cell, and keep
+        # doing so as the panel is resized.
+        view = p.getViewBox()
+        if view is not None and not getattr(self, "_rate_labels_tracked", False):
+            view.sigResized.connect(self._fit_rate_labels)
+            self._rate_labels_tracked = True
+        self._fit_rate_labels()
+
+    def _fit_rate_labels(self) -> None:
+        """Scale the rate-matrix labels so each fits inside its own cell."""
+        p = self._p_rates
+        view = p.getViewBox()
+        if view is None:
+            return
+        try:
+            px_w, px_h = view.viewPixelSize()
+        except Exception:
+            return
+        if not px_w or not px_h:
+            return
+        cell_w = 1.0 / px_w  # one cell spans one data unit in each direction
+        cell_h = 1.0 / px_h
+        for item in p.items:
+            if not isinstance(item, pg.TextItem):
+                continue
+            chars = max(len(item.toPlainText()), 1)
+            # A digit is roughly 0.6 * point size wide; leave a margin in the cell.
+            size = min(cell_w * 0.8 / (0.6 * chars), cell_h * 0.5)
+            # Below ~5 pt the number is unreadable anyway — hide it rather than
+            # overprint the neighbouring cell.
+            item.setVisible(size >= 5.0)
+            font = QFont()
+            font.setPointSizeF(max(5.0, min(12.0, size)))
+            item.setFont(font)
 
     def _overlay_es_uncert(self, p, fret, stoich):
         """Draw bootstrap E/S error bars on the E–S state markers, if available."""

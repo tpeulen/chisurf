@@ -1242,10 +1242,20 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # Building the form reparents the pages into the dock panels, emptying
         # the tab widget, which is then removed from the layout and replaced by
         # the form (the dock area fills the space itself — no scroll wrapper).
-        # The dock area's own tab widgets manage per-panel visibility, so we do
-        # NOT force every page visible here — doing so would draw all docks on
-        # top of each other instead of only the selected tab.
         form = AutoForm(self)
+        # A QTabWidget *explicitly* hides every page that is not the current one,
+        # and an explicit hide survives reparenting. Inside a dock that flag is
+        # never cleared -- the dock's own stack shows its content wrapper, but the
+        # page inside it stays hidden -- so every page other than the tab that
+        # happened to be current rendered as an empty dock: the whole Burst-MLE
+        # workspace (plots, fit controls) was blank, and in the burst-analysis
+        # workflow, where the file docks are dropped, the entire panel was blank.
+        # Visibility is the dock area's job from here on, so hand the pages over
+        # unhidden; which dock is on top is still decided by its tab bar.
+        for attr, _title in pages:
+            page = getattr(self, attr, None)
+            if page is not None:
+                page.show()
         parent = tw.parentWidget()
         layout = parent.layout() if parent is not None else None
         if layout is not None:
@@ -4166,7 +4176,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             # Reported here because nothing else can: the per-detector summary
             # counts non-NaN tau over the rows that are *present*, so a file that
             # contributed no rows at all cannot appear in it.
-            names = ", ".join(sorted({pathlib.Path(f).name for f in failed_files}))
+            names = ", ".join(sorted({Path(f).name for f in failed_files}))
             summary_bits.append(f"{len(failed_files)} file(s) failed: {names}")
             cs.logging.warning(f"MLE batch: no rows exported for {names}")
         if summary_bits:
@@ -4659,14 +4669,23 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if not isinstance(payload, dict):
             cs.logging.error("settings in %s are not a mapping", source)
             return
-        self.apply_settings_payload(payload)
+        self.apply_settings_payload(payload, source)
 
-    def apply_settings_payload(self, payload: dict) -> None:
+    def apply_settings_payload(self, payload: dict, source=None) -> None:
         """Restore the wizard from an already-loaded settings mapping.
 
         Split out from :meth:`load_settings` so the same restore runs whether the
         settings came from a file dialog, a burst-analysis folder, or a caller
         driving the wizard headlessly.
+
+        Parameters
+        ----------
+        payload : dict
+            The settings mapping to apply.
+        source : path-like, optional
+            Where the payload came from, shown in the settings-file field and in
+            the status line. A caller that built the payload itself passes
+            nothing, and those two places are left alone.
         """
         # Micro time binning
         mtb = payload.get("micro_time_binning", None)
@@ -4677,9 +4696,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # 2) TTTR file‐type is now handled by DetectorWizardPage
         # The tttr_file_type will be set when we load the detector settings below
 
-        # 3) reflect path
-        self.lineEdit_settings_file.setText(path)
-        # self.channel_definer.file_path_line_edit.setText(path)
+        # 3) where the settings came from is reported on the status line at the
+        # end of the restore; the old ``lineEdit_settings_file`` field went with
+        # the .ui file and no longer exists.
 
         # 4) channel_settings
         self.channel_settings = payload.get("channel_settings", {})
@@ -4733,7 +4752,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.update_decay_of_detector()
         self.update_fit()
 
-        self._set_status(f"All settings loaded from:\n{path}")
+        self._set_status(
+            f"All settings loaded from:\n{source}" if source is not None
+            else "All settings loaded"
+        )
 
 
 if __name__ == 'plugin':

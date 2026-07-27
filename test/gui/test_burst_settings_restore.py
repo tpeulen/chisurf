@@ -271,8 +271,9 @@ def test_mle_loader_accepts_a_burst_folder(tmp_path, monkeypatch):
 
     applied = {}
 
-    def record(self, payload):
+    def record(self, payload, source=None):
         applied.update(payload)
+        applied["__source__"] = source
 
     monkeypatch.setattr(
         MLELifetimeAnalysisWizard, "apply_settings_payload", record, raising=True
@@ -281,6 +282,9 @@ def test_mle_loader_accepts_a_burst_folder(tmp_path, monkeypatch):
         MLELifetimeAnalysisWizard.__new__(MLELifetimeAnalysisWizard), tmp_path
     )
     assert applied.get("micro_time_binning") == 4
+    # The restore needs to know where the payload came from — it shows it in the
+    # settings-file field and the status line.
+    assert applied.get("__source__") == tmp_path
 
 
 def test_mle_loader_still_reads_a_plain_settings_file(tmp_path, monkeypatch):
@@ -297,7 +301,7 @@ def test_mle_loader_still_reads_a_plain_settings_file(tmp_path, monkeypatch):
     applied = {}
     monkeypatch.setattr(
         MLELifetimeAnalysisWizard, "apply_settings_payload",
-        lambda self, payload: applied.update(payload), raising=True,
+        lambda self, payload, source=None: applied.update(payload), raising=True,
     )
     MLELifetimeAnalysisWizard.load_settings_from(
         MLELifetimeAnalysisWizard.__new__(MLELifetimeAnalysisWizard), path
@@ -314,7 +318,7 @@ def test_mle_loader_reports_rather_than_raises_on_junk(tmp_path, monkeypatch):
     called = []
     monkeypatch.setattr(
         MLELifetimeAnalysisWizard, "apply_settings_payload",
-        lambda self, payload: called.append(payload), raising=True,
+        lambda self, payload, source=None: called.append(payload), raising=True,
     )
     blank = MLELifetimeAnalysisWizard.__new__(MLELifetimeAnalysisWizard)
 
@@ -325,6 +329,38 @@ def test_mle_loader_reports_rather_than_raises_on_junk(tmp_path, monkeypatch):
     MLELifetimeAnalysisWizard.load_settings_from(blank, tmp_path / "no_manifest_here")
 
     assert called == [], "nothing should have been applied"
+
+
+def test_mle_restore_actually_runs(tmp_path, qapp):
+    """Run the restore for real — the other loader tests monkeypatch it away.
+
+    ``apply_settings_payload`` was split out of the loader and kept referring to
+    the loader's local ``path``, so every real restore died with ``NameError``
+    right after the micro-time binning — before channel settings, detectors or
+    any per-detector UI state were applied. Nothing caught it: the tests around
+    it replace the method, and its two call sites sit behind a file dialog.
+    """
+    import json
+
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    path = tmp_path / "mle_wizard_settings.json"
+    path.write_text(json.dumps({"micro_time_binning": 8}), encoding="utf-8")
+
+    w = MLELifetimeAnalysisWizard()
+    try:
+        w.load_settings_from(path)
+        assert w.channel_definer.micro_binning_combo.currentText() == "8"
+        # The source is reported on the status line, which is what the missing
+        # name was for (the old settings-file field went with the .ui).
+        assert str(path) in w.statusBar().currentMessage()
+        # A payload built by a caller carries no source, and must still apply.
+        w.apply_settings_payload({"micro_time_binning": 4})
+        assert w.channel_definer.micro_binning_combo.currentText() == "4"
+    finally:
+        w.close()
 
 
 def test_bocpd_and_cusum_are_not_the_same_value(wizard):

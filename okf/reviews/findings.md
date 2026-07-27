@@ -5673,3 +5673,84 @@ Findings RF-470..RF-475.
 - **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_update_helpers.py:607-608` (`logging.error("X histogram computation failed or returned empty result")`) and `modules/ndxplorer/ndxplorer/core/plot_main.py:2445` (`logging.error("[DISPLAY] Invalid 2D histogram format")`)
 - **Finding:** every successful run of the workflow emits `[DISPLAY] Invalid 2D histogram format` once at startup (before any data exists) and `X histogram computation failed or returned empty result` **six times** while a burst folder loads correctly — reproduced identically on four separate runs, each ending with a correct 2-D histogram of 12 237 bursts. Nothing failed: these are the "no data yet" and "still loading" states of the update loop, logged as errors. Demote to `debug` (or guard on `_loading_data`, which the same load path already sets and clears), so an ERROR in this window means something.
 - **Fix note:**
+
+### RF-468
+- **Status:** FIXED
+- **Severity:** S2 (the MLE-Lifetime step of the burst workflow renders as an empty panel — no fit controls, no decay, no residuals — while the fit itself works)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py`, `_convert_tabs_to_dock_shell` (the pages are handed to `AutoForm` still carrying `QTabWidget`'s explicit hide)
+- **Finding:** the wizard replaces its `QTabWidget` with an AutoForm dock area. A `QTabWidget` calls `hide()` on every page that is not the current one, and an *explicit* hide survives reparenting — the dock's stack shows its content wrapper, the page inside it stays hidden. So every page except whichever tab happened to be current when the deferred conversion ran (`tab_files`, index 0) rendered as a dock title above empty space. Standalone that lost the whole Burst-MLE workspace; embedded in the burst-analysis workflow, where the duplicate file docks are dropped and Burst-MLE is the only page left, it lost the entire step-5 panel. The blankness was not silent-but-harmless: the batch fit still ran from the pinned toolbar and wrote `.bg4`/`.br4`/`.by4`, so the step *worked* and showed nothing, which reads as "the step is broken". A comment in `test_dock_shell_replaces_tabwidget` explicitly excused it (*"non-current pages are hidden by its tab widget — that is correct, not a regression"*), which is why it survived the dock-shell work.
+- **Fix note:** ✅ **FIXED 2026-07-27.** After `AutoForm` reparents the pages, the conversion `show()`s each hosted page: visibility belongs to the dock area from that point, and which dock is on top is still its tab bar's decision (no docks stack on top of each other — checked in both the standalone and the embedded render). Tests: `chisurf/plugins/burst/burst_mle_analysis/tests/test_dock_shell.py` (+2) — `test_hosted_pages_are_not_left_explicitly_hidden` and `test_embedded_panel_shows_the_fit_workspace`, both failing before the change — and the misleading comment is replaced. Verified visually as well: the workflow panel now renders the fit table (τ = 2.36 ns on `m003.bur`), the decay with IRF/background, and the weighted residuals.
+
+### RF-469
+- **Status:** FIXED
+- **Severity:** S3 (the MLE batch's "which files failed" report raises `NameError`, so a partly-failed batch loses the message *and* the results it had)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:4169` (`pathlib.Path(f).name` in `process_bursts`; the module imports `Path`, not `pathlib`)
+- **Finding:** the only branch that names the files that produced no rows died in its own formatting, before `_save_burst_results_fast`, so a batch that lost a worker also lost the surviving results and said nothing useful. Found by running the workflow with a spawn-unsafe driver, which killed the pool workers — i.e. a path that only executes once something else has already failed.
+- **Fix note:** ✅ **FIXED 2026-07-27.** Uses the imported `Path`; it is the file's only `pathlib.` reference, so nothing else was affected.
+
+### RF-470
+- **Status:** FIXED
+- **Severity:** S4 (the H2MM transition-rate matrix overprints its own cells in a narrow dock — the numbers are unreadable)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/gui/tool.py`, `_plot_rates` (`pg.TextItem` per cell at the default point size)
+- **Finding:** the labels are drawn in screen points while the cells scale with the panel. In the burst workflow the plot column is ~200 px wide, so a 4×4 matrix gives ~15 px cells and labels such as `7.4e-05` ran straight through their neighbours.
+- **Fix note:** ✅ **FIXED 2026-07-27.** `_fit_rate_labels` sizes each label to its own cell (character count against cell width, capped by cell height) and is reconnected to the view's resize signal, so it holds while the dock is dragged; under ~5 pt the label is hidden rather than smeared over the neighbouring cell. Verified in the rendered workflow panel.
+
+## GUI tester — ndXplorer, gating a multiparameter burst space (2026-07-27)
+
+Drove the real ndX window headlessly (offscreen Qt, arm64 env,
+`chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer`) on the repo's real Paris
+burstwise MFD folder `modules/ndxplorer/test/mfd/burstwise_All 0.1500#30`
+(45 `.bur` + `bg4`/`br4` companions, 12 237 bursts): loaded it, plotted
+lifetime vs anisotropy, gated with a z-range and with a painted 2-D bitmap,
+exported Burst IDs and sent the gated population to the four advertised burst
+analyses. Use case: [ndx-mfd-burst-gating](/usecases/ndx-mfd-burst-gating.md).
+Findings RF-470..RF-475.
+
+### RF-470
+- **Status:** OPEN
+- **Severity:** S1 (the last real column of every `.bur` is discarded, so the whole red / FRET half of the MFD parameter set silently never computes)
+- **Location:** `modules/ndxplorer/ndxplorer/io/reader.py:541-542` (`_process_burst_analysis_dir`: `if drop_last_column and df_main.shape[1] > 1: df_main = df_main.iloc[:, :-1]`), against `:559-563`, where the *companion* branch already uses `_drop_trailing_empty_columns` with a comment stating exactly why a blanket drop-last is wrong
+- **Finding:** the `.bur` header line carries a trailing tab, but the parser already resolves that — measured, `_read_text_table_auto` returns **16 real columns** for `bi4_bur/m000_0.bur` (last = `Red Count Rate (KHz)`, not all-NaN) and **32** for chisurf's own PIE dataset `chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/…/m000.bur` (last = `S delayed yellow (kHz) | 2048-4095`). The unconditional `iloc[:, :-1]` therefore throws away a real measurement column in both. Consequence, measured on the shipped equation set (54 equations, 15 constants from `~/.ndxplorer`): with the drop, `compute_columns` derives **3** columns (`Sg`, `Fg`, `Tg-Tr(ms)`); without it, **15** — `Sr`, `Sg/Sr`, `Proximity ratio` (median 0.067), `Fr`, `Fg/Fr`, `Fd/Fa`, `FRET efficiency` (median 0.429), `R_FRET`, `<tauD(A)>x`, … . `Sr` = `'Red Count Rate (KHz)'` is the head of that chain. In the GUI this shows as an axis combo with 39 entries and **no proximity ratio and no FRET efficiency to plot**, with no warning anywhere. (Corroborating symptom from the same trailing tab: `[read] PyArrow failed for m000_0.br4 (Expected 10 columns, got 9)` → a pandas fallback for every companion file.) Use `_drop_trailing_empty_columns` for the main table too.
+- **Fix note:**
+
+### RF-471
+- **Status:** OPEN
+- **Severity:** S2 (the ndX→ChiSurf burst handoff sends a bare file name, so it can only ever work when the process CWD happens to be the measurement folder)
+- **Location:** `modules/ndxplorer/ndxplorer/analysis/burst_bridge.py:196-201` (`selection_to_burst_slices` keys the slices by the raw `First File` cell) → `:453-475` (`send` passes that key straight through as `tttr_path` / `burst_slices`), with nothing joining it to `ndxplorer.working_path`
+- **Finding:** measured — after gating, `bridge.burst_slices(...)` returns `{'m000.spc': [(2755, 3006), …], …}` for 45 files, and `os.path.exists('m000.spc')` is False; every send then fails with `No such file or directory: 'm000.spc'` (visible in the log as 45 `could not open m000.spc` stack traces from `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:187`). The burst table knows where it came from (`working_path` is the `burstwise_All …` folder, and the original absolute paths are in `Info/Paris_x64 info.bin`), so the file name should be resolved — try `working_path`, its parent, and the recorded Paris path — before it is handed over, and report the ones that cannot be found rather than sending a name that will not resolve.
+- **Fix note:**
+
+### RF-472
+- **Status:** OPEN
+- **Severity:** S2 (two of the four burst consumers report `ok` with an empty result when *no* file could be opened, so a totally failed analysis is announced to the user as a success)
+- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:507-509` (`correlate_burst_file`: `tttr = open_tttr(...)`; `if tttr is None: return []`) wrapped by `chisurf/plugins/burst/burst_fcs_correlator/backend/services.py:69-80` (`correlate_file_handler` → `_ok({"curves": curves})`), and `chisurf/server/services/pda.py:100-117` (an empty `group` still returns `{"ok": True, "result": {"curves": [], "n_files": …}}`), against `chisurf/server/services/bursts.py:278-281` / `:448-451`, where the decay and PCH paths correctly return `service_error`
+- **Finding:** measured through ndX's own **Send selection to** menu with a 7 312-burst gate over 45 files whose TTTR paths do not resolve (RF-471): `TCSPC decay` and `PCH` raise (*"decay read failed: … No such file or directory"*), while `FCS` returns `[{'file': 'm000.spc', 'result': {'curves': []}}, …]` and `PDA` returns `{'curves': [], 'n_files': 45}`. `send_menu.send_selection` only inspects `n_bursts`/`n_files`, so the status bar reads **"Sent 7312 bursts from 45 file(s) to fcs (not recorded: no database product attached)"** while zero photons were read (screenshot evidence in the use case). Either return `service_error` when no file could be opened, or return a per-file failure list the caller can count — a consumer that cannot open its input must not answer `ok`.
+- **Fix note:**
+
+### RF-473
+- **Status:** OPEN
+- **Severity:** S2 (the first gate a user creates excludes every burst, with an invisible handle and no message)
+- **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_control.py:1353-1358` (`onAddSelection` reads `self.parent.selection_z.get_range()`) with `on_axis_changed`/`update_axis_settings` (`:582-638`, `:790-796`), which re-range the z *axis* and the z *histogram* on a parameter change but never move the `PGRangeSelection` region (`modules/ndxplorer/ndxplorer/plotting/pg_image_widget.py:101-118`)
+- **Finding:** measured — after loading a burst table and enabling the z panel, the region sits at `(0.25, 0.5)` for **every** parameter chosen: `Number of Photons` (axis 31…3131), `Duration (ms)` (0.2…55.1), `Tau (green)` (0…6), `Count Rate (KHz)` (3.76…215). At 3131 photons full-scale the handle is 0.008 % of the plot wide, i.e. invisible, so the natural gesture — pick a parameter, press `+ select` — adds a `0.25…0.5` gate, the count goes `0 / 12237`, the 2-D plot and both marginals go blank, and the z histogram (now drawn from the gated data) is empty too, so there is nothing left to drag the handle back onto. The only ways out are editing the Min/Max cells or deleting the row, neither of which is suggested. Reset the region to the new parameter's range (or to a sensible inner quantile) whenever the z axis changes, in the same place the axis min/max is refreshed.
+- **Fix note:**
+
+### RF-474
+- **Status:** OPEN
+- **Severity:** S3 (the marginal-plot fast path aborts on its first attribute access and updates nothing; one `try` covers all three axes)
+- **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_update_helpers.py:311-316` (`x_bin_edges = x_hist.edges`) through `:409` (`except Exception as e: logging.warning("Error updating marginal plots from cache: %s")`), against `modules/ndxplorer/ndxplorer/core/plot_main.py:520-525`, where `self._histogram` is initialised as `{"x": (), "y": (), "z": (), "2d": ()}` — plain tuples with no `.edges`/`.counts`
+- **Finding:** reproduced by clearing a selection (🗑) after gating: `Error updating marginal plots from cache: 'tuple' object has no attribute 'edges'`, with `_histogram["x"]` confirmed to be a bare tuple at that moment. Because the X, Y and Z updates and the three `replot()` calls share one `try`, the failure on X silently skips Y and Z as well — the function is a no-op whenever the cache holds the tuple form. The visible plots survive only because another path redraws them, which is what makes this invisible outside the log. Either normalise `_histogram` entries to the histogram object everywhere (including the initialiser) or accept both shapes at the top of the function, and split the per-axis blocks so one bad axis cannot take the other two down.
+- **Fix note:**
+
+### RF-475
+- **Status:** OPEN
+- **Severity:** S3 (ERROR-level log noise on the entirely normal startup/load path trains the user to ignore real errors)
+- **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_update_helpers.py:607-608` (`logging.error("X histogram computation failed or returned empty result")`) and `modules/ndxplorer/ndxplorer/core/plot_main.py:2445` (`logging.error("[DISPLAY] Invalid 2D histogram format")`)
+- **Finding:** every successful run of the workflow emits `[DISPLAY] Invalid 2D histogram format` once at startup (before any data exists) and `X histogram computation failed or returned empty result` **six times** while a burst folder loads correctly — reproduced identically on four separate runs, each ending with a correct 2-D histogram of 12 237 bursts. Nothing failed: these are the "no data yet" and "still loading" states of the update loop, logged as errors. Demote to `debug` (or guard on `_loading_data`, which the same load path already sets and clears), so an ERROR in this window means something.
+- **Fix note:**
+
+### RF-471
+- **Status:** FIXED
+- **Severity:** S2 (restoring MLE settings from a file or a burst-analysis folder raised `NameError` before applying anything past the micro-time binning)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py`, `apply_settings_payload` (referenced `path` and `lineEdit_settings_file`, neither of which exists there)
+- **Finding:** the method was split out of the loader and kept referring to the loader's local `path`, so every real restore died at step 3 — channel settings, detector definitions and the per-detector UI state were never applied, and the analysis folder stopped being self-describing. Behind it sat a second break: `lineEdit_settings_file` went with the `.ui` file and no longer exists, so fixing only the name would have swapped `NameError` for `AttributeError`. Both were invisible because the four tests around the loader monkeypatch `apply_settings_payload` away and its two call sites sit behind a file dialog. Found by `ruff --select F821` on a file being edited for RF-468/469.
+- **Fix note:** ✅ **FIXED 2026-07-27.** `apply_settings_payload(payload, source=None)` takes the source from the loader and reports it on the status line; a caller that built the payload itself passes nothing and the status line says so. The dead line-edit write is gone. Tests: `test/gui/test_burst_settings_restore.py::test_mle_restore_actually_runs` drives a real wizard through `load_settings_from` and through a source-less payload (it fails at `HEAD` with the `NameError`), and the three monkeypatched stubs now assert the source is forwarded.
