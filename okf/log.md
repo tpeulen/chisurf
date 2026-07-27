@@ -2,6 +2,18 @@
 
 ## 2026-07-27
 
+* **Two demos for the repositories, and a duplicate-contour bug the screenshot
+  caught.** `emdb_map` fetches EMD-3061 (180 cubed, 5.8M voxels) and contours it;
+  `npc_integrative` fetches one spoke of the nuclear pore (29,273 **beads**, no
+  atoms at all) and colours it. Both verified through `run_demo`, the same path
+  the menu uses: 5.9 s and 12.0 s.
+
+  Taking the screenshot is what found the bug. A map **opens already contoured**,
+  so `isosurface map` with no level asked for the level it was already showing
+  and got a *second identical surface* drawn on top of the first — two objects,
+  same 1114 vertices. `isosurface`/`isomesh` now restyle an existing contour at
+  that level instead of appending a copy.
+
 * **A burst-FCS run that read not one photon reported success (RF-472, FCS half).**
   ndX's *Send selection to* handed 7 312 gated bursts across 45 files to the
   burst-FCS consumer; every path failed to open, and the status bar said

@@ -47,6 +47,8 @@ DEMOS: tuple[tuple[str, str, str], ...] = (
     ("publication", "Publication figure", "Flat shading with silhouettes."),
     ("trajectory", "Trajectory + intra_fit", "Why fitting makes a movie readable."),
     ("measure", "Measuring", "Surface area, bonds, hydrogens."),
+    ("emdb_map", "EMDB density map", "Fetch a map and contour it."),
+    ("npc_integrative", "NPC (integrative, PDB-IHM)", "A model made of beads, not atoms."),
 )
 
 

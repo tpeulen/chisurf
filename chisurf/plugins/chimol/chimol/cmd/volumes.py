@@ -111,6 +111,23 @@ class VolumeMixin(BaseCmd):
             return
 
         levels = list(viewer.get_volume_levels(object_id) or [])
+        # A map opens already contoured, so `isosurface map` with no level asked
+        # for the level it is already showing -- and got a second identical
+        # surface drawn on top of the first. Restyle the existing one instead.
+        for index, existing in enumerate(levels):
+            try:
+                same = abs(float(existing.get("level")) - value) <= abs(value) * 1e-9
+            except (TypeError, ValueError):
+                continue
+            if same:
+                levels[index] = dict(
+                    existing,
+                    style="mesh" if style == "isomesh" else "surface",
+                    color=_named_color(color, existing.get("color")),
+                )
+                viewer.set_volume_levels(levels, object_id=object_id)
+                self._emit_message(f"{style}: {grid.name} at {value:.4g}")
+                return
         levels.append(
             {
                 "level": value,
