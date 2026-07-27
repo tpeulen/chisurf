@@ -50,8 +50,8 @@ are future work.
   (per-atom masks, overlays).
 - **Tier 4 — structural editing & new objects (future).** Chemistry edits
   (`bond`/`unbond`/`h_add`/`rebond`) behind a dedicated backend with undo/redo;
-  volume/map objects (`map_new`/`isomesh`/`isosurface`); sandboxed `alter`-style
-  expression evaluation.
+  sandboxed `alter`-style expression evaluation. Volume/map objects have grown
+  past a tier bullet -- see **Voxel maps as first-class objects** below.
 - **Tier 5 — movies, wizards, analysis (long-term).** Timeline/keyframe animation;
   guided-workflow plugin framework; structural analysis (`align`/`super`/`cealign`/
   `rms`/`intra_fit`).
@@ -59,6 +59,75 @@ are future work.
 Keep unimplemented command names **registered** so the CLI emits a friendly "not
 yet implemented" message instead of `KeyError`. When porting a command, re-read the
 reference implementation's block first to understand hidden side effects.
+
+# Voxel maps as first-class objects
+
+ChiMOL must **display volumetric data**, to the standard of the established
+molecular-visualisation tool that is the reference for this (isosurface, mesh and
+direct volume rendering, with interactive contour levels). This is not a niche
+addition for this group: most of what is looked at here is a density of some kind.
+
+The data that has to be viewable:
+
+| Source | What it is | Where it comes from |
+| --- | --- | --- |
+| **Accessible volumes** | Where a tethered dye can physically be | the labelling/FRET framework (`IMP.bff`) — the single most-used map here |
+| **Probability / occupancy densities** | Where an ensemble puts something | modelling output, MCMC and docking runs |
+| **Electron density / cryo-EM maps** | Experimental maps around a model | MRC / CCP4 / MAP files |
+| **3D microscopy** | An acquired image stack, **including 3D CLSM** | the imaging side of this codebase |
+
+A 3D CLSM stack loaded in chisurf must be viewable in ChiMOL. That is the
+integration test for this whole section: the same viewer that shows the structure
+shows the image, in the same scene, so a model can be looked at inside its data.
+
+## Current state
+
+The gap is specific, and larger than the Tier 4 line above suggests. ChiMOL can
+*read* MRC/CCP4/MAP, but `io/mrc.py` turns the file into a **downsampled point
+cloud** (`load_mrc_as_points`, capped at 250k points) and the volume itself is
+discarded. There is a marching-cubes implementation
+(`_generate_surface_mesh_from_density`), but it serves molecular surfaces built
+from atoms and is not reachable from a loaded map. There is no map object, no
+contour level to change, no second level to show at once, and no volume rendering.
+
+## What has to exist
+
+1. **A map object.** A voxel grid with its transform (voxel size, origin, and the
+   full 3x3 for a non-axis-aligned or anisotropic grid — a confocal stack's z step
+   is rarely its xy step, and treating it as cubic silently squashes the picture),
+   held as a real object in the scene with its own name, visibility and colour.
+   Independent of where it came from: a map read from a file, computed from atoms,
+   or handed over in memory by a chisurf plugin is the same object.
+2. **Reachable from memory, not only from a file.** AVs and CLSM stacks already
+   exist as arrays in this process. Requiring a round trip through a file on disk
+   to see them would be the wrong seam.
+3. **The display modes**, in this order of usefulness here:
+   * **isosurface** at a contour level the user can drag, with more than one level
+     shown at once and coloured separately (this is how an AV is read: a dense core
+     inside a diffuse shell);
+   * **mesh** — the same contour as a wireframe, so a structure inside it stays
+     visible;
+   * **direct volume rendering** — the mode with no PyMOL equivalent worth using,
+     and the one that suits microscopy and diffuse probability densities, where
+     there is no meaningful single threshold to pick.
+4. **Colour by value**, through a transfer function or a colour ramp, not one flat
+   colour per surface.
+5. **Commands.** `map_new`, `isomesh`, `isosurface`, `volume`, `map_trim` — PyMOL
+   names and semantics, per the compatibility contract, with ChiMOL's additions
+   after them rather than in place of them.
+6. **A level the eye can find.** A contour default derived from the data (a
+   quantile of occupied voxels, say) rather than a fixed number, since an AV, a
+   cryo-EM map and a photon-count stack do not share a scale.
+
+## Constraints
+
+Volume rendering must not become the thing that makes the viewer slow — see the
+trajectory standard in [the target spec](/specs/chimol.md). A map is large and
+mostly static, so it uploads once and is not rebuilt per frame; changing a contour
+level re-meshes only the map, never the molecule beside it.
+
+No new dependency for reading MRC/CCP4 or for marching cubes: both are already
+here, and the file format is documented and short.
 
 # Renderer migration (immediate-mode GUI backend)
 

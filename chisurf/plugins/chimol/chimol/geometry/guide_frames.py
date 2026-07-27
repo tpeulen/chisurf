@@ -34,6 +34,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import math
+
 import numpy as np
 
 __all__ = [
@@ -242,39 +244,67 @@ def refine_normals(
     candidates[:, 0] = out
     candidates[:, 1] = np.where(is_helix[:, None], out, -out)
 
-    # 3. forward sweep -- sequential: each step reads the neighbour just written
+    # 3. forward sweep -- sequential: each step reads the neighbour just written,
+    # so it stays a loop. The arithmetic is on plain floats, though: at three
+    # components per residue, the four NumPy calls this used to make per step
+    # were almost entirely call overhead and temporary arrays.
+    out_rows = out.tolist()
+    candidate_rows = candidates.tolist()
+    normal_rows = normals.tolist()
+    interior_rows = interior.tolist()
     for a in range(1, n - 1):
-        if not interior[a]:
+        if not interior_rows[a]:
             continue
-        axis = normals[a - 1]
-        if not np.any(axis):
+        ax, ay, az = normal_rows[a - 1]
+        if ax == 0.0 and ay == 0.0 and az == 0.0:
             continue
-        axis = axis / np.linalg.norm(axis)
-        previous = _unit(_remove_component(out[a - 1][None, :], axis[None, :]))[0]
-        options = _unit(_remove_component(candidates[a], np.tile(axis, (2, 1))))
-        out[a] = candidates[a][int(np.argmax(options @ previous))]
+        axis_len = math.sqrt(ax * ax + ay * ay + az * az)
+        ax, ay, az = ax / axis_len, ay / axis_len, az / axis_len
 
-    # 4. soften kinks
+        ox, oy, oz = out_rows[a - 1]
+        along = ox * ax + oy * ay + oz * az
+        px, py, pz = ox - along * ax, oy - along * ay, oz - along * az
+        plen = math.sqrt(px * px + py * py + pz * pz)
+        if plen > 1e-12:
+            px, py, pz = px / plen, py / plen, pz / plen
+
+        best = -math.inf
+        chosen = candidate_rows[a][0]
+        for candidate in candidate_rows[a]:
+            cx, cy, cz = candidate
+            along = cx * ax + cy * ay + cz * az
+            qx, qy, qz = cx - along * ax, cy - along * ay, cz - along * az
+            qlen = math.sqrt(qx * qx + qy * qy + qz * qz)
+            if qlen > 1e-12:
+                qx, qy, qz = qx / qlen, qy / qlen, qz / qlen
+            score = qx * px + qy * py + qz * pz
+            if score > best:
+                best = score
+                chosen = candidate
+        out_rows[a] = chosen
+    out[:] = out_rows
+
+    # 4. soften kinks -- reads only the swept result, never its own output, so
+    # every residue is independent and the whole pass is one set of array ops.
     softened = np.array(out, dtype=float)
-    for a in range(1, n - 1):
-        if not interior[a]:
-            continue
-        agreement = float(out[a] @ out[a + 1]) * float(out[a] @ out[a - 1])
-        if agreement >= _KINK_THRESHOLD:
-            continue
-        # PyMOL's 0.001 nudge keeps the sum from vanishing when the two
-        # neighbours are exactly opposed.
-        target = out[a + 1] + out[a - 1] + 0.001 * out[a]
-        target = _unit(_remove_component(target[None, :], tangents[a][None, :]))[0]
-        if float(out[a] @ target) < 0.0:
-            blended = out[a] - target
-        else:
-            blended = out[a] + target
-        blended = _unit(blended[None, :])[0]
-        weight = min(2.0 * (_KINK_THRESHOLD - agreement), 1.0)
-        softened[a] = _unit(
-            ((1.0 - weight) * out[a] + weight * blended)[None, :]
-        )[0]
+    middle = np.nonzero(interior)[0]
+    if middle.size:
+        agreement = np.einsum("ij,ij->i", out[middle], out[middle + 1]) * np.einsum(
+            "ij,ij->i", out[middle], out[middle - 1]
+        )
+        kinked = agreement < _KINK_THRESHOLD
+        if np.any(kinked):
+            rows = middle[kinked]
+            agreement = agreement[kinked]
+            here = out[rows]
+            # PyMOL's 0.001 nudge keeps the sum from vanishing when the two
+            # neighbours are exactly opposed.
+            target = out[rows + 1] + out[rows - 1] + 0.001 * here
+            target = _unit(_remove_component(target, tangents[rows]))
+            facing = np.einsum("ij,ij->i", here, target)
+            blended = _unit(np.where(facing[:, None] < 0.0, here - target, here + target))
+            weight = np.minimum(2.0 * (_KINK_THRESHOLD - agreement), 1.0)[:, None]
+            softened[rows] = _unit((1.0 - weight) * here + weight * blended)
     return softened
 
 

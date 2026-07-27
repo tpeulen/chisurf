@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import logging
+
+import time
+
 import numpy as np
 
 from qtpy import QtCore
@@ -245,20 +249,96 @@ class AnimationMixin(BaseCmd):
             self._emit_error("Frame index must be an integer (e.g., 10, +1, -1).")
 
     @command("mplay")
-    def mplay(self) -> None:
-        """Start movie playback (~30 fps)."""
+    def mplay(self, step: str = "", fps: str = "") -> None:
+        """Start movie playback (~30 fps).
+
+        ``mplay`` alone behaves as PyMOL's does. The two optional arguments are
+        additions: ``mplay 5`` advances five trajectory frames per displayed
+        step, and ``mplay 5, 60`` also asks for 60 steps a second.
+
+        A step larger than one is how a long trajectory is watched end to end
+        without waiting -- and it pairs with ``minterpolate``, which fills the
+        gap in with intermediate positions so a big step still moves smoothly
+        rather than jumping.
+        """
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
+        if step:
+            try:
+                value = float(step)
+            except ValueError:
+                self._emit_error(f"mplay: step must be a number, not {step!r}")
+                return
+            if value <= 0:
+                self._emit_error("mplay: step must be greater than zero")
+                return
+            viewer.movie_step = value
+
+        interval = 33
+        if fps:
+            try:
+                rate = float(fps)
+            except ValueError:
+                self._emit_error(f"mplay: fps must be a number, not {fps!r}")
+                return
+            if rate <= 0:
+                self._emit_error("mplay: fps must be greater than zero")
+                return
+            interval = max(1, int(round(1000.0 / rate)))
+
         if viewer._animation_timer is None:
             viewer._animation_timer = QtCore.QTimer(viewer)
             viewer._animation_timer.timeout.connect(self._on_animation_tick)
-
-        # Default ~30fps
-        viewer._animation_timer.start(33)
+        # Single-shot, rescheduled by the tick itself; see `_on_animation_tick`.
+        viewer._animation_timer.setSingleShot(True)
+        viewer._animation_interval = interval
+        viewer._animation_busy = False
         viewer._animation_running = True
-        self._emit_message("Playing movie...")
+        viewer._animation_timer.start(interval)
+        detail = f" (step {viewer.movie_step:g}"
+        sub = int(getattr(viewer, "movie_interpolate", 1) or 1)
+        if sub > 1:
+            detail += f", {sub} interpolated"
+        detail += ")"
+        self._emit_message(f"Playing movie...{detail}")
+
+    @command("minterpolate")
+    def minterpolate(self, sub_steps: str = "") -> None:
+        """Draw ``n`` interpolated positions between successive frames.
+
+        ``minterpolate 4`` moves a quarter of a step at a time, straight-lining
+        each atom between the two stored frames it lies between. ``minterpolate
+        1`` turns it off; with no argument it reports the current setting.
+
+        This is what makes a coarse ``mplay`` step look like motion instead of a
+        slideshow -- and on a trajectory whose frames are far apart it is worth
+        having even at step 1.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        if not sub_steps:
+            self._emit_message(
+                f"minterpolate: {int(getattr(viewer, 'movie_interpolate', 1) or 1)}"
+            )
+            return
+        try:
+            value = int(float(sub_steps))
+        except ValueError:
+            self._emit_error(
+                f"minterpolate: expected a whole number, not {sub_steps!r}"
+            )
+            return
+        if value < 1:
+            self._emit_error("minterpolate: need at least 1 (1 means no interpolation)")
+            return
+        viewer.movie_interpolate = value
+        self._emit_message(
+            "minterpolate: off" if value == 1
+            else f"minterpolate: {value} steps between frames"
+        )
 
     @command("mpause")
     def mpause(self) -> None:
@@ -281,15 +361,58 @@ class AnimationMixin(BaseCmd):
             viewer.set_current_frame(0)
 
     def _on_animation_tick(self) -> None:
+        """Draw one playback step, then schedule the next.
+
+        Rescheduled after each frame rather than repeating on a fixed interval,
+        and that is the difference between playback and a frozen window. A
+        repeating 33 ms timer driving a redraw that takes longer than 33 ms
+        never gives the event loop an idle moment: the application stops
+        answering the mouse, the menus and the resize, and looks hung. Waiting
+        until the frame is actually on screen before asking for the next one
+        means playback runs at whatever rate the machine sustains and the UI
+        keeps its turn either way.
+
+        The re-entrancy guard matters for the same reason: a tick that arrived
+        while the previous redraw was still running would recurse into the
+        renderer.
+        """
         window, viewer = self._require_window_and_viewer()
-        if viewer is None or not viewer._animation_running:
+        if viewer is None or not getattr(viewer, "_animation_running", False):
+            return
+        if getattr(viewer, "_animation_busy", False):
             return
 
-        curr = viewer.get_current_frame()
-        total = viewer.get_total_frames()
+        viewer._animation_busy = True
+        started = time.perf_counter()
+        try:
+            total = viewer.get_total_frames()
+            if total <= 0:
+                return
+            sub_steps = max(1, int(getattr(viewer, "movie_interpolate", 1) or 1))
+            advance = float(getattr(viewer, "movie_step", 1.0) or 1.0) / sub_steps
+            position = viewer.get_frame_position() + advance
+            if position > total - 1:
+                position = position % max(total - 1, 1e-9) if total > 1 else 0.0
+            viewer.set_frame_position(position)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "chimol: playback step failed; stopping", exc_info=True
+            )
+            viewer._animation_running = False
+            return
+        finally:
+            viewer._animation_busy = False
 
-        next_frame = (curr + 1) % total
-        viewer.set_current_frame(next_frame)
+        if not getattr(viewer, "_animation_running", False):
+            return
+        timer = getattr(viewer, "_animation_timer", None)
+        if timer is None:
+            return
+        # Whatever is left of the frame's budget, and never zero -- a zero-delay
+        # timer would monopolise the loop just as the repeating one did.
+        elapsed_ms = (time.perf_counter() - started) * 1000.0
+        interval = float(getattr(viewer, "_animation_interval", 33) or 33)
+        timer.start(max(1, int(round(interval - elapsed_ms))))
 
     @command("mdo", mode="raw1")
     def mdo(self, frame: str = "", command: str = "") -> None:

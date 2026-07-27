@@ -107,11 +107,32 @@ Concretely, and in priority order:
    to replace the current per-vertex estimate, then depth cue. PyMOL has no
    equivalent of any of these outside its ray tracer, so this is the axis on which
    "better than PyMOL" is actually won.
-2. **Honesty about limits.** PyMOL will happily add hydrogens to a ligand whose
+2. **Trajectories that play.** ChiMOL is the viewer for chisurf's modelling
+   output, so a structure that *moves* is the normal case here rather than the
+   exception, and a cartoon is what people want to watch it in. The standard is
+   that stepping frames keeps up with the eye.
+
+   Two rules follow, and both are about where work is allowed to happen. First,
+   **anything that does not depend on the frame is not allowed to be recomputed
+   per frame** — which atom is a residue's backbone nitrogen, how a ribbon
+   segment's triangles are wired together, and so on. These caches are keyed to
+   topology, so they must be discarded by anything that renumbers atoms rather
+   than being left to rot. Second, **quality may be traded while the view is
+   moving, never while it is still**: a scrub can draw fewer triangles and skip
+   baked shading, provided the ribbon does not move somewhere else and provided
+   full quality returns the moment it settles. That trade is made by measuring
+   how fast frames arrive, never by a mode a caller sets — a mode can be left on,
+   and would then quietly hand a coarse picture to a headless render.
+
+   A per-vector `np.cross` costs about ten times what the component form does,
+   so per-residue Python loops over three floats are the usual reason this is
+   slow. Vectorise where the recurrence allows; where it genuinely does not,
+   keep the loop but take NumPy out of it.
+3. **Honesty about limits.** PyMOL will happily add hydrogens to a ligand whose
    bond orders it does not know. ChiMOL says so instead.
-3. **A session you can still read in ten years.** Not a pickle of internal
+4. **A session you can still read in ten years.** Not a pickle of internal
    structures: a documented container that cannot execute code when opened.
-4. **Verifiable behaviour.** Every carried table and transcribed algorithm has a
+5. **Verifiable behaviour.** Every carried table and transcribed algorithm has a
    test that would fail if it were wrong, not merely one that runs it.
 
 ## What to take from ChimeraX beyond rendering

@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 import math
+from functools import lru_cache
 
 import numpy as np
 
@@ -257,49 +258,128 @@ def _smooth_backbone_points(
     return out
 
 
+def _flip_for_sign_continuity(vectors: np.ndarray) -> np.ndarray:
+    """Negate each vector that opposes the one before it, in place.
+
+    Reads as a sequential scan -- residue ``i`` is compared against the
+    *already flipped* ``i - 1`` -- but it is not one. Writing the flip as a sign
+    ``s[i]``, the rule ``s[i] = -1 if s[i-1] * dot(u[i-1], u[i]) < 0 else +1``
+    is exactly ``s[i] = s[i-1] * sign(dot(u[i-1], u[i]))``, so the whole chain
+    is a running product and ``cumprod`` does it at once.
+
+    The one case where the identity fails is an exactly perpendicular pair,
+    where the original leaves the sign at ``+1`` rather than carrying it; that
+    is taken by the scan, since guessing there would be a behaviour change
+    rather than a speed-up.
+    """
+    n = vectors.shape[0]
+    if n < 2:
+        return vectors
+    pairwise = np.einsum("ij,ij->i", vectors[:-1], vectors[1:])
+    if np.any(pairwise == 0.0):
+        for i in range(1, n):
+            if float(np.dot(vectors[i - 1], vectors[i])) < 0.0:
+                vectors[i] = -vectors[i]
+        return vectors
+    sign = np.empty(n, dtype=float)
+    sign[0] = 1.0
+    np.cumprod(np.where(pairwise < 0.0, -1.0, 1.0), out=sign[1:])
+    vectors *= sign[:, None]
+    return vectors
+
+
 def _propagate_ups(
     path: np.ndarray,
     ups_hint: Optional[np.ndarray],
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Tangents and parallel-transported up vectors along a sampled path.
+
+    The up vectors are genuinely sequential -- each one is carried from its
+    predecessor, which is the whole point of parallel transport -- so the loop
+    stays. What does not stay is NumPy inside it: at three floats per point a
+    ``np.linalg.norm`` call spends all its time on dispatch, and this ran two
+    projections per point over every sampled point of every segment. The
+    arithmetic is written out on Python floats instead, and the tangents, which
+    are *not* sequential, are computed for the whole path at once.
+    """
     pts = np.asarray(path, dtype=float)
     m = pts.shape[0]
-    tangents = np.zeros((m, 3), dtype=float)
-    ups = np.zeros_like(tangents)
+    if m == 0:
+        return np.zeros((0, 3), dtype=float), np.zeros((0, 3), dtype=float)
+    if m == 1:
+        # Previously an IndexError: the i == 0 branch reached for pts[1].
+        return (
+            np.array([[0.0, 0.0, 1.0]], dtype=float),
+            np.array([[0.0, 1.0, 0.0]], dtype=float),
+        )
+
+    # Central differences, one-sided at the ends -- no dependence between
+    # points, so the whole path at once.
+    tangents = np.empty((m, 3), dtype=float)
+    tangents[0] = pts[1] - pts[0]
+    tangents[-1] = pts[-1] - pts[-2]
+    if m > 2:
+        tangents[1:-1] = pts[2:] - pts[:-2]
+    lengths = np.sqrt(np.einsum("ij,ij->i", tangents, tangents))
+    degenerate = lengths <= 0.0
+    if np.any(degenerate):
+        tangents[degenerate] = (0.0, 0.0, 1.0)
+        lengths[degenerate] = 1.0
+    tangents /= lengths[:, None]
+
     hint = None
     if ups_hint is not None:
         try:
             hint = np.asarray(ups_hint, dtype=float)
-            if hint.shape[0] != m:
+            if hint.shape[0] != m or hint.shape[1:] != (3,):
                 hint = None
         except Exception:
             hint = None
-    prev_up = None
+
+    t_list = tangents.tolist()
+    hint_list = hint.tolist() if hint is not None else None
+    ups = np.empty((m, 3), dtype=float)
+    ups_list: list[tuple[float, float, float]] = []
+    prev: Optional[tuple[float, float, float]] = None
+
     for i in range(m):
-        if i == 0:
-            t = pts[i + 1] - pts[i]
-        elif i == m - 1:
-            t = pts[i] - pts[i - 1]
-        else:
-            t = pts[i + 1] - pts[i - 1]
-        tn = float(np.linalg.norm(t))
-        if tn <= 0.0:
-            t = np.array([0.0, 0.0, 1.0], dtype=float)
-        else:
-            t = t / tn
-        tangents[i] = t
-        candidate = hint[i] if hint is not None else None
-        up_vec = _project_perpendicular(candidate, t)
-        if up_vec is None and prev_up is not None:
-            up_vec = _project_perpendicular(prev_up, t)
-        if up_vec is None:
-            fallback = _default_up_from_tangent(t)
-            up_vec = _project_perpendicular(fallback, t)
-        if up_vec is None:
-            up_vec = np.array([0.0, 1.0, 0.0], dtype=float)
-        if prev_up is not None and float(np.dot(prev_up, up_vec)) < 0.0:
-            up_vec = -up_vec
-        ups[i] = up_vec
-        prev_up = up_vec
+        tx, ty, tz = t_list[i]
+        up: Optional[tuple[float, float, float]] = None
+
+        for source in (hint_list[i] if hint_list is not None else None, prev):
+            if source is None:
+                continue
+            vx, vy, vz = source
+            d = vx * tx + vy * ty + vz * tz
+            ox, oy, oz = vx - d * tx, vy - d * ty, vz - d * tz
+            n = math.sqrt(ox * ox + oy * oy + oz * oz)
+            if n > 1e-8:
+                up = (ox / n, oy / n, oz / n)
+                break
+
+        if up is None:
+            # No hint and no predecessor: pick whichever axis is least parallel
+            # to the tangent, project it, and project the result again -- the
+            # second pass is what the helper pair did, kept so the arithmetic
+            # matches to the last bit.
+            for ax, ay, az in ((0.0, 0.0, 1.0), (0.0, 1.0, 0.0), (1.0, 0.0, 0.0)):
+                d = ax * tx + ay * ty + az * tz
+                fx, fy, fz = ax - d * tx, ay - d * ty, az - d * tz
+                if math.sqrt(fx * fx + fy * fy + fz * fz) > 1e-6:
+                    break
+            else:
+                fx, fy, fz = 0.0, 1.0, 0.0
+            d = fx * tx + fy * ty + fz * tz
+            ox, oy, oz = fx - d * tx, fy - d * ty, fz - d * tz
+            n = math.sqrt(ox * ox + oy * oy + oz * oz)
+            up = (ox / n, oy / n, oz / n) if n > 1e-8 else (0.0, 1.0, 0.0)
+
+        if prev is not None and (prev[0] * up[0] + prev[1] * up[1] + prev[2] * up[2]) < 0.0:
+            up = (-up[0], -up[1], -up[2])
+        ups_list.append(up)
+        prev = up
+
+    ups[:] = ups_list
     return tangents, ups
 
 
@@ -375,9 +455,7 @@ def _build_frames(
     for i in np.nonzero(~good)[0]:
         side[i] = _default_side_from_up(up_in[i])
 
-    for i in range(1, m):
-        if float(np.dot(side[i - 1], side[i])) < 0.0:
-            side[i] = -side[i]
+    _flip_for_sign_continuity(side)
 
     up = _batch_cross(side, t)  # re-orthogonalise
 
@@ -612,53 +690,82 @@ def _extrude_shape(
     k1 = i0 + (jj + 1) % s
     k2 = i1 + jj
     k3 = i1 + (jj + 1) % s
-    tri1 = np.stack([k0, k2, k1], axis=-1)  # (m-1, s, 3)
-    tri2 = np.stack([k1, k2, k3], axis=-1)
-    strip_faces = np.stack([tri1, tri2], axis=2).reshape(-1, 3)
-    face_list: list[list[int]] = []
-
-    # End caps (triangle fans)
+    # End cap centres. Which vertices a cap fans over is topology; where the
+    # centre sits is geometry, so only the latter is computed here.
     next_offset = m * s
-
-    def _add_cap(ring_idx: int, reverse: bool):
-        nonlocal next_offset
+    for ring_idx, reverse in ((0, True), (m - 1, False)):
+        if not (cap_first if reverse else cap_last):
+            continue
         base = ring_idx * s
-        center = verts[base:base + s].mean(axis=0)
-        # Place center vertex
-        verts[next_offset] = center
-        if reverse:
-            cap_normal = -frames[ring_idx, :, 2]
-        else:
-            cap_normal = frames[ring_idx, :, 2]
-        norms[next_offset] = cap_normal
+        verts[next_offset] = verts[base:base + s].mean(axis=0)
+        norms[next_offset] = (
+            -frames[ring_idx, :, 2] if reverse else frames[ring_idx, :, 2]
+        )
         if cols_arr is not None:
             ci = min(ring_idx, colors.shape[0] - 1) if colors is not None else 0
             cols_arr[next_offset] = colors[ci] if colors is not None else np.ones(4)
-        center_idx = next_offset
         next_offset += 1
-        # Fan triangles: center -> v0 -> v1
-        for j in range(1, s - 1):
-            v0 = base + (0 if reverse else j)
-            v1 = base + (s - j if reverse else j + 1)
-            if reverse:
-                face_list.append([center_idx, v1, v0])
-            else:
-                face_list.append([center_idx, v0, v1])
 
-    if cap_first:
-        _add_cap(0, reverse=True)
-    if cap_last:
-        _add_cap(m - 1, reverse=False)
-
-    if strip_faces.shape[0] == 0 and not face_list:
+    faces_arr = _extrusion_faces(m, s, bool(cap_first), bool(cap_last))
+    if faces_arr.shape[0] == 0:
         return None
-
-    if face_list:
-        cap_faces = np.asarray(face_list, dtype=np.int32)
-        faces_arr = np.concatenate([strip_faces.astype(np.int32), cap_faces], axis=0)
-    else:
-        faces_arr = strip_faces.astype(np.int32)
     return verts, norms, faces_arr, cols_arr
+
+
+@lru_cache(maxsize=256)
+def _extrusion_faces(
+    m: int, s: int, cap_first: bool, cap_last: bool
+) -> np.ndarray:
+    """Triangle indices for an extrusion, which depend only on its *shape*.
+
+    An extruded ribbon's connectivity is fixed by how many rings it has and how
+    many vertices are in each -- not by where any of them are. So this is the
+    same array on every frame of a trajectory, and rebuilding it per segment per
+    frame (with a Python loop over the cap fans) was pure repetition: a cartoon
+    extrudes about sixty segments, twice over for the two caps.
+
+    Returned **read-only**, since callers share one cached array.
+    """
+    ii = np.arange(m - 1)[:, None]
+    jj = np.arange(s)[None, :]
+    i0 = ii * s
+    i1 = (ii + 1) * s
+    k0 = i0 + jj
+    k1 = i0 + (jj + 1) % s
+    k2 = i1 + jj
+    k3 = i1 + (jj + 1) % s
+    tri1 = np.stack([k0, k2, k1], axis=-1)  # (m-1, s, 3)
+    tri2 = np.stack([k1, k2, k3], axis=-1)
+    strip_faces = np.stack([tri1, tri2], axis=2).reshape(-1, 3)
+
+    fans: list[np.ndarray] = []
+    centre = m * s
+    for ring_idx, reverse in ((0, True), (m - 1, False)):
+        if not (cap_first if reverse else cap_last):
+            continue
+        base = ring_idx * s
+        j = np.arange(1, s - 1)
+        if j.size:
+            if reverse:
+                fan = np.stack(
+                    [np.full(j.shape, centre), base + (s - j), np.full(j.shape, base)],
+                    axis=1,
+                )
+            else:
+                fan = np.stack(
+                    [np.full(j.shape, centre), base + j, base + j + 1], axis=1
+                )
+            fans.append(fan)
+        centre += 1
+
+    if fans:
+        faces = np.concatenate(
+            [strip_faces.astype(np.int32)] + [f.astype(np.int32) for f in fans], axis=0
+        )
+    else:
+        faces = strip_faces.astype(np.int32)
+    faces.flags.writeable = False
+    return faces
 
 
 def _extrude_arrowhead(
@@ -872,27 +979,33 @@ def _helix_twist(
     """
     if valid.size < 2:
         return None, 0.0
-    pairs = [(int(a), int(b)) for a, b in zip(valid[:-1], valid[1:]) if b - a == 1]
-    if not pairs:
+    first = valid[:-1].astype(np.int64)
+    second = valid[1:].astype(np.int64)
+    adjacent = (second - first) == 1
+    first = first[adjacent]
+    second = second[adjacent]
+    if first.size == 0:
         return None, 0.0
 
-    axes = []
-    angles = []
-    for a, b in pairs:
-        cr = np.cross(radial[a], radial[b])
-        ln = float(np.linalg.norm(cr))
-        if ln <= 1e-9:
-            continue
-        axes.append(cr / ln)
-        angles.append(math.atan2(ln, float(np.dot(radial[a], radial[b]))))
-    if not axes:
+    r0 = radial[first]
+    r1 = radial[second]
+    # One batched cross for the whole run. Called per helix run per rebuild, and
+    # `np.cross` on a single 3-vector spends over ten microseconds in axis
+    # bookkeeping before it multiplies anything.
+    crossed = _batch_cross(r0, r1)
+    lengths = np.sqrt(np.einsum("ij,ij->i", crossed, crossed))
+    usable = lengths > 1e-9
+    if not np.any(usable):
         return None, 0.0
 
-    axis = np.mean(np.asarray(axes), axis=0)
-    ln = float(np.linalg.norm(axis))
+    axes = crossed[usable] / lengths[usable][:, None]
+    angles = np.arctan2(lengths[usable], np.einsum("ij,ij->i", r0[usable], r1[usable]))
+
+    axis = axes.mean(axis=0)
+    ln = float(math.sqrt(axis[0] ** 2 + axis[1] ** 2 + axis[2] ** 2))
     if ln <= 1e-9:
         return None, 0.0
-    return axis / ln, float(np.mean(angles))
+    return axis / ln, float(angles.mean())
 
 
 def _helix_radials(
@@ -932,24 +1045,26 @@ def _helix_radials(
     radial = np.zeros((n, 3), dtype=float)
     has_radial = np.zeros(n, dtype=bool)
 
-    for i in np.nonzero(is_helix)[0]:
-        i = int(i)
-        if i - 1 < 0 or i + 1 >= n:
-            continue
-        if not (is_helix[i - 1] and is_helix[i + 1]):
-            continue
-        a = ca[i - 1] - ca[i]
-        b = ca[i + 1] - ca[i]
-        an = float(np.linalg.norm(a))
-        bn = float(np.linalg.norm(b))
-        if an <= 1e-6 or bn <= 1e-6:
-            continue
-        bisector = a / an + b / bn
-        bl = float(np.linalg.norm(bisector))
-        if bl <= 1e-6:
-            continue
-        radial[i] = -bisector / bl
-        has_radial[i] = True
+    # Every interior residue whose two neighbours are also helical, at once.
+    if n >= 3:
+        interior = np.zeros(n, dtype=bool)
+        interior[1:-1] = is_helix[:-2] & is_helix[1:-1] & is_helix[2:]
+        rows = np.nonzero(interior)[0]
+        if rows.size:
+            a = ca[rows - 1] - ca[rows]
+            b = ca[rows + 1] - ca[rows]
+            an = np.sqrt(np.einsum("ij,ij->i", a, a))
+            bn = np.sqrt(np.einsum("ij,ij->i", b, b))
+            ok = (an > 1e-6) & (bn > 1e-6)
+            if np.any(ok):
+                rows = rows[ok]
+                bisector = a[ok] / an[ok][:, None] + b[ok] / bn[ok][:, None]
+                bl = np.sqrt(np.einsum("ij,ij->i", bisector, bisector))
+                good = bl > 1e-6
+                if np.any(good):
+                    rows = rows[good]
+                    radial[rows] = -bisector[good] / bl[good][:, None]
+                    has_radial[rows] = True
 
     for run_lo, run_hi in _contiguous_runs(is_helix):
         idx = np.arange(run_lo, run_hi)
@@ -999,20 +1114,27 @@ def _helix_cylinder_radii(
         axis_u, _ = _helix_twist(radial, valid)
         if axis_u is None:
             continue
-        for i in idx:
-            i = int(i)
-            if i - 1 < run_lo or i + 1 >= run_hi:
-                continue
-            pts = ca[[i - 1, i, i + 1]] - ca[i]
-            flat = pts - np.outer(pts @ axis_u, axis_u)
-            a = float(np.linalg.norm(flat[1] - flat[0]))
-            b = float(np.linalg.norm(flat[2] - flat[1]))
-            c = float(np.linalg.norm(flat[2] - flat[0]))
-            area = 0.5 * float(np.linalg.norm(np.cross(flat[1] - flat[0],
-                                                       flat[2] - flat[0])))
-            if area <= 1e-9:
-                continue
-            radii[i] = a * b * c / (4.0 * area)
+        # The circumradius of each residue's own triple, for the whole run at
+        # once. The middle point of a triple is the residue itself, so it sits
+        # at the origin after the shift and drops out of the algebra.
+        rows = idx[(idx - 1 >= run_lo) & (idx + 1 < run_hi)]
+        if rows.size:
+            before = ca[rows - 1] - ca[rows]
+            after = ca[rows + 1] - ca[rows]
+            first = before - (before @ axis_u)[:, None] * axis_u
+            third = after - (after @ axis_u)[:, None] * axis_u
+            side_a = np.sqrt(np.einsum("ij,ij->i", first, first))
+            side_b = np.sqrt(np.einsum("ij,ij->i", third, third))
+            span = third - first
+            side_c = np.sqrt(np.einsum("ij,ij->i", span, span))
+            crossed = _batch_cross(-first, span)
+            area = 0.5 * np.sqrt(np.einsum("ij,ij->i", crossed, crossed))
+            usable = area > 1e-9
+            if np.any(usable):
+                radii[rows[usable]] = (
+                    side_a[usable] * side_b[usable] * side_c[usable]
+                    / (4.0 * area[usable])
+                )
         # carry the nearest measured radius into the run's end residues
         measured = idx[radii[idx] > 0.0]
         if measured.size == 0:
@@ -1304,33 +1426,78 @@ def _round_helix_path(
     axis_pt = ca - radial * radii[:, None]
 
     usable = has_radial & (radii > 1e-6) & is_helix
-    for k in range(out.shape[0]):
-        i = int(seg[k])
-        j = i + 1
-        if j >= n or not (usable[i] and usable[j]):
-            continue
-        t = float(tt[k])
-        r0, r1 = radial[i], radial[j]
-        dot = float(np.clip(np.dot(r0, r1), -1.0, 1.0))
-        omega = math.acos(dot)
-        so = math.sin(omega)
-        if so < 1e-6:
-            rad_t = (1.0 - t) * r0 + t * r1
-        else:
-            rad_t = (math.sin((1.0 - t) * omega) * r0 + math.sin(t * omega) * r1) / so
-        ln = float(np.linalg.norm(rad_t))
-        if ln <= 1e-9:
-            continue
-        rad_t /= ln
-        centre = (1.0 - t) * axis_pt[i] + t * axis_pt[j]
-        radius = (1.0 - t) * radii[i] + t * radii[j]
-        out[k] = centre + radius * rad_t
+    # Every sampled point is independent of every other, so the slerp runs over
+    # the whole path at once rather than a point at a time.
+    i = seg.astype(np.int64)
+    j = i + 1
+    take = j < n
+    take[take] &= usable[i[take]] & usable[j[take]]
+    if not np.any(take):
+        return out
+    k = np.nonzero(take)[0]
+    i = i[k]
+    j = j[k]
+    t = tt[k].astype(float)[:, None]
+
+    r0 = radial[i]
+    r1 = radial[j]
+    dot = np.clip(np.einsum("ij,ij->i", r0, r1), -1.0, 1.0)
+    omega = np.arccos(dot)[:, None]
+    so = np.sin(omega)
+    # Linear where the two radials are nearly parallel: the slerp is 0/0 there,
+    # and the chord and the arc agree to well past float precision anyway.
+    flat = so < 1e-6
+    safe = np.where(flat, 1.0, so)
+    rad_t = np.where(
+        flat,
+        (1.0 - t) * r0 + t * r1,
+        (np.sin((1.0 - t) * omega) * r0 + np.sin(t * omega) * r1) / safe,
+    )
+
+    length = np.sqrt(np.einsum("ij,ij->i", rad_t, rad_t))
+    good = length > 1e-9
+    if not np.any(good):
+        return out
+    k = k[good]
+    i = i[good]
+    j = j[good]
+    t = t[good]
+    rad_t = rad_t[good] / length[good][:, None]
+
+    centre = (1.0 - t) * axis_pt[i] + t * axis_pt[j]
+    radius = (1.0 - t[:, 0]) * radii[i] + t[:, 0] * radii[j]
+    out[k] = centre + radius[:, None] * rad_t
     return out
 
 
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
+def _normalised_ss(ss_codes, n: int):
+    """One-character upper-case secondary-structure codes, or ``None``.
+
+    Called on every rebuild with the same codes -- secondary structure is
+    assigned once and does not change as a trajectory moves -- so the per-residue
+    ``str(...).upper()[:1]`` comprehension this replaces was several hundred
+    string operations a frame for an answer that was already known. NumPy does
+    the whole array at once when the codes are already strings; anything else
+    (a list holding ``None``, say) still takes the careful path.
+    """
+    if ss_codes is None:
+        return None
+    try:
+        codes = np.asarray(ss_codes)
+        if codes.shape[0] != n:
+            return None
+        if codes.dtype.kind in "US":
+            return np.char.upper(codes.astype("U1"))
+        return np.array(
+            [str(code).upper()[:1] if code is not None else "" for code in ss_codes]
+        )
+    except Exception:
+        return None
+
 
 def _refine_orientations(
     ca: np.ndarray,
@@ -1370,37 +1537,32 @@ def _refine_orientations(
     tl = np.linalg.norm(tang, axis=1, keepdims=True)
     tang = tang / np.where(tl > 1e-9, tl, 1.0)
 
-    ss = None
-    if ss_codes is not None:
-        try:
-            ss = np.array(
-                [str(s).upper()[:1] if s is not None else "" for s in ss_codes]
-            )
-            if ss.shape[0] != n:
-                ss = None
-        except Exception:
-            ss = None
+    ss = _normalised_ss(ss_codes, n)
     is_helix = (ss == "H") if ss is not None else np.zeros(n, dtype=bool)
     is_sheet = np.isin(ss, ["S", "E"]) if ss is not None else np.zeros(n, dtype=bool)
 
     # 1. Round helices: point the ribbon normal radially outward from the local
     #    helix cylinder, so the oval circles a smooth axis.
     radial, has_radial = _helix_radials(ca, is_helix)
-    for i in np.nonzero(is_helix & has_radial)[0]:
-        vo[int(i)] = radial[int(i)]
+    take = is_helix & has_radial
+    if np.any(take):
+        vo[take] = radial[take]
 
     # 2. Flat sheets: 4 cycles of a 3-point box average within strands.
     if is_sheet.any():
-        for _ in range(4):
-            acc = vo.copy()
-            for i in range(1, n - 1):
-                if is_sheet[i] and is_sheet[i - 1] and is_sheet[i + 1]:
-                    acc[i] = vo[i - 1] + vo[i] + vo[i + 1]
-            for i in range(1, n - 1):
-                if is_sheet[i] and is_sheet[i - 1] and is_sheet[i + 1]:
-                    ln = float(np.linalg.norm(acc[i]))
-                    if ln > 1e-6:
-                        vo[i] = acc[i] / ln
+        inner = np.zeros(n, dtype=bool)
+        inner[1:-1] = is_sheet[:-2] & is_sheet[1:-1] & is_sheet[2:]
+        rows = np.nonzero(inner)[0]
+        if rows.size:
+            for _ in range(4):
+                # Every window is read from the *unmodified* vo and written
+                # afterwards, so the cycle is a simultaneous update and the
+                # whole strand can be averaged at once.
+                acc = vo[rows - 1] + vo[rows] + vo[rows + 1]
+                length = np.sqrt(np.einsum("ij,ij->i", acc, acc))
+                ok = length > 1e-6
+                if np.any(ok):
+                    vo[rows[ok]] = acc[ok] / length[ok][:, None]
 
     # 3. Refine normals: force perpendicular to the tangent, then propagate the
     #    sign so a ribbon does not flip over between neighbouring residues.
@@ -1417,13 +1579,20 @@ def _refine_orientations(
     # the spline the up-vectors partly cancel and the helix renders as pinched,
     # edge-on tape instead of a coil. A real 180 degree flip is nearly
     # antiparallel, so only correct those.
+    # Sequential -- each step compares against the neighbour it just wrote -- but
+    # it does not need NumPy to compare three floats. The helix threshold is what
+    # stops this being a running product like the other sign sweeps here.
+    rows = vo.tolist()
+    helix = is_helix.tolist()
     for i in range(1, n):
-        d = float(np.dot(vo[i - 1], vo[i]))
-        if is_helix[i] or is_helix[i - 1]:
-            if d < -_ANTIPARALLEL_DOT:
-                vo[i] = -vo[i]
-        elif d < 0.0:
-            vo[i] = -vo[i]
+        previous = rows[i - 1]
+        current = rows[i]
+        d = (previous[0] * current[0] + previous[1] * current[1]
+             + previous[2] * current[2])
+        threshold = -_ANTIPARALLEL_DOT if (helix[i] or helix[i - 1]) else 0.0
+        if d < threshold:
+            rows[i] = [-current[0], -current[1], -current[2]]
+    vo[:] = rows
     return vo
 
 
@@ -1798,12 +1967,130 @@ def _generate_trace_arrays(
 # Up-vector builder
 # ---------------------------------------------------------------------------
 
+def backbone_index_map(
+    atoms: np.ndarray,
+    res_ids: Optional[np.ndarray],
+    chain_ids: Optional[np.ndarray] = None,
+) -> Optional[np.ndarray]:
+    """Locate each residue's N, C and O atoms once, as an index array.
+
+    Which atom of ``atoms`` is residue *i*'s backbone nitrogen is a fact about
+    **topology**, not about coordinates: it is the same in every frame of a
+    trajectory. Separating it out is what lets :func:`_build_trace_ups` be a
+    handful of array operations on a moving structure instead of a per-residue
+    Python loop -- the loop it replaces compared every atom's residue id against
+    every residue's, which is ``n_res * n_atoms`` comparisons per frame, plus a
+    full ``astype(str)`` pass over the atom names.
+
+    Parameters
+    ----------
+    atoms : numpy.ndarray
+        Structured atom array with at least ``res_id`` and ``atom_name``.
+    res_ids : numpy.ndarray
+        Residue ids, in the order the cartoon walks them.
+    chain_ids : numpy.ndarray, optional
+        Chain of each residue. Needed whenever residue numbering restarts per
+        chain, which is the normal case.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``(n_res, 3)`` of atom indices in ``N, C, O`` order, ``-1`` where the
+        residue does not have that atom. ``None`` when the atom array cannot
+        supply the fields.
+    """
+    if res_ids is None or not isinstance(atoms, np.ndarray):
+        return None
+    fields = set(atoms.dtype.fields or {})
+    if not {"res_id", "atom_name"}.issubset(fields):
+        return None
+    try:
+        atom_res_id = np.asarray(atoms["res_id"]).astype(np.int64, copy=False)
+        atom_names = np.char.strip(atoms["atom_name"].astype(str))
+    except Exception:
+        return None
+
+    n = len(res_ids)
+    try:
+        res_id_arr = np.asarray(res_ids).astype(np.int64, copy=False)
+    except Exception:
+        return None
+
+    # Fold (chain, res_id) into one integer key so residues can be matched with
+    # a single searchsorted rather than a mask per residue. Chains are encoded
+    # over the union of both sides so the codes agree.
+    if "chain" in fields and chain_ids is not None:
+        try:
+            atom_chain = np.char.strip(atoms["chain"].astype(str))
+            res_chain = np.char.strip(np.asarray(chain_ids).astype(str))
+            _codes, inverse = np.unique(
+                np.concatenate([atom_chain, res_chain]), return_inverse=True
+            )
+            atom_chain_code = inverse[: atom_chain.shape[0]].astype(np.int64)
+            res_chain_code = inverse[atom_chain.shape[0]:].astype(np.int64)
+        except Exception:
+            atom_chain_code = np.zeros(atom_res_id.shape[0], dtype=np.int64)
+            res_chain_code = np.zeros(n, dtype=np.int64)
+    else:
+        atom_chain_code = np.zeros(atom_res_id.shape[0], dtype=np.int64)
+        res_chain_code = np.zeros(n, dtype=np.int64)
+
+    if atom_res_id.size == 0 or n == 0:
+        return np.full((n, 3), -1, dtype=np.int64)
+    lo = int(min(atom_res_id.min(), res_id_arr.min()))
+    span = int(max(atom_res_id.max(), res_id_arr.max())) - lo + 1
+    atom_key = atom_chain_code * span + (atom_res_id - lo)
+    res_key = res_chain_code * span + (res_id_arr - lo)
+
+    out = np.full((n, 3), -1, dtype=np.int64)
+    atom_index = np.arange(atom_key.shape[0], dtype=np.int64)
+    # Looked up residue -> atom, not atom -> residue. The distinction matters
+    # whenever two residues share a key, which happens for every multi-chain
+    # structure whose chains are not being distinguished (1RTD: 2028 residues,
+    # 554 distinct numbers). Each of them takes the same first matching atom,
+    # as the per-residue mask did; an atom -> residue map would instead hand the
+    # atoms to one row and leave the others without a backbone.
+    for column, name in enumerate(("N", "C", "O")):
+        sel = atom_names == name
+        if not np.any(sel):
+            continue
+        keys = atom_key[sel]
+        indices = atom_index[sel]
+        # Sorted by key, then by atom index, so the leftmost hit is the first
+        # such atom in file order -- which is the one the loop picked.
+        order = np.lexsort((indices, keys))
+        keys = keys[order]
+        indices = indices[order]
+        pos = np.searchsorted(keys, res_key, side="left")
+        in_range = pos < keys.shape[0]
+        found = np.zeros(n, dtype=bool)
+        found[in_range] = keys[pos[in_range]] == res_key[in_range]
+        out[found, column] = indices[pos[found]]
+    return out
+
+
 def _build_trace_ups(
     atoms: np.ndarray,
     res_ids: Optional[np.ndarray],
     ca_coords: Optional[np.ndarray],
     chain_ids: Optional[np.ndarray] = None,
+    index_map: Optional[np.ndarray] = None,
 ) -> Optional[np.ndarray]:
+    """Per-residue ribbon orientation from the peptide plane.
+
+    ``vo = normalize((N - C) x (N - O))``, as PyMOL's
+    ``RepCartoonGeneratePASS1`` does. Far more stable than the raw C->O
+    carbonyl direction, and it is what lets the downstream round-helix and
+    flat-sheet refinement produce untwisted ribbons. Falls back to C->O, then
+    ``+Z``, where backbone atoms are missing.
+
+    Parameters
+    ----------
+    index_map : numpy.ndarray, optional
+        Result of :func:`backbone_index_map`. Pass it across the frames of a
+        trajectory -- it depends only on topology, and recomputing it is what
+        made this the most expensive step of a frame change.
+    """
     if res_ids is None or ca_coords is None:
         return None
     if not isinstance(atoms, np.ndarray):
@@ -1812,61 +2099,56 @@ def _build_trace_ups(
     if not {"res_id", "atom_name", "xyz"}.issubset(fields):
         return None
     try:
-        atom_res_id = np.asarray(atoms["res_id"])
-        atom_names = np.char.strip(atoms["atom_name"].astype(str))
         atom_xyz = np.asarray(atoms["xyz"], dtype=float)
     except Exception:
         return None
-    if "chain" in fields:
-        try:
-            atom_chain = np.char.strip(atoms["chain"].astype(str))
-        except Exception:
-            atom_chain = np.array([str(c).strip() for c in atoms["chain"]])
-    else:
-        atom_chain = None
+
     n = len(res_ids)
+    if index_map is None or getattr(index_map, "shape", None) != (n, 3):
+        index_map = backbone_index_map(atoms, res_ids, chain_ids)
+    if index_map is None:
+        return None
+
+    idx_n = index_map[:, 0]
+    idx_c = index_map[:, 1]
+    idx_o = index_map[:, 2]
     ups = np.zeros((n, 3), dtype=float)
-    # Per-residue ribbon orientation = the peptide-plane normal, as PyMOL does:
-    # vo = normalize((N - C) x (N - O)) (RepCartoonGeneratePASS1). This is far more
-    # stable than the raw C->O carbonyl direction and is what lets the downstream
-    # round-helix / flat-sheet refinement produce untwisted ribbons. Falls back to
-    # the C->O direction, then +Z, when backbone atoms are missing.
-    for i, rid in enumerate(res_ids):
-        mask = atom_res_id == rid
-        if atom_chain is not None and chain_ids is not None:
-            cid = str(chain_ids[i]).strip() if i < len(chain_ids) else ""
-            mask = mask & (atom_chain == cid)
-        if not np.any(mask):
-            ups[i] = np.array([0.0, 0.0, 1.0], dtype=float)
-            continue
-        names = atom_names[mask]
-        coords = atom_xyz[mask]
-        idx_c = np.where(names == "C")[0]
-        idx_o = np.where(names == "O")[0]
-        idx_n = np.where(names == "N")[0]
-        up_vec = None
-        if idx_c.size and idx_o.size and idx_n.size:
-            c = coords[idx_c[0]]
-            o = coords[idx_o[0]]
-            nn = coords[idx_n[0]]
-            up_vec = np.cross(nn - c, nn - o)
-            if float(np.linalg.norm(up_vec)) <= 1e-8:
-                up_vec = None
-        if up_vec is None and idx_c.size and idx_o.size:
-            up_vec = coords[idx_c[0]] - coords[idx_o[0]]
-        if up_vec is None:
-            up_vec = np.array([0.0, 0.0, 1.0], dtype=float)
-        norm = float(np.linalg.norm(up_vec))
-        if norm > 0.0:
-            up_vec = up_vec / norm
-        ups[i] = up_vec
+    ups[:, 2] = 1.0  # the fallback, overwritten wherever the backbone allows
+
+    # Peptide-plane normal, for every residue that has all three atoms, in one
+    # batched cross product.
+    full = (idx_n >= 0) & (idx_c >= 0) & (idx_o >= 0)
+    if np.any(full):
+        rows = np.nonzero(full)[0]
+        nn = atom_xyz[idx_n[rows]]
+        cc = atom_xyz[idx_c[rows]]
+        oo = atom_xyz[idx_o[rows]]
+        plane = _batch_cross(nn - cc, nn - oo)
+        good = np.sqrt(np.einsum("ij,ij->i", plane, plane)) > 1e-8
+        ups[rows[good]] = plane[good]
+        full[rows[~good]] = False  # degenerate plane -> fall through to C->O
+
+    # C->O for the rest, where both atoms are present.
+    carbonyl = (~full) & (idx_c >= 0) & (idx_o >= 0)
+    if np.any(carbonyl):
+        rows = np.nonzero(carbonyl)[0]
+        ups[rows] = atom_xyz[idx_c[rows]] - atom_xyz[idx_o[rows]]
+
+    lengths = np.sqrt(np.einsum("ij,ij->i", ups, ups))
+    zero = lengths <= 0.0
+    if np.any(zero):
+        ups[zero] = (0.0, 0.0, 1.0)
+        lengths[zero] = 1.0
+    ups /= lengths[:, None]
 
     # Global sign continuity only; the per-SS refinement (round helices, flat
     # sheets, anti-twist propagation) happens in _refine_orientations once the
     # secondary structure is known.
-    for i in range(1, n):
-        if float(np.dot(ups[i - 1], ups[i])) < 0.0:
-            ups[i] = -ups[i]
+    #
+    # Sequential in appearance, but not in fact: flipping residue i whenever it
+    # opposes the *already flipped* i-1 makes the sign a running product of the
+    # raw pairwise signs, so a cumprod does the whole scan at once.
+    _flip_for_sign_continuity(ups)
     return ups
 
 
@@ -2477,6 +2759,7 @@ _build_profile = lambda *a, **kw: {}
 
 __all__ = [
     "_build_trace_ups",
+    "backbone_index_map",
     "_generate_cartoon_tube_arrays",
     "_generate_nucleic_cartoon_arrays",
     "_sample_path",

@@ -50,6 +50,69 @@ objects of their own. Each molecule gets a row with PyMOL's five menus —
 row applies a choice to every object at once.
 ```
 
+### Playing a trajectory
+
+```text
+mplay                # play, as PyMOL does
+mplay 5              # ...advancing five frames per step
+mplay 5, 60          # ...and aiming for 60 steps a second
+minterpolate 4       # draw four positions between each pair of frames
+mpause               # stop where it is
+mstop                # stop and rewind
+```
+
+`mplay`'s two arguments are additions; with none it behaves exactly as PyMOL's
+does. A **step** above one is how a long trajectory is watched end to end
+without waiting for every frame.
+
+**`minterpolate`** fills the gaps in. Each atom is straight-lined between the
+two stored frames the playhead lies between, so a coarse step still moves
+smoothly instead of jumping, and a trajectory whose frames are far apart looks
+like motion rather than a slideshow. It is worth having even at step 1 for that
+reason. `minterpolate 1` turns it off; with no argument it reports the setting.
+
+The interpolation is linear, which real motion between two frames is not — but
+over a single frame's worth of it the error is far smaller than the jump the eye
+sees without it, and nothing is stored or recomputed to get it.
+
+**Playback never blocks the window.** The next frame is asked for only once the
+last one is on screen, so the application keeps answering the mouse, the menus
+and a resize while a trajectory runs, and the rate simply drops to whatever the
+machine sustains rather than the window going dead.
+
+### How a trajectory redraws
+
+Stepping through frames rebuilds the ribbon each time, and a cartoon is the most
+expensive thing the viewer draws. Two things keep that interactive.
+
+**A scrub draws a draft.** While frames arrive back to back, the cartoon is
+tessellated more coarsely — sampled less finely along the chain and around its
+cross-section — and the ambient occlusion and cast shadows are not baked. As
+soon as the frame holds still for about a fifth of a second, it is redrawn in
+full. The draft is the *same ribbon* with fewer triangles, so it does not shift
+position and then settle somewhere else; what changes is the triangle count and
+the shading.
+
+This is decided by **how fast frames are arriving**, not by a playback mode. A
+single frame change — one click of the frame spinner, a headless render, a
+script that sets one frame and grabs an image — is never drafted. There is no
+setting that can be left on and quietly give you a coarse picture.
+
+**Topology is not recomputed.** Which atom is a given residue's backbone
+nitrogen does not change when the molecule moves, so it is worked out once and
+reused across frames; likewise the triangle connectivity of each ribbon segment,
+which depends only on how finely that segment is tessellated. Both are discarded
+the moment they could go stale — `sort` and `remove` renumber the atoms, so the
+backbone lookup is dropped and rebuilt.
+
+Together with drawing the mesh indexed rather than expanding it into a flat
+triangle list, a cartoon frame change on a 5235-atom, 570-residue trajectory
+went from about 240 ms to about 16 ms — 4 frames a second to 60.
+
+If you want the full-quality ribbon while scrubbing, the draft settings are
+tessellation values in the `cartoon` display config; raising them trades frame
+rate back for triangles.
+
 ### Trajectories and holding part of a structure still
 
 A window average over the coordinate states suppresses high-frequency vibration,
@@ -152,6 +215,18 @@ lighting simple              # key + fill, modest ambient
 lighting default             # back to the plain key light
 lighting                     # report the current settings
 ```
+
+Any single parameter can be set on its own, or after a preset to adjust it:
+
+```text
+lighting soft, ambient_light_intensity=1.2
+lighting depth_jump=0.05     # no preset: just this one parameter
+```
+
+The names are ChimeraX's — `key_light_intensity`, `fill_light_intensity`,
+`ambient_light_intensity`, `specular_strength`, `shininess`, `rim_strength`,
+`rim_power`, `silhouette`, `silhouette_thickness` and `depth_jump`. A name that
+is not one of these is reported as an error rather than silently ignored.
 
 Silhouettes are the other half, and PyMOL has no equivalent outside its ray
 tracer:

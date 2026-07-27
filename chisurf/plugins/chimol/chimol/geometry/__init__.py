@@ -13,6 +13,7 @@ from .ambient import (
 )
 from .cartoon import (
     _build_trace_ups,
+    backbone_index_map,
     _generate_cartoon_tube_arrays,
     _generate_nucleic_cartoon_arrays,
     _generate_trace_arrays,
@@ -39,6 +40,7 @@ __all__ = [
     "_build_sphere_mesh",
     "_build_stick_mesh",
     "_build_trace_ups",
+    "backbone_index_map",
     "_extract_ca_trace",
     "_build_bond_pairs",
     "build_bond_pairs_by_element",

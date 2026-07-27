@@ -68,6 +68,14 @@ class _MolViewObjectState:
     colors_per_residue_override: Optional[np.ndarray] = None
     colors_per_atom_override: Optional[np.ndarray] = None
     secondary_structure: Optional[np.ndarray] = None
+    #: ``(n_res, 3)`` atom indices of each residue's N, C and O -- see
+    #: :func:`~chimol.geometry.cartoon.backbone_index_map`. Pure topology, so it
+    #: survives a trajectory frame change, where only ``atoms["xyz"]`` is
+    #: replaced. Consulted *only* on that path and cleared wherever the topology
+    #: is genuinely rebuilt, so it cannot drift from the atom array.
+    backbone_map: Optional[np.ndarray] = None
+    #: Frame position actually shown, which may sit between two stored frames.
+    frame_position: float = 0.0
     representation_mode: str = "cartoon"
     trace_ups: Optional[np.ndarray] = None
     show_cartoon: bool = True

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import time
 from collections import OrderedDict
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -29,6 +30,7 @@ from ..geometry import (
     _build_sphere_mesh,
     _build_stick_mesh,
     _build_trace_ups,
+    backbone_index_map,
     _compute_center_radius,
     _estimate_ambient_occlusion,
     directional_occlusion,
@@ -155,6 +157,33 @@ def _apply_rigid_transform(data, rotation, translation):
 
 
 
+def _frame_blend(position, n_frames: int) -> tuple[int, float, int]:
+    """Split a possibly fractional frame position into a pair and a weight.
+
+    Returns ``(index, blend, next_index)`` where ``blend`` is 0 on a stored
+    frame and the interpolation weight toward ``next_index`` otherwise. The last
+    frame never blends past the end, and a non-numeric position falls back to
+    the first frame rather than raising -- callers pass whatever a spinner or a
+    script gave them.
+    """
+    if n_frames <= 0:
+        return 0, 0.0, 0
+    try:
+        pos = float(position)
+    except (TypeError, ValueError):
+        return 0, 0.0, 0
+    if not np.isfinite(pos):
+        return 0, 0.0, 0
+    pos = min(max(pos, 0.0), float(n_frames - 1))
+    index = int(np.floor(pos))
+    blend = float(pos - index)
+    if index >= n_frames - 1:
+        return n_frames - 1, 0.0, n_frames - 1
+    if blend <= 1e-9:
+        return index, 0.0, index
+    return index, blend, index + 1
+
+
 class MolView(QtWidgets.QWidget):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -200,6 +229,7 @@ class MolView(QtWidgets.QWidget):
     _secondary_structure = _StateField("secondary_structure")
     _representation_mode = _StateField("representation_mode")
     _trace_ups = _StateField("trace_ups")
+    _backbone_map = _StateField("backbone_map")
     _show_cartoon = _StateField("show_cartoon")
     _show_trace = _StateField("show_trace")
     _show_atoms = _StateField("show_atoms")
@@ -1096,28 +1126,68 @@ class MolView(QtWidgets.QWidget):
     def get_current_frame(self) -> int:
         return self._current_frame
 
-    def set_current_frame(self, frame_idx: int) -> None:
-        # If frames have been attached without going through the public
-        # timeline (e.g. via ``set_frames`` + ``set_active_frame``), derive
-        # the timeline length from the active state so the spinbox/UI match.
+    #: Trajectory frames advanced per displayed playback step (``mplay 5``).
+    movie_step: float = 1.0
+
+    #: Positions drawn between successive frames (``minterpolate``); 1 is off.
+    movie_interpolate: int = 1
+
+    def get_frame_position(self) -> float:
+        """Where playback actually is, which may be between two frames."""
+        return float(getattr(self, "_frame_position", self._current_frame))
+
+    def set_frame_position(self, position: float) -> None:
+        """Show a possibly fractional point on the timeline.
+
+        A whole number is a stored frame; anything between two is interpolated.
+        This is what lets playback advance by less than a frame at a time, so a
+        trajectory whose frames are far apart still moves smoothly.
+        """
+        self._sync_timeline_length()
+        limit = max(self._total_frames - 1, 0)
+        try:
+            pos = float(position)
+        except (TypeError, ValueError):
+            return
+        if not np.isfinite(pos):
+            return
+        pos = min(max(pos, 0.0), float(limit))
+        if abs(pos - self.get_frame_position()) < 1e-9:
+            return
+        self._frame_position = pos
+        self._current_frame = int(np.floor(pos))
+        self._apply_frame_states()
+        self._note_frame_change()
+        self._update_view(fit_camera=False)
+
+    def _sync_timeline_length(self) -> None:
+        """Grow the timeline to fit frames attached outside it."""
         try:
             active_state = self._get_active_state()
             state_frames = getattr(active_state, "frames", None)
         except Exception:
-            state_frames = None
-        if state_frames is not None and getattr(state_frames, "ndim", 0) == 3:
-            try:
-                n_states = int(state_frames.shape[0])
-            except Exception:
-                n_states = 0
-            if n_states > 0 and n_states > self._total_frames:
-                self._total_frames = n_states
-        new_idx = max(0, min(int(frame_idx), self._total_frames - 1))
-        if new_idx == self._current_frame:
             return
-        self._current_frame = new_idx
-        self._apply_frame_states()
-        self._update_view(fit_camera=False)
+        if state_frames is None or getattr(state_frames, "ndim", 0) != 3:
+            return
+        try:
+            n_states = int(state_frames.shape[0])
+        except Exception:
+            return
+        if n_states > self._total_frames:
+            self._total_frames = n_states
+
+    def set_current_frame(self, frame_idx: int) -> None:
+        """Jump the timeline to a whole frame.
+
+        Delegates, rather than keeping its own idea of where playback is: a
+        second copy of the position is exactly the thing that drifts, and the
+        symptom would be a spinbox and a picture disagreeing about which frame
+        is on screen.
+        """
+        try:
+            self.set_frame_position(int(frame_idx))
+        except (TypeError, ValueError):
+            return
 
     def _select_state_frame(
         self,
@@ -1142,10 +1212,19 @@ class MolView(QtWidgets.QWidget):
             return 0
 
         n_frames = int(arr.shape[0])
-        idx = max(0, min(int(index), n_frames - 1))
-        frame = np.asarray(arr[idx], dtype=float)
+        idx, blend, next_idx = _frame_blend(index, n_frames)
+        if blend > 0.0:
+            # Between two stored frames: straight-line interpolation of every
+            # atom. Motion between saved frames is not linear in truth, but over
+            # one frame's worth of it the error is far smaller than the jump the
+            # eye sees without it -- and it lets playback be smooth without
+            # storing, or recomputing, more frames than there are.
+            frame = (1.0 - blend) * arr[idx] + blend * arr[next_idx]
+        else:
+            frame = np.asarray(arr[idx], dtype=float)
 
         state.active_frame = idx
+        state.frame_position = float(idx) + blend
         # Coordinate-only trajectories should not leave stale all-atom data in
         # atom rendering paths. Reuse all-atom coords only when dimensions match.
         all_atom_coords = getattr(state, "all_atom_coords", None)
@@ -1229,7 +1308,17 @@ class MolView(QtWidgets.QWidget):
                 if frames_raw is not None:
                     raw_arr = np.asarray(frames_raw, dtype=float)
                     if raw_arr.ndim == 3 and raw_arr.shape[0] > idx and raw_arr.shape[1:] == frame.shape:
-                        raw_frame = raw_arr[idx]
+                        # Interpolated exactly like the render coordinates were.
+                        # Taking the floor frame here instead would orient the
+                        # ribbon from one frame while drawing it at another.
+                        raw_blend = float(getattr(state, "frame_position", idx)) - idx
+                        if raw_blend > 0.0 and raw_arr.shape[0] > idx + 1:
+                            raw_frame = (
+                                (1.0 - raw_blend) * raw_arr[idx]
+                                + raw_blend * raw_arr[idx + 1]
+                            )
+                        else:
+                            raw_frame = raw_arr[idx]
                     else:
                         raw_frame = None
                 else:
@@ -1237,11 +1326,23 @@ class MolView(QtWidgets.QWidget):
                 if raw_frame is not None and raw_frame.shape == state.atoms["xyz"].shape:
                     state.atoms = state.atoms.copy()
                     state.atoms["xyz"] = raw_frame
+                    # Only ``xyz`` changed, so which atom is which residue's
+                    # backbone N/C/O is still true. Rebuilding that map was the
+                    # single most expensive part of a frame change -- it costs
+                    # ``n_res * n_atoms`` comparisons and a full string
+                    # conversion of every atom name.
+                    if state.backbone_map is None:
+                        state.backbone_map = backbone_index_map(
+                            state.atoms,
+                            state.residue_ids,
+                            state.residue_chain_ids,
+                        )
                     state.trace_ups = _build_trace_ups(
                         state.atoms,
                         state.residue_ids,
                         selected_coords,
                         state.residue_chain_ids,
+                        index_map=state.backbone_map,
                     )
             except Exception:
                 pass
@@ -1271,15 +1372,18 @@ class MolView(QtWidgets.QWidget):
         return idx
 
     def _apply_frame_states(self) -> None:
-        """Update scene objects based on the current frame index."""
+        """Update scene objects based on the current frame position."""
         # For objects with 'frames' coordinate sets, update their active_frame
+        position = float(getattr(self, "_frame_position", self._current_frame))
         for entry in self._objects.values():
             state = entry.state
             if state.frames is not None and state.frames.ndim == 3:
                 # If the object has frames, map the global timeline to its states.
                 # Simplest mapping: state_idx = global_idx % n_states
                 n_states = state.frames.shape[0]
-                self._select_state_frame(state, self._current_frame % n_states)
+                # Modulo on the *fractional* position, so interpolation survives
+                # the wrap instead of snapping to a whole frame at the seam.
+                self._select_state_frame(state, position % n_states)
                 # Also update center/radius if needed, but maybe defer for performance?
                 # PyMOL usually doesn't re-center automatically during movie playback.
 
@@ -2045,6 +2149,7 @@ class MolView(QtWidgets.QWidget):
                     )[0]
                 except Exception:
                     self._ca_indices = None
+            self._backbone_map = None  # topology replaced; the map must be rebuilt
             self._trace_ups = _build_trace_ups(atoms, self._residue_ids, self._coords, chain_ids)
 
             try:
@@ -2200,6 +2305,7 @@ class MolView(QtWidgets.QWidget):
         # than the picture.
         self._secondary_structure = None
         self._trace_ups = None
+        self._backbone_map = None  # topology replaced; the map must be rebuilt
         if self._atoms is not None and self._coords is not None:
             self._trace_ups = _build_trace_ups(
                 self._atoms, self._residue_ids, self._coords, self._residue_chain_ids
@@ -2333,15 +2439,11 @@ class MolView(QtWidgets.QWidget):
             if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0:
                 return
             n_frames = arr.shape[0]
-            try:
-                idx = int(index)
-            except Exception:
-                return
-            if idx < 0:
-                idx = 0
-            if idx >= n_frames:
-                idx = n_frames - 1
-            self._select_state_frame(state, idx)
+            # A fractional position is legitimate: it means "between these two
+            # frames", and `_select_state_frame` interpolates there.
+            idx, _blend, _next = _frame_blend(index, n_frames)
+            self._note_frame_change()
+            self._select_state_frame(state, index)
             # Keep ``_total_frames`` consistent with the trajectory length
             # so the public ``get_total_frames`` / ``set_current_frame`` API
             # behaves correctly for externally attached frames.
@@ -3568,6 +3670,100 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 pass
 
+    #: How a cartoon is coarsened while a trajectory is being scrubbed.
+    #:
+    #: All but the last are **tessellation**: how finely the ribbon is sampled
+    #: along the chain and around its cross-section. They change how many
+    #: triangles the same ribbon is drawn with, not where it goes, so the draft
+    #: does not slide around and then settle somewhere else. Everything
+    #: downstream scales with them, down to the vertices uploaded to the GPU.
+    #:
+    #: ``round_helices`` is the one exception and is here deliberately: it lifts
+    #: the spline back onto the helix cylinder, and switching it off leaves a
+    #: helix about 13% narrower through the middle of each turn (2.17 A against
+    #: 1.88 A on 148L). That is a real difference, and it is included because it
+    #: buys the per-residue helix-axis fit -- which tessellation cannot reduce,
+    #: since it runs per residue rather than per sampled point. Rendered side by
+    #: side against the settled frame the fold, the helices and the strands are
+    #: indistinguishable, which is why it is an acceptable trade *while moving*.
+    #: Anything that flipped the ribbon's face -- ``refine_normals``,
+    #: ``flat_sheets`` -- is deliberately **not** here: a ribbon that twists
+    #: differently mid-scrub and then snaps is worse than a coarser one.
+    _DRAFT_CARTOON = {
+        "cartoon_sampling": 3,
+        "subdivisions": 3,
+        "segments_circle": 8,
+        "loop_quality": 7,
+        "oval_quality": 8,
+        "tube_quality": 8,
+        "profile_segments": 8,
+        "round_helices": False,
+    }
+
+    def _cartoon_config(self, config: dict) -> dict:
+        """The cartoon settings to draw with, coarsened while scrubbing."""
+        if not getattr(self, "_draft_quality", False):
+            return config
+        coarse = dict(config)
+        coarse.update(self._DRAFT_CARTOON)
+        return coarse
+
+    #: A frame change arriving sooner than this after the previous one counts as
+    #: a scrub rather than a look. Comfortably longer than a bake, so a
+    #: trajectory played at any watchable rate stays in the cheap path.
+    _SCRUB_INTERVAL_S = 0.35
+
+    #: How long the frame has to hold still before the full-quality bake runs.
+    _SETTLE_MS = 220
+
+    def _note_frame_change(self) -> None:
+        """Record a frame change and decide whether to bake occlusion for it.
+
+        Baking ambient occlusion and cast shadows into the vertex colours costs
+        more than everything else in a cartoon rebuild put together, and during
+        playback it is wasted: the result is replaced before anyone can look at
+        it. Skipping it while frames are arriving quickly is the same trade
+        every viewer makes when you drag the mouse.
+
+        The decision is made on **rate**, not on a mode flag, so that a single
+        frame change -- a headless render, one click of a frame spinner -- is
+        never quietly downgraded. Only a frame that follows hard on the heels of
+        another skips the bake, and a settle timer restores full quality once
+        the scrubbing stops, so what you end up looking at is always the good
+        version.
+        """
+        now = time.perf_counter()
+        previous = getattr(self, "_last_frame_change", None)
+        self._last_frame_change = now
+        self._draft_quality = (
+            previous is not None and (now - previous) < self._SCRUB_INTERVAL_S
+        )
+        if not self._draft_quality:
+            return
+        try:
+            timer = getattr(self, "_settle_timer", None)
+            if timer is None:
+                timer = QtCore.QTimer(self)
+                timer.setSingleShot(True)
+                timer.timeout.connect(self._bake_after_settling)
+                self._settle_timer = timer
+            timer.start(self._SETTLE_MS)
+        except Exception:
+            # No event loop to settle into (headless stepping). Leave the flag
+            # to the rate test alone -- the next unhurried frame bakes anyway.
+            logger.debug("chimol: no settle timer available", exc_info=True)
+
+    def _bake_after_settling(self) -> None:
+        """Redraw at full quality once the frame has stopped changing."""
+        if not getattr(self, "_draft_quality", False):
+            return
+        self._draft_quality = False
+        self._last_frame_change = None
+        try:
+            self._update_view(fit_camera=False)
+        except Exception:
+            logger.warning("chimol: full-quality redraw failed", exc_info=True)
+
     def _occlusion_occluders(
         self, override: str | None = None
     ) -> tuple[np.ndarray, np.ndarray] | None:
@@ -3661,6 +3857,10 @@ class MolView(QtWidgets.QWidget):
             computed.
         """
         if cols is None:
+            return cols, None
+        if getattr(self, "_draft_quality", False):
+            # Mid-scrub: this frame is about to be replaced. `_note_frame_change`
+            # schedules the full-quality redraw for when it stops.
             return cols, None
         cfg = _DISPLAY_CONFIG.get("occlusion") or {}
         if not bool(cfg.get("enabled", True)):
@@ -6453,7 +6653,7 @@ class MolView(QtWidgets.QWidget):
         coords = coords.copy()
         n_points = coords.shape[0]
 
-        cartoon_cfg = _DISPLAY_CONFIG.get("cartoon", {})
+        cartoon_cfg = self._cartoon_config(_DISPLAY_CONFIG.get("cartoon", {}))
         balls_cfg = _DISPLAY_CONFIG.get("balls", {})
         sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
         surface_cfg = _DISPLAY_CONFIG.get("surface", {})

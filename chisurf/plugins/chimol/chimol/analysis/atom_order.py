@@ -194,7 +194,24 @@ NON_ATOM_INDEXED_FIELDS = (
     "raw_center",                 # a single 3-vector
     "residue_oneletter",          # per residue
     "trace_ups",                  # per trace point, i.e. per residue
+    # Per residue in *shape*, but its values are atom indices -- so neither
+    # permuting nor subsetting it is right, and leaving it alone is wrong too:
+    # the indices would point at whatever atom now sits at that slot. It is a
+    # cache of pure topology, so both operations discard it below and the next
+    # rebuild recomputes it.
+    "backbone_map",
 )
+
+
+def _drop_backbone_map(state) -> None:
+    """Discard the cached N/C/O lookup: its values are atom indices.
+
+    Called from both the permute and the subset path. Recomputing it costs a
+    fraction of a millisecond, and a stale one silently orients every ribbon
+    from the wrong atoms.
+    """
+    if getattr(state, "backbone_map", None) is not None:
+        state.backbone_map = None
 
 
 def permute_atom_state(state, order: np.ndarray) -> dict[str, int]:
@@ -216,6 +233,7 @@ def permute_atom_state(state, order: np.ndarray) -> dict[str, int]:
     order = np.asarray(order, dtype=int)
     n_atoms = order.shape[0]
     moved = 0
+    _drop_backbone_map(state)
     for field_name in ATOM_INDEXED_FIELDS:
         value = getattr(state, field_name, None)
         if value is None:
@@ -295,6 +313,7 @@ def subset_atom_state(state, keep: np.ndarray) -> dict[str, int]:
     dict
         ``{"fields": n, "bonds": n}`` -- arrays trimmed, bonds kept.
     """
+    _drop_backbone_map(state)
     keep = np.asarray(keep, dtype=bool)
     n_old = keep.shape[0]
     moved = 0

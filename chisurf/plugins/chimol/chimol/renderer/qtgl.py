@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from typing import Any, List, Optional
@@ -28,6 +29,8 @@ from .view_state import (
 # additional PyOpenGL dependency while still driving Qt's GL functions.
 GL_TRIANGLES = 0x0004
 GL_LINES = 0x0001
+logger = logging.getLogger(__name__)
+
 GL_POINTS = 0x0000
 GL_LINE_STRIP = 0x0003
 GL_POINT_SPRITE = 0x8861
@@ -45,6 +48,7 @@ GL_ONE_MINUS_SRC_ALPHA = 0x0303
 
 GL_PROGRAM_POINT_SIZE = 0x8642
 GL_FLOAT = 0x1406
+GL_UNSIGNED_INT = 0x1405
 
 
 def _invoke_menu(menu: QtWidgets.QMenu, pos: QtCore.QPoint):
@@ -69,6 +73,9 @@ class _DrawData:
     occlusion: Optional[np.ndarray] = None
     material: Any = None
     two_sided: bool = False
+    #: Triangle indices, when the mesh can be drawn indexed. ``None`` means the
+    #: vertices were already expanded into a flat triangle list.
+    indices: Optional[np.ndarray] = None
 
 @dataclass
 class _LabelData:
@@ -104,6 +111,8 @@ class _GpuDrawCall:
     occlusion_vbo: Optional[QtGui.QOpenGLBuffer] = None
     material: Any = None
     two_sided: bool = False
+    index_vbo: Optional[QtGui.QOpenGLBuffer] = None
+    index_count: int = 0
 
 class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     """Qt-native OpenGL renderer with lightweight VBO caching.
@@ -912,7 +921,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                         self._program.disableAttributeArray(self._occlusion_attr)
                         self._program.setAttributeValue(self._occlusion_attr, 0.0)
 
-                gl.glDrawArrays(call.primitive, 0, call.vertex_count)
+                if call.index_vbo is not None:
+                    call.index_vbo.bind()
+                    gl.glDrawElements(
+                        call.primitive, call.index_count, GL_UNSIGNED_INT, None
+                    )
+                    call.index_vbo.release()
+                else:
+                    gl.glDrawArrays(call.primitive, 0, call.vertex_count)
 
                 if call.primitive == GL_POINTS:
                     gl.glPointSize(1.0)
@@ -1285,33 +1301,76 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         occlusion = None
         if geom.occlusion is not None:
             occlusion = np.asarray(geom.occlusion, dtype=np.float32).reshape(-1)
+        indices_out = None
         if geom.indices is not None:
             try:
                 idx = np.asarray(geom.indices, dtype=np.int32).reshape(-1)
-                if occlusion is not None:
-                    occlusion = (
-                        occlusion[idx]
-                        if occlusion.shape[0] == idx.max() + 1
+                # One pass, not four. `idx.max()` was recomputed for the
+                # occlusion, the colours and the normals in turn, and on a
+                # cartoon this array holds a couple of million entries -- so
+                # three quarters of the scans were pure repetition, on the path
+                # every single frame of a trajectory goes through.
+                vertex_count = int(idx.max()) + 1 if idx.size else 0
+
+                # Draw the mesh indexed whenever every per-vertex attribute is
+                # already indexed the same way. Expanding it into a flat
+                # triangle list instead -- which is what this did unconditionally
+                # -- costs a gather over every attribute *and* multiplies what
+                # goes to the GPU: a cartoon's 68k vertices become 402k, and
+                # 2.7 MB a frame becomes 16 MB. The expansion path below stays
+                # for meshes whose attributes do not line up, where it is the
+                # only way to draw them at all.
+                aligned = positions.shape[0] == vertex_count
+                if aligned and geom.colors is not None:
+                    aligned = np.asarray(geom.colors).shape[0] == vertex_count
+                if aligned and geom.normals is not None:
+                    aligned = np.asarray(geom.normals).shape[0] == vertex_count
+                if aligned and occlusion is not None:
+                    aligned = occlusion.shape[0] == vertex_count
+                if aligned:
+                    indices_out = idx.astype(np.uint32, copy=False)
+                    colors = (
+                        np.asarray(geom.colors, dtype=np.float32)
+                        if geom.colors is not None
                         else None
                     )
-                positions = positions[idx]
-                if geom.colors is not None:
-                    colors = np.asarray(geom.colors, dtype=np.float32)
-                    if colors.shape[0] == idx.max() + 1:
-                        colors = colors[idx]
-                    else:
-                        colors = np.resize(colors, (positions.shape[0], colors.shape[1]))
+                    normals = (
+                        np.asarray(geom.normals, dtype=np.float32)
+                        if geom.normals is not None
+                        else None
+                    )
                 else:
-                    colors = None
-                if geom.normals is not None:
-                    normals = np.asarray(geom.normals, dtype=np.float32)
-                    if normals.shape[0] == idx.max() + 1:
-                        normals = normals[idx]
+                    if occlusion is not None:
+                        occlusion = (
+                            occlusion[idx]
+                            if occlusion.shape[0] == vertex_count
+                            else None
+                        )
+                    positions = positions[idx]
+                    if geom.colors is not None:
+                        colors = np.asarray(geom.colors, dtype=np.float32)
+                        if colors.shape[0] == vertex_count:
+                            colors = colors[idx]
+                        else:
+                            colors = np.resize(
+                                colors, (positions.shape[0], colors.shape[1])
+                            )
                     else:
-                        normals = np.resize(normals, (positions.shape[0], 3))
-                else:
-                    normals = None
+                        colors = None
+                    if geom.normals is not None:
+                        normals = np.asarray(geom.normals, dtype=np.float32)
+                        if normals.shape[0] == vertex_count:
+                            normals = normals[idx]
+                        else:
+                            normals = np.resize(normals, (positions.shape[0], 3))
+                    else:
+                        normals = None
             except Exception:
+                logger.warning(
+                    "chimol: could not prepare indexed geometry; drawing it "
+                    "unindexed", exc_info=True
+                )
+                indices_out = None
                 colors = None
                 normals = None
         else:
@@ -1358,6 +1417,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             positions=positions,
             colors=colors,
             normals=normals,
+            indices=indices_out,
             render_mode=obj.render_mode,
             width=width,
             depth_test=depth_test,
@@ -1472,6 +1532,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             )
             self._gpu_calls.append(gpu_call)
 
+            if draw.indices is not None and draw.indices.size:
+                vbo_idx = QtGui.QOpenGLBuffer(QtGui.QOpenGLBuffer.IndexBuffer)
+                vbo_idx.create()
+                vbo_idx.bind()
+                vbo_idx.allocate(draw.indices.tobytes(), draw.indices.nbytes)
+                vbo_idx.release()
+                gpu_call.index_vbo = vbo_idx
+                gpu_call.index_count = int(draw.indices.size)
+
             if draw.radii is not None and draw.radii.size == draw.positions.shape[0]:
                 vbo_rad = QtGui.QOpenGLBuffer(QtGui.QOpenGLBuffer.VertexBuffer)
                 vbo_rad.create()
@@ -1505,6 +1574,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 call.radii_vbo.destroy()
             if call.occlusion_vbo is not None and call.occlusion_vbo.isCreated():
                 call.occlusion_vbo.destroy()
+            if call.index_vbo is not None and call.index_vbo.isCreated():
+                call.index_vbo.destroy()
         self._gpu_calls = []
 
     def _update_center_opt(self) -> None:

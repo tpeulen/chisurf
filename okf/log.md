@@ -2,37 +2,88 @@
 
 ## 2026-07-27
 
-* **Recorded what was actually taken from the dataflow toolkit, as opposed to
-  what was surveyed.** The two existing concepts are both *surveys* — the
-  2026-07-06 [lessons](/references/orange3-lessons.md) over its data model and
-  the [mining note](/references/orange3-mining.md) over everything else — and
-  neither answers the question that will be asked later: *why does ChiSurf do it
-  this way?* [What ChiSurf took from Orange3](/references/orange3-adopted.md) is
-  that record. Three ideas: data that cannot be written by accident, one contract
-  for work that runs off the GUI thread, and conditions declared rather than
-  fired. For each: what was borrowed, where it lives now, why it was worth
-  taking, and — the part worth writing down — **where ChiSurf deliberately
-  departs**, because all three ended up different from their origin.
-  The departures are the useful content. The lock **copies** a non-owning array
-  on the way in where the reference merely refuses to unlock one, because the
-  CSV reader hands out rows of a throwaway buffer and the refusal made the
-  documented escape hatch raise on every file-loaded curve. The task layer is
-  built *on* the existing progress seam rather than beside it (which is what made
-  the migration cheap), runs **inline** with no `QApplication` so a CLI or test
-  exercises the real call site, renders a standalone tool's run in its own status
-  bar rather than a modal, and adds `set_range` and a `progress_window()` adapter
-  for the multi-phase runs and the `set_value(i)` cores ChiSurf already has.
-  Declared messages translate at *render* time through the ChiSurf i18n seam and
-  render as one elided status-bar line, since ChiSurf tools are windows rather
-  than canvas nodes.
-  Attribution is explicit: GPL-3.0, patterns and API shape only, every line
-  written independently — the same standing the [PAM port](/references/fcs-pam-port.md)
-  and [QuickFit3 mining](/references/quickfit3-mining.md) established. Both survey
-  concepts now point at it, and it points back at the mining note for what
-  remains unharvested (the widget-contract test mixins, VizRank, the report
-  system, data-matched settings contexts and the safe-expression layer are the
-  highest-rated of those).
+* **PRD-57: voxel maps written up as a first-class requirement.** ChiMOL has to
+  show volumetric data to the standard of the reference molecular-visualisation
+  tool — accessible volumes above all, plus probability/occupancy densities,
+  electron-density and cryo-EM maps, and 3D microscopy including **CLSM stacks
+  loaded in chisurf**. Reading the code first made the gap specific rather than
+  aspirational: `io/mrc.py` does read MRC/CCP4/MAP, but turns the file into a
+  **downsampled point cloud** capped at 250k points and throws the volume away,
+  and the marching-cubes code that exists serves atom-derived molecular surfaces
+  and is unreachable from a loaded map. So there is no map object, no adjustable
+  contour, no second level, and no volume rendering. Section records what must
+  exist (map object with a full 3x3 transform — a confocal z step is not its xy
+  step; in-memory construction, since AVs and CLSM stacks are already arrays in
+  this process; isosurface/mesh/direct volume rendering; colour by value; the
+  PyMOL command names) and the constraint that a map uploads once rather than
+  per frame. The Tier 4 bullet now points at it.
 
+* **chimol: playback froze the window; now it does not, and it can step and
+  interpolate.** Reported as "becomes unresponsive during traj run", and
+  measured: a heartbeat timer asking for a turn every 20 ms got one every
+  **266 ms** while a trajectory played. The cause was a *repeating* 33 ms
+  QTimer driving a redraw that takes longer than 33 ms — the event loop never
+  reaches idle, so the window stops answering the mouse, the menus and resize.
+  The next frame is now requested only once the last is drawn (single-shot,
+  rescheduled by the tick, with a re-entrancy guard), so the rate degrades to
+  what the machine sustains instead of the UI dying. Same measurement after:
+  **24.6 ms** median, and playback advanced 113 frames in four seconds against
+  15 before.
+
+  With that in place the frame position became a **float**, which is one
+  mechanism for both of the things asked for: `mplay 5` advances five frames a
+  step, and `minterpolate 4` straight-lines each atom between the two stored
+  frames the playhead lies between. `set_current_frame` now *delegates* to
+  `set_frame_position` rather than keeping its own index — two copies of the
+  playhead is precisely the drift this codebase keeps finding, and the symptom
+  would have been a spinbox and a picture naming different frames.
+
+  Trap worth recording: `set_frames` **scales and centres on ingest**, so a
+  fixture built from 0/10/20 is stored as -100/0/100, and the render coordinates
+  are re-centred *per frame* on top of that — which makes a uniform translation,
+  the obvious thing to build a test from, subtract straight back out so every
+  frame compares equal. The interpolation test asserts against `state.frames`
+  and `all_atom_coords` for that reason. Documented in
+  [guide 44](../docs/guides/44_molecular_viewer.md).
+
+* **chimol: a cartoon trajectory frame cost 240 ms; now ~16 ms.** Profiled
+  rather than guessed, and every cost was one of two kinds.
+
+  **Work that did not depend on the frame, redone every frame.** Which atom is
+  residue *i*'s backbone N/C/O is topology — the same in all 464 frames — but was
+  rederived per frame by comparing every atom's residue id against every
+  residue's (`n_res x n_atoms`) plus an `astype(str)` over all 5235 atom names.
+  Extracted to `backbone_index_map`, cached on the object state, and **discarded
+  on `sort`/`remove`**, whose renumbering would leave it pointing at the wrong
+  atoms — the guard test that classifies every array field caught this
+  immediately, which is what it is for. Extrusion connectivity likewise depends
+  only on an extrusion's shape, so it is memoised and returned read-only.
+
+  **NumPy called three floats at a time inside per-residue Python loops.**
+  `np.cross` on a single 3-vector costs 13.8 us against 1.2 us written out — it
+  spends the difference in `moveaxis`/axis normalisation. The spline, helix-axis
+  fit, orientation refinement and ribbon-face sweeps were rewritten as array
+  operations; the two genuinely sequential loops (parallel transport, the
+  flip-consistency sweep) kept their loop but lost the NumPy inside it. The
+  sign-continuity sweeps turned out not to be sequential at all: flipping
+  against the *already flipped* predecessor makes the sign a running product, so
+  `cumprod` does the whole scan — except at an exactly perpendicular pair, where
+  the identity fails and the scan is taken instead.
+
+  Two further changes: the mesh is drawn **indexed** rather than expanded into a
+  flat triangle list (68k vertices were becoming 402k, and 2.7 MB a frame 16 MB),
+  and a **scrub draws a draft** — coarser tessellation, no baked occlusion, full
+  quality restored when the frame settles. Draft is entered on *rate*, so a lone
+  frame change (headless render, one spinner click) is never silently downgraded.
+
+  Verified by replaying HEAD's `cartoon.py` against the new one on 148L, 1RTD and
+  the trajectory: the whole mesh agrees to 2e-13, and the vertex count is
+  unchanged at full quality. A/B against a HEAD worktree under identical load:
+  cartoon 238 -> 31.5 ms at full quality and ~16 ms drafting, trace 32 -> 1.7 ms.
+  One real bug found on the way: mapping *atoms to residues* broke 1RTD, whose
+  2028 residues share 554 numbers across chains — all but one duplicate lost its
+  backbone. Documented in [guide 44](../docs/guides/44_molecular_viewer.md);
+  guard tests in `test_trajectory_performance.py`.
 
 * **`match_2d` did the opposite of what it said, in six shipped image panels.**
   The AutoForm `image` section took a `match_2d` flag documented as "render a 3D
