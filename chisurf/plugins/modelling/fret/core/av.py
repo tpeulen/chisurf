@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from dataclasses import dataclass, field
@@ -9,6 +10,8 @@ from typing import Dict, Optional, Tuple
 import numpy as np
 
 from . import io
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Backend detection
@@ -616,9 +619,12 @@ def _find_attachment_point(
 ) -> Optional[np.ndarray]:
     """Find the coordinates of an attachment atom.
 
-    If pdb_path is provided, parses the PDB file directly to locate the exact
-    atom matching chain, residue number, and atom name. Otherwise, falls back
-    to using residue sequence number as a proxy index.
+    If pdb_path is provided, the atom is resolved by identity — chain, residue
+    number and atom name — and a miss stays a miss: an unresolvable site
+    returns ``None`` rather than a positional guess, because a dye attached to
+    an unrelated atom yields a plausible and entirely wrong accessible volume.
+    Without a PDB file the atoms array carries no identity at all, so the
+    residue sequence number is used as a proxy index into it.
 
     Parameters
     ----------
@@ -640,12 +646,19 @@ def _find_attachment_point(
     """
     if pdb_path and os.path.exists(pdb_path):
         try:
-            for line_chain, line_resseq, line_atom_name, x, y, z, _ in _cached_pdb_records(pdb_path):
-                if line_resseq == resseq and line_atom_name == atom_name:
-                    if not chain or line_chain == chain:
-                        return np.array([x, y, z], dtype=np.float64)
+            records = _cached_pdb_records(pdb_path)
         except Exception:
-            pass
+            logger.warning("Could not read atom records from %s", pdb_path, exc_info=True)
+            return None
+        for line_chain, line_resseq, line_atom_name, x, y, z, _ in records:
+            if line_resseq == resseq and line_atom_name == atom_name:
+                if not chain or line_chain == chain:
+                    return np.array([x, y, z], dtype=np.float64)
+        logger.warning(
+            "Attachment atom '%s:%s:%s' does not exist in %s",
+            chain, resseq, atom_name, pdb_path,
+        )
+        return None
 
     return atoms[resseq - 1, :3] if resseq > 0 and resseq <= atoms.shape[0] else None
 

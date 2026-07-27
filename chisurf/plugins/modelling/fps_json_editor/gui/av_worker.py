@@ -46,13 +46,11 @@ class AVWorker(QtCore.QThread):
     def run(self) -> None:
         """Run AV computation and emit result or error signal."""
         try:
-            import chisurf.core.fio as fio
-            
             if not self.pdb_path:
                 raise ValueError("PDB path is required")
-                
+
             atoms_xyzr = av.load_structure_with_vdw(self.pdb_path)
-            
+
             source_xyz = av._find_attachment_point(
                 atoms_xyzr,
                 self.chain,
@@ -60,17 +58,13 @@ class AVWorker(QtCore.QThread):
                 self.atom,
                 pdb_path=self.pdb_path,
             )
-            
+
             if source_xyz is None:
-                struct = fio.structure.coordinates.PdbCoordinates(self.pdb_path)
-                atom_idx = fio.structure.coordinates.get_atom_index(
-                    struct.atoms, self.chain, self.res_id, self.atom, None
+                raise ValueError(
+                    f"Attachment point '{self.chain}:{self.res_id}:{self.atom}' "
+                    f"not found in {self.pdb_path}"
                 )
-                if atom_idx >= 0:
-                    source_xyz = atoms_xyzr[atom_idx, :3]
-                else:
-                    raise ValueError(f"Attachment point '{self.chain}:{self.res_id}:{self.atom}' not found")
-                    
+
             clean_atoms_xyzr = av._strip_residue_atoms(
                 atoms_xyzr,
                 self.chain,

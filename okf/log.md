@@ -2,6 +2,25 @@
 
 ## 2026-07-27
 
+* **A labelling site that does not exist got a dye anyway (RF-379).**
+  `av._find_attachment_point` resolved chain / residue / atom against the PDB
+  records, but any miss fell through to `atoms[resseq - 1]` — *the resseq-th
+  atom of the file*. Against `148l.pdb` that turned `("E", 134, "CG")` (ALA 134
+  has no CG), `("A", 18, "CB")` (no chain A) and `("E", 300)` (162 residues) into
+  coordinates rather than into an error, and `_strip_residue_atoms` then missed
+  the same residue, so the AV was simulated from an atom buried in its own
+  un-stripped residue. On a solvent-exposed mis-index the user gets a full,
+  plausible, entirely wrong accessible volume, and the site is three editable
+  combo-box cells with no validation of a loaded `fps.json` against the
+  structure. A miss now logs the site and returns `None`; the positional proxy
+  survives only for the no-PDB call, where the atom array carries no identity to
+  match on. The AV worker's "not found" branch was dead *and* stale — it called
+  `fio.structure.coordinates.PdbCoordinates`, which does not exist, so making it
+  live would have raised `AttributeError`; it now raises the descriptive
+  `ValueError` naming the site and the file. Pinned by
+  `chisurf/plugins/modelling/fret/test/test_attachment_point.py` (7) and
+  `chisurf/plugins/modelling/fps_json_editor/test/test_av_worker.py` (1).
+
 * **`csc` and the menu could call the same plugin two different names
   (RF-467).** `manifest.json` is the plugin contract, and GUI discovery has
   always read the display name from it; the `csc` scanner did the opposite —
