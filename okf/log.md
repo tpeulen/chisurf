@@ -2,6 +2,21 @@
 
 ## 2026-07-27
 
+* **A plugin could disappear from the menu and from `csc` without a word
+  (BUG-13).** Plugin discovery and the `csc` command both read a plugin's
+  `__init__.py` with `ast` instead of importing it — that is what keeps startup
+  and `csc --help` fast — but both decoded it as UTF-8 only. A plugin carrying a
+  PEP 263 coding cookie, legal Python that the interpreter imports fine, raised
+  `UnicodeDecodeError`; the discovery reader's failure branch then returned three
+  values where all three of its call sites unpack five, and the `ValueError` was
+  swallowed by the bare `except Exception: continue` around the discovery loop.
+  Both readers now parse the raw bytes and let `ast.parse` apply the coding
+  cookie, so the decode step that could fail is gone and every failure branch
+  returns its full tuple. The dead `ast.Str` / `ast.NameConstant` fallbacks went
+  with it (the parser has emitted only `ast.Constant` since 3.8, and `ast.Str` is
+  a deprecated alias that warned on every scan). Pinned by
+  `test/core/test_plugin_metadata_reader.py` (8).
+
 * **Step changes are now blocked while a step is working — the crash needs that
   overlap and can no longer have it (RF-446 follow-up).** The first fix made
   **Next** wait for the run it started, which closed the reported gesture but

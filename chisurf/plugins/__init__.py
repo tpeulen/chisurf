@@ -101,10 +101,16 @@ if (
 def _read_plugin_metadata(init_py: pathlib.Path):
     if not init_py.exists():
         return None, None, None, False, False
+    # Read bytes and let ``ast.parse`` decode: it honours the PEP 263 coding
+    # cookie, so a plugin whose ``__init__.py`` declares a non-UTF-8 encoding is
+    # scanned exactly as the interpreter would import it. Decoding as UTF-8 here
+    # instead raised, and the failure branch returned a 3-tuple that every caller
+    # unpacks into five names — the ValueError was swallowed upstream and the
+    # plugin silently vanished from the menu and the CLI.
     try:
-        source = init_py.read_text(encoding="utf-8")
+        source = init_py.read_bytes()
     except Exception:
-        return None, None, None
+        return None, None, None, False, False
     try:
         tree = ast.parse(source, filename=str(init_py))
     except Exception:
@@ -116,46 +122,42 @@ def _read_plugin_metadata(init_py: pathlib.Path):
     menu_hidden = False
 
     def _string_literal(value):
-        """Return a string literal value from modern or legacy AST nodes."""
+        """Return the value of a string-literal AST node, or ``None``."""
+        # ``ast.Str`` has not been produced by the parser since 3.8 and is a
+        # deprecated alias scheduled for removal, so ``ast.Constant`` is the
+        # only node a string literal can be.
         if isinstance(value, ast.Constant) and isinstance(value.value, str):
             return value.value
-        ast_str = getattr(ast, "Str", None)
-        if ast_str is not None and isinstance(value, ast_str):
-            return value.s
+        return None
+
+    def _bool_literal(value):
+        """Return the value of a boolean-literal AST node, or ``None``."""
+        if isinstance(value, ast.Constant) and isinstance(value.value, bool):
+            return value.value
         return None
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Assign):
             continue
         for target in getattr(node, "targets", []):
-            if isinstance(target, ast.Name) and target.id == "name":
+            if not isinstance(target, ast.Name):
+                continue
+            if target.id == "name":
                 literal = _string_literal(node.value)
                 if literal is not None:
                     plugin_name = literal
-            if isinstance(target, ast.Name) and target.id == "cli_entrypoint":
+            elif target.id == "cli_entrypoint":
                 literal = _string_literal(node.value)
                 if literal is not None:
                     cli_entrypoint = literal.strip()
-            if isinstance(target, ast.Name) and target.id == "cli_only":
-                value = node.value
-                # Support simple boolean literals like ``cli_only = True``.
-                if isinstance(value, ast.Constant) and isinstance(value.value, bool):
-                    cli_only = bool(value.value)
-                else:
-                    # Fallback for older Python AST nodes
-                    if hasattr(ast, "NameConstant") and isinstance(value, ast.NameConstant):  # type: ignore[attr-defined]
-                        if isinstance(value.value, bool):
-                            cli_only = bool(value.value)
-            if isinstance(target, ast.Name) and target.id == "menu_hidden":
-                value = node.value
-                # Support simple boolean literals like ``menu_hidden = True``.
-                if isinstance(value, ast.Constant) and isinstance(value.value, bool):
-                    menu_hidden = bool(value.value)
-                else:
-                    # Fallback for older Python AST nodes
-                    if hasattr(ast, "NameConstant") and isinstance(value, ast.NameConstant):  # type: ignore[attr-defined]
-                        if isinstance(value.value, bool):
-                            menu_hidden = bool(value.value)
+            elif target.id == "cli_only":
+                literal = _bool_literal(node.value)
+                if literal is not None:
+                    cli_only = literal
+            elif target.id == "menu_hidden":
+                literal = _bool_literal(node.value)
+                if literal is not None:
+                    menu_hidden = literal
     return plugin_name, description, cli_entrypoint, cli_only, menu_hidden
 
 

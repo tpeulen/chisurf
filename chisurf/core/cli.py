@@ -133,8 +133,11 @@ def _forward_plugin_cli(
 def _read_plugin_metadata(init_py: pathlib.Path) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     if not init_py.exists():
         return None, None, None
+    # Parse the raw bytes so the PEP 263 coding cookie decides the encoding, the
+    # way the interpreter does on import; decoding as UTF-8 here dropped any
+    # plugin declaring another source encoding from ``csc`` without a word.
     try:
-        source = init_py.read_text(encoding="utf-8")
+        source = init_py.read_bytes()
     except Exception:
         return None, None, None
     try:
@@ -148,18 +151,17 @@ def _read_plugin_metadata(init_py: pathlib.Path) -> Tuple[Optional[str], Optiona
         if not isinstance(node, ast.Assign):
             continue
         for target in getattr(node, "targets", []):
-            if isinstance(target, ast.Name) and target.id == "name":
-                value = node.value
-                if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                    plugin_name = value.value
-                elif isinstance(value, ast.Str):
-                    plugin_name = value.s
-            if isinstance(target, ast.Name) and target.id == "cli_entrypoint":
-                value = node.value
-                if isinstance(value, ast.Constant) and isinstance(value.value, str):
-                    cli_entrypoint = value.value.strip()
-                elif isinstance(value, ast.Str):
-                    cli_entrypoint = value.s.strip()
+            if not isinstance(target, ast.Name):
+                continue
+            value = node.value
+            # A string literal is an ``ast.Constant``; the ``ast.Str`` alias has
+            # not been produced since 3.8 and is scheduled for removal.
+            if not (isinstance(value, ast.Constant) and isinstance(value.value, str)):
+                continue
+            if target.id == "name":
+                plugin_name = value.value
+            elif target.id == "cli_entrypoint":
+                cli_entrypoint = value.value.strip()
     return plugin_name, description, cli_entrypoint
 
 

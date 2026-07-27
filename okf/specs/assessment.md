@@ -72,8 +72,9 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
 | [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | ~~VERIFIED~~ ✅ FIXED |
 | [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | ~~VERIFIED~~ ✅ FIXED |
+| [BUG-13](#bug-13) | S3 | BUG | Plugins | The plugin-metadata AST reader returns 3 values where every caller unpacks 5 when the source will not decode as UTF-8, so a plugin declaring another source encoding disappears from the menu and from `csc` without a word | ~~VERIFIED~~ ✅ FIXED |
 
-39 findings (27 FIXED): 3 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
+40 findings (28 FIXED): 3 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 4 PARTIAL, 1 OPEN.
 Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
@@ -670,3 +671,26 @@ at the new home, writing its pre-replace backup to a scratch dir so package data
 Tests: `modules/mmfdb/tests/test_mmcif_database_resolver.py` (+4) pin that the seed ships, that
 its `_schema_version` equals `SCHEMA_VERSION`, that no `example.db` shadows a missing seed, and
 that a missing seed still yields a migrated database.
+
+### BUG-13
+**S3 · A plugin can vanish from the application without a word.** Found 2026-07-27 while
+reading the plugin-discovery seam for [INC-07](#inc-07). Discovery
+(`chisurf/plugins/__init__.py::_read_plugin_metadata`) and the `csc` command
+(`chisurf/core/cli.py::_read_plugin_metadata`) both read a plugin's `__init__.py` with `ast`
+rather than importing it, which is what keeps startup and `csc --help` fast. Both read the
+file as **UTF-8 only**, so a plugin carrying a PEP 263 coding cookie (`# -*- coding: latin-1
+-*-`) — legal Python that the interpreter imports fine — raised `UnicodeDecodeError`. The
+discovery reader's failure branch then returned `None, None, None` where all three of its
+call sites unpack **five** names, and the resulting `ValueError` was swallowed by the bare
+`except Exception: continue` that wraps the discovery loop: the plugin simply was not in the
+menu, with nothing logged. The same file also carried dead `ast.Str` / `ast.NameConstant`
+fallbacks — the parser has emitted only `ast.Constant` since 3.8, and `ast.Str` is a
+deprecated alias scheduled for removal that raised a `DeprecationWarning` on every scan.
+
+**✅ Fixed 2026-07-27.** Both readers parse the raw bytes and let `ast.parse` apply the coding
+cookie, exactly as the interpreter does on import, so the decode step that could fail is gone
+along with its malformed return; every remaining failure branch returns the full tuple. The
+`ast.Str` / `ast.NameConstant` fallbacks are removed in favour of `ast.Constant`, which also
+ends the deprecation warnings. Guardrail tests:
+`test/core/test_plugin_metadata_reader.py` (8) pin the tuple arity of every failure branch of
+both readers and the non-UTF-8 round trip.
