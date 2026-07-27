@@ -6,7 +6,7 @@ import io
 import zipfile
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
@@ -161,6 +161,92 @@ def photon_filter_settings_from_wizard(wizard_filter: Any) -> PhotonFilterSettin
     )
 
 
+#: Stored ``photon_filter`` settings that the generated filter form owns, mapped
+#: onto its field names. The two differ because the settings dataclass groups by
+#: algorithm (``cusum_filter.alpha``) while the form is flat (``alpha``).
+#:
+#: **Only these go through the generic restore.** The filter page is a partial
+#: AutoForm port: its view spec covers the settings that apply whichever search
+#: is chosen — channel, macro-time interval, the enable/invert switches — while
+#: the *search parameters* are rendered from the JSON Schema tttrlib publishes,
+#: and a few legacy modes still read shared spin boxes. Those cannot be restored
+#: by writing form state because the form has no field for them, so they go
+#: through the page's own accessors below. When the search parameters move into
+#: the declarative settings, their entries move here and the fallback shrinks.
+_FILTER_STATE_MAP = {
+    ("", "filter_active"): "filter_active",
+    ("", "invert_filter"): "invert",
+    ("delta_macro_time_filter", "dT_min"): "dt_min",
+    ("delta_macro_time_filter", "dT_max"): "dt_max",
+    ("delta_macro_time_filter", "dT_min_active"): "dt_min_active",
+    ("delta_macro_time_filter", "dT_max_active"): "dt_max_active",
+}
+
+
+
+
+#: The form binds its controls through this target, so state keys carry it.
+_FILTER_TARGET = "settings"
+
+
+def _filter_state_from_settings(photon: dict) -> dict:
+    """Translate stored ``photon_filter`` settings into filter-form state."""
+    state: dict[str, Any] = {}
+    for (group, key), field in _FILTER_STATE_MAP.items():
+        block = photon if not group else (photon.get(group) or {})
+        if isinstance(block, dict) and block.get(key) is not None:
+            state[f"{_FILTER_TARGET}.{field}"] = block[key]
+    return state
+
+
+#: Settings the generated form has no field for, written through the page's own
+#: accessors. Each is ``(page attribute, group, key)``; the page's properties
+#: already funnel into one settings object, so this is a naming bridge and not a
+#: second store. It shrinks to nothing as the search parameters are ported.
+_UNPORTED_FILTER_SETTINGS = (
+    ("channels", "", "channels"),
+    ("microtime_ranges", "", "microtime_ranges"),
+    ("use_gap_fill", "", "use_gap_fill"),
+    ("max_gap", "", "max_gap"),
+    ("min_ph", "count_rate_filter", "n_ph_max"),
+    ("cusum_sb_ratio", "cusum_filter", "sb_ratio"),
+    ("cusum_alpha", "cusum_filter", "alpha"),
+    ("cusum_beta", "cusum_filter", "beta"),
+    ("kalman_q", "kalman_filter", "q"),
+    ("kalman_r_scale", "kalman_filter", "r_scale"),
+    ("kalman_z_thresh", "kalman_filter", "z_thresh"),
+    ("kalman_min_len", "kalman_filter", "min_len"),
+    ("kalman_merge_gap", "kalman_filter", "merge_gap"),
+    ("bocpd_prior_count", "bocpd_filter", "prior_count"),
+    ("bocpd_prior_duration", "bocpd_filter", "prior_duration"),
+    ("bocpd_changepoint_prob", "bocpd_filter", "changepoint_prob"),
+    ("tttrlib_algorithm", "tttrlib_search", "algorithm"),
+    ("tttrlib_parameters", "tttrlib_search", "parameters"),
+)
+
+
+def _apply_unported_filter_settings(finder: Any, photon: dict, skipped: list) -> None:
+    """Write the settings the generated form does not yet cover."""
+    for attribute, group, key in _UNPORTED_FILTER_SETTINGS:
+        block = photon if not group else (photon.get(group) or {})
+        if not isinstance(block, dict):
+            continue
+        value = block.get(key)
+        if value is None:
+            continue
+        try:
+            setattr(finder, attribute, value)
+        except Exception as exc:
+            skipped.append(f"photon_filter.{group or ''}{'.' if group else ''}{key}: {exc}")
+
+
+def _filter_mode_from_settings(photon: dict) -> Optional[str]:
+    """The filter mode to select before restoring mode-specific parameters."""
+    used = photon.get("used_filter")
+    if used is None:
+        return None
+    return str(getattr(used, "value", used))
+
 def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
     """Repopulate the wizard from stored analysis settings — the inverse of
     :func:`analysis_settings_from_wizard`.
@@ -195,6 +281,8 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
         Human-readable notes about anything that could not be applied.
     """
     from dataclasses import asdict, is_dataclass
+
+    from chisurf.gui.autoform.state import apply_state
 
     data = asdict(settings) if is_dataclass(settings) else dict(settings or {})
     skipped: list[str] = []
@@ -232,71 +320,33 @@ def apply_analysis_settings_to_wizard(wizard: Any, settings: Any) -> list[str]:
         _set(finder, "ph_window", detection.get("photon_window"),
              "burst_detection.photon_window")
 
+    # The photon-filter page is already declarative: its controls are generated
+    # from a view spec over a FilterSettings dataclass, and the page attributes
+    # this adapter used to set one by one are properties over that same object.
+    # So there is nothing to hand-map — the generic AutoForm restore writes the
+    # settings straight back, and a filter parameter added to the spec is
+    # restored without being named here.
     photon = data.get("photon_filter") or {}
     if finder is not None and photon:
-        _set(finder, "channels", photon.get("channels"), "photon_filter.channels")
-        _set(finder, "microtime_ranges", photon.get("microtime_ranges"),
-             "photon_filter.microtime_ranges")
-        used = photon.get("used_filter")
-        if used is not None:
-            _set(finder, "used_filter",
-                 getattr(used, "value", used), "photon_filter.used_filter")
-        _set(finder, "max_gap", photon.get("max_gap"), "photon_filter.max_gap")
-        _set(finder, "use_gap_fill", photon.get("use_gap_fill"),
-             "photon_filter.use_gap_fill")
+        model = getattr(finder, "_filter_settings_model", None)
+        if model is None:
+            skipped.append("photon_filter: the filter form is not built yet")
+        else:
+            # The mode decides which parameter sections the form has, so it is
+            # applied first and the spec re-read: restoring CUSUM parameters
+            # into a form still showing Kalman's would report every one of them
+            # as unknown.
+            mode = _filter_mode_from_settings(photon)
+            if mode is not None:
+                apply_state(model, {f"{_FILTER_TARGET}.mode": mode}, sync=False)
 
-        delta = photon.get("delta_macro_time_filter") or {}
-        # The raw widget values, in the widget's own units — see the docstring.
-        _set(finder, "dT_min", delta.get("dT_min"), "delta_macro_time_filter.dT_min")
-        _set(finder, "dT_max", delta.get("dT_max"), "delta_macro_time_filter.dT_max")
-        _set(finder, "use_lower", delta.get("dT_min_active"), "dT_min_active")
-        _set(finder, "use_upper", delta.get("dT_max_active"), "dT_max_active")
-
-        bocpd = photon.get("bocpd_filter") or {}
-        for attr, key in (
-            ("bocpd_prior_count", "prior_count"),
-            ("bocpd_prior_duration", "prior_duration"),
-            ("bocpd_changepoint_prob", "changepoint_prob"),
-        ):
-            _set(finder, attr, bocpd.get(key), f"bocpd_filter.{key}")
-        if bocpd.get("dt") is not None:
-            _set(finder, "trace_bin_width", float(bocpd["dt"]) * 1000.0,
-                 "bocpd_filter.dt")
-
-        kalman = photon.get("kalman_filter") or {}
-        for attr, key in (
-            ("kalman_q", "q"), ("kalman_r_scale", "r_scale"),
-            ("kalman_z_thresh", "z_thresh"), ("kalman_min_len", "min_len"),
-            ("kalman_merge_gap", "merge_gap"),
-        ):
-            _set(finder, attr, kalman.get(key), f"kalman_filter.{key}")
-
-        cusum = photon.get("cusum_filter") or {}
-        for attr, key in (
-            ("cusum_bg_rate", "background_rate"), ("cusum_sb_ratio", "sb_ratio"),
-            ("cusum_alpha", "alpha"), ("cusum_beta", "beta"),
-        ):
-            _set(finder, attr, cusum.get(key), f"cusum_filter.{key}")
-
-        search = photon.get("tttrlib_search") or {}
-        _set(finder, "tttrlib_algorithm", search.get("algorithm"),
-             "tttrlib_search.algorithm")
-        _set(finder, "tttrlib_parameters", search.get("parameters"),
-             "tttrlib_search.parameters")
-
-        finder_settings = getattr(finder, "settings", None)
-        if isinstance(finder_settings, dict):
-            if photon.get("filter_active") is not None:
-                finder_settings["filter_active"] = bool(photon["filter_active"])
-            if photon.get("invert_filter") is not None:
-                finder_settings["invert_filter"] = bool(photon["invert_filter"])
-            count_rate = photon.get("count_rate_filter") or {}
-            if count_rate:
-                block = finder_settings.setdefault("count_rate_filter", {})
-                if count_rate.get("n_ph_max") is not None:
-                    block["n_ph_max"] = int(count_rate["n_ph_max"])
-                if count_rate.get("time_window") is not None:
-                    block["time_window"] = float(count_rate["time_window"])
+            result = apply_state(model, _filter_state_from_settings(photon))
+            skipped.extend(f"photon_filter.{k}: {v}" for k, v in result.failed.items())
+            skipped.extend(
+                f"photon_filter.{k}: the filter form has no such control"
+                for k in result.unknown
+            )
+            _apply_unported_filter_settings(finder, photon, skipped)
 
     gmm = data.get("gmm") or {}
     if gmm:

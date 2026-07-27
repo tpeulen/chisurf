@@ -153,15 +153,17 @@ def collect_state(form: Any) -> Dict[str, Any]:
 
     Parameters
     ----------
-    form : AutoForm
-        A built form; its ``model`` and view spec are read.
+    form : AutoForm or view model
+        A built form, or the model itself when there is no widget (headless) or
+        when the widget is rebuilt on mode changes and the model is the stabler
+        handle.
 
     Returns
     -------
     dict
         ``{"<target>.<attr>": value}``, JSON-safe.
     """
-    model = getattr(form, "model", None)
+    model = _model_of(form)
     spec = _spec_of(form)
     if model is None or spec is None:
         return {}
@@ -204,7 +206,7 @@ def apply_state(form: Any, state: Dict[str, Any], *, sync: bool = True) -> State
         What was applied, ignored and refused.
     """
     result = StateResult()
-    model = getattr(form, "model", None)
+    model = _model_of(form)
     spec = _spec_of(form)
     if model is None or spec is None:
         result.unknown = sorted(state or {})
@@ -230,10 +232,14 @@ def apply_state(form: Any, state: Dict[str, Any], *, sync: bool = True) -> State
             result.failed[key] = str(exc)
 
     if sync:
-        try:
-            form.sync_fields()
-        except Exception:  # pragma: no cover - a form may not be built yet
-            logging.debug("could not refresh the form after restoring", exc_info=True)
+        # A bare model has no widgets to refresh, which is not a failure.
+        refresh = getattr(form, "sync_fields", None)
+        if callable(refresh):
+            try:
+                refresh()
+            except Exception:  # pragma: no cover - a form may not be built yet
+                logging.debug("could not refresh the form after restoring",
+                              exc_info=True)
     return result
 
 
@@ -285,15 +291,32 @@ def load_state(form: Any, path: pathlib.Path | str) -> StateResult:
     return apply_state(form, payload)
 
 
+def _model_of(form: Any) -> Any:
+    """The view model behind *form*, which may itself be the model.
+
+    Callers hold whichever is stabler for them. A form that is rebuilt when its
+    mode changes — the photon filter does exactly that — makes the widget a
+    moving target, while the model persists; a headless caller has no widget at
+    all. Both are accepted so neither has to reach for the other.
+    """
+    model = getattr(form, "model", None)
+    if model is not None:
+        return model
+    # No ``.model``: this is the model, provided it can describe itself.
+    if hasattr(form, "view_spec") or hasattr(form, "spec"):
+        return form
+    return None
+
+
 def _spec_of(form: Any) -> Any:
-    """The view spec behind a form.
+    """The view spec behind a form or a model.
 
     ``AutoForm.rebuild`` reads it as ``model.view_spec()``, so that is the first
     place to look; the attribute forms are accepted too because view models are
     also constructed directly in tests and in headless callers.
     """
     candidates = []
-    model = getattr(form, "model", None)
+    model = _model_of(form)
     if model is not None:
         candidates.append(getattr(model, "view_spec", None))
         candidates.append(getattr(model, "spec", None))

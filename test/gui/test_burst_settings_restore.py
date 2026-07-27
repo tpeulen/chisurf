@@ -16,6 +16,10 @@ from __future__ import annotations
 
 import pytest
 
+from chisurf.gui.widgets.wizard.tttr_photonfilter.filter_settings_form import (
+    FilterSettings,
+    FilterSettingsModel,
+)
 from chisurf.plugins.burst.burst_selection.api.models import AnalysisSettings
 from chisurf.plugins.burst.burst_selection.gui.adapter import (
     analysis_settings_from_wizard,
@@ -38,39 +42,75 @@ class Checkbox:
 
 
 class Finder:
-    """Stand-in for the photon-filter page, with the attributes read out."""
+    """Stand-in for the photon-filter page, over the **real** settings model.
+
+    The page's own attributes are properties over ``filter_settings``, and the
+    restore now goes through the generated form's model rather than through a
+    hand-written per-field mapping — so a stub with plain attributes would test
+    nothing that exists. This mirrors the real page: one FilterSettings object,
+    with the accessors the adapter uses defined on top of it.
+    """
 
     def __init__(self):
+        self.filter_settings = FilterSettings()
+        self._filter_settings_model = FilterSettingsModel(self.filter_settings)
         self.channels = [0, 1]
         self.microtime_ranges = []
-        self.used_filter = "count_rate"
-        self.max_gap = 3
-        self.use_gap_fill = True
-        self.min_ph = 60
-        self.ph_window = 20
-        self.dT_min = 0.5
-        self.dT_max = 4.0
-        self.use_lower = True
-        self.use_upper = False
-        self.trace_bin_width = 1.0
-        self.bocpd_prior_count = 1.0
-        self.bocpd_prior_duration = 0.1
-        self.bocpd_changepoint_prob = 1e-5
-        self.kalman_q = 0.01
-        self.kalman_r_scale = 0.1
-        self.kalman_z_thresh = 3.0
-        self.kalman_min_len = 2
-        self.kalman_merge_gap = 5
-        self.cusum_bg_rate = 2000
-        self.cusum_sb_ratio = 30.0
-        self.cusum_alpha = 0.05
-        self.cusum_beta = 0.05
         self.tttrlib_algorithm = "maxtree"
         self.tttrlib_parameters = {}
-        self.settings = {
-            "filter_active": True,
-            "invert_filter": False,
-            "count_rate_filter": {"n_ph_max": 20, "time_window": 0.005},
+        self.cusum_bg_rate = 2000
+        self.trace_bin_width = 1.0
+
+    # -- properties over the one settings object, as the real page has them --
+
+    def _prop(name):  # noqa: N805 - a tiny descriptor factory, not a method
+        return property(
+            lambda self: getattr(self.filter_settings, name),
+            lambda self, value: setattr(self.filter_settings, name, value),
+        )
+
+    used_filter = _prop("mode")
+    use_gap_fill = _prop("use_gap_fill")
+    min_ph = _prop("min_photons")
+    ph_window = _prop("photon_window")
+    dT_min = _prop("dt_min")
+    dT_max = _prop("dt_max")
+    use_lower = _prop("dt_min_active")
+    use_upper = _prop("dt_max_active")
+    kalman_q = _prop("kalman_q")
+    kalman_r_scale = _prop("kalman_r_scale")
+    kalman_z_thresh = _prop("kalman_z_thresh")
+    kalman_min_len = _prop("kalman_min_len")
+    kalman_merge_gap = _prop("kalman_merge_gap")
+    cusum_sb_ratio = _prop("sb_ratio")
+    cusum_alpha = _prop("alpha")
+    cusum_beta = _prop("beta")
+    # BOCPD has fields of its own now; its parameters used to read CUSUM's
+    # background_rate while writing a shared spin box.
+    bocpd_prior_count = _prop("bocpd_prior_count")
+    bocpd_prior_duration = _prop("bocpd_prior_duration")
+    bocpd_changepoint_prob = _prop("bocpd_changepoint_prob")
+    del _prop
+
+    @property
+    def max_gap(self):
+        """Zero unless gap filling is on, as the real page reports it."""
+        return self.filter_settings.merge_gap if self.use_gap_fill else 0
+
+    @max_gap.setter
+    def max_gap(self, value):
+        self.filter_settings.merge_gap = int(value)
+
+    @property
+    def settings(self):
+        """The dict-shaped view the adapter reads the switches from."""
+        return {
+            "filter_active": self.filter_settings.filter_active,
+            "invert_filter": self.filter_settings.invert,
+            "count_rate_filter": {
+                "n_ph_max": self.filter_settings.min_photons,
+                "time_window": self.filter_settings.time_window,
+            },
         }
 
 
@@ -285,3 +325,40 @@ def test_mle_loader_reports_rather_than_raises_on_junk(tmp_path, monkeypatch):
     MLELifetimeAnalysisWizard.load_settings_from(blank, tmp_path / "no_manifest_here")
 
     assert called == [], "nothing should have been applied"
+
+
+def test_bocpd_and_cusum_are_not_the_same_value(wizard):
+    """BOCPD's prior count and CUSUM's background rate were one field.
+
+    The page's ``bocpd_prior_count`` getter read ``filter_settings.background_rate``
+    — CUSUM's parameter — while its setter wrote a shared spin box, so the two
+    filters stored one number and reading a BOCPD parameter back gave a CUSUM
+    one. They have separate fields now.
+    """
+    finder = wizard.burst_finder
+    finder.cusum_bg_rate = 2000
+    finder.filter_settings.background_rate = 2000.0
+    finder.bocpd_prior_count = 7.5
+
+    assert finder.bocpd_prior_count == 7.5
+    assert finder.filter_settings.background_rate == 2000.0, (
+        "setting a BOCPD parameter moved a CUSUM one"
+    )
+
+
+def test_bocpd_parameters_survive_a_round_trip(wizard):
+    """They are ordinary settings now, so they restore like the rest."""
+    finder = wizard.burst_finder
+    finder.bocpd_prior_count = 3.25
+    finder.bocpd_prior_duration = 0.45
+    finder.bocpd_changepoint_prob = 2e-4
+
+    captured = analysis_settings_from_wizard(wizard)
+    finder.bocpd_prior_count = 1.0
+    finder.bocpd_prior_duration = 0.1
+    finder.bocpd_changepoint_prob = 1e-5
+
+    assert apply_analysis_settings_to_wizard(wizard, captured) == []
+    assert finder.bocpd_prior_count == pytest.approx(3.25)
+    assert finder.bocpd_prior_duration == pytest.approx(0.45)
+    assert finder.bocpd_changepoint_prob == pytest.approx(2e-4)

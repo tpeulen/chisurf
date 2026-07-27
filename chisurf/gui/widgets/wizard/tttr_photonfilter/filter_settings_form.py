@@ -97,6 +97,13 @@ class FilterSettings:
     beta: float = 0.05
 
     # -- Kalman ---------------------------------------------------------------
+    #: BOCPD's Gamma prior and changepoint rate. Fields of their own since the
+    #: page's properties used to read CUSUM's ``background_rate`` while writing a
+    #: shared spin box -- so the two filters were one stored value, and reading a
+    #: BOCPD parameter back gave a CUSUM one.
+    bocpd_prior_count: float = 1.0
+    bocpd_prior_duration: float = 0.1
+    bocpd_changepoint_prob: float = 1e-5
     kalman_q: float = 0.01
     kalman_r_scale: float = 0.1
     kalman_z_thresh: float = 3.0
