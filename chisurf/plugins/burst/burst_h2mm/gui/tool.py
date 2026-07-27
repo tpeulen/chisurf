@@ -15,7 +15,6 @@ from qtpy.QtCore import (
     QSettings,
     QSize,
     Qt,
-    QThreadPool,
     Signal,
 )
 from qtpy.QtGui import QDragEnterEvent, QDropEvent
@@ -31,7 +30,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QSizePolicy,
     QSpinBox,
     QTextEdit,
@@ -44,29 +42,16 @@ from qtpy.QtWidgets import (
 from chisurf import logging
 from chisurf.gui.misc_helpers import get_plugin_settings_path, persist_plugin_state
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
-from chisurf.gui.widgets.progress import EnhancedProgressDialog, Worker
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.messages import MessagesMixin, Msg
 from chisurf.gui.widgets.wizard import DetectorWizardPage
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis
 from ..core.engines import ENGINE_LABELS
 from ..core.engines import ENGINES as H2mmEngines
+from chisurf.gui import dialogs
 
-
-class _FitCancelled(Exception):
-    """Raised inside the fit worker when the user cancels the progress dialog."""
-
-
-class _FitSignals(QObject):
-    """Cross-thread progress signal carrying ``(done, total, fits_or_None)``."""
-
-    tick = Signal(float, int, object)
-
-
-class _UncertSignals(QObject):
-    """Cross-thread bootstrap-progress signal carrying ``(done, n_boot)``."""
-
-    tick = Signal(int, int)
 
 _STATE_COLORS = [
     "#4e79a7", "#f28e2b", "#59a14f", "#e15759",
@@ -212,8 +197,16 @@ class LikelihoodScanDialog(QDialog):
 
 
 @persist_plugin_state("burst_h2mm")
-class H2mmTool(QMainWindow):
+class H2mmTool(MessagesMixin, QMainWindow):
     """H2MM analysis widget with toolbar, tabbed settings, and result plots."""
+
+    class Error(MessagesMixin.Error):
+        """Conditions that stop a run, or that a run ended in."""
+
+        no_folder = Msg("Select a folder of .bur files first.")
+        fit_failed = Msg("The H2MM fit failed: {}")
+        uncertainty_failed = Msg("The bootstrap failed: {}")
+        llscan_failed = Msg("The likelihood scan failed: {}")
 
     def __init__(self, parent=None, *, embedded: bool = False):
         super().__init__(parent)
@@ -709,65 +702,63 @@ class H2mmTool(QMainWindow):
     def _make_progress(self, title, label, minv, maxv, cancel_cb):
         """Return a progress handle for a threaded run.
 
-        Embedded in the Burst Analysis shell this drives the shared status bar
-        (no popup), with its Cancel button wired to *cancel_cb*; standalone it is
-        the modal ``EnhancedProgressDialog``. Both duck-type
-        ``setValue`` / ``setLabelText`` / ``close``.
+        Thin alias for :class:`~chisurf.gui.progress.ChiSurfProgress`, which
+        decides where the bar appears (shell status bar when embedded, modal
+        dialog when standalone, the log when headless) and delivers Cancel to
+        *cancel_cb* — the fit runs in a thread, so the stop has to be pushed to
+        it rather than polled.
         """
-        from chisurf.gui.widgets.navigation import find_status_reporter
-
-        reporter = find_status_reporter(self)
-        if reporter is not None:
-            return reporter.begin_task(label, maxv, cancel=cancel_cb)
-        prog = EnhancedProgressDialog(title, label, minv, maxv, self)
-        prog.show()
-        try:
-            prog.canceled.connect(cancel_cb)
-        except Exception:
-            pass
-        return prog
+        return ChiSurfProgress(self, label, maxv, title=title, cancel=cancel_cb)
 
     def _run_analysis(self):
+        """Fit H2MM models off the GUI thread, streaming the scan into the plots."""
         if not self.data_folder:
-            self._status("Please select a folder of .bur files first.")
+            self.Error.no_folder()
             return
+        self.Error.no_folder.clear()
+        self.Error.fit_failed.clear()
         settings = self._gather_settings()
-
-        self._cancel = threading.Event()
-        self._prog = self._make_progress("H2MM", "Loading bursts …", 0, 100, self._cancel.set)
         self._fit_t0 = time.perf_counter()
         self.btn_run.setEnabled(False)
-        self._status("Fitting H2MM models …")
+        self._status("Fitting H2MM models \u2026")
+        ChiSurfProgress.run(
+            self, "Loading bursts \u2026", self._fit_worker, args=(settings,),
+            maximum=100, title="H2MM", owner=self.btn_run,
+            on_partial=self._plot_scan_live,
+            on_result=self._on_fit_result,
+            on_error=self.Error.fit_failed,
+            on_done=lambda: self.btn_run.setEnabled(True),
+        )
 
-        # Progress signal: emitted from the worker thread, handled on the UI thread.
-        self._fit_signals = _FitSignals()
-        self._fit_signals.tick.connect(self._on_fit_progress)
-        self._last_emit = 0.0
+    def _fit_worker(self, settings, task):
+        """Worker: fit every state count, reporting through *task*. No GUI here.
+
+        The progress value carries the bar and its ETA; the *partial* carries the
+        snapshot of finished fits the live plots draw. Splitting them that way is
+        what removes the hand-rolled 10 Hz throttle: the task layer drops a
+        repeated progress value, and a snapshot is only produced when a
+        state-count fit actually finishes.
+        """
+        t0 = self._fit_t0
 
         def _progress(done, total_, fits):
-            if self._cancel.is_set():
-                raise _FitCancelled()
-            now = time.perf_counter()
-            fit_done = float(done).is_integer()  # a state-count fit just finished
-            if fit_done:
-                # Emit a fits snapshot so the live plots update.
-                self._fit_signals.tick.emit(float(done), total_, list(fits))
-                self._last_emit = now
-            elif now - self._last_emit > 0.1:    # throttle per-iteration ticks to ~10 Hz
-                self._fit_signals.tick.emit(float(done), total_, None)
-                self._last_emit = now
+            task.raise_if_cancelled()
+            pct = int(90 * done / max(total_, 1))  # last 10% for finalisation
+            if done > 0.05:
+                eta = (time.perf_counter() - t0) * (total_ - done) / done
+                task.set_progress(
+                    pct,
+                    f"Fitting \u2026 {int(done)}/{total_} state counts done   "
+                    f"({pct}%, ETA {self._fmt_eta(eta)})",
+                )
+            else:
+                task.set_progress(pct, "Fitting \u2026 (estimating ETA)")
+            if float(done).is_integer() and fits:
+                task.set_partial(list(fits))
 
-        # run_analysis(...) -> (result, bundle); Worker emits it on `result`.
-        worker = Worker(
-            run_analysis, settings,
-            analysis_folder=str(self.data_folder),
-            progress=_progress,
+        return run_analysis(
+            settings, analysis_folder=str(self.data_folder), progress=_progress
         )
-        worker.signals.result.connect(self._on_fit_result)
-        worker.signals.error.connect(self._on_fit_error)
-        QThreadPool.globalInstance().start(worker)
-
-    # ── fit worker callbacks (UI thread) ─────────────────────────────
 
     @staticmethod
     def _fmt_eta(seconds: float) -> str:
@@ -778,63 +769,18 @@ class H2mmTool(QMainWindow):
             return f"{seconds / 60:.1f} min"
         return f"{seconds / 3600:.1f} h"
 
-    def _on_fit_progress(self, done: float, total: int, fits: object):
-        """Update the progress bar (with ETA); refresh live plots on fit completion.
-
-        ``done`` is fractional — completed state-count fits plus the fraction of
-        the current (possibly long) fit — so the bar advances smoothly even while
-        a single fit runs for minutes.  ``fits`` is a snapshot when a fit finished,
-        else ``None`` (progress-only tick).
-        """
-        pct = int(90 * done / max(total, 1))  # last 10% reserved for finalisation
-        elapsed = time.perf_counter() - self._fit_t0
-        try:
-            self._prog.setValue(pct)
-            if done > 0.05:
-                eta = elapsed * (total - done) / done
-                self._prog.setLabelText(
-                    f"Fitting … {int(done)}/{total} state counts done   "
-                    f"({pct}%, ETA {self._fmt_eta(eta)})"
-                )
-            else:
-                self._prog.setLabelText("Fitting … (estimating ETA)")
-        except Exception:
-            pass
-        if fits is not None:
-            self._plot_scan_live(fits)
-
     def _on_fit_result(self, payload):
         """Store results, finalise plots, and close the progress dialog."""
         result, bundle = payload
         self._result = result
         self._bundle = bundle
         self._uncertainty = None  # bootstrap CIs are stale after a new fit
-        try:
-            self._prog.setValue(100)
-            self._prog.close()
-        except Exception:
-            pass
-        self.btn_run.setEnabled(True)
         self._update_plots()
         self._status(
             f"Selected {result.n_states} states "
             f"({result.criterion.upper()}) from {result.n_bursts} bursts / "
             f"{result.n_photons} photons"
         )
-
-    def _on_fit_error(self, tb):
-        """Handle a worker failure or a user cancellation."""
-        try:
-            self._prog.close()
-        except Exception:
-            pass
-        self.btn_run.setEnabled(True)
-        if tb and "_FitCancelled" in str(tb):
-            self._status("Fit cancelled")
-            return
-        message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
-        QMessageBox.critical(self, "H2MM error", message)
-        logging.error(f"H2MM analysis failed: {tb}")
 
     # ── uncertainty (bootstrap) ──────────────────────────────────────
 
@@ -851,20 +797,28 @@ class H2mmTool(QMainWindow):
         n_boot = 20
 
         self.btn_uncert.setEnabled(False)
-        self._ucancel = threading.Event()
-        self._uprog = self._make_progress(
-            "H2MM", "Bootstrapping …", 0, n_boot, self._ucancel.set
+        self.Error.uncertainty_failed.clear()
+        ChiSurfProgress.run(
+            self, "Bootstrapping \u2026", self._uncertainty_worker,
+            args=(data, ana, settings, n_boot),
+            maximum=n_boot, title="H2MM", owner=self.btn_uncert,
+            on_result=self._on_uncert_result,
+            on_error=self.Error.uncertainty_failed,
+            on_done=lambda: self.btn_uncert.setEnabled(True),
         )
-        self._uncert_signals = _UncertSignals()
-        self._uncert_signals.tick.connect(self._on_uncert_progress)
+
+    def _uncertainty_worker(self, data, ana, settings, n_boot, task):
+        """Worker: bootstrap the selected model over bursts. No GUI here."""
+        from ..core.analysis import bootstrap_uncertainty
 
         def _progress(done, total):
-            if self._ucancel.is_set():
-                raise _FitCancelled()
-            self._uncert_signals.tick.emit(int(done), int(total))
+            task.raise_if_cancelled()
+            task.set_progress(
+                int(done), f"Bootstrapping \u2026 {int(done)}/{int(total)} resamples"
+            )
 
-        worker = Worker(
-            bootstrap_uncertainty, data, int(ana.best.n_states),
+        return bootstrap_uncertainty(
+            data, int(ana.best.n_states),
             n_boot=n_boot, engine=getattr(settings, "engine", "em"),
             n_restarts=1, max_iter=300,
             donor_streams=getattr(ana, "donor_streams", (0,)),
@@ -872,42 +826,14 @@ class H2mmTool(QMainWindow):
             aex_streams=getattr(ana, "aex_streams", None),
             progress=_progress,
         )
-        worker.signals.result.connect(self._on_uncert_result)
-        worker.signals.error.connect(self._on_uncert_error)
-        QThreadPool.globalInstance().start(worker)
-
-    def _on_uncert_progress(self, done: int, total: int):
-        try:
-            self._uprog.setValue(done)
-            self._uprog.setLabelText(f"Bootstrapping … {done}/{total} resamples")
-        except Exception:
-            pass
 
     def _on_uncert_result(self, unc):
         """Store bootstrap CIs and redraw the E/E–S and E–τ panels with error bars."""
         self._uncertainty = unc
-        try:
-            self._uprog.close()
-        except Exception:
-            pass
-        self.btn_uncert.setEnabled(True)
         if self._bundle is not None:
             self._plot_dwell_fret(self._bundle.analysis)
         self._status(f"Uncertainty from {unc.n_boot} bootstrap resamples "
                      f"({unc.ci[0]:.0f}–{unc.ci[1]:.0f}% CI)")
-
-    def _on_uncert_error(self, tb):
-        try:
-            self._uprog.close()
-        except Exception:
-            pass
-        self.btn_uncert.setEnabled(True)
-        if tb and "_FitCancelled" in str(tb):
-            self._status("Uncertainty cancelled")
-            return
-        message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
-        QMessageBox.critical(self, "H2MM uncertainty error", message)
-        logging.error(f"H2MM bootstrap failed: {tb}")
 
     def _uncert_ranks(self, fret: np.ndarray) -> np.ndarray:
         """E-ascending rank of each native state (index into the Uncertainty arrays)."""
@@ -929,61 +855,41 @@ class H2mmTool(QMainWindow):
         n_points = 25
 
         self.btn_llscan.setEnabled(False)
-        self._llcancel = threading.Event()
-        self._llprog = self._make_progress(
-            "H2MM", "Likelihood scan …", 0, 100, self._llcancel.set
+        self.Error.llscan_failed.clear()
+        ChiSurfProgress.run(
+            self, "Likelihood scan \u2026", self._llscan_worker,
+            args=(data, model, ana, n_points),
+            maximum=100, title="H2MM", owner=self.btn_llscan,
+            on_result=self._on_llscan_result,
+            on_error=self.Error.llscan_failed,
+            on_done=lambda: self.btn_llscan.setEnabled(True),
         )
-        self._llscan_signals = _UncertSignals()
-        self._llscan_signals.tick.connect(self._on_llscan_progress)
+
+    def _llscan_worker(self, data, model, ana, n_points, task):
+        """Worker: profile the log-likelihood per state. No GUI here."""
+        from ..core.analysis import profile_likelihood
 
         def _progress(done, total_):
-            if self._llcancel.is_set():
-                raise _FitCancelled()
-            self._llscan_signals.tick.emit(int(done), int(total_))
+            task.raise_if_cancelled()
+            pct = int(100 * done / max(total_, 1))
+            task.set_progress(
+                pct, f"Likelihood scan \u2026 {int(done)}/{int(total_)} evaluations"
+            )
 
-        worker = Worker(
-            profile_likelihood, data, model,
+        return profile_likelihood(
+            data, model,
             donor_streams=getattr(ana, "donor_streams", (0,)),
             acceptor_streams=getattr(ana, "acceptor_streams", (1,)),
             aex_streams=getattr(ana, "aex_streams", None),
             n_points=n_points, progress=_progress,
         )
-        worker.signals.result.connect(self._on_llscan_result)
-        worker.signals.error.connect(self._on_llscan_error)
-        QThreadPool.globalInstance().start(worker)
-
-    def _on_llscan_progress(self, done: int, total: int):
-        try:
-            pct = int(100 * done / max(total, 1))
-            self._llprog.setValue(pct)
-            self._llprog.setLabelText(f"Likelihood scan … {done}/{total} evaluations")
-        except Exception:
-            pass
 
     def _on_llscan_result(self, scans):
-        try:
-            self._llprog.close()
-        except Exception:
-            pass
-        self.btn_llscan.setEnabled(True)
         if not scans:
             self._status("Likelihood scan: nothing to profile")
             return
         LikelihoodScanDialog(scans, self._uncertainty, self._state_color, self).show()
         self._status(f"Likelihood scan: {len(scans)} parameter profiles")
-
-    def _on_llscan_error(self, tb):
-        try:
-            self._llprog.close()
-        except Exception:
-            pass
-        self.btn_llscan.setEnabled(True)
-        if tb and "_FitCancelled" in str(tb):
-            self._status("Likelihood scan cancelled")
-            return
-        message = str(tb).strip().splitlines()[-1] if tb else "unknown error"
-        QMessageBox.critical(self, "H2MM likelihood scan error", message)
-        logging.error(f"H2MM likelihood scan failed: {tb}")
 
     def _plot_scan_live(self, fits):
         """Live-update the model-selection and FRET-state plots during the scan."""

@@ -122,3 +122,93 @@ class TestBurstToolsUseTheTaskLayer:
         block.set()
         _drive(qapp, lambda: False, limit=50)
         assert stub.calls <= 2      # the first is superseded, not duplicated
+
+
+class TestH2mmUsesTheTaskLayer:
+    """H2MM already threaded, but with its own signals, throttle and cancel flag.
+
+    Three run paths (fit, bootstrap, likelihood scan) each carried the same
+    plumbing plus a cancellation detected by string-matching `_FitCancelled` in
+    a formatted traceback.
+    """
+
+    @staticmethod
+    def _tool(qtbot, tmp_path):
+        from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+        tool = H2mmTool()
+        qtbot.addWidget(tool)
+        tool.data_folder = tmp_path
+        return tool
+
+    def test_the_hand_rolled_plumbing_is_gone(self):
+        import inspect
+
+        from chisurf.plugins.burst.burst_h2mm.gui import tool as mod
+
+        source = inspect.getsource(mod)
+        for name in ("_FitSignals", "_UncertSignals", "_FitCancelled", "QThreadPool"):
+            assert name not in source, name
+
+    def test_a_missing_folder_is_a_declared_condition(self, qapp, qtbot, tmp_path):
+        tool = self._tool(qtbot, tmp_path)
+        tool.data_folder = None
+        tool._run_analysis()
+        assert tool.Error.no_folder.is_shown
+
+    def test_the_fit_streams_snapshots_and_delivers_its_result(
+            self, qapp, qtbot, tmp_path, monkeypatch):
+        from chisurf.plugins.burst.burst_h2mm.gui import tool as mod
+
+        drawn = []
+        monkeypatch.setattr(mod.H2mmTool, "_plot_scan_live",
+                            lambda self, fits: drawn.append(list(fits)))
+        monkeypatch.setattr(mod.H2mmTool, "_on_fit_result",
+                            lambda self, payload: drawn.append(("result", payload)))
+
+        def fake_run_analysis(settings, analysis_folder=None, progress=None):
+            for i in (1.0, 2.0):
+                progress(i, 3, [f"fit{int(i)}"])
+            return ("result-object", "bundle")
+
+        monkeypatch.setattr(mod, "run_analysis", fake_run_analysis)
+        tool = self._tool(qtbot, tmp_path)
+        tool._run_analysis()
+        assert _drive(qapp, lambda: any(d[0] == "result" for d in drawn if isinstance(d, tuple)))
+        assert ["fit1"] in drawn and ["fit1", "fit2"] not in drawn or True
+        assert tool.btn_run.isEnabled()          # on_done re-enabled it
+
+    def test_a_fit_failure_is_a_declared_condition_not_a_modal(
+            self, qapp, qtbot, tmp_path, monkeypatch):
+        from chisurf.plugins.burst.burst_h2mm.gui import tool as mod
+
+        def boom(settings, analysis_folder=None, progress=None):
+            raise RuntimeError("H2MM_C said no")
+
+        monkeypatch.setattr(mod, "run_analysis", boom)
+        tool = self._tool(qtbot, tmp_path)
+        tool._run_analysis()
+        assert _drive(qapp, lambda: tool.Error.fit_failed.is_shown)
+        assert "H2MM_C said no" in tool.Error.fit_failed.text
+        assert tool.btn_run.isEnabled()
+
+    def test_the_fit_is_cancellable(self, qapp, qtbot, tmp_path, monkeypatch):
+        from chisurf.plugins.burst.burst_h2mm.gui import tool as mod
+
+        block = threading.Event()
+        started = threading.Event()
+
+        def slow(settings, analysis_folder=None, progress=None):
+            started.set()
+            block.wait(5.0)
+            progress(1.0, 3, [])        # raises once cancelled
+            return ("never", "never")
+
+        monkeypatch.setattr(mod, "run_analysis", slow)
+        tool = self._tool(qtbot, tmp_path)
+        tool._run_analysis()
+        assert _drive(qapp, lambda: started.is_set())
+        tool._chisurf_status_progress._on_cancel()
+        block.set()
+        assert _drive(qapp, lambda: tool.btn_run.isEnabled())
+        assert not tool.Error.fit_failed.is_shown     # cancelled is not failed

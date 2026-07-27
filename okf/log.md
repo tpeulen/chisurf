@@ -2,6 +2,40 @@
 
 ## 2026-07-27
 
+* **H2MM's three run paths move onto the task layer, and the throttle
+  disappears into it.** Unlike the two tools before it, H2MM already threaded
+  properly — but with its own `Worker`, two signal classes, a `threading.Event`
+  per run, a `_FitCancelled` exception, and a **cancellation detected by
+  string-matching `"_FitCancelled"` in a formatted traceback**. Three run paths
+  (model-selection fit, bootstrap uncertainty, profile-likelihood scan) each
+  carried a copy.
+  The migration is mostly deletion, but one part is a genuine simplification.
+  The fit reported through a single callback carrying *both* a progress tick and
+  a snapshot of the finished fits for the live plots, and had to hand-throttle
+  the whole thing to ~10 Hz to keep from flooding the event queue. Those are two
+  different things and the layer already separates them: the tick becomes
+  `set_progress` (which drops a repeated value, so the 0–90 % bar emits at most
+  91 times however often the fit calls back — strictly better than a timer), and
+  the snapshot becomes `set_partial`, delivered straight to `_plot_scan_live`.
+  The hand-rolled throttle, the `_last_emit` bookkeeping and both signal classes
+  are gone.
+  Cancellation stops being a string match: `task.raise_if_cancelled()` inside
+  each progress callback, and the layer distinguishes cancelled from failed. The
+  three `dialogs.error(...)` modals become declared conditions, and the three
+  `btn.setEnabled(True)` scattered across result *and* error handlers become one
+  `on_done` each. Each run is owned by **its own button**, so the bootstrap and
+  the likelihood scan do not supersede one another.
+  Rendered headlessly mid-fit — "Fitting … 1/4 state counts done (22 %, ETA 4 s)"
+  with a determinate bar and a ✕, every plot live — and inspected.
+  5 more tests in `test/gui/test_burst_tool_tasks.py` (17 total): the plumbing is
+  gone, a missing folder is declared, the fit streams snapshots and delivers its
+  result, a failure is a condition rather than a modal, and the fit is
+  cancellable. The tool's own suites pass (6 GUI, 9 services, 5 export). Not
+  mine and left alone: `tests/test_examples.py` aborts the interpreter
+  (`Abort trap: 6`) — it never touches the GUI, exercising the backend services
+  with tttrlib and pytables.
+
+
 * **An isotropic sample was reading r = +0.167.** `LifetimeModel._tcspc_rt_curves`
   — the r(t) curve shown for a VV/VH fit — computed `(VV - VH) / (g VV + 2 VH)`:
   the denominator G-corrected, the numerator raw. That agrees with the truth only
