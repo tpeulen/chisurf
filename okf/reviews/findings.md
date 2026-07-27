@@ -3730,11 +3730,34 @@ inter-photon gap**, and the plugin's own "make it faster" lever (`time_scale`)
 manufactures them by the thousand.
 
 ### RF-311
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (coincident macro times are silently propagated as if the smallest non-zero gap had elapsed; when every gap is zero the fit returns a uniform model with an inflated log-likelihood and `converged=True`)
 - **Location:** `chisurf/plugins/burst/burst_h2mm/core/h2mm.py:284-299` (`prepare_bursts`: `unique_dt = unique_dt[unique_dt > 0]` followed by `np.searchsorted(unique_dt, dt)`), consumed by `:603` / `:637` (`pow_cache[slot]`) and mirrored in `chisurf/plugins/burst/burst_h2mm/core/h2mm_tttrlib.py:56` and `chisurf/plugins/burst/burst_h2mm/core/analysis.py:672`
 - **Finding:** `prepare_bursts` drops `Δt == 0` from the unique-gap table and then maps every gap through `searchsorted`, so a zero gap resolves to **slot 0 — the smallest *positive* Δt**. Its own docstring documents the input as "monotonically **non-decreasing**", i.e. ties are contractually allowed, and `extract_burst_photons` produces them by construction: `chisurf/core/fluorescence/burst/photons.py:229-230` does `t = t // time_scale`. That is the same `time_scale` the GUI exposes as "Macro-time scale" with range 1..100000 (`gui/tool.py:368-370`), the CLI as `--time-scale`, and that `backend/services.py:110-120` explicitly *tells the user to raise* ("Increase 'Macro-time scale' (e.g. to ×100) to speed up"). Verified on 200 synthetic bursts × 60 photons with exponential gaps: `time_scale=10` → 10.4 % of all gaps are zero, `time_scale=50` → 42.5 %, `time_scale=100` → 63.0 % — and every one of them is propagated with `A**1` instead of `A**0 = I`. Verified directly on a tie-containing burst: `t = [0,0,5,5,5,12]` gives `unique_dt = [5,7]`, `gap_slot = [0,0,0,0,1,-1]`, so the true gaps `[0,5,0,0,7]` are seen by the engine as `[5,5,5,5,7]`. The degenerate case is worse: when *all* gaps are zero `unique_dt` is empty, `n_dt == 0` short-circuits the cache fill (`:888`) and the never-filled all-zero `pow_cache` is still indexed — a 20-burst × 30-photon dataset returns `loglik = -13.86` for 600 photons (= 20·ln 0.5, only the first photon of each burst counted), `trans = obs = [[0.5,0.5],[0.5,0.5]]`, `converged=True`, `bic = 59.7` — a score no honest model can beat, so the state scan would select it. Give `Δt = 0` its own slot by keeping `0` in `unique_dt` (the pair-power build already returns `(I, 0)` for `power=0`; the spectral build at `:461` needs a `Δt == 0` guard because `lam ** (dt-1)` is singular there), and add a guardrail test that a tie-containing burst scores identically to the same photons with the tie resolved by the identity propagator.
-- **Fix note:**
+- **Fix note:** `prepare_bursts` now keeps `Δt == 0` in `unique_dt` (`>= 0`
+  instead of `> 0`), so a tie gets its own slot whose propagator is the identity
+  the pair-power build already returns for `power = 0` and whose `ρ` is zero — no
+  transition mass is booked across a zero interval. The spectral build's
+  confluent term now uses `λ ** max(Δt-1, 0)`: at the zero slot the leading `Δt`
+  factor kills it anyway, so clamping avoids evaluating `λ⁻¹` of an exactly zero
+  eigenvalue (which produced `inf → NaN` in the divided differences). The two
+  mirrored macro-time reconstructions (`h2mm_tttrlib._to_engine`,
+  `analysis.py:672`) read `unique_dt[gap_slot]` and are correct as soon as the
+  table is; the all-zero-gap dataset no longer produces an empty table, which
+  also removes the never-filled `pow_cache` short-circuit and a latent
+  `IndexError` in `_to_engine`. Pinned by four tests in
+  `chisurf/plugins/burst/burst_h2mm/tests/test_h2mm_engine.py`:
+  `test_zero_dt_gets_its_own_slot` (the finding's `[0,0,5,5,5,12]` burst →
+  `unique_dt == [0,5,7]`, `gap_slot == [0,1,0,0,2,-1]`),
+  `test_zero_dt_propagates_with_the_identity` and
+  `test_all_gaps_zero_is_not_a_free_lunch` (engine `loglik` equals an independent
+  forward recursion built on `np.linalg.matrix_power`, and the degenerate case is
+  no longer above `n_bursts·ln 0.5`), and `test_eig_build_handles_the_zero_dt_slot`
+  (singular `A`, spectral vs pair-power caches finite and equal). All three of the
+  first three fail on the pre-fix engine. 54/54 of the plugin suite pass; the
+  pre-existing `test_examples.py` abort in `tttrlib.write_hdf_file` is unrelated
+  (reproduced unchanged at `HEAD`) and is recorded in
+  [known-issues](/references/known-issues.md).
 
 ### RF-312
 - **Status:** OPEN

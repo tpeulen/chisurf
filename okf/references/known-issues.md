@@ -740,3 +740,15 @@ be, because three of them were defects in the code rather than in the tests.
   scan the fit returns a confident wrong number (2.6× at `D` = 0.05, ~15× at
   `D` = 0.02) instead of collapsing to its bound as the square region did. The
   scan-precision planner is the intended defence.
+
+- **`burst_h2mm/tests/test_examples.py` aborts the process in
+  `tttrlib.write_hdf_file`.** Found on 2026-07-27 while gating the RF-311 fix.
+  `test_generate_and_analyze_example_dataset` calls
+  `examples/generate_example_data.py:95`, whose HDF5 write raises `Fatal Python
+  error: Aborted` and takes the whole pytest run with it, so nothing after it in
+  the same session runs. Reproduced unchanged with `core/h2mm.py` restored to
+  `HEAD`, i.e. it is not the H2MM engine — it is the tttrlib/HDF5 pairing in this
+  environment (the abort is inside the extension, below Python). The rest of the
+  plugin suite is green (54 passed with this file ignored). Belongs in the
+  tttrlib repository; until then run the plugin suite with
+  `--ignore=chisurf/plugins/burst/burst_h2mm/tests/test_examples.py`.

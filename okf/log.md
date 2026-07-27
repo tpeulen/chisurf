@@ -451,6 +451,37 @@
   entry point is greppable and can hold a guard, six hand-rolled `QMessageBox`
   statics were neither.
 
+* **H2MM: two photons at the same macro time are not one photon apart**
+  (RF-311). `prepare_bursts` dropped `Δt == 0` from its unique-gap table, so
+  every tie fell through `searchsorted` onto slot 0 — **the smallest positive
+  gap**. The ties are not exotic: the plugin's own "Macro-time scale" control
+  divides macro times, and the backend explicitly advises raising it to speed
+  fits up, which is precisely what manufactures coincidences. At ×100 most gaps
+  in an ordinary burst are zero and every one of them was propagated with
+  `A¹`.
+
+  The degenerate case was the sharper one. With *all* gaps zero the table came
+  out empty, the cache fill was short-circuited on `n_dt == 0`, and the
+  all-zeros propagator array was indexed anyway — the fit then reported the
+  log-likelihood of the first photon of each burst alone, a uniform model, and
+  `converged=True`. That is a score no honest model can beat, so a state scan
+  would have *selected* it.
+
+  `Δt == 0` is now a slot like any other: the pair-power build already returns
+  `(I, 0)` for exponent 0, which is exactly right — no time passed, so no
+  transition mass. The spectral build needed a guard, because its confluent term
+  `Δt·λ^{Δt−1}` evaluates `λ⁻¹` there; the leading `Δt` kills the term anyway, so
+  the exponent is clamped rather than the singularity computed. Four tests pin
+  it, three of which fail on the pre-fix engine; the strongest compares the
+  engine's log-likelihood against an independent forward recursion built on
+  `numpy.linalg.matrix_power`, where a zero gap is the identity by construction.
+  The [H2MM theory concept](/references/h2mm-theory.md) now says so in the
+  `A^Δt` note instead of leaving it implied.
+
+  Found on the way and recorded rather than fixed: `test_examples.py` aborts the
+  whole pytest process inside `tttrlib.write_hdf_file`, unchanged at `HEAD` —
+  it is the extension, not the engine. See
+  [known-issues](/references/known-issues.md).
 
 ## 2026-07-26
 

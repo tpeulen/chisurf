@@ -207,7 +207,8 @@ class BurstPhotons:
     burst_offsets : numpy.ndarray
         CSR offsets, ``int64`` of length ``n_bursts + 1``.
     unique_dt : numpy.ndarray
-        Sorted unique inter-photon ``Δt`` values, ``int64``.
+        Sorted unique inter-photon ``Δt`` values, ``int64``.  ``0`` is a slot
+        like any other (coincident macro times propagate with the identity).
     n_streams : int
         Number of photon streams.
     """
@@ -282,7 +283,11 @@ def prepare_bursts(
             all_dt.append(np.diff(t))
     if all_dt:
         unique_dt = np.unique(np.concatenate(all_dt)).astype(np.int64)
-        unique_dt = unique_dt[unique_dt > 0]
+        # ``Δt == 0`` is a legitimate gap (the input is only non-*decreasing*, and
+        # coarse macro-time scaling makes ties common) and gets its own slot: the
+        # propagator of a zero interval is the identity, ``ρ(0) = 0``.  Dropping it
+        # would make every tie resolve to slot 0, i.e. the smallest *positive* Δt.
+        unique_dt = unique_dt[unique_dt >= 0]
     else:
         unique_dt = np.zeros(0, dtype=np.int64)
 
@@ -458,7 +463,10 @@ def _build_caches_eig(A, unique_dt, pow_cache, rho_cache):
 
     dt = unique_dt.astype(np.float64)
     lam_dt = lam[None, :] ** unique_dt[:, None]  # (S, n) complex
-    lam_dtm1 = lam[None, :] ** (unique_dt[:, None] - 1)
+    # The confluent term is ``Δt·λ^{Δt−1}``; at the ``Δt == 0`` slot it vanishes
+    # through the leading factor, so clamp the exponent rather than evaluate the
+    # singular ``λ⁻¹`` of a zero eigenvalue (which would poison ``D`` with NaN).
+    lam_dtm1 = lam[None, :] ** np.maximum(unique_dt[:, None] - 1, 0)
 
     num = lam_dt[:, :, None] - lam_dt[:, None, :]  # (S, n, n)
     den = lam[None, :, None] - lam[None, None, :]  # (1, n, n)
