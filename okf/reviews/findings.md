@@ -3846,3 +3846,64 @@ transform leaves `frames_raw` behind. Plus the "edit a demo" path, which opens a
 - **Location:** `chisurf/plugins/chimol/chimol/io/structure.py:442-451` (`load_structure_payload` calls the structure factory before looking at the extension) via `:401` (`_read_full_model`) → `chisurf/core/structure/structure.py:146` → `chisurf/core/fio/structure/coordinates.py:601` (`string = f.read()` on a text-mode handle)
 - **Finding:** `load hgbp1_transition.h5` — the file the shipped `trajectory.pml` demo uses — hands a binary HDF5 file to the PDB text reader, which raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0x89 in position 0` (0x89 is the leading byte of the HDF5 signature) and is logged at WARNING with `exc_info=True`: *"Structure reader failed for …hgbp1_transition.h5; falling back to the built-in PDB parser (no radius of gyration)."* The load then succeeds — a 464×5235×3 bead trajectory arrives through the trajectory loader, not through any PDB parser — so a normal, fully working operation prints a stack trace and a message that is wrong about both the cause and the remedy. Dispatch known non-PDB containers (`.h5`/`.hdf5`/`.dcd`/`.xtc`/`.trr`) by extension before trying the structure factory, and word the fallback for what it actually falls back to.
 - **Fix note:**
+
+### Review 2026-07-27 — the metadata-key completer and the editors that consume it
+
+Slice: `55f51a568` (`fix(gui): the metadata-key completer offered thirty-seven keys,
+not nine thousand`) — `chisurf/core/fio/mmcif/db/pdbx_metadata.py`, the shared
+`MetadataEditor`, and its three consumers (`gui/plots/fitinfo.py`,
+`mmfdb_admin/gui/metadata_dock.py`, `burst_selection/gui/tool.py`). The facade is
+right: `load_bundled()` costs 93 ms once and yields 9,343 keys / 4,065
+descriptions, the module caches are `None`-guarded so an empty parse is not
+re-attempted, and returning copies keeps a caller's `.clear()` from poisoning the
+cache. The popup widening works as claimed (widest key 711 px, under the 900 cap).
+What the commit did not look at is what happens to the shared model *after* the
+first build, and what the editor does when a row is removed: switching the edited
+record leaks a 9,344-item model each time (RF-373), deleting a row emits nothing
+even though the class documents that it does (RF-374), and every per-row callback
+carries a row index that goes stale the moment a row above it is deleted
+(RF-375). The two consumers add one doubled backend call per sample selection
+(RF-376) and one editor that was named in the commit message but never migrated
+(RF-377). Findings RF-373..RF-378, all reproduced offscreen in the `arm64` env.
+
+### RF-373
+- **Status:** OPEN
+- **Severity:** S2 (every rebuild of the shared key model leaks the previous one — ~6 MB per edited record, held for the life of the editor)
+- **Location:** `chisurf/gui/widgets/metadata_editor.py:297` (`_key_model`: `model = QtGui.QStandardItemModel(self)`), invalidated at `:295` and re-cached at `:302-303`; driven by `set_data` (`:238-256`) via `_extra_keys`
+- **Finding:** the model is parented to the editor and the cache attribute is simply overwritten, so the superseded model stays a live child of the widget with all 9,344 `QStandardItem`s attached. Nothing ever deletes it. Verified offscreen: a `MetadataEditor` starts with 0 `QStandardItemModel` children; after 10 `set_data` calls that each bring a different unknown key it holds **10**, after 30 it holds **30**, and max RSS goes 143.6 MB -> 323.5 MB — about **6 MB per rebuild**. This is not a synthetic path: `MetadataDock._load_metadata` (`mmfdb_admin/gui/metadata_dock.py:216`) calls `set_data` with the selected sample's key-values, and any sample carrying a key the dictionary does not define changes `_extra_keys` and forces a rebuild — browsing three samples through the real dock already leaves **5** stale models behind (two per selection, see RF-376). A user working through a few dozen samples in one session walks the process into hundreds of megabytes. Call `deleteLater()` (or `setParent(None)`) on the old `_key_model_cache` before replacing it, and pin it with a test that counts `findChildren(QStandardItemModel)` after repeated `set_data`.
+- **Fix note:**
+
+### RF-374
+- **Status:** OPEN
+- **Severity:** S2 (deleting a metadata row emits no `changed`, so in the Fit Info panel the deletion is never written back)
+- **Location:** `chisurf/gui/widgets/metadata_editor.py:356-359` (`_on_delete_row`) and `:351-354` (`_on_add_empty_row`, which suppresses), against the class docstring at `:161-163` ("Emitted whenever the user edits a cell or adds/deletes a row"); consumer `chisurf/gui/plots/fitinfo.py:397` (`self.metadata_editor.changed.connect(self._on_changed)`)
+- **Finding:** `_on_delete_row` calls `self.table.removeRow(row)` and stops — it never calls `_emit_changed`, and destroying the row's combo box does not emit `currentTextChanged` either. Verified: with a listener attached, deleting the middle of three rows leaves `rowCount() == 2` and the emission count at **0**; `_on_add_empty_row` likewise emits 0, because it deliberately holds `_suppress_change` across the add. `FitInfo._on_changed` (`fitinfo.py:700-708`) is the *only* persistence path for fit metadata — it writes `self.metadata_editor.as_dict()` into `flr_analysis_key_value` (or `fit.flr_metadata`) — so a user who deletes a metadata row and touches nothing else has removed it from the table and from nothing else; reopening the panel brings the key back. It happens to be harmless in `MetadataDock`, which saves behind an explicit button. Emit `changed` from `_on_delete_row` (an empty added row carries no data, so the add case can stay silent, but then the docstring must say so).
+- **Fix note:**
+
+### RF-375
+- **Status:** OPEN
+- **Severity:** S2 (every row callback captures its row index at build time, so after a delete the descriptions are written onto the wrong row)
+- **Location:** `chisurf/gui/widgets/metadata_editor.py:319` (`combo.currentTextChanged.connect(lambda text, r=row: self._update_row_tooltip(r, text))` in `_make_key_combo`), against `_on_delete_row` at `:356-359` (`removeRow` renumbers everything below it) and `_update_row_tooltip` at `:323-331`
+- **Finding:** `r` is bound once, when the row is created, and no path re-binds it; `QTableWidget.removeRow` shifts every following row up by one, so each surviving combo now addresses the row *below* itself. Verified offscreen with three rows (`pH`, `temperature`, `power`): after deleting row 0, editing the key in row 0 (now `temperature`) to `ionic_strength` wrote *"Ionic strength (mM or M)"* onto **row 1**'s combo and value cell, while row 0 kept the stale *"Temperature in Kelvin"* — both rows then describe a key they do not hold. With only one row left the write lands on `cellWidget(1, 0) is None` and is silently dropped, so the tooltip simply freezes. The tooltip is the only thing telling a user what an opaque mmCIF key such as `_flr_reference_measurement_lifetime.lifetime` means, so a wrong one is worse than none. Resolve the row at call time from the sender (`self.table.indexAt(combo.pos()).row()`, or a scan of `cellWidget(r, 0) is combo`) instead of capturing it.
+- **Fix note:**
+
+### RF-376
+- **Status:** OPEN
+- **Severity:** S2 (selecting a sample runs the whole load twice — two backend calls, two full editor rebuilds — and `load_sample` runs it three times)
+- **Location:** `chisurf/plugins/core/mmfdb_admin/gui/metadata_dock.py:64-65` (`currentIndexChanged` -> `_on_sample_changed` **and** `editTextChanged` -> `_on_sample_text_changed`, both reaching `_load_metadata` at `:195` and `:203`), plus `load_sample` at `:177-187`, which sets the combo *and then* calls `_load_metadata` itself
+- **Finding:** the two selector signals are not mutually exclusive — changing the index also changes the edit text of an editable combo, and the items are formatted `"sid — label"`, which is exactly the `" — "` pattern `_on_sample_text_changed` keys on. Verified with a counting fake client: one `setCurrentIndex` produces `get_sample` calls `['S1', 'S1']`; `load_sample("S2")` produces `['S2', 'S2', 'S2']`; browsing three samples produces six calls. Each of those is a real RPC round trip to the mmfdb backend *and* a full `MetadataEditor.set_data`, which is what makes RF-373 accumulate two models per click rather than one. The second load also silently discards any unsaved edit the first one had just rendered. Route both signals through one guarded entry point that returns early when `sample_id == self._current_sample_id`, and drop the redundant `_load_metadata` in `load_sample`.
+- **Fix note:**
+
+### RF-377
+- **Status:** OPEN
+- **Severity:** S3 (the second metadata editor the commit names was not migrated: no shared model, no descriptions, and the mid-key elision the commit fixed is still there)
+- **Location:** `chisurf/plugins/burst/burst_selection/gui/tool.py:73-86` (its own `COMMON_METADATA_KEYS` + `ALL_METADATA_KEYS`) and `:249-265` (`MetadataDialog._add_metadata_row`, `combo.addItems(ALL_METADATA_KEYS)` at `:255`), against the comment claiming the de-duplication already happened at `chisurf/gui/widgets/metadata_editor.py:11-14` ("previously duplicated in fitinfo.py and burst_selection/gui/tool.py")
+- **Finding:** the comment is false — `burst_selection` still carries its own copy of the key list, and it is not the same list: 9,359 keys against the shared 9,366, missing `pdbx.sample_type`, `pdbihm.entry_id`, the three `flrcif.*` keys and two `_exptl_crystal_grow.*` keys, so the flrCIF export dialog cannot offer the very flrCIF keys it exists to write. Verified offscreen: its rows do **not** share a model (`c0.model() is c1.model()` -> `False`, 9,359 items built per row, 0.099 s for twenty rows against 0.026 s for the shared editor), `itemData(i, Qt.UserRole + 1)` is `None` so no dictionary description reaches any tooltip, there is no `ElideNone`/width pass so a key is still elided in the middle of the popup, and the insert policy is the default `InsertAtBottom` (`3`) — typing a key and pressing Enter appends it to that row's list, 9,359 -> 9,360. `MetadataDialog` reimplements what `MetadataEditor` already does (add/delete row, `get_metadata` == `as_dict`); replace it with the shared widget rather than porting the four fixes into a second copy.
+- **Fix note:**
+
+### RF-378
+- **Status:** OPEN
+- **Severity:** S3 (the two consumer-side guards swallow a dictionary failure without a word, which is the exact failure mode this commit was chasing)
+- **Location:** `chisurf/gui/widgets/metadata_editor.py:39-48` (two `try: ... except Exception: _PDBX_KEYS = [] / _PDBX_DESCRIPTIONS = {}`) and `chisurf/plugins/burst/burst_selection/gui/tool.py:82-85`
+- **Finding:** the commit's own message records that these bare guards are how the broken dictionary path stayed invisible for so long ("The guard was never the problem: the function did not raise, it returned `[]`"), and it added a `logger.warning` in `pdbx_metadata._load` for the empty case — but the consumers' silent `except Exception` is untouched, so a dictionary that *raises* (a malformed bundled `.dic`, an mmfdb accessor renamed again) still degrades to the 37 hard-coded keys with nothing in the log. The guard also does not guard what it appears to: the `from ... import get_pdbx_metadata_keys` at `metadata_editor.py:8` and `tool.py:18` sits outside any `try`, so a missing `mmfdb` raises at import and takes the whole module down regardless. Log the exception (`logger.exception`) in both handlers, or drop the guards and let the facade — which already logs — be the single place that decides what an unusable dictionary looks like.
+- **Fix note:**
