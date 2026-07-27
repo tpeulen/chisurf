@@ -6,13 +6,13 @@ import importlib
 import json
 import logging
 import pathlib
-import time
 import traceback
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, NamedTuple
 
 from qtpy import QtCore, QtWidgets
 
+from chisurf.core.plugin.manifest import load_manifest
 from chisurf.gui.event_pump import pump_ui
 
 
@@ -262,6 +262,79 @@ def _make_panel_factory(entrypoint: str, embed: bool):
     return factory
 
 
+class _MaturityFlag(NamedTuple):
+    """How one manifest maturity flag is presented by the panel shell."""
+
+    #: Appended to the navigation label of a flagged panel.
+    marker: str
+    #: Panel/manifest key holding the tool-specific message, if any.
+    message_key: str
+    #: Banner text when the manifest carries no message of its own.
+    default_message: str
+    #: Banner background / bottom-border colours.
+    background: str
+    border: str
+
+
+#: The maturity flags a panel may carry, in the order they are rendered. Both are
+#: written by :func:`apply_manifest_flags` from the plugin manifest, so a tool's
+#: maturity is declared once — in its manifest — and surfaced here.
+MATURITY_FLAGS: dict[str, _MaturityFlag] = {
+    "deprecated": _MaturityFlag(
+        marker="⛔",
+        message_key="deprecation_message",
+        default_message="{name} is DEPRECATED — it will be removed, do not build new work on it",
+        background="#8a5300",
+        border="#5c3700",
+    ),
+    "experimental": _MaturityFlag(
+        marker="⚠️",
+        message_key="experimental_message",
+        default_message="{name} is EXPERIMENTAL and UNTESTED — results are not validated",
+        background="#b30000",
+        border="#7d0000",
+    ),
+}
+
+#: ``chisurf/plugins`` — a panel's ``"manifest"`` path is relative to this.
+_PLUGINS_DIR = pathlib.Path(__file__).resolve().parents[2] / "plugins"
+
+
+def apply_manifest_flags(panels: list[dict]) -> list[dict]:
+    """Copy the maturity flags of each panel's plugin manifest onto the panel.
+
+    A panel may declare ``"manifest": "<path under chisurf/plugins>"``; that
+    manifest's ``experimental`` / ``deprecated`` flags (and their messages) then
+    drive the navigation marker and the banner above the panel. The flag lives in
+    one place — the manifest — instead of being duplicated in every host that
+    embeds the tool. Panels naming no (or an unreadable) manifest are untouched.
+
+    Parameters
+    ----------
+    panels : list of dict
+        Panel definitions, modified in place.
+
+    Returns
+    -------
+    list of dict
+        The same list, for use directly in a module-level panel definition.
+    """
+    for panel in panels:
+        rel = panel.get("manifest")
+        if not rel:
+            continue
+        manifest = load_manifest(_PLUGINS_DIR / rel / "manifest.json")
+        if manifest is None:
+            continue
+        for flag, spec in MATURITY_FLAGS.items():
+            if getattr(manifest, flag, False):
+                panel[flag] = True
+                message = getattr(manifest, spec.message_key, "")
+                if message:
+                    panel[spec.message_key] = message
+    return panels
+
+
 def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     """Load a data-driven ``panels.json`` spec into NavigationPanelTool panels.
 
@@ -269,7 +342,9 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     a tool by its GUI entrypoint (``"module:Class"``) plus ``name`` / ``icon`` /
     ``description`` / ``role``. Set ``"embed": true`` for ``QMainWindow`` tools
     that must be flattened via :func:`embed_mainwindow`; ``{"separator": true}``
-    inserts a group separator. Panels import lazily inside their factories.
+    inserts a group separator. An entry may also name the tool's ``manifest`` so
+    :func:`apply_manifest_flags` surfaces its maturity flags. Panels import
+    lazily inside their factories.
 
     Returns
     -------
@@ -295,12 +370,13 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
                 "icon": entry.get("icon", ""),
                 "description": entry.get("description", ""),
                 "role": entry["role"],
+                "manifest": entry.get("manifest", ""),
                 "factory": _make_panel_factory(
                     entry["entrypoint"], bool(entry.get("embed", False))
                 ),
             }
         )
-    return spec, panels
+    return spec, apply_manifest_flags(panels)
 
 
 class NavigationPanelTool(QtWidgets.QMainWindow):
@@ -860,12 +936,13 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             self.nav_list.item(sep_row).setHidden(not group_has_visible)
 
     def _panel_label(self, panel: Mapping[str, Any]) -> str:
-        """Return the selector label for a panel (flagged when experimental)."""
+        """Return the selector label for a panel (flagged when deprecated/experimental)."""
         icon = str(panel.get("icon") or "").strip()
         name = str(panel.get("name") or "").strip()
         label = f"{icon} {name}".strip()
-        if panel.get("experimental"):
-            label = f"{label}  ⚠️"
+        for flag, spec in MATURITY_FLAGS.items():
+            if panel.get(flag):
+                label = f"{label}  {spec.marker}"
         return label
 
     def _placeholder_widget(self, panel: Mapping[str, Any]) -> QtWidgets.QWidget:
@@ -952,31 +1029,48 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
     def _wrap_panel(
         self, widget: QtWidgets.QWidget, panel: Mapping[str, Any] | None = None
     ) -> QtWidgets.QWidget:
-        """Wrap a panel widget with margins, child-window flags and an experimental banner.
+        """Wrap a panel widget with margins, child-window flags and maturity banners.
 
-        For panels flagged experimental, a prominent warning banner is prepended.
+        For panels flagged deprecated or experimental, a prominent warning banner
+        is prepended for each flag.
         """
         wrapper = QtWidgets.QWidget()
         self._prepare_embedded_widget(widget, wrapper)
         layout = QtWidgets.QVBoxLayout(wrapper)
         layout.setContentsMargins(*self._panel_margins)
-        if panel is not None and panel.get("experimental"):
-            layout.addWidget(self._experimental_banner(panel))
+        if panel is not None:
+            for flag in MATURITY_FLAGS:
+                if panel.get(flag):
+                    layout.addWidget(self._maturity_banner(panel, flag))
         layout.addWidget(widget)
         return wrapper
 
-    def _experimental_banner(self, panel: Mapping[str, Any]) -> QtWidgets.QLabel:
-        """Build the red 'experimental / untested' banner for an experimental panel."""
-        msg = panel.get("experimental_message") or (
-            f"{panel.get('name', 'This tool')} is EXPERIMENTAL and UNTESTED — "
-            "results are not validated"
+    def _maturity_banner(self, panel: Mapping[str, Any], flag: str) -> QtWidgets.QLabel:
+        """Build the warning banner a deprecated or experimental panel is topped with.
+
+        Parameters
+        ----------
+        panel : Mapping
+            The panel definition carrying the flag and (optionally) its message.
+        flag : str
+            Key in :data:`MATURITY_FLAGS` — ``"deprecated"`` or ``"experimental"``.
+
+        Returns
+        -------
+        QtWidgets.QLabel
+            The banner label, styled for the flag.
+        """
+        spec = MATURITY_FLAGS[flag]
+        msg = panel.get(spec.message_key) or spec.default_message.format(
+            name=panel.get("name", "This tool")
         )
-        banner = QtWidgets.QLabel(f"⚠️  {msg}")
+        banner = QtWidgets.QLabel(f"{spec.marker}  {msg}")
         banner.setAlignment(QtCore.Qt.AlignCenter)
         banner.setWordWrap(True)
         banner.setStyleSheet(
-            "QLabel { background-color: #b30000; color: white; font-weight: bold; "
-            "font-size: 14px; padding: 5px; border-bottom: 2px solid #7d0000; }"
+            f"QLabel {{ background-color: {spec.background}; color: white; "
+            "font-weight: bold; font-size: 14px; padding: 5px; "
+            f"border-bottom: 2px solid {spec.border}; }}"
         )
         return banner
 

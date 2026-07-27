@@ -2,6 +2,31 @@
 
 ## 2026-07-27
 
+* **A deprecated tool now says so, and a tool declares its maturity once
+  (INC-07).** `deprecated` / `deprecation_message` had been parsed, validated and
+  round-tripped by the manifest layer while **no host rendered them** — the
+  honest-metadata flag [specs/plugins.md](/specs/plugins.md) asks for was
+  write-only. `NavigationPanelTool` now surfaces it exactly as it surfaces
+  `experimental`: `⛔` after the navigation entry and an amber banner above the
+  panel, both driven by a new `MATURITY_FLAGS` table (marker, message key,
+  fallback wording, colours) instead of a branch per flag, so a tool that is both
+  deprecated and experimental gets both banners with the harder warning first.
+  The reader moved with it: `_apply_manifest_flags()` was a private helper of the
+  FCS hub that knew only `experimental`, so the Decay Analysis hub hard-coded the
+  LLTF panel's flag *and* message — a copy that had already drifted from the
+  manifest by a trailing full stop. It is now
+  `navigation.apply_manifest_flags()`, also applied by `load_panels_json()` so a
+  data-driven `panels.json` entry may name its tool's `manifest`. No built-in
+  plugin declares `deprecated` today; this is the surface waiting for the first
+  one. Rendered offscreen and inspected (deprecated alone, and both banners
+  stacked). Tests: `test/gui/test_navigation_maturity.py` (8),
+  `lifetime_analysis/tests` (+1). Docs: maturity-flag table in
+  `docs/development/plugin_architecture.md`. Fixed in passing: the
+  `lifetime_analysis` menu-metadata test had been red since the ribbon
+  regrouping (`22cef2ebe`) flattened the decay tools into one `Spectroscopy`
+  group, and `navigation.py` carried an unused `import time`. See
+  [specs/assessment.md](/specs/assessment.md) INC-07.
+
 * **The what-if plot no longer answers from a posterior that is gone (RF-103).**
   `ConditionalScanPlot.update()` cleared its *Fix* combo box **outside** the
   `blockSignals` pair, so `clear()` emitted `currentIndexChanged` and re-entered

@@ -234,6 +234,26 @@ Global plugin settings can override this behavior through `plugins.statefulness.
 
 Per-plugin overrides are stored in `plugins.statefulness.per_plugin` and can be edited in the Plugin Manager. A checked per-plugin state means force persistence, unchecked means force no persistence, and the partial/indeterminate state means use the global mode.
 
+### 3.1.1 Maturity flags
+
+A manifest declares how far a tool can be trusted, and the GUI surfaces that
+declaration — the flag is written once, in the manifest, never in the hosts that
+embed the tool:
+
+| Key | Message key | Surfaced as |
+|-----|-------------|-------------|
+| `"experimental": true` | `experimental_message` | red banner above the panel, `⚠️` after the navigation entry |
+| `"deprecated": true` | `deprecation_message` | amber banner above the panel, `⛔` after the navigation entry |
+
+A tool may carry both; the deprecation banner is drawn first. Without a message
+the banner falls back to a generic wording built from the panel name.
+
+A shell built on `NavigationPanelTool` picks the flags up by naming the tool's
+manifest in the panel definition — `"manifest": "<path under chisurf/plugins>"` —
+and passing the panels through
+`chisurf.gui.widgets.navigation.apply_manifest_flags()` (a `panels.json` entry may
+carry the same key; `load_panels_json()` applies the flags itself).
+
 ### 3.2 Schema files
 
 Plugin schemas live under `schemas/` and are JSON Schema draft-07 files referenced from the manifest:

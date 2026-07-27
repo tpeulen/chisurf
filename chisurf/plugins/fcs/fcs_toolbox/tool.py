@@ -15,36 +15,11 @@ use — so it shares their look and codebase.
 
 from __future__ import annotations
 
-import pathlib
-
 from qtpy import QtWidgets
 
-from chisurf.core.plugin.manifest import load_manifest
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.navigation import apply_manifest_flags
 from chisurf.plugins.fcs.fcs_correlator.tool import CORRELATOR_PANELS, FcsCorrelatorTool
-
-#: chisurf/plugins directory (this file is plugins/fcs/fcs_toolbox/tool.py).
-_PLUGINS_DIR = pathlib.Path(__file__).resolve().parents[2]
-
-
-def _apply_manifest_flags(panels: list[dict]) -> list[dict]:
-    """Enrich panels with the ``experimental`` flag from each tool's manifest.json.
-
-    A panel may declare ``"manifest": "<rel path under chisurf/plugins>"``; the manifest's
-    ``experimental`` / ``experimental_message`` then drive the navigation marker and banner,
-    so the flag lives in one place (the manifest) rather than being duplicated here.
-    """
-    for panel in panels:
-        rel = panel.get("manifest")
-        if not rel:
-            continue
-        manifest = load_manifest(_PLUGINS_DIR / rel / "manifest.json")
-        if manifest is not None and manifest.experimental:
-            panel["experimental"] = True
-            if manifest.experimental_message:
-                panel["experimental_message"] = manifest.experimental_message
-    return panels
-
 
 # ---------------------------------------------------------------------------
 # Optional-tool panel factories
@@ -95,7 +70,7 @@ def _make_filter_calc(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
 #: Optional, independent FCS tools shown below the correlator workflow. The
 #: channel-definition, detector-setup and merger tools are omitted here because
 #: the correlator workflow already owns those steps.
-TOOL_PANELS = _apply_manifest_flags(
+TOOL_PANELS = apply_manifest_flags(
     [
         {
             "name": "2D-FLCS",

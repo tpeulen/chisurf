@@ -26,7 +26,11 @@ def test_lifetime_panel_order() -> None:
 
 
 def test_lazy_lifetime_panel_marked_experimental() -> None:
-    """Lazy Lifetime panel carries experimental metadata for the navigation shell."""
+    """Lazy Lifetime panel carries experimental metadata for the navigation shell.
+
+    The flag is not written in the panel definition: it is read from the LLTF
+    manifest, so the tool declares its maturity in one place only.
+    """
     from chisurf.plugins.fluorescence_decay.lifetime_analysis.gui.tool import (
         LIFETIME_PANELS,
     )
@@ -34,6 +38,10 @@ def test_lazy_lifetime_panel_marked_experimental() -> None:
     lazy_panel = next(panel for panel in LIFETIME_PANELS if panel["role"] == "lazy_lifetime")
     assert lazy_panel["experimental"] is True
     assert "experimental" in lazy_panel["experimental_message"].lower()
+
+    lltf = load_manifest(Path(__file__).resolve().parents[2] / "lltf" / "manifest.json")
+    assert lltf is not None
+    assert lazy_panel["experimental_message"] == lltf.experimental_message
 
 
 def test_lifetime_panel_factories_import_expected_widgets(monkeypatch) -> None:
@@ -95,7 +103,9 @@ def test_lifetime_analysis_menu_metadata() -> None:
     root = Path(__file__).resolve().parents[1]
     visible = load_manifest(root / "manifest.json")
     assert visible is not None
-    assert visible.display_name == "Spectroscopy:Fluorescence decay:Decay Analysis"
+    # The ribbon regrouping (22cef2ebe) flattened the decay tools into one
+    # ``Spectroscopy`` group; this expectation had been stale ever since.
+    assert visible.display_name == "Spectroscopy:Decay Analysis"
     assert visible.experimental is True
     assert "experimental" in visible.experimental_message.lower()
     assert visible.menu_hidden is False

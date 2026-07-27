@@ -5,7 +5,7 @@ from __future__ import annotations
 from qtpy import QtWidgets
 
 from chisurf.gui.glyphs import Glyphs
-from chisurf.gui.widgets.navigation import NavigationPanelTool
+from chisurf.gui.widgets.navigation import NavigationPanelTool, apply_manifest_flags
 
 
 def _irf_estimator(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -51,45 +51,49 @@ def _vv_vh_g_factor(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
-LIFETIME_PANELS = [
-    {
-        "name": "1. IRF Estimation",
-        "icon": Glyphs.WAVE,
-        "description": "Estimate instrument response functions from fluorescence decays.",
-        "factory": _irf_estimator,
-        "role": "irf",
-    },
-    {
-        "name": "2. MaxEnt MEM",
-        "icon": Glyphs.CHART_UP,
-        "description": "Run maximum entropy lifetime and FRET-distance analysis.",
-        "factory": _maxent_mem,
-        "role": "maxent",
-    },
-    {
-        "name": "3. Lazy Lifetime Analysis",
-        "icon": Glyphs.TIMER,
-        "description": "Analyze TCSPC decays with the LLTF workflow.",
-        "experimental": True,
-        "experimental_message": "Lazy Lifetime Analysis is experimental and not yet validated.",
-        "factory": _lazy_lifetime,
-        "role": "lazy_lifetime",
-    },
-    {
-        "name": "4. Histogram-Microtime",
-        "icon": Glyphs.CHART,
-        "description": "Build TTTR microtime histograms.",
-        "factory": _microtime_histogram,
-        "role": "microtime_histogram",
-    },
-    {
-        "name": "5. VV/VH G-Factor",
-        "icon": "⚖️",
-        "description": "Calculate detector G-factors from VV/VH decays.",
-        "factory": _vv_vh_g_factor,
-        "role": "vv_vh_g_factor",
-    },
-]
+#: The panels of this shell. Maturity flags are not written here: a panel names
+#: its tool's ``manifest`` and the flags are read from it, so a tool declares its
+#: maturity once instead of once per host that embeds it.
+LIFETIME_PANELS = apply_manifest_flags(
+    [
+        {
+            "name": "1. IRF Estimation",
+            "icon": Glyphs.WAVE,
+            "description": "Estimate instrument response functions from fluorescence decays.",
+            "factory": _irf_estimator,
+            "role": "irf",
+        },
+        {
+            "name": "2. MaxEnt MEM",
+            "icon": Glyphs.CHART_UP,
+            "description": "Run maximum entropy lifetime and FRET-distance analysis.",
+            "factory": _maxent_mem,
+            "role": "maxent",
+        },
+        {
+            "name": "3. Lazy Lifetime Analysis",
+            "icon": Glyphs.TIMER,
+            "description": "Analyze TCSPC decays with the LLTF workflow.",
+            "manifest": "fluorescence_decay/lltf",
+            "factory": _lazy_lifetime,
+            "role": "lazy_lifetime",
+        },
+        {
+            "name": "4. Histogram-Microtime",
+            "icon": Glyphs.CHART,
+            "description": "Build TTTR microtime histograms.",
+            "factory": _microtime_histogram,
+            "role": "microtime_histogram",
+        },
+        {
+            "name": "5. VV/VH G-Factor",
+            "icon": "⚖️",
+            "description": "Calculate detector G-factors from VV/VH decays.",
+            "factory": _vv_vh_g_factor,
+            "role": "vv_vh_g_factor",
+        },
+    ]
+)
 
 
 class LifetimeAnalysisTool(NavigationPanelTool):

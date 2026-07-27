@@ -88,8 +88,9 @@ class PluginManifest:
     #: only for manifests that do not set this).
     menu_hidden: bool = False
 
-    #: Declared maturity flag from the plugin spec's "honest metadata" rule. Parsed
-    #: and round-tripped, but no host surfaces it yet (unlike ``experimental``).
+    #: Declared maturity flag from the plugin spec's "honest metadata" rule. Surfaced
+    #: like ``experimental``: the meta-tool shell marks the navigation entry and tops
+    #: the panel with a banner carrying ``deprecation_message``.
     deprecated: bool = False
     deprecation_message: str = ""
 
