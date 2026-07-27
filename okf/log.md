@@ -1077,6 +1077,25 @@
   Reverted rather than left in as a plausible-looking no-op, and the real options
   are written down in [known-issues](/references/known-issues.md).
 
+* **Restorability belongs to the form framework, not to the plugin author.** A
+  view spec already names, per control, the model attribute it binds to — which
+  is a complete description of where a form's state lives. So reading it out and
+  putting it back was written once
+  ([gui-autoform](/subsystems/gui-autoform.md)), and turned save/restore on for
+  83 of the 92 shipped view specs, 690 controls, with no per-plugin work. The
+  motivation is not convenience: a tool whose settings cannot be written down is
+  a tool whose results cannot be reproduced, and an analysis folder that holds
+  the numbers while holding no record of what was asked for is an archive rather
+  than a result. Three rules decide whether saved settings are worth keeping —
+  action-bound controls are commands and not state; applying is lenient so an
+  older file restores what it still shares and reports the rest; values are
+  coerced JSON-safe because numpy is everywhere in these models. Burst folders
+  are the first consumer, and both burst tools can now be repopulated from the
+  folder that produced them. One trap found on the way, of a kind no per-field
+  test catches: `dT_max` is read out twice in different units, so restoring from
+  the wrong one divides the burst search by 1000 per round trip while every
+  isolated assertion still passes — the test drives three consecutive trips.
+
 * **If a later step must reopen the data, record how it was opened — do not let
   it infer.** Sending a gated burst population to FCS failed on every Becker &
   Hickl file with "Container type SPC not supported". `"SPC"` is not a
