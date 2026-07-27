@@ -4214,3 +4214,60 @@ never go through a vstack. Findings RF-356..RF-359.
 - **Location:** `chisurf/core/fio/ascii.py:695-703` (`Csv.header`: `range(self.data.shape[1])`) and `:689-693` (`Csv.data`, which rebuilds `np.array(self._data, dtype=np.float64).T` on every access), against `:679-686` (`n_cols`/`n_rows`, which read `_data` directly)
 - **Finding:** `data` is transposed, so `data.shape[1]` is the number of **rows**. Verified on a 3-column × 7-row file with no detected header: `n_cols == 3` but `header` returns `['0'…'6']`, seven entries — the index fallback is wrong by the whole shape of the file, and it pays for a full float64 copy of the table to get there when `n_cols` is one attribute lookup away. Nothing in the tree consumes `Csv.header` today, which is why it has never surfaced; the docstring nevertheless promises "a list of the column headers". The same `data`-copies-per-access behaviour costs `DataCurve.load` six full copies of the file for a 5-column CSV (`chisurf/core/data.py:413,436-440` — measured 6 ms and 48 MB of churn for a 200 000-row file), and is what makes the companion arrays in RF-356 views into a throwaway buffer. Use `n_cols` in `header`, and let `data` reuse a cached transposed view instead of rebuilding it — noting that a stable buffer makes fixing RF-356 (copy on the way in) a prerequisite, not an optional extra.
 - **Fix note:**
+
+### Review 2026-07-27 — the chimol trajectory commands, the Demo menu, and the script editor
+
+Slice: `99afc554b` (`feat(chimol): trajectory commands, a Demo menu of scripts, and
+a script editor`) plus the viewer timeline API it drives — `chimol/cmd/animation.py`,
+`chimol/app/demos.py`, `MolViewPluginWindow.run_demo`/`run_script_text`, and the
+`renderer/view.py` animation seam. Driven headlessly against a real
+`MolViewPluginWindow` with the shipped demos and the 464-state
+`hgbp1_transition.h5`. The Kabsch fit itself is right — the reflection guard is
+present and the rotation convention (`P @ R.T` with `R = V D Uᵀ`) checks out — and
+all seven demos run without a single command error. What does not hold is
+everything around the **timeline**: nothing ever stops playback, the timeline only
+ever grows, `frame 0` runs backwards to the end of the movie, and a rigid
+transform leaves `frames_raw` behind. Plus the "edit a demo" path, which opens a
+100×30 empty box. Findings RF-360..RF-365.
+
+### RF-360
+- **Status:** OPEN
+- **Severity:** S2 (the menu entry that opens a demo for editing drops the demo and opens a 100×30 empty box)
+- **Location:** `chisurf/plugins/chimol/chimol/app/demos.py:179-197` (`open_script_editor`), reached from `chisurf/plugins/chimol/chimol/app/molview_main_window.py:468-476` (`edit_demo_script`) via the two Demo-menu entries built at `demos.py:219-229`
+- **Finding:** the chisurf branch is `editor = CodeEditor(parent=window)` followed by `if hasattr(editor, "setPlainText") … elif hasattr(editor, "set_text") …`. `chisurf.plugins.core.code_editor.CodeEditor` (`editor.py:61`) is a tabbed `QWidget`, not a `QPlainTextEdit`: verified in a real app that **both** `hasattr` checks are `False`, so the demo text is silently discarded and an empty *Untitled* editor opens. Worse, a `QWidget` given a parent is not a window — verified `editor.isWindow() is False` and, after `show()`, `editor.geometry() == QRect(0, 0, 100, 30)`: a 100×30 sliver pasted over the top-left corner of the ChiMOL window rather than a dialog. `runner = getattr(window, "run_script_text", None)` (`:179`) and `path` are computed but used only in the `except` fallback, so even with text there would be no way to run it back into the viewer, and *Save* could not write back to the demo. Nothing raises, so the fallback `ScriptEditor` — the one that actually works — never gets a chance. No test touches this path (`test_demos.py` covers the scripts, the runner and the menu, never the editor). Open `CodeEditorWindow(filename=str(path))` (a `QMainWindow`, and the class that actually loads files) and wire `runner` to it.
+- **Fix note:**
+
+### RF-361
+- **Status:** OPEN
+- **Severity:** S2 (playback survives deleting the trajectory and keeps redrawing a static scene at 30 fps, forever)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/animation.py:247-261` (`mplay`) and `:304-311` (`mclear`, which resets the timeline without pausing); nothing on the `delete` / `load` / object-teardown paths touches `viewer._animation_running` or `viewer._animation_timer` (`renderer/view.py:1684-1686`)
+- **Finding:** the shipped `trajectory.pml` ends with `mplay`, and nothing ever ends it. Measured on a real window: after `run_demo("trajectory")`, `_animation_running` is `True` and the timer is active — expected. Then `run_demo("cartoon")`, whose first line is `delete all` and which loads a single-state PDB, leaves it **still running**: the frame counter marched 30 → 150 with a static structure on screen, i.e. `set_current_frame` → `_apply_frame_states()` + `_update_view()` fire 30× a second on a scene that has one state, indefinitely. The only stops are the ■ button in the timeline dock (`app/timeline_panel.py:32`) and typing `mstop`; a user who ran the demo from the menu and never opened the dock has no visible way to know a timer is running, let alone stop it. `delete`, `load` and `mclear` should pause playback (`mclear` in particular sets the timeline to one frame and leaves the timer ticking), and the trajectory demo should not leave the viewer in a state the next demo inherits.
+- **Fix note:**
+
+### RF-362
+- **Status:** OPEN
+- **Severity:** S2 (the movie timeline only ever grows, so a one-state structure gets a 464-frame slider)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:2282` (`set_frames`: `self._total_frames = max(self._total_frames, int(arr.shape[0]))`), with the same one-way `max(...)` at `:291`, `:1113-1114` and `:2348`; no path resets `_total_frames` when objects are deleted
+- **Finding:** only the explicit `set_total_frames` (`:1090`) can shrink the timeline; every other write raises it and none lowers it. Verified: `mset 100` then `delete all` still reports `get_total_frames() == 100`, and after the 464-state trajectory a `delete all` plus a single-state PDB still reports **464** — the timeline dock then reads e.g. "150 / 464" and offers 464 slider positions for a structure with one conformation (`app/timeline_panel.py:88-100` takes its maximum straight from this number). The reverse case is the damaging one: a 10-state trajectory loaded after a 464-state one keeps 454 phantom frames, each clamped back to the last real state by `_select_state_frame` (`:1145`), so the movie plays for 10 frames and then freezes for the remaining 97 % of its length with no indication why. Recompute the timeline from the objects actually present (max over their state counts, floor 1) whenever an object is added or deleted.
+- **Fix note:**
+
+### RF-363
+- **Status:** OPEN
+- **Severity:** S3 (an out-of-range frame number silently lands somewhere arbitrary instead of clamping or complaining)
+- **Location:** `chisurf/plugins/chimol/chimol/cmd/animation.py:240-243` (`viewer.set_current_frame((frame_no - 1) % total)`), and the blanket `except Exception` at `:244-245`
+- **Finding:** the absolute form of `frame` is a modulo, not a clamp. Verified on the 464-state trajectory: `frame 0` jumps to frame **463** (the last state) and `frame 100000` jumps to **239**, both silently and both reported as success. PyMOL clamps an out-of-range state; here a typo or an off-by-one in a script lands on a frame that looks deliberate, and `frame 0` — the natural thing to type for "the beginning" when the command is documented as 1-based — runs to the end. Wrapping is right for the relative `+N`/`-N` forms one line above (`:237-239`); it is the absolute form that should clamp to `1..total` (or emit an error). While there: the whole body sits in one `try`/`except Exception` that reports *every* failure as "Frame index must be an integer (e.g., 10, +1, -1)", including a viewer error or a `ZeroDivisionError` that has nothing to do with the argument.
+- **Fix note:**
+
+### RF-364
+- **Status:** OPEN
+- **Severity:** S2 (`rotate`/`translate`/`align` move the displayed trajectory but not the array the trajectory commands read, so the next `intra_fit` or frame change silently undoes them)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:641-644` (`apply_transform_to_object` transforms `coords`, `center`, `all_atom_coords`, `frames` and `atoms` — **not** `frames_raw`), against its consumers `cmd/animation.py:126` (`intra_fit`/`intra_rms`), `renderer/view.py:1228-1239` (`_select_state_frame`, which writes `state.atoms["xyz"]` from `frames_raw` on every frame change) and `:2311` (`append_frame`). Callers: `cmd/rendering.py:846` (`rotate`), `:875` (`translate`), `cmd/measurements.py:747` (`align`)
+- **Finding:** verified on the 464-state trajectory: `translate [50, 0, 0]` moved `state.frames[0,0]` by `[500, 0, 0]` scene units and `state.frames_raw[0,0]` by `[0, 0, 0]`. The following `intra_fit all, 1` — which reads `frames_raw` and writes its result back through `set_frames` — put the object back at x = 153.8 from x = 628.3, discarding the translation with no message. The same stale array is copied into `state.atoms["xyz"]` by `_select_state_frame` whenever the frame changes, so on an all-atom trajectory stepping one frame after a `rotate`/`translate`/`align` reverts the atom array to the untransformed geometry while `state.coords` stays transformed — precisely the desync the comment at `:646-658` was written to prevent, and which it names `align`, `get_area`, `alter_state` and the distance selections as the victims of. Transform `frames_raw` alongside `atoms` (rotation in atom space, translation divided by the scale, about the same pivot).
+- **Fix note:**
+
+### RF-365
+- **Status:** OPEN
+- **Severity:** S3 (every trajectory load logs a WARNING with a full traceback and names a fallback that is not what happens)
+- **Location:** `chisurf/plugins/chimol/chimol/io/structure.py:442-451` (`load_structure_payload` calls the structure factory before looking at the extension) via `:401` (`_read_full_model`) → `chisurf/core/structure/structure.py:146` → `chisurf/core/fio/structure/coordinates.py:601` (`string = f.read()` on a text-mode handle)
+- **Finding:** `load hgbp1_transition.h5` — the file the shipped `trajectory.pml` demo uses — hands a binary HDF5 file to the PDB text reader, which raises `UnicodeDecodeError: 'utf-8' codec can't decode byte 0x89 in position 0` (0x89 is the leading byte of the HDF5 signature) and is logged at WARNING with `exc_info=True`: *"Structure reader failed for …hgbp1_transition.h5; falling back to the built-in PDB parser (no radius of gyration)."* The load then succeeds — a 464×5235×3 bead trajectory arrives through the trajectory loader, not through any PDB parser — so a normal, fully working operation prints a stack trace and a message that is wrong about both the cause and the remedy. Dispatch known non-PDB containers (`.h5`/`.hdf5`/`.dcd`/`.xtc`/`.trr`) by extension before trying the structure factory, and word the fallback for what it actually falls back to.
+- **Fix note:**
