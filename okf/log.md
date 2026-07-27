@@ -2,6 +2,21 @@
 
 ## 2026-07-27
 
+* **GUI tester — particle tracking.** Drove *Microscopy → Imaging → Particle
+  Tracking* headlessly against its own ground-truth simulator, a real TIFF stack
+  and a `.ht3` photon stream, and recorded it as
+  [particle tracking](/usecases/particle-tracking-diffusion.md). The science
+  holds: 8 simulated particles at a true D of 0.5 px²/frame come back as
+  `0.5038 ± 0.1` in 1.7 s with the honest "only 8 tracks contributed" caveat,
+  full calibration reproduces `0.5 · 0.1² / 0.05` exactly, and a 50-frame
+  300×300 run with 77 796 detections stays responsive behind a live status bar.
+  The reporting around it does not: the unit label follows one boolean covering
+  two independent calibrations (RF-418), the report panel is `<pre>` and cannot
+  wrap the 280-character sentence that says what to do next (RF-419), an empty
+  *detection* stage is diagnosed as a *linking* problem (RF-420), and a D fitted
+  from 5 % of 21 954 shattered noise tracks prints no caveat while a clean
+  8-track fit does (RF-421). Findings RF-418..RF-421.
+
 * **An odd-sized image lost a row and a column of its spectrum (RF-410).**
   `_ring_sums` walked `range(-(n // 2), n // 2)` on both axes, which enumerates
   all `n` FFT frequencies only for even `n`; for odd `n` it kept `-n//2` and

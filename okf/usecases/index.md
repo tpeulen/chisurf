@@ -120,6 +120,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   it into a lifetime–lifetime distribution, and correlate the resolved species
   against each other for the interconversion rates — validated against the
   plugin's own two-state simulator. *(last driven 2026-07-27; RF-396..RF-407)*
+- [Particle tracking — from spots to a diffusion coefficient](/usecases/particle-tracking-diffusion.md)
+  — the imaging counterpart of an FCS measurement: detect diffraction-limited
+  particles in every frame, link them into trajectories by exact global
+  assignment, and fit D (and optionally the anomalous exponent) from the
+  ensemble MSD — checked against the tool's own ground-truth simulator, a real
+  TIFF stack and a photon stream. *(last driven 2026-07-27; RF-418..RF-421)*
 
 ## Per-workflow file format
 
