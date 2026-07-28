@@ -11,6 +11,7 @@
 * [Graph layer (chinet.graph)](graph.md) - In-tree graph containers, algorithms, layouts and GraphML I/O shared by the factor graph, the node editor and the global-parameter view.
 * [GUI & AutoForm](gui-autoform.md) - The Qt application and the data-driven AutoForm UI framework.
 * [Tables (chitable)](gui-tables.md) - The shared model/view table family: sources, vectorised filtering, value colouring, column hiding and export.
+* [Toolbar action vocabulary](gui-action-vocabulary.md) - One icon, colour, tooltip and position per semantic action, including the run/restart/pause/stop transport controls.
 * [Internationalisation](i18n.md) - The Qt-free translation seam, QTranslator bootstrap, string-extraction kit, and view.json/manifest/.ui localization.
 * [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.
 * [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the recording QtConsole.

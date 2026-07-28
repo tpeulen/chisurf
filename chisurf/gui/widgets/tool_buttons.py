@@ -33,6 +33,12 @@ QToolButton { background-color: #2a6a3a; border: 1px solid #4a9a5a; }
 QToolButton:hover { background-color: #3a8a4a; border-color: #6aba7a; }
 QToolButton:pressed { background-color: #1a5a2a; }
 """,
+    #: Pause sits between "going" and "stopped", and reads that way: amber.
+    "pause": """
+QToolButton { background-color: #8a6a1a; border: 1px solid #baa04a; }
+QToolButton:hover { background-color: #aa8a2a; border-color: #d0c070; }
+QToolButton:pressed { background-color: #6a4a0a; }
+""",
     "toggle": """
 QToolButton { background-color: #5a3a6a; border: 1px solid #8a5a9a; }
 QToolButton:hover { background-color: #7a4a8a; border-color: #aa7aba; }
@@ -225,11 +231,6 @@ class ToolAction:
     tooltip: str
     kind: str
     order: int
-    #: Point size for the glyph, when the default is wrong for it. Emoji are
-    #: drawn by the colour font at a size of their own; a plain text glyph like
-    #: ``⟳`` obeys ``font-size`` and comes out visibly smaller than its emoji
-    #: neighbours unless it is asked for larger.
-    font_px: int = 0
 
 
 #: The shared action vocabulary. ``order`` fixes left-to-right toolbar position so
@@ -238,12 +239,21 @@ TOOL_ACTIONS: dict[str, ToolAction] = {
     "add":      ToolAction("add", Glyphs.OPEN, "Add", "Add files", "folder", 10),
     "folder":   ToolAction("folder", Glyphs.FOLDER, "Folder", "Select data folder", "folder", 12),
     "batch":    ToolAction("batch", "🗂️", "Batch", "Batch-process a folder", "folder", 20),
-    "run":      ToolAction("run", Glyphs.ROCKET, "Run", "Run — process all loaded data", "run", 30),
-    "recompute": ToolAction(
-        "recompute", Glyphs.RECOMPUTE, "Recompute",
-        "Recompute even if nothing changed", "run", 32, font_px=17,
+    # ── transport controls ───────────────────────────────────────────────────
+    # The four that drive a long job read as the media controls everyone already
+    # knows: play, pause, stop, restart. Their shapes are the standard ones and
+    # their colour comes from the accent behind them (green / amber / red /
+    # green), because ▶ ⏸ ⏹ have no colour presentation in the shipped emoji
+    # font — verified by rendering them. Restart is the exception: 🔁 *is* a
+    # colour glyph, and the difference is worth having, since restart is the one
+    # control that repeats work rather than starting or ending it.
+    "run":      ToolAction("run", Glyphs.RUN, "Run", "Run — process all loaded data", "run", 30),
+    "restart":  ToolAction(
+        "restart", Glyphs.RESTART, "Restart",
+        "Run again from scratch, even if nothing changed", "run", 32,
     ),
     "auto":     ToolAction("auto", "⚡", "Auto", "Auto-run / auto-optimize", "toggle", 34),
+    "pause":    ToolAction("pause", Glyphs.PAUSE, "Pause", "Pause the running job", "pause", 36),
     "stop":     ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "clear", 38),
     "clear":    ToolAction("clear", Glyphs.DELETE, "Clear", "Clear loaded data", "clear", 50),
     "refresh":  ToolAction("refresh", Glyphs.REFRESH, "Refresh", "Refresh plots", "settings", 60),
@@ -283,10 +293,6 @@ def action_button(
         checkable=checkable, parent=parent,
     )
     btn.setObjectName(f"{TOOL_ACTION_OBJECT_PREFIX}{key}")
-    if action.font_px:
-        btn.setStyleSheet(
-            btn.styleSheet() + f"\nQToolButton {{ font-size: {action.font_px}px; }}\n"
-        )
     if on_click is not None:
         btn.clicked.connect(on_click)
     return btn

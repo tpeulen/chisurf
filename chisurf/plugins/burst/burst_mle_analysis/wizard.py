@@ -2255,8 +2255,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         )
         # Exported fits that are already current are not refitted; this is how the
         # user asks for them anyway (a rebuilt fit2x, a suspect export).
-        self.pushButton_recompute_bursts = action_button(
-            "recompute", tooltip="Refit every burst even if nothing changed"
+        self.pushButton_restart_bursts = action_button(
+            "restart", tooltip="Refit every burst from scratch, even if nothing changed"
         )
 
         # --- Populate the top action toolbar (every hosted widget now exists) ---
@@ -2269,7 +2269,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         flow = self._mle_toolbar_layout
         for widget in (
             self.pushButton_process_bursts,
-            self.pushButton_recompute_bursts,
+            self.pushButton_restart_bursts,
             _tb_sep(),
             self.toolButton_auto_optimize,
             self.toolButton_auto_irf,
@@ -2450,7 +2450,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # --- Burst processing & navigation ---
         self.pushButton_process_bursts.clicked.connect(self.process_bursts)
-        self.pushButton_recompute_bursts.clicked.connect(self.recompute_bursts)
+        self.pushButton_restart_bursts.clicked.connect(self.restart_bursts)
         self.toolButton_auto_optimize.clicked.connect(self.auto_optimize)
         self.toolButton_auto_irf.clicked.connect(self.auto_extract_irf_bg)
         # Flipping the IRF model re-extracts so the change is immediate.
@@ -3948,13 +3948,13 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return None
         return selected[0].parent.parent / "burst_mle.stamp.json"
 
-    def recompute_bursts(self):
+    def restart_bursts(self):
         """Refit every burst even though the exported fits are current."""
         self.process_bursts(force=True)
 
-    def _flag_recompute(self, on: bool) -> None:
+    def _flag_restart(self, on: bool) -> None:
         """Draw attention to Recompute exactly when an export was skipped."""
-        button = self.__dict__.get("pushButton_recompute_bursts")
+        button = self.__dict__.get("pushButton_restart_bursts")
         if button is not None:
             flag_attention(button, on)
 
@@ -3985,11 +3985,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         ):
             self._set_status(
                 "Unchanged — the exported burst fits are current (nothing refitted); "
-                "⟳ Recompute refits them anyway"
+                "🔁 Restart refits them anyway"
             )
-            self._flag_recompute(True)
+            self._flag_restart(True)
             return
-        self._flag_recompute(False)
+        self._flag_restart(False)
 
         # The batch export runs every fit2x model (fit23/24/25) through the same
         # multiprocessing worker. The tail fit is a different estimator family

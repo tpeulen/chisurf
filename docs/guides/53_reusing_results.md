@@ -35,7 +35,7 @@ If all four are identical to what produced the result the step is holding, the
 run is skipped and the status bar says so:
 
 ```
-Unchanged — kept the previous BVA result (⟳ recomputes it anyway)
+Unchanged — kept the previous BVA result (🔁 Restart recomputes it)
 ```
 
 Anything else recomputes: a changed τ or window length, a different donor
@@ -129,7 +129,7 @@ of making each recompute the other.
 ## Forcing a recomputation
 
 You rarely need to: change any setting and the step runs. When you do want the
-same computation again, press **⟳ Recompute** — every analysis step has one
+same computation again, press **🔁 Restart** — every analysis step has one
 beside its Run button, and it is outlined the moment a run was skipped, which is
 exactly when it is the thing you want. Deleting the stamp file works too.
 

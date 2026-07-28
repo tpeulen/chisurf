@@ -311,14 +311,14 @@ class PositionPanel(QtWidgets.QWidget):
 
         name_map = {
             f"{Glyphs.ADD} Add Row": "toolbarAddRow",
-            f"{Glyphs.ROCKET} Compute AVs": "toolbarComputeAV",
+            f"{Glyphs.RUN} Compute AVs": "toolbarComputeAV",
             f"{Glyphs.SAVE} Save AV MRC": "toolbarSaveMRC",
         }
         
         self.add_row_action = self.toolbar.addAction(f"{Glyphs.ADD} Add Row")
         self.add_row_action.triggered.connect(self.onAddRowTriggered)
 
-        self.compute_avs_action = self.toolbar.addAction(f"{Glyphs.ROCKET} Compute AVs")
+        self.compute_avs_action = self.toolbar.addAction(f"{Glyphs.RUN} Compute AVs")
         self.compute_avs_action.triggered.connect(self.onComputeAVAll)
 
         self.save_av_mrc_action = self.toolbar.addAction(f"{Glyphs.SAVE} Save AV MRC")

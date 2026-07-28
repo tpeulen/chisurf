@@ -116,7 +116,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
         btn_row = QtWidgets.QHBoxLayout()
         self.btn_delete = QtWidgets.QPushButton(f"{Glyphs.DELETE} Delete Selected")
         self.btn_clear = QtWidgets.QPushButton(f"{Glyphs.CLEAR} Clear All")
-        self.btn_process = QtWidgets.QPushButton(f"{Glyphs.ROCKET} Process")
+        self.btn_process = QtWidgets.QPushButton(f"{Glyphs.RUN} Process")
         btn_row.addStretch(1)
         btn_row.addWidget(self.btn_delete)
         btn_row.addWidget(self.btn_clear)

@@ -295,8 +295,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self.btn_run = action_button("run", tooltip="Fit H2MM on all loaded bursts")
         # A fit whose bursts and settings are unchanged is skipped; this is how
         # the user asks for it anyway (a rebuilt engine, a suspect scan).
-        self.btn_recompute = action_button(
-            "recompute", tooltip="Refit H2MM even if nothing changed"
+        self.btn_restart = action_button(
+            "restart", tooltip="Refit H2MM from scratch, even if nothing changed"
         )
         # The fit starts on its own when this step is opened, and a state scan
         # with restarts runs for minutes: stopping it has to be one click away,
@@ -320,7 +320,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
 
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
-        self.toolbar.addWidget(self.btn_recompute)
+        self.toolbar.addWidget(self.btn_restart)
         self.toolbar.addWidget(self.btn_stop)
         self.toolbar.addWidget(self.btn_uncert)
         self.toolbar.addWidget(self.btn_llscan)
@@ -680,7 +680,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self.btn_folder.clicked.connect(self._select_folder)
         self._folder_field.folderDropped.connect(self._set_folder)
         self.btn_run.clicked.connect(self._on_run_clicked)
-        self.btn_recompute.clicked.connect(self._on_recompute_clicked)
+        self.btn_restart.clicked.connect(self._on_restart_clicked)
         self.btn_uncert.clicked.connect(self._run_uncertainty)
         self.btn_llscan.clicked.connect(self._run_llscan)
         self.btn_save.clicked.connect(self._save_plot)
@@ -793,11 +793,11 @@ class H2mmTool(MessagesMixin, QMainWindow):
             and self._result_cache.matches(fingerprint)
         ):
             self._status(
-                "Unchanged — kept the previous H2MM fit (⟳ refits it anyway)"
+                "Unchanged — kept the previous H2MM fit (🔁 Restart refits it)"
             )
-            flag_attention(self.btn_recompute, True)
+            flag_attention(self.btn_restart, True)
             return
-        flag_attention(self.btn_recompute, False)
+        flag_attention(self.btn_restart, False)
         self._running_fingerprint = fingerprint
         self._fit_t0 = time.perf_counter()
         self.btn_run.setEnabled(False)
@@ -872,7 +872,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self._result_cache.allow()
         self._run_analysis()
 
-    def _on_recompute_clicked(self) -> None:
+    def _on_restart_clicked(self) -> None:
         """Refit even though nothing changed."""
         self._result_cache.allow()
         self._run_analysis(force=True)

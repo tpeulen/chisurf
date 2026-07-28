@@ -451,7 +451,7 @@ def test_run_button_is_identical_across_plugins(qapp) -> None:
         for tool in tools:
             run = tool.findChild(QtWidgets.QToolButton, "toolAction_run")
             assert run is not None, f"{type(tool).__name__} has no canonical Run button"
-            assert run.text() == Glyphs.ROCKET
+            assert run.text() == Glyphs.RUN
     finally:
         for tool in tools:
             tool.close()

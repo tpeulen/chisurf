@@ -53,7 +53,7 @@ decisive — with few bursts, or states that overlap in E, two independent sets 
 restarts can prefer different state counts. Reporting a state count without the
 seed that produced it is therefore not reproducible. To find out whether your
 result is robust rather than lucky, change the seed and refit: an answer that
-survives several seeds is one you can report. Pressing **⟳ Recompute** does *not*
+survives several seeds is one you can report. Pressing **🔁 Restart** does *not*
 do this — it reproduces the same fit, by design.
 
 ## Result

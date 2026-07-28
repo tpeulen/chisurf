@@ -459,7 +459,7 @@ def test_a_stopped_2cde_run_does_not_start_itself_again(
     assert len(started) == 2
 
 
-def test_recompute_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
+def test_restart_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
     """The override has to be reachable from the panel, not only from Python."""
     from chisurf.core import analysis_cache
     from chisurf.gui.progress import ChiSurfProgress
@@ -479,11 +479,11 @@ def test_recompute_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
 
     two_cde.run()
     assert len(started) == 1, "unchanged: skipped"
-    assert two_cde._recompute.property("attention") is True, (
+    assert two_cde._restart.property("attention") is True, (
         "the button is drawn attention to exactly when it is the thing you want"
     )
 
-    two_cde._recompute.click()
+    two_cde._restart.click()
     assert len(started) == 2, "Recompute must run what the gate skipped"
 
 

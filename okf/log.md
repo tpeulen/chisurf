@@ -2,6 +2,26 @@
 
 ## 2026-07-28
 
+* **The controls that drive a computation read as media controls.** Run was a
+  rocket, which says "launch" rather than "play" and matched nothing else on the
+  toolbar, and the reuse override added earlier the same day used `⟳` — a plain
+  text glyph that renders visibly smaller than the emoji beside it. The shared
+  vocabulary now carries the four transport controls everyone already knows:
+  `run` ▶, `restart` 🔁, `pause` ⏸, `stop` ⏹, with the accent behind the glyph
+  supplying the colour (green *go*, amber *held*, red *ended*) because ▶/⏸/⏹
+  have **no colour presentation in the shipped emoji font** — established by
+  rendering candidates and looking, not by assuming. `restart` replaces the
+  `recompute` action key throughout, and is deliberately distinct from `refresh`
+  🔄: one recomputes a result, the other redraws a view, and the burst search
+  shows both. `pause` is defined but wired to nothing — `chisurf/gui/task.py`
+  has `cancel()` and no suspend — so it exists for the first tool that can
+  genuinely pause rather than as a dead button. The rocket keeps its one honest
+  use, the *Getting Started* onboarding entry. New concept:
+  [/subsystems/gui-action-vocabulary.md](subsystems/gui-action-vocabulary.md),
+  which also records why `flag_attention` rewrites a stylesheet instead of
+  toggling a `[attention="true"]` property (the selector does not re-evaluate on
+  a widget carrying its own stylesheet, so the outline silently never drew).
+
 * **An RMF is read like everything else, and can say how finely it is drawn.**
   RMF had its own route into the viewer — a branch in the window's loader and a
   `set_rmf_data` filling a parallel set of state fields — so it received nothing

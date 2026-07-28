@@ -59,10 +59,10 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self._run.clicked.connect(self._on_run_clicked)
         # A run whose inputs and settings are unchanged is skipped; this is how
         # the user asks for it anyway (a corrected estimator, a suspect result).
-        self._recompute = action_button(
-            "recompute", tooltip="Recompute 2CDE even if nothing changed"
+        self._restart = action_button(
+            "restart", tooltip="Recompute 2CDE from scratch, even if nothing changed"
         )
-        self._recompute.clicked.connect(self._on_recompute_clicked)
+        self._restart.clicked.connect(self._on_restart_clicked)
         # The computation starts on its own when this step is opened, so stopping
         # it must be one click away.
         self._stop = action_button("stop", tooltip="Stop the running 2CDE computation")
@@ -71,7 +71,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         browse = action_button("folder", tooltip="Choose the burst analysis folder")
         browse.clicked.connect(self._browse)
         toolbar.addWidget(self._run)
-        toolbar.addWidget(self._recompute)
+        toolbar.addWidget(self._restart)
         toolbar.addWidget(self._stop)
         toolbar.addWidget(browse)
         layout.addWidget(toolbar)
@@ -218,7 +218,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self._result_cache.allow()
         self.run()
 
-    def _on_recompute_clicked(self) -> None:
+    def _on_restart_clicked(self) -> None:
         """Recompute even though nothing changed."""
         self._result_cache.allow()
         self.run(force=True)
@@ -247,11 +247,11 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             and analysis_cache.is_current(stamp, fingerprint)
         ):
             self._set_status(
-                "Unchanged — kept the previous 2CDE result (⟳ recomputes it anyway)"
+                "Unchanged — kept the previous 2CDE result (🔁 Restart recomputes it)"
             )
-            flag_attention(self._recompute, True)
+            flag_attention(self._restart, True)
             return
-        flag_attention(self._recompute, False)
+        flag_attention(self._restart, False)
         self._running_fingerprint = fingerprint
         self._run.setEnabled(False)
         self._stop.setEnabled(True)

@@ -69,8 +69,8 @@ class Glyphs:
     RUN = "▶" + VS16       # run / play / start
     STOP = "⏹" + VS16
     PAUSE = "⏸" + VS16
-    REFRESH = "🔄"    # refresh / reload / restart
-    RECOMPUTE = "⟳"   # redo a computation a cache would otherwise skip
+    REFRESH = "🔄"    # refresh / reload the view
+    RESTART = "🔁"    # run it again from scratch (not "redraw" — that is REFRESH)
     RESET = "♻" + VS16     # reset to defaults / lifecycle
     LOOP = "🔁"       # repeat / loop semantics (not "refresh")
     SHUFFLE = "🔀"
@@ -132,7 +132,7 @@ class Glyphs:
     USER = "👤"
     USERS = "👥"
     SPARKLE = "✨"
-    ROCKET = "🚀"
+    ROCKET = "🚀"     # launch / getting started — NOT "run": that is RUN (▶)
     CHAIN = "⛓" + VS16
     GRID = "🎛" + VS16
 

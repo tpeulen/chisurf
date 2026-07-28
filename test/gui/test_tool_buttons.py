@@ -19,15 +19,29 @@ def qapp():
     return QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
 
-def test_canonical_run_action_is_the_rocket(qapp):
-    run = tb.TOOL_ACTIONS["run"]
-    assert run.icon == Glyphs.ROCKET
-    assert run.kind == "run"
+def test_the_controls_are_the_transport_symbols_everyone_knows(qapp):
+    """Run/pause/stop/restart read as media controls, not as invented icons."""
+    assert tb.TOOL_ACTIONS["run"].icon == Glyphs.RUN        # ▶
+    assert tb.TOOL_ACTIONS["pause"].icon == Glyphs.PAUSE    # ⏸
+    assert tb.TOOL_ACTIONS["stop"].icon == Glyphs.STOP      # ⏹
+    assert tb.TOOL_ACTIONS["restart"].icon == Glyphs.RESTART  # 🔁
+    assert tb.TOOL_ACTIONS["run"].kind == "run"
+    # Each control carries its own accent, so the row reads as a colour language
+    # even where the glyph itself has no colour presentation.
+    kinds = {k: tb.TOOL_ACTIONS[k].kind for k in ("run", "pause", "stop", "restart")}
+    assert kinds["pause"] == "pause" and kinds["stop"] == "clear"
+    assert len(set(kinds.values())) == 3, "play and restart share the 'go' accent"
+
+
+def test_restart_is_not_refresh(qapp):
+    """Redrawing a plot and redoing an analysis are different actions."""
+    assert tb.TOOL_ACTIONS["restart"].icon != tb.TOOL_ACTIONS["refresh"].icon
+    assert Glyphs.RESTART != Glyphs.REFRESH
 
 
 def test_action_button_is_icon_only_with_object_name_and_tooltip(qapp):
     btn = tb.action_button("run", tooltip="Run BVA")
-    assert btn.text() == Glyphs.ROCKET           # icon only, space-efficient
+    assert btn.text() == Glyphs.RUN              # icon only, space-efficient
     assert btn.objectName() == "toolAction_run"  # stable, testable identity
     assert "Run" in btn.toolTip() and "Run BVA" in btn.toolTip()
 
@@ -44,19 +58,14 @@ def test_action_qaction_shares_the_same_vocabulary(qapp):
 
     parent = QtWidgets.QWidget()
     qact = tb.action_qaction("run", parent, tooltip="Detect bursts")
-    assert qact.text() == Glyphs.ROCKET
+    assert qact.text() == Glyphs.RUN
     assert qact.objectName() == "toolAction_run"
 
 
-def test_recompute_sits_next_to_run_and_is_legible(qapp):
-    """The reuse override belongs beside the action it overrides."""
-    recompute = tb.TOOL_ACTIONS["recompute"]
-    assert recompute.icon == Glyphs.RECOMPUTE
-    assert tb.TOOL_ACTIONS["run"].order < recompute.order < tb.TOOL_ACTIONS["auto"].order
-    # ⟳ is a text glyph, not an emoji: without an explicit size it renders
-    # visibly smaller than the emoji it sits beside.
-    assert recompute.font_px > 0
-    assert f"font-size: {recompute.font_px}px" in tb.action_button("recompute").styleSheet()
+def test_the_controls_lay_out_in_transport_order(qapp):
+    """Left to right: run, restart, pause, stop — as on any player."""
+    order = [tb.TOOL_ACTIONS[k].order for k in ("run", "restart", "pause", "stop")]
+    assert order == sorted(order)
 
 
 def test_attention_actually_changes_how_the_button_is_drawn(qapp):
@@ -66,7 +75,7 @@ def test_attention_actually_changes_how_the_button_is_drawn(qapp):
     carries its own stylesheet — the outline silently never appeared. Asserting
     on the property alone would not have caught that, so assert on the rule.
     """
-    btn = tb.action_button("recompute")
+    btn = tb.action_button("restart")
     plain = btn.styleSheet()
 
     tb.flag_attention(btn, True)

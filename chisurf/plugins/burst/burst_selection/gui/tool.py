@@ -1865,18 +1865,18 @@ class BurstSelectionTool(ChisurfDockTool):
             self._status_bar.showMessage(f"Error updating plots after filter change: {exc}")
             _LOG.error("error updating plots after filter change", error=str(exc))
 
-    def _recompute_files(self) -> None:
+    def _restart_search(self) -> None:
         """Search the bursts again even though nothing changed."""
         self.analyze_files(force=True)
 
-    def _flag_recompute(self, on: bool) -> None:
+    def _flag_restart(self, on: bool) -> None:
         """Draw attention to Recompute exactly when a search was skipped.
 
         Read from the instance dict rather than with ``getattr``: the gate is
         exercised on tools built without ``__init__`` (headless service tests),
         where any attribute miss reaches PyQt's fallback and raises.
         """
-        button = self.__dict__.get("_act_recompute")
+        button = self.__dict__.get("_act_restart")
         if button is not None:
             flag_attention(button, on)
 
@@ -1936,11 +1936,11 @@ class BurstSelectionTool(ChisurfDockTool):
             self.summary.setPlainText(
                 "Unchanged — kept the previous burst search "
                 "(same files, same settings; nothing re-searched).\n"
-                "Press ⟳ Recompute to search them again anyway."
+                "Press 🔁 Restart to search them again anyway."
             )
-            self._flag_recompute(True)
+            self._flag_restart(True)
             return
-        self._flag_recompute(False)
+        self._flag_restart(False)
         self._running_fingerprint = fingerprint
 
         self.Error.clear()
@@ -3008,8 +3008,8 @@ class BurstSelectionTool(ChisurfDockTool):
                                           tooltip="Process all loaded files")
         # A search whose files and settings are unchanged is skipped; this is how
         # the user asks for it anyway.
-        self._act_recompute = action_button(
-            "recompute", on_click=self._recompute_files,
+        self._act_restart = action_button(
+            "restart", on_click=self._restart_search,
             tooltip="Search the bursts again even if nothing changed",
         )
         self._act_clear = action_button("clear", on_click=self.clear,
@@ -3017,7 +3017,7 @@ class BurstSelectionTool(ChisurfDockTool):
         self._act_refresh = action_button("refresh", on_click=self.update_burst_plots,
                                           tooltip="Refresh burst plots")
         for _btn in (self._act_add, self._act_batch, self._act_process,
-                     self._act_recompute, self._act_clear, self._act_refresh):
+                     self._act_restart, self._act_clear, self._act_refresh):
             toolbar.addWidget(_btn)
 
         toolbar.addSeparator()

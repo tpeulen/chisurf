@@ -275,8 +275,8 @@ class BVATool(MessagesMixin, QMainWindow):
         self.btn_run = action_button("run", tooltip="Run BVA on all loaded data")
         # A run whose inputs and settings are unchanged is skipped; this is how
         # the user asks for it anyway (a corrected estimator, a suspect result).
-        self.btn_recompute = action_button(
-            "recompute", tooltip="Recompute BVA even if nothing changed"
+        self.btn_restart = action_button(
+            "restart", tooltip="Recompute BVA from scratch, even if nothing changed"
         )
         # BVA recomputes on its own whenever the folder or a setting changes, so
         # stopping a long run must be one click away.
@@ -299,7 +299,7 @@ class BVATool(MessagesMixin, QMainWindow):
         # Left cluster: source, then the primary action group in canonical order.
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
-        self.toolbar.addWidget(self.btn_recompute)
+        self.toolbar.addWidget(self.btn_restart)
         self.toolbar.addWidget(self.btn_stop)
         self.toolbar.addWidget(self.btn_clear)
         self.toolbar.addWidget(self.btn_save)
@@ -440,7 +440,7 @@ class BVATool(MessagesMixin, QMainWindow):
         self._folder_field.folderDropped.connect(self._on_folder_dropped)
         self.cb_setup.currentIndexChanged.connect(self._on_setup_selected)
         self.btn_run.clicked.connect(self._run_analysis)
-        self.btn_recompute.clicked.connect(self._recompute_analysis)
+        self.btn_restart.clicked.connect(self._restart_analysis)
         self.cb_toggle_static.toggled.connect(self._toggle_static_line)
         self.btn_save.clicked.connect(self._save_plot)
         self.btn_clear.clicked.connect(self._clear_plot)
@@ -599,7 +599,7 @@ class BVATool(MessagesMixin, QMainWindow):
         self._result_cache.allow()
         self._start_analysis(write_output=True)
 
-    def _recompute_analysis(self):
+    def _restart_analysis(self):
         """Run the full analysis even though nothing changed."""
         self._result_cache.allow()
         self._start_analysis(write_output=True, force=True)
@@ -683,12 +683,12 @@ class BVATool(MessagesMixin, QMainWindow):
             and (not write_output or outputs_current)
         ):
             self._status(
-                "Unchanged — kept the previous BVA result (⟳ recomputes it anyway)"
+                "Unchanged — kept the previous BVA result (🔁 Restart recomputes it)"
             )
-            flag_attention(self.btn_recompute, True)
+            flag_attention(self.btn_restart, True)
             return
 
-        flag_attention(self.btn_recompute, False)
+        flag_attention(self.btn_restart, False)
         self._running_fingerprint = fingerprint
         self.btn_stop.setEnabled(True)
         self._task = ChiSurfProgress.run(
