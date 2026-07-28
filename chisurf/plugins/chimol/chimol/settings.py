@@ -440,7 +440,13 @@ def set_setting(name: str, value: Any) -> tuple[SettingSpec, Any]:
     UnknownSettingError, SettingValueError
     """
     spec = resolve(name)
-    coerced = coerce(value, spec.kind)
+    # `toggle` on a boolean flips whatever it currently holds. A button that can
+    # only say "on" or "off" has to read the setting first, and every caller
+    # doing that themselves is how one of them ends up sending the literal word.
+    if spec.kind == "bool" and str(value).strip().lower() == "toggle":
+        coerced = not bool(get_setting(name))
+    else:
+        coerced = coerce(value, spec.kind)
     node: dict = _DISPLAY_CONFIG
     for part in spec.path[:-1]:
         child = node.get(part)

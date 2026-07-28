@@ -62,7 +62,6 @@ from ..analysis import (
     assign_ss_c3_from_file,
 )
 from .command_dock import CommandDock
-from .timeline_panel import TimelineDock
 from .controls_panel import ControlsToolbar
 from .state_control_panel import StateControlDock
 from .objects_panel import ObjectsDock
@@ -142,7 +141,6 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
             {
                 "type": "tab",
                 "tabs": [
-                    {"widget_key": "Timeline", "tab_name": "Timeline", "tab_text": "Timeline"},
                 ],
                 "current_index": 0,
             },
@@ -285,14 +283,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             spacing=spacing,
         )
 
-        self.timeline = TimelineDock(
-            self,
-            self.viewer,
-            _cmd,
-            margins=dock_margins,
-            spacing=spacing,
-        )
-
         # Build central widget with single DockArea
         central = QtWidgets.QWidget(self)
         central_layout = QtWidgets.QVBoxLayout(central)
@@ -311,7 +301,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self.dock_area.addTab(self.volume_panel, "Map", close_mode="hide")
             self.dock_area.addTab(self.sequence.widget, "Sequence", close_mode="hide")
             self.dock_area.addTab(self.command_panel.widget, "Command", close_mode="hide")
-            self.dock_area.addTab(self.timeline.widget, "Timeline", close_mode="hide")
             try:
                 self.dock_area.set_layout_state(
                     dict(_DEFAULT_DOCK_AREA_STATE), emit_change=False,
@@ -518,16 +507,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 lambda c: self._set_tab_visible("Command", c),
             )
             self._view_menu_actions.append(self._act_toggle_command)
-
-            self._act_toggle_timeline = view_menu.addAction(
-                "\U000023f3 Toggle Timeline",
-            )
-            self._act_toggle_timeline.setCheckable(True)
-            self._act_toggle_timeline.setChecked(True)
-            self._act_toggle_timeline.triggered.connect(
-                lambda c: self._set_tab_visible("Timeline", c),
-            )
-            self._view_menu_actions.append(self._act_toggle_timeline)
 
             view_menu.addSeparator()
             sub = view_menu.addMenu("\U0001f4cb Panel Tabs")
@@ -2016,6 +1995,12 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         if entry is not None:
             entry["visible"] = bool(visible)
 
+        # The panel shows which objects are on and drops the sequences of the
+        # ones that are not, so it has to be told when that changes -- otherwise
+        # a switched-off molecule keeps its row bright and its sequence on the
+        # strip until something unrelated happens to refresh it.
+        self.sync_internal_gui()
+
     def _make_object_name(self, path: Optional[Path]) -> str:
         if path is None:
             base = f"Molecule {self._default_object_name_counter + 1}"
@@ -2079,6 +2064,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)
         gui.on_playback_change = self._apply_playback_settings
+        gui.on_frame_change = self._seek_to_frame
         try:
             gui.stride = int(self.viewer.get_frame_step())
             gui.average = int(self.viewer.get_trajectory_smoothing())
@@ -2097,6 +2083,14 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         gui.layout(renderer.width(), renderer.height(),
                    name_width=max(60.0, widest * gui.FONT_PT * 0.62 + 8))
         renderer.update()
+
+    def _seek_to_frame(self, frame: int) -> None:
+        """Jump to a 1-based frame, from the timeline drawn in the viewport."""
+        try:
+            self.viewer.set_current_frame(max(int(frame), 1) - 1)
+            self.viewer.update()
+        except Exception:
+            logging.getLogger(__name__).debug("Could not seek", exc_info=True)
 
     def _apply_playback_settings(self, stride: int, average: int) -> None:
         """Apply the stride and averaging window chosen in the viewport block.

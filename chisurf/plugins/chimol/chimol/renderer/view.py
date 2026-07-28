@@ -7620,17 +7620,17 @@ class MolView(QtWidgets.QWidget):
         return scene_objects
 
     def _update_selection_highlight(self, coords: np.ndarray) -> list[SceneObject] | None:
-        """Mark the selected residues the way PyMOL marks a selection.
+        """Outline the selected residues, the way Chimera outlines a selection.
 
-        Hollow squares at the selected positions, not spheres. PyMOL's marker
-        *frames* an atom rather than covering it -- `selection_round_points` is
-        off, so the dots are square, and they are drawn as an outline. A solid
-        blob hides the thing it is pointing at, which is the opposite of what a
-        selection indicator is for.
+        A green ring around each selected position, drawn **depth-tested** and
+        wider than the atom: the molecule covers the middle of each ring, and
+        what is left is a halo hugging its silhouette. That is the difference
+        between an outline and a marker -- an outline says *this* is selected
+        while leaving it visible, and a marker sits on top of the thing it is
+        describing.
 
-        Colour and size are PyMOL's own: `sele` is (1.0, 0.63, 0.0), and
-        `selection_width` 3 scaled by `selection_width_scale` 2 and clamped by
-        `selection_width_max` 10.
+        Spheres were the first attempt and were worse than either: a solid blob
+        exactly where you are trying to look.
         """
         sel = getattr(self, "_selected_residues", None)
         if not sel or self._coords is None:
@@ -7658,28 +7658,36 @@ class MolView(QtWidgets.QWidget):
             sel_cfg = _DISPLAY_CONFIG.get("selection", {})
         except Exception:
             sel_cfg = {}
+        # Chimera's selection green.
+        default_color = [0.2, 1.0, 0.2, 1.0]
         try:
-            col = np.asarray(sel_cfg.get("color", [1.0, 0.631, 0.0, 1.0]), dtype=float)
+            col = np.asarray(sel_cfg.get("color", default_color), dtype=float)
         except Exception:
-            col = np.array([1.0, 0.631, 0.0, 1.0], dtype=float)
+            col = np.array(default_color, dtype=float)
         if col.shape[0] != 4:
-            col = np.array([1.0, 0.631, 0.0, 1.0], dtype=float)
+            col = np.array(default_color, dtype=float)
 
-        width = float(sel_cfg.get("width", 3.0))
-        scale = float(sel_cfg.get("width_scale", 2.0))
-        width_max = float(sel_cfg.get("width_max", 10.0))
-        size = min(max(width * scale, width), width_max)
+        size = float(sel_cfg.get("outline_size", 15.0))
 
         geom = Geometry(
             kind="points",
             positions=centers,
             colors=np.tile(col, (centers.shape[0], 1)),
             meta={
-                "glyph": "square_outline",
+                "glyph": "ring",
                 "size": size,
                 "px_mode": True,
             },
         )
+        # Drawn as an overlay. Depth-testing it was tried and is worse than the
+        # problem it solves: the markers sit at CA positions, *inside* the
+        # cartoon, so the ribbon covers every one of them and the selection
+        # becomes invisible. A ring that shows through from the far side is a
+        # smaller cost than a selection you cannot see.
+        #
+        # The faithful version of Chimera's outline is a silhouette of the
+        # selected geometry -- render it to a mask, dilate, draw the fringe --
+        # which needs a pass this renderer does not have yet.
         return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
 
     def _update_view(self, fit_camera: bool = True) -> None:

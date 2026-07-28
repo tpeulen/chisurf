@@ -2,6 +2,30 @@
 
 ## 2026-07-28
 
+* **Switching off the last object took the whole view control with it**, and
+  the S button asked for a value the parser refuses.
+  - `paintGL` returned early when the scene had no geometry -- *before* drawing
+    the overlay. So disabling the last molecule left a black window with no
+    panel, no sequence, no mouse-mode block and no transport, which reads as the
+    view control switching itself off. It also leaves no way back, because the
+    way back is a button on the thing that vanished. The panel is not part of
+    the scene and is drawn either way now.
+  - `set seq_view, toggle` reported `expected on/off, got 'toggle'`. A button
+    that can only say on or off has to read the setting first, and every caller
+    doing that itself is how one of them ends up sending the literal word --
+    so `toggle` is understood for any boolean setting.
+  - Enabling or disabling an object now refreshes the panel, so a switched-off
+    molecule loses its sequence row immediately rather than keeping it until
+    something unrelated happens to refresh.
+  - **The timeline is in the viewport**, above the transport: the state counter
+    says where you are, and this is how you get somewhere else without stepping
+    frame by frame. The Timeline dock is gone -- two controls over one movie
+    drift apart, and the viewport one is the one you can see while looking at
+    the molecule.
+  - `gl_PointSize` is in framebuffer pixels while callers ask in logical ones,
+    so every pixel-sized point came out half its size on this display. The same
+    device-ratio trap as the viewport, in a third place.
+
 * **The mode line cycles PyMOL's ring, and the block gained two things PyMOL
   does not have.**
   - `MODE_RINGS` is transcribed from `pymol.controlling.ring_dict` and checked

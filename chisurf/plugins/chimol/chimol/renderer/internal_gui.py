@@ -223,6 +223,11 @@ class InternalGui:
         self.stride = 1
         self.average = 0
         self._stride_rect = Rect(0, 0, 0, 0)
+        self._timeline_track = Rect(0, 0, 0, 0)
+        self._timeline_thumb = Rect(0, 0, 0, 0)
+        self._dragging_timeline = False
+        #: Called with a 1-based frame when the timeline is dragged.
+        self.on_frame_change: Callable[[int], None] | None = None
         self._average_rect = Rect(0, 0, 0, 0)
         #: Called with ``(stride, average)`` when either is clicked.
         self.on_playback_change: Callable[[int, int], None] | None = None
@@ -245,6 +250,7 @@ class InternalGui:
         self._seq_track = Rect(0, 0, 0, 0)
         self._seq_thumb = Rect(0, 0, 0, 0)
         self._dragging_thumb = False
+        self._dragging_timeline = False
         #: Called with ``(object name, indices, additive)`` when the strip
         #: selects. Kept separate from `run_command`: a selection is not a
         #: command string, and round-tripping one through the parser would lose
@@ -423,6 +429,24 @@ class InternalGui:
             return None
         return None
 
+    def _seek_to(self, x: float) -> None:
+        """Jump the movie to the frame under the cursor."""
+        track = self._timeline_track
+        if track.w <= 0:
+            return
+        _current, total = self.state
+        span = max(int(total), 1)
+        fraction = min(max((x - track.x) / track.w, 0.0), 1.0)
+        frame = int(round(fraction * (span - 1))) + 1
+        if frame != self.state[0]:
+            self.state = (frame, span)
+            self.layout_block(self._width, self._height)
+            if self.on_frame_change is not None:
+                try:
+                    self.on_frame_change(frame)
+                except Exception:
+                    pass
+
     def _scroll_to(self, x: float) -> None:
         """Put the thumb under the cursor and scroll to match."""
         track = self._seq_track
@@ -459,7 +483,10 @@ class InternalGui:
         block_w = self.PAD + label_w + 4 * cell_w + self.PAD
         # title, the L/M/R/Wheel heading, six binding rows, selecting, state
         rows = len(rows_for(self.mouse_mode))
-        block_h = self.PAD + line_h * (rows + 5) + self.PAD + self.ROW_H + self.PAD
+        block_h = (
+            self.PAD + line_h * (rows + 5) + self.PAD
+            + self.SEQ_BAR_H + 4 + self.ROW_H + self.PAD
+        )
 
         if self.docked:
             block_w = max(block_w, self.column_width)
@@ -484,6 +511,24 @@ class InternalGui:
         self._stride_rect = Rect(self._block.x, stride_y, split, line_h)
         self._average_rect = Rect(
             self._block.x + split, stride_y, block_w - split, line_h
+        )
+
+        # The timeline runs the width of the block, above the transport: the
+        # state counter says *where* you are, and this is how you get somewhere
+        # else without stepping frame by frame.
+        self._timeline_track = Rect(
+            self._block.x + self.PAD,
+            self._block.y + block_h - self.PAD - self.ROW_H - self.SEQ_BAR_H - 4,
+            block_w - 2 * self.PAD,
+            self.SEQ_BAR_H,
+        )
+        current, total = self.state
+        span = max(int(total), 1)
+        fraction = (max(int(current), 1) - 1) / max(span - 1, 1)
+        thumb_w = max(self._timeline_track.w / span, 10.0)
+        self._timeline_thumb = Rect(
+            self._timeline_track.x + fraction * (self._timeline_track.w - thumb_w),
+            self._timeline_track.y, thumb_w, self.SEQ_BAR_H,
         )
 
         # The transport sits on the block's last line, spread across its width.
@@ -548,6 +593,8 @@ class InternalGui:
 
         if self._mode_rect.contains(x, y):
             return Hit("mode")
+        if self._timeline_track.contains(x, y):
+            return Hit("timeline")
         if self._stride_rect.contains(x, y):
             return Hit("stride")
         if self._average_rect.contains(x, y):
@@ -578,6 +625,10 @@ class InternalGui:
     # ── interaction ──────────────────────────────────────────────────────
     def drag(self, x: float, y: float) -> bool:
         """Continue a splitter drag. Returns whether anything moved."""
+        if self._dragging_timeline:
+            self._seek_to(x)
+            return True
+
         if self._dragging_thumb:
             self._scroll_to(x)
             return True
@@ -598,10 +649,11 @@ class InternalGui:
         return True
 
     def release(self) -> None:
-        """End a splitter or sequence drag."""
+        """End whichever drag the panel had started."""
         self._dragging_splitter = False
         self._seq_drag = None
         self._dragging_thumb = False
+        self._dragging_timeline = False
 
     def is_dragging(self) -> bool:
         """Whether a drag the panel owns is in progress."""
@@ -609,6 +661,7 @@ class InternalGui:
             self._dragging_splitter
             or self._seq_drag is not None
             or self._dragging_thumb
+            or self._dragging_timeline
         )
 
     def mouse_move(self, x: float, y: float) -> bool:
@@ -669,6 +722,11 @@ class InternalGui:
 
         if hit.kind == "mode":
             self.cycle_mouse_mode()
+            return True
+
+        if hit.kind == "timeline":
+            self._dragging_timeline = True
+            self._seek_to(x)
             return True
 
         if hit.kind in ("stride", "average"):
@@ -1002,6 +1060,13 @@ class InternalGui:
         draw(left + label_w + cell_w * 2, line,
              "off" if self.average <= 1 else str(self.average),
              MODE_ACTION_FG, cell_w * 2)
+
+        track, thumb = self._timeline_track, self._timeline_thumb
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(*SEQ_TRACK_BG))
+        painter.drawRect(QtCore.QRectF(track.x, track.y, track.w, track.h))
+        painter.setBrush(QtGui.QColor(*MOVIE_FG))
+        painter.drawRect(QtCore.QRectF(thumb.x, thumb.y, thumb.w, thumb.h))
 
         for button_rect, _command in self._movie_rects:
             box = QtCore.QRectF(button_rect.x, button_rect.y,

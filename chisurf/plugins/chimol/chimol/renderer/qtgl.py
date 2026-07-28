@@ -1085,6 +1085,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if not self._gpu_calls:
             if offscreen:
                 self._post.end(self.defaultFramebufferObject())
+            # The panel is *not* part of the scene, so an empty scene must not
+            # take it with it. Returning here left the view control gone the
+            # moment the last object was switched off -- which looks exactly
+            # like the control switching itself off, and leaves no way back,
+            # because the way back is a button on the thing that vanished.
+            self._render_overlay()
             return
 
         mvp, view = self._build_matrices()
@@ -1156,7 +1162,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 gl.glDepthMask(True)
 
             for call in call_set:
-                if call.primitive == GL_POINTS and call.glyph == "square_outline":
+                if call.primitive == GL_POINTS and call.glyph == "ring":
+                    glyph_mode = 3
+                elif call.primitive == GL_POINTS and call.glyph == "square_outline":
                     glyph_mode = 2
                 elif call.glyph == "sphere" and call.primitive == GL_POINTS:
                     glyph_mode = 1
@@ -1173,7 +1181,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                     gl.glDisable(GL_CULL_FACE)
                 else:
                     gl.glEnable(GL_CULL_FACE)
-                self._program.setUniformValue(self._point_size_uniform, float(call.size))
+                # `gl_PointSize` is in *framebuffer* pixels while a caller asks
+                # in logical ones, so on a high-DPI screen a point comes out at
+                # half the size it asked for. World-radius points already scale
+                # through `_point_scale`, which carries the ratio.
+                pixel_size = float(call.size)
+                if not call.world_radius:
+                    pixel_size *= float(self.devicePixelRatioF())
+                self._program.setUniformValue(self._point_size_uniform, pixel_size)
                 if self._point_scale_uniform != -1:
                     self._program.setUniformValue(
                         self._point_scale_uniform,
@@ -1187,7 +1202,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 self._program.setUniformValue(self._rim_power_uniform, _material_val(mat, "rim_power", self._rim_power))
 
                 if call.primitive == GL_POINTS:
-                    gl.glPointSize(call.size)
+                    gl.glPointSize(pixel_size)
                     if glyph_mode:
                         gl.glEnable(GL_POINT_SPRITE)
                     else:
@@ -1398,6 +1413,19 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 }
                 float z = sqrt(max(0.0, 1.0 - dist2));
                 n = normalize(vec3(coord, z));
+            } else if (glyphMode == 3) {
+                // A ring: Chimera's selection is a green outline *around* what
+                // is selected, not a marker sitting on top of it. Drawn
+                // depth-tested and a little wider than the atom, the middle is
+                // covered by the molecule and what is left is a halo hugging
+                // its silhouette.
+                vec2 coord = gl_PointCoord * 2.0 - 1.0;
+                float radius = length(coord);
+                if (radius > 1.0 || radius < 0.68) {
+                    discard;
+                }
+                gl_FragColor = v_color;
+                return;
             } else if (glyphMode == 2) {
                 // A hollow square, which is what PyMOL draws a selection with:
                 // `selection_round_points` is off by default, and the marker is

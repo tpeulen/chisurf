@@ -607,3 +607,45 @@ def test_neither_goes_below_its_floor(gui):
 
     assert gui.stride == 1
     assert gui.average == 0
+
+
+# --------------------------------------------------------------------------- #
+# The timeline, and staying on screen
+# --------------------------------------------------------------------------- #
+def test_the_timeline_thumb_follows_the_state(gui):
+    gui.state = (1, 10)
+    gui.layout(WIDTH, HEIGHT)
+    at_start = gui._timeline_thumb.x
+
+    gui.state = (10, 10)
+    gui.layout(WIDTH, HEIGHT)
+    assert gui._timeline_thumb.x > at_start
+    assert (gui._timeline_thumb.x + gui._timeline_thumb.w
+            <= gui._timeline_track.x + gui._timeline_track.w + 1e-6)
+
+
+def test_dragging_the_timeline_seeks(gui):
+    """Dragging the timeline jumps to that frame.
+
+    Stepping frame by frame through a long trajectory is not a way to get
+    somewhere: the counter says where you are, this is how you move.
+    """
+    seen: list[int] = []
+    gui.on_frame_change = seen.append
+    gui.state = (1, 100)
+    gui.layout(WIDTH, HEIGHT)
+
+    track = gui._timeline_track
+    gui.mouse_press(track.x + track.w / 2, track.y + 2)
+    assert seen and abs(seen[-1] - 50) <= 2
+
+    gui.drag(track.x + track.w, track.y + 2)
+    assert seen[-1] == 100
+    gui.release()
+    assert gui.is_dragging() is False
+
+
+def test_a_single_frame_movie_does_not_divide_by_zero(gui):
+    gui.state = (1, 1)
+    gui.layout(WIDTH, HEIGHT)          # must not raise
+    assert gui._timeline_thumb.w > 0
