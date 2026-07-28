@@ -303,6 +303,19 @@ The workflows a first pass should cover — expand as the tester discovers more:
   to 10⁻¹² s and is reported as rates of 10¹⁰ s⁻¹, and the finished fit cannot
   leave the window. *(last driven 2026-07-28; RF-853..RF-862)*
 
+- [Lazy Lifetime Analysis (LLTF)](/usecases/lltf-lazy-lifetime-analysis.md) — the
+  one-button TCSPC fit: hand the *Decay Analysis* hub's panel 3 a decay and its
+  IRF and let it estimate the analysis range, the background and the IRF shift,
+  fit 1…N exponentials and F-test the series for the component count. The engine
+  is real and quick (a 1…4 scan in 31 s; an explicit two-exponential fit returns
+  χ²ᵣ = 1.54), but almost nothing around it is: **Find Optimal** returns the
+  *worst* model it fitted (n = 1 at χ²ᵣ = 9.07 out of scores 7.97 / 3.95 / 12.88
+  / 68.78) because the selection loop falls through to its initial index and the
+  config's `selection_mode` is overwritten by the CLI default; the IRF shift is
+  converted with a hard-coded 2 ns channel width, so 8 ns moves the prompt
+  0.032 ns; the only route to the settings aborts the application; and the
+  saved plot is a green block. *(last driven 2026-07-28; RF-877..RF-884)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
