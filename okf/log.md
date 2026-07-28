@@ -2,6 +2,21 @@
 
 ## 2026-07-28
 
+* **The PCH tool joins the shared dockable-tool base, and its window now takes a
+  drop** ([PRD-36](/prds/prd-36.md)). `PCHApp` was the last plain
+  `MessagesMixin, QMainWindow` tool in the priority-B backlog; it is now a
+  `ChisurfDockTool`, which is what finally makes dragging a `.ptu` onto the
+  window mean something — `_on_load` was split into a dialog and a `_load_path`,
+  and `on_paths_dropped` goes through the same `_load_path`, so a dropped file
+  and a chosen file cannot diverge. The accepted extensions became one
+  `TTTR_SUFFIXES` constant feeding both the dialog filter and the drop filter; a
+  drop of anything else raises a declared `Information` message rather than being
+  swallowed, and a drop that fails to load leaves the tool disarmed instead of
+  half-loaded. The plugin root resolves `PCHApp` lazily (PEP 562), so
+  `api`/`backend`/`cli` import with no Qt binding. Six tests in
+  `chisurf/plugins/pch/test/test_gui_dock_tool.py` pin the base, the two drop
+  outcomes and the import boundary (clean subprocess); rendered offscreen and
+  inspected.
 * **Fast math deleted the HMM's `-inf` guards** (RF-670). `fastmath=True`
   implies LLVM's `ninf`/`nnan`, so the compiler was free to assume no operand is
   infinite and folded away both guards the log-domain kernels in
