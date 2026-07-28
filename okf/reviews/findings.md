@@ -9001,3 +9001,62 @@ Findings RF-765..RF-770.
 - **Location:** `chisurf/gui/widgets/fitting/fitting_controls.py:344-345` (`model.apply()` / `return True`, ignoring the returned bool) with `apply` at `:294-303` (`except Exception: pass` around the session update) and `chisurf/core/settings/settings_utils.py:256-259` (`except Exception: return False`)
 - **Finding:** `set_optimization_settings` swallows every failure — an unwritable settings folder, a settings file that is not valid YAML — and returns `False`; `apply()` faithfully passes that on, and its own docstring promises the caller can tell ("Whether the settings file was written"). `show_optimization_settings` then discards it: it calls `model.apply()` for its side effect and unconditionally returns `True`, whose docstring claims it means "whether the settings were accepted **and applied**". The session update that would at least keep the values for this run is itself wrapped in a bare `except Exception: pass`, so on that path nothing is stored and nothing is said. Return `model.apply()` and have the caller report a failed write (the shared `ChiSurfMessageBox` warning), so the user learns the sampler they just chose will not survive the session.
 - **Fix note:**
+
+### Review 2026-07-28 — PDA: three colours as a reader setting (`ad12a0913`)
+
+Slice: the newest substantial landing — the merge of the `pda3c` experiment into
+the one `pda` section. The migration of the stale user section, the merged
+registry and the `supports_data` filter itself all check out at the *curve*
+level. What does not is the object the filter is actually asked about in the
+running application (RF-786), and the move of `n_colors` behind a property
+(RF-787). Findings RF-786..RF-792 below; all verified by running the code in the
+`arm64` env.
+
+### RF-786
+- **Status:** OPEN
+- **Severity:** S1 (a three-colour PDA dataset offers exactly the six models that cannot fit it, and hides the one that can)
+- **Location:** `chisurf/core/experiments/core/experiment.py:167` (`Experiment.get_model_classes`) as called from `chisurf/gui/main.py:391` (`experiment.get_model_names(ds)`) and `chisurf/macros/core_fit.py:1058` (`exp.get_model_classes(data_sets[0])`), against `chisurf/core/models/pda3c/pda3c.py:137` (`burst_payload`) and `chisurf/core/models/pda2c/common.py:840` (`Pda2cModelMixin.supports_data`)
+- **Finding:** the filter is asked about the **group**, not the curve. `Pda2cReader.read` returns an `ExperimentDataGroup`, so `core_data.add_dataset:570,628` takes the `is_experiment_group` branch and appends *the group itself* to `cs.imported_datasets`; `ExperimentalDataSelector.selected_curve_index` (`chisurf/gui/widgets/experiments/widgets.py:50-62`) deliberately maps a selected child back to its parent row, so `current_dataset` is always that top-level group. A `DataGroup` is a `list` subclass with no attribute proxy and its own empty `meta_data`, so `burst_payload(group)` is `None`. Verified headlessly on a fabricated three-colour curve: for the *curve*, `Pda3cModel.supports_data` → `True` / `Pda2cSimpleModel.supports_data` → `False`; for the `ExperimentDataGroup` holding that same curve, `False` / `True` — exactly inverted. So the feature this refactor exists for is off by one container in the GUI combo *and* in the headless `add_fit` fallback, which now picks `Pda2cSimpleModel` for a burst table. Look through a group to its first element (in `get_model_classes`, so every model's `supports_data` gets the payload-carrying object), and pin it with a test that goes through `ExperimentDataGroup` rather than a bare `DataCurve` — `test/gui/test_pda_colour_setting.py` only tests the curve.
+- **Fix note:**
+
+### RF-787
+- **Status:** OPEN
+- **Severity:** S1 (a saved three-colour PDA project reloads as two-colour, and touching the reader's colour count raises `AttributeError`)
+- **Location:** `chisurf/core/experiments/pda2c/reader.py:150` (`self._n_colors = …`) and `:155-181` (the `n_colors` property) against `chisurf/macros/core_fit.py:642` (`if k in banned_keys or (k.startswith("_") and k not in {"_irf"}): continue`)
+- **Finding:** `n_colors` used to be a plain instance attribute (`ad12a0913^`: `self.n_colors = int(n_colors) if n_colors else len(channels)`) and was therefore serialised into a project by `_serialize_reader`, which walks `reader.__dict__`. Moving it behind `_n_colors` puts it under the underscore skip, so it is dropped. Verified end to end: `_serialize_reader(Pda2cReader(channels=[[0],[1],[2]], n_colors=3))['state']` contains no colour count at all, and since `_deserialize_reader` builds the object with `cls.__new__` and only `__dict__.update(state)`, the restored reader has no `_n_colors` — `reader.n_colors` raises `AttributeError: Pda2cReader object has no attribute '_n_colors'`. `detection_windows` masks it (`int(getattr(self, "n_colors", 2))` swallows the AttributeError and returns the default), so a restored three-colour reader silently reads two-colour. Either serialise the property (add `_n_colors` to the `_irf` exemption, or serialise `dir()`-declared properties) or keep a public `n_colors` in `__dict__`; and give `n_colors` a class-level default so the getter cannot raise on a `__new__`-built instance.
+- **Fix note:**
+
+### RF-788
+- **Status:** OPEN
+- **Severity:** S2 (every nested-list reader attribute is silently emptied when a project is saved — for PDA that is both the detection channels and the micro-time windows)
+- **Location:** `chisurf/macros/core_fit.py:628-637` (`_to_basic`: `if isinstance(v, (list, tuple)): … else: # skip non-basic entries in sequences / continue`)
+- **Finding:** `_to_basic` only keeps *scalar* items of a sequence, so a list of lists comes back as an empty list rather than being recursed into — and `[]` is not `None`, so it is stored as if it were the real value. Verified: a `Pda2cReader` with `channels=[[0],[1],[2]]` and `micro_time_ranges=[[0,8000],[8000,16000]]` serialises to `{'channels': [], 'micro_time_ranges': [], …}`, and the round-tripped reader reports `detection_windows() == []`. A subsequent `read()` then dies at `reader.py:686` (`channels_1 = self.channels[0]`, `IndexError`). Pre-existing rather than introduced by `ad12a0913`, but it is what makes RF-787 unrecoverable: the restored reader has neither its colour count nor its channels. Recurse in `_to_basic` for nested sequences (the function is already recursive for the scalar case) instead of dropping them.
+- **Fix note:**
+
+### RF-789
+- **Status:** OPEN
+- **Severity:** S2 (constructing the reader at three colours with two channel groups is accepted, then raises deep in the read)
+- **Location:** `chisurf/core/experiments/pda2c/reader.py:147-150` (the constructor's deliberate `self._n_colors = …` bypass of the setter) and `:282` (`blue, green, red = (list(c) for c in self.channels[:3])`), reachable from `chisurf/server/services/pda.py:97-99` (`settings["n_colors"] = int(n_colors)` forwarded verbatim to `Pda2cReader(**settings)`)
+- **Finding:** the `n_colors` setter normalises `channels` and `micro_time_ranges` for the new count (`default_channels` / `default_micro_time_ranges`), but the constructor writes `_n_colors` directly on the stated reasoning that "at construction the windows were given for this colour count" — which the constructor never checks. Verified: `Pda2cReader(channels=[[0],[1]], micro_time_ranges=[[0,4096]], n_colors=3).detection_windows()` raises `ValueError: not enough values to unpack (expected 3, got 2)`. The `pda.from_bursts` RPC hands `n_colors` straight through from a JSON client with an independently supplied `channels`, so the mismatch is client-reachable and surfaces only as `PDA read failed: not enough values to unpack`. Validate the pair in `__init__` (pad/roll through `default_channels`, or raise a message naming the two counts), and reject it at the service boundary where the caller can be told what it sent.
+- **Fix note:**
+
+### RF-790
+- **Status:** OPEN
+- **Severity:** S2 (the Segmentation control is offered at three colours and has no effect there)
+- **Location:** `chisurf/core/experiments/pda2c/reader.py:378-386` (`burst_count_table` → `tttr_data.get_ranges_by_time_window(...)`, unconditional) against `chisurf/core/experiments/pda2c/pda.view.json:38-56` (the `Segmentation` panel, with no visibility condition) and `reader.py:766` (`time_binned = str(getattr(self, "segmentation", "burst")) == "time-bins"`, in the two-colour branch only)
+- **Finding:** the three-colour branch (`reader.py:726-746`) returns before the segmentation switch is ever read — `burst_count_table` contains no reference to `self.segmentation` (verified by inspecting its source) and always runs the burst search. The panel nevertheless shows "Fixed time bins (constant duration)" at both colour counts, and its own description argues that fixed bins are what a *dynamic* model needs. A user reading a three-colour file with "Fixed time bins" selected gets burst-search windows with varying durations and nothing says so. Either honour the setting on the three-colour path (bin the stream the way `time_binned_histograms` does and count per bin), or hide/disable the control when `n_colors == 3` and say why.
+- **Fix note:**
+
+### RF-791
+- **Status:** OPEN
+- **Severity:** S2 (`pda.from_bursts(n_colors=3)` reports `ok: True` with every curve empty)
+- **Location:** `chisurf/server/services/pda.py:106-118` (`pda = getattr(curve, "pda", None) or {}` → `s1s2`, `n_photons`, `maximum_number_of_photons`) against `chisurf/core/experiments/pda2c/reader.py:295-339` (`_three_color_curve`, which attaches `pda3c` and never `pda`)
+- **Finding:** the service advertises `n_colors` as a parameter ("Optional colour count override (2 → S1/S2 histogram)") and forwards it to the reader, but its result assembly only knows the two-colour payload. A three-colour read produces curves carrying `meta_data['pda3c']` / `curve.pda3c`; `getattr(curve, "pda", None)` is genuinely missing on them (verified — `DataCurve` has no meta-data attribute fallback), so every curve comes back as `{"shape": [0], "s1s2": [], "n_photons": 0, "maximum_number_of_photons": None}` with `ok: True`. A client cannot distinguish that from a file with no bursts. Either serialise the burst table for three colours (`blue`/`green`/`columns`/`n_bursts`) or refuse `n_colors=3` in this service with an explicit error.
+- **Fix note:**
+
+### RF-792
+- **Status:** OPEN
+- **Severity:** S3 (clearing an excitation-period field in the three-colour panel makes the next read raise instead of reporting the empty field)
+- **Location:** `chisurf/gui/widgets/experiments/pda2c/controller.py:1429-1432` (`_parse_windows`: `return [window[0] if window else [] for window in windows]`) → `chisurf/core/experiments/pda2c/reader.py:254-258` (`_micro_time_range`) → `:398` (`for index, (channels, (low, high)) in enumerate(windows)`)
+- **Finding:** an empty excitation field parses to `[]`, which `_parse_windows` stores as a window rather than rejecting, `onParametersChanged` writes to `reader.micro_time_ranges`, and `_micro_time_range` hands back `tuple([]) == ()`. Verified: `Pda2cReader(channels=[[0],[1],[2]], micro_time_ranges=[[], [8000,16000]], n_colors=3).detection_windows()` returns `[([0], ()), ([1], ()), ([2], ()), …]`, and `burst_count_table` then unpacks `()` into `(low, high)` — `ValueError: not enough values to unpack (expected 2, got 0)`. The two-colour path degrades gracefully here (an empty list of ranges just means "no window"), so only three colours breaks. Keep the previously configured window (or fall back to the full micro-time span) when the field is blank, and mark the field rather than accepting it.
+- **Fix note:**
