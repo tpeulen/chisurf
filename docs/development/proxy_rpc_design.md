@@ -154,9 +154,19 @@ class ProxyDatasetList:
     def __iter__(self) -> Iterator[DatasetProxy]: ...
 ```
 
-### 3.2 No `append()` on proxies
+### 3.2 Insertion is rejected, never silent
 
-`append()` is a no-op (datasets/fits must be created server-side via RPC).
+The server owns its objects: a *local* dataset or fit cannot be transferred over
+the transport, so it cannot enter `cs.imported_datasets` / `cs.fits` in server
+mode. Every insertion route — `append()`, `extend()`, `insert()`,
+`proxy[i] = x`, `proxy[:] = [x, …]` — therefore raises `NotImplementedError`
+naming the RPC to use instead (`dataset__load(...)` / `fit__create(...)`).
+
+They must not silently do nothing: a no-op `append()` turns
+`clear(); extend(...)` into pure data loss. For the same reason a slice
+assignment raises **before** removing anything, rather than clearing the list.
+The one insertion-shaped operation the server *can* honour is
+`proxy[a:b] = []`, which deletes that slice.
 
 ---
 

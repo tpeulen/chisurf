@@ -8531,11 +8531,25 @@ half about another. RF-718..RF-729.
 - **Fix note:**
 
 ### RF-722
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the server-mode proxy that replaces `cs.fits` / `cs.imported_datasets` is not list-compatible: `append` does not exist, `extend` / `insert` silently discard their argument, and slice assignment **deletes the whole list**)
 - **Location:** `chisurf/core/api/_proxies.py:350-461` (`ProxyList` — no `append`; `insert` at `:405-407` ignores `index`; `_add_item` is `pass` in both subclasses at `:474-475` and `:494-495`; `__setitem__` at `:446-449` calls `self._clear_all()` for a slice and never looks at `value`), reached via `install_proxies` at `:16-17`
 - **Finding:** verified against a stub client: `hasattr(p, 'append') → False`; `p[:] = [1, 2]` issues `fit__clear` and nothing else; `p.extend([...])` issues no RPC at all. The call sites this breaks are live code, not hypotheticals — `cs.fits.append(fit)` (`chisurf/core/fluorescence/fret/calibration.py:717`, `chisurf/macros/core_fit.py:1123`), `cs.imported_datasets.append(...)` (`core_data.py:94,629-633`, `core_fit.py:2686`, `chisurf/gui/widgets/experiments/widgets.py:113`), `cs.imported_datasets[:] = normalized` (`core_data.py:75`, `core_fit.py:3057`) and `cs.imported_datasets.clear(); cs.imported_datasets.extend(global_datasets)` (`core_data.py:772-774`). That last one is the worst shape: under proxies the `clear()` succeeds and the `extend()` is a no-op, so the global-fit datasets the block exists to preserve are destroyed — inside a `try/except` that only logs. The layer is currently unreachable (`install_proxies` has no caller outside `ChiSurfAPI.install_proxies`, which itself has none), so this is the moment to fix it, before server mode is switched on. Fix: implement `append` / `insert` / `extend` against a real `_add_item` RPC, and make slice assignment replace rather than clear — or raise `NotImplementedError` loudly for the ones the server cannot honour, so nothing fails silently.
-- **Fix note:**
+- **Fix note:** Fixed by the second route: there is no RPC that can accept a
+  *live local* object (the server creates its own from `dataset.load` /
+  `fit.create`), so insertion is now rejected loudly instead of silently. Both
+  subclasses' `_add_item` raises `NotImplementedError` naming the RPC to use
+  instead of being `pass`; `ProxyList` gained the missing `append`, and every
+  insertion route (`append` / `insert` / `extend` / `__setitem__`) goes through
+  it. `__setitem__` no longer clears on a slice: it raises **before** removing
+  anything, except for `p[a:b] = []`, which is a plain deletion the server can
+  honour. `clear(); extend(...)` therefore now surfaces an exception rather
+  than destroying the list and reporting nothing. Pinned by
+  `test/server/test_proxy.py::TestProxyListInsertion` (6 tests, parametrised
+  over both proxy lists — `append` exists and raises, `extend`/`insert`/`[i]=`
+  raise, `p[:] = [x]` issues **no** clear/remove RPC, `p[:] = []` deletes).
+  `docs/development/proxy_rpc_design.md` §3.2 (which documented `append()` as a
+  no-op) updated to the new contract.
 
 ### RF-723
 - **Status:** OPEN

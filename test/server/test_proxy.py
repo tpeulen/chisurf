@@ -482,6 +482,53 @@ class TestProxyDatasetList:
         client.dataset__clear.assert_called_once()
 
 
+# ── Insertion contract (RF-722) ──────────────────────────────────
+
+
+class TestProxyListInsertion:
+    """A local object cannot enter a server-side list -- but never silently."""
+
+    @pytest.fixture(params=["fits", "datasets"])
+    def proxy(self, request, client):
+        if request.param == "fits":
+            client.fit__list.return_value = [{"uid": "f1", "name": "F1"}]
+            return ProxyFitList(client)
+        client.dataset__list.return_value = [{"uid": "ds1", "name": "DS1"}]
+        return ProxyDatasetList(client)
+
+    def test_append_exists_and_rejects_loudly(self, proxy):
+        assert hasattr(proxy, "append")
+        with pytest.raises(NotImplementedError):
+            proxy.append(object())
+
+    def test_extend_rejects_loudly(self, proxy):
+        with pytest.raises(NotImplementedError):
+            proxy.extend([object()])
+
+    def test_insert_rejects_loudly(self, proxy):
+        with pytest.raises(NotImplementedError):
+            proxy.insert(0, object())
+
+    def test_setitem_rejects_loudly(self, proxy):
+        with pytest.raises(NotImplementedError):
+            proxy[0] = object()
+
+    def test_slice_assign_does_not_clear_the_list(self, proxy, client):
+        """``p[:] = [x]`` must not destroy the server-side list."""
+        with pytest.raises(NotImplementedError):
+            proxy[:] = [object()]
+        client.fit__clear.assert_not_called()
+        client.dataset__clear.assert_not_called()
+        client.fit__remove.assert_not_called()
+        client.dataset__remove.assert_not_called()
+
+    def test_slice_assign_empty_deletes_the_slice(self, proxy, client):
+        """``p[:] = []`` is a deletion the server *can* honour."""
+        proxy[:] = []
+        removed = client.fit__remove.called or client.dataset__remove.called
+        assert removed
+
+
 # ── FitProxy RPC method completeness ─────────────────────────────
 
 

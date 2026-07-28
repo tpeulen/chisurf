@@ -402,7 +402,21 @@ class ProxyList:
         self._invalidate()
         return self._wrap(items[actual])
 
+    def append(self, item: Any) -> None:
+        """Append ``item`` to the server-side list.
+
+        Delegates to :meth:`_add_item`, which the concrete lists implement (or
+        reject with a `NotImplementedError` naming the RPC to use instead).
+        """
+        self._add_item(item)
+        self._invalidate()
+
     def insert(self, index: int, item: Any) -> None:
+        """Insert ``item``; ``index`` is only honoured if the server can.
+
+        Delegates to :meth:`_add_item` -- the server decides where a new
+        element lands, so a positional insert is not silently faked here.
+        """
         self._add_item(item)
         self._invalidate()
 
@@ -444,8 +458,22 @@ class ProxyList:
         self._invalidate()
 
     def __setitem__(self, index: Union[int, slice], value: Any) -> None:
+        """Replace an element or a slice of the server-side list.
+
+        A slice assigned an empty sequence deletes that slice.  Anything else
+        would have to put a *local* object into the server-side list, which the
+        transport cannot do, so it goes through :meth:`_add_item` and fails
+        loudly there -- before anything is removed -- rather than discarding
+        ``value`` (and, for a slice, rather than clearing the whole list).
+        """
         if isinstance(index, slice):
-            self._clear_all()
+            items = list(value)
+            if not items:
+                del self[index]
+                return
+            self._add_item(items[0])
+        else:
+            self._add_item(value)
         self._invalidate()
 
     def _wrap(self, data: dict):
@@ -472,7 +500,11 @@ class ProxyDatasetList(ProxyList):
         return DatasetProxy(data, client=self._client)
 
     def _add_item(self, item: Any) -> None:
-        pass
+        raise NotImplementedError(
+            "The server owns its datasets, so a local object cannot be put into "
+            "cs.imported_datasets in server mode. Load it server-side with "
+            "ChisurfClient.dataset__load(reader_name=..., filename=...) instead."
+        )
 
     def _remove_items(self, indices=None, uids=None) -> None:
         self._client.dataset__remove(dataset_indices=indices or [], dataset_uids=uids or [])
@@ -492,7 +524,11 @@ class ProxyFitList(ProxyList):
         return FitProxy(data, client=self._client)
 
     def _add_item(self, item: Any) -> None:
-        pass
+        raise NotImplementedError(
+            "The server owns its fits, so a local object cannot be put into "
+            "cs.fits in server mode. Create it server-side with "
+            "ChisurfClient.fit__create(dataset_index=..., model_name=...) instead."
+        )
 
     def _remove_items(self, indices=None, uids=None) -> None:
         self._client.fit__remove(fit_indices=indices or [], fit_uids=uids or [])

@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **RF-722 — the server-mode list proxies swallowed every insertion.**
+  `ProxyList` (the object that replaces `cs.fits` / `cs.imported_datasets` in
+  server mode) had no `append` at all, `_add_item` was `pass` in both
+  subclasses, and `__setitem__` answered a slice assignment by calling
+  `_clear_all()` and never looking at `value`. So `cs.imported_datasets[:] =
+  normalized` **emptied** the list, and the `clear(); extend(...)` pair in
+  `macros/core_data.py` — the block that exists to preserve the global-fit
+  datasets — destroyed them, silently, inside a `try/except` that only logs.
+  There is no RPC that can take a *live local* object (the server builds its own
+  from `dataset.load` / `fit.create`), so the fix is the loud one: `_add_item`
+  now raises `NotImplementedError` naming the RPC to use instead, `append`
+  exists, and every insertion route goes through it. A slice assignment raises
+  **before** removing anything; `p[a:b] = []` stays a plain deletion, which the
+  server can honour. Pinned by `test/server/test_proxy.py::TestProxyListInsertion`
+  (6 tests over both proxy lists, including "`p[:] = [x]` issues no clear/remove
+  RPC"). `docs/development/proxy_rpc_design.md` §3.2 documented `append()` as a
+  no-op and now documents the rejection contract. 154 tests green
+  (`test_proxy`, `test_proxy_integration`, `test_client`, `test_api`).
+
 * **ChiMOL now asks, at start-up, when your display settings disagree with the
   ones it ships.** The version stamp cannot answer the question that matters. A
   file stamped with the *current* version is "up to date" as far as migration is
