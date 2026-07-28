@@ -10426,3 +10426,81 @@ reconfirmed with two new symptoms and is **not** re-filed.
 - **Location:** `chisurf/plugins/vv_vh_g_factor/gui/tool.py:280-347` (`init_ui` — the complete control inventory is `load_button`, `batch_button`, `fp_load_button` and four `show_*`/`bg`/`flip` checkboxes; no save, apply or archive), against `chisurf/plugins/vv_vh_g_factor/gui/client.py:93-116` (`archive_g_factor`), `chisurf/plugins/vv_vh_g_factor/backend/services.py:104-306` (`archive_g_factor_handler`, full MMFDB provenance registration) and its only callers, `chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py:330` and `:482`
 - **Finding:** `G`, `l1` and `l2` leave this window only as characters in a read-only-looking line edit. The batch CSV exports `r_inf` per file and repeats `g_factor` in a column, but there is no route from the calculator to the *Corrections* page of the anisotropy wizard, to a VV/VH fit's nuisance parameters, or to MMFDB — even though `vv_vh_g_factor.archive_g_factor` is registered by this plugin's own `register_services`, has a client wrapper on the class the window already holds (`self._client`), and has provenance tests in `test/test_calib_provenance.py`. The channel-definition wizard calls it; the calculator does not. Verified by control inventory on the live widget and by `grep -rn archive_g_factor chisurf test --include="*.py"`. An *Archive to MMFDB* button beside **Batch...**, and a *Send to fit* that writes `g_factor`/`l1`/`l2` into the selected VV/VH fit, would close a loop that is already built. Consistent with the same pattern filed elsewhere ([RF-516], [RF-695], [RF-862]).
 - **Fix note:**
+
+### Review 2026-07-29 (4) — project persistence: `chisurf/core/project/`
+
+Slice: the whole `chisurf/core/project/` package — `archive.py` (the `.csp`
+container), `project.py` (`Project`, save/load), `fit_state.py` (the parameter
+snapshot/restore that every project save and every `Model.get_state`/`set_state`
+goes through) and `ui_state.py`. Chosen by rotation: project persistence carries
+only ~11 findings on record against 112 for burst, and it is the one subsystem
+where a defect silently changes *published numbers* rather than crashing. The
+whole package is untouched in the working tree, so everything below is HEAD.
+
+Verified by executing the real classes in the `arm64` env
+(`PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:."`), not
+by reading alone: every number quoted was printed by a probe script. No source
+was changed.
+
+What holds up: the UID-keyed v4 format and its link resolution are sound; the
+cross-fit link search in `_apply_state_to_model` correctly treats the recorded
+fit uid as a hint and falls back to a full scan; `_local_fits` expands groups for
+exactly the right reason; `_normalize_name`/`_safe_destination` do block
+traversal (`../`, absolute) on both write and extract. Findings RF-926..RF-933
+are the parameter-state round-trip, the archive container and the UI-state half.
+
+### RF-926
+- **Status:** OPEN
+- **Severity:** S1 (a saved fit reloads with a *different, silently clamped* parameter value — 50.0 comes back as 10.0 — with no warning and no trace in the project file, which still holds the correct number)
+- **Location:** `chisurf/core/project/fit_state.py:259-292` (`_apply_state_to_model`, first pass: `p.value = float(p_state["value"])` at `:259-264`, then `p.bounds = (float(b[0]), float(b[1]))` at `:280-286`, then `p.bounds_on` at `:288-292`), against `chisurf/core/parameter.py:729-739` (`Parameter.set_state`, which applies **bounds → bounds_on → fixed → value**) and `chisurf/core/fitting/parameter.py:565-574` (`FittingParameterGroup.set_state`'s fallback, same correct order)
+- **Finding:** the project-load path writes `value` **before** it restores `bounds`, so the stored value is clamped against the *freshly constructed* model's default bounds rather than the saved ones. `Parameter.value`'s setter and getter both clamp while `bounds_on` is true and write the clamped number back to the port (`chisurf/core/parameter.py:288-309`), so the loss is permanent — widening the bounds one statement later does not undo it. Verified through the real helper: a `FittingParameter(value=1.0, lb=0.0, ub=10.0, bounds_on=True)` fed a state of `value=50.0, bounds=[0.0, 100.0], bounds_on=True` through `_apply_state_to_model` comes back as **`value = 10.0`, `bounds = (0.0, 100.0)`** — the bounds restored, the value silently truncated to the old ceiling. Assigning in the other order (`bounds`, `bounds_on`, then `value`) on the same parameter gives `50.0`. This is the *only* one of the three restore implementations in the tree that uses the wrong order, and it is the one the project loader reaches. The existing round-trip tests miss it because they restore into the very object they saved (`test/project/test_project_roundtrip.py:70-80` sets `value = 2.0` inside its own `(0.0, 5.0)` bounds, so no clamp can occur). Fix: move the `bounds`/`bounds_on` assignment above the `value` assignment in the first pass, and pin it with a test whose saved value lies outside the target model's *default* bounds.
+- **Fix note:**
+
+### RF-927
+- **Status:** OPEN
+- **Severity:** S2 (every parameter whose bounds are not currently *enforced* has its configured bounds replaced by ±inf on save, so a save/load round-trip destroys them and the user's ranges come back as "unbounded" the moment they tick bounds on)
+- **Location:** `chisurf/core/project/fit_state.py:68-73` (`_model_to_state`: `bounds = p.bounds; lb = float(bounds[0])` inside a bare `except` that falls back to `float("-inf"), float("inf")`) and the same normalisation stated outright in `chisurf/core/parameter.py:692-699` (`Parameter.get_state`), against `chisurf/core/parameter.py:157-197` (`_stored_bound`, `lb`, `ub` — added precisely so "`p.lb = x; p.lb == x` holds regardless of `bounds_on`")
+- **Finding:** `Port.bounds` reports `(None, None)` whenever enforcement is off, so `float(None)` raises and both snapshot paths record `[-inf, +inf]` — discarding bounds that are still stored on the port and still visible through `p.lb`/`p.ub`. On restore `_apply_state_to_model` writes those ±inf back (`fit_state.py:280-286`), overwriting the stored bounds for good. Verified on a real `FittingParameter(value=1.0, lb=0.5, ub=2.0, bounds_on=False)`: `p.lb/p.ub` read `0.5 / 2.0`, `p.bounds` reads `(None, None)`, `get_state()` records `'bounds': [-inf, inf]`, and after `set_state` of that snapshot the parameter reports `lb/ub = -inf / inf` — ticking bounds on then yields `(-inf, inf)` instead of `(0.5, 2.0)`. Both snapshot sites should read `p.lb`/`p.ub` (which exist for exactly this) instead of `p.bounds`. The round-trip tests only ever exercise `bounds_on = True` (`test/project/test_project_roundtrip.py:75-76`, `test_project_fits_roundtrip.py:70-71`), which is why the lossy half was never covered.
+- **Fix note:**
+
+### RF-928
+- **Status:** OPEN
+- **Severity:** S2 (`project.json` is written with `NaN` and `-Infinity` literals, which are not JSON — the file parses in Python and is rejected by every strict parser, including SQLite's own `json_valid`)
+- **Location:** `chisurf/core/project/project.py:124` (`save_to_archive`: `json.dumps(self.to_dict(), ...)` with the default `allow_nan=True`), fed by `chisurf/core/project/fit_state.py:68-73` (the ±inf bounds fallback of RF-927) and `:87-90` (`error_estimate = float(getattr(p, "error_estimate", 0.0) or 0.0)` — `NaN` is *truthy*, so the `or 0.0` guard that the comment relies on never fires for a NaN error estimate)
+- **Finding:** a snapshot of a plain two-parameter `FittingParameterGroup` already contains both literals — verified by running `_model_to_state` on one and dumping it: `"error_estimate": NaN` for each parameter and `"bounds": [-Infinity, Infinity]` for the unenforced one. `json.dumps(..., allow_nan=False)` on that payload raises `ValueError: Out of range float values are not JSON compliant`, and SQLite reports `json_valid(payload) = 0` where an equivalent finite payload gives `1` — relevant because the same project payload is stored as `metadata_json`/`fit_structure` and queried with `json_extract` (`chisurf/plugins/core/project_browser/backend/services.py:298-302`, `:1097-1102`). Emit `null` (or `0.0`) for a non-finite `error_estimate` and a real number for the bounds (see RF-927), then dump with `allow_nan=False` so the invariant is enforced rather than assumed. A guardrail test asserting `json.dumps(project.to_dict(), allow_nan=False)` succeeds for a saved project pins it.
+- **Fix note:**
+
+### RF-929
+- **Status:** OPEN
+- **Severity:** S2 (a `.csp` that has been unzipped and re-zipped with any ordinary tool cannot be opened at all — the loader dies with a bare `KeyError`, not a diagnostic)
+- **Location:** `chisurf/core/project/archive.py:345-347` (`extract_to`, which loops over `list_entries()` and calls `extract_entry_to` for every name) → `:377-380` (`extract_entry_to` → `read_bytes`) → `:430-439` (`_normalize_name`, which routes the name through `PurePosixPath(...).as_posix()` and so **strips the trailing slash** of a directory entry), reached from `chisurf/macros/core_fit.py:2612` (`load_fit_project`) and `:3221` (`_load_project_archive`, no `try`)
+- **Finding:** ChiSurf's own writer never emits directory entries, but `zip`, Finder's *Compress*, 7-Zip and most GUI archivers do. For such an archive `list_entries()` yields `'data/'`, `_normalize_name` turns it into `'data'`, and `self._zip.read('data')` raises `KeyError: "There is no item named 'data' in the archive"`. Verified end to end: an archive built as `project.json` + `ZipInfo("data/")` + `data/x.txt` opens fine (`has_entry`, `read_text` both work) and then `extract_to` fails with exactly that `KeyError`; the identical archive without the directory entry extracts cleanly. Because `_load_project_archive` calls `extract_to_temp()` with no guard, the whole *Open project* action aborts on a `.csp` that is a perfectly valid ZIP containing a perfectly valid `project.json`. Skip names ending in `/` in `extract_to` (creating the directory instead), and add a test that round-trips an archive written with explicit directory entries.
+- **Fix note:**
+
+### RF-930
+- **Status:** OPEN
+- **Severity:** S2 (64 lines of MMFDB dependency-edge link restoration are unreachable, and would resolve nothing if they were reached)
+- **Location:** `chisurf/core/project/fit_state.py:419-482` (`_restore_parameter_links_from_edges`) and its only entry point `:387-416` (`apply_state_to_fit`'s `dependency_edges` argument), against the call sites `chisurf/macros/core_fit.py:3136-3153` and `:2760-2779` — both inside `else:` branches guarded by `set_state = getattr(new_fit, "set_state", None); if callable(set_state): set_state(state)` — and `chisurf/core/fitting/fit.py:596` (`Fit.set_state`, defined on the base `Fit` class)
+- **Finding:** two defects, either of which alone makes the feature inert. (1) **Unreachable.** `Fit.set_state` is defined on `Fit` (`fit.py:596`), so `getattr(new_fit, "set_state", None)` is *always* callable for every member of `grouped_fits` and the loader always takes the `set_state(state)` branch; the `else:` branch that assembles `dependency_edges` and calls `apply_state_to_fit(new_fit, state, dependency_edges, fit_record_id)` can never run. Grep confirms these two branches are the only callers that pass `dependency_edges`. (2) **Wrong scope even if reached.** The docstring promises it "ensures that linked-to fits exist before the linking fit is processed", but both endpoints are looked up in a single model's `uid_to_param` built at `:459-463` from `model.parameters_all` — a cross-fit edge's `source_node_id` lives in *another* fit's model, so `source_param` is `None` and the edge is silently skipped by the `if source_param and target_param` guard at `:478`. Compare `_apply_state_to_model:324-336`, which does search `_local_fits()` and is what actually restores cross-fit links today. Either delete the dead path (the `link_target_fit_uid` mechanism already covers it) or make the loader reach it and give it a global parameter lookup — but do not leave a documented feature that no code path can execute.
+- **Fix note:**
+
+### RF-931
+- **Status:** OPEN
+- **Severity:** S3 (six exported helpers with no caller anywhere, a docstring promising three sections the function never captures, and one section that is saved into every project and never restored)
+- **Location:** `chisurf/core/project/ui_state.py:6-15` (`get_ui_state`'s docstring: "dataset_selector", "fit_selector", "active_tabs"), `:128-254` (`get_dataset_selector_state`, `set_dataset_selector_state`, `get_fit_selector_state`, `set_fit_selector_state`, `get_active_tabs`, `set_active_tabs`), and the `get`/`set` asymmetry at `:56-65` (captures `state["history_browser"]`) vs `:70-125` (`set_ui_state` restores only `geometry`, `dock_state`, `mdi_area`)
+- **Finding:** `get_ui_state` returns exactly four keys — `geometry`, `dock_state`, `mdi_area`, `history_browser` — and none of the three the docstring advertises; the six helpers that *would* produce them are called from nowhere in `chisurf/` or `test/` (`grep -rn` over both trees returns only their definitions). Separately, `history_browser` is captured by `get_ui_state` (`chisurf/macros/core_fit.py:2050-2053` folds it into the project's `ui` section) but `set_ui_state` ignores that key, so on `load_project` (`core_fit.py:3183-3184`) the history-browser layout stored in every `.csp` is discarded — the single-fit path restores it by hand at `core_fit.py:2807-2811`, the full-project path does not. Either wire the helpers into `get_ui_state`/`set_ui_state` or delete them, restore `history_browser` symmetrically, and make the docstring describe what the function returns.
+- **Fix note:**
+
+### RF-932
+- **Status:** OPEN
+- **Severity:** S3 (saving over an existing project truncates it in place — an interruption during the write leaves neither the old project nor a complete new one)
+- **Location:** `chisurf/core/project/archive.py:238-243` (`ProjectArchive.save`: `archive_path.parent.mkdir(...)`, `self._zip.close()`, `archive_path.write_bytes(self._buffer.getvalue())`)
+- **Finding:** the destination is opened for writing and truncated before any bytes land, and the whole archive is one `write_bytes` call, so a crash, a full disk or a `SIGKILL` mid-write destroys the previous save. This matters here more than for a scratch file: the entire archive already exists in `self._buffer`, so the atomic form costs nothing — write to a sibling temporary in the same directory and `os.replace()` onto the target, which is atomic on both POSIX and Windows. Pin with a test that patches `write_bytes` to raise part-way and asserts the pre-existing archive still opens.
+- **Fix note:**
+
+### RF-933
+- **Status:** OPEN
+- **Severity:** S3 (`overwrite=True` does not overwrite — it appends a second entry under the same name, doubling the stored bytes and emitting a `UserWarning`)
+- **Location:** `chisurf/core/project/archive.py:179-186` (`write_bytes`: both branches call the same `self._zip.writestr(...)`, so the `overwrite` flag only decides whether to raise) and `:211-216` (`write_file`, same shape)
+- **Finding:** `zipfile.writestr` never replaces an existing member; it appends. Verified: writing `data/x.txt` twice with `overwrite=True` produces `['project.json', 'data/x.txt', 'data/x.txt']` from `list_entries()` plus `UserWarning: Duplicate name: 'data/x.txt'`, and `extract_to` then writes the same destination file twice. Reads happen to return the *last* copy, so the bug is invisible until someone overwrites a large embedded data file and the `.csp` silently carries both. No in-tree caller passes `overwrite=True` today (only `write_mmfdb_layer` forwards it), which is why it has never bitten — but it is a live trap for the next writer. Either rebuild the archive without the old member, or make `overwrite=True` an explicit `NotImplementedError` rather than a flag that quietly means "append again".
+- **Fix note:**
