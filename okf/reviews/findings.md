@@ -8348,3 +8348,62 @@ back: in-memory `output_paths` holds
 - **Location:** `chisurf/plugins/traj/traj_convert/sections.py:216` (`dialogs.information(self, "MC-Converter", "Conversion done!")`) and `chisurf/plugins/traj/traj_convert/widget.py:35` (`name = "MC-Converter"`), against `widget.py:1`, `sections.py:1` and `view_model.py:1,45` which all say **MD**-Converter
 - **Finding:** verified by driving the Convert tab to completion in the GUI — the modal that appears on a successful conversion is titled `MC-Converter`. There is no "MC" anything in ChiSurf; the tool converts molecular-dynamics trajectories and the tab is labelled *Convert*. Fix both spellings (and consider titling the dialog after the tab the user actually clicked). While there: this is the only one of the eight Traj Tools panels that pops a modal on success *and* writes `Conversion done` to its log — the other seven only log.
 - **Fix note:**
+
+### Review 2026-07-28 — chimol trajectory step, smoothing, and the transparent pass
+
+Slice: `46e285281` (*"trajectory step and smoothing, and transparency that
+draws"*), the newest landing — `renderer/qtgl.py` (depth mask + two-pass
+culling + the alpha clamp), `renderer/view.py` (`_smooth_frame`,
+`set_trajectory_smoothing`, `set_frame_step`, the draft-colour rule) and
+`app/timeline_panel.py` (the two new spin boxes). The draft-colour fix and the
+shader's `glint` clamp check out. Findings RF-711..RF-717 below; RF-711 and
+RF-712 are in the transparent pass, the rest are the two new controls.
+
+### RF-711
+- **Status:** OPEN
+- **Severity:** S1 (correctness/rendering: after the first frame that draws transparent geometry, the depth buffer is never cleared again — every later frame is depth-tested against a stale buffer)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:854` (`gl.glDepthMask(False)`) and `:857` (`gl.glDepthMask(True)`, inside the `else` of the same `if blend_enable`), against the pass list at `:833-838`, the `if not call_set: continue` at `:839`, `glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)` at `:772`, and the restore block at `:994-996`
+- **Finding:** `glDepthMask` occurs in exactly two places in the whole plugin (verified by grep over `chisurf/plugins/chimol/`), both inside the per-pass `if blend_enable:` branch. The pass order is opaque (mask `True`), transparent (mask `False`), overlay (mask `True`) — but each pass is skipped wholesale by `if not call_set: continue`, and `overlay` calls only exist when a measurement, a selection or the grid is on screen (`view.py:6276`, `:7431`, `:7568-7594`, `:7647`, `qtgl.py:1580`). A plain scene with one transparent metaball and no measurements therefore ends `paintGL` with the depth mask still `False`, and the "Restore global GL state so we don't leak into the next frame" block at `:994-996` restores `GL_CULL_FACE` and five uniforms but **not** the depth mask. The depth write mask gates `glClear` as well as fragment writes, so the `glClear(… | GL_DEPTH_BUFFER_BIT)` at `:772` on every subsequent frame is a no-op: the depth buffer keeps whatever the *first* transparent frame left in it (it persists across frames in both the widget FBO and the offscreen post-process target, whose depth attachment is a texture allocated once — `renderer/postprocess.py:199-222`). The opaque pass then depth-tests against that stale buffer, so geometry that rotates into view is rejected wherever the old frame had something nearer. Fix: restore `glDepthMask(True)` unconditionally in the state-restore block at `:994` (or set it immediately before the `glClear`), not only on a pass that may never run.
+- **Fix note:**
+
+### RF-712
+- **Status:** OPEN
+- **Severity:** S2 (contract: the back-to-front sort for transparent draw calls uses a model-space z computed once at upload, and the loop that claims to recompute it in camera space assigns the value to itself)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:822-831` (`# Compute camera-space depth for transparent sorting (back-to-front)`, then `depth = getattr(call, "depth", 0.0)` / `call.depth = depth` / `transparent_calls.sort(key=lambda c: c.depth, reverse=True)`) against `:1610` (`centroid_z = float(np.mean(draw.positions[:, 2])) if draw.render_mode == "transparent" …`) and `:1622` (`depth=centroid_z`)
+- **Finding:** the sort key is the mean **z of the raw vertex positions**, i.e. model/world space, computed once in `_upload_draw_data` and stored on the GPU call. It is never multiplied by the view matrix and never recomputed when the camera moves, so `depth` is a constant for the lifetime of the upload. The loop at `:823-830` reads the field and writes it straight back — it computes nothing, and its comment ("*use the draw-call's depth stored during upload (centroid z in view space)*") describes a value the code does not produce. Consequences, now that transparency actually blends (`46e285281`): two transparent objects are ordered by their model-space z regardless of where the camera is, and rotating the scene 180° does not reorder them; `reverse=True` (descending) is in any case the *near*-first order for a right-handed camera space, where farther is more negative. Fix: transform the centroid by the view matrix in `paintGL` (`view` is already built at `:807`) and sort ascending, or delete the dead loop and say the sort is model-space only.
+- **Fix note:**
+
+### RF-713
+- **Status:** OPEN
+- **Severity:** S2 (turning on smoothing silently turns off sub-frame interpolation, so `minterpolate` and fractional playback positions stop having any effect)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:161-201` (`_smooth_frame`, which returns `frames[lo:hi].mean(axis=0)` and uses its `frame` argument only as the pass-through return) called from `:1487-1489` in `_select_state_frame`, immediately after the interpolation at `:1477-1481` (`frame = (1.0 - blend) * arr[idx] + blend * arr[next_idx]`)
+- **Finding:** when the window is >1 the interpolated `frame` is discarded and replaced by an unweighted mean over `[idx - w//2, idx + w//2]`, which depends only on `idx = floor(position)`. Verified against the real function (arm64 env, `frames[t] = t`): position `5.5` with window 3 returns `5.0` — identical to position `5.0` — while window 0 correctly returns `5.5`. So with smoothing on, every fractional position between two frames draws exactly the same picture and playback becomes stepwise again, defeating `minterpolate` (`cmd/animation.py:392`, `advance = movie_step / sub_steps`) and the sub-frame `advance` that `mplay 0.5` produces. The two features are advertised as independent ("*step to cover it in reasonable time, smoothing to stop it shimmering*", `:1436-1439`) and are not. Fix: interpolate between the smoothed frames — average the window centred on `idx` and the window centred on `next_idx`, then blend those two with the same weight — or state in the docstring and tooltip that smoothing snaps playback to whole frames.
+- **Fix note:**
+
+### RF-714
+- **Status:** OPEN
+- **Severity:** S3 (an even smoothing window is silently widened to the next odd one, so the control does not mean what its tooltip says)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:190-199` (`half = window // 2`, `lo = max(0, index - half)`, `hi = min(n_frames, index + half + 1)` — a span of `2 * (window // 2) + 1`) against the docstring at `:180` (*"Width in frames"*), `set_trajectory_smoothing`'s at `:1420` (*"Window width in frames"*) and the spin box tooltip at `chisurf/plugins/chimol/chimol/app/timeline_panel.py:81-85` (*"Smoothing window, in frames"*)
+- **Finding:** verified against the real function: window 2 averages **3** frames, 4 averages **5**, 8 averages **9** — every even request is rounded up. Nothing clamps or reports it, and the spin box (`timeline_panel.py:76`, range 0..999) offers even values as first-class choices; the four tests added with the feature only exercise odd windows and 0/1. Either force the window odd on entry (`window += 1 - window % 2`) and show the effective value, or centre an even window asymmetrically — but the docstring and the tooltip must describe whichever is chosen. Related, and untested: the spin box's maximum of 999 is not clamped to the trajectory length, so any window ≥ `2 * n_frames` makes every frame render the same global mean and playback looks frozen.
+- **Fix note:**
+
+### RF-715
+- **Status:** OPEN
+- **Severity:** S2 (the new API's docstring names the wrong command, and its integer clamp destroys the sub-frame step that command legitimately sets)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:1430-1448` (`set_frame_step`: *"This is the same setting the ``mset`` command drives"*, `self.movie_step = max(1, int(step))`, `get_frame_step` → `max(1, int(...))`) against `chisurf/plugins/chimol/chimol/cmd/animation.py:195-218` (`mset` — *"Set the movie timeline length"*, calls `viewer.set_total_frames`) and `:266-277` (`mplay`, the **only** writer of `movie_step`: `value = float(step)`, rejects `<= 0`, `viewer.movie_step = value`)
+- **Finding:** `mset` does not touch `movie_step` at all — it sets the timeline *length*. The step is driven by `mplay <step>`, which is deliberately a **float** (`view.py:1336`, `movie_step: float = 1.0`; consumed as `advance = movie_step / sub_steps` at `animation.py:392`), so `mplay 0.5` is valid slow motion. `set_frame_step` coerces with `max(1, int(step))` and `get_frame_step` truncates the same way, so any fractional step set from the command line reads back as `1`, and the new control cannot express slow motion at all. The false claim is repeated in the test that pins the behaviour (`chisurf/plugins/chimol/test/test_trajectory_controls.py:157`, *"The control beside the slider and `mset` must not disagree"*), so it will be copied forward. Fix the docstrings to name `mplay`, and either keep `movie_step` a float (clamp to `> 0`, not to `>= 1`) or document that the spin box deliberately restricts it to whole frames.
+- **Fix note:**
+
+### RF-716
+- **Status:** OPEN
+- **Severity:** S2 (the two new timeline controls are write-only: nothing syncs them back from the viewer, so a command-line `mplay 4` leaves the panel showing `×1`)
+- **Location:** `chisurf/plugins/chimol/chimol/app/timeline_panel.py:134-160` (`refresh_ui`, the 10 Hz sync at `:100-103`) — it updates `self.slider` and `self.lbl_frame` and never reads `viewer.get_frame_step()` / `viewer.get_trajectory_smoothing()` into `self.spin_step` / `self.spin_smooth`
+- **Finding:** both getters exist (`renderer/view.py:1424-1425`, `:1446-1448`) and are unused by the GUI. `mplay 4` (`cmd/animation.py:277`) and any script or session restore that sets `movie_step` or `_trajectory_smoothing` therefore leave the spin boxes showing stale values, which is precisely the "spinbox and picture disagreeing" failure `set_current_frame`'s own docstring (`view.py:1385-1392`) says the design exists to prevent. Add the two reads to `refresh_ui` behind `blockSignals(True)`, the same way the slider is already guarded at `:145-148`, or the panel will keep asserting a step the viewer is not using.
+- **Fix note:**
+
+### RF-717
+- **Status:** OPEN
+- **Severity:** S3 (changing the smoothing window re-renders only the active object; other loaded trajectories keep their unsmoothed coordinates until playback moves them)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/view.py:1417-1423` (`set_trajectory_smoothing`: `state = self._get_active_state()` → `self._select_state_frame(state, …)` → `self._update_view(fit_camera=False)`) against `:1641-1655` (`_apply_frame_states`, which loops `for entry in self._objects.values()`)
+- **Finding:** `_trajectory_smoothing` is a single viewer-wide setting, but only the *active* object's `state.coords` are recomputed when it changes; every other object with `frames` keeps the coordinates it last derived and is redrawn unsmoothed. It self-corrects only once playback advances (`_apply_frame_states` does iterate all objects) — so with playback paused, which is exactly when someone dials the window to judge it, a two-trajectory scene shows one smoothed and one not, with nothing on screen to explain the difference. Loop over `self._objects.values()` here, as `_apply_frame_states` does, instead of over the active state alone. The blanket `except Exception` around the block (`:1422-1423`) also swallows a genuinely broken re-apply into a `logger.debug`.
+- **Fix note:**
