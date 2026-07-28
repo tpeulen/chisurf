@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 from collections.abc import Callable
@@ -13,12 +14,53 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 3
+DISPLAY_CONFIG_VERSION: int = 5
 """Current version of the chimol_display.json schema.
 
-Increment this when keys are added, renamed, or removed so that users
-with an older copy in ``~/.chisurf/`` are prompted to update.
+Increment this when keys are added, renamed, or removed, **or when a default
+changes**, and record the change in :data:`DISPLAY_CONFIG_MIGRATIONS` so an
+existing user copy picks it up.
 """
+
+#: Defaults that changed, by the version that changed them:
+#: ``{version: {section: {key: (old_default, new_default)}}}``.
+#:
+#: A user's copy of ``chimol_display.json`` is written once and then never
+#: touched again, so *changing a default here reaches nobody who already has
+#: one* -- which is every existing user. The version check that was supposed to
+#: catch this was never called from anywhere.
+#:
+#: A value is updated only where the user's copy still holds the **old
+#: default**, which means they never changed it. Anything else is a deliberate
+#: choice and is left exactly as it is. That distinction is the whole point:
+#: refreshing the file wholesale would throw away the settings people came to
+#: rely on, and refreshing nothing leaves every appearance fix stranded in the
+#: package.
+DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
+    4: {
+        "metaball": {
+            # A metaball should look like a wet gel, not like clay. See the log
+            # for 2026-07-28: the normals were the reason it never could.
+            "ao_strength": (0.9, 0.35),
+            "shininess": (22.0, 96.0),
+            "specular_strength": (0.12, 0.85),
+            "rim_strength": (0.2, 0.55),
+            "rim_power": (3.0, 2.2),
+            "sigma_factor": (2.2, 2.8),
+        },
+    },
+    5: {
+        "metaball": {
+            # Fusion, which is what actually makes a metaball read as jelly:
+            # the material was already glossy and the surface still showed every
+            # bead. Larger sigma merges neighbours into smooth lobes. 9.0 was
+            # tried and is too far -- the molecule becomes a featureless egg --
+            # so this is the point where the fold is still legible.
+            "sigma_factor": (2.8, 6.5),
+            "iso_value": (0.1, 0.06),
+        },
+    },
+}
 
 
 _update_listeners: list[Callable[[], None]] = []
@@ -74,6 +116,72 @@ def check_for_display_config_update() -> bool:
         return user_version < DISPLAY_CONFIG_VERSION
     except Exception:
         return False
+
+
+def apply_display_config_migrations(cfg: dict, from_version: int) -> list[str]:
+    """Bring *cfg* forward, changing only values the user never touched.
+
+    Parameters
+    ----------
+    cfg : dict
+        A loaded ``chimol_display.json``, modified in place.
+    from_version : int
+        The ``_version`` the file was written with; 0 when it has none.
+
+    Returns
+    -------
+    list of str
+        ``"section.key"`` for each value updated, so the caller can report or
+        persist. Empty when nothing changed.
+
+    Notes
+    -----
+    A value moves only if it still equals the **old default**. If it differs,
+    the user chose it and it stays -- a migration that overwrote choices would
+    be worse than one that never ran.
+    """
+    changed: list[str] = []
+    for version in sorted(DISPLAY_CONFIG_MIGRATIONS):
+        if version <= int(from_version or 0):
+            continue
+        for section, keys in DISPLAY_CONFIG_MIGRATIONS[version].items():
+            block = cfg.get(section)
+            if not isinstance(block, dict):
+                continue
+            for key, (old, new) in keys.items():
+                if key not in block:
+                    continue
+                current = block[key]
+                same = (
+                    abs(float(current) - float(old)) < 1e-9
+                    if isinstance(current, (int, float))
+                    and isinstance(old, (int, float))
+                    and not isinstance(current, bool)
+                    else current == old
+                )
+                if same:
+                    block[key] = new
+                    changed.append(f"{section}.{key}")
+    return changed
+
+
+def _write_user_display_config(path, cfg: dict) -> None:
+    """Write *cfg* back to the user's copy, stamped with the current version.
+
+    Failure is not fatal: the migrated values are already in the dict the
+    session will use, and a config that cannot be written is a permissions
+    problem rather than a reason to refuse to draw.
+    """
+    try:
+        payload = dict(cfg)
+        payload["_version"] = DISPLAY_CONFIG_VERSION
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2)
+            fh.write("\n")
+    except Exception:  # pragma: no cover - unwritable settings directory
+        logging.getLogger(__name__).debug(
+            "chimol: could not update %s", path, exc_info=True
+        )
 
 
 def _load_display_config() -> dict:
@@ -222,11 +330,11 @@ def _load_display_config() -> dict:
             # Density field function: "wyvill" (compact support, faster) or "gaussian"
             "field_function": "wyvill",
             # Isosurface threshold for marching cubes (lower = larger, blobbier surface)
-            "iso_value": 0.1,
+            "iso_value": 0.06,
             # Per-atom Gaussian sigma multiplier (higher = rounder, more fused
             # blobs). A gel has no lumps: neighbouring beads should merge into
             # one smooth body rather than read as a heap of spheres.
-            "sigma_factor": 2.8,
+            "sigma_factor": 6.5,
             # Grid resolution in Angstroms (smaller = finer mesh, slower)
             "grid_spacing": 0.6,
             # Extra space around bounding box in Angstroms
@@ -495,6 +603,14 @@ def _load_display_config() -> dict:
 
     # Strip meta keys that should not leak into the rendered config.
     cfg.pop("_version", None)
+
+    # Bring forward defaults that changed since this copy was written.
+    migrated = apply_display_config_migrations(cfg, _DISPLAY_CONFIG_USER_VERSION)
+    # Persisted only when the file being read *is* the user's copy -- never the
+    # package's, which is read-only as far as a session is concerned and shared
+    # by every install.
+    if migrated and path != package_path:
+        _write_user_display_config(path, cfg)
 
     # Shallow-merge user config with defaults to ensure all keys exist.
     for key, sub in default.items():

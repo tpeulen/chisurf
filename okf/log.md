@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **Every appearance default I changed today reached nobody, and the mechanism
+  meant to catch that was never called.** Chimol's defaults live *twice*: a
+  Python dict in `config.py` and the shipped `chimol_display.json`. The JSON is
+  what is read; the dict only fills keys the JSON lacks. So editing the dict --
+  which is what an afternoon of metaball tuning did -- changed nothing for
+  anyone, silently. Worse, a user's copy in `~/.chisurf/` is written once and
+  never touched again, so fixing the shipped file still reaches nobody who
+  already has one. `check_for_display_config_update()` existed for exactly this
+  and **had no callers**.
+  - The shipped JSON now carries the values, and `DISPLAY_CONFIG_MIGRATIONS`
+    records each changed default as `(old, new)` per version. On load, a value
+    moves **only where the user's copy still holds the old default** -- anything
+    else was chosen deliberately and is left alone. Migrations chain, so a copy
+    old enough to need two steps lands on the newest value.
+  - Guardrail: the shipped JSON and the Python defaults must agree for every
+    shared key, the shipped file must carry the current version, and each
+    migration's final value must be what ships. That test fails on the exact
+    mistake made here.
+  - **Jelly, at last.** The material was already glossy; what still read as
+    "not jelly" was *fusion* -- every bead visible on the surface.
+    `sigma_factor` 2.8 -> 6.5 with `iso_value` 0.06 merges neighbours into
+    smooth lobes. 9.0 was tried and is too far: the molecule becomes a
+    featureless egg. Chosen by rendering the real viewport at four settings and
+    looking at them, with the settings directory seeded fresh from the package
+    file each run so no stale preset could be judged by mistake.
+
 * **QA — the two steps that bracket every FCS fit, driven for the first time.**
   New use case
   [merging FCS repeats and calibrating the confocal volume](/usecases/fcs-merge-and-calibrate.md):
