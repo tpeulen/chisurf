@@ -42,6 +42,12 @@ __all__ = ["Headers", "Response", "RequestError", "HTTPStatusError", "request", 
 #: Sent when the caller does not set one; some APIs reject the urllib default.
 USER_AGENT = "chisurf"
 
+#: The only schemes this client speaks. ``urlopen`` serves every scheme urllib
+#: has a handler for -- ``file:`` reads off the local disk, ``ftp:`` dials out --
+#: and the URLs reaching here come from model providers and plugin registries,
+#: so anything but HTTP is refused before the request is opened.
+ALLOWED_SCHEMES = frozenset({"http", "https"})
+
 
 class RequestError(OSError):
     """The request never produced a response (DNS, TLS, timeout, refused)."""
@@ -202,13 +208,20 @@ def request(
     ValueError
         If both ``json`` and ``data`` are given.
     RequestError
-        If no response was produced at all.
+        If the URL is not ``http``/``https``, or no response was produced at all.
     """
     if json is not None and data is not None:
         raise ValueError("pass either json= or data=, not both")
 
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme.lower() not in ALLOWED_SCHEMES:
+        raise RequestError(
+            f"{method.upper()} {url} refused: "
+            f"{parsed.scheme.lower() or 'relative'} is not one of {sorted(ALLOWED_SCHEMES)}"
+        )
+
     if params:
-        separator = "&" if urllib.parse.urlparse(url).query else "?"
+        separator = "&" if parsed.query else "?"
         url = f"{url}{separator}{urllib.parse.urlencode(params)}"
 
     sent = {"User-Agent": USER_AGENT}

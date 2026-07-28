@@ -8070,11 +8070,31 @@ explicit `timeout`; the `HTTPError` branch closes the response (`with error:`),
 so the error path leaks no socket. Findings RF-685..RF-688.
 
 ### RF-685
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a non-HTTP URL is fetched instead of rejected, and the resulting response makes `.ok` and `raise_for_status()` raise `TypeError`)
 - **Location:** `chisurf/core/http.py:222-233` (`request`: `urllib.request.urlopen(req, ...)` with no check on the URL scheme) and `:107-116` (`Response.__init__` stores `raw.status` unchecked; `ok` is `self.status_code < 400`), reached with a provider-supplied URL at `chisurf/plugins/core/plugin_manager/gui/tool.py:1527` (`image_response = http.get(first["url"], timeout=60)`)
 - **Finding:** `urlopen` serves every scheme urllib has a handler for, not just HTTP, so the module documented as *"a small HTTP client"* also reads local files and speaks FTP. Verified: `get("file:///tmp/…")` returns `content == b'SECRET-LOCAL-CONTENT'` with **`status_code = None`**, whereupon `response.ok` and `response.raise_for_status()` both raise `TypeError: '<' not supported between instances of 'NoneType' and 'int'` — not `RequestError`, which is the only failure the docstring at `:200-206` admits, so no call site's `except RequestError` catches it. (`ftp://` is likewise attempted — it fails with a *connection refused* from the FTP handler; only a scheme with no handler at all, `gopher://`, produces the documented `RequestError`.) The reachable instance is the icon path above: the URL comes from the image-generation provider's JSON, and a `file://` URL there is fetched from the ChiSurf host and written into the plugin's icon. Reject anything but `http`/`https` in `request` with `RequestError` before opening, and treat a `None` status as a transport failure rather than storing it.
-- **Fix note:**
+- **Fix note:** `request()` now parses the URL and refuses any scheme outside
+  the new module constant `ALLOWED_SCHEMES = {"http", "https"}` — raising
+  `RequestError`, the one failure the docstring admits, **before** the request
+  is built, so no handler runs and nothing is opened. Verified: the finding's
+  reproduction (`get(<file url>)` on a file holding `SECRET-LOCAL-CONTENT`)
+  raises `RequestError` instead of returning the file's bytes, and `ftp:`,
+  `gopher:` and a schemeless path do the same. The last three *did* already
+  raise `RequestError` — but accidentally (the host did not resolve, urllib had
+  no `gopher` handler, `Request` rejected the relative URL with a `ValueError`),
+  so the tests assert the message says the request was **refused**, which is
+  what keeps a *reachable* FTP host from being dialled. The `None`-status half
+  of the finding goes with the same gate rather than
+  needing its own guard: `status is None` came from urllib's `addinfourl`,
+  which only the non-HTTP handlers return — every `http`/`https` response is an
+  `HTTPResponse` with an integer `status`, so with the scheme gate closed
+  `Response.status_code` cannot be `None` and `.ok` cannot raise `TypeError`.
+  All nine call sites pass a provider or registry `https://` URL and are
+  unaffected. Tests: `test/core/test_http_client.py` (+5 ids, every one red
+  against `git show HEAD:chisurf/core/http.py`) — the `file:`-URL read, a
+  parametrised sweep over `ftp:`/`gopher:`/a relative URL, and one that
+  monkeypatches `urlopen` to assert the refusal happens before it is reached.
 
 ### RF-686
 - **Status:** OPEN

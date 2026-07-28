@@ -129,3 +129,37 @@ def test_transport_failure_raises_request_error():
 def test_json_and_data_together_are_rejected(server_url):
     with pytest.raises(ValueError):
         client.post(server_url + "/chat", json={"a": 1}, data=b"raw", timeout=10)
+
+
+def test_a_file_url_is_refused_instead_of_read(tmp_path):
+    """A provider-supplied ``file:`` URL must not turn into a local disk read."""
+    secret = tmp_path / "secret.txt"
+    secret.write_bytes(b"SECRET-LOCAL-CONTENT")
+    with pytest.raises(client.RequestError) as caught:
+        client.get(secret.as_uri(), timeout=10)
+    assert "file" in str(caught.value)
+
+
+@pytest.mark.parametrize("url", ["ftp://example.invalid/x", "gopher://example.invalid", "/models"])
+def test_only_http_urls_are_opened(url):
+    """Every non-HTTP scheme -- and a schemeless URL -- is refused, and refused as such.
+
+    ``ftp:`` and ``gopher:`` already raised :class:`RequestError` before the
+    scheme was checked, but for accidental reasons (the host did not resolve,
+    urllib had no handler); the message has to say the request was *refused* so
+    a reachable FTP host is not dialled instead.
+    """
+    with pytest.raises(client.RequestError) as caught:
+        client.get(url, timeout=5)
+    assert "refused" in str(caught.value)
+
+
+def test_the_refusal_happens_before_anything_is_opened(monkeypatch):
+    """The scheme is checked first, so a rejected URL never reaches ``urlopen``."""
+
+    def fail(*args, **kwargs):
+        raise AssertionError("urlopen must not be called for a non-HTTP URL")
+
+    monkeypatch.setattr(client.urllib.request, "urlopen", fail)
+    with pytest.raises(client.RequestError):
+        client.get("file:///etc/hosts", timeout=5)

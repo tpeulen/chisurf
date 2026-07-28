@@ -82,6 +82,25 @@
   operations, a tab bar that overflows at the window's own default size) in the
   use case.
 
+* **The "small HTTP client" also read local files** (RF-685). `urlopen` serves
+  every scheme urllib has a handler for, and `chisurf.core.http.request` checked
+  none of them — so a `file:` URL arriving in a model provider's JSON (the icon
+  path in the plugin manager fetches `first["url"]` verbatim) was read off the
+  ChiSurf host's disk and written into a plugin icon, returning
+  `status_code = None` so that `.ok` and `raise_for_status()` then raised
+  `TypeError` rather than the `RequestError` the docstring promises. `request()`
+  now parses the URL and refuses anything outside `ALLOWED_SCHEMES =
+  {"http", "https"}` with a `RequestError`, **before** the request is built, so
+  no handler runs. The `None` status needs no separate guard: it comes from
+  urllib's `addinfourl`, which only the non-HTTP handlers return. All nine call
+  sites pass a provider or registry `https://` URL. Tests:
+  `test/core/test_http_client.py` (+5 ids, every one red against the previous
+  `http.py` — the `file:` read, `ftp:`/`gopher:`/relative, and one asserting the
+  refusal happens before `urlopen` is reached, since `ftp:` and `gopher:` had
+  been failing only by accident of DNS and a missing handler). Tracker: RF-685
+  OPEN → FIXED in [/reviews/findings.md]; RF-686..RF-688 in the same module
+  remain open.
+
 * **Metaballs play at 26 fps, and finally look wet.** A trajectory wants 20 fps
   (50 ms); a full build is ~220 ms on one nuclear-pore spoke, nearly all of it
   the per-vertex transfer of colour and normals from the atoms -- spent on a
