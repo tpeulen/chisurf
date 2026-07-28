@@ -1749,6 +1749,14 @@ def _ensemble_walker_start(
         (upper - lower) * 1e-4,
         np.where(np.abs(p0) > 1e-15, np.abs(p0) * std, std),
     )
+    # A dimension in which every walker sits at the same value cannot be
+    # sampled at all: the moves are built from differences between walkers, so
+    # a direction with no spread has no component and the parameter stays at
+    # its starting value for the whole run -- reported afterwards as a
+    # delta-function posterior. It happens whenever the scale is taken
+    # relative to something that is zero (a parameter at 0, or bounds that
+    # coincide), so the relative scale is floored by the absolute one.
+    spread = np.where(spread > 0.0, spread, std)
     start = p0[None, :] + spread[None, :] * random.standard_normal((nwalkers, ndim))
     return np.clip(start, lower, upper)
 
@@ -1826,7 +1834,12 @@ def _sample_ensemble(
             state,
             nsteps=n_to_run,
             thin_by=thin,
-            skip_initial_state_check=True,
+            # The ensemble is checked for degeneracy once, on the way in. The
+            # continuation chunks carry the sampler's own state, which no
+            # longer has to look independent -- walkers legitimately collapse
+            # together on a narrow posterior -- so re-checking there would
+            # abort a healthy run halfway through.
+            skip_initial_state_check=current_stored > 0,
         )
         current_stored += n_to_run
         current_step = current_stored * thin

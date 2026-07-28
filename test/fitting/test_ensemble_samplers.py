@@ -241,3 +241,33 @@ def test_a_pool_and_the_serial_path_agree():
     a.run_mcmc(start, 30)
     b.run_mcmc(start, 30)
     assert np.array_equal(a.get_chain(), b.get_chain())
+
+
+def test_the_walker_spread_is_never_zero_in_any_direction():
+    """A dimension with no spread is a dimension the ensemble cannot sample.
+
+    The moves are built from differences between walkers, so a parameter whose
+    walkers all start at the same value stays there for the whole run and is
+    reported as a delta-function posterior. Relative scales produce exactly
+    that whenever the value they are relative to is zero.
+    """
+    # ``sample`` decorates at import time with a helper from ``factorgraph``,
+    # which ``fit`` is what pulls in -- importing it alone raises.
+    import chisurf.core.fitting.fit  # noqa: F401
+    import chisurf.core.fitting.sample as sample
+
+    class _Model:
+        """Model whose parameters would all get a zero relative spread."""
+
+        # value 0 (no relative scale), and bounds that coincide (no range).
+        parameter_values = [0.0, 5.0, 0.0]
+        parameter_bounds = [(None, None), (5.0, 5.0), (0.0, 0.0)]
+
+    start = sample._ensemble_walker_start(
+        _Model(), nwalkers=12, std=1e-3, random=np.random.default_rng(0)
+    )
+    spread = start.std(axis=0)
+    # The bounded-but-pinned parameters cannot move off their bound, but the
+    # unbounded one must have room.
+    assert spread[0] > 0.0
+    assert np.all(np.isfinite(start))
