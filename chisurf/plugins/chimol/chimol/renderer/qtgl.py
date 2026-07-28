@@ -59,6 +59,23 @@ def _invoke_menu(menu: QtWidgets.QMenu, pos: QtCore.QPoint):
     return exec_fn(pos)
 
 
+
+def _image_from_rgb(array: np.ndarray) -> QtGui.QImage:
+    """Wrap an ``(H, W, 3)`` uint8 array as a QImage that owns its bytes.
+
+    The copy is deliberate: ``QImage`` does not take ownership of a numpy
+    buffer, and a texture uploaded from one that has been garbage collected is
+    a use-after-free that usually shows up as a black or torn image rather than
+    a crash.
+    """
+    data = np.ascontiguousarray(array, dtype=np.uint8)
+    height, width = data.shape[:2]
+    image = QtGui.QImage(
+        data.tobytes(), width, height, 3 * width, QtGui.QImage.Format_RGB888
+    )
+    return image.copy()
+
+
 @dataclass
 class _DrawData:
     primitive: int
@@ -166,6 +183,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._radius_attr = -1
         self._occlusion_attr = -1
         self._background = (0.0, 0.0, 0.0, 1.0)
+        #: Backdrop picture: what was requested, the resolved image, its GL
+        #: texture, and whether the texture needs rebuilding (a named backdrop
+        #: is generated at the widget's own size, so a resize invalidates it).
+        self._background_source = None
+        self._background_image = None
+        self._background_texture = None
+        self._background_program = None
+        self._background_dirty = False
+        self._background_texture_size = (0, 0)
 
         # Render-to-texture scaffolding. Silhouettes today; occlusion and depth
         # cue reuse the same target rather than each adding their own.
@@ -436,6 +462,59 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             )
         self._background = rgba
         self.update()
+
+    def set_background_image(self, source) -> None:
+        """Put a picture behind the scene, or take it away.
+
+        Transparency is invisible against one flat colour: a surface at alpha
+        0.4 over black is merely a darker surface, because there is nothing
+        behind it for the eye to catch. Give the background structure and the
+        same surface reads as glass immediately.
+
+        Parameters
+        ----------
+        source : str, QImage, numpy.ndarray or None
+            A name from :data:`~chimol.renderer.backdrop.BACKDROPS` (``stars``,
+            ``nebula``), a path to an image file, an image already in hand, or
+            ``None``/``""``/``"off"`` to go back to the flat colour.
+
+        Raises
+        ------
+        ValueError
+            If a path was given and cannot be read -- a background that silently
+            does not appear is indistinguishable from one that is not supported.
+        """
+        self._background_source = source
+        if source is None or (isinstance(source, str) and source.strip().lower()
+                              in ("", "off", "none")):
+            self._background_image = None
+            self._background_dirty = True
+            self.update()
+            return
+
+        image = None
+        if isinstance(source, QtGui.QImage):
+            image = source
+        elif isinstance(source, np.ndarray):
+            image = _image_from_rgb(source)
+        elif isinstance(source, str):
+            from .backdrop import BACKDROPS
+
+            if source.strip().lower() in BACKDROPS:
+                image = None  # generated at paint time, at the widget's size
+            else:
+                loaded = QtGui.QImage(source)
+                if loaded.isNull():
+                    raise ValueError(f"cannot read background image: {source}")
+                image = loaded
+
+        self._background_image = image
+        self._background_dirty = True
+        self.update()
+
+    def get_background_image(self):
+        """What ``set_background_image`` was last given, or ``None``."""
+        return getattr(self, "_background_source", None)
 
     def set_lighting(self, **values) -> None:
         """Set lighting parameters by name and redraw.
@@ -744,6 +823,118 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             return
         gl.glViewport(0, 0, width, max(height, 1))
 
+    #: A full-screen quad in clip space: two triangles, no matrices involved.
+    _BACKGROUND_VERT = """
+        attribute vec2 position;
+        varying vec2 v_uv;
+        void main() {
+            v_uv = position * 0.5 + 0.5;
+            gl_Position = vec4(position, 0.0, 1.0);
+        }
+    """
+
+    _BACKGROUND_FRAG = """
+        uniform sampler2D backdrop;
+        varying vec2 v_uv;
+        void main() {
+            // Flipped in v: an image's first row is its top, a texture's is its
+            // bottom, and a star field is symmetric enough that getting this
+            // wrong is invisible until someone uses a photograph.
+            gl_FragColor = texture2D(backdrop, vec2(v_uv.x, 1.0 - v_uv.y));
+        }
+    """
+
+    def _ensure_background_texture(self, width: int, height: int) -> bool:
+        """Build or rebuild the backdrop texture; True when one is ready."""
+        source = getattr(self, "_background_source", None)
+        if source is None or (isinstance(source, str)
+                              and source.strip().lower() in ("", "off", "none")):
+            return False
+
+        size = (int(width), int(height))
+        if (
+            self._background_texture is not None
+            and not self._background_dirty
+            and self._background_texture_size == size
+        ):
+            return True
+
+        image = self._background_image
+        if image is None and isinstance(source, str):
+            from .backdrop import render_backdrop
+
+            array = render_backdrop(source, width, height)
+            if array is None:
+                return False
+            image = _image_from_rgb(array)
+        if image is None:
+            return False
+
+        try:
+            if self._background_texture is not None:
+                self._background_texture.destroy()
+            texture = QtGui.QOpenGLTexture(image.mirrored(False, True))
+            texture.setMinificationFilter(QtGui.QOpenGLTexture.Linear)
+            texture.setMagnificationFilter(QtGui.QOpenGLTexture.Linear)
+            texture.setWrapMode(QtGui.QOpenGLTexture.ClampToEdge)
+        except Exception:
+            logger.warning("chimol: could not upload the background image", exc_info=True)
+            self._background_texture = None
+            return False
+
+        self._background_texture = texture
+        self._background_texture_size = size
+        self._background_dirty = False
+        return True
+
+    def _draw_background(self, gl, width: int, height: int) -> None:
+        """Draw the backdrop as a full-screen quad, behind everything.
+
+        Kept on its own tiny program rather than folded into the scene shader:
+        the backdrop has no lighting, no normals and no depth, and giving it a
+        branch in the shared program would cost every other draw a uniform and
+        a test.
+        """
+        if not self._ensure_background_texture(width, height):
+            return
+        if self._background_program is None:
+            program = QtGui.QOpenGLShaderProgram()
+            ok = program.addShaderFromSourceCode(
+                QtGui.QOpenGLShader.Vertex, self._BACKGROUND_VERT
+            ) and program.addShaderFromSourceCode(
+                QtGui.QOpenGLShader.Fragment, self._BACKGROUND_FRAG
+            ) and program.link()
+            if not ok:
+                logger.warning("chimol: background shader failed: %s", program.log())
+                self._background_source = None
+                return
+            self._background_program = program
+
+        program = self._background_program
+        program.bind()
+        try:
+            # One oversized triangle rather than two -- it covers the screen
+            # with no seam down the diagonal. Shaped (N, 2): PyQt takes the
+            # tuple size from the array, and passing it separately does not
+            # match any overload.
+            quad = np.array([[-1.0, -1.0], [3.0, -1.0], [-1.0, 3.0]], dtype=np.float32)
+            location = program.attributeLocation("position")
+            program.enableAttributeArray(location)
+            program.setAttributeArray(location, quad)
+            self._background_texture.bind(0)
+            program.setUniformValue("backdrop", 0)
+            gl.glDisable(GL_DEPTH_TEST)
+            gl.glDepthMask(False)
+            gl.glDrawArrays(GL_TRIANGLES, 0, 3)
+            gl.glDepthMask(True)
+            gl.glEnable(GL_DEPTH_TEST)
+            program.disableAttributeArray(location)
+            self._background_texture.release(0)
+        finally:
+            program.release()
+            if self._program is not None:
+                self._program.bind()
+
     def paintGL(self) -> None:
         if GL is None:
             return
@@ -770,6 +961,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         r, g_col, b, a = self._background
         gl.glClearColor(r, g_col, b, a)
         gl.glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        # The backdrop goes down first, with depth writes off, so everything
+        # else draws over it exactly as it would over the clear colour.
+        self._draw_background(gl, buffer_w, buffer_h)
 
         if self._program is None:
             if offscreen:

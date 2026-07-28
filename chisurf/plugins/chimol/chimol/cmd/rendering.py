@@ -17,6 +17,52 @@ class RenderingMixin(BaseCmd):
     # ------------------------------------------------------------------ #
     # Background / rep toggles
     # ------------------------------------------------------------------ #
+    @command("bg_image", aliases=("bg_picture",))
+    def bg_image(self, source: str = "") -> None:
+        """Put a picture behind the scene: ``bg_image stars`` (``bg_image off``).
+
+        Transparency is invisible against one flat colour. A surface at alpha
+        0.4 over black is merely a darker surface -- there is nothing behind it
+        for the eye to catch, so lowering the alpha reads as dimming rather than
+        as seeing through. Give the background structure and the same surface
+        reads as glass at once.
+
+        Parameters
+        ----------
+        source : str
+            ``stars`` or ``nebula`` for a generated deep-sky field, a path to an
+            image file, or ``off`` to go back to the flat colour. With no
+            argument, reports what is set.
+        """
+        from ..renderer.backdrop import BACKDROPS
+
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+        renderer = getattr(viewer, "_renderer", None)
+        setter = getattr(renderer, "set_background_image", None)
+        if not callable(setter):
+            self._emit_error("bg_image: this renderer cannot show a background image")
+            return
+
+        text = str(source).strip()
+        if not text:
+            current = getattr(renderer, "get_background_image", lambda: None)()
+            self._emit_message(
+                f"bg_image: {current or 'off'}  "
+                f"(named: {', '.join(sorted(set(BACKDROPS)))}, a file path, or off)"
+            )
+            return
+
+        try:
+            setter(text)
+        except ValueError as exc:
+            self._emit_error(f"bg_image: {exc}")
+            return
+        self._emit_message(
+            "bg_image: off" if text.lower() in ("off", "none") else f"bg_image: {text}"
+        )
+
     @command("bg_color", aliases=("bg_colour",))
     def bg_color(self, color: str) -> None:
         """Set the background color (PyMOL ``bg_color <color>``)."""

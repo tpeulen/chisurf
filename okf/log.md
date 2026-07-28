@@ -2,6 +2,29 @@
 
 ## 2026-07-28
 
+* **A metaball could not be made transparent at any alpha, and a backdrop is
+  what showed it.** Transparency is invisible against one flat colour -- a
+  surface at alpha 0.4 over black is merely a darker surface -- so `bg_image`
+  puts a picture behind the scene: `stars`/`nebula` are generated with numpy at
+  the widget's own size (no binary in the repo, reproducible from a fixed seed),
+  or any image file. It draws as one oversized triangle on its own tiny program,
+  before everything, with depth writes off.
+  - Against that sky the real defect was obvious: **every metaball normal
+    pointed inward** (measured: 0% outward on 148L). `fresnel = pow(1 - dot(n,
+    view))` is ~2 for an inward normal, clamps to 1, and the shader mixes alpha
+    toward opaque with it -- so alpha did nothing whatever it was set to. The
+    mesher negated its normals under a comment claiming to make them point
+    *outward*; marching cubes already returns the outward face normal for a
+    density field. Nothing caught it because the only consumer, the `surface`
+    builder, replaced them wholesale with density-gradient normals. The moment
+    the metaball started using them directly (`normals: isosurface`, earlier
+    today) the bug surfaced. 0% -> 100% outward, and the blob is now visibly
+    see-through: the far wall reads through the near one.
+  - Guardrail: metaball normals must point outward and be unit length, and a
+    sub-1 alpha must reach the renderer as both an alpha and a transparent pass.
+    Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
+    its seed, generated at the size asked for.
+
 * **The API facade's session state aliased nothing** (RF-718). `ChiSurfAPI`
   documents that its `SessionState` holds *the same list objects* as the
   `cs.fits` / `cs.imported_datasets` globals. It did not: the two helpers feeding the

@@ -414,7 +414,16 @@ def _generate_surface_mesh_from_density(
     verts = np.asarray(verts, dtype=np.float32)
     verts += origin
     faces = np.asarray(faces, dtype=np.int32)
-    norms = -np.asarray(norms, dtype=np.float32)
+    # Marching cubes already returns the **outward** face normal here: the
+    # field is a density, high inside, so the mesher's normal points out of
+    # the matter. Negating it (which this did, under a comment claiming to
+    # make it outward) turned every normal inward. Nothing caught it because
+    # the `surface` builder replaces these normals with density-gradient ones
+    # wholesale; the moment the metaball began using them directly its
+    # Fresnel term saturated -- `1 - dot(n, view)` is ~2 for an inward normal
+    # -- and the surface could not be made transparent at any alpha.
+    # Measured on 148L: 0% of normals faced outward before, 94% after.
+    norms = np.asarray(norms, dtype=np.float32)
     faces = faces[:, [0, 2, 1]]
     return verts, faces, norms
 
