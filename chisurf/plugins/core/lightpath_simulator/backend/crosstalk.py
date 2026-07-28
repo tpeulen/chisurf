@@ -7,6 +7,57 @@ logger = logging.getLogger(__name__)
 # Standard wavelengths for simulation
 WAVELENGTHS = np.arange(300, 901, 1, dtype=np.float64)
 
+# Transmission curves are catalogued in two conventions -- a fraction in [0, 1]
+# and a percentage in [0, 100] -- both tagged ``intensity_unit = 'normalized'``,
+# so the unit column cannot tell them apart. A peak well above unity can only be
+# the percentage one: a passive optical element does not amplify.
+PERCENT_PEAK_THRESHOLD = 1.5
+
+def as_transmission_fraction(spec, label=None):
+    """Return a stored transmission spectrum with its values as a fraction.
+
+    Parameters
+    ----------
+    spec : tuple of numpy.ndarray or None
+        A ``(wavelengths, values)`` spectrum as the catalogue stores it, the
+        values being either a fraction or a percentage.
+    label : str, optional
+        Identifier of the spectrum, used in the warning logged when a curve is
+        rescaled.
+
+    Returns
+    -------
+    tuple of numpy.ndarray or None
+        The spectrum with its values as a fraction, clipped to ``[0, 1]`` so
+        that a filter or a beam splitter can never amplify the light passing
+        through it. ``None`` and discrete-line spectra pass through unchanged.
+
+    Notes
+    -----
+    The convention is decided on the *stored* curve, over its full wavelength
+    range rather than the simulated one: a curve peaking above
+    :data:`PERCENT_PEAK_THRESHOLD` is read as a percentage and divided by 100.
+    A percentage curve peaking *below* that threshold -- a strong
+    neutral-density filter, say -- is indistinguishable from a fraction and is
+    left as it is; it then under-attenuates, but it still never amplifies.
+    """
+    if spec is None:
+        return None
+    if isinstance(spec[0], str):
+        return spec
+    w, y = spec
+    arr = np.asarray(y, dtype=np.float64)
+    if arr.size == 0:
+        return w, arr
+    peak = float(np.nanmax(arr))
+    if np.isfinite(peak) and peak > PERCENT_PEAK_THRESHOLD:
+        logger.warning(
+            "Transmission spectrum %s peaks at %.3g; reading it as percent.",
+            label if label is not None else "<unnamed>", peak
+        )
+        arr = arr / 100.0
+    return w, np.clip(arr, 0.0, 1.0)
+
 def interp(spec):
     """Interpolate (w, y) spectrum onto the standard grid."""
     if spec is None:
@@ -228,7 +279,7 @@ def propagate_node(node_type, config, input_spectra, db):
         if probe_id:
             with db:
                 s = db.get_probe_spectrum(probe_id, "transmission")
-                t_y = interp(s)
+                t_y = interp(as_transmission_fraction(s, probe_id))
                 node_char = t_y
                 out_dict = {}
                 for src_id, in_spec in spectral_in.items():
@@ -243,7 +294,7 @@ def propagate_node(node_type, config, input_spectra, db):
         if probe_id:
             with db:
                 s = db.get_probe_spectrum(probe_id, "transmission")
-                t_y = interp(s)
+                t_y = interp(as_transmission_fraction(s, probe_id))
                 node_char = t_y
                 t_dict = {}
                 r_dict = {}

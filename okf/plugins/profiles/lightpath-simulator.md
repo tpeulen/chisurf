@@ -64,6 +64,17 @@ PYTHONPATH="modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/p
   absorption spectrum is scaled by the extinction coefficient downstream and so
   has to arrive peaked at one. Never test a spectrum type by string equality at a
   call site.
+- **A transmission curve may be stored in percent.** 119 of the catalogue's 757
+  `transmission` spectra — every Thorlabs `FB…` bandpass, the Semrock `NF…`
+  notches, the Thorlabs `ND…` family — hold percentages, the other 638 hold
+  fractions, and all 757 are tagged `intensity_unit = 'normalized'`, so the unit
+  column cannot tell them apart. Read every transmission curve through
+  `backend/crosstalk.py::as_transmission_fraction`, which rescales a curve
+  peaking above 1.5 over its **stored** wavelength range and clips the result to
+  `[0, 1]`; a filter or splitter that multiplies the raw curve *amplifies* the
+  light (a passive `FB560-10` gained 58×). Strong neutral-density filters whose
+  percentages stay below the threshold (`ND30`, `ND40`) remain ambiguous — they
+  under-attenuate, never amplify, until the catalogue records the unit.
 - **Two preset formats coexist.** The Full Simulator saves optical-path presets
   as a node/edge **graph dict** (`{"nodes":…, "edges":…}`) under
   `~/.chisurf/presets/lightpath_optical/`, while Easy Mode's `_populate_form()`

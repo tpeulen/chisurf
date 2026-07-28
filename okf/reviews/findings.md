@@ -9799,11 +9799,29 @@ plausible-looking number or an empty table rather than an error. Complements the
 earlier catalogue-uniformity findings RF-269/RF-270. Findings RF-863..RF-867.
 
 ### RF-863
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (16 % of the selectable filters *amplify* the light instead of attenuating it — a passive bandpass gains 58×, and every crosstalk number downstream is wrong by that factor)
 - **Location:** `chisurf/plugins/core/lightpath_simulator/backend/crosstalk.py:235` (`out_dict[src_id] = in_spec * t_y`, the `filter` branch) and `:252` (`r_dict[src_id] = in_spec * np.clip(1.0 - t_y, 0, 1)`, the `splitter` branch)
 - **Finding:** both branches assume a transmission curve is a *fraction* in [0, 1]. The catalogue is not uniform: of its 757 `transmission` spectra, **119 are stored as percent** — every Thorlabs `FB…` bandpass (`FB340 10` … `FB550 10`) and the Semrock `NF…` notch family, peaking at 36.7 … 100.0 — while all 757 carry `intensity_unit = 'normalized'`, so the unit column cannot disambiguate them. Verified live through `propagate_node` against the shipped database: given a flat unit input, probe 1201 (`FB560 10`) leaves the `filter` node with a peak of **58.19**, whereas probe 711 (`ET667/30m`, stored as a fraction) leaves it at 0.984. In the `splitter` branch the same curve makes `1.0 - t_y` negative across the passband, so `clip(…, 0, 1)` yields exactly **0** reflection where the correct value is `1 − 0.582 = 0.418`. Nothing warns. The two conventions are cleanly separated (638 rows peak ≤ 1.02, 119 peak ≥ 36.7), so normalising on read — percent → fraction above a ~1.5 peak — is safe; alternatively fix the catalogue and reject an out-of-range curve loudly. Discriminating test: propagate one graph with probe 1201 and one with the same curve scaled to a fraction, and assert equal detector signals.
-- **Fix note:**
+- **Fix note:** `backend/crosstalk.py` gained `as_transmission_fraction(spec, label)`,
+  through which both the `filter` and the `splitter` branch now read the curve
+  (`t_y = interp(as_transmission_fraction(s, probe_id))`). A curve peaking above
+  `PERCENT_PEAK_THRESHOLD = 1.5` is read as a percentage and divided by 100 (logging
+  a warning), and the result is clipped to `[0, 1]`, so a passive element can no
+  longer amplify whatever the catalogue holds. The convention is decided on the
+  **stored** curve over its full wavelength range, not on the 300–900 nm simulation
+  window — that is what makes `ND20` (peaking at 1.50 % near 1090 nm) come out at
+  1.2 % transmission instead of a clipped 100 %. Verified live against the shipped
+  database: `FB560 10` now leaves the filter node at 0.5819 (was 58.19), `ET667/30m`
+  is unchanged at 0.9845, and splitter `T + R` is exactly 1 everywhere for both.
+  Pinned by five tests in `tests/test_crosstalk.py` — the discriminating pair
+  `test_filter_node_does_not_amplify_a_percent_curve` and
+  `test_splitter_reflects_what_a_percent_curve_does_not_transmit` (both fail against
+  the pre-fix expression), plus the helper's percent/fraction/never-amplify/
+  stored-range cases. Residual, and now a *catalogue* issue rather than a code one:
+  a percentage curve peaking below the threshold (`ND30` at 0.26 %, `ND40` at
+  0.12 %) still reads as a fraction and under-attenuates by 100× — recorded as a
+  gotcha in `/plugins/profiles/lightpath-simulator.md`.
 
 ### RF-864
 - **Status:** OPEN

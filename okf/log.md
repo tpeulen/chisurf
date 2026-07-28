@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+* **A filter that amplifies, because the catalogue mixes percent with fractions
+  (RF-863).** 119 of the 757 `transmission` spectra hold percentages and the
+  other 638 hold fractions, all tagged `intensity_unit = 'normalized'` — so the
+  `filter` and `splitter` branches, which multiply the input by the raw curve,
+  gained 58× on a passive Thorlabs `FB560-10` and reflected exactly nothing
+  where 42 % should have come back. Both branches now read through
+  `as_transmission_fraction`, which rescales a curve peaking above 1.5 and clips
+  to `[0, 1]`, so a passive element cannot amplify whatever the catalogue holds.
+  The convention is decided on the **stored** curve over its full wavelength
+  range, not the 300–900 nm simulation window: that is what makes `ND20`, which
+  only exceeds 1 % near 1090 nm, come out at 1.2 % transmission instead of a
+  clipped 100 %. Verified live against the shipped database and pinned by five
+  tests in the plugin's `test_crosstalk.py`, two of which fail against the
+  pre-fix expression. A percentage curve peaking *below* the threshold (`ND30`,
+  `ND40`) is still indistinguishable from a fraction — it under-attenuates,
+  never amplifies — and is recorded as a gotcha in the plugin profile.
+
 * **Taking a column for the panel squashed the molecule, because only the
   viewport knew about it.** `glViewport` was narrowed but the projection still
   divided by the *widget's* width, so the same picture was stretched into a
