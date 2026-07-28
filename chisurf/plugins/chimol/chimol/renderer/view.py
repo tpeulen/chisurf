@@ -158,6 +158,48 @@ def _apply_rigid_transform(data, rotation, translation):
 
 
 
+def _smooth_frame(
+    frames: np.ndarray,
+    index: int,
+    frame: np.ndarray,
+    window: int,
+) -> np.ndarray:
+    """Average *frame* over the smoothing window centred on *index*.
+
+    Parameters
+    ----------
+    frames : numpy.ndarray
+        ``(T, N, 3)`` trajectory.
+    index : int
+        The frame being shown.
+    frame : numpy.ndarray
+        The coordinates that would be shown without smoothing.
+    window : int
+        Width in frames; 0 or 1 means no smoothing.
+
+    Returns
+    -------
+    numpy.ndarray
+        Averaged coordinates, or ``frame`` unchanged when the window would not
+        cover more than one frame.
+    """
+    window = int(window or 0)
+    if window <= 1:
+        return frame
+    n_frames = int(frames.shape[0])
+    if n_frames < 2:
+        return frame
+    half = window // 2
+    # Clipped at the ends rather than wrapped: a trajectory's last frame is not
+    # next to its first, and averaging across that seam invents motion that
+    # never happened.
+    lo = max(0, index - half)
+    hi = min(n_frames, index + half + 1)
+    if hi - lo < 2:
+        return frame
+    return np.asarray(frames[lo:hi], dtype=float).mean(axis=0)
+
+
 def _frame_blend(position, n_frames: int) -> tuple[int, float, int]:
     """Split a possibly fractional frame position into a pair and a weight.
 
@@ -1353,6 +1395,58 @@ class MolView(QtWidgets.QWidget):
         except (TypeError, ValueError):
             return
 
+    def set_trajectory_smoothing(self, frames: int) -> None:
+        """Average each frame with its neighbours over a window of *frames*.
+
+        A trajectory sampled often enough to be smooth in time is rarely smooth
+        to *look* at: thermal motion moves every atom a little in every frame,
+        so the picture jitters even when nothing is happening. A running mean
+        over a few frames removes that without touching the slower motion, which
+        is what anyone is watching for.
+
+        The average is over the **stored** frames around the one shown, centred,
+        and it never changes which frame is current -- only what is drawn -- so
+        measurements, exports and the frame number all continue to mean what
+        they say.
+
+        Parameters
+        ----------
+        frames : int
+            Window width in frames. ``0`` or ``1`` shows the trajectory as
+            recorded; larger values average more and lag more.
+        """
+        self._trajectory_smoothing = max(0, int(frames))
+        try:
+            state = self._get_active_state()
+            self._select_state_frame(state, getattr(state, "active_frame", 0))
+            self._update_view(fit_camera=False)
+        except Exception:
+            logger.debug("chimol: could not re-apply smoothing", exc_info=True)
+
+    def get_trajectory_smoothing(self) -> int:
+        """The smoothing window in frames; 0 or 1 means none."""
+        return int(getattr(self, "_trajectory_smoothing", 0))
+
+    def set_frame_step(self, step: int) -> None:
+        """How many frames playback advances per step.
+
+        This is the same setting the ``mset`` command drives, so the control
+        beside the slider and the command line cannot disagree about it. It
+        *skips* frames rather than averaging them -- the two knobs answer
+        different questions, and a long trajectory usually wants both: step to
+        cover it in reasonable time, smoothing to stop it shimmering.
+
+        Parameters
+        ----------
+        step : int
+            Frames per step; at least 1.
+        """
+        self.movie_step = max(1, int(step))
+
+    def get_frame_step(self) -> int:
+        """Frames advanced per playback step."""
+        return max(1, int(getattr(self, "movie_step", 1) or 1))
+
     def _select_state_frame(
         self,
         state: _MolViewObjectState,
@@ -1386,6 +1480,13 @@ class MolView(QtWidgets.QWidget):
             frame = (1.0 - blend) * arr[idx] + blend * arr[next_idx]
         else:
             frame = np.asarray(arr[idx], dtype=float)
+
+        # `getattr` rather than `self.`: `_select_state_frame` is also driven
+        # unbound (`MolView._select_state_frame(None, state, i)`) by tests that
+        # exercise the frame maths without building a widget.
+        frame = _smooth_frame(
+            arr, idx, frame, getattr(self, "_trajectory_smoothing", 0)
+        )
 
         state.active_frame = idx
         state.frame_position = float(idx) + blend
@@ -6774,17 +6875,22 @@ class MolView(QtWidgets.QWidget):
         # the frame stops changing, so what you end up *looking* at is never the
         # draft. This is the same trade the cartoon makes; see
         # `_note_frame_change`.
-        if getattr(self, "_draft_quality", False):
-            # The *object's* colour, not the type's default. `atom_colors`
-            # already carries whatever `color` and `spectrum` put there, so its
-            # mean keeps the hue; taking `base_color` instead turned a green
-            # model blue for the duration of every scrub and snapped it back on
-            # settle, which is precisely the flicker the cartoon's draft rules
-            # exist to avoid. A model coloured *per atom* does flatten to its
-            # average while moving -- the per-vertex transfer that spreads those
-            # colours over the surface is the cost being skipped.
+        # Draft is only available when one flat colour is the *truth*. Averaging
+        # the atom colours was the first attempt and it is wrong for anything
+        # coloured per atom: the mean of a spectrum is **grey**, so a rainbow
+        # trajectory went grey the moment it started playing and came back on
+        # settle. A uniformly coloured model loses nothing to a flat colour, so
+        # it keeps the fast path; a spectrum-coloured one pays for the transfer
+        # that spreads its colours over the surface, because that transfer *is*
+        # the picture.
+        draft = getattr(self, "_draft_quality", False)
+        if draft and len(atom_colors):
+            colours = np.asarray(atom_colors, dtype=float)
+            spread = float(np.abs(colours[:, :3] - colours[0, :3]).max())
+            draft = spread <= 1e-6
+        if draft:
             draft_color = (
-                np.asarray(atom_colors, dtype=float).mean(axis=0)
+                np.asarray(atom_colors, dtype=float)[0]
                 if len(atom_colors)
                 else base_color
             )

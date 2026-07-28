@@ -38,6 +38,7 @@ GL_POINT_SPRITE = 0x8861
 GL_DEPTH_TEST = 0x0B71
 GL_CULL_FACE = 0x0B44
 GL_BACK = 0x0405
+GL_FRONT = 0x0404
 
 GL_COLOR_BUFFER_BIT = 0x00004000
 GL_DEPTH_BUFFER_BIT = 0x00000100
@@ -843,8 +844,17 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             if blend_enable:
                 gl.glEnable(GL_BLEND)
                 gl.glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                # **Stop writing depth.** Transparent geometry has to be tested
+                # against the opaque scene but must not occlude itself, and this
+                # was never turned off: the first fragment of a transparent
+                # surface wrote depth and rejected everything behind it, so an
+                # alpha of 0.5 came out as a solid surface that had merely been
+                # dimmed. Nothing behind it was ever drawn, which is why it
+                # never looked see-through however low the alpha went.
+                gl.glDepthMask(False)
             else:
                 gl.glDisable(GL_BLEND)
+                gl.glDepthMask(True)
 
             for call in call_set:
                 glyph_mode = 1 if (call.glyph == "sphere" and call.primitive == GL_POINTS) else 0
@@ -932,14 +942,35 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                         self._program.disableAttributeArray(self._occlusion_attr)
                         self._program.setAttributeValue(self._occlusion_attr, 0.0)
 
-                if call.index_vbo is not None:
-                    call.index_vbo.bind()
-                    gl.glDrawElements(
-                        call.primitive, call.index_count, GL_UNSIGNED_INT, None
-                    )
-                    call.index_vbo.release()
-                else:
-                    gl.glDrawArrays(call.primitive, 0, call.vertex_count)
+                # A closed transparent surface is drawn twice: its far wall
+                # first, then its near wall. Sorting whole draw calls does
+                # nothing for a metaball, which is a *single* call -- the
+                # triangles inside it come in whatever order marching cubes
+                # emitted, so blending them showed one arbitrary layer and the
+                # inside of the blob was never drawn at all. Culling front faces
+                # for the first pass and back faces for the second puts them in
+                # the right order for free, which is what makes a transparent
+                # body read as having an inside.
+                two_pass = (
+                    blend_enable
+                    and call.primitive == GL_TRIANGLES
+                    and not call.two_sided
+                )
+                passes = ((GL_FRONT, GL_BACK) if two_pass else (None,))
+                for cull in passes:
+                    if cull is not None:
+                        gl.glEnable(GL_CULL_FACE)
+                        gl.glCullFace(cull)
+                    if call.index_vbo is not None:
+                        call.index_vbo.bind()
+                        gl.glDrawElements(
+                            call.primitive, call.index_count, GL_UNSIGNED_INT, None
+                        )
+                        call.index_vbo.release()
+                    else:
+                        gl.glDrawArrays(call.primitive, 0, call.vertex_count)
+                if two_pass:
+                    gl.glCullFace(GL_BACK)
 
                 if call.primitive == GL_POINTS:
                     gl.glPointSize(1.0)
@@ -1145,7 +1176,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 finalAlpha = mix(finalAlpha * 0.3, clamp(finalAlpha + 0.5, 0.0, 1.0), fresnel);
             }
             
-            gl_FragColor = vec4(finalColor, clamp(finalAlpha + spec * 0.3 + sun * 0.3, 0.0, 1.0));
+            // Highlights are opaque -- a glint on wet glass hides what is behind
+            // it -- but the amount added has to scale with how much room is
+            // left, or a glossy material simply is not transparent: with
+            // `specular_strength` at 0.85 this term saturated alpha to 1 over
+            // most of the surface, so lowering the alpha changed nothing at all.
+            // `spec` and `sun` are radiance terms and are *not* bounded by 1 --
+            // they are added to the colour and allowed to blow out. Feeding
+            // them into alpha unclamped drove a nominally 0.35-opaque surface
+            // to ~0.85, which is why lowering the alpha barely changed what
+            // showed through.
+            float glint = clamp(spec + sun, 0.0, 1.0) * 0.25 * (1.0 - finalAlpha);
+            gl_FragColor = vec4(finalColor, clamp(finalAlpha + glint, 0.0, 1.0));
         }
         """
 

@@ -2,6 +2,44 @@
 
 ## 2026-07-28
 
+* **Trajectories: a step control, a smoothing window, and the grey blob fixed.**
+  Reported from the running app: metaballs went grey during playback. That was
+  my own draft path -- it averaged the atom colours, and **the mean of a
+  spectrum is grey**. Draft now only takes the flat-colour shortcut when the
+  object really is one colour; anything coloured per atom pays for the transfer,
+  because that transfer *is* the picture.
+  - **Smoothing** (`set_trajectory_smoothing`) averages each frame with its
+    neighbours over a centred window. Thermal motion moves every atom in every
+    frame, so a trajectory shimmers even when nothing is happening; measured on
+    a synthetic drift-plus-jitter trajectory, a window of 9 cuts the
+    frame-to-frame jump **8.8x** (27.0 -> 3.1) while keeping the net motion
+    (89.9 -> 84.6). Display only: the frame number, `frames_raw`, measurements
+    and exports are untouched. Clipped at the ends, never wrapped -- a
+    trajectory's last frame is not next to its first, and averaging across that
+    seam invents motion that never happened.
+  - **Step** (`set_frame_step`) drives the same `movie_step` the `mset` command
+    does, so the control and the command line cannot disagree. It skips frames;
+    it does not average them. Both controls sit beside the timeline slider.
+  - `_smooth_frame` is a module-level function rather than a method: two tests
+    drive `_select_state_frame` *unbound* (`MolView._select_state_frame(None,
+    state, i)`) to exercise the frame maths without building a widget, and a
+    `self.` call broke them.
+
+* **Transparency was never actually drawn.** `glDepthMask` appears nowhere in
+  the GL renderer, so transparent geometry still wrote depth: the first fragment
+  of a transparent surface rejected everything behind it, and lowering the alpha
+  only dimmed a solid surface. Depth writes are now off for the transparent
+  pass, and a closed transparent mesh is drawn twice -- far wall then near wall,
+  by culling front faces and then back faces -- because sorting whole draw calls
+  does nothing for a metaball, which is a *single* call whose triangles arrive in
+  marching-cubes order. The shader also added the (unbounded) specular and sun
+  terms straight into alpha, which drove a nominally 0.35-opaque surface to
+  ~0.85; that contribution is clamped and scaled by the room left.
+  Measured against a white background, the background now bleeds through where
+  it did not before. A metaball still reads as fairly solid at any usable alpha,
+  and that part is geometry rather than blending: an isosurface is a foam of
+  lobes, so a ray crosses many sheets and their alphas accumulate.
+
 * **QA — the trajectory bench everyone walks through and nobody has driven.**
   New use case [preparing an MD trajectory for FRET analysis](/usecases/trajectory-preparation.md):
   the seven Traj Tools tabs *before* the FRET tab (Save Topol → Align → Remove

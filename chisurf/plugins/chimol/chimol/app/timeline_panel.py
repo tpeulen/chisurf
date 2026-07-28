@@ -55,11 +55,45 @@ class TimelineDock(QtCore.QObject):
         self.lbl_frame.setMinimumWidth(60)
         self.lbl_frame.setAlignment(QtCore.Qt.AlignCenter)
 
+        # How many frames a step advances. A long trajectory is usually sampled
+        # far more finely than anyone wants to watch, and stepping it one frame
+        # at a time is both slow and indistinguishable from standing still.
+        self.spin_step = QtWidgets.QSpinBox(container)
+        self.spin_step.setRange(1, 1000)
+        self.spin_step.setValue(1)
+        self.spin_step.setPrefix("×")
+        self.spin_step.setMaximumWidth(64)
+        self.spin_step.setToolTip(
+            "Frames advanced per step. Skips frames; it does not average them."
+        )
+        self.spin_step.valueChanged.connect(self._on_step_changed)
+
+        # Running mean over neighbouring frames. Thermal motion jitters every
+        # atom in every frame, so a trajectory can be restless to look at even
+        # when nothing is happening; averaging a few frames takes that out and
+        # leaves the slower motion alone.
+        self.spin_smooth = QtWidgets.QSpinBox(container)
+        self.spin_smooth.setRange(0, 999)
+        self.spin_smooth.setValue(0)
+        self.spin_smooth.setPrefix("~")
+        self.spin_smooth.setSpecialValueText("~off")
+        self.spin_smooth.setMaximumWidth(70)
+        self.spin_smooth.setToolTip(
+            "Smoothing window, in frames. Averages each frame with its "
+            "neighbours for display only -- the frame number, measurements and "
+            "exports are unchanged."
+        )
+        self.spin_smooth.valueChanged.connect(self._on_smoothing_changed)
+
         layout.addWidget(self.btn_stop)
         layout.addWidget(self.btn_play)
         layout.addWidget(self.btn_pause)
         layout.addWidget(self.slider, 1)
         layout.addWidget(self.lbl_frame)
+        layout.addWidget(QtWidgets.QLabel("step", container))
+        layout.addWidget(self.spin_step)
+        layout.addWidget(QtWidgets.QLabel("smooth", container))
+        layout.addWidget(self.spin_smooth)
 
         self._widget = container
 
@@ -82,6 +116,20 @@ class TimelineDock(QtCore.QObject):
     def _on_slider_changed(self, value: int) -> None:
         if not self.viewer._animation_running:
              self.cmd.do(f"frame {value}")
+
+    def _on_step_changed(self, value: int) -> None:
+        """Set how many frames a step advances."""
+        self.slider.setSingleStep(max(1, int(value)))
+        self.slider.setPageStep(max(1, int(value)) * 10)
+        setter = getattr(self.viewer, "set_frame_step", None)
+        if callable(setter):
+            setter(int(value))
+
+    def _on_smoothing_changed(self, value: int) -> None:
+        """Set the display-only smoothing window."""
+        setter = getattr(self.viewer, "set_trajectory_smoothing", None)
+        if callable(setter):
+            setter(int(value))
 
     def refresh_ui(self) -> None:
         """Sync slider and label with viewer state."""
