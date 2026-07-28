@@ -2,6 +2,51 @@
 
 ## 2026-07-28
 
+* **A sampling result opens in nDXplorer from the folder you actually have.**
+  `sample_fit` writes `<target>/<timestamp>/chains/*.er4`, and nDXplorer's
+  sampling reader looked only in `<folder>/chains/` or `<folder>/*.er4` -- so
+  picking the folder the run was *started* in, the only path a user knows,
+  returned an empty table with a warning in the log and nothing on screen. It
+  now resolves a folder of runs to its most recent run. Runs are deliberately
+  **not** merged: separate timestamps are separate sessions, possibly of
+  different fits, and stacking them would pool two posteriors into one cloud
+  that looks bimodal and never was.
+  Ensemble chains stored in HDF5 (`mcmc/chain` as `(steps, walkers, dim)`, the
+  shape ucfret's backend writes) now open through the same HDF5 entry point,
+  which routes on sight of the dataset. Only the steps actually written are
+  read -- storage grows in whole chunks and a thinned run leaves its tail
+  unwritten; a zero row is not a draw. The metadata in those files is
+  **pickled**, so the reader refuses to resolve any class while decoding it: a
+  list of parameter names needs none, and anything that does is not metadata
+  worth running code for. A test pickles an object that reaches for a global and
+  asserts the names fall back to positional ones with the chain still opening.
+  Every draw now carries `chain` (which run/walker) and `draw` (position within
+  it). Without them the stack is a bag of numbers -- no trace, no per-chain
+  comparison, and no way to see whether the independent runs agree, which is the
+  one question a sampling result exists to answer.
+  Guide 39 gains a section on opening the chains; the reader change and its 14
+  tests live in the nDXplorer repo (commit 823939e).
+
+* **The ensemble sampler never actually checked its own ensemble.**
+  `sample_ensemble`/`sample_ensemble_slice` passed
+  `skip_initial_state_check=True` on *every* chunk including the first, so
+  `walkers_independent()` -- written the same day -- never ran in the pipeline.
+  It now runs on the way in and is skipped only for continuation chunks, which
+  carry the sampler's own state: walkers legitimately collapse together on a
+  narrow posterior, and re-checking there would abort a healthy run halfway
+  through. The initial spread could also be **zero by construction** -- it is
+  the bounded range where a parameter has one and relative to the value
+  otherwise, and both vanish for a parameter sitting at zero or bounded to a
+  point. An ensemble move is built from differences between walkers, so a
+  direction with no spread has no component: the parameter never moves and the
+  run reports a delta-function posterior for it rather than failing. The
+  relative scale is now floored by the absolute one.
+  Found while auditing the companion ucfret sampler, where the same
+  construction (`initial *= normal(1, sd)`, multiplicative) freezes any
+  parameter whose value is exactly zero -- on its example data
+  `d0.scatter_fraction` is 0.0, so that parameter has identical values in all
+  130 walkers and is never sampled by any move.
+
 * **H2MM results now land beside the bursts, as `bh4` companions — ndX gates on
   state with no configuration.** Two asks, one root cause. The photon-table
   format was an implicit `try/except` (HDF5, CSV only if that raised), so a
