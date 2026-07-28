@@ -124,6 +124,38 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **The dwell-time histogram was plotting burst durations, and the flag that
+  says so was written but unused.** A dwell touching its burst's first or last
+  photon is **censored**: it did not end, the burst did. Its duration is a lower
+  bound set by the photon selection, and a state slower than a burst produces
+  *nothing else* — so those panels were showing the burst-duration distribution
+  under the name "dwell time". `Is Edge` was already in the exported per-dwell
+  table and nothing consumed it.
+  - `Dwell.is_edge` now records it once, where the burst bounds are;
+    `H2mmAnalysis.dwell_time_arrays()` returns only complete dwells (the
+    histogram's input; `include_edges=True` gives the raw view, and the legacy
+    `dwell_times` mapping is unchanged for anyone reading it). The export
+    reports the record's flag instead of recomputing it — one definition of
+    "edge", so the table and the plot cannot disagree. A state with no complete
+    dwell is named in the plot title (*S1: no dwell ended within a burst*)
+    rather than silently missing from the legend: that is a result about the
+    sample, not an empty plot.
+  - **The dwell grain has a consumer.** `h2mm_dwells.csv` was written for a
+    human to open by hand; the toolbar's 🔬 (`open_dwells_in_ndx`) now opens the
+    same table — the same builder — in ndX, where gating on state, duration,
+    E/S and `Is Edge` is what the tool is for.
+  - `burst_h2mm/tests/test_dwell_censoring.py` (**5 pass**): every burst
+    contributes exactly two edge dwells (one when it holds a single state) and
+    nothing in between is one; the complete-dwell view drops exactly the
+    censored ones; with a single state *every* dwell is censored and its
+    durations are provably the burst durations, so the complete view is
+    correctly empty; the exported flag is the record's flag; and the ndX
+    hand-off builds the table (and says so, rather than raising, before a fit).
+    Whole `burst_h2mm` suite: 86 pass. Plot re-rendered and read.
+    [guides/30](../docs/guides/30_h2mm_workflow_results.md) and
+    [plugins/burst.md](plugins/burst.md) document it; the known-issues entry is
+    removed.
+
 * **The ndX rename, done by enumerating call sites — and the regex that did it
   first had renamed *code*.** Every remaining "ndXplorer" in prose is now "ndX":
   79 files, 243 occurrences across docstrings, comments, status messages,

@@ -1080,8 +1080,3 @@ passwordless login — the security intent the guard was written for. **Not
 applied:** editing that file was refused by this environment's guard on
 authentication code, so it needs a human to apply it in the `mmfdb` repository,
 with a test that a placeholder actor row does not block the bootstrap.
-
-**H2MM ↔ ndX.** Raised but not investigated: the H2MM outputs open in ndX and
-the per-burst `bh4` merges, but the dwell grain has no automated consumer
-(`h2mm_dwells.csv` is a manual CSV open) and `Is Edge` is written yet unused by
-the dwell-time histogram, which therefore plots burst durations for slow states.

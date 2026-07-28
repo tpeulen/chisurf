@@ -70,6 +70,13 @@ class Dwell:
         Global (CSR) index of the dwell's first photon.
     stop : int
         Global (CSR) index one past the dwell's last photon.
+    is_edge : bool
+        Whether the dwell touches its burst's first or last photon. Such a dwell
+        is **censored**: the molecule was already in that state when the burst
+        began, or still in it when the burst ended, so its measured duration is
+        a lower bound set by the burst — not the time the state lasted. A state
+        slower than a burst produces nothing but edge dwells, whose "dwell
+        times" are burst durations.
     """
 
     burst: int
@@ -80,6 +87,7 @@ class Dwell:
     s: float
     start: int
     stop: int
+    is_edge: bool = False
 
 
 @dataclass
@@ -100,7 +108,10 @@ class H2mmAnalysis:
         Per-state apparent stoichiometry ``S``, shape ``(n_states,)``. All-``nan``
         when the data has no acceptor-excitation stream (< 3 streams).
     dwell_times : dict
-        Maps ``state -> numpy.ndarray`` of dwell durations (base time units).
+        Maps ``state -> numpy.ndarray`` of dwell durations (base time units),
+        **every** dwell including the censored ones at burst edges. For the
+        distribution of how long a state lasts, use
+        :meth:`dwell_time_arrays`, which drops them.
     dwells : list of Dwell
         Every Viterbi-decoded dwell with its measured E/S (for per-state dwell
         histograms and E–S scatter plots).
@@ -140,6 +151,38 @@ class H2mmAnalysis:
     donor_streams: tuple[int, ...] = (0,)
     acceptor_streams: tuple[int, ...] = (1,)
     aex_streams: tuple[int, ...] | None = None
+
+    def dwell_time_arrays(self, *, include_edges: bool = False) -> dict:
+        """Per-state dwell durations (base time units), censored ones dropped.
+
+        A dwell that touches its burst's first or last photon did not *end* —
+        the burst did. Its duration is therefore a lower bound, and a state
+        slower than a burst produces nothing else: histogramming those numbers
+        plots the burst-duration distribution and calls it a dwell time, which
+        is how a slow state comes out looking like the photon-selection
+        settings. Only dwells with a transition at both ends are observed
+        durations, so they are what this returns.
+
+        Parameters
+        ----------
+        include_edges : bool, optional
+            Keep the censored dwells (the raw :attr:`dwell_times` content).
+
+        Returns
+        -------
+        dict
+            ``state -> numpy.ndarray`` of durations. A state with no complete
+            dwell maps to an empty array — a real answer ("this state was never
+            seen to end"), not a missing key.
+        """
+        n_states = int(self.best.model.n_states)
+        out = {s: [] for s in range(n_states)}
+        for d in self.dwells:
+            if d.is_edge and not include_edges:
+                continue
+            if 0 <= int(d.state) < n_states:
+                out[int(d.state)].append(int(d.dur))
+        return {s: np.asarray(v, dtype=np.int64) for s, v in out.items()}
 
 
 def _obs_sum(model: H2mmModel, streams) -> np.ndarray:
@@ -653,9 +696,14 @@ def _dwells_and_transitions(
         """Append the dwell spanning global photon indices ``[g0, g1)``."""
         dwell_durs[st].append(int(dur))
         e, s = _measured_es(streams_all[g0:g1], donor_streams, acceptor_streams, aex_streams)
+        # Censored at a burst boundary: one end of this dwell is the burst, not
+        # a transition. Decided here, where the burst bounds are, so every
+        # consumer shares one definition of "edge".
+        edge = g0 == int(offsets[b]) or g1 == int(offsets[b + 1])
         dwells.append(
             Dwell(burst=b, state=st, dur=int(dur), n_photons=int(g1 - g0),
-                  e=float(e), s=float(s), start=int(g0), stop=int(g1))
+                  e=float(e), s=float(s), start=int(g0), stop=int(g1),
+                  is_edge=bool(edge))
         )
 
     for b in range(data.n_bursts):

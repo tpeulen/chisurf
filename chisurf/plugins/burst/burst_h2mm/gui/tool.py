@@ -20,6 +20,7 @@ from qtpy.QtCore import (
 )
 from qtpy.QtGui import QDragEnterEvent, QDropEvent, QFont
 from qtpy.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -316,6 +317,16 @@ class H2mmTool(MessagesMixin, QMainWindow):
             "flags an unidentifiable state. Run after a fit."
         ))
         self.btn_save = action_button("save", tooltip="Save the active plot")
+        # The dwell grain had no way out of this window: `h2mm_dwells.csv` was
+        # written and then opened by hand. One row per dwell is a table ndX is
+        # made for — gate on state, duration, E/S, and drop the censored
+        # burst-edge dwells with the flag that is already in it.
+        self.btn_dwells_ndx = styled_tool_button("\U0001f52c", kind="toggle", tooltip=(
+            "Dwells in ndX — open the per-dwell table (one row per Viterbi dwell: "
+            "state, photons, duration, E/S, Is Edge) in an ndX window. Run a fit "
+            "first."
+        ))
+        self.btn_dwells_ndx.clicked.connect(self.open_dwells_in_ndx)
         self.btn_help = action_button("help", tooltip="Show help")
 
         self.toolbar.addWidget(self.btn_folder)
@@ -325,6 +336,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self.toolbar.addWidget(self.btn_uncert)
         self.toolbar.addWidget(self.btn_llscan)
         self.toolbar.addWidget(self.btn_save)
+        self.toolbar.addWidget(self.btn_dwells_ndx)
         self.toolbar.addWidget(self._folder_field)
         _spacer = QWidget()
         _spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -1034,6 +1046,71 @@ class H2mmTool(MessagesMixin, QMainWindow):
             on_done=lambda: self.btn_uncert.setEnabled(True),
         )
 
+    def dwell_table(self):
+        """The per-dwell table of the current fit, or ``None``.
+
+        The same builder the exporter writes to ``h2mm_dwells.csv``, so what a
+        user explores is what a later reader gets.
+        """
+        if self._bundle is None:
+            return None
+        meta = getattr(self._bundle, "meta", None)
+        if meta is None:
+            return None  # loaded without per-photon metadata
+        from ..core.decays import colour_groups
+        from ..core.export import build_dwell_table
+
+        ana = self._bundle.analysis
+        micro_ns = getattr(self._bundle, "micro_time_ns", None)
+        return build_dwell_table(
+            self._bundle.data, meta, ana.dwells, ana.base_time_s,
+            stream_groups=colour_groups(ana, self._bundle.settings),
+            micro_time_ns=(micro_ns if micro_ns else None),
+        )
+
+    def open_dwells_in_ndx(self) -> bool:
+        """Open the per-dwell table in ndX (one row per Viterbi dwell).
+
+        The dwell is a grain this window computes and nothing consumed: the CSV
+        was written for a human to open by hand. ndX is exactly the tool for it
+        — gate on state, duration, E/S, and drop the censored burst-edge dwells
+        with the ``Is Edge`` column that is already there.
+        """
+        df = self.dwell_table()
+        if df is None or df.empty:
+            self._status("No dwells to explore — run a fit first.")
+            return False
+        try:
+            from ndxplorer.core.data_source import DataSource
+
+            try:
+                from chisurf.plugins.ndxplorer.rpc_bridge import make_ndxplorer
+
+                win = make_ndxplorer()
+            except Exception:
+                from ndxplorer import NDXplorer
+
+                win = NDXplorer()
+            win.setWindowTitle("ndX — H2MM dwells")
+            self._ndx_dwell_window = win
+            win.show()
+            win.raise_()
+            win.activateWindow()
+            # ndX builds its plot widgets in a deferred init after the window is
+            # shown; let that run first or the data lands before the UI exists.
+            QApplication.processEvents()
+            win.data_source = DataSource(parameter_names=list(df.columns), data=df)
+            for name in ("recompute", "replot", "update_plots"):
+                fn = getattr(win, name, None)
+                if callable(fn):
+                    fn()
+        except Exception as exc:
+            logging.warning("could not open the dwell table in ndX: %s", exc)
+            self._status(f"ndX could not be opened: {exc}")
+            return False
+        self._status(f"{len(df)} dwells opened in ndX.")
+        return True
+
     def _uncertainty_worker(self, data, ana, settings, n_boot, task):
         """Worker: bootstrap the selected model over bursts. No GUI here."""
         from ..core.analysis import bootstrap_uncertainty
@@ -1414,17 +1491,32 @@ class H2mmTool(MessagesMixin, QMainWindow):
                          pen=pg.mkPen("#e15759", width=2), symbol="s", name="ICL")
 
     def _plot_dwell_times(self, ana):
-        """Bottom-right: per-state dwell-time distributions (ms)."""
+        """Bottom-right: per-state dwell-time distributions (ms).
+
+        Dwells that touch a burst edge are left out. They did not end — the
+        burst did — so their duration is a lower bound set by the photon
+        selection, and a state slower than a burst has *only* those: plotted,
+        they draw the burst-duration distribution under the name "dwell time".
+        A state with no complete dwell is named in the title rather than
+        silently missing from the legend.
+        """
         self._p_dwell.clear()
         self._dwell_legend.clear()
         base_ms = ana.base_time_s * 1e3
-        for i, (_state, arr) in enumerate(sorted(ana.dwell_times.items())):
+        arrays = ana.dwell_time_arrays()  # complete dwells only
+        censored = []
+        for i, (_state, arr) in enumerate(sorted(arrays.items())):
             if arr.size == 0:
+                censored.append(f"S{i}")
                 continue
             counts, edges = np.histogram(arr * base_ms, bins=30)
             centers = (edges[:-1] + edges[1:]) / 2
             self._p_dwell.plot(centers, counts, pen=pg.mkPen(self._state_color(i), width=2),
                                name=f"S{i}")
+        title = "Dwell times (burst-edge dwells excluded)"
+        if censored:
+            title += f" — {', '.join(censored)}: no dwell ended within a burst"
+        self._p_dwell.setTitle(title)
 
     #: Pen colour per detection colour. A decay is drawn in the colour of the
     #: light that produced it, so a green curve is green photons — the state is

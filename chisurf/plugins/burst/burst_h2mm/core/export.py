@@ -261,7 +261,13 @@ def build_dwell_table(
         cols["FRET efficiency"].append(float(d.e))
         cols["Proximity ratio"].append(float(d.e))
         cols["Stoichiometry"].append(float(d.s))
-        cols["Is Edge"].append(int(s0 == burst_start or s1 == burst_end))
+        # The dwell record already carries this (it is what the dwell-time
+        # histogram filters on); recomputing it here is how the two could come
+        # to disagree about which dwells are censored.
+        edge = getattr(d, "is_edge", None)
+        if edge is None:
+            edge = s0 == burst_start or s1 == burst_end
+        cols["Is Edge"].append(int(bool(edge)))
 
     return pd.DataFrame(cols)
 
