@@ -9159,11 +9159,21 @@ running application (RF-786), and the move of `n_colors` behind a property
 - **Fix note:**
 
 ### RF-793
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the frame time shown and exported by the RICS planner is 1000× too small, and it is the only number in the panel that prices the precision/time trade-off)
 - **Location:** `chisurf/plugins/calculator/rics_precision/gui/view_model.py:199` (`PrecisionViewModel.sweep_rows`, `"frame": f"{line * self.ny:.2f}"`), surfaced by `gui/precision.view.json` (column `frame`, label `Frame [ms]`) and re-exported by `gui/tool.py:108-110` (`RicsPrecisionTool._export_csv`, header `frame_ms`)
 - **Finding:** `line` is in **seconds** — the neighbouring `"line"` entry converts it (`line * 1e3`), the `frame` entry does not — so the `Frame [ms]` column holds seconds under a millisecond header. Verified by driving the tool offscreen at the shipped defaults (D = 10 µm²/s, 64×64, 100 frames, seed 1) against `rics-precision 10 --pixel-time 8 --nx 64 --ny 64 --frames 100 --seed 1`, which formats the same quantity correctly (`cli/main.py:97,120`: `line * ny * 1e3`). Identical settings, identical error column, contradictory frame column: CLI `2.46 / 5.83 / 13.8 / 32.8 / 77.7 / 184 / 437 / 1.04e3 / 2.46e3` ms versus GUI table and `💾 Export CSV` `0.00 / 0.01 / 0.01 / 0.03 / 0.08 / 0.18 / 0.44 / 1.04 / 2.46`. The `:.2f` then destroys what is left: the four fastest rows render as `0.00`/`0.01`, so a planner reads a 100-frame acquisition at the optimum as costing 8 ms when it costs 7.8 s. Multiply by `1e3` and use a `:.3g` like the other columns; a regression test comparing `sweep_rows()` against the CLI's formatter for one row would pin the two spellings together.
-- **Fix note:**
+- **Fix note:** `sweep_rows` now spells the frame time exactly as the CLI does —
+  `f"{line * self.ny * 1e3:.3g}"` — so the `Frame [ms]` column (and the
+  `frame_ms` field of `💾 Export CSV`, which formats the same strings) is in the
+  unit its header promises, with the same significant-figure format as the
+  neighbouring dwell/line columns instead of a `:.2f` that collapsed the four
+  fastest rows to `0.00`/`0.01`. Pinned by
+  `test_the_frame_time_is_in_milliseconds_like_its_header`
+  (`chisurf/plugins/calculator/rics_precision/test/test_rics_precision.py`),
+  which checks every swept row against the CLI's formatter *and* against the
+  internal relation "a frame is `ny` lines in the same unit", so the two
+  spellings cannot drift apart again.
 
 ### RF-794
 - **Status:** OPEN

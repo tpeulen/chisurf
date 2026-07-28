@@ -196,6 +196,8 @@ class PrecisionViewModel:
                 "dwell": f"{dwell * 1e6:.3g}",
                 "line": f"{line * 1e3:.3g}",
                 "error": "—" if not np.isfinite(err) else f"{err * 100:.1f}",
-                "frame": f"{line * self.ny:.2f}",
+                # milliseconds, like the line time next to it -- the CLI spells
+                # the same quantity ``line * ny * 1e3`` (cli/main.py:89,110)
+                "frame": f"{line * self.ny * 1e3:.3g}",
             })
         return rows

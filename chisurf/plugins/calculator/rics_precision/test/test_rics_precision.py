@@ -174,6 +174,28 @@ def test_view_model_drives_the_whole_flow():
     assert "%" in vm.status or "error" in vm.status
 
 
+def test_the_frame_time_is_in_milliseconds_like_its_header():
+    """The table's frame column carries the unit its label promises.
+
+    ``Frame [ms]`` is the only number in the panel that prices the
+    precision/time trade-off, and it is a scan line repeated ``ny`` times --
+    so it must be the line time (already in ms) times ``ny``, spelled the same
+    way the CLI spells it (``line * ny * 1e3``). A frame column left in
+    seconds reads as 8 ms for an acquisition that costs 7.8 s.
+    """
+    vm = _view_model()
+    assert vm.compute() is True
+
+    rows = vm.sweep_rows()
+    for row, line in zip(rows, vm.sweep.line_time):
+        assert float(row["frame"]) == pytest.approx(
+            float(f"{line * vm.ny * 1e3:.3g}")
+        ), "the frame time must agree with the CLI's formatter"
+        assert float(row["frame"]) == pytest.approx(
+            float(row["line"]) * vm.ny, rel=1e-2
+        ), "a frame is ny lines, in the same unit"
+
+
 def test_view_model_reports_a_bad_setting_without_raising():
     """An impossible configuration leaves a message, not a traceback."""
     vm = _view_model()
