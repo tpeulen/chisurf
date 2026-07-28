@@ -2313,7 +2313,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             "state holds far fewer photons than the whole burst, so this is "
             "separate from (and usually below) 'Min photons'."
         )
-        _state_row = Q.QWidget()
+        # Kept as an attribute: the burst workflow shows this row only on its
+        # "Burst segment MLE" step (where the segmentation it consumes already
+        # exists) and hides it on the plain burst-level MLE step.
+        self.widget_state_split_row = _state_row = Q.QWidget()
         _srl = Q.QHBoxLayout(_state_row)
         _srl.setContentsMargins(0, 0, 0, 0)
         _srl.setSpacing(4)

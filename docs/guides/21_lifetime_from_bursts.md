@@ -86,8 +86,13 @@ lands at 2.2 ns — a number nothing in the sample has.
 
 Tick **Split by H2MM state** and each burst is additionally fitted once per
 Viterbi state, using the same IRF, background and model as the ordinary fit. It
-needs an H2MM run in the same analysis folder (step 6); without one the option
-says so and the batch proceeds normally.
+needs a segmentation in the same analysis folder (step 6, *Burst segmentation
+(H2MM)*); without one the option says so and the batch proceeds normally.
+
+In the burst workflow this is step 7, **Burst segment MLE**: the same wizard as
+step 5 with the box already ticked, placed *after* the segmentation it consumes.
+The control is shown only there — on step 5 it offered an option whose input did
+not exist yet. Run standalone, the checkbox is always available.
 
 The results are extra **columns on the same burst row** — `Tau S0 (green)`,
 `Tau S1 (green)`, … beside the all-photon `Tau (green)`. That is deliberate and

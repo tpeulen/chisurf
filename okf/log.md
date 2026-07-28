@@ -25,6 +25,39 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **The burst pipeline now names its two grains, and the sub-burst fit is back
+  where it belongs.** The step names hid the logic — *first the burst, then
+  inside it*. Renamed in `BURST_PANELS`
+  (`burst_analysis/gui/tool.py`): **3. Burst BVA · 4. Burst 2CDE · 5. Burst
+  MLE** are the burst-level features, **6. Burst segmentation (H2MM)** is the
+  step that cuts a burst up (H2MM is one method; the step is the concept), and
+  **7. Burst segment MLE** returns. Step 7 is *not* a new plugin: its factory
+  builds the same `MLELifetimeAnalysisWizard` as step 5 with
+  `checkBox_split_by_state` ticked (role `segment_mle`, wired into
+  `_apply_context_to_downstream` and into the IRF/background hand-off, which now
+  feeds both MLE panels — the same fit at two grains must never disagree about
+  the IRF). One wizard, one column contract; the deleted `burst_state_mle`
+  emitted a second `Tau (green)` that every reader silently dropped
+  ([subsystems/burst-companions.md](subsystems/burst-companions.md)). This also
+  closes the ordering wart: *Split by H2MM state* is now **shown only on step
+  7** (`widget_state_split_row`, hidden on step 5), so a linear Next-walk no
+  longer meets the option before the segmentation it consumes exists; run
+  standalone the checkbox is unconditional. The nav pane went 270 → 310 px
+  because the longest label was clipped mid-word — found by rendering the shell
+  headlessly and looking, not by a test. Guard tests in
+  `burst_analysis/tests/test_workflow.py`: the exact label list + separator
+  index 7 + `h2mm` before `segment_mle`, and
+  `test_segment_mle_is_the_same_wizard_with_the_split_ticked` (same class, split
+  off/on, row hidden/shown). `burst_analysis` + `burst_mle_analysis` suites 54
+  pass / 20 skip. Docs: [guides/53](../docs/guides/53_reusing_results.md) reuse
+  table (its stale `7. MLE-Statewise` row described the deleted plugin),
+  [guides/21](../docs/guides/21_lifetime_from_bursts.md), the H2MM plugin
+  README, [plugins/burst.md](plugins/burst.md),
+  [usecases/burst-selection-fret.md](usecases/burst-selection-fret.md),
+  [usecases/h2mm-burst-dynamics.md](usecases/h2mm-burst-dynamics.md); the
+  matching entries are struck from
+  [references/known-issues.md](references/known-issues.md).
+
 * **The API facade's session state aliased nothing** (RF-718). `ChiSurfAPI`
   documents that its `SessionState` holds *the same list objects* as the
   `cs.fits` / `cs.imported_datasets` globals. It did not: the two helpers feeding the

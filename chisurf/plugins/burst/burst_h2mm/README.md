@@ -73,9 +73,11 @@ stream are dropped.
 
 ## Usage
 
-**In the pipeline** — the plugin appears as step *6. H2MM* in the integrated
-**Burst Analysis** tool; it inherits the burst folder and channel definitions
-from earlier steps.
+**In the pipeline** — the plugin appears as step *6. Burst segmentation (H2MM)*
+in the integrated **Burst Analysis** tool; it inherits the burst folder and
+channel definitions from earlier steps. It is the step that cuts each burst into
+segments, so everything after it works one level down: step *7. Burst segment
+MLE* fits a lifetime per burst *and* state from its Viterbi assignment.
 
 **Standalone GUI** — launch `H2mmTool`, pick a folder of `.bur` files, set the
 donor/acceptor detectors and the state range, then **Run**.

@@ -1071,37 +1071,8 @@ the per-burst `bh4` merges, but the dwell grain has no automated consumer
 (`h2mm_dwells.csv` is a manual CSV open) and `Is Edge` is written yet unused by
 the dwell-time histogram, which therefore plots burst durations for slow states.
 
-**MLE-Burstwise ordering.** *Split by H2MM state* lives in step 5, but the H2MM
-run it needs is step 6 — so a linear Next-walk reaches the option before the
-data it consumes exists. It degrades correctly (a status line, then an ordinary
-fit) and the fingerprint now includes the split, so returning to step 5 and
-ticking the box does refit. Consider reordering the steps, or offering the split
-from step 6.
-
 **Global τ per state.** The pooled per-(state, colour) fit — the robust headline
 number — is designed but not implemented; only the per-burst columns landed.
-
-## Burst pipeline naming should show the two levels (requested 2026-07-28)
-
-The pipeline has a logic the step names hide: **first look at the burst, then
-look inside it.** Requested renaming, to make that visible:
-
-| now | proposed |
-|---|---|
-| 2. Burst Selection | 2. Burst Selection *(unchanged)* |
-| 3. BVA · 4. 2CDE · 5. MLE-Burstwise | burst-level **features** |
-| 6. H2MM | 6. **Burst segmentation (H2MM)** — H2MM is one method, the step is the concept |
-| *(missing)* | 7. **Burst segment MLE** — the sub-burst analysis |
-
-Step 7 should *be* the MLE-Burstwise plugin with **Split by H2MM state** on, not
-a second plugin — that split already exists and is tested, it is simply reachable
-today only from step 5, which sits *before* the segmentation it depends on. Put
-it at 7 and the dependency runs forwards, which also closes the ordering wart
-recorded above.
-
-Care needed: the earlier per-state plugin was deleted for good reasons (it wrote
-columns no reader could see). Re-adding a step 7 must reuse the existing fitter
-and the existing state-suffixed columns, not reintroduce a parallel one.
 
 ## Fast-forward button (in flight, uncommitted)
 

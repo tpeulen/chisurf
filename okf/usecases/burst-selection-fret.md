@@ -23,9 +23,12 @@ and 1/9 (red).
 
 **Tool:** Burst Analysis (`chisurf/plugins/burst/burst_analysis`, display name
 *Spectroscopy:Burst Analysis*, `BurstAnalysisTool`) — a navigation-panel window
-that embeds nine other burst plugins as steps: **1. Data Selection**,
-**2. Burst Selection**, **3. BVA**, **4. 2CDE**, **5. MLE-Lifetime**,
-**6. H2MM**, then (below a separator) **Browser**, **Background**,
+that embeds the other burst plugins as steps. The numbered pipeline names its
+two grains — burst-level features first, then the segments a burst is cut into:
+**1. Data Selection**, **2. Burst Selection**, **3. Burst BVA**,
+**4. Burst 2CDE**, **5. Burst MLE**, **6. Burst segmentation (H2MM)**,
+**7. Burst segment MLE**, then (below a separator) **Browser**,
+**Accurate FRET**, **Burst FCS**, **Kinetics (GS)**, **Background**,
 **IRF & Background**. Each embedded plugin is also reachable on its own; only
 the aggregator is shown in the menu.
 
@@ -68,20 +71,25 @@ the aggregator is shown in the menu.
 10. Cross-check the **dT** and **Decay** tabs: delta-macro-time against photon
     index with the accepted band shaded, and the micro-time histogram of all
     photons against the burst-selected photons.
-11. Click **3. BVA**. The burst folder and the detector setup carry over; the
-    panel reads the `.bur` files and draws the burst-variance plot (std of the
-    proximity ratio against its mean) with the shot-noise-limited static line.
-12. Click **4. 2CDE**, then its **🚀** button, to add the FRET-2CDE dynamics
-    feature (kernel *laplace*, τ = 100 µs) for the same bursts.
-13. Click **5. MLE-Lifetime**. The first `.bur` of the run is loaded, the
+11. Click **3. Burst BVA**. The burst folder and the detector setup carry over;
+    the panel reads the `.bur` files and draws the burst-variance plot (std of
+    the proximity ratio against its mean) with the shot-noise-limited static
+    line.
+12. Click **4. Burst 2CDE**, then its **🚀** button, to add the FRET-2CDE
+    dynamics feature (kernel *laplace*, τ = 100 µs) for the same bursts.
+13. Click **5. Burst MLE**. The first `.bur` of the run is loaded, the
     detector channels come from the setup, and a burst-wise maximum-likelihood
     lifetime/anisotropy fit is shown (model *Single lifetime + anisotropy
     (Fit23)*). Use **IRF & Background** (last panel) to extract a real IRF and
     background from the non-burst photons and **Send to MLE** instead of the
     synthetic Gaussian IRF the panel starts with.
-14. Click **Browser** to inspect the whole result: the burst table, an
+14. Optional, for dynamics: **6. Burst segmentation (H2MM)** assigns every
+    photon a state, then **7. Burst segment MLE** — the same wizard as step 5
+    with *Split by H2MM state* already ticked — adds `Tau S0`, `Tau S1`, …
+    columns beside the burst-level lifetime.
+15. Click **Browser** to inspect the whole result: the burst table, an
     E histogram, and E/S/size gating.
-15. Optional headless equivalent: `burst-selection` CLI
+16. Optional headless equivalent: `burst-selection` CLI
     (`analyze`, `inspect`, `fit-gmm`), or the
     `burst_selection.jobs.analyze_files` / `.results.inspect_bur` /
     `.gmm.fit` / `.diagnostics.load` RPC methods.

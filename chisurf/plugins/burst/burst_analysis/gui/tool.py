@@ -231,8 +231,22 @@ def _burst_2cde(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
-def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the burst MLE panel."""
+def _mle_panel(
+    parent: QtWidgets.QWidget, *, role: str, split_by_state: bool
+) -> QtWidgets.QWidget:
+    """Create an embedded burst-MLE panel, at burst or at segment level.
+
+    Both pipeline MLE steps are the *same* wizard: the burst-level step fits one
+    decay per burst, the segment-level step additionally fits one decay per H2MM
+    state (``Split by H2MM state``). Only the checkbox differs, so there is one
+    implementation, one set of columns, and one companion contract — a separate
+    per-state plugin is exactly what produced duplicate ``Tau (green)`` columns
+    that every reader silently dropped (see ``okf/subsystems/burst-companions.md``).
+
+    The split control is shown only on the segment step: in the burst-level step
+    it sat *before* the segmentation it consumes, so a linear Next-walk met the
+    option before the states existed.
+    """
     from chisurf.plugins.burst.burst_mle_analysis.wizard import MLELifetimeAnalysisWizard
 
     wizard = MLELifetimeAnalysisWizard(parent=parent)
@@ -241,7 +255,8 @@ def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     # (IRF & Background -> Send to MLE) are provided upstream, so the MLE panel's
     # own file-drop docks are duplicates — hide them, leaving just the fit.
     wizard._embedded = True
-    _bind(parent, "mle", wizard)
+    _set_state_split(wizard, split_by_state)
+    _bind(parent, role, wizard)
     # Embed the plain central QWidget, not the QMainWindow. On native macOS an
     # embedded QMainWindow (its menu/status bars and native view layer) swallowed
     # mouse clicks over the panel; hosting just its central content widget avoids
@@ -271,6 +286,26 @@ def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     wizard.setParent(central, QtCore.Qt.Widget)
     wizard.hide()
     return central
+
+
+def _set_state_split(wizard: QtWidgets.QWidget, enabled: bool) -> None:
+    """Tick (and show) or hide the wizard's ``Split by H2MM state`` control."""
+    box = getattr(wizard, "checkBox_split_by_state", None)
+    row = getattr(wizard, "widget_state_split_row", None)
+    if box is not None:
+        box.setChecked(bool(enabled))
+    if row is not None:
+        row.setVisible(bool(enabled))
+
+
+def _burst_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the burst-level MLE panel (one lifetime per burst)."""
+    return _mle_panel(parent, role="mle", split_by_state=False)
+
+
+def _burst_segment_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the segment-level MLE panel (one lifetime per burst *and* state)."""
+    return _mle_panel(parent, role="segment_mle", split_by_state=True)
 
 
 def _burst_h2mm(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
@@ -389,33 +424,50 @@ BURST_PANELS = [
         "factory": _burst_selection,
         "role": "selection",
     },
+    # Steps 3-5 are burst-level features: one number per burst. Step 6 cuts each
+    # burst into segments, and step 7 is the same MLE fit one level down — one
+    # number per burst *and* state. The names carry that split so the pipeline
+    # reads as "first the burst, then inside it".
     {
-        "name": "3. BVA",
+        "name": "3. Burst BVA",
         "icon": Glyphs.CHART,
-        "description": "Run burst variance analysis using selected bursts.",
+        "description": "Burst-level feature: burst variance analysis of the selected bursts.",
         "factory": _burst_bva,
         "role": "bva",
     },
     {
-        "name": "4. 2CDE",
+        "name": "4. Burst 2CDE",
         "icon": Glyphs.CHART,
-        "description": "Compute the FRET-2CDE / ALEX-2CDE burst-dynamics feature.",
+        "description": "Burst-level feature: the FRET-2CDE / ALEX-2CDE burst-dynamics filter.",
         "factory": _burst_2cde,
         "role": "two_cde",
     },
     {
-        "name": "5. MLE-Burstwise",
+        "name": "5. Burst MLE",
         "icon": Glyphs.TARGET,
-        "description": "Fit burst lifetimes using selected bursts.",
+        "description": "Burst-level feature: one maximum-likelihood lifetime per burst.",
         "factory": _burst_mle,
         "role": "mle",
     },
     {
-        "name": "6. H2MM",
+        "name": "6. Burst segmentation (H2MM)",
         "icon": Glyphs.SHUFFLE,
-        "description": "Resolve sub-burst FRET dynamics with photon-by-photon HMM.",
+        "description": (
+            "Cut each burst into segments: photon-by-photon HMM (H2MM) assigns "
+            "every photon a state."
+        ),
         "factory": _burst_h2mm,
         "role": "h2mm",
+    },
+    {
+        "name": "7. Burst segment MLE",
+        "icon": Glyphs.TARGET,
+        "description": (
+            "Segment-level: the same MLE fit once per burst and H2MM state, "
+            "written as Tau S0 / Tau S1 ... beside the burst-level lifetime."
+        ),
+        "factory": _burst_segment_mle,
+        "role": "segment_mle",
     },
     {
         "name": "────────",
@@ -468,7 +520,7 @@ BURST_PANELS = [
         "icon": Glyphs.SPARKLE,
         "description": (
             "Extract a per-detector IRF and background from the non-burst photons "
-            "and feed them to the MLE-Burstwise fit."
+            "and feed them to both MLE steps."
         ),
         "factory": _burst_irf_bg,
         "role": "irf_bg",
@@ -477,7 +529,11 @@ BURST_PANELS = [
 
 
 class BurstAnalysisTool(NavigationPanelTool):
-    """Integrated five-step burst workflow tool."""
+    """Integrated burst workflow tool: the numbered pipeline plus its side tools.
+
+    The pipeline runs at two grains — bursts (steps 2-5) and the segments H2MM
+    cuts them into (steps 6-7) — and the step names say which.
+    """
 
     def __init__(self, parent=None):
         """Create the integrated burst workflow tool."""
@@ -492,8 +548,11 @@ class BurstAnalysisTool(NavigationPanelTool):
             parent=parent,
             minimum_size=(950, 620),
             initial_size=(1180, 760),
-            navigation_width=270,
-            navigation_min_width=250,
+            # Wide enough for the longest step label ("6. Burst segmentation
+            # (H2MM)"); at 270 it was clipped mid-word and the list grew a
+            # horizontal scroll bar.
+            navigation_width=310,
+            navigation_min_width=290,
             # Embedded panels report status via normal logging; the shared status
             # bar shows any INFO record from the burst plugin package.
             status_logger="chisurf.plugins.burst",
@@ -698,8 +757,8 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "browser",
-                     "burst_fcs", "burst_gs", "accurate_fret",
+        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "segment_mle",
+                     "browser", "burst_fcs", "burst_gs", "accurate_fret",
                      "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
             if widget is not None:
@@ -713,7 +772,7 @@ class BurstAnalysisTool(NavigationPanelTool):
             self._apply_context_to_bva(widget)
         elif role == "two_cde":
             self._apply_context_to_2cde(widget)
-        elif role == "mle":
+        elif role in ("mle", "segment_mle"):
             self._apply_context_to_mle(widget)
         elif role == "h2mm":
             self._apply_context_to_h2mm(widget)
@@ -809,7 +868,7 @@ class BurstAnalysisTool(NavigationPanelTool):
                 pass
 
     def _apply_context_to_mle(self, widget: QtWidgets.QWidget) -> None:
-        """Use upstream burst files and channels in MLE-Burstwise."""
+        """Use upstream burst files and channels in either MLE step."""
         # The embedded panel is the wizard's central widget (see _burst_mle); the
         # wizard that owns burst_files_list/channel_definer/etc. hangs off it.
         widget = getattr(widget, "_mle_wizard", widget)
@@ -873,15 +932,19 @@ class BurstAnalysisTool(NavigationPanelTool):
         """Feed non-burst IRF/background patterns to the MLE panel (workflow handoff).
 
         Called by the IRF & Background tool's "Send to MLE" action. The patterns
-        are stored on the workflow context and applied to the MLE panel now (if
-        loaded) and again whenever the MLE panel is (re)bound. Returns the number
-        of detectors applied.
+        are stored on the workflow context and applied to *both* MLE panels — the
+        burst-level fit and the segment-level one are the same fit at two grains
+        and must never disagree about the IRF — now (for whichever are loaded)
+        and again whenever a panel is (re)bound. Returns the number of detectors
+        applied.
         """
         self.workflow_context.irf_background_patterns = dict(patterns or {})
-        mle = self._workflow_panels.get("mle")
-        if mle is not None:
-            return self._apply_irf_bg_to_mle_widget(mle, patterns)
-        return len(patterns or {})
+        applied = 0
+        for role in ("mle", "segment_mle"):
+            panel = self._workflow_panels.get(role)
+            if panel is not None:
+                applied = max(applied, self._apply_irf_bg_to_mle_widget(panel, patterns))
+        return applied or len(patterns or {})
 
     @staticmethod
     def _apply_irf_bg_to_mle_widget(mle: QtWidgets.QWidget, patterns: dict[str, Any]) -> int:

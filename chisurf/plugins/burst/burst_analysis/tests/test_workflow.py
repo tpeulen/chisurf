@@ -134,23 +134,57 @@ def test_send_to_mle_survives_detector_switch() -> None:
     assert np.array_equal(mle.irf_np["green"], [1.0, 2.0, 3.0])
 
 
+def test_segment_mle_is_the_same_wizard_with_the_split_ticked(qapp) -> None:
+    """Step 7 must be step 5's wizard with ``Split by H2MM state`` on.
+
+    Not a second plugin: a separate per-state analysis wrote its own companion
+    emitting ``Tau (green)`` — the same name the burst-level fit contributes —
+    and readers drop duplicate columns, so its results were invisible. One
+    wizard, one column contract, one checkbox difference.
+
+    The split control is also shown only on the segment step; on the burst-level
+    step it offered an option whose input (the segmentation) does not exist yet.
+    """
+    from qtpy import QtWidgets
+
+    from chisurf.plugins.burst.burst_analysis.gui import tool as tool_mod
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    host = QtWidgets.QWidget()
+    burst_level = tool_mod._burst_mle(host)._mle_wizard
+    segment_level = tool_mod._burst_segment_mle(host)._mle_wizard
+    QtWidgets.QApplication.processEvents()
+
+    assert isinstance(segment_level, MLELifetimeAnalysisWizard)
+    assert burst_level.split_by_state is False
+    assert segment_level.split_by_state is True
+    # ``isHidden`` (not ``isVisible``): neither panel is shown in this test, and
+    # the row lives inside a collapsible box, so explicit hiding is the signal.
+    assert burst_level.widget_state_split_row.isHidden()
+    assert not segment_level.widget_state_split_row.isHidden()
+
+
 def test_burst_workflow_panel_order() -> None:
     """Meta burst workflow exposes requested ordered steps."""
     from chisurf.plugins.burst.burst_analysis.gui.tool import BURST_PANELS
 
     labels = [f"{panel.get('icon', '')} {panel['name']}".strip() for panel in BURST_PANELS]
     # No standalone Channels step (channels come from the Burst Selection setup);
-    # the numbered pipeline (Data → H2MM) is the main flow, with the unnumbered
-    # steps below the separator: first what you do *with* the bursts (Browser,
-    # Accurate FRET, Burst FCS, Kinetics), then the two that feed the pipeline
-    # from the raw files (Background, IRF & Background).
+    # the numbered pipeline is the main flow and names its two grains — the
+    # burst-level features (3-5), then the segmentation and the same MLE fit one
+    # level down (6-7). Below the separator: first what you do *with* the bursts
+    # (Browser, Accurate FRET, Burst FCS, Kinetics), then the two that feed the
+    # pipeline from the raw files (Background, IRF & Background).
     assert labels == [
         "📂 1. Data Selection",
         "🔍 2. Burst Selection",
-        "📊 3. BVA",
-        "📊 4. 2CDE",
-        "🎯 5. MLE-Burstwise",
-        "🔀 6. H2MM",
+        "📊 3. Burst BVA",
+        "📊 4. Burst 2CDE",
+        "🎯 5. Burst MLE",
+        "🔀 6. Burst segmentation (H2MM)",
+        "🎯 7. Burst segment MLE",
         "────────",
         "📋 Browser",
         "🎯 Accurate FRET",
@@ -159,9 +193,12 @@ def test_burst_workflow_panel_order() -> None:
         "🌙 Background",
         "✨ IRF & Background",
     ]
-    # The separator sits after the six numbered steps.
-    assert BURST_PANELS[6]["separator"] is True
+    # The separator sits after the seven numbered steps.
+    assert BURST_PANELS[7]["separator"] is True
     assert "channels" not in {p.get("role") for p in BURST_PANELS}
+    # Segmentation must come before the fit that consumes it.
+    roles = [p.get("role") for p in BURST_PANELS]
+    assert roles.index("h2mm") < roles.index("segment_mle")
 
 
 def test_h2mm_panel_is_not_flagged_experimental() -> None:

@@ -17,7 +17,7 @@ holds one row per burst per measurement; every analysis writes its results
 |---|---|
 | `bv4/<stem>.bv4` | Burst Variance Analysis |
 | `2c4/<stem>.2c4` | FRET-2CDE / ALEX-2CDE |
-| `bg4`, `br4`, `by4` | MLE-Burstwise, one per colour |
+| `bg4`, `br4`, `by4` | Burst MLE, one per colour — and the segment-level fit, which adds `Tau S0`, `Tau S1`, … *columns* to the same files |
 | `bh4/<stem>.bh4` | H2MM per-burst state |
 
 A reader opens the folder by concatenating the `.bur` files and merging every
