@@ -2,6 +2,28 @@
 
 ## 2026-07-28
 
+* **BVA is on the shared dockable-tool base, and its folder drop stops lying**
+  ([PRD-36](prds/prd-36.md), priority-A rollout). `BVATool` now subclasses
+  `ChisurfDockTool` instead of forking `MessagesMixin, QMainWindow`, and the
+  private `_FolderLineEdit` — a `QLineEdit` carrying its own
+  `dragEnterEvent`/`dropEvent`, the first drop target in this rollout that was not
+  a drop *list* — is gone. The folder box no longer accepts drops at all; the
+  base's window-level drop feeds `on_paths_dropped`. That closed a swallowed drop:
+  the field-level handler wrote **any** dropped path into the box and then
+  `_set_folder` silently ignored it unless it was a directory, so dropping a file
+  left the box naming a folder BVA was not reading. A non-directory now raises a
+  declared `Information` message ("BVA reads a burst-analysis folder; … is not
+  one.") and leaves the box alone. Window geometry stays owned by the
+  manifest-declared statefulness plus the tool's own dock-layout persistence, as
+  for `fret_calculator` and `pch`, so the base's `save/restore_window_geometry`
+  are deliberately left uncalled. The plugin root resolves `BVATool` through PEP
+  562 `__getattr__`, so `api`/`core`/`backend`/`cli` import with no Qt binding.
+  Guardrails: `chisurf/plugins/burst/burst_bva/tests/test_construction_smoke.py`
+  (4) pins the base, the non-dropping folder box, read-only construction, both
+  drop outcomes, and the clean-subprocess headless import boundary. Verified
+  headlessly at 1400×850: a dropped directory fills the folder box and status
+  line, a dropped `.ptu` shows the information message with the box untouched.
+
 * **Align Trajectory: the default setting wrote 5235 atoms of NaN and called it
   saved** (review finding **RF-706**, S1, now `FIXED`). `atom_indices` parsed the
   atom selection with `np.fromstring`, which turns an empty string into a

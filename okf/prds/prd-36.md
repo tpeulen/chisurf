@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; fourteen tools are on the base and a backlog of ~13 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; fifteen tools are on the base and a backlog of ~12 tools remains.
 
 # Goal
 
@@ -83,6 +83,21 @@ read-only-construction guard already exist.
       `__getattr__`, so `api`/`core`/`backend` import with no Qt binding — pinned by
       a clean-subprocess boundary check alongside the construction smoke test.
 
+- [x] `burst/burst_bva` — priority-A rollout, and the first tool whose drop target was a
+      **line edit** rather than a drop list: `_FolderLineEdit` (a `QLineEdit` with its own
+      `dragEnterEvent`/`dropEvent`) is gone, the folder box no longer accepts drops at
+      all, and the base's window-level drop feeds `on_paths_dropped`. That also fixed a
+      swallowed drop: the field-level handler wrote *any* dropped path into the folder box
+      and then `_set_folder` silently ignored it unless it was a directory, so a dropped
+      file left the box showing a folder BVA was not using; a non-directory now raises a
+      declared `Information` message and the box is left alone. Geometry stays owned by
+      the manifest-declared window statefulness plus the tool's own dock-layout
+      persistence, as for `calculator/fret_calculator` and `pch`, so the base's
+      `save/restore_window_geometry` are deliberately left uncalled; `tool_settings_name`
+      is set per the recipe. The plugin root resolves `BVATool` through PEP 562
+      `__getattr__`, so `api`/`core`/`backend`/`cli` import with no Qt binding — pinned by
+      a clean-subprocess boundary check alongside the construction and drop smoke tests.
+
 - [x] `pch` — priority-B rollout, and the first tool whose single file input makes the
       base's window-level drop *do* the work: `_on_load` was split so the file dialog
       and `on_paths_dropped` share one `_load_path`, and a dropped photon-stream file
@@ -104,7 +119,6 @@ chisurf/plugins`; keep this section in sync with it.
 **Priority A — drag-drop tools (highest ROI; they copied the drop widget / drop
 handlers):**
 
-- [ ] `burst/burst_bva/gui/tool.py` — `QMainWindow`, drag-drop.
 - [ ] `burst/burst_mle_analysis/wizard.py` — drag-drop (verify it is a `QMainWindow`,
       not a `QWizard`/`QWizardPage`; only the `QMainWindow` form fits this base).
 - [ ] `tttr/ptu_alex_creator/wizard.py` — drag-drop (same `QMainWindow` caveat).

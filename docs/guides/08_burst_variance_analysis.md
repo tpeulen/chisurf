@@ -25,6 +25,10 @@ line.
 The engine is the `tttrlib.BVA` burst feature (parallel over bursts); the
 `burst_bva` plugin wraps it, and it is a step in the guided burst workflow.
 
+Point the plugin at a burst-analysis folder either with the 📂 toolbar button or
+by **dropping the folder anywhere on the BVA window**. BVA reads a whole folder,
+so dropping a single file is reported in the status line rather than accepted.
+
 ```python
 import numpy as np
 import tttrlib

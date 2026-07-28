@@ -8,8 +8,7 @@ from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
-from qtpy.QtCore import QCoreApplication, QSettings, QSize, Qt, QTimer, Signal
-from qtpy.QtGui import QDragEnterEvent, QDropEvent
+from qtpy.QtCore import QSettings, QSize, Qt, QTimer
 from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -21,7 +20,6 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMainWindow,
     QSizePolicy,
     QSpinBox,
     QTextEdit,
@@ -45,7 +43,8 @@ from chisurf.plugins.burst.burst_bva.core import computation as core
 from chisurf.gui import dialogs
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.event_pump import pump_ui
-from chisurf.gui.widgets.messages import MessagesMixin, Msg
+from chisurf.gui.widgets.messages import Msg
+from chisurf.gui.widgets.tools import ChisurfDockTool
 
 
 class HelpDialog(QDialog):
@@ -121,40 +120,40 @@ from chisurf.core.fio.fluorescence.burst_manifest import source_inputs  # noqa: 
 ALGORITHM_VERSION = 1
 
 
-class _FolderLineEdit(QLineEdit):
-    """QLineEdit that accepts folder drops from the file manager."""
-    folderDropped = Signal(str)
+def _folder_field(placeholder: str) -> QLineEdit:
+    """Return the read-only line edit showing the selected burst-analysis folder.
 
-    def __init__(self, placeholder: str = "", parent=None):
-        super().__init__(parent)
-        self.setPlaceholderText(placeholder)
-        self.setReadOnly(True)
-        self.setAcceptDrops(True)
-        self.setStyleSheet("color: #aaa; padding: 0 4px; background: transparent; border: none;")
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent):
-        urls = event.mimeData().urls()
-        if urls:
-            path = urls[0].toLocalFile()
-            if path:
-                self.setText(path)
-                self.folderDropped.emit(path)
+    Drops are deliberately *not* accepted here: the shared dock-tool base takes
+    window-level path drops and dispatches them to
+    :meth:`BVATool.on_paths_dropped`, so the field only displays the outcome.
+    """
+    field = QLineEdit()
+    field.setPlaceholderText(placeholder)
+    field.setReadOnly(True)
+    field.setAcceptDrops(False)
+    field.setStyleSheet("color: #aaa; padding: 0 4px; background: transparent; border: none;")
+    return field
 
 
 @persist_plugin_state("burst_bva")
-class BVATool(MessagesMixin, QMainWindow):
-    """BVA analysis widget with toolbar, tabbed settings, and pyqtgraph plot."""
+class BVATool(ChisurfDockTool):
+    """BVA analysis widget with toolbar, tabbed settings, and plot."""
 
-    class Error(MessagesMixin.Error):
+    #: Window geometry stays owned by the manifest-declared window statefulness,
+    #: so the base's ``save/restore_window_geometry`` are deliberately not called.
+    tool_settings_name = "BVATool"
+
+    class Error(ChisurfDockTool.Error):
         """Conditions that stop a BVA run, or that a run ended in."""
 
         no_folder = Msg("Select a data folder first.")
         bad_settings = Msg("BVA settings: {}")
         failed = Msg("BVA failed: {}")
+
+    class Information(ChisurfDockTool.Information):
+        """Context worth stating about a drop that changed nothing."""
+
+        not_a_folder = Msg("BVA reads a burst-analysis folder; {} is not one.")
 
     def __init__(self, parent=None, *, embedded: bool = False):
         super().__init__(parent)
@@ -270,7 +269,7 @@ class BVATool(MessagesMixin, QMainWindow):
         # Canonical shared actions (same icon / colour / order as every other
         # plugin toolbar). Detail lives in the tooltip; captions are icon-only.
         self.btn_folder = action_button("folder", tooltip="Select the burst analysis folder")
-        self._folder_field = _FolderLineEdit(placeholder="No folder selected")
+        self._folder_field = _folder_field("No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = action_button("run", tooltip="Run BVA on all loaded data")
         # A run whose inputs and settings are unchanged is skipped; this is how
@@ -437,7 +436,6 @@ class BVATool(MessagesMixin, QMainWindow):
 
     def _connect_signals(self):
         self.btn_folder.clicked.connect(self._select_folder)
-        self._folder_field.folderDropped.connect(self._on_folder_dropped)
         self.cb_setup.currentIndexChanged.connect(self._on_setup_selected)
         self.btn_run.clicked.connect(self._run_analysis)
         self.btn_restart.clicked.connect(self._restart_analysis)
@@ -585,8 +583,20 @@ class BVATool(MessagesMixin, QMainWindow):
             self._status(f"Data folder: {p}")
             self._on_param_changed()
 
-    def _on_folder_dropped(self, path: str):
-        self._set_folder(path)
+    def on_paths_dropped(self, paths: list[pathlib.Path]) -> None:
+        """Load the first dropped directory as the burst-analysis folder.
+
+        BVA reads a whole burst-analysis folder, so a dropped *file* cannot be
+        used. Rather than swallowing it — the old field-level drop wrote the
+        rejected path into the folder box and then ignored it — say so.
+        """
+        for path in paths:
+            if path.is_dir():
+                self.Information.not_a_folder.clear()
+                self._set_folder(str(path))
+                return
+        if paths:
+            self.Information.not_a_folder(paths[0].name)
 
     def _notify_error(self, title: str, msg: str) -> None:
         """Log the error (shown in the shell status bar when embedded); box if standalone."""
