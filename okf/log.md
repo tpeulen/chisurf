@@ -921,6 +921,29 @@
   recorded in [known issues](/references/known-issues.md), since the
   regenerator was mid-edit in another working copy.
 
+* **QA — FRC resolution driven end to end** (RF-664..RF-669). Drove
+  `chisurf/plugins/microscopy/img_frc` (*Imaging → FRC Resolution*, also the
+  **Resolution** step of Image Tools) headlessly on a 50 × 300 × 300 TIFF and on
+  `PQ_Olympus_MFIS.ht3` (40 × 256 × 256, five routing channels), with both Leica
+  PTUs as a control. **The estimator is right and sub-second**: 6.329 px (1/7) /
+  7.458 px (½-bit) / 6.720 px (2σ) on the TIFF, 4.656 px on `ch0` and 4.101 px on
+  the brighter `ch1` of the HT3, even/odd halves differing by 48 of 1 682 333
+  photons, an exact pixel-size conversion, and a *two files* split of one file
+  with itself correctly refusing to report a resolution. The panel around it
+  under-reports: the *Second channel* combo displays `ch0` while the run
+  correlates `ch0` with `ch1` and no output records the pair (RF-664); an empty
+  detector is offered *"resolved beyond what this sampling can show"* and its
+  undefined correlation is plotted as a measured zero (RF-665); the two half
+  images the user is told to compare are drawn ~2.2× apart (RF-666); the
+  frequency axis states neither its unit nor its `×10⁻³` decade at the tool's own
+  minimum size (RF-667); **Measure** stays enabled, so three clicks ran three
+  concurrent `compute()` calls on one view model (RF-668); and the GUI computes
+  in-process while its docstring claims the plugin client / RPC path — a spy
+  client recorded zero calls (RF-669). A Leica PTU whose scan markers are not
+  auto-detected is still measured without comment (14 × 512 px → 33.27 px), i.e.
+  the already-open RF-161 reaching a sixth Image Tools step. Use case recorded in
+  [usecases/frc-resolution.md](/usecases/frc-resolution.md).
+
 ## 2026-07-27
 
 * **chimol: the hierarchy panel can switch parts of a model off.** Each node

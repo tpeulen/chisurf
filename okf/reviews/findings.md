@@ -7740,3 +7740,60 @@ to 1e-9, no NaN, ~40× faster. Findings RF-661..RF-663.
 - **Location:** `okf/prds/prd-030.md:174` (DoD item 1) and `:62`, `:136`, against `test/test_no_retired_dependency_imports.py:40-42` and `rattler-recipe/recipe.yaml:94`
 - **Finding:** PRD-030 is marked `status: done` and states, in a locked design decision (*"`msgpack_numpy` declared as a runtime dependency"*), in task 1 and in its first DoD checkbox, that `msgpack` **and `msgpack-numpy`** must be declared and installed. `e45e9b30d` retired `msgpack-numpy` from all three manifests and added a guardrail that fails on any re-declaration, so that DoD item is now unsatisfiable by construction. The removal is right — nothing in chisurf or MMFDB imports `msgpack_numpy`, and PRD-030's own array-encoding section explains why (arrays round-trip through an explicit `__ndarray__` sub-map precisely so the envelope is stable *"even with `msgpack_numpy` installed"*), so the package was never load-bearing. Only the PRD text is stale. Drop `msgpack-numpy` from decision 1, task 1 and the DoD line, and — per the *Mark done when done* rule — tick the DoD boxes of a concept that has been `done` since it landed, or say which items are outstanding.
 - **Fix note:**
+
+## QA 2026-07-28 — FRC resolution: the estimator is right, the panel around it under-reports
+
+Drove `chisurf/plugins/microscopy/img_frc` (`ImgFrcTool`, *Imaging → FRC
+Resolution*, also the **Resolution** step of Image Tools) headlessly on
+`test/data/rics/RICS_EGFPGFP.tif` (50 × 300 × 300) and
+`test/data/clsm/PQ_Olympus_MFIS.ht3` (40 × 256 × 256, five routing channels),
+plus both Leica PTUs. Every measurement finished in under a second; the TIFF
+returns 6.329 px (1/7), 7.458 px (½-bit), 6.720 px (2σ), the HT3 4.656 px on
+`ch0` and 4.101 px on the brighter `ch1`, the even/odd halves of the HT3 differ
+by 48 of 1 682 333 photons, the pixel-size conversion is exact, the same file
+twice under a *two files* split correctly refuses to report a resolution, both
+impossible splits are refused with the right advice and the CSV is correct.
+Findings RF-664..RF-669 are about what surrounds that. Use case recorded in
+`okf/usecases/frc-resolution.md`.
+
+### RF-664
+- **Status:** OPEN
+- **Severity:** S2 (the panel displays one channel pair and correlates another, and no output records which)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/view_model.py:58` (`self.channel_2: Any = ""`) and `:229` (`channel_2=self.channel_2 or None`), against `chisurf/plugins/microscopy/img_frc/core.py:219` (`other = index + 1 if channel_2 is None else …`) and `gui/frc.view.json:57-62` (the *Second channel* choice, `options_source: channel_names`, no empty entry)
+- **Finding:** `channel_2` starts as `""`, which is not one of the channel names, so the combo falls back to displaying its **first item** while the model still holds `""` — and `compute()` maps `"" or None` to `None`, which `halves()` reads as "use the channel after this one". Verified on `PQ_Olympus_MFIS.ht3` (channels `ch0 ch1 ch2 ch4 ch5`): the panel shows *Channel = ch0*, *Second channel = ch0*, and a *Two channels* run returns 3.799 px — bit-identical to `core.analyse(channel=0, channel_2=1)`, while `core.analyse(channel=0, channel_2=0)` — the pair the panel displays — raises *"the two channels of a channel split must differ"*. Neither `summary_html` ("40 frames, tttr source, 128 rings"), the status line, `FrcAnalysis` nor the exported CSV names the channels, so nothing downstream can recover which detectors were correlated. Same root cause, second symptom: selecting the **last** channel (`ch5`) leaves the implicit neighbour at list position 5 and the run fails with *"channel 5 is out of range; the source has 5"* — an index-vs-name collision naming a channel that is in the combo. Bind `channel_2` to a real in-range default when the file is read (and re-check it in `set_filename`), and record the split and both channel names in `FrcAnalysis`/`summary_html`/the CSV header.
+- **Fix note:**
+
+### RF-665
+- **Status:** OPEN
+- **Severity:** S2 (a detector with no photons is reported as possibly "resolved beyond what this sampling can show", and its undefined correlation is plotted as a measured zero)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/view_model.py:331-337` (`summary_html`, the not-`crossed` branch) and `:270` (`frc_series`, `np.nan_to_num(...)`), reached from `core.analyse`
+- **Finding:** `ch2` of `PQ_Olympus_MFIS.ht3` holds **0 counts** (verified: `stack.image(2).sum() == 0`, both halves sum to 0). The FRC of two all-zero images is `0/0` in every ring, so nothing crosses, and the panel offers the only two explanations it knows: *"Either the two halves agree everywhere — the image is resolved beyond what this sampling can show — or the split did not produce independent halves."* The first reads as a good outcome and neither is the truth. The curve compounds it: `frc_series` runs `np.nan_to_num` over the correlation, so an **undefined** curve is drawn as a solid line at exactly 0 — indistinguishable from two genuinely uncorrelated halves (screenshot `21_empty_channel`). The information needed for the right message is already in hand (`half_1.sum()`, `half_2.sum()`, and the NaN count of the curve): say *"this channel has no photons"* — or *"the correlation is undefined"* — before offering a physical interpretation, and leave NaN rings out of the plotted series rather than zeroing them.
+- **Fix note:**
+
+### RF-666
+- **Status:** OPEN
+- **Severity:** S3 (the two images the user is told to compare are drawn at ~2.2× different magnification)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/frc.view.json:183-209` (the *Halves* `dock_area`, `split: "horizontal"`, two `image` custom sections)
+- **Finding:** the *Half 1* and *Half 2* docks are siblings in a horizontal split holding identically shaped arrays, but the split allocates them unequal widths as the window grows: measured **269 px vs 432 px** for the containing widgets at a 1700 × 1000 window (and visibly ~130 px vs ~285 px of drawn image at 1900 px). The panel's own description is *"Both should show the same structure — if one is empty or shows something else, the split is wrong and the resolution is meaningless"*, i.e. side-by-side comparison is the whole point of the dock, and at different magnifications a difference in structure or noise cannot be judged. At the tool's minimum 900 × 600 the two are equal, so this appears only at working sizes (screenshots `10_wide_window`, `12_ht3_measured` vs `40_min_size`). Give the two docks an equal initial split.
+- **Fix note:**
+
+### RF-667
+- **Status:** OPEN
+- **Severity:** S3 (the frequency axis states neither its unit nor its decade at the tool's own minimum size)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/frc.view.json:170` (`"x_label": "spatial frequency (1/nm or 1/px)"`), against `view_model.py:307` (`ring_rows` already resolves the unit) and `core.FrcAnalysis.unit`
+- **Finding:** the plot's x label is a static *"spatial frequency (1/nm or 1/px)"* although the result knows which of the two is in force — the info box, the ring table and the CSV header all resolve it correctly, only the axis does not. Worse, the plot backend appends its own decade multiplier: at a 1500 px window the label renders as *"spatial frequency (1/nm or 1/px) (x0"* — the multiplier is cut off — and at the tool's own `setMinimumSize(900, 600)` it renders as *"atial frequency (1/n"* over ticks `0 … 5`, so the axis silently reads in units of 10⁻³ with nothing on screen saying so (screenshots `03_tiff_measured`, `40_min_size`). Set the label from `result.unit` after each run (`spatial frequency [1/nm]`), and either fix the axis scale or keep the label short enough to survive the minimum width.
+- **Fix note:**
+
+### RF-668
+- **Status:** OPEN
+- **Severity:** S3 (**Measure** stays enabled during a run; each extra click starts another worker writing the same view model)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/tool.py:81-89` (`run_with_progress`) and `:33-43` (`_ComputeTask.run`), against `view_model.FrcViewModel.compute` (`self._result = …`, `self._status = …`)
+- **Finding:** `run_with_progress` starts a `_ComputeTask` on the global thread pool and returns; nothing disables the action, tracks the in-flight task or ignores a stale `finished`. Verified by wrapping `FrcViewModel.compute` with a counter and clicking **▶ Measure** three times: **peak concurrency 3**, three full reads and correlations of the same file, three writes to `_result`/`_status` from three worker threads with no lock, and three `_refresh()` calls. Since a user can also change the split, the channel or the criterion between clicks, the surviving `_result` and the surviving `_status` need not come from the same run. Disable the action (or coalesce) while a measurement is in flight, and drop a `finished` whose task is no longer the current one.
+- **Fix note:**
+
+### RF-669
+- **Status:** OPEN
+- **Severity:** S3 (the documented client/RPC seam is unused: the GUI computes in-process and `FrcClient` is dead in this path)
+- **Location:** `chisurf/plugins/microscopy/img_frc/gui/view_model.py:1-6` (module docstring: *"drives the Qt-free compute through the plugin client (so the GUI takes the same RPC path as the CLI)"*), `:94-101` (the `client` property) and `:224` (`compute` calls `_core.analyse` directly)
+- **Finding:** `compute()` calls `_core.analyse(...)` in the GUI process; `self.client` is never read by it or by anything else in the module. Verified by constructing `FrcViewModel(client=spy)` with a spy that raises on any attribute call and running a full measurement: it returned `True` with the correct 6.329 px and the spy recorded **zero** calls. So the property and the lazily imported `FrcClient` are dead in the GUI path, the docstring's claim is false, and the plugin's own client-server standard (heavy compute on the backend, GUI over ZMQ JSON-RPC) is not met by the one caller that matters — a 68 MB photon-stream read happens in the GUI process. Either route `compute()` through `self.client.resolution(...)` (which is what the CLI does) or delete the property and correct the docstring.
+- **Fix note:**

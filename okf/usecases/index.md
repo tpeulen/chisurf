@@ -202,6 +202,14 @@ The workflows a first pass should cover — expand as the tester discovers more:
   **+ Data** one cannot be fitted at all. *(last driven 2026-07-28;
   RF-636..RF-639)*
 
+- [FRC resolution](/usecases/frc-resolution.md) — how fine a detail the
+  acquisition actually resolved, measured from the image itself: split a TIFF
+  stack or a confocal photon stream into two independent halves, correlate them
+  ring by ring, and read the crossing of the 1/7, ½-bit or 2σ threshold. The
+  estimator is right and sub-second; the panel around it shows one channel pair
+  and correlates another, and calls an empty detector "resolved beyond what this
+  sampling can show". *(last driven 2026-07-28; RF-664..RF-669)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
