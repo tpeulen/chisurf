@@ -10196,3 +10196,74 @@ Findings RF-896..RF-906.
 - **Location:** `chisurf/plugins/burst/bid_to_analysis/__init__.py:616` (`self.table.horizontalHeader().setStretchLastSection(True)` with no `setSectionResizeMode` on columns 0–2), table built at `:609-611` with headers `["BID file", "TTTR file", "Output folder", "Status"]`
 - **Finding:** stretching the *last* section gives all spare width to `Status`, whose only values are `Ready` / `Processing` / `Done` / `TTTR not found`. Verified in a 1400×850 window with one row: `Status` occupies roughly 55 % of the table while **BID file**, **TTTR file** and **Output folder** are each elided to `/tmp/qa-...` (`11_bid_done.png`) — the TTTR-resolution result, which is the one thing the user must check before pressing Process, is unreadable. Give `Status` a fixed width (`ResizeToContents`) and stretch the path columns instead, or set `setTextElideMode(Qt.ElideLeft)` so the file name survives.
 - **Fix note:**
+
+### Review 2026-07-29 — the tttrlib registry seam and the photon-filter wizard that reads it
+
+Slice: `chisurf/core/tttrlib_registry.py`, its two thin views
+(`chisurf/core/fluorescence/burst/tttrlib_search.py`,
+`chisurf/core/fluorescence/mle/registry.py`), the two generated forms that consume
+it (`chisurf/gui/widgets/burst_search_form.py`,
+`chisurf/gui/widgets/fit_model_form.py`) and the wizard page they are embedded in
+(`chisurf/gui/widgets/wizard/tttr_photonfilter/`). Chosen because the registry seam
+carried **zero** findings so far. Every file cited below is clean in the working
+tree; `chisurf/core/fluorescence/mle/fit2x.py` and
+`chisurf/plugins/burst/burst_mle_analysis/wizard.py` are being rewritten by another
+instance right now and were deliberately **not** reviewed.
+
+Verified against the installed tttrlib **0.27.0**, whose registry publishes
+`burst_search` (6), `file_container` (9), `fit` (5), `fit_setup` (2) and
+`objective` (4), and against real single-molecule data
+(`/Users/tpeulen/dev/tttr-data/bh/bh_spc132_sm_dna/m000.spc`, 174 438 photons).
+The registry module itself is sound — categories, the legacy fallback, `describe`'s
+error messages, the composite/nested form and the group-folding all behave as
+documented; carrying values across a nested rebuild correctly drops the previous
+inner search's parameters. Findings RF-907..RF-912 are in the layers around it.
+
+### RF-907
+- **Status:** OPEN
+- **Severity:** S1 (the photon-filter wizard never runs the burst search the user picked — every `.bur`/`.sl5` it writes, and the burst count it reports, come from the pre-filter alone)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:484-491` (`used_filter`, a property returning the constant `'tttrlib'`) against the mode chain in `selected` at `:539-690` (`count_rate` `:543`, `burst` `:554`, `bocpd` `:566`, `kalman` `:613`, `cusum` `:669` — and **no** `'tttrlib'` branch), consumed by `burst_start_stop` (`:698-709`), `save_selection` (`:1314`, `generate_burst_dataframe(start_stop=self.burst_start_stop …)` at `:1387` and `'filter': compress_numpy_array(self.selected)` at `:1512`) and `update_burst_info` (`:968`)
+- **Finding:** every burst search moved into tttrlib's registry and `used_filter` was pinned to `'tttrlib'`, but the branch that would *run* a registry search was never added to `selected`. The chain therefore falls through: the returned mask is only channel ∧ micro-time ∧ ΔT-bounds ∧ optional invert ∧ gap-fill. Verified end to end through the real `BurstSelectionTool` (offscreen) on `m000.spc` with the form set to `maxtree`, `L=20`: `page.used_filter` is `'tttrlib'`, `page.tttrlib_algorithm` is `'maxtree'`, and `page.selected` marks **116 122 of 174 438** photons (67 %) giving `page.burst_start_stop` = **7 730 "bursts"**, while the selected search actually finds **358** bursts covering **30 298** photons (`tttrlib_search.tttrlib_burst_filter(photons, "maxtree", page.burst_search_form.parameters)`). The headless API path is unaffected — `chisurf/plugins/burst/burst_selection/api/selection.py:213-224` does call `tttrlib_burst_filter` — so the GUI and the API now disagree about what "burst selection" means. Add the `'tttrlib'` branch to `selected` (`tttrlib_burst_filter(tttr, self.tttrlib_algorithm, self.tttrlib_parameters)`), and pin it with a test asserting `page.burst_start_stop` matches `tttrlib_search.search(...)` for the selected algorithm — `chisurf/plugins/burst/burst_selection/tests/test_filter_ui_elements.py:371` calls the search *directly* with the form's parameters and so never touches this path.
+- **Fix note:**
+
+### RF-908
+- **Status:** OPEN
+- **Severity:** S3 (≈150 lines of unreachable burst-search code in the wizard page, including the last numba Kalman/CUSUM copies, kept alive behind a constant)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:543-690` (the five `elif self.used_filter == …` branches in `selected`), `:691` (`if … and self.used_filter != 'count_rate'`, now always true), `:1799-1823` (`update_parameter`'s `bocpd`/`kalman`/`cusum` blocks) and `:2078-2110` (the matching restore blocks), all against `used_filter` at `:484-491` which returns `'tttrlib'` unconditionally and has no setter (`grep -n "used_filter" chisurf/gui/widgets/wizard/tttr_photonfilter/*.py` shows no assignment anywhere)
+- **Finding:** with the mode constant, none of the five branches can execute — the count-rate filter, the built-in `burst_filter`, the BOCPD block, the numba Kalman fallback and the CUSUM block are dead, and so are the per-mode parameter blocks that save and restore their settings. The `bocpd` branch is doubly stale: the API path deliberately *raises* "the BOCPD burst search has been removed" (`chisurf/plugins/burst/burst_selection/api/selection.py:137-145`) while this copy still tries to run it. Also stale in the same spot: `default_filter_mode` defaults to `'burst'` (`:2474`) and is documented as `'count_rate'` (`:99`), but `install_filter_mode_visibility` only honours it when it names a registry algorithm (`tttr_photon_filter_mode.py:50-54`), so neither value does anything. Delete the dead branches and the dead per-mode save/restore blocks. **Order matters: fix [RF-907] first** — the chain must gain its `'tttrlib'` branch before the rest is removed.
+- **Fix note:**
+
+### RF-909
+- **Status:** OPEN
+- **Severity:** S2 (every burst selection the wizard suggests a name for is called `burstwise_…`, whichever of the six searches produced it)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:1136-1147` (`update_output_path`: `if self.used_filter == "count_rate": path_prefix = "countrate" … else: path_prefix = "burstwise"`) against `used_filter` at `:484-491`
+- **Finding:** the prefix exists to record *which* search wrote the folder, and it can now only ever take the `else` value: `used_filter` is the constant `'tttrlib'`, so `countrate`/`bocpd`/`kalman`/`cusum` are unreachable and the suggested name is always `burstwise_<channels> <dT_max>#<threshold>`. A user comparing a Kalman run against a Max-tree run on the same file gets two identically-named folders. The information is available one property away — `self.tttrlib_algorithm` — so the prefix should be the algorithm name. Pin with a test asserting the suggested path changes when `burst_search_form.set_state("kalman")` follows `set_state("maxtree")`.
+- **Fix note:**
+
+### RF-910
+- **Status:** OPEN
+- **Severity:** S2 (loading a burst-selection setup saved before the registry migration silently restores a *different* search than the one saved, with none of its parameters)
+- **Location:** `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:2051-2075` (`update_burst_selection_parameters`: `self.comboBox_burst_filter.setCurrentText("Count rate" / "Burst" / "BOCPD Burst" / "Kalman Burst" / "CUSUM Burst")`) against `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter_mode.py:26` (`BurstSearchForm(combo=page.comboBox_burst_filter, …)`) and `chisurf/gui/widgets/burst_search_form.py:85-94` (`clear()` + one item per registry algorithm)
+- **Finding:** the combobox is no longer the old mode selector — `BurstSearchForm` clears it and fills it with the registry labels (`Sliding window`, `Cumulative (CUSUM / SPRT)`, `Kalman (rate change)`, `Coincident (multi-detector)`, `Max-tree (threshold-free)`, `Bayesian Blocks (optimal segmentation)`), and it is **not editable**, so `setCurrentText` with a string that matches no item is a no-op. Verified at runtime: after `combo.setCurrentText("Count rate")` and `combo.setCurrentText("Kalman Burst")` the selection is still `('Sliding window', 'sliding_window')` both times. A setup saved in Kalman mode therefore reopens as a sliding-window search, its saved `kalman_q`/`z_thresh`/… are dropped (see [RF-908]), and nothing is logged or shown. The `tttrlib` branch at `:2062-2074` is the only one that works. Map the legacy names onto registry algorithms where one exists (`kalman` → `kalman`, `cusum` → `cusum_sprt`, `burst` → `sliding_window`) and log a warning naming the substitution for the rest, instead of silently keeping the default.
+- **Fix note:**
+
+### RF-911
+- **Status:** OPEN
+- **Severity:** S2 (a required array parameter the user has not typed is sent to tttrlib as `None`, so the coincident burst search dies with a bare `TypeError` instead of the named error the tests pin)
+- **Location:** `chisurf/core/dataspec/rpc.py:140-159` (`RpcMethodView.params`: optional empty parameters are dropped at `:156`, but a **required** one keeps its `None` from the empty-JSON branch at `:147-150`), surfaced through `chisurf/core/tttrlib_registry.py:357-362` (`CompositeEntryView.params`) → `chisurf/gui/widgets/burst_search_form.py:131-136` (`parameters`) → `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:499-503` (`tttrlib_parameters`) → `chisurf/core/fluorescence/burst/tttrlib_search.py:113` (`tttr.burst_search_by_name(algorithm, **dict(parameters or {}))`)
+- **Finding:** `channel_groups` is `required` in the coincident search's schema and has no `default`, so the generated form renders it as an empty JSON line edit and `params()` reports `{'channel_groups': None, 'algorithm': 'maxtree', 'min_groups': 0, 'L': 20, 'parameters': {…}}`. Feeding exactly that back into `tttrlib_search.search` raises `TypeError: 'NoneType' object is not iterable` from inside SWIG — whereas *omitting* the key raises the helpful `ValueError … channel_groups` that `chisurf/plugins/burst/burst_selection/tests/test_tttrlib_search.py:74-84` pins. Verified both ways on a synthetic 20 000-photon TTTR. The same line also hands **unparseable** JSON through as raw text (`:154-155`, `pass  # hand the raw text to the caller's validation`), which reaches the C++ call as a `str`. Drop `None`-valued required parameters as well (so the callee's own "missing required" error fires), or raise a `ValueError` naming the empty required field; a form-level test for the coincident search pins it.
+- **Fix note:**
+
+### RF-912
+- **Status:** OPEN
+- **Severity:** S3 (the N-exp fit model's entire parameter form is two empty "JSON" boxes, although tttrlib publishes defaults for both parameters)
+- **Location:** `chisurf/core/tttrlib_registry.py:102-113` (`defaults`, which reads only property-level `"default"`) and `chisurf/core/dataspec/rpc.py:162-181` (`_initial_value`, same) against the `fit_nexp` schema, whose `lifetimes`/`amplitudes` are arrays carrying `items.default` (2.0 ns / 1.0), `items.minimum`/`maximum`, `items.fixed_default` and `count_from: "n_exponentials"`; rendered by `chisurf/gui/widgets/fit_model_form.py:149-170`
+- **Finding:** neither `items.default` nor `count_from` is honoured, so an array-valued parameter has no starting value at all: `tttrlib_registry.defaults("fit", "fit_nexp")` returns `{}` and `FitModelForm(model="fit_nexp").parameters` returns `{'lifetimes': None, 'amplitudes': None}`. An offscreen render confirms the visible result — under "Multi-exponential reconvolution (N-exp)" the form is two line edits with the placeholder `JSON` and nothing else, so the model cannot be used without hand-typing `[2.0, 2.0]`. That contradicts the module's own promise (`fit_model_form.py:11-13`: *"Labels, ranges, units, defaults and the `fixed_default` flags all come from tttrlib; a fit model added there appears here on upgrade with no change to this file"*). The same gap makes the coincident search's `channel_groups` a JSON box (see [RF-911]). Expand `items.default` to a list when the count is known (`count_from` names a property of the linked `fit_setup`) and otherwise seed a one-element list, so the box is never empty; `test/gui/test_fit_model_form.py` covers only fit23 today and needs a `fit_nexp` case.
+- **Fix note:**
+
+### RF-913
+- **Status:** OPEN
+- **Severity:** S3 (a module docstring with two definitions spliced into the middle of its usage example — the rendered API docs show source code as prose)
+- **Location:** `chisurf/core/fluorescence/burst/tttrlib_search.py:16-31` (the module docstring, containing `logger = logging.getLogger(__name__)`, the three `#:` comment lines and `IMPLAUSIBLE_COVERAGE = 0.7` between `from chisurf.core import tttrlib_registry` and `from chisurf.gui.autoform import AutoForm`) against the real definitions at `:43-48`, plus the stray import at `:49`
+- **Finding:** a paste landed inside the docstring rather than after it: lines 18–23 are *text*, and the two-line usage example they interrupt now reads as `from chisurf.core import tttrlib_registry` / `logger = …` / `IMPLAUSIBLE_COVERAGE = 0.7` / `from chisurf.gui.autoform import AutoForm`. Verified in `HEAD` (`git show HEAD:…`), so it is committed, not a working-tree accident; the module still imports because the duplicate below is the live one. Delete lines 18–23 from the docstring and move `from chisurf.core.fluorescence.burst.utils import create_array_with_ones` (`:49`, sitting after a constant) up into the import block.
+- **Fix note:**
