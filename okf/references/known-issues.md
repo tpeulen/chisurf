@@ -1080,3 +1080,37 @@ from step 6.
 
 **Global τ per state.** The pooled per-(state, colour) fit — the robust headline
 number — is designed but not implemented; only the per-burst columns landed.
+
+## Burst pipeline naming should show the two levels (requested 2026-07-28)
+
+The pipeline has a logic the step names hide: **first look at the burst, then
+look inside it.** Requested renaming, to make that visible:
+
+| now | proposed |
+|---|---|
+| 2. Burst Selection | 2. Burst Selection *(unchanged)* |
+| 3. BVA · 4. 2CDE · 5. MLE-Burstwise | burst-level **features** |
+| 6. H2MM | 6. **Burst segmentation (H2MM)** — H2MM is one method, the step is the concept |
+| *(missing)* | 7. **Burst segment MLE** — the sub-burst analysis |
+
+Step 7 should *be* the MLE-Burstwise plugin with **Split by H2MM state** on, not
+a second plugin — that split already exists and is tested, it is simply reachable
+today only from step 5, which sits *before* the segmentation it depends on. Put
+it at 7 and the dependency runs forwards, which also closes the ordering wart
+recorded above.
+
+Care needed: the earlier per-state plugin was deleted for good reasons (it wrote
+columns no reader could see). Re-adding a step 7 must reuse the existing fitter
+and the existing state-suffixed columns, not reintroduce a parallel one.
+
+## Fast-forward button (in flight, uncommitted)
+
+A ⏩ button beside Back/Next that walks the remaining pipeline: it re-arms the
+existing `_pending_advance` after every completion, so exactly one step runs at
+a time (starting a step while another is in flight is the SIGSEGV the armed
+advance exists to prevent). A second click stops it; Back stops it.
+`test/gui/test_fast_forward.py` covers stop-on-second-click, stop-on-Back, and
+never-two-at-once — those pass. The chaining test
+(`test_fast_forward_runs_every_remaining_step`) fails with only the first step
+processed, and the cause is not yet found: `goto_next_step()` advances correctly
+in isolation. **Not committed** until that is understood.
