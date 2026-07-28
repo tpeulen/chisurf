@@ -47,7 +47,7 @@ IRF. You never have to remember to invalidate anything.
 | 2. Burst Selection | the same raw files and the same search settings produced the displayed search | any file or setting differs |
 | 3. BVA | the plot on screen is the answer *and*, for a Run, the `bv4/` files are current | settings, detectors or burst files differ |
 | 4. 2CDE | the `2c4/` companions on disk match the current settings | variant, kernel, τ, channels or burst files differ |
-| 5. MLE-Lifetime | the `bg4/`, `br4`, `by4/` exports on disk match | model, start values, min photons, per-detector settings or IRF differ |
+| 5. MLE-Burstwise | the `bg4/`, `br4`, `by4/` exports on disk match | model, start values, min photons, per-detector settings or IRF differ |
 | 6. H2MM | the fitted model on screen matches the request | state range, criterion, engine, seed, streams or burst files differ |
 
 …and, for every row, when the raw measurements change, when the setup's reading

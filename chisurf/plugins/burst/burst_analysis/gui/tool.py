@@ -404,7 +404,7 @@ BURST_PANELS = [
         "role": "two_cde",
     },
     {
-        "name": "5. MLE-Lifetime",
+        "name": "5. MLE-Burstwise",
         "icon": Glyphs.TARGET,
         "description": "Fit burst lifetimes using selected bursts.",
         "factory": _burst_mle,
@@ -468,7 +468,7 @@ BURST_PANELS = [
         "icon": Glyphs.SPARKLE,
         "description": (
             "Extract a per-detector IRF and background from the non-burst photons "
-            "and feed them to the MLE-Lifetime fit."
+            "and feed them to the MLE-Burstwise fit."
         ),
         "factory": _burst_irf_bg,
         "role": "irf_bg",
@@ -809,7 +809,7 @@ class BurstAnalysisTool(NavigationPanelTool):
                 pass
 
     def _apply_context_to_mle(self, widget: QtWidgets.QWidget) -> None:
-        """Use upstream burst files and channels in MLE Lifetime."""
+        """Use upstream burst files and channels in MLE-Burstwise."""
         # The embedded panel is the wizard's central widget (see _burst_mle); the
         # wizard that owns burst_files_list/channel_definer/etc. hangs off it.
         widget = getattr(widget, "_mle_wizard", widget)

@@ -149,7 +149,7 @@ def test_burst_workflow_panel_order() -> None:
         "🔍 2. Burst Selection",
         "📊 3. BVA",
         "📊 4. 2CDE",
-        "🎯 5. MLE-Lifetime",
+        "🎯 5. MLE-Burstwise",
         "🔀 6. H2MM",
         "────────",
         "📋 Browser",

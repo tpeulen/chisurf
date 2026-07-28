@@ -203,6 +203,58 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         cols += [f'BIFL scatter? ({color})', f'2I*: P+2S? ({color})']
         return cols
 
+    def experiment_settings(self) -> dict:
+        """The per-detector IRF and background this fit actually used.
+
+        Kept apart from ``channel_settings`` on purpose. A channel setting
+        describes the *instrument*: which routing channels are green, the G
+        factor, the polarisation mixing — properties of the setup that outlive
+        any one measurement and are reused across samples. An instrument response
+        and a background are neither: they are measured **per experiment** and
+        depend on the sample, the buffer and the day. Writing them into the
+        channel definition would invite exactly the mistake of carrying one
+        sample's scatter into another's fit.
+
+        They do have to be written down somewhere, though, and were not: the
+        arrays lived only in the wizard's ``irf_np``/``bg_np``, so nothing on
+        disk recorded which IRF produced the exported fits, and no later step
+        could repeat them — which is what a burst- *and* state-wise refit has to
+        do.
+
+        Returns
+        -------
+        dict
+            ``{"detectors": {name: {"irf": [...], "background": [...]}}}``, in the
+            fit's VV/VH layout. A detector with nothing loaded contributes empty
+            lists, so the absence is recorded rather than implied.
+        """
+        detectors = {}
+        for det in self.channel_settings:
+            entry = {}
+            for key, source in (("irf", self.irf_np), ("background", self.bg_np)):
+                entry[key] = np.asarray(source.get(det, []), dtype=float).ravel().tolist()
+            detectors[det] = entry
+        return {"format": "chisurf-burst-experiment", "version": 1,
+                "detectors": detectors}
+
+    def write_experiment_settings(self, analysis_dir) -> Path | None:
+        """Write :meth:`experiment_settings` to ``Info/experiment_settings.json``.
+
+        Beside the burst folder's other provenance, not inside a ``b?4`` result
+        folder: one experiment has one IRF and one background, shared by every
+        colour's results.
+        """
+        root = Path(analysis_dir)
+        payload = self.experiment_settings()
+        if not any(d.get("irf") for d in payload["detectors"].values()):
+            return None  # nothing measured yet — do not write an empty record
+        info = root / "Info"
+        info.mkdir(parents=True, exist_ok=True)
+        target = info / "experiment_settings.json"
+        with open(target, "w") as fh:
+            json.dump(payload, fh, indent=2, cls=NumpyEncoder)
+        return target
+
     def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:
         """
         Save burst-fit results grouped by (file stem, detector) with a fast, vectorized path.
@@ -312,12 +364,15 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 f.write('\t'.join(cols) + '\t\n')  # keep trailing tab + newline
                 np.savetxt(f, out, delimiter='\t', fmt='%.6f')
 
-            # Write channel settings once per folder
+            # Write channel settings once per folder (instrument description),
+            # and the IRF/background once per analysis folder (experiment
+            # description — sample-dependent, shared by every colour).
             if out_dir not in wrote_settings_for:
                 settings_file = out_dir / 'channel_settings.json'
                 with open(settings_file, 'w') as sf:
                     json.dump(self.channel_settings, sf, indent=4, cls=NumpyEncoder)
                 wrote_settings_for.add(out_dir)
+                self.write_experiment_settings(out_dir.parent)
 
             current_task += 1
             progress.setValue(current_task)
@@ -1773,7 +1828,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         of the wizard (~200 references) and the AutoForm dock-shell conversion
         depend on. The dock shell then fans these pages out into foldable docks.
         """
-        self.setWindowTitle("MLE Lifetime Analysis")
+        self.setWindowTitle("MLE Burstwise Analysis")
         self.centralwidget = QtWidgets.QWidget(self)
         self.verticalLayout = QtWidgets.QVBoxLayout(self.centralwidget)
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
@@ -4910,6 +4965,6 @@ if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     app.aboutToQuit.connect(app.deleteLater)
     mle = MLELifetimeAnalysisWizard()
-    mle.setWindowTitle('MLE Lifetime Analysis')
+    mle.setWindowTitle('MLE Burstwise Analysis')
     mle.show()
     sys.exit(app.exec_())

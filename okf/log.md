@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **A state-wise MLE, and the experiment record it needed.** The burst-wise MLE
+  step (renamed **MLE-Burstwise**, since "lifetime" said nothing the other steps
+  do not also fit) fits one decay per burst per colour. For a burst with
+  dynamics that is the wrong unit: half low-FRET and half high-FRET yields a
+  lifetime belonging to neither, and the new test measures exactly that — the
+  mixed fit lands *between* the two true lifetimes. H2MM already says which
+  photon was emitted in which state, so the new plugin
+  `chisurf/plugins/burst/burst_state_mle/` refits at the unit the kinetics has:
+  **one decay per (burst, state, colour)**. It is a post-H2MM step by
+  construction, consuming the analysis rather than redoing it — `h2mm_photons.*`
+  for the per-photon state, `h2mm_result.json` for the stream definitions, and
+  the burst-wise MLE's own settings. Results fold into the analysis folder as
+  **`bg4_s0/`, `bg4_s1/`, …** — the same `.b?4` format one level down, so the
+  burst browser, ndX and `bid_to_analysis` open a state folder unchanged, and
+  because every folder carries the full burst grid, joining two states is a
+  row-wise join with no keys; a tidy `Info/state_mle.csv` sits beside them.
+  Doing this exposed a real gap: **the IRF and background were never persisted**
+  — they lived only in the wizard's `irf_np`/`bg_np`, so nothing on disk recorded
+  which IRF produced the exported fits and no later step could repeat them. They
+  are now written to `Info/experiment_settings.json`, deliberately **not** into
+  `channel_settings.json`: a channel setting describes the instrument (which
+  routing channels are green, G, l1/l2) and outlives any measurement, while an
+  IRF and a background are measured per sample and would otherwise invite one
+  sample's scatter into another's fit. Core is Qt-free and covered by
+  `burst_state_mle/tests/test_state_mle.py` (7).
+
 * **A per-state decay is only defined within one detection colour (RF-656).**
   The H2MM *Per-state decay* panel histogrammed every photon assigned to a
   state, donor and acceptor together. That is not a decay: donor and acceptor
