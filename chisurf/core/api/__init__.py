@@ -35,11 +35,41 @@ def _extract_curve_data(dataset: Any) -> Optional[Dict[str, List[float]]]:
 
 
 def _global_datasets() -> list[Any]:
-    return getattr(cs, "imported_datasets", None) or []
+    """Return the process-global imported-dataset list *object*.
+
+    The identity matters: :class:`ChiSurfAPI` binds this list into its
+    :class:`SessionState`, so the state and ``cs.imported_datasets`` must stay
+    the same object even when the global is currently empty.  The list is
+    created and installed on the ``chisurf`` module if it is genuinely absent.
+
+    Returns
+    -------
+    list
+        The ``chisurf.imported_datasets`` list itself, never a copy.
+    """
+    datasets = getattr(cs, "imported_datasets", None)
+    if datasets is None:
+        datasets = []
+        cs.imported_datasets = datasets
+    return datasets
 
 
 def _global_fits() -> list[Any]:
-    return getattr(cs, "fits", None) or []
+    """Return the process-global fit list *object*.
+
+    See :func:`_global_datasets` — the same identity requirement applies to
+    ``cs.fits``.
+
+    Returns
+    -------
+    list
+        The ``chisurf.fits`` list itself, never a copy.
+    """
+    fits = getattr(cs, "fits", None)
+    if fits is None:
+        fits = []
+        cs.fits = fits
+    return fits
 
 
 def _local_datasets() -> list[Any]:

@@ -32,6 +32,13 @@ New code that needs datasets, fits, parameters, project state, or server
 communication should prefer the [API facade](/architecture/api-facade.md)
 (`ChiSurfAPI`) or `PluginContext`, not these globals.
 
+The facade does not hold a *copy* of the two list globals: in local and hybrid
+mode its `SessionState` binds `chisurf.fits` and `chisurf.imported_datasets`
+themselves, so a mutation through either surface is visible from the other.
+Anything reaching for those lists must therefore return the list object, never
+a fresh one — a helper that falls back to a literal (`getattr(cs, "fits", None)
+or []` on an empty global) silently forks the session in two.
+
 # Citations
 
 [1] [ChiSurf architecture doc](/references/architecture-doc.md)

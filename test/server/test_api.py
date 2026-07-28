@@ -145,6 +145,29 @@ class TestChiSurfAPI:
         api = ChiSurfAPI(mode="hybrid")
         assert api.mode == "hybrid"
 
+    def test_state_aliases_globals_when_empty(self):
+        """The state must alias the globals even if they are empty (RF-718)."""
+        cs.fits.clear()
+        cs.imported_datasets.clear()
+        api = ChiSurfAPI(mode="local")
+        assert api._state.fits is cs.fits
+        assert api._state.datasets is cs.imported_datasets
+
+    def test_empty_state_sees_later_global_appends(self):
+        """A fit added after construction is visible to the state half (RF-718)."""
+        cs.fits.clear()
+        api = ChiSurfAPI(mode="local")
+        fit = DummyFit(name="LateFit", uid="late-uid")
+        cs.fits.append(fit)
+        try:
+            assert [f["name"] for f in api.list_fits()] == ["LateFit"]
+            assert api.get_fit_info(fit_index=0)["ok"] is True
+            assert api.fit_count == 1
+            assert api.clear_fits()["ok"] is True
+            assert len(cs.fits) == 0
+        finally:
+            cs.fits.clear()
+
     def test_ping_no_client(self):
         api = ChiSurfAPI(mode="local")
         result = api.ping()

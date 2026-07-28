@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **The API facade's session state aliased nothing** (RF-718). `ChiSurfAPI`
+  documents that its `SessionState` holds *the same list objects* as the
+  `cs.fits` / `cs.imported_datasets` globals. It did not: the two helpers feeding the
+  constructor spelled the lookup `getattr(cs, "fits", None) or []`, and `[] or []`
+  evaluates to the **right-hand literal**, so on the normal path (both globals
+  start empty and the facade is built before any data is loaded) the state got a
+  private list and diverged for the life of the process. The facade then answered
+  about two different sessions at once — `list_fits()` / `fit_count` /
+  `get_project_info` / `session_describe` read the state while `_local_fit` /
+  `_local_dataset` / `_local_parameter` read the globals — and `clear_fits()`
+  returned `{"ok": True}` while `cs.fits` kept every fit. The helpers now return
+  the global list objects themselves (installing one only if the attribute is
+  genuinely missing), which is what the 2026-07-05 *SV-03 fix* entry below
+  believed it had done. Pinned by two tests in `test/server/test_api.py`:
+  `test_state_aliases_globals_when_empty` (identity, both lists, on a freshly
+  built API with empty globals) and `test_empty_state_sees_later_global_appends`
+  (a fit appended after construction is seen by `list_fits` / `fit_count`, and
+  `clear_fits` really empties `cs.fits`). Both fail at `HEAD`. Suites:
+  `test/server/test_api.py` 23, the API-adjacent server tests 178,
+  `test/fitting/test_{posterior_api,calibration_shared,prior_reweighting}.py` 32,
+  `test/agent/test_codebase_tools.py` + `test/test_basic.py` 41 — all green.
+  `ruff check` on the two touched files reports findings identical to `HEAD`
+  (all pre-existing). The invariant is now written down in the
+  [runtime-globals](architecture/runtime-globals.md) concept, since it binds
+  anyone else reaching for those two lists.
+
 * **Every appearance default I changed today reached nobody, and the mechanism
   meant to catch that was never called.** Chimol's defaults live *twice*: a
   Python dict in `config.py` and the shipped `chimol_display.json`. The JSON is

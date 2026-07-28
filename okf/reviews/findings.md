@@ -8442,11 +8442,20 @@ the globals it claims to alias, so half its methods answer about one list and
 half about another. RF-718..RF-729.
 
 ### RF-718
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the facade's `SessionState` does **not** alias `cs.fits` / `cs.imported_datasets` as its docstring promises, so `list_fits()` and `get_fit_info()` on the same object answer about different lists and `clear_fits()` is a silent no-op)
 - **Location:** `chisurf/core/api/__init__.py:37-42` (`_global_datasets` / `_global_fits`: `return getattr(cs, "imported_datasets", None) or []`) feeding the constructor at `:126-129`, against the class docstring at `:98-101` (*"The API owns a SessionState that aliases the `cs.fits` / `cs.imported_datasets` globals (same list objects)"*)
 - **Finding:** `[] or []` evaluates to the **right-hand literal**, so whenever the globals are empty at construction time — which is the normal case, since `chisurf/__init__.py` initialises both to `[]` and `ChiSurfAPI` is built before data is loaded — the state gets a brand-new list and diverges permanently. Verified in the `arm64` env: `api = ChiSurfAPI(mode='local')` right after import gives `api._state.fits is cs.fits → False` and `api._state.datasets is cs.imported_datasets → False`; then `cs.fits.append(f)` gives `api.list_fits() → []` (state) while `api.get_fit_info(fit_index=0)['ok'] → True` (globals, via `_local_fit`), and `api.clear_fits()` returns `{'ok': True}` with `len(cs.fits)` still `1`. Every state-reading method is affected — `list_datasets`, `list_fits`, `remove_datasets` (uid resolution), `remove_fits`, `clear_datasets`, `clear_fits`, `get_project_info`, `session_describe`, `session_snapshot`, `session_restore`, `fit_count`, `dataset_count`, `build_fit_graph` — while `_local_dataset` / `_local_fit` / `_local_parameter` read the globals, so the two halves of the facade disagree. Fix: drop the `or []` (bind the actual global list objects, initialising them if genuinely absent), and add a test that asserts `api._state.fits is cs.fits` for a freshly constructed API.
-- **Fix note:**
+- **Fix note:** `_global_datasets` / `_global_fits` no longer collapse an empty
+  global into a fresh literal — they return the `cs.imported_datasets` / `cs.fits`
+  list objects themselves (creating and installing one only when the attribute is
+  genuinely absent), so the `SessionState` really aliases the globals as the class
+  docstring promises and both halves of the facade answer about the same list.
+  Pinned by `test/server/test_api.py::TestChiSurfAPI::test_state_aliases_globals_when_empty`
+  (identity assertion on a freshly built API with empty globals) and
+  `::test_empty_state_sees_later_global_appends` (a fit appended after
+  construction is seen by `list_fits` / `fit_count`, and `clear_fits` really
+  empties `cs.fits`).
 
 ### RF-719
 - **Status:** OPEN
