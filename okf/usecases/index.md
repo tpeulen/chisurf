@@ -251,6 +251,17 @@ The workflows a first pass should cover — expand as the tester discovers more:
   unticking every row merges all of them anyway, and two of its three buttons do
   nothing. *(last driven 2026-07-28; RF-730..RF-738)*
 
+- [Planning a raster scan](/usecases/rics-scan-precision.md) — the workflow that
+  happens *before* the microscope time is spent: from the intended scan settings
+  and the `D` you expect, predict the relative error on the fitted `D` and sweep
+  the pixel dwell time for the one that measures it best. The estimator is fast
+  (0.9 s), threaded with a real progress readout, and reproduces the CLI exactly;
+  the panel around it reports the frame time **1000× too small**, answers a
+  failed prediction with the two words "Prediction failed" while holding the
+  exact diagnosis, and calls the last point of a hard-coded 0.5 µs–0.5 ms sweep
+  "the best dwell" on curves that never turned around.
+  *(last driven 2026-07-28; RF-793..RF-797)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
