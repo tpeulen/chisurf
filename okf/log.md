@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **QA: drove project save / version / export / restore (RF-616..RF-620).** Built
+  a TCSPC session in the real main window, stored it as a versioned MMFDB project
+  through the *Project Browser*, read the version history, exported and
+  re-imported the `.csp`, and reopened it in a fresh ChiSurf — headlessly,
+  against an isolated settings dir and database, with screenshots read at each
+  step. The storage layer is good: a save takes ~0.8 s, the object store
+  deduplicates across versions, export/import round-trips, and search, *Show
+  public*, soft-delete and the empty-selection guards all behave. The round-trip
+  does not: restore hands back the **MMFDB storage schema**
+  (`{schema_version, curves: […], reader_settings, source_object_uuids}`) while
+  `load_project_payload` reads ChiSurf's flat `{name, filename, x, y,
+  data_reader}` shape, so a project saved with three datasets and one fit
+  restores as three empty curves named `ds001`/`ds002` and **zero fits** — the
+  arrays are intact in the object store, only the re-composition is missing —
+  and the failure is a `log.warning`, so *Open Project* looks like it succeeded.
+  Restoring a version that contains a fit then segfaults (3/3; a fit-free project
+  survives). Separately, every toolbar button is connected twice, so one *Save*
+  click writes two identical versions, and re-importing a `.csp` into its source
+  database adds a second `v1` to the existing project instead of an independent
+  copy. Recorded as
+  [project save & restore](/usecases/project-save-restore.md) with the numbered
+  manual test script and the UX suggestions (clipped header descenders, columns
+  sized while collapsed, blank empty state, branch/graph RPCs with no UI), and
+  filed into the [findings queue](/reviews/findings.md).
+
 * **TCSPC: the pile-up correction stops punching holes into the model
   (RF-611).** Coates' scale factor `sf_i = data_i / -log(1 - p_i)` is `0/0` in a
   channel without a detected photon. `add_pile_up_to_model` used to patch the

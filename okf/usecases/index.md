@@ -186,6 +186,13 @@ The workflows a first pass should cover — expand as the tester discovers more:
   Fast and photon-exact where it works; a header edit quietly breaks a scan file
   and the count rates are reported without a plausibility check.
   *(last driven 2026-07-28; RF-596..RF-603)*
+- [Save, version, export and restore a project](/usecases/project-save-restore.md)
+  — the workflow around every other one: store a whole session as a versioned
+  MMFDB project, read the version history, export and re-import the `.csp`, and
+  reopen it in a fresh ChiSurf. Saving, versioning, dedup, export and the
+  housekeeping controls are solid; the restore hands back the storage schema, so
+  the session comes back with empty datasets and no fits — and one *Save* click
+  writes two versions. *(last driven 2026-07-28; RF-616..RF-620)*
 
 ## Per-workflow file format
 
