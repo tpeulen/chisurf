@@ -8879,3 +8879,62 @@ deleting it leaves the step "current". Findings RF-760..RF-764.
 - **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:560` (`def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:`) against `:692` (`return written_files`), the bare `return` on the cancel path at `:684-688`, and the consumer at `:4747-4748` (`written = self._save_burst_results_fast(result_df)` … `if written and stamp_path is not None:`)
 - **Finding:** the method is annotated as returning `None` but returns `list[Path]` on the normal path and `None` when the save is cancelled, and `process_bursts` branches on that value to decide whether to write the stamp at all — so the annotation contradicts the one contract the reuse gate rests on, and `pixi run typecheck` cannot see the difference between "cancelled" and "wrote nothing". Annotate it `-> list[Path] | None` and say in the docstring that `None` means the save was cancelled.
 - **Fix note:**
+
+## Review 2026-07-28 — the dwell that did not end, and the window it opens in
+
+Slice: `1b98717ee` (*"dwell times exclude the censored dwells, and the dwell table
+opens in ndX"*) — `Dwell.is_edge` / `H2mmAnalysis.dwell_time_arrays` /
+`_dwells_and_transitions` in `burst_h2mm/core/analysis.py`, the `Is Edge` column in
+`core/export.py`, and the new `dwell_table` / `open_dwells_in_ndx` /
+`_plot_dwell_times` in `gui/tool.py`. The edge flag itself is right: `edge = g0 ==
+offsets[b] or g1 == offsets[b+1]` is decided where the burst bounds are, every
+burst contributes exactly its first and last run, and because the trailing dwell of
+a burst is *always* an edge dwell, dropping edge dwells also removes the
+interior-vs-trailing duration asymmetry of RF-313 from the plotted set. What the
+review found is on both sides of that: dropping the censored dwells instead of
+modelling them replaces one bias with the opposite one (RF-766), two of the three
+consumers of dwell durations were left on the old pooled view (RF-767), and the ndX
+hand-off — the part with no test — opens a window with no axes (RF-765).
+Findings RF-765..RF-770.
+
+### RF-765
+- **Status:** OPEN
+- **Severity:** S2 (the new 🔬 action opens an ndX window with empty axis selectors, plotting an unrelated computed column)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/gui/tool.py:1102-1106` (`win.data_source = DataSource(...)` then `for name in ("recompute", "replot", "update_plots")`) against the working seam `chisurf/plugins/microscopy/imaging_common/tool_base.py:223-252` (`_load_ndx_data_source` → `refresh_axis_comboboxes_preserving_selection` + `update_ui_data`)
+- **Finding:** the hand-off guesses at ndX's refresh API and picks the one call that does not refresh the UI. Of the three names tried, **`recompute` and `replot` do not exist** on `NDXplorer` (verified with `getattr`), so only `update_plots` runs — and `update_plots` → `ui_helpers.update_parameter_names` only re-titles the axes; it never repopulates the parameter combo boxes. Reproduced headlessly with the exact sequence of `open_dwells_in_ndx` (construct → `show()` → `processEvents()` → assign `data_source` → the three-name loop) on a six-column dwell table: `plot_control.comboBoxSelX.count() == 0`, `plot_control.p1 == (-1, "")`, and `win.x_values` returns `[0.909, 0.714, 0.870, 0.741, 0.800]` — index `-1`, i.e. the **last** computed column (`1/Sensitivity`, an ndX default equation), for *both* axes. The same run with `update_ui_data()` instead gives 10 items in each selector, `p1 == (0, "Burst")` and `x_values == [0, 0, 1, 1, 2]`. So the window opens with nothing selectable in the axis dropdowns and a 2-D histogram of a meaningless derived column against itself. Call `update_ui_data()` (better: reuse `imaging_common`'s `_load_ndx_data_source`, which is the same problem already solved) rather than probing for method names. `tests/test_dwell_censoring.py:178-191` only asserts `dwell_table()` builds and that `open_dwells_in_ndx()` returns `False` *before* a fit — the success path is untested.
+- **Fix note:**
+
+### RF-766
+- **Status:** OPEN
+- **Severity:** S2 (dropping the right-censored dwells is length-biased: the panel now reports dwell times systematically *too short*, by >2× when the state is as slow as a burst)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/analysis.py:155-186` (`dwell_time_arrays`: `if d.is_edge and not include_edges: continue`) and its only consumer `chisurf/plugins/burst/burst_h2mm/gui/tool.py:1493-1521` (`_plot_dwell_times`, title *"Dwell times (burst-edge dwells excluded)"*)
+- **Finding:** a dwell touching a burst edge is right-censored, and *which* dwells get censored depends on their length — a long dwell is far more likely to run into a burst boundary than a short one. Discarding them is therefore not a neutral filter but a selection on the quantity being measured, and it biases the surviving distribution short, in the opposite direction to the bias RF-321 reported. Quantified on a stationary exponential renewal process observed through a window of length `T` (200 000 windows, true mean τ = 1): complete-only mean = **0.282** at `T = τ`, **0.476** at `T = 2τ`, **0.760** at `T = 5τ`, **0.888** at `T = 10τ` — so even when bursts are ten times the dwell time the panel reads 11 % fast, and in the regime RF-321 measured on real data (slow states, almost no interior dwells) it reads 2–4× fast. The tool therefore still cannot agree with the *Transition rates* panel beside it, and now errs toward "faster dynamics than the truth", which is the direction that invents exchange. The information needed is already carried: use the censored durations as censored observations (Kaplan–Meier, or an exponential MLE over complete **and** censored dwells) rather than deleting them — note both ends are censored, so the naive `Σ all / n_complete` estimator overshoots (2.73 at `T = τ` in the same simulation) and the leading-dwell inspection bias has to be handled too. At minimum, state the direction of the residual bias in the panel title/docs instead of implying the plotted numbers are unbiased dwell times.
+- **Fix note:**
+
+### RF-767
+- **Status:** OPEN
+- **Severity:** S2 (the GUI panel and the RPC result / headless facade now answer the same question two different ways)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/backend/services.py:311-314` (`dwell_mean = [float(np.mean(v)) * base_time_s … for _, v in sorted(ana.dwell_times.items())]` → `H2mmResult.dwell_mean_s`) and `chisurf/plugins/burst/burst_analysis/api/workflow.py:506-525` (`plot_dwell_times`: `np.asarray(self.analysis.dwell_times.get(i, [])) * base_ms`)
+- **Finding:** the commit moved the GUI histogram onto `dwell_time_arrays()` but left the other two consumers on the raw `dwell_times` mapping, which by its own new docstring holds "**every** dwell including the censored ones at burst edges". So `H2mmResult.dwell_mean_s` — the number every RPC/CLI client and every saved result reports — and the headless facade's `plot_dwell_times` (the dashboard panel of `BurstWorkflow.h2mm(...)`) still pool the burst-duration values the GUI now refuses to plot, and the two disagree by exactly the effect RF-321 measured (1.14 ms pooled vs a transition-rate 64.8 ms on the repo burst folder). This is the second half of RF-321, which asked for the mean as well as the histogram. Route both through the same accessor (whatever RF-766 settles on), so one definition of "dwell time" serves the GUI, the result model and the facade.
+- **Fix note:**
+
+### RF-768
+- **Status:** OPEN
+- **Severity:** S3 (opening the dwell table a second time destroys the first ndX window and everything gated in it)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/gui/tool.py:1089-1095` (`win = make_ndxplorer()` … `self._ndx_dwell_window = win` — a fresh window every call, one attribute) against `chisurf/plugins/microscopy/imaging_common/tool_base.py:201-208` (`win = self._ndx_window; if win is None: … make_ndxplorer()`)
+- **Finding:** `open_dwells_in_ndx` always constructs a new parentless `NDXplorer` and stores it in the single attribute `_ndx_dwell_window`; `make_ndxplorer` keeps no registry of its own (`chisurf/plugins/ndxplorer/rpc_bridge.py:70-85`), so that attribute is the only Python reference. Re-assigning it drops the last reference to the previous window and Qt deletes the C++ object — verified: with two shown parentless `QMainWindow`s and the reference overwritten, `QApplication.topLevelWidgets()` afterwards lists only the second. Pressing 🔬 again (the natural thing to do after re-fitting with a different state count) therefore silently closes the window the user had gated and arranged, rather than opening a second view or refreshing the existing one. Reuse the window when it is still alive, as the imaging tool does, or keep a list.
+- **Fix note:**
+
+### RF-769
+- **Status:** OPEN
+- **Severity:** S3 (a status message that tells the user to do the thing they already did)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/gui/tool.py:1079-1082` (`df = self.dwell_table(); if df is None or df.empty: self._status("No dwells to explore — run a fit first.")`) with `dwell_table` at `:1055-1059` (`if self._bundle is None: return None` / `meta = getattr(self._bundle, "meta", None); if meta is None: return None`)
+- **Finding:** `dwell_table()` returns `None` for two different reasons and the caller reports only one of them. A result loaded without per-photon metadata is an explicitly supported state — `_plot_state_decays` documents it at `:1554-1555` ("Requires the per-photon micro times (`bundle.meta`); when absent (e.g. a result loaded without photon metadata) the panel is left empty") and every other panel keeps working — yet in that state the fit *has* run, the dwells exist on `ana.dwells`, and the button says "run a fit first". Distinguish the two: no bundle → "run a fit first"; bundle without `meta` → say the per-dwell table needs the per-photon metadata this result was loaded without.
+- **Fix note:**
+
+### RF-770
+- **Status:** OPEN
+- **Severity:** S3 (dead defensive branch that cannot fire, guarding against the one case its default silently mislabels)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/export.py:267-270` (`edge = getattr(d, "is_edge", None); if edge is None: edge = s0 == burst_start or s1 == burst_end`) with the now-unused locals at `:245-246`, against `chisurf/plugins/burst/burst_h2mm/core/analysis.py:90` (`is_edge: bool = False`)
+- **Finding:** `Dwell` is a dataclass with `is_edge` declared and defaulted, so every instance carries the attribute and `getattr(d, "is_edge", None)` can never return `None` — the recompute fallback is unreachable, and `burst_start` / `burst_end` are now computed once per dwell solely to feed it (nothing in the tree pickles `Dwell`; only `core/surrogate.py` pickles anything). The case the fallback was meant to cover — a `Dwell` built without the flag — instead lands on the field default `False`, i.e. the table reports a censored dwell as **not** censored, which is exactly the disagreement the comment above it says it is preventing. Drop the branch and the two locals and read `d.is_edge` directly; if an unflagged record must stay tolerable, make the default detectable (`is_edge: bool | None = None`) so the fallback can actually run.
+- **Fix note:**
