@@ -33,8 +33,11 @@ The plugin implements a comprehensive workflow for single-molecule state analysi
   - pyqtgraph
   - numpy
   - scipy
+  - numba
   - tttrlib
-  - hmmlearn
+
+The Gaussian HMM is `chisurf.core.math.hmm`, in-tree; no external HMM package
+is needed.
 
 ## Usage
 

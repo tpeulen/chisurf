@@ -4,7 +4,7 @@
 
 # ChiSurf
 
-📐 [Architecture Documentation](docs/architecture.md)
+📐 [Architecture Documentation](docs/architecture.md) · ⏱️ [Benchmarks](docs/development/benchmarks.md)
 
 ChiSurf is a software package for the global analysis of fluorescence data. It enables users to interlink, optimize, and jointly sample variables of models for time-resolved single-molecule and ensemble fluorescence experiments. By introducing dependencies across models, ChiSurf allows for the construction of complex descriptions across multiple datasets.
 For a detailed explanation of the methods and implementation, please refer to the [ChiSurf Manuscript](https://doi.org/10.3390/spectroscj3020016).
@@ -123,6 +123,9 @@ For Linux users, ChiSurf can be built and run using Docker. This ensures all sys
 ## Local CI & Smoke Tests
 
 - Follow `docs/ci-act.md` to reproduce the Pixi-based GitHub Actions Linux job locally with [`act`](https://github.com/nektos/act).
+- Performance of the compute cores ChiSurf owns (Gaussian HMM, ensemble samplers) is
+  tracked in [docs/development/benchmarks.md](docs/development/benchmarks.md); the scripts
+  behind every table live in `test/benchmarks/` and are re-run whenever the component changes.
 
 ---
 

@@ -29,6 +29,7 @@ Architecture & API
    client_server_agent_entrypoint
    api
    parameter_registry_tools
+   benchmarks
 
 MMFDB / database design
 -----------------------

@@ -1,0 +1,84 @@
+{
+  "_comment": "Generic hidden-Markov-model tool. AutoForm over HmmViewModel: a settings dock (trace files, state count, covariance type, EM controls) and a result dock with the trace + decoded path, the intensity histogram with the fitted emissions, dwell-time histograms, the state table, the transition matrix and the state-count scan. All plots go through the AutoForm plot section, which renders with chiplot.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Hidden Markov model",
+      "split": "horizontal",
+      "persist": "hmm",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Model",
+          "n_col": 1,
+          "collapsed": false,
+          "sections": [
+            {"type": "info", "source": "info_html", "max_height": 56},
+            {"type": "custom", "key": "path_list", "target": "sel_files", "title": "Traces",
+             "options": {"add_folders": false, "max_height": 120, "dialog_filter": "Traces (*.csv *.txt *.dat *.npy);;All files (*)"},
+             "description": "Binned trace files: rows are time bins, columns are detection channels. Several files are fitted jointly as separate sequences."},
+            {"type": "value", "attr": "n_states", "kind": "int", "label": "States", "minimum": 1, "maximum": 32,
+             "description": "Number of hidden states. Use the state scan below rather than guessing — the likelihood always improves with more states, the information criteria do not."},
+            {"type": "choice", "attr": "covariance_type", "label": "Covariance",
+             "options": ["full", "diag", "spherical", "tied"],
+             "description": "Shape of the emission covariance: full = an unrestricted matrix per state; diag = one variance per channel; spherical = one variance per state; tied = one matrix shared by all states. Fewer parameters are more stable on short traces."},
+            {"type": "value", "attr": "time_step", "kind": "float", "label": "Bin width (s)", "decimals": 6, "minimum": 0.0, "maximum": 1000.0,
+             "description": "Duration of one time bin. Dwell times and transition rates are reported in these units; leave at 1 to report them in bins."},
+            {"type": "panel", "title": "Fitting", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "n_iter", "kind": "int", "label": "Max EM maps", "minimum": 1, "maximum": 100000,
+               "description": "Upper bound on Baum-Welch maps. With acceleration, one SQUAREM cycle spends three."},
+              {"type": "value", "attr": "tol", "kind": "float", "label": "Tolerance", "decimals": 6, "minimum": 0.0, "maximum": 1000.0,
+               "description": "Stop once the log-likelihood gain per iteration falls below this."},
+              {"type": "toggle", "attr": "accelerate", "label": "Accelerate (SQUAREM)",
+               "description": "Extrapolate the EM fixed-point iteration (Varadhan & Roland scheme S3). Same optimum, far fewer maps when the states overlap."},
+              {"type": "choice", "attr": "decode", "label": "Decoder", "options": ["viterbi", "map"],
+               "description": "viterbi = the single most probable state path (self-consistent, what dwell times need); map = the most probable state in each bin taken independently."},
+              {"type": "value", "attr": "random_state", "kind": "int", "label": "Seed", "minimum": 0, "maximum": 1000000,
+               "description": "Seed of the k-means initialisation. A fixed seed makes the fit reproducible."}
+            ]},
+            {"type": "panel", "title": "State scan", "n_col": 2, "collapsed": true, "sections": [
+              {"type": "value", "attr": "min_states", "kind": "int", "label": "From", "minimum": 1, "maximum": 32,
+               "description": "Smallest state count to score."},
+              {"type": "value", "attr": "max_states", "kind": "int", "label": "To", "minimum": 1, "maximum": 32,
+               "description": "Largest state count to score."}
+            ]},
+            {"type": "button_row", "buttons": [
+              {"label": "▶ Fit", "action": "request_run",
+               "description": "Fit the model with the chosen number of states and decode the state path."},
+              {"label": "⇄ Scan states", "action": "request_scan",
+               "description": "Fit every state count in the range and score each by AIC and BIC."}
+            ]},
+            {"type": "custom", "key": "help",
+             "options": {"title": "Hidden Markov models — help", "resource": "help.md"}}
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Trace",
+          "sections": [
+            {"type": "plot", "source": "trace_series", "title": "Trace and decoded states",
+             "x_label": "time", "y_label": "counts per bin", "legend": true,
+             "description": "The binned trace with the decoded state path drawn over it: each bin at the total emission mean of the state it was assigned to."},
+            {"type": "plot", "source": "histogram_series", "title": "Intensity histogram",
+             "x_label": "counts per bin", "y_label": "occurrences", "legend": true,
+             "description": "Histogram of the summed intensity with the fitted emission densities, each scaled by its state's occupancy. Overlapping curves mean the states are not resolved by intensity alone — the transition structure is then what separates them."}
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "States",
+          "sections": [
+            {"type": "info", "source": "states_html", "height": 130, "max_height": 190},
+            {"type": "info", "source": "transitions_html", "height": 120, "max_height": 190},
+            {"type": "plot", "source": "dwell_series", "title": "Dwell times",
+             "x_label": "dwell time", "y_label": "occurrences", "legend": true, "log_y": true,
+             "description": "Dwell-time histogram per state. A single exponential (a straight line on this log axis) is what a Markov state predicts; curvature means the state hides substructure."},
+            {"type": "plot", "source": "scan_series", "title": "State-count scan",
+             "x_label": "states", "y_label": "information criterion", "legend": true,
+             "description": "AIC and BIC against the number of states. Take the minimum, not the elbow of the likelihood; BIC charges more per parameter and usually gives the model a kinetic interpretation can carry."}
+          ]
+        }
+      ]
+    }
+  ]
+}

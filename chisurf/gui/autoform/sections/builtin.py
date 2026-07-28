@@ -1305,64 +1305,47 @@ class PlotWidget(QtWidgets.QWidget):
 
     is_form_field = False
 
-    _STYLES = {
-        "solid": QtCore.Qt.SolidLine,
-        "dash": QtCore.Qt.DashLine,
-        "dot": QtCore.Qt.DotLine,
-    }
-
     def __init__(self, model, section, parent=None):
         super().__init__(parent)
-        import pyqtgraph as pg
+        from chisurf.gui import chiplot as cp
 
         self._model = model
         self._section = section
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.plot = pg.PlotWidget()
+        self.plot = cp.Plot()
         if section.height:
             self.plot.setMaximumHeight(int(section.height))
             self.plot.setMinimumHeight(int(section.height))
-        if section.x_label:
-            self.plot.setLabel("bottom", section.x_label)
-        if section.y_label:
-            self.plot.setLabel("left", section.y_label)
+        else:
+            # Without this, a panel mixing plots with form rows or info blocks
+            # adds a trailing stretch that wins over the plot's own expanding
+            # policy, leaving the plot a few dozen pixels tall.
+            self._autoform_expanding = True
+        self.plot.set_labels(left=section.y_label or None, bottom=section.x_label or None)
         if getattr(section, "log_x", False) or section.log_y:
             try:
                 log_x = bool(getattr(section, "log_x", False))
-                self.plot.setLogMode(log_x, bool(section.log_y))
+                self.plot.set_log(x=log_x, y=bool(section.log_y))
                 self._log_axes = tuple(
                     (("bottom",) if log_x else ()) + (("left",) if section.log_y else ())
                 )
                 self._thin_log_ticks()
                 # Re-evaluate on zoom and pan: the right tick density depends on
                 # how much of the axis is showing, not on how it was declared.
-                self.plot.getPlotItem().getViewBox().sigRangeChanged.connect(
-                    lambda *_: self._thin_log_ticks()
-                )
+                self.plot.on_range_changed(lambda *_: self._thin_log_ticks())
             except Exception:
                 pass
         if getattr(section, "invert_y", False):
-            try:
-                # Image coordinates: row 0 is the top row.
-                self.plot.getPlotItem().getViewBox().invertY(True)
-            except Exception:
-                pass
+            # Image coordinates: row 0 is the top row.
+            self.plot.invert_y(True)
         if section.legend:
-            try:
-                self.plot.addLegend(offset=(-5, 5))
-            except Exception:
-                pass
+            self.plot.legend(offset=(-5, 5))
         self._apply_ranges()
-        try:
-            # Right-click menu (per-axis log/linear toggle, autoscale, export) is
-            # on by default; a section can opt out with "context_menu": false.
-            self.plot.getPlotItem().getViewBox().setMenuEnabled(
-                bool(getattr(section, "context_menu", True))
-            )
-        except Exception:
-            pass
+        # Right-click menu (per-axis log/linear toggle, autoscale, export) is
+        # on by default; a section can opt out with "context_menu": false.
+        self.plot.set_menu_enabled(bool(getattr(section, "context_menu", True)))
         layout.addWidget(self.plot)
         if getattr(section, "description", ""):
             self.setToolTip(section.description)
@@ -1386,15 +1369,14 @@ class PlotWidget(QtWidgets.QWidget):
         is why this is re-run on every range change rather than set once.
         """
         try:
-            item = self.plot.getPlotItem()
+            x_range, y_range = self.plot.get_range()
             for name in self._log_axes:
-                lo, hi = item.getViewBox().viewRange()[0 if name == "bottom" else 1]
+                lo, hi = x_range if name == "bottom" else y_range
                 decades = abs(float(hi) - float(lo))  # already in log10 units
-                axis = item.getAxis(name)
                 if decades >= 2.0:
-                    axis.setTickSpacing(major=1.0, minor=1.0)
+                    self.plot.set_tick_spacing(name, major=1.0, minor=1.0)
                 else:
-                    axis.setTickSpacing()  # back to automatic
+                    self.plot.set_tick_spacing(name)  # back to automatic
         except Exception:  # pragma: no cover - cosmetic only, never fatal
             pass
 
@@ -1409,15 +1391,13 @@ class PlotWidget(QtWidgets.QWidget):
                              ("y", getattr(self._section, "y_range", ()))):
             if bounds and len(bounds) == 2:
                 try:
-                    setter = self.plot.setXRange if axis == "x" else self.plot.setYRange
+                    setter = self.plot.set_xlim if axis == "x" else self.plot.set_ylim
                     setter(float(bounds[0]), float(bounds[1]), padding=0.0)
                 except Exception:
                     pass
 
     def refresh(self) -> None:
         """Re-read the section's source method and redraw all series."""
-        import pyqtgraph as pg
-
         source = getattr(self._model, self._section.source, None)
         if not callable(source):
             return
@@ -1428,19 +1408,21 @@ class PlotWidget(QtWidgets.QWidget):
             return
         self.plot.clear()
         for s in series:
-            pen = pg.mkPen(
-                s.get("color", "y"),
-                width=int(s.get("width", 1)),
-                style=self._STYLES.get(s.get("style", "solid"), QtCore.Qt.SolidLine),
-            )
-            kw = {"pen": pen, "name": s.get("name", "")}
+            color = s.get("color", "y")
+            kw = {
+                "pen": color,
+                "width": int(s.get("width", 1)),
+                "style": s.get("style", "solid"),
+                "name": s.get("name", "") or None,
+            }
             if s.get("symbol"):
                 kw["symbol"] = s["symbol"]
-                kw["symbolBrush"] = s.get("color", "y")
-                kw["symbolSize"] = int(s.get("symbol_size", 9))
+                kw["symbol_brush"] = color
+                kw["symbol_size"] = int(s.get("symbol_size", 9))
                 if s.get("no_line"):
-                    kw["pen"] = None
-            self.plot.plot(s.get("x", []), s.get("y", []), **kw)
+                    # Markers only: a transparent pen leaves the points unjoined.
+                    kw["pen"] = (0, 0, 0, 0)
+            self.plot.line(s.get("x", []), s.get("y", []), **kw)
         self._apply_ranges()
 
 

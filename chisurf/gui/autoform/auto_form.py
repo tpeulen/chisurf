@@ -911,6 +911,10 @@ class AutoForm(QtWidgets.QWidget):
         layout.setSpacing(2)
         caption = QtWidgets.QLabel(section.title)
         caption.setStyleSheet("font-weight: bold;")
+        # A label grows into spare vertical space like any other widget, and it
+        # centres its text while doing so: next to a height-capped widget the
+        # caption drifts into the middle of the panel, far from what it names.
+        caption.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
         if section.description:
             caption.setToolTip(section.description)
         layout.addWidget(caption)

@@ -119,66 +119,47 @@ def save_burst_ids(hmm_states, time_axis, time_window_s, tttr_obj, output_dir=".
 
 
 def compute_bic_curve(data, max_states=10):
-    # Imported lazily: hmmlearn pulls in scikit-learn, which costs ~1s at
-    # import time and is only needed once an HMM is actually fitted.
-    from hmmlearn.hmm import GaussianHMM
+    """Fit an HMM with one to ``max_states`` states and score each by BIC.
 
-    bics = []
-    n_samples, n_features = data.shape
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Binned trace, shape ``(n_bins, n_channels)``.
+    max_states : int
+        Largest number of states to try.
 
-    for n in range(1, max_states + 1):
-        try:
-            model = GaussianHMM(n_components=n, covariance_type="full", n_iter=1000, random_state=0)
-            model.fit(data)
-            logL = model.score(data)
-            n_params = n * (n - 1) + n * n_features * 2  # transitions + mean + cov
-            bic = np.log(n_samples) * n_params - 2 * logL
-            bics.append((n, bic))
-        except Exception as e:
-            print(f"HMM fit failed for {n} states: {e}")
-            bics.append((n, np.nan))
-    return bics
+    Returns
+    -------
+    list of tuple
+        ``(n_states, bic)`` pairs; the BIC of a fit that failed is ``nan``.
+        The elbow of that curve is the number of states the data supports.
+    """
+    # Imported lazily: the first fit compiles the numba kernels, which is worth
+    # paying only once an HMM is actually asked for.
+    from chisurf.plugins.core.hmm.core import scan_state_counts
+
+    scan = scan_state_counts(data, min_states=1, max_states=max_states)
+    return list(zip(scan.n_states, scan.bic))
 
 
 def compute_dwell_times(state_sequence, time_step=1.0):
-    """
-    Compute dwell times for each state in a state sequence.
+    """Return the dwell times of each state in an inferred state sequence.
 
-    Parameters:
-    -----------
-    state_sequence : np.ndarray
-        Array of inferred HMM state labels (1D).
+    Parameters
+    ----------
+    state_sequence : numpy.ndarray
+        Inferred HMM state label per time bin (1-D).
     time_step : float
-        Duration represented by each step in the state sequence (e.g., in seconds).
+        Duration of one bin; the dwell times come back in these units.
 
-    Returns:
-    --------
-    dwell_times : dict
-        Dictionary mapping state index to a list of dwell times in units of `time_step`.
+    Returns
+    -------
+    dict
+        State index to the list of its dwell times.
     """
-    dwell_times = {}
-    if len(state_sequence) == 0:
-        return dwell_times
+    from chisurf.plugins.core.hmm.core import dwell_times
 
-    current_state = state_sequence[0]
-    dwell_count = 1
-
-    for s in state_sequence[1:]:
-        if s == current_state:
-            dwell_count += 1
-        else:
-            if current_state not in dwell_times:
-                dwell_times[current_state] = []
-            dwell_times[current_state].append(dwell_count * time_step)
-            current_state = s
-            dwell_count = 1
-
-    # Save the last dwell
-    if current_state not in dwell_times:
-        dwell_times[current_state] = []
-    dwell_times[current_state].append(dwell_count * time_step)
-
-    return dwell_times
+    return dwell_times(state_sequence, time_step)
 
 
 class DistPlotWindow(QtWidgets.QDialog):
@@ -1558,23 +1539,33 @@ class IntensityTrace(QtWidgets.QWidget):
         return time_axis, padded, labels
 
     def apply_hmm(self, traces, n_components=2):
-        from hmmlearn.hmm import GaussianHMM
+        """Fit an HMM to the binned trace and return its states, sorted by brightness.
+
+        Parameters
+        ----------
+        traces : numpy.ndarray
+            Binned intensities, shape ``(n_bins, n_channels)``.
+        n_components : int
+            Number of states to fit.
+
+        Returns
+        -------
+        states : numpy.ndarray
+            State index per bin, relabelled so that state 0 is the dimmest.
+        transmat : numpy.ndarray
+            Transition matrix in the same state order.
+        """
+        # The shared HMM seam: same estimator, same dimmest-first state order
+        # and same dwell-time definition as the HMM tool and its RPC service.
+        from chisurf.plugins.core.hmm.api import HmmSettings
+        from chisurf.plugins.core.hmm.core import fit_traces
 
         logging.info(f"IntensityTrace: Running HMM with {n_components} components on traces shape={getattr(traces, 'shape', None)}")
-        model = GaussianHMM(n_components=n_components, covariance_type="full", n_iter=1000)
-        model.fit(traces)
-        states = model.predict(traces)
-        transmat = model.transmat_
-
-        combined = traces.sum(axis=1)
-        means = [np.mean(combined[states == s]) for s in range(n_components)]
-        order = np.argsort(means)
-        remap = np.zeros_like(order)
-        for new_idx, old in enumerate(order):
-            remap[old] = new_idx
-        sorted_states = remap[states]
-        transmat_sorted = transmat[np.ix_(order, order)]
-        return sorted_states, transmat_sorted
+        fit = fit_traces(
+            np.asarray(traces, dtype=float),
+            HmmSettings(n_states=n_components, covariance_type="full", n_iter=1000),
+        )
+        return fit.state_array, np.asarray(fit.transmat)
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

@@ -74,6 +74,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 51 | [Image resolution: measuring it from the image itself](51_frc_resolution.md) | `img_frc` plugin, `imaging.frc` |
 | 52 | [Sending a gated burst population to FCS, TCSPC, PDA or PCH](52_send_bursts_to_analysis.md) | ndX bridge, `*.from_bursts` services |
 | 53 | [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.analysis_cache`, burst workflow steps |
+| 54 | [Hidden Markov models of binned traces](54_hidden_markov_models.md) | `hmm` plugin, `chisurf.core.math.hmm`, `csg-hmm` |
 
 ## Running
 

@@ -846,6 +846,20 @@ class _PgCanvas(base.Canvas):
         """Toggle logarithmic scaling per axis."""
         self._pi.setLogMode(x=x, y=y)
 
+    def set_tick_spacing(self, side, *, major=None, minor=None) -> None:
+        """Fix the tick interval on one axis, or restore automatic spacing."""
+        axis = self._pi.getAxis(side)
+        if major is None and minor is None:
+            axis.setTickSpacing()
+        else:
+            axis.setTickSpacing(major=major, minor=minor if minor is not None else major)
+
+    def on_range_changed(self, callback) -> None:
+        """Register ``callback(x_range, y_range)`` for pan/zoom of this panel."""
+        self._pi.getViewBox().sigRangeChanged.connect(
+            lambda _vb, ranges: callback(tuple(ranges[0]), tuple(ranges[1]))
+        )
+
     def set_range(self, *, x=None, y=None, padding=None) -> None:
         """Set visible x/y range."""
         if x is not None:

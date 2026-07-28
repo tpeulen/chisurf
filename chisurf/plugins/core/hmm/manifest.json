@@ -1,0 +1,64 @@
+{
+  "id": "hmm",
+  "version": "0.1.0",
+  "display_name": "Analysis:Kinetics:Hidden Markov model",
+  "description": "Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf — the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own.",
+  "icon": "🔀",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Analysis", "Kinetics"],
+  "state_namespace": "hmm",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": "hmm_window"
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.core.hmm.gui.tool:HmmTool",
+    "cli": "hmm=chisurf.plugins.core.hmm.cli.main:cli",
+    "services": "chisurf.plugins.core.hmm.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "hmm.fit",
+      "summary": "Fit a Gaussian hidden Markov model to binned trace(s) and return states, dwell times and transitions.",
+      "params": {
+        "type": "object",
+        "properties": {
+          "traces": {
+            "type": "array",
+            "description": "One (n_bins, n_channels) nested list, or a list of them to fit several sequences jointly."
+          },
+          "settings": {
+            "type": "object",
+            "description": "Fit settings.",
+            "properties": {
+              "n_states": {"type": "integer", "description": "Number of hidden states."},
+              "covariance_type": {"type": "string", "description": "full, diag, spherical or tied."},
+              "n_iter": {"type": "integer", "description": "Maximum number of EM maps."},
+              "tol": {"type": "number", "description": "Log-likelihood convergence threshold."},
+              "accelerate": {"type": "boolean", "description": "Accelerate EM with SQUAREM extrapolation."},
+              "decode": {"type": "string", "description": "viterbi (most probable path) or map (per-bin)."},
+              "time_step": {"type": "number", "description": "Bin width in seconds; dwell times and rates use it."},
+              "random_state": {"type": "integer", "description": "Initialisation seed."}
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "hmm.scan",
+      "summary": "Fit a range of state counts and score each by AIC and BIC.",
+      "params": {
+        "type": "object",
+        "properties": {
+          "traces": {"type": "array", "description": "Binned trace(s), as for hmm.fit."},
+          "settings": {"type": "object", "description": "Fit settings, as for hmm.fit (n_states is overridden)."},
+          "min_states": {"type": "integer", "description": "Smallest state count to score."},
+          "max_states": {"type": "integer", "description": "Largest state count to score."}
+        }
+      }
+    }
+  ]
+}

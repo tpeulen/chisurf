@@ -118,8 +118,10 @@ class Plot(QtWidgets.QWidget):
             Legend label.
         fill : brush-like, optional
             Fill to the baseline under the curve.
-        step : bool
-            Draw as a centered step curve (histogram outline).
+        step : bool or str
+            Draw as a step curve (histogram outline). ``True`` uses centered
+            bins (requires ``len(x) == len(y) + 1``); the equal-length modes
+            ``"left"``/``"right"``/``"center"`` may be passed as strings.
         symbol : str or handles.Symbol, optional
             If given, draw a marker at each point (``"o"``, ``"s"``, ``"x"``, …).
         symbol_size : float
@@ -646,6 +648,42 @@ class Plot(QtWidgets.QWidget):
     def set_log(self, *, x=None, y=None) -> Plot:
         """Toggle logarithmic scaling per axis. Returns ``self``."""
         self._canvas.set_log(x=x, y=y)
+        return self
+
+    def set_tick_spacing(self, side, *, major=None, minor=None) -> Plot:
+        """Fix the tick interval on one axis, or restore automatic spacing.
+
+        Parameters
+        ----------
+        side : str
+            ``"bottom"``, ``"left"``, ``"top"`` or ``"right"``.
+        major, minor : float, optional
+            Interval between labelled and unlabelled ticks, in axis units --
+            decades on a log axis, so ``major=1`` labels once per decade.
+            Passing neither restores automatic spacing.
+
+        Returns
+        -------
+        Plot
+            ``self``.
+        """
+        self._canvas.set_tick_spacing(side, major=major, minor=minor)
+        return self
+
+    def on_range_changed(self, callback) -> Plot:
+        """Call ``callback(x_range, y_range)`` whenever the view is panned or zoomed.
+
+        Parameters
+        ----------
+        callback : callable
+            Receives two ``(low, high)`` tuples in axis units.
+
+        Returns
+        -------
+        Plot
+            ``self``.
+        """
+        self._canvas.on_range_changed(callback)
         return self
 
     def set_xlim(self, lo, hi, *, padding=None) -> Plot:

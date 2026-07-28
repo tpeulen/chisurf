@@ -121,7 +121,7 @@ def _grab_pda_editor():
     _grab(editor, "pda_model_editor.png")
 
 
-def _grab_c3pda_exchange_panel():
+def _grab_pda3c_exchange_panel():
     """Grab the PDA3c exchange-scheme panel for the three-colour guide.
 
     Driven into a realistic state — three species and a linear 1-2-3 chain — so
@@ -710,6 +710,34 @@ def _grab_region_editor():
     _grab(tool, "regions_list.png")
 
 
+def _grab_hmm_tool():
+    """Hidden-Markov-model tool fitted on a simulated two-state trace."""
+    from chisurf.plugins.core.hmm.gui.tool import HmmTool
+
+    rng = np.random.default_rng(0)
+    transmat = np.array([[0.985, 0.015], [0.03, 0.97]])
+    means = np.array([[18.0], [55.0]])
+    states = np.zeros(4000, dtype=int)
+    for t in range(1, len(states)):
+        states[t] = rng.choice(2, p=transmat[states[t - 1]])
+    trace = means[states] + rng.normal(0, 4, size=(len(states), 1))
+
+    tool = HmmTool()
+    tool.resize(1280, 860)
+    tool.set_traces([trace], ["simulated"])
+    tool.model.time_step = 1e-3
+    tool.model.n_states = 2
+    tool.model.min_states, tool.model.max_states = 1, 4
+    tool.show()
+    QApplication.instance().processEvents()
+    # Run synchronously: the worker thread would not have finished by the grab.
+    tool.model.run()
+    tool.model.run_scan()
+    tool._refresh()
+    QApplication.instance().processEvents()
+    _grab(tool, "hmm_workspace.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -718,7 +746,7 @@ def main():
         _grab_fcs_model_editor,
         _grab_tcspc_lifetime_editor,
         _grab_pda_editor,
-        _grab_c3pda_exchange_panel,
+        _grab_pda3c_exchange_panel,
         _grab_burst_browser,
         _grab_2cde_tool,
         _grab_coloc_tool,
@@ -728,6 +756,7 @@ def main():
         _grab_frc_tool,
         _grab_tracking_tool,
         _grab_accurate_fret_tool,
+        _grab_hmm_tool,
         _grab_chimol_viewer,
         _grab_region_editor,
     ):

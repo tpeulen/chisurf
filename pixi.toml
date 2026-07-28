@@ -55,10 +55,9 @@ pyopengl = "*"
 pytables = "*"
 python-docx = "*"
 qtconsole = "*"
-hmmlearn = "*"
-# scikit-learn was only ever present transitively (via hmmlearn). It is used
-# directly -- k-means and GMM for burst selection and ndXplorer clustering, PCA
-# for the parameter decomposition, and the H2MM surrogate -- so it is declared.
+# scikit-learn: k-means and GMM for burst selection and ndXplorer clustering,
+# PCA for the parameter decomposition, and the H2MM surrogate. (hmmlearn was
+# dropped: chisurf.core.math.hmm now provides the Gaussian HMM in-tree.)
 scikit-learn = "*"
 # HDBSCAN: density-based clustering in ndXplorer. scikit-learn has shipped its
 # own implementation since 1.3 and the code falls back to it, but the standalone

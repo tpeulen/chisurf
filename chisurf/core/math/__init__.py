@@ -20,6 +20,7 @@ from typing import Any
 _LAZY_SUBMODULES = (
     "datatools",
     "functions",
+    "hmm",
     "linalg",
     "optimization",
     "rand",

@@ -58,7 +58,6 @@ DEPS=(
     "pytables"
     "python-docx"
     "qtconsole"
-    "hmmlearn"
     "latexify-py"
     "pygments"
     "pyarrow"

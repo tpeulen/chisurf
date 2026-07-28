@@ -53,6 +53,57 @@
   Suites: 308 passed (bva, fio, plugin-CLI registration + entrypoint resolution,
   count-rate CLI, maxent, tcspc) plus the new guardrail.
 
+* **The HMM is ours now, and it is faster than the package it replaced.**
+  `hmmlearn` is gone from every dependency list (`pixi.toml`,
+  `rattler-recipe/recipe.yaml`, `build_tools/setup_runtime.sh`,
+  `test/settings/test_py314.toml`); the Gaussian HMM lives in
+  [`chisurf/core/math/hmm.py`](/subsystems/hidden-markov-models.md) — Baum-Welch
+  in log space with numba kernels, all four covariance parameterisations,
+  multi-sequence fitting, Viterbi/MAP decoding, sampling and AIC/BIC. It is
+  **1.1× to 18× faster per E-step and 2× to 10× end to end**, at an equal or
+  better optimum ([benchmarks](/references/benchmarks.md)). Three things do
+  that: a **fused backward sweep** that computes and exponentiates
+  `log a_ij + log b_j + beta` once for the backward lattice, the posteriors and
+  the transition counts together (`_backward_posteriors_xi`), keeping two rows
+  live instead of a `(T, K)` array; **data-driven initialisation** from one
+  k-means clustering read as a hard-assignment path (centres → means, scatter →
+  covariances, label transitions → transitions), which also removes a real
+  failure mode — a random Dirichlet draw can contain an exact zero, the M-step
+  preserves zeros forever, and a state that can never be entered again merged
+  two well-separated states into one wide blob; and **SQUAREM** (Varadhan &
+  Roland S3, the accelerator the photon-by-photon H2MM optimiser already uses),
+  on by default and abandoned automatically when it stops paying. Two crash
+  paths found and fixed on the way: an all-`-inf` frame turning into `nan`
+  through `-inf - -inf` and poisoning every later iteration, and a state that
+  lost all posterior mass producing `0/0` means. New
+  [`test/math/test_hmm.py`](/subsystems/hidden-markov-models.md) checks the
+  kernels against the recursions written out and Viterbi against exhaustive
+  enumeration.
+* **One HMM for all of ChiSurf, not one per plugin.** New `hmm` plugin
+  (`chisurf/plugins/core/hmm/`) with the four surfaces: Qt-free `core.analysis`
+  (the seam), `hmm.fit`/`hmm.scan` RPC, a `csg-hmm` CLI, and an AutoForm GUI
+  whose plots go through chiplot. It owns the decisions that must not differ
+  between tools — states relabelled dimmest-first, dwell times never continued
+  across a sequence boundary, rates as `A_ij/dt`, model selection by AIC/BIC —
+  and `intensity_trace` now calls it instead of fitting its own. Docs:
+  concept `hidden_markov_models`, guide 54 with a real screenshot, generated
+  plugin page.
+* **Benchmarks are a tracked artefact.** New
+  [`docs/development/benchmarks.md`](/references/benchmarks.md), linked from the
+  README, with the scripts that produce every table in `test/benchmarks/`
+  (`benchmark_hmm.py`, `benchmark_sampling.py`, both new) and the rule that a
+  table is regenerated in the change that touches its component. Each script
+  carries a `slow` test asserting the property it protects.
+* **Three general GUI fixes fell out of building that tool** — all in shared
+  code, all found by rendering the widget and looking at it: the AutoForm `plot`
+  section now renders through **chiplot** instead of importing pyqtgraph
+  ([PRD-64](/prds/prd-64.md)), which needed two additions to chiplot
+  (`set_tick_spacing`, `on_range_changed`); a plot inside a panel now marks
+  itself expanding, so the panel's trailing stretch no longer squashes it to a
+  few dozen pixels; a `custom` section's caption no longer grows into spare
+  space and drift into the middle of the panel; and `path_list` gained a
+  `max_height` option so a file list cannot eat a settings panel.
+
 * **The per-state decay plot is a choice, not a dump.** Splitting the decays per
   colour made them meaningful but left the panel drawing colours × states curves
   at once — on a two-state PIE fit that is six, on a small dock unreadable. The

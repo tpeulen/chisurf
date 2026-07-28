@@ -46,6 +46,7 @@ ordering below runs from the physical fundamentals to the specific methods.
 .. toctree::
    :maxdepth: 1
 
+   hidden_markov_models
    h2mm
    photon_by_photon_kinetics
    ebfret

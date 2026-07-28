@@ -118,6 +118,17 @@ class PathListWidget(QtWidgets.QWidget):
         self._unchecked: set[str] = set()
 
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # A file list left to expand takes every spare pixel of a settings
+        # panel, which reads as an empty tool when nothing is loaded yet. The
+        # policy has to drop with the cap: a still-Expanding widget is handed
+        # the whole cell and then centred inside it, leaving the gap above and
+        # below that the cap was meant to remove.
+        if options.get("max_height"):
+            self.setMaximumHeight(int(options["max_height"]))
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Maximum)
+            # ... and it must stop claiming the panel's spare space, or the
+            # hosting panel still hands it a tall cell for a short widget.
+            self._autoform_expanding = False
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)

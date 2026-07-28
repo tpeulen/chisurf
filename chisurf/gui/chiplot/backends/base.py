@@ -43,14 +43,22 @@ class Canvas(abc.ABC):
         pen: S.Pen,
         name: str | None = None,
         fill: S.Brush | None = None,
-        step: bool = False,
+        step: bool | str = False,
         symbol: H.Symbol | None = None,
         symbol_size: float = 7.0,
         symbol_brush: S.Brush | None = None,
         symbol_pen: S.Pen | None = None,
         skip_missing: bool = True,
     ) -> H.Curve:
-        """Draw a line/step curve (optionally with markers) and return its handle."""
+        """Draw a line/step curve (optionally with markers) and return its handle.
+
+        ``step`` may be a bool (``True`` = centered bins, needing ``len(x) ==
+        len(y) + 1``) or one of the equal-length modes ``"left"``/``"right"``/
+        ``"center"``.
+
+        ``skip_missing`` breaks the line at non-finite samples instead of
+        drawing across them, so a masked or gappy series reads as a gap.
+        """
 
     @abc.abstractmethod
     def add_scatter(
@@ -213,6 +221,36 @@ class Canvas(abc.ABC):
     @abc.abstractmethod
     def set_log(self, *, x: bool | None = None, y: bool | None = None) -> None:
         """Toggle logarithmic scaling per axis."""
+
+    @abc.abstractmethod
+    def set_tick_spacing(
+        self,
+        side: str,
+        *,
+        major: float | None = None,
+        minor: float | None = None,
+    ) -> None:
+        """Fix the tick interval on one axis, or restore automatic spacing.
+
+        Parameters
+        ----------
+        side : str
+            ``"bottom"``, ``"left"``, ``"top"`` or ``"right"``.
+        major, minor : float, optional
+            Interval between labelled and unlabelled ticks, in axis units
+            (decades on a log axis). Passing neither restores the backend's own
+            spacing.
+        """
+
+    @abc.abstractmethod
+    def on_range_changed(self, callback) -> None:
+        """Register ``callback(x_range, y_range)`` for view range changes.
+
+        Fires on pan and zoom; both arguments are ``(low, high)`` tuples in
+        axis units. Used to keep anything that depends on how much of an axis
+        is showing -- tick density, level-of-detail decimation -- in step with
+        the view.
+        """
 
     @abc.abstractmethod
     def set_range(

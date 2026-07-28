@@ -3,6 +3,7 @@
 * [Architecture Doc](architecture-doc.md) - The maintained source-of-truth architecture document.
 * [Project Instructions](claude-md.md) - CLAUDE.md, the agent-facing guidance for this repo.
 * [Roadmap PRDs](roadmap-prds.md) - Numbered PRD design notes that drive current work.
+* [Benchmarks](benchmarks.md) - Where the measured performance of ChiSurf's own compute cores lives, what each number means, and the rule that it is regenerated with the component.
 * [Known issues & gotchas](known-issues.md) - Open functional bugs and recurring engineering pitfalls distilled from working bug logs.
 * [MMFDB architecture ideas](mmfdb-architecture-ideas.md) - The observed-problem → design-decision rationale behind the MMFDB architecture PRDs (17–27).
 * [MMFDB LIMS diagnosis](mmfdb-lims-diagnosis.md) - LIMS gap analysis and prior-art comparison behind the provenance/LIMS PRDs (12–15).
