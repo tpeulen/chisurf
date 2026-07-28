@@ -2,6 +2,26 @@
 
 ## 2026-07-28
 
+* **A deposition bundle kept one of two same-named files, and never read the
+  object store** (DATA-06, mmfdb `9e2f6fa`). `archive.zip.export` named every
+  bundled payload after its basename alone, so two artifacts called `data.ptu`
+  in different directories wrote to one `external_data/data.ptu`: the copy
+  overwrote, the ZIP carried two members under one name, and the manifest
+  pointed **both** nodes at it — restoring by manifest entry then handed back
+  the wrong bytes for one of them, silently. Members are now allocated through
+  `_archive_member_name()`, and two nodes that genuinely share one blob or one
+  file are bundled once with both entries pointing at that member. The half the
+  backlog named is closed too: `_bundle_payload_source()` prefers the
+  content-addressed object store when a node carries an `object_uuid` (the
+  store is the durable location; `file_path` may be stale, elsewhere or gone)
+  and falls back to the recorded path, and a node reachable only through the
+  store — previously skipped before it got a manifest entry — is bundled. Each
+  entry records its `source`, and an unreachable payload records
+  `unavailable_reason` rather than a bare `copied: false`. Tests:
+  `modules/mmfdb/tests/test_zip_archive_export.py` (6, the handler had none;
+  5 fail against the previous code); `test/fio/test_fdb_archive.py` unchanged.
+  Still open in DATA-06: `archive.zip.import` and the general CIF path.
+
 * **A metaball could not be made transparent at any alpha, and a backdrop is
   what showed it.** Transparency is invisible against one flat colour -- a
   surface at alpha 0.4 over black is merely a darker surface -- so `bg_image`
