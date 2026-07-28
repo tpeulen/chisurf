@@ -2,6 +2,15 @@
 
 ## 2026-07-28
 
+* **The timeline thumb follows the movie, not only its own clicks.** The panel
+  reads the frame every time it is drawn rather than being told when it changes,
+  because there is no one place a frame changes: playback advances it on a
+  timer, `frame` and the transport set it directly, and reloading a trajectory
+  resets it. A slider wired to one of those and not the others sits still while
+  the molecule moves, which is worse than no slider -- it says frame one while
+  frame forty is on screen. A drag in progress wins over the pull, or the thumb
+  would be tugged back out of the hand holding it.
+
 * **The splitter's floor is measured, not guessed.** It was a constant 120 px,
   which is either too small -- cutting off whichever part of the column is
   widest -- or too large, stopping the drag before it had to.

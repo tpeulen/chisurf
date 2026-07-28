@@ -1609,10 +1609,35 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         try:
             if self._labels:
                 self._paint_labels(painter)
+            self._refresh_gui_state(gui)
             gui.layout(self.width(), self.height())
             gui.paint(painter)
         finally:
             painter.end()
+
+    def _refresh_gui_state(self, gui) -> None:
+        """Read the movie position into the panel before it is drawn.
+
+        Pulled every frame rather than pushed on change, because there is no one
+        place a frame changes: playback advances it on a timer, `frame` and the
+        transport set it directly, and a trajectory reload resets it. A slider
+        wired to one of those and not the others sits still while the molecule
+        moves, which is worse than having no slider.
+
+        A drag in progress wins: the position under the cursor is what the user
+        is asking for, and overwriting it from the viewer each frame would drag
+        the thumb back out of their hand.
+        """
+        controller = self._controller
+        if controller is None or gui.is_dragging():
+            return
+        try:
+            current = int(controller.get_current_frame()) + 1
+            total = max(int(controller.get_total_frames()), 1)
+        except Exception:
+            return
+        if (current, total) != gui.state:
+            gui.state = (current, total)
 
     def _paint_labels(self, painter) -> None:
         """Draw the 3-D labels, projected to the window."""

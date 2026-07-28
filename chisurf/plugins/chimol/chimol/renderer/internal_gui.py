@@ -551,7 +551,7 @@ class InternalGui:
         return self._block
 
     def minimum_column_width(self) -> float:
-        """The narrowest the column can be and still show what it holds.
+        """Return the narrowest the column can be and still show what it holds.
 
         Measured from the contents rather than fixed: the object rows need the
         widest name plus five boxes, the mouse-mode block needs its label column

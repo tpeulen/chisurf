@@ -689,3 +689,20 @@ def test_a_single_frame_movie_does_not_divide_by_zero(gui):
     gui.state = (1, 1)
     gui.layout(WIDTH, HEIGHT)          # must not raise
     assert gui._timeline_thumb.w > 0
+
+
+def test_the_timeline_tracks_a_frame_change_it_did_not_make(gui):
+    """Playback moves the frame on a timer, not through this panel.
+
+    A slider wired only to its own clicks sits still while the molecule moves,
+    which is worse than having no slider: it says the movie is at frame one
+    while frame forty is on screen.
+    """
+    gui.state = (1, 50)
+    gui.layout(WIDTH, HEIGHT)
+    start = gui._timeline_thumb.x
+
+    gui.state = (40, 50)          # as playback would leave it
+    gui.layout(WIDTH, HEIGHT)
+
+    assert gui._timeline_thumb.x > start
