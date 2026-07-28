@@ -138,3 +138,113 @@ def test_every_written_path_is_reported(written):
         assert str(out / name) in reported, f"{name} written but not reported"
     photons, _ = _photon_table(out)
     assert str(photons) in reported, "the photon table is written but not reported"
+
+
+def _write_with(tmp_path, **flags):
+    """Write the tables with the given format flags, return the output dir."""
+    from chisurf.plugins.burst.burst_h2mm.api.models import H2mmSettings
+    from chisurf.plugins.burst.burst_h2mm.backend.services import (
+        H2mmAnalysisBundle,
+        _result_from_analysis,
+        write_result_tables,
+    )
+    from chisurf.plugins.burst.burst_h2mm.core.analysis import analyze
+
+    data, meta = _dataset_via_tttrlib(n_bursts=12, burst_len=40)
+    ana = analyze(data, state_counts=(2,), base_time_s=1e-6, n_restarts=1, max_iter=50)
+    settings = H2mmSettings(**flags)
+    result = _result_from_analysis(ana, settings)
+    bundle = H2mmAnalysisBundle(ana, data, settings)
+    bundle.meta = meta
+    bundle.micro_time_ns = 0.032
+    write_result_tables(result, bundle, tmp_path)
+    return result
+
+
+def test_both_photon_formats_can_be_written(tmp_path):
+    """HDF5 and CSV are independent choices, not a fallback chain.
+
+    The formats used to be try/except: HDF5, and CSV *only* if that raised. So a
+    folder could never carry both, and which one you got depended on whether
+    pytables happened to be importable.
+    """
+    result = _write_with(tmp_path, photon_hdf5=True, photon_csv=True)
+    assert (tmp_path / "h2mm_photons.csv").is_file()
+    assert "photons_csv" in result.output_paths
+    if (tmp_path / "h2mm_photons.h5").is_file():
+        assert "photons_hdf5" in result.output_paths
+
+
+def test_csv_only_writes_no_hdf5(tmp_path):
+    result = _write_with(tmp_path, photon_hdf5=False, photon_csv=True)
+    assert (tmp_path / "h2mm_photons.csv").is_file()
+    assert not (tmp_path / "h2mm_photons.h5").exists()
+    assert "photons_hdf5" not in result.output_paths
+
+
+def test_asking_for_neither_still_writes_one(tmp_path):
+    """The state assignment must never end up nowhere: it is what step 7 reads."""
+    _write_with(tmp_path, photon_hdf5=False, photon_csv=False)
+    assert (tmp_path / "h2mm_photons.h5").is_file() or (
+        tmp_path / "h2mm_photons.csv"
+    ).is_file()
+
+
+def test_the_burst_companions_line_up_with_the_bur_rows(tmp_path):
+    """Per-measurement `.bh4` files, in the shape a burst folder already speaks.
+
+    One table for the whole folder cannot be joined back: H2MM numbers only the
+    bursts it kept, so one dropped burst shifts every later row. These are one
+    file per measurement, one row per burst *of that measurement*, so they line
+    up positionally exactly as `bv4`/`2c4` do.
+    """
+    import numpy as np
+    import pandas as pd
+
+    from chisurf.plugins.burst.burst_h2mm.core.export import (
+        H2MM_COMPANION,
+        H2MM_COMPANION_COLUMNS,
+        write_burst_companions,
+    )
+
+    class _Data:
+        burst_offsets = np.array([0, 3, 6])
+
+    # Four bursts in the table; H2MM kept rows 0 and 2 (1 and 3 were too short),
+    # and the padding row the .bur zero-interleaving leaves behind reads as "0".
+    burst_df = pd.DataFrame({"First File": ["m000.spc", "m000.spc", "m000.spc", "0"]})
+    path = np.array([0, 0, 1, 1, 1, 1])
+    written = write_burst_companions(
+        burst_df, [0, 2], _Data(), path, np.array([0.2, 0.8]), tmp_path
+    )
+
+    assert [p.name for p in written] == [f"m000.{H2MM_COMPANION}"], (
+        "the zero padding row must not become a companion file"
+    )
+    text = written[0].read_text().splitlines()
+    assert text[0].split("\t")[: len(H2MM_COMPANION_COLUMNS)] == H2MM_COMPANION_COLUMNS
+    body = np.loadtxt(written[0], skiprows=1, delimiter="\t")
+    # 3 real bursts for this measurement → zero-interleaved 2*3+1 rows.
+    assert body.shape == (7, len(H2MM_COMPANION_COLUMNS))
+    data_rows = body[1::2]
+    fitted = data_rows[:, H2MM_COMPANION_COLUMNS.index("H2MM Fitted")]
+    assert fitted.tolist() == [1.0, 0.0, 1.0], (
+        "an unfitted burst keeps its row rather than shifting the ones after it"
+    )
+    states = data_rows[:, H2MM_COMPANION_COLUMNS.index("H2MM State")]
+    assert states[0] == 0.0 and states[2] == 1.0
+
+
+def test_ndx_merges_the_companions_without_being_told_about_them(tmp_path):
+    """ndX discovers any sibling `*4` folder — the companion needs no ndX config."""
+    from ndxplorer.io.reader import _discover_burst_extra_endings
+
+    from chisurf.plugins.burst.burst_h2mm.core.export import H2MM_COMPANION
+
+    (tmp_path / "bi4_bur").mkdir()
+    (tmp_path / H2MM_COMPANION).mkdir()
+    assert H2MM_COMPANION in _discover_burst_extra_endings(tmp_path), (
+        "a burst folder must load everything it holds, not only what is configured"
+    )
+    # …and the base burst directory is never mistaken for a companion.
+    assert "bi4_bur" not in _discover_burst_extra_endings(tmp_path)

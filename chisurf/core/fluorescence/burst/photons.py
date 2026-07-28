@@ -162,6 +162,7 @@ def extract_burst_photons(
     time_scale: int = 1,
     min_photons: int = 3,
     with_meta: bool = False,
+    with_rows: bool = False,
 ):
     """Slice bursts into per-burst ``(times, stream_index)`` arrays.
 
@@ -180,6 +181,14 @@ def extract_burst_photons(
     with_meta : bool
         Also return per-photon ``(micro_time, channel)`` arrays (same filter and
         order as the stream arrays) for building a per-photon result table.
+    with_rows : bool
+        Also return the **positions in** ``df`` **of the bursts that survived**.
+        Bursts too short, too empty, or from a file that is not loaded are
+        skipped here, so the returned lists are a *compacted* sequence and their
+        index is not a row index into the burst table. Anything that has to write
+        a result back beside the ``.bur`` files — one row per burst, aligned —
+        needs this mapping; without it a dropped burst silently shifts every
+        later row.
 
     Returns
     -------
@@ -189,6 +198,8 @@ def extract_burst_photons(
         Per-burst photon stream indices in ``[0, len(streams))``.
     micro, channel : list of numpy.ndarray
         Only when ``with_meta`` — matching per-burst micro-time / channel arrays.
+    rows : numpy.ndarray
+        Only when ``with_rows`` — the ``df`` row position of each kept burst.
     """
     col_ff = df.columns.get_loc("First File")
     col_fp = df.columns.get_loc("First Photon")
@@ -206,7 +217,8 @@ def extract_burst_photons(
     streams_out: list[np.ndarray] = []
     micro_out: list[np.ndarray] = []
     chan_out: list[np.ndarray] = []
-    for row in df.itertuples(index=False, name=None):
+    rows_out: list[int] = []
+    for position, row in enumerate(df.itertuples(index=False, name=None)):
         ff = row[col_ff]
         if ff not in cache:
             continue
@@ -234,12 +246,18 @@ def extract_burst_photons(
         order = np.argsort(t, kind="stable")
         times_out.append(t[order])
         streams_out.append(s[order])
+        rows_out.append(position)
         if with_meta:
             micro_out.append(mi[keep][order])
             chan_out.append(ch[keep][order])
 
+    rows = np.asarray(rows_out, dtype=np.int64)
+    if with_meta and with_rows:
+        return times_out, streams_out, micro_out, chan_out, rows
     if with_meta:
         return times_out, streams_out, micro_out, chan_out
+    if with_rows:
+        return times_out, streams_out, rows
     return times_out, streams_out
 
 

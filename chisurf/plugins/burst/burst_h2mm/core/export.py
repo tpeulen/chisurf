@@ -260,3 +260,123 @@ def write_csv(df, path: str | pathlib.Path) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(str(path), index=False)
     return str(path)
+
+
+
+#: Companion folder/extension for the per-burst H2MM results. Ends in ``4`` so
+#: ndXplorer's burst-folder reader discovers it with no code change: it merges
+#: ``<ending>/<stem>.<ending>`` beside each ``.bur`` for any sibling directory
+#: whose name ends in ``4``, exactly as it already does for ``bv4`` and ``2c4``.
+H2MM_COMPANION = "bh4"
+
+#: The columns a ``.bh4`` carries. ``H2MM Fitted`` is 0 for a burst H2MM skipped
+#: (too few photons), so "not fitted" is a value rather than an absence.
+H2MM_COMPANION_COLUMNS = [
+    "H2MM State", "H2MM Transitions", "H2MM Mean E", "H2MM Photons", "H2MM Fitted",
+]
+
+
+def write_burst_companions(
+    burst_df,
+    burst_rows,
+    data: BurstPhotons,
+    path: np.ndarray,
+    fret: np.ndarray,
+    out_root,
+) -> list:
+    """Write per-measurement H2MM results, one row per burst, ndX-mergeable.
+
+    ``h2mm_bursts.csv`` is one table for the whole folder indexed by a
+    *compacted* burst number — the bursts H2MM kept. That cannot be joined back
+    to a burst folder: one dropped burst shifts every later row. These companions
+    are the shape the folder already speaks: one file per measurement, one row
+    per burst **of that measurement**, in the same zero-interleaved layout as
+    ``bv4``/``2c4``, with zeros and ``H2MM Fitted = 0`` for a burst that was not
+    analysed. ndX merges them beside each ``.bur`` with no change to ndX at all,
+    so bursts can be gated by H2MM state.
+
+    Parameters
+    ----------
+    burst_df : pandas.DataFrame
+        The burst table the analysis was built from (needs ``First File``).
+    burst_rows : array_like
+        Row position in *burst_df* of each analysed burst, from
+        ``extract_burst_photons(..., with_rows=True)``. This is the mapping that
+        makes the rows line up.
+    data : BurstPhotons
+        Engine-layout photons (for the per-burst offsets).
+    path : numpy.ndarray
+        Per-photon Viterbi state.
+    fret : numpy.ndarray
+        Per-state apparent FRET efficiency.
+    out_root : path-like
+        The burst-analysis folder; ``bh4/`` is created inside it.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Every file written — empty when the row mapping is unavailable, which is
+        the honest outcome for an analysis that cannot say which burst is which.
+    """
+    import pandas as pd  # noqa: F401 - burst_df is a DataFrame
+
+    if burst_rows is None or burst_df is None:
+        return []
+    if "First File" not in getattr(burst_df, "columns", []):
+        return []
+    rows = np.asarray(burst_rows, dtype=np.int64)
+    if rows.size == 0:
+        return []
+
+    offsets = np.asarray(data.burst_offsets)
+    n_states = int(np.asarray(fret).shape[0])
+    fret_arr = np.asarray(fret, dtype=np.float64)
+
+    # Per analysed burst: dominant state, transitions, occupancy-weighted E.
+    n_analysed = min(rows.size, len(offsets) - 1)
+    dominant = np.zeros(n_analysed, dtype=np.float64)
+    transitions = np.zeros(n_analysed, dtype=np.float64)
+    mean_e = np.zeros(n_analysed, dtype=np.float64)
+    photons = np.zeros(n_analysed, dtype=np.float64)
+    for b in range(n_analysed):
+        seg = path[int(offsets[b]) : int(offsets[b + 1])]
+        if seg.size == 0:
+            continue
+        occ = np.bincount(seg, minlength=n_states).astype(np.float64)
+        dominant[b] = float(np.argmax(occ))
+        transitions[b] = float(np.count_nonzero(np.diff(seg)))
+        mean_e[b] = float((occ * fret_arr).sum() / occ.sum()) if occ.sum() else np.nan
+        photons[b] = float(seg.size)
+
+    out_dir = pathlib.Path(out_root) / H2MM_COMPANION
+    out_dir.mkdir(parents=True, exist_ok=True)
+    files = np.asarray(burst_df["First File"].astype(str))
+    written = []
+    for name in pd.unique(files):
+        # ``.bur`` tables are zero-interleaved, and the loader keeps those
+        # padding rows: their "First File" reads as "0". They are not a
+        # measurement and must not become a companion file.
+        if "." not in name:
+            continue
+        # Every burst of this measurement, in burst-table order — the row grid
+        # the .bur file itself has, so the companion lines up positionally.
+        mine = np.flatnonzero(files == name)
+        table = np.zeros((mine.size, len(H2MM_COMPANION_COLUMNS)), dtype=float)
+        where = {int(r): i for i, r in enumerate(rows[:n_analysed])}
+        for local, global_row in enumerate(mine):
+            b = where.get(int(global_row))
+            if b is None:
+                continue  # not analysed: zeros, and Fitted stays 0
+            table[local] = (
+                dominant[b], transitions[b],
+                0.0 if np.isnan(mean_e[b]) else mean_e[b], photons[b], 1.0,
+            )
+
+        interleaved = np.zeros((table.shape[0] * 2 + 1, table.shape[1]), dtype=float)
+        interleaved[1::2] = table
+        target = out_dir / f"{pathlib.Path(str(name)).stem}.{H2MM_COMPANION}"
+        with open(target, "w", newline="") as fh:
+            fh.write("\t".join(H2MM_COMPANION_COLUMNS) + "\t\n")
+            np.savetxt(fh, interleaved, delimiter="\t", fmt="%.6f")
+        written.append(target)
+    return written

@@ -404,8 +404,29 @@ class H2mmTool(MessagesMixin, QMainWindow):
             "(fluorescence-lifetime) bins so H2MM can separate states that share "
             "an apparent FRET E but differ in lifetime. 1 = off."
         )
+        # What the run leaves on disk. Two independent formats, not a fallback:
+        # the per-photon state assignment is what every later step reads, so it
+        # is worth being explicit about where it ends up.
+        self.cb_photon_hdf5 = QCheckBox("HDF5")
+        self.cb_photon_hdf5.setChecked(True)
+        self.cb_photon_hdf5.setToolTip(
+            "Write h2mm_photons.h5 — compact and fast to reload."
+        )
+        self.cb_photon_csv = QCheckBox("CSV")
+        self.cb_photon_csv.setChecked(True)
+        self.cb_photon_csv.setToolTip(
+            "Write h2mm_photons.csv — what every other tool can open."
+        )
+        photon_row = QWidget()
+        photon_h = QHBoxLayout(photon_row)
+        photon_h.setContentsMargins(0, 0, 0, 0)
+        photon_h.addWidget(self.cb_photon_hdf5)
+        photon_h.addWidget(self.cb_photon_csv)
+        photon_h.addStretch(1)
+
         of.addRow("Restarts:", self.sb_restarts)
         of.addRow("Seed:", self.sb_seed)
+        of.addRow("Photon table:", photon_row)
         of.addRow("Max iterations:", self.sb_max_iter)
         of.addRow("Min photons/burst:", self.sb_min_photons)
         of.addRow("Macro-time scale:", self.sb_time_scale)
@@ -746,6 +767,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
             criterion=self.cb_criterion.currentText(),
             n_restarts=self.sb_restarts.value(),
             seed=self.sb_seed.value(),
+            photon_hdf5=self.cb_photon_hdf5.isChecked(),
+            photon_csv=self.cb_photon_csv.isChecked(),
             max_iter=self.sb_max_iter.value(),
             min_photons=self.sb_min_photons.value(),
             time_scale=self.sb_time_scale.value(),

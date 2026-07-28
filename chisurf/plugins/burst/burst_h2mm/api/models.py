@@ -74,7 +74,14 @@ class H2mmSettings:
         falls back to exact EM.
     write_photons : bool
         Also write the per-photon Viterbi-state table (ndX-openable) alongside
-        the JSON summary.
+        the JSON summary. The master switch for the two format flags below.
+    photon_hdf5, photon_csv : bool
+        Which formats the per-photon table is written in. Both are independent
+        choices rather than a fallback chain: HDF5 is compact and fast to reload,
+        CSV is what every other tool can open, and there is no reason a folder
+        cannot carry both. If HDF5 is asked for and fails (no pytables), CSV is
+        written whether or not it was ticked — a run must not end with the state
+        assignment nowhere on disk.
     """
 
     streams: list[StreamSettings] = field(
@@ -99,6 +106,8 @@ class H2mmSettings:
     patience: int | None = None
     surrogate_path: str = ""
     write_photons: bool = True
+    photon_hdf5: bool = True
+    photon_csv: bool = True
 
     @property
     def state_counts(self) -> list[int]:

@@ -144,6 +144,7 @@ def run_analysis(
     result = _result_from_analysis(ana, settings)
     bundle = H2mmAnalysisBundle(analysis=ana, data=data, settings=settings)
     bundle.meta = meta
+    bundle.burst_df = df
     bundle.micro_time_ns = _micro_resolution(tttrs) * 1e9
     return result, bundle
 
@@ -167,7 +168,10 @@ def write_result_tables(
 
     Records every written path in ``result.output_paths``.
     """
-    from ..core.export import build_dwell_table, build_tables, write_csv, write_hdf5
+    from ..core.export import (
+        build_dwell_table, build_tables, write_burst_companions, write_csv,
+        write_hdf5,
+    )
 
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -194,10 +198,26 @@ def write_result_tables(
         stream_groups=stream_groups,
         micro_time_ns=(micro_ns if micro_ns else None),
     )
-    try:
-        result.output_paths["photons_hdf5"] = write_hdf5(tables.photons, out_dir / "h2mm_photons.h5")
-    except Exception:  # pragma: no cover - pytables optional; CSV is the fallback
-        result.output_paths["photons_csv"] = write_csv(tables.photons, out_dir / "h2mm_photons.csv")
+    # Formats are two independent choices, not a fallback chain: HDF5 is compact
+    # and fast to reload, CSV is what every other tool opens, and a folder can
+    # carry both. The fallback survives *inside* that: if HDF5 was asked for and
+    # cannot be written, the CSV is written whether or not it was ticked, so a
+    # run never ends with the state assignment nowhere on disk.
+    want_hdf5 = bool(getattr(bundle.settings, "photon_hdf5", True))
+    want_csv = bool(getattr(bundle.settings, "photon_csv", True))
+    if not (want_hdf5 or want_csv):
+        want_hdf5 = True
+    if want_hdf5:
+        try:
+            result.output_paths["photons_hdf5"] = write_hdf5(
+                tables.photons, out_dir / "h2mm_photons.h5"
+            )
+        except Exception:  # pragma: no cover - pytables optional
+            want_csv = True
+    if want_csv:
+        result.output_paths["photons_csv"] = write_csv(
+            tables.photons, out_dir / "h2mm_photons.csv"
+        )
     result.output_paths["bursts_csv"] = write_csv(tables.bursts, out_dir / "h2mm_bursts.csv")
 
     # Per-dwell table (one row per Viterbi dwell) — the unit ndxplorer filters on
@@ -220,6 +240,17 @@ def write_result_tables(
     result.output_paths["state_decays_csv"] = write_csv(
         decay_table(decays), out_dir / "h2mm_state_decays.csv"
     )
+
+    # Per-measurement companions beside the .bur files themselves, so a burst
+    # folder loaded in ndX carries the H2MM state as just another column and
+    # bursts can be gated on it. Written to the *analysis* folder, not this
+    # output folder: that is where the .bur files and their bv4/2c4 siblings are.
+    companions = write_burst_companions(
+        getattr(bundle, "burst_df", None), getattr(meta, "burst_rows", None),
+        bundle.data, ana.path, ana.fret, pathlib.Path(out_dir).parent,
+    )
+    for target in companions:
+        result.output_paths[f"companion_{target.stem}"] = str(target)
 
 
 def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:

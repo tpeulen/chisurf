@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **H2MM results now land beside the bursts, as `bh4` companions — ndX gates on
+  state with no configuration.** Two asks, one root cause. The photon-table
+  format was an implicit `try/except` (HDF5, CSV only if that raised), so a
+  folder could never carry both and which one you got depended on whether
+  pytables imported: it is now two independent settings with checkboxes
+  (*Photon table: HDF5 / CSV*), with the fallback kept *inside* them so a run
+  never ends with the state assignment nowhere. And "ndX should load all, so
+  bursts can be selected by H2MM state" turned out to be blocked, not missing:
+  `h2mm_bursts.csv` is one table for the whole folder indexed by a **compacted**
+  burst number — `extract_burst_photons` skips bursts below `min_photons` with a
+  bare `continue` — so one dropped burst shifts every later row and no
+  positional join is possible. Fixed at the root: the extractor gained
+  `with_rows=True` (which `.bur` rows survived), and H2MM writes **per-measurement
+  `bh4/<stem>.bh4`** companions — one row per burst *of that measurement*, in the
+  same zero-interleaved layout as `bv4`/`2c4`, with `H2MM Fitted = 0` where a
+  burst was not analysed so the grid never shifts. ndX merges any sibling folder
+  ending in `4` beside each `.bur`, so this needs no ndX change… except that
+  `read_burst_analysis` filled the ending list from `mfd.settings.json` and never
+  called its own `_discover_burst_extra_endings`, silently dropping any companion
+  nobody had configured (fixed in ndxplorer, landed in its commit `823939e`).
+  Verified on the real folder: 11 `bh4` files, ndX loads 2 495 bursts carrying
+  `H2MM State/Transitions/Mean E/Photons/Fitted`, states 0/1 at mean E 0.038 and
+  0.451. Also caught: `load_bur_dataframe` keeps the `.bur` zero-padding rows
+  (5 001 rows, 2 506 with `First File == "0"`), which must not become a companion
+  file.
+
 * **A bead model had no depth cue at all, and the demo's colours said nothing.**
   Ambient occlusion reaches every other sphere path in the viewer and never
   reached the bead path, so an integrative model was a flat sheet of coloured
