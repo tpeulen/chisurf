@@ -2,6 +2,19 @@
 
 ## 2026-07-28
 
+* **The in-viewport panel is a column with a splitter now, not an overlay.**
+  Drawn on top, the panel hides the molecule it is describing -- and the part it
+  hides is the part you just moved out from under it. So the scene renders into
+  the width the column does not take, as PyMOL's does, and the boundary is
+  draggable between a floor and 60% of the window.
+  - The viewport is set **every frame**, not only on resize: dragging the
+    splitter changes how much width the scene has without the widget being
+    resized at all. In framebuffer pixels, too -- `width()` is logical, and on a
+    high-DPI screen using it would render the scene into a quarter of the window.
+  - The column is filled as one rectangle rather than two floating boxes, or the
+    scene shows between the object list and the mouse block and reads as a hole
+    in the panel.
+
 * **The mouse-mode block and the movie transport are in the viewport too, and
   the table is PyMOL's own.** The block in the bottom-right corner is reference
   material -- someone reads it to find out what ctrl-shift-middle does -- so a

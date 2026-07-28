@@ -600,10 +600,22 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._far_clip = far_val
         self.update()
 
+    def scene_width(self) -> int:
+        """Width left for the 3-D scene once the panel's column is taken.
+
+        The panel is a *column*, not an overlay: drawn on top it would hide the
+        molecule it describes, and the part it hides is the part you just moved
+        out from under it.
+        """
+        gui = getattr(self, "_internal_gui", None)
+        if gui is None or not (gui.visible and gui.docked):
+            return max(self.width(), 1)
+        return max(int(self.width() - gui.column_width), 1)
+
     def _aspect(self) -> float:
         """Viewport width over height, for PyMOL's portrait framing correction."""
         height = max(self.height(), 1)
-        return max(self.width(), 1) / float(height)
+        return max(self.scene_width(), 1) / float(height)
 
     def set_field_of_view(self, fov: float) -> None:
         """Set the vertical field of view in degrees, re-framing the scene.
@@ -891,7 +903,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         gl = self._gl
         if gl is None:
             return
-        gl.glViewport(0, 0, width, max(height, 1))
+        gl.glViewport(0, 0, self.scene_width(), max(height, 1))
 
     #: A full-screen quad in clip space: two triangles, no matrices involved.
     _BACKGROUND_VERT = """
@@ -1012,6 +1024,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         gl = self._gl
         if gl is None:
             return
+
+        # Every frame, not only on resize: dragging the splitter changes how
+        # much width the scene has without the widget being resized at all.
+        # In *framebuffer* pixels -- `width()` is logical, and on a high-DPI
+        # screen the two differ by the device pixel ratio, which would render
+        # the scene into a quarter of the window.
+        ratio = float(self.devicePixelRatioF())
+        gl.glViewport(
+            0, 0,
+            max(int(self.scene_width() * ratio), 1),
+            max(int(self.height() * ratio), 1),
+        )
 
         # Effects that read the scene back -- silhouettes now, occlusion and
         # depth cue next -- need it rendered into a texture first. With none of
@@ -2055,6 +2079,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # cursor is over the panel it must not be dragging the camera.
         x, y = self._gui_pos(event)
         if self._gui_grab:
+            if self._internal_gui.is_dragging() and self._internal_gui.drag(x, y):
+                self.update()
             event.accept()
             return
         if not event.buttons():
@@ -2191,6 +2217,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             # The press belonged to the panel, so the release does too:
             # otherwise letting go over the scene picks whatever is under it.
             self._gui_grab = False
+            self._internal_gui.release()
             event.accept()
             return
 

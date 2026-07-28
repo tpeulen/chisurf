@@ -40,6 +40,7 @@ MENU_FG = (240, 240, 240)
 MENU_DISABLED_FG = (144, 144, 144)
 MENU_SEL_BG = (74, 74, 138)
 MENU_EDGE = (144, 144, 144)
+SPLITTER_FG = (96, 96, 96, 230)
 
 # The bottom-right block's palette, read off PyMOL's own.
 MODE_TITLE_FG = (0, 224, 0)
@@ -133,9 +134,17 @@ class InternalGui:
     FONT_PT = 10
     MENU_ITEM_H = 18
     MENU_PAD = 6
+    #: Grab width of the splitter, in pixels.
+    SPLITTER_W = 6
+    #: How narrow and how wide the column may be dragged.
+    MIN_COLUMN = 120.0
+    MAX_COLUMN_FRACTION = 0.6
 
     def __init__(self, run_command: Callable[[str], None] | None = None) -> None:
         self.visible = True
+        #: Docked into a column of its own, PyMOL-style, rather than floating
+        #: over the scene.
+        self.docked = True
         self.rows: list[GuiRow] = []
         self._run_command = run_command
         self._row_rects: list[Rect] = []
@@ -153,6 +162,13 @@ class InternalGui:
         self.selecting = "Residues"
         self.state = (1, 1)
         self._mode_rect = Rect(0, 0, 0, 0)
+        #: Width of the column the panel and the block live in. The scene is
+        #: rendered to the *left* of it, as PyMOL does, rather than under it:
+        #: an overlay hides the molecule it is describing, and the part it hides
+        #: is the part you just moved out of the way.
+        self.column_width = 230.0
+        self._splitter = Rect(0, 0, 0, 0)
+        self._dragging_splitter = False
         self._movie_rects: list[tuple[Rect, str]] = []
         self._block = Rect(0, 0, 0, 0)
 
@@ -186,12 +202,22 @@ class InternalGui:
         if name_width is not None:
             self._name_width = float(name_width)
 
+        column = self.column_width if self.docked else 0.0
+        self._splitter = Rect(
+            width - column - self.SPLITTER_W / 2, 0.0, self.SPLITTER_W, float(height)
+        ) if self.docked else Rect(0, 0, 0, 0)
+
         buttons_w = self.BUTTON_W * len(OBJECT_MENUS)
         panel_w = self.PAD + self._name_width + self.PAD + buttons_w + self.PAD
+        if self.docked:
+            panel_w = max(panel_w, column)
         panel_h = self.ROW_H * len(self.rows) + 2 * self.PAD if self.rows else 0
-        self._panel = Rect(
-            width - self.MARGIN - panel_w, self.MARGIN, panel_w, panel_h
-        )
+        if self.docked:
+            self._panel = Rect(width - column, 0.0, column, panel_h)
+        else:
+            self._panel = Rect(
+                width - self.MARGIN - panel_w, self.MARGIN, panel_w, panel_h
+            )
 
         self._row_rects = []
         self._button_rects = []
@@ -224,12 +250,18 @@ class InternalGui:
         rows = len(rows_for(self.mouse_mode))
         block_h = self.PAD + line_h * (rows + 4) + self.PAD + self.ROW_H + self.PAD
 
-        self._block = Rect(
-            width - self.MARGIN - block_w,
-            height - self.MARGIN - block_h,
-            block_w,
-            block_h,
-        )
+        if self.docked:
+            block_w = max(block_w, self.column_width)
+            self._block = Rect(
+                width - self.column_width, height - block_h, block_w, block_h
+            )
+        else:
+            self._block = Rect(
+                width - self.MARGIN - block_w,
+                height - self.MARGIN - block_h,
+                block_w,
+                block_h,
+            )
         self._mode_rect = Rect(
             self._block.x + self.PAD, self._block.y + self.PAD, block_w, line_h
         )
@@ -279,6 +311,9 @@ class InternalGui:
         if not self.visible:
             return Hit("")
 
+        if self.docked and self._splitter.contains(x, y):
+            return Hit("splitter")
+
         if self._mode_rect.contains(x, y):
             return Hit("mode")
         for rect, command in self._movie_rects:
@@ -305,6 +340,23 @@ class InternalGui:
         return bool(self.hit_test(x, y).kind)
 
     # ── interaction ──────────────────────────────────────────────────────
+    def drag(self, x: float, y: float) -> bool:
+        """Continue a splitter drag. Returns whether anything moved."""
+        if not self._dragging_splitter:
+            return False
+        widest = self._width * self.MAX_COLUMN_FRACTION
+        self.column_width = min(max(self._width - x, self.MIN_COLUMN), widest)
+        self.layout(self._width, self._height)
+        return True
+
+    def release(self) -> None:
+        """End a splitter drag."""
+        self._dragging_splitter = False
+
+    def is_dragging(self) -> bool:
+        """Whether the splitter is being dragged."""
+        return self._dragging_splitter
+
     def mouse_move(self, x: float, y: float) -> bool:
         """Track hover. Returns whether a redraw is needed."""
         hit = self.hit_test(x, y)
@@ -341,6 +393,10 @@ class InternalGui:
                     rect = self._button_rects[hit.row][key]
                     self._open_menu(f"{title}:", row.name, entries, rect.x, rect.y + rect.h)
                     break
+            return True
+
+        if hit.kind == "splitter":
+            self._dragging_splitter = True
             return True
 
         if hit.kind == "mode":
@@ -476,10 +532,25 @@ class InternalGui:
         painter.setFont(font)
         metrics = QtGui.QFontMetrics(font)
 
+        if self.visible and self.docked:
+            # One continuous column, not two floating boxes with the scene
+            # showing between them: the gap reads as a hole in the panel.
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor(*PANEL_BG))
+            painter.drawRect(QtCore.QRectF(
+                self._width - self.column_width, 0.0,
+                self.column_width, float(self._height),
+            ))
         if self.visible and self.rows:
             self._paint_panel(painter, QtGui, QtCore, metrics)
         if self.visible:
             self._paint_block(painter, QtGui, QtCore)
+        if self.visible and self.docked:
+            painter.setPen(QtCore.Qt.NoPen)
+            painter.setBrush(QtGui.QColor(*SPLITTER_FG))
+            painter.drawRect(QtCore.QRectF(
+                self._splitter.x + self.SPLITTER_W / 2 - 1, 0.0, 2.0, self._height
+            ))
         for menu in self._menus:
             self._paint_menu(painter, QtGui, QtCore, menu)
 

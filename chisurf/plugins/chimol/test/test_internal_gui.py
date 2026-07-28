@@ -293,3 +293,49 @@ def test_the_block_swallows_clicks_that_land_on_its_text(gui):
     gui.commands.clear()
     assert gui.mouse_press(*point) is True
     assert gui.commands == []
+
+
+# --------------------------------------------------------------------------- #
+# The splitter
+# --------------------------------------------------------------------------- #
+def test_the_scene_keeps_the_width_the_column_does_not_take(gui):
+    """Docked, not overlaid.
+
+    An overlay hides the molecule it is describing, and the part it hides is the
+    part you just moved out from under it.
+    """
+    assert gui.docked is True
+    assert gui.panel_rect.x == pytest.approx(WIDTH - gui.column_width)
+    assert gui.block_rect.x == pytest.approx(WIDTH - gui.column_width)
+
+
+def test_dragging_the_splitter_resizes_the_column(gui):
+    """And the column is what decides how much width the scene gets."""
+    handle = gui._splitter
+    gui.mouse_press(handle.x + handle.w / 2, HEIGHT / 2)
+    assert gui.is_dragging() is True
+
+    gui.drag(WIDTH - 320, HEIGHT / 2)
+    assert gui.column_width == pytest.approx(320)
+    assert gui.panel_rect.x == pytest.approx(WIDTH - 320)
+
+    gui.release()
+    assert gui.is_dragging() is False
+
+
+def test_the_column_cannot_be_dragged_away_or_over_the_scene(gui):
+    """Bounds on both ends, or the panel becomes unusable or takes the window."""
+    gui.mouse_press(gui._splitter.x + 1, HEIGHT / 2)
+
+    gui.drag(WIDTH - 5, HEIGHT / 2)
+    assert gui.column_width >= gui.MIN_COLUMN
+
+    gui.drag(10, HEIGHT / 2)
+    assert gui.column_width <= WIDTH * gui.MAX_COLUMN_FRACTION
+
+
+def test_the_splitter_takes_its_own_press_only(gui):
+    """A press one pixel away belongs to the scene, not to the handle."""
+    handle = gui._splitter
+    assert gui.hit_test(handle.x + handle.w / 2, HEIGHT / 2).kind == "splitter"
+    assert gui.hit_test(handle.x - 20, HEIGHT / 2).kind == ""
