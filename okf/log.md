@@ -1,5 +1,25 @@
 # Update Log
 
+## 2026-07-29
+
+* **The exported extension categories still carried a consuming application's
+  brand** ([PRD-44](/prds/prd-44.md), mmfdb `ce2560f`). PRD-44 de-branded the
+  dictionary's schema-mapping tags and stopped there; the five local extension
+  categories the flrCIF exporter writes (`_chisurf_probe_spectrum` and four
+  siblings) were still branded, so every file MMFDB disseminates named ChiSurf
+  in its own category namespace. They are export-only — no table, no DDL,
+  nothing to migrate — so unlike the deliberately out-of-scope
+  `flr_chisurf_parameter` the `_mmfdb_*` rename applies cleanly. The importer
+  reads both spellings through one seam
+  (`mmfdb.cif_writer.canonical_extension_category()` over an explicit alias
+  table). Guardrails: the importer fixture is parametrised over both
+  namespaces, the alias table is pinned as a pure rebranding with standard
+  categories passing through untouched, an AST scan of `repository.py` fails on
+  any remaining `_chisurf_*` literal, and a real export must carry no
+  `_chisurf_`-prefixed category line. 768 mmfdb tests green. Still branded and
+  deliberately deferred: the CIF data block name `data_chisurf_flr_export`,
+  which has consumers in both repositories.
+
 ## 2026-07-28
 
 * **The timeline thumb follows the movie, not only its own clicks.** The panel
