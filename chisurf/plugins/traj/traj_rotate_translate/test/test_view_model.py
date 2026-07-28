@@ -4,8 +4,19 @@ import numpy as np
 import pytest
 
 
-def _tiny_trajectory(path: str, n_frames: int = 4) -> None:
-    """Write a minimal *n_frames* three-atom trajectory to *path* (.h5)."""
+def _tiny_trajectory(path: str, n_frames: int = 4, times: np.ndarray | None = None) -> None:
+    """Write a minimal *n_frames* three-atom trajectory to *path* (.h5).
+
+    Parameters
+    ----------
+    path : str
+        Destination ``.h5`` trajectory path.
+    n_frames : int
+        Number of frames to write.
+    times : numpy.ndarray, optional
+        Frame times. Defaults to mdtraj's own ``0, 1, 2, …``; pass an explicit
+        array to tell a carried-through time axis apart from a write counter.
+    """
     md = pytest.importorskip("mdtraj")
     topology = md.Topology()
     chain = topology.add_chain()
@@ -14,7 +25,7 @@ def _tiny_trajectory(path: str, n_frames: int = 4) -> None:
         topology.add_atom(name, md.element.carbon, residue)
     rng = np.random.default_rng(0)
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
-    md.Trajectory(xyz=xyz, topology=topology).save(path)
+    md.Trajectory(xyz=xyz, topology=topology, time=times).save(path)
 
 
 def test_log_starts_ready():
@@ -122,6 +133,28 @@ def test_save_respects_stride(tmp_path):
     model.save_rotated_translated(str(target))
 
     assert md.load(str(target)).n_frames == 3
+
+
+def test_save_keeps_the_source_time_axis(tmp_path):
+    """A rigid-body transform changes coordinates, not time (RF-708).
+
+    The tool used to write ``0, 1, 2, …`` from the chunk write index, so a
+    strided output claimed unit frame spacing — and the sibling FRET tab
+    exports ``RDA(t)`` against exactly that axis.
+    """
+    md = pytest.importorskip("mdtraj")
+    from chisurf.plugins.traj.traj_rotate_translate.view_model import RotateTranslateViewModel
+
+    source = tmp_path / "traj.h5"
+    target = tmp_path / "out.h5"
+    _tiny_trajectory(str(source), n_frames=6, times=np.arange(6, dtype=np.float32) * 10.0)
+
+    model = RotateTranslateViewModel()
+    model.set_trajectory(str(source))
+    model.stride = 2
+    model.save_rotated_translated(str(target))
+
+    np.testing.assert_allclose(md.load(str(target)).time, [0.0, 20.0, 40.0])
 
 
 def test_view_spec_loads():

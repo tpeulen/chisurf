@@ -4,11 +4,19 @@ import numpy as np
 import pytest
 
 
-def _clash_trajectory(path: str) -> None:
+def _clash_trajectory(path: str, times: np.ndarray | None = None) -> None:
     """Write a four-frame three-atom trajectory to *path* (.h5).
 
     Frames 0 and 2 are clash-free (all atoms ~1 nm apart); frames 1 and 3 each
     contain a pair of atoms only 0.01 nm apart (a clash).
+
+    Parameters
+    ----------
+    path : str
+        Destination ``.h5`` trajectory path.
+    times : numpy.ndarray, optional
+        Frame times. Defaults to mdtraj's own ``0, 1, 2, 3``; pass an explicit
+        array to tell a carried-through time axis apart from a write counter.
     """
     md = pytest.importorskip("mdtraj")
     topology = md.Topology()
@@ -26,7 +34,7 @@ def _clash_trajectory(path: str) -> None:
     xyz[2] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
     # frame 3 – atoms 1 and 2 clash (0.01 nm apart)
     xyz[3] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.01, 0.0, 0.0]]
-    md.Trajectory(xyz=xyz, topology=topology).save(path)
+    md.Trajectory(xyz=xyz, topology=topology, time=times).save(path)
 
 
 def test_log_starts_ready():
@@ -103,6 +111,29 @@ def test_save_clash_free_drops_clashing_frames(tmp_path):
     assert result.n_frames == 2
     assert result.n_atoms == 3
     assert "Clash-free trajectory saved" in model.log_html()
+
+
+def test_kept_frames_keep_their_source_times(tmp_path):
+    """The discarded frames must leave gaps in the time axis (RF-708).
+
+    A running write counter renumbered the survivors ``0, 1, …``, hiding both
+    the removals and the read stride from every downstream reader.
+    """
+    md = pytest.importorskip("mdtraj")
+    from chisurf.plugins.traj.traj_remove_clashes.view_model import RemoveClashesViewModel
+
+    source = tmp_path / "traj.h5"
+    target = tmp_path / "clashfree.h5"
+    _clash_trajectory(str(source), times=np.arange(4, dtype=np.float32) * 5.0)
+
+    model = RemoveClashesViewModel()
+    model.set_trajectory(str(source))
+    model.atom_selection = "all"
+    model.min_distance = 0.5
+    model.save_clash_free(str(target))
+
+    # frames 1 and 3 clash; the survivors keep t = 0 and t = 10, not 0 and 1.
+    np.testing.assert_allclose(md.load(str(target)).time, [0.0, 10.0])
 
 
 def test_view_spec_loads():

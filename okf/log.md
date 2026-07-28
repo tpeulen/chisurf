@@ -2,6 +2,27 @@
 
 ## 2026-07-28
 
+* **A prepared trajectory kept its coordinates and lost its clock (RF-708).**
+  The three streaming writers in the [trajectory tools](/plugins/trajectory.md)
+  — Align, Rot Translate and Remove Clashed — wrote their HDF5 `time` axis as
+  `np.arange` over the *chunk write index*, so every output claimed frames
+  `0, 1, 2, …` no matter what it had read. The user-set **Stride** never
+  reached the axis: a trajectory read every 32nd frame came back asserting unit
+  spacing, and Remove Clashed renumbered its survivors so the removals left no
+  trace. That is not cosmetic — the sibling FRET tab in the same window exports
+  `RDA(t)` and `κ²(t)` per frame *against that axis*
+  ([md-trajectory-fret](/usecases/md-trajectory-fret.md)), so any rate or
+  correlation time fitted from a prepared trajectory was off by the stride
+  factor with nothing on screen to say so. All three now append `chunk.time`,
+  which was already in memory: a transform changes coordinates, not time, so
+  Align and Rot Translate carry it through unchanged, and Remove Clashed
+  indexes it by the kept-frame selection so the gaps stay visible. A source
+  whose own times are non-monotonic is deliberately *not* special-cased —
+  substituting an invented monotonic axis is the bug, not the cure. One test
+  per tool, each writing an explicit source axis so a carried-through one is
+  distinguishable from a counter (`traj_align`, `traj_rotate_translate`,
+  `traj_remove_clashes` `test/test_view_model.py`, 41 green).
+
 * **Documenting the backdrop meant running the commands the guide prints, and
   two of them were wrong.** The molecular-viewer guide now has *A picture behind
   the scene, so transparency reads* -- `bg_image stars|nebula|<file>|off`, why a

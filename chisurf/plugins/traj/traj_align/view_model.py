@@ -122,6 +122,11 @@ class AlignTrajectoryViewModel:
         chunk superposed onto the first frame using :meth:`atom_indices`, and the
         aligned coordinates appended to a fresh HDF5 trajectory.
 
+        Aligning changes coordinates, not time: each chunk's own ``time`` array
+        is carried through unchanged, so a strided read keeps the source frame
+        times (``0, 32, 64, …`` at ``stride=32``) instead of a write-index
+        counter that would claim unit frame spacing (RF-708).
+
         Parameters
         ----------
         target_filename : str
@@ -152,13 +157,11 @@ class AlignTrajectoryViewModel:
 
         table = tables.open_file(target_filename, "a")
         try:
-            for i, chunk in enumerate(md.iterload(filename, chunk=chunk_size, stride=stride)):
+            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride):
                 chunk = chunk.superpose(frame_0, frame=0, atom_indices=atom_indices)
                 xyz = chunk.xyz.copy()
                 table.root.coordinates.append(xyz)
-                table.root.time.append(
-                    np.arange(i * chunk_size, i * chunk_size + xyz.shape[0], dtype=np.float32)
-                )
+                table.root.time.append(np.asarray(chunk.time, dtype=np.float32))
         finally:
             table.close()
         self.append_log(f"Aligned trajectory saved: {target_filename}")

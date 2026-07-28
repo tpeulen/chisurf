@@ -98,6 +98,11 @@ class RotateTranslateViewModel:
         Angstrom-to-nanometre convention of this tool), and the transformed
         coordinates are appended to a fresh HDF5 trajectory.
 
+        A rigid-body transform changes coordinates, not time: each chunk's own
+        ``time`` array is carried through unchanged, so a strided read keeps the
+        source frame times (``0, 64, 128, …`` at ``stride=64``) instead of a
+        write-index counter that would claim unit frame spacing (RF-708).
+
         Parameters
         ----------
         target_filename : str
@@ -134,9 +139,7 @@ class RotateTranslateViewModel:
                     rotate(xyz, rotation_matrix)
                     translate(xyz, translation_vector)
                     table.root.coordinates.append(xyz)
-                    table.root.time.append(
-                        np.arange(i * chunk_size, i * chunk_size + xyz.shape[0], dtype=np.float32)
-                    )
+                    table.root.time.append(np.asarray(chunk.time, dtype=np.float32))
                     if (i + 1) % 10 == 0:
                         self.append_log(f"Processed {i + 1} chunks")
             finally:

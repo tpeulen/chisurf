@@ -164,6 +164,10 @@ class RemoveClashesViewModel:
         closer than :meth:`min_distance_nm`; frames with a flag ``< 1`` are kept
         and appended to a fresh HDF5 trajectory.
 
+        The kept frames carry their **own** source times rather than a running
+        write counter, so the gaps left by the discarded frames — and the read
+        stride — stay visible on the time axis (RF-708).
+
         Parameters
         ----------
         target_filename : str
@@ -198,11 +202,7 @@ class RemoveClashesViewModel:
             xyz_clash_free = np.take(xyz, selection, axis=0)
             with tables.open_file(target_filename, "a") as table:
                 table.root.coordinates.append(xyz_clash_free)
-                times = np.arange(
-                    table.root.time.shape[0],
-                    table.root.time.shape[0] + xyz_clash_free.shape[0],
-                    dtype=np.float32,
-                )
+                times = np.asarray(chunk.time, dtype=np.float32)[selection]
                 table.root.time.append(times)
         self.append_log(f"Clash-free trajectory saved: {target_filename}")
 
