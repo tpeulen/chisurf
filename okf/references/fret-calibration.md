@@ -251,7 +251,7 @@ back to the physically-motivated light-path prior.
   tool (`accurate_fret.view.json` + `AccurateFretViewModel`) over the core:
   reads a burst table (delimited text/`.npz`, columns auto-mapped from the
   ndX/`.bur`/API naming conventions via `COLUMN_HINTS`) **or the live columns of
-  an open ndXplorer window**, shows the factor/population tables and the E-S and
+  an open ndX window**, shows the factor/population tables and the E-S and
   E-τ scatter plots with the static and dynamic lines, and can share the
   calibration in the session (`register_calibration`) or push it to ndX. Headless
   `csc accurate-fret`, RPC `accurate_fret.calibrate{,_file}`. Light paths saved by
@@ -376,7 +376,7 @@ back to the physically-motivated light-path prior.
   View shows and what regularizes the calibration are the same numbers.
   (`test/fitting/test_global_view_parameters.py`.)
 - **ndX window locator** — `calibration_bridge.find_ndx_windows()` finds the
-  in-process ndXplorer windows among the top-level Qt widgets (empty head-less),
+  in-process ndX windows among the top-level Qt widgets (empty head-less),
   which is what the tool's push/pull buttons use.
 - **AutoForm plot ranges** — `PlotSection` gained `x_range`/`y_range`; without
   them one acceptor-only burst (no donor signal → unbounded "efficiency") squeezes
@@ -385,7 +385,7 @@ back to the physically-motivated light-path prior.
 ## What is missing (later phases)
 
 - **ndx toolbar push button** — resolved twice over: the `accurate_fret` tool's
-  *📤 To ndXplorer* action, and ndX's own *🎯 Optimize FRET calibration* toolbar
+  *📤 To ndX* action, and ndX's own *🎯 Optimize FRET calibration* toolbar
   button (`optimize_calibration_from_ndx`). Editor-tree sync inside the push stays
   best-effort (derived columns already update via `ndx.constants`).
 - **Multi-acceptor cross-leakage** — resolved: `corrected_es_general` un-mixes

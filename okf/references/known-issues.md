@@ -870,7 +870,7 @@ be, because three of them were defects in the code rather than in the tests.
 - `modules/ndxplorer/ndxplorer/utils/performance_optimizations.py` still calls
   `np.bool8`, removed in NumPy 2. In-process it is covered by
   `chisurf/core/compat.py` (chisurf is imported first, which restores the alias),
-  but ndXplorer run standalone would raise. The root fix belongs in the ndxplorer
+  but ndX run standalone would raise. The root fix belongs in the ndxplorer
   repository — left alone here only because that working tree currently holds
   another instance's uncommitted work.
 
@@ -1043,17 +1043,43 @@ be, because three of them were defects in the code rather than in the tests.
   the dependency); it is recorded rather than fixed here because it belongs to
   the burst subsystem and not to the PDA finding this run closed.
 
+
 ## Burst GUI follow-ups (opened 2026-07-28)
 
-**ndX rename — the prose half.** Every *GUI-visible* "ndXplorer" is now "ndX"
-(window titles, actions, tooltips, status lines, the accurate-FRET help modal,
-`server/burst_consumers.json`). Not done, and deliberately left: docstrings,
-comments and READMEs still say ndXplorer, as do identifiers (`NDXplorer` class,
-`ndxplorer` package/RPC ids), which are not user-facing. A first attempt used a
-quote-matching regex and **silently skipped files** — it missed
-`burst_selection/gui/tool.py` entirely — so the remaining sweep should enumerate
-call sites explicitly (`setToolTip|addAction|QLabel|setText|setWindowTitle|
-showMessage|QAction`) rather than trust a regex over whole files.
+**MMFDB: a placeholder user named like the bootstrap admin locks the deployment
+out.** Found while running the ndX launcher tests, which are red on it
+(`test/plugins/test_ndxplorer_mmfdb_launcher.py`, 2 failures:
+`ValueError: Bootstrap administrator 'admin' already exists`). Registering an
+artifact records its actor and auto-creates that user as a **plain row**
+(`is_admin = 0`, no password). When the actor's name is also the configured
+bootstrap admin — the common case, both are `admin` — the later one-shot
+bootstrap finds no *active* admin, tries to create one, hits that row and
+raises. The deployment then has no administrator and no way to get one: every
+embedded `MMFDBClient(inprocess=True)` fails to start from then on.
+
+Minimal reproduction, on a fresh database:
+
+```python
+with MFDatabase(resolve_database_path()) as db:      # creates a plain 'admin' row
+    register_raw_measurement(str(some_file), db=db, is_public=True)
+MMFDBClient(inprocess=True)                          # ValueError
+```
+
+The fix belongs in `mmfdb/security/bootstrap.py::bootstrap_local_admin`, which
+already knows how to *promote* a placeholder row (no admin rights, no password,
+no passwordless login) but restricts that path to `SERVICE_USER_ID`:
+
+```python
+if user_id != SERVICE_USER_ID or existing[0] or existing[1] or existing[2]:
+    raise ValueError(f"Bootstrap administrator {user_id!r} already exists")
+```
+
+Dropping the `user_id != SERVICE_USER_ID` clause promotes any placeholder while
+still never resetting a row that carries admin rights, a password or
+passwordless login — the security intent the guard was written for. **Not
+applied:** editing that file was refused by this environment's guard on
+authentication code, so it needs a human to apply it in the `mmfdb` repository,
+with a test that a placeholder actor row does not block the bootstrap.
 
 **H2MM ↔ ndX.** Raised but not investigated: the H2MM outputs open in ndX and
 the per-burst `bh4` merges, but the dwell grain has no automated consumer

@@ -288,7 +288,7 @@ def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "
 
     One tab-separated file per source TTTR named after the ``.bur`` stem
     (``<stem>.2c4``), part of the ``…4`` burst-companion family (``bg4`` / ``bv4``
-    / ``2c4`` …). Per-stem consumers — ndXplorer and the burst browser — join it
+    / ``2c4`` …). Per-stem consumers — ndX and the burst browser — join it
     to the burst table by stem, so it must match the ``.bur`` name (no ``_0``).
     """
     column = column_for_variant(variant)

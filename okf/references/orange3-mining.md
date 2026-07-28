@@ -195,7 +195,7 @@ This is the highest-value *new capability* in the tree, and it maps onto
 several open ChiSurf problems:
 
 * rank 2D projections of a burst-parameter table by class separation or
-  bimodality (ndXplorer today asks the user to pick axes by hand),
+  bimodality (ndX today asks the user to pick axes by hand),
 * rank detector/channel pairs by correlation amplitude,
 * rank candidate fit models by χ²ᵣ/AIC and apply the winner,
 * rank filter/gate combinations by the purity of the resulting population.
@@ -386,7 +386,7 @@ superseded by MMFDB.
 4. ✅ **Declared message groups** — non-modal, addressable, testable widget
    messages layered on the existing dialog seam. **Landed 2026-07-27.**
 5. **VizRank** — the one genuinely new user-facing capability; start with
-   burst-parameter projection ranking in ndXplorer.
+   burst-parameter projection ranking in ndX.
 6. **Report system** on the dockable-tool base, rendered from the view specs
    that already carry every control's description.
 7. **Data-matched settings contexts**, then the **safe-expression layer**, the

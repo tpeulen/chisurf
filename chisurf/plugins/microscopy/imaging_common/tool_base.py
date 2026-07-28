@@ -94,8 +94,8 @@ class ImagingMapTool(QtWidgets.QWidget):
         a_h5 = toolbar.addAction(getattr(self.model, "HDF5_ACTION_LABEL", f"{Glyphs.ADD} Add to HDF5"))
         a_h5.setToolTip("Add these fields to a standard imaging HDF5 (or create it).")
         a_h5.triggered.connect(self.model.add_to_hdf5)
-        a_ndx = toolbar.addAction("🧭 ndxplorer")
-        a_ndx.setToolTip("Explore the per-pixel table in ndxplorer (shared, live dataset).")
+        a_ndx = toolbar.addAction("🧭 ndX")
+        a_ndx.setToolTip("Explore the per-pixel table in ndX (shared, live dataset).")
         a_ndx.triggered.connect(self._open_ndxplorer)
         self._ndx_window = None
         toolbar.addSeparator()
@@ -191,9 +191,9 @@ class ImagingMapTool(QtWidgets.QWidget):
             return
         try:
             try:
-                from ndxplorer import ndX
+                from ndxplorer import NDXplorer
             except Exception:
-                from ndxplorer.core.plot_main import ndX
+                from ndxplorer.core.plot_main import NDXplorer
 
             from .base import build_ndx_data_source
 
@@ -205,7 +205,7 @@ class ImagingMapTool(QtWidgets.QWidget):
 
                     win = self._ndx_window = make_ndxplorer()
                 except Exception:
-                    win = self._ndx_window = ndX()
+                    win = self._ndx_window = NDXplorer()
                 win.setWindowTitle("ndX — imaging")
             win.show()
             win.raise_()

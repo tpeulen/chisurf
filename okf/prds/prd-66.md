@@ -2,7 +2,7 @@
 type: PRD
 prd: "66"
 title: "PRD-66: chitable — single table seam and DataFrameEditor replacement"
-description: One model/view table family shared by ChiSurf and ndXplorer — value filtering, column hiding, hide-empty columns, colour-by-value, column picker, copy/export — replacing a third-party DataFrameEditor and dozens of hand-rolled QTableWidgets, and dropping the last third-party GUI dependency.
+description: One model/view table family shared by ChiSurf and ndX — value filtering, column hiding, hide-empty columns, colour-by-value, column picker, copy/export — replacing a third-party DataFrameEditor and dozens of hand-rolled QTableWidgets, and dropping the last third-party GUI dependency.
 status: in-progress
 phase: "unassigned"
 resource: chisurf/gui/widgets/chitable/
@@ -19,12 +19,12 @@ internals, no third-party GUI toolkit.
 
 # Problem
 
-Tables in ChiSurf and ndXplorer were historically a third-party `DataFrameEditor`.
+Tables in ChiSurf and ndX were historically a third-party `DataFrameEditor`.
 That widget supplied value-scaled cell backgrounds, per-column formatting,
 chunked loading and a real context menu; nothing in-tree did. As the third-party
 plotting toolkit was retired, those features were left stranded, and each call
 site grew its own `QTableWidget` — roughly forty across the plugins, four in
-ndXplorer — sharing nothing.
+ndX — sharing nothing.
 
 The concrete symptoms:
 
@@ -36,7 +36,7 @@ The concrete symptoms:
 * **No shared machinery.** No `QSortFilterProxyModel` existed anywhere in either
   repository, no colour-by-value delegate, no table→CSV export, no reusable
   column picker.
-* **The richest table was also the buggiest.** ndXplorer's editor was
+* **The richest table was also the buggiest.** ndX's editor was
   item-based (`df.iloc[i, j]` per cell, rebuilt on every keystroke), tested
   numeric-ness with `np.issubdtype` — which *raises* on the nullable dtypes the
   pyarrow burst reader produces — and wrote edits through the view row while
@@ -70,9 +70,9 @@ alpha-composited so it works in dark themes.
 `ForeignTableProxy` layers the features onto a model that must keep its own
 semantics, so tables like the Global View's parameter table are not rewritten.
 
-## ndXplorer
+## ndX
 
-ndXplorer imports chitable optionally with a local fallback, keeping it
+ndX imports chitable optionally with a local fallback, keeping it
 standalone-installable. Its changes land in its own repository.
 
 Full architecture in the [chitable subsystem concept](/subsystems/gui-tables.md).
@@ -90,7 +90,7 @@ Full architecture in the [chitable subsystem concept](/subsystems/gui-tables.md)
 - [x] Legacy burst selector migrated.
 - [x] `guidata` removed from `pixi.toml`, the rattler recipe and
       `build_tools/setup_runtime.sh`, with a guardrail test.
-- [x] ndXplorer's `DataFrameEditor` backed by chitable with a fixed fallback;
+- [x] ndX's `DataFrameEditor` backed by chitable with a fixed fallback;
       the extension-dtype and filtered-edit-row defects regression-tested.
 - [ ] Remaining hand-rolled plugin tables migrated (mmfdb_admin ~26,
       lightpath_simulator, burst_browser's `_BurstTableModel`).
@@ -101,6 +101,6 @@ Full architecture in the [chitable subsystem concept](/subsystems/gui-tables.md)
 
 The AutoForm `table` section and its item-based `TableWidget` stay as they are:
 they are the right tool for small fixed-order record tables, and five view
-schemes depend on them. ndXplorer's Gaussian-fit and report-wizard tables mix
+schemes depend on them. ndX's Gaussian-fit and report-wizard tables mix
 `setCellWidget` combo boxes with `UserRole` metadata; porting them is a
 behavioural rewrite, not a drop-in, and is deferred.

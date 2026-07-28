@@ -85,7 +85,7 @@ try:
 except Exception:
     burstio = None
 try:
-    # Both moved when ndXplorer was reorganised (``ndxplorer.reader`` ->
+    # Both moved when ndX was reorganised (``ndxplorer.reader`` ->
     # ``ndxplorer.io.reader``, ``ndxplorer.plot_main`` -> the package root).
     # Guarded imports turn that into a silently missing feature, so the paths
     # are covered by a test rather than only by this ``except``.
@@ -2294,19 +2294,19 @@ class TraceBrowser(QWidget):
         selected_paths = self._selected_paths()
         if not selected_paths:
             try:
-                QMessageBox.information(self, "ndX", "Please select a trace file first.")
+                dialogs.information(self, "ndX", "Please select a trace file first.")
             except Exception:
                 pass
             return
         if tttrlib is None:
             try:
-                QMessageBox.critical(self, "ndX", "tttrlib is not available.")
+                dialogs.error(self, "ndX", "tttrlib is not available.")
             except Exception:
                 pass
             return
         if NDXplorer is None or ndx_reader is None:
             try:
-                QMessageBox.critical(self, "ndX", "ndX components are not available.")
+                dialogs.error(self, "ndX", "ndX components are not available.")
             except Exception:
                 pass
             return
@@ -2342,7 +2342,7 @@ class TraceBrowser(QWidget):
 
             if bids is None or getattr(bids, 'size', 0) == 0:
                 try:
-                    QMessageBox.warning(self, "ndX", "No data to compute burst IDs.")
+                    dialogs.warning(self, "ndX", "No data to compute burst IDs.")
                 except Exception:
                     pass
                 return
@@ -2367,7 +2367,7 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Could not create analysis directories: {e}")
                 try:
-                    QMessageBox.critical(self, "ndX", f"Failed to create analysis folder:\n{e}")
+                    dialogs.error(self, "ndX", f"Failed to create analysis folder:\n{e}")
                 except Exception:
                     pass
                 return
@@ -2420,7 +2420,7 @@ class TraceBrowser(QWidget):
             except Exception as e:
                 logging.exception(f"TraceBrowser: Failed to write BUR: {e}")
                 try:
-                    QMessageBox.critical(self, "ndX", f"Failed to write .bur file:\n{e}")
+                    dialogs.error(self, "ndX", f"Failed to write .bur file:\n{e}")
                 except Exception:
                     pass
                 return
@@ -2462,7 +2462,7 @@ class TraceBrowser(QWidget):
                     # Use NDXplorer's loader to read the burst analysis directory
                     ndx.open_files(file_handles=str(analysis_dir), file_type="burst_dir", append=False)
                 except Exception as _e:
-                    logging.debug(f"TraceBrowser: NDXplorer open_files failed, continuing with preloaded DataSource: {_e}")
+                    logging.debug(f"TraceBrowser: ndX open_files failed, continuing with preloaded DataSource: {_e}")
 
                 self.ndxplorer_windows.append(ndx)
 
@@ -2480,18 +2480,18 @@ class TraceBrowser(QWidget):
                         event.accept()
                 ndx.closeEvent = _close_wrapper
 
-                logging.info("TraceBrowser: NDXplorer opened successfully")
+                logging.info("TraceBrowser: ndX opened successfully")
             except Exception as e:
-                logging.exception(f"TraceBrowser: Failed to open NDXplorer: {e}")
+                logging.exception(f"TraceBrowser: Failed to open ndX: {e}")
                 try:
-                    QMessageBox.critical(self, "ndX", f"Failed to open ndX:\n{e}")
+                    dialogs.error(self, "ndX", f"Failed to open ndX:\n{e}")
                 except Exception:
                     pass
 
         except Exception as e:
             logging.exception(f"TraceBrowser: One-click NDX workflow failed: {e}")
             try:
-                QMessageBox.critical(self, "ndX", f"One-click workflow failed:\n{e}")
+                dialogs.error(self, "ndX", f"One-click workflow failed:\n{e}")
             except Exception:
                 pass
 

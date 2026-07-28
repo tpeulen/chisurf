@@ -81,7 +81,7 @@ def cli(ctx: click.Context, version: bool) -> None:
     default=False,
     show_default=True,
     help="Register the run in MMFDB (raw inputs linked to a sample, burst tables, and the "
-    "co-located output folder) so downstream tools such as ndXplorer can open it.",
+    "co-located output folder) so downstream tools such as ndX can open it.",
 )
 @click.option(
     "--db",
@@ -108,7 +108,7 @@ def cli(ctx: click.Context, version: bool) -> None:
     "legacy_output",
     default=None,
     help="Write the legacy burstwise output folder next to the TTTR files "
-    "(default: on when --mmfdb so ndXplorer has a folder to open).",
+    "(default: on when --mmfdb so ndX has a folder to open).",
 )
 def analyze(
     files: list[str],
@@ -136,7 +136,7 @@ def analyze(
     With ``--mmfdb`` the run is archived to MMFDB: raw inputs are registered and
     linked to a sample (``raw+sample``), burst tables are stored, and the
     co-located burst output folder is registered as a single group whose
-    artifact ID is reported in the output (consumed by ndXplorer).
+    artifact ID is reported in the output (consumed by ndX).
     """
     if not files:
         click.echo("No files specified. Use --help for usage information.", err=True)
@@ -201,7 +201,7 @@ def _analyze_with_mmfdb(
     Reuses the backend ``analyze_files_handler`` (the same path the GUI and RPC
     use) so input registration, burst tables, and the output-folder group are
     registered identically. Prints the service response, including
-    ``mmfdb_artifacts`` with the artifact IDs ndXplorer can open.
+    ``mmfdb_artifacts`` with the artifact IDs ndX can open.
     """
     from dataclasses import asdict
 

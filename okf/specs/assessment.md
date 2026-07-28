@@ -401,7 +401,7 @@ in-tree had, so the Data-table plot imported it and then fought it —
 column, a duplicate checkbox delegate, and ~45 lines walking the dialog's
 children to install all three. No `QSortFilterProxyModel`, colour-by-value
 delegate, CSV export or reusable column picker existed anywhere in either
-repository, and ndXplorer's item-based editor — the richest table of the lot —
+repository, and ndX's item-based editor — the richest table of the lot —
 crashed on nullable pandas dtypes and wrote filtered edits to the wrong row.
 
 **Fixed** by [PRD-66](/prds/prd-66.md): the

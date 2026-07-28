@@ -14,7 +14,7 @@ trace, decide which measurements are worth analysing, record that judgement
 (0–3 stars plus a free-text note that persists in the folder), and pass the
 keepers on — as copied raw files, as binned CSV traces, as a DOCX report, or
 straight into the [time-window](/usecases/burst-selection-fret.md),
-intensity-trace HMM or [ndXplorer](/architecture/plugin-system.md) tools.
+intensity-trace HMM or [ndX](/architecture/plugin-system.md) tools.
 
 This is the "Correlation / TTTR tools" coverage entry for **file triage**; it sits
 upstream of [micro-time histograms](/usecases/tttr-microtime-histogram.md),
@@ -76,7 +76,7 @@ upstream of [micro-time histograms](/usecases/tttr-microtime-histogram.md),
    report of traces plus annotations.
 9. Hand off the selected trace: **⏱️ TW** opens it in *TTTR→Time-Window BIDs* at
    the current bin width, **🧠 HMM** in *Intensity Trace Analysis*, **📊 NDX**
-   computes burst IDs from the current time window and opens ndXplorer.
+   computes burst IDs from the current time window and opens ndX.
 
 ## Expected
 

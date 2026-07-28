@@ -3,7 +3,7 @@
 ``try: from x import y / except: y = None`` is how an optional dependency is
 handled, and it is also how a *renamed* module turns into a missing feature that
 nothing reports. Three real cases were found the day this test was written: the
-trace browser and the MMFDB admin tool had both lost their ndXplorer
+trace browser and the MMFDB admin tool had both lost their ndX
 integration to a package reorganisation, and the proteinMC widget had been
 opening labelling files as raw text since the FPS editor was renamed — no
 error, no log line, just a button that did less than it used to.

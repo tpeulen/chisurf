@@ -120,7 +120,7 @@ def test_analyze_command_uses_shared_api(tmp_path: Path) -> None:
 def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
     """``analyze --mmfdb`` registers raw+sample, burst tables, and a single
     output-folder group whose artifact resolves to the on-disk burst folder —
-    the handoff Burst Selection -> ndXplorer relies on."""
+    the handoff Burst Selection -> ndX relies on."""
     import shutil
 
     from mmfdb.repository import MFDatabase
@@ -179,7 +179,7 @@ def test_analyze_mmfdb_registers_raw_sample_and_group(tmp_path: Path) -> None:
         group_id = artifacts["sidecar_artifacts"]["output_folder"]
 
         # The group artifact resolves (as mmfdb.datasets.open does) to the on-disk
-        # burst folder co-located with the TTTR — what ndXplorer opens.
+        # burst folder co-located with the TTTR — what ndX opens.
         db = MFDatabase(db_path)
         try:
             folder = db.open_dataset(group_id)

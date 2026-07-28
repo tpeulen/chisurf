@@ -22,7 +22,7 @@ The contract
    ``<ending>/<stem>.<ending>``. Not one table for the whole folder — a reader
    merges per measurement.
 2. **The directory name ends in** ``4``. That is how a folder-level reader
-   discovers a companion it has never heard of (ndXplorer's burst reader merges
+   discovers a companion it has never heard of (ndX's burst reader merges
    any sibling directory whose name ends in ``4``). A companion named anything
    else is written, and silently never read.
 3. **One row per burst of that measurement, in burst-table order** — including

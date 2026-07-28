@@ -14,15 +14,15 @@ ChiSurf.
 
 ## Overview
 
-The ndXplorer tool is particularly useful for analyzing complex fluorescence datasets where multiple parameters need 
+The ndX tool is particularly useful for analyzing complex fluorescence datasets where multiple parameters need 
 to be correlated, such as fluorescence intensity, lifetime, anisotropy, and spectral information. It provides an 
 intuitive interface for exploring relationships between different fluorescence parameters.
 
-For single-molecule experiments, ndXplorer enables detailed burst analysis with capabilities to select, filter, and 
+For single-molecule experiments, ndX enables detailed burst analysis with capabilities to select, filter, and 
 categorize individual molecule detection events based on multiple criteria. The tool also supports advanced FRET 
 analysis with various correction factors and calculation methods.
 
-When working with image spectroscopy data, ndXplorer allows pixel-by-pixel analysis of multiparameter fluorescence 
+When working with image spectroscopy data, ndX allows pixel-by-pixel analysis of multiparameter fluorescence 
 information, enabling spatial correlation of spectroscopic properties.
 
 ## Requirements
@@ -37,7 +37,7 @@ information, enabling spatial correlation of spectroscopic properties.
 
 ## Usage
 
-1. Launch the plugin from the ChiSurf menu: Tools > ndXplorer
+1. Launch the plugin from the ChiSurf menu: Tools > ndX
 2. Load data:
    - Import TTTR files for single-molecule analysis
    - Load image data for spatial analysis

@@ -1,8 +1,8 @@
-"""Open a registered burst selection from MMFDB in ndXplorer (PRD-28).
+"""Open a registered burst selection from MMFDB in ndX (PRD-28).
 
-The chisurf side of the ndXplorer ↔ MMFDB round trip. Reuses the existing dataset
+The chisurf side of the ndX ↔ MMFDB round trip. Reuses the existing dataset
 picker (the sample/measurement selection widget) and ``mmfdb.datasets.open`` to
-resolve an artifact to a local path, then hands it to ndXplorer via its drop-style
+resolve an artifact to a local path, then hands it to ndX via its drop-style
 opener. ``modules/ndxplorer`` stays chisurf-free; this module is the only glue.
 
 Usable directly (e.g. from the Code Editor) for a manual round-trip test::
@@ -18,7 +18,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-#: Artifact kinds that can be opened in ndXplorer (burst outputs).
+#: Artifact kinds that can be opened in ndX (burst outputs).
 #: A burst selection's .bur files reference photons by index in the original TTTR
 #: file, so the thing to open is the on-disk burst *folder* (registered as a
 #: directory external_reference next to the TTTR files), not an object-store copy.
@@ -37,9 +37,9 @@ def resolve_dataset_path(client: Any, artifact_id: str) -> str | None:
 
 
 def open_path_in_ndxplorer(path: str) -> Any:
-    """Launch (a new) ndXplorer and open ``path`` using its drop-style opener.
+    """Launch (a new) ndX and open ``path`` using its drop-style opener.
 
-    Best-effort: ndXplorer is an optional external module. Returns the ndXplorer
+    Best-effort: ndX is an optional external module. Returns the ndX
     instance or ``None`` if it could not be launched.
     """
     try:
@@ -47,9 +47,9 @@ def open_path_in_ndxplorer(path: str) -> Any:
         from ndxplorer.__main__ import open_path_like_drop
         from qtpy import QtCore
     except Exception as exc:  # pragma: no cover - depends on optional module
-        logger.error("ndXplorer is not available: %s", exc)
+        logger.error("ndX is not available: %s", exc)
         return None
-    # PRD-56: hand ndXplorer an in-process ChiSurf client so its phasor / FRET-line
+    # PRD-56: hand ndX an in-process ChiSurf client so its phasor / FRET-line
     # features work with no server process. Best-effort — None degrades gracefully.
     chisurf_rpc = None
     try:
@@ -62,7 +62,7 @@ def open_path_in_ndxplorer(path: str) -> Any:
     ndx.show()
     ndx.raise_()
     ndx.activateWindow()
-    # Open AFTER ndXplorer's deferred initialization has run. NDXplorer schedules
+    # Open AFTER ndX's deferred initialization has run. NDXplorer schedules
     # _deferred_init via singleShot(0) from __init__, and that is what loads the
     # settings/equations (which derive Sg/Sr/Proximity ratio/FRET…) and seeds the
     # default state. Opening synchronously here would (a) compute columns with
@@ -79,10 +79,10 @@ def open_burst_selection_from_mmfdb(
     *,
     client: Any,
 ) -> Any:
-    """Pick a registered burst selection from MMFDB and open it in ndXplorer.
+    """Pick a registered burst selection from MMFDB and open it in ndX.
 
     Pick (the sample/measurement selection widget) → resolve the artifact to a
-    local path → open in ndXplorer. Returns the ndXplorer instance, or ``None`` if
+    local path → open in ndX. Returns the ndX instance, or ``None`` if
     nothing was selected / it could not be opened.
     """
     from chisurf.gui.widgets.mmfdb.dataset_browser import MmfdbDatasetPickerDialog
@@ -103,7 +103,7 @@ def open_burst_selection_from_mmfdb(
 
 
 def send_path_to_ndxplorer(path: str, parent: Any = None) -> Any:
-    """Open a burst-selection output path (e.g. just produced) in ndXplorer."""
+    """Open a burst-selection output path (e.g. just produced) in ndX."""
     if not path:
         return None
     return open_path_in_ndxplorer(path)

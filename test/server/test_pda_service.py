@@ -1,7 +1,7 @@
 """Headless tests for the ``pda.from_bursts`` RPC service.
 
 The service turns a gated burst selection (per-file photon intervals, the
-ndXplorer ``.bst`` shape) into a PDA S1/S2 experimental histogram. The happy
+ndX ``.bst`` shape) into a PDA S1/S2 experimental histogram. The happy
 path needs real TTTR data, so it is skipped when the fixture is absent; the
 input-validation paths run everywhere.
 """
@@ -64,7 +64,7 @@ def test_missing_channels_is_rejected():
 
 
 def test_inprocess_client_exposes_bridge_methods():
-    """The ndXplorer in-process client must expose every analysis-bridge target."""
+    """The ndX in-process client must expose every analysis-bridge target."""
     from chisurf.plugins.ndxplorer.rpc_bridge import make_inprocess_chisurf_client
 
     client = make_inprocess_chisurf_client()
@@ -75,7 +75,7 @@ def test_inprocess_client_exposes_bridge_methods():
     methods = set(result.get("methods", result) if isinstance(result, dict) else result)
     for m in ("pda.from_bursts", "burst_fcs.correlate_file", "burst_mle.workflow.prepare",
               "fit.create", "dataset.load"):
-        assert m in methods, f"{m} not exposed to ndXplorer"
+        assert m in methods, f"{m} not exposed to ndX"
 
 
 @pytest.mark.skipif(not TTTR_FILE.is_file(), reason=f"{TTTR_FILE} not available")

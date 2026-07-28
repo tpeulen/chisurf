@@ -1,6 +1,6 @@
-"""ndXplorer constants and the simulated optics as fitting parameters.
+"""ndX constants and the simulated optics as fitting parameters.
 
-Both are numbers that live outside a fit — ndXplorer's correction constants and
+Both are numbers that live outside a fit — ndX's correction constants and
 the light-path simulator's excitation/emission probabilities — and both belong in
 the Global View: visible next to every fit parameter, linkable to one, bounded
 and freeable like any other. These tests pin that they are real
@@ -44,7 +44,7 @@ MATRICES = {
 
 
 class _DataSource:
-    """Minimal stand-in for ndXplorer's data source."""
+    """Minimal stand-in for ndX's data source."""
 
     data = None
     last: dict | None = None
@@ -55,7 +55,7 @@ class _DataSource:
 
 
 class _Window:
-    """Minimal stand-in for an ndXplorer window."""
+    """Minimal stand-in for an ndX window."""
 
     def __init__(self):
         self.constants = dict(NDX_CONSTANTS)
@@ -70,7 +70,7 @@ class _Window:
 
 @pytest.fixture()
 def window():
-    """Return a stub ndXplorer window with its constants set."""
+    """Return a stub ndX window with its constants set."""
     return _Window()
 
 
@@ -83,7 +83,7 @@ def _clean_registry():
 
 
 # ---------------------------------------------------------------------------
-# ndXplorer constants
+# ndX constants
 # ---------------------------------------------------------------------------
 
 
@@ -169,7 +169,7 @@ def test_pull_reads_the_window_back(window):
 def test_calibration_view_of_the_same_numbers(window):
     """The Hellenkamp view is derived, not duplicated.
 
-    ndXplorer's ``beta`` is the direct excitation and its ``r`` is ``1/beta``, so
+    ndX's ``beta`` is the direct excitation and its ``r`` is ``1/beta``, so
     the two namings are converted rather than mirrored.
     """
     group = NdxConstants(window.constants)

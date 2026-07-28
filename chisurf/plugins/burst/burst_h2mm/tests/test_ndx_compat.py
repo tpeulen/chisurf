@@ -1,4 +1,4 @@
-"""The H2MM tables are openable by ndXplorer, checked with ndX's own readers.
+"""The H2MM tables are openable by ndX, checked with ndX's own readers.
 
 ``export.py`` claims its tables are "openable directly in ndxplorer (ndX)". That
 claim is only worth having if something checks it: the tables are plain CSV/HDF5,
@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 
 pytest.importorskip("tttrlib")
-# ndXplorer is a local source tree on PYTHONPATH, not an installed dependency.
+# ndX is a local source tree on PYTHONPATH, not an installed dependency.
 pytest.importorskip("ndxplorer", reason="ndxplorer not on the path")
 
 from ndxplorer.io.reader import read_csv, read_mfd_hdf5  # noqa: E402

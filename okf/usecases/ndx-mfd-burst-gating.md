@@ -1,16 +1,16 @@
 ---
 type: Reference
-title: Use case — ndXplorer, gating a multiparameter burst space
-description: Load a Paris/Seidel burstwise MFD folder into ndXplorer, plot one burst parameter against another, gate a sub-population with a 1-D range or a painted 2-D bitmap, and carry the gate out as Burst IDs or into an FCS/TCSPC/PDA/PCH analysis.
+title: Use case — ndX, gating a multiparameter burst space
+description: Load a Paris/Seidel burstwise MFD folder into ndX, plot one burst parameter against another, gate a sub-population with a 1-D range or a painted 2-D bitmap, and carry the gate out as Burst IDs or into an FCS/TCSPC/PDA/PCH analysis.
 tags: [usecase, burst, mfd, ndxplorer, gating, smfret]
 timestamp: '2026-07-27T00:00:00Z'
 ---
 
-# Use case: ndXplorer — gating a multiparameter burst space
+# Use case: ndX — gating a multiparameter burst space
 
 **Goal:** answer *where the populations are*. A burst search produces one row per
 molecule with ~40 parameters (photon numbers, count rates, per-colour lifetimes,
-anisotropies, macro-times). ndXplorer is the tool that plots any two of them
+anisotropies, macro-times). ndX is the tool that plots any two of them
 against each other, shows the third as a marginal, lets the user **cut out a
 sub-population** — a FRET state, a bright fraction, the bursts with a sensible
 anisotropy — and then hands that population on: as Burst-ID `.bst` files, or
@@ -32,7 +32,7 @@ fits), `BID/` (burst-ID files) and `Info/` (the Paris setup log). The raw
 1. Open **Tools → 🔭 ndX** (`chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer`,
    which injects the in-process ChiSurf RPC client so the phasor/FRET-line
    overlays and the "Send selection to …" menu are live). The window opens on the
-   ndXplorer splash with every plot control blank — nothing is loaded yet.
+   ndX splash with every plot control blank — nothing is loaded yet.
 2. **File → Import → Analysis-Folder** and pick the `burstwise_All …` folder (the
    folder that *contains* `bi4_bur/`, not `bi4_bur/` itself). The reader
    concatenates all 45 `.bur` tables, joins the `bg4`/`br4` companions by file

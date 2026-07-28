@@ -1,7 +1,7 @@
 ---
 type: Subsystem
 title: chitable — the shared table widget family
-description: One model/view table implementation with filtering, sorting, column hiding, value colouring and export, shared by ChiSurf and ndXplorer and replacing the retired third-party DataFrameEditor.
+description: One model/view table implementation with filtering, sorting, column hiding, value colouring and export, shared by ChiSurf and ndX and replacing the retired third-party DataFrameEditor.
 resource: chisurf/gui/widgets/chitable/
 tags: [gui, qt, table, dataframe, chitable]
 timestamp: '2026-07-25T00:00:00Z'
@@ -95,7 +95,7 @@ scheme set it also strips whatever background the wrapped model paints.
   (`chisurf/gui/autoform/sections/global_parameter_table.py`) — via the foreign
   model path;
 * the burst selector's results editor;
-* ndXplorer's `DataFrameEditor` and its item tables, through the optional-import
+* ndX's `DataFrameEditor` and its item tables, through the optional-import
   arrangement below.
 
 The AutoForm `table` section and its `TableWidget`
@@ -103,15 +103,15 @@ The AutoForm `table` section and its `TableWidget`
 right tool for small fixed-order record tables. Migrating the remaining
 hand-rolled plugin tables is open work.
 
-# The ndXplorer contract
+# The ndX contract
 
-ndXplorer lives in its own repository and installs standalone — it does not
+ndX lives in its own repository and installs standalone — it does not
 depend on ChiSurf. Its `ui/dataframe_editor.py` therefore imports chitable
 inside a `try`/`except ImportError` and keeps a reduced local implementation as
 the fallback, the same arrangement `ui/parameter_editor.py` and `ui/glyphs.py`
 use. The public surface (`DataFrameEditor(df, parent)`, `.dataframe`,
 `.exec_()`, `edit_dataframe`) is identical on both branches, so call sites never
-branch. Changes to those files are committed in the ndXplorer repository, not
+branch. Changes to those files are committed in the ndX repository, not
 in ChiSurf.
 
 `ndxplorer/ui/table.py` extends the same arrangement to the ordinary *item*
@@ -130,7 +130,7 @@ both branches (the identity where there is no proxy). Any table gaining chitable
 must have its selection-to-record call sites converted at the same time; this is
 the same hazard `DataFrameEditor` records for its own `_source_rows` list.
 
-Tables whose cells hold real widgets (`setCellWidget` — ndXplorer's selection
+Tables whose cells hold real widgets (`setCellWidget` — ndX's selection
 table and report table) are **not** shim candidates: chitable expresses those
 with delegates, so they need their state handling rewritten rather than swapped.
 

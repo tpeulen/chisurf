@@ -1221,13 +1221,13 @@ def fig_timestamps():
 
 
 def fig_ndxplorer():
-    """ndXplorer: marginal fitting of an overlay curve, and the static FRET line.
+    """ndX: marginal fitting of an overlay curve, and the static FRET line.
 
     Two static smFRET populations (a no-FRET species and a FRET species) are
     simulated with binomial shot noise. The left panel is the E-vs-lifetime plane
     every burst lives in, with the **static FRET line** fitted through both
     clusters; the right panel is the E marginal fitted with two Gaussians using
-    ndXplorer's own ``fit_equation_to_marginal`` engine (the very function the
+    ndX's own ``fit_equation_to_marginal`` engine (the very function the
     guide's overlay-fit button drives).
     """
     import sys
@@ -1255,7 +1255,7 @@ def fig_ndxplorer():
     popt, _ = curve_fit(lambda t, t0: 1.0 - t / t0, tau, Emeas, p0=[3.5])
     tau0_fit = float(popt[0])
 
-    # Fit the E marginal with two Gaussians via ndXplorer's marginal-fit engine.
+    # Fit the E marginal with two Gaussians via ndX's marginal-fit engine.
     counts, edges = np.histogram(Emeas, bins=70, range=(-0.1, 0.9))
     xc = bin_centers(edges)
     res = fit_equation_to_marginal(

@@ -30,7 +30,7 @@ def register_services(dispatcher: Any) -> None:
         lambda p: compute_fret_line(**p),
     )
     # Shared overlay-lines interface (PRD-56): FRET lines in the same LineSet shape
-    # as ``phasor.overlays``, so ndXplorer draws both uniformly.
+    # as ``phasor.overlays``, so ndX draws both uniformly.
     dispatcher.register(
         "fret_line.overlays",
         lambda p: fret_line_overlays(**p),

@@ -193,7 +193,7 @@ def test_cli_and_gui_agree_on_every_built_in_display_name():
     """``csc`` and the menu must never label the same plugin differently.
 
     Eleven shipped plugins declare a ``name`` literal their manifest has since
-    renamed (``Tools:mmfdb-admin`` vs ``Tools:MMFDB Admin``, ``Main:Tools:ndXplorer``
+    renamed (``Tools:mmfdb-admin`` vs ``Tools:MMFDB Admin``, ``Main:Tools:ndX``
     vs ``Main:Tools:ndX``, …). Both readers now resolve to the manifest.
     """
     mismatches = []

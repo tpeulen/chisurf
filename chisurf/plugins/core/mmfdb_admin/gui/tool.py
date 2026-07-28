@@ -5966,11 +5966,11 @@ class MMFDBWidget(NavigationPanelTool):
 
         try:
             import ndxplorer.io.reader as ndx_reader
-            from ndxplorer import ndX
+            from ndxplorer import NDXplorer
 
             if path.is_dir():
                 ds = ndx_reader.read_burst_analysis(str(path))
-                ndx = ndX(
+                ndx = NDXplorer(
                     data_source=ds,
                     zmq_cmd_port=8765,
                     processed_data_id=prod_id,
@@ -5986,7 +5986,7 @@ class MMFDBWidget(NavigationPanelTool):
                 except Exception as exc:
                     chisurf.logging.warning("Operation failed: %s", exc)
             else:
-                ndx = ndX(
+                ndx = NDXplorer(
                     zmq_cmd_port=8765,
                     processed_data_id=prod_id,
                     experiment_id=exp_id,

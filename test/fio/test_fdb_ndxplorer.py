@@ -29,7 +29,7 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
     #
     # It used to drop the last column unconditionally, and this fixture was
     # written against that: a populated `dummy_col` was expected to vanish. It no
-    # longer does, and should not -- ndXplorer RF-470 ("keep the last .bur column
+    # longer does, and should not -- ndX RF-470 ("keep the last .bur column
     # instead of blanket-dropping it") found the blanket rule deleting *real*
     # measurements, `Red Count Rate (KHz)` and `S delayed yellow (kHz)` among
     # them, and with them every derived red/FRET quantity. Only trailing

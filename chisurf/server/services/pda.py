@@ -52,7 +52,7 @@ def from_bursts(
         The RPC session (unused; PDA reading is stateless).
     burst_slices
         ``{tttr_path: [[first, last], ...]}`` — the gated bursts, per file, as
-        photon-index intervals (the ndXplorer ``.bst`` shape).
+        photon-index intervals (the ndX ``.bst`` shape).
     channels
         Detection-channel groups, e.g. ``[[0], [1]]`` for green/red; required.
     micro_time_ranges

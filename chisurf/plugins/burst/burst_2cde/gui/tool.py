@@ -323,7 +323,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             variant=settings["variant"],
             progress_window=task.progress_window("Computing 2CDE …"),
         )
-        # Write the ``2c4/`` companion so the browser and ndXplorer can join the
+        # Write the ``2c4/`` companion so the browser and ndX can join the
         # per-burst 2CDE column to the burst table (best-effort; plotting still
         # works if the folder is read-only).
         try:

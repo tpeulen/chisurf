@@ -124,12 +124,12 @@ class AccurateFretTool(ChisurfDockTool):
             self.Error.no_result()
 
     def _load_from_ndx(self) -> None:
-        """Pull the burst columns from an open ndXplorer window."""
+        """Pull the burst columns from an open ndX window."""
         self.statusBar().showMessage(self.model.load_from_ndxplorer(), 8000)
         self._refresh()
 
     def _push_to_ndx(self) -> None:
-        """Push the calibrated factors into ndXplorer."""
+        """Push the calibrated factors into ndX."""
         self.statusBar().showMessage(self.model.push_to_ndxplorer(), 8000)
 
     def _register(self) -> None:

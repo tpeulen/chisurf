@@ -1,5 +1,5 @@
 (plugin-ndxplorer)=
-# ndXplorer
+# ndX
 
 Multidimensional fluorescence data analysis and visualization tool. Supports burst analysis, multiparameter fluorescence detection (MFD), FRET calculations, and interactive selection/filtering of burst events for both single-molecule and image spectroscopy data.
 
@@ -8,7 +8,7 @@ Multidimensional fluorescence data analysis and visualization tool. Supports bur
 | Field | Value |
 | --- | --- |
 | Plugin id | `ndxplorer` |
-| Menu path | Main → Tools → **ndXplorer** |
+| Menu path | Main → Tools → **ndX** |
 | Categories | Main, Tools |
 | Version | 1.0.0 |
 | Surfaces | cli, gui |

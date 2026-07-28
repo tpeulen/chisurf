@@ -378,7 +378,7 @@ class FretLine:
         """Return the line in the shared plot-overlay contract.
 
         The same ``{"name", "kind", "x", "y", "style", "axes"}`` dictionary that
-        ``fret_line_overlays`` and ``phasor.overlays`` emit, so ndXplorer and the
+        ``fret_line_overlays`` and ``phasor.overlays`` emit, so ndX and the
         ChiSurf plots draw analytic and model-based lines through one interface.
 
         Parameters

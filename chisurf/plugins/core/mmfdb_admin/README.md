@@ -90,7 +90,7 @@ one-off Qt form builders for ordinary schema-driven UI.
   archive handlers.
 - `backend/auth_services.py`: login/session, groups, and permissions.
 - `backend/measurement_services.py`: measurement/raw/processed-data handlers.
-- `backend/ndxplorer_services.py`: ndXplorer handoff/query handlers.
+- `backend/ndxplorer_services.py`: ndX handoff/query handlers.
 - `backend/fluorophore_services.py`: fluorophore curation handlers.
 - `modules/mmfdb/src/mmfdb/admin/gui/`: Qt views, clients, docks, generic forms, lifecycle/protocol/study/reagent
   views, optical-component editors, and provenance graph widgets.

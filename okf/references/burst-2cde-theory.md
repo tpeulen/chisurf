@@ -137,7 +137,7 @@ histograms.
   "TwoCDE")`, else the NumPy fallback runs (`_compute_file_numpy`).
 - **Persistence**: `write_2cde_analysis` writes one `<stem>.2c4` tab-separated
   companion per TTTR under a `2c4/` subfolder (the `…4` burst-companion family
-  alongside `bg4`/`bv4`); ndXplorer and the burst browser join it to the burst
+  alongside `bg4`/`bv4`); ndX and the burst browser join it to the burst
   table by stem. Columns are `FRET-2CDE` / `ALEX-2CDE`.
 
 ## Provenance / bit-exactness

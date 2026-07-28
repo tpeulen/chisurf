@@ -5,7 +5,7 @@ maps (as produced by
 :func:`chisurf.core.fluorescence.imaging.pixel_maps.phasor_maps`) and return derived
 maps, cursor masks, and reference-geometry polylines. These functions are the single
 source of truth for the phasor math exposed over the ``phasor.*`` RPC namespace
-(``backend/services.py``) and consumed by ndXplorer (PRD-56).
+(``backend/services.py``) and consumed by ndX (PRD-56).
 
 The formulas follow the PhasorPy reference (``thirdparty/phasorpy``, read-only); nothing
 is imported from it and it is **not** a dependency. Angular frequency uses the MHz→ns
@@ -756,7 +756,7 @@ def density_contours(
 
     Ported from phasorpy's ``PhasorPlot.contour``. Uses ``contourpy`` (a matplotlib
     dependency, already present) to extract the contour geometry without any GUI, so
-    the result is a plain LineSet drawable by the calculator, ndXplorer or the RPC
+    the result is a plain LineSet drawable by the calculator, ndX or the RPC
     layer. ``density`` is indexed ``[g_bin, s_bin]`` (axis 0 = g), matching the
     phasor density image; ``g_range`` / ``s_range`` give the physical extent.
 

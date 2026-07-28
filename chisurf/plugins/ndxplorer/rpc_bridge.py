@@ -1,14 +1,14 @@
-"""Build an in-process ChiSurf RPC client for ndXplorer (PRD-56).
+"""Build an in-process ChiSurf RPC client for ndX (PRD-56).
 
-In the GUI, ndXplorer runs in-process with ChiSurf, so it does not need a socket: it can
+In the GUI, ndX runs in-process with ChiSurf, so it does not need a socket: it can
 be handed an :class:`~chisurf.core.plugin.client.InProcessClient` wired to a
 ``ServiceDispatcher`` that has ChiSurf's services registered. That client satisfies
-ndXplorer's chisurf-free ``RpcClient`` contract (``call(method, params)``), so
+ndX's chisurf-free ``RpcClient`` contract (``call(method, params)``), so
 ``NDXplorer(chisurf_rpc=...)`` gains ChiSurf's RPC methods with no server process and no
 configuration.
 
 The dispatcher is built with the **core manifest** (``fit.*``, ``dataset.*``,
-``pda.from_bursts``, …) *plus* the plugin services below, so ndXplorer gets both the
+``pda.from_bursts``, …) *plus* the plugin services below, so ndX gets both the
 phasor / FRET-line overlays and the analysis **bridges** — routing a gated burst
 selection into PDA (``pda.from_bursts``), burst correlation (``burst_fcs.*``) or
 lifetime MLE (``burst_mle.*``), via
@@ -44,7 +44,7 @@ def make_inprocess_chisurf_client() -> Any | None:
     """Return an ``InProcessClient`` exposing the phasor + FRET-line RPC methods.
 
     Best-effort: returns ``None`` if the RPC/plugin machinery is unavailable, so callers
-    can degrade gracefully (ndXplorer then runs without ChiSurf features).
+    can degrade gracefully (ndX then runs without ChiSurf features).
     """
     try:
         from chisurf.core.plugin.client import InProcessClient
@@ -74,7 +74,7 @@ def make_ndxplorer(**kwargs: Any):
     gets the phasor / FRET-line features (the "ChiSurf Phasor" toolbar). Any
     caller-supplied ``chisurf_rpc`` is respected; otherwise an in-process client is
     built and injected. Falls back to a plain ``NDXplorer`` if the client cannot be
-    built, so ndXplorer still opens when the RPC stack is unavailable.
+    built, so ndX still opens when the RPC stack is unavailable.
     """
     import ndxplorer
 

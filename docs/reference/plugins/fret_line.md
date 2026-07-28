@@ -1,7 +1,7 @@
 (plugin-fret_line)=
 # FRET Line Generator
 
-Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndxplorer.
+Compute static, dynamic, WLC, and mixture FRET lines for parameter ranges. Results are suitable for overlaying on smFRET 2D histograms in ndX.
 
 ## Identity
 

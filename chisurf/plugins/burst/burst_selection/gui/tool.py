@@ -3146,7 +3146,7 @@ class BurstSelectionTool(ChisurfDockTool):
         dialog.exec_()
 
     def _open_in_ndxplorer(self) -> None:
-        """Open a registered burst selection from MMFDB in ndXplorer (PRD-28)."""
+        """Open a registered burst selection from MMFDB in ndX (PRD-28)."""
         try:
             from chisurf.plugins.ndxplorer.mmfdb_launcher import open_burst_selection_from_mmfdb
 

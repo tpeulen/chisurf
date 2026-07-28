@@ -4,7 +4,7 @@ A :class:`TableSource` is the only thing :class:`~chisurf.gui.widgets.chitable.m
 knows about. Three adapters cover every tabular shape already in the tree:
 
 ``DataFrameSource``
-    a :class:`pandas.DataFrame` (ndXplorer burst frames, model-parameter tables);
+    a :class:`pandas.DataFrame` (ndX burst frames, model-parameter tables);
 ``ArraySource``
     named ``numpy`` column arrays (fit curves: x / data / model / residuals);
 ``RecordSource``
@@ -20,7 +20,7 @@ Notes
 Numeric dtype tests go exclusively through :func:`pandas.api.types.is_numeric_dtype`.
 ``numpy.issubdtype`` raises on pandas extension dtypes (the nullable ``Float64``
 the pyarrow reader produces), which is the root cause of a long-standing crash in
-ndXplorer's table editor.
+ndX's table editor.
 """
 
 from __future__ import annotations

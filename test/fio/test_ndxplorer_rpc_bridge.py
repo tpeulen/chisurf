@@ -1,7 +1,7 @@
-"""End-to-end headless test of the ndXplorer ↔ ChiSurf in-process RPC bridge (PRD-56 §7).
+"""End-to-end headless test of the ndX ↔ ChiSurf in-process RPC bridge (PRD-56 §7).
 
 Builds the in-process ChiSurf client (phasor + FRET-line services), then drives it
-through ndXplorer's own chisurf-free ``PhasorService`` / ``LinesService`` facades — the
+through ndX's own chisurf-free ``PhasorService`` / ``LinesService`` facades — the
 exact path the GUI uses, minus the socket.
 """
 
@@ -15,13 +15,13 @@ import pytest
 
 from chisurf.plugins.ndxplorer.rpc_bridge import make_inprocess_chisurf_client
 
-# ndXplorer is an optional submodule under modules/ndxplorer; put it on the path (as the
+# ndX is an optional submodule under modules/ndxplorer; put it on the path (as the
 # plugin does at load time) so this cross-module test can import its RPC facades.
 _NDX_MODULE = pathlib.Path(__file__).resolve().parents[2] / "modules" / "ndxplorer"
 if _NDX_MODULE.is_dir() and str(_NDX_MODULE) not in sys.path:
     sys.path.insert(0, str(_NDX_MODULE))
 
-pytest.importorskip("ndxplorer", reason="ndXplorer submodule not available")
+pytest.importorskip("ndxplorer", reason="ndX submodule not available")
 
 
 @pytest.fixture()

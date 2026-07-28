@@ -1,7 +1,7 @@
 """Accurate-FRET calibration on a burst table — loading, calibration, export.
 
 Qt-free layer of the plugin. It turns a burst table (any delimited text file, or
-the columns of a live ndXplorer window) into the arrays the accurate-FRET core
+the columns of a live ndX window) into the arrays the accurate-FRET core
 needs, runs the automatic calibration
 (:func:`chisurf.core.fluorescence.fret.accurate.auto_calibrate`), and hands back
 the factors, the population summary and ready-to-plot series.
@@ -35,7 +35,7 @@ from chisurf.core.fluorescence.fret.lines import dynamic_fret_line, static_fret_
 logger = logging.getLogger(__name__)
 
 # The burst-table conventions (which column is which channel) are shared with the
-# live ndXplorer bridge, so they live in the core and are re-exported here.
+# live ndX bridge, so they live in the core and are re-exported here.
 __all__ = [
     "CalibrationResult",
     "COLUMN_HINTS",

@@ -199,7 +199,7 @@ def test_plugins_list_format():
                 'FCS:Correlator',
                 'Single-Molecule:Burst-Selection',
                 'Single-Molecule:Burst MLE Lifetime Analysis',
-                'Tools:ndXplorer'
+                'Tools:ndX'
             ]
         }
     }

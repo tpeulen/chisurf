@@ -2,7 +2,7 @@
 
 Thin, transport-friendly wrappers over :mod:`..analysis` (pure numpy/scipy). Handlers
 take and return JSON-friendly arrays (nested lists), so any RPC client — ChiSurf's
-own ``ChisurfClient`` / ``InProcessClient`` or ndXplorer's chisurf-free
+own ``ChisurfClient`` / ``InProcessClient`` or ndX's chisurf-free
 ``ZmqRpcClient`` — can drive them. Registered with the server's ``ServiceDispatcher``
 via the plugin manifest ``entrypoints.services`` (mirrors ``plugins/pch``).
 """

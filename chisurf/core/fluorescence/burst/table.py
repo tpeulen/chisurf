@@ -1,11 +1,11 @@
 """Per-burst tables: reading them, and recognizing which column is which channel.
 
 A burst table is one row per burst and one column per measured quantity, and
-every program in the field names those columns differently — ndXplorer's
+every program in the field names those columns differently — ndX's
 ``Green Count Rate (KHz)``, the Seidel-style ``.bur`` headers, the plain
 ``i_dd``/``i_da``/``i_aa`` of this API. Analyses should not each carry their own
 guessing rules, so the conventions live here once and both the file readers and
-the live ndXplorer bridge use them.
+the live ndX bridge use them.
 
 Channel roles follow the convention of
 :mod:`chisurf.core.fluorescence.burst.es`: ``i_dd`` (donor emission under donor
@@ -112,7 +112,7 @@ def columns_from_data(data) -> dict[str, np.ndarray]:
     """Extract the numeric columns of an in-memory burst table.
 
     Works with anything column-addressable — a :class:`pandas.DataFrame`, a plain
-    mapping of arrays, or the ``data_source.data`` of a live ndXplorer window —
+    mapping of arrays, or the ``data_source.data`` of a live ndX window —
     so an analysis can run on data already loaded elsewhere instead of on a file
     exported in between.
 

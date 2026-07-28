@@ -1,4 +1,4 @@
-# From a selection to a fit: the ndXplorer analysis bridges
+# From a selection to a fit: the ndX analysis bridges
 
 :::{admonition} Theory
 :class: seealso
@@ -9,7 +9,7 @@ lifetime, {ref}`concept-filtered-fcs` for FRET-FCS.
 
 ## What it does
 
-Gating a population in {doc}`ndXplorer <46_ndxplorer>` isolates a species; a
+Gating a population in {doc}`ndX <46_ndxplorer>` isolates a species; a
 **bridge** then hands that species' *photons* to a full ChiSurf fit. The gate is
 resolved to per-file ``(first_photon, last_photon)`` intervals — the same
 representation every ChiSurf burst reader consumes — and dispatched over the
@@ -27,7 +27,7 @@ target is just another RPC method name — no new selection plumbing.
 
 ## Prerequisites
 
-ndXplorer must be linked to ChiSurf: either launched from ChiSurf (the in-process
+ndX must be linked to ChiSurf: either launched from ChiSurf (the in-process
 client exposes `pda.from_bursts`, `burst_fcs.*`, `burst_mle.*`, `fit.*` and
 `dataset.*` automatically), or standalone with `--chisurf-rpc host:port` against a
 running ChiSurf server. Without a link the bridges are disabled and say so.
@@ -40,7 +40,7 @@ running ChiSurf server. Without a link the bridges are disabled and say so.
    and calls the chosen analysis; the result comes back to be overlaid or opened
    in a ChiSurf fit.
 
-Headlessly, the bridge is a few lines. The RPC client is ndXplorer's injected
+Headlessly, the bridge is a few lines. The RPC client is ndX's injected
 ``chisurf_rpc`` (or an in-process client built directly):
 
 ```python

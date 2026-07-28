@@ -28,7 +28,7 @@ table and would shift every burst after the first.
 
 A reader opens the folder by concatenating the `.bur` files and merging every
 companion **column-wise, by position**, so the whole folder reads as one table
-with one row per burst. ndXplorer does exactly this, which is how a burst can be
+with one row per burst. ndX does exactly this, which is how a burst can be
 gated on a column another plugin produced.
 
 That merge is positional, and **nothing validates it at read time**. A companion

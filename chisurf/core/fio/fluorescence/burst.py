@@ -678,7 +678,7 @@ def read_bur_file(bur_path):
 
 #: Per-burst companion files in the ``…4`` family, keyed to each ``.bur`` by stem:
 #: ``bg4``/``br4``/``by4`` (background/red/yellow), ``bv4`` (BVA), ``td4`` (time
-#: differences), ``2c4`` (2CDE). Same set ndXplorer merges.
+#: differences), ``2c4`` (2CDE). Same set ndX merges.
 BURST_COMPANION_ENDINGS = ["bg4", "br4", "by4", "bv4", "td4", "2c4"]
 
 

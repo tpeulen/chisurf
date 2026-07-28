@@ -1,7 +1,7 @@
 """Small helper dialogs for :mod:`chisurf.gui.widgets.chitable`.
 
 :class:`ColumnPickerDialog` is the generalised form of the column chooser that
-previously existed only inside ndXplorer; :class:`ColumnFilterDialog` edits one
+previously existed only inside ndX; :class:`ColumnFilterDialog` edits one
 column's predicate.
 """
 

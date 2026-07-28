@@ -1,5 +1,5 @@
 """
-ndXplorer
+ndX
 
 This plugin provides a powerful interface for analyzing and visualizing multidimensional 
 fluorescence data within ChiSurf.
@@ -63,7 +63,7 @@ if __name__ == "plugin":
 
         ndx = make_ndxplorer()
     except Exception:
-        log("Could not load ndXplorer plugin (missing optional dependencies)")
+        log("Could not load ndX plugin (missing optional dependencies)")
         raise
     ndx.show()
     ndx.raise_()
@@ -176,7 +176,7 @@ if __name__ == "plugin":
             )
             sync_action.triggered.connect(_sync_constants)
     except Exception:
-        log("Could not add the accurate-FRET toolbar to ndXplorer")
+        log("Could not add the accurate-FRET toolbar to ndX")
 
 
 cli_entrypoint = "ndxplorer=chisurf.plugins.ndxplorer.cli:cli"

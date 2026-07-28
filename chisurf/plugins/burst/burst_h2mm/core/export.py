@@ -284,7 +284,7 @@ def write_csv(df, path: str | pathlib.Path) -> str:
 
 
 #: Companion folder/extension for the per-burst H2MM results. Ends in ``4`` so
-#: ndXplorer's burst-folder reader discovers it with no code change: it merges
+#: ndX's burst-folder reader discovers it with no code change: it merges
 #: ``<ending>/<stem>.<ending>`` beside each ``.bur`` for any sibling directory
 #: whose name ends in ``4``, exactly as it already does for ``bv4`` and ``2c4``.
 H2MM_COMPANION = "bh4"

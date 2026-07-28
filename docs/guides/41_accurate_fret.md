@@ -41,8 +41,8 @@ factors with their uncertainties and how each was determined on the right.
 
 Use the **Burst table** row (or drop a file on the window): any delimited text
 file — `.csv`, `.tsv`, `.txt`, `.bur` — or an `.npz` archive, one row per burst.
-Alternatively press **📥 From ndXplorer** to take the columns of an open
-ndXplorer window, so the calibration runs on exactly the bursts currently
+Alternatively press **📥 From ndX** to take the columns of an open
+ndX window, so the calibration runs on exactly the bursts currently
 selected there.
 
 Reached as the *Accurate FRET* step of the **Burst Analysis** workflow, the step
@@ -230,15 +230,15 @@ offset.
   a fit parameter can be *linked* to one — one number, one owner, many
   consumers — and each carries a typeset label, so a parameter table shows
   $\gamma$ and $\Phi_A$ rather than `gamma` and `PhiA`.
-* **📤 To ndXplorer** writes the factors into an open ndXplorer window's MFD
+* **📤 To ndX** writes the factors into an open ndX window's MFD
   constants and recomputes its derived columns.
 * **💾 Export CSV** writes the per-burst $E$, $S$, lifetime and distance with the
   calibration report in the file header, so the numbers stay traceable.
 
-## Doing it entirely inside ndXplorer
+## Doing it entirely inside ndX
 
-If the bursts are already open in ndXplorer, the round trip through this tool is
-unnecessary. ndXplorer's own toolbar carries **🎯 Optimize FRET calibration**,
+If the bursts are already open in ndX, the round trip through this tool is
+unnecessary. ndX's own toolbar carries **🎯 Optimize FRET calibration**,
 which does the whole thing in one click on the loaded measurement:
 
 1. it reads the burst columns out of the window;
@@ -246,16 +246,16 @@ which does the whole thing in one click on the loaded measurement:
    quantum yields, Förster radius and `tauD0` stay yours; only what the data can
    improve is changed;
 3. it runs the same automatic calibration and writes the posterior back into
-   ndXplorer's MFD constants (`gG/gR`, `alpha`, `beta`, `r`, …), recomputing its
+   ndX's MFD constants (`gG/gR`, `alpha`, `beta`, `r`, …), recomputing its
    derived columns;
 4. it adds the accurate per-burst columns — `FRET efficiency (accurate)`,
    `Stoichiometry (accurate)`, `R_DA (accurate)`, `Off static FRET line` and
    `Population` — so they can be plotted and gated like any other column.
 
-Step 4 is not redundant. ndXplorer's own efficiency equation corrects donor
+Step 4 is not redundant. ndX's own efficiency equation corrects donor
 leakage but has **no direct-excitation term**, so pushing constants alone cannot
 make its native `FRET efficiency` column accurate; the injected column is the
-fully corrected one. ndXplorer's own columns and equations are left untouched, so
+fully corrected one. ndX's own columns and equations are left untouched, so
 nothing is corrected twice.
 
 A dialog reports what changed — every constant with its old and new value, the
@@ -273,9 +273,9 @@ print(result["constants"])                      # what was written
 
 ### Naming differences to watch
 
-ndXplorer's constants do not use Hellenkamp's letters:
+ndX's constants do not use Hellenkamp's letters:
 
-| ndXplorer | meaning | Hellenkamp |
+| ndX | meaning | Hellenkamp |
 |---|---|---|
 | `alpha` | donor leakage | $\alpha$ |
 | `beta` | direct excitation | $\delta$ |
@@ -283,7 +283,7 @@ ndXplorer's constants do not use Hellenkamp's letters:
 | `gG/gR`, `PhiA`, `PhiD` | detection · quantum yield | $\gamma = (\Phi_A/\Phi_D)/(g_G/g_R)$ |
 
 The bridge translates in both directions, so the numbers in the tool and in
-ndXplorer always mean the same thing.
+ndX always mean the same thing.
 
 ## Trying it without data (and checking it works)
 
@@ -388,7 +388,7 @@ Both sides of the calibration are published as ordinary **fitting parameters**,
 so they appear in the Global View next to every fit parameter — with their
 bounds, their link column and an editable value:
 
-* **ndXplorer constants** — every scalar the open window holds (`gG/gR`,
+* **ndX constants** — every scalar the open window holds (`gG/gR`,
   `alpha`, `beta`, `r`, the backgrounds, `PhiA`/`PhiD`, `forster_radius`,
   `tauD0`, …), read from the window rather than hard-coded, so a setup with extra
   constants exposes those too.
@@ -400,7 +400,7 @@ bounds, their link column and an editable value:
 That makes the two things you would otherwise keep in your head explicit:
 
 ```python
-# a fit's Förster radius follows the one ndXplorer is using
+# a fit's Förster radius follows the one ndX is using
 from chisurf.plugins.ndxplorer.parameters import bound_ndx_parameters
 
 constants = bound_ndx_parameters()
@@ -418,9 +418,9 @@ optics = registered_lightpath_parameters()
 result = auto_calibrate(i_dd, i_da, i_aa, lightpath=optics.as_prior_arguments())
 ```
 
-Editing an ndXplorer constant in the Global View reaches the window: the group
-pushes the changed value and ndXplorer recomputes. The `⟲ Sync constants`
-toolbar action in ndXplorer does the same on demand, in both directions.
+Editing an ndX constant in the Global View reaches the window: the group
+pushes the changed value and ndX recomputes. The `⟲ Sync constants`
+toolbar action in ndX does the same on demand, in both directions.
 
 Note that the optics `gamma`/`alpha`/`delta` are **derived** — recomputed from
 the probabilities whenever the optical model changes — so read them, do not fit

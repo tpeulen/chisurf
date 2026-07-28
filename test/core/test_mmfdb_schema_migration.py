@@ -73,7 +73,7 @@ def test_persistent_db_reopened_is_idempotent():
 
 
 def test_ndxplorer_has_manifest():
-    """INC-06 guard: ndXplorer must have a valid manifest.json."""
+    """INC-06 guard: ndX must have a valid manifest.json."""
     from chisurf.core.plugin.manifest import validate_manifest
     mf = pathlib.Path(__file__).resolve().parents[2] / "chisurf" / "plugins" / "ndxplorer" / "manifest.json"
     assert mf.is_file(), f"ndxplorer manifest not found at {mf}"

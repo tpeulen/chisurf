@@ -56,7 +56,7 @@ red = 9,1,2; yellow). The same folder the
    one pair. Select a row to see its **Correlation** curve with the fit, and —
    in MaxEnt mode — its **Diffusion-time distribution**.
 10. Carry the per-burst τ_D out to a burst-parameter file so it can be plotted
-    against E/S in ndXplorer or the Burst Browser. **There is no such step: the
+    against E/S in ndX or the Burst Browser. **There is no such step: the
     window has no export at all** (RF-509 … RF-510).
 
 ## Expected

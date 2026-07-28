@@ -41,7 +41,7 @@ def test_comma_string_to_list_round_trip(tmp_path):
                 'FCS:Correlator',
                 'Single-Molecule:Burst-Selection',
                 'Single-Molecule:Burst MLE Lifetime Analysis',
-                'Tools:ndXplorer'
+                'Tools:ndX'
             ]
         },
         'mixed_types_list': [1, 'string', 3.14, True, None],

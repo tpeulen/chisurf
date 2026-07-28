@@ -1,7 +1,7 @@
 """Contract tests for the shared FRET-line overlay interface (PRD-56).
 
 ``fret_line.overlays`` must return the same LineSet shape as ``phasor.overlays`` so
-ndXplorer can draw FRET lines and phasor lines through one uniform path.
+ndX can draw FRET lines and phasor lines through one uniform path.
 """
 
 from __future__ import annotations

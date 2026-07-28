@@ -1,6 +1,6 @@
-# ndXplorer headless CLI recipes (PRD-31)
+# ndX headless CLI recipes (PRD-31)
 
-ndXplorer's two core workflows — **burst filtering** and **imaging** — run without
+ndX's two core workflows — **burst filtering** and **imaging** — run without
 a window. Each prints JSON to stdout so pipelines can chain on it. There are two
 layers:
 
@@ -13,7 +13,7 @@ layers:
 All commands run headless; set `QT_QPA_PLATFORM=offscreen` if a `QApplication`
 needs to construct.
 
-## 1. ndXplorer as a burst filter
+## 1. ndX as a burst filter
 
 ### Local (primitive)
 
@@ -43,7 +43,7 @@ csc burst-selection analyze m000.spc m001.spc \
     --mmfdb --db mmfdb.sqlite --sample-name "DNA burst sample"
 #   => prints the output-folder artifact id.
 
-# 2) Burst Selection -> ndXplorer filter (PRD-31)
+# 2) Burst Selection -> ndX filter (PRD-31)
 csc ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite \
     --select "proximity_ratio:0.30-0.70" --select "n_photons:50-" \
     --to-mmfdb --sample-id <sample_id>
@@ -55,7 +55,7 @@ csc ndxplorer filter --from-mmfdb <output_folder_artifact_id> --db mmfdb.sqlite 
 **same** DB to both CLIs for a real round trip. With `--to-mmfdb` omitted, the
 command only writes the filtered folder and prints its path.
 
-## 2. ndXplorer headless imaging
+## 2. ndX headless imaging
 
 ### Local (primitive)
 
@@ -94,12 +94,12 @@ csc ndxplorer image --from-mmfdb <tttr_or_image_artifact_id> --db mmfdb.sqlite \
 ## Canonical `--select` parameters
 
 `--select "<param>:<min>-<max>"` (open-ended `min-` or `-max` allowed). `param`
-matches ndXplorer's column ids; the common burst columns are: `proximity_ratio`,
+matches ndX's column ids; the common burst columns are: `proximity_ratio`,
 `stoichiometry`, `lifetime`, `duration`, `count rate`, `n_photons`. Use `--query`
 for expressions over any loaded column.
 
 ## Round-trip parity
 
 Outputs re-open identically in the GUI and resolve through `mmfdb.datasets.open`,
-so `raw+sample → BS → ndXplorer filter` and `raw(+sample) → ndXplorer image` work
+so `raw+sample → BS → ndX filter` and `raw(+sample) → ndX image` work
 the same in scripts and by hand.

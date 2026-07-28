@@ -507,7 +507,7 @@ def fret_line_overlays(
 
     Wraps :func:`compute_fret_line` and reshapes its result into the same
     ``{"overlays": [{"name", "kind", "x", "y", "style", "axes"}]}`` contract that
-    ``phasor.overlays`` returns, so ndXplorer (and any other client) can draw FRET
+    ``phasor.overlays`` returns, so ndX (and any other client) can draw FRET
     lines and phasor lines through one uniform interface.
 
     Parameters

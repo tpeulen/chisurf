@@ -243,11 +243,11 @@ persistence that keeps every shape and flag. It is Qt-free, so a headless
 script, an RPC payload and the widget share one object.
 
 Its semantics are deliberately the union of what the tools had: the CLSM tool's
-names/save/load/measure, ndXplorer's per-row enabled+invert combined by AND, and
+names/save/load/measure, ndX's per-row enabled+invert combined by AND, and
 the MLE tools' implicit union of everything in a file. `combined()` returns
 `None` when nothing is enabled — *not* an all-true region, so "no regions" and
 "every region switched off" stay distinguishable; the `to_mask`/`contains`
-conveniences answer all-true, and `excluded()` names ndXplorer's inverted
+conveniences answer all-true, and `excluded()` names ndX's inverted
 convention rather than leaving it to be remembered.
 
 The GUI is `chisurf/gui/widgets/roi/`, in two separable halves:
@@ -291,22 +291,22 @@ loss:
   already converts through `RectangleROI.from_slices` / `to_indices`, which is
   the part that belongs here.
 
-### ndXplorer's selections are the same type
+### ndX's selections are the same type
 
-`selections.py` converts ndXplorer's `DataSelection` hierarchy — a 1-D interval,
+`selections.py` converts ndX's `DataSelection` hierarchy — a 1-D interval,
 a Mahalanobis ellipse, a painted histogram bitmap — into a `RegionCollection`.
 The mapping is term for term: each selection's `enabled`/`invert` are the entry's
-flags, and ndXplorer's implicit AND is `combine="and"`. Two things differ and
+flags, and ndX's implicit AND is `combine="and"`. Two things differ and
 both are mechanical: its `get_mask` returns `True` for *excluded* (hence
 `excluded()`), and a selection names its axes by parameter index where a region
 carries none, so the axes are supplied at conversion. A selection constraining a
 parameter that is not on the plane is skipped, not approximated.
 
 The bridge is duck-typed and lives on the ChiSurf side, so the dependency stays
-one-directional. Its tests assert agreement with ndXplorer's own `get_mask`
+one-directional. Its tests assert agreement with ndX's own `get_mask`
 point for point, which is the only way to know the inverted convention was
 reconciled rather than merely described. Storing gates as a collection also
-fixes a real loss: ndXplorer's `onLoad_selection` rebuilds **only** rectangles,
+fixes a real loss: ndX's `onLoad_selection` rebuilds **only** rectangles,
 so a saved ellipse or painted population disappeared on reload.
 
 Regions are `(x, y) = (column, row)` throughout. The AutoForm `image` section

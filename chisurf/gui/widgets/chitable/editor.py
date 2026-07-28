@@ -7,7 +7,7 @@ the accepted frame back and replays it through the fitting client, so a live-edi
 dialog would change what "Cancel" means.
 
 :func:`edit_dataframe` is the drop-in entry point, deliberately keeping the
-signature the previous third-party editor and ndXplorer's own dialog exposed.
+signature the previous third-party editor and ndX's own dialog exposed.
 """
 
 from __future__ import annotations

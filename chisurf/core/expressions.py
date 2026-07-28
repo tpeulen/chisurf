@@ -28,7 +28,7 @@ The engine does three things, all governed by an :class:`ExpressionPolicy`:
 The public surface is :func:`validate_expression` (for GUI ✓/✗ feedback),
 :func:`compile_expression`, and :func:`evaluate_expression`. :data:`DEFAULT_POLICY`
 is a rich, Python-like policy (bare names, full maths library); :data:`NDX_POLICY`
-mirrors the ndXplorer burst-column convention (quoted names, arithmetic + ``abs``,
+mirrors the ndX burst-column convention (quoted names, arithmetic + ``abs``,
 case-insensitive, left-of-``|`` matching).
 """
 
@@ -185,7 +185,7 @@ DEFAULT_POLICY = ExpressionPolicy(
     allow_bitops=True,
 )
 
-#: ndXplorer burst-column convention: quoted references only, arithmetic +
+#: ndX burst-column convention: quoted references only, arithmetic +
 #: ``abs`` (matching ``ndxplorer.core.equation_graph``), case-insensitive, and
 #: left-of-``|`` matching. No comparisons/bit-ops.
 NDX_POLICY = ExpressionPolicy(

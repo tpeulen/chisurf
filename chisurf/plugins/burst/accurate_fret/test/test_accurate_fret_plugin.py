@@ -41,7 +41,7 @@ def _simulate(seed: int = 5, efficiencies=(0.3, 0.75), n: int = 900):
 
 @pytest.fixture()
 def burst_table(tmp_path):
-    """Write a burst table with ndXplorer-style column names."""
+    """Write a burst table with ndX-style column names."""
     i_dd, i_da, i_aa, tau = _simulate()
     path = tmp_path / "bursts.csv"
     header = ("Green Count Rate (KHz),Red Count Rate (KHz),"

@@ -137,7 +137,7 @@ The two scores are complementary: FRET-2CDE reports **within-burst FRET
 dynamics** (state switching), ALEX-2CDE reports **within-burst brightness
 heterogeneity** (impurity / photophysics). Both are single numbers per burst,
 computed from the same KDE primitive, and both live as columns you can gate on in
-the burst browser or in ndXplorer.
+the burst browser or in ndX.
 
 ## Settings, and what 2CDE cannot tell you
 

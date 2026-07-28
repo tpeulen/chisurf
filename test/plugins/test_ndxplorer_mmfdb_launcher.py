@@ -1,7 +1,7 @@
-"""PRD-28: ndXplorer ← MMFDB launcher (the testable path-resolution core).
+"""PRD-28: ndX ← MMFDB launcher (the testable path-resolution core).
 
 Runs under the hermetic harness, driving the real in-process MMFDBClient so the
-resolve-path step is exercised end to end (the ndXplorer launch itself is
+resolve-path step is exercised end to end (the ndX launch itself is
 interactive and not tested here).
 """
 

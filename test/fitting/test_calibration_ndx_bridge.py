@@ -185,7 +185,7 @@ TAU_D0 = 4.0
 
 
 def _simulated_burst_columns(seed: int = 2):
-    """ndXplorer-named burst columns with known correction factors."""
+    """ndX-named burst columns with known correction factors."""
     import numpy as np
 
     from chisurf.core.fluorescence.fret.lines import static_fret_line

@@ -19,7 +19,7 @@ circularity, the inertia-tensor axes, why a perimeter is not a pixel count — s
 | **Imaging → Colocalization** | every gate on the intensity scatter in one list — a typed box, a painted cloud, a drawn shape — combined rather than overriding |
 | **Imaging → Phasor-FLIM** | cursors on the $(g,s)$ plane; the *Selected* dock shows the pixels they pick out |
 | **Imaging → Drift Correction** | a structured patch gives a sharper correlation peak than a mostly-dark frame |
-| **ndXplorer** | a gate on any two parameters selects the bursts inside it |
+| **ndX** | a gate on any two parameters selects the bursts inside it |
 
 They are the same object in all six. A rectangle drawn on a confocal image and a
 rectangle drawn on an $E$–$S$ histogram differ only in the axes handed to them at
@@ -140,7 +140,7 @@ the same object works wherever there are two of them:
   axes carry the intensities themselves. The typed box, a painted population and
   any shape you draw are entries in one list, so "this cloud **and** above that
   threshold" is expressible — previously a painted gate simply overrode the box.
-* **ndXplorer's** gates are the same thing under another name. Its selections
+* **ndX's** gates are the same thing under another name. Its selections
   carry per-row *enabled* and *invert* and combine by AND, which is exactly a
   region collection; `chisurf.core.roi.selections` converts between them:
 
@@ -155,7 +155,7 @@ the same object works wherever there are two of them:
   Note the two conventions: `contains` answers where a point is *inside*, ndX's
   `get_mask` answers where it is *excluded*. `excluded()` names the second so it
   is not re-derived — and re-derived wrongly — at each call site. Saving through
-  a collection also fixes a real loss: ndXplorer's own loader rebuilds only
+  a collection also fixes a real loss: ndX's own loader rebuilds only
   rectangles, so a saved ellipse or painted population silently disappeared on
   reload.
 

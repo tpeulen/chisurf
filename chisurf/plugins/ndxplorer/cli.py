@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Qt-free ndXplorer workflows with explicit MMFDB provenance boundaries."""
+"""Qt-free ndX workflows with explicit MMFDB provenance boundaries."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ SubprocessRunner = Callable[..., subprocess.CompletedProcess[str]]
 
 
 def _get_ndxplorer_env() -> dict[str, str]:
-    """Return an environment that can import the optional ndXplorer module."""
+    """Return an environment that can import the optional ndX module."""
     env = dict(os.environ)
     root = Path(__file__).resolve().parents[3]
     ndx_path = root / "modules" / "ndxplorer"
@@ -33,10 +33,10 @@ def _get_ndxplorer_env() -> dict[str, str]:
 
 
 def _parse_command_result(command: str, result: subprocess.CompletedProcess[str]) -> dict[str, Any]:
-    """Validate an ndXplorer subprocess result and extract its JSON object."""
+    """Validate an ndX subprocess result and extract its JSON object."""
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "no diagnostic output").strip()
-        raise RuntimeError(f"ndXplorer {command} failed: {detail}")
+        raise RuntimeError(f"ndX {command} failed: {detail}")
 
     output = (result.stdout or "").strip()
     try:
@@ -46,16 +46,16 @@ def _parse_command_result(command: str, result: subprocess.CompletedProcess[str]
         end = output.rfind("}")
         if start < 0 or end <= start:
             raise RuntimeError(
-                f"ndXplorer {command} returned no JSON object: {output!r}"
+                f"ndX {command} returned no JSON object: {output!r}"
             ) from None
         try:
             payload = json.loads(output[start : end + 1])
         except json.JSONDecodeError as exc:
             raise RuntimeError(
-                f"ndXplorer {command} returned invalid JSON: {output!r}"
+                f"ndX {command} returned invalid JSON: {output!r}"
             ) from exc
     if not isinstance(payload, dict):
-        raise RuntimeError(f"ndXplorer {command} returned a non-object JSON payload")
+        raise RuntimeError(f"ndX {command} returned a non-object JSON payload")
     return payload
 
 
@@ -104,7 +104,7 @@ def _execute_ndxplorer(
     subprocess_runner: SubprocessRunner,
 ) -> dict[str, Any]:
     args = [sys.executable, "-m", "ndxplorer", command, *arguments]
-    logger.info("Running ndXplorer %s", command)
+    logger.info("Running ndX %s", command)
     completed = subprocess_runner(
         args,
         capture_output=True,
@@ -206,12 +206,12 @@ def run_filter_workflow(
     payload = _execute_ndxplorer("filter", arguments, subprocess_runner=subprocess_runner)
     for required in ("n_in", "n_out", "out"):
         if required not in payload:
-            raise RuntimeError(f"ndXplorer filter result is missing {required!r}")
+            raise RuntimeError(f"ndX filter result is missing {required!r}")
 
     artifact_id: str | None = None
     if register_output:
         if not target.is_dir():
-            raise FileNotFoundError(f"ndXplorer filter output was not created: {target}")
+            raise FileNotFoundError(f"ndX filter output was not created: {target}")
         metadata = {
             **_common_metadata(
                 source_artifact_id=source_artifact_id,
@@ -344,16 +344,16 @@ def run_image_workflow(
     payload = _execute_ndxplorer("image", arguments, subprocess_runner=subprocess_runner)
     for required in ("shape", "n_selected_px", "out"):
         if required not in payload:
-            raise RuntimeError(f"ndXplorer image result is missing {required!r}")
+            raise RuntimeError(f"ndX image result is missing {required!r}")
 
     image_artifact_id: str | None = None
     selection_artifact_id: str | None = None
     if register_outputs:
         if not target.is_file():
-            raise FileNotFoundError(f"ndXplorer image output was not created: {target}")
+            raise FileNotFoundError(f"ndX image output was not created: {target}")
         if selection_target is not None and not selection_target.is_dir():
             raise FileNotFoundError(
-                f"ndXplorer ROI selection output was not created: {selection_target}"
+                f"ndX ROI selection output was not created: {selection_target}"
             )
         metadata = {
             **_common_metadata(
@@ -390,7 +390,7 @@ def run_image_workflow(
 
 @click.group()
 def cli() -> None:
-    """ndXplorer headless CLI with explicit MMFDB integration."""
+    """ndX headless CLI with explicit MMFDB integration."""
 
 
 @cli.command("filter")

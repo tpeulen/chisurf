@@ -402,7 +402,7 @@ evaluation time. `refs` stays free of constants, so a constant is neither an
 unresolved name nor a discovered fitting parameter.) Public surface:
 `validate_expression(expr, known_names, policy) -> ValidationResult(ok, message,
 refs)` for GUI ✓/✗, plus `compile_expression`/`evaluate_expression`. Two presets:
-`DEFAULT_POLICY` (rich, Python-like, bare names) and `NDX_POLICY` (ndXplorer
+`DEFAULT_POLICY` (rich, Python-like, bare names) and `NDX_POLICY` (ndX
 burst-column convention — quoted names, arithmetic + `abs`, case-insensitive,
 left-of-`|`).
 
@@ -417,7 +417,7 @@ edited as raw text. Validation is pluggable: a caller may inject its own
 `validator` so the editor's ✓/✗ stays in step with whatever engine will *evaluate*
 the formulas. The `equation_editor` AutoForm section
 (`sections/equation_editor_section.py`) exposes it view.json-drivably
-(`{attr, names, call, policy}`). ndXplorer's equation editor delegates to this
+(`{attr, names, call, policy}`). ndX's equation editor delegates to this
 widget when ChiSurf is importable (injecting its own `equation_graph`
 validator + a `(columns, constants)`→mapping names adapter), and falls back to a
 local table when ChiSurf is absent.

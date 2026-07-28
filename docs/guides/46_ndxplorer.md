@@ -1,4 +1,4 @@
-# Exploring & fitting multidimensional data (ndXplorer)
+# Exploring & fitting multidimensional data (ndX)
 
 :::{admonition} Theory
 :class: seealso
@@ -20,7 +20,7 @@ calibration and the fit stay in sync.
 
 ## Launching
 
-ndXplorer runs standalone or connected to a ChiSurf RPC server (the latter
+ndX runs standalone or connected to a ChiSurf RPC server (the latter
 enables the phasor / FRET-line overlays and the analysis
 {ref}`bridges <concept-md-bridges>`):
 
@@ -39,7 +39,7 @@ Each row has a value, a **fixed** box, and bounds — the same compact fitting-t
 widget used across ChiSurf. Editing a value recomputes every derived column live.
 
 To keep one number consistent between a fit and the explorer, **link** a constant
-to a ChiSurf fit parameter (for example ndXplorer's `tauD0` to the donor-only
+to a ChiSurf fit parameter (for example ndX's `tauD0` to the donor-only
 lifetime of a TCSPC {doc}`lifetime fit <10_lifetime_anisotropy_fitting>`). The
 linked constant then tracks the fit — re-fit the lifetime and the FRET columns
 update. Constants default to **fixed**, so a marginal fit never silently moves
@@ -110,7 +110,7 @@ print(tau0_fit)   # -> ~4.00 ns, recovered to <0.1 %
 
 Left: every burst lies on the fitted static FRET line $E = 1 - \tau/\tau_0$
 ($\tau_0 = 4.00$ ns recovered). Right: the E marginal fitted with two Gaussians
-via ndXplorer's `fit_equation_to_marginal` engine. The FRET peak (broad) is well
+via ndX's `fit_equation_to_marginal` engine. The FRET peak (broad) is well
 described; the near-zero-efficiency peak is shot-noise-discretised rather than
 Gaussian, so its $\chi^2_r$ is elevated — the cue to hand that population to a
 {ref}`PDA bridge <concept-md-bridges>` for a shot-noise-aware line shape.

@@ -271,7 +271,7 @@ def test_mock_model_round_trip_preserves_plugin_lists(qapp, tmp_path):
                 'FCS:Correlator',
                 'Single-Molecule:Burst-Selection',
                 'Single-Molecule:Burst MLE Lifetime Analysis',
-                'Tools:ndXplorer'
+                'Tools:ndX'
             ]
         }
     }

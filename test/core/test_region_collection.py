@@ -2,7 +2,7 @@
 
 Three tools grew their own version of this list and disagreed about it: the CLSM
 tool could not combine two regions although the core supports ``&``/``|``/``~``;
-ndXplorer's carried ``enabled`` and ``invert`` per member, combined by implicit
+ndX's carried ``enabled`` and ``invert`` per member, combined by implicit
 AND, in the opposite mask convention, and dropped every non-rectangle selection
 on reload; the MLE tools silently unioned whatever a file contained. These tests
 pin the one type behind all three.
@@ -84,7 +84,7 @@ def test_nothing_enabled_is_not_the_same_as_no_restriction():
 
 
 def test_the_exclusion_mask_is_the_complement_of_containment():
-    """ndXplorer's convention, named rather than remembered."""
+    """ndX's convention, named rather than remembered."""
     c = _collection("or")
     points = np.array([LEFT, MIDDLE])
     assert c.excluded(points).tolist() == [False, True]

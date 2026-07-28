@@ -72,7 +72,7 @@ skill.
 every absolute import that a `try` body depends on. A `try: import x / except:
 x = None` is how an optional dependency is handled *and* how a renamed module
 becomes a feature that silently stops working — three such cases were live when
-the test was written (ndXplorer's reorganisation had disconnected two tools; a
+the test was written (ndX's reorganisation had disconnected two tools; a
 renamed editor had degraded a labelling view to raw text).
 
 Two patterns are deliberately not flagged: a handler re-importing the *same*

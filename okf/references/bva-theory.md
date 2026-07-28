@@ -99,7 +99,7 @@ a fixed photon count, for strongly varying count rates.
   standard: `backend/` + `server/` (RPC services, compute), `api/` (contract,
   models, serialization), `gui/` (database-free client/adapter/tool), `cli/main.py`,
   `wizard.py`. Results are written as `.bv4` companion files named after the burst
-  `.bur` stem (`write_bv4_analysis`) so ndXplorer and the burst browser join them
+  `.bur` stem (`write_bv4_analysis`) so ndX and the burst browser join them
   by stem; `read_burst_analysis` skips `.json`/`.yaml` sidecars when merging tables.
 - **Columns** — per-burst outputs surface as `Proximity Ratio Mean` and
   `Proximity Ratio Std`, visible in the Browser and ndX alongside the other

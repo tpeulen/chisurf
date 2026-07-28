@@ -12,7 +12,7 @@ It is deliberately general and configurable:
 * **Validation** is backed by :mod:`chisurf.core.expressions` (a safe AST
   whitelist) by default, but a caller may inject its own ``validator`` so the
   editor's ✓/✗ stays perfectly in step with whatever engine will *evaluate* the
-  expressions (ndXplorer does this so the editor never accepts a formula its own
+  expressions (ndX does this so the editor never accepts a formula its own
   compute engine would drop).
 * **Names** come from a ``names_provider`` returning ``{category: [names]}`` —
   shown grouped in a reference dialog and flattened for validation. Earlier

@@ -8,7 +8,7 @@ that list, and they disagreed:
 
 * the CLSM tool kept a ``{name: ROI}`` dict with add/apply/remove/save/load and
   no way to combine two regions, although the core supports ``&``/``|``/``~``;
-* ndXplorer kept a ``DataSelection`` hierarchy whose members carry exactly
+* ndX kept a ``DataSelection`` hierarchy whose members carry exactly
   ``name`` + ``enabled`` + ``invert`` and are combined by implicit AND, with the
   **opposite mask convention** (``True`` = excluded) and a save/load that
   silently dropped every selection that was not a rectangle;
@@ -48,7 +48,7 @@ class RegionEntry:
         deleted — switching a region off to see what it was doing is the most
         common thing a user does with a list of them.
     invert : bool
-        Whether the region contributes its *complement*. This is ndXplorer's
+        Whether the region contributes its *complement*. This is ndX's
         per-selection "invert" and the core's ``~`` operator; keeping it as a
         flag rather than wrapping the region means the underlying geometry is
         still there to edit after the user toggles it.
@@ -342,7 +342,7 @@ class RegionCollection:
     def excluded(self, points: np.ndarray) -> np.ndarray:
         """Return the *exclusion* mask — ``True`` where a point is filtered out.
 
-        ndXplorer's selection layer works in this convention throughout
+        ndX's selection layer works in this convention throughout
         (``DataSelection.get_mask`` returns what to hide), and silently
         disagreeing with it is how a gate ends up inverted three call sites
         later. Naming both directions is cheaper than remembering which one a

@@ -1,8 +1,8 @@
-r"""ndXplorer's constants as ChiSurf fitting parameters.
+r"""ndX's constants as ChiSurf fitting parameters.
 
-ndXplorer derives its FRET columns from a handful of scalar constants
+ndX derives its FRET columns from a handful of scalar constants
 (``gG/gR``, ``alpha``, ``beta``, ``r``, the backgrounds, ``PhiA``/``PhiD``,
-``forster_radius``, ``tauD0``, …). Inside ndXplorer they are numbers in a table:
+``forster_radius``, ``tauD0``, …). Inside ndX they are numbers in a table:
 typed in, not fitted, not shared, and invisible to the rest of ChiSurf.
 
 This module turns them into real
@@ -18,7 +18,7 @@ makes them first-class in ChiSurf:
 
 The group is a *view* of one window: :meth:`NdxConstants.pull` reads the window's
 constants into the parameters, :meth:`NdxConstants.push` writes them back and
-makes ndXplorer recompute. Which constants exist is read from the window rather
+makes ndX recompute. Which constants exist is read from the window rather
 than hard-coded, so a setup with extra constants exposes those too.
 
 Parameters are created **free**, so they show up in the Global View without
@@ -44,7 +44,7 @@ __all__ = [
     "bound_ndx_parameters",
 ]
 
-#: Bounds per known ndXplorer constant: ``name -> (lower, upper)``. Anything not
+#: Bounds per known ndX constant: ``name -> (lower, upper)``. Anything not
 #: listed gets no bounds — the point is to keep a physical quantity physical
 #: (a quantum yield cannot exceed 1), not to guess limits for unknown entries.
 CONSTANT_BOUNDS: dict[str, tuple[float, float]] = {
@@ -64,7 +64,7 @@ CONSTANT_BOUNDS: dict[str, tuple[float, float]] = {
 
 
 def _attribute_name(constant: str) -> str:
-    """Return a Python attribute name for an ndXplorer constant name.
+    """Return a Python attribute name for an ndX constant name.
 
     Constants like ``gG/gR`` are not identifiers; the parameter keeps the ndX
     spelling as its ``name`` (that is what a user recognises) while the attribute
@@ -74,7 +74,7 @@ def _attribute_name(constant: str) -> str:
 
 
 class NdxConstants(FittingParameterGroup):
-    """The scalar constants of one ndXplorer window, as fitting parameters.
+    """The scalar constants of one ndX window, as fitting parameters.
 
     Parameters
     ----------
@@ -86,10 +86,10 @@ class NdxConstants(FittingParameterGroup):
     Attributes
     ----------
     constant_names : list of str
-        The ndXplorer constant names currently exposed, in insertion order.
+        The ndX constant names currently exposed, in insertion order.
     """
 
-    def __init__(self, constants: dict | None = None, name: str = "ndXplorer"):
+    def __init__(self, constants: dict | None = None, name: str = "ndX"):
         """Create the group and one parameter per constant."""
         super().__init__(name=name)
         #: ndX constant name -> FittingParameter
@@ -104,7 +104,7 @@ class NdxConstants(FittingParameterGroup):
         """Refresh, and carry any edited value into the bound window.
 
         A parameter edited in the Global View writes straight into the parameter
-        object; nothing tells ndXplorer. Hooking the group's refresh means the
+        object; nothing tells ndX. Hooking the group's refresh means the
         two cannot drift: whenever ChiSurf refreshes this group, a value that no
         longer matches the window is pushed and the window recomputes. The
         comparison keeps it a no-op — and free — when nothing changed.
@@ -132,7 +132,7 @@ class NdxConstants(FittingParameterGroup):
         Parameters
         ----------
         constants : dict
-            ``{name: value}`` as ndXplorer holds them. Non-numeric entries are
+            ``{name: value}`` as ndX holds them. Non-numeric entries are
             skipped.
 
         Returns
@@ -168,15 +168,15 @@ class NdxConstants(FittingParameterGroup):
 
     @property
     def constant_names(self) -> list[str]:
-        """The ndXplorer constant names exposed by this group."""
+        """The ndX constant names exposed by this group."""
         return list(self._by_constant)
 
     def parameter(self, constant: str) -> FittingParameter | None:
-        """Return the parameter of one ndXplorer constant (``None`` if absent)."""
+        """Return the parameter of one ndX constant (``None`` if absent)."""
         return self._by_constant.get(str(constant))
 
     def as_dict(self) -> dict:
-        """Return the current values as an ndXplorer constants mapping."""
+        """Return the current values as an ndX constants mapping."""
         return {name: float(p.value) for name, p in self._by_constant.items()}
 
     # ── synchronisation with a window ──
@@ -186,7 +186,7 @@ class NdxConstants(FittingParameterGroup):
         Parameters
         ----------
         ndx : object
-            In-process ndXplorer window.
+            In-process ndX window.
 
         Returns
         -------
@@ -201,9 +201,9 @@ class NdxConstants(FittingParameterGroup):
         Parameters
         ----------
         ndx : object
-            In-process ndXplorer window.
+            In-process ndX window.
         recompute : bool, optional
-            Recompute ndXplorer's derived columns and refresh its plots.
+            Recompute ndX's derived columns and refresh its plots.
 
         Returns
         -------
@@ -242,7 +242,7 @@ class NdxConstants(FittingParameterGroup):
     def as_calibration(self, calibration=None):
         """Return these constants as a Hellenkamp calibration group.
 
-        ndXplorer's names are not Hellenkamp's — its ``beta`` is the direct
+        ndX's names are not Hellenkamp's — its ``beta`` is the direct
         excitation δ and its ``r`` is ``1/β`` — so the two views are kept
         separate and converted explicitly.
 
@@ -268,13 +268,13 @@ _BOUND: dict[str, tuple[NdxConstants, object]] = {}
 
 
 def bind_ndx_parameters(ndx, *, owner_id: str = "ndxplorer",
-                        label: str = "ndXplorer constants") -> NdxConstants:
+                        label: str = "ndX constants") -> NdxConstants:
     """Expose a window's constants as fitting parameters in the Global View.
 
     Parameters
     ----------
     ndx : object
-        In-process ndXplorer window.
+        In-process ndX window.
     owner_id : str, optional
         Registry slot; re-binding the same id replaces the previous group.
     label : str, optional

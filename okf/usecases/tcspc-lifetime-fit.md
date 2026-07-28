@@ -105,7 +105,7 @@ an uncaught `AttributeError: ExperimentDataGroup object has no attribute 'x'`
 - **Clipped text, several places.** The **FWHM** value box collides with its label
   and loses its leading digits (`0.254` renders as `.254`); the bottom dock tabs
   truncate to *"Read…" "Dat…" "An…" "Plot se…" "Co…" "Lo…"* even at 1700 px; the
-  third ribbon row ("ndXplorer") is cut off at the panel edge; the fit window's
+  third ribbon row ("ndX") is cut off at the panel edge; the fit window's
   custom title-bar button reads `C...e`; the IRF dialog's column headers are
   clipped along their top edge. See RF-016 for the FWHM one.
 - **The *Data table*'s last column ("IRF") is stretched over ~700 px** while the

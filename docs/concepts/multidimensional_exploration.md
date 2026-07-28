@@ -8,7 +8,7 @@ and a dozen columns — FRET efficiency, stoichiometry, donor lifetime,
 anisotropy, brightness, duration, arrival time. Every scientific question about
 that table is a question about a **projection** of it: which populations exist,
 where they sit, how a gate in one projection reshapes another. This is what
-ndXplorer is for, and this page explains the ideas that make its projections
+ndX is for, and this page explains the ideas that make its projections
 *quantitative* rather than merely pretty — the derived-parameter equation engine,
 constants that are real fitting parameters, and fitting a model to a marginal.
 
@@ -51,7 +51,7 @@ to a full model through a {ref}`bridge <concept-md-bridges>`.
 Most of the interesting axes are not measured directly. A burst measures *photon
 counts* in a few detection channels; the FRET efficiency, the stoichiometry, the
 donor lifetime are **derived** from those counts and from calibration constants.
-ndXplorer computes every derived column from a small set of **equations** over
+ndX computes every derived column from a small set of **equations** over
 the raw columns and a table of named **constants** — background rates, detection
 efficiency ratios, quantum yields, the Förster radius, the donor-only lifetime:
 
@@ -71,7 +71,7 @@ means the transform is inspectable rather than baked into a loader.
 
 Those equations are user-editable text, so they cannot be handed to Python's
 `eval`. ChiSurf provides a shared **safe expression engine**
-(`chisurf/core/expressions.py`) that ndXplorer uses when present: it parses an
+(`chisurf/core/expressions.py`) that ndX uses when present: it parses an
 expression to an abstract syntax tree and walks it against an explicit
 **allow-list** of node types, functions (`exp`, `sqrt`, `log`, trigonometry, …)
 and constants ($\pi$, $e$). A name that is not a known column, a listed function
@@ -83,7 +83,7 @@ formula ("parse") models.
 
 ## Constants are fitting parameters
 
-Here is the design decision that connects exploration to fitting. ndXplorer's
+Here is the design decision that connects exploration to fitting. ndX's
 constants are not bare floats. They are ChiSurf **`FittingParameter`s**, rendered
 in the same fitting-parameter table used everywhere else in ChiSurf: each carries
 a value, a **fixed/free** flag, and **bounds**. A constant you are confident about
@@ -91,7 +91,7 @@ a value, a **fixed/free** flag, and **bounds**. A constant you are confident abo
 from the data (a background rate) can be freed.
 
 Because they are real `FittingParameter`s, a constant can be **crosslinked** to a
-parameter in an actual ChiSurf fit. Link ndXplorer's $\tau_{D(0)}$ to the
+parameter in an actual ChiSurf fit. Link ndX's $\tau_{D(0)}$ to the
 donor-only lifetime returned by a TCSPC {ref}`lifetime fit <concept-tcspc-lifetime>`,
 and the calibration follows the fit: re-fit the lifetime and every FRET column in
 the explorer updates. There is then *one* source of truth for that number instead
@@ -103,7 +103,7 @@ share a parameter across datasets.
 
 An overlay curve on an axis is a parameterised function $y = f(x;\,\theta)$ — a
 Gaussian, a sum of Gaussians, any expression the safe engine accepts. Once you
-can draw it you want to **fit** it to the marginal histogram, and ndXplorer does
+can draw it you want to **fit** it to the marginal histogram, and ndX does
 this by reusing ChiSurf's fitting stack rather than a bespoke optimiser: the
 equation becomes a ChiSurf `ParseModel`, the histogram (bin centres → counts)
 becomes a `DataCurve` with Poisson counting weights

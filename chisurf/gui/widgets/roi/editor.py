@@ -3,7 +3,7 @@
 Before this widget, every tool that let a user work with more than one region
 grew its own list, and they disagreed about what a list of regions even is: the
 CLSM tool had names, save/load and measurements but no way to combine two
-regions; ndXplorer had per-row *enabled* and *invert* and combined by implicit
+regions; ndX had per-row *enabled* and *invert* and combined by implicit
 AND, but lost every non-rectangle selection when reloading; the MLE tools took
 several regions from a file and silently unioned them, with nothing on screen to
 say so. Most tools had no list at all — one anonymous region, or a file picker.

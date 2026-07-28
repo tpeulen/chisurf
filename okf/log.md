@@ -124,6 +124,32 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **The ndX rename, done by enumerating call sites — and the regex that did it
+  first had renamed *code*.** Every remaining "ndXplorer" in prose is now "ndX":
+  79 files, 243 occurrences across docstrings, comments, status messages,
+  READMEs, guides and OKF concepts. Identifiers keep their names (`NDXplorer`
+  class, `ndxplorer` package and RPC ids); `okf/log.md` and `okf/reviews/findings.md`
+  are history and were left alone; the canonical guide and the plugin README now
+  say the tool is ndX and note the former spelling, so a search still lands.
+  - Two **GUI-visible** strings had survived the earlier pass, which is what the
+    handover's "enumerate call sites, do not trust a regex" was about: the
+    FRET-line *Push to ndxplorer* button (and its two dialogs) and the imaging
+    tools' *🧭 ndxplorer* toolbar action.
+  - Worse, that earlier regex had renamed **imports**: `from ndxplorer import
+    ndXplorer` became `from ndxplorer import ndX`, so opening ndX from MMFDB
+    admin and from the imaging tools was dead — inside a `try`, therefore
+    silent. `test/architecture/test_guarded_imports.py` catches exactly this and
+    is green again with the symbol restored (`NDXplorer`, three import sites and
+    three constructor calls).
+  - **Found and not fixed:** the ndX launcher tests are red on an MMFDB defect —
+    registering an artifact auto-creates a plain user row named like the
+    configured bootstrap admin, and the one-shot bootstrap then refuses to
+    promote it, leaving the deployment with no administrator and no way to get
+    one. Diagnosis, minimal reproduction and the one-clause fix are in
+    [references/known-issues.md](references/known-issues.md); the file is
+    authentication code and this environment refused the edit, so it needs a
+    human hand in the `mmfdb` repository.
+
 * **⏩ was walking past the end of the pipeline, and the first step it ran
   crashed.** Three things, all reported from a real run:
   - `TypeError: 'bool' object is not callable` in `burst_2cde`'s auto-run.

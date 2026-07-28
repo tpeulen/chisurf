@@ -133,9 +133,9 @@ class AccurateFretViewModel:
         self.notify("file")
 
     def load_from_ndxplorer(self) -> str:
-        """Take the burst columns from an open ndXplorer window.
+        """Take the burst columns from an open ndX window.
 
-        The usual workflow: bursts are already selected and plotted in ndXplorer,
+        The usual workflow: bursts are already selected and plotted in ndX,
         so the calibration should run on exactly those columns instead of a file
         exported in between.
 
@@ -147,13 +147,13 @@ class AccurateFretViewModel:
         try:
             from chisurf.plugins.ndxplorer.calibration_bridge import find_ndx_windows
         except Exception:
-            return "ndXplorer is not available."
+            return "ndX is not available."
         windows = find_ndx_windows()
         if not windows:
-            return "No open ndXplorer window found."
+            return "No open ndX window found."
         data = getattr(getattr(windows[-1], "data_source", None), "data", None)
         if data is None:
-            return "The ndXplorer window holds no burst data."
+            return "The ndX window holds no burst data."
         columns: dict[str, np.ndarray] = {}
         for name in list(getattr(data, "columns", data.keys() if hasattr(data, "keys") else [])):
             try:
@@ -163,13 +163,13 @@ class AccurateFretViewModel:
             if values.size and np.any(np.isfinite(values)):
                 columns[str(name)] = values
         if not columns:
-            return "No numeric burst columns in the ndXplorer window."
+            return "No numeric burst columns in the ndX window."
         self._columns = columns
-        self.filename = "<ndXplorer>"
+        self.filename = "<ndX>"
         self._map_columns()
         self._result = None
         self.notify("file")
-        return f"Loaded {len(next(iter(columns.values())))} bursts from ndXplorer."
+        return f"Loaded {len(next(iter(columns.values())))} bursts from ndX."
 
     def column_names(self) -> list[str]:
         """Column names of the loaded table (for the column pickers)."""
@@ -548,7 +548,7 @@ class AccurateFretViewModel:
         return "Calibration registered in the session (linkable from any fit)."
 
     def push_to_ndxplorer(self) -> str:
-        """Push the posterior factors into an open ndXplorer window.
+        """Push the posterior factors into an open ndX window.
 
         Returns
         -------
@@ -563,13 +563,13 @@ class AccurateFretViewModel:
                 push_calibration_to_ndx,
             )
         except Exception:
-            return "ndXplorer is not available."
+            return "ndX is not available."
         windows = find_ndx_windows()
         if not windows:
-            return "No open ndXplorer window found."
+            return "No open ndX window found."
         for window in windows:
             mapping = push_calibration_to_ndx(window, self._result.calibration.calibration)
-        return f"Pushed {len(mapping)} constants to {len(windows)} ndXplorer window(s)."
+        return f"Pushed {len(mapping)} constants to {len(windows)} ndX window(s)."
 
     def export_csv(self, path: str) -> None:
         """Write the per-burst accurate values (with the calibration header) to *path*."""

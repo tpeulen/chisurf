@@ -119,9 +119,9 @@ def push_calibration_to_ndx(ndx, calibration, *, recompute: bool = True) -> dict
 
 
 def find_ndx_windows() -> list:
-    """Return the open in-process ndXplorer windows.
+    """Return the open in-process ndX windows.
 
-    ndXplorer runs inside the ChiSurf process, so a tool that wants to push a
+    ndX runs inside the ChiSurf process, so a tool that wants to push a
     calibration (or read burst columns) only has to find the window among the
     top-level Qt widgets. Returns an empty list when Qt is not running — the
     callers stay usable head-less.
@@ -129,7 +129,7 @@ def find_ndx_windows() -> list:
     Returns
     -------
     list
-        Every ndXplorer-like top-level window, newest last.
+        Every ndX-like top-level window, newest last.
     """
     try:
         from qtpy import QtWidgets
@@ -183,7 +183,7 @@ def optimize_calibration_from_ndx(
     Parameters
     ----------
     ndx : object
-        In-process ndXplorer window (needs ``data_source.data`` and
+        In-process ndX window (needs ``data_source.data`` and
         ``constants``).
     columns : dict, optional
         Explicit ``{role: column_name}`` overrides for ``i_dd``/``i_da``/
@@ -224,7 +224,7 @@ def optimize_calibration_from_ndx(
     data = getattr(data_source, "data", None)
     table = columns_from_data(data)
     if not table:
-        return {"ok": False, "error": "the ndXplorer window holds no burst columns"}
+        return {"ok": False, "error": "the ndX window holds no burst columns"}
 
     mapping = {**guess_columns(table), **{k: v for k, v in (columns or {}).items() if v}}
     for role in ("i_dd", "i_da"):
@@ -306,7 +306,7 @@ def refresh_column_selectors(ndx) -> None:
     Parameters
     ----------
     ndx : object
-        In-process ndXplorer window.
+        In-process ndX window.
     """
     data_source = getattr(ndx, "data_source", None)
     for name in ("update_parameter_names", "refresh_axis_comboboxes_preserving_selection"):
