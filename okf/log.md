@@ -2,6 +2,27 @@
 
 ## 2026-07-28
 
+* **A deprecation that could never say "unsupported"** (RF-662). Retiring the
+  third-party `deprecation` package dropped the frozen `current_version` that
+  had made all twelve `@deprecated` decorations inert since 2019 — but dropped
+  it to `None`, which `_deprecation_state` reads as "no version to compare
+  against" and answers `(True, False)` to. `UnsupportedWarning` is exported,
+  documented and unreachable: `bh123_header`, `removed_in="20.01.01"`, reported
+  that it *"will be removed in 20.01.01"* on a `26.dev4404` tree, six years
+  after the fact. `chisurf/core/decorators.py` now defaults `current_version` to
+  a sentinel resolving to the running version via `_running_version()`, read
+  lazily from the stdlib-only leaf `chisurf.core.info` behind an `ImportError`
+  guard so the module stays liftable; an explicit `None` keeps its documented
+  meaning of disabling the comparison. Fixing the default surfaced a bug it had
+  been hiding — `deprecated_in=None`, documented as "deprecated as of now",
+  returned `(False, False)` once a real version was supplied, so a bare
+  `@deprecated()` would have gone silent — fixed in the same change. Verified
+  end-to-end: `bh123_header` is now *unsupported as of 20.01.01*, `pq_photons`
+  (no `removed_in`) still merely deprecated. `test/core/test_decorators.py`
+  10 passed, plus the `decorators.py` doctest; lint on both files is
+  byte-identical to its baseline. The one red test in the sweep,
+  `test_vm_rt_to_vv_vh_recovers_anisotropy`, is another instance's in-flight
+  `vv_vh` work and fails identically with the old decorator semantics restored.
 * **A "perfect" three-colour PDA burst was a float64 overflow** (RF-538). The
   GEMM factorisation in `chisurf/core/fluorescence/pda3c/likelihood.py`
   exponentiated its two halves separately, but each is astronomically out of

@@ -182,6 +182,25 @@ def _version_key(text: str) -> tuple:
     return tuple(key)
 
 
+def _running_version():
+    """Return the version of the running code, or ``None`` if unknown.
+
+    Resolved lazily from :mod:`chisurf.core.info` -- a dependency-free leaf
+    module -- so that this module keeps working when it is lifted out of
+    ChiSurf, in which case the version comparison is simply disabled.
+
+    Returns
+    -------
+    str or None
+        The running version string, or ``None`` outside a ChiSurf tree.
+    """
+    try:
+        from chisurf.core.info import __version__
+    except ImportError:  # pragma: no cover - only outside a ChiSurf tree
+        return None
+    return __version__
+
+
 def _deprecation_state(deprecated_in, removed_in, current_version):
     """Decide whether a decoration warns, and with which warning class.
 
@@ -193,8 +212,10 @@ def _deprecation_state(deprecated_in, removed_in, current_version):
         Version or date the function is removed at.
     current_version : str or None
         Version of the running code. ``None`` disables the comparison, in which
-        case the decoration always warns -- the decorator was applied, so the
-        function *is* deprecated.
+        case the decoration always warns as *deprecated* -- the decorator was
+        applied, so the function *is* deprecated, but without a version to
+        compare against there is no way to tell that it is already past
+        ``removed_in``.
 
     Returns
     -------
@@ -208,7 +229,7 @@ def _deprecation_state(deprecated_in, removed_in, current_version):
     current = _version_key(current_version)
     if removed_in and current >= _version_key(removed_in):
         return True, True
-    if deprecated_in and current >= _version_key(deprecated_in):
+    if deprecated_in is None or current >= _version_key(deprecated_in):
         return True, False
     return False, False
 
@@ -245,7 +266,10 @@ def _with_deprecation_note(docstring: str, deprecated_in, removed_in, details: s
     return "\n\n".join(part for part in (summary, textwrap.dedent(body).strip(), note) if part)
 
 
-def deprecated(deprecated_in=None, removed_in=None, current_version=None, details=""):
+_UNSET = object()
+
+
+def deprecated(deprecated_in=None, removed_in=None, current_version=_UNSET, details=""):
     """Mark a function as deprecated.
 
     The wrapped function keeps working and gains two things: a
@@ -270,7 +294,10 @@ def deprecated(deprecated_in=None, removed_in=None, current_version=None, detail
         without ``deprecated_in``.
     current_version : str, optional
         Version of the running code, used to decide whether the deprecation
-        period has started. When ``None`` the decoration always warns.
+        period has started and whether ``removed_in`` has already passed.
+        Defaults to the running ChiSurf version; pass ``None`` explicitly to
+        disable the comparison, in which case the decoration always warns as
+        deprecated and never as unsupported.
     details : str, optional
         Extra guidance, typically naming the replacement.
 
@@ -300,6 +327,8 @@ def deprecated(deprecated_in=None, removed_in=None, current_version=None, detail
     if deprecated_in is None and removed_in is not None:
         raise TypeError("Cannot set removed_in without also setting deprecated_in")
 
+    if current_version is _UNSET:
+        current_version = _running_version()
     should_warn, is_unsupported = _deprecation_state(deprecated_in, removed_in, current_version)
 
     def _decorate(function):
