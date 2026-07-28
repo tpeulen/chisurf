@@ -8808,3 +8808,57 @@ and the same answer. Findings RF-752..RF-759; use case
 - **Location:** `chisurf/gui/widgets/dock_area/dock_stacked_tab_bar.py:240` (`self._label = QtWidgets.QLabel(text, self)` in `DockStackedTabItem.__init__`, and `setText` at `:257-260`)
 - **Finding:** the tab caption is rendered by a `QLabel`, which parses `&` as a mnemonic marker. The IRF & Background panel's *"Files & Parameters"* dock — the title authored in `burst_irf_bg/gui/irf_bg.view.json:18` and returned verbatim by `tabText()` — is drawn as *"Files Parameters"* with the *P* underlined (verified in the rendered screenshot). Any view spec whose panel title contains an ampersand is affected. Escape the text for display (`text.replace("&", "&&")`) in `DockStackedTabItem`, keeping `text()` returning the original.
 - **Fix note:**
+
+## Review 2026-07-28 — the pooled per-state lifetime that steers the per-burst fits
+
+Slice: `3abad0e77` (*"fit each H2MM state's pooled decay, and start its bursts
+from it"*) — `pool_states_worker` in
+`chisurf/plugins/burst/burst_mle_analysis/_mp_worker.py`, and
+`_pool_state_decays` / `_fit_pooled_state_decays` / `_state_lifetime_rows` /
+`_apply_pooled_state_fits` / `write_state_lifetimes` in `wizard.py`, plus the new
+call site inside `process_bursts`. The arithmetic holds up: the shift/window are
+linear and applied once to the sum exactly as the per-burst pass applies them
+(`_copy_shifted(cs, d, n, s0, s1, shift, n)` is called identically in both), the
+per-photon state array is built at the full photon length by
+`burst_states.state_arrays`, so the mask can never mis-slice, the seeds are keyed
+by plain `int` and only `x[0]` is overwritten, and every `perdet_cfg` really is
+per-file identical apart from `class_lut`. What the review found is on the edges:
+the pooled fit reads its configuration from `jobs[0]`, which is an empty dict
+whenever the first measurement has no TTTR; the new pass is not cancellable and
+does not repaint; and the table it writes is not among the stamped outputs, so
+deleting it leaves the step "current". Findings RF-760..RF-764.
+
+### RF-760
+- **Status:** OPEN
+- **Severity:** S2 (one file without a raw TTTR silently costs the whole pooled fit *and* the seeding it exists for)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:438-440` (`_fit_pooled_state_decays(pooled, det_order, jobs[0][9], int(self.shift or 0))`, under the comment "the first one describes the pooled fit") against `:4518-4523` (a measurement whose TTTR cannot be resolved — `self.tttrs.get(key) is None` — is appended as a placeholder job whose `perdet_cfg` is `{}`) and `:347-351` (`cfg = perdet_cfg.get(det)` … `if arr is None or cfg is None: continue`)
+- **Finding:** the pooled fit takes its per-detector configuration from the *first* job only, and the first job is not guaranteed to be a real one. `jobs` is built in `df_bursts.groupby('First File', sort=False)` order, so if the first burst file's raw measurement is missing the job at index 0 carries `{}`, every `perdet_cfg.get(det)` is `None`, the loop `continue`s for all detectors and `_fit_pooled_state_decays` returns `{}`. `_pool_state_decays` meanwhile succeeded — that job carries `state_info=None`, so `pool_states_worker` returns `{}` for it and the totals over the remaining files are complete — so `pooled` is non-empty and the early return at `:432` does not fire. The result: no rows, no `Info/state_lifetimes.csv`, no `state_x0` on any job, the status line *"Pooled state lifetimes: none could be fitted."*, and every per-burst state fit falls back to the panel's one global guess, which is precisely the bias the seeding was added to remove — while the run otherwise completes and exports a full table. Choose the first job whose `perdet_cfg` is non-empty (or hand the shared configuration in separately). `tests/test_state_split.py:238` only exercises a single, fully loaded job.
+- **Fix note:**
+
+### RF-761
+- **Status:** OPEN
+- **Severity:** S3 (a second full pass over every photon during which Cancel does nothing and the window does not repaint)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:304-319` (`_pool_state_decays`: `with ProcessPoolExecutor(...) as ex: … for fut in as_completed(futures)` — no `progress.wasCanceled()`, no `setValue`, no `processEvents`) and its call site `:4645-4651` (`self.stop_processing` is read *before* the call, `ui_pump(0)` fires once), against the fit loop's own comment at `:4658-4667` ("Cancel has to be read *here*")
+- **Finding:** the pooled pass re-bins every photon of every burst of every file on a freshly spawned process pool, and nothing inside it touches the progress object: the bar stays at 0 under the label *"Fitting the pooled decay of each state..."*, `wasCanceled()` is never read, and there is no `processEvents`, so the window is unresponsive and unrepainted for the duration. A user pressing Cancel sees nothing happen until the pooled pass has finished and the *fit* loop below reads the flag on its first completed future. The comment directly below documents why a cancel check belongs inside the loop rather than after it. Poll `progress.wasCanceled()` / `self.stop_processing` per completed future in `_pool_state_decays`, return early when set, and move the bar with the files as they land.
+- **Fix note:**
+
+### RF-762
+- **Status:** OPEN
+- **Severity:** S3 (deleting the state-lifetime table leaves the step reporting "unchanged" and it is never rewritten)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:443` (`self.write_state_lifetimes(rows)` — the returned paths are discarded) and `:4747-4760` (`written = self._save_burst_results_fast(result_df)` → `analysis_cache.write_stamp(..., outputs=written, ...)`), with `_save_burst_results_fast` at `:666`/`:692` (`written_files` holds only the `.b?4` tables) and `:674-679` (`channel_settings.json` + `Info/experiment_settings.json`, likewise unrecorded), against the gate at `:4378` (`analysis_cache.is_current(stamp_path, fingerprint)`) → `chisurf/core/analysis_cache.py:441-452` (`outputs_unchanged(entry.get("outputs") or ())`)
+- **Finding:** `write_state_lifetimes` deliberately returns the paths it wrote, and the caller throws them away, so `Info/state_lifetimes.csv` never enters the stamp's `outputs` — neither do the two settings sidecars written by the same step. The reuse gate validates only the outputs the stamp names, so removing or corrupting any sidecar leaves the next run reporting *"Unchanged — the exported burst fits are current (nothing refitted)"* and the file is never regenerated; the only recovery is 🔁 Restart, which refits every burst of every file. Collect the sidecar paths (the return value of `write_state_lifetimes`, and the settings files from `_save_burst_results_fast`) into `written` so the gate covers everything the step produces.
+- **Fix note:**
+
+### RF-763
+- **Status:** OPEN
+- **Severity:** S3 (dead parameter and dead accumulator in the new pooled step)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:279` (`def _pool_state_decays(self, jobs, det_order, n_states, ctx, max_workers)` — `n_states` is never read in the body, `:290-319`, and is passed from `:4649`) and `:445`/`:462` (`seeded = 0` … `seeded = max(seeded, len(seeds))`, never read again)
+- **Finding:** two leftovers. `n_states` is threaded into `_pool_state_decays` and unused — the state count that actually shapes the pooled arrays comes from each job's own `state_info` tuple — so the signature implies a consistency check between the caller's count and the jobs' that does not exist. `seeded` counts how many states received a start value and is then dropped, although the status line built ten lines below reports only the τ values and not how many per-burst fits were actually re-seeded. Drop the parameter (or use it to assert the jobs agree), and either report `seeded` or remove it.
+- **Fix note:**
+
+### RF-764
+- **Status:** OPEN
+- **Severity:** S3 (a return annotation that says `None` while the caller depends on the value)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:560` (`def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:`) against `:692` (`return written_files`), the bare `return` on the cancel path at `:684-688`, and the consumer at `:4747-4748` (`written = self._save_burst_results_fast(result_df)` … `if written and stamp_path is not None:`)
+- **Finding:** the method is annotated as returning `None` but returns `list[Path]` on the normal path and `None` when the save is cancelled, and `process_bursts` branches on that value to decide whether to write the stamp at all — so the annotation contradicts the one contract the reuse gate rests on, and `pixi run typecheck` cannot see the difference between "cancelled" and "wrote nothing". Annotate it `-> list[Path] | None` and say in the docstring that `None` means the save was cancelled.
+- **Fix note:**
