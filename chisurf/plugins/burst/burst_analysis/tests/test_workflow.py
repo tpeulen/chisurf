@@ -849,3 +849,34 @@ def test_every_panel_role_has_an_applier() -> None:
         if not role or role in {"separator", "data"}:
             continue
         assert f'"{role}"' in src, f"panel {panel['name']!r} gets no workflow context"
+
+
+def test_registered_storage_mode_is_a_term_mmfdb_accepts() -> None:
+    """Importing a file must not be rejected by the raw-data vocabulary.
+
+    ``raw_data.register`` validates ``storage_mode`` against the dictionary-
+    generated vocabulary. The selector used to send ``"file"``, which is not a
+    term, so every import logged "Invalid storage_mode" and no raw data was ever
+    registered — the object store call before it had already succeeded, so the
+    failure looked partial rather than total.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from mmfdb.models import STORAGE_MODES
+
+    from chisurf.plugins.burst.burst_analysis.gui.tool import (
+        BurstDataSelectionWidget,
+    )
+
+    src = inspect.getsource(BurstDataSelectionWidget._import_path_to_mmfdb)
+    modes = [
+        node.value
+        for node in ast.walk(ast.parse(textwrap.dedent(src)))
+        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+    ]
+    sent = [m for m in modes if m in STORAGE_MODES or m == "file"]
+    assert sent, "no storage_mode literal found — did the payload change?"
+    for mode in sent:
+        assert mode in STORAGE_MODES, f"{mode!r} is not one of {STORAGE_MODES}"

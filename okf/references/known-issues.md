@@ -1,3 +1,30 @@
+## quest: the plugin's RPC layer targets a backend the package does not have
+
+**Found 2026-07-28.** Starting the GUI logs
+
+```
+Failed to register services for plugin 'quenching_estimator'
+ModuleNotFoundError: No module named 'quest.backend'
+```
+
+`chisurf/plugins/quenching_estimator/` is deliberately a thin shell: its
+`rpc/services.py`, `api/contract.py` and `api/client.py` all forward to
+`quest.backend.services` / `quest.backend.contract` so the CLI, the web backend
+and ChiSurf share one implementation of the sixteen `quest.*` methods the
+manifest declares. That backend package does not exist -- not in the checked-out
+`modules/quest`, and not on any of its branches (`git ls-tree` over `master`,
+`main`, `dev`, `devel`, `development`, `chisurf-pin` shows only `quest/lib` and
+`quest/settings`). So every `quest.*` RPC is unreachable, and the plugin's own
+tests for the contract cannot run either. The GUI entry point still works: it
+imports `quest.gui` directly and never touches the backend.
+
+**To close it:** write `quest/backend/{contract,services}.py` in the quest
+repository, over `quest.core` / `quest.api`, matching the schemas already in
+`chisurf/plugins/quenching_estimator/manifest.json` (that file is the contract's
+written form). It belongs there, not here: a second implementation ChiSurf-side
+is exactly the `LAY-01` duplication the shell was built to avoid. Until then the
+failure is a logged registration error, not a crash.
+
 ## packaging: the LaTeX converter has no Python 3.12 conda build
 
 **Found 2026-07-28.** `chisurf/gui/widgets/models/parse/latex.py` renders a

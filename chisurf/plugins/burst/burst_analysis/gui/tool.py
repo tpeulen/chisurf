@@ -163,7 +163,9 @@ class BurstDataSelectionWidget(QtWidgets.QWidget):
                         "raw_data": {
                             "file_path": str(path),
                             "data_type": "TTTR",
-                            "storage_mode": "file",
+                            # One of MMFDB's storage_mode vocabulary terms; "file"
+                            # is not one, and every registration was rejected.
+                            "storage_mode": "local_file",
                             "header_metadata": {
                                 "mmfdb_object": object_result.get("object", {}),
                                 "source": "burst_analysis.data_selection",

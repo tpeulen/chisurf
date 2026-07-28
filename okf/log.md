@@ -2,6 +2,34 @@
 
 ## 2026-07-28
 
+* **ndX: the marginals described a larger population than the map below them,
+  and four silent failures around them.** A per-state lifetime column (defined
+  for the bursts one H2MM state claims) against a proximity ratio (defined for
+  all of them) drew a full-height y marginal beside a nearly empty image --
+  each 1D histogram dropped only its own column's NaNs. One
+  `apply_joint_axis_mask` seam, applied in all three computation paths, now
+  keeps the marginals, the image and the displayed count on the same rows.
+  Found with it, all silent: `currentIndexChanged` bound straight to
+  `update_spinbox_limits` made the combo box index the lower *percentile*
+  (wrong contrast under index 100, `ValueError` above it -- the crash in the
+  report); `resolve_weights` had lost the two lines defining `weight_param`
+  and `weight_idx`, so every weighted histogram raised `NameError`;
+  `update_plots` accepted only tuple histograms and blanked the dataclasses the
+  immediate path had just computed; and "not computed yet" was an empty tuple
+  that read as a corrupt histogram. Fixed in the ndX repository (`459d2f7`)
+  with `test/test_marginals_match_the_map.py`.
+* **Burst data selection registered no raw data at all.** The MMFDB import in
+  the burst-analysis data selector sent `storage_mode: "file"`, which is not one
+  of the dictionary-generated vocabulary terms, so `raw_data.register` rejected
+  every file -- after the object-store call before it had succeeded, which made
+  the failure look partial. It is `local_file`; a test in the plugin's suite
+  checks the literal against `mmfdb.models.STORAGE_MODES`.
+* **Filed:** the QuEst plugin's RPC shell forwards to a `quest.backend` package
+  that exists on no branch of the quest repository, so all sixteen `quest.*`
+  methods are unreachable and startup logs a registration error. See
+  [known issues](/references/known-issues.md); it closes in the quest
+  repository, not here.
+
 * **Samplers advertise their own settings, and the GUI is built from that.**
   The settings dialog behind the fit controls' ⚙ contains no list of fields.
   `chisurf/core/fitting/sample.py` gains a `SAMPLERS` registry (name, label,
