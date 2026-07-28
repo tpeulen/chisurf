@@ -8138,3 +8138,54 @@ accurate. Findings RF-689..RF-695.
 - **Location:** `quest/gui/form_model.py:403` (`simulate_project(self._project, save_outputs=False)`) and `quest/gui/generate_view_spec.py:332-350` (the button row offers only `run_simulation`, `load_project_dialog`, `save_project_dialog`); compare `quest/core/simulation.py:1240-1266`, which writes `decay.csv` and `result.csv` when `save_outputs=True`
 - **Finding:** the GUI deliberately runs with `save_outputs=False` (so a click does not litter `jobs/`), but nothing replaces it: the window can save its **inputs** and nothing else. There is no *Export decay*, no CSV, and no push into a ChiSurf dataset, so the predicted donor and D–A decays cannot be plotted next to a measured one — which is the reason to predict them, and what every neighbouring tool (Filter Calc, the Simulator file type, the burst tools) does offer. Add an export action that writes the same `decay.csv` the CLI writes, and an *add to ChiSurf* action that lands the two curves as datasets.
 - **Fix note:**
+
+## Review 2026-07-28 — the burst companions, one commit after they were introduced
+
+Slice: the per-measurement companion writers, read against the contract they are
+supposed to enforce and against the reader that is supposed to merge them —
+`chisurf/plugins/burst/burst_h2mm/core/export.py` (`write_burst_companions`, new
+in `035ec8228`), `chisurf/plugins/burst/burst_state_mle/core/state_mle.py`
+(`write_state_results`), `chisurf/core/fio/fluorescence/burst_companion.py` and
+ndXplorer's `_process_burst_analysis_dir`. The contract lives in
+[/subsystems/burst-companions.md](/subsystems/burst-companions.md) and is
+load-bearing precisely because nothing validates it at read time.
+
+Checked and clean: `write_companion` itself (interleaving, duplicate-column and
+shape guards, `nan_to_num` sentinel) round-trips through `read_companion` and
+through ndX's `_read_text_table_auto` + `skip_nth_row`; `extract_burst_photons`'s
+new `with_rows` really does return **positions in `df`** (`enumerate` over
+`itertuples`), and `write_burst_companions` maps them correctly, so the *row
+grid* of a `.bh4` is right — `2N+1` rows for the `N` bursts of that measurement,
+`H2MM Fitted = 0` where a burst was skipped, padding rows excluded. What is wrong
+is which file that grid is written to, and where.
+
+Verified against the real burst folder in the tree,
+`modules/ndxplorer/test/mfd/burstwise_All 0.1500#30`.
+
+### RF-696
+- **Status:** OPEN
+- **Severity:** S2 (the companion is written under a name the reader never looks for, so an H2MM state column is silently absent from every burst folder whose TTTR files are not named exactly like its `.bur` files)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/export.py:353-381` (`write_burst_companions`: `files = np.asarray(burst_df["First File"]...)`, `for name in pd.unique(files)`, and the stem at `:377` — `pathlib.Path(str(name)).stem`) against `modules/ndxplorer/ndxplorer/io/reader.py:562-565` (`stem = bur.stem; extra = base_path / ending / f"{stem}.{ending}"`)
+- **Finding:** the companion is named after the **TTTR file** (`First File`), while every reader — ndX and the folder's own existing companions — names it after the **`.bur` file**. On `modules/ndxplorer/test/mfd/burstwise_All 0.1500#30` the two differ: the burst tables are `bi4_bur/m000_0.bur`, their `First File` column reads `m000.spc`, and the companions already in the folder are `bg4/m000_0.bg4`, `br4/m000_0.br4`. Run (`load_bur_dataframe` on the first two `.bur` files, then the stem expression): H2MM would write `bh4/m000.bh4` and `bh4/m001.bh4`, while ndX looks for `bh4/m000_0.bh4` — no match, so `extra.exists()` is false and the companion is skipped with no error. The whole point of the `bh4` work in `035ec8228` (gate bursts by H2MM state in ndX) is therefore lost on this folder layout, and lost *silently*. The mapping is already in hand: `run_analysis` knows `bur_paths`, so the stem must come from the `.bur` file each burst row came from, not from its `First File`. Note that `chisurf/plugins/burst/burst_h2mm/tests/test_ndx_compat.py:219-222` **asserts the current, wrong rule** (`["m000.bh4"]` from `First File == "m000.spc"`, with no `.bur` file in the fixture at all), so the test has to be rewritten alongside — ideally against a `.bur` whose stem differs from its `First File`, which is the case the tree's own sample data has.
+- **Fix note:**
+
+### RF-697
+- **Status:** OPEN
+- **Severity:** S2 (the state-wise MLE companions break rules 1 and 3 of the contract: one folder-wide table indexed by a compacted burst number — the exact trap the H2MM fix removed, still live one plugin over)
+- **Location:** `chisurf/plugins/burst/burst_state_mle/core/state_mle.py:490-523` (`write_state_results`: `file_stem = burs[0].stem if len(burs) == 1 else "all"` at `:494`, `n_bursts = int(results["Burst"].max()) + 1` at `:496`, `write_companion(root, ending, file_stem, cols, table)` at `:523`), called with no `file_stem` from `chisurf/plugins/burst/burst_state_mle/gui/tool.py:291`
+- **Finding:** two independent breakages in one writer. (a) With more than one `.bur` in the folder — the normal case; the sample folder has 30 — the stem falls back to `"all"`, so it writes `bg4_s0/all.bg4_s0`, which ndX (`base_path/<ending>/<bur stem>.<ending>`) never opens: written, and never read. (b) The row grid is `results["Burst"]`, which is H2MM's per-photon `Burst` id (`read_photon_table` at `:178`, ultimately `PhotonMeta.burst_id` = `enumerate(times)` in `bursts_from_dataframe`) — the **compacted** index of the bursts H2MM kept, across the whole folder. So even the single-`.bur` case is misaligned whenever any burst fell below `min_photons`: the table has one row per *analysed* burst, not one row per burst of that measurement, and row *k* is not burst *k* of the `.bur`. This is verbatim the failure `okf/subsystems/burst-companions.md` records as fixed for H2MM ("*one row per burst including the ones the analysis skipped*"), and the fix is the same shape: carry `burst_rows` through the state-wise step and write one file per measurement on the `.bur` row grid.
+- **Fix note:**
+
+### RF-698
+- **Status:** OPEN
+- **Severity:** S3 (the companion directory is placed relative to the output folder rather than to the `.bur` files, so it lands outside the burst folder for two of the three ways the folder can be chosen)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/backend/services.py:248-251` (`write_burst_companions(..., pathlib.Path(out_dir).parent)`) with the callers at `chisurf/plugins/burst/burst_h2mm/gui/tool.py:978` (`write_result_tables(result, bundle, pathlib.Path(self.data_folder) / "h2mm")`) and `services.py:322` (`pathlib.Path(resolved_folder) / "h2mm"`), against `_resolve_bur_files` at `:365-378` (`folder.glob("**/" + pattern)`)
+- **Finding:** the companion root is inferred as *the parent of the output directory*, i.e. the folder the user selected, while the contract requires it to be the parent of `bi4_bur`. The `.bur` search is deliberately **recursive** (`**/*.bur`), so the selected folder need not be the analysis folder, and the two other plausible selections both misplace `bh4/`: pick the TTTR folder that *contains* `burstwise_All 0.1500#30` and the companions are written one level above the burst folder (ndX, opened on the burst folder, does not see them); pick `bi4_bur` itself — which the dialog's own wording, *"Select burst (.bur) folder"*, invites — and they land in `bi4_bur/bh4/`, which is not a sibling of `bi4_bur` and is likewise never merged. Only selecting the analysis folder exactly works. `run_analysis` already resolves `bur_paths`; the root should be derived from those (`bur_paths[0].parent.parent` when they sit in `bi4_bur`/`bur`) and carried on the bundle, not re-derived from the output path.
+- **Fix note:**
+
+### RF-699
+- **Status:** OPEN
+- **Severity:** S3 (a column named for a mean holds the burst's first photon instead, and the sibling table one function below computes the real mean)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/core/export.py:139` (`cols["Mean Macro Time (s)"].append(float(meta.macro_time[s]) * base_time_s)`, where `s = int(offsets[b])` is the burst's first photon) against `:234-235` in `build_dwell_table` (`float(macro[s0:s1].mean()) * base_time_s`)
+- **Finding:** the per-burst table's time axis is the burst **start** time, not the mean macro time its column name promises — `offsets[b]` is the first photon of the burst and the arrays are sorted, so it is the minimum. The name is not incidental: `Mean Macro Time (s)` is the column ndX auto-selects as the time axis (`export.py:8-9`) and the name it gives the `.bur`'s own `Mean Macro Time (ms)`, which *is* a mean — so a plot mixing the two compares a mean against a start, offset by roughly half a burst duration. `build_dwell_table` computes the mean over the same arrays, so the two tables written by the same call disagree about what the column means. Either take the mean here as well, or rename the column — but then it stops being the axis ndX picks up, so the mean is the fix.
+- **Fix note:**
