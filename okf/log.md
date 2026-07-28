@@ -2,6 +2,18 @@
 
 ## 2026-07-29
 
+* **An IRF shift asked for in nanoseconds was applied in half-nanoseconds**
+  (RF-880). The LLTF decay model converted `irf_shift` to channels with a
+  hard-coded `2.0`, so on the shipped example (0.008 ns per channel) 8 ns moved
+  the IRF by 4 channels and `estimate_irf_shift` railed at the edge of its own
+  scan range while applying essentially nothing. `Decay.channel_width` now
+  reads the channel width off the time axis. Fixing the units exposed a second
+  defect in the same path: the shift kernel truncated towards zero, so a
+  negative fractional shift silently lost its integer part and a positive one
+  wrapped the IRF tail into the first channels — it now floors the shift and
+  iterates over destination channels. Pinned by
+  `chisurf/plugins/fluorescence_decay/lltf/test/test_irf_shift.py`.
+
 * **The exported extension categories still carried a consuming application's
   brand** ([PRD-44](/prds/prd-44.md), mmfdb `ce2560f`). PRD-44 de-branded the
   dictionary's schema-mapping tags and stopped there; the five local extension

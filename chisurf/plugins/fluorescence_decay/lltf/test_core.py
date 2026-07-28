@@ -37,6 +37,11 @@ def test_fit_lifetime_example_data(tmp_path, n_lifetimes: int) -> None:
     with CONFIG_FILE.open("r", encoding="utf-8") as fh:
         config = yaml.safe_load(fh)
 
+    # the bundled config searches for the optimal component count, which ignores
+    # n_lifetimes and starts from randomised values - switch it off so the
+    # assertions below are about the number of lifetimes that was requested
+    config["lifetime_fit_parameter"]["find_optimal"] = False
+
     result = fit_lifetime(
         decay_file=str(DECAY_FILE),
         irf_file=str(IRF_FILE),

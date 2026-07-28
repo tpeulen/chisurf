@@ -41,24 +41,24 @@ def _shift_irf_numba(original_irf: np.ndarray, shift_ch: float) -> np.ndarray:
     n = len(original_irf)
     shifted = np.zeros_like(original_irf)
 
-    # Split the shift into integer and fractional parts
-    int_shift = int(shift_ch)
+    # Split the shift into integer and fractional parts. Flooring keeps
+    # 0 <= frac < 1 for negative shifts too, so shifted[dst] samples the
+    # original IRF at dst - shift_ch for either sign.
+    int_shift = int(np.floor(shift_ch))
     frac = shift_ch - int_shift
 
-    if frac == 0:
+    if frac == 0.0:
         # Integer shift - simple case
-        for i in range(n):
-            dst = i + int_shift
-            if 0 <= dst < n:
-                shifted[dst] = original_irf[i]
+        for dst in range(n):
+            src = dst - int_shift
+            if 0 <= src < n:
+                shifted[dst] = original_irf[src]
     else:
-        # Fractional shift - linear interpolation
-        # int_shift is negative, so -int_shift is positive
-        for i in range(-int_shift, n):
-            dst = i + int_shift
-            if 0 <= dst < n:
-                # note: idx-1 also in range because i starts at -int_shift
-                shifted[dst] = (1.0 - abs(frac)) * original_irf[i] + abs(frac) * original_irf[i - 1]
+        # Fractional shift - linear interpolation between src - 1 and src
+        for dst in range(n):
+            src = dst - int_shift
+            if 1 <= src < n:
+                shifted[dst] = frac * original_irf[src - 1] + (1.0 - frac) * original_irf[src]
 
     return shifted
 
@@ -112,10 +112,27 @@ class Decay:
 
 
     @property
+    def channel_width(self) -> float:
+        """
+        The time between two channels of the time axis in nanoseconds.
+
+        Returns
+        -------
+        float
+            The channel width. Falls back to 1.0 when no usable time axis is
+            set, in which case ``irf_shift`` is effectively counted in channels.
+        """
+        if self.time_axis is None or len(self.time_axis) < 2:
+            return 1.0
+
+        dt = float(self.time_axis[1] - self.time_axis[0])
+        return dt if dt > 0.0 else 1.0
+
+    @property
     def irf(self) -> np.ndarray:
         """
-        Returns the IRF shifted by self.irf_shift (seconds) along self.time_axis,
-        using linear interpolation for non‐integer shifts. Accelerated with Numba.
+        Returns the IRF shifted by self.irf_shift (nanoseconds) along
+        self.time_axis, using linear interpolation for non‐integer shifts.
         """
         if self._original_irf is None:
             return None
@@ -123,10 +140,9 @@ class Decay:
         if not self.apply_irf_shift:
             return self._original_irf.copy()
 
-        # compute how many "channels" to shift by
-        shift_ch = self.irf_shift / 2.0
+        # convert the shift from nanoseconds into (fractional) channels
+        shift_ch = self.irf_shift / self.channel_width
 
-        # call the JIT‐compiled routine
         return _shift_irf_numba(self._original_irf, shift_ch)
 
 
