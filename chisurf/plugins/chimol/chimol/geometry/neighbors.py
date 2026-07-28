@@ -135,7 +135,11 @@ if _HAVE_NUMBA and _nb is not None:
                             j = nxt[j]
         return mask
 
-    @_nb.njit(cache=True, nogil=True)  # type: ignore[misc]
+    # Parallel over vertices. Each iteration writes only to its own row of
+    # `out_col`/`grad`/`wsum`/`nearest`, so there is nothing to synchronise --
+    # and this one kernel was 87% of a metaball build (0.65 s of 0.75 s on one
+    # nuclear-pore spoke) while running on a single core.
+    @_nb.njit(cache=True, nogil=True, parallel=True)  # type: ignore[misc]
     def _shade_from_atoms_nb(verts, atoms, colors, sigmas, cutoff):
         nv = verts.shape[0]
         out_col = np.zeros((nv, 4), dtype=np.float64)
@@ -147,7 +151,7 @@ if _HAVE_NUMBA and _nb is not None:
             return out_col, wsum, grad, nearest
         head, nxt, minx, miny, minz, nx, ny, nz, inv = _build_cells(atoms, cutoff)
         c2 = cutoff * cutoff
-        for i in range(nv):
+        for i in _nb.prange(nv):
             vx = verts[i, 0]
             vy = verts[i, 1]
             vz = verts[i, 2]
