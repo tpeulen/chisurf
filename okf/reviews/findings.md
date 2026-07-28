@@ -8013,3 +8013,46 @@ of `chisurf/core/structure/label/` leaves no referent in the tree
 - **Location:** `chisurf/core/actions/_decorator.py:16-40` in HEAD (`action`; the docstring's *Parameters* block at `:27-39` lists `name`, `schema`, `replayable`, `debounce_ms` and `side_effect_class` but not `debounce_keys`, declared at `:21`) and `chisurf/core/actions/_infra.py:114-158` / `:161-313` (`ActionRegistry` and `ActionDispatcher`: no class docstring, and no docstring on `register`, `has`, `get`, `list_actions`, `catalog`, `set_scheduler`, `_fingerprint`, `_is_within_debounce`, `_cancel_pending`, `_schedule_trailing_edge` or `execute`)
 - **Finding:** `debounce_ms` is documented as *"Coalesce repeated identical calls within this window"*, which is what a reader would expect; what actually decides whether two calls count as "identical" is `debounce_keys`, and the decorator's docstring never mentions it — RF-683 is the direct consequence. The whole dispatcher core is undocumented alongside it, including `execute`, whose `_is_trailing_edge` flag and *result-or-history-event-or-None* return (`:313`) are not inferable from the body. This survived the repo-wide NumPy-docstring rule because ruff's `D` rules treat a module whose **file name starts with an underscore** as private: verified with `ruff check --select D102 --stdin-filename`, where an undocumented method in the same source is reported as `chisurf/core/actions/infra.py` and passes silently as `chisurf/core/actions/_infra.py`. Sixteen other `_*.py` modules ship under `chisurf/` (`chisurf/core/api/_client.py`, `chisurf/gui/chiplot/_passthrough.py`, `chisurf/plugins/spectra_downloader/download/_base.py`, …) and are exempt the same way. Document `debounce_keys` (state that `None` means the full payload) and the dispatcher API; if the project rule is meant to hold for private modules too, that is a `per-file-ignores` entry re-enabling `D101`/`D102` for `**/_*.py`.
 - **Fix note:**
+
+## Review 2026-07-28 — the in-tree HTTP client, one commit old
+
+Slice: `chisurf/core/http.py` and its call sites, as landed in `085bd79b4`
+(*"an HTTP client of our own, and the last undeclared dependency"*). The module
+replaced a third-party client on five call sites and states in its own docstring
+that *"the surface deliberately mirrors the well-known one, because the call
+sites were written against it"* — so the findings below are all places where it
+does not, verified against the real module (loaded by path, stdlib only) and,
+where a server was needed, against a local `http.server`. Checked and clean:
+proxy handling and TLS verification are urllib's defaults (certificates *are*
+verified); `Accept-Encoding: identity` is sent automatically, so no call site
+can receive an undecompressed body; every one of the nine call sites passes an
+explicit `timeout`; the `HTTPError` branch closes the response (`with error:`),
+so the error path leaks no socket. Findings RF-685..RF-688.
+
+### RF-685
+- **Status:** OPEN
+- **Severity:** S2 (a non-HTTP URL is fetched instead of rejected, and the resulting response makes `.ok` and `raise_for_status()` raise `TypeError`)
+- **Location:** `chisurf/core/http.py:222-233` (`request`: `urllib.request.urlopen(req, ...)` with no check on the URL scheme) and `:107-116` (`Response.__init__` stores `raw.status` unchecked; `ok` is `self.status_code < 400`), reached with a provider-supplied URL at `chisurf/plugins/core/plugin_manager/gui/tool.py:1527` (`image_response = http.get(first["url"], timeout=60)`)
+- **Finding:** `urlopen` serves every scheme urllib has a handler for, not just HTTP, so the module documented as *"a small HTTP client"* also reads local files and speaks FTP. Verified: `get("file:///tmp/…")` returns `content == b'SECRET-LOCAL-CONTENT'` with **`status_code = None`**, whereupon `response.ok` and `response.raise_for_status()` both raise `TypeError: '<' not supported between instances of 'NoneType' and 'int'` — not `RequestError`, which is the only failure the docstring at `:200-206` admits, so no call site's `except RequestError` catches it. (`ftp://` is likewise attempted — it fails with a *connection refused* from the FTP handler; only a scheme with no handler at all, `gopher://`, produces the documented `RequestError`.) The reachable instance is the icon path above: the URL comes from the image-generation provider's JSON, and a `file://` URL there is fetched from the ChiSurf host and written into the plugin's icon. Reject anything but `http`/`https` in `request` with `RequestError` before opening, and treat a `None` status as a transport failure rather than storing it.
+- **Fix note:**
+
+### RF-686
+- **Status:** OPEN
+- **Severity:** S2 (`.text` raises `LookupError` on a charset the codec registry does not know, so `raise_for_status()` and the LLM error path fail with an undocumented exception instead of reporting the HTTP error)
+- **Location:** `chisurf/core/http.py:118-131` (`encoding` returns the `charset=` token verbatim; `text` decodes with `errors="replace"` and is documented *"undecodable bytes are replaced, never raised"*), with `:59-61` (`HTTPStatusError.__init__` formats `response.text[:300]`) and `:148-158` (`raise_for_status`); call sites `chisurf/core/agent/llm.py:471-476` (`_error_body`) and `chisurf/plugins/core/plugin_manager/gui/tool.py:1517`
+- **Finding:** `errors="replace"` covers bad *bytes*, not a bad *codec name* — `bytes.decode("unknown-8bit")` raises `LookupError` before any byte is looked at, and so do `binary`, `none`, `iso-8859` and `ansi`, all of which real servers emit. Verified against a local server: a 200 with `Content-Type: text/plain; charset=unknown-8bit` gives `response.encoding == 'unknown-8bit'` and `response.text` raises `LookupError: unknown encoding: unknown-8bit`; a **500** with `charset=x-user-defined-bad` makes `raise_for_status()` raise `LookupError` instead of `HTTPStatusError`, so the caller loses the status entirely. `llm.py:_error_body` is hit doubly: `response.json()` raises `LookupError`, the bare `except Exception` catches it, and the fallback `getattr(response, "text", "")` re-evaluates the same property and raises again — `getattr`'s default only suppresses `AttributeError` (checked) — so an error reply from a provider with a bad charset escapes `LLMError` as a `LookupError` from inside the retry loop. Validate the charset in `encoding` (`codecs.lookup`, falling back to UTF-8) so `text` keeps the promise its docstring makes. No test covers a `charset=` value at all — `test/core/test_http_client.py` only ever serves `application/json` and `charset=utf-8`.
+- **Fix note:**
+
+### RF-687
+- **Status:** OPEN
+- **Severity:** S3 (after a redirect the response reports the URL that was requested, not the one that answered)
+- **Location:** `chisurf/core/http.py:225` (`return Response(raw.status, dict(raw.headers), raw.read(), url)` — the local `url`, while the open response carries `raw.url`) against `:102-104` (the parameter is documented as *"The URL that produced this response"*), and the same on the error branch at `:229`
+- **Finding:** urllib follows 3xx redirects transparently, so `raw.status` and the body come from the final URL while `Response.url` is still the requested one — the two describe different responses. Verified against a local server: `get(base + "/redir")` returns `status_code == 200` with a body from `/final?x=1`, and `response.url == 'http://127.0.0.1:…/redir'`. The client that this module mirrors reports the final URL there. Consequences are small but real: `HTTPStatusError`'s message (`:61`) names a URL that did not produce the status, and any caller resolving a relative link out of a redirected body would resolve it against the wrong base. Pass `getattr(raw, "url", url) or url` instead; `HTTPError` also carries `.url`.
+- **Fix note:**
+
+### RF-688
+- **Status:** OPEN
+- **Severity:** S3 (an exported class whose documented case-insensitivity silently stops holding for anything written after construction)
+- **Location:** `chisurf/core/http.py:64-89` (`Headers`: `_folded` is built once in `__init__` at `:74`; `__setitem__`, `update`, `setdefault` and `pop` are inherited from `dict` and never refresh it)
+- **Finding:** the class is in `__all__` and documented as *"looked up without regard to case"*, but the fold map is a snapshot of the keys present at construction. Verified: `h = Headers({"Content-Type": "application/json"}); h["Retry-After"] = "5"` then raises `KeyError: 'retry-after'` on `h["retry-after"]`, reports `"retry-after" in h` as **False** and `h.get("retry-after")` as `None`, while `h["Retry-After"]` works — i.e. the guarantee holds for exactly the subset of keys that happened to be there first, with no error to say so. Nothing in the tree mutates a `Headers` today (`Response.__init__` builds one and leaves it), so this is latent rather than broken, but it is a trap left in a public class for the first caller that stashes a header on a response. Either fold on write (override `__setitem__`/`update`/`pop`/`setdefault`) or drop `_folded` and fold the key in `__getitem__` against `super().keys()`.
+- **Fix note:**
