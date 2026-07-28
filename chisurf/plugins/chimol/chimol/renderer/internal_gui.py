@@ -190,7 +190,10 @@ class InternalGui:
     #: Grab width of the splitter, in pixels.
     SPLITTER_W = 6
     #: How narrow and how wide the column may be dragged.
-    MIN_COLUMN = 120.0
+    #: The transport needs a hit target per button, whatever else is in the
+    #: column: below this the buttons stop being clickable rather than merely
+    #: looking cramped.
+    MIN_BUTTON_W = 14.0
     MAX_COLUMN_FRACTION = 0.6
 
     def __init__(self, run_command: Callable[[str], None] | None = None) -> None:
@@ -547,6 +550,24 @@ class InternalGui:
         """Where the mouse-mode block currently sits."""
         return self._block
 
+    def minimum_column_width(self) -> float:
+        """The narrowest the column can be and still show what it holds.
+
+        Measured from the contents rather than fixed: the object rows need the
+        widest name plus five boxes, the mouse-mode block needs its label column
+        and four action columns, and the transport needs a clickable target for
+        each of its nine buttons. A constant floor either cuts one of them off
+        or stops the splitter well before it needs to.
+        """
+        char_w = self.FONT_PT * 0.62
+        rows_w = (
+            self.PAD + self._name_width + self.PAD
+            + self.BUTTON_W * len(OBJECT_MENUS) + self.PAD
+        )
+        block_w = self.PAD + 10.0 * char_w + 4 * (5 * char_w) + self.PAD
+        transport_w = 2 * self.PAD + self.MIN_BUTTON_W * len(MOVIE_BUTTONS)
+        return max(rows_w, block_w, transport_w)
+
     def cycle_mouse_mode(self) -> None:
         """Step to the next mode in the ring, as PyMOL's mode line does.
 
@@ -643,8 +664,11 @@ class InternalGui:
 
         if not self._dragging_splitter:
             return False
-        widest = self._width * self.MAX_COLUMN_FRACTION
-        self.column_width = min(max(self._width - x, self.MIN_COLUMN), widest)
+        # The upper bound has to clear the lower one on a narrow window, or the
+        # clamp inverts and the column snaps to the *widest* it may be.
+        floor = self.minimum_column_width()
+        widest = max(self._width * self.MAX_COLUMN_FRACTION, floor)
+        self.column_width = min(max(self._width - x, floor), widest)
         self.layout(self._width, self._height)
         return True
 

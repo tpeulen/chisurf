@@ -328,10 +328,50 @@ def test_the_column_cannot_be_dragged_away_or_over_the_scene(gui):
     gui.mouse_press(gui._splitter.x + 1, HEIGHT / 2)
 
     gui.drag(WIDTH - 5, HEIGHT / 2)
-    assert gui.column_width >= gui.MIN_COLUMN
+    assert gui.column_width >= gui.minimum_column_width()
 
     gui.drag(10, HEIGHT / 2)
     assert gui.column_width <= WIDTH * gui.MAX_COLUMN_FRACTION
+
+
+def test_the_floor_is_what_the_control_actually_needs(gui):
+    """Measured from the contents, not a constant.
+
+    A fixed floor either cuts off the widest thing in the column -- the object
+    rows, the mouse-mode table or the nine transport buttons -- or stops the
+    splitter well before it had to.
+    """
+    floor = gui.minimum_column_width()
+
+    rows_need = (
+        gui.PAD + gui._name_width + gui.PAD
+        + gui.BUTTON_W * len(OBJECT_MENUS) + gui.PAD
+    )
+    transport_need = 2 * gui.PAD + gui.MIN_BUTTON_W * 9
+
+    assert floor >= rows_need
+    assert floor >= transport_need
+
+
+def test_a_wider_name_pushes_the_floor_out(gui):
+    """The floor follows the contents rather than being decided once."""
+    before = gui.minimum_column_width()
+    gui.layout(WIDTH, HEIGHT, name_width=gui._name_width + 80)
+    assert gui.minimum_column_width() > before
+
+
+def test_the_clamp_survives_a_window_narrower_than_the_floor(gui):
+    """On a window too small for the panel the bounds cross over.
+
+    Clamping to `min(max(x, floor), 0.6 * width)` inverts when the ceiling falls
+    below the floor, and the column snaps to the *widest* it may be -- the
+    opposite of respecting a minimum.
+    """
+    gui.layout(200, HEIGHT)
+    gui.mouse_press(gui._splitter.x + 1, HEIGHT / 2)
+    gui.drag(190, HEIGHT / 2)
+
+    assert gui.column_width >= gui.minimum_column_width()
 
 
 def test_the_splitter_takes_its_own_press_only(gui):

@@ -2,6 +2,18 @@
 
 ## 2026-07-28
 
+* **The splitter's floor is measured, not guessed.** It was a constant 120 px,
+  which is either too small -- cutting off whichever part of the column is
+  widest -- or too large, stopping the drag before it had to.
+  `minimum_column_width()` takes the largest of what the column actually holds:
+  the object rows (widest name plus five boxes), the mouse-mode table (its label
+  column plus four action columns) and the transport (a clickable target for
+  each of nine buttons). It follows the contents, so a longer object name pushes
+  the floor out rather than being silently clipped.
+  - The ceiling now has to clear the floor. `min(max(x, floor), 0.6 * width)`
+    inverts on a window too narrow for the panel, and the column snaps to the
+    *widest* it may be -- the exact opposite of respecting a minimum.
+
 * **Switching off the last object took the whole view control with it**, and
   the S button asked for a value the parser refuses.
   - `paintGL` returned early when the scene had no geometry -- *before* drawing
