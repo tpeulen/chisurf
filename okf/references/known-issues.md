@@ -1,3 +1,36 @@
+## test/server: the shared-server integration file errors and then hangs
+
+**Found 2026-07-28**, while test-gating an unrelated proxy fix (RF-722).
+`pytest test/server` never finishes: `test_integration_lifecycle.py` runs its
+module-scoped `ChiSurfServer` in-process, and most of its tests error in
+*setup* with
+
+```
+chisurf.startup.services.AppStartupError: service 'mmfdb' did not become ready
+within 5.0s
+```
+
+after which the run stalls indefinitely at
+`TestParameterLifecycle::test_linked_info` (>180 s, no output). The 5 s
+`ready_timeout` in `chisurf/startup/services.py` is the visible trigger and it
+is load-dependent — the same tests pass when the machine is idle, so a machine
+running several suites (or several agent instances) turns it red. Which of the
+two symptoms causes the other is not yet established: a server whose startup
+raised may leave the ZMQ socket half-alive, which would explain a later call
+that never returns.
+
+Not fixed in the change that found it: the failure is in the shared server
+fixture, not in anything that change touched (nothing in the file calls the
+insertion routes it altered), and diagnosing a startup-timeout-plus-hang is its
+own change. The proxy behaviour itself is covered by `test_proxy.py` and
+`test_proxy_integration.py`, which are green.
+
+**To close it:** decide whether `mmfdb` should be started at all for a test
+server (a fixture flag would remove the timing race entirely) or give the stage
+a timeout that survives a loaded machine, then find the blocking call behind
+`test_linked_info` — a client-side receive timeout there would at least turn a
+hang into a failure.
+
 ## quest: the plugin's RPC layer targets a backend the package does not have
 
 **Found 2026-07-28.** Starting the GUI logs
