@@ -245,6 +245,35 @@ pyqtgraph object — every `Plot`/handle exposes a `.native` escape hatch for
 that, which the CI guard treats as the seam (the object comes from the backend,
 not a direct import). New code must not use `.native`.
 
+## The rule (repo-wide)
+
+**Plot through chiplot, never pyqtgraph.** This is a standing rule in
+[`CLAUDE.md`](../../CLAUDE.md), not merely the direction of a migration:
+
+* new code must not `import pyqtgraph`; the allow-list is a **shrinking** record
+  of files not yet ported, never a place to add a new one;
+* use the chiplot spelling — `Plot.line` not `plot`, `to_pen` not `mkPen`,
+  `set_labels` not `setLabel`;
+* **if chiplot cannot do it, grow chiplot** and then use it. Reaching past the
+  seam "just this once" is precisely what stops a migration ever finishing, and
+  every batch below that grew the native API did so because a real call site
+  demanded it.
+
+### The passthrough's sharp edge
+
+Passthrough keeps a half-ported file running, but it is *not* a parity layer for
+chiplot's own value objects. `Plot.plot(...)` is not a chiplot method, so it
+falls through to pyqtgraph — and a chiplot `Pen` handed to pyqtgraph's `plot`
+dies as `TypeError: Not sure how to make a color from "(Pen(...),)"`, deep in the
+backend and far from the mistake. Hit for real while writing the state-wise MLE
+panel (2026-07-28).
+
+`_passthrough._RENAMED` now maps the pyqtgraph names chiplot *does* cover to
+their chiplot spelling, so those fall-throughs warn with the replacement ("use
+`Plot.line(x, y, pen=…, width=…, style=…, name=…)`") instead of the generic
+"migration gap" text. A rename is not a gap, and saying so turns a confusing
+runtime failure into a one-line fix.
+
 ## CI guard
 
 `test/test_pyqtgraph_seam.py` scans `chisurf/` and asserts `import pyqtgraph` /

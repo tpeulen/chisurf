@@ -873,3 +873,37 @@ def test_image_view_clear_removes_overlays(qapp):
     iv.clear()
     assert overlay.native not in view.addedItems
     assert roi.native not in view.addedItems
+
+
+def test_a_renamed_pyqtgraph_name_says_what_chiplot_calls_it(qapp, recwarn):
+    """A rename is not a gap, and the warning must say the replacement.
+
+    ``Plot.plot`` is not a chiplot method, so it falls through to pyqtgraph —
+    where a chiplot ``Pen`` is unreadable and dies with an unrelated "not sure
+    how to make a color from" deep in the backend. Naming the chiplot spelling
+    turns that into a one-line fix.
+    """
+    import warnings
+
+    from chisurf.gui import chiplot as cp
+    from chisurf.gui.chiplot import _passthrough
+
+    _passthrough.reset_gaps()
+    plot = cp.Plot()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        plot.plot([0, 1], [0, 1])          # the pyqtgraph spelling
+    messages = [str(w.message) for w in caught
+                if issubclass(w.category, cp.ChiplotPassthroughWarning)]
+    assert messages, "falling through must warn"
+    assert "Plot.line" in messages[0], messages[0]
+    assert "Plot.plot" in _passthrough.passthrough_gaps()
+
+    # A genuine gap still reads as a gap, not as a rename.
+    _passthrough.reset_gaps()
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        cp.LinearRegionItem  # noqa: B018 - attribute access is the call
+    gap = [str(w.message) for w in caught
+           if issubclass(w.category, cp.ChiplotPassthroughWarning)]
+    assert gap and "migration gap" in gap[0], gap

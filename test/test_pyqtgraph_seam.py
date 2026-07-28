@@ -1,9 +1,19 @@
 """Guard: pyqtgraph is imported only through the chiplot backend seam.
 
-PRD-64 confines every ``pyqtgraph`` import to one sanctioned module
-(``chisurf/gui/chiplot/backends/pyqtgraph_backend.py``). Every other file that
-still imports pyqtgraph directly is listed in
-``test/pyqtgraph_import_allowlist.txt`` — the migration tracker.
+**The rule: plot through chiplot, never pyqtgraph.** ``chisurf.gui.chiplot`` is
+*the* plotting API; pyqtgraph is an implementation detail behind it that the repo
+is migrating away from (PRD-64). Concretely:
+
+* new code must not ``import pyqtgraph``;
+* ``test/pyqtgraph_import_allowlist.txt`` is a **shrinking** record of files not
+  yet ported — never somewhere to add yourself to make this test pass;
+* use the chiplot spelling: ``Plot.line`` not ``plot``, ``to_pen`` not
+  ``mkPen``, ``set_labels`` not ``setLabel``. Anything chiplot lacks *falls
+  through* to pyqtgraph with a ``ChiplotPassthroughWarning`` rather than
+  failing, so a wrong spelling does not announce itself at import time — it
+  breaks later, when a chiplot ``Pen`` reaches a pyqtgraph function;
+* **if chiplot cannot do it, add the API to chiplot**, then use it. Reaching
+  past the seam "just this once" is what stops a migration ever finishing.
 
 This test fails if a **new** file imports pyqtgraph directly (regression) or if
 a listed file has already been migrated (stale allow-list entry). The end state
@@ -50,8 +60,13 @@ def test_no_new_direct_pyqtgraph_imports():
 
     new_offenders = sorted(current - allow)
     assert not new_offenders, (
-        "New direct pyqtgraph import(s) detected — route plotting through "
-        "chisurf.gui.chiplot instead (PRD-64):\n  " + "\n  ".join(new_offenders)
+        "New direct pyqtgraph import(s) detected — plot through "
+        "chisurf.gui.chiplot instead (PRD-64):\n  "
+        + "\n  ".join(new_offenders)
+        + "\n\nDo NOT add these to test/pyqtgraph_import_allowlist.txt: that list "
+        "only shrinks. Port the call site — Plot.line(x, y, pen=…, width=…, "
+        "style=…, name=…) rather than plot(...)/mkPen(...) — and if chiplot "
+        "cannot express it, add the API to chiplot first."
     )
 
 

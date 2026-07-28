@@ -2,6 +2,27 @@
 
 ## 2026-07-28
 
+* **"Plot through chiplot, never pyqtgraph" is now a repo rule.** The state-wise
+  MLE panel reached for `Plot.plot(...)` — a pyqtgraph name chiplot does not
+  have — and the passthrough duly fell through to pyqtgraph, which cannot read a
+  chiplot `Pen` and died as *"Not sure how to make a color from (Pen(...),)"*
+  deep in the backend, far from the mistake. The guard
+  `test/test_pyqtgraph_seam.py` had already caught the file as a **new direct
+  pyqtgraph importer**; the fix was to use `Plot.line(x, y, pen=…, width=…,
+  style=…, name=…)`, not to add the file to the allow-list. Three things landed
+  so the trap cannot recur: the rule is written into
+  [`CLAUDE.md`](../CLAUDE.md) (new code never imports pyqtgraph; the allow-list
+  is a shrinking record, not a place to add yourself; **if chiplot cannot do it,
+  grow chiplot**); `_passthrough._RENAMED` maps the pyqtgraph names chiplot
+  *does* cover to their chiplot spelling, so those warnings now name the
+  replacement instead of the generic "migration gap" — a rename is not a gap;
+  and [PRD-64](/prds/prd-64.md) gained a *The rule* section recording both, with
+  the sharp edge spelled out. Pinned by a new
+  `test/gui/test_chiplot.py::test_a_renamed_pyqtgraph_name_says_what_chiplot_calls_it`.
+  Still on the tracker (allow-list 19): `burst_h2mm/gui/tool.py`, whose new
+  per-state decay plot uses pyqtgraph pens like the rest of that file — a port
+  of its own, not a partial mix.
+
 * **emcee is no longer a dependency: two ensemble samplers now live in-tree.**
   `chisurf/core/fitting/ensemble.py` implements the Goodman & Weare
   affine-invariant **stretch** move with the Foreman-Mackey red-blue parallel

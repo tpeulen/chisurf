@@ -20,7 +20,6 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 
 from chisurf.core import analysis_cache
-import pyqtgraph as pg
 from chisurf.gui import chiplot as cp
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button, flag_attention
@@ -37,11 +36,9 @@ _COLOUR_PENS = {
     "yellow": "#e8b400", "aex": "#e8b400",
 }
 #: Line style per state — the dash carries the state, the colour the detector.
-_STATE_DASHES = [
-    QtCore.Qt.SolidLine, QtCore.Qt.DashLine, QtCore.Qt.DotLine,
-    QtCore.Qt.DashDotLine, QtCore.Qt.DashDotDotLine,
-]
-_DASH_NAMES = ["solid", "dashed", "dotted", "dash-dot", "dash-dot-dot"]
+#: chiplot dash names, not Qt pen constants: nothing here touches pyqtgraph.
+_STATE_DASHES = ["solid", "dash", "dot", "dash_dot"]
+_DASH_NAMES = ["solid", "dashed", "dotted", "dash-dot"]
 
 
 class BurstStateMleTool(QtWidgets.QMainWindow):
@@ -370,7 +367,7 @@ class BurstStateMleTool(QtWidgets.QMainWindow):
                     continue
                 counts, _ = np.histogram(tau.to_numpy(dtype=float), bins=edges)
                 style = _STATE_DASHES[s % len(_STATE_DASHES)]
-                p.plot(centers, counts,
-                       pen=pg.mkPen(rgb, width=2, style=style), name=f"{det} S{s}")
+                p.line(centers, counts, pen=rgb, width=2, style=style,
+                       name=f"{det} S{s}")
         key = " · ".join(f"{_DASH_NAMES[s % len(_DASH_NAMES)]} S{s}" for s in states)
         p.set_labels(bottom=f"τ (ns) — {key}", left="Bursts")

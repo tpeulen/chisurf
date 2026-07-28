@@ -63,6 +63,28 @@ class ChiplotPassthroughWarning(UserWarning):
 _GAPS: set[str] = set()
 _WARNED: set[str] = set()
 
+#: pyqtgraph names that chiplot *does* cover under a different spelling. These
+#: are not gaps — they are the caller reaching for the old name — and falling
+#: through for them is actively harmful: ``Plot.plot(pen=to_pen(...))`` lands in
+#: pyqtgraph, which cannot read a chiplot ``Pen`` and dies with an unrelated
+#: "not sure how to make a color from" deep inside the backend. Naming the
+#: replacement turns that into a one-line fix.
+_RENAMED: dict[str, str] = {
+    "plot": "Plot.line(x, y, pen=…, width=…, style=…, name=…)",
+    "mkPen": "chiplot.to_pen(...) — and pass it to a chiplot method, not a pyqtgraph one",
+    "mkBrush": "chiplot.to_brush(...)",
+    "mkColor": "chiplot.to_color(...)",
+    "setLabel": "Plot.set_labels(bottom=…, left=…)",
+    "setLabels": "Plot.set_labels(...)",
+    "setTitle": "Plot.set_title(...)",
+    "setLogMode": "Plot.set_log(x=…, y=…)",
+    "setXRange": "Plot.set_xlim(lo, hi)",
+    "setYRange": "Plot.set_ylim(lo, hi)",
+    "addLegend": "Plot.legend(...)",
+    "addItem": "Plot.add(handle)",
+    "removeItem": "Plot.remove(handle)",
+}
+
 
 def record_and_warn(scope: str, name: str, *, stacklevel: int = 3) -> None:
     """Record a passthrough gap and warn once for it.
@@ -78,15 +100,23 @@ def record_and_warn(scope: str, name: str, *, stacklevel: int = 3) -> None:
     """
     key = f"{scope}.{name}"
     _GAPS.add(key)
-    if key not in _WARNED:
-        _WARNED.add(key)
-        warnings.warn(
+    if key in _WARNED:
+        return
+    _WARNED.add(key)
+    replacement = _RENAMED.get(name)
+    if replacement:
+        message = (
+            f"chiplot spells '{name}' differently — use {replacement}. Falling "
+            f"through to the pyqtgraph backend, which does not understand "
+            f"chiplot's own Pen/Brush/Color objects and will fail on them."
+        )
+    else:
+        message = (
             f"chiplot has no native '{name}' ({scope} scope); falling through to "
             f"the pyqtgraph backend. This is a migration gap — prefer a chiplot "
-            f"API, or add one. Set it up via chisurf.gui.chiplot.",
-            ChiplotPassthroughWarning,
-            stacklevel=stacklevel,
+            f"API, or add one. Set it up via chisurf.gui.chiplot."
         )
+    warnings.warn(message, ChiplotPassthroughWarning, stacklevel=stacklevel)
 
 
 def passthrough_gaps() -> set[str]:
