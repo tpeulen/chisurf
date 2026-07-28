@@ -8736,3 +8736,75 @@ retired `.ui` owned. Findings RF-745..RF-751.
 - **Location:** `chisurf/gui/autoform/auto_form.py:531-535` (`box = CollapsibleBox(...)` then `if not getattr(section, "collapsible", True): box._btn.setEnabled(False)`, under the comment *"the header is purely cosmetic when not collapsible"*), against `CollapsibleBox._build_ui` at `chisurf/gui/widgets/collapsible_box.py:97-110`, where the header is a checkable `QPushButton` whose text carries the ▼/▶ fold arrow
 - **Finding:** disabling the header button is how "not collapsible" is expressed, so Qt paints the section *title* in the disabled palette while its contents stay fully enabled. In the headless render of the ported fit controller all four titles — *Dataset*, *Fit range*, *Sampling*, *Fitting* — come out pale grey above black field labels and still show a ▼ that does nothing, which reads as four disabled panels of live controls. This is not specific to that widget: 20 `.view.json` files ship `"collapsible": false`. Keep the button enabled and make it non-checkable (or render the header as a plain label with no arrow) so a section that cannot fold does not announce itself as switched off.
 - **Fix note:**
+
+## GUI-tester run — burst background + scatter IRF (2026-07-28)
+
+Drove the two Burst Analysis utility panels that calibrate every burst-level
+number and had never been driven: **Background** (`burst_background`) and
+**IRF & Background** (`burst_irf_bg`), on three real Becker & Hickl SPC files
+(`chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/m00{0,1,2}.spc`)
+with detector setup `BS`, offscreen in the arm64 env, screenshots read at every
+dock. The estimators themselves are fast and plausible — background 1.6–2.7 s
+for three files (green 1.33/1.38/1.33 kHz across repeats), IRF/background
+2.2–2.7 s with a clean scatter prompt at 2.50 ns (green) / 2.29 ns (red) — but
+the panels around them lose most of what they compute: the Background tool's
+results table and file list never populate, the IRF hand-over to the MLE reports
+success while the arrays are the wrong length, and the two PIE detectors get one
+and the same answer. Findings RF-752..RF-759; use case
+[/usecases/burst-background-and-scatter-irf.md](/usecases/burst-background-and-scatter-irf.md).
+
+### RF-752
+- **Status:** OPEN
+- **Severity:** S2 (after a successful estimate the results table and the file list are empty — the panel shows almost nothing it computed)
+- **Location:** `chisurf/plugins/burst/burst_background/__init__.py:38-53` (`BurstBackgroundEstimator.__init__` builds `AutoForm(self.model)` and registers **no** `model.add_observer`), against `chisurf/plugins/burst/burst_irf_bg/gui/tool.py:41-48` (the sibling tool's `_on_model_event` → `auto_form.refresh_plots()`) and the refresh path at `chisurf/gui/autoform/auto_form.py:291-316`
+- **Finding:** the Background tool's declarative sections — the `table` section bound to `results_rows` and the `path_list` bound to `files` (`gui/background.view.json:29-35` and `:18-19`) — are only re-read when something calls `AutoForm.refresh_plots()`/`sync_fields()`, and nothing in this tool ever does. Its three custom sections (`bg_run`, `bg_iht_plot`, `bg_rate_plot`) each register their own observer, so the status line, the inter-photon-time plot and the rate bars update, and the two declarative ones do not. Verified in the Burst Analysis workflow on three SPC files: after **▶️ Estimate background** the status reads *"3 file(s), 3 detector(s) estimated."*, `model.results_rows()` returns 9 rows (green 1.327 / red 0.398 / yellow 0.184 kHz for `m000`, …) and the bar chart draws three bars — while the **Results** dock shows column headers over one blank row and the **Files** dock shows an empty list, although `model.files` holds the three files the workflow pushed in via `_add_tttr_files`. The user's only evidence of what ran is three unlabelled bars. Register an observer in `__init__` that calls `self.auto_form.refresh_plots()` (plus `sync_fields()` for the file list, see RF-754), exactly as `burst_irf_bg` does.
+- **Fix note:**
+
+### RF-753
+- **Status:** OPEN
+- **Severity:** S2 (*Send to MLE* reports success for a hand-over the fit then silently refuses)
+- **Location:** `chisurf/plugins/burst/burst_irf_bg/gui/view_model.py:54` (`self.micro_time_binning: int = 1`) and `chisurf/plugins/burst/burst_irf_bg/gui/sections.py:128-151` (`_send_to_mle` → `self._status.setText(f"Sent IRF + background to MLE for {count} detector(s).")`), against `BurstAnalysisTool.apply_irf_background_to_mle` at `chisurf/plugins/burst/burst_analysis/gui/tool.py:931-947` and the MLE wizard's `micro_time_binning`
+- **Finding:** the tool builds its vv_vh patterns at its own `micro_time_binning`, whose shipped default is **1**, while the burst-MLE wizard in the same workflow runs at **32**. Verified end to end twice: with the default the patterns are 8192 long, `apply_irf_background_to_mle` returns 3, the status line says *"Sent IRF + background to MLE for 3 detector(s)."*, `channel_settings[det]['irf'].shape == (8192,)` — and the fit then logs `MLE fit skipped: decay length 256 != IRF length 8192 for 'green' (rebuild IRF at the current binning)` at INFO and fits nothing. Setting **Micro-time binning = 32** before **🌙 Compute** produces 256-long patterns that land cleanly (no skip). So the one control that decides whether the hand-over works at all is a spin box whose description merely says *"match the burst-MLE binning"*, its default is the value that never matches, and the failure is reported nowhere the user looks. Either read the binning from the MLE panel when embedded (the workflow already owns both), or have `apply_irf_background_to_mle` compare lengths and report the mismatch instead of counting it as applied.
+- **Fix note:**
+
+### RF-754
+- **Status:** OPEN
+- **Severity:** S3 (every `path_list` in the app stays empty when files are added programmatically)
+- **Location:** `chisurf/gui/autoform/auto_form.py:305-316` (`refresh_plots` → `refresh = getattr(w, "refresh", None); if not callable(refresh): continue`) against `chisurf/gui/autoform/sections/path_list_section.py:85,238-247` (`AUTOFORM_REFRESH = True` with **`sync()`**, no public `refresh`), and `sync_fields` at `auto_form.py:272-289`, which does try `sync` or `refresh`
+- **Finding:** `AUTOFORM_REFRESH` is the contract for "re-read me when the model changes", and `sync_fields()` honours it by trying `sync` *or* `refresh`; `refresh_plots()` — the call every plugin makes from its model-observer after a recompute — only tries `refresh`, so `PathListWidget`, which implements `sync()`, is skipped. Verified in the Burst Analysis workflow: the IRF & Background panel *does* call `refresh_plots()` on every model event, yet after the workflow pushes the three raw files (`model.add_files`) the model holds 3 paths and the visible list holds **0** rows; the same widget fills correctly when the user adds the files through its own ➕ button. The file list is what says which files an analysis ran on, and 12 shipped `.view.json` specs declare a `path_list`. Make `refresh_plots` fall back to `sync` the way `sync_fields` does.
+- **Fix note:**
+
+### RF-755
+- **Status:** OPEN
+- **Severity:** S3 (two detectors that differ only in micro-time window get byte-identical IRF/background patterns and duplicate result rows)
+- **Location:** `chisurf/core/fluorescence/burst/irf_bg.py:235-249` (the IRF histogram selects on `chs` only — `micro_time_ranges` is applied at `:252-258` to the background rate alone) and `extract_mle_irf_background._half` at `:454-465` (`sel = np.isin(rout, channels)`, no micro-time gate), surfaced by `chisurf/plugins/burst/burst_irf_bg/gui/view_model.py:results_rows/irf_series`
+- **Finding:** in the standard PIE setup `BS`, `red` (channels 9,1,2 over micro-time 0:2048) and `yellow` (the same channels over 2048:4095) are the prompt and delayed windows of one physical detector. Verified on three SPC files: their result rows are identical in prompt (2.291 ns), non-burst (146 405) and burst (23 776) photons, and `np.array_equal` is **True** for both their `irf` and their `bg` MLE patterns; only `background_khz` differs (0.338 vs 0.177 kHz), because that is the one path that reads `micro_time_ranges`. In the IRF plot the red trace is drawn under the yellow one, so the legend lists a colour the user cannot see. The full-period IRF is deliberate (a PIE window would clip the scatter prompt, per the module docstring) — but the *background* pattern then handed to the MLE for the delayed detector contains the prompt-window counts it can never have detected, and the table gives no hint that two rows describe the same photons. Gate the background pattern (not the IRF) by the detector's micro-time ranges, and mark rows that share channels.
+- **Fix note:**
+
+### RF-756
+- **Status:** OPEN
+- **Severity:** S3 (the diagnostic plot's y range is set by the extrapolated fit, so all data is squeezed into the top decade)
+- **Location:** `chisurf/plugins/burst/burst_background/view_model.py:195-198` (`model = np.asarray(diag.model); m = model > 0` — the fitted tail is emitted over the **whole** axis) with `chisurf/plugins/burst/burst_background/gui/sections.py:115-141` (`_IhtPlotSection`, `set_log(x=True, y=True)`, autoranged)
+- **Finding:** the tail model is a single exponential fitted to the long-gap part and then plotted across the full inter-photon-time axis, where it falls to ~1e-20 while the data lives between 1 and 1e5. Measured on `m000.spc`: histogram counts sum 119 938 (green) against a model sum of 229 422 — the curve dominates the range it is drawn on. In the rendered dock (screenshot) the y axis spans 1e5 → 1e-20, 25 decades, so every point of every one of the nine series sits in the top ~15 % of the plot and the short-gap/long-gap structure the guide describes is invisible. Two more layout faults in the same view: the log x tick labels collide into an unreadable smear at the left edge ("0.05 0.06 0.07 0.08 0.9 1"), and the nine-entry legend is drawn over the data. Clip the model to the range where the data is non-zero (or set an explicit y range from the counts), and move the legend out of the plot area.
+- **Fix note:**
+
+### RF-757
+- **Status:** OPEN
+- **Severity:** S3 (the "non-burst" photons are the complement of a burst search the user never ran)
+- **Location:** `chisurf/plugins/burst/burst_analysis/gui/tool.py:913-929` (`_apply_context_to_irf_bg` carries only the channel settings and the raw files) against `chisurf/plugins/burst/burst_irf_bg/gui/view_model.py:51-53` (`min_photons=60`, `photon_window=10`, `time_window_ms=1.0`)
+- **Finding:** the IRF & Background step defines background as "everything the burst search rejects", so its burst-search parameters decide what the IRF and the background rate are measured on. The workflow hands it the files and the detectors but not the burst-search settings that step 2 actually used: with setup `BS` selected, the Burst Selection wizard runs `min_ph = 60`, `ph_window = 5`, while this panel keeps 60 / 10 / 1.0 ms. Verified in one session — both values read off the two live widgets. The two searches select different photons, so the background and IRF do not belong to the burst set the rest of the workflow analyses, and nothing on screen relates the two parameter sets. Push the step-2 parameters into the panel with the channel settings (leaving them editable), or show the step-2 values beside the panel's own.
+- **Fix note:**
+
+### RF-758
+- **Status:** OPEN
+- **Severity:** S3 (two buttons that do nothing and say nothing when their preconditions are unmet)
+- **Location:** `chisurf/plugins/burst/burst_irf_bg/gui/sections.py:112-116` (`_compute`: `logging.getLogger(__name__).warning("Cannot compute: %s", reason); return`) and `:128-131` (`_send_to_mle`: same pattern), against the sibling `chisurf/plugins/burst/burst_background/gui/sections.py:96-103`, which writes the reason into its status label
+- **Finding:** the run bar owns a status label that is written on success (*"Extracted IRF + background for 3 detector(s)."*) and never on failure. Verified: with no files loaded, **🌙 Compute** leaves the label at its initial *"Load files, define detectors, then compute."*, and **🎯 Send to MLE** before a compute does the same; both reasons go only to a log record. Embedded in the Burst Analysis window that record reaches the shared status bar (`status_logger="chisurf.plugins.burst"`) and stays there stale afterwards; the standalone tool has no status bar at all, so the buttons are simply inert. Write the reason into the same label that reports success.
+- **Fix note:**
+
+### RF-759
+- **Status:** OPEN
+- **Severity:** S3 (dock tab titles silently drop `&`)
+- **Location:** `chisurf/gui/widgets/dock_area/dock_stacked_tab_bar.py:240` (`self._label = QtWidgets.QLabel(text, self)` in `DockStackedTabItem.__init__`, and `setText` at `:257-260`)
+- **Finding:** the tab caption is rendered by a `QLabel`, which parses `&` as a mnemonic marker. The IRF & Background panel's *"Files & Parameters"* dock — the title authored in `burst_irf_bg/gui/irf_bg.view.json:18` and returned verbatim by `tabText()` — is drawn as *"Files Parameters"* with the *P* underlined (verified in the rendered screenshot). Any view spec whose panel title contains an ampersand is affected. Escape the text for display (`text.replace("&", "&&")`) in `DockStackedTabItem`, keeping `text()` returning the original.
+- **Fix note:**

@@ -251,6 +251,17 @@ The workflows a first pass should cover — expand as the tester discovers more:
   unticking every row merges all of them anyway, and two of its three buttons do
   nothing. *(last driven 2026-07-28; RF-730..RF-738)*
 
+- [Background rate and scatter IRF from the non-burst photons](/usecases/burst-background-and-scatter-irf.md)
+  — the two instrument quantities every burst-level number needs, taken from the
+  measurement itself: the per-detector background rate from the
+  inter-photon-time tail, and a scatter IRF plus background pattern from the
+  photons the burst search rejected, handed to the burst-MLE lifetime fit. Both
+  estimators are fast and plausible (0.18–1.38 kHz per detector, a clean prompt
+  at 2.3–2.5 ns), but the Background panel's **results table and file list stay
+  empty** after a successful run, *Send to MLE* reports success while the default
+  binning makes the arrays unusable, and the two PIE detectors receive one and
+  the same answer. *(last driven 2026-07-28; RF-752..RF-759)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
