@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **The transport was missing three of PyMOL's buttons, the block wasted its
+  space, and a switched-off object looked identical to a live one.**
+  - `S`, `▼` and `F` are back: the sequence, rocking and full screen. Two of
+    them had nothing to call, so `rock` and `full_screen` are new commands.
+    `rock` oscillates rather than spinning -- PyMOL's does, and a full spin
+    keeps turning the far side towards you, which reads as motion for its own
+    sake. The transport glyphs are PyMOL's order and shapes.
+  - The block's labels are right-aligned against their columns with a one-
+    character gutter, and the line height is tighter than a panel row: it is a
+    dense reference table and should read as one thing. Two traps on the way --
+    right-aligning into the full width butts the label against the first value
+    (`ButtonsL`), and a column narrower than the longest label does not wrap or
+    elide, it **clips from the left** (`Selecting` became `lecting`).
+  - **A switched-off object's A/S/H/L/C boxes are drawn dim.** They stay -- they
+    are how it gets switched back on -- but the row now says which state it is
+    in at a glance rather than only in the colour of its name.
+  - Measured while checking a report: clicking a row disables **that object**
+    and nothing else, and the panel stays up. The view control is global.
+
 * **The sequence scrolls, takes the structure's colours, and the selection
   marker stopped hiding what it points at.** Three things the strip needed to be
   usable rather than decorative.

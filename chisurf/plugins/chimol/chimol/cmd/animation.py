@@ -434,6 +434,100 @@ class AnimationMixin(BaseCmd):
             self._emit_message("Animation cleared.")
 
 
+
+    # Rocking and full screen sit behind the buttons PyMOL puts at the right of
+    # its movie transport -- `S`, `▼` and `F`. The first is the sequence, which
+    # chimol already had as a setting; these two were missing, so those buttons
+    # had nothing to call.
+
+    #: Degrees either side of centre, and how far each step turns. PyMOL's
+    #: ``rock`` sweeps 30 degrees by default (``movie.rock``'s ``angle``).
+    ROCK_ANGLE = 30.0
+    ROCK_STEP = 1.5
+
+    @command("rock")
+    def rock(self, state: str = "") -> None:
+        """Rock the view back and forth about the vertical axis.
+
+        ``rock`` toggles; ``rock on`` / ``rock off`` are explicit. PyMOL's
+        equivalent oscillates the camera rather than spinning it, which is what
+        makes a shape readable without anyone touching the mouse -- a full spin
+        keeps turning the far side towards you and reads as motion for its own
+        sake.
+        """
+        window, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return
+
+        wanted = str(state).strip().lower()
+        running = bool(getattr(window, "_rock_timer", None))
+        if wanted in ("on", "1", "true"):
+            turn_on = True
+        elif wanted in ("off", "0", "false"):
+            turn_on = False
+        elif wanted:
+            self._emit_error("rock: expected on or off")
+            return
+        else:
+            turn_on = not running
+
+        if not turn_on:
+            timer = getattr(window, "_rock_timer", None)
+            if timer is not None:
+                timer.stop()
+                window._rock_timer = None
+            self._emit_message("rock: off")
+            return
+        if running:
+            return
+
+        from qtpy import QtCore
+
+        window._rock_phase = 0.0
+        window._rock_direction = 1.0
+        timer = QtCore.QTimer(window)
+
+        def step() -> None:
+            phase = getattr(window, "_rock_phase", 0.0)
+            direction = getattr(window, "_rock_direction", 1.0)
+            if abs(phase) >= self.ROCK_ANGLE:
+                direction = -direction
+                window._rock_direction = direction
+            window._rock_phase = phase + direction * self.ROCK_STEP
+            try:
+                viewer.turn("y", direction * self.ROCK_STEP)
+            except Exception:
+                timer.stop()
+                window._rock_timer = None
+
+        timer.timeout.connect(step)
+        timer.start(33)                     # ~30 steps a second, as playback is
+        window._rock_timer = timer
+        self._emit_message("rock: on")
+
+    @command("full_screen", aliases=("fullscreen",))
+    def full_screen(self, state: str = "") -> None:
+        """Toggle full screen (PyMOL's ``full_screen``)."""
+        window, viewer = self._require_window_and_viewer()
+        if window is None:
+            return
+        wanted = str(state).strip().lower()
+        if wanted in ("on", "1", "true"):
+            window.showFullScreen()
+        elif wanted in ("off", "0", "false"):
+            window.showNormal()
+        elif wanted:
+            self._emit_error("full_screen: expected on or off")
+            return
+        elif window.isFullScreen():
+            window.showNormal()
+        else:
+            window.showFullScreen()
+        self._emit_message(
+            f"full_screen: {'on' if window.isFullScreen() else 'off'}"
+        )
+
+
 def _kabsch(moving: np.ndarray, target: np.ndarray) -> np.ndarray:
     """The rotation taking ``moving`` onto ``target``, both already centred.
 

@@ -35,6 +35,9 @@ BUTTON_BG = (157, 157, 255)
 BUTTON_FG = (16, 16, 96)
 BUTTON_EDGE = (32, 32, 96)
 HOVER_BG = (192, 192, 255)
+#: The same boxes on a switched-off object: still there, visibly inactive.
+BUTTON_OFF_BG = (78, 78, 116)
+BUTTON_OFF_FG = (150, 150, 170)
 MENU_BG = (58, 58, 58, 244)
 MENU_FG = (240, 240, 240)
 MENU_DISABLED_FG = (144, 144, 144)
@@ -63,12 +66,17 @@ MOVIE_BG = (48, 48, 48, 230)
 
 #: The movie transport, left to right: glyph and the command it runs.
 MOVIE_BUTTONS: tuple[tuple[str, str], ...] = (
-    ("|<", "frame 1"),
-    ("<", "frame -1"),
+    ("|\u25c0", "frame 1"),
+    ("\u25c0", "frame -1"),
     ("\u25a0", "mstop"),
     ("\u25b6", "mplay"),
-    (">", "frame +1"),
-    (">|", "frame last"),
+    ("\u25b6\u25b6", "frame +1"),
+    ("\u25b6|", "frame last"),
+    # PyMOL's three at the right of the transport, which were missing: the
+    # sequence, rocking, and full screen.
+    ("S", "set seq_view, toggle"),
+    ("\u25bc", "rock"),
+    ("F", "full_screen"),
 )
 
 #: The C button's rainbow, left to right.
@@ -175,6 +183,10 @@ class InternalGui:
     SEQ_ROW_H = 15
     #: Height of the scrollbar under the strip.
     SEQ_BAR_H = 9
+    #: Line height inside the mouse-mode block. Tighter than a panel row: it is
+    #: a dense reference table, and PyMOL sets it close enough that the whole
+    #: matrix reads as one thing rather than eight loose lines.
+    BLOCK_ROW_H = 14
     #: Grab width of the splitter, in pixels.
     SPLITTER_W = 6
     #: How narrow and how wide the column may be dragged.
@@ -429,8 +441,8 @@ class InternalGui:
         you glance at without leaving the view, so it belongs in the view.
         """
         char_w = self.FONT_PT * 0.62
-        line_h = self.ROW_H
-        label_w = 7.4 * char_w
+        line_h = self.BLOCK_ROW_H
+        label_w = 10.0 * char_w
         cell_w = 5 * char_w
         block_w = self.PAD + label_w + 4 * cell_w + self.PAD
         # title, the L/M/R/Wheel heading, six binding rows, selecting, state
@@ -816,10 +828,13 @@ class InternalGui:
             )
 
             for key, brect in self._button_rects[index].items():
-                self._paint_button(painter, QtGui, QtCore, key, brect,
-                                   hovered=(self._hover.kind == "button"
-                                            and self._hover.row == index
-                                            and self._hover.key == key))
+                self._paint_button(
+                    painter, QtGui, QtCore, key, brect,
+                    hovered=(self._hover.kind == "button"
+                             and self._hover.row == index
+                             and self._hover.key == key),
+                    enabled=row.enabled or row.is_header,
+                )
 
     def _paint_sequence(self, painter, QtGui, QtCore) -> None:
         """Draw the sequence strip: numbers, names, residues, selection.
@@ -890,42 +905,48 @@ class InternalGui:
         painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
 
         char_w = self.FONT_PT * 0.62
-        label_w = 7.4 * char_w
+        label_w = 10.0 * char_w
         cell_w = 5 * char_w
         left = rect.x + self.PAD
         line = rect.y + self.PAD
 
-        def draw(x, y, text, colour, width=None):
-            painter.setPen(QtGui.QColor(*colour))
-            painter.drawText(
-                QtCore.QRectF(x, y, width or cell_w, self.ROW_H),
-                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), text,
-            )
+        gutter = char_w          # between a right-aligned label and its values
 
-        draw(left, line, "Mouse Mode", MODE_TITLE_FG, label_w + cell_w)
-        draw(left + label_w + cell_w * 0.6, line,
+        def draw(x, y, text, colour, width=None, right=False):
+            painter.setPen(QtGui.QColor(*colour))
+            align = QtCore.Qt.AlignRight if right else QtCore.Qt.AlignLeft
+            box = QtCore.QRectF(x, y, width or cell_w, self.BLOCK_ROW_H)
+            if right:
+                # Shrink from the right so the text ends a gutter short of the
+                # column beside it; right-aligning into the full width puts the
+                # last glyph hard against the first value ("ButtonsL").
+                box.setWidth(box.width() - gutter)
+            painter.drawText(box, int(QtCore.Qt.AlignVCenter | align), text)
+
+        draw(left, line, "Mouse Mode", MODE_TITLE_FG, label_w + cell_w, right=True)
+        draw(left + label_w + cell_w, line,
              MODE_NAMES.get(self.mouse_mode, self.mouse_mode), MODE_TITLE_FG,
              rect.w)
-        line += self.ROW_H
+        line += self.BLOCK_ROW_H
 
-        draw(left, line, "Buttons", MODE_HEAD_FG, label_w)
+        draw(left, line, "Buttons", MODE_HEAD_FG, label_w, right=True)
         for index, (_key, heading) in enumerate(BUTTON_COLUMNS):
             draw(left + label_w + index * cell_w, line, heading, MODE_HEAD_FG)
-        line += self.ROW_H
+        line += self.BLOCK_ROW_H
 
         for label, cells in rows_for(self.mouse_mode):
             colour = MODE_HEAD_FG if label == "& Keys" else MODE_KEY_FG
-            draw(left, line, label, colour, label_w)
+            draw(left, line, label, colour, label_w, right=True)
             for index, cell in enumerate(cells):
                 if cell:
                     draw(left + label_w + index * cell_w, line, cell, MODE_ACTION_FG)
-            line += self.ROW_H
+            line += self.BLOCK_ROW_H
 
-        draw(left, line, "Selecting", SELECT_FG, label_w + cell_w)
-        draw(left + label_w + cell_w * 0.6, line, self.selecting, SELECT_MODE_FG, rect.w)
-        line += self.ROW_H
+        draw(left, line, "Selecting", SELECT_FG, label_w, right=True)
+        draw(left + label_w, line, self.selecting, SELECT_MODE_FG, rect.w)
+        line += self.BLOCK_ROW_H
         current, total = self.state
-        draw(left, line, "State", STATE_FG, label_w)
+        draw(left, line, "State", STATE_FG, label_w, right=True)
         draw(left + label_w, line, f"{current} / {total}", MODE_ACTION_FG, cell_w * 3)
 
         for button_rect, _command in self._movie_rects:
@@ -937,19 +958,34 @@ class InternalGui:
             painter.setPen(QtGui.QColor(*MOVIE_FG))
             painter.drawText(box, int(QtCore.Qt.AlignCenter), _glyph_of(_command))
 
-    def _paint_button(self, painter, QtGui, QtCore, key, rect, hovered) -> None:
+    def _paint_button(self, painter, QtGui, QtCore, key, rect, hovered,
+                      enabled=True) -> None:
+        """Draw one A/S/H/L/C box.
+
+        A switched-off object keeps its boxes -- they are how it gets switched
+        back on -- but they are drawn dim, so the row says at a glance which
+        state it is in rather than only in the colour of its name.
+        """
         box = QtCore.QRectF(rect.x, rect.y + 1, rect.w, rect.h - 2)
         if key == "C":
             gradient = QtGui.QLinearGradient(box.left(), 0.0, box.right(), 0.0)
             for index, stop in enumerate(COLOR_BUTTON_STOPS):
-                gradient.setColorAt(index / (len(COLOR_BUTTON_STOPS) - 1),
-                                    QtGui.QColor(stop))
+                colour = QtGui.QColor(stop)
+                if not enabled:
+                    grey = colour.value() // 3 + 60
+                    colour = QtGui.QColor(grey, grey, grey)
+                gradient.setColorAt(index / (len(COLOR_BUTTON_STOPS) - 1), colour)
             painter.setBrush(QtGui.QBrush(gradient))
+        elif not enabled:
+            painter.setBrush(QtGui.QColor(*BUTTON_OFF_BG))
         else:
             painter.setBrush(QtGui.QColor(*(HOVER_BG if hovered else BUTTON_BG)))
         painter.setPen(QtGui.QColor(*BUTTON_EDGE))
         painter.drawRect(box)
-        painter.setPen(QtGui.QColor(0, 0, 0) if key == "C" else QtGui.QColor(*BUTTON_FG))
+        if key == "C":
+            painter.setPen(QtGui.QColor(0, 0, 0) if enabled else QtGui.QColor(70, 70, 70))
+        else:
+            painter.setPen(QtGui.QColor(*(BUTTON_FG if enabled else BUTTON_OFF_FG)))
         painter.drawText(box, int(QtCore.Qt.AlignCenter), key)
 
     def _paint_menu(self, painter, QtGui, QtCore, menu: _OpenMenu) -> None:
