@@ -827,11 +827,60 @@ class BurstSelectionTool(ChisurfDockTool):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self._build_wizard_embed(panel), 1)
+        # The display settings sit with the other settings, not in the toolbar.
+        # They govern every diagnostic plot (dT, MCS, Decay, Burst length), so
+        # they belong once, here, rather than repeated in each plot's controls.
+        layout.addWidget(self._build_display_form(panel), 0)
         panel.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
         return panel
+
+    def _ensure_display_widgets(self) -> None:
+        """Create the widgets that *hold* the display settings, once.
+
+        They are the state, not the presentation: the AutoForm built from
+        ``burst_display.view.json`` is what the user sees, and it reads and
+        writes these through the view-model. Keeping them means every existing
+        reader (``plot_min_spin``, ``show_all_photons_check``, the MCS aliases,
+        the tests) and every existing signal connection keeps working while the
+        control moves out of the toolbar. Hidden children of the tool: they are
+        never laid out anywhere, so they render nothing on their own.
+        """
+        if getattr(self, "show_all_photons_check", None) is not None:
+            return
+        self.show_all_photons_check = QtWidgets.QCheckBox("All photons", self)
+        self.show_all_photons_check.setChecked(True)
+        self.show_all_photons_check.setToolTip(
+            "Show diagnostic layers computed from all photons."
+        )
+        self.show_all_photons_check.hide()
+        self.show_selected_photons_check = QtWidgets.QCheckBox("Selected photons", self)
+        self.show_selected_photons_check.setChecked(True)
+        self.show_selected_photons_check.setToolTip(
+            "Show diagnostic layers computed from selected burst photons."
+        )
+        self.show_selected_photons_check.hide()
+        # Backwards-compatible aliases for older code paths/tests that used
+        # the original MCS-local controls.
+        self.mcs_show_all_check = self.show_all_photons_check
+        self.mcs_show_selected_check = self.show_selected_photons_check
+
+        self.plot_min_spin = QtWidgets.QSpinBox(self)
+        self.plot_min_spin.setRange(0, 99_999_999)
+        self.plot_min_spin.setValue(0)
+        self.plot_min_spin.setToolTip(
+            "Minimum photon index to process (0 = start of file)"
+        )
+        self.plot_min_spin.hide()
+        self.plot_max_spin = QtWidgets.QSpinBox(self)
+        self.plot_max_spin.setRange(0, 99_999_999)
+        self.plot_max_spin.setValue(DEFAULT_PLOT_MAX)
+        self.plot_max_spin.setToolTip(
+            "Maximum photon index to process (default = end of file)"
+        )
+        self.plot_max_spin.hide()
 
     def _build_display_form(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """The display settings, rendered by AutoForm from ``burst_display.view.json``.
@@ -847,6 +896,7 @@ class BurstSelectionTool(ChisurfDockTool):
 
         from .display_view_model import BurstDisplayViewModel
 
+        self._ensure_display_widgets()
         self._display_view_model = BurstDisplayViewModel(self)
         form = AutoForm(self._display_view_model, parent)
         form.setSizePolicy(
@@ -1098,6 +1148,17 @@ class BurstSelectionTool(ChisurfDockTool):
             burst_splitter.setStretchFactor(0, 0)
             burst_splitter.setStretchFactor(1, 1)
             self.dock_area.addTab(burst_splitter, "Burst length")
+
+        # A controls panel is built for every diagnostic plot but only *placed*
+        # when that plot is shown. An unplaced one keeps the dock area as its
+        # parent with no layout to size it, so Qt draws it at its default
+        # 640x480 in the corner — a ghost "Burst bins" spin box over the tab
+        # bar. Hide what nothing placed.
+        for panel, placed in ((mcs_controls_panel, self.show_mcs_plot),
+                              (decay_controls_panel, self.show_decay_plot),
+                              (burst_controls_panel, self.show_burst_plot)):
+            if not placed:
+                panel.hide()
 
         self.dock_area.addTab(self.summary, "Summary")
 
@@ -3049,42 +3110,11 @@ class BurstSelectionTool(ChisurfDockTool):
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
 
-        # The layer toggles and the photon range live in a form, not here: they
-        # are settings, the toolbar holds actions, and a wide "Show: … Photon
-        # Range: … to …" run pushed the actions themselves off to the left. The
-        # widgets are still built (every existing call site and test reads them);
-        # only their placement moved — see _build_display_form.
-        self.show_all_photons_check = QtWidgets.QCheckBox("All photons", self)
-        self.show_all_photons_check.setChecked(True)
-        self.show_all_photons_check.setToolTip("Show diagnostic layers computed from all photons.")
-        self.show_selected_photons_check = QtWidgets.QCheckBox("Selected photons", self)
-        self.show_selected_photons_check.setChecked(True)
-        self.show_selected_photons_check.setToolTip("Show diagnostic layers computed from selected burst photons.")
-        # Backwards-compatible aliases for older code paths/tests that used
-        # the original MCS-local controls.
-        self.mcs_show_all_check = self.show_all_photons_check
-        self.mcs_show_selected_check = self.show_selected_photons_check
-
-        self.plot_min_spin = QtWidgets.QSpinBox()
-        self.plot_min_spin.setRange(0, 99_999_999)
-        self.plot_min_spin.setValue(0)
-        self.plot_min_spin.setToolTip("Minimum photon index to process (0 = start of file)")
-        self.plot_max_spin = QtWidgets.QSpinBox()
-        self.plot_max_spin.setRange(0, 99_999_999)
-        self.plot_max_spin.setValue(DEFAULT_PLOT_MAX)
-        self.plot_max_spin.setToolTip("Maximum photon index to process (default = end of file)")
-
-        # TODO(ndx/autoform): these belong in burst_display.view.json, which is
-        # written but does not yet render its sections; until it does they stay
-        # here so they remain reachable.
-        toolbar.addWidget(QtWidgets.QLabel("Show:"))
-        toolbar.addWidget(self.show_all_photons_check)
-        toolbar.addWidget(self.show_selected_photons_check)
-        toolbar.addSeparator()
-        toolbar.addWidget(QtWidgets.QLabel("Photon Range:"))
-        toolbar.addWidget(self.plot_min_spin)
-        toolbar.addWidget(QtWidgets.QLabel("to"))
-        toolbar.addWidget(self.plot_max_spin)
+        # The layer toggles and the photon range are not here any more: they are
+        # settings, the toolbar holds actions, and a wide "Show: … Photon
+        # Range: … to …" run pushed the actions themselves off to the left. They
+        # are built in ``_ensure_display_widgets`` and shown by the AutoForm in
+        # Filter Settings — see ``_build_display_form``.
 
         spacer = QtWidgets.QWidget()
         spacer.setSizePolicy(

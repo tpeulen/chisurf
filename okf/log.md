@@ -103,6 +103,41 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **The burst-selection display settings are a form now, and the "section
+  binding" that blocked it was never broken.** The layer toggles (*All photons* /
+  *Selected photons*) and the *Photon Range* spin boxes are settings, not
+  actions, and a wide `Show: … Photon Range: … to …` run pushed the action
+  buttons out of the toolbar. They are now an AutoForm rendered from
+  `burst_display.view.json` at the foot of the **Filter Settings** dock — one
+  place, because they govern every diagnostic plot (dT, MCS, Decay, Burst
+  length) rather than any one of them.
+  - The reported blocker (an empty collapsed "Display" header, 100×15, blamed on
+    `toggle`/`value` sections not binding) was neither: the sections bind fine,
+    and `_build_display_form` **had no caller**. Rendering it standalone showed
+    all four controls immediately. Reading the failure as a binding bug is what
+    made it look deep; rendering it is what made it shallow.
+  - Ordering trap on the way in: the widgets that *hold* the state were created
+    in `_setup_toolbar`, which runs after `_build_ui`, so a form built during
+    `_build_ui` would have proxied to attributes that did not exist yet and
+    silently fallen back to defaults. They now live in `_ensure_display_widgets`
+    (idempotent, hidden children of the tool), called by the form builder. Every
+    existing reader (`plot_min_spin`, `show_all_photons_check`, the MCS aliases,
+    the tests) and every existing signal connection is untouched — the *placement*
+    moved, not the state.
+  - **Ghost widget found by looking at the render:** a "Burst bins" spin box was
+    drawn across the tab bar. Every diagnostic control panel is built but only
+    *placed* when its plot is shown, and an unplaced one kept the dock area as
+    its parent with no layout to size it, so Qt drew it at its default 640×480 in
+    the corner. Unplaced panels are hidden now. Pre-existing, unrelated to this
+    change, and invisible to every assertion.
+  - `burst_selection/tests/test_display_form.py` (**5 pass**): the form renders
+    its four controls (a bare header is the failure it pins), the toolbar carries
+    none of them, the form and the tool are one state in both directions, a
+    change through the form still redraws the plots, and no control panel is
+    left floating over the dock area. Whole `burst_selection` suite: 183 pass.
+    Documented in [plugins/burst.md](plugins/burst.md); the known-issues entry is
+    removed.
+
 * **A state's lifetime is now fitted from the state, not averaged over bursts —
   and that fit steers the per-burst ones.** A split-by-state run pools first:
   `pool_states_worker` (a second, binning-only pass over the same bursts and the

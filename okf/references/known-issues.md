@@ -1055,17 +1055,6 @@ quote-matching regex and **silently skipped files** — it missed
 call sites explicitly (`setToolTip|addAction|QLabel|setText|setWindowTitle|
 showMessage|QAction`) rather than trust a regex over whole files.
 
-**Burst-selection toolbar → AutoForm.** The layer toggles (*Show: All photons /
-Selected photons*) and the *Photon Range* spin boxes are settings, not actions,
-and they crowd the toolbar enough to push the action buttons out of view. The
-groundwork is in: `gui/display_view_model.py` (a proxy view-model — it holds no
-state, it reads and writes the tool's own widgets, so nothing can drift) and
-`gui/burst_display.view.json`. **Blocked:** the rendered `AutoForm` comes out as
-an empty collapsed "Display" header (100×15) — the `toggle`/`value` sections do
-not bind to the view-model's plain properties as authored. The controls are
-therefore still in the toolbar. Resolve the section binding first, verify by
-rendering the form and *looking* at it, then remove them from the toolbar.
-
 **H2MM ↔ ndX.** Raised but not investigated: the H2MM outputs open in ndX and
 the per-burst `bh4` merges, but the dwell grain has no automated consumer
 (`h2mm_dwells.csv` is a manual CSV open) and `Is Edge` is written yet unused by
