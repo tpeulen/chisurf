@@ -42,13 +42,16 @@ Method: Peulen, Opanasyuk & Seidel, *J. Phys. Chem. B* **121**, 8211–8241 (201
   *Structure file* box and fetches it.
 
 **Tool:** *Structure Tools → QuEst*
-(`chisurf/plugins/quenching_estimator`, `QuEstWindow`, wrapping
+(`chisurf/plugins/quenching_estimator`, `QuEstTool` — `QuEstWindow` is kept as an
+alias for the legacy name — wrapping
 `quest.gui.dye_widget.TransientDecayGenerator` from the companion **quest**
 repository). The plugin is `menu_hidden`; it is reached as the fourth entry of
 the **Structure Tools** hub, below the separator. The form is an `AutoForm` over
 `quest/gui/quest.view.json`, whose state *is* the QuEst project dict — so the
 GUI, the `quest` CLI and the web backend all consume the same JSON, and there is
-no hand-written conversion between them.
+no hand-written conversion between them. Headless equivalents: the `quest` CLI
+and the RPC methods `quest.simulate`, `quest.scan` (a whole set of labelling
+sites in one call) and `quest.structure.metadata`.
 
 ## Steps
 
@@ -108,8 +111,13 @@ no hand-written conversion between them.
 ## Observed (last run: 2026-07-28)
 
 Driven headlessly (`QT_QPA_PLATFORM=offscreen`, arm64 env) through
-`StructureToolsTool` and through the standalone `QuEstWindow`, with screenshots
-read at every step.
+`StructureToolsTool` and through the standalone window, with screenshots read at
+every step. The plugin shell was refactored in the same window as this run
+(`669fce499`, manifest + `QuEstTool` + RPC services + CLI); the panel was
+re-driven afterwards and every observation below still holds, except that the
+duplicated *Save project… / Load project… / Close* toolbar buttons the first pass
+saw are already gone — the toolbar is now just *Load PDB…*, and the footer row
+keeps the primary action.
 
 **What works, and works well.** The physics runs, and it is fast: a full
 simulation on T4L with the **shipped defaults** (500,000 photons, 16 µs
@@ -228,16 +236,12 @@ viewer. The empty column is ~1/3 of the window and says nothing about why.
   and `ChiSurfProgress` already exist for exactly this
   ([gui-autoform](/subsystems/gui-autoform.md)); the model itself already notes
   the synchronous run as `LAY-07`.
-* **Drop the duplicate buttons.** Embedded in Structure Tools the panel shows a
-  toolbar *Load PDB… / Save project… / Load project… / Close* **and** a footer
-  *▶ Simulate / 📂 Load project… / 💾 Save project…* — the same two actions twice,
-  in different styles, 700 px apart. Keep the footer row (it has the primary
-  action) and reduce the toolbar to *Load PDB…*.
 * **The quencher table needs room.** At the Structure Tools default size
-  (1200×750) the 20-row table is clipped to its header plus one part-row inside a
-  scroll area that is itself scrolling — two nested scrollbars, ~1 usable row. It
-  becomes readable around 1150 px of window height. Give it a fixed sensible
-  height with its own scrollbar, or move the chemistry to its own tab.
+  (1200×750) the *Quenching* group header sits on the bottom edge of the panel
+  and the 20-row table is entirely below the fold, inside a scroll area that is
+  itself scrolling — two nested scrollbars. It becomes readable around 1150 px of
+  window height. Give it a fixed sensible height with its own scrollbar, or move
+  the chemistry to its own tab.
 * **Say why the 3-D column is empty.** When no structure is loaded (or no GL
   context exists) the column shows a bold "Structure" and a dead frame slider.
   A one-line placeholder — *"load a structure to see the accessible volume"* —
