@@ -9317,3 +9317,72 @@ source was changed. Findings RF-804..RF-809.
 - **Location:** `chisurf/core/agent/skills_builtin/burst-search/SKILL.md:64-66` ("the end is **exclusive** — `photons[a:b]`, ordinary Python slicing") and its verification snippet at `:84-86` (`routing[a:b]`), with `chisurf/core/agent/skills_builtin/sub-ensemble-decay/SKILL.md:48-49` (`micro[a:b][np.isin(routing[a:b], GREEN)]`)
 - **Finding:** the skill presents the exclusive end as one of "the two facts to verify before trusting anything" and then hands the agent an assertion — `green == bursts["Number of Photons (green)"].sum()` — that compares an exclusive extraction against a table whose per-detector counts are written inclusively (`chisurf/core/fio/fluorescence/burst.py:457-460`, `slice(start, stop + 1)`). On a table from the current writer, or on the real PARIS fixture, the assert fails by the green photons sitting at index `b`. The skill then instructs: "*Do not adjust the slice until the numbers agree — that is fitting the bookkeeping to the answer*", so an agent that follows it correctly detects the mismatch and then stops, concluding the file layout is unfamiliar. It passes today only against the repo's stale `bh_spc132_sm_dna` fixture (2980/2980 rows exclusive), which is the one table in the tree written before RF-163. Both skills need `a:b + 1` and the sentence rewritten to "inclusive", and the sub-ensemble decay skill builds its decays with the same slice.
 - **Fix note:**
+
+### Review 2026-07-28 — the TTTR image browser, and what per-tile normalisation hides
+
+Slice: the two freshest landings in `chisurf/plugins/tttr/tttr_image_browser/`
+(`bafb89be1` — open through the staging seam; `ff4f63f7d` — the window accepts the
+drop the workspace declines) plus the module they changed, `core/image.py`, and
+the view-model/tool around it. Both landings are sound: the AST guard really does
+pin the `tttrlib.TTTR(...)` seam, and `on_paths_dropped` really does report the
+file-instead-of-folder case instead of swallowing it.
+
+What the slice does hide is that the mosaic **normalises every tile
+independently** (`to_uint8`, `core/image.py:335-344`), so anything that scales a
+detector's counts is invisible in the preview and only escapes through the TIFF
+export — which is what RF-811 is. The setup the browser consumes is the
+DetectorWizard's `channels` cross-product (`tttr_channel_definition.py:1563-1573`,
+windows × detectors), and the browser applies the detector half of it and drops
+the window half on the floor.
+
+Verified by running the real code in the `arm64` env (matplotlib 3.11, the
+version the user actually has); no source was changed. Findings RF-810..RF-816.
+
+### RF-810
+- **Status:** OPEN
+- **Severity:** S2 (a colour map that has silently not existed since matplotlib 3.9 — the DOCX report has been exporting grayscale and saying nothing)
+- **Location:** `chisurf/plugins/tttr/tttr_image_browser/core/image.py:264-272` (`get_magma_lut`: `import matplotlib.cm as cm` / `m = cm.get_cmap("magma")` inside `except Exception: return None`), consumed at `chisurf/plugins/tttr/tttr_image_browser/__init__.py:215-220`
+- **Finding:** `matplotlib.cm.get_cmap` was deprecated in 3.7 and **removed in 3.9**; the environment here is 3.11, where `import matplotlib.cm as cm; cm.get_cmap` raises `AttributeError: module 'matplotlib.cm' has no attribute 'get_cmap'`. The bare `except Exception` turns that into `return None`, and the caller's `if lut is not None:` then falls through to `QImage.Format_Grayscale8` — so **every** DOCX export since the matplotlib bump has written grayscale PNGs while the view.json still declares `"default_colormap": "magma"`, and nothing is logged. Verified: `get_magma_lut()` returns `None` in the project env. Per the repo rule this is a pure rename and belongs in `chisurf/core/compat.py` (`matplotlib.colormaps["magma"]` on ≥3.5, `cm.get_cmap` before), not a call-site rewrite; the second dead site is `chisurf/gui/widgets/chitable/colorize.py:110-114`, whose matplotlib branch is equally unreachable — it is masked today only because the chiplot registry answers first. While fixing, make the `except` log at debug rather than vanish: a silent `None` is what let this run for a whole major version.
+- **Fix note:**
+
+### RF-811
+- **Status:** OPEN
+- **Severity:** S1 (exported TIFF photon counts are multiplied by the number of time windows in the setup, and the mosaic's per-tile normalisation makes it invisible)
+- **Location:** `chisurf/plugins/tttr/tttr_image_browser/core/image.py:235-251` (`get_combo_stack` reads only `detector_chs` / `micro_time_range` — `window_range` is never passed to `tttrlib.CLSMImage`), with `group_channels_by_detector` at `:306-321` and the entry cache key at `:143-159` (`entry_hash` also omits `window_range`)
+- **Finding:** the wizard writes one combo per **window × detector** (`tttr_channel_definition.py:1563-1573`), each entry carrying `window_range`, `detector_chs`, `micro_time_range`. `group_channels_by_detector` collapses the window prefix and `extend`s the entry lists, so a detector ends up with one entry *per window* that are identical in every field the browser reads. `get_combo_stack` then computes each and `sum_stacks_with_padding` adds them. Verified with a two-window/one-detector setup: `group_channels_by_detector` yields `{'green': 2 entries}`, `compute_entry_stack_cached` is called twice with **one distinct argument tuple**, and a stack of ones comes back as a stack of **twos** — an exact ×W factor, W = number of windows. It does not show in the browser because `to_uint8` rescales each tile to its own min/max, but `save_tiff_stacks` writes `stack.astype(np.uint32)` (`:532`), so the exported intensity images carry W× the photons that are in the file. The other half of the same defect: the macro-time window is silently *not applied*, so the tool's own help text ("preview intensity images for all DetectorWizard-defined detector windows", `gui/tool.py:234`) describes something it does not do. A fix must pass the window to `CLSMImage` (or slice the TTTR to it) **and** add `window_range` to `entry_hash` — the cache key omits it today (both windows hash to `2e47d66c55bb85ba`), so honouring windows without touching the key would just serve the first window's stack for every window.
+- **Fix note:**
+
+### RF-812
+- **Status:** OPEN
+- **Severity:** S2 (the on-disk mosaic cache key omits the one parameter that changes the mosaic's size, so `--max-side` silently returns the previous size)
+- **Location:** `chisurf/plugins/tttr/tttr_image_browser/core/image.py:69-90` (`mosaic_hash` / `mosaic_cache_file` — payload is version, file name, mtime, reading routine, channels) against `load_image` at `:474-484` (the cache branch returns before `render_mosaic_array(..., max_side=max_side)` is ever consulted)
+- **Finding:** `max_side` is a first-class input on all three entry points — the CLI flag `tttr-image-browser load FILE --max-side N` (`cli/main.py:30`), the RPC parameter `max_side` (`backend/services.py:74`), and the client (`gui/client.py:92`) — and it is the only thing that sets the mosaic's pixel size (`:426-431`). It does not enter the cache signature, so the second call for the same file with a different `max_side` hits the `.npz` written by the first and returns a mosaic at the *old* size, with the caller's `cols`/`rows` still correct and its tile geometry silently wrong. There is no way to invalidate it short of the GUI's *Caches* button. Add `max_side` to the `mosaic_hash` payload (a cache-version bump is not needed — the key changes anyway).
+- **Fix note:**
+
+### RF-813
+- **Status:** OPEN
+- **Severity:** S3 (a parameter carried through three layers and documented in two docstrings that no code reads)
+- **Location:** `chisurf/plugins/tttr/tttr_image_browser/core/image.py:451-456` (`load_image(..., cache_folder: str | None = None)`; `cache_folder` appears nowhere in the body) — passed in from `gui/view_model.py:216`, `gui/client.py:96` ("Custom cache folder path"), `backend/services.py:76` and the manifest's `images.load` parameter list
+- **Finding:** `grep cache_folder core/image.py` returns only the signature line. Caches always land in `file_path.parent / ".tttr_image_cache"` (`cache_dir_for`, `:26-33`), so a caller that asks for a cache location gets none, and browsing a read-only or network folder writes nothing at all (`cache_dir_for` swallows the `mkdir` failure, then every `np.savez_compressed` swallows its own) — an unexplained "recomputes every time" with no log line. Either honour it (`cache_dir_for(file_path, cache_folder)`), which also gives the read-only case somewhere to go, or delete it from all four layers and the manifest so the contract stops promising it.
+- **Fix note:**
+
+### RF-814
+- **Status:** OPEN
+- **Severity:** S2 (DOCX export leaves the model pointing at the last file in the folder, so the preview and the "Next ▶ Intensity" hand-off act on a file the user never selected)
+- **Location:** `chisurf/plugins/tttr/tttr_image_browser/__init__.py:205-224` (`_on_export_docx`: `self.model.current_file = path` inside the per-entry loop, never restored), against `gui/tool.py:152-159` (`_on_next_step` reads `self._workspace._current_file`, i.e. `model.current_file`) and `gui/autoform/sections/image_browser_section.py:255-268` (the section pushes its own `_current_id` into `entry_attr` on a pick and never reads it back)
+- **Finding:** the export walks every visible entry and rebinds `model.current_file` to drive `current_image()`, then returns with it left on the last entry. The list widget keeps its own `_current_id` and its highlighted row, and the binding is one-way, so nothing puts it back: the next `refresh_plots` repaints the canvas from `current_image()` — the *last exported* file's mosaic under the *still-highlighted* selection — `current_note()` returns the wrong annotation for the note box, and pressing *Next ▶ Intensity* sends the wrong path to the imaging pipeline's `set_pipeline(source=...)` plus an `autorun_role("pixel_intensity")` on it. Save and restore `current_file` around the loop (`try/finally`), or better, render each entry without touching model state by calling the client directly, the way `save_tiff_stacks` does.
+- **Fix note:**
+
+### RF-815
+- **Status:** OPEN
+- **Severity:** S2 (a detector with no micro-time gating renders a blank tile and exports no TIFF, silently — the natural way to say "use all micro times")
+- **Location:** `chisurf/plugins/tttr/tttr_image_browser/core/image.py:275-303` (`channels_map_from_setup`: `for mtr in dinfo.get("micro_time_ranges", [])`) and the identical comprehension the wizard precomputes at `tttr_channel_definition.py:1568-1573`, reaching `get_combo_stack` (`:242-251`) and `save_tiff_stacks` (`:525-526`, `if stack is None: continue`)
+- **Finding:** the entries for a detector are built by iterating its micro-time ranges, so a detector whose µt column is empty produces **zero** entries — and `_parse_microtime_ranges_text` (`tttr_channel_definition.py:1035-1040`) returns `[]` for empty text, which is exactly what a user types to mean "no micro-time gate". Verified: a setup with `{"green": {"chs": [0, 8], "micro_time_ranges": []}}` gives `channels_map_from_setup → {'w1_green': []}` and `get_combo_stack(...) → None`. Consequences: a blank tile in the mosaic with a correct-looking label (`render_mosaic_array:437-438` fills zeros), no TIFF written for that detector with nothing logged, and if *every* detector is ungated `render_mosaic_array` returns `None` → `load_image` returns `None` → the browser shows nothing and the failure is reported only as a debug line (`view_model.py:218-219`). Treat an empty range list as one full-range entry (`micro_time_range = None`, which `compute_entry_stack_cached:187-192` already handles by omitting `micro_time_ranges` from the `CLSMImage` call).
+- **Fix note:**
+
+### RF-816
+- **Status:** OPEN
+- **Severity:** S2 (five installed GUI entry points still point at the pre-regrouping module paths and die with ModuleNotFoundError)
+- **Location:** `pyproject.toml`, `[project.gui-scripts]`: `csg_kappa2distribution`, `csg_calculator`, `csg_f_test`, `csg_trace_browser`, `csg_tttr_image_browser`, `chisurf_update`
+- **Finding:** the plugin tree was regrouped into `chisurf/plugins/<group>/<plugin>/` and the console-script targets were not moved with it. Verified by import in the project env: `chisurf.plugins.tttr_image_browser.__main__`, `chisurf.plugins.trace_browser.__main__` and `chisurf.plugins.updater.__main__` all raise `ModuleNotFoundError`; the packages now live at `chisurf/plugins/tttr/tttr_image_browser`, `chisurf/plugins/tttr/trace_browser` and `chisurf/plugins/core/updater`, and `kappa2_dist` / `f_test` moved to `calculator/` and `core/` the same way. `csg_calculator` is worse than a stale path: its target `chisurf.plugins.fret_calculator.__main__` has **no** counterpart — `chisurf/plugins/calculator/fret_calculator/` ships no `__main__.py` at all — so that one needs an entry module written or the script dropped. Every one of these is a shipped command that fails on first use, including `chisurf_update`. Nothing guards them: no test in `test/` reads `[project.scripts]`/`[project.gui-scripts]`. Fix the six targets and add a guard that parses `pyproject.toml` and asserts `importlib.util.find_spec` resolves each in-tree module (`csg_quest = quest.quest_gui:start_gui` also fails to import here, but it targets the external quest package — two checkouts of which exist on this machine, only one carrying `quest_gui.py` — so verify that one against the installed package rather than folding it into the in-tree fix).
+- **Fix note:**
