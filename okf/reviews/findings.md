@@ -6464,11 +6464,32 @@ read off the source. Findings RF-532..RF-537.
 - **Fix note:**
 
 ### RF-533
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (unhandled `KeyError` on the GUI thread, from a combo box that stays editable during the run)
 - **Location:** `chisurf/plugins/burst/burst_2cde/gui/tool.py:277-284` (`_analysis_done`: `variant = self._variant.currentText()` → `column = core.COLUMN_ALEX_2CDE if variant == "alex" else core.COLUMN_FRET_2CDE` → `self._draw(df, column)`) against `:205-215` (the settings snapshot passed to the worker) and `chisurf/plugins/burst/burst_2cde/core/computation.py:170,216` (`column = …` then `df[column] = values` — the frame gets **only** the computed variant's column)
 - **Finding:** the run is parameterised by a snapshot (`settings()` taken in `run()`), but the completion callback re-reads the *live* `Variant` combo to decide which column to plot. The combo is never disabled during a run and changing it starts no new run, so switching `fret` → `alex` while the folder is being correlated makes `_analysis_done` ask a frame that has only `FRET-2CDE` for `ALEX-2CDE`; `_draw`'s `df[column].to_numpy(...)` raises `KeyError` inside an `on_result` callback, which has no handler. The same read is also wrong in the benign direction — with `alex` → `fret` it silently labels the plot with the other variant. Derive the column from `self._running_fingerprint`'s settings (or return `(df, column)` from the worker), and disable the settings form while a run is in flight.
-- **Fix note:**
+- **Fix note:** The variant now travels with the frame: `_analysis_worker` returns
+  `(df, settings["variant"])` — the snapshot it was given, never a widget — and
+  `_analysis_done` unpacks it and derives the column from that. The live combo is
+  no longer read after a run starts. The four copies of the `variant → column`
+  mapping (core `compute_2cde` and `write_2cde_analysis`, the RPC service, the
+  CLI, the GUI) are now one `core.column_for_variant`, so the seam that produced
+  the divergence cannot drift again. The settings form was also moved into a
+  `self._settings_box` widget that `run()` disables and `_analysis_over()`
+  re-enables, so the controls cannot move under a computation at all —
+  a run is parameterised by the settings it started with. Reproduced against
+  `HEAD` first: with the old `_analysis_done`, switching the combo to `alex`
+  before a `fret` frame arrives raises `KeyError: 'ALEX-2CDE'`. Pinned by
+  `chisurf/plugins/burst/burst_2cde/tests/test_gui.py::test_plotted_column_follows_the_run_not_the_live_combo`
+  (combo moved to `alex`, worker returns a `fret` frame — the status line names
+  `FRET-2CDE` and not `ALEX-2CDE`), `::test_settings_are_locked_while_a_run_is_in_flight`
+  and `::test_column_for_variant_is_the_single_mapping`. `chisurf/plugins/burst/`
+  and `test/gui/test_burst_reuse.py` green (408 passed, 28 skipped); the tool was
+  re-rendered offscreen in both the idle and the locked state and inspected — the
+  form still lays out as one column and greys as a block. `ruff check` /
+  `ruff format --check` on the touched files add no finding that `HEAD` did not
+  already have (and drop one pre-existing `I001` in the CLI).
+  `docs/guides/01_fret_2cde.md` states the lock and the variant guarantee.
 
 ### RF-534
 - **Status:** OPEN

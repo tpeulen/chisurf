@@ -68,8 +68,7 @@ def compute_2cde_handler(
     """Compute the 2CDE feature from explicit parameters or a workflow handoff."""
     try:
         from ..core.computation import (
-            COLUMN_ALEX_2CDE,
-            COLUMN_FRET_2CDE,
+            column_for_variant,
             compute_2cde,
             read_burst_analysis,
             write_2cde_analysis,
@@ -95,7 +94,7 @@ def compute_2cde_handler(
             tau=cfg.tau, kernel=cfg.kernel, variant=cfg.variant,
         )
 
-        column = COLUMN_ALEX_2CDE if cfg.variant == "alex" else COLUMN_FRET_2CDE
+        column = column_for_variant(cfg.variant)
         output_paths: dict[str, str] = {}
         if write_output:
             write_2cde_analysis(df_v, str(resolved_folder), variant=cfg.variant)

@@ -27,6 +27,27 @@ COLUMN_FRET_2CDE = "FRET-2CDE"
 COLUMN_ALEX_2CDE = "ALEX-2CDE"
 
 
+def column_for_variant(variant: str) -> str:
+    """Return the dataframe column a 2CDE *variant* is written to.
+
+    A computed frame carries **only** the column of the variant it was computed
+    for, so every consumer has to derive the name from the variant that ran —
+    never from a live control that may have moved since. One mapping, so the
+    core, the service, the CLI and the GUI cannot drift apart.
+
+    Parameters
+    ----------
+    variant : str
+        ``"fret"`` (FRET-2CDE) or ``"alex"`` (ALEX-2CDE).
+
+    Returns
+    -------
+    str
+        ``COLUMN_ALEX_2CDE`` for ``"alex"``, ``COLUMN_FRET_2CDE`` otherwise.
+    """
+    return COLUMN_ALEX_2CDE if variant == "alex" else COLUMN_FRET_2CDE
+
+
 # The burst-analysis reader is shared with the BVA plugin (identical file
 # layout: First File / First Photon / Last Photon columns).
 from chisurf.plugins.burst.burst_bva.core.computation import read_burst_analysis  # noqa: E402
@@ -167,7 +188,7 @@ def compute_2cde(
     pandas.DataFrame
         ``df`` with a ``FRET-2CDE`` or ``ALEX-2CDE`` column added.
     """
-    column = COLUMN_ALEX_2CDE if variant == "alex" else COLUMN_FRET_2CDE
+    column = column_for_variant(variant)
     n = len(df)
     values = np.full(n, np.nan)
 
@@ -270,7 +291,7 @@ def write_2cde_analysis(df: pd.DataFrame, analysis_folder: str, variant: str = "
     / ``2c4`` …). Per-stem consumers — ndXplorer and the burst browser — join it
     to the burst table by stem, so it must match the ``.bur`` name (no ``_0``).
     """
-    column = COLUMN_ALEX_2CDE if variant == "alex" else COLUMN_FRET_2CDE
+    column = column_for_variant(variant)
     out = pathlib.Path(analysis_folder) / "2c4"
     out.mkdir(parents=True, exist_ok=True)
     for i, (tttr_file, group) in enumerate(df.groupby("First File"), start=1):

@@ -37,6 +37,11 @@ it needs was decided upstream. It runs off the GUI thread, so the window stays
 usable, and **Stop** in the toolbar interrupts it. Opening the step again does
 not recompute; see [53 — Reusing results](53_reusing_results.md).
 
+A run is parameterised by the settings as they stood when it started, so the
+settings form is **locked while it computes** — change *Variant*, *Kernel*, τ or
+a channel list and press **Run** again to compute the other answer. The plot and
+the status line always name the variant that actually ran.
+
 ```python
 import numpy as np
 import tttrlib

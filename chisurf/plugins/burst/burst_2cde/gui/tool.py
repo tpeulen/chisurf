@@ -85,7 +85,13 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         layout.addLayout(row)
 
         # --- settings form ----------------------------------------------------
-        form = QtWidgets.QFormLayout()
+        # In one widget so the whole form can be disabled while a run is in
+        # flight: the computation is parameterised by a snapshot taken when it
+        # started, and a control the user moves meanwhile describes a result
+        # nobody asked for.
+        self._settings_box = QtWidgets.QWidget()
+        form = QtWidgets.QFormLayout(self._settings_box)
+        form.setContentsMargins(0, 0, 0, 0)
         self._variant = QtWidgets.QComboBox()
         self._variant.addItems(["fret", "alex"])
         self._kernel = QtWidgets.QComboBox()
@@ -104,7 +110,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         form.addRow("Donor ch.", self._donor)
         form.addRow("Acceptor ch.", self._acceptor)
         form.addRow("File type", self._file_type)
-        layout.addLayout(form)
+        layout.addWidget(self._settings_box)
 
         # --- plot -------------------------------------------------------------
         self._plot = cp.Plot()
@@ -255,6 +261,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self._running_fingerprint = fingerprint
         self._run.setEnabled(False)
         self._stop.setEnabled(True)
+        self._settings_box.setEnabled(False)
         self._task = ChiSurfProgress.run(
             self, "Reading burst data …", self._analysis_worker,
             # Inputs and params are resolved here, on the GUI thread: the worker
@@ -272,6 +279,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self._task = None
         self._run.setEnabled(True)
         self._stop.setEnabled(False)
+        self._settings_box.setEnabled(True)
 
     def stop(self) -> None:
         """Stop the running computation.
@@ -325,12 +333,21 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             )
         except Exception as exc:  # pragma: no cover - GUI error path
             logging.getLogger(__name__).warning("Could not write 2c4 companion: %s", exc)
-        return df
+        # The variant travels with the frame: it is the only thing that says
+        # which of the two columns was computed, and the control it came from
+        # may have moved while the folder was being correlated.
+        return df, settings["variant"]
 
-    def _analysis_done(self, df) -> None:
-        """Back on the GUI thread with the 2CDE table: draw it."""
-        variant = self._variant.currentText()
-        column = core.COLUMN_ALEX_2CDE if variant == "alex" else core.COLUMN_FRET_2CDE
+    def _analysis_done(self, result) -> None:
+        """Back on the GUI thread with the 2CDE table: draw it.
+
+        The column is taken from the variant the *worker* ran with, never from
+        the live combo box: a computed frame carries only that one column, so
+        re-reading a control the user changed mid-run asks for a column that is
+        not there (``KeyError``) or labels the plot with the wrong variant.
+        """
+        df, variant = result
+        column = core.column_for_variant(variant)
         self._df = df
         if self._running_fingerprint is not None:
             self._result_cache.remember(self._running_fingerprint)

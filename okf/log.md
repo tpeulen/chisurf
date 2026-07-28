@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **A 2CDE result is labelled by the run that produced it, not by where the
+  combo box happens to be when it lands (RF-533).** The 2CDE worker is
+  parameterised by a settings snapshot and the frame it returns carries **only**
+  the computed variant's column, but `_analysis_done` re-read the live *Variant*
+  combo to decide which column to plot. Switching `fret` → `alex` while a folder
+  was being correlated therefore asked a `FRET-2CDE` frame for `ALEX-2CDE` and
+  raised `KeyError` inside an `on_result` callback with no handler; the other
+  direction silently labelled the plot with the wrong variant. The worker now
+  returns `(df, variant)` and the handler derives the column from that, the
+  settings form lives in a widget that is disabled for the duration of a run,
+  and the copies of the `variant → column` mapping (core compute, companion
+  writer, RPC service, CLI, GUI) collapse into one `core.column_for_variant` so
+  the seam cannot drift apart again. Pinned by three tests in
+  `chisurf/plugins/burst/burst_2cde/tests/test_gui.py`; `docs/guides/01_fret_2cde.md`
+  states the lock and the labelling guarantee.
+
 * **A sub-population of a burst is a column, not a row — state-wise MLE folded
   into MLE-Burstwise.** The `burst_state_mle` plugin (step 7) wrote one companion
   folder per (state, colour). It was doubly broken: after the `bg4_s0` →

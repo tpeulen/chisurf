@@ -9,8 +9,7 @@ import click
 
 from chisurf.plugins.burst.burst_2cde.api.models import TwoCdeSettings
 from chisurf.plugins.burst.burst_2cde.core.computation import (
-    COLUMN_ALEX_2CDE,
-    COLUMN_FRET_2CDE,
+    column_for_variant,
     compute_2cde,
     read_burst_analysis,
     write_2cde_analysis,
@@ -73,7 +72,7 @@ def compute(
         acceptor_micro_time_ranges=settings.acceptor_micro_time_ranges,
         tau=settings.tau, kernel=settings.kernel, variant=settings.variant,
     )
-    column = COLUMN_ALEX_2CDE if variant == "alex" else COLUMN_FRET_2CDE
+    column = column_for_variant(variant)
     import numpy as np
     valid = int(np.isfinite(df_v[column]).sum())
     click.echo(f"Valid bursts: {valid} / {len(df_v)} total")
