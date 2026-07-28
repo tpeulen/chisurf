@@ -111,6 +111,11 @@ class DummyClient:
         self._calls.append("parameter__set_bounds")
         return {"ok": True}
 
+    def graph__build(self, fit_indices=None, fit_uids=None, include_fixed=True,
+                     connect_fits=False):
+        self._calls.append("graph__build")
+        return {"ok": True, "graph": {"nodes": [], "edges": []}}
+
     def project__info(self):
         self._calls.append("project__info")
         return {"ok": True, "fit_count": 0, "dataset_count": 0}
@@ -281,6 +286,58 @@ class TestChiSurfAPI:
             assert len(cs.fits) == 0
         finally:
             cs.fits.clear()
+
+    def test_build_fit_graph_local(self):
+        """Local mode builds a real graph instead of raising (RF-719).
+
+        The local branch used to be a hand-copied, drifted duplicate of the
+        server service that called a helper it never imported, so it raised
+        ``NameError`` for every fit with at least one parameter.
+        """
+        target = DummyParameter("tau", 3.0)
+        linked = DummyParameter("tau", 3.0)
+        linked.is_linked = True
+        linked.link = target
+        fixed = DummyParameter("bg", 1.0)
+        fixed.fixed = True
+
+        fit1 = DummyFit(name="Fit1", uid="graph-uid-1")
+        fit1.model.parameters_all = [target]
+        fit2 = DummyFit(name="Fit2", uid="graph-uid-2")
+        fit2.model.parameters_all = [linked, fixed]
+        cs.fits.extend([fit1, fit2])
+        try:
+            api = ChiSurfAPI(mode="local")
+            result = api.build_fit_graph()
+            assert result["ok"] is True
+            nodes = result["graph"]["nodes"]
+            edges = result["graph"]["edges"]
+
+            assert [n["node_type"] for n in nodes] == [
+                "fit", "parameter", "fit", "parameter", "parameter"
+            ]
+            assert nodes[1]["value"] == 3.0
+            # Every parameter hangs off its own fit ...
+            assert {(1, 0), (3, 2), (4, 2)} <= {(e["source"], e["target"]) for e in edges}
+            # ... the link joins the two same-named parameters ...
+            assert {"source": 3, "target": 1} in edges
+            # ... and a linked parameter never links to itself.
+            assert not [e for e in edges if e["source"] == e["target"]]
+
+            # Selection and the fixed-parameter filter reach the service too.
+            assert len(api.build_fit_graph(include_fixed=False)["graph"]["nodes"]) == 4
+            assert len(api.build_fit_graph(fit_uids=["graph-uid-2"])["graph"]["nodes"]) == 3
+            assert len(api.build_fit_graph(fit_indices=[0])["graph"]["nodes"]) == 2
+        finally:
+            cs.fits.clear()
+
+    def test_build_fit_graph_server(self):
+        """Server mode delegates to the client rather than the local service."""
+        client = DummyClient()
+        api = ChiSurfAPI(client=client, mode="server")
+        result = api.build_fit_graph()
+        assert result["ok"] is True
+        assert "graph__build" in client._calls
 
 
 class TestPluginContext:

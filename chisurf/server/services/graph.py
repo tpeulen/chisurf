@@ -131,6 +131,10 @@ def build_fit_graph(
         for m in nodes:
             if m["node_type"] != "parameter":
                 continue
+            if m["node_idx"] == n["node_idx"]:
+                # A parameter linked to a same-named one elsewhere matches
+                # itself by name; an edge onto itself is not a link.
+                continue
             if m["name"] == link_name:
                 edges.append({"source": n["node_idx"], "target": m["node_idx"]})
 

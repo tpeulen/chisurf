@@ -922,6 +922,28 @@ class ChiSurfAPI:
         include_fixed: bool = True,
         connect_fits: bool = False,
     ) -> Dict[str, Any]:
+        """Build the fit/parameter graph for the selected fits.
+
+        Local and hybrid modes answer from the process-local session state
+        through the very same service the server exposes, so a graph does not
+        depend on which mode asked for it.
+
+        Parameters
+        ----------
+        fit_indices : list of int, optional
+            Positions of the fits to include; ignored when *fit_uids* is given.
+        fit_uids : list of str, optional
+            Unique identifiers of the fits to include.  Defaults to every fit.
+        include_fixed : bool, optional
+            Include fixed parameters as nodes.  Default ``True``.
+        connect_fits : bool, optional
+            Additionally connect every pair of fit nodes.  Default ``False``.
+
+        Returns
+        -------
+        dict
+            ``{"ok": True, "graph": {"nodes": [...], "edges": [...]}}``.
+        """
         if self.mode == "server" and self.client is not None:
             return self.client.graph__build(
                 fit_indices=fit_indices,
@@ -929,102 +951,15 @@ class ChiSurfAPI:
                 include_fixed=include_fixed,
                 connect_fits=connect_fits,
             )
-        fits = list(self._state.fits)
-        selected = []
-        if fit_uids:
-            uid_set = set(fit_uids)
-            for i, f in enumerate(fits):
-                uid = str(getattr(f, "unique_identifier", "") or "")
-                if uid in uid_set:
-                    selected.append((i, f))
-        elif fit_indices:
-            for i in fit_indices:
-                if 0 <= i < len(fits):
-                    selected.append((i, fits[i]))
-        else:
-            selected = list(enumerate(fits))
+        from chisurf.server.services import graph as _graph
 
-        nodes: List[Dict[str, Any]] = []
-        edges: List[Dict[str, Any]] = []
-        node_idx = 0
-        fit_node_ids: Dict[int, int] = {}
-
-        for fit_idx, fit in selected:
-            try:
-                data_filename = str(getattr(getattr(fit, "data", None), "filename", ""))
-            except Exception:
-                data_filename = ""
-            try:
-                model_module = getattr(fit.model.__class__, "__module__", "")
-                model_class_name = getattr(fit.model.__class__, "__name__", "")
-                model_full = f"{model_module}.{model_class_name}"
-            except Exception:
-                model_full = ""
-            node = {
-                "node_idx": node_idx,
-                "node_type": "fit",
-                "name": str(getattr(fit, "name", "fit")),
-                "fit_idx": fit_idx,
-                "data_filename": data_filename,
-                "model": model_full,
-            }
-            node_id = node_idx
-            nodes.append(node)
-            fit_node_ids[fit_idx] = node_id
-            node_idx += 1
-            try:
-                parameters = list(getattr(fit.model, "parameters_all", []) or [])
-            except Exception:
-                parameters = []
-            for param in parameters:
-                try:
-                    fixed = bool(getattr(param, "fixed", False))
-                except Exception:
-                    fixed = False
-                if fixed and not include_fixed:
-                    continue
-                try:
-                    is_linked = bool(getattr(param, "is_linked", False))
-                except Exception:
-                    is_linked = False
-                try:
-                    link_name = str(getattr(getattr(param, "link", None), "name", ""))
-                except Exception:
-                    link_name = ""
-                param_node = {
-                    "node_idx": node_idx,
-                    "node_type": "parameter",
-                    "name": str(getattr(param, "name", "param")),
-                    "fit_idx": fit_idx,
-                    "value": _safe_float(getattr(param, "value", None)),
-                    "fixed": fixed,
-                    "is_linked": is_linked,
-                    "link_name": link_name,
-                }
-                param_node_id = node_idx
-                nodes.append(param_node)
-                edges.append({"source": param_node_id, "target": node_id})
-                node_idx += 1
-
-        for n in nodes:
-            if n["node_type"] != "parameter" or not n.get("is_linked"):
-                continue
-            link_name = n.get("link_name", "")
-            if not link_name:
-                continue
-            for m in nodes:
-                if m["node_type"] != "parameter":
-                    continue
-                if m["name"] == link_name and m["fit_idx"] != n["fit_idx"]:
-                    edges.append({"source": n["node_idx"], "target": m["node_idx"]})
-
-        if connect_fits:
-            fit_nodes = [n for n in nodes if n["node_type"] == "fit"]
-            for i, a in enumerate(fit_nodes):
-                for b in fit_nodes[i + 1:]:
-                    edges.append({"source": a["node_idx"], "target": b["node_idx"]})
-
-        return {"ok": True, "graph": {"nodes": nodes, "edges": edges}}
+        return _graph.build_fit_graph(
+            self._state,
+            fit_indices=fit_indices,
+            fit_uids=fit_uids,
+            include_fixed=include_fixed,
+            connect_fits=connect_fits,
+        )
 
 
 from chisurf.server.services._stats import _safe_chi2, _safe_chi2r, _safe_n_points, _safe_n_free, _collect_param_list

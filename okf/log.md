@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **One fit graph, not two (RF-719).** `ChiSurfAPI.build_fit_graph`'s local branch
+  was a hand-copied, drifted duplicate of `chisurf.server.services.graph`, and the
+  copy called a `_safe_float` helper the module never imported -- so local and
+  hybrid mode raised `NameError` for every fit that had at least one parameter,
+  unnoticed because the method has no callers and every graph test imported the
+  service instead. The duplicate is deleted; the API now hands `self._state`
+  (already a `SessionState`) straight to the service, so all three modes answer
+  from one implementation. Unifying surfaced the other half of the drift: the
+  service matched a linked parameter against itself by name and emitted a
+  self-edge, which the local copy suppressed with a `fit_idx` guard that also
+  dropped legitimate within-fit links -- the loop now simply skips its own node.
+  Pinned by `test/server/test_api.py::TestChiSurfAPI::test_build_fit_graph_local`
+  and `::test_build_fit_graph_server` (184 tests green across `test_api.py`,
+  `test_services_fits.py`, `test_service_robustness.py`, `test_client.py`,
+  `test_adapters.py`).
+
 * **The metaball was tuned on the wrong molecule, twice, and the shader could
   not have shown transparency anyway.** Three linked changes, each found by
   rendering rather than reasoning:

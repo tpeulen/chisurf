@@ -8458,11 +8458,32 @@ half about another. RF-718..RF-729.
   empties `cs.fits`).
 
 ### RF-719
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (`ChiSurfAPI.build_fit_graph` raises `NameError` on any fit that has at least one parameter — the local branch calls a helper the module never imports)
 - **Location:** `chisurf/core/api/__init__.py:969` (`"value": _safe_float(getattr(param, "value", None))`) against the import at `:1000`, which brings in `_safe_chi2, _safe_chi2r, _safe_n_points, _safe_n_free, _collect_param_list` — and **not** `_safe_float`; the helper exists only in `chisurf/server/services/graph.py:9`, `chisurf/plugins/core/globalview/api/graph.py:41` and `chisurf/plugins/core/globalview/backend/services.py:133`
 - **Finding:** verified by running the real method against a one-fit, one-parameter session: `RAISED NameError name '_safe_float' is not defined`. The failure is unconditional for any non-empty parameter list, so the local/hybrid branch of `build_fit_graph` has never executed successfully. It survives because the method has **no callers and no tests** — every `build_fit_graph` test in `test/server/` imports `chisurf.server.services.graph` instead — and because `:888-997` is a hand-copied, drifted duplicate of that service (the copy adds `and m["fit_idx"] != n["fit_idx"]` to the link loop; the service does not). Fix: delete the duplicated body and delegate to `chisurf.server.services.graph.build_fit_graph` through the same `_State` adapter `posterior` / `reweight_prior` / `derived_quantities` already use (`:449-459`), and add one local-mode test.
-- **Fix note:**
+- **Fix note:** The 97-line duplicate is gone: `ChiSurfAPI.build_fit_graph` now
+  delegates to `chisurf.server.services.graph.build_fit_graph`, handing it
+  `self._state` directly -- the API's session state already *is* a
+  `chisurf.server.session.SessionState`, so no `_State` adapter is needed -- and
+  the method gained the NumPy-style docstring it never had. Local, hybrid and
+  server modes therefore answer from one implementation, and the `NameError`
+  cannot come back because the helper now lives beside its only caller.
+  Unifying on the service exposed the other half of the drift: the service's
+  link loop matched a linked parameter against *itself* by name, so the
+  now-reachable local mode would have emitted a self-edge; the loop skips its
+  own node (an edge onto itself is not a link) while still allowing
+  within-fit links, which the local copy's `fit_idx` guard had silently
+  dropped. Pinned by `test/server/test_api.py::TestChiSurfAPI` --
+  `test_build_fit_graph_local` (asserts the node/edge shape, the cross-fit link
+  edge, the absence of a self-edge, and that `include_fixed` / `fit_uids` /
+  `fit_indices` reach the service) and `test_build_fit_graph_server` (server
+  mode still goes through `graph__build`). `test/server/test_api.py`,
+  `test_services_fits.py`, `test_service_robustness.py`, `test_client.py` and
+  `test_adapters.py` green (184 tests); `ruff check` reports no new finding on
+  the touched lines. Unrelated pre-existing reds in `test_rpc_edge_cases.py`
+  and `test_startup.py` (RPC error-shape work in flight in another tree) are
+  untouched by this change.
 
 ### RF-720
 - **Status:** OPEN
