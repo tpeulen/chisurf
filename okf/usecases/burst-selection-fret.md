@@ -139,9 +139,10 @@ carries two columns with the same unit label on scales 1000 apart, and the
 burst's total rate reads *smaller* than its own green sub-rate. The cause is a
 unit mismatch inside one expression (`crate = (npix/dur)/1e3` where `dur` is
 already in ms), and the same file's `write_bur_file_old` computes it correctly
-from seconds (RF-052). The bundled legacy reference `.bur` has the same 1000×
-scaling, so this is long-standing and the fix has to decide between the value
-and the label.
+from seconds (RF-052). *Fixed:* the value was corrected to kHz — the genuine
+Seidel reference `.bur` is self-consistent kHz, so the file that shows the 1000×
+scaling was itself written by ChiSurf carrying this bug, and no format version
+bump is needed.
 
 **Both export menu items crash whenever there is something to export.**
 *File → Export → Export as .bur* and *→ Export as flrCIF* start with
@@ -243,8 +244,8 @@ it; and each run creates a new numbered output folder next to the raw data
 
 ## Bugs filed
 
-- RF-052 — `Count Rate (KHz)` in the burst dataframe and every `.bur` file is
-  1000× too small (it is MHz), and disagrees with the per-detector
+- RF-052 (fixed) — `Count Rate (KHz)` in the burst dataframe and every `.bur` file
+  was 1000× too small (it was MHz), and disagreed with the per-detector
   `… Count Rate (KHz)` columns in the same row.
 - RF-053 — *File → Export → Export as .bur* and *→ Export as flrCIF* raise
   `ValueError: The truth value of a DataFrame is ambiguous` whenever burst data

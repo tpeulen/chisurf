@@ -2,6 +2,27 @@
 
 ## 2026-07-29
 
+* **A burst's total count rate was in MHz under a kHz header** (RF-052, RF-896).
+  `generate_burst_dataframe` computes the burst duration in **milliseconds**, so
+  photons-per-duration is already kilohertz; the extra `/1e3` wrote megahertz into
+  `Count Rate (KHz)` while the per-detector rates in the very same row — divided by
+  the same kind of millisecond duration, without the scaling — stayed in kHz, so one
+  `.bur` row carried two rate families 1000× apart and a burst's total rate read
+  *smaller* than its own green sub-rate. Every `.bur` ChiSurf has written is
+  affected: this is the shared burst core behind `bid_to_analysis`, the burst
+  wizard and the Bursts table. RF-052 warned that "the bundled legacy reference
+  carries the same scaling, so decide between the value and the label" — checked and
+  wrong: the genuine Seidel reference
+  (`modules/ndxplorer/test/mfd/burstwise_All 0.1500#30/bi4_bur/n000_0.bur`) is
+  self-consistent kHz (192 photons / 7.434007 ms → `25.827255`), and the file that
+  shows MHz was itself written by ChiSurf carrying this bug — so kHz *is* the
+  format's convention and no `.bur` version bump is needed. The scaling is gone.
+  New `test/fio/test_burst_count_rate_units.py` pins it three ways: an exact
+  two-photon 2 kHz burst, the invariant that a burst's total rate is ≥ every
+  per-detector rate inside it, and agreement between `write_bur_file_old` (correct
+  all along — its duration is in seconds) and the fast writer.
+  `test/fio/test_burst_dataframe_bounds.py` no longer asserts the MHz value.
+
 * **A model widget that could not be defined.** `EtModelFreeWidget` inherited
   `QtWidgets.QWidget` directly while its model is an abstract base class, and
   `ABCMeta` + Qt's `wrappertype` is a metaclass conflict raised while the class

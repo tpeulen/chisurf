@@ -861,11 +861,18 @@ Slice: the integrated **Burst Analysis** workflow driven headlessly end-to-end o
 Findings RF-052..RF-056.
 
 ### RF-052
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a documented column is 1000× off and contradicts its neighbours)
 - **Location:** `chisurf/core/fio/fluorescence/burst.py:435` (`generate_burst_dataframe`, `crate = (npix / dur)/1e3`), header at `:353`
 - **Finding:** `dur` is already in milliseconds (`:432`, `(macro[stop]-macro[start]) * res * 1e3`), so `npix/dur` is photons per ms — i.e. **kHz** — and dividing by `1e3` again writes **MHz** into a column headed `Count Rate (KHz)`. The per-detector rates in the same row are computed correctly (`rate = idxs.size / d_ms`, `:469`), so one burst row carries two `… (KHz)` columns whose scales differ by 1000 and the burst's *total* rate reads smaller than its own green sub-rate. Verified on `m000.spc`, first burst: 21 photons between macro times of photons 1786 and 1807 = 0.8980875 ms → 23.383 kHz; the GUI *Bursts* table and the written `.bur` both show `0.023383`, next to `Green Count Rate (KHz) = 20.817`. The older writer in the same file gets it right because its `duration` is in seconds (`:218`, `:227`). Note before fixing: the bundled legacy reference (`burstwise_All 0.1000#15/bi4_bur/m000.bur`) carries the same 1000× scaling (29 photons / 0.3969 ms → `0.0730`), so this convention predates the port — decide explicitly whether to correct the value (and version the `.bur`) or relabel the column, and pin it with a test that asserts the total rate ≥ every per-detector rate.
-- **Fix note:**
+- **Fix note:** Duplicate of the same defect re-filed as RF-896; both closed by the
+  same change — the extra `/1e3` is gone from `generate_burst_dataframe`. The
+  "legacy reference carries the same scaling" caveat does *not* hold: the genuine
+  Seidel reference (`modules/ndxplorer/test/mfd/burstwise_All 0.1500#30/bi4_bur/n000_0.bur`)
+  is self-consistent kHz (192 photons / 7.434007 ms → `25.827255`); the file that
+  shows the 1000× scaling (`burst_selection/tests/data/…/bi4_bur/m000.bur`) was
+  itself written by ChiSurf carrying this bug, so kHz is the format's convention
+  and no `.bur` version bump is needed. See RF-896 for the pinning tests.
 
 ### RF-053
 - **Status:** FIXED
@@ -10121,11 +10128,23 @@ Use case: [/usecases/converter-time-window-bids.md](/usecases/converter-time-win
 Findings RF-896..RF-906.
 
 ### RF-896
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every `.bur` ChiSurf writes states a total count rate 1000× too small, in a column labelled kHz, while the per-detector kHz columns beside it are right)
 - **Location:** `chisurf/core/fio/fluorescence/burst.py:442` (`generate_burst_dataframe`: `crate = (npix / dur)/1e3 if dur>0 else np.nan`, written to `"Count Rate (KHz)"` at `:449`) against the per-detector rate at `:475` (`rate = (idxs.size / d_ms) if d_ms>0 else np.nan`, written to `"{d} Count Rate (KHz)"`)
 - **Finding:** `dur` is already in **milliseconds** (`dur = (macro[stop] - macro[start]) * res * 1e3`, `:439`), so `npix / dur` is photons-per-ms — i.e. **kHz already**. The extra `/1e3` turns it into MHz under a `(KHz)` header. The per-detector branch does the same division *without* the `/1e3` and is correct, so the two column families in one row disagree by exactly 1000×. Verified on a real file: a time window with 664 photons over 100.035567 ms is written as `Count Rate (KHz) = 0.006637639190868984` (664/100.0356 = 6.6376 kHz), while `Green Count Rate (KHz)` on the same row is `5.96668177774029` for 594 photons over 99.5528205 ms (= 5.9667 kHz, correct). This is the shared burst core, so every writer that goes through it is affected — `bid_to_analysis`, the burst wizard, and anything reading `Count Rate (KHz)` back for a rate filter. Drop the `/1e3`; pin with a synthetic two-photon burst whose rate is exact.
-- **Fix note:**
+- **Fix note:** Dropped the `/1e3` in `generate_burst_dataframe` — `crate = npix / dur`
+  with a comment naming the unit, so the total rate and the per-detector rates in a
+  row are now one family. Same defect as RF-052, closed with it; the "legacy files
+  carry the 1000× scaling too" caveat there was checked and is wrong (the genuine
+  Seidel reference is kHz; the file that showed MHz was written by ChiSurf), so no
+  `.bur` version bump. Pinned by the new
+  `test/fio/test_burst_count_rate_units.py` — an exact two-photon 2 kHz burst, the
+  invariant that a burst's total rate is ≥ every per-detector rate inside it, and
+  agreement between `write_bur_file_old` (which was already correct, its duration
+  being in seconds) and the fast writer. `test/fio/test_burst_dataframe_bounds.py`
+  no longer asserts the MHz value. `test/fio` (312 passed) and
+  `chisurf/plugins/burst` (423 passed) green; `ruff` adds no finding on the touched
+  lines.
 
 ### RF-897
 - **Status:** OPEN

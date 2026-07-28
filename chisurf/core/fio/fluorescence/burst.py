@@ -439,7 +439,10 @@ def generate_burst_dataframe(
         dur   = (macro[stop] - macro[start]) * res * 1e3
         meanm = ((macro[stop] + macro[start]) / 2) * res * 1e3
         npix  = stop - start + 1
-        crate = (npix / dur)/1e3 if dur>0 else np.nan
+        # ``dur`` is milliseconds, so photons-per-``dur`` is already kHz — the
+        # unit the "Count Rate (KHz)" header and the per-detector rates below
+        # are written in. Do not scale again.
+        crate = (npix / dur) if dur>0 else np.nan
 
         row[idx["First Photon"]]          = start
         row[idx["Last Photon"]]           = stop
