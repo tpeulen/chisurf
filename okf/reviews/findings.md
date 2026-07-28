@@ -8559,11 +8559,28 @@ around it.
 - **Fix note:**
 
 ### RF-731
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the merged curve poisons the fit that consumes it: exact zeros in the error column become infinite fit weights, with only a stderr RuntimeWarning)
 - **Location:** `chisurf/core/fio/fluorescence/fcs/kristine.py:110-117` (`w = 1. / data[:, 3][i]` inside a `try` that catches only `IndexError`/`ValueError`), fed by `chisurf/core/fluorescence/fcs/merge.py:53` (`ey = np.std(ys, axis=0) / np.sqrt(n_curves)`) and `:131` / `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py:222` (`if np.any(ey != 0)` → write the 4th column)
 - **Finding:** `std` over the merged repeats is **exactly 0** at every lag where the curves happen to agree — common at long lags, where G is quantised and the repeats converge to 1.0. The writer's guard is `np.any(ey != 0)`, i.e. *any* non-zero value makes it emit the whole column including the zeros, and the reader inverts it elementwise with no guard. Verified through the GUI on the real merged file: `save` produced a 4-column `.cor` with **24 zeros in 206 error values**, and `read_kristine` on it returned `correlation_amplitude_weights` with **24 `inf` entries** (largest finite weight 2.8 × 10¹⁰) — while the only signal to the user was `RuntimeWarning: divide by zero encountered in divide` on stderr, invisible in the GUI. The page's own *add to ChiSurf* path (`fcs_merger.py:255-298`) carries this straight into a dataset, so a χ² is then decided almost entirely by 24 lag channels. Guard the inversion (`np.divide(1.0, ey, out=…, where=ey > 0)` and fall back to the Suren noise model for the affected points, or clamp to the smallest positive error), and have the merger refuse to write an error column with zeros in it.
-- **Fix note:**
+- **Fix note:** guarded at the seam both sides share. A new
+  `chisurf.core.fluorescence.fcs.complete_noise` completes a *measured*
+  uncertainty with the Suren noise model wherever it is zero, negative or
+  non-finite — and, where the model itself cannot be evaluated (no lag spacing,
+  no count rate), with the largest uncertainty of the curve, i.e. its smallest
+  weight — so what it returns is strictly positive and `1 / sd` is always
+  finite. `read_kristine` now routes both the fourth-column and the
+  no-fourth-column case through it, keeping every measured uncertainty and
+  filling only the unusable points; `merge.save_mean_correlation` completes the
+  merged standard error the same way before writing, so a merged `.cor` no
+  longer carries a zero in its error column at all (the guard also became
+  `np.any(ey > 0)`, since a negative column is not an uncertainty either).
+  Pinned by `test/fio/test_kristine_roundtrip.py::test_a_zero_uncertainty_does_not_become_an_infinite_weight`
+  (three zeros among twenty uncertainties: the other seventeen weights stay
+  `1 / ey`, all twenty are finite) and by
+  `chisurf/plugins/fcs/fcs_merger/test/test_core.py::test_a_merged_error_column_never_holds_a_zero`
+  (two repeats made to agree at the long lags: the merge has zeros, the written
+  file does not, the weights read back finite).
 
 ### RF-732
 - **Status:** OPEN

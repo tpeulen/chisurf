@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **A zero uncertainty is a missing one, and it was becoming an infinite weight
+  (RF-731).** The standard error a merged FCS curve carries is exactly zero at
+  every lag where its repeats agreed — common at long lags, where G is quantised
+  and the repeats sit on 1.0 — and the writer's guard (*any* non-zero value)
+  emitted the whole column including those zeros, which
+  [the reader](/subsystems/data-io.md) then inverted elementwise into `inf`
+  weights. A real merged file came back with 24 `inf` among 206 weights, the
+  only signal being a `RuntimeWarning` on stderr; a χ² computed from it is
+  decided by those 24 lag channels. Both sides now go through one seam,
+  `fluorescence/fcs.complete_noise`: it completes a measured uncertainty from
+  the noise model where it is zero, negative or non-finite, falls back to the
+  curve's largest uncertainty (its smallest weight) where the model cannot be
+  evaluated, and guarantees a strictly positive result. `read_kristine` uses it
+  for the fourth-column *and* the no-column case — measured uncertainties are
+  kept, only the unusable points are filled — and `merge.save_mean_correlation`
+  completes the column before writing, so the file never carries a zero either.
+  Pinned in `test/fio/test_kristine_roundtrip.py` and
+  `chisurf/plugins/fcs/fcs_merger/test/test_core.py`.
+
 * **A prepared trajectory kept its coordinates and lost its clock (RF-708).**
   The three streaming writers in the [trajectory tools](/plugins/trajectory.md)
   — Align, Rot Translate and Remove Clashed — wrote their HDF5 `time` axis as

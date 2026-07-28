@@ -33,6 +33,37 @@ def test_core_average_and_merge_folder(tmp_path):
     assert (tmp_path / "out.cor").exists()
 
 
+def test_a_merged_error_column_never_holds_a_zero(tmp_path):
+    """Repeats that agree give a standard error of exactly zero (RF-731).
+
+    The reader inverts the fourth column into fit weights, so a zero there
+    becomes an infinite weight; the merger must not write one.
+    """
+    from chisurf.core.fio.fluorescence.fcs.kristine import read_kristine
+    from chisurf.plugins.fcs.fcs_merger.core import (
+        compute_average_correlations,
+        save_mean_correlation,
+    )
+
+    a, b = _corr(1), _corr(2)
+    y_a, y_b = np.asarray(a["y"]), np.asarray(b["y"])
+    # long lags, where the repeats converge on the same quantised value
+    y_b[-4:] = y_a[-4:]
+    b["y"] = y_b.tolist()
+
+    m = compute_average_correlations([a, b])
+    assert np.any(np.asarray(m["ey"]) == 0.0)  # the merge itself has zeros
+
+    filename = tmp_path / "merged.cor"
+    save_mean_correlation(m, filename)
+    written = np.loadtxt(str(filename), delimiter="\t")
+    assert written.shape[1] == 4
+    assert np.all(written[:, 3] > 0.0)
+
+    weights = np.asarray(read_kristine(str(filename))[0]["correlation_amplitude_weights"])
+    assert np.all(np.isfinite(weights))
+
+
 def test_count_rate_survives_the_cor_round_trip(tmp_path):
     """The kHz count rate written to a ``.cor`` chunk must come back unchanged (RF-621)."""
     from chisurf.core.fluorescence.fcs.merge import _correlation_from_cor_array

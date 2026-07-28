@@ -114,7 +114,16 @@ def parse_correlation_folder(folder: pathlib.Path) -> List[Dict[str, Any]]:
 
 
 def save_mean_correlation(correlation: dict, filename: pathlib.Path) -> None:
-    """Write a merged correlation to a ChiSurf ``.cor`` file (Kristine format)."""
+    """Write a merged correlation to a ChiSurf ``.cor`` file (Kristine format).
+
+    The uncertainty column is written only when the merge produced one at all
+    (a single curve has no spread). Where it did, points whose standard error
+    came out as an exact zero — the repeats agreed, which at long lags is
+    common — are completed from the noise model, because a reader inverts this
+    column into a fit weight and a zero there becomes an infinite weight.
+    """
+    import chisurf.core.fluorescence.fcs as _fcs
+
     filename = pathlib.Path(filename)
     try:
         filename.parent.mkdir(parents=True, exist_ok=True)
@@ -128,7 +137,12 @@ def save_mean_correlation(correlation: dict, filename: pathlib.Path) -> None:
         suren_column[0] = correlation["duration"]
     if suren_column.size > 1:
         suren_column[1] = correlation["count_rate"]
-    if np.any(ey != 0):
+    if np.any(ey > 0):
+        ey = _fcs.complete_noise(
+            x, y, ey,
+            float(correlation["duration"]),
+            float(correlation["count_rate"]),
+        )
         c = np.vstack([x, y, suren_column, ey])
     else:
         c = np.vstack([x, y, suren_column])

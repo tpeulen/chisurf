@@ -130,6 +130,38 @@ def test_a_measured_curve_survives_the_public_writer(tmp_path):
     assert np.allclose(written[0].y, original[0].y)
 
 
+def test_a_zero_uncertainty_does_not_become_an_infinite_weight(tmp_path, curve):
+    """A merged curve has exact zeros where its repeats agreed (RF-731).
+
+    The reader inverts the uncertainty column elementwise, so those points used
+    to come back as ``inf`` weights — with nothing but a stderr RuntimeWarning
+    — and a fit consuming the dataset was then decided by them alone.
+    """
+    correlation_time, correlation_amplitude, uncertainty, _ = curve
+    uncertainty = uncertainty.copy()
+    uncertainty[[5, 11, 17]] = 0.0
+    filename = str(tmp_path / "zero_error.cor")
+
+    write_kristine(
+        filename=filename,
+        correlation_time=correlation_time,
+        correlation_amplitude=correlation_amplitude,
+        correlation_amplitude_uncertainty=uncertainty,
+        acquisition_time=10.0,
+        mean_countrate=50.0,
+        verbose=False,
+    )
+
+    ds = read_kristine(filename)[0]
+    w = np.asarray(ds["correlation_amplitude_weights"])
+    assert np.all(np.isfinite(w))
+    # The measured uncertainties are kept; only the zeros are filled in.
+    kept = np.ones(N_POINTS, dtype=bool)
+    kept[[5, 11, 17]] = False
+    assert np.allclose(w[kept], 1.0 / uncertainty[kept])
+    assert np.all(w[~kept] > 0.0)
+
+
 def test_a_mask_without_uncertainties_is_refused(tmp_path, curve):
     """The format has no slot for a mask on its own — say so."""
     correlation_time, correlation_amplitude, _, mask = curve

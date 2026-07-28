@@ -107,13 +107,17 @@ def read_kristine(
     except IndexError:
         dur, cr = 1.0, 1.0
 
-    # First try to use experimental errors in the 4th column (index 3)
+    # First try to use experimental errors in the 4th column (index 3). Points
+    # whose uncertainty is zero (a merged curve has one wherever its repeats
+    # agreed) would invert into an infinite weight, so they — and a missing
+    # column altogether — are taken from the Suren noise model instead.
     try:
-        w = 1. / data[:, 3][i]
+        ey = data[:, 3][i]
     except (IndexError, ValueError):
-        # In case everything fails
-        # Use no errors at all but uniform weighting
-        w = 1. / cs.core.fluorescence.fcs.noise(x, y, dur, cr, weight_type='suren')
+        ey = None
+    w = 1. / cs.core.fluorescence.fcs.complete_noise(
+        x, y, ey, dur, cr, weight_type='suren'
+    )
 
     # Try to load mask from the 5th column (index 4)
     try:

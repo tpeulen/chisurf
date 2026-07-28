@@ -184,6 +184,79 @@ def noise(
     return sd
 
 
+def complete_noise(
+        times: np.ndarray,
+        correlation: np.ndarray,
+        uncertainty: typing.Optional[np.ndarray],
+        measurement_duration: float,
+        mean_count_rate: float,
+        weight_type: str = 'suren',
+        **kwargs
+) -> np.ndarray:
+    """Complete a measured uncertainty estimate with the noise model.
+
+    An FCS uncertainty of zero carries no information, but inverting it into a
+    fit weight yields an infinite weight — a handful of such points decide a
+    χ² on their own. Exact zeros are not exotic: a curve merged
+    from repeats gets one at every lag where the repeats happen to agree, which
+    at long lags is common. The same holds for negative or non-finite entries.
+    Points like these are replaced by the :func:`noise` model estimate, and any
+    point the model cannot estimate either takes the largest uncertainty of the
+    curve, i.e. the smallest weight.
+
+    Parameters
+    ----------
+    times : numpy.ndarray
+        Correlation times in milliseconds.
+    correlation : numpy.ndarray
+        Correlation amplitudes.
+    uncertainty : numpy.ndarray, optional
+        Measured per-point uncertainty. ``None`` (or an array of the wrong
+        length) means "no measured uncertainty at all" and the whole curve is
+        taken from the model.
+    measurement_duration : float
+        Total measurement duration in seconds.
+    mean_count_rate : float
+        Mean count rate in kHz.
+    weight_type : str
+        Weighting scheme handed to :func:`noise`.
+    **kwargs
+        Further keyword arguments for :func:`noise`.
+
+    Returns
+    -------
+    numpy.ndarray
+        Uncertainties of the same length as ``times``, every one of them
+        strictly positive and finite, so that ``1 / sd`` is a usable weight.
+    """
+    times = np.asarray(times, dtype=np.float64)
+    correlation = np.asarray(correlation, dtype=np.float64)
+    sd = np.zeros_like(times)
+    if uncertainty is not None:
+        measured = np.asarray(uncertainty, dtype=np.float64)
+        if measured.shape == times.shape:
+            sd = measured
+    usable = np.isfinite(sd) & (sd > 0.0)
+    if usable.all():
+        return sd
+
+    sd = np.where(usable, sd, 0.0)
+    # The noise model needs a lag spacing (``np.diff``) and divides by the
+    # count rate, so it can only be evaluated on a real, non-empty curve.
+    if times.size > 1 and measurement_duration > 0 and mean_count_rate > 0:
+        modelled = noise(
+            times, correlation, measurement_duration, mean_count_rate,
+            weight_type=weight_type, **kwargs
+        )
+        modelled = np.asarray(modelled, dtype=np.float64)
+        from_model = ~usable & np.isfinite(modelled) & (modelled > 0.0)
+        sd = np.where(from_model, modelled, sd)
+        usable |= from_model
+    if not usable.any():
+        return np.ones_like(times)
+    return np.where(usable, sd, sd[usable].max())
+
+
 def background_factor_ac(signal_cr_khz: float, background_cr_khz: float) -> float:
     """Return background attenuation factor for an autocorrelation model.
 

@@ -50,6 +50,16 @@ records the instrument's own count rate is the ground truth for checking this,
 and at short lag the derived error must match the empirical scatter between
 repeats.
 
+A measured uncertainty of **zero** is not a small uncertainty, it is a missing
+one — and a reader inverts that column into a weight, so a zero becomes an
+infinite weight and a handful of such points decide the χ² alone. Merged curves
+produce them by construction: the standard error over the repeats is exactly
+zero at every lag where the repeats agreed, which at long lags is common. The
+seam that handles this is `fluorescence/fcs.complete_noise`, which fills the
+unusable points from the noise model and guarantees a strictly positive result;
+readers route the measured column through it, and the merger completes the
+column before writing so the file itself never carries a zero.
+
 A reader may also return **many curves per file**: a cross-correlation
 measurement archive holds repeats of two autocorrelations and two
 cross-correlations, which are different quantities rather than repeats of one.
