@@ -2,6 +2,30 @@
 
 ## 2026-07-28
 
+* **Documenting the backdrop meant running the commands the guide prints, and
+  two of them were wrong.** The molecular-viewer guide now has *A picture behind
+  the scene, so transparency reads* -- `bg_image stars|nebula|<file>|off`, why a
+  generated sky beats a shipped one (drawn at the widget's size, from a fixed
+  seed, so a screenshot differs when the *rendering* changed), and the pairing
+  with `set metaball.alpha`. Driving that sequence headlessly found:
+  - **A background that could not be read was still reported as the current
+    one.** `set_background_image` recorded its source before resolving it, so a
+    mistyped path raised, was reported as an error, *and* left `bg_image`
+    naming a picture that had never loaded and was nowhere on screen.
+  - **`load` of a path that does not exist produced a one-atom molecule.**
+    `load_structure_payload` falls back to its own PDB parser whenever the core
+    reader cannot handle a file, and a missing path took that branch too: the
+    command reported success, the object panel listed the molecule, and the
+    viewport stayed empty -- which reads as a broken renderer, not a typo. It
+    now raises `FileNotFoundError`; the fallback is for a file that cannot be
+    *parsed*, which is a different thing from one that is not there.
+  - Measured through the transparent pass rather than eyeballed: against a
+    deliberately loud backdrop, 95% of interior pixels change, so the sky does
+    reach through the surface. It arrives weak (~4%) because the isosurface has
+    many internal sheets, and for the same reason alpha saturates -- 0.85 and
+    0.7 are near-indistinguishable while 1.0 is distinctly the glossy look. The
+    shipped default stays opaque; transparency is a knob, not the new default.
+
 * **Sampling chains can be an HDF5 table, and the fit controller is a view spec.**
   A long run's chains are the bulk of what sampling leaves on disk, and text
   spends ~25 characters on every float64. `sample_fit` gains

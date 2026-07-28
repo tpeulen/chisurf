@@ -136,3 +136,71 @@ def test_every_advertised_backdrop_renders(name):
     """A name offered in the command's help must produce a picture."""
     image = backdrop.render_backdrop(name, 48, 32)
     assert image is not None and image.shape == (32, 48, 3)
+
+
+# --------------------------------------------------------------------------- #
+# Setting it on the renderer
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def gl_widget(_qt_app):
+    """Return the GL widget a viewer owns; it is never realised here.
+
+    Taken from a `MolView` rather than constructed directly, because the widget
+    takes the viewer as its controller. No GL context is needed: setting a
+    background only resolves the source and marks it dirty.
+    """
+    return MolView()._renderer
+
+
+def test_a_named_backdrop_is_accepted_and_reported(gl_widget):
+    gl_widget.set_background_image("stars")
+    assert gl_widget.get_background_image() == "stars"
+
+
+def test_turning_it_off_clears_both_the_source_and_the_image(gl_widget):
+    gl_widget.set_background_image("stars")
+    gl_widget.set_background_image("off")
+    assert gl_widget.get_background_image() == "off"
+    assert gl_widget._background_image is None
+
+
+def test_a_path_that_cannot_be_read_is_refused_and_not_recorded(gl_widget, tmp_path):
+    """A refused background must not be reported as the current one.
+
+    The source was recorded before the image was resolved, so `bg_image` named a
+    picture that had never loaded and was nowhere on screen -- which reads as the
+    command having worked and the backdrop being broken.
+    """
+    gl_widget.set_background_image("stars")
+    missing = tmp_path / "not-an-image.png"
+
+    with pytest.raises(ValueError):
+        gl_widget.set_background_image(str(missing))
+
+    assert gl_widget.get_background_image() == "stars", "a refused path was recorded"
+
+
+def test_an_array_can_be_set_directly(gl_widget):
+    """So a generated or computed backdrop needs no temporary file."""
+    sky = backdrop.starfield(32, 24)
+    gl_widget.set_background_image(sky)
+    assert gl_widget._background_image is not None
+    assert gl_widget._background_image.width() == 32
+
+
+# --------------------------------------------------------------------------- #
+# A path that is not there
+# --------------------------------------------------------------------------- #
+def test_a_missing_file_is_refused_rather_than_parsed_into_one_atom(tmp_path):
+    """`load` of a mistyped path must fail, not produce an empty molecule.
+
+    Found while checking the commands this guide prints: the reader falls back
+    to its own PDB parser whenever the core reader cannot handle a file, and a
+    path that does not exist took that branch too. The result was a single atom
+    at the origin -- `load` reported success, the object panel listed the
+    molecule, and the viewport was empty, which reads as a broken *renderer*.
+    """
+    from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
+
+    with pytest.raises(FileNotFoundError):
+        load_structure_payload(tmp_path / "definitely-not-here.pdb")

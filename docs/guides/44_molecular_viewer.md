@@ -500,6 +500,42 @@ skipped rather than quietly giving you a different look. For the same reason
 shadow-map resolution.
 :::
 
+### A picture behind the scene, so transparency reads
+
+Transparency is invisible against one flat colour. A surface at `alpha 0.4` over
+black is merely a *darker* surface: there is nothing behind it for the eye to
+catch, so lowering the alpha reads as dimming rather than as seeing through. Give
+the background structure and the same surface reads as glass immediately.
+
+```text
+bg_image stars               # a generated deep-sky field
+bg_image nebula              # the same field, stronger cloud
+bg_image ~/pictures/sky.png  # any image file
+bg_image off                 # back to the flat bg_color
+bg_image                     # report what is set
+```
+
+`stars` and `nebula` are **generated**, not shipped: a few lines of numpy drawn
+at the widget's own size, from a fixed seed. That means no image is stretched to
+fit, and a screenshot taken twice is the same picture — so a rendering change
+shows up as a rendering change, not as a re-rolled sky. They are deliberately
+dark and vignetted toward the centre, so the backdrop never competes with the
+molecule sitting in front of it.
+
+This pairs with a translucent surface or metaball:
+
+```text
+bg_image stars
+show metaballs
+set metaball.alpha, 0.45
+```
+
+:::{note}
+Use `bg_image` with silhouettes and you get the opposite of the `bg_color white`
+advice above: against a dark sky, outlines want to be light. `bg_image off`
+restores whatever `bg_color` was last set.
+:::
+
 ### Tidying and shielding
 
 ```text

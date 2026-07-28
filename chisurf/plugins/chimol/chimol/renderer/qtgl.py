@@ -484,9 +484,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             If a path was given and cannot be read -- a background that silently
             does not appear is indistinguishable from one that is not supported.
         """
-        self._background_source = source
+        # Recorded only once the source has resolved. Setting it up front left a
+        # refused path as the reported background: `bg_image` would name a
+        # picture that had never loaded and was not on screen.
         if source is None or (isinstance(source, str) and source.strip().lower()
                               in ("", "off", "none")):
+            self._background_source = source
             self._background_image = None
             self._background_dirty = True
             self.update()
@@ -508,6 +511,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                     raise ValueError(f"cannot read background image: {source}")
                 image = loaded
 
+        self._background_source = source
         self._background_image = image
         self._background_dirty = True
         self.update()

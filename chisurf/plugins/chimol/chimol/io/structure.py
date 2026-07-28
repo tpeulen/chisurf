@@ -802,7 +802,19 @@ def load_structure_payload(
     tuple
         ``(structure, None)`` when the core reader succeeded, otherwise
         ``(None, StructurePayload)``.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``path`` does not exist. The fallback below is for a file this
+        reader cannot *parse*, which is a different thing from a file that is
+        not there: a mistyped path used to fall through it and arrive as a
+        one-atom object at the origin, so `load` reported success, the object
+        panel listed the molecule, and the viewport stayed empty.
     """
+    if not Path(path).exists():
+        raise FileNotFoundError(f"no such file: {path}")
+
     structure = None
     # An RMF is read here rather than by a branch of its own in the window. It
     # used to have one, and so it never received anything the common path
