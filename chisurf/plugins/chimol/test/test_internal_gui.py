@@ -706,3 +706,59 @@ def test_the_timeline_tracks_a_frame_change_it_did_not_make(gui):
     gui.layout(WIDTH, HEIGHT)
 
     assert gui._timeline_thumb.x > start
+
+
+# --------------------------------------------------------------------------- #
+# The bindings behind the table
+# --------------------------------------------------------------------------- #
+def test_the_table_and_the_mouse_read_the_same_bindings():
+    """The block is a reference, so it has to describe what actually happens.
+
+    Writing the bindings out a second time in the event handlers is how a panel
+    ends up promising `CtSh + L = Sele` while the code does something else, and
+    nothing catches it because both look right on their own.
+    """
+    from qtpy import QtCore, QtWidgets
+
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    from chisurf.plugins.chimol.chimol.mouse_modes import action_of, rows_for
+
+    mode = "three_button_viewing"
+    cells = dict(rows_for(mode))
+
+    assert action_of(mode, QtCore.Qt.LeftButton, QtCore.Qt.NoModifier) == "rota"
+    assert cells["& Keys"][0] == "Rota"
+
+    assert action_of(
+        mode, QtCore.Qt.LeftButton,
+        QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier,
+    ) == "sele"
+    assert cells["CtSh"][0] == "Sele"
+
+    assert action_of(mode, QtCore.Qt.RightButton, QtCore.Qt.ControlModifier) == "pk1"
+    assert cells["Ctrl"][2] == "Pk1"
+
+
+def test_ctrl_shift_is_its_own_row_not_a_ctrl_row():
+    """`CtSh` is a row of its own; testing ctrl first would swallow it."""
+    from qtpy import QtCore, QtWidgets
+
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    from chisurf.plugins.chimol.chimol.mouse_modes import modifier_of
+
+    assert modifier_of(QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier) == "ctsh"
+    assert modifier_of(QtCore.Qt.ControlModifier) == "ctrl"
+    assert modifier_of(QtCore.Qt.ShiftModifier) == "shft"
+    assert modifier_of(QtCore.Qt.NoModifier) == "none"
+
+
+def test_the_wheel_bindings_come_from_the_table_too():
+    from qtpy import QtCore, QtWidgets
+
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    from chisurf.plugins.chimol.chimol.mouse_modes import wheel_action_of
+
+    mode = "three_button_viewing"
+    assert wheel_action_of(mode, QtCore.Qt.NoModifier) == "slab"
+    assert wheel_action_of(mode, QtCore.Qt.ShiftModifier) == "movs"
+    assert wheel_action_of(mode, QtCore.Qt.ControlModifier) == "mvsz"

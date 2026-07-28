@@ -500,3 +500,68 @@ def next_mode(mode: str, ring: str = DEFAULT_RING) -> str:
     if mode not in modes:
         return modes[0]
     return modes[(modes.index(mode) + 1) % len(modes)]
+
+
+#: How Qt spells the modifiers PyMOL's table names.
+_QT_MODIFIERS = (
+    ("ctsh", ("ControlModifier", "ShiftModifier")),
+    ("ctrl", ("ControlModifier",)),
+    ("shft", ("ShiftModifier",)),
+    ("alt", ("AltModifier",)),
+)
+
+
+def modifier_of(modifiers) -> str:
+    """Return PyMOL's name for a Qt modifier state.
+
+    Order matters: ctrl+shift is its own row (``CtSh``), not a ctrl row that
+    happens to have shift held, so the combination has to be tested before
+    either of its parts.
+    """
+    from qtpy import QtCore
+
+    for name, flags in _QT_MODIFIERS:
+        mask = None
+        for flag in flags:
+            bit = getattr(QtCore.Qt, flag, None)
+            if bit is None:
+                mask = None
+                break
+            mask = bit if mask is None else (mask | bit)
+        if mask is not None and (modifiers & mask) == mask:
+            return name
+    return "none"
+
+
+def button_of(button) -> str:
+    """Return PyMOL's name for a Qt mouse button, or ``""``."""
+    from qtpy import QtCore
+
+    if button == QtCore.Qt.LeftButton:
+        return "l"
+    if button == QtCore.Qt.MiddleButton:
+        return "m"
+    if button == QtCore.Qt.RightButton:
+        return "r"
+    return ""
+
+
+def action_of(mode: str, button, modifiers) -> str:
+    """Return the *action code* a Qt button and modifier map to in *mode*.
+
+    The code, not the label: the block draws ``MovZ`` and the handler wants
+    ``movz``. Both come from one table, so what the panel promises and what the
+    mouse does cannot drift apart -- which is the whole reason for wiring the
+    handlers through here rather than writing the bindings out a second time.
+    """
+    name = button_of(button)
+    if not name:
+        return "none"
+    bindings = MODE_BINDINGS.get(mode, {})
+    return str(bindings.get((name, modifier_of(modifiers)), "none")).lower()
+
+
+def wheel_action_of(mode: str, modifiers) -> str:
+    """Return the action code the wheel carries under *modifiers*."""
+    bindings = MODE_BINDINGS.get(mode, {})
+    return str(bindings.get(("w", modifier_of(modifiers)), "none")).lower()

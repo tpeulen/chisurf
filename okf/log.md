@@ -22,6 +22,22 @@
 
 ## 2026-07-28
 
+* **The mouse now reads the same table the block draws.** `action_of(mode,
+  button, modifiers)` looks the binding up in `MODE_BINDINGS` -- the
+  transcription of `pymol.controlling.mode_dict` -- and the press handler asks
+  it instead of testing modifier bits itself. Writing the bindings out a second
+  time in the handlers is exactly how a panel ends up promising `CtSh + L =
+  Sele` while the code does something else, with both looking right on their
+  own and nothing catching the difference. A test now asserts the table and the
+  lookup agree cell by cell.
+  - `CtSh` is a row in its own right, so ctrl+shift is matched **before** either
+    ctrl or shift; testing ctrl first swallows it and the combination silently
+    behaves as plain ctrl.
+  - Wheel bindings are exposed the same way (`wheel_action_of`) and asserted
+    against the table -- plain wheel is `Slab` in PyMOL, which chimol still
+    spends on zooming. That divergence is now visible in one place rather than
+    implied by two.
+
 * **Two cheap routes to Chimera's selection outline, both measured and both
   dead ends -- written down where the marker is built so the next attempt does
   not repeat them.** Depth-testing the markers hides every one: they sit at CA

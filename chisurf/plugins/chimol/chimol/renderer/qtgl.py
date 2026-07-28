@@ -15,6 +15,7 @@ except Exception:  # pragma: no cover - handled at runtime
 
 from ..config import _DISPLAY_CONFIG
 from .internal_gui import InternalGui
+from ..mouse_modes import action_of as mouse_action_of
 from .base import Renderer
 from .scene import Geometry, Material, Scene, SceneObject
 from .view_state import (
@@ -2139,7 +2140,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
         if event.button() == QtCore.Qt.LeftButton:
             mods = event.modifiers()
-            if mods & QtCore.Qt.ShiftModifier:
+            # Which action this button carries comes from the same table the
+            # block on screen draws, so what the panel promises and what the
+            # mouse does cannot drift apart. PyMOL binds the box select to
+            # shift-left (`+Box`) and the residue select to ctrl-shift-left
+            # (`Sele`); both drag a rubber band here.
+            action = mouse_action_of(
+                self._internal_gui.mouse_mode, event.button(), mods
+            )
+            if action in ("+box", "-box", "sele"):
                 self._drag_selecting = True
                 self._drag_start = event.pos()
                 self._drag_modifiers = mods
