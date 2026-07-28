@@ -9244,3 +9244,76 @@ running application (RF-786), and the move of `n_colors` behind a property
 - **Location:** `chisurf/gui/widgets/fitting/fitting_controls.py:286-300` (the `Run` panel, built from every numeric key of `optimization.sampling` that the selected sampler does not advertise) against `chisurf/core/fitting/fit.py:2036-2041` (the `dropped` filter)
 - **Finding:** `substeps` is a top-level sampling setting and a parameter of `sample_ensemble` / `sample_ensemble_slice` only. With `ensemble` or `slice` selected it is advertised and therefore shown in the Sampler panel; with `blocked`, `collapsed`, `de` or `mcmc` it falls through to the Run panel — where its description ("Steps between progress reports, cancellation checks and partial saves") promises behaviour those four samplers do not have — and is then dropped by `sample_fit`. Verified: a run with `method='blocked'` logs `blocked does not take substeps; ignoring` and proceeds. Either hide the Run-panel entry for a setting the selected sampler cannot take, or say in the control that it applies to the ensemble samplers only.
 - **Fix note:**
+
+### Review 2026-07-28 — `Last Photon` is inclusive, and the six places that slice it exclusively
+
+Slice: every consumer of a `.bur` burst table's `First Photon` / `Last Photon`
+pair. RF-163's fix note said the readers that re-slice `macro[first:last]` "need
+their own finding"; this is that finding, enumerated per site.
+
+The convention is settled, from three independent directions:
+
+- **The external format.** `modules/ndxplorer/test/mfd/burstwise_All 0.1500#30/bi4_bur/*.bur`
+  is a real PARIS analysis folder (`n022_0.bur` naming, `bg4`/`br4`/`BID`
+  siblings). All **1299** non-sentinel rows satisfy
+  `Number of Photons == Last Photon − First Photon + 1`; none satisfies the
+  exclusive relation.
+- **The in-tree writer.** After RF-163, `generate_burst_dataframe` counts
+  `stop - start + 1` and slices `slice(start, stop + 1)`, and its docstring
+  (`chisurf/core/fio/fluorescence/burst.py:321-325`) states the convention.
+- **The compiled engine.** `tttrlib::BurstFeature::for_each_burst` marks the
+  second column `// inclusive` (`src/BurstFeature.cpp:207`), which is what
+  `tttrlib.BVA` and `tttrlib.TwoCDE` are built on.
+
+Consumers already on the right side: `burst_2cde`'s NumPy fallback
+(`slice(s, e + 1)`), `burst_fcs_correlator` (`tttr[s:e + 1]`), the PDA reader
+(`cumulative[stops + 1]`), and the MLE wizard's coverage mask (`stops + 1`).
+The six below are not. Note the repo's own `bh_spc132_sm_dna` fixture was written
+by the **pre**-RF-163 writer and is exclusive throughout (2980/2980 rows), so it
+agrees with the buggy readers and hides all of this — a guardrail for any of
+these fixes needs the PARIS fixture or a freshly written table.
+
+Everything below was verified by running the real code in the `arm64` env; no
+source was changed. Findings RF-804..RF-809.
+
+### RF-804
+- **Status:** OPEN
+- **Severity:** S1 (the shared core seam every photon-by-photon analysis starts from drops the last photon of every burst, and discards single-photon bursts entirely)
+- **Location:** `chisurf/core/fluorescence/burst/photons.py:239-245` (`extract_burst_photons`: `if last <= first: continue` then `mt = macro[first:last]` / `ch = chan[first:last]` / `mi = micro[first:last]`)
+- **Finding:** `Last Photon` is the burst's last photon **inclusive** (see the review note above: 1299/1299 rows of the real PARIS fixture, the writer's own docstring, and tttrlib's `// inclusive`), so the slice must run to `last + 1`. Verified against the repo's own Becker&Hickl measurement: a burst declared `First Photon = 100`, `Last Photon = 109` — ten photons, all in channels `[0, 1, 8, 9]` — comes back with **9**, and a one-photon burst (`First = Last = 300`) is dropped by the `last <= first` guard before any stream filtering. This is the seam the module docstring calls "the first step of every photon-by-photon analysis": H2MM (`chisurf/plugins/burst/burst_h2mm/core/photons.py:134`), the Gopich-Szabo fit (`chisurf/plugins/burst/burst_gs/core.py:126`) and anything else built on it inherit a uniformly one-photon-short burst — the systematic `1/N` bias hits shortest and dimmest bursts hardest, exactly where the gap statistics that drive a kinetic fit live. Fix is `first:last + 1` in the three slices, `last < first` in the guard, and `first + np.nonzero(keep)[0][order]` at `:268` stays correct as written. Pin it with a burst whose declared count matches the table's `Number of Photons`.
+- **Fix note:**
+
+### RF-805
+- **Status:** OPEN
+- **Severity:** S1 (the BVA NumPy fallback raises on every real `.bur`, because it skips rows without emitting a value for them)
+- **Location:** `chisurf/plugins/burst/burst_bva/core/computation.py:176-177` (`if ff not in tttr_arrays: continue`) against `:240-241` (`df['Proximity Ratio Mean'] = np.array(prox_means)`)
+- **Finding:** the fallback appends one value per *processed* row but `continue`s without appending for any row whose `First File` is not in `tttrs` — and every real `.bur` is `2n+1` interleaved, so **half** the rows are sentinels carrying `First File == "0"`, which `load_tttrs_for_dataframe` deliberately skips (RF-563). The two lengths therefore always differ. Verified on two files of the repo's fixture: `compute_bva` with the C++ engine hidden raises `ValueError: Length of values (496) does not match length of index (994)`. This is not inside the `try` that guards the C++ path (`:141-153`) — that one only wraps `_compute_bva_tttrlib` — so the exception propagates to the caller and BVA is simply unavailable on any build without `tttrlib.BVA`. Note the failure mode would be *silent misalignment* rather than a crash if the counts ever coincided; the C++ path already does it right (`means = np.full(n, np.nan)` indexed by original row). Pre-fill both arrays with NaN and assign by row index, exactly as `_compute_bva_tttrlib` does.
+- **Fix note:**
+
+### RF-806
+- **Status:** OPEN
+- **Severity:** S2 (the two implementations of BVA disagree on half the bursts, and which one runs depends on how tttrlib was built)
+- **Location:** `chisurf/plugins/burst/burst_bva/core/computation.py:182-184` (`micro_arr[first_photon:last_photon]` and the two sibling slices) against the C++ path at `:96-106` (`bva.compute(burst_pairs, …)`) → `tttrlib::BurstFeature::for_each_burst`, `src/BurstFeature.cpp:207` (`int64_t e = bursts[2 * b + 1];  // inclusive`)
+- **Finding:** `compute_bva` picks the C++ engine when `hasattr(tttrlib, "BVA")` and otherwise falls through to the NumPy code with only an `INFO` line, and the two read the same `(First Photon, Last Photon)` pair with different end conventions — inclusive in C++, exclusive in NumPy. Verified on 496 real bursts from the repo's fixture with identical settings (`donor [0,8]`, `acceptor [1,9]`, 5 photons per slice): the proximity-ratio **mean** differs on 251 of 496 bursts (max |Δ| = 0.25) and the **standard deviation** — the BVA observable itself, the thing compared against the static line — on 250 of 496 (max |Δ| = 0.433, i.e. the full range of the statistic). Fold this into RF-804's convention fix: `first_photon:last_photon + 1`. A test asserting the two paths agree on the same table would have caught it and would keep them together (the existing `burst_2cde` suite does exactly this for its pair).
+- **Fix note:**
+
+### RF-807
+- **Status:** OPEN
+- **Severity:** S2 (the shared BVA entry point loses the last photon of every burst — already documented in a comment elsewhere in the tree, and left in place)
+- **Location:** `chisurf/core/fluorescence/burst/bva.py:125-126` (`burst_start, burst_stop = int(row['First Photon']), int(row['Last Photon'])` → `burst_tttr = tttr[burst_start:burst_stop]`), exported as `compute_bva` from `chisurf/core/fluorescence/burst/__init__.py:2`
+- **Finding:** the same off-by-one as RF-804, in the core BVA. It is already known in the tree and written down rather than fixed: `chisurf/core/experiments/pda2c/reader.py:400-406` says "*the ranges are INCLUSIVE of ``stop`` … (``fluorescence/burst/bva.py`` slices ``[start:stop]`` and so silently loses the last photon of every burst)*", and the same function's own inner loop has the identical note about `get_ranges_by_time_window` and correctly uses `burst_tttr[start:stop + 1]` for the *slices* (`:140`). So the function slices its windows inclusively inside a burst it sliced exclusively — one convention two lines apart. Fix `tttr[burst_start:burst_stop + 1]` and delete the now-stale parenthetical in the PDA reader.
+- **Fix note:**
+
+### RF-808
+- **Status:** OPEN
+- **Severity:** S1 (every per-burst MLE lifetime fit and every pooled per-state decay is missing the burst's last photon, in the plugin whose own coverage mask uses the opposite convention)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/_mp_worker.py:180` (pooled state decays) and `:265` (the per-burst fits), both `sl = slice(int(first_ph), int(last_ph))`, plus `chisurf/plugins/burst/burst_mle_analysis/wizard.py:2084` (`burst = tttr[int(row['First Photon']):int(row['Last Photon'])]`, the burst-inspection plot) — against `wizard.py:4939-4952` in the same class, which builds its photon-coverage mask from `np.concatenate([starts, stops + 1])`, i.e. **inclusive**
+- **Finding:** the pairs handed to the workers come straight from the table (`wizard.py:4633`, `df_file[['First Photon', 'Last Photon']]`) and both worker loops slice them exclusively, so `Number of Photons (fit window)`, every fitted `Tau`/`2I*` and every `(detector, state)` pooled decay are computed on one photon less than the burst the row describes. Two consequences beyond the bias: the plugin contradicts itself (the coverage mask at `:4944` marks photon `stop` as inside the burst while the fit that consumes it does not), and the `min_photons` / `state_min_photons` floors are applied to a count that is one short, so bursts sitting exactly on the threshold are rejected. The results go out as `…4` companions merged column-wise beside the bursts, which is where a silently-wrong-by-one lifetime is hardest to notice. Fix `slice(first_ph, last_ph + 1)` at both worker sites and `tttr[first:last + 1]` in the inspection plot.
+- **Fix note:**
+
+### RF-809
+- **Status:** OPEN
+- **Severity:** S2 (the agent skills state the wrong convention as a fact to verify, and ship a cross-check that fails on any correctly-written burst table while telling the agent not to change the slice)
+- **Location:** `chisurf/core/agent/skills_builtin/burst-search/SKILL.md:64-66` ("the end is **exclusive** — `photons[a:b]`, ordinary Python slicing") and its verification snippet at `:84-86` (`routing[a:b]`), with `chisurf/core/agent/skills_builtin/sub-ensemble-decay/SKILL.md:48-49` (`micro[a:b][np.isin(routing[a:b], GREEN)]`)
+- **Finding:** the skill presents the exclusive end as one of "the two facts to verify before trusting anything" and then hands the agent an assertion — `green == bursts["Number of Photons (green)"].sum()` — that compares an exclusive extraction against a table whose per-detector counts are written inclusively (`chisurf/core/fio/fluorescence/burst.py:457-460`, `slice(start, stop + 1)`). On a table from the current writer, or on the real PARIS fixture, the assert fails by the green photons sitting at index `b`. The skill then instructs: "*Do not adjust the slice until the numbers agree — that is fitting the bookkeeping to the answer*", so an agent that follows it correctly detects the mismatch and then stops, concluding the file layout is unfamiliar. It passes today only against the repo's stale `bh_spc132_sm_dna` fixture (2980/2980 rows exclusive), which is the one table in the tree written before RF-163. Both skills need `a:b + 1` and the sentence rewritten to "inclusive", and the sub-ensemble decay skill builds its decays with the same slice.
+- **Fix note:**
