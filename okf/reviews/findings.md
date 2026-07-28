@@ -7080,3 +7080,63 @@ everything the tool does with the result. Findings RF-588..RF-595.
 - **Location:** `chisurf/plugins/tttr/ptu_alex_creator/core/__init__.py:294-309` (`convert_file` → `apply_alex(load(...))`, `:75`) reached from `gui/sections.py:126` (`_save`) and `gui/view_model.py:113-120` (`save`)
 - **Finding:** the tool accepts any container (its own description says *".sm and other TTTR files"*) and rewrites `micro_times` from the macro-time modulation unconditionally. Driven through the toolbox on a PTU chunk of `test/data/clsm/PQ_Olympus_MFIS.ht3`: 2 000 000 photons in and out, but the maximum micro-time goes from **31 277** (a genuine 32 768-channel HydraHarp TCSPC axis) to **7 999** (the ALEX period), i.e. the lifetime information is destroyed and the output is written without a dialog. For an `.sm` file, which has no micro-time, this is the intended operation; for a file that has one it is silent data loss. Detect a non-degenerate micro-time histogram on load and either warn on *Save* or state on the panel what the conversion will overwrite.
 - **Fix note:**
+
+## Review 2026-07-28 — two-colour PDA: the fitted axis, the engine's cache, and a plot that cannot draw
+
+The compute half of `chisurf/core/models/pda2c/` (`common.py`, `consistency.py`,
+`pdagauss.py`, `dynamic.py`, `dynamic_mc.py`, `saw_nu.py`, `simple.py`) with
+`chisurf/core/experiments/pda2c/reader.py` for the S1S2 conventions — a subsystem
+with **no** findings on record so far. Everything below was measured in the
+`arm64` env against tttrlib 0.27.0. **One thing holds and is worth recording**,
+because the rest rests on it: the S1S2 orientation is right end to end. The
+reader transposes `Pda.compute_experimental_histograms` into the model's
+`(green row, red col)` layout (`reader.py:684-699`), tttrlib's `get_1dhistogram`
+reads a flat cell as `s1s2[ch2 * (n_max + 1) + ch1]` (`tttrlib/src/Pda.cpp:280`)
+while `S1S2_pF` writes it as `S1S2[n * green + red]` (`Pda.cpp:404`), so the axis
+callbacks really are handed `(ch1, ch2) = (red, green)` exactly as
+`common.py:229-238` claims — the proximity-ratio, γ-corrected `E` and inverted
+`R` axes all compute what they say. What does not hold is what the *diagnostic*
+does with that axis, what the residual does to the engine's cache, and one plot
+that has never been able to draw. Findings RF-604..RF-609.
+
+### RF-604
+- **Status:** OPEN
+- **Severity:** S1 (on the `R` axis the consistency check reports "consistent" for every dataset, including one the model could not have produced)
+- **Location:** `chisurf/core/models/pda2c/consistency.py:29-35` (`DEFAULT_HIST_KWARGS = {x_min: 0.0, x_max: 1.0, log_x: False, ...}`) used unconditionally at `:190` (`kw_hist = dict(DEFAULT_HIST_KWARGS if kw_hist is None else kw_hist)`), against `:194-195` (`model.update(); model.get_wres(fit)` — run precisely so *the model's own* axis callback is installed) and the axis choice at `chisurf/core/models/pda2c/common.py:250-255` (`PDA_AXIS_RANGES`: `S0/S1 → (0.01, 500.0, log)`, `R → (20.0, 100.0)`)
+- **Finding:** the check binds the *fitted* axis callback but bins it on a hard-coded 0–1 linear grid, so any axis that is not a 0–1 ratio falls outside every bin and is dropped by the engine (`Pda.cpp:264`, `if ((binf < Nbinsf) && (binf >= 0.))`). Measured directly on a `tttrlib.Pda` (n_max = 200, two species) with the four callbacks `build_pda_histogram_function` produces and `DEFAULT_HIST_KWARGS`: `S1/(S0+S1)` and `E` keep **1.000** of the probability mass in 79 bins, `S0/S1` keeps **0.402**, and `R` keeps **0.000** in **0** bins. With `R` selected, `hist_measured` and `hist_expected` are therefore both all-zero, `_poisson_chi2` returns 0.0 for the data *and* for every resample, `n_worse == n_resamples`, and `p_value = (n + 1)/(n + 1) = 1.0` → `consistent: True` — the verdict the panel prints ("the data are consistent with the fitted scheme") is independent of the data. On `S0/S1` the check silently scores only the 40 % of bursts below a ratio of 1. Every FRET PDA editor offers all four axes (`pdagauss.view.json`, `saw_nu`, `dynamic`, `simple`, `dynamic_mc`: `options: ["S1/(S0+S1)", "E", "S0/S1", "R"]`) next to the *🎲 Consistency check* button in the same *Diagnostics* panel. Take the binning from `resolve_fit_settings(model).kw_hist` instead of the constant, and refuse rather than pass when the histograms come back empty. `test/models/test_pda2c_diagnostics.py` runs the check only on the default axis, so nothing catches it.
+- **Fix note:**
+
+### RF-605
+- **Status:** OPEN
+- **Severity:** S2 (every residual evaluation throws away tttrlib's per-cell bin cache and re-runs ~125 000 Python callbacks: 48.5 ms instead of 10.1 ms per evaluation)
+- **Location:** `chisurf/core/models/pda2c/common.py:643-645` (`pda_obj.histogram_function = build_pda_histogram_function(...)`, executed on every call to `pda_1d_residuals_from_s1s2`) and the same unconditional assignment in `get_pda_distribution` at `:563`; the cache it invalidates is `tttrlib/src/Pda.cpp:246-281` (`_hist1d_bin_cache`, invalidated by `Pda::set_callback`, `include/Pda.h:172-175`)
+- **Finding:** tttrlib caches the target bin of every visited `(ch1, ch2)` cell "across calls (fit iterations)" — its own comment — because the callback is a Python function called once per cell. Assigning `histogram_function` calls `set_callback`, which sets `_hist1d_valid = false`, so ChiSurf discards that cache on **every** model evaluation even when the axis, γ and R0 are unchanged (the code already computes exactly that signature ten lines below, at `:744-755`, to invalidate its *own* data-histogram cache). Measured at the reader's default `maximum_number_of_photons = 500` (`reader.py:88`), i.e. a 501×501 matrix: reassigning before each call costs **48.5 ms** per `get_1dhistogram` and **124 715** Python callback invocations, against **10.1 ms** and **0** invocations when the callback is left in place — ~38 ms of pure waste per residual evaluation, on the fit's inner loop. Assign the callback only when its `(axis, gamma, forster_radius)` signature changes.
+- **Fix note:**
+
+### RF-606
+- **Status:** OPEN
+- **Severity:** S2 (the SAW-ν model's *Distance P(R)* plot is always empty — the one panel that shows what the model is for)
+- **Location:** `chisurf/core/models/pda2c/common.py:83-85` (`get_pda_distance_distribution`: `means = distances.means; sigmas = distances.sigmas; amplitudes = distances.amplitudes`) with the bare `except Exception: return []` at `:94-95`, against `chisurf/core/models/pda2c/saw_nu.py:23-69` (`Pda2cSawNuDistances` defines `distribution`, `r_rms`, `nu` — and no `means`/`sigmas`/`amplitudes`) and its view spec `chisurf/core/models/pda2c/saw_nu.view.json:238-247` (`"Distance P(R)": {"accessor": "...common:get_pda_distance_distribution"}`)
+- **Finding:** the accessor is written against the Gaussian-component group and reads three attributes the SAW-ν group does not have; `AttributeError` on `distances.means` is swallowed by the catch-all and the plot renders blank. Verified in the `arm64` env: `Pda2cSawNuDistances().distribution` is a valid `(2, 96)` array, `hasattr(d, "means")` is `False`, and `get_pda_distance_distribution(fit)` returns `[]` — so even the *summed* curve, which was already built at `:82` before the per-component loop, is lost. Build the summed curve first and return it, adding the per-component overlay only when the group offers components (or give `Pda2cSawNuDistances` empty `means`/`sigmas`/`amplitudes`). The blanket `except` is what makes this invisible; it should not swallow attribute errors from the group contract.
+- **Fix note:**
+
+### RF-607
+- **Status:** OPEN
+- **Severity:** S2 (the dynamic two-state model ships the grid its own docstring calls "far too coarse"; the width of the recovered time-fraction distribution is biased 7 % high)
+- **Location:** `chisurf/core/models/pda2c/dynamic.py:209` (`n_grid: int = 41`) against its own parameter docstring at `:222-227` ("*512 is accurate to ~1e-4 in the mean occupancy even at fast exchange. The previous default of 41 was sized for a direct density evaluation and is far too coarse here*"), consumed at `:299` (`two_state_occupation_quadrature(p1, K, n_nodes=self.n_grid)`)
+- **Finding:** nothing in the tree passes `n_grid` — `grep -rn "n_grid" chisurf` finds only this file — so every dynamic two-state fit runs at 41 nodes, the value the docstring says is wrong. Measured against the same routine at 4096 nodes: at `p1 = 0.2, K = 20` the mean occupancy comes out **0.204611** instead of 0.200082 (bias 4.6e-3, vs 5.1e-4 at 512) and the **variance 0.016289 instead of 0.015242 — 6.9 % high**; at `p1 = 0.5` the error is exactly zero for every `K`, so the bias is invisible at equal populations and grows with asymmetry, which is where a two-state fit is actually informative. The variance is not a detail here: it is the width of the pG spectrum handed to the engine, i.e. the width of the fitted E-histogram. The trade-off is real and should be stated in the fix rather than jumping to 512 — the spectrum has `n_grid + 1` species and the engine cost is linear in that: measured 1.0 ms per `evaluate` at 42 species against 8.5 ms at 513. A middle value (128–256) or a docstring that matches the default are both defensible; the two disagreeing is not.
+- **Fix note:**
+
+### RF-608
+- **Status:** OPEN
+- **Severity:** S3 (the consistency check bootstraps Neyman χ², not the statistic the fit minimises, while both its docstrings say it does)
+- **Location:** `chisurf/core/models/pda2c/consistency.py:122-133` (`_poisson_chi2` — "*Uses the same `(obs - exp) / sqrt(max(obs, 1))` weighting as the PDA fit residual, so the statistic being bootstrapped is the one being minimised*") and the module docstring at `:12-14` ("*scored against the fitted expectation with the same statistic the fit minimises*"), against `chisurf/core/models/pda2c/common.py:259` (`PDA_STATISTICS = ("poisson", "neyman", "pearson")`) and `:405-418` (`pda_weighted_residuals` — `neyman` is the branch at `:405`, the default and documented-correct choice is the Poisson deviance at `:410-418`)
+- **Finding:** `_poisson_chi2` is the `neyman` statistic, hard-coded, and its name says the opposite. Every PDA model defaults to `statistic = "poisson"` (`common.py:471`) and exposes all three in its editor, and `kinetic_consistency_check` never reads `fit_settings.statistic` — so the check bootstraps a statistic the fit is not minimising, and the one `common.py:371-375` documents as *"systematically underestimates amplitudes at low counts"*, on histograms chosen for being sparse. The bootstrap is self-calibrating, so this does not invalidate the p-value; it does make the two panels disagree about what "poor" means, and the docstrings assert an equality that does not hold. Read the statistic from the settings (`pda_weighted_residuals(..., statistic=settings.statistic)`, squared and summed) and rename, or correct both docstrings to say Neyman and why.
+- **Fix note:**
+
+### RF-609
+- **Status:** OPEN
+- **Severity:** S3 (the 2D zero-photon mask is cached on the data object keyed only on array *size*, the exact failure the sibling cache twenty lines away documents and guards against)
+- **Location:** `chisurf/core/models/pda2c/common.py:31-40` (`mask_zero_photon_bins`: `nonzero_full = getattr(data_obj, "_pda_nonzero_mask", None)`; recomputed only `if nonzero_full is None or getattr(nonzero_full, "size", 0) != y_arr.size`) against `:756-771` in the same file, where the data-histogram key deliberately carries `hash(s1s2_data.tobytes())` with the comment "*id + size alone are stable across an in-place edit / a new dataset loaded into the same object*"
+- **Finding:** the mask records which S1S2 bins had photons and is reused for the lifetime of the `DataCurve`; a dataset re-read into the same object, or the same S1S2 grid recomputed at a different photon-number gate, produces a same-sized `y` and the stale mask survives — bins that now hold photons are zeroed out of χ² and bins that are now empty are left contributing. It is reached from all four models' 2D residual path (`pdagauss.py:632`, `simple.py:490`, `dynamic.py:366`, `dynamic_mc.py:394`), which the editor can select (`chisurf/gui/widgets/models/pda2c/widgets.py:1699,1909,2082`). Key it the way the sibling cache is keyed, or drop the cache — `y_arr > 0.0` on a 501×501 grid is ~0.1 ms and is not what makes a PDA fit slow (see RF-605).
+- **Fix note:**
