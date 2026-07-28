@@ -191,6 +191,50 @@ def test_background_series_starts_at_one():
     assert u.size <= 6  # never more terms than photons
 
 
+def test_the_reference_survives_a_series_that_overflows_in_linear_space():
+    """Regression: the dominant terms of the series must not be masked away.
+
+    A channel the model calls essentially impossible (``p = 1e-18``) that
+    collected 20 photons has a series growing by ~1e19 per step, so its linear
+    form runs into ``inf`` within a few terms — on the terms that carry the
+    likelihood. Summing over ``isfinite`` alone dropped exactly those and
+    returned a finite answer computed from the sub-dominant tail, off by ~109
+    nats. The convolution now runs in log space, so nothing overflows and
+    nothing is dropped.
+    """
+    from chisurf.core.fluorescence.pda3c import (
+        burst_log_likelihood_reference,
+        log_background_correction,
+        log_background_series,
+        log_multinomial_pmf,
+    )
+
+    counts = np.array([20, 6, 5])
+    p = np.array([1e-18, 0.5, 0.5 - 1e-18])
+    background = np.array([0.5, 0.5, 0.5])
+
+    # the linear view of this series does overflow — the log one does not
+    log_u = log_background_series(int(counts[0]), background[0], p[0])
+    assert np.all(np.isfinite(log_u))
+    with np.errstate(over="ignore"):
+        assert not np.all(np.isfinite(np.exp(log_u)))
+
+    convolution = log_multinomial_pmf(counts, p) + log_background_correction(counts, background, p)
+    nested_sum = burst_log_likelihood_reference(counts[None, :], p[None, :], background)
+    assert convolution == pytest.approx(nested_sum[0, 0], rel=1e-9)
+
+
+def test_the_log_series_is_the_log_of_the_series():
+    """The two views agree wherever the linear one is representable."""
+    from chisurf.core.fluorescence.pda3c import background_series, log_background_series
+
+    for count, rate, p in [(5, 0.7, 0.4), (0, 0.7, 0.4), (9, 0.0, 0.4), (4, 0.7, 0.0)]:
+        u = background_series(count=count, rate=rate, p=p)
+        log_u = log_background_series(count=count, rate=rate, p=p)
+        assert log_u.shape == u.shape
+        np.testing.assert_allclose(np.exp(log_u), u, rtol=1e-12)
+
+
 def test_truncation_tolerance_does_not_move_the_answer():
     """Tightening the cutoff must not move a well-fitting burst's likelihood."""
     from chisurf.core.fluorescence.pda3c import burst_log_likelihood

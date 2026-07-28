@@ -14,6 +14,7 @@ from .likelihood import (  # noqa: F401
     burst_log_likelihood_reference,
     collapse_bursts,
     log_background_correction,
+    log_background_series,
     log_multinomial_pmf,
 )
 from .model import (  # noqa: F401
@@ -59,6 +60,7 @@ __all__ = [
     "gauss_hermite_grid",
     "green_channel_probabilities",
     "log_background_correction",
+    "log_background_series",
     "log_multinomial_pmf",
     "nearest_positive_definite",
     "relative_brightness",

@@ -6490,11 +6490,30 @@ model's own parameter bounds. Findings RF-538..RF-543.
 - **Fix note:**
 
 ### RF-539
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (an overflow inside the per-burst path is silently discarded, returning a finite log-likelihood that is ~109 nats wrong)
 - **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:335-339` (`finite = np.isfinite(terms)` → `peak = terms[finite].max()` → sum over `finite` only) with the overflow at `:271` (`background_series`: `return np.exp(log_u - log_u[0])`)
 - **Finding:** the `isfinite` mask is there to drop `-inf` terms, but it drops `+inf` ones too — and `+inf` is exactly what an overflowed series produces. `background_series(20, 0.5, 1e-18)` returns `[1, 1e19, 4.75e37, 1.43e56, …]` and is `inf` from `b = 18` on (three entries); those are the *dominant* terms, so `log_background_correction` silently returns a finite number computed from the sub-dominant tail alone. Verified on `counts = [20, 6, 5]`, `p = [1e-18, 0.5, 0.5-1e-18]`, `background = [0.5, 0.5, 0.5]`: the convolution path gives **`-166.720`** against the nested-sum reference's **`-58.188`**. There is no warning beyond a NumPy `RuntimeWarning: overflow encountered in exp` on stderr, and this is the path `burst_log_likelihood` deliberately falls back to (`:483-491`), so the "independent reference" and the fallback are wrong in the same regime. Keep the series in log space (return `log_u - log_u[0]` and convolve with a log-domain shift), or at minimum treat a non-finite term as an error instead of dropping it.
-- **Fix note:**
+- **Fix note:** The series is now primitive in log space. New
+  `log_background_series` returns `log u(b)` (normalised to `log u(0) = 0`, with
+  `-inf` for exactly-zero terms) and is what `log_background_correction`
+  consumes; `background_series` stays as the public linear *view* of it
+  (`np.exp`), with a Notes paragraph saying it overflows on the dominant terms
+  and that summing consumers must use the log form. The per-channel convolution
+  runs through a new `_log_convolve` (pairwise `np.logaddexp` over shifted
+  windows), so no intermediate is ever formed in linear space and nothing can
+  reach `inf`. The mask at the end now drops only `-inf` (`~np.isneginf`), so a
+  `+inf` propagates loudly instead of being silently summed away. The reported
+  case now gives `-58.18761417` against the nested sum's `-58.18761417`
+  (was `-166.720`). Pinned by
+  `test/models/test_pda3c_likelihood.py::test_the_reference_survives_a_series_that_overflows_in_linear_space`
+  (asserts the log series is finite where its linear view is not, and that the
+  convolution matches `burst_log_likelihood_reference`) and
+  `::test_the_log_series_is_the_log_of_the_series` (the two views agree on the
+  zero-count, zero-rate and zero-probability branches). `test/models` green
+  (303 passed; the one failure, `test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`,
+  is a pre-existing Qt `is_interactive` guard unrelated to this module and fails
+  identically at HEAD); `ruff check` clean on the touched files.
 
 ### RF-540
 - **Status:** OPEN

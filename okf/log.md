@@ -2,6 +2,29 @@
 
 ## 2026-07-28
 
+* **The PDA3c background series is now primitive in log space (RF-539).** The
+  per-burst reference path built the per-channel series
+  `u(b) = Pois(b;B) F!/(F-b)! p^-b` in *linear* space and convolved it there.
+  Where a channel collected far more photons than the model allows the terms
+  grow like `(F/(N p))^b`, so a float64 overflows to `inf` — on precisely the
+  terms that carry the likelihood, since the growth is what makes them dominant.
+  The closing sum then masked on `np.isfinite`, which was meant to drop `-inf`
+  but dropped the `+inf` ones too, and returned a *finite* number computed from
+  the sub-dominant tail alone: on `counts = [20, 6, 5]`, `p = [1e-18, 0.5, ~0.5]`,
+  `B = [0.5, 0.5, 0.5]` the convolution said `-166.720` where the nested-sum
+  reference says `-58.188` — 109 nats, announced only as a NumPy
+  `RuntimeWarning` on stderr. Since `burst_log_likelihood` deliberately falls
+  back to this path, the "independent reference" and the fallback were wrong in
+  the same regime, which is why no cross-check caught it.
+  New `log_background_series` returns `log u(b)` and is what
+  `log_background_correction` consumes; `background_series` remains the public
+  linear *view* of it, documented as overflowing there so summing consumers know
+  to take the log form. The convolution runs through `_log_convolve`
+  (`np.logaddexp` over shifted windows), so no intermediate is ever formed
+  linearly, and the closing mask drops only `-inf` (`~np.isneginf`) — a `+inf`
+  now propagates instead of being summed away. Pinned by
+  `test/models/test_pda3c_likelihood.py::test_the_reference_survives_a_series_that_overflows_in_linear_space`
+  and `::test_the_log_series_is_the_log_of_the_series`.
 * **Each transport control owns its own button colour.** The accent behind a
   glyph is what the eye lands on — a monochrome `▶` is read second — so sharing
   one made two different actions look like one button. Two collisions existed:

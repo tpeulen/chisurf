@@ -96,6 +96,7 @@ __all__ = [
     "burst_log_likelihood_reference",
     "collapse_bursts",
     "log_background_correction",
+    "log_background_series",
     "log_multinomial_pmf",
 ]
 
@@ -229,6 +230,56 @@ def _channel_boxes(counts, background, p, tolerance):
     return boxes
 
 
+def log_background_series(count: int, rate: float, p: float):
+    r"""Return :math:`\log u(b)`, the per-channel series of the factorisation.
+
+    The log form is the primitive one: where a channel collected far more
+    photons than the model allows, the terms grow like ``(F/(N p))**b`` and the
+    linear series overflows to ``inf`` — on exactly the *dominant* terms, since
+    the growth is what makes them dominant. Staying in logs keeps that regime
+    representable; :func:`background_series` is the linear view of the same
+    numbers.
+
+    Parameters
+    ----------
+    count : int
+        Observed photons in this channel.
+    rate : float
+        Mean background photons in this channel.
+    p : float
+        Channel probability under the multinomial; must be positive when
+        ``count`` is.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``log u(b)`` for ``b = 0 … count``, normalised so ``log u(0) = 0``.
+        Terms that are exactly zero are ``-inf``.
+    """
+    count = int(count)
+    if rate <= 0.0 or count <= 0:
+        return np.zeros(1, dtype=float)
+
+    b = np.arange(count + 1, dtype=float)
+    if p <= 0.0:
+        # An impossible channel cannot hold signal, so every observed photon in
+        # it is background; the series degenerates to that single term.
+        out = np.full(count + 1, -np.inf)
+        out[count] = poisson.logpmf(count, rate)
+        return out
+
+    # falling_factorial(count, b) = count!/(count-b)!
+    log_u = (
+        poisson.logpmf(b, rate)
+        + gammaln(count + 1.0)
+        - gammaln(count - b + 1.0)
+        - b * np.log(p)
+    )
+    # Normalise out u(0) = Pois(0; rate) so the series starts at 1 and the
+    # discarded constant reappears in `log_background_correction`.
+    return log_u - log_u[0]
+
+
 def background_series(count: int, rate: float, p: float):
     """Return the per-channel series :math:`u(b)` of the factorisation, untruncated.
 
@@ -255,31 +306,40 @@ def background_series(count: int, rate: float, p: float):
     -------
     numpy.ndarray
         The series, indexed by background count.
+
+    Notes
+    -----
+    This is a *view* of :func:`log_background_series` and overflows to ``inf``
+    wherever that one exceeds ``log(np.finfo(float).max)`` — which happens on
+    the dominant terms of a channel the model calls nearly impossible. Consumers
+    that sum the series must work from the log form.
     """
-    count = int(count)
-    if rate <= 0.0 or count <= 0:
-        return np.ones(1, dtype=float)
+    return np.exp(log_background_series(count, rate, p))
 
-    b_max = count
-    b = np.arange(b_max + 1, dtype=float)
-    if p <= 0.0:
-        # An impossible channel cannot hold signal, so every observed photon in
-        # it is background; the series degenerates to that single term.
-        out = np.zeros(b_max + 1, dtype=float)
-        if b_max >= count:
-            out[count] = poisson.pmf(count, rate)
-        return out
 
-    # log form throughout: falling_factorial(count, b) = count!/(count-b)!
-    log_u = (
-        poisson.logpmf(b, rate)
-        + gammaln(count + 1.0)
-        - gammaln(count - b + 1.0)
-        - b * np.log(p)
-    )
-    # Normalise out u(0) = Pois(0; rate) so the series starts at 1 and the
-    # discarded constant reappears in `log_background_correction`.
-    return np.exp(log_u - log_u[0])
+def _log_convolve(log_a, log_b):
+    """Discrete convolution of two non-negative sequences, in log space.
+
+    ``exp(_log_convolve(log(a), log(b))) == convolve(a, b)`` up to rounding,
+    without ever forming ``a`` or ``b`` themselves.
+
+    Parameters
+    ----------
+    log_a, log_b : numpy.ndarray
+        Logarithms of the two sequences; ``-inf`` marks an exactly zero term.
+
+    Returns
+    -------
+    numpy.ndarray
+        Logarithm of the convolution, of length ``log_a.size + log_b.size - 1``.
+    """
+    out = np.full(log_a.size + log_b.size - 1, -np.inf)
+    for i, term in enumerate(log_a):
+        if term == -np.inf:
+            continue
+        window = slice(i, i + log_b.size)
+        out[window] = np.logaddexp(out[window], term + log_b)
+    return out
 
 
 def log_background_correction(
@@ -292,7 +352,7 @@ def log_background_correction(
 
     Implements :math:`\log \sum_m w_m c_m` of the module docstring for one
     burst and one set of channel probabilities: ``c`` by convolving the
-    per-channel :func:`background_series`, ``w`` from the falling factorial of
+    per-channel :func:`log_background_series`, ``w`` from the falling factorial of
     the observed total (times the photon-number distribution when given).
 
     Parameters
@@ -319,18 +379,20 @@ def log_background_correction(
     p = np.asarray(p, dtype=float)
 
     # c = convolution of the per-channel series, each normalised to start at 1.
-    c = np.ones(1, dtype=float)
+    # Convolved in log space: the series is unbounded above (see
+    # `log_background_series`) and its dominant terms overflow a float64.
+    log_c = np.zeros(1, dtype=float)
     log_offset = 0.0
     for k in range(counts.size):
-        u = background_series(int(counts[k]), float(background[k]), float(p[k]))
+        log_u = log_background_series(int(counts[k]), float(background[k]), float(p[k]))
         # Pois(0; rate) was divided out of each series; put it back once.
         log_offset += -float(background[k])
-        c = np.convolve(c, u)
+        log_c = _log_convolve(log_c, log_u)
 
     total = float(counts.sum())
-    m = np.arange(c.size, dtype=float)
+    m = np.arange(log_c.size, dtype=float)
     keep = m <= total
-    c = c[keep]
+    log_c = log_c[keep]
     m = m[keep]
 
     # w_m = P(N-m) (N-m)! / N!  — the reciprocal falling factorial of the total.
@@ -342,12 +404,14 @@ def log_background_correction(
         with np.errstate(divide="ignore"):
             log_w = log_w + np.log(weights)
 
-    terms = log_w + np.log(np.maximum(c, 0.0), where=c > 0.0, out=np.full(c.shape, -np.inf))
-    finite = np.isfinite(terms)
-    if not np.any(finite):
+    # Only exactly-zero terms are dropped. A `+inf` must *not* be masked away
+    # here — it would silently return a finite sum over the sub-dominant tail.
+    terms = log_w + log_c
+    kept = ~np.isneginf(terms)
+    if not np.any(kept):
         return -np.inf
-    peak = terms[finite].max()
-    return float(log_offset + peak + np.log(np.exp(terms[finite] - peak).sum()))
+    peak = terms[kept].max()
+    return float(log_offset + peak + np.log(np.exp(terms[kept] - peak).sum()))
 
 
 def _background_factors(counts, background, photon_number_pmf, boxes):
