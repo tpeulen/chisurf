@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **A sub-population of a burst is a column, not a row — state-wise MLE folded
+  into MLE-Burstwise.** The `burst_state_mle` plugin (step 7) wrote one companion
+  folder per (state, colour). It was doubly broken: after the `bg4_s0` →
+  `s0_bg4` discovery fix, each folder still emitted `Tau (green)` — *the same
+  column name* the real `bg4` contributes — and both mergers drop a duplicate,
+  so the per-state numbers were written and then silently discarded by the burst
+  browser and by ndX alike. Multi-measurement folders never merged at all
+  (`file_stem` fell back to the literal `"all"`). The plugin and step 7 are
+  deleted. MLE-Burstwise instead gained **Split by H2MM state**: each burst is
+  additionally fitted once per Viterbi state and the results are extra *columns
+  on the same burst row* — `Tau S0 (green)` beside `Tau (green)` — which is the
+  only shape a positional merge admits, since the number of dwells varies per
+  burst. Enablers: `extract_burst_photons` now emits the **absolute photon
+  index** (`PhotonMeta.photon_index`), and the H2MM photon table gained `Photon`
+  + `Source` columns, so a per-photon result can be handed back to any analysis
+  that slices the raw arrays — verified exact on the real folder, 275 973 of
+  275 973 photons re-joined across 11 measurements. New
+  `chisurf/core/fio/fluorescence/burst_states.py` turns those into per-photon
+  state arrays, shipped to the batch workers in a third shared-memory block, so
+  a state pass is a mask over the same slice rather than a second extraction.
+  Measured on synthetic bursts with 3.6 / 1.0 ns states: `Tau S0 = 3.81`,
+  `Tau S1 = 0.95`, and the all-photon `Tau = 2.18` — the blend that belongs to
+  neither state, which is the whole reason the split exists. Guide 21 and
+  [/subsystems/burst-companions.md](subsystems/burst-companions.md) updated.
+
 * **The 3-D view can be photographed now, and the metaball material was tuned
   against the wrong renderer until it could.** Qt's offscreen platform cannot
   create an OpenGL context at all, so a grab of the viewport was a black

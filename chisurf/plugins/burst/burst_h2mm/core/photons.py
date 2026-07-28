@@ -129,7 +129,7 @@ def bursts_from_dataframe(
     need_meta = return_meta or divisors > 1
     rows = None
     if need_meta:
-        times, stream_idx, micro, chan, rows = extract_burst_photons(
+        times, stream_idx, micro, chan, index, rows = extract_burst_photons(
             df, tttrs, streams, time_scale=time_scale,
             min_photons=min_photons, with_meta=True, with_rows=True,
         )
@@ -153,6 +153,7 @@ def bursts_from_dataframe(
         burst_id=np.concatenate(
             [np.full(t.shape[0], b, dtype=np.int64) for b, t in enumerate(times)]
         ),
+        photon_index=np.concatenate(index).astype(np.int64) if index else None,
     )
     # Which burst-table row each kept burst came from. Bursts below
     # ``min_photons`` are skipped, so the burst index is a compacted sequence;

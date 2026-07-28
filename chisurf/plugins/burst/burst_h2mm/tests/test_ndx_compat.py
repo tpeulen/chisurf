@@ -60,7 +60,7 @@ def _photon_table(out):
 
     ``write_result_tables`` writes HDF5 **or** CSV, not both: the CSV is the
     fallback for an environment without pytables. Any consumer therefore has to
-    look for both — which is exactly what ``state_mle.read_photon_table`` does.
+    look for both — which is exactly what ``burst_states.read_photon_table`` does.
     """
     h5, csv = out / "h2mm_photons.h5", out / "h2mm_photons.csv"
     if h5.is_file():

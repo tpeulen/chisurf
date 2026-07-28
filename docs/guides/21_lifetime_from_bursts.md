@@ -77,6 +77,34 @@ decay reports the intensity-weighted lifetime while $E$ follows the
 species-weighted one.
 ```
 
+## Splitting a burst by H2MM state
+
+A burst that changes conformation part-way through has no single lifetime: fit
+all its photons together and you get a blend that belongs to neither state. On
+synthetic bursts holding a 3.6 ns and a 1.0 ns population, the all-photon fit
+lands at 2.2 ns — a number nothing in the sample has.
+
+Tick **Split by H2MM state** and each burst is additionally fitted once per
+Viterbi state, using the same IRF, background and model as the ordinary fit. It
+needs an H2MM run in the same analysis folder (step 6); without one the option
+says so and the batch proceeds normally.
+
+The results are extra **columns on the same burst row** — `Tau S0 (green)`,
+`Tau S1 (green)`, … beside the all-photon `Tau (green)`. That is deliberate and
+it is the only shape that works: a burst table has one row per burst, every
+companion is merged onto it by position, and the number of dwells varies from
+burst to burst. **A sub-population is a column, not a row.** The burst stays the
+unit of observation; the state is a label on the photons inside it.
+
+Two practical points:
+
+* A burst split by colour *and* state holds far fewer photons than the whole
+  burst, so the per-state passes have their own **min ph.** floor. Below it the
+  row is still written, with the photon counts and an empty fit — never omitted,
+  because a missing row would shift every later burst against the `.bur` grid.
+* Photons H2MM did not assign to any state (outside a burst, or dropped by its
+  stream definitions) take part in the all-photon fit only.
+
 ## See also
 
 - `chisurf/plugins/burst/burst_mle_analysis/`, `chisurf/core/fluorescence/mle/`.

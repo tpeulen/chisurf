@@ -178,6 +178,31 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     """
 
     @staticmethod
+    def _state_result_columns(color: str, model: str, param_names, n_states: int) -> list:
+        """The all-photon columns, then one suffixed block per state.
+
+        A sub-population of a burst is a *column* of that burst's row: the burst
+        table has one row per burst, and every companion is merged onto it by
+        position. The suffixed names must not collide with the all-photon ones,
+        because the merge drops a duplicate name and its data with it.
+        """
+        cols = MLELifetimeAnalysisWizard._burst_result_columns(color, model, param_names)
+        for state in range(int(n_states)):
+            sfx = f" S{state}"
+            cols += [f"Ng-p{sfx}", f"Ng-s{sfx}",
+                     f"Number of Photons (fit window){sfx} ({color})",
+                     f"2I*{sfx} ({color})", f"Tau{sfx} ({color})"]
+            if model == "fit23":
+                cols += [f"gamma{sfx} ({color})", f"r0{sfx} ({color})",
+                         f"rho{sfx} ({color})"]
+            else:
+                cols += [f"{nm}{sfx} ({color})" for nm in (param_names or ())]
+            cols += [f"BIFL scatter?{sfx} ({color})", f"2I*: P+2S?{sfx} ({color})"]
+            if model == "fit23":
+                cols += [f"r Scatter{sfx} ({color})", f"r Experimental{sfx} ({color})"]
+        return cols
+
+    @staticmethod
     def _burst_result_columns(color: str, model: str, param_names) -> list:
         """Per-detector export columns for ``model`` (matches the worker rows).
 
@@ -202,6 +227,52 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         cols += [f'{nm} ({color})' for nm in param_names]
         cols += [f'BIFL scatter? ({color})', f'2I*: P+2S? ({color})']
         return cols
+
+    @property
+    def split_by_state(self) -> bool:
+        """Whether each burst is additionally fitted once per H2MM state."""
+        box = self.__dict__.get("checkBox_split_by_state")
+        return bool(box.isChecked()) if box is not None else False
+
+    @property
+    def state_min_photons(self) -> int:
+        """Photon floor for a *state* fit, which sees far fewer than a burst fit."""
+        box = self.__dict__.get("spinBox_state_min_photons")
+        return int(box.value()) if box is not None else 20
+
+    def _load_state_arrays(self):
+        """Per-photon H2MM states for the loaded measurements.
+
+        Returns ``({stem: int8 array}, n_states)``; ``({}, 0)`` when the folder
+        has no usable H2MM run, with the reason on the status line — a missing
+        upstream analysis turns the split off rather than failing the batch.
+        """
+        from chisurf.core.fio.fluorescence import burst_states
+
+        folder = self.batch_stamp_path()
+        folder = folder.parent if folder is not None else None
+        if folder is None:
+            self._set_status("Split by state: no analysis folder — skipped.")
+            return {}, 0
+        sizes = {}
+        for stem, tttr in (self.tttrs or {}).items():
+            try:
+                sizes[str(stem)] = int(np.asarray(tttr.routing_channels).size)
+            except Exception:
+                continue
+        try:
+            arrays, n_states = burst_states.state_arrays(folder, sizes)
+        except (FileNotFoundError, ValueError) as exc:
+            self._set_status(f"Split by state: {exc}")
+            return {}, 0
+        if n_states < 1:
+            self._set_status("Split by state: the H2MM run resolved no states.")
+            return {}, 0
+        labelled = sum(int((a >= 0).sum()) for a in arrays.values())
+        self._set_status(
+            f"Split by state: {n_states} states, {labelled:,} photons labelled."
+        )
+        return arrays, n_states
 
     def experiment_settings(self) -> dict:
         """The per-detector IRF and background this fit actually used.
@@ -255,6 +326,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             json.dump(payload, fh, indent=2, cls=NumpyEncoder)
         return target
 
+    #: States the last batch fitted per burst (0 = the ordinary all-photon run).
+    _exported_state_count = 0
+
     def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:
         """
         Save burst-fit results grouped by (file stem, detector) with a fast, vectorized path.
@@ -299,7 +373,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         for det in dets:
             color = det.lower()
             letter = color[0]
-            cols = self._burst_result_columns(color, model, param_names)
+            cols = self._state_result_columns(
+                color, model, param_names, self._exported_state_count
+            )
             det_meta[det] = (color, letter, cols)
 
         # Group once by (First Stem, Detector)
@@ -2221,6 +2297,31 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             "Lifetime fit model (from the tttrlib registry). fit23 fits one "
             "lifetime with anisotropy; other models are selectable as they are wired."
         )
+        # Split the fit by H2MM state: each burst additionally yields one decay
+        # per state, written as extra columns on the same burst row.
+        self.checkBox_split_by_state = Q.QCheckBox("Split by H2MM state")
+        self.checkBox_split_by_state.setToolTip(
+            "Additionally fit each burst's photons once per H2MM Viterbi state, "
+            "writing Tau S0 / Tau S1 ... columns beside the all-photon Tau. "
+            "Requires an H2MM run in this analysis folder."
+        )
+        self.spinBox_state_min_photons = Q.QSpinBox()
+        self.spinBox_state_min_photons.setRange(2, 100000)
+        self.spinBox_state_min_photons.setValue(20)
+        self.spinBox_state_min_photons.setToolTip(
+            "Photon floor for a per-state fit. A burst split by colour *and* "
+            "state holds far fewer photons than the whole burst, so this is "
+            "separate from (and usually below) 'Min photons'."
+        )
+        _state_row = Q.QWidget()
+        _srl = Q.QHBoxLayout(_state_row)
+        _srl.setContentsMargins(0, 0, 0, 0)
+        _srl.setSpacing(4)
+        _srl.addWidget(self.checkBox_split_by_state)
+        _srl.addWidget(Q.QLabel("min ph."))
+        _srl.addWidget(self.spinBox_state_min_photons)
+        _srl.addStretch(1)
+
         _model_row = Q.QWidget()
         _mrl = Q.QHBoxLayout(_model_row)
         _mrl.setContentsMargins(0, 0, 0, 0)
@@ -2245,6 +2346,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         _params_box = CollapsibleBox("Fit parameters", expanded=True)
         _params_box.add_widget(_model_row)
+        _params_box.add_widget(_state_row)
         _params_box.add_widget(self.groupBox_model_params)
         _params_box.add_widget(self.groupBox_dyn_params)
         grid3.addWidget(_params_box, 3, 0)
@@ -4161,6 +4263,14 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 if len(chs):
                     rc_max_seen = max(rc_max_seen, int(np.max(chs)))
 
+            # Per-photon H2MM states, when the run is asked to split by state.
+            # Read once for the whole folder; missing or unusable inputs turn the
+            # split off with a status line rather than failing the batch.
+            state_arrays_by_stem, n_states = {}, 0
+            if self.split_by_state:
+                state_arrays_by_stem, n_states = self._load_state_arrays()
+            self._exported_state_count = int(n_states)
+
             # Build per-file jobs with shared memory
             jobs = []
             shm_blocks = []  # to unlink at end
@@ -4172,7 +4282,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     jobs.append((fname,
                                  list(df_file[['First Photon', 'Last Photon']].itertuples(index=False, name=None)),
                                  None, None, None, None, None, None,
-                                 det_order, {}, int(self.shift or 0)))
+                                 det_order, {}, int(self.shift or 0), None))
                     continue
 
                 rc_full = np.asarray(tttr.routing_channels)
@@ -4192,6 +4302,20 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 mt_shm = shared_memory.SharedMemory(create=True, size=mt_bins_full.nbytes)
                 np.ndarray(mt_bins_full.shape, dtype=mt_bins_full.dtype, buffer=mt_shm.buf)[:] = mt_bins_full
                 shm_blocks.extend([rc_shm, mt_shm])
+
+                # A third block: the per-photon state, indexed exactly as the
+                # routing channels are, so the worker selects a sub-population
+                # with a mask rather than a second slice.
+                state_info = None
+                states_full = state_arrays_by_stem.get(key)
+                if states_full is not None and n_states > 0:
+                    states_full = np.ascontiguousarray(states_full, dtype=np.int8)
+                    st_shm = shared_memory.SharedMemory(create=True, size=states_full.nbytes)
+                    np.ndarray(states_full.shape, dtype=states_full.dtype,
+                               buffer=st_shm.buf)[:] = states_full
+                    shm_blocks.append(st_shm)
+                    state_info = (st_shm.name, states_full.shape,
+                                  str(states_full.dtype), int(n_states))
 
                 # Per-detector config (use class LUT: -1 ignore, 0=P, 1=S)
                 rc_max = int(rc_full.max(initial=rc_max_seen)) if rc_full.size else rc_max_seen
@@ -4223,6 +4347,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                         'p2s_twoIstar': bool(st['p2s_twoIstar']),
                         'BIFL_scatter': bool(st['BIFL_scatter']),
                         'min_photons': int(st['min_photons']),
+                        # A burst split by colour *and* state is thin, so the
+                        # per-state passes get their own, lower floor.
+                        'state_min_photons': int(self.state_min_photons),
                         'x0': x0,
                         'fixed': fixed,
                         'irf': np.asarray(irf_cache[det], dtype=np.float64),
@@ -4237,7 +4364,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 jobs.append((fname, bursts,
                              rc_shm.name, rc_full.shape, str(rc_full.dtype),
                              mt_shm.name, mt_bins_full.shape, str(mt_bins_full.dtype),
-                             det_order, perdet_cfg, int(self.shift or 0)))
+                             det_order, perdet_cfg, int(self.shift or 0),
+                             state_info))
 
             # Processes (leave one core for UI; cap by #files)
             ctx = mp.get_context('spawn')

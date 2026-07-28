@@ -229,7 +229,7 @@ def test_a_gui_fit_writes_its_tables_where_the_next_step_looks(qapp, tmp_path,
     — and the state-wise MLE step reported a finished H2MM as "run H2MM first".
     """
     from chisurf.plugins.burst.burst_h2mm.gui import tool as tool_mod
-    from chisurf.plugins.burst.burst_state_mle.core.state_mle import h2mm_output_dir
+    from chisurf.core.fio.fluorescence.burst_states import h2mm_output_dir
 
     written: list = []
 

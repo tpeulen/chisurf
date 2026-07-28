@@ -3,6 +3,7 @@
 * [Core](core.md) - Domain objects, fitting, data, models, math, settings, actions, and the API facade.
 * [Data model](data-model.md) - `Base`/`Data`/`DataCurve`, data groups, experiment readers, and dataset flow.
 * [Data IO](data-io.md) - File loading, TTTR/photon readers, format registry, and slow-storage staging.
+* [Burst companion files](burst-companions.md) - The one contract every burst-analysis plugin follows when writing results beside the bursts, so a folder merges into one table without misaligning.
 * [Fluorescence domain](fluorescence-domain.md) - Shared fluorescence math and algorithms used by models and plugins.
 * [Fitting engine](fitting.md) - Fit/FitGroup, weighted residuals, global analysis, error analysis, and sampling.
 * [Hidden Markov models](hidden-markov-models.md) - The in-tree Gaussian HMM (fused compiled E-step, data-driven initialisation, SQUAREM acceleration) and the shared analysis seam every state-reporting tool calls.

@@ -294,7 +294,7 @@ def _synthetic_worker_job(model, method, param_names, x0, fixed, *, n=64,
     args = ("synthetic.spc", [(0, int(rc.size))],
             rc_shm.name, rc.shape, str(rc.dtype),
             mt_shm.name, mt.shape, str(mt.dtype),
-            ["green"], {"green": cfg}, 0)
+            ["green"], {"green": cfg}, 0, None)
     return args, [rc_shm, mt_shm]
 
 

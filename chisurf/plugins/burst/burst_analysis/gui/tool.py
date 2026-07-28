@@ -283,15 +283,6 @@ def _burst_h2mm(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
-def _burst_state_mle(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-    """Create the burst- and state-wise MLE panel (post-H2MM)."""
-    from chisurf.plugins.burst.burst_state_mle.gui.tool import BurstStateMleTool
-
-    widget = BurstStateMleTool(parent=parent, embedded=True)
-    _bind(parent, "state_mle", widget)
-    return widget
-
-
 def _burst_fcs(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the burst-wise FCS panel."""
     from chisurf.plugins.burst.burst_fcs_correlator.gui.tool import BurstFcsTool
@@ -425,16 +416,6 @@ BURST_PANELS = [
         "description": "Resolve sub-burst FRET dynamics with photon-by-photon HMM.",
         "factory": _burst_h2mm,
         "role": "h2mm",
-    },
-    {
-        "name": "7. MLE-Statewise",
-        "icon": Glyphs.TARGET,
-        "description": (
-            "Refit the H2MM states: one lifetime per burst *and* state, "
-            "not one per burst."
-        ),
-        "factory": _burst_state_mle,
-        "role": "state_mle",
     },
     {
         "name": "────────",
@@ -717,8 +698,8 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "state_mle",
-                     "browser", "burst_fcs", "burst_gs", "accurate_fret",
+        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "browser",
+                     "burst_fcs", "burst_gs", "accurate_fret",
                      "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
             if widget is not None:
@@ -736,8 +717,6 @@ class BurstAnalysisTool(NavigationPanelTool):
             self._apply_context_to_mle(widget)
         elif role == "h2mm":
             self._apply_context_to_h2mm(widget)
-        elif role == "state_mle":
-            self._apply_context_to_state_mle(widget)
         elif role == "browser":
             self._apply_context_to_browser(widget)
         elif role == "burst_fcs":
@@ -804,23 +783,6 @@ class BurstAnalysisTool(NavigationPanelTool):
         should adopt the folder produced upstream instead of asking the user to pick
         it again. ``set_folder`` only fills the folder field (it does not auto-run),
         so this is a cheap, side-effect-free hand-off.
-        """
-        folder = self.workflow_context.burst_folder
-        set_folder = getattr(widget, "set_folder", None)
-        if folder is not None and callable(set_folder):
-            try:
-                set_folder(str(folder))
-            except Exception:
-                pass
-
-    def _apply_context_to_state_mle(self, widget: QtWidgets.QWidget) -> None:
-        """Point the state-wise MLE at the analysis folder the workflow produced.
-
-        The step needs nothing else: the H2MM run, the burst-wise MLE settings
-        and the experiment's IRF are all *in* that folder, which is the whole
-        point of it being a post-H2MM step. ``set_folder`` only fills the field
-        and describes what it found — it does not start a fit, because refitting
-        every burst of every state is the most expensive thing in the workflow.
         """
         folder = self.workflow_context.burst_folder
         set_folder = getattr(widget, "set_folder", None)

@@ -146,13 +146,22 @@ class PhotonMeta:
     channel : numpy.ndarray
         Per-photon routing channel.
     burst_id : numpy.ndarray
-        Zero-based index of the burst each photon belongs to.
+        Zero-based index of the burst each photon belongs to. A *compacted*
+        index over the bursts that survived extraction — not a row in the burst
+        table (see ``with_rows``).
+    photon_index : numpy.ndarray
+        Position of the photon in its measurement's raw TTTR arrays. This is the
+        only key that joins an extracted photon back to the file it came from:
+        ``burst_id`` counts survivors and the concatenated order counts nothing
+        at all, so without it a per-photon result (a Viterbi state, say) cannot
+        be handed to any other analysis that slices the raw arrays itself.
     """
 
     macro_time: np.ndarray
     micro_time: np.ndarray
     channel: np.ndarray
     burst_id: np.ndarray
+    photon_index: np.ndarray | None = None
 
 
 def extract_burst_photons(
@@ -196,8 +205,9 @@ def extract_burst_photons(
         Per-burst monotonically non-decreasing integer macro times.
     stream_idx : list of numpy.ndarray
         Per-burst photon stream indices in ``[0, len(streams))``.
-    micro, channel : list of numpy.ndarray
-        Only when ``with_meta`` — matching per-burst micro-time / channel arrays.
+    micro, channel, index : list of numpy.ndarray
+        Only when ``with_meta`` — matching per-burst micro-time / channel arrays,
+        and the photons' positions in the measurement's raw TTTR arrays.
     rows : numpy.ndarray
         Only when ``with_rows`` — the ``df`` row position of each kept burst.
     """
@@ -217,6 +227,7 @@ def extract_burst_photons(
     streams_out: list[np.ndarray] = []
     micro_out: list[np.ndarray] = []
     chan_out: list[np.ndarray] = []
+    index_out: list[np.ndarray] = []
     rows_out: list[int] = []
     for position, row in enumerate(df.itertuples(index=False, name=None)):
         ff = row[col_ff]
@@ -250,12 +261,16 @@ def extract_burst_photons(
         if with_meta:
             micro_out.append(mi[keep][order])
             chan_out.append(ch[keep][order])
+            # Where these photons sit in the measurement's own arrays: the burst
+            # starts at ``first``, ``keep`` selects the stream-assigned ones, and
+            # ``order`` is the sort applied above.
+            index_out.append((first + np.nonzero(keep)[0][order]).astype(np.int64))
 
     rows = np.asarray(rows_out, dtype=np.int64)
     if with_meta and with_rows:
-        return times_out, streams_out, micro_out, chan_out, rows
+        return times_out, streams_out, micro_out, chan_out, index_out, rows
     if with_meta:
-        return times_out, streams_out, micro_out, chan_out
+        return times_out, streams_out, micro_out, chan_out, index_out
     if with_rows:
         return times_out, streams_out, rows
     return times_out, streams_out

@@ -151,7 +151,6 @@ def test_burst_workflow_panel_order() -> None:
         "📊 4. 2CDE",
         "🎯 5. MLE-Burstwise",
         "🔀 6. H2MM",
-        "🎯 7. MLE-Statewise",
         "────────",
         "📋 Browser",
         "🎯 Accurate FRET",
@@ -160,8 +159,8 @@ def test_burst_workflow_panel_order() -> None:
         "🌙 Background",
         "✨ IRF & Background",
     ]
-    # The separator sits after the seven numbered steps.
-    assert BURST_PANELS[7]["separator"] is True
+    # The separator sits after the six numbered steps.
+    assert BURST_PANELS[6]["separator"] is True
     assert "channels" not in {p.get("role") for p in BURST_PANELS}
 
 

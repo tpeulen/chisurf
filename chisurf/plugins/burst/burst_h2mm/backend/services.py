@@ -159,6 +159,36 @@ def _load_surrogates(settings: H2mmSettings) -> dict[int, object] | None:
     return {int(sm.n_states): sm}
 
 
+def _burst_sources(burst_df, burst_rows):
+    """Return ``(source names in index order, source index per analysed burst)``.
+
+    The burst table names the measurement of every burst; ``burst_rows`` says
+    which of its rows survived extraction. Together they label each analysed
+    burst with the file it came from — the piece a per-photon ``Photon`` index
+    needs to be unambiguous.
+    """
+    import numpy as np
+
+    if burst_df is None or burst_rows is None:
+        return [], None
+    if "First File" not in getattr(burst_df, "columns", []):
+        return [], None
+    rows = np.asarray(burst_rows, dtype=np.int64)
+    if rows.size == 0:
+        return [], None
+    files = np.asarray(burst_df["First File"].astype(str))
+    names: list[str] = []
+    index: dict[str, int] = {}
+    out = np.zeros(rows.size, dtype=np.int64)
+    for i, row in enumerate(rows):
+        name = pathlib.Path(str(files[int(row)])).stem
+        if name not in index:
+            index[name] = len(names)
+            names.append(name)
+        out[i] = index[name]
+    return names, out
+
+
 def write_result_tables(
     result: H2mmResult,
     bundle: H2mmAnalysisBundle,
@@ -193,10 +223,19 @@ def write_result_tables(
 
     stream_groups = colour_groups(ana, bundle.settings)
 
+    # Which measurement each analysed burst came from, so the per-photon table
+    # can say so: Photon numbers restart in every file.
+    burst_df = getattr(bundle, "burst_df", None)
+    burst_rows = getattr(meta, "burst_rows", None)
+    source_names, burst_sources = _burst_sources(burst_df, burst_rows)
+    if source_names:
+        result.output_paths.setdefault("sources", ",".join(source_names))
+
     tables = build_tables(
         bundle.data, meta, ana.path, ana.fret, ana.base_time_s,
         stream_groups=stream_groups,
         micro_time_ns=(micro_ns if micro_ns else None),
+        burst_sources=burst_sources,
     )
     # Formats are two independent choices, not a fallback chain: HDF5 is compact
     # and fast to reload, CSV is what every other tool opens, and a folder can

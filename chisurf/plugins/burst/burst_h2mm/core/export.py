@@ -22,6 +22,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from chisurf.core.fio.fluorescence.burst_companion import write_companion
+
 from .h2mm import BurstPhotons
 from .photons import PhotonMeta
 
@@ -45,6 +47,7 @@ def build_tables(
     *,
     stream_groups=None,
     micro_time_ns: float | None = None,
+    burst_sources=None,
 ) -> H2mmTables:
     """Assemble the per-photon and per-burst ndX tables.
 
@@ -77,6 +80,10 @@ def build_tables(
     micro_time_ns : float, optional
         Nanoseconds per micro-time channel. When given the ``Mean Microtime``
         columns are in ns; otherwise they are ``NaN``.
+    burst_sources : array_like, optional
+        Source index of each analysed burst — which measurement it came from.
+        Written as a per-photon ``Source`` column, because ``Photon`` numbers
+        restart in every measurement and are ambiguous without it.
 
     Returns
     -------
@@ -97,6 +104,19 @@ def build_tables(
             "Burst": meta.burst_id,
         }
     )
+    # Where each photon sits in its measurement's raw arrays. ``Burst`` counts
+    # only the bursts that survived extraction, so it cannot take a per-photon
+    # result back to the file; this can, which is what lets another analysis
+    # (the state-split MLE) slice the same photons this table describes.
+    if getattr(meta, "photon_index", None) is not None:
+        photons["Photon"] = np.asarray(meta.photon_index, dtype=np.int64)
+    if burst_sources is not None:
+        # ``Photon`` restarts at 0 in every measurement, so on its own it points
+        # at several photons at once. The source index disambiguates it.
+        sources = np.asarray(burst_sources, dtype=np.int64)
+        ids = np.asarray(meta.burst_id, dtype=np.int64)
+        if sources.size and ids.max(initial=-1) < sources.size:
+            photons["Source"] = sources[ids]
 
     if stream_groups is None:
         stream_groups = [("green", (0,))]
@@ -348,8 +368,6 @@ def write_burst_companions(
         mean_e[b] = float((occ * fret_arr).sum() / occ.sum()) if occ.sum() else np.nan
         photons[b] = float(seg.size)
 
-    out_dir = pathlib.Path(out_root) / H2MM_COMPANION
-    out_dir.mkdir(parents=True, exist_ok=True)
     files = np.asarray(burst_df["First File"].astype(str))
     written = []
     for name in pd.unique(files):
@@ -372,11 +390,10 @@ def write_burst_companions(
                 0.0 if np.isnan(mean_e[b]) else mean_e[b], photons[b], 1.0,
             )
 
-        interleaved = np.zeros((table.shape[0] * 2 + 1, table.shape[1]), dtype=float)
-        interleaved[1::2] = table
-        target = out_dir / f"{pathlib.Path(str(name)).stem}.{H2MM_COMPANION}"
-        with open(target, "w", newline="") as fh:
-            fh.write("\t".join(H2MM_COMPANION_COLUMNS) + "\t\n")
-            np.savetxt(fh, interleaved, delimiter="\t", fmt="%.6f")
-        written.append(target)
+        written.append(
+            write_companion(
+                out_root, H2MM_COMPANION, pathlib.Path(str(name)).stem,
+                H2MM_COMPANION_COLUMNS, table,
+            )
+        )
     return written
