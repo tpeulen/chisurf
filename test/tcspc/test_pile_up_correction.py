@@ -77,6 +77,37 @@ def test_pile_up_is_applied_for_a_sufficient_measurement_time():
     assert sf[0] > sf[-1]
 
 
+def test_empty_channels_keep_the_analytic_limit_of_the_scale_factor():
+    """Zero-count channels must not punch holes into the model (RF-611).
+
+    Coates' factor is ``data / -log(1 - p)`` with ``p = data / (N - cumsum)``.
+    Where ``data`` is zero this is ``0/0``; its limit is the number of remaining
+    excitation pulses, not zero.
+    """
+    data = _decay(n_photons=3e4, n_channels=256)
+    data = np.floor(data)  # a realistic dim decay: the tail channels are empty
+    assert np.any(data == 0.0)
+    model = np.ones_like(data)
+
+    corrected = add_pile_up_to_model(data, model, REP_RATE, DEAD_TIME, 300.0, False)
+    assert np.all(np.isfinite(corrected))
+    assert np.all(corrected > 0.0)
+
+    rep_rate = REP_RATE * 1e6
+    n_excitation_pulses = (300.0 - data.sum() * DEAD_TIME * 1e-9) * rep_rate
+    remaining = n_excitation_pulses - np.cumsum(data)
+    p = data / remaining
+    with np.errstate(invalid="ignore"):  # the 0/0 branch is discarded below
+        sf = np.where(data > 0.0, data / -np.log(1.0 - p), remaining)
+    sf = sf / sf.sum() * len(data)
+    np.testing.assert_allclose(corrected, sf)
+
+    # The scale factor is smooth in the channel index - an empty channel is
+    # scaled like its filled neighbours, not by zero.
+    empty = data == 0.0
+    np.testing.assert_allclose(corrected[empty], corrected[empty][0], rtol=1e-3)
+
+
 def test_the_input_model_is_only_modified_in_place_when_requested():
     """`modify_inplace=False` must not touch the caller's model array."""
     data = _decay()

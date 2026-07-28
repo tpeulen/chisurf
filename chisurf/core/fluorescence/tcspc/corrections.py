@@ -188,15 +188,21 @@ def add_pile_up_to_model(
         # Coates, 1968, eq. 2. The probability is capped strictly below one so
         # that eq. 4 stays finite for a measurement time that is only barely
         # long enough.
-        p = np.minimum(data / (n_excitation_pulses - cum_sum), MAX_DETECTION_PROBABILITY)
+        remaining_pulses = n_excitation_pulses - cum_sum
+        p = np.minimum(data / remaining_pulses, MAX_DETECTION_PROBABILITY)
         # Coates, 1968, eq. 4
         rescaled_data = -np.log(1.0 - p)
-        rescaled_data[rescaled_data == 0] = 1.0
 
         # instead of rescaling the data, the model function is
         # rescaled, to preserve the counting statistics and the
         # known noise.
-        sf = data / rescaled_data
+        #
+        # A channel without a detected photon makes eq. 4 a 0/0 expression. Its
+        # analytic limit for p -> 0 is the number of excitation pulses that are
+        # left, so the scaling factor stays a smooth function of the channel
+        # index instead of forcing the model to zero in every empty channel.
+        empty = rescaled_data <= 0.0
+        sf = np.where(empty, remaining_pulses, data / np.where(empty, 1.0, rescaled_data))
         sf = sf / np.sum(sf) * len(data)
     if modify_inplace:
         model *= sf

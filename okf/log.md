@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+* **TCSPC: the pile-up correction stops punching holes into the model
+  (RF-611).** Coates' scale factor `sf_i = data_i / -log(1 - p_i)` is `0/0` in a
+  channel without a detected photon. `add_pile_up_to_model` used to patch the
+  *denominator* (`rescaled_data[rescaled_data == 0] = 1.0`), which makes
+  `sf_i = 0`, so every empty channel — 110 of 1024 on a normal dim decay — had
+  its model value multiplied by exactly zero. Those channels then contribute
+  nothing to χ², so the fit is rewarded rather than penalised for the model
+  deviating there, and the plotted model drops to the axis at scattered tail
+  channels. The ratio's analytic limit for `p → 0` is the number of remaining
+  excitation pulses, `n_excitation_pulses - cum_sum_i`, which is what makes `sf`
+  a smooth function of the channel index rather than of the noise; that limit is
+  now selected for the empty channels and the denominator is left alone. Pinned
+  by `test/tcspc/test_pile_up_correction.py::test_empty_channels_keep_the_analytic_limit_of_the_scale_factor`
+  (a floored 3e4-count 256-channel decay with an empty tail: the corrected model
+  stays strictly positive, matches the reference factors, and scales empty
+  channels like their filled neighbours). 5 passed + 2 doctests.
+
 * **PDA: the SAW-ν model's *Distance P(R)* panel can draw at all (RF-606).**
   `pda2c/common.py::get_pda_distance_distribution` was written against the
   Gaussian-component group and read `means`/`sigmas`/`amplitudes` — three
