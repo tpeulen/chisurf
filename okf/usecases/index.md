@@ -289,6 +289,20 @@ The workflows a first pass should cover — expand as the tester discovers more:
   covariance error bar is quoted instead. *(last driven 2026-07-28;
   RF-840..RF-845)*
 
+- [Rates from a binned trace — the hidden Markov model](/usecases/hmm-binned-trace-kinetics.md)
+  — the binned-trace counterpart of H2MM and the declared shared HMM seam of
+  ChiSurf: drop a trace, let the state scan choose the state count by BIC, fit,
+  and read the emissions, dwell times and per-second transition rates. The
+  estimator is exact and fast (a 30 000-bin three-state trace returns
+  12.02 / 33.91 / 59.98 counts and every rate within 15 % of truth in 0.7 s, and
+  the CLI reproduces it digit for digit); the window around it does not connect
+  to the rest of the application — the trace is not drawn until a fit runs, a
+  file it cannot read is reported as no file at all, the only binned-trace CSV
+  ChiSurf itself writes fails to load (and with its header removed its time
+  column is fitted as a detection channel), a sub-microsecond bin width collapses
+  to 10⁻¹² s and is reported as rates of 10¹⁰ s⁻¹, and the finished fit cannot
+  leave the window. *(last driven 2026-07-28; RF-853..RF-862)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

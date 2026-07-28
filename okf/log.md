@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **QA — rates from a binned trace (hidden Markov model).** Drove the
+  `Analysis ▸ Kinetics ▸ Hidden Markov model` tool headlessly on a three-state
+  simulated trace with known rates and on a real SPC-132 single-molecule photon
+  stream binned at 1 ms, plus the full chain from the Trace Browser's own HMM
+  export back into the tool. The estimator is exact and fast (means
+  12.02 / 33.91 / 59.98 against 12 / 34 / 60, every rate within 15 % of truth,
+  0.7 s for the fit and 7.4 s for a 1…6 state scan; the CLI reproduces it digit
+  for digit), and the window around it is disconnected from the rest of the
+  application: a loaded trace is not drawn until a fit runs, a file that cannot
+  be read is reported as no file at all, the only binned-trace CSV ChiSurf
+  itself writes fails to load (and with its header removed the time column is
+  fitted as a detection channel), a sub-microsecond bin width collapses to
+  10⁻¹² s and is reported as rates of 10¹⁰ s⁻¹, a reversed scan range answers
+  "BIC prefers 0 states", a minute-long fit shows no progress, the transition
+  matrix is illegible past ~6 states, nested plot titles are dropped by
+  AutoForm, and the finished fit cannot be saved. Recorded as
+  [hmm-binned-trace-kinetics](/usecases/hmm-binned-trace-kinetics.md) with
+  RF-853..RF-862 in the [findings queue](/reviews/findings.md).
+
 * **A click on the in-viewport panel crashed the next drag, and a duplicate
   method is why the fix did not take the first time.** `_last_mouse_pos` was
   only ever *assigned* on a press the camera handled. A press taken by the panel

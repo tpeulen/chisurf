@@ -9716,3 +9716,73 @@ tint it carries are each honoured on one side only. RF-846..RF-852.
 - **Location:** `chisurf/plugins/chimol/chimol/app/molview_main_window.py:2058` (`sync_internal_gui`)
 - **Finding:** the docstring promises the two panels are "two views of one list … fed from the same place so they cannot disagree", but they are fed from different places: the docked list is built by `_grouped_display_order` with a header row per group and the members of a *collapsed* group skipped (`:1974-1997`), while `sync_internal_gui` walks `_object_store`, which deliberately keeps every object "whether or not its row is drawn" (`:1987-1990`), and emits one flat row each. So the in-viewport panel shows the members of collapsed groups, has no group row, and cannot address a group at all — and the `{sele}`-to-members expansion the docked panel does for a group (`objects_panel._targets_for`) has no counterpart. `GuiRow.is_group`, `.indent` and `.detail` are painted (`internal_gui.py:398-408`) but have no producer anywhere in the tree. Fix: build the rows from the same display order, set `is_group`/`indent`, and skip a collapsed group's members.
 - **Fix note:**
+
+### RF-853
+- **Status:** OPEN
+- **Severity:** S3 (a trace loaded into the HMM tool is not drawn until a fit is run, and the status line still says no trace is loaded)
+- **Location:** `chisurf/plugins/core/hmm/gui/view_model.py:279-313` (`trace_series`: `traces = self._traces`) and `:314-354` (`histogram_series`: `traces = self._traces`), against the lazy loader at `:205-210` (`traces` property, which reads the files on first access) and the `sel_files` setter at `:82-88` (which clears `_traces`)
+- **Finding:** both plot sources read the *private* `_traces` list instead of the `traces` property that reads the selected files, so between dropping a file and pressing **▶ Fit** the tool shows nothing at all: measured on a 30 000-bin trace, `len(model.trace_series()) == 0` with `model.sel_files == ['…/sim_3state.csv']`, both plots blank, and `info_html()` still reading *"No traces loaded."* (the status is only written by `run`/`run_scan`/`load`). A user who drops the wrong file, or the right file in the wrong format, gets exactly the same screen as one who dropped nothing. Read through `self.traces` in both sources and set a status on load ("3 files · 30 000 bins · 1 channel").
+- **Fix note:**
+
+### RF-854
+- **Status:** OPEN
+- **Severity:** S2 (the loader composes the reason a file could not be read and the run path overwrites it with "No traces loaded.")
+- **Location:** `chisurf/plugins/core/hmm/gui/view_model.py:192-203` (`load`: `self._status = f"Cannot read {…}: {exc}"`) against `:221-227` (`run`: `if not self.traces: self._status = "No traces loaded."`) and `:239-245` (`run_scan`, same)
+- **Finding:** `load()` catches a per-file read failure, logs it and writes the diagnosis into `_status` — and `run()` then immediately replaces it, because `self.traces` is empty. Measured twice this run: a raw `.spc` dropped in by mistake logs `cannot read …/m005.spc: 'utf-8' codec can't decode byte 0x87 in position 0` and the panel says *"No traces loaded."*; ChiSurf's own exported `m005_traces.csv` logs `could not convert string 'time_s' to float64 at row 0, column 1` and the panel says *"No traces loaded."* The user is told the file is absent while it is sitting in the list, and the one sentence that would explain it exists and is thrown away. Keep the loader's status when it set one (e.g. only overwrite when `self.files` is empty).
+- **Fix note:**
+
+### RF-855
+- **Status:** OPEN
+- **Severity:** S2 (the only binned-trace file ChiSurf writes cannot be read by the tool that consumes binned traces, and stripping its header makes the time column a detection channel)
+- **Location:** `chisurf/plugins/core/hmm/cli/main.py:26-48` (`load_trace`: `np.loadtxt(file, delimiter="," if "," in sample else None)`, no header handling, no time column) against `chisurf/plugins/tttr/intensity_trace/__init__.py:1222-1233` (`perform_hmm` writes `header_cols = ["time_s"] + chan_labels + (["HMM_State"] …)` to `<stem>_HMM#N_XXms/traces/<stem>_traces.csv`) and `:1236-1241` (`<stem>_state_traj.csv`, header `time_s,HMM_State`)
+- **Finding:** driven end to end this run on a copy of `bh_spc132_sm_dna/m005.spc`: the Trace Browser's **Perform HMM** wrote `m005_traces.csv` (1.3 MB) and `m005_state_traj.csv`, and dropping either into the HMM tool fails in `np.loadtxt` on the header line — the panel reports "No traces loaded." (see RF-854). With the header removed by hand the file loads as `(64081, 3)` and the fit treats `time_s` (0…64.08 s, monotone) and `HMM_State` as two extra detection channels: the returned state means are `[32.027, 0.598, 0.0]` and `[32.489, 7.608, 1.0]`, i.e. the tool reports the mean elapsed time as an emission brightness and nothing flags it. The producer and the consumer of ChiSurf's binned traces have no shared contract. Teach `load_trace` to skip a non-numeric header row and to recognise/drop a leading time column (or write the trace without one), and pin it with a round-trip test over the Trace Browser's own export.
+- **Fix note:**
+
+### RF-856
+- **Status:** OPEN
+- **Severity:** S2 (a bin width below 1 µs cannot be entered, silently becomes 1e-12 s, and every dwell time and rate is then wrong by nine orders of magnitude without a warning)
+- **Location:** `chisurf/plugins/core/hmm/gui/hmm.view.json:25` (`"kind": "float", "decimals": 6, "minimum": 0.0, "maximum": 1000.0`, no `step`) with `chisurf/plugins/core/hmm/gui/view_model.py:111-119` (`time_step` setter: `max(float(value), 1e-12)`), consumed by `states_html` (`:381-411`) and `transitions_html` (`:413-…`)
+- **Finding:** the spin box rounds anything below 5e-7 to `0.000000`, and the setter then clamps 0 to **1e-12 s** rather than refusing it. Measured: typing `1e-7` (a 100 ns bin, an ordinary TTTR binning) leaves the widget reading `0.000000` and the model holding `1e-12`; the following fit is numerically identical (the transition *probabilities* are unaffected) but the state table reports mean dwells of `4.726e-11`, `2.833e-11`, `3.320e-11` s and the transition table `1.94e+10 s⁻¹`, `2.27e+10 s⁻¹`, with the trace axis relabelled `time (x1e-09)` — all presented as results, with no warning anywhere. The default `singleStep` of 1.0 also makes the arrows useless: one click from 1 ms lands on 1.001 s. Give the field a realistic minimum (or scientific-notation entry), a step matched to its range, and refuse rather than clamp.
+- **Fix note:**
+
+### RF-857
+- **Status:** OPEN
+- **Severity:** S3 (a reversed state-scan range reports "BIC prefers 0 states, AIC 0" as a result and blanks the scan plot)
+- **Location:** `chisurf/plugins/core/hmm/core/analysis.py:365-386` (`scan_state_counts`: `for n_states in range(int(min_states), int(max_states) + 1)` — an empty range leaves `best_bic`/`best_aic` at their `0` default) with `chisurf/plugins/core/hmm/gui/view_model.py:239-253` (`run_scan`: `f"BIC prefers {self._scan.best_bic} states, AIC {self._scan.best_aic}."`) and `chisurf/plugins/core/hmm/gui/hmm.view.json:40-43` (`min_states` / `max_states`, each independently bounded 1…32 with no cross-check)
+- **Finding:** setting **From** 5 and **To** 2 — two independent spin boxes with nothing tying them together — returns `StateScan(n_states=[], aic=[], bic=[], best_bic=0, best_aic=0)` in 0.2 s, which the panel reports as *"BIC prefers 0 states, AIC 0."* and the scan plot renders empty, replacing whatever scan was there before. A state count of zero is not a possible answer. Swap or clamp the bounds (or refuse with a message) and report an empty scan as an empty scan.
+- **Fix note:**
+
+### RF-858
+- **Status:** OPEN
+- **Severity:** S3 (a minute-long fit shows no progress, no busy state and the previous run's message; a second click on the run button is discarded silently)
+- **Location:** `chisurf/plugins/core/hmm/gui/tool.py:71-79` (`_start`: `if self._worker is not None and self._worker.isRunning(): return`, then only `setCursor(Qt.BusyCursor)`) with `:64-69` (`_on_model_event`) and `chisurf/plugins/core/hmm/gui/hmm.view.json:45-50` (the `button_row`, whose buttons are never disabled)
+- **Finding:** measured on a 12-state fit of a 30 000-bin trace: **59.8 s** during which `button_sample`-equivalent `▶ Fit` reports `isEnabled() == True`, the status line still carries the *previous* action's text (`"BIC prefers 0 states, AIC 0."`) and nothing else changes — a screenshot mid-run is indistinguishable from idle. A user who concludes nothing happened and clicks **▶ Fit** again has the click dropped by the `isRunning()` guard without a word. The state-count scan (1…6, 7.4 s; 1…32 would be far longer) behaves the same. ChiSurf has a shared progress surface for this (`ChiSurfProgress` / the AutoForm `progress` section); at minimum disable both buttons for the duration and write "Fitting…" into the status line.
+- **Fix note:**
+
+### RF-859
+- **Status:** OPEN
+- **Severity:** S3 (the transition matrix becomes unreadable above ~6 states while the control allows 32)
+- **Location:** `chisurf/plugins/core/hmm/gui/view_model.py:413-…` (`transitions_html`: `"<table width='100%' cellspacing='2'>"`, one column per state, each cell `probability` + `<br/><small>rate</small>`) rendered into the fixed-height `info` section at `chisurf/plugins/core/hmm/gui/hmm.view.json:78` (`"height": 120, "max_height": 190`), with `:22` allowing `n_states` up to 32
+- **Finding:** at 12 states in a 1250 px window the table cannot fit its columns, so the renderer wraps *inside* the cells: the corner header comes out as `fro` / `m` / `\` / `to` on four lines and every probability breaks into stacked digit groups (`0.` / `20` / `73` / `264`), which is illegible rather than merely cramped (screenshot `09_overfit.png`). The dwell-time plot's legend clips at 6 of 12 entries, and `STATE_COLORS` has 8 entries (`view_model.py:28-33`), so states 8–11 repeat the colours of 0–3 in both the table and the legend. Render the matrix as a real table widget (or a heat-map image) that scrolls horizontally, and either extend the palette or vary the marker beyond 8 states.
+- **Fix note:**
+
+### RF-860
+- **Status:** OPEN
+- **Severity:** S3 (a `plot` section's `title` is silently dropped whenever the plot is nested in a panel — 6 titled plots in 3 shipped view specs render with no caption)
+- **Location:** `chisurf/gui/autoform/sections/builtin.py:1327-1369` (`PlotWidget.__init__`, which reads `y_label`, `x_label`, `log_*`, `legend`, `description` and never `section.title`) against `chisurf/core/dataspec/__init__.py:50-51` (`Section.title`, "Optional title shown for the section") and `chisurf/gui/autoform/auto_form.py:912-926` (the caption wrapper, added for `custom` sections only)
+- **Finding:** the same defect that was fixed for `custom` sections one level over. A plot that is a *direct* child of a `dock_area` gets its title as the dock tab (`auto_form.py:754-757`); a plot inside a `panel` loses it entirely. Verified on the HMM tool, whose *Trace* and *States* docks each stack two plots whose authored titles — *Trace and decoded states*, *Intensity histogram*, *Dwell times*, *State-count scan* — appear nowhere on screen, leaving the user to tell them apart by axis labels. A tree scan finds 6 such plots in 3 specs: `chisurf/plugins/core/hmm/gui/hmm.view.json` (4), `chisurf/plugins/fcs/fcs_correlator/correlator.view.json` (*FCS Correlation*), `chisurf/plugins/fluorescence_decay/synthetic_decay/gui/synthetic_decay.view.json` (*Synthetic decay*). Render the title as a caption above the plot, exactly as `_build_custom` does.
+- **Fix note:**
+
+### RF-861
+- **Status:** OPEN
+- **Severity:** S3 (a completed HMM fit cannot be saved or exported from the GUI; the view model's own `save_result` has no caller)
+- **Location:** `chisurf/plugins/core/hmm/gui/view_model.py:261-265` (`save_result`, which writes the full `to_dict()` as JSON) against `chisurf/plugins/core/hmm/gui/hmm.view.json:45-50` (the `button_row`, which offers only **▶ Fit** and **⇄ Scan states**) — the tool's full button set this run was `➕ Files / 🗄️ Database / ➖ Remove / 🗑️ Clear / ▶ Fit / ⇄ Scan states / ?`
+- **Finding:** the emissions, occupancies, dwell times, transition matrix, rates and the decoded per-bin state path are computed, displayed and then unreachable: there is no Save, no Export, no copy action, and the two HTML tables are not selectable text. `save_result()` exists for exactly this and nothing calls it (`grep` finds no caller in the tree). The same result *is* obtainable from `csc hmm fit … -o fit.json`, which is a poor answer for a user who has just tuned the fit in the GUI. Add a **💾 Save result** button bound to `save_result`, and ideally a CSV of the state path for downstream use.
+- **Fix note:**
+
+### RF-862
+- **Status:** OPEN
+- **Severity:** S2 (with no detector setup configured the Trace Browser builds its trace from one routing channel while showing eight ticked, and never offers the channels that hold most of the photons)
+- **Location:** `chisurf/plugins/tttr/intensity_trace/__init__.py:1044-1054` (`_refresh_detector_checkboxes`: `for ch in [0, 1, 2, 3, 4, 5, 6, 7]`, each `setChecked(True)`) and `:1390-1395` (`fallback_channel = selected_detectors[0] if selected_detectors else "__all__"`, then `_process_routing_channels(…, fallback_channel)`)
+- **Finding:** driven on `bh_spc132_sm_dna/m005.spc` (routing channels **0, 1, 8, 9** carrying 50 896 / 27 121 / 71 174 / 29 960 = 179 151 photons) with no detector setup present: the panel added eight ticked boxes labelled *Routing Channel 0…7*, and the run logged `Processing routing channel 0 … 1 traces, 64081 bins` — 50 896 photons, **28 % of the file**. The other three channels are silently absent from the trace, and channels 8 and 9 (101 134 photons, 56 %) cannot be selected at all because the fallback list stops at 7. Nothing in the window says which channels the trace came from. Build the fallback list from the channels actually present in the file (`numpy.unique(tttr.routing_channels)`) and honour every ticked box rather than the first.
+- **Fix note:**
