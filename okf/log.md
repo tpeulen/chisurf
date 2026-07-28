@@ -2,6 +2,38 @@
 
 ## 2026-07-28
 
+* **A fix that could not reach the person it was for, and a reader that opened a
+  trajectory as text.** Two independent silent-degradation bugs, both surfaced by
+  the same report -- a metaball still tearing after it had been fixed twice.
+  - **The migration was unreachable.** `sigma_factor` changed three times inside
+    version 6 over one afternoon. Anyone who launched the app in between had a
+    file **already stamped 6**, holding an intermediate value, and
+    `apply_display_config_migrations` skips every version `<= from_version` --
+    so the correction could never arrive, and they kept a width nobody intended.
+    That is precisely what happened: a user copy read `_version 6,
+    sigma_factor 3.0`, the per-helix width that causes the tearing. The lesson
+    is that a default must get a **new version each time it moves**, not an
+    edit to the version already shipped. A migration entry may now name several
+    superseded values (`((3.0, 3.5), 4.0)`), which is what reaches a file
+    stranded mid-change, and version 7 does exactly that. Guardrails: every
+    superseded value named in the table must land on what ships, and a value the
+    user chose must survive the looser match.
+  - **The coordinate reader slurped every file as text, before it looked at the
+    extension** -- and only the PQR branch ever used the result. For PDB and
+    mmCIF that was a wasted read of the whole file; for an HDF5 trajectory it
+    *raised*, on the file's own magic byte (`0x89` at position 0), from a
+    function with no intention of reading the bytes. Chimol caught it, warned
+    "falling back to the built-in PDB parser", logged a traceback, and loaded the
+    file correctly by another route -- so the only symptom was noise, which is
+    why it survived. The read now happens only for PQR.
+  - **And an unsupported extension returned zero atoms rather than saying so.**
+    Every caller then had to tell "this reader cannot read that" apart from "the
+    file holds no atoms", and none of them did. It raises now.
+  - Chimol no longer offers a trajectory (`.h5`, `.hdf5`, `.gro`, `.g96`) to the
+    core structure reader at all, the same way an mmCIF is already routed to its
+    own reader: a *choice* of reader, not the failure of one, and it should not
+    be announced as a degraded load.
+
 * **A base class that could not be indexed, and the test module that quietly
   rounded every float in the process.** `NCurve.__getitem__` built its abscissa
   from `self.y` — an attribute `NCurve` does not have, and whose length is the

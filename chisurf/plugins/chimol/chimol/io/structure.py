@@ -834,8 +834,16 @@ def load_structure_payload(
     # had fallen back to "the built-in PDB parser" when the dedicated mmCIF
     # reader had in fact read the file, and the GUI raised a degraded-load
     # notice over the top of it.
+    #
+    # A trajectory is the same situation and was not covered. The core reader
+    # opens whatever it is given as text, so an HDF5 file failed on its own
+    # magic bytes (`0x89` at position 0) and the load continued down the
+    # fallback with a warning and a full traceback in the log -- for a file the
+    # dedicated reader handles perfectly. Nothing was broken in the picture,
+    # which is exactly why it survived: the only symptom was noise.
     is_mmcif = str(path).lower().endswith((".cif", ".mmcif", ".bcif"))
-    if is_mmcif:
+    is_trajectory = str(path).lower().endswith((".h5", ".hdf5", ".gro", ".g96"))
+    if is_mmcif or is_trajectory:
         structure_factory = None
     elif structure_factory is None:
         logger.warning(

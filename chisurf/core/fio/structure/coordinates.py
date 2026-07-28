@@ -585,7 +585,15 @@ def read_coordinates(
     elif upper.endswith('.CIF'):
         mp = IMP.atom.read_mmcif(filename, model, selector)
     else:
-        return np.zeros(0, dtype={'names': keys, 'formats': formats})
+        # An unsupported format used to return **zero atoms**, which every
+        # caller then had to tell apart from a file that genuinely holds none.
+        # None of them did: a trajectory handed to this reader produced an empty
+        # structure, and whatever was built from it was simply blank.
+        raise ValueError(
+            f"cannot read coordinates from '{filename}': this reader handles "
+            "PDB, ENT, mmCIF and PQR. Trajectories (.h5, .gro, ...) are read by "
+            "their own loader."
+        )
 
     return convert_atoms(
         IMP.atom.get_by_type(mp, IMP.atom.ATOM_TYPE),
@@ -637,29 +645,27 @@ def read(
     if verbose is None:
         verbose = cs.core.settings.cs_settings['verbose']
     if os.path.isfile(filename):
-        with io.zipped.open_maybe_zipped(
-                filename=filename,
-                mode='r'
-        ) as f:
-            string = f.read()
-            if verbose:
-                path, baseName = os.path.split(filename)
-                print("======================================")
-                print("Filename: %s" % filename)
-                print("Path: %s" % path)
-            fn1, ext1 = os.path.splitext(filename.upper())
-            _, ext2 = os.path.splitext(fn1)
-            # # PDB, mmCIF now handled by scikit_fluorescence
-            # if '.PDB' in [ext1, ext2]:
-            #     atoms = parse_string_pdb(string, assign_charge, **kwargs)
-            if '.PQR' in [ext1, ext2]:
-                atoms = parse_string_pqr(string, **kwargs)
-            else:
-                atoms = read_coordinates(
-                    filename=filename,
-                    keep_water=keep_water,
-                    only_standard_residues=only_standard_residues,
-                )
-            return atoms
+        if verbose:
+            path, baseName = os.path.split(filename)
+            print("======================================")
+            print(f"Filename: {filename}")
+            print(f"Path: {path}")
+        fn1, ext1 = os.path.splitext(filename.upper())
+        _, ext2 = os.path.splitext(fn1)
+        # The file is slurped **only** for PQR, which is the one format parsed
+        # from a string here. It used to be read unconditionally, before the
+        # dispatch, and the text was then thrown away for every PDB and mmCIF --
+        # and for anything binary it did not merely waste the read, it raised:
+        # an HDF5 trajectory died on its own magic byte (`0x89` at position 0)
+        # with a UnicodeDecodeError, from a function that had no intention of
+        # looking at the bytes.
+        if '.PQR' in [ext1, ext2]:
+            with io.zipped.open_maybe_zipped(filename=filename, mode='r') as f:
+                return parse_string_pqr(f.read(), **kwargs)
+        return read_coordinates(
+            filename=filename,
+            keep_water=keep_water,
+            only_standard_residues=only_standard_residues,
+        )
     else:
         return np.zeros(0, dtype={'names': keys, 'formats': formats})

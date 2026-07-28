@@ -110,7 +110,7 @@ def test_every_migration_matches_the_shipped_value(shipped):
 def test_a_chained_migration_lands_on_the_current_default(shipped):
     """A copy old enough to need several steps ends on the newest value.
 
-    `sigma_factor` has moved 2.2 -> 2.8 -> 6.5 -> 3.0 across three versions, and
+    `sigma_factor` has moved 2.2 -> 2.8 -> 6.5 -> 4.0 across four versions, and
     it went *up* and then back down: someone who never opened the app in between
     must still arrive at what ships today, and someone who stopped part-way must
     be carried the rest of the way. Asserted against the shipped file rather
@@ -207,3 +207,51 @@ def test_a_stale_user_copy_is_migrated_on_load(tmp_path, monkeypatch):
     written = json.loads(user_path.read_text(encoding="utf-8"))
     assert written["metaball"]["shininess"] == 96.0
     assert written["_version"] == cfg_mod.DISPLAY_CONFIG_VERSION
+
+
+# --------------------------------------------------------------------------- #
+# A default that changed twice inside one version
+# --------------------------------------------------------------------------- #
+def test_a_copy_stamped_with_the_current_version_can_still_be_corrected(shipped):
+    """Someone who launched the app mid-change must not be stranded there.
+
+    A default can change more than once before it settles, and anyone who ran
+    the app in between has a file *already stamped with the current version*.
+    Every later migration is then skipped for them -- the correction is
+    unreachable and they keep a value nobody intended, which is exactly how a
+    reported bug survived being fixed twice.
+
+    A migration entry may therefore name several superseded values, and this
+    holds that the intermediates named in the table really do arrive at what
+    ships.
+    """
+    superseded: dict[tuple[str, str], list] = {}
+    for version, sections in cfg_mod.DISPLAY_CONFIG_MIGRATIONS.items():
+        for section, keys in sections.items():
+            for key, (old, _new) in keys.items():
+                values = old if isinstance(old, tuple) else (old,)
+                superseded.setdefault((section, key), []).extend(values)
+
+    for (section, key), olds in superseded.items():
+        target = shipped.get(section, {}).get(key)
+        for old in olds:
+            stale = {section: {key: old}}
+            cfg_mod.apply_display_config_migrations(stale, from_version=0)
+            assert stale[section][key] == target, (
+                f"{section}.{key}: a copy holding the superseded {old!r} "
+                f"ended on {stale[section][key]!r}, not the shipped {target!r}"
+            )
+
+
+def test_a_value_the_user_chose_survives_a_multi_valued_migration():
+    """Naming several old defaults must not turn into overwriting choices.
+
+    The looser match is the risk of the mechanism: the more values a migration
+    claims, the more likely one of them is something a person actually picked.
+    Anything not named stays exactly as it is.
+    """
+    chosen = {"metaball": {"sigma_factor": 2.0, "iso_value": 0.30}}
+    changed = cfg_mod.apply_display_config_migrations(chosen, from_version=0)
+
+    assert chosen["metaball"] == {"sigma_factor": 2.0, "iso_value": 0.30}
+    assert changed == []

@@ -27,6 +27,18 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture(scope="module")
 def app():
+    """Return the Qt application, skipping if the platform cannot do GL.
+
+    Checked here rather than relying on the module-level mark alone: that mark
+    is evaluated at **import** time, and several modules in this tree set
+    `QT_QPA_PLATFORM=offscreen` with `setdefault` when *they* are imported. Run
+    together with any of them, the mark sees a windowed platform, the fixture
+    then meets an offscreen one, and these turn into errors rather than skips --
+    which reads as a broken screenshot helper instead of an unsuitable
+    environment.
+    """
+    if os.environ.get("QT_QPA_PLATFORM", "").lower() == "offscreen":
+        pytest.skip("another module set QT_QPA_PLATFORM=offscreen after import")
     return shot.ensure_app()
 
 

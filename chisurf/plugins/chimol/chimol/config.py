@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 6
+DISPLAY_CONFIG_VERSION: int = 7
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -74,6 +74,18 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # normals point outward and the surface terms scale with alpha;
             # before either fix, a sub-1 alpha gave opaque milk.
             "alpha": (1.0, 0.55),
+        },
+    },
+    7: {
+        "metaball": {
+            # Version 6 shipped three different widths over one afternoon, and
+            # whoever launched the app in between was left holding one of them
+            # -- their file already stamped 6, so nothing above could ever reach
+            # it. 3.0 and 3.5 are those intermediates: both wrap a helical
+            # bundle too tightly, which is precisely the tearing this was meant
+            # to fix. Named here so the correction actually arrives.
+            "sigma_factor": ((3.0, 3.5), 4.0),
+            "iso_value": ((0.14, 0.12), 0.10),
         },
     },
 }
@@ -168,17 +180,34 @@ def apply_display_config_migrations(cfg: dict, from_version: int) -> list[str]:
                 if key not in block:
                     continue
                 current = block[key]
-                same = (
-                    abs(float(current) - float(old)) < 1e-9
-                    if isinstance(current, (int, float))
-                    and isinstance(old, (int, float))
-                    and not isinstance(current, bool)
-                    else current == old
-                )
-                if same:
+                if any(_same_value(current, candidate) for candidate in _as_tuple(old)):
                     block[key] = new
                     changed.append(f"{section}.{key}")
     return changed
+
+
+def _as_tuple(old) -> tuple:
+    """Return the superseded value(s) of a migration entry as a tuple.
+
+    An entry may name **several** old defaults, because a default can change
+    more than once within one version during development. Anyone who launched
+    the app while an intermediate value was the shipped one has a file already
+    stamped with the current version, and no later migration will ever run for
+    them: the correction is unreachable, and they stay on a value nobody
+    intended. Naming the intermediate values explicitly is what reaches them.
+    """
+    return old if isinstance(old, tuple) else (old,)
+
+
+def _same_value(current, old) -> bool:
+    """Return whether *current* is the default *old*, comparing floats loosely."""
+    if (
+        isinstance(current, (int, float))
+        and isinstance(old, (int, float))
+        and not isinstance(current, bool)
+    ):
+        return abs(float(current) - float(old)) < 1e-9
+    return current == old
 
 
 def _write_user_display_config(path, cfg: dict) -> None:
