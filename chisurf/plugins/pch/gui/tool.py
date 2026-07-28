@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import logging
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -17,7 +18,6 @@ from qtpy.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMainWindow,
     QScrollArea,
     QSizePolicy,
     QSpinBox,
@@ -30,13 +30,21 @@ from qtpy.QtWidgets import (
 
 from chisurf.gui import chiplot as cp
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.progress import ChiSurfProgress
+from chisurf.gui.widgets.messages import Msg
+from chisurf.gui.widgets.tools import ChisurfDockTool
 
 from ..api.models import FitResult, PchResult
 from .client import PCHClient
-from chisurf.gui.progress import ChiSurfProgress
-from chisurf.gui.widgets.messages import MessagesMixin, Msg
 
 logger = logging.getLogger(__name__)
+
+#: Photon-stream files this tool can open, lower-case with the leading dot.
+TTTR_SUFFIXES = (".ptu", ".ht3", ".t2r", ".t3r")
+
+#: Qt file-dialog filter built from :data:`TTTR_SUFFIXES` so the dialog and the
+#: drop handler accept exactly the same set of files.
+TTTR_FILE_FILTER = "TTTR (" + " ".join(f"*{s}" for s in TTTR_SUFFIXES) + ")"
 
 
 class HelpDialog(QDialog):
@@ -99,8 +107,13 @@ class HelpDialog(QDialog):
         layout.addWidget(buttons)
 
 
-class PCHApp(MessagesMixin, QMainWindow):
+class PCHApp(ChisurfDockTool):
     """Photon-counting-histogram tool.
+
+    A :class:`~chisurf.gui.widgets.tools.ChisurfDockTool` (PRD-23 / PRD-36), so
+    the window-level path drag-drop, the geometry helpers, the lazy MMFDB
+    accessors and the declared-message status bar come from the shared base
+    rather than being re-implemented here.
 
     The conditions this tool can be in — nothing loaded, nothing computed, a step
     that failed — are declared below and shown in the status bar rather than
@@ -110,7 +123,13 @@ class PCHApp(MessagesMixin, QMainWindow):
 
     name = "Spectroscopy:Single-Molecule:PCH"
 
-    class Error(MessagesMixin.Error):
+    #: QSettings key for the base's geometry helpers (PRD-36 recipe step 1). The
+    #: manifest declares window statefulness, and that mechanism owns geometry
+    #: for this tool, so ``save/restore_window_geometry`` are left uncalled and
+    #: the two do not both write a geometry key.
+    tool_settings_name: str = "PCHApp"
+
+    class Error(ChisurfDockTool.Error):
         """Conditions that stop the tool from doing what was asked."""
 
         no_file = Msg("Load a TTTR file first.")
@@ -120,8 +139,13 @@ class PCHApp(MessagesMixin, QMainWindow):
         fit_failed = Msg("The fit failed: {}")
         save_failed = Msg("Saving failed: {}")
 
-    def __init__(self):
-        super().__init__()
+    class Information(ChisurfDockTool.Information):
+        """Conditions worth reporting that do not stop the tool."""
+
+        unsupported_drop = Msg("Drop a photon-stream file (" + ", ".join(TTTR_SUFFIXES) + ").")
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
         self.setWindowTitle("Photon Counting Histogram (PCH)")
         self.resize(1000, 650)
 
@@ -349,12 +373,30 @@ class PCHApp(MessagesMixin, QMainWindow):
     def _on_param_changed(self):
         pass
 
+    def on_paths_dropped(self, paths: list[Path]) -> None:
+        """Load the first dropped photon-stream file.
+
+        The base enables window-level path drag-drop for every dock tool. This
+        tool has exactly one file input, so a dropped TTTR file goes through the
+        same load path as the toolbar's Load action; anything else is reported
+        in the status bar rather than accepted and dropped on the floor.
+        """
+        for path in paths:
+            if path.suffix.lower() in TTTR_SUFFIXES:
+                self.Information.unsupported_drop.clear()
+                self._load_path(str(path))
+                return
+        if paths:
+            self.Information.unsupported_drop()
+
     def _on_load(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Open TTTR", "", "TTTR (*.ptu *.ht3 *.t2r *.t3r)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Open TTTR", "", TTTR_FILE_FILTER)
         if not path:
             return
+        self._load_path(path)
+
+    def _load_path(self, path: str) -> None:
+        """Open *path* through the backend and arm the compute step."""
         try:
             info = self._client.load_tttr(path)
             self._filename = path
@@ -593,8 +635,6 @@ class PCHApp(MessagesMixin, QMainWindow):
     # ── file I/O ───────────────────────────────────────────────────
 
     def _save_outputs(self, fname_base: str):
-        from ..api.algorithms import pch_mixture
-
         npz_path = f"{fname_base}.npz"
         png_win = f"{fname_base}_window.png"
         png_hist = f"{fname_base}_histogram.png"

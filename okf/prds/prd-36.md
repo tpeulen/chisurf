@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; thirteen tools are on the base and a backlog of ~14 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; fourteen tools are on the base and a backlog of ~13 tools remains.
 
 # Goal
 
@@ -83,6 +83,19 @@ read-only-construction guard already exist.
       `__getattr__`, so `api`/`core`/`backend` import with no Qt binding — pinned by
       a clean-subprocess boundary check alongside the construction smoke test.
 
+- [x] `pch` — priority-B rollout, and the first tool whose single file input makes the
+      base's window-level drop *do* the work: `_on_load` was split so the file dialog
+      and `on_paths_dropped` share one `_load_path`, and a dropped photon-stream file
+      is now loaded exactly as the toolbar's **Load TTTR** action loads it. The
+      accepted extensions are one `TTTR_SUFFIXES` constant feeding both the dialog
+      filter and the drop filter, so the two cannot drift; a drop of anything else
+      raises a declared `Information` message instead of being swallowed. Geometry
+      stays owned by the manifest-declared window statefulness, as for
+      `calculator/fret_calculator`, so the base's `save/restore_window_geometry` are
+      deliberately left uncalled. The plugin root now resolves `PCHApp` through PEP 562
+      `__getattr__`, so `api`/`backend`/`cli` import with no Qt binding — pinned by a
+      clean-subprocess boundary check alongside the construction smoke test.
+
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
 
@@ -102,7 +115,6 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `tttr/trace_browser/gui/tool.py`
 - [ ] `tttr/tttr_image_browser/gui/tool.py`
 - [ ] `tttr/tttr_lut_tools/gui/tool.py`
-- [ ] `pch/gui/tool.py`
 - [ ] `fluorescence_decay/irf_estimator/gui/tool.py`
 - [ ] `fluorescence_decay/lltf/lltf_gui.py`
 - [ ] `modelling/hydropro/gui/tool.py` (`HydroProTool`; the old top-level
