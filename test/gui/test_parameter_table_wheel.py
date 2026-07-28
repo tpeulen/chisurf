@@ -9,8 +9,8 @@ The step has to be relative: a parameter table holds a lifetime of 4, an
 amplitude of 1e-3 and a count of 1e6 at the same time, and a fixed step is
 either useless on one or destructive on another.
 """
+import numpy as np
 import pytest
-
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf
@@ -18,8 +18,8 @@ import chisurf.core.fitting.fit  # noqa: F401  (binds the fitting submodules)
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.gui.autoform.sections.parameter_table import (
     COLUMN_IDS,
-    ParameterGroupTableWidget,
     WHEEL_COLUMNS,
+    ParameterGroupTableWidget,
     wheel_step,
 )
 
@@ -50,6 +50,38 @@ def turn_wheel(view, row, column, notches=1, modifiers=QtCore.Qt.NoModifier):
         False,
     )
     QtWidgets.QApplication.sendEvent(view.viewport(), event)
+    return event.isAccepted()
+
+
+def turn_wheel_raw(view, row, column, delta):
+    """Send one wheel event with a raw ``angleDelta`` (eighths of a degree)."""
+    position = view.visualRect(view.model().index(row, column)).center()
+    event = QtGui.QWheelEvent(
+        QtCore.QPointF(position),
+        QtCore.QPointF(view.viewport().mapToGlobal(position)),
+        QtCore.QPoint(0, 0),
+        QtCore.QPoint(0, delta),
+        QtCore.Qt.NoButton,
+        QtCore.Qt.NoModifier,
+        QtCore.Qt.NoScrollPhase,
+        False,
+    )
+    QtWidgets.QApplication.sendEvent(view.viewport(), event)
+    return event.isAccepted()
+
+
+@pytest.fixture
+def table_long(qtbot):
+    """A table with far more rows than its viewport can show."""
+    params = [FittingParameter(name=f"p{i}", value=1.0) for i in range(40)]
+    widget = ParameterGroupTableWidget(params)
+    qtbot.addWidget(widget)
+    widget.resize(520, 120)
+    widget.table_view.setFixedHeight(120)
+    widget.table_view.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+    widget.table_view.updateGeometry()
+    widget.show()
+    return widget, params
 
 
 @pytest.fixture
@@ -80,7 +112,7 @@ def test_the_wheel_steps_the_value_under_the_mouse(table):
 
 
 def test_the_step_is_relative_to_the_value_it_moves(table):
-    """One notch is one percent of the value's own magnitude.
+    """One notch is one decade below the value's own magnitude (1–10 % of it).
 
     A step that suits a lifetime of 4 would take a thousand turns to move an
     amplitude of 1e-3, and would obliterate it in one.
@@ -181,3 +213,113 @@ def test_the_wheel_writes_through_the_same_path_as_typing(table):
         assert applied == [pytest.approx(4.1)]
     finally:
         controller.apply_value = original
+
+
+# --- what the review of this feature found (RF-834..RF-839) ----------------
+
+def test_a_cell_the_table_declares_read_only_is_not_wheeled(table):
+    """RF-834: a bound that is not enforced paints blank and cannot be typed.
+
+    It must not be wheelable either — the write lands invisibly and then clamps
+    the parameter the moment bounds are switched on.
+    """
+    widget, params = table
+    assert not params[0].bounds_on
+    index = widget.table_view.model().index(0, COLUMN_IDS.index("bounds_lo"))
+    assert not (widget.table_view.model().flags(index) & QtCore.Qt.ItemIsEditable)
+
+    before = (params[0].lb, params[0].ub, params[0].value)
+    turn_wheel(widget.table_view, 0, COLUMN_IDS.index("bounds_lo"), +1)
+    assert (params[0].lb, params[0].ub, params[0].value) == before
+
+    params[0].bounds_on = True
+    assert params[0].value == pytest.approx(4.0), "the parameter was clamped"
+
+
+def test_editing_one_bound_leaves_the_other_alone(table):
+    """RF-835: the untouched half must not become nan.
+
+    ``param.bounds`` is masked by enforcement; ``lb``/``ub`` are not, and the
+    partner has to be read through them.
+    """
+    widget, params = table
+    params[0].bounds_on = True
+    params[0].bounds = (1.0, 10.0)
+
+    turn_wheel(widget.table_view, 0, COLUMN_IDS.index("bounds_lo"), +1)
+    # 1.0 steps by 0.1, one decade below its magnitude.
+    assert params[0].lb == pytest.approx(1.1)
+    assert params[0].ub == pytest.approx(10.0)
+    assert not np.isnan(params[0].ub)
+
+
+def test_wheel_motion_is_measured_not_counted(table):
+    """RF-836: a trackpad sends fractions of a detent and a wheel sends several.
+
+    One event is not one step: the motion is accumulated in units of 120.
+    """
+    widget, params = table
+    value_column = COLUMN_IDS.index("value")
+    view = widget.table_view
+
+    # An eighth of a detent, eight times, is one step — not eight.
+    for _ in range(8):
+        turn_wheel_raw(view, 0, value_column, 15)
+    assert params[0].value == pytest.approx(4.1)
+
+    # Ten detents merged into one event are ten steps, not one.
+    before = params[1].value
+    turn_wheel_raw(view, 1, value_column, 1200)
+    assert params[1].value == pytest.approx(before + 10 * 0.0001)
+
+
+def test_a_long_table_can_still_be_scrolled(table_long):
+    """RF-837: reaching a parameter must not retune the ones passed on the way.
+
+    With something to scroll, only the cell the user made current is edited.
+    """
+    widget, params = table_long
+    view = widget.table_view
+    value_column = COLUMN_IDS.index("value")
+    bar = view.verticalScrollBar()
+    assert bar.maximum() > bar.minimum(), "the fixture must overflow its viewport"
+
+    before = [p.value for p in params]
+    for _ in range(3):
+        turn_wheel(view, 0, value_column, -1)
+    assert [p.value for p in params] == before, "wheeling over a value retuned it"
+    assert bar.value() > 0, "the table did not scroll"
+
+    # ...and the parameter the user selected is still wheelable.
+    view.setCurrentIndex(view.model().index(0, value_column))
+    turn_wheel(view, 0, value_column, +1)
+    assert params[0].value != before[0]
+
+
+def test_a_value_pinned_at_its_bound_scrolls_instead_of_swallowing(table):
+    """RF-838: an edit that changes nothing must not eat the gesture."""
+    widget, params = table
+    params[0].bounds_on = True
+    params[0].bounds = (1.0, 4.0)
+    params[0].value = 4.0
+
+    accepted = turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
+    assert params[0].value == pytest.approx(4.0)
+    assert not accepted, "the event was consumed although nothing moved"
+
+
+def test_the_wheel_reaches_zero_and_crosses_it(table):
+    """RF-839: an IRF time shift is legitimately negative.
+
+    Re-deriving the step from a shrinking value makes the descent asymptotic —
+    2000 notches from 1.0 reached 3e-23 and never zero. One step per gesture
+    fixes that, so the wheel can take a parameter back through zero.
+    """
+    widget, params = table
+    params[0].value = 1.0
+    value_column = COLUMN_IDS.index("value")
+    view = widget.table_view
+
+    for _ in range(11):
+        turn_wheel(view, 0, value_column, -1)
+    assert params[0].value == pytest.approx(-0.1, abs=1e-9)

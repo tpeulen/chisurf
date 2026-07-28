@@ -17,9 +17,8 @@ attribute on the section descriptor.
 from __future__ import annotations
 
 import re
-import weakref
 from functools import partial
-from math import copysign, floor, isfinite, log10
+from math import floor, isfinite, log10
 from typing import Callable, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -90,9 +89,9 @@ def wheel_step(value: float, modifiers=None) -> float:
 
     A parameter table holds numbers spanning many decades -- a lifetime of 4,
     an amplitude of 1e-3, a count of 1e6 -- so a fixed step is either useless
-    or destructive. The step is one percent of the value's own magnitude,
-    snapped to a decade, which moves every parameter at the same *relative*
-    rate. ``Ctrl`` makes it ten times coarser and ``Shift`` ten times finer,
+    or destructive. The step is one decade below the value's own magnitude,
+    i.e. between 1 % and 10 % of it (4.0 steps by 0.1, or 2.5 %), which moves
+    every parameter at the same *relative* rate. ``Ctrl`` makes it ten times coarser and ``Shift`` ten times finer,
     as in the scientific spin boxes.
 
     Parameters
@@ -122,65 +121,151 @@ def wheel_step(value: float, modifiers=None) -> float:
     return step
 
 
-class WheelValueFilter(QtCore.QObject):
-    """Steps the value under the mouse when the wheel turns over a table.
+class WheelEditTableView(QtWidgets.QTableView):
+    """A table whose wheel steps the value under the mouse.
 
     Reaching for a parameter, then clicking into the cell, then typing, then
     pressing Enter is four actions to try a number. Hovering it and turning the
     wheel is one, and the fit follows immediately -- which is how a parameter
     gets *explored* rather than merely set.
 
-    The event is consumed only when it actually changed something, so the wheel
-    still scrolls the table over its name and error columns, and over a
-    parameter that refuses the edit (fixed, or a linked follower).
+    The wheel falls through to scrolling, as a wheel should, when:
+
+    * the cell is not one of :data:`WHEEL_COLUMNS`;
+    * the table itself declares it read-only -- a bound that is not enforced
+      paints blank and cannot be typed into, so it cannot be wheeled into;
+    * the view has somewhere to scroll and the cell is not the current one, so
+      reaching a parameter in a long table stays a scroll and tuning it stays
+      one click away;
+    * the write could not move the value, e.g. a parameter pinned at its bound.
+
+    A *fixed* parameter is edited like any other: fixed means the optimiser
+    leaves it alone, not that the user may not set it.
+
+    Handling this in ``wheelEvent`` rather than in an event filter is
+    deliberate. A filter edits the model underneath Qt's own delivery to the
+    viewport, and the view's later destruction then crashes the process.
     """
 
-    def __init__(self, view: QtWidgets.QTableView, parent=None):
-        super().__init__(parent or view)
-        # Weak, deliberately. A strong reference here keeps a table (and the
-        # parameters behind it) alive past the point its owner dropped it, and
-        # a repaint of that corpse reads freed parameters -- which surfaced as
-        # another test's table painting an AttributeError from headerData.
-        self._view_ref = weakref.ref(view)
+    #: Eighths of a degree in one detent, the unit ``angleDelta`` reports in.
+    DETENT = 120.0
 
-    @property
-    def _view(self):
-        """Return the table this filter serves, or ``None`` once it is gone."""
-        return self._view_ref()
+    #: A pause longer than this starts a new gesture, and with it a new step.
+    #: Within one gesture the step stays put, so a scroll down from 1.0 reaches
+    #: 0.0 and crosses into the negatives instead of halving forever.
+    GESTURE_MS = 700
 
-    def eventFilter(self, obj, event) -> bool:
-        """Turn a wheel notch over an editable numeric cell into an edit."""
-        if event.type() != QtCore.QEvent.Wheel:
-            return False
-        view = self._view
-        if view is None:
-            return False
-        model = view.model()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._wheel_pending = 0.0
+        self._wheel_key = None
+        self._wheel_step = None
+        self._wheel_at = 0
+
+    def wheelEvent(self, event):
+        """Step the value under the cursor, or scroll if that is not possible."""
+        if not self._wheel_edit(event):
+            super().wheelEvent(event)
+
+    def _wheel_edit(self, event) -> bool:
+        """Apply one wheel event as an edit; return whether it was consumed.
+
+        Parameters
+        ----------
+        event : QtGui.QWheelEvent
+            The wheel event being handled.
+
+        Returns
+        -------
+        bool
+            ``True`` when the event became an edit.
+        """
+        model = self.model()
         if model is None:
             return False
         try:
             position = event.position().toPoint()      # Qt6
         except AttributeError:
             position = event.pos()                     # Qt5
-        index = view.indexAt(position)
+        index = self.indexAt(position)
         if not index.isValid():
             return False
-        column_id = self._column_id(model, index)
-        if column_id not in WHEEL_COLUMNS:
+        if self._column_id(model, index) not in WHEEL_COLUMNS:
             return False
+        if not (model.flags(index) & QtCore.Qt.ItemIsEditable):
+            return False
+        if not self._may_edit(index):
+            return False
+
+        # Wheel motion arrives in eighths of a degree: a trackpad sends many
+        # fractions of a detent and a fast wheel several at once, so it is
+        # accumulated rather than counted as one notch per event. The
+        # modifiers are part of the gesture, so changing gear re-derives the
+        # step.
+        key = (index.row(), index.column(), int(event.modifiers()))
+        now = int(QtCore.QDateTime.currentMSecsSinceEpoch())
+        if key != self._wheel_key or now - self._wheel_at > self.GESTURE_MS:
+            self._wheel_pending = 0.0
+            self._wheel_step = None
+        self._wheel_key = key
+        self._wheel_at = now
+
+        self._wheel_pending += event.angleDelta().y() / self.DETENT
+        notches = int(self._wheel_pending)
+        if notches == 0:
+            # Part of a detent: keep it, and keep the event -- passing it on
+            # would scroll by the very motion being collected.
+            return True
+        self._wheel_pending -= notches
 
         try:
             current = float(model.data(index, QtCore.Qt.EditRole))
         except (TypeError, ValueError):
             return False
-        notches = event.angleDelta().y()
-        if not notches:
+        if self._wheel_step is None:
+            # One step for the whole gesture. Re-deriving it from a shrinking
+            # value made the descent asymptotic: it could never reach zero,
+            # let alone cross it.
+            self._wheel_step = wheel_step(current, event.modifiers())
+
+        target = current + notches * self._wheel_step
+        if target == current:
             return False
-        step = wheel_step(current, event.modifiers())
-        new_value = current + copysign(step, notches)
-        if not model.setData(index, new_value, QtCore.Qt.EditRole):
+        if not model.setData(index, target, QtCore.Qt.EditRole):
             return False
-        return True
+        try:
+            moved = float(model.data(index, QtCore.Qt.EditRole)) != current
+        except (TypeError, ValueError):
+            moved = True
+        # A value clamped at its bound did not move; let the table scroll
+        # rather than swallow the gesture.
+        return moved
+
+    def _may_edit(self, index) -> bool:
+        """Whether the wheel may edit this cell rather than scroll the view.
+
+        A table sized to its rows has nothing to scroll -- that is how a
+        model's parameter group is rendered -- so the wheel is free to edit
+        whatever it is over. One that does scroll is a table the user is
+        probably trying to *reach* something in (Global View's is 77 rows), so
+        there only the current cell is edited.
+
+        Parameters
+        ----------
+        index : QtCore.QModelIndex
+            The cell under the cursor.
+
+        Returns
+        -------
+        bool
+            Whether to edit rather than scroll.
+        """
+        if self.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff:
+            return True
+        bar = self.verticalScrollBar()
+        if bar is None or bar.maximum() <= bar.minimum():
+            return True
+        return index == self.currentIndex()
 
     @staticmethod
     def _column_id(model, index) -> str:
@@ -204,32 +289,6 @@ class WheelValueFilter(QtCore.QObject):
         if index.column() < len(COLUMN_META):
             return COLUMN_META[index.column()][0]
         return ""
-
-
-def install_wheel_editing(view: QtWidgets.QTableView) -> WheelValueFilter:
-    """Let the wheel edit the numeric cell under the mouse in ``view``.
-
-    Parameters
-    ----------
-    view : QtWidgets.QTableView
-        The table to equip.
-
-    Returns
-    -------
-    WheelValueFilter
-        The installed filter, kept alive by the view.
-    """
-    # Parented to the object it filters, not to the view: a filter that
-    # outlives its viewport is a filter Qt tears down in the wrong order, and
-    # the table's own deletion then takes the process with it.
-    viewport = view.viewport()
-    handler = WheelValueFilter(view, parent=viewport)
-    viewport.installEventFilter(handler)
-    # The view's focus policy is left alone. Narrowing it to StrongFocus (it
-    # ships as WheelFocus) changed how the view answers a right-click, which
-    # broke the guard that says only the left button may toggle a checkbox
-    # cell -- the wheel needs no focus to be filtered.
-    return handler
 
 
 def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) -> bool:
@@ -258,7 +317,10 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
             else:
                 param.fixed = _parse_bool(value)
         elif col_id in ("bounds_lo", "bounds_hi"):
-            b = list(param.bounds)
+            # Read the partner through lb/ub, not through ``bounds``: with
+            # enforcement off the tuple is (None, None), and writing that back
+            # turns the bound nobody touched into nan (RF-835).
+            b = [param.lb, param.ub]
             b[0 if col_id == "bounds_lo" else 1] = float(value)
             if ctrl is not None:
                 ctrl.apply_bounds(b[0], b[1], param)
@@ -484,6 +546,49 @@ def _release_controllers(owned, *_) -> None:
             continue
 
 
+#: Releasers waiting for their table to be destroyed. They are kept here, and
+#: only here, so each stays alive exactly as long as its connection.
+_PENDING_RELEASES = set()
+
+
+class _ControllerRelease(QtCore.QObject):
+    """Drops a dead table's ``parameter.controller`` back-references.
+
+    Connecting a :func:`functools.partial` to ``destroyed`` looks equivalent
+    and is not: Qt cannot know what owns a partial, so the connection outlives
+    whatever the partial captured, and firing it during the widget's own
+    destruction dereferences freed memory (``partial_vectorcall``, EXC_BAD_ACCESS
+    — reproducible whenever a table is force-deleted after a session that
+    edited parameters). A bound method of a live QObject is a receiver Qt can
+    track.
+    """
+
+    def __init__(self, owned):
+        super().__init__()
+        self._owned = list(owned)
+
+    def release(self, *_args) -> None:
+        """Release the back-references, then let this releaser go."""
+        _release_controllers(self._owned)
+        self._owned = []
+        _PENDING_RELEASES.discard(self)
+
+
+def _release_controllers_when_destroyed(widget, owned) -> None:
+    """Release ``owned`` once ``widget`` is destroyed.
+
+    Parameters
+    ----------
+    widget : QtWidgets.QWidget
+        The table whose destruction ends the ownership.
+    owned : list of tuple
+        ``(parameter, controller)`` pairs the table installed.
+    """
+    releaser = _ControllerRelease(owned)
+    _PENDING_RELEASES.add(releaser)
+    widget.destroyed.connect(releaser.release)
+
+
 # ── table widget ────────────────────────────────────────────────────────
 
 
@@ -528,7 +633,7 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         layout.setSpacing(0)
 
         self._model = ParameterGroupTableModel(params)
-        self._table = QtWidgets.QTableView()
+        self._table = WheelEditTableView()
         self._table.setModel(self._model)
         self._table.setAlternatingRowColors(False)
         self._table.setWordWrap(False)
@@ -541,9 +646,6 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._table.verticalHeader().setDefaultSectionSize(self._row_h)
         self._table.verticalHeader().setMinimumSectionSize(self._row_h)
         self._table.verticalHeader().hide()
-        # The wheel over a numeric cell steps its value, so a parameter can be
-        # explored by hovering it rather than by clicking, typing and entering.
-        install_wheel_editing(self._table)
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self._table.setShowGrid(True)
@@ -644,7 +746,7 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
             owned.append((param, ctrl))
         # The parameters outlive this widget, so drop the back-reference when the
         # table goes away rather than leaving a deleted proxy behind.
-        self.destroyed.connect(partial(_release_controllers, owned))
+        _release_controllers_when_destroyed(self, owned)
 
     def _size_to_content(self) -> None:
         """Fix the table height to header + visible rows so it wastes no space."""
@@ -1140,11 +1242,9 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         layout.setSpacing(0)
 
         self._model = PairedParameterTableModel(params, width)
-        self._table = QtWidgets.QTableView()
+        self._table = WheelEditTableView()
         self._table.setModel(self._model)
         self._table.setHorizontalHeader(_RichTextHeaderView(self._table))
-        # Same wheel-to-edit as the single-parameter table.
-        install_wheel_editing(self._table)
         self._table.setAlternatingRowColors(False)
         self._table.setWordWrap(False)
         self._table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
@@ -1315,7 +1415,7 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
                 except Exception:
                     continue
                 owned.append((param, ctrl))
-        self.destroyed.connect(partial(_release_controllers, owned))
+        _release_controllers_when_destroyed(self, owned)
 
     def _controller(self, param: FittingParameter):
         ctrl = self._controllers.get(id(param))
