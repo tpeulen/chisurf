@@ -7392,11 +7392,26 @@ minimum, and four smaller contract defects in the fixed-grid `scan_parameter`.
 Findings RF-628..RF-635.
 
 ### RF-628
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (for any *positive*-valued parameter the lower confidence bound is fabricated by extrapolating across one huge step — measured 4.8× too small, on a fit whose true interval is symmetric)
 - **Location:** `chisurf/core/fitting/support_plane.py:411-412` (`if p_min is None and v0 >= 0: p_min = max(0.0, v0 * 1e-6)`) feeding `:414` (`neg_boundary = p_min if p_min is not None and p_min < v0 else None`), which switches `_scan_one_side` into its bounded mode at `:300` (`max_expansions = 1 if p_boundary is not None else 10`) where the whole side is one `np.linspace(previous_x, end_x, segment_points + 1)` at `:315`
 - **Finding:** the auto lower clamp puts the negative boundary at ~0 for every positive parameter, and the bounded branch then sweeps the *entire* range `[~0, v0]` in a single segment of `max(max_points_per_side, 25)` steps. The first step down is therefore `v0/51`, which for a well-determined parameter is many σ; χ² leaps over the threshold in one step and the lower crossing becomes a linear interpolation across that leap. Measured on `c + a·x²` (64 points, σ = 5, `a = 1.2021`, covariance σ_a = 2.095e-3, p = 0.99): the scan spends **1 point** below `v0` and 12 above, and returns crossings `(1.20096, 1.20768)` — **−0.55 σ** and **+2.66 σ**. The model is linear in `a`, so the true profile interval is symmetric; the control experiment is decisive — refitting the *same data* with `c - a·x²` (so `v0 < 0`, no auto clamp, both sides unbounded) gives 12 points per side and crossings at **±2.660 σ**. The sign of the parameter must not decide whether its lower error bar is right. This is what the GUI *Smart scan* shows and what `ProfileEngine` returns as `Marginal.low` (`engine.py:1337-1345`), so it reaches every quoted asymmetric error. The same two lines have a second hole: when a bounded parameter sits *at* its lower bound, `p_min < v0` is false, `neg_boundary` becomes `None`, and the scan runs **unbounded below the declared bound**. Fix the boundary policy: keep the adaptive geometric expansion on a bounded side (clamped by the boundary) instead of collapsing it to one uniform segment, and treat `p_min == v0` as a boundary rather than as "no boundary". Nothing in `test/` exercises `adaptive_scan_parameter` on a parameter with a known analytic interval.
-- **Fix note:**
+- **Fix note:** the boundary now *truncates* a side instead of *becoming* it.
+  `_scan_one_side` keeps its geometric expansion on a bounded side — `end_x`
+  is still `v0 + sign*span*2**expansion`, merely clamped towards `p_boundary`,
+  and the loop stops once the boundary has been reached — so the region next to
+  `v0` is resolved exactly as finely as on an unbounded side.
+  `adaptive_scan_parameter` also treats a limit that coincides with `v0` as a
+  limit (`p_min <= v0` / `p_max >= v0`), so a parameter sitting on its bound no
+  longer scans past it. On the linear reference fit `c + a·x²` the crossing
+  ratio `(high-v0)/(v0-low)` goes **6.27 → 1.0000000000**, matching the `-a`
+  control to 12 digits, and the lower side gains 10 points instead of 1.
+  Pinned by `AdaptiveScanBoundaryTests` in
+  `test/fitting/test_support_plane_scan.py` (symmetric interval, sign
+  independence, truncation at a declared limit, nothing scanned below a limit
+  sitting at the optimum). The per-side evaluation ceiling on a clamped side is
+  now the same as on an unbounded one; that ceiling is RF-629's subject and is
+  unchanged here.
 
 ### RF-629
 - **Status:** OPEN

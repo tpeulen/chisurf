@@ -320,9 +320,11 @@ def _scan_one_side(
 
     Expands outward until the chi² crosses the F-test threshold.
     When *p_boundary* is provided, the scan is clamped to that
-    boundary as a hard limit.  Without a boundary the scan is
-    unbounded — it only stops on threshold crossing, max_points
-    exhaustion, or numerical failure.
+    boundary as a hard limit; the step geometry is unchanged, so a
+    bounded side resolves the region next to *v0* exactly as finely
+    as an unbounded one and simply stops early.  Without a boundary
+    the scan is unbounded — it only stops on threshold crossing,
+    max_points exhaustion, or numerical failure.
 
     Step sizes start small and grow to keep the curve smooth.
     A short warmup with geometric growth is followed by
@@ -344,15 +346,16 @@ def _scan_one_side(
     span = max(abs(v0) * 0.02, 1e-4, min_step * 10.0)
 
     segment_points = max(int(max_points), 25)
-    max_expansions = 1 if p_boundary is not None else 10
+    max_expansions = 10
     previous_x = v0
     previous_y = chi2r_min
 
     for expansion in range(max_expansions):
+        end_x = v0 + sign * span * (2.0 ** expansion)
         if p_boundary is not None:
-            end_x = float(p_boundary)
-        else:
-            end_x = v0 + sign * span * (2.0 ** expansion)
+            # The boundary only truncates the segment; it must not become the
+            # segment, or the first step away from v0 would be the whole side.
+            end_x = max(end_x, float(p_boundary)) if sign < 0 else min(end_x, float(p_boundary))
 
         if sign < 0 and end_x < 0.0 <= v0:
             end_x = 0.0
@@ -384,7 +387,7 @@ def _scan_one_side(
             previous_x = float(v_next)
             previous_y = float(chi2_next)
 
-        if p_boundary is not None:
+        if p_boundary is not None and abs(end_x - float(p_boundary)) < EPS:
             break
 
     return xs, ys, v_cross
@@ -458,8 +461,10 @@ def adaptive_scan_parameter(
     if p_min is None and v0 >= 0:
         p_min = max(0.0, v0 * 1e-6)
 
-    neg_boundary = p_min if p_min is not None and p_min < v0 else None
-    pos_boundary = p_max if p_max is not None and p_max > v0 else None
+    # A limit that coincides with v0 is still a limit: the side has no room and
+    # must not be scanned, rather than be scanned as if unbounded.
+    neg_boundary = p_min if p_min is not None and p_min <= v0 else None
+    pos_boundary = p_max if p_max is not None and p_max >= v0 else None
 
     # Scan in both directions
     neg_xs, neg_ys, neg_cross = _scan_one_side(

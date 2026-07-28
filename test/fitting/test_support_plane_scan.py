@@ -1,4 +1,4 @@
-"""Contract tests for the fixed-grid support-plane scan (RF-633..RF-635)."""
+"""Contract tests for the support-plane scans (RF-628, RF-633..RF-635)."""
 import utils
 import unittest
 import pathlib
@@ -39,6 +39,94 @@ def make_fit(n_points: int = 32):
     fit.model.update_model()
     fit.run()
     return fit
+
+
+def make_noisy_fit(sign: float = 1.0, n_points: int = 64):
+    """Build ``c + sign * a * x**2`` on data with a deterministic residual.
+
+    The model is linear in ``a``, so the chi² profile of ``a`` is an exact
+    parabola around the best fit and the confidence interval is exactly
+    symmetric — an analytic reference for the adaptive scan.  A non-zero
+    residual is required because the F-test threshold scales with chi²_min.
+
+    Parameters
+    ----------
+    sign : float, optional
+        Sign of the quadratic amplitude, i.e. the sign of the fitted ``a``.
+    n_points : int, optional
+        Number of data points.
+
+    Returns
+    -------
+    chisurf.core.fitting.fit.FitGroup
+        A converged fit whose model exposes the free parameters ``a`` and ``c``.
+    """
+    x_data = np.linspace(0, 32, n_points)
+    sigma = 5.0
+    residual = sigma * np.sin(np.arange(n_points) * 1.7)
+    y_data = 3.1 + sign * 1.2 * x_data ** 2.0 + residual
+    data = chisurf.core.data.DataCurve(x=x_data, y=y_data, ey=np.full_like(y_data, sigma))
+    fit = chisurf.core.fitting.fit.FitGroup(
+        data=chisurf.core.data.DataGroup([data]),
+        model_class=chisurf.core.models.parse.ParseModel
+    )
+    fit.model.func = 'c+a*x**2'
+    fit.fit_range = 0, len(fit.model.y) - 1
+    fit.model.update_model()
+    fit.run()
+    return fit
+
+
+class AdaptiveScanBoundaryTests(unittest.TestCase):
+    """A limit must truncate the scan, not coarsen it (RF-628)."""
+
+    def test_positive_parameter_keeps_a_symmetric_interval(self):
+        """The auto lower clamp must not swallow the whole lower side."""
+        fit = make_noisy_fit(sign=+1.0)
+        v0 = fit.model.parameters_all_dict['a'].value
+        self.assertGreater(v0, 0.0)
+        r = support_plane.adaptive_scan_parameter(fit=fit, parameter_name='a', p_value=0.99)
+        low, high = r['crossings']
+        self.assertIsNotNone(low)
+        self.assertIsNotNone(high)
+        self.assertAlmostEqual((high - v0) / (v0 - low), 1.0, places=2)
+
+    def test_sign_of_the_parameter_does_not_change_the_interval(self):
+        """The same data fitted as ``-a`` must give the same half-widths."""
+        positive = make_noisy_fit(sign=+1.0)
+        negative = make_noisy_fit(sign=-1.0)
+        widths = []
+        for fit in (positive, negative):
+            v0 = fit.model.parameters_all_dict['a'].value
+            r = support_plane.adaptive_scan_parameter(fit=fit, parameter_name='a', p_value=0.99)
+            low, high = r['crossings']
+            widths.append((abs(v0 - low), abs(high - v0)))
+        for reference, measured in zip(widths[1], widths[0]):
+            self.assertAlmostEqual(measured / reference, 1.0, places=3)
+
+    def test_scan_stops_at_a_declared_lower_limit(self):
+        """A limit inside the interval truncates the side without coarsening it."""
+        fit = make_noisy_fit(sign=+1.0)
+        v0 = fit.model.parameters_all_dict['a'].value
+        limit = v0 - 2.0e-3
+        r = support_plane.adaptive_scan_parameter(
+            fit=fit, parameter_name='a', scan_range=(limit, None), p_value=0.99
+        )
+        values = np.asarray(r['parameter_values'])
+        self.assertGreaterEqual(float(values.min()), limit - 1e-12)
+        self.assertGreater(int((values < v0).sum()), 10)
+        self.assertIsNone(r['crossings'][0])
+
+    def test_limit_at_the_optimum_leaves_that_side_unscanned(self):
+        """``p_min == v0`` is a limit, not an invitation to scan below it."""
+        fit = make_noisy_fit(sign=+1.0)
+        v0 = fit.model.parameters_all_dict['a'].value
+        r = support_plane.adaptive_scan_parameter(
+            fit=fit, parameter_name='a', scan_range=(v0, None), p_value=0.99
+        )
+        values = np.asarray(r['parameter_values'])
+        self.assertEqual(int((values < v0).sum()), 0)
+        self.assertIsNone(r['crossings'][0])
 
 
 class SupportPlaneScanRangeTests(unittest.TestCase):

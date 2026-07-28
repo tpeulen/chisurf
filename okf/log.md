@@ -2,6 +2,24 @@
 
 ## 2026-07-28
 
+* **A scan limit truncates a support-plane side; it does not replace it (RF-628).**
+  `_scan_one_side` collapsed a bounded direction into one uniform segment
+  spanning the whole allowed range, and `adaptive_scan_parameter` auto-clamps
+  every *positive* parameter at `~0`, so the first step down from the optimum
+  was `v0/51` — many σ for a well-determined parameter. χ² leapt the F-test
+  threshold in one step and the lower confidence bound became an interpolation
+  across that leap: on the linear reference fit `c + a·x²` the interval came
+  back `-0.55σ / +2.66σ` where the same data fitted as `c - a·x²` (negative
+  `v0`, no auto clamp) gives `±2.660σ`. The sign of a parameter decided whether
+  its lower error bar was right, in the GUI *Smart scan* and in every
+  `Marginal.low` the profile engine quotes. The boundary now only clamps
+  `end_x` on the unchanged geometric expansion and stops the loop when it is
+  reached, and a limit equal to `v0` counts as a limit (`p_min <= v0`) instead
+  of as "unbounded" — previously a parameter resting on its bound was scanned
+  *below* that bound. Ratio `(high-v0)/(v0-low)` **6.27 → 1.0000000000**.
+  Pinned by `AdaptiveScanBoundaryTests` in
+  `test/fitting/test_support_plane_scan.py` (12 passed).
+
 * **One atom row, and it turns out 544 chains were 26.** Chimol carried three
   transcriptions of "the atom dtype every reader produces" — six fields for the
   PDB/mmCIF/RMF readers, twelve for MDTraj topologies, twelve for pseudoatoms —
