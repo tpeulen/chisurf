@@ -682,6 +682,12 @@ Used by: Measurement File Database APIs and repository code.
 
 - **`default_user_id`**  
   The default `user_id` used to attribute database operations and entities when no explicit user is provided. Defaults to `"user_default"`.
+  **Must not be the name of the database's bootstrap administrator.** The first
+  write auto-creates this user as a plain row, and the one-shot bootstrap then
+  refuses to claim a name that already exists — deliberately, so a configured
+  secret can never take over an existing identity. Setting both to `admin` left
+  a fresh install able to register data and then never obtain an administrator,
+  with every embedded MMFDB client failing to start.
 
 ---
 

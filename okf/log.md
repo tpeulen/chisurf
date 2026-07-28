@@ -171,6 +171,46 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **A fresh install could register data and then never obtain an
+  administrator.** The MMFDB launcher tests were red on
+  `ValueError: Bootstrap administrator 'admin' already exists`, and the cause was
+  a **configuration collision we ship**: `mmfdb.default_user_id` is the identity
+  in-process writes stamp — MMFDB auto-creates that user as a plain row — and it
+  was `admin`, the same name as the database's bootstrap administrator. The
+  one-shot bootstrap refuses to claim a name that already exists, so the first
+  write took the name and no administrator could ever be created; every embedded
+  `MMFDBClient` then failed to start.
+  - **The refusal is right and stays.** A configured secret must never be able to
+    take over an existing identity — `mmfdb` pins that in
+    `test_admin_bootstrap_never_promotes_preexisting_non_service_identity`. My
+    first attempt relaxed it to promote any "placeholder" row; the existing test
+    caught that immediately, and it was the wrong fix. What was missing is that
+    the message said nothing about *why* it was reached, so the failure read as
+    an attack rather than as a setting: it now names the two settings that
+    collided and the default acting identity (`user_default`).
+  - **The fix is the setting.** `settings_chisurf.yaml` ships
+    `default_user_id: user_default` — MMFDB's own service identity, seeded and
+    promotable — with the constraint written down beside it and in
+    [reference/settings.md](../docs/reference/settings.md). Existing installs
+    keep their local value and already have an administrator, so only fresh ones
+    change. Verified end to end on a fresh database: register first, then start a
+    client → `user_default` stamps the artifact, `admin` is created as the
+    administrator, no collision.
+  - Guarded by `test/settings/test_mmfdb_identity_collision.py` (the shipped
+    acting identity is not `admin`, and *is* MMFDB's service identity) and, in
+    the companion repo, `tests/test_bootstrap_placeholder_admin.py` (**5 pass**:
+    only the service identity is promoted, any other placeholder is still
+    refused, the refusal names the configuration, an account with a password is
+    never reset, and register-then-bootstrap now works).
+  - Two more, found on the way: a `base_url` parametrize argument shadows the
+    session-scoped fixture of the `pytest-base-url` plugin (installed here), so
+    seven URL-safety cases across the two repos **never ran** — renamed; and the
+    packaged seed database had been stamped v45 since the schema went to v47,
+    which its own test forbids ("a stale seed cannot be migrated forward") —
+    migrated in place, foreign keys clean and every curated count intact.
+  `mmfdb`: 758 pass. chisurf `test/plugins` + `test/settings`: green apart from
+  other instances' in-flight work.
+
 * **Collecting the burst plugins in one pytest run failed on a name clash.**
   `pytest chisurf/plugins/burst` aborted with *import file mismatch* — two
   `test_construction_smoke.py` in directories that were not packages, so the

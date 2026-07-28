@@ -1073,37 +1073,3 @@ be, because three of them were defects in the code rather than in the tests.
 
 ## Burst GUI follow-ups (opened 2026-07-28)
 
-**MMFDB: a placeholder user named like the bootstrap admin locks the deployment
-out.** Found while running the ndX launcher tests, which are red on it
-(`test/plugins/test_ndxplorer_mmfdb_launcher.py`, 2 failures:
-`ValueError: Bootstrap administrator 'admin' already exists`). Registering an
-artifact records its actor and auto-creates that user as a **plain row**
-(`is_admin = 0`, no password). When the actor's name is also the configured
-bootstrap admin — the common case, both are `admin` — the later one-shot
-bootstrap finds no *active* admin, tries to create one, hits that row and
-raises. The deployment then has no administrator and no way to get one: every
-embedded `MMFDBClient(inprocess=True)` fails to start from then on.
-
-Minimal reproduction, on a fresh database:
-
-```python
-with MFDatabase(resolve_database_path()) as db:      # creates a plain 'admin' row
-    register_raw_measurement(str(some_file), db=db, is_public=True)
-MMFDBClient(inprocess=True)                          # ValueError
-```
-
-The fix belongs in `mmfdb/security/bootstrap.py::bootstrap_local_admin`, which
-already knows how to *promote* a placeholder row (no admin rights, no password,
-no passwordless login) but restricts that path to `SERVICE_USER_ID`:
-
-```python
-if user_id != SERVICE_USER_ID or existing[0] or existing[1] or existing[2]:
-    raise ValueError(f"Bootstrap administrator {user_id!r} already exists")
-```
-
-Dropping the `user_id != SERVICE_USER_ID` clause promotes any placeholder while
-still never resetting a row that carries admin rights, a password or
-passwordless login — the security intent the guard was written for. **Not
-applied:** editing that file was refused by this environment's guard on
-authentication code, so it needs a human to apply it in the `mmfdb` repository,
-with a test that a placeholder actor row does not block the bootstrap.

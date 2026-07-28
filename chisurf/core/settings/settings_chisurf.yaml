@@ -259,7 +259,14 @@ mmfdb:
   # For a non-loopback host the base_url must be https:// (or set
   # allow_insecure_http: true on an isolated development network).
   client: {}
-  default_user_id: admin
+  # The identity in-process writes stamp ownership with. It must NOT be the name
+  # of the database's bootstrap administrator: the first write auto-creates this
+  # user as a plain row, and the one-shot bootstrap then refuses to claim a name
+  # that already exists (deliberately — a configured secret must never be able
+  # to take over an existing identity). Shipping `admin` for both meant a fresh
+  # install could register data and then never obtain an administrator, with
+  # every embedded MMFDB client failing to start from then on.
+  default_user_id: user_default
   save_login: true
   autologin: false
   object_store:

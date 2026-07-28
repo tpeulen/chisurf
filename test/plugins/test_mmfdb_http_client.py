@@ -132,8 +132,13 @@ def test_client_config_rejects_persisted_password() -> None:
         client_config({"client": {"mode": "remote", "password": "admin"}})
 
 
+# The parameter is *not* called ``base_url``: the pytest-base-url plugin (pulled
+# in by several browser-testing packages, and installed here) defines a
+# session-scoped fixture of that name, and a same-named parametrize argument
+# then fails to collect with ScopeMismatch — so these four cases silently never
+# ran.
 @pytest.mark.parametrize(
-    "base_url",
+    "unsafe_url",
     [
         "http://mmfdb.example.test:8080",
         "https://user:secret@mmfdb.example.test",
@@ -141,11 +146,11 @@ def test_client_config_rejects_persisted_password() -> None:
         "https://mmfdb.example.test#fragment",
     ],
 )
-def test_client_config_rejects_unsafe_remote_urls(base_url: str) -> None:
+def test_client_config_rejects_unsafe_remote_urls(unsafe_url: str) -> None:
     from chisurf.plugins.core.mmfdb_admin.gui.client import client_config
 
     with pytest.raises(ValueError):
-        client_config({"client": {"mode": "remote", "base_url": base_url}})
+        client_config({"client": {"mode": "remote", "base_url": unsafe_url}})
 
 
 def test_client_config_allows_explicit_insecure_remote_url() -> None:
