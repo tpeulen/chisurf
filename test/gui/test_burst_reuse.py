@@ -292,7 +292,11 @@ def test_mle_export_is_skipped_when_the_files_on_disk_are_current(
     wizard = MLELifetimeAnalysisWizard()
     try:
         bur = burst_folder / "bi4_bur" / "m000.bur"
-        monkeypatch.setattr(wizard, "batch_input_files", lambda: [bur])
+        # The stamp sits beside the selected burst files, so the selection is
+        # what has to be stubbed — the fingerprint's input list is wider than it.
+        monkeypatch.setattr(
+            wizard.burst_files_list, "get_selected_files", lambda: [str(bur)]
+        )
         # Enough state to get past the "no data" guard.
         wizard.df_bursts = object()
         wizard.tttrs = {"m000": object()}
@@ -391,6 +395,174 @@ def test_h2mm_fits_when_the_step_is_opened_and_can_be_stopped(
 
         tool._on_fit_done()
         assert tool.btn_run.isEnabled() and not tool.btn_stop.isEnabled()
+    finally:
+        tool.close()
+
+
+def test_a_stopped_h2mm_fit_does_not_start_itself_again(
+    qapp, burst_folder, monkeypatch
+):
+    """Stop has to outlast the visit that started the fit.
+
+    Each step computes on arrival, so without this a fit the user deliberately
+    abandoned came straight back on the next *Next* — Stop only postponed
+    minutes of work rather than cancelling it.
+    """
+    from chisurf.gui.progress import ChiSurfProgress
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+    tool = H2mmTool(embedded=True)
+    try:
+        tool._set_folder(str(burst_folder))
+        started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
+        tool.show()
+        _drain_timers()
+        assert len(started) == 1
+
+        tool.stop()
+        tool._on_fit_done()
+
+        tool.hide()
+        tool.show()
+        _drain_timers()
+        assert len(started) == 1, "revisiting must not restart what was stopped"
+
+        # Changing the fit is a different request, and is not suppressed.
+        tool.sb_max_states.setValue(tool.sb_max_states.value() + 1)
+        tool.hide()
+        tool.show()
+        _drain_timers()
+        assert len(started) == 2, "a different fit was never the one stopped"
+    finally:
+        tool.close()
+
+
+def test_a_stopped_2cde_run_does_not_start_itself_again(
+    two_cde, monkeypatch
+):
+    from chisurf.gui.progress import ChiSurfProgress
+
+    started = _runs(monkeypatch, ChiSurfProgress, "run", returns=_RunningTask())
+    two_cde.show()
+    _drain_timers()
+    assert len(started) == 1
+
+    two_cde.stop()
+    two_cde._analysis_over()
+    two_cde.hide()
+    two_cde.show()
+    _drain_timers()
+    assert len(started) == 1, "revisiting must not restart what was stopped"
+
+    # Asking explicitly overrides the stop — that is what Run means.
+    two_cde._on_run_clicked()
+    assert len(started) == 2
+
+
+def test_recompute_runs_what_the_gate_would_have_skipped(two_cde, monkeypatch):
+    """The override has to be reachable from the panel, not only from Python."""
+    from chisurf.core import analysis_cache
+    from chisurf.gui.progress import ChiSurfProgress
+
+    started = _runs(monkeypatch, ChiSurfProgress, "run")
+    folder = pathlib_path(two_cde)
+    two_cde.run()
+    two_cde._df = object()
+    two_cde._result_cache.remember(two_cde._running_fingerprint)
+    out = folder / "2c4"
+    out.mkdir(exist_ok=True)
+    (out / "m000.2c4").write_text("x")
+    analysis_cache.write_stamp(
+        out / "2cde.stamp.json", two_cde.analysis_fingerprint(),
+        outputs=[out / "m000.2c4"], tool="2cde",
+    )
+
+    two_cde.run()
+    assert len(started) == 1, "unchanged: skipped"
+    assert two_cde._recompute.property("attention") is True, (
+        "the button is drawn attention to exactly when it is the thing you want"
+    )
+
+    two_cde._recompute.click()
+    assert len(started) == 2, "Recompute must run what the gate skipped"
+
+
+def pathlib_path(tool):
+    """The folder a 2CDE panel is pointed at."""
+    import pathlib
+
+    return pathlib.Path(tool._folder_edit.text().strip())
+
+
+def test_a_changed_lut_recomputes_every_photon_reading_step(two_cde):
+    """The LUT is ambient, so nothing in the panel's settings mentions it."""
+    np = pytest.importorskip("numpy")
+    from chisurf.core.fio import lut_context
+
+    lut_context.clear_active_setup_lut()
+    before = two_cde.analysis_fingerprint()
+    try:
+        lut_context.set_active_setup_lut(
+            channel_luts={0: np.arange(16)}, channel_shifts={}, apply_lut=True
+        )
+        assert two_cde.analysis_fingerprint() != before, (
+            "linearising the micro-times changes what 2CDE computes"
+        )
+    finally:
+        lut_context.clear_active_setup_lut()
+    assert two_cde.analysis_fingerprint() == before, "and switching back is the old state"
+
+
+def test_a_corrected_estimator_does_not_inherit_the_old_exports(
+    qapp, burst_folder, monkeypatch
+):
+    """MLE is the only gate that survives a restart — and the only one that could
+    hand back another version's numbers without saying so."""
+    from chisurf.core import analysis_cache
+    from chisurf.plugins.burst.burst_mle_analysis import wizard as wizard_mod
+
+    wizard = wizard_mod.MLELifetimeAnalysisWizard()
+    try:
+        bur = burst_folder / "bi4_bur" / "m000.bur"
+        monkeypatch.setattr(
+            wizard.burst_files_list, "get_selected_files", lambda: [str(bur)]
+        )
+        wizard.df_bursts = object()
+        wizard.tttrs = {"m000": object()}
+        saved = _runs(monkeypatch, wizard, "_save_burst_results_fast")
+
+        out = burst_folder / "bg4" / "m000.bg4"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text("fit results")
+        analysis_cache.write_stamp(
+            wizard.batch_stamp_path(), wizard.batch_fingerprint(),
+            outputs=[out], tool="burst_mle",
+        )
+        wizard.process_bursts()
+        assert saved == [], "current exports are not refitted"
+
+        # The estimator is corrected; the burst files and settings are untouched.
+        monkeypatch.setattr(wizard_mod, "ALGORITHM_VERSION", 2)
+        assert not analysis_cache.is_current(
+            wizard.batch_stamp_path(), wizard.batch_fingerprint()
+        ), "results from the previous estimator are not current"
+    finally:
+        wizard.close()
+
+
+def test_h2mm_fits_the_same_answer_twice(qapp, burst_folder):
+    """A reported state count is only reproducible if its seed travels with it."""
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+
+    tool = H2mmTool(embedded=True)
+    try:
+        tool._set_folder(str(burst_folder))
+        assert tool._gather_settings().seed == tool.sb_seed.value()
+        first = tool.analysis_fingerprint(tool._gather_settings())
+        tool.sb_seed.setValue(tool.sb_seed.value() + 1)
+        assert tool.analysis_fingerprint(tool._gather_settings()) != first, (
+            "a different seed is a different sample, not a cache hit"
+        )
     finally:
         tool.close()
 

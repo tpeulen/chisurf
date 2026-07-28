@@ -15,15 +15,20 @@ import numpy as np
 from chisurf.gui import chiplot as cp
 from qtpy import QtCore, QtWidgets
 
-from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button
+from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button, flag_attention
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 from chisurf.core import analysis_cache
+from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.gui.progress import ChiSurfProgress
 
 try:
     from chisurf.plugins.burst.burst_selection.api.features import proximity_ratio
 except Exception:  # pragma: no cover - optional dependency
     proximity_ratio = None
+
+#: Bump in the same change that alters what this tool computes, so results
+#: written by the previous version stop reading as current.
+ALGORITHM_VERSION = 1
 
 
 class BurstTwoCdeTool(QtWidgets.QMainWindow):
@@ -51,7 +56,13 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         toolbar = QtWidgets.QToolBar()
         toolbar.setStyleSheet(TOOLBAR_STYLE)
         self._run = action_button("run", tooltip="Compute 2CDE over all loaded data")
-        self._run.clicked.connect(self.run)
+        self._run.clicked.connect(self._on_run_clicked)
+        # A run whose inputs and settings are unchanged is skipped; this is how
+        # the user asks for it anyway (a corrected estimator, a suspect result).
+        self._recompute = action_button(
+            "recompute", tooltip="Recompute 2CDE even if nothing changed"
+        )
+        self._recompute.clicked.connect(self._on_recompute_clicked)
         # The computation starts on its own when this step is opened, so stopping
         # it must be one click away.
         self._stop = action_button("stop", tooltip="Stop the running 2CDE computation")
@@ -60,6 +71,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         browse = action_button("folder", tooltip="Choose the burst analysis folder")
         browse.clicked.connect(self._browse)
         toolbar.addWidget(self._run)
+        toolbar.addWidget(self._recompute)
         toolbar.addWidget(self._stop)
         toolbar.addWidget(browse)
         layout.addWidget(toolbar)
@@ -120,7 +132,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         if d:
             self._folder_edit.setText(d)
             # Picking a folder is a request for its 2CDE, not for a button press.
-            self.run()
+            self._on_run_clicked()
 
     def _channels(self, text: str):
         return [int(x) for x in str(text).split(",") if x.strip()]
@@ -130,16 +142,22 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         self._folder_edit.setText(str(folder))
 
     def input_files(self) -> list[pathlib.Path]:
-        """The burst files this analysis reads (``bi4_bur/*``)."""
+        """Everything this analysis reads: the burst tables and the photons.
+
+        2CDE correlates photon arrival times, so the raw measurements named in
+        the folder's manifest are inputs as much as the ``bi4_bur`` tables are —
+        a re-exported source with unchanged burst tables changes the answer.
+        """
         folder = self._folder_edit.text().strip()
         if not folder:
             return []
-        return [
+        tables = [
             f
             for d in sorted(pathlib.Path(folder).glob("bi4_bur"))
             for f in sorted(d.glob("*"))
             if f.is_file()
         ]
+        return tables + list(source_inputs(folder))
 
     def settings(self) -> dict:
         """Everything the computation is given, in one mapping."""
@@ -152,10 +170,18 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             "file_type": self._file_type.text().strip(),
         }
 
+    def fingerprint_params(self) -> dict:
+        """The settings plus the ambient state a photon read depends on."""
+        params = dict(self.settings())
+        params["_read_context"] = analysis_cache.photon_read_context()
+        return params
+
     def analysis_fingerprint(self) -> str:
-        """Fingerprint of the burst files plus the current settings."""
-        return analysis_cache.fingerprint(self.input_files(), self.settings(),
-                                          extra="2cde")
+        """Fingerprint of the inputs, the settings, the read context and the code."""
+        return analysis_cache.fingerprint(
+            self.input_files(), self.fingerprint_params(),
+            extra=analysis_cache.algorithm_tag("2cde", ALGORITHM_VERSION, "tttrlib"),
+        )
 
     def showEvent(self, event) -> None:
         """Compute for the folder this panel was given, as soon as it is shown.
@@ -172,10 +198,30 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(0, self._auto_run)
 
     def _auto_run(self) -> None:
-        """Run for the current folder, quietly doing nothing when there is none."""
+        """Run for the current folder, quietly doing nothing when there is none.
+
+        A computation the user stopped does not start itself again when the step
+        is revisited — otherwise Stop would only postpone it until the next
+        *Next*. Changing a file or a setting gives a different fingerprint, which
+        was never abandoned, so the suppression is exactly as narrow as the stop.
+        """
         folder = self._folder_edit.text().strip()
-        if folder and pathlib.Path(folder).is_dir() and not self._is_running():
-            self.run()
+        if not folder or not pathlib.Path(folder).is_dir() or self._is_running():
+            return
+        if self._result_cache.was_abandoned(self.analysis_fingerprint()):
+            self._set_status("Stopped earlier — press Run to compute 2CDE")
+            return
+        self.run()
+
+    def _on_run_clicked(self) -> None:
+        """Run because the user asked, clearing any earlier stop."""
+        self._result_cache.allow()
+        self.run()
+
+    def _on_recompute_clicked(self) -> None:
+        """Recompute even though nothing changed."""
+        self._result_cache.allow()
+        self.run(force=True)
 
     def run(self, *, force: bool = False) -> None:
         """Read the burst folder, compute 2CDE and update the plot.
@@ -200,14 +246,21 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             and self._result_cache.matches(fingerprint)
             and analysis_cache.is_current(stamp, fingerprint)
         ):
-            self._set_status("Unchanged — kept the previous 2CDE result")
+            self._set_status(
+                "Unchanged — kept the previous 2CDE result (⟳ recomputes it anyway)"
+            )
+            flag_attention(self._recompute, True)
             return
+        flag_attention(self._recompute, False)
         self._running_fingerprint = fingerprint
         self._run.setEnabled(False)
         self._stop.setEnabled(True)
         self._task = ChiSurfProgress.run(
             self, "Reading burst data …", self._analysis_worker,
-            args=(folder, self.settings(), fingerprint),
+            # Inputs and params are resolved here, on the GUI thread: the worker
+            # must not read widgets.
+            args=(folder, self.settings(), fingerprint,
+                  self.input_files(), self.fingerprint_params()),
             maximum=0, title="2CDE", owner=self._run,
             on_result=self._analysis_done,
             on_error=self._analysis_failed,
@@ -231,14 +284,14 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
         if task is None:
             return
         task.cancel()
-        self._result_cache.invalidate()
+        self._result_cache.abandon(self._running_fingerprint)
         self._set_status("Stopping the 2CDE computation …")
 
     def _is_running(self) -> bool:
         """Whether a computation started by this panel is still going."""
         return self._task is not None and self._task.is_running()
 
-    def _analysis_worker(self, folder, settings, fingerprint, task):
+    def _analysis_worker(self, folder, settings, fingerprint, inputs, params, task):
         """Worker: read, compute, write the companion. No GUI here."""
         task.set_range(0, 0)  # reading has no incremental hook
         task.set_text("Reading burst data …")
@@ -267,7 +320,7 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
             out = pathlib.Path(folder) / "2c4"
             analysis_cache.write_stamp(
                 pathlib.Path(folder) / "2c4" / "2cde.stamp.json", fingerprint,
-                params=settings, inputs=self.input_files(),
+                params=params, inputs=inputs,
                 outputs=sorted(out.glob("*.2c4")), tool="2cde",
             )
         except Exception as exc:  # pragma: no cover - GUI error path

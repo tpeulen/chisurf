@@ -37,8 +37,24 @@ uncertainties are supported.
 In the burst workflow, **step 6 starts fitting as soon as you open it**. A state
 scan with restarts runs for minutes, so it runs off the GUI thread and **Stop**
 in the toolbar ends it — a stopped scan is discarded rather than reported as the
-answer. Opening the step again does not refit; see
-[53 — Reusing results](53_reusing_results.md).
+answer, and coming back to the step does not restart it. Opening the step again
+does not refit either; see [53 — Reusing results](53_reusing_results.md).
+
+## Reproducing a scan
+
+The restarts are **seeded**, so the same bursts and the same options give the
+same answer every time. The seed is an ordinary fit option (*Seed*, default 0),
+it is recorded in the result alongside the settings it was fitted with, and the
+status line reports it: `Selected 3 states (BIC) from 2495 bursts / 275973
+photons (seed 0)`.
+
+This matters more than it looks. Model selection over state counts is not always
+decisive — with few bursts, or states that overlap in E, two independent sets of
+restarts can prefer different state counts. Reporting a state count without the
+seed that produced it is therefore not reproducible. To find out whether your
+result is robust rather than lucky, change the seed and refit: an answer that
+survives several seeds is one you can report. Pressing **⟳ Recompute** does *not*
+do this — it reproduces the same fit, by design.
 
 ## Result
 

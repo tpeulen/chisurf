@@ -23,7 +23,13 @@ import chisurf as cs
 
 from chisurf.gui.autoform import AutoForm
 from chisurf.gui.autoform.sections.registry import register_section
-from chisurf.gui.widgets.tool_buttons import action_button
+from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
+
+#: Bump in the same change that alters what this step computes, so the exported
+#: burst fits of the previous version stop reading as current. This is the only
+#: step whose reuse survives a restart, so it is the one that would otherwise
+#: inherit an old estimator's results across an upgrade without saying so.
+ALGORITHM_VERSION = 1
 
 
 def _mle_progress(widget, text: str, maximum: int) -> ChiSurfProgress:
@@ -2247,6 +2253,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.pushButton_process_bursts = action_button(
             "run", tooltip="Process all loaded burst files and fit each burst"
         )
+        # Exported fits that are already current are not refitted; this is how the
+        # user asks for them anyway (a rebuilt fit2x, a suspect export).
+        self.pushButton_recompute_bursts = action_button(
+            "recompute", tooltip="Refit every burst even if nothing changed"
+        )
 
         # --- Populate the top action toolbar (every hosted widget now exists) ---
         def _tb_sep():
@@ -2258,6 +2269,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         flow = self._mle_toolbar_layout
         for widget in (
             self.pushButton_process_bursts,
+            self.pushButton_recompute_bursts,
             _tb_sep(),
             self.toolButton_auto_optimize,
             self.toolButton_auto_irf,
@@ -2438,6 +2450,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         # --- Burst processing & navigation ---
         self.pushButton_process_bursts.clicked.connect(self.process_bursts)
+        self.pushButton_recompute_bursts.clicked.connect(self.recompute_bursts)
         self.toolButton_auto_optimize.clicked.connect(self.auto_optimize)
         self.toolButton_auto_irf.clicked.connect(self.auto_extract_irf_bg)
         # Flipping the IRF model re-extracts so the change is immediate.
@@ -3854,11 +3867,28 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self._inputs_frozen = bool(frozen)
 
     def batch_input_files(self) -> list:
-        """The burst files the batch export fits."""
+        """Everything the batch export fits *from*.
+
+        The selected burst tables, plus the raw measurements the folder's
+        manifest names and the manifest itself. Per-burst MLE fits photons, not
+        tables: a source re-exported or re-staged, or a linearisation applied
+        after the burst search, changes every decay that is fitted while leaving
+        each `.bur` byte-identical. This gate is the only one that survives a
+        restart, so it is the one that must not inherit an old result silently.
+        """
         try:
-            return [Path(p) for p in self.burst_files_list.get_selected_files()]
+            selected = [Path(p) for p in self.burst_files_list.get_selected_files()]
         except Exception:
             return []
+        if not selected:
+            return []
+        try:
+            from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
+
+            sources = list(source_inputs(selected[0]))
+        except Exception:
+            sources = []
+        return selected + sources
 
     def batch_settings(self) -> dict:
         """Everything the batch fit is given, in one mapping.
@@ -3877,6 +3907,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                 self._ensure_channel_state(det)
         except Exception:
             pass
+        from chisurf.core import analysis_cache
+
         x0, fixed = self.fit_parameters
         return {
             "model": self.fit_model,
@@ -3884,24 +3916,47 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             "fixed": list(fixed) if fixed is not None else [],
             "min_photons": float(self.min_photons),
             "channels": self.channel_settings,
+            # The LUTs and micro-time shifts applied inside the reader are not a
+            # setting of this step, and they change every decay it fits.
+            "_read_context": analysis_cache.photon_read_context(),
         }
 
     def batch_fingerprint(self) -> str:
-        """Fingerprint of the selected burst files plus the batch settings."""
+        """Fingerprint of the inputs, the settings, the read context and the code."""
         from chisurf.core import analysis_cache
 
         return analysis_cache.fingerprint(
-            self.batch_input_files(), self.batch_settings(), extra="burst_mle"
+            self.batch_input_files(), self.batch_settings(),
+            extra=analysis_cache.algorithm_tag(
+                "burst_mle", ALGORITHM_VERSION, "fit2x", "tttrlib"
+            ),
         )
 
     def batch_stamp_path(self):
-        """Where the exported burst fits record what produced them."""
-        files = self.batch_input_files()
-        if not files:
+        """Where the exported burst fits record what produced them.
+
+        Beside the ``b{g,r,y}4`` folders, which are siblings of the burst tables.
+        One stamp per analysis folder holds an entry per fingerprint, so two
+        selections of the same folder remember each other rather than taking
+        turns overwriting one record.
+        """
+        try:
+            selected = [Path(p) for p in self.burst_files_list.get_selected_files()]
+        except Exception:
             return None
-        # The b{g,r,y}4 folders are siblings of the burst folder; the stamp sits
-        # with them rather than inside any one detector's folder.
-        return files[0].parent.parent / "burst_mle.stamp.json"
+        if not selected:
+            return None
+        return selected[0].parent.parent / "burst_mle.stamp.json"
+
+    def recompute_bursts(self):
+        """Refit every burst even though the exported fits are current."""
+        self.process_bursts(force=True)
+
+    def _flag_recompute(self, on: bool) -> None:
+        """Draw attention to Recompute exactly when an export was skipped."""
+        button = self.__dict__.get("pushButton_recompute_bursts")
+        if button is not None:
+            flag_attention(button, on)
 
     def process_bursts(self, *, force: bool = False):
         import os
@@ -3929,9 +3984,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             and analysis_cache.is_current(stamp_path, fingerprint)
         ):
             self._set_status(
-                "Unchanged — the exported burst fits are current (nothing refitted)"
+                "Unchanged — the exported burst fits are current (nothing refitted); "
+                "⟳ Recompute refits them anyway"
             )
+            self._flag_recompute(True)
             return
+        self._flag_recompute(False)
 
         # The batch export runs every fit2x model (fit23/24/25) through the same
         # multiprocessing worker. The tail fit is a different estimator family

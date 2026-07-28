@@ -110,9 +110,15 @@ from chisurf.gui.widgets.tool_buttons import (  # noqa: E402
 )
 from chisurf.gui.widgets.tool_buttons import (
     action_button,
+    flag_attention,
 )
 
 from chisurf.core import analysis_cache  # noqa: E402
+from chisurf.core.fio.fluorescence.burst_manifest import source_inputs  # noqa: E402
+
+#: Bump in the same change that alters what this tool computes, so results
+#: written by the previous version stop reading as current.
+ALGORITHM_VERSION = 1
 
 
 class _FolderLineEdit(QLineEdit):
@@ -267,6 +273,11 @@ class BVATool(MessagesMixin, QMainWindow):
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = action_button("run", tooltip="Run BVA on all loaded data")
+        # A run whose inputs and settings are unchanged is skipped; this is how
+        # the user asks for it anyway (a corrected estimator, a suspect result).
+        self.btn_recompute = action_button(
+            "recompute", tooltip="Recompute BVA even if nothing changed"
+        )
         # BVA recomputes on its own whenever the folder or a setting changes, so
         # stopping a long run must be one click away.
         self.btn_stop = action_button("stop", tooltip="Stop the running BVA analysis")
@@ -288,6 +299,7 @@ class BVATool(MessagesMixin, QMainWindow):
         # Left cluster: source, then the primary action group in canonical order.
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
+        self.toolbar.addWidget(self.btn_recompute)
         self.toolbar.addWidget(self.btn_stop)
         self.toolbar.addWidget(self.btn_clear)
         self.toolbar.addWidget(self.btn_save)
@@ -428,6 +440,7 @@ class BVATool(MessagesMixin, QMainWindow):
         self._folder_field.folderDropped.connect(self._on_folder_dropped)
         self.cb_setup.currentIndexChanged.connect(self._on_setup_selected)
         self.btn_run.clicked.connect(self._run_analysis)
+        self.btn_recompute.clicked.connect(self._recompute_analysis)
         self.cb_toggle_static.toggled.connect(self._toggle_static_line)
         self.btn_save.clicked.connect(self._save_plot)
         self.btn_clear.clicked.connect(self._clear_plot)
@@ -583,27 +596,35 @@ class BVATool(MessagesMixin, QMainWindow):
 
     def _run_analysis(self):
         """Run the full analysis and write the BV4 output."""
+        self._result_cache.allow()
         self._start_analysis(write_output=True)
+
+    def _recompute_analysis(self):
+        """Run the full analysis even though nothing changed."""
+        self._result_cache.allow()
+        self._start_analysis(write_output=True, force=True)
 
     # ── reuse instead of recompute ───────────────────────────────────
 
     def input_files(self) -> list[pathlib.Path]:
-        """The burst files this analysis reads (``bi4_bur/*``).
+        """Everything this analysis reads: the burst tables and the photons.
 
-        These are what identifies the input: they are themselves the product of
-        the raw TTTR files, so raw data that changed under them means step 2 has
-        to run again anyway, and stat-ing a burst folder is far cheaper than
-        stat-ing gigabytes of photon data.
+        The burst tables are the product of the raw TTTR files, so ordinarily a
+        change to the photons rewrites them too. Ordinarily is not always: a
+        source re-exported or re-staged without re-running the burst search
+        leaves every table byte-identical while the correlation changes. The
+        manifest names those sources, and stat-ing them is cheap.
         """
         folder = self.analysis_folder
         if folder is None:
             return []
-        return [
+        tables = [
             f
             for d in sorted(pathlib.Path(folder).glob("bi4_bur"))
             for f in sorted(d.glob("*"))
             if f.is_file()
         ]
+        return tables + list(source_inputs(folder))
 
     def _stamp_path(self) -> pathlib.Path | None:
         """Where the BV4 outputs record what produced them."""
@@ -611,9 +632,18 @@ class BVATool(MessagesMixin, QMainWindow):
             return None
         return pathlib.Path(self.analysis_folder) / "bv4" / "bva.stamp.json"
 
+    def fingerprint_params(self, settings: dict) -> dict:
+        """*settings* plus the ambient state a photon read depends on."""
+        params = dict(settings)
+        params["_read_context"] = analysis_cache.photon_read_context()
+        return params
+
     def analysis_fingerprint(self, settings: dict) -> str:
-        """Fingerprint of the burst files plus *settings* (see analysis_cache)."""
-        return analysis_cache.fingerprint(self.input_files(), settings, extra="bva")
+        """Fingerprint of the inputs, *settings*, the read context and the code."""
+        return analysis_cache.fingerprint(
+            self.input_files(), self.fingerprint_params(settings),
+            extra=analysis_cache.algorithm_tag("bva", ALGORITHM_VERSION, "tttrlib"),
+        )
 
     def _start_analysis(self, *, write_output: bool, force: bool = False) -> None:
         """Read, compute and (optionally) write BVA off the GUI thread.
@@ -652,14 +682,20 @@ class BVATool(MessagesMixin, QMainWindow):
             and self._result_cache.matches(fingerprint)
             and (not write_output or outputs_current)
         ):
-            self._status("Unchanged — kept the previous BVA result")
+            self._status(
+                "Unchanged — kept the previous BVA result (⟳ recomputes it anyway)"
+            )
+            flag_attention(self.btn_recompute, True)
             return
 
+        flag_attention(self.btn_recompute, False)
         self._running_fingerprint = fingerprint
         self.btn_stop.setEnabled(True)
         self._task = ChiSurfProgress.run(
             self, "Reading burst data...", self._analysis_worker,
-            args=(dict(self.bva_settings), bool(write_output), fingerprint),
+            # Resolved here, on the GUI thread: the worker must not read widgets.
+            args=(dict(self.bva_settings), bool(write_output), fingerprint,
+                  self.input_files(), self.fingerprint_params(self.bva_settings)),
             maximum=0, title="BVA Analysis", owner=self,
             on_result=self._analysis_done,
             on_error=self._analysis_failed,
@@ -682,7 +718,9 @@ class BVATool(MessagesMixin, QMainWindow):
         if task is None:
             return
         task.cancel()
-        self._result_cache.invalidate()
+        # Abandoned rather than merely invalidated: a stopped run must not be
+        # restarted by anything but the user asking again.
+        self._result_cache.abandon(self._running_fingerprint)
         self._status("Stopping the BVA analysis …")
 
     def _analysis_failed(self, exc) -> None:
@@ -690,7 +728,7 @@ class BVATool(MessagesMixin, QMainWindow):
         self._result_cache.invalidate()
         self.Error.failed(exc)
 
-    def _analysis_worker(self, settings, write_output, fingerprint, task):
+    def _analysis_worker(self, settings, write_output, fingerprint, inputs, params, task):
         """Worker: read (if needed), compute, write. No GUI here.
 
         Each phase announces its own length through ``task.set_range`` rather
@@ -732,7 +770,7 @@ class BVATool(MessagesMixin, QMainWindow):
             # the same burst files and settings can leave them alone.
             analysis_cache.write_stamp(
                 bv4_folder / "bva.stamp.json", fingerprint,
-                params=settings, inputs=self.input_files(),
+                params=params, inputs=inputs,
                 outputs=sorted(bv4_folder.glob("*.bv4")), tool="bva",
             )
         return burst_df, tttrs, df_v

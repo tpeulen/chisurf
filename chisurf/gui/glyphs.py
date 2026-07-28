@@ -70,6 +70,7 @@ class Glyphs:
     STOP = "⏹" + VS16
     PAUSE = "⏸" + VS16
     REFRESH = "🔄"    # refresh / reload / restart
+    RECOMPUTE = "⟳"   # redo a computation a cache would otherwise skip
     RESET = "♻" + VS16     # reset to defaults / lifecycle
     LOOP = "🔁"       # repeat / loop semantics (not "refresh")
     SHUFFLE = "🔀"

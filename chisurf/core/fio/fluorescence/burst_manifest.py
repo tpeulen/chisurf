@@ -38,6 +38,7 @@ __all__ = [
     "read_analysis_manifest",
     "describe_tttr_source",
     "reading_settings_for",
+    "source_inputs",
     "restore_settings",
     "restore_form",
 ]
@@ -265,6 +266,52 @@ def reading_settings_for(
         if recorded == wanted or recorded.name == wanted.name:
             return dict(entry)
     return {}
+
+
+def source_inputs(start: pathlib.Path | str) -> List[pathlib.Path]:
+    """Every file a burst analysis was computed *from*, for change detection.
+
+    A burst table is a set of pointers into photon streams, so a step that fits
+    or correlates bursts reads the raw measurements as well as the `.bur` files.
+    Fingerprinting only the tables therefore misses a raw file that was
+    re-exported or re-staged underneath an unchanged analysis, and the step
+    would report its old result as current.
+
+    Returns the manifest itself alongside the sources it names: the manifest
+    changes when the burst search is re-run or its settings change, which is a
+    reason to recompute even if every `.bur` happens to look the same.
+
+    Parameters
+    ----------
+    start : path-like
+        A `.bur` file, the `bi4_bur` directory, or the analysis folder — the
+        manifest is searched for upwards, as in :func:`read_analysis_manifest`.
+
+    Returns
+    -------
+    list of pathlib.Path
+        Empty for a folder written before the manifest existed, which leaves the
+        caller fingerprinting its burst tables alone — the behaviour it had
+        before. A recorded source that does not exist here (an analysis copied
+        off the instrument) is still returned: "missing" is a stable identity,
+        and it becoming present later is itself a change.
+    """
+    here = pathlib.Path(start)
+    if here.is_file():
+        here = here.parent
+    for _ in range(5):
+        candidate = here / "Info" / MANIFEST_NAME
+        if candidate.is_file():
+            manifest = read_analysis_manifest(candidate)
+            paths = [candidate]
+            for entry in (manifest or {}).get("sources") or []:
+                if isinstance(entry, dict) and entry.get("path"):
+                    paths.append(pathlib.Path(str(entry["path"])))
+            return paths
+        if here.parent == here:
+            break
+        here = here.parent
+    return []
 
 
 def restore_settings(start: pathlib.Path | str) -> Dict[str, Any]:

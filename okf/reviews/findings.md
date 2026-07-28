@@ -7549,3 +7549,52 @@ RF-640..RF-648.
 - **Location:** `chisurf/core/transform/mmfdb.py:73-82` (`from chisurf.plugins.core.mmfdb_admin.gui.session import cached_token` under the comment "*Keep this import local so core remains Qt-free*", inside `try: … except Exception: return None` wrapping the whole body of `runtime_session_for_database`)
 - **Finding:** importing that submodule executes `chisurf/plugins/core/mmfdb_admin/__init__.py`, whose first statements are `from chisurf.gui import dialogs` and `from .gui.tool import MMFDBWidget`. Verified in a clean interpreter: before the import `qtpy` and `PyQt5.QtWidgets` are absent from `sys.modules`; after `import chisurf.plugins.core.mmfdb_admin.gui.session` both are loaded and so is `chisurf.gui` — the opposite of what the comment promises, and a core→gui→plugin dependency that `test/architecture/test_model_ui_boundary.py` does not catch (its `GUI_FREE_ROOTS` covers only `chisurf/core/models` and `chisurf/core/dataspec`). The surrounding `except Exception` then hides both this import and every `AuthError` from an expired or mismatched token, so a caller cannot distinguish "no credential configured" from "your token was rejected" — `chisurf/plugins/tttr/tttr_microtime_shifter/gui/tool.py:654-675` wraps the call in a second bare `except Exception: return None`. Move the process-token cache out of the plugin GUI package into core (or invert the dependency so the plugin registers its cache with core), narrow the `except` to `AuthError`/`ImportError`, and extend `GUI_FREE_ROOTS` to `chisurf/core` so the leak cannot come back.
 - **Fix note:**
+
+### RF-649
+- **Status:** FIXED
+- **Severity:** S2 (a corrected estimator's results were reported as current; the only reuse gate that survives a restart could hand back another version's numbers with no way to tell)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py` (`batch_fingerprint`), and the same pattern in `burst_2cde`, `burst_bva`, `burst_h2mm`, `burst_selection`
+- **Finding:** the reuse fingerprint covered inputs and settings only — `extra=` was used purely as a tool *name* (`"2cde"`, `"bva"`, `"h2mm"`, `"burst_mle"`, `"burst_selection"`), never as a version. Four of the five steps AND the on-disk stamp with live in-memory state, so a fresh session recomputes regardless; **MLE does not** (`process_bursts` gates on the stamp alone). Opening a project on a rebuilt tree therefore reported *"Unchanged — the exported burst fits are current (nothing refitted)"* while the `b{g,r,y}4` files every downstream step reads were the previous estimator's. Fixed by `analysis_cache.algorithm_tag(tool, ALGORITHM_VERSION, *libraries)`: a per-tool constant bumped with the code, plus the resolved build of the compiled library that holds the estimator (`fit2x`, `tttrlib`), so a dependency rebuild invalidates without anyone remembering to. Pinned by `test/core/test_analysis_cache.py` and `test/gui/test_burst_reuse.py::test_a_corrected_estimator_does_not_inherit_the_old_exports`.
+- **Fix note:** landed with RF-650..RF-653.
+
+### RF-650
+- **Status:** FIXED
+- **Severity:** S2 (a per-channel TAC linearisation changes every micro-time an analysis reads while no step's fingerprint moves)
+- **Location:** `chisurf/core/fio/lut_context.py` (process-global `_active`), consulted by `chisurf/core/fio/staging.py:367` when the caller passes no correction
+- **Finding:** the LUTs, micro-time shifts and the master `apply_lut` gate are ambient process state, not a parameter of any tool. Editing a setup's LUT therefore changed what BVA, 2CDE, MLE, H2MM and the burst search compute, with every input file and every setting byte-identical — each step reported its previous result as current. Fixed by `analysis_cache.photon_read_context()`, which digests the active LUTs, shifts, gate and dither seed into the params of every photon-reading step. Pinned by `test_the_ambient_read_context_is_reported` and `test_a_changed_lut_recomputes_every_photon_reading_step`.
+- **Fix note:** landed with RF-649.
+
+### RF-651
+- **Status:** FIXED
+- **Severity:** S3 (a raw measurement replaced under an unchanged burst folder was not noticed)
+- **Location:** `input_files()` in all four burst analysis panels, and `batch_input_files()` in the MLE wizard
+- **Finding:** each step fingerprinted the `bi4_bur` tables only, although all of them read the raw photon streams those tables point into. The tables are normally rewritten when the sources change, so the gap opens exactly when they are not: a source re-exported or re-staged without re-running the burst search. `Info/analysis.json` already records every source path, so the fix costs one small JSON read: `burst_manifest.source_inputs()` returns the manifest and the sources it names, and every step adds them to its input list.
+- **Fix note:** landed with RF-649.
+
+### RF-652
+- **Status:** FIXED
+- **Severity:** S3 (an output edited or truncated after it was written still counted as current; two selections of one folder each recomputed the other)
+- **Location:** `chisurf/core/analysis_cache.py` (`outputs_present`, `write_stamp`, `is_current`)
+- **Finding:** a stamp recorded output *paths* and `is_current` checked only `Path.exists()`, so a result rewritten by another tool or truncated by a failed write was reused. A stamp also held exactly one fingerprint, so analysing one folder with two selections of burst files made each overwrite the other's record and recompute on every switch. Stamp format bumped to v2: each output is recorded with its size and modification time and verified against them, and entries accumulate newest-first (capped at `MAX_STAMP_ENTRIES = 16`). v1 stamps read as absent, i.e. recompute once.
+- **Fix note:** landed with RF-649.
+
+### RF-653
+- **Status:** FIXED
+- **Severity:** S2 (Stop did not stop: a minutes-long fit the user abandoned restarted on the next visit to the step)
+- **Location:** `chisurf/plugins/burst/burst_2cde/gui/tool.py` (`_auto_run`) and `chisurf/plugins/burst/burst_h2mm/gui/tool.py` (`_auto_run`)
+- **Finding:** the steps that compute on arrival guarded `_auto_run` on only "a folder is set" and "nothing is running", and `stop()` merely invalidated the cache. Stopping an H2MM scan and stepping away therefore restarted the same 64 s fit on the next `showEvent` — in the workflow shell, on every pass through the steps — so Stop only postponed the work. `ResultCache` gained `abandon()`/`was_abandoned()`/`allow()`: a stop records the fingerprint it stopped, arrival is suppressed for exactly that request, and any changed input or setting, or an explicit Run/⟳, clears it. Pinned by `test_a_stopped_h2mm_fit_does_not_start_itself_again` and `test_a_stopped_2cde_run_does_not_start_itself_again`.
+- **Fix note:** landed with RF-649.
+
+### RF-654
+- **Status:** FIXED
+- **Severity:** S3 (the documented way to override the reuse gate did not exist in the interface)
+- **Location:** the five burst analysis steps; `docs/guides/53_reusing_results.md:100`
+- **Finding:** `force=True` was documented in four docstrings and the user guide (*"either delete the stamp file or call the step from Python"*) and reachable from no button, modifier or menu item; the only non-test call site was the guide's own snippet. Toggling a setting and back does not substitute, because the fingerprint returns to its previous value. Added a canonical `recompute` action (`⟳`, `Glyphs.RECOMPUTE`) to the shared toolbar vocabulary and a button to all five steps, outlined via `flag_attention()` the moment a run is skipped. Note for future actions: a `[attention="true"]` rule is *not* reliable on a widget carrying its own stylesheet — verified by pixel-sampling a rendered toolbar — so `flag_attention` rewrites the button's stylesheet instead.
+- **Fix note:** landed with RF-649.
+
+### RF-655
+- **Status:** FIXED
+- **Severity:** S3 (an H2MM state count could not be reproduced or reported, because the seed that produced it was invisible)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/gui/tool.py` (`_gather_settings`)
+- **Finding:** `H2mmSettings.seed` exists and is plumbed all the way to `h2mm_tttrlib.py:129` as `seed + r` per restart, but the GUI never set it, so every fit silently used the default 0. Fits were therefore reproducible by accident and not by record: nothing in the panel, the status line or a report said which sample was kept, and a user wanting an independent sample had no way to ask for one. The seed is now a fit option (*Seed*, default 0), part of the fingerprint, reported in the status line, and already carried in `H2mmResult.settings_applied`. Its absence also made a docstring wrong — `force=True` was described as "a genuinely different sample", which it never was.
+- **Fix note:** landed with RF-649.

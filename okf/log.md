@@ -2,6 +2,34 @@
 
 ## 2026-07-28
 
+* **"Nothing changed" now means the code did not change either (RF-649..RF-655).**
+  The burst steps' reuse gate fingerprinted inputs and settings, which is not the
+  same as everything that decides the answer. Three things were missing and each
+  could hand back a wrong result in silence: the **estimator** (`extra=` carried
+  only a tool *name*, so a rebuilt `fit2x` left the MLE step — the one gate that
+  survives a restart — reporting the previous version's exports as current); the
+  **ambient read context** (per-channel TAC LUTs and micro-time shifts live in
+  process-global state and are applied inside the reader, so editing one changed
+  every micro-time while no fingerprint moved); and the **raw sources** (only the
+  `bi4_bur` tables were stat-ed, though every step reads the photon streams those
+  tables point into). `chisurf/core/analysis_cache.py` grew `algorithm_tag()`,
+  `photon_read_context()` and `library_version()`; `burst_manifest.source_inputs()`
+  resolves a folder's sources from the `Info/analysis.json` it already writes.
+  Stamps went to **v2**: outputs are recorded with size and mtime and verified
+  against them (existence alone reused a truncated or rewritten result), and one
+  stamp holds an entry per fingerprint so two selections of a folder stop evicting
+  each other. Two interface defects went with them: **Stop did not stop** — a
+  stopped 2CDE/H2MM run restarted on the next visit, because `_auto_run` knew
+  only "is something running", so `ResultCache` gained `abandon()`/`allow()` — and
+  the documented override **did not exist**, `force=True` being reachable from no
+  button at all, so a canonical `⟳ Recompute` action joined the shared toolbar
+  vocabulary in all five steps, outlined the moment a run is skipped. H2MM's seed,
+  plumbed through the core but never set by the GUI, is now a fit option reported
+  in the status line, so a state count can be reported and reproduced. Guides
+  [53](../docs/guides/53_reusing_results.md) and
+  [19](../docs/guides/19_h2mm_hidden_markov.md) updated; `test/core/test_analysis_cache.py`
+  and `test/gui/test_burst_reuse.py` cover each.
+
 * **A simulated decay carries the reader that made it (RF-637).** The
   reader-level `TCSPCSimulatorSetup.read()` — the *Read data* header's **+ Data**
   button — built its `DataCurve` with `setup=self` but no `data_reader=`, so the

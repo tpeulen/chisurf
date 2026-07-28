@@ -48,12 +48,18 @@ from chisurf.gui.event_pump import pump_ui
 from chisurf.gui.widgets.messages import MessagesMixin, Msg
 from chisurf.gui.widgets.wizard import DetectorWizardPage
 from chisurf.core import analysis_cache
+from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
+from chisurf.gui.widgets.tool_buttons import flag_attention
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis
 from ..core.engines import ENGINE_LABELS
 from ..core.engines import ENGINES as H2mmEngines
 from chisurf.gui import dialogs
+
+#: Bump in the same change that alters what this tool computes, so results
+#: written by the previous version stop reading as current.
+ALGORITHM_VERSION = 1
 
 
 _STATE_COLORS = [
@@ -287,6 +293,11 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self._folder_field = _FolderLineEdit(placeholder="No folder selected")
         self._folder_field.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.btn_run = action_button("run", tooltip="Fit H2MM on all loaded bursts")
+        # A fit whose bursts and settings are unchanged is skipped; this is how
+        # the user asks for it anyway (a rebuilt engine, a suspect scan).
+        self.btn_recompute = action_button(
+            "recompute", tooltip="Refit H2MM even if nothing changed"
+        )
         # The fit starts on its own when this step is opened, and a state scan
         # with restarts runs for minutes: stopping it has to be one click away,
         # not buried in a progress bar the shell may render as a status line.
@@ -309,6 +320,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
 
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
+        self.toolbar.addWidget(self.btn_recompute)
         self.toolbar.addWidget(self.btn_stop)
         self.toolbar.addWidget(self.btn_uncert)
         self.toolbar.addWidget(self.btn_llscan)
@@ -378,6 +390,14 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self.sb_divisors = QSpinBox()
         self.sb_divisors.setRange(1, 8)
         self.sb_divisors.setValue(1)
+        self.sb_seed = QSpinBox()
+        self.sb_seed.setRange(0, 2**31 - 2)
+        self.sb_seed.setValue(0)
+        self.sb_seed.setToolTip(
+            "Random seed for the restarts. The same seed refits to the same "
+            "answer, so a scan can be reported and reproduced; change it to draw "
+            "an independent sample of starting points."
+        )
         self.sb_divisors.setSpecialValueText("off (E only)")
         self.sb_divisors.setToolTip(
             "Nanotime divisors: split each stream into this many micro-time "
@@ -385,6 +405,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
             "an apparent FRET E but differ in lifetime. 1 = off."
         )
         of.addRow("Restarts:", self.sb_restarts)
+        of.addRow("Seed:", self.sb_seed)
         of.addRow("Max iterations:", self.sb_max_iter)
         of.addRow("Min photons/burst:", self.sb_min_photons)
         of.addRow("Macro-time scale:", self.sb_time_scale)
@@ -658,7 +679,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
     def _connect_signals(self):
         self.btn_folder.clicked.connect(self._select_folder)
         self._folder_field.folderDropped.connect(self._set_folder)
-        self.btn_run.clicked.connect(self._run_analysis)
+        self.btn_run.clicked.connect(self._on_run_clicked)
+        self.btn_recompute.clicked.connect(self._on_recompute_clicked)
         self.btn_uncert.clicked.connect(self._run_uncertainty)
         self.btn_llscan.clicked.connect(self._run_llscan)
         self.btn_save.clicked.connect(self._save_plot)
@@ -691,6 +713,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
             max_states=max(self.sb_max_states.value(), self.sb_min_states.value()),
             criterion=self.cb_criterion.currentText(),
             n_restarts=self.sb_restarts.value(),
+            seed=self.sb_seed.value(),
             max_iter=self.sb_max_iter.value(),
             min_photons=self.sb_min_photons.value(),
             time_scale=self.sb_time_scale.value(),
@@ -726,15 +749,25 @@ class H2mmTool(MessagesMixin, QMainWindow):
         return ChiSurfProgress(self, label, maxv, title=title, cancel=cancel_cb)
 
     def input_files(self) -> list:
-        """The burst files this fit reads."""
+        """Everything this fit reads: the burst tables and the photons.
+
+        H2MM is a photon-by-photon fit, so the raw measurements named in the
+        folder's manifest are inputs as much as the `.bur` tables are.
+        """
         if not self.data_folder:
             return []
-        return sorted(pathlib.Path(self.data_folder).glob("**/*.bur"))
+        tables = sorted(pathlib.Path(self.data_folder).glob("**/*.bur"))
+        return tables + list(source_inputs(self.data_folder))
 
     def analysis_fingerprint(self, settings) -> str:
-        """Fingerprint of the burst files plus every fit setting."""
+        """Fingerprint of the inputs, the settings, the read context and the code."""
         return analysis_cache.fingerprint(
-            self.input_files(), {"settings": settings}, extra="h2mm"
+            self.input_files(),
+            {
+                "settings": settings,
+                "_read_context": analysis_cache.photon_read_context(),
+            },
+            extra=analysis_cache.algorithm_tag("h2mm", ALGORITHM_VERSION, "tttrlib"),
         )
 
     def _run_analysis(self, *, force: bool = False):
@@ -743,8 +776,9 @@ class H2mmTool(MessagesMixin, QMainWindow):
         A fit whose burst files and settings are identical to the one already
         displayed is skipped — the workflow asks for a run on every *Next*, and
         scanning state counts with restarts is minutes of work on real data.
-        ``force=True`` refits regardless (the fit is stochastic, so a forced
-        refit is a genuinely different sample, not a no-op).
+        ``force=True`` refits regardless — which, because the restarts are
+        seeded, reproduces the same answer rather than resampling. To draw a
+        genuinely different sample, change the seed.
         """
         if not self.data_folder:
             self.Error.no_folder()
@@ -758,8 +792,12 @@ class H2mmTool(MessagesMixin, QMainWindow):
             and self._result is not None
             and self._result_cache.matches(fingerprint)
         ):
-            self._status("Unchanged — kept the previous H2MM fit")
+            self._status(
+                "Unchanged — kept the previous H2MM fit (⟳ refits it anyway)"
+            )
+            flag_attention(self.btn_recompute, True)
             return
+        flag_attention(self.btn_recompute, False)
         self._running_fingerprint = fingerprint
         self._fit_t0 = time.perf_counter()
         self.btn_run.setEnabled(False)
@@ -793,7 +831,9 @@ class H2mmTool(MessagesMixin, QMainWindow):
         if task is None:
             return
         task.cancel()
-        self._result_cache.invalidate()
+        # Abandoned rather than merely invalidated: revisiting this step must not
+        # start the same minutes-long scan the user just stopped.
+        self._result_cache.abandon(self._running_fingerprint)
         self._status("Stopping the H2MM fit \u2026")
 
     def showEvent(self, event) -> None:
@@ -810,9 +850,32 @@ class H2mmTool(MessagesMixin, QMainWindow):
         QtCore.QTimer.singleShot(0, self._auto_run)
 
     def _auto_run(self) -> None:
-        """Fit for the current folder, quietly doing nothing when there is none."""
-        if self.data_folder and not self._fit_is_running():
-            self._run_analysis()
+        """Fit for the current folder, quietly doing nothing when there is none.
+
+        A fit the user stopped does not start itself again when the step is
+        revisited — otherwise Stop would only postpone minutes of work until the
+        next *Next*. Changing a burst file or a setting gives a different
+        fingerprint, which was never abandoned, so the suppression is exactly as
+        narrow as the stop was.
+        """
+        if not self.data_folder or self._fit_is_running():
+            return
+        if self._result_cache.was_abandoned(
+            self.analysis_fingerprint(self._gather_settings())
+        ):
+            self._status("Stopped earlier — press Run to fit H2MM")
+            return
+        self._run_analysis()
+
+    def _on_run_clicked(self) -> None:
+        """Fit because the user asked, clearing any earlier stop."""
+        self._result_cache.allow()
+        self._run_analysis()
+
+    def _on_recompute_clicked(self) -> None:
+        """Refit even though nothing changed."""
+        self._result_cache.allow()
+        self._run_analysis(force=True)
 
     def _fit_is_running(self) -> bool:
         """Whether a fit started by this panel is still going."""
@@ -867,10 +930,14 @@ class H2mmTool(MessagesMixin, QMainWindow):
             self._result_cache.remember(self._running_fingerprint)
         self._uncertainty = None  # bootstrap CIs are stale after a new fit
         self._update_plots()
+        # The seed is part of the answer: the same one refits identically, so a
+        # reported state count is only reproducible if it travels with it.
+        seed = (result.settings_applied or {}).get("seed")
         self._status(
             f"Selected {result.n_states} states "
             f"({result.criterion.upper()}) from {result.n_bursts} bursts / "
             f"{result.n_photons} photons"
+            + (f" (seed {seed})" if seed is not None else "")
         )
 
     # ── uncertainty (bootstrap) ──────────────────────────────────────

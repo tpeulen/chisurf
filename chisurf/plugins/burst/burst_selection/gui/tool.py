@@ -22,7 +22,7 @@ from chisurf.gui.widgets.dock_area.dock_area import DockArea
 from chisurf.gui.progress import ChiSurfProgress
 from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.sample_picker import show_sample_picker_dialog
-from chisurf.gui.widgets.tool_buttons import action_button
+from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.gui.widgets.tools import PathDropListWidget as DropListWidget
 from chisurf.gui.widgets.wizard.tttr_channeldefinition.tttr_channel_definition import (
@@ -88,6 +88,10 @@ except Exception:
 ALL_METADATA_KEYS = COMMON_METADATA_KEYS + [k for k in _PDBX_KEYS if k not in COMMON_METADATA_KEYS]
 
 _LOG = RpcLogWriter("chisurf.plugins.burst.burst_selection")
+
+#: Bump in the same change that alters what this tool computes, so results
+#: written by the previous version stop reading as current.
+ALGORITHM_VERSION = 1
 
 DEFAULT_CHANNELS = [0, 1, 8, 9]
 DEFAULT_MIN_PHOTONS = 60
@@ -1861,6 +1865,21 @@ class BurstSelectionTool(ChisurfDockTool):
             self._status_bar.showMessage(f"Error updating plots after filter change: {exc}")
             _LOG.error("error updating plots after filter change", error=str(exc))
 
+    def _recompute_files(self) -> None:
+        """Search the bursts again even though nothing changed."""
+        self.analyze_files(force=True)
+
+    def _flag_recompute(self, on: bool) -> None:
+        """Draw attention to Recompute exactly when a search was skipped.
+
+        Read from the instance dict rather than with ``getattr``: the gate is
+        exercised on tools built without ``__init__`` (headless service tests),
+        where any attribute miss reaches PyQt's fallback and raises.
+        """
+        button = self.__dict__.get("_act_recompute")
+        if button is not None:
+            flag_attention(button, on)
+
     def analyze_files(self, *, force: bool = False) -> None:
         """Run the burst selection over every selected file, off the GUI thread.
 
@@ -1903,7 +1922,11 @@ class BurstSelectionTool(ChisurfDockTool):
         # A request identical to the one that produced what is on screen is
         # answered by what is on screen.
         fingerprint = analysis_cache.fingerprint(
-            self._file_paths, request, extra="burst_selection"
+            self._file_paths,
+            {**request, "_read_context": analysis_cache.photon_read_context()},
+            extra=analysis_cache.algorithm_tag(
+                "burst_selection", ALGORITHM_VERSION, "tttrlib"
+            ),
         )
         if (
             not force
@@ -1912,9 +1935,12 @@ class BurstSelectionTool(ChisurfDockTool):
         ):
             self.summary.setPlainText(
                 "Unchanged — kept the previous burst search "
-                "(same files, same settings; nothing re-searched)."
+                "(same files, same settings; nothing re-searched).\n"
+                "Press ⟳ Recompute to search them again anyway."
             )
+            self._flag_recompute(True)
             return
+        self._flag_recompute(False)
         self._running_fingerprint = fingerprint
 
         self.Error.clear()
@@ -2980,12 +3006,18 @@ class BurstSelectionTool(ChisurfDockTool):
                                         tooltip="Batch-process a folder of TTTR files")
         self._act_process = action_button("run", on_click=self.analyze_files,
                                           tooltip="Process all loaded files")
+        # A search whose files and settings are unchanged is skipped; this is how
+        # the user asks for it anyway.
+        self._act_recompute = action_button(
+            "recompute", on_click=self._recompute_files,
+            tooltip="Search the bursts again even if nothing changed",
+        )
         self._act_clear = action_button("clear", on_click=self.clear,
                                         tooltip="Clear loaded files")
         self._act_refresh = action_button("refresh", on_click=self.update_burst_plots,
                                           tooltip="Refresh burst plots")
         for _btn in (self._act_add, self._act_batch, self._act_process,
-                     self._act_clear, self._act_refresh):
+                     self._act_recompute, self._act_clear, self._act_refresh):
             toolbar.addWidget(_btn)
 
         toolbar.addSeparator()

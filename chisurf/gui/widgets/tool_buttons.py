@@ -85,6 +85,15 @@ QToolButton:disabled {
 }
 """
 
+#: The "this is the one you want now" outline. Appended to a button's own
+#: stylesheet rather than expressed as a ``[attention="true"]`` rule: a widget
+#: that carries its own stylesheet does not reliably re-evaluate a dynamic
+#: property selector on unpolish/polish, and an outline that sometimes fails to
+#: appear is worse than none.
+ATTENTION_RULE = """
+QToolButton { border: 2px solid #f0b429; }
+"""
+
 #: Transparent toolbar chrome so the styled buttons read as one row.
 TOOLBAR_STYLE = """
 QToolBar {
@@ -129,6 +138,30 @@ def button_style(kind: str = "default") -> str:
 def apply_tool_button_style(button: QtWidgets.QAbstractButton, kind: str = "default") -> None:
     """Apply the shared style of *kind* to an existing button."""
     button.setStyleSheet(button_style(kind))
+
+
+def flag_attention(button: QtWidgets.QAbstractButton, on: bool = True) -> None:
+    """Outline *button* to say "this is the one you want now".
+
+    Used by the analysis steps for their Recompute action: it is only worth
+    noticing straight after a run was skipped because nothing changed, and
+    invisible clutter the rest of the time.
+
+    The button's own stylesheet is rewritten rather than a dynamic property
+    toggled, because the accent has to be *seen*: a widget carrying its own
+    stylesheet does not reliably re-evaluate an attribute selector when the
+    property changes. ``attention`` is still set, so callers and tests can ask.
+    """
+    on = bool(on)
+    if button.property("attention") == on:
+        return
+    base = button.property("_attention_base_style")
+    if base is None:
+        base = button.styleSheet()
+        button.setProperty("_attention_base_style", base)
+    button.setProperty("attention", on)
+    button.setStyleSheet(base + ATTENTION_RULE if on else base)
+    button.update()
 
 
 def styled_tool_button(
@@ -192,6 +225,11 @@ class ToolAction:
     tooltip: str
     kind: str
     order: int
+    #: Point size for the glyph, when the default is wrong for it. Emoji are
+    #: drawn by the colour font at a size of their own; a plain text glyph like
+    #: ``⟳`` obeys ``font-size`` and comes out visibly smaller than its emoji
+    #: neighbours unless it is asked for larger.
+    font_px: int = 0
 
 
 #: The shared action vocabulary. ``order`` fixes left-to-right toolbar position so
@@ -201,6 +239,10 @@ TOOL_ACTIONS: dict[str, ToolAction] = {
     "folder":   ToolAction("folder", Glyphs.FOLDER, "Folder", "Select data folder", "folder", 12),
     "batch":    ToolAction("batch", "🗂️", "Batch", "Batch-process a folder", "folder", 20),
     "run":      ToolAction("run", Glyphs.ROCKET, "Run", "Run — process all loaded data", "run", 30),
+    "recompute": ToolAction(
+        "recompute", Glyphs.RECOMPUTE, "Recompute",
+        "Recompute even if nothing changed", "run", 32, font_px=17,
+    ),
     "auto":     ToolAction("auto", "⚡", "Auto", "Auto-run / auto-optimize", "toggle", 34),
     "stop":     ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "clear", 38),
     "clear":    ToolAction("clear", Glyphs.DELETE, "Clear", "Clear loaded data", "clear", 50),
@@ -241,6 +283,10 @@ def action_button(
         checkable=checkable, parent=parent,
     )
     btn.setObjectName(f"{TOOL_ACTION_OBJECT_PREFIX}{key}")
+    if action.font_px:
+        btn.setStyleSheet(
+            btn.styleSheet() + f"\nQToolButton {{ font-size: {action.font_px}px; }}\n"
+        )
     if on_click is not None:
         btn.clicked.connect(on_click)
     return btn
