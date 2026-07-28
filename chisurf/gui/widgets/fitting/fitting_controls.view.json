@@ -1,38 +1,50 @@
 {
-  "_comment": "Fit controller: dataset, fit range, sampling and fitting controls. Replaces the hand-drawn fittingWidget.ui, whose controls were named spinBox_2..spinBox_6 and whose steps field was labelled 'Stps'. The four panels mirror its group boxes, so the controller's per-group show/hide (ProteinMC hides Fitting, keeping Sampling) still means what it meant.",
+  "_comment": "Fit controller: one foldable box holding the two actions that matter (Fit, Distribution) above the fields they use. Replaces the hand-drawn fittingWidget.ui, whose controls were named spinBox_2..spinBox_6 and whose steps field read 'Stps'. The actions come first and stay big because they are what the panel is for; everything else is a setting for them.",
   "sections": [
     {
       "type": "panel",
-      "title": "Dataset",
-      "collapsible": false,
-      "n_col": 1,
+      "title": "Fit",
+      "collapsible": true,
+      "collapsed": false,
+      "n_col": 2,
       "sections": [
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "▶  Fit",
+              "action": "fit",
+              "description": "Run the optimiser on the selected fit."
+            },
+            {
+              "label": "📊  Distribution",
+              "action": "sample",
+              "description": "Sample the posterior of the free parameters — the distribution behind the error bars. Writes the chains, the diagnostics and the project to a folder."
+            }
+          ]
+        },
         {
           "type": "choice",
           "attr": "dataset_index",
           "label": "Dataset",
           "kind": "combo",
           "options_source": "dataset_options",
-          "description": "Which fit of this window the controls below act on."
+          "description": "Which fit of this window the controls act on."
         },
         {
-          "type": "button_row",
-          "buttons": [
-            {
-              "label": "…",
-              "action": "select_dataset",
-              "description": "Attach a different dataset to this fit."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Fit range",
-      "collapsible": false,
-      "n_col": 2,
-      "sections": [
+          "type": "choice",
+          "attr": "chain_format",
+          "label": "Chains",
+          "options": [
+            "er4",
+            "hdf5"
+          ],
+          "labels": [
+            "Text (.er4)",
+            "HDF5 (.h5)"
+          ],
+          "description": "How sampled chains are stored. Text reads anywhere; HDF5 is a compressed table about four times smaller, which is what a long run needs. Both open in nDXplorer."
+        },
         {
           "type": "value",
           "attr": "xmin",
@@ -66,24 +78,6 @@
           "description": "Last channel of the second axis, for two-dimensional data."
         },
         {
-          "type": "button_row",
-          "buttons": [
-            {
-              "label": "auto",
-              "action": "auto_range",
-              "description": "Choose the fit range from the data: the rising edge to where the signal reaches the background."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Sampling",
-      "collapsible": false,
-      "n_col": 2,
-      "sections": [
-        {
           "type": "value",
           "attr": "steps_k",
           "kind": "float",
@@ -92,7 +86,7 @@
           "maximum": 10000.0,
           "decimals": 2,
           "suffix": " k",
-          "description": "Steps per walker, in thousands. The diagnostics report whether it was enough."
+          "description": "Sampling steps per walker, in thousands. The diagnostics report whether it was enough."
         },
         {
           "type": "value",
@@ -101,40 +95,8 @@
           "label": "Runs",
           "minimum": 1,
           "maximum": 1000,
-          "description": "Independent runs. Their disagreement is the R-hat that says whether the chain converged, so more than one is the point."
+          "description": "Independent sampling runs. Their disagreement is the R-hat that says whether the chain converged, so more than one is the point."
         },
-        {
-          "type": "choice",
-          "attr": "chain_format",
-          "label": "Format",
-          "options": [
-            "er4",
-            "hdf5"
-          ],
-          "labels": [
-            "Text (.er4)",
-            "HDF5 (.h5)"
-          ],
-          "description": "How the chains are stored. Text reads anywhere; HDF5 is a compressed table about four times smaller, which is what a long run needs. Both open in nDXplorer."
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "label": "Sample",
-              "action": "sample",
-              "description": "Sample the posterior of the free parameters and write the chains, the diagnostics and the project to a folder."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Fitting",
-      "collapsible": false,
-      "n_col": 2,
-      "sections": [
         {
           "type": "value",
           "attr": "result_index",
@@ -153,9 +115,14 @@
           "type": "button_row",
           "buttons": [
             {
-              "label": "Fit",
-              "action": "fit",
-              "description": "Run the optimiser on the selected fit."
+              "label": "auto range",
+              "action": "auto_range",
+              "description": "Choose the fit range from the data: the rising edge to where the signal reaches the background."
+            },
+            {
+              "label": "change data",
+              "action": "select_dataset",
+              "description": "Attach a different dataset to this fit."
             }
           ]
         }

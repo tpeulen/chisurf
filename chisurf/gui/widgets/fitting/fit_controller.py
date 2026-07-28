@@ -171,8 +171,12 @@ class FittingControllerWidget(Controller):
         self.button_sample = self._button('sample')
         self.button_auto_fit_range = self._button('auto_range')
         self.button_dataset_select = self._button('select_dataset')
-        self.groupBox = self.form.section_widget(title="Fitting")
-        self.groupBox_sampling = self.form.section_widget(title="Sampling")
+        # One foldable box now, so the group the ProteinMC path used to hide is
+        # gone; what it meant -- "this fit is not optimised from here" -- is the
+        # Fit button and the two fields that belong to it.
+        self.groupBox = self.form.section_widget(title="Fit")
+        self._emphasise(self.button_fit)
+        self._emphasise(self.button_sample)
 
         # The actions the designer file carried. Nothing outside this widget
         # triggers them, but the connections below are the widget's own vocabulary.
@@ -214,6 +218,47 @@ class FittingControllerWidget(Controller):
                 return widget
         cs.logging.warning("fitting controls: no field %r in the view spec", attr)
         return None
+
+    @staticmethod
+    def _emphasise(button) -> None:
+        """Make an action button read as the action it is.
+
+        The designer file gave Fit and Sample a bold font and let them span
+        their group; rendered from a spec they come out the size of a
+        text field's spin arrows, which is not what the panel is for.
+
+        Parameters
+        ----------
+        button : QtWidgets.QAbstractButton or None
+            The button to emphasise.
+        """
+        if button is None:
+            return
+        font = button.font()
+        font.setBold(True)
+        button.setFont(font)
+        button.setMinimumHeight(28)
+        button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+        button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+
+    def _set_fitting_controls_visible(self, visible: bool) -> None:
+        """Show or hide the controls that only make sense for a fitted model.
+
+        A ProteinMC fit runs its own algorithm, so the optimiser button and the
+        result selector do not apply to it -- but its *sampling* does, which is
+        why this hides controls rather than the whole box.
+
+        Parameters
+        ----------
+        visible : bool
+            Whether the fitting controls should be shown.
+        """
+        if self.button_fit is not None:
+            self.button_fit.setVisible(bool(visible))
+        for attr in ('result_index', 'local_first'):
+            self._set_field_visible(attr, visible)
 
     def _editor(self, attr: str):
         """Return the Qt editor AutoForm built for one bound attribute.
@@ -494,9 +539,9 @@ class FittingControllerWidget(Controller):
 
         if self._is_proteinmc_fit():
             self.actionFit.setEnabled(False)
-            self.groupBox.hide()
+            self._set_fitting_controls_visible(False)
         else:
-            self.groupBox.show()
+            self._set_fitting_controls_visible(True)
             self.actionFit.setEnabled(True)
             self.button_fit.setEnabled(True)
 
