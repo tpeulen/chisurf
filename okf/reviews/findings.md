@@ -7701,3 +7701,42 @@ RF-640..RF-648.
 - **Location:** `chisurf/core/fitting/sample.py:1829` (`_sample_ensemble`: `skip_initial_state_check=True`), against `chisurf/core/fitting/ensemble.py:544-548` (`walkers_independent`) and the sibling caller `chisurf/plugins/fluorescence_decay/maxent_decay/core/sampling.py:291` (`skip_initial_state_check=(i > 0)`)
 - **Finding:** `_sample_ensemble` drives the run in chunks and passes `skip_initial_state_check=True` on *every* chunk, including the first, so `walkers_independent` is never evaluated for `sample_ensemble` or `sample_ensemble_slice`. The check is not vacuous: `EnsembleSliceSampler(10, 12, ...)` with a random start raises *"Initial state has a large condition number"* when it is allowed to run, i.e. it catches exactly the case the slice sampler does not otherwise reject (unlike `EnsembleSampler`, which enforces `nwalkers >= 2 * ndim` in its constructor, `ensemble.py:642-646`). The MaxEnt plugin shows the intended shape: check the first chunk, skip the resumed ones, and downgrade a failure to a logged warning. Skipping is required only for `i > 0`; make the flag depend on the chunk index the same way.
 - **Fix note:**
+
+## Review 2026-07-28 — the six dependencies that left, and the decorator module they landed in
+
+Slice: `e45e9b30d` (`chisurf.core.decorators`, `chisurf.core.progress`,
+`chisurf.core.cli_support` replacing `deprecation`, `tqdm`, `click-didyoumean`;
+`pytools` / `msgpack-numpy` / `jsonschema` dropped as undeclared-and-unused),
+plus the pre-existing `register` decorator the new code now shares a module with.
+
+The three replacements were checked against their originals rather than read:
+`csc burst-backgroud` and `count-rate analyse` both print the git-style
+suggestion list (`click.utils.make_str` still exists on the installed click
+8.4.2), the twelve `@deprecated` decorations now really warn (`pq_photons` emits
+a `DeprecatedWarning`, and the numba dispatchers survive `functools.wraps`), and
+nothing in the tree or in MMFDB imports `msgpack_numpy`, `jsonschema` or
+`pytools` — the removals are correct. `chisurf.core.progress` is clean.
+Separately, `7167d1e9f`'s log-space PDA3C background sum was spot-checked against
+`burst_log_likelihood_reference` including a zero-background channel: identical
+to 1e-9, no NaN, ~40× faster. Findings RF-661..RF-663.
+
+### RF-661
+- **Status:** OPEN
+- **Severity:** S2 (instantiating a subclass silently overwrites the *subclass's* `__name__` with the base class name, process-wide)
+- **Location:** `chisurf/core/decorators.py:77` (`register.<locals>.RegisteredClass.__init__`, `self.__class__.__name__ = cls.__name__`), consumed by `chisurf/core/base.py:231` (`find_objects` name fallback) and `chisurf/core/base.py:765` (`Base.__init__`, `name = self.__class__.__name__`)
+- **Finding:** `RegisteredClass.__init__` assigns to `self.__class__.__name__`, i.e. to whatever the *runtime* class is — not to the wrapper class the decorator built. For a direct instantiation that is the intended repair (the wrapper is born as `RegisteredClass`), but every **undecorated subclass** gets renamed to the base class instead, on its first instantiation, for the life of the process. `Parameter` is `@register`ed (`chisurf/core/parameter.py:62`); `FittingParameter` is not. Verified in the arm64 env: before any instance, `Parameter.__name__ == 'RegisteredClass'` and `FittingParameter.__name__ == 'FittingParameter'`; after one `FittingParameter(name='b', value=2.0)`, `FittingParameter.__name__ == 'Parameter'` while `__qualname__` still reads `FittingParameter` and `Parameter.__name__` is *still* `'RegisteredClass'` — three classes, three inconsistent identities, all mutated as a side effect of construction. It is not cosmetic: `find_objects`'s name fallback (`type(value).__name__ == searched_object_type.__name__`) then matches on the collision, and `find_objects([Parameter(...)], FittingParameter)` returns the plain `Parameter` — verified. The core fitting layer already carries a workaround comment for this at `chisurf/core/fitting/parameter.py:427-429` (*"FittingParameter is renamed by @register so isinstance against FittingParameter can be unreliable"*) which misdiagnoses the cause — `isinstance(f, FittingParameter)` is `True` and was never affected; only the *name* is. Set the name on the wrapper class at decoration time (`RegisteredClass.__name__ = cls.__name__` next to the `return`, plus `__qualname__` / `__module__`) instead of from `__init__`, which fixes the pre-first-instance `'RegisteredClass'` window too, and then drop the stale comment and its workaround.
+- **Fix note:**
+
+### RF-662
+- **Status:** OPEN
+- **Severity:** S3 (`UnsupportedWarning` is exported and documented but unreachable from any decoration in the tree; a function six years past its removal version reports that it "will be removed")
+- **Location:** `chisurf/core/decorators.py:185-213` (`_deprecation_state`), `:141-152` (`UnsupportedWarning`), against the twelve `@deprecated(...)` sites in `chisurf/core/fio/fluorescence/tttr.py` and `chisurf/core/fluorescence/fcs/correlate.py`
+- **Finding:** `e45e9b30d` correctly dropped the frozen `current_version="19.08.23"` that had made all twelve decorations inert since 2019, but dropped it to `None` rather than to the running version. `_deprecation_state` short-circuits on `current_version is None` and returns `(True, False)` — always the *deprecated*, never the *unsupported*, branch — so with string `removed_in` values (the only kind used) `UnsupportedWarning` cannot be constructed by the decorator at all. Verified: `bh123_header`, whose `removed_in` is `"20.01.01"`, raises `DeprecatedWarning: bh123_header is deprecated as of 19.10.31 and will be removed in 20.01.01.` on a tree whose `chisurf.__version__` is `26.dev4401`. The machinery to say the right thing already works — `_deprecation_state('19.10.31', '20.01.01', chisurf.__version__)` returns `(True, True)`, and `_version_key` orders `26.dev4401` → `(26, 0, -1)` above `20.01.01` → `(20, 1, 1)` correctly. Pass the running version at the call sites (or default `current_version` to it in `chisurf.core.fio` / `chisurf.core.fluorescence`, keeping `decorators.py` chisurf-free), so the one decoration that is past its removal version says so; otherwise delete `UnsupportedWarning` rather than shipping a dead branch and a misleading future tense.
+- **Fix note:**
+
+### RF-663
+- **Status:** OPEN
+- **Severity:** S3 (a `status: done` PRD's Definition of Done now requires a dependency a guardrail test fails on)
+- **Location:** `okf/prds/prd-030.md:174` (DoD item 1) and `:62`, `:136`, against `test/test_no_retired_dependency_imports.py:40-42` and `rattler-recipe/recipe.yaml:94`
+- **Finding:** PRD-030 is marked `status: done` and states, in a locked design decision (*"`msgpack_numpy` declared as a runtime dependency"*), in task 1 and in its first DoD checkbox, that `msgpack` **and `msgpack-numpy`** must be declared and installed. `e45e9b30d` retired `msgpack-numpy` from all three manifests and added a guardrail that fails on any re-declaration, so that DoD item is now unsatisfiable by construction. The removal is right — nothing in chisurf or MMFDB imports `msgpack_numpy`, and PRD-030's own array-encoding section explains why (arrays round-trip through an explicit `__ndarray__` sub-map precisely so the envelope is stable *"even with `msgpack_numpy` installed"*), so the package was never load-bearing. Only the PRD text is stale. Drop `msgpack-numpy` from decision 1, task 1 and the DoD line, and — per the *Mark done when done* rule — tick the DoD boxes of a concept that has been `done` since it landed, or say which items are outstanding.
+- **Fix note:**
