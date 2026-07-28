@@ -9824,11 +9824,24 @@ earlier catalogue-uniformity findings RF-269/RF-270. Findings RF-863..RF-867.
   gotcha in `/plugins/profiles/lightpath-simulator.md`.
 
 ### RF-864
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (choosing a light source from the database empties the emission crosstalk matrix — one of the tool's three result tables — and mangles the laser label in the other two)
 - **Location:** `chisurf/plugins/core/lightpath_simulator/backend/simulator.py:146-152` (`get_detector_signals`: `parts = src_key.split(" (ex ")`, `laser = parts[1].rstrip(")")`) against `backend/crosstalk.py:115` (`output_spectra["Light"] = {"Light (Database)": y}`) and `:214` (`out_dict[f"{dye_name} (ex {src_id})"]`), joined at `simulator.py:238` (`excitation_by_key.get((laser, dye), 0.0)`)
 - **Finding:** the laser identity travels from the sample to the detector by string concatenation and is recovered by string surgery. In *Database Spectrum* mode the source key is `Light (Database)`, so the sample emits `MyDye (ex Light (Database))`, and `rstrip(")")` — which strips *every* trailing parenthesis, not one — recovers the laser as **`Light (Database`**. `get_crosstalk_matrices` then looks the excitation up under the unmangled `Light (Database)` the sample recorded, misses, and the `if excitation > 0.0` guard drops the row. Verified headlessly on a laser → sample → detector graph: in database mode the excitation row reads `laser='Light (Database)'`, the detector row `laser='Light (Database'`, and `crosstalk_matrices["emission"]` comes back `rows=[] columns=[] values=[]`; the identical graph in manual mode (`488:1.0`) gives `rows=['MyDye'] columns=['Det1'] values=[[0.32]]`. The mangled label is also what the *detected* matrix and the saved MMFDB artifact carry. Carry `(laser, dye)` as a structured key through propagation instead of re-parsing it (at minimum `split(" (ex ", 1)` + `removesuffix(")")`), and pin it with a database-mode graph asserting a non-empty emission matrix.
-- **Fix note:**
+- **Fix note:** The channel key is now written and read back through one pair of
+  helpers in `backend/crosstalk.py` — `emission_key(dye, source)` and
+  `split_emission_key(key)` around the shared `EXCITATION_SEPARATOR` — instead of
+  an f-string at one end and `split`/`rstrip` at the other. The reader partitions
+  on the *first* separator and drops a *single* closing bracket, so a source
+  named `Light (Database)` survives the round trip; `get_detector_signals` calls
+  it and keeps its old "no source in the key" fallback. In database mode the
+  sample and the detector now agree on `laser='Light (Database)'`, so the
+  excitation lookup hits and `crosstalk_matrices["emission"]` comes back
+  `rows=['Test Dye'] columns=['Det1']` instead of empty. Pinned by
+  `test_a_database_light_source_keeps_its_name_down_to_the_detector` in
+  `chisurf/plugins/core/lightpath_simulator/tests/test_headless.py`, which
+  round-trips the helpers and asserts a non-empty emission matrix on a
+  database-mode laser → sample → detector graph.
 
 ### RF-865
 - **Status:** OPEN

@@ -87,6 +87,65 @@ def test_propagate_headless():
     assert signals[0]["detector"] == "Main Channel"
     assert signals[0]["intensity"] > 0
 
+def test_a_database_light_source_keeps_its_name_down_to_the_detector():
+    """A source whose own name ends in a bracket must survive the channel key.
+
+    The dye and the source that excited it travel downstream in one string. In
+    *Database Spectrum* mode the source is named ``Light (Database)``, so the
+    key ends in two brackets; a reader that strips every trailing bracket loses
+    one and the excitation lookup then misses, emptying the emission matrix.
+    """
+    from chisurf.plugins.core.lightpath_simulator.backend.crosstalk import (
+        WAVELENGTHS,
+        emission_key,
+        split_emission_key,
+    )
+    from chisurf.plugins.core.lightpath_simulator.backend.simulator import OpticalPathSimulator
+
+    assert split_emission_key(emission_key("Dye", "Light (Database)")) == (
+        "Dye",
+        "Light (Database)",
+    )
+    assert split_emission_key(emission_key("Dye", "488 nm")) == ("Dye", "488 nm")
+    assert split_emission_key("488 nm") == ("488 nm", None)
+
+    mock_db = MagicMock()
+    mock_db.get_standardized_optical_properties.return_value = {"qy": 0.8, "ext_coeff": 92000}
+    mock_db.get_probe_by_id.return_value = {"chromophore_name": "Test Dye"}
+    mock_db.get_probe_spectrum.return_value = (WAVELENGTHS, np.ones_like(WAVELENGTHS))
+
+    sim = OpticalPathSimulator(mock_db)
+    sim.load_from_dict({
+        "nodes": [
+            {"id": "node_laser", "type": "light_source", "title": "Laser", "inputs": [],
+             "outputs": [{"name": "Light", "is_output": True}],
+             "config": {"source_mode": "database", "probe_id": 7}},
+            {"id": "node_sample", "type": "sample", "title": "Sample",
+             "inputs": [{"name": "In", "is_output": False}],
+             "outputs": [{"name": "Out", "is_output": True}], "config": {"probe_ids": [1]}},
+            {"id": "node_det", "type": "detector", "title": "Detector",
+             "inputs": [{"name": "In", "is_output": False}], "outputs": [],
+             "config": {"detector_name": "Det1", "probe_id": 999}},
+        ],
+        "edges": [
+            {"source": "node_laser", "source_port": 0, "target": "node_sample", "target_port": 0},
+            {"source": "node_sample", "source_port": 1, "target": "node_det", "target_port": 0},
+        ],
+    })
+    sim.propagate()
+
+    # the sample and the detector must agree on what the source is called
+    excitation_lasers = {row["laser"] for row in sim.get_excitation_rows()}
+    detected_lasers = {row["laser"] for row in sim.get_detector_signals()}
+    assert excitation_lasers == detected_lasers == {"Light (Database)"}
+
+    matrices = sim.get_crosstalk_matrices()
+    assert matrices["emission"]["rows"] == ["Test Dye"]
+    assert matrices["emission"]["columns"] == ["Det1"]
+    assert matrices["emission"]["values"][0][0] > 0.0
+    assert matrices["detected"]["rows"] == ["Light (Database) | Test Dye"]
+
+
 def test_export_instrument_setting():
     """Test mapping simulator state to mmCIF dataclasses."""
     from chisurf.plugins.core.lightpath_simulator.backend.mmcif_export import InstrumentSetting

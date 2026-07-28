@@ -9,7 +9,7 @@ import numpy as np
 
 from chisurf.gui.widgets.node_editor.graph import GraphDef
 
-from .crosstalk import WAVELENGTHS, propagate_node
+from .crosstalk import WAVELENGTHS, propagate_node, split_emission_key
 
 logger = logging.getLogger(__name__)
 
@@ -143,14 +143,10 @@ class OpticalPathSimulator:
                 for src_key, val in signals.items():
                     if val <= 1e-12: continue
                     
-                    if " (ex " in src_key:
-                        parts = src_key.split(" (ex ")
-                        dye = parts[0]
-                        laser = parts[1].rstrip(")")
-                    else:
-                        dye = "None"
-                        laser = src_key
-                        
+                    dye, laser = split_emission_key(src_key)
+                    if laser is None:
+                        dye, laser = "None", src_key
+
                     if " (QY:" in dye:
                         dye = dye.split(" (QY:")[0]
                         

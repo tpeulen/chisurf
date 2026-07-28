@@ -83,6 +83,21 @@
     projection and the aspect both use it, or the molecule stretches the moment
     the strip appears.
 
+* **A laser named `Light (Database)` lost a bracket between the sample and the
+  detector (RF-864).** The dye and the source that excited it travel downstream
+  inside one channel key, written as an f-string at the sample and recovered at
+  the detector with `split(" (ex ")` + `rstrip(")")`. `rstrip` strips *every*
+  trailing bracket, so a source read from the catalogue — whose own name ends in
+  one — came back as `Light (Database`; the excitation lookup then missed, the
+  `excitation > 0.0` guard dropped every row, and the **emission crosstalk
+  matrix rendered empty** while the *detected* matrix and the saved MMFDB
+  artifact carried the mangled label. The key is now written and read through a
+  single pair of helpers in `backend/crosstalk.py` (`emission_key` /
+  `split_emission_key` around a shared `EXCITATION_SEPARATOR`) that partition on
+  the first separator and drop one closing bracket, so the two ends cannot drift
+  apart again. Manual-mode paths are unchanged. Pinned by a database-mode
+  laser → sample → detector graph in the plugin's `test_headless.py`.
+
 * **A filter that amplifies, because the catalogue mixes percent with fractions
   (RF-863).** 119 of the 757 `transmission` spectra hold percentages and the
   other 638 hold fractions, all tagged `intensity_unit = 'normalized'` — so the

@@ -75,6 +75,16 @@ PYTHONPATH="modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/p
   light (a passive `FB560-10` gained 58×). Strong neutral-density filters whose
   percentages stay below the threshold (`ND30`, `ND40`) remain ambiguous — they
   under-attenuate, never amplify, until the catalogue records the unit.
+- **The channel key carries two free-text names, so never parse it by hand.** A
+  dye emits one spectrum per exciting source, and both identities travel
+  downstream inside the dictionary key (`ATTO 550 (ex 488 nm)`). Either half can
+  itself contain brackets — a source taken from the catalogue is named
+  `Light (Database)` — so write and read the key only through
+  `backend/crosstalk.py::emission_key` / `split_emission_key`, which partition on
+  the first separator and drop exactly one closing bracket. Ad-hoc surgery
+  (`rstrip(")")`) silently renames the source, and the excitation lookup that
+  joins the sample's rows to the detector's then misses and empties the emission
+  crosstalk matrix.
 - **Two preset formats coexist.** The Full Simulator saves optical-path presets
   as a node/edge **graph dict** (`{"nodes":…, "edges":…}`) under
   `~/.chisurf/presets/lightpath_optical/`, while Easy Mode's `_populate_form()`

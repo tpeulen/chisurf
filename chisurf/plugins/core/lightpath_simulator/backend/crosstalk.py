@@ -13,6 +13,49 @@ WAVELENGTHS = np.arange(300, 901, 1, dtype=np.float64)
 # the percentage one: a passive optical element does not amplify.
 PERCENT_PEAK_THRESHOLD = 1.5
 
+# A dye emits one channel per exciting source, and the two identities travel
+# downstream together in the channel key. Both halves are free text -- a source
+# read from the catalogue is named ``Light (Database)`` -- so the key is written
+# and read back through the pair below rather than by ad-hoc string surgery.
+EXCITATION_SEPARATOR = " (ex "
+
+def emission_key(dye_name, source_id):
+    """Return the channel key a dye's emission travels under.
+
+    Parameters
+    ----------
+    dye_name : str
+        Name of the emitting dye.
+    source_id : str
+        Identifier of the source that excited it, as the sample received it.
+
+    Returns
+    -------
+    str
+        The composite key, e.g. ``'ATTO 550 (ex 488 nm)'``.
+    """
+    return f"{dye_name}{EXCITATION_SEPARATOR}{source_id})"
+
+def split_emission_key(key):
+    """Split a channel key back into the dye and the source that excited it.
+
+    Parameters
+    ----------
+    key : str
+        A key written by :func:`emission_key`, or any other channel key.
+
+    Returns
+    -------
+    tuple of (str, str or None)
+        ``(dye, source)``, or ``(key, None)`` if the key carries no source.
+        Only the first separator and a *single* closing bracket are consumed,
+        so a source whose own name ends in a bracket survives the round trip.
+    """
+    dye, separator, source = key.partition(EXCITATION_SEPARATOR)
+    if not separator:
+        return key, None
+    return dye, source[:-1] if source.endswith(")") else source
+
 def as_transmission_fraction(spec, label=None):
     """Return a stored transmission spectrum with its values as a fraction.
 
@@ -262,7 +305,9 @@ def propagate_node(node_type, config, input_spectra, db):
                                 "excitation": float(excitation_prob),
                             }
                         )
-                        out_dict[f"{dye_name} (ex {src_id})"] = excitation_prob * cur_em_scaled
+                        out_dict[emission_key(dye_name, src_id)] = (
+                            excitation_prob * cur_em_scaled
+                        )
                 
             node_char = (sum_abs, sum_em)
             config["_last_excitation"] = excitation_rows
