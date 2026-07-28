@@ -1,9 +1,10 @@
 import os
-import tempfile
-import yaml
 import re
+import tempfile
 
-# Custom YAML representer for floats to preserve scientific notation
+import yaml
+
+
 def float_representer(dumper, value):
     """
     Custom representer for float values to preserve scientific notation.
@@ -35,8 +36,30 @@ def float_representer(dumper, value):
         # Use default representation for regular floats
         return dumper.represent_scalar('tag:yaml.org,2002:float', str(value))
 
-# Register the custom representer
-yaml.add_representer(float, float_representer)
+
+class ScientificDumper(yaml.Dumper):
+    """A dumper that writes floats the way the settings editor does.
+
+    The representer is registered on **this subclass**, not on ``yaml.Dumper``.
+    ``yaml.add_representer(float, ...)`` mutates the base dumper for the whole
+    process, and at import time it did so before any test had run: every later
+    ``yaml.dump`` in the same session — a curve saved to YAML, a project file —
+    silently lost precision, because the representer keeps only ten decimal
+    digits where a double needs seventeen. That is how this module used to turn
+    ``test/core/test_curve.py::Tests::test_reading`` red whenever the two suites
+    were collected together, and green when either ran alone.
+    """
+
+
+ScientificDumper.add_representer(float, float_representer)
+
+
+def test_the_global_dumper_is_not_mutated():
+    """Registering the representer must not leak into ``yaml.Dumper``."""
+    assert yaml.Dumper.yaml_representers[float] is not float_representer
+    text = yaml.dump({"tiny": 2.4492935982947064e-16})
+    assert yaml.safe_load(text)["tiny"] == 2.4492935982947064e-16
+
 
 def test_scientific_notation_preservation():
     """Test that scientific notation is preserved when saving and loading settings."""
@@ -58,7 +81,7 @@ def test_scientific_notation_preservation():
 
         # Save the test settings to the temporary file
         with open(temp_filename, 'w') as f:
-            yaml.dump(test_settings, f)
+            yaml.dump(test_settings, f, Dumper=ScientificDumper)
 
         # Read the raw YAML file to check if scientific notation is preserved in the file
         with open(temp_filename, 'r') as f:
@@ -104,6 +127,7 @@ def test_scientific_notation_preservation():
         # Clean up the temporary file
         if os.path.exists(temp_filename):
             os.remove(temp_filename)
+
 
 if __name__ == "__main__":
     test_scientific_notation_preservation()

@@ -231,6 +231,12 @@ class NCurve(chisurf.core.base.Base):
     def __getitem__(self, key) -> typing.Tuple[np.ndarray, np.ndarray]:
         """Index into the flattened data array.
 
+        Both members of the returned pair are indexed by the *same* ``key``, so
+        they always have matching shapes — the contract :class:`Curve` and
+        :class:`~chisurf.core.data.DataCurve` implement over their own ``x`` and
+        ``y``. A bare :class:`NCurve` carries no abscissa, so the position
+        within the flattened array stands in for it.
+
         Parameters
         ----------
         key : int, slice, or np.ndarray
@@ -239,12 +245,21 @@ class NCurve(chisurf.core.base.Base):
         Returns
         -------
         tuple
-            ``(x, y)`` where *x* is an index array and *y* is the
-            selected data values.
+            ``(x, y)`` where *x* holds the selected positions within the
+            flattened array and *y* the selected data values.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> from chisurf.core.curve import NCurve
+        >>> x, y = NCurve(d=np.arange(6.0))[1:4]
+        >>> x
+        array([1, 2, 3])
+        >>> y
+        array([1., 2., 3.])
         """
-        y = self.d.flatten().__getitem__(key)
-        x = np.arange(0, len(self.y))
-        return x, y
+        d = self.d.flatten()
+        return np.arange(d.size).__getitem__(key), d.__getitem__(key)
 
 
 class Curve(NCurve):

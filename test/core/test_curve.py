@@ -185,6 +185,38 @@ class Tests(unittest.TestCase):
         self.assertEqual(n.d.dtype, np.float64)
         self.assertEqual(len(n.d), 0)
 
+    def test_ncurve_getitem(self):
+        """A bare NCurve is indexable, and both returned arrays share the key."""
+        n = chisurf.core.curve.NCurve(d=np.arange(6.0))
+
+        x, y = n[1:4]
+        self.assertEqual(np.array_equal(x, np.array([1, 2, 3])), True)
+        self.assertEqual(np.array_equal(y, np.array([1., 2., 3.])), True)
+
+        # A fancy-index key selects the same positions from both members.
+        key = np.array([0, 5, 2])
+        x, y = n[key]
+        self.assertEqual(np.array_equal(x, key), True)
+        self.assertEqual(np.array_equal(y, np.array([0., 5., 2.])), True)
+
+        # Scalars stay scalars, and the whole-array key round-trips.
+        x, y = n[3]
+        self.assertEqual(int(x), 3)
+        self.assertEqual(float(y), 3.0)
+        x, y = n[:]
+        self.assertEqual(len(x), len(y))
+
+    def test_curve_getitem_matches_ncurve_contract(self):
+        """Curve indexes x and y by the same key, as NCurve does d."""
+        c = chisurf.core.curve.Curve(
+            x=np.arange(5.0),
+            y=np.arange(5.0) ** 2
+        )
+        x, y = c[1:4]
+        self.assertEqual(len(x), len(y))
+        self.assertEqual(np.array_equal(x, np.array([1., 2., 3.])), True)
+        self.assertEqual(np.array_equal(y, np.array([1., 4., 9.])), True)
+
     def test_normalize(self):
         import scipy.stats
 

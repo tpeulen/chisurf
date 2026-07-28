@@ -2,6 +2,30 @@
 
 ## 2026-07-28
 
+* **A base class that could not be indexed, and the test module that quietly
+  rounded every float in the process.** `NCurve.__getitem__` built its abscissa
+  from `self.y` — an attribute `NCurve` does not have, and whose length is the
+  *unsliced* one anyway — so a bare `NCurve` raised `AttributeError` on any key
+  and would have returned mismatched arrays if it had not
+  ([RF-188](/reviews/findings.md#rf-188), reported a second time as
+  [RF-358](/reviews/findings.md#rf-358); both close). It now indexes **both**
+  members by the same key over the flattened array, which is the contract
+  `Curve` and `DataCurve` already implement, with a doctest and
+  `test/core/test_curve.py::test_ncurve_getitem` /
+  `::test_curve_getitem_matches_ncurve_contract` pinning it.
+  Verifying that turned up why `test/core/test_curve.py::Tests::test_reading`
+  is red in a combined `test/core test/fitting` run and green in either alone:
+  `test/fitting/test_scientific_notation.py` called
+  `yaml.add_representer(float, …)` **at import time**, mutating the base
+  `yaml.Dumper` for the whole process so every later `yaml.dump` — a curve, a
+  project — kept ten decimal digits where a double needs seventeen. The
+  representer now lives on a local `ScientificDumper` subclass, with a test
+  asserting the global dumper is untouched; `test/core` is green in the
+  combined run again. The **production** copy of the same line
+  (`chisurf/gui/widgets/settings_editor.py:256`, a global side effect of merely
+  importing the settings editor — verified to break a `Curve` YAML round-trip)
+  is filed as [RF-785](/reviews/findings.md#rf-785) rather than fixed here,
+  because that file carries another instance's uncommitted edits.
 * **One fit graph, not two (RF-719).** `ChiSurfAPI.build_fit_graph`'s local branch
   was a hand-copied, drifted duplicate of `chisurf.server.services.graph`, and the
   copy called a `_safe_float` helper the module never imported -- so local and
