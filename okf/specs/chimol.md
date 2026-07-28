@@ -66,6 +66,25 @@ polyhedron, at one vertex instead of a hundred and sixty. Nothing is dropped and
 nothing is subsampled: a model is not allowed to be quietly shown as a fraction
 of itself.
 
+**One route from a file into the viewer.** "Every reader applies the rule" is
+not achieved by teaching each reader the rule; it is achieved by giving them
+nowhere else to go. Readers produce one payload and the viewer has one method
+that consumes it. A format with its own route does not merely risk drifting from
+the common one — it *cannot receive* anything the common one learns, and the
+divergence is silent, because a second path that draws something plausible
+raises nothing. RMF had such a route and so had none of the bead rule at all:
+one global radius, decimated to a fraction of its particles, hierarchy check
+boxes that moved nothing.
+
+**A model may state more than one depiction of itself.** Coarse-graining is a
+modelling choice the file records, not a rendering budget, so the choice between
+resolutions belongs to the person reading the model. Which depiction is drawn
+and which parts are switched off are *different questions*, kept as separate
+masks and composed only at draw time: sharing one mask means choosing a
+resolution silently un-hides what was hidden. A file opens on the representation
+in its own hierarchy — alternatives are loaded and not drawn — so reading a file
+never changes what it has always looked like.
+
 ## Principles
 
 ### Read the source before implementing

@@ -5,6 +5,7 @@ from typing import Optional, Sequence, List, Dict, Any, Tuple
 import numpy as np
 import copy
 
+from .beads import BEAD_RES_NAME, make_bead_rows
 from .hierarchy import HierarchyNode
 
 try:
@@ -20,6 +21,41 @@ class RmfNotAvailableError(RuntimeError):
 #: reader filled it. It lives in ``io/hierarchy.py``; this name is kept because
 #: RMF is where the tree is richest and most of the call sites are here.
 RmfHierarchyNode = HierarchyNode
+
+def _residue_numbers(res_nums: Sequence[int], chains: Sequence[str]) -> np.ndarray:
+    """Give every bead a residue identity, inventing one only where the file has none.
+
+    A bead's residue number is what the trace and every ``resi`` selection key
+    on, and beads that share ``(chain, res_id)`` are treated as one residue --
+    so a model whose particles carry no residue index at all would collapse to a
+    single trace point per chain. Particles the file *does* number keep their
+    number; the rest are numbered sequentially within their chain.
+
+    Parameters
+    ----------
+    res_nums : sequence of int
+        Per particle, the residue index the hierarchy gave, or ``-1``.
+    chains : sequence of str
+        Per particle, its chain.
+
+    Returns
+    -------
+    numpy.ndarray
+        Residue numbers, one per particle.
+    """
+    numbers = np.asarray(res_nums, dtype=np.int64)
+    missing = numbers < 0
+    if not missing.any():
+        return numbers
+
+    counters: Dict[str, int] = {}
+    filled = numbers.copy()
+    for index in np.nonzero(missing)[0]:
+        chain = chains[index]
+        counters[chain] = counters.get(chain, 0) + 1
+        filled[index] = counters[chain]
+    return filled
+
 
 class _RmfHierarchyInfo:
     """Track structural information encountered through the RMF hierarchy."""
@@ -65,7 +101,23 @@ class _RmfLoader:
     def __init__(self):
         self.particle_nodes: List[RMF.NodeConstHandle] = []
         self.rmf_index_to_particle_idx: Dict[int, int] = {}
-        
+        #: Per particle, the resolution of the representation it belongs to, and
+        #: whether that representation is the tree's own (as opposed to an
+        #: alternative hung off it). Both stay parallel to ``particle_nodes``.
+        self.particle_resolutions: List[float] = []
+        self.particle_is_default: List[bool] = []
+        #: Per particle, the chain it belongs to and the residue it stands for,
+        #: as the hierarchy states them. These are what turn particles into
+        #: *bead rows*: without a residue identity the trace collapses to one
+        #: point, and without a chain no selection can name part of the model.
+        self.particle_chains: List[str] = []
+        self.particle_res_nums: List[int] = []
+        #: ``{node index: resolution}`` for every subtree that is an *alternative*
+        #: representation. Such a subtree is reached through the node that owns
+        #: it, never as an ordinary child, or its particles would be collected
+        #: twice and drawn on top of themselves.
+        self.alternative_roots: Dict[int, float] = {}
+
     def load(self, path: Path) -> Dict[str, Any]:
         if RMF is None:
             raise RmfNotAvailableError("RMF loading requires 'RMF' package.")
@@ -84,6 +136,17 @@ class _RmfLoader:
         self.atomf = RMF.AtomConstFactory(r)
         self.segmentf = RMF.SegmentConstFactory(r)
         self.coloredf = RMF.ColoredConstFactory(r)
+        # Built once. These two are consulted at *every* node of the walk, and a
+        # factory constructed per node is a quarter of a million constructions
+        # on a model the size of the nuclear pore.
+        try:
+            self.resolutionf = RMF.ExplicitResolutionConstFactory(r)
+        except Exception:  # pragma: no cover - very old RMF
+            self.resolutionf = None
+        try:
+            self.alternativesf = RMF.AlternativesConstFactory(r)
+        except Exception:  # pragma: no cover - very old RMF
+            self.alternativesf = None
         
         try:
             self.softwaref = RMF.SoftwareProvenanceConstFactory(r)
@@ -94,11 +157,16 @@ class _RmfLoader:
                 self.softwaref = None
 
         r.set_current_frame(RMF.FrameID(0))
-        
+
+        # 0. Find the alternative representations before walking anything, so
+        #    the walk knows which subtrees are alternatives rather than more
+        #    matter in the same model.
+        self._find_alternatives(r)
+
         # 1. First pass: Collect all particle nodes and build hierarchy
         rhi = _RmfHierarchyInfo()
         root_node = self._handle_node(r.get_root_node(), rhi)
-        
+
         # 2. Extract coordinates for all frames
         num_frames = r.get_number_of_frames()
         num_particles = len(self.particle_nodes)
@@ -115,15 +183,25 @@ class _RmfLoader:
             
         frames_arr = np.zeros((num_frames, num_particles, 3), dtype=np.float32)
         coord_buffer = np.zeros((num_particles, 3), dtype=np.float64)
-        
+        # ``get_all_global_coordinates`` fills the buffer in RMF's own order and
+        # is the only reader that applies ancestors' reference frames, so it is
+        # worth keeping -- but this loader no longer walks the tree in that
+        # order, because an alternative representation is visited through the
+        # node that owns it. Reorder rather than assume the two agree: getting
+        # this wrong scrambles every coordinate against its radius and hierarchy
+        # entry, which looks like a broken file rather than a broken reader.
+        permutation = self._global_order_permutation(r)
+
         for f in range(num_frames):
             r.set_current_frame(RMF.FrameID(f))
             try:
                 RMF.get_all_global_coordinates(r, r.get_root_node(), coord_buffer)
+                frame_coords = coord_buffer[permutation]
             except Exception:
                 for i, node in enumerate(self.particle_nodes):
                     coord_buffer[i] = self.particlef.get(node).get_coordinates()
-            frames_arr[f] = coord_buffer.astype(np.float32)
+                frame_coords = coord_buffer
+            frames_arr[f] = frame_coords.astype(np.float32)
             self._extract_stat_values(
                 r.get_root_node(),
                 stat_keys,
@@ -143,14 +221,54 @@ class _RmfLoader:
         bond_pairs = []
         
         self._extract_metadata(r.get_root_node(), restraints, rmf_provenance, states, bond_pairs)
-        
+
+        # A file with no alternatives has no resolution dimension at all, and
+        # says so with None rather than with an array of one repeated value:
+        # every consumer then skips the work, and the chooser knows to stay
+        # hidden instead of offering a choice of one.
+        has_alternatives = bool(self.alternative_roots)
+        resolutions_arr = (
+            np.asarray(self.particle_resolutions, dtype=np.float32)
+            if has_alternatives
+            else None
+        )
+        default_mask = (
+            np.asarray(self.particle_is_default, dtype=bool)
+            if has_alternatives
+            else None
+        )
+
+        chains_arr = np.asarray(self.particle_chains, dtype=str)
+        res_ids_arr = _residue_numbers(self.particle_res_nums, self.particle_chains)
+        atoms_arr = make_bead_rows(
+            frames_arr[0], chain_ids=chains_arr, res_ids=res_ids_arr
+        )
+        # One trace point per bead, deliberately not deduplicated by
+        # ``(chain, res_id)``. Two copies of a molecule share residue numbers,
+        # and a coarse bead covers residues a fine one also covers, so merging
+        # by residue identity would drop rows -- and it is the *identity* of the
+        # trace points with the rows that lets per-residue colours be applied
+        # per bead without a lookup over hundreds of thousands of them.
+        res_names_arr = np.full(len(chains_arr), BEAD_RES_NAME, dtype=object)
+
         return {
             "hierarchy": root_node,
             "frames": frames_arr,
             "radii": radii_arr,
+            "atoms": atoms_arr,
+            "chain_ids": chains_arr,
+            "res_ids": res_ids_arr,
+            "res_names": res_names_arr,
             "states": states,
             "restraints": restraints,
             "rmf_provenance": rmf_provenance,
+            "resolutions": resolutions_arr,
+            "resolution_default_mask": default_mask,
+            "rmf_resolutions": (
+                sorted({float(v) for v in self.particle_resolutions})
+                if has_alternatives
+                else []
+            ),
             "bond_pairs": np.array(bond_pairs, dtype=np.int32) if bond_pairs else None,
             "rmf_frame_series": {
                 name: np.asarray(values, dtype=float)
@@ -159,9 +277,153 @@ class _RmfLoader:
             "rmf_frame_metadata": rmf_frame_metadata,
         }
         
-    def _handle_node(self, node: RMF.NodeConstHandle, parent_rhi: _RmfHierarchyInfo) -> RmfHierarchyNode:
+    def _find_alternatives(self, handle: Any) -> None:
+        """Record every subtree that is an *alternative* representation.
+
+        IMP stores a molecule's coarser depictions as ``Alternatives`` hung off
+        the node they replace, and the roots of those subtrees sit in the file
+        as ordinary nodes -- routinely as children of the file root. A plain
+        walk therefore collects a model's fine *and* coarse particles and draws
+        them on top of each other, which is what this reader did: 40 fine beads
+        and 8 coarse ones came back as one 48-particle model.
+
+        The first entry of ``get_alternatives`` is the node itself -- the
+        representation that lives in the tree -- so everything after it is an
+        alternative, and is reached through its owner rather than where it
+        happens to sit.
+
+        Parameters
+        ----------
+        handle : RMF file handle
+            The open file.
+        """
+        if self.alternativesf is None:
+            return
+
+        def walk(node):
+            yield node
+            for child in node.get_children():
+                yield from walk(child)
+
+        for node in walk(handle.get_root_node()):
+            if not self.alternativesf.get_is(node):
+                continue
+            try:
+                alternatives = self.alternativesf.get(node).get_alternatives(
+                    RMF.PARTICLE
+                )
+            except Exception:
+                continue
+            for alternative in list(alternatives)[1:]:
+                self.alternative_roots[alternative.get_id().get_index()] = (
+                    self._resolution_of(alternative)
+                )
+
+    def _explicit_resolution(self, node: Any) -> float:
+        """The resolution ``node`` states for itself, or NaN.
+
+        Parameters
+        ----------
+        node : RMF.NodeConstHandle
+            Node to ask.
+
+        Returns
+        -------
+        float
+            The stated resolution, or NaN when the node does not state one. NaN
+            rather than 0: it is not a resolution anyone chose, so it compares
+            unequal to every real one instead of colliding with a real value.
+        """
+        if self.resolutionf is None:
+            return float("nan")
+        try:
+            if self.resolutionf.get_is(node):
+                return float(self.resolutionf.get(node).get_explicit_resolution())
+        except Exception:
+            pass
+        return float("nan")
+
+    def _resolution_of(self, node: Any) -> float:
+        """The resolution of the representation rooted at ``node``.
+
+        Prefers what the node states; falls back to the value RMF derives from
+        the subtree, which is an average and meaningful only where there are
+        particles beneath.
+
+        Parameters
+        ----------
+        node : RMF.NodeConstHandle
+            Root of a representation.
+
+        Returns
+        -------
+        float
+            The resolution, or NaN when the file does not say.
+        """
+        stated = self._explicit_resolution(node)
+        if stated == stated:  # not NaN
+            return stated
+        try:
+            return float(RMF.get_resolution(node))
+        except Exception:
+            return float("nan")
+
+    def _global_order_permutation(self, handle: Any) -> np.ndarray:
+        """Map RMF's own particle order onto this loader's.
+
+        ``get_all_global_coordinates`` writes one row per particle in the order
+        a plain depth-first walk meets them. This loader deliberately walks in a
+        different order -- an alternative representation is visited through the
+        node that owns it, not where it sits in the file -- so the buffer has to
+        be permuted before it means anything.
+
+        Returns
+        -------
+        numpy.ndarray
+            Index array such that ``buffer[permutation]`` is in loader order.
+            The identity when the two orders happen to agree, and when anything
+            about the mapping is incomplete (a particle this loader collected
+            that the plain walk did not reach), because a partial permutation
+            would silently mix rows.
+        """
+        order: Dict[int, int] = {}
+
+        def walk(node):
+            if self.particlef.get_is(node):
+                order.setdefault(node.get_id().get_index(), len(order))
+            for child in node.get_children():
+                walk(child)
+
+        walk(handle.get_root_node())
+
+        try:
+            permutation = np.asarray(
+                [order[node.get_id().get_index()] for node in self.particle_nodes],
+                dtype=int,
+            )
+        except KeyError:
+            return np.arange(len(self.particle_nodes), dtype=int)
+        if permutation.shape[0] != len(order):
+            return np.arange(len(self.particle_nodes), dtype=int)
+        return permutation
+
+    def _handle_node(
+        self,
+        node: RMF.NodeConstHandle,
+        parent_rhi: _RmfHierarchyInfo,
+        resolution: float = float("nan"),
+        is_default: bool = True,
+    ) -> RmfHierarchyNode:
         rhi = parent_rhi.handle_node(node, self)
-        
+
+        # A node may state its own resolution; otherwise it inherits the one of
+        # the representation it is part of. Only an *explicit* statement counts
+        # here: a resolution derived from whatever happens to sit below a node is
+        # an average, and would overwrite the representation's own answer.
+        own_resolution = self._explicit_resolution(node)
+        if own_resolution == own_resolution:  # not NaN
+            resolution = own_resolution
+
         ntype = "NODE"
         if self.statef.get_is(node): ntype = "STATE"
         elif self.chainf.get_is(node): ntype = "CHAIN"
@@ -187,21 +449,74 @@ class _RmfLoader:
             p_idx = len(self.particle_nodes)
             self.particle_nodes.append(node)
             self.rmf_index_to_particle_idx[ridx] = p_idx
+            self.particle_resolutions.append(resolution)
+            self.particle_is_default.append(is_default)
+            self.particle_chains.append(str(rhi.chain_id or ""))
+            self.particle_res_nums.append(
+                int(rhi.res_num) if rhi.res_num is not None else -1
+            )
             h_node.atom_indices = [p_idx]
             h_node.radius = self.particlef.get(node).get_radius()
-            
-        for child in node.get_children():
-            # Skip Representation and Provenance nodes in the main hierarchy tree
-            if self.represf.get_is(child): continue
-            if child.get_type() == RMF.PROVENANCE: continue
-            
-            child_h = self._handle_node(child, rhi)
+
+        def attach(child_h: RmfHierarchyNode) -> None:
             child_h.parent = h_node
             child_h.parent_index = ridx
             h_node.children.append(child_h)
             h_node.atom_indices.extend(child_h.atom_indices)
-            
+
+        for child in node.get_children():
+            # Skip Representation and Provenance nodes in the main hierarchy tree
+            if self.represf.get_is(child): continue
+            if child.get_type() == RMF.PROVENANCE: continue
+            # An alternative representation is reached through the node it is an
+            # alternative *to*, below, not from wherever it sits in the file.
+            if child.get_id().get_index() in self.alternative_roots: continue
+
+            attach(self._handle_node(child, rhi, resolution, is_default))
+
+        # The coarser depictions of this same node. They hang underneath it, so
+        # that hiding a molecule in the hierarchy panel hides it at every
+        # resolution -- it is one molecule, however finely it is drawn.
+        for alternative, alt_resolution in self._alternatives_of(node):
+            alt_h = self._handle_node(alternative, rhi, alt_resolution, False)
+            alt_h.name = f"{alt_h.name} [resolution {alt_resolution:g}]"
+            attach(alt_h)
+
         return h_node
+
+    def _alternatives_of(self, node: RMF.NodeConstHandle) -> List[Tuple[Any, float]]:
+        """The alternative representations of ``node``, with their resolutions.
+
+        Parameters
+        ----------
+        node : RMF.NodeConstHandle
+            The node that may own alternatives.
+
+        Returns
+        -------
+        list of (node, float)
+            Empty for the overwhelmingly common case of a file that states one
+            representation.
+        """
+        if not self.alternative_roots or self.alternativesf is None:
+            return []
+        try:
+            if not self.alternativesf.get_is(node):
+                return []
+            alternatives = list(
+                self.alternativesf.get(node).get_alternatives(RMF.PARTICLE)
+            )[1:]
+        except Exception:
+            return []
+        return [
+            (
+                alternative,
+                self.alternative_roots.get(
+                    alternative.get_id().get_index(), float("nan")
+                ),
+            )
+            for alternative in alternatives
+        ]
 
     def _extract_stat_keys(self, rmf_handle: Any) -> list[tuple[Any, str]]:
         """Return RMF stat keys that can be read as frame metadata."""
@@ -294,11 +609,4 @@ def load_rmf_full(path: Path) -> Dict[str, Any]:
     loader = _RmfLoader()
     return loader.load(path)
 
-def load_rmf_frames(path: Path, frame_indices: Optional[Sequence[int]] = None) -> np.ndarray:
-    data = load_rmf_full(path)
-    frames = data["frames"]
-    if frame_indices is not None:
-        return frames[frame_indices]
-    return frames
-
-__all__ = ["load_rmf_frames", "load_rmf_full", "RmfNotAvailableError", "RmfHierarchyNode"]
+__all__ = ["load_rmf_full", "RmfNotAvailableError", "RmfHierarchyNode"]

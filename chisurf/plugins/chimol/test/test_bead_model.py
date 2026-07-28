@@ -22,6 +22,7 @@ import math
 import numpy as np
 import pytest
 
+from chisurf.plugins.chimol.chimol.io.beads import make_bead_rows
 from chisurf.plugins.chimol.chimol.renderer.view import (
     MolView,
     _bead_mask,
@@ -33,27 +34,16 @@ from chisurf.plugins.chimol.chimol.renderer.view import (
 # A synthetic bead model, shaped like the real thing
 # --------------------------------------------------------------------------- #
 def _bead_atoms(n: int = 64, seed: int = 0):
-    """Build the atom array ``_parse_mmcif_backbone`` produces for beads."""
+    """Build the atom array the readers produce for beads.
+
+    Built through the shared builder rather than by hand: a fixture that spells
+    the bead row out itself passes happily while the readers drift away from it,
+    which is the exact failure this module exists to catch.
+    """
     rng = np.random.default_rng(seed)
     xyz = rng.normal(scale=40.0, size=(n, 3))
     radii = rng.uniform(6.0, 30.0, size=n)
-    dtype = np.dtype(
-        [
-            ("atom_name", "U4"),
-            ("res_name", "U4"),
-            ("chain", "U4"),
-            ("res_id", "i4"),
-            ("element", "U2"),
-            ("xyz", "f8", 3),
-        ]
-    )
-    atoms = np.zeros(n, dtype=dtype)
-    atoms["atom_name"] = "CA"
-    atoms["res_name"] = "BEA"
-    atoms["chain"] = "A"
-    atoms["res_id"] = np.arange(1, n + 1)
-    atoms["element"] = "C"
-    atoms["xyz"] = xyz
+    atoms = make_bead_rows(xyz, chain_ids=["A"] * n)
     return atoms, xyz, radii
 
 
@@ -99,7 +89,7 @@ def test_a_protein_is_not_a_bead_model():
 # Drawing one
 # --------------------------------------------------------------------------- #
 def test_a_bead_model_loads_as_spheres_not_a_cartoon(bead_view):
-    """The rule `set_rmf_data` already applied, now applied by every reader."""
+    """The rule the viewer applies, whichever reader produced the beads."""
     view, _radii = bead_view
     assert view._show_atoms is True
     assert view._show_cartoon is False

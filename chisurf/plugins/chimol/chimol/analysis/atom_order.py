@@ -171,6 +171,8 @@ ATOM_INDEXED_FIELDS = (
     "protected_mask",
     "masked_mask",
     "hidden_mask",
+    "resolutions",
+    "representation_mask",
 )
 
 #: Array fields that are *not* atom-indexed, listed so the guardrail can tell
@@ -189,7 +191,6 @@ NON_ATOM_INDEXED_FIELDS = (
     "frames_raw",
     "all_atom_radii",             # atom-indexed but rebuilt from `atoms`
     "all_atom_res_ids",
-    "bead_radii",
     "secondary_structure",
     "ss_codes",
     "raw_center",                 # a single 3-vector

@@ -119,6 +119,48 @@ nearer centre wins the whole disc rather than the two surfaces intersecting.
 Below the threshold, where the beads are meshes, they intersect properly. The
 threshold is `balls.impostor_min_atoms` in the display configuration.
 
+### RMF models from IMP
+
+An `.rmf` / `.rmf3` written by IMP is the same kind of thing as an integrative
+mmCIF — beads, organised into a hierarchy — with a trajectory as well, and it is
+read into exactly the same shape. Everything above applies to it unchanged:
+per-bead radii, the sphere representation, impostors past the threshold, the
+hierarchy panel and its check boxes, `spectrum`, `resi`, `distance` and `zoom`.
+
+```text
+load model.rmf3            # or File > Open; `fetch` does not serve RMF
+```
+
+Restraints, provenance and the per-frame score series come with it, and the
+trajectory drives the frame slider. Measurements follow playback: a `distance`
+is re-read from the frame on show, not frozen at the first one.
+
+#### Choosing a resolution
+
+An IMP model is often deposited at more than one **resolution** — the same
+molecule as ten beads and as one — with the coarser depictions stored as
+*alternatives* to the finer. Where a file does this, the RMF panel grows a
+**Resolution** box listing what is available; a file with a single
+representation, which is most of them, shows no box at all.
+
+Resolution here is IMP's: **residues per bead**, so a larger number is coarser.
+
+```text
+Resolution [ 1  ▾ ]      1 · 10 · all (superimposed)
+```
+
+The file opens on the representation that lives in its own hierarchy, so it
+looks as it always did, and the alternatives are loaded but not drawn until
+asked for. Choosing `all (superimposed)` draws every representation at once,
+which is occasionally useful for comparing them and is not a sensible way to
+work.
+
+Choosing a resolution is **not** the same as hiding: it changes which depiction
+of the model is drawn, and it leaves whatever you switched off in the Hierarchy
+panel switched off. Hide `Nup84`, then switch to the coarse depiction, and
+`Nup84` is still hidden — in its coarse form too, because it is one molecule
+however finely it is drawn.
+
 ### Voxel maps
 
 A great deal of what gets looked at here is a density rather than a structure:

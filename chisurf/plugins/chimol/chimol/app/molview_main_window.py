@@ -51,10 +51,6 @@ from ..io import (
     load_trajectory_frames,
     MdtrajNotAvailableError,
     load_mrc_as_points,
-    load_rmf_frames,
-    load_rmf_full,
-    RmfHierarchyNode,
-    RmfNotAvailableError,
 )
 from ..renderer.view import MolView
 from ..analysis import (
@@ -1727,53 +1723,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     pass
             return object_id
 
-        if name_lower.endswith((".rmf", ".rmf3")):
-            try:
-                data = load_rmf_full(path)
-                hierarchy = data["hierarchy"]
-                frames = data["frames"]
-                radii = data["radii"]
-                restraints = data.get("restraints")
-                rmf_provenance = data.get("rmf_provenance")
-                rmf_frame_series = data.get("rmf_frame_series", {})
-                rmf_frame_metadata = data.get("rmf_frame_metadata", {})
-                rmf_resolutions = data.get("rmf_resolutions", set())
-                bond_pairs = data.get("bond_pairs")
-                
-                object_id = self.viewer._create_object(name=display_name, source_path=source_path).object_id
-                self.viewer.set_rmf_data(
-                    hierarchy=hierarchy,
-                    frames=frames,
-                    radii=radii,
-                    restraints=restraints,
-                    rmf_provenance=rmf_provenance,
-                    rmf_frame_series=rmf_frame_series,
-                    rmf_frame_metadata=rmf_frame_metadata,
-                    rmf_resolutions=rmf_resolutions,
-                    bond_pairs=bond_pairs,
-                    object_id=object_id
-                )
-                
-                n_atoms = int(frames.shape[1])
-                entry: dict[str, Any] = {
-                    "name": display_name,
-                    "path": source_path,
-                    "visible": True,
-                    "n_atoms": n_atoms,
-                    "rmf_hierarchy": hierarchy,
-                }
-                self._object_store[object_id] = entry
-                self._add_object_list_item(object_id, entry)
-                self._select_object_in_ui(object_id)
-                self.hierarchy.set_hierarchy(hierarchy)
-                return object_id
-            except RmfNotAvailableError as e:
-                dialogs.warning(self, "RMF Not Available", str(e))
-                raise
-            except Exception as e:
-                dialogs.warning(self, "RMF Load Error", f"Failed to load RMF: {e}")
-                raise
-
         # First try the standard IMP/Structure-based loader for static files.
         backbone = None
         try:
@@ -1809,173 +1758,99 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             # mmCIF/IHM reader, which then read it. Warning about it told every
             # `fetch` of a `.cif` that it had fallen back to a parser it never
             # touched, which is the reader lying about itself.
-            if getattr(backbone, "reader", "pdb") != "mmcif":
+            if getattr(backbone, "reader", "pdb") not in ("mmcif", "rmf"):
                 self._report_degraded_load(path, primary_exc)
-            # Pass the parsed backbone through: without residue/chain ids the
-            # trace cannot find segment boundaries and draws one polyline
-            # through every atom in file order.
-            object_id = self.viewer.add_coordinates(
-                coords_arr,
+            # The whole payload, in one call. Spelling its fields out here is
+            # what let the RMF branch that used to sit above this one fall
+            # behind: it passed a different set, and so an RMF got none of the
+            # per-bead radii, hierarchy visibility or impostor drawing that
+            # arriving through here confers.
+            object_id = self.viewer.add_payload(
+                backbone,
                 name=display_name,
                 source_path=source_path,
-                trace_coords=backbone.trace_coords if backbone is not None else None,
-                res_ids=backbone.res_ids if backbone is not None else None,
-                res_names=backbone.res_names if backbone is not None else None,
-                chain_ids=backbone.chain_ids if backbone is not None else None,
-                atoms=backbone.atoms if backbone is not None else None,
-                # An integrative model is made of beads of differing size, and
-                # the sizes are the shape of the thing. Drawn at one default
-                # radius the picture is wrong in a way that still looks like a
-                # picture. The viewer scales them with the coordinates and
-                # switches the object to the sphere representation, which is
-                # what the RMF path already did.
-                atom_radii=(
-                    getattr(backbone, "bead_radii", None)
-                    if backbone is not None
-                    else None
-                ),
-                # An integrative mmCIF describes its own organisation --
-                # molecules and the copies of them this model places -- in the
-                # same shape the RMF reader builds. Passing it through is what
-                # turns 234,184 anonymous beads into 31 nucleoporins in 544
-                # copies in the hierarchy panel.
-                hierarchy=(
-                    getattr(backbone, "hierarchy", None)
-                    if backbone is not None
-                    else None
-                ),
             )
             n_atoms = 0 if coords_arr is None else coords_arr.shape[0]
         else:
-            # No usable static structure/coords; try specialised trajectory
-            # loaders (RMF via IMP/PMI, then MDTraj for e.g. GRO/HDF5).
-            suffix = path.suffix.lower()
+            # No usable static structure/coords: MDTraj-based trajectory loading
+            # for the formats the structure readers do not cover (GRO, HDF5).
+            #
+            # RMF is *not* handled here. It used to be -- a second RMF path,
+            # unreachable because the branch above it always returned, which
+            # also draped an identity gaussian over every bead. It is read by
+            # `load_structure_payload` with everything else now.
+            try:
+                frames = load_trajectory_frames(path)
+            except MdtrajNotAvailableError:
+                # Surface a clear message to GUI/cmd callers.
+                raise
+            except Exception:
+                if primary_exc is not None:
+                    raise primary_exc
+                raise
 
-            if suffix in {".rmf", ".rmf3"}:
+            arr = np.asarray(frames, dtype=float)
+            if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0:
+                raise ValueError(
+                    f"Invalid trajectory array from {path!s}: shape={arr.shape!r}"
+                )
+
+            first = arr[0]
+
+            # If the file carries a topology, go in through `set_structure`
+            # -- the same path a PDB takes -- rather than `add_coordinates`.
+            # That is what builds the residues, the CA trace and the
+            # secondary structure a cartoon needs. Without it an all-atom
+            # trajectory arrives as bare points, and every feature keyed on
+            # atom identity degrades *silently*: the cartoon splines through
+            # all 5235 atoms instead of the CAs, `intra_fit polymer` cannot
+            # resolve a selection, the sequence view is empty. Nothing
+            # errors, which is why it read as "cartoons do not work on
+            # trajectories".
+            object_id = None
+            try:
+                from ..io.structure import load_trajectory_atoms
+
+                traj_atoms = load_trajectory_atoms(path, first)
+            except Exception:
+                traj_atoms = None
+
+            if traj_atoms is not None:
+                class _TrajectoryStructure:
+                    """The shape :meth:`set_structure` reads."""
+
+                structure = _TrajectoryStructure()
+                structure.atoms = traj_atoms
+                structure.xyz = np.asarray(traj_atoms["xyz"], dtype=float)
+                structure.n_atoms = int(len(traj_atoms))
                 try:
-                    frames = load_rmf_frames(path)
-                except RmfNotAvailableError:
-                    # Surface a clear message to GUI/cmd callers.
-                    raise
+                    entry = self.viewer._create_object(name=display_name)
+                    entry.source_path = source_path
+                    object_id = entry.object_id
+                    self.viewer.set_active_object(object_id)
+                    self.viewer.set_structure(structure)
                 except Exception:
-                    if primary_exc is not None:
-                        raise primary_exc
-                    raise
-
-                arr = np.asarray(frames, dtype=float)
-                if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0:
-                    raise ValueError(
-                        f"Invalid RMF trajectory array from {path!s}: shape={arr.shape!r}"
+                    logging.getLogger(__name__).warning(
+                        "chimol: could not build the trajectory topology; "
+                        "falling back to bare coordinates", exc_info=True,
                     )
+                    object_id = None
 
-                first = arr[0]
+            if object_id is None:
                 object_id = self.viewer.add_coordinates(
                     np.asarray(first, dtype=float),
                     name=display_name,
                     source_path=source_path,
                 )
 
-                try:
-                    self.viewer.set_frames(arr, object_id=object_id)
-                except Exception:
-                    # If anything goes wrong, we still keep the first frame as a
-                    # static coordinate set.
-                    pass
+            try:
+                self.viewer.set_frames(arr, object_id=object_id)
+            except Exception:
+                # If anything goes wrong, we still keep the first frame as a
+                # static coordinate set.
+                pass
 
-                try:
-                    n_beads = int(first.shape[0])
-                except Exception:
-                    n_beads = 0
-                if n_beads > 0:
-                    try:
-                        cov = np.eye(3, dtype=float)[np.newaxis, :, :]
-                        cov = np.tile(cov, (n_beads, 1, 1))
-                        self.viewer.set_atom_features(
-                            {"gaussian_covariances": cov},
-                            object_id=object_id,
-                        )
-                        self.viewer.set_atom_gaussians_visible(True)
-                    except Exception:
-                        pass
-
-                n_atoms = int(first.shape[0])
-            else:
-                # Fallback: MDTraj-based trajectory loading for formats IMP does
-                # not support (e.g. GRO/HDF5).
-                try:
-                    frames = load_trajectory_frames(path)
-                except MdtrajNotAvailableError:
-                    # Surface a clear message to GUI/cmd callers.
-                    raise
-                except Exception:
-                    if primary_exc is not None:
-                        raise primary_exc
-                    raise
-
-                arr = np.asarray(frames, dtype=float)
-                if arr.ndim != 3 or arr.shape[2] != 3 or arr.shape[0] == 0:
-                    raise ValueError(
-                        f"Invalid trajectory array from {path!s}: shape={arr.shape!r}"
-                    )
-
-                first = arr[0]
-
-                # If the file carries a topology, go in through `set_structure`
-                # -- the same path a PDB takes -- rather than `add_coordinates`.
-                # That is what builds the residues, the CA trace and the
-                # secondary structure a cartoon needs. Without it an all-atom
-                # trajectory arrives as bare points, and every feature keyed on
-                # atom identity degrades *silently*: the cartoon splines through
-                # all 5235 atoms instead of the CAs, `intra_fit polymer` cannot
-                # resolve a selection, the sequence view is empty. Nothing
-                # errors, which is why it read as "cartoons do not work on
-                # trajectories".
-                object_id = None
-                try:
-                    from ..io.structure import load_trajectory_atoms
-
-                    traj_atoms = load_trajectory_atoms(path, first)
-                except Exception:
-                    traj_atoms = None
-
-                if traj_atoms is not None:
-                    class _TrajectoryStructure:
-                        """The shape :meth:`set_structure` reads."""
-
-                    structure = _TrajectoryStructure()
-                    structure.atoms = traj_atoms
-                    structure.xyz = np.asarray(traj_atoms["xyz"], dtype=float)
-                    structure.n_atoms = int(len(traj_atoms))
-                    try:
-                        entry = self.viewer._create_object(name=display_name)
-                        entry.source_path = source_path
-                        object_id = entry.object_id
-                        self.viewer.set_active_object(object_id)
-                        self.viewer.set_structure(structure)
-                    except Exception:
-                        logging.getLogger(__name__).warning(
-                            "chimol: could not build the trajectory topology; "
-                            "falling back to bare coordinates", exc_info=True,
-                        )
-                        object_id = None
-
-                if object_id is None:
-                    object_id = self.viewer.add_coordinates(
-                        np.asarray(first, dtype=float),
-                        name=display_name,
-                        source_path=source_path,
-                    )
-
-                try:
-                    self.viewer.set_frames(arr, object_id=object_id)
-                except Exception:
-                    # If anything goes wrong, we still keep the first frame as a
-                    # static coordinate set.
-                    pass
-
-
-
-                n_atoms = int(first.shape[0])
+            n_atoms = int(first.shape[0])
 
         # Rg is computed here, from the unscaled coordinates, because the viewer
         # only keeps a centred/scaled copy.

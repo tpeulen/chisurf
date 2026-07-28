@@ -22,6 +22,7 @@ from ..colors import (
     _three_to_one_array,
 )
 from ..config import _DISPLAY_CONFIG, register_update_listener, unregister_update_listener
+from ..io.beads import bead_mask
 from ..io.structure import parse_pdb_secondary_structure
 from ..geometry import (
     bond_line_segments,
@@ -277,9 +278,7 @@ def _bead_mask(atoms) -> np.ndarray | None:
         names = np.asarray(atoms["res_name"])
     except Exception:
         return None
-    if names.size == 0:
-        return None
-    return np.char.strip(names.astype(str)) == "BEA"
+    return bead_mask(names)
 
 
 def _is_bead_model(atoms) -> bool:
@@ -369,85 +368,93 @@ class MolView(QtWidgets.QWidget):
     _point_overlays = _StateField("point_overlays")
     _ca_indices = _StateField("_ca_indices")
     _measurements = _StateField("measurements")
-    _bead_radii = _StateField("bead_radii")
     _rmf_hierarchy = _StateField("rmf_hierarchy")
     _hidden_mask = _StateField("hidden_mask")
+    _resolutions = _StateField("resolutions")
+    _representation_mask = _StateField("representation_mask")
+    _rmf_resolutions = _StateField("rmf_resolutions")
     _restraints = _StateField("restraints")
     _rmf_provenance = _StateField("rmf_provenance")
 
-    def set_rmf_data(
-        self,
-        hierarchy: object,
-        frames: np.ndarray,
-        radii: np.ndarray,
-        restraints: list[dict] = None,
-        rmf_provenance: list[dict] = None,
-        rmf_frame_series: dict[str, object] | None = None,
-        rmf_frame_metadata: dict[str, object] | None = None,
-        rmf_resolutions: set[object] | None = None,
-        bond_pairs: np.ndarray | None = None,
-        *,
-        object_id: str | None = None
-    ) -> None:
-        """Load full RMF data (hierarchy, trajectory, radii) into an object.
+    def apply_payload(self, payload, *, object_id: str | None = None) -> None:
+        """Load everything a reader recovered from a file into one object.
 
-        RMF coordinates are stored and returned in Angstroms by IMP.  Chimol's
-        internal scene uses the same scaled units as :meth:`set_frames` and
-        :meth:`add_structure` (coordinates are centered and multiplied by
-        ``_scale_factor``), so we apply that scaling here to keep bond,
-        cartoon, and bead sizes consistent with structure-loaded objects.
+        The single route from a file into the viewer. RMF used to have its own
+        -- ``set_rmf_data``, which filled a parallel set of state fields -- and
+        the consequence was not that RMF looked slightly different but that it
+        received nothing the common path knew: beads drawn at one default radius
+        instead of their own, decimated to a fraction of themselves rather than
+        drawn as impostors, and a hierarchy whose check boxes moved nothing at
+        all.
+
+        Parameters
+        ----------
+        payload : StructurePayload
+            What the reader produced.
+        object_id : str, optional
+            Which object to load into; the active one by default.
         """
         with self._activate_object(object_id):
+            self.set_coordinates(
+                payload.coords,
+                trace_coords=payload.trace_coords,
+                res_ids=payload.res_ids,
+                res_names=payload.res_names,
+                chain_ids=payload.chain_ids,
+                atoms=payload.atoms,
+                atom_radii=payload.atom_radii,
+                bonds=payload.bonds,
+                hierarchy=payload.hierarchy,
+                resolutions=payload.resolutions,
+                resolution_default_mask=payload.resolution_default_mask,
+            )
+
+            extras = getattr(payload, "extras", None) or {}
             state = self._get_active_state()
-            state.rmf_hierarchy = hierarchy
+            if extras.get("restraints"):
+                state.restraints = extras["restraints"]
+            if extras.get("rmf_provenance"):
+                state.rmf_provenance = extras["rmf_provenance"]
+            if extras.get("rmf_frame_series") is not None:
+                state.rmf_frame_series = extras["rmf_frame_series"]
+            if extras.get("rmf_frame_metadata") is not None:
+                state.rmf_frame_metadata = extras["rmf_frame_metadata"]
 
-            if frames is not None and len(frames) > 0:
-                arr = np.asarray(frames, dtype=float)
-                flat = arr.reshape(-1, 3)
-                center, radius = _compute_center_radius(flat)
-                scale = float(self._scale_factor)
-                state.frames = (arr - center) * scale
-                state.frames_raw = arr
-                self._center = np.zeros(3, dtype=float)
-                self._radius = float(radius * scale)
-            else:
-                state.frames = frames
-                state.frames_raw = frames
+            # Frames last. `set_frames` centres and scales over the *whole*
+            # trajectory, which is what stops the model jumping about as it
+            # plays; doing it before `set_coordinates` would leave the object
+            # centred on one frame instead.
+            if payload.frames is not None and len(payload.frames) > 0:
+                self.set_frames(np.asarray(payload.frames, dtype=float))
 
-            if radii is not None:
-                state.bead_radii = np.asarray(radii, dtype=float) * float(self._scale_factor)
-            else:
-                state.bead_radii = radii
+    def add_payload(
+        self,
+        payload,
+        *,
+        name: str | None = None,
+        source_path: str | None = None,
+    ) -> str:
+        """Create an object from a reader payload and return its id.
 
-            if restraints:
-                state.restraints = restraints
-            if rmf_provenance:
-                state.rmf_provenance = rmf_provenance
-            if rmf_frame_series is not None:
-                state.rmf_frame_series = rmf_frame_series
-            if rmf_frame_metadata is not None:
-                state.rmf_frame_metadata = rmf_frame_metadata
-            if rmf_resolutions is not None:
-                state.rmf_resolutions = rmf_resolutions
-            if bond_pairs is not None:
-                state.bond_pairs = bond_pairs
-                state.show_sticks = True
-            # If we have frames, set the first one as active
-            if frames is not None and len(frames) > 0:
-                self._select_state_frame(state, 0)
-                self._total_frames = max(self._total_frames, len(frames))
-                n_points = int(np.asarray(state.frames).shape[1])
-                state.cartoon_mask = np.zeros(n_points, dtype=bool)
-                state.ball_mask = np.ones(n_points, dtype=bool)
-                state.sticks_mask = np.ones(n_points, dtype=bool)
+        Parameters
+        ----------
+        payload : StructurePayload
+            What the reader produced.
+        name : str, optional
+            Display name for the object list.
+        source_path : str, optional
+            Where it came from, for the info panel and for deposited
+            secondary-structure lookup.
 
-            # If we have radii, we likely want to show beads (mode 'spheres')
-            if radii is not None and np.any(radii > 0):
-                state.show_atoms = True  # We use the atoms/spheres path for beads
-                state.show_cartoon = False
-                state.show_trace = False
-
-        self._update_view()
+        Returns
+        -------
+        str
+            The new object's id.
+        """
+        entry = self._create_object(name=name, source_path=source_path)
+        self.apply_payload(payload, object_id=entry.object_id)
+        self._apply_deposited_secondary_structure(source_path)
+        return entry.object_id
 
     @staticmethod
     def _residue_bead_mask(res_names) -> np.ndarray | None:
@@ -468,12 +475,7 @@ class MolView(QtWidgets.QWidget):
         numpy.ndarray or None
             Boolean mask over trace points, or ``None`` when there are no names.
         """
-        if res_names is None:
-            return None
-        names = np.asarray(res_names)
-        if names.size == 0:
-            return None
-        return np.char.strip(names.astype(str)) == "BEA"
+        return bead_mask(res_names)
 
     def is_empty(self) -> bool:
         """Whether the viewer holds nothing a command could act on.
@@ -1460,11 +1462,13 @@ class MolView(QtWidgets.QWidget):
         # the ribbon normals (C→O vectors) are frozen at the starting
         # conformation and the cartoon appears twisted/tangled as the MC moves
         # the backbone.
-        if (
-            frame_matches_all_atoms
-            and state.atoms is not None
-            and state.residue_ids is not None
-        ):
+        # Residue ids are *not* required here. They were, because this started
+        # life as a fix for cartoon ribbon normals -- but `atoms["xyz"]` is what
+        # `zoom`, `distance` and `select ... within` read, so an object with
+        # atoms and no residues had every measurement silently frozen at the
+        # first frame while the picture moved. Only the backbone map, below,
+        # genuinely needs residues.
+        if frame_matches_all_atoms and state.atoms is not None:
             try:
                 frames_raw = getattr(state, "frames_raw", None)
                 if frames_raw is not None:
@@ -1493,19 +1497,20 @@ class MolView(QtWidgets.QWidget):
                     # single most expensive part of a frame change -- it costs
                     # ``n_res * n_atoms`` comparisons and a full string
                     # conversion of every atom name.
-                    if state.backbone_map is None:
-                        state.backbone_map = backbone_index_map(
+                    if state.residue_ids is not None:
+                        if state.backbone_map is None:
+                            state.backbone_map = backbone_index_map(
+                                state.atoms,
+                                state.residue_ids,
+                                state.residue_chain_ids,
+                            )
+                        state.trace_ups = _build_trace_ups(
                             state.atoms,
                             state.residue_ids,
+                            selected_coords,
                             state.residue_chain_ids,
+                            index_map=state.backbone_map,
                         )
-                    state.trace_ups = _build_trace_ups(
-                        state.atoms,
-                        state.residue_ids,
-                        selected_coords,
-                        state.residue_chain_ids,
-                        index_map=state.backbone_map,
-                    )
             except Exception:
                 pass
 
@@ -2384,7 +2389,10 @@ class MolView(QtWidgets.QWidget):
         chain_ids: np.ndarray | None = None,
         atoms: np.ndarray | None = None,
         atom_radii: np.ndarray | None = None,
+        bonds: np.ndarray | None = None,
         hierarchy: object | None = None,
+        resolutions: np.ndarray | None = None,
+        resolution_default_mask: np.ndarray | None = None,
     ) -> None:
         """Set raw coordinates for visualization.
 
@@ -2412,12 +2420,26 @@ class MolView(QtWidgets.QWidget):
             magnitude and the sizes *are* the shape of the thing, so a single
             default radius does not describe it. Scaled here with the
             coordinates so every downstream renderer stays in one frame.
+        bonds:
+            Optional ``(K, 2)`` connectivity the *file states*. When given it is
+            used verbatim: it outranks both the distance-cutoff inference and
+            the rule that a bead model has no bonds, because a reader that knows
+            the topology is a better source than either.
         hierarchy:
             The tree the file describes -- molecules, and the copies of them
             this model places -- as a
             :class:`~chisurf.plugins.chimol.chimol.io.hierarchy.HierarchyNode`.
             An integrative mmCIF carries one, in the same shape the RMF reader
             builds, and it feeds the same panel.
+        resolutions:
+            Optional per-row resolution of the representation each row belongs
+            to, for a file that offers more than one. ``None`` means there is
+            nothing to choose between.
+        resolution_default_mask:
+            Optional per-row mask of the representation to show on opening --
+            the one that lives in the file's own tree. Rows outside it are
+            present but not drawn until asked for, so a file opens looking as it
+            always did.
         """
         arr = np.asarray(xyz, dtype=float)
         if arr.ndim != 2 or arr.shape[1] != 3:
@@ -2427,6 +2449,7 @@ class MolView(QtWidgets.QWidget):
         # The same field the RMF reader fills: one hierarchy per object, however
         # it was read, so the panel does not have to know which reader ran.
         self._rmf_hierarchy = hierarchy
+        self._set_representations(arr.shape[0], resolutions, resolution_default_mask)
         self._all_atom_res_ids = None
         self._atom_features = {}
         self._atom_feature_meta = {}
@@ -2467,9 +2490,12 @@ class MolView(QtWidgets.QWidget):
                     arr.shape[0],
                 )
 
-        bead_mask = _bead_mask(self._atoms)
-        has_beads = bead_mask is not None and bool(bead_mask.any())
-        all_beads = bead_mask is not None and bool(bead_mask.all())
+        # Named apart from the imported `bead_mask` helper: a local of the same
+        # name shadows it for the whole function body, which is a trap for the
+        # next edit rather than a bug today.
+        beads = _bead_mask(self._atoms)
+        has_beads = beads is not None and bool(beads.any())
+        all_beads = beads is not None and bool(beads.all())
 
         # Replay any manual bond/unbond over the fresh inference: a hand-made
         # bond stored only in bond_pairs vanishes the moment coordinates change.
@@ -2480,10 +2506,18 @@ class MolView(QtWidgets.QWidget):
         # open, for pairs that would be wrong if it found any. A model that
         # mixes beads with resolved atoms is bonded over the atoms alone, with
         # the pair indices mapped back to the full array.
-        if all_beads:
+        #
+        # Bonds the *file states* are not inferred and not guessed away: a
+        # reader that knows the connectivity outranks both the distance cutoff
+        # and the rule that a bead model has none. An RMF names its bonds, and
+        # they are often the restraint topology someone opened the file to see.
+        if bonds is not None:
+            stated = np.asarray(bonds, dtype=int).reshape(-1, 2)
+            self._bond_pairs = self._apply_bond_edits(stated)
+        elif all_beads:
             self._bond_pairs = self._apply_bond_edits(np.zeros((0, 2), dtype=int))
         elif has_beads:
-            atomic = np.nonzero(~bead_mask)[0]
+            atomic = np.nonzero(~beads)[0]
             pairs = self._infer_bonds(raw_all[atomic], self._atoms[atomic])
             pairs = np.asarray(pairs, dtype=int).reshape(-1, 2)
             self._bond_pairs = self._apply_bond_edits(
@@ -2538,7 +2572,7 @@ class MolView(QtWidgets.QWidget):
                     # back over the full residue list. Running it over the
                     # beads as well is the 4-seconds-a-spoke cost, spent on
                     # rows that cannot contribute a hydrogen bond.
-                    atomic = np.nonzero(~bead_mask)[0]
+                    atomic = np.nonzero(~beads)[0]
                     res_beads = self._residue_bead_mask(self._residue_names)
                     # Only when the residue-level mask really describes this
                     # trace: without one there is no way to say which code
@@ -2573,9 +2607,9 @@ class MolView(QtWidgets.QWidget):
                 except Exception:
                     self._secondary_structure = None
 
-        # A bead is drawn as a bead, and an atom is not. This is the same rule
-        # `set_rmf_data` applies, and it has to be applied here too or the two
-        # readers of the same kind of model disagree about how to draw it: an
+        # A bead is drawn as a bead, and an atom is not. The rule lives here,
+        # in the viewer, rather than in each reader -- or the readers of the same
+        # kind of model disagree about how to draw it: an
         # integrative mmCIF came out as a cartoon splined through beads that
         # have no backbone -- meaningless as a depiction, and the reason the
         # eight-spoke nuclear pore took seven minutes to open.
@@ -2596,7 +2630,7 @@ class MolView(QtWidgets.QWidget):
             # Beads, plus whatever the atomic part would have shown as balls on
             # its own -- a hybrid entry's waters and ligands are not forfeited
             # because the entry also contains beads.
-            self._ball_mask = bead_mask.copy()
+            self._ball_mask = beads.copy()
             if not all_beads:
                 hetero = self._hetero_atom_mask(self._atoms, arr.shape[0])
                 if hetero is not None and len(hetero) == arr.shape[0]:
@@ -3595,22 +3629,159 @@ class MolView(QtWidgets.QWidget):
             self._hidden_mask = mask
         self._update_view()
 
+    def _set_representations(
+        self,
+        n_rows: int,
+        resolutions: np.ndarray | None,
+        default_mask: np.ndarray | None,
+    ) -> None:
+        """Record which resolutions this object holds, and show the default one.
+
+        Parameters
+        ----------
+        n_rows : int
+            Rows of the coordinate array the masks must match.
+        resolutions : numpy.ndarray or None
+            Per-row resolution, or ``None`` for a single-representation file.
+        default_mask : numpy.ndarray or None
+            Per-row mask of the representation to show. Everything is shown when
+            it is missing, which is the right answer for a file that offers one.
+        """
+        if resolutions is None:
+            self._resolutions = None
+            self._representation_mask = None
+            self._rmf_resolutions = []
+            return
+
+        values = np.asarray(resolutions, dtype=float).ravel()
+        if values.shape[0] != n_rows:
+            logger.warning(
+                "resolutions has %d entries for %d coordinates; ignoring them.",
+                values.shape[0],
+                n_rows,
+            )
+            self._resolutions = None
+            self._representation_mask = None
+            self._rmf_resolutions = []
+            return
+
+        self._resolutions = values
+        # NaN is "the file did not say", and it is not a resolution anyone can
+        # choose, so it must not appear in the chooser.
+        self._rmf_resolutions = sorted(
+            {float(v) for v in np.unique(values) if np.isfinite(v)}
+        )
+
+        if default_mask is not None and len(default_mask) == n_rows:
+            self._representation_mask = np.asarray(default_mask, dtype=bool).copy()
+        else:
+            self._representation_mask = np.ones(n_rows, dtype=bool)
+
+    def available_resolutions(self, *, object_id: str | None = None) -> list[float]:
+        """The resolutions this object holds, coarsest last.
+
+        Parameters
+        ----------
+        object_id : str, optional
+            Which object; the active one by default.
+
+        Returns
+        -------
+        list of float
+            Empty when the file states a single representation -- which is the
+            signal to offer no choice at all rather than a choice of one.
+        """
+        with self._activate_object(object_id):
+            return list(self._rmf_resolutions or [])
+
+    def set_visible_resolutions(
+        self,
+        resolutions,
+        *,
+        object_id: str | None = None,
+    ) -> int:
+        """Choose which resolution(s) of a multi-resolution model are drawn.
+
+        This is the *depiction*, not visibility: it never touches what the
+        hierarchy panel switched off, and the two are combined when drawing. So
+        switching from a coarse depiction to a fine one leaves a molecule you
+        hid still hidden.
+
+        Parameters
+        ----------
+        resolutions : iterable of float or None
+            The resolutions to show. ``None`` shows every row the file holds,
+            which superimposes the representations -- occasionally wanted for
+            comparison, never a sensible default.
+        object_id : str, optional
+            Which object; the active one by default.
+
+        Returns
+        -------
+        int
+            How many rows the chosen representation covers. Zero means the
+            request matched nothing and the previous choice was kept, rather
+            than the model being silently emptied.
+        """
+        with self._activate_object(object_id):
+            values = self._resolutions
+            if values is None:
+                return 0
+            n_rows = int(np.asarray(values).shape[0])
+
+            if resolutions is None:
+                self._representation_mask = np.ones(n_rows, dtype=bool)
+                self._update_view()
+                return n_rows
+
+            wanted = [float(v) for v in resolutions]
+            mask = np.zeros(n_rows, dtype=bool)
+            for value in wanted:
+                mask |= np.isclose(values, value, rtol=0.0, atol=1e-9)
+            if not mask.any():
+                return 0
+
+            self._representation_mask = mask
+            self._update_view()
+            return int(mask.sum())
+
     def visible_row_mask(self, n_rows: int) -> np.ndarray | None:
-        """The complement of the hidden mask, when it fits ``n_rows``.
+        """Which rows may be drawn: everything not hidden, in the chosen depiction.
+
+        Two independent questions are answered here, and they have to be
+        answered together. ``hidden_mask`` is what the hierarchy panel's check
+        boxes set -- the parts of the model you switched off.
+        ``representation_mask`` is which depiction of it is selected, when the
+        file offers several resolutions. Compose them in one place, or picking a
+        resolution quietly un-hides what you had hidden, and every drawing path
+        has to remember to consult both.
+
+        Parameters
+        ----------
+        n_rows : int
+            Length the masks must have to apply to this array.
 
         Returns
         -------
         numpy.ndarray or None
-            A boolean mask of rows that may be drawn, or ``None`` when nothing
-            is hidden -- which lets callers skip the work entirely.
+            A boolean mask of rows that may be drawn, or ``None`` when
+            everything is visible -- which lets callers skip the work entirely.
         """
-        mask = self._hidden_mask
-        if mask is None or len(mask) != n_rows:
-            return None
-        arr = np.asarray(mask, dtype=bool)
-        if not arr.any():
-            return None
-        return ~arr
+        visible = None
+
+        hidden = self._hidden_mask
+        if hidden is not None and len(hidden) == n_rows:
+            hidden_arr = np.asarray(hidden, dtype=bool)
+            if hidden_arr.any():
+                visible = ~hidden_arr
+
+        chosen = self._representation_mask
+        if chosen is not None and len(chosen) == n_rows:
+            chosen_arr = np.asarray(chosen, dtype=bool)
+            if not chosen_arr.all():
+                visible = chosen_arr if visible is None else (visible & chosen_arr)
+
+        return visible
 
     def set_cartoon_visible(self, visible: bool) -> None:
         """Enable or disable the cartoon tube globally."""
@@ -4880,6 +5051,16 @@ class MolView(QtWidgets.QWidget):
                 pts = pts[sel]
                 colors_rgb = colors_rgb[sel]
                 radii = radii[sel]
+            # Hiding is not a property of the bead path: a raw-coordinate object
+            # has a hierarchy too whenever its reader built one, and its check
+            # boxes have to move something here as well.
+            visible = self.visible_row_mask(pts.shape[0])
+            if visible is not None:
+                pts = pts[visible]
+                colors_rgb = colors_rgb[visible]
+                radii = radii[visible]
+                if pts.shape[0] == 0:
+                    return scene_objects
             if pts.shape[0] and balls_max_atoms > 0 and pts.shape[0] > balls_max_atoms:
                 step = max(1, pts.shape[0] // balls_max_atoms)
                 pts = pts[::step]
@@ -5200,21 +5381,21 @@ class MolView(QtWidgets.QWidget):
 
             if point_positions:
                 radii_vals = None
-                beads = getattr(self, "_bead_radii", None)
+                sizes = self._all_atom_radii
                 # The radii cover the *coordinates*, and `indices` selects into
                 # them. Comparing the array against the length of the selection
                 # only held when everything was selected, so any narrower
                 # selection silently lost the per-bead sizes and drew one size
                 # for all of them.
-                if beads is not None and len(beads) == n_points:
-                    radii_vals = np.asarray(beads, dtype=float)[indices]
+                if sizes is not None and len(sizes) == n_points:
+                    radii_vals = np.asarray(sizes, dtype=float)[indices]
 
                 geom = Geometry(
                     kind="points",
                     positions=np.asarray(point_positions, dtype=float),
                     colors=np.asarray(point_colors, dtype=float),
                     radii=radii_vals,
-                    # `set_rmf_data` has already multiplied these by
+                    # `set_coordinates` has already multiplied these by
                     # `_scale_factor`, so they are distances in the scene, not
                     # pixel counts. Without saying so a 20 A bead was drawn as a
                     # 200-pixel dot that did not change when you zoomed.
@@ -5439,6 +5620,16 @@ class MolView(QtWidgets.QWidget):
             if bool(getattr(self, flag, False)):
                 mask[:] = True
                 break
+
+        # ...and then only the rows that are visible at all. A representation
+        # mask says *how* a row would be drawn; this says whether it is drawn.
+        # Without it `ray` traced molecules switched off in the hierarchy panel
+        # and every resolution of a multi-resolution model at once, so the
+        # traced image disagreed with the picture on screen -- silently, since
+        # both are pictures of the same thing.
+        visible = self.visible_row_mask(n_atoms)
+        if visible is not None:
+            mask &= visible
         return mask
 
     def get_ray_view_state(self) -> list[float]:

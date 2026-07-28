@@ -153,14 +153,20 @@ def _qt_app():
     return app
 
 
-def test_set_rmf_data_scales_frames_and_radii_consistently(_qt_app) -> None:
-    """RMF coordinates (Angstrom) must be scaled like set_frames/add_structure.
+def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> None:
+    """Trajectory coordinates (Angstrom) are scaled like set_frames/add_structure.
 
-    Previously ``set_rmf_data`` stored raw RMF frames without applying
-    ``_scale_factor``.  This made RMF-loaded structures render at a different
-    scale than structure-loaded ones, causing cartoon/bond/bead sizes to look
-    wrong (the reported nm/Å mixup).
+    An RMF used to arrive through ``set_rmf_data``, which stored raw frames
+    without applying ``_scale_factor`` -- so RMF-loaded models rendered at a
+    different scale from structure-loaded ones and every cartoon, bond and bead
+    size looked wrong (the reported nm/A mixup). That method is gone and the
+    payload goes through ``set_coordinates``/``set_frames`` like everything
+    else, but the property it was fixed to have is exactly as load-bearing, so
+    it is pinned here against the new seam.
     """
+    from chisurf.plugins.chimol.chimol.io.beads import make_bead_rows
+    from chisurf.plugins.chimol.chimol.io.structure import StructurePayload
+
     widget = MolView()
     widget._update_view = lambda *args, **kwargs: None
 
@@ -174,13 +180,14 @@ def test_set_rmf_data_scales_frames_and_radii_consistently(_qt_app) -> None:
     raw_radii = np.array([1.5, 1.7, 1.9], dtype=float)
     scale = float(widget._scale_factor)
 
-    object_id = widget._create_object(name="rmf_test").object_id
-    widget.set_rmf_data(
-        hierarchy=None,
+    payload = StructurePayload(
+        coords=raw_frames[0],
+        atoms=make_bead_rows(raw_frames[0]),
+        atom_radii=raw_radii,
         frames=raw_frames,
-        radii=raw_radii,
-        object_id=object_id,
+        reader="rmf",
     )
+    object_id = widget.add_payload(payload, name="rmf_test")
 
     entry = widget._objects[object_id]
     state = entry.state
@@ -193,8 +200,8 @@ def test_set_rmf_data_scales_frames_and_radii_consistently(_qt_app) -> None:
     expected_frames = (raw_frames - center) * scale
     np.testing.assert_allclose(state.frames, expected_frames, atol=1e-9)
 
-    # bead radii must be scaled by _scale_factor
-    np.testing.assert_allclose(state.bead_radii, raw_radii * scale, atol=1e-9)
+    # per-bead radii must be scaled by _scale_factor
+    np.testing.assert_allclose(state.all_atom_radii, raw_radii * scale, atol=1e-9)
 
     # state.coords/active frame should use the scaled frames
     assert state.active_frame == 0

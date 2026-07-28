@@ -2,6 +2,54 @@
 
 ## 2026-07-28
 
+* **An RMF is read like everything else, and can say how finely it is drawn.**
+  RMF had its own route into the viewer — a branch in the window's loader and a
+  `set_rmf_data` filling a parallel set of state fields — so it received nothing
+  the common path had learned. Measured on a 60,000-bead model: every bead drawn
+  at **one global radius** (the per-bead radii were stored where nothing that
+  draws reads them), rendered as a merged mesh **decimated** to `balls_max_atoms`
+  rather than as sphere impostors, and hiding 30,000 rows through the hierarchy
+  panel's check boxes removed **none** of them from the picture. Nothing raised;
+  a second path that draws something plausible is silent by construction. Two
+  further RMF paths turned up while reading: a `load_rmf_frames` fallback in the
+  window that was unreachable (and draped an identity gaussian over every bead),
+  and the `world_radius` points branch fixed as RF-521 last session, which an RMF
+  never reached because the `_atoms is None` fallback returned first.
+  - The bead row is now defined once, in `chimol/io/beads.py` (`ATOM_DTYPE`,
+    `bead_row`, `make_bead_rows`, `bead_mask`) — it had been spelled out in four
+    places and *not at all* by the RMF reader, which is why an RMF was never
+    recognised as beads. `PdbBackbone` is renamed `StructurePayload` and carries
+    `frames`, `atom_radii`, `bonds`, resolutions and an `extras` dict; `.rmf` is
+    read inside `load_structure_payload`; `set_rmf_data`, the window's `.rmf`
+    branch and the dead fallback are gone, replaced by `apply_payload` /
+    `add_payload`.
+  - `set_coordinates` gained `bonds=`: connectivity a reader *states* outranks
+    both the distance-cutoff inference and the rule that a bead model has none,
+    since an RMF's bonds are often the restraint topology someone opened the file
+    to see.
+  - **Resolutions.** The reader now descends `Alternatives` instead of collecting
+    every particle blind, tagging each row with its representation's resolution
+    and marking the tree's own one. Previously a two-resolution model came back
+    as one 48-particle object with both depictions superimposed. The RMF panel
+    grows a Resolution box (hidden for the single-representation files that are
+    almost all of them) driving a `representation_mask` composed with
+    `hidden_mask` in `visible_row_mask` — two masks, because sharing one means
+    choosing a resolution un-hides what you hid.
+  - Traversal order no longer has to match RMF's: `get_all_global_coordinates`
+    fills its buffer in a plain depth-first order and is the only reader that
+    applies ancestors' reference frames, so the buffer is *permuted* into loader
+    order. Pinned by a test that forces both paths and compares them.
+  - Two incidental fixes, both silent: `atoms["xyz"]` was re-synced per frame
+    only for objects that also had residue ids, so an object with atoms and no
+    residues had `zoom`, `distance` and `select … within` frozen at frame 0 while
+    the picture moved; and `sphere_visible_mask` ignored visibility, so `ray`
+    traced molecules switched off in the hierarchy panel — that one shipped
+    broken with the check boxes themselves last session.
+  - Verified on a written two-resolution RMF (`test/rmf_fixture.py`, via
+    `RMF.AlternativesFactory` — no binary in the repo): 240 fine beads → 36
+    coarse → 276 superimposed → 200 with two chains hidden, ray-traced in all
+    four states and inspected, plus a grab of the panel with the chooser.
+
 * **"Nothing changed" now means the code did not change either (RF-649..RF-655).**
   The burst steps' reuse gate fingerprinted inputs and settings, which is not the
   same as everything that decides the answer. Three things were missing and each

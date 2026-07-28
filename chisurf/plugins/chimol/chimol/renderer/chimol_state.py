@@ -151,17 +151,26 @@ class _MolViewObjectState:
     frames_raw: Optional[np.ndarray] = None
     active_frame: int = 0
     measurements: dict[str, dict] = field(default_factory=dict)
-    bead_radii: Optional[np.ndarray] = None
     rmf_hierarchy: Optional[object] = None  # HierarchyNode, whoever built it
     #: Rows of the coordinate array to leave undrawn, one flag each. This is
     #: *visibility*, not representation: the hierarchy panel switches whole
     #: molecules and chains off with it, and every representation honours it.
     hidden_mask: Optional[np.ndarray] = None
+    #: Per row, the resolution of the representation it belongs to; ``None``
+    #: when the file states a single one. "Resolution" is residues per bead, so
+    #: a larger number is a coarser depiction.
+    resolutions: Optional[np.ndarray] = None
+    #: Rows of the representation currently *chosen*, one flag each. Kept apart
+    #: from ``hidden_mask`` deliberately: the two answer different questions --
+    #: "which depiction of this model" and "which parts of it did I switch off"
+    #: -- and one mask serving both means picking a resolution silently
+    #: un-hides whatever you had hidden. They are combined at draw time.
+    representation_mask: Optional[np.ndarray] = None
     restraints: list[dict] = field(default_factory=list)
     rmf_provenance: list[dict] = field(default_factory=list)
     rmf_frame_series: dict[str, object] = field(default_factory=dict)
     rmf_frame_metadata: dict[str, object] = field(default_factory=dict)
-    rmf_resolutions: set[object] = field(default_factory=set)
+    rmf_resolutions: list[float] = field(default_factory=list)
     _ca_indices: Optional[np.ndarray] = None
 
 

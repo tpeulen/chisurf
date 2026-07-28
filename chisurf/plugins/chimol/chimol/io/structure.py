@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional, Sequence, Tuple
 
@@ -9,6 +9,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from ..analysis.atom_classes import ATOMIC_NUMBER
+from .beads import ATOM_DTYPE as _ATOM_DTYPE, BEAD_RES_NAME, bead_row
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +52,24 @@ def open_structure_files(
 
 
 @dataclass
-class PdbBackbone:
-    """Coordinates plus the residue metadata recovered from a PDB file.
+class StructurePayload:
+    """Everything a reader recovered from a file, in one shape.
 
-    This is the payload used when the core ``Structure`` reader is unavailable
-    or fails. Carrying the backbone metadata matters for more than the info
-    panel: without residue and chain ids the viewer cannot find segment
-    boundaries and splines a single polyline through every atom in file order.
+    Named for what it is rather than for the first reader that produced one: it
+    began as a PDB fallback, then carried integrative-mmCIF hierarchies and
+    beads, and now carries RMF trajectories too. While it was still called
+    ``PdbBackbone`` the RMF reader had its own private route into the viewer,
+    and everything the bead path learned -- real radii, sphere impostors,
+    hierarchy visibility -- silently did not apply to it.
+
+    Carrying the backbone metadata matters for more than the info panel:
+    without residue and chain ids the viewer cannot find segment boundaries and
+    splines a single polyline through every atom in file order.
 
     Attributes
     ----------
     coords : numpy.ndarray
-        All ``ATOM``/``HETATM`` coordinates, shape ``(N, 3)``.
+        All coordinates, shape ``(N, 3)``. For a trajectory, the first frame.
     trace_coords : numpy.ndarray or None
         The CA trace, shape ``(M, 3)``, or ``None`` when the file has no
         recognisable protein backbone.
@@ -75,12 +82,33 @@ class PdbBackbone:
         H/E/C, and the ribbon needs the carbonyl to know which way is up.
         Without it the viewer can only spline a thin tube through the CA
         positions, which is the bare-spring look that says "the reader gave up".
+    atom_radii : numpy.ndarray or None
+        Per-row radii, in the same units as ``coords``. An integrative model's
+        beads differ in size by an order of magnitude and the sizes *are* the
+        shape of the thing.
+    bonds : numpy.ndarray or None
+        ``(K, 2)`` explicit connectivity, for a format that states it. Distinct
+        from "no bonds": a bead model has none inferred, but an RMF may name
+        them.
+    frames : numpy.ndarray or None
+        ``(T, N, 3)`` trajectory, when the file holds one.
+    resolutions : numpy.ndarray or None
+        Per row, the resolution of the representation it belongs to, for a file
+        that states more than one. ``None`` means the file offers a single
+        representation and there is nothing to choose between.
+    resolution_default_mask : numpy.ndarray or None
+        Per row, whether it belongs to the representation that lives in the
+        file's own tree -- the one shown when the file opens.
     hierarchy : HierarchyNode or None
         The tree the file describes -- molecules, and the copies of them this
-        model places -- when the format carries one. An integrative mmCIF does;
-        a PDB file does not, beyond its chains.
+        model places -- when the format carries one. An integrative mmCIF and an
+        RMF both do; a PDB file does not, beyond its chains.
+    extras : dict
+        Format-specific matter with no place in the common shape: an RMF's
+        restraints, provenance and per-frame statistics. Kept opaque here so
+        that adding one does not widen this class for every other reader.
     reader : str
-        Which reader produced this. ``"mmcif"`` means the dedicated mmCIF/IHM
+        Which reader produced this. ``"mmcif"`` and ``"rmf"`` mean a dedicated
         reader read the file *on purpose* -- that is not a fallback and must not
         be reported as one. ``"pdb"`` means the built-in PDB parser stood in for
         a core reader that was missing or failed, which is worth telling the
@@ -93,18 +121,14 @@ class PdbBackbone:
     res_names: np.ndarray | None = None
     chain_ids: np.ndarray | None = None
     atoms: np.ndarray | None = None
+    atom_radii: np.ndarray | None = None
+    bonds: np.ndarray | None = None
+    frames: np.ndarray | None = None
+    resolutions: np.ndarray | None = None
+    resolution_default_mask: np.ndarray | None = None
     reader: str = "pdb"
     hierarchy: object | None = None
-
-
-_ATOM_DTYPE = np.dtype([
-    ("atom_name", "U4"),
-    ("res_name", "U4"),
-    ("chain", "U2"),
-    ("res_id", np.int64),
-    ("element", "U2"),
-    ("xyz", float, (3,)),
-])
+    extras: dict = field(default_factory=dict)
 
 
 def _element_symbol_from_pdb_line(line: str) -> str:
@@ -232,7 +256,7 @@ def _mmcif_hierarchy(system, row_asym: list) -> "HierarchyNode | None":
         return None
     return root
 
-def _parse_mmcif_backbone(path: str) -> PdbBackbone:
+def _parse_mmcif_backbone(path: str) -> StructurePayload:
     """Read an mmCIF file with the format's own reference library.
 
     Handled by ``ihm``, which is written by the people who define the IHM
@@ -336,21 +360,22 @@ def _parse_mmcif_backbone(path: str) -> PdbBackbone:
         coords.append(xyz)
         radii.append(radius)
         # A bead is not an atom, but every per-atom path downstream wants a row.
-        # Named CA so the trace and cartoon follow the chain of beads.
-        atom_rows.append(("CA", "BEA", chain, res_id, "C", xyz))
+        # What one looks like is defined once, in `io/beads.py`, because the RMF
+        # reader has to produce exactly the same thing.
+        atom_rows.append(bead_row(chain, res_id, xyz))
         if (chain, res_id) in seen:
             continue
         seen.add((chain, res_id))
         trace.append(xyz)
         res_ids.append(res_id)
-        res_names.append("BEA")
+        res_names.append(BEAD_RES_NAME)
         chain_ids.append(chain)
 
     if not coords:
         raise ValueError(f"No coordinates found in {path!r}")
 
     has_trace = len(trace) >= 2
-    backbone = PdbBackbone(
+    backbone = StructurePayload(
         coords=np.asarray(coords, dtype=float),
         trace_coords=np.asarray(trace, dtype=float) if has_trace else None,
         res_ids=np.asarray(res_ids, dtype=int) if has_trace else None,
@@ -361,11 +386,61 @@ def _parse_mmcif_backbone(path: str) -> PdbBackbone:
         hierarchy=_mmcif_hierarchy(system, row_asym),
     )
     if any(value > 0.0 for value in radii):
-        backbone.bead_radii = np.asarray(radii, dtype=float)
+        backbone.atom_radii = np.asarray(radii, dtype=float)
     return backbone
 
 
-def _parse_pdb_backbone(path: str) -> PdbBackbone:
+def _parse_rmf(path: Path) -> StructurePayload:
+    """Read an RMF as the same payload every other reader produces.
+
+    An RMF is a bead model with a trajectory and a hierarchy, which is a
+    superset of what an integrative mmCIF holds -- not a different kind of
+    thing. Reading it into the same shape is what lets it share the bead
+    depiction (real radii, sphere impostors past a budget), the hierarchy
+    panel's visibility check boxes, and the selection and measurement commands,
+    instead of each having to be taught about RMF separately.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The ``.rmf`` / ``.rmf3`` file.
+
+    Returns
+    -------
+    StructurePayload
+        With ``frames`` set, and ``resolutions`` set when the file states more
+        than one representation.
+    """
+    from .rmf import load_rmf_full
+
+    data = load_rmf_full(path)
+    frames = np.asarray(data["frames"], dtype=float)
+
+    return StructurePayload(
+        coords=frames[0],
+        trace_coords=frames[0],
+        res_ids=data["res_ids"],
+        res_names=data["res_names"],
+        chain_ids=data["chain_ids"],
+        atoms=data["atoms"],
+        atom_radii=np.asarray(data["radii"], dtype=float),
+        bonds=data.get("bond_pairs"),
+        frames=frames,
+        resolutions=data.get("resolutions"),
+        resolution_default_mask=data.get("resolution_default_mask"),
+        reader="rmf",
+        hierarchy=data["hierarchy"],
+        extras={
+            "restraints": data.get("restraints"),
+            "rmf_provenance": data.get("rmf_provenance"),
+            "rmf_frame_series": data.get("rmf_frame_series", {}),
+            "rmf_frame_metadata": data.get("rmf_frame_metadata", {}),
+            "rmf_resolutions": data.get("rmf_resolutions", []),
+        },
+    )
+
+
+def _parse_pdb_backbone(path: str) -> StructurePayload:
     """Parse coordinates and the CA backbone out of a PDB file.
 
     Only the first model is read, and alternate locations other than the first
@@ -379,7 +454,7 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
 
     Returns
     -------
-    PdbBackbone
+    StructurePayload
         Coordinates and, when a protein backbone is present, the CA trace with
         its residue metadata.
 
@@ -455,7 +530,7 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
     atoms = np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None
 
     if len(trace) >= 2:
-        return PdbBackbone(
+        return StructurePayload(
             coords=np.asarray(coords, dtype=float),
             trace_coords=np.asarray(trace, dtype=float),
             res_ids=np.asarray(res_ids, dtype=int),
@@ -463,7 +538,7 @@ def _parse_pdb_backbone(path: str) -> PdbBackbone:
             chain_ids=np.asarray(chain_ids, dtype=object),
             atoms=atoms,
         )
-    return PdbBackbone(coords=np.asarray(coords, dtype=float), atoms=atoms)
+    return StructurePayload(coords=np.asarray(coords, dtype=float), atoms=atoms)
 
 
 def parse_pdb_secondary_structure(path: str | Path) -> dict[tuple[str, int], str] | None:
@@ -684,7 +759,7 @@ def load_structure_payload(
     path: Path,
     *,
     structure_factory: StructureFactory = None,
-) -> tuple[object | None, PdbBackbone | None]:
+) -> tuple[object | None, StructurePayload | None]:
     """Load ``path`` as a ``Structure``, falling back to a parsed PDB backbone.
 
     Parameters
@@ -699,9 +774,17 @@ def load_structure_payload(
     -------
     tuple
         ``(structure, None)`` when the core reader succeeded, otherwise
-        ``(None, PdbBackbone)``.
+        ``(None, StructurePayload)``.
     """
     structure = None
+    # An RMF is read here rather than by a branch of its own in the window. It
+    # used to have one, and so it never received anything the common path
+    # learned: its beads were drawn at a single default radius, decimated to a
+    # fraction of themselves, and its hierarchy's visibility check boxes moved
+    # nothing.
+    if str(path).lower().endswith((".rmf", ".rmf3")):
+        return None, _parse_rmf(Path(path))
+
     # An IHM mmCIF goes straight to `ihm`. The core reader has no idea what a
     # bead model is: on one NPC spoke it ground for 34 seconds and then failed,
     # and the fallback did the work anyway. Trying it first costs that every
@@ -771,7 +854,7 @@ def load_structure_payload(
 
 
 __all__ = [
-    "PdbBackbone",
+    "StructurePayload",
     "open_structure_files",
     "load_structure_payload",
     "load_trajectory_frames",

@@ -270,9 +270,17 @@ Tasks:
   - `rmf_frame_series`
   - `rmf_frame_metadata`
   - `rmf_resolutions`
-- Extend `MolView.set_rmf_data()` to accept these fields.
-- Update RMF load path in `molview_main_window.py` to pass these fields.
+- Carry these fields on the reader payload and into the state.
 - Update object switching so RMF UI panels refresh with active object state.
+
+> **Superseded, 2026-07-28.** This step was written against
+> `MolView.set_rmf_data()` and a `.rmf` branch in `molview_main_window.py`. Both
+> are gone: an RMF is read by `load_structure_payload` into the same
+> `StructurePayload` as every other format and applied with
+> `MolView.apply_payload()`. Having a route of its own is what stopped RMF
+> receiving per-bead radii, sphere impostors and hierarchy visibility at all —
+> see `okf/log.md` for that date. The RMF-only fields above now travel in the
+> payload's `extras`; `rmf_resolutions` is real rather than always empty.
 
 Acceptance criteria:
 

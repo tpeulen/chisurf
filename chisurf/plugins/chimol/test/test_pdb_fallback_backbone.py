@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from chisurf.plugins.chimol.chimol.io.structure import (
-    PdbBackbone,
+    StructurePayload,
     _parse_pdb_backbone,
     load_structure_payload,
 )
@@ -45,7 +45,7 @@ def _segment_count(res_ids: np.ndarray, chain_ids: np.ndarray) -> int:
 def test_fallback_recovers_backbone_metadata() -> None:
     backbone = _parse_pdb_backbone(str(PDB))
 
-    assert isinstance(backbone, PdbBackbone)
+    assert isinstance(backbone, StructurePayload)
     assert backbone.trace_coords is not None
     # One CA per residue, and the metadata arrays must line up with it.
     n_res = backbone.trace_coords.shape[0]
@@ -99,7 +99,7 @@ def test_payload_falls_back_to_backbone_without_a_factory() -> None:
     structure, backbone = load_structure_payload(PDB, structure_factory=None)
 
     assert structure is None
-    assert isinstance(backbone, PdbBackbone)
+    assert isinstance(backbone, StructurePayload)
     assert backbone.res_ids is not None
 
 

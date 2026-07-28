@@ -30,9 +30,31 @@ each, shaded as a sphere in the fragment shader — instead of ~160 vertices of
 merged mesh per bead, with the impostor's world radius projected to a sprite size
 so it follows the camera. Pinned by `test/test_bead_model.py`.
 
+**IMP RMF support landed on 2026-07-28** — and the shape of what was wrong is
+worth keeping. RMF was not missing the bead rule because nobody had written it
+for RMF; it was missing it because RMF had *its own route into the viewer* and
+therefore could not receive anything the common route learned. Measured: one
+global radius for every bead, decimation instead of impostors, and hierarchy
+check boxes that moved nothing. All of it silent. The fix was to remove the
+route, not to duplicate the rule — see the log for that date.
+
 **Still open from that thread:** interior culling (`_get_surface_atom_mask`
 exists and is unused), dynamic LOD on camera motion (the draft/settle mechanism
-from the trajectory work generalises), depth-cue fog, and **IMP RMF support**.
+from the trajectory work generalises), and depth-cue fog.
+
+---
+
+## chimol: two atom dtypes, and only one of them is the bead row
+
+**2026-07-28.** `chimol/io/beads.py` now owns the six-field `ATOM_DTYPE` that the
+PDB, mmCIF and RMF readers all produce. `chimol/io/structure.py` separately
+defines a twelve-field `_MDTRAJ_ATOM_DTYPE` for trajectory topologies, whose
+comment claims it is "the atom dtype the rest of ChiMOL expects" — which is not
+true of the other three readers. Nothing is broken by this: every consumer
+guards on `atoms.dtype.fields` rather than assuming either shape. But the two
+have never been reconciled, and the MDTraj one carries a `radius` field that
+duplicates what now travels as `atom_radii`. Reconciling them is a separate
+change from the RMF unification and was deliberately not folded into it.
 
 ---
 

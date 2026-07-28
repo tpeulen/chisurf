@@ -7,7 +7,9 @@ from pathlib import Path
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
-from ..io import RmfNotAvailableError, load_rmf_full
+from chisurf.gui import dialogs
+
+from ..io import RmfNotAvailableError, load_structure_payload
 
 
 class RmfPlotWidget(QtWidgets.QWidget):
@@ -100,6 +102,28 @@ class RmfPanel(QtCore.QObject):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
 
+        # The resolution chooser sits above the frame series because it decides
+        # *what you are looking at*, where the series only decides what is
+        # plotted. It hides itself entirely for a file that states one
+        # representation, which is almost all of them -- a chooser offering one
+        # choice is worse than no chooser.
+        self.resolution_row = QtWidgets.QWidget(self._widget)
+        resolution_layout = QtWidgets.QHBoxLayout(self.resolution_row)
+        resolution_layout.setContentsMargins(0, 0, 0, 0)
+        resolution_label = QtWidgets.QLabel("Resolution", self.resolution_row)
+        resolution_label.setStyleSheet("font-weight: bold;")
+        resolution_layout.addWidget(resolution_label)
+        self.resolution_combo = QtWidgets.QComboBox(self.resolution_row)
+        self.resolution_combo.setToolTip(
+            "Which depiction of this model to draw. IMP resolution is residues "
+            "per bead, so a larger number is coarser. Choosing one does not "
+            "disturb what you switched off in the hierarchy."
+        )
+        self.resolution_combo.currentIndexChanged.connect(self._on_resolution_changed)
+        resolution_layout.addWidget(self.resolution_combo, stretch=1)
+        layout.addWidget(self.resolution_row)
+        self.resolution_row.setVisible(False)
+
         header = QtWidgets.QLabel("RMF frame series")
         header.setStyleSheet("font-weight: bold;")
         layout.addWidget(header)
@@ -126,8 +150,14 @@ class RmfPanel(QtCore.QObject):
         """Return the content widget."""
         return self._widget
 
+    #: What the chooser calls "show every representation at once". Superimposing
+    #: them is occasionally wanted for comparison and is never a useful default.
+    ALL_RESOLUTIONS = "all (superimposed)"
+
     def set_state(self, state: object | None) -> None:
         """Update the panel for the active Chimol object state."""
+        self._refresh_resolutions(state)
+
         series = getattr(state, "rmf_frame_series", {}) if state is not None else {}
         if not isinstance(series, dict):
             series = {}
@@ -141,6 +171,55 @@ class RmfPanel(QtCore.QObject):
             self.series_combo.setCurrentText(current)
         self.series_combo.blockSignals(False)
         self._update_plot()
+
+    def _refresh_resolutions(self, state: object | None) -> None:
+        """Offer the resolutions this object holds, or nothing at all.
+
+        Parameters
+        ----------
+        state : object or None
+            The active object's render state.
+        """
+        available = list(getattr(state, "rmf_resolutions", []) or [])
+        self.resolution_row.setVisible(bool(available))
+        if not available:
+            return
+
+        # What is *currently* drawn, so the box shows the truth rather than
+        # resetting the user's choice every time the panel is refreshed.
+        current = None
+        resolutions = getattr(state, "resolutions", None)
+        chosen = getattr(state, "representation_mask", None)
+        if resolutions is not None and chosen is not None:
+            shown = {
+                float(v)
+                for v in np.unique(np.asarray(resolutions)[np.asarray(chosen, bool)])
+                if np.isfinite(v)
+            }
+            if len(shown) == 1:
+                current = f"{shown.pop():g}"
+            elif len(shown) > 1:
+                current = self.ALL_RESOLUTIONS
+
+        self.resolution_combo.blockSignals(True)
+        self.resolution_combo.clear()
+        self.resolution_combo.addItems([f"{value:g}" for value in available])
+        self.resolution_combo.addItem(self.ALL_RESOLUTIONS)
+        if current is not None:
+            self.resolution_combo.setCurrentText(current)
+        self.resolution_combo.blockSignals(False)
+
+    def _on_resolution_changed(self, index: int) -> None:
+        """Draw the chosen representation."""
+        del index
+        text = self.resolution_combo.currentText()
+        if not text:
+            return
+        try:
+            wanted = None if text == self.ALL_RESOLUTIONS else [float(text)]
+        except ValueError:
+            return
+        self.viewer.set_visible_resolutions(wanted)
 
     def _on_series_changed(self, index: int) -> None:
         """Refresh the plot when the selected series changes."""
@@ -190,35 +269,32 @@ class RmfPanel(QtCore.QObject):
         except Exception:
             old_frame = 0
 
+        # The same reader the file went through when it was opened, so a refresh
+        # cannot produce an object shaped differently from a freshly loaded one.
         try:
-            data = load_rmf_full(Path(path))
+            _structure, payload = load_structure_payload(Path(path))
         except RmfNotAvailableError as exc:
-            QtWidgets.QMessageBox.warning(self._widget, "RMF Not Available", str(exc))
+            dialogs.warning(self._widget, "RMF Not Available", str(exc))
             return
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self._widget, "RMF Refresh Failed", f"{exc}")
+            dialogs.warning(self._widget, "RMF Refresh Failed", f"{exc}")
+            return
+
+        if payload is None:
+            dialogs.warning(
+                self._widget, "RMF Refresh Failed", f"Nothing could be read from {path}"
+            )
             return
 
         try:
-            self.viewer.set_rmf_data(
-                hierarchy=data["hierarchy"],
-                frames=data["frames"],
-                radii=data["radii"],
-                restraints=data.get("restraints"),
-                rmf_provenance=data.get("rmf_provenance"),
-                rmf_frame_series=data.get("rmf_frame_series", {}),
-                rmf_frame_metadata=data.get("rmf_frame_metadata", {}),
-                rmf_resolutions=data.get("rmf_resolutions", set()),
-                bond_pairs=data.get("bond_pairs"),
-                object_id=object_id,
-            )
+            self.viewer.apply_payload(payload, object_id=object_id)
             state = _active_state(self.viewer)
             n_frames = getattr(getattr(state, "frames", None), "shape", (0,))[0]
             if n_frames > 0:
                 self.viewer.set_current_frame(min(old_frame, n_frames - 1))
             self.set_state(state)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self._widget, "RMF Refresh Failed", f"{exc}")
+            dialogs.warning(self._widget, "RMF Refresh Failed", f"{exc}")
 
 
 def _active_state(viewer: object) -> object | None:
