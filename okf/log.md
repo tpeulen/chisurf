@@ -2,6 +2,33 @@
 
 ## 2026-07-28
 
+* **A representation toggle cost 6.2 s; it costs 0.31 s. None of it was where
+  it looked.** Benchmarked per representation on one nuclear-pore spoke
+  (`PDBDEV_00000010`, 29,273 beads) -- `test/benchmarks/benchmark_chimol_representations.py`,
+  which is now the bench for all of them. Surface **2.47 s → 0.32 s**, metaballs
+  **4.31 s → 0.40 s**, whole-scene rebuild **6.24 s → 0.31 s**, with *identical
+  vertex counts* (28,904 and 63,772): the picture does not change, this is waste.
+  The density grid and marching cubes -- what one assumes is the cost of a
+  metaball -- were **1%** of it.
+  - **Radii written in Angstrom, applied to scaled scene coordinates.** A 5 A
+    neighbourhood inside a 6,000-unit model builds a cell list of millions of
+    near-empty cells: **2.0 s** to answer a question whose answer was "all of
+    them". So `surface_only` had never culled anything in its life -- it kept
+    **100%** of 29,273 beads. `MolView.scene_radius_for` takes the larger of the
+    configured value and a fraction of the model's own spread; at a
+    model-appropriate radius the same mask costs 0.03 s. This is the *third*
+    place today the Angstrom/scaled mix-up has appeared (bead AO, surface cull,
+    mesh AO), which is why it is one shared helper now.
+  - **`_get_surface_atom_mask` was evaluated twice** with identical arguments in
+    the metaball builder, once for the points and once to index the colours:
+    2.7 s of a 4.0 s build for a result already in hand.
+  - **The shading kernel ran on one core.** `_shade_from_atoms_nb` writes only
+    row `i` per iteration, so `prange` is free: 0.649 s → 0.157 s.
+  - Not yet at the 20 fps a trajectory needs (50 ms; the warm build is 0.255 s).
+    The remaining profile is shading 0.157 s, geometry 0.062 s, and reaching the
+    budget means a draft/settle split -- geometry only and a coarser grid while
+    playing, full quality on settle -- rather than more micro-optimisation.
+
 * **The wheel was missing four things the code imports at module scope.** With
   the dev env and the conda package now agreeing, the third list — the
   `pip install chisurf` metadata in `pyproject.toml` — turned out to be the one
