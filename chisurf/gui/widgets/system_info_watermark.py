@@ -255,8 +255,19 @@ def build_system_info_text() -> str:
     return "\n".join(lines)
 
 
-def _get_memory_usage_mb() -> float | None:
-    """Return current process memory usage in MB (including children), or None if unavailable."""
+def memory_usage_mb() -> float | None:
+    """Return current process memory usage in MB (including children), or None if unavailable.
+
+    Public because this is the one place that knows how to ask -- ``psutil`` is
+    optional and deliberately undeclared, so every caller must be able to cope
+    with ``None`` rather than importing it and raising.
+
+    Returns
+    -------
+    float or None
+        Resident memory of this process and its children in MB, or ``None``
+        when it cannot be determined.
+    """
     try:
         import psutil
         process = psutil.Process()
@@ -299,14 +310,26 @@ def _get_cpu_usage_percent() -> float | None:
         return None
 
 
-def _get_total_memory_mb() -> float | None:
-    """Return total system memory in MB, or None if unavailable."""
+def total_memory_mb() -> float | None:
+    """Return total system memory in MB, or None if unavailable.
+
+    Returns
+    -------
+    float or None
+        Physical memory of the machine in MB, or ``None`` when it cannot be
+        determined (``psutil`` is optional).
+    """
     try:
         import psutil
         mem = psutil.virtual_memory()
         return mem.total / (1024.0 * 1024.0)
     except Exception:
         return None
+
+
+#: Backwards-compatible private aliases for the two public readings above.
+_get_memory_usage_mb = memory_usage_mb
+_get_total_memory_mb = total_memory_mb
 
 
 def _get_update_interval_ms() -> int:

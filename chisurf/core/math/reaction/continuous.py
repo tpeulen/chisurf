@@ -2,7 +2,6 @@ from __future__ import annotations
 from chisurf import typing
 
 import numpy as np
-import pylab as p
 from scipy.integrate import odeint
 
 import chisurf.core.parameter

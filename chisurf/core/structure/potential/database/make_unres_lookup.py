@@ -1,5 +1,5 @@
+import matplotlib.pyplot as plt
 import numpy as np
-import pylab as p
 
 aa_names = ['Cys', 'Met', 'Phe', 'Ile', 'Leu', 'Val', 'Trp', 'Tyr', 'Ala',
             'Gly', 'Thr', 'Ser', 'Gln', 'Asn', 'Glu', 'Asp', 'His', 'Arg', 'Lys', 'Pro']
@@ -73,6 +73,6 @@ for i in range(n_aa):
         v -= v[-1]
         print("name: %s energy" % name, eij)
         V_ij_r[i, j, :] = v
-        p.plot(r_ij[30:], v[30:])
-p.show()
+        plt.plot(r_ij[30:], v[30:])
+plt.show()
 np.save('unres.npy', V_ij_r)

@@ -89,6 +89,21 @@ cli = [
 postgres = [
     "psycopg[binary]>=3.1",
 ]
+# Optional HTTP surface of the FRET modelling plugin
+# (chisurf/plugins/modelling/fret/api/router.py). The plugin imports it behind a
+# try, so the analysis code works without these.
+api = [
+    "fastapi",
+    "pydantic",
+]
+# The spectra scrapers (chisurf/plugins/spectra_downloader/download/) fetch and
+# parse vendor pages into the development spectra database. Nothing in the
+# application imports them.
+scrape = [
+    "requests",
+    "beautifulsoup4",
+    "openpyxl",
+]
 
 [project.urls]
 Homepage = "https://www.peulen.xyz/downloads/chisurf"

@@ -26,7 +26,6 @@ name = "Main:Tools:Acquisition"
 
 import os
 import time
-import psutil
 import numpy as np
 from pathlib import Path
 import logging as _py_logging

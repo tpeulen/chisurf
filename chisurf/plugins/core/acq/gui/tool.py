@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 import time
 import numpy as np
+from chisurf.gui.widgets.system_info_watermark import memory_usage_mb, total_memory_mb
 
 # Try to import numba for performance
 try:
@@ -2089,10 +2090,17 @@ class SMAcquisitionManager:
                 raise
 
     def update_ram_usage(self):
-        """Log the RAM usage."""
-        process = psutil.Process(os.getpid())
-        ram_usage = process.memory_info().rss / (1024 * 1024)  # MB
-        total_ram = psutil.virtual_memory().total / (1024 * 1024)  # MB
+        """Log the RAM usage.
+
+        The readings come from the watermark helpers, which own the optional
+        ``psutil`` import; this module never had one, so every call raised
+        ``NameError`` before. Both return ``None`` when the reading is not
+        available, and then there is nothing to log.
+        """
+        ram_usage = memory_usage_mb()
+        total_ram = total_memory_mb()
+        if ram_usage is None or not total_ram:
+            return
         percent = ram_usage / total_ram * 100
         logger.debug(f"RAM usage: {ram_usage:.1f} MB ({percent:.1f}%)")
 

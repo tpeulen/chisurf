@@ -2,6 +2,34 @@
 
 ## 2026-07-28
 
+* **The other half of the dependency audit: imports nothing declares.** Retiring
+  packages fixed the list; this fixes the tree. A new guardrail,
+  `test/test_declared_dependencies.py`, asserts that every **module-level**
+  import under `chisurf/` resolves to a declared distribution, the standard
+  library or a sibling project — an import inside a `try`, a function or an `if`
+  is an optional feature and stays unpoliced. It found five things, all of which
+  work on a developer machine (the package is installed transitively) and fail
+  only in a packaged install.
+  `chisurf/core/structure/label/` — 1249 lines, seven files — imported
+  `scikit_fluorescence`, which is installed nowhere and declared nowhere, so the
+  package could not be imported *at all*; nothing referenced it and its domain
+  (label distributions, AV, potentials) migrated to imp-tricks `IMP.bff.label`
+  long ago. Deleted. `chisurf/core/math/reaction/continuous.py` imported
+  `pylab` and never used it, which dragged matplotlib's pyplot and a GUI backend
+  into Qt-free core on every import of the reaction kinetics; the UNRES lookup
+  generator used `pylab` for real and now uses `matplotlib.pyplot`. The
+  acquisition plugin imported `psutil` at the top of its `__init__` without using
+  it — an undeclared package deciding whether the plugin loads — while
+  `acq/gui/tool.py` *used* `psutil` in `update_ram_usage` with **no import in the
+  module at all**, so every call raised `NameError`; it now reads through
+  `memory_usage_mb()` / `total_memory_mb()` in the watermark widget, which own
+  the optional import and return `None` when it is unavailable. The two files
+  that legitimately need packages the application does not (the FRET plugin's
+  FastAPI surface, the spectra scrapers' requests/bs4/openpyxl) got
+  `pyproject.toml` extras — `api` and `scrape` — so they are declared without
+  being installed by default.
+  Suites: 1008 passed (core, structure, both dependency guardrails).
+
 * **The front door to an integrative model had two holes in it (RF-488,
   RF-490).** Both were confirmed by measurement, not by reading:
   `fetch PDBDEV_00000012` — the canonical identifier, the one in our own demo and

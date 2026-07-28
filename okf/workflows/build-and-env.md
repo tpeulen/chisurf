@@ -41,6 +41,18 @@ packaging declaration that brings one back — a re-added import would work on a
 developer machine, where the package is usually still installed transitively, and
 fail only in a packaged install.
 
+The mirror image of an undeclared *dependency* is an undeclared *import*, and it
+fails the same way: on a developer machine the package is there transitively, in
+a packaged install the plugin does not load. `test/test_declared_dependencies.py`
+holds the line — every **module-level** import under `chisurf/` must resolve to a
+declared distribution, the standard library, or a sibling project. An import
+inside a `try`, a function or an `if` is an optional feature the code is expected
+to survive without, and is deliberately not policed. So a package that is genuinely
+optional gets one of two homes: a guarded import (`psutil` for the system
+watermark), or a `pyproject.toml` extra when a whole file needs it — `api` for the
+FRET plugin's HTTP surface, `scrape` for the spectra scrapers, neither installed
+by default.
+
 Pixi environments are **detached** from the source tree: with
 `detached-environments = true` set in the global pixi config, the multi-GB solved
 env lives under the central pixi cache instead of `<repo>/.pixi/envs`, so the repo
