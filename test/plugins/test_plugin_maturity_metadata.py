@@ -104,6 +104,62 @@ def test_a_deprecated_plugin_names_what_replaces_it():
     )
 
 
+def _discovery_records() -> dict[str, dict]:
+    """Return every plugin discovery record, keyed by its package directory."""
+    from chisurf.plugins import iter_plugins
+
+    return {str(record["package_dir"]): record for record in iter_plugins()}
+
+
+def test_discovery_record_carries_the_maturity_flags():
+    """Every record has the keys, so a host never has to guess a missing one is ``False``."""
+    records = _discovery_records()
+    assert records, "plugin discovery found nothing"
+    for path, record in records.items():
+        for key in ("experimental", "deprecated"):
+            assert isinstance(record.get(key), bool), f"{path}: {key} is not a bool"
+        for key in ("experimental_message", "deprecation_message"):
+            assert isinstance(record.get(key), str), f"{path}: {key} is not a str"
+
+
+def test_every_manifest_flag_reaches_the_discovery_record():
+    """A flag the discovery record drops can be rendered by no menu (RF-517).
+
+    Before this, the record carried ``menu_hidden`` / ``manifest_id`` /
+    ``state_namespace`` and nothing about maturity, so the ribbon could not mark an
+    entry even if it wanted to — the flag showed only for a tool a navigation hub
+    happened to embed as a panel.
+    """
+    records = _discovery_records()
+    dropped: list[str] = []
+    for manifest_path in sorted(PLUGIN_ROOT.rglob("manifest.json")):
+        if any("{{" in part for part in manifest_path.parts):
+            continue
+        manifest = load_manifest(manifest_path)
+        if manifest is None:
+            continue
+        record = records.get(str(manifest_path.parent))
+        if record is None:  # not a package (no __init__.py) — nothing discovers it
+            continue
+        for flag in MATURITY_KEYS:
+            if getattr(manifest, flag, False) and not record.get(flag):
+                dropped.append(f"{manifest_path.relative_to(REPO_ROOT)}: {flag}")
+    assert not dropped, (
+        "these manifests declare a maturity flag that plugin discovery drops, so no "
+        f"menu can mark the tool: {dropped}"
+    )
+
+
+def test_the_flagged_message_travels_with_the_record():
+    """The tool's own wording reaches the record, so hosts do not restate it."""
+    records = _discovery_records()
+    lifetime = records[str(PLUGIN_ROOT / "fluorescence_decay" / "lifetime_analysis")]
+    assert lifetime["experimental"] is True
+    assert "experimental" in lifetime["experimental_message"].lower()
+    assert lifetime["deprecated"] is False
+    assert lifetime["deprecation_message"] == ""
+
+
 class TestVvVhAnisotropyDeprecation:
     """The tree's one self-declared deprecated plugin (RF-518)."""
 

@@ -161,6 +161,18 @@ def _read_plugin_metadata(init_py: pathlib.Path):
     return plugin_name, description, cli_entrypoint, cli_only, menu_hidden
 
 
+#: Maturity keys a discovery record carries verbatim from the manifest, mapped to
+#: the value a manifest-less (legacy AST) plugin gets. The AST fallback cannot see
+#: these — they are manifest-only, which is what
+#: ``test/plugins/test_plugin_maturity_metadata.py`` pins.
+_MATURITY_DEFAULTS: dict = {
+    "experimental": False,
+    "experimental_message": "",
+    "deprecated": False,
+    "deprecation_message": "",
+}
+
+
 def _read_manifest_metadata(plugin_dir: pathlib.Path):
     """Read plugin metadata from ``manifest.json`` when present."""
     manifest = load_manifest(plugin_dir / "manifest.json")
@@ -192,6 +204,13 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
         "manifest_id": manifest.id,
         "manifest_version": manifest.version,
         "state_namespace": manifest.state_namespace,
+        # Maturity travels with the record every menu is built from. Without it a
+        # host could only mark a tool it happens to embed as a navigation panel,
+        # so a menu-launched experimental tool carried no warning anywhere.
+        "experimental": bool(manifest.experimental),
+        "experimental_message": manifest.experimental_message,
+        "deprecated": bool(manifest.deprecated),
+        "deprecation_message": manifest.deprecation_message,
     }
 
 
@@ -270,6 +289,7 @@ def _iter_plugins_uncached():
                 if not init_py.exists():
                     continue
                 manifest_metadata = _read_manifest_metadata(package_dir)
+                maturity = dict(_MATURITY_DEFAULTS)
                 if manifest_metadata is not None:
                     plugin_name = manifest_metadata["plugin_name"]
                     description = manifest_metadata["description"]
@@ -279,6 +299,7 @@ def _iter_plugins_uncached():
                     manifest_id = manifest_metadata["manifest_id"]
                     manifest_version = manifest_metadata["manifest_version"]
                     state_namespace = manifest_metadata["state_namespace"]
+                    maturity.update({k: manifest_metadata[k] for k in _MATURITY_DEFAULTS})
                 else:
                     (
                         plugin_name,
@@ -322,6 +343,7 @@ def _iter_plugins_uncached():
                     "manifest_id": manifest_id,
                     "manifest_version": manifest_version,
                     "state_namespace": state_namespace,
+                    **maturity,
                 }
             except Exception:
                 continue

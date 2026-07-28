@@ -15,7 +15,13 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("qtpy")
 
 from chisurf.gui.widgets import navigation
-from chisurf.gui.widgets.navigation import NavigationPanelTool, apply_manifest_flags
+from chisurf.gui.widgets.navigation import (
+    NavigationPanelTool,
+    apply_manifest_flags,
+    maturity_markers,
+    maturity_message,
+    maturity_warnings,
+)
 
 
 @pytest.fixture(scope="module")
@@ -143,3 +149,87 @@ def test_apply_manifest_flags_tolerates_a_missing_manifest(tmp_path, monkeypatch
     monkeypatch.setattr(navigation, "_PLUGINS_DIR", tmp_path)
     panel = apply_manifest_flags([{"name": "Gone", "manifest": "group/absent"}])[0]
     assert panel == {"name": "Gone", "manifest": "group/absent"}
+
+
+class TestSharedMaturityPresentation:
+    """The markers and wording any host renders come from one table (RF-517)."""
+
+    def test_markers_follow_the_render_order(self):
+        assert maturity_markers({}) == []
+        assert maturity_markers({"experimental": True}) == ["⚠️"]
+        assert maturity_markers({"deprecated": True, "experimental": True}) == ["⛔", "⚠️"]
+
+    def test_message_prefers_the_tool_s_own_wording(self):
+        meta = {"experimental": True, "experimental_message": "not validated on real data"}
+        assert maturity_message(meta, "experimental", "Tool") == "not validated on real data"
+
+    def test_message_falls_back_to_the_flag_default(self):
+        text = maturity_message({"deprecated": True}, "deprecated", "Old Tool")
+        assert text.startswith("Old Tool is DEPRECATED")
+
+    def test_warnings_pair_each_marker_with_its_message(self):
+        lines = maturity_warnings({"deprecated": True, "experimental": True}, "Tool")
+        assert len(lines) == 2
+        assert lines[0].startswith("⛔") and "DEPRECATED" in lines[0]
+        assert lines[1].startswith("⚠️") and "EXPERIMENTAL" in lines[1]
+        assert maturity_warnings({"name": "Tool"}) == []
+
+
+class TestRibbonMarksAMenuLaunchedTool:
+    """A tool opened from the ribbon carries its warning too, not only as a panel (RF-517)."""
+
+    @staticmethod
+    def _plugins_ribbon(qapp):
+        """Build the ribbon's Plugins categories over the real discovered plugins."""
+        from qtpy import QtWidgets
+
+        from chisurf import logging
+        from chisurf.gui.widgets.ribbon.ribbon_plugins import PluginMethodsMixin
+        from chisurf.gui.widgets.ribbon.ribbonbar import RibbonBar
+
+        class _Main(QtWidgets.QMainWindow):
+            def onRunMacro(self, *args, **kwargs):
+                """Stand in for the main window's macro executor."""
+
+        class _Host(PluginMethodsMixin):
+            def __init__(self, bar):
+                self.ribbon_bar = bar
+                self.categories = {}
+                self.main_window = _Main()
+                self.logger = logging.getLogger("test-ribbon")
+
+        bar = RibbonBar()
+        _Host(bar)._create_plugins_category()
+        return bar
+
+    def _flagged_buttons(self, qapp):
+        from qtpy import QtWidgets
+
+        bar = self._plugins_ribbon(qapp)
+        return {
+            btn.text(): btn.toolTip()
+            for btn in bar.findChildren(QtWidgets.QToolButton)
+            if any(marker in btn.text() for marker in ("⚠️", "⛔"))
+        }
+
+    def test_an_experimental_tool_is_marked_and_explained(self, qapp):
+        flagged = self._flagged_buttons(qapp)
+        assert "Decay Analysis ⚠️" in flagged, sorted(flagged)
+        tooltip = flagged["Decay Analysis ⚠️"]
+        assert tooltip.startswith("⚠️")
+        assert "experimental" in tooltip.split("\n")[0].lower()
+        # The description is kept below the warning, not replaced by it.
+        assert len(tooltip.split("\n")) > 1
+
+    def test_a_tool_without_its_own_message_gets_the_default_wording(self, qapp):
+        flagged = self._flagged_buttons(qapp)
+        assert "Spectra Downloader ⚠️" in flagged, sorted(flagged)
+        assert "EXPERIMENTAL" in flagged["Spectra Downloader ⚠️"]
+
+    def test_a_mature_tool_is_not_marked(self, qapp):
+        from qtpy import QtWidgets
+
+        bar = self._plugins_ribbon(qapp)
+        labels = [b.text() for b in bar.findChildren(QtWidgets.QToolButton)]
+        assert "Burst Analysis" in labels
+        assert "FCS" in labels

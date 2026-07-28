@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **The warning was on the panel, not on the way in.** A plugin that declares
+  itself `experimental` or `deprecated` was marked only when a navigation hub
+  embedded it as a *panel* -- so `lifetime_analysis`, which declares
+  `experimental: true` with its own message and is menu-visible, told the user
+  nothing when opened the normal way. The cause was upstream of the shell: the
+  discovery record every menu is built from carried `menu_hidden` /
+  `manifest_id` / `state_namespace` and dropped both maturity flags, so the
+  ribbon *could not* mark an entry. `iter_plugins()` now carries
+  `experimental` / `deprecated` and their messages, and the ribbon appends the
+  marker to the button label and the warning above the description in its
+  tooltip. One table (`navigation.MATURITY_FLAGS`) and three shared helpers
+  (`maturity_markers` / `maturity_message` / `maturity_warnings`) now serve
+  both hosts -- `_panel_label` and `_maturity_banner` were rewritten onto them
+  -- so a tool's ribbon entry and its navigation entry cannot drift in glyph
+  or wording. 8 plugins in the tree are flagged, 6 of them `menu_hidden`;
+  exactly the two menu-visible ones -- `lifetime_analysis` and
+  `spectra_downloader` -- now render `⚠️`, the second on the flag's default
+  wording since it declares no message. Ribbon screenshotted offscreen and
+  inspected. Tests: `test/gui/test_navigation_maturity.py` (+7),
+  `test/plugins/test_plugin_maturity_metadata.py` (+3, tree-wide: a manifest
+  flag the discovery record drops fails the suite). Docs:
+  `docs/development/plugin_architecture.md`. Trackers: RF-517 OPEN -> PARTIAL,
+  [assessment INC-07](specs/assessment.md#inc-07). Still open: the banner atop
+  the *launched window* -- a ribbon entry `exec`s the plugin's `__init__.py`
+  and gets no widget handle back, so there is nothing to wrap.
+
 * **The wheel was missing four things the code imports at module scope.** With
   the dev env and the conda package now agreeing, the third list — the
   `pip install chisurf` metadata in `pyproject.toml` — turned out to be the one

@@ -300,6 +300,72 @@ MATURITY_FLAGS: dict[str, _MaturityFlag] = {
 _PLUGINS_DIR = pathlib.Path(__file__).resolve().parents[2] / "plugins"
 
 
+def maturity_markers(meta: Mapping[str, Any]) -> list[str]:
+    """Return the marker glyph of every maturity flag *meta* sets, in render order.
+
+    *meta* is anything carrying the manifest's flags under their own names — a
+    panel definition, or a plugin discovery record. Keeping the lookup here means
+    the ribbon entry and the navigation entry of the same tool are marked from
+    one table.
+
+    Parameters
+    ----------
+    meta : Mapping
+        Panel definition or discovery record.
+
+    Returns
+    -------
+    list of str
+        One marker per set flag; empty when the tool declares no maturity flag.
+    """
+    return [spec.marker for flag, spec in MATURITY_FLAGS.items() if meta.get(flag)]
+
+
+def maturity_message(meta: Mapping[str, Any], flag: str, name: str = "This tool") -> str:
+    """Return the warning sentence for one maturity *flag* set on *meta*.
+
+    Parameters
+    ----------
+    meta : Mapping
+        Panel definition or discovery record, optionally carrying the flag's own
+        message under ``MATURITY_FLAGS[flag].message_key``.
+    flag : str
+        Key in :data:`MATURITY_FLAGS` — ``"deprecated"`` or ``"experimental"``.
+    name : str, optional
+        Tool name filled into the fallback wording when the manifest carries no
+        message of its own.
+
+    Returns
+    -------
+    str
+        The tool's own wording when it has one, else the flag's default sentence.
+    """
+    spec = MATURITY_FLAGS[flag]
+    return str(meta.get(spec.message_key) or spec.default_message.format(name=name))
+
+
+def maturity_warnings(meta: Mapping[str, Any], name: str = "This tool") -> list[str]:
+    """Return ``marker + message`` for every maturity flag set on *meta*.
+
+    Parameters
+    ----------
+    meta : Mapping
+        Panel definition or discovery record.
+    name : str, optional
+        Tool name filled into any fallback wording.
+
+    Returns
+    -------
+    list of str
+        One line per set flag, hardest warning first; empty when none is set.
+    """
+    return [
+        f"{spec.marker}  {maturity_message(meta, flag, name)}"
+        for flag, spec in MATURITY_FLAGS.items()
+        if meta.get(flag)
+    ]
+
+
 def apply_manifest_flags(panels: list[dict]) -> list[dict]:
     """Copy the maturity flags of each panel's plugin manifest onto the panel.
 
@@ -940,9 +1006,8 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         icon = str(panel.get("icon") or "").strip()
         name = str(panel.get("name") or "").strip()
         label = f"{icon} {name}".strip()
-        for flag, spec in MATURITY_FLAGS.items():
-            if panel.get(flag):
-                label = f"{label}  {spec.marker}"
+        for marker in maturity_markers(panel):
+            label = f"{label}  {marker}"
         return label
 
     def _placeholder_widget(self, panel: Mapping[str, Any]) -> QtWidgets.QWidget:
@@ -1061,9 +1126,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             The banner label, styled for the flag.
         """
         spec = MATURITY_FLAGS[flag]
-        msg = panel.get(spec.message_key) or spec.default_message.format(
-            name=panel.get("name", "This tool")
-        )
+        msg = maturity_message(panel, flag, str(panel.get("name") or "This tool"))
         banner = QtWidgets.QLabel(f"{spec.marker}  {msg}")
         banner.setAlignment(QtCore.Qt.AlignCenter)
         banner.setWordWrap(True)

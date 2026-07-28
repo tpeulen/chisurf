@@ -242,17 +242,28 @@ embed the tool:
 
 | Key | Message key | Surfaced as |
 |-----|-------------|-------------|
-| `"experimental": true` | `experimental_message` | red banner above the panel, `⚠️` after the navigation entry |
-| `"deprecated": true` | `deprecation_message` | amber banner above the panel, `⛔` after the navigation entry |
+| `"experimental": true` | `experimental_message` | red banner above the panel, `⚠️` after the navigation entry and after the ribbon entry |
+| `"deprecated": true` | `deprecation_message` | amber banner above the panel, `⛔` after the navigation entry and after the ribbon entry |
 
 A tool may carry both; the deprecation banner is drawn first. Without a message
-the banner falls back to a generic wording built from the panel name.
+the banner falls back to a generic wording built from the tool name.
 
-A shell built on `NavigationPanelTool` picks the flags up by naming the tool's
-manifest in the panel definition — `"manifest": "<path under chisurf/plugins>"` —
-and passing the panels through
-`chisurf.gui.widgets.navigation.apply_manifest_flags()` (a `panels.json` entry may
-carry the same key; `load_panels_json()` applies the flags itself).
+The flags reach a host by two routes, and both read the same table
+(`chisurf.gui.widgets.navigation.MATURITY_FLAGS`), so a tool is marked the same
+way wherever it is opened from:
+
+- **Ribbon entry.** Plugin discovery carries `experimental` / `deprecated` and
+  their messages in every record (`chisurf.plugins.iter_plugins()`), so the
+  ribbon appends the marker to the button label and prepends the warning to its
+  tooltip, above the description.
+- **Navigation panel.** A shell built on `NavigationPanelTool` picks the flags up
+  by naming the tool's manifest in the panel definition —
+  `"manifest": "<path under chisurf/plugins>"` — and passing the panels through
+  `apply_manifest_flags()` (a `panels.json` entry may carry the same key;
+  `load_panels_json()` applies the flags itself).
+
+Hosts that need the presentation without a panel use
+`maturity_markers()` / `maturity_warnings()` from the same module.
 
 ### 3.2 Schema files
 

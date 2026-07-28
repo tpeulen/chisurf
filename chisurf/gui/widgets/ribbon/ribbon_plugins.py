@@ -15,6 +15,7 @@ from qtpy import QtWidgets
 
 import chisurf as cs
 from chisurf import logging
+from chisurf.gui.widgets.navigation import maturity_markers, maturity_warnings
 
 # Import enhanced icon utilities for emoji support
 try:
@@ -618,6 +619,16 @@ class PluginMethodsMixin:
                         if is_cli_only:
                             label_base = f"{label_base} (CLI)"
                         label = f"{label_base} (BROKEN)" if is_broken else label_base
+
+                    # Maturity: a tool that declares itself experimental or
+                    # deprecated is marked here too, not only when a navigation
+                    # hub happens to embed it as a panel. Same table, same
+                    # wording — the manifest is the one place it is declared.
+                    markers = maturity_markers(info)
+                    if markers:
+                        label = f"{label} {' '.join(markers)}"
+                        warnings = maturity_warnings(info, display_name)
+                        description = "\n".join([*warnings, description])
 
                     all_plugins.append({
                         'label': label,
