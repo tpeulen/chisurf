@@ -9319,11 +9319,34 @@ source was changed. Findings RF-804..RF-809.
 - **Fix note:**
 
 ### RF-808
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every per-burst MLE lifetime fit and every pooled per-state decay is missing the burst's last photon, in the plugin whose own coverage mask uses the opposite convention)
 - **Location:** `chisurf/plugins/burst/burst_mle_analysis/_mp_worker.py:180` (pooled state decays) and `:265` (the per-burst fits), both `sl = slice(int(first_ph), int(last_ph))`, plus `chisurf/plugins/burst/burst_mle_analysis/wizard.py:2084` (`burst = tttr[int(row['First Photon']):int(row['Last Photon'])]`, the burst-inspection plot) — against `wizard.py:4939-4952` in the same class, which builds its photon-coverage mask from `np.concatenate([starts, stops + 1])`, i.e. **inclusive**
 - **Finding:** the pairs handed to the workers come straight from the table (`wizard.py:4633`, `df_file[['First Photon', 'Last Photon']]`) and both worker loops slice them exclusively, so `Number of Photons (fit window)`, every fitted `Tau`/`2I*` and every `(detector, state)` pooled decay are computed on one photon less than the burst the row describes. Two consequences beyond the bias: the plugin contradicts itself (the coverage mask at `:4944` marks photon `stop` as inside the burst while the fit that consumes it does not), and the `min_photons` / `state_min_photons` floors are applied to a count that is one short, so bursts sitting exactly on the threshold are rejected. The results go out as `…4` companions merged column-wise beside the bursts, which is where a silently-wrong-by-one lifetime is hardest to notice. Fix `slice(first_ph, last_ph + 1)` at both worker sites and `tttr[first:last + 1]` in the inspection plot.
-- **Fix note:**
+- **Fix note:** FIXED — both worker sites now go through one named helper,
+  `_mp_worker._burst_slice(first_ph, last_ph) -> slice(first, last + 1)`, whose
+  docstring states the convention and names the two witnesses in the same plugin
+  (the `.bur` writer's `Number of Photons == last - first + 1` and the coverage
+  mask's `stops + 1`); `wizard.inspect_bursts` slices `last + 1` too, so the
+  burst the user inspects is the burst that was fitted. Pinned by
+  `chisurf/plugins/burst/burst_mle_analysis/tests/test_burst_photon_slice.py`
+  (5 tests, all of which fail against the old exclusive slice — verified by
+  monkeypatching it back): the pooled decay of a `(10, 19)` burst holds ten
+  photons *and* the marker micro-time bin occupied only by photon 19, a
+  `(5, 5)` burst pools one photon rather than none, the three
+  `Number of Photons (fit window)` values come back `[10, 1, 24]` for
+  `(10,19)/(30,30)/(40,63)`, and a burst of exactly `min_photons = 10` is fitted
+  instead of being rejected as nine. One existing test was frozen to the old
+  behaviour and was corrected in the same change rather than left red:
+  `tests/test_state_split.py::_synth` generated its burst pairs as
+  `(i*w, (i+1)*w)` — an exclusive stop the table never writes — so its
+  "every photon of the state" assertion only held while the worker also dropped
+  one; it now emits `(i*w, (i+1)*w - 1)`, and the no-state case `(0, n)` became
+  `(0, n - 1)`. The whole plugin suite is green (36 passed, 20 skipped — the
+  skips are the GUI end-to-end tests, whose BH smFRET DNA fixture is absent on
+  this machine, unrelated to the change). `ruff check` on `_mp_worker.py`,
+  `wizard.py` and `test_state_split.py` reports findings identical to `HEAD`
+  (all pre-existing); the new test file is clean.
 
 ### RF-809
 - **Status:** OPEN

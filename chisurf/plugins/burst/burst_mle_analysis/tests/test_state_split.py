@@ -58,11 +58,13 @@ def _synth(taus=(3.6, 1.0), n_bursts=40, per_state=300, seed=0):
             rc.append(rng.integers(0, 2, per_state))
             st.append(np.full(per_state, s))
     width = len(taus) * per_state
+    # ``Last Photon`` is inclusive, as the burst writer stores it — the pairs
+    # handed to the worker must use the table's own convention.
     return (
         np.concatenate(mt).astype(np.uint16),
         np.concatenate(rc).astype(np.uint16),
         np.concatenate(st).astype(np.int8),
-        [(i * width, (i + 1) * width) for i in range(n_bursts)],
+        [(i * width, (i + 1) * width - 1) for i in range(n_bursts)],
     )
 
 
@@ -146,7 +148,7 @@ def test_without_state_info_the_worker_behaves_exactly_as_before():
 
     try:
         rc_sh, mt_sh = put(rc), put(mt)
-        args = ("m000.spc", [(0, n)], rc_sh.name, rc.shape, str(rc.dtype),
+        args = ("m000.spc", [(0, n - 1)], rc_sh.name, rc.shape, str(rc.dtype),
                 mt_sh.name, mt.shape, str(mt.dtype), ["green"],
                 {"green": _cfg()}, 0, None)
         out, _ = process_one_file_worker(args)

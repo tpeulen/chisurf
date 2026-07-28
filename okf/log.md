@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **A burst-MLE fit ended one photon before the burst did** (RF-808). Both
+  multiprocessing workers of the burst-MLE plugin sliced `(First Photon,
+  Last Photon)` exclusively, while the table's `Last Photon` is inclusive and
+  the plugin's own photon-coverage mask reads it that way (`stops + 1`) -- so
+  every fitted `Tau`/`2I*`, every `Number of Photons (fit window)` and every
+  pooled per-state decay was computed on one photon less than the row describes,
+  and a burst sitting exactly on `min_photons` was rejected as one short. Both
+  sites now share `_mp_worker._burst_slice`, and the burst-inspection plot
+  slices the same photons the fit does. The convention itself was already
+  written down in [burst companions](/subsystems/burst-companions.md); this is
+  the plugin catching up to it. Pinned by
+  `chisurf/plugins/burst/burst_mle_analysis/tests/test_burst_photon_slice.py`
+  (5 tests, all red against the old slice); `tests/test_state_split.py` built
+  its synthetic burst pairs with an exclusive stop and was corrected in the same
+  change rather than left frozen to the bug.
+
 * **A 5-second budget for a 3.8-second import is not a budget, it is a coin
   toss.** `pytest test/server` had been erroring in *setup* with
   `AppStartupError: service 'mmfdb' did not become ready within 5.0s` — a

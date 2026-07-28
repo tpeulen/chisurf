@@ -43,6 +43,30 @@ def _copy_shifted(src_u32: np.ndarray,
         dst_f64[dst_off + s0 + first : dst_off + s1] = src_u32[0 : rem]
 
 
+def _burst_slice(first_ph, last_ph) -> slice:
+    """Return the photons of one burst as a slice into the file's arrays.
+
+    ``Last Photon`` is the burst's last photon **inclusive** — that is what the
+    ``.bur`` writer stores (``Number of Photons == last - first + 1``) and what
+    the wizard's own photon-coverage mask assumes (``stops + 1``). The slice
+    therefore runs to ``last + 1``; a burst with ``first == last`` is one
+    photon, not none.
+
+    Parameters
+    ----------
+    first_ph : int
+        Index of the burst's first photon.
+    last_ph : int
+        Index of the burst's last photon, inclusive.
+
+    Returns
+    -------
+    slice
+        ``slice(first_ph, last_ph + 1)``.
+    """
+    return slice(int(first_ph), int(last_ph) + 1)
+
+
 def _build_fitter(cfg):
     """Build the raw tttrlib estimator for this detector's configuration.
 
@@ -177,7 +201,7 @@ def pool_states_worker(args):
             for det in det_order
         }
         for first_ph, last_ph in bursts:
-            sl = slice(int(first_ph), int(last_ph))
+            sl = _burst_slice(first_ph, last_ph)
             rc_slice = rc_full[sl]
             mt_slice = mt_full[sl]
             st_slice = state_full[sl]
@@ -262,7 +286,7 @@ def process_one_file_worker(args):
         do_shift = int(shift_int) if shift_int else 0
 
         for first_ph, last_ph in bursts:
-            sl = slice(int(first_ph), int(last_ph))
+            sl = _burst_slice(first_ph, last_ph)
             rc_slice = rc_full[sl]
             mt_bins = mt_bins_full[sl]
             st_slice = state_full[sl] if state_full is not None else None

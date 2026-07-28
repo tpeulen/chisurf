@@ -2081,7 +2081,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if tttr is None:
             cs.logging.info(f"TTTR with key {key} not found.")
             return
-        burst = tttr[int(row['First Photon']):int(row['Last Photon'])]
+        # ``Last Photon`` is inclusive (see ``_mp_worker._burst_slice``), so the
+        # inspected burst must be the same photons the fit uses.
+        burst = tttr[int(row['First Photon']):int(row['Last Photon']) + 1]
 
         # clear any existing plots
         self.burst_layout.clear()
