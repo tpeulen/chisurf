@@ -55,9 +55,7 @@ def test_every_control_of_the_designer_file_is_still_there(controller):
         'spinBox_2': QtWidgets.QSpinBox,      # xmin
         'spinBox_3': QtWidgets.QSpinBox,      # result index
         'spinBox_4': QtWidgets.QSpinBox,      # xmin2
-        'spinBox_5': QtWidgets.QSpinBox,      # n_runs
         'spinBox_6': QtWidgets.QSpinBox,      # xmax2
-        'doubleSpinBox': QtWidgets.QDoubleSpinBox,
         'checkBox': QtWidgets.QCheckBox,
     }
     for name, kind in expected.items():
@@ -68,16 +66,48 @@ def test_every_control_of_the_designer_file_is_still_there(controller):
     assert controller.groupBox is not None
 
 
+def test_steps_and_runs_come_from_the_settings_not_from_the_panel(controller, monkeypatch):
+    """They configure a *run*, not a fit, so they live with the run settings.
+
+    One place to set them, and the same value whether the run is started from
+    the panel, a macro or the server.
+    """
+    settings = chisurf.core.settings.cs_settings['optimization']['sampling']
+    monkeypatch.setitem(settings, 'steps', 4321)
+    monkeypatch.setitem(settings, 'n_runs', 7)
+    assert controller.n_steps == 4321
+    assert controller.n_runs == 7
+
+
+def test_each_sampler_keeps_its_own_settings(controller):
+    """Switching sampler must not lose what was set, nor mix the two up.
+
+    They do not take the same knobs: handing one another's to it would be a
+    TypeError at the start of a long run.
+    """
+    from chisurf.gui.widgets.fitting.fitting_controls import OptimizationSettingsModel
+
+    model = OptimizationSettingsModel()
+    model.method = 'blocked'
+    model.sampler_changed()
+    model.step_size = 0.25
+    model._remember_sampler_settings()
+
+    model.method = 'slice'
+    model.sampler_changed()
+    model.std = 0.05
+
+    saved = model.sampling_settings()['samplers']
+    assert saved['blocked']['step_size'] == 0.25
+    assert saved['slice']['std'] == 0.05
+    assert 'std' not in saved['blocked']
+    assert 'step_size' not in saved['slice']
+
+
 def test_the_values_the_fit_reads_round_trip(controller):
     """Setting a control must be visible through the property the fit uses."""
     controller.xmin, controller.xmax = 10, 480
     assert (controller.xmin, controller.xmax) == (10, 480)
-
-    controller.doubleSpinBox.setValue(2.5)
-    assert controller.n_steps == 2500
-
-    controller.spinBox_5.setValue(4)
-    assert controller.n_runs == 4
 
     controller.checkBox.setChecked(False)
     assert controller.local_first is False
@@ -154,3 +184,41 @@ def test_the_actions_the_buttons_route_through_still_exist(controller):
     controller.actionFit.triggered.connect(lambda *_a: fired.append(True))
     controller.controls.fit()
     assert fired == [True]
+
+
+def test_visiting_two_samplers_does_not_poison_the_next_run(controller, tmp_path,
+                                                            monkeypatch):
+    """The S1 of the review (RF-779), end to end.
+
+    Open the settings, pick one sampler, accept; open them again, pick another,
+    accept; sample. The first sampler's knobs must not reach the second, which
+    does not take them -- binding them raises ``TypeError`` and the run dies
+    before its first step.
+    """
+    import chisurf.macros.core_fit
+    from chisurf.gui.widgets.fitting.fitting_controls import OptimizationSettingsModel
+
+    monkeypatch.setattr(
+        chisurf.macros.core_fit, "save_project",
+        lambda target_path, project_name="project", **kw: None,
+    )
+
+    for method in ('slice', 'ensemble'):
+        model = OptimizationSettingsModel()
+        model.method = method
+        model.sampler_changed()
+        settings = chisurf.core.settings.cs_settings['optimization']['sampling']
+        monkeypatch.setitem(settings, 'method', method)
+        monkeypatch.setitem(settings, 'samplers', model.sampling_settings()['samplers'])
+
+    # Everything the GUI would forward, exactly as onErrorEstimate builds it.
+    kw = dict(chisurf.core.settings.cs_settings['optimization']['sampling'])
+    kw.pop('steps', None)
+    kw.pop('n_runs', None)
+    fit_module.sample_fit(
+        fit=controller.fit, target_directory=str(tmp_path),
+        steps=40, n_runs=1, **kw
+    )
+    runs = list(tmp_path.iterdir())
+    assert len(runs) == 1
+    assert list((runs[0] / "chains").iterdir())

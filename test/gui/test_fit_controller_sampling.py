@@ -47,11 +47,13 @@ def test_proteinmc_sample_button_runs_model_handler(qapp, qtbot, monkeypatch, tm
         lambda *args, **kwargs: (tmp_path, ""),
     )
 
-    # Mock spinboxes used by n_steps/n_runs properties
-    controller.doubleSpinBox = QtWidgets.QDoubleSpinBox()
-    controller.doubleSpinBox.setValue(2.0)  # n_steps = 2000
-    controller.spinBox_5 = QtWidgets.QSpinBox()
-    controller.spinBox_5.setValue(3)  # n_runs = 3
+    # Steps and runs are sampling settings now, not spin boxes on the panel.
+    monkeypatch.setitem(
+        chisurf.core.settings.cs_settings['optimization']['sampling'], 'steps', 2000
+    )
+    monkeypatch.setitem(
+        chisurf.core.settings.cs_settings['optimization']['sampling'], 'n_runs', 3
+    )
 
     controller.onErrorEstimate()
 

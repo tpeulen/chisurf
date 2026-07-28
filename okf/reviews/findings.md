@@ -8992,46 +8992,46 @@ Findings RF-765..RF-770.
 - **Fix note:**
 
 ### RF-779
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (visiting two samplers in the settings dialog leaves a key behind that kills the next sampling run with a `TypeError`)
 - **Location:** `chisurf/gui/widgets/fitting/fitting_controls.py:283-303` (`OptimizationSettingsModel.apply` → `optimization.setdefault('sampling', {}).update(sampling)`) and `chisurf/core/settings/settings_utils.py:254` (`section.update(values)`), consumed by `chisurf/gui/widgets/fitting/fit_controller.py:770-786` (`kw = cs_settings['optimization']['sampling'].copy()` → `extra` → `start_sampling(**extra)`) → `chisurf/server/services/fits.py:1160-1175` (`settings_kw.update(kw)` → `sample_fit(**settings_kw)`) → `chisurf/core/fitting/fit.py:2236,2249` (`**kwargs` into `sample_ensemble_slice` / `sample_ensemble`)
 - **Finding:** `optimization.sampling` is one flat dict, but the new dialog writes *the selected sampler's* knobs into it and never removes the previous one's — both the session update and `set_optimization_settings` only `update()`. Verified headlessly: `sampling_settings()` yields `{… 'tune': True}` for `slice`, `{… 'stretch_scale': 2.0}` for `ensemble`, `{… 'target_acceptance': 0.3}` for `mcmc`, `{… 'jitter', 'snooker'}` for `de`. The whole dict is then forwarded verbatim to `sample_fit`, whose `**kwargs` reach `sample_ensemble` / `sample_ensemble_slice` unfiltered — and neither takes `**kwargs`: binding their signatures with `tune`, `jitter`, `snooker` or `target_acceptance` raises `TypeError: got an unexpected keyword argument` (checked against the real signatures on this tree), as does `stretch_scale` on `sample_ensemble_slice`. So the ordinary sequence *open settings → pick Ensemble slice → OK → open settings → pick Ensemble → OK → Sample* runs `sample_ensemble(..., tune=True)` and the job dies before the first step, reported only as a `Sampling failed:` log line. Either drop the keys of the previous sampler when writing (`sampling` is a complete description of the chosen sampler, so replace rather than merge), or filter `kwargs` in `sample_fit` against the target sampler's signature — the second is the real guard, because a settings file edited by hand can carry the same collision.
-- **Fix note:**
+- **Fix note:** each sampler's settings are stored under its own name (`optimization.sampling.samplers.<name>`) and `sample_fit` filters what it forwards against the target sampler's signature, so a hand-edited file cannot collide either.
 
 ### RF-780
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the dialog offers knobs for four of the six samplers that the run path silently discards)
 - **Location:** `chisurf/core/fitting/fit.py:2184-2231` (the `de`, `collapsed`, `blocked`, `mcmc` and `slice` branches of `sample_fit`) against its signature at `:1900-1916` (`steps, thin, chi2max, n_runs, step_size, temp, chain_format, **kwargs`)
 - **Finding:** `sample_fit` forwards `**kwargs` in exactly two branches — `slice` (`:2236`) and `ensemble` (`:2249`). Every other branch calls its sampler with a fixed argument list, so any advertised setting that is not one of `sample_fit`'s own named parameters is dropped without a word. Concretely, `sampler_settings` advertises (verified by running it) `jitter` and `snooker` for **Differential evolution** and `target_acceptance` for **Metropolis** — the user edits them, `apply()` persists them to the user settings file, and the run then uses the sampler's compiled-in defaults. `n_adapt` and `n_chains` are in the same position but escape notice because they have `None` defaults and are therefore not advertised at all (see RF-781). Give the non-ensemble branches the same `**kwargs` pass-through, filtered against the target signature as RF-779 requires, so a knob the GUI shows is a knob the run reads.
-- **Fix note:**
+- **Fix note:** every branch of `sample_fit` now forwards the filtered kwargs, so an advertised knob is one the run reads; `nwalkers` is honoured instead of being recomputed over.
 
 ### RF-781
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the annotation→kind table is dead code, and the Metropolis sampler's central knob is missing from its own settings panel)
 - **Location:** `chisurf/core/fitting/sample.py:2259-2264` (`_SETTING_KINDS = {int: 'int', float: 'float', bool: 'toggle', str: 'str'}`) used at `:2343` (`kind = _SETTING_KINDS.get(param.annotation)`), with `from __future__ import annotations` at `:2`
 - **Finding:** the module is compiled with PEP 563 annotations, so `inspect.signature(...).parameters[...].annotation` is the **string** `'float'`, never the `float` type — verified: `inspect.signature(walk_mcmc)` prints `step_size: 'float'`. The dict is keyed by types, so the lookup at `:2343` can never hit and every kind in practice comes from the `type(param.default)` fallback at `:2345`. The consequence is not cosmetic: a parameter *without* a default gets no kind and is skipped, so `walk_mcmc`'s required `step_size` — the one number that decides whether the historical random walk moves at all — is absent from the Metropolis panel, while `blocked` shows a step size only because its own default happens to be `0.1`. Confirmed by enumerating the advertised sections: `mcmc → [temp, thin, chi2max, target_acceptance]`. Resolve the annotation properly (`typing.get_type_hints(func)`, or key `_SETTING_KINDS` by name as well: `'int'`, `'float'`, `'bool'`, `'str'`) and give a defaultless parameter its kind from the annotation instead of dropping it.
-- **Fix note:**
+- **Fix note:** `_SETTING_KINDS` is keyed by the annotation *string* as well as the type (PEP 563), and a defaultless parameter takes its kind from the annotation — `walk_mcmc`'s `step_size` is in the Metropolis panel.
 
 ### RF-782
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (`sample_fit` ignores the alias resolver written for it, so a mistyped or mis-cased sampler name silently samples something else)
 - **Location:** `chisurf/core/fitting/fit.py:2184-2238` (`if method == 'de': … else:  # 'ensemble' (and the legacy name 'emcee')`) and the `global_posterior` guard at `:2005-2008`, against `chisurf/core/fitting/sample.py:2188-2210` (`resolve_sampler`)
 - **Finding:** `resolve_sampler` exists precisely so that "a typo in a setting should cost a different sampler, not the run" — and logs a warning when it folds one — but the dispatcher never calls it: `sample_fit` compares the raw `method` string, and everything that matches nothing lands in the trailing `else`, which runs the ensemble sampler in silence. `optimization.sampling.method` is a hand-editable YAML value, so `Blocked`, `blocked ` or `mcmC` all sample the affine-invariant ensemble while the chain, the diagnostics and the log say nothing. The same raw string is compared in the `global_posterior` guard at `:2005`, so `method='Blocked', global_posterior=True` raises "requires method='blocked'…" against a name that only differs in case. Normalise once at the top of `sample_fit` (`method = cs.core.fitting.sample.resolve_sampler(method)`) and dispatch on the canonical name; the `emcee` alias then stops living in a comment.
-- **Fix note:**
+- **Fix note:** `sample_fit` normalises with `resolve_sampler` at the top and dispatches on the canonical name; the `global_posterior` guard sees the same.
 
 ### RF-783
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (the optimiser panel types each control from the *current value*, so two tolerances can only be set to whole numbers and a boolean setting is invisible)
 - **Location:** `chisurf/gui/widgets/fitting/fitting_controls.py:252-261` (`"kind": "int" if isinstance(value, bool) is False and isinstance(value, int) else "float"` … `if isinstance(value, (int, float)) and not isinstance(value, bool)`)
 - **Finding:** the kind of every optimiser control is inferred from the Python type of the value currently in the settings, not from what the setting *is*. With the shipped `optimization.leastsq` block (`chisurf/core/settings/settings_chisurf.yaml:292-312`) that renders — verified by building the spec headlessly — `epsfcn/ftol/xtol` as floats but **`gtol` and `maxfev` as integers**, because both ship as `0`. `gtol` is a scipy `leastsq` tolerance: through this dialog it can never be given `1e-8`, and once a user sets it to `1` the control stays integral forever. The same expression's filter drops every boolean, so `full_output: true` has no control at all — yet `__init__:170-172` still binds it as `leastsq_full_output` and `leastsq_settings()` writes it back, i.e. it is carried through the dialog invisibly. Take the kind from a declared description of the leastsq settings (the same "settings advertise themselves" move the samplers got) rather than from `type(value)`, and render booleans as toggles.
-- **Fix note:**
+- **Fix note:** the optimiser settings are derived from `scipy.optimize.leastsq`'s own signature (`sample.optimizer_settings`), so `gtol` is a float and a boolean is a toggle.
 
 ### RF-784
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (a settings write that fails is reported as a success — the dialog closes, the values are gone at the next start)
 - **Location:** `chisurf/gui/widgets/fitting/fitting_controls.py:344-345` (`model.apply()` / `return True`, ignoring the returned bool) with `apply` at `:294-303` (`except Exception: pass` around the session update) and `chisurf/core/settings/settings_utils.py:256-259` (`except Exception: return False`)
 - **Finding:** `set_optimization_settings` swallows every failure — an unwritable settings folder, a settings file that is not valid YAML — and returns `False`; `apply()` faithfully passes that on, and its own docstring promises the caller can tell ("Whether the settings file was written"). `show_optimization_settings` then discards it: it calls `model.apply()` for its side effect and unconditionally returns `True`, whose docstring claims it means "whether the settings were accepted **and applied**". The session update that would at least keep the values for this run is itself wrapped in a bare `except Exception: pass`, so on that path nothing is stored and nothing is said. Return `model.apply()` and have the caller report a failed write (the shared `ChiSurfMessageBox` warning), so the user learns the sampler they just chose will not survive the session.
-- **Fix note:**
+- **Fix note:** `show_optimization_settings` returns what `apply()` reports and warns when the write failed; the session update no longer swallows its own failure.
 
 ### Review 2026-07-28 — PDA: three colours as a reader setting (`ad12a0913`)
 

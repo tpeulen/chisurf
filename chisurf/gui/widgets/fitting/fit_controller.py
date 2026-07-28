@@ -118,6 +118,310 @@ class FittingControllerWidget(Controller):
         except Exception:
             pass
 
+    def _build_controls(self, dataset_labels):
+        """Render the controls from the view spec and bind them to this widget.
+
+        The layout, the labels and the tooltips come from
+        ``fitting_controls.view.json``; the widgets AutoForm builds are then
+        bound to the names the rest of this controller uses, so behaviour that
+        was written against the designer file keeps working unchanged.
+
+        Parameters
+        ----------
+        dataset_labels : list of (str, str)
+            ``(display, full)`` dataset name pairs to offer in the combo.
+        """
+        from chisurf.gui.autoform import AutoForm
+        from chisurf.gui.widgets.fitting.fitting_controls import FittingControlsModel
+
+        try:
+            chain_format = str(
+                cs.core.settings.cs_settings['optimization']['sampling'].get(
+                    'chain_format', 'er4'
+                )
+            )
+        except (KeyError, TypeError, AttributeError):
+            chain_format = 'er4'
+
+        #: Controls lifted out of the form's grid, by attribute.
+        self._moved_fields = {}
+        self.controls = FittingControlsModel(
+            self, dataset_labels=dataset_labels, chain_format=chain_format
+        )
+        self.form = AutoForm(self.controls, parent=self)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        layout.addWidget(self.form)
+        # These are controls, not a view: they must take the height they need
+        # and no more. Left at the default the box grows into whatever room the
+        # dock has spare, which is how a five-row panel ends up half empty above
+        # the model editor.
+        for widget in (self.form, self):
+            widget.setSizePolicy(
+                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum
+            )
+
+        # The names the rest of the controller was written against. Binding the
+        # concrete editors keeps one source of truth for the layout (the spec)
+        # without rewriting behaviour that is not being changed.
+        self.comboBox = self._editor('dataset_index')
+        self.spinBox_2 = self._editor('xmin')
+        self.spinBox = self._editor('xmax')
+        self.spinBox_4 = self._editor('xmin2')
+        self.spinBox_6 = self._editor('xmax2')
+        self.spinBox_3 = self._editor('result_index')
+        self.checkBox = self._editor('local_first')
+
+        self.button_fit = self._button('fit')
+        self.button_sample = self._button('sample')
+        self.button_auto_fit_range = self._button('auto_range')
+        self.button_dataset_select = self._button('select_dataset')
+        # One foldable box now, so the group the ProteinMC path used to hide is
+        # gone; what it meant -- "this fit is not optimised from here" -- is the
+        # Fit button and the two fields that belong to it.
+        self.groupBox = self.form.section_widget(title="Fit")
+        self.button_settings = self._button('settings')
+        self._emphasise(self.button_fit)
+        self._emphasise(self.button_sample)
+        self._move_toggle_into_action_row('local_first')
+
+        # The actions the designer file carried. Nothing outside this widget
+        # triggers them, but the connections below are the widget's own vocabulary.
+        for name in (
+                "actionFit", "actionAutoFitRange", "actionFit_range_changed",
+                "actionChange_dataset", "actionSelectionChanged", "actionErrorEstimate",
+        ):
+            setattr(self, name, QtWidgets.QAction(name, self))
+
+        # The connections the designer file declared. The range boxes commit on
+        # ``editingFinished`` rather than on every keystroke: a partly typed
+        # number is not a fit range, and applying one re-runs the fit.
+        if self.comboBox is not None:
+            self.comboBox.currentIndexChanged.connect(
+                lambda *_a: self.actionSelectionChanged.trigger()
+            )
+        for box in (self.spinBox, self.spinBox_2, self.spinBox_4, self.spinBox_6):
+            if box is not None:
+                box.editingFinished.connect(
+                    lambda *_a: self.actionFit_range_changed.trigger()
+                )
+
+    def _field(self, attr: str):
+        """Return the field container AutoForm built for one bound attribute.
+
+        Parameters
+        ----------
+        attr : str
+            The ``attr`` of a ``value``/``choice``/``toggle`` section.
+
+        Returns
+        -------
+        QtWidgets.QWidget or None
+            The container, whose ``_autoform_label`` is the label beside it.
+        """
+        moved = getattr(self, "_moved_fields", {}).get(attr)
+        if moved is not None:
+            return moved
+        for widget in self.form.findChildren(QtWidgets.QWidget):
+            section = getattr(widget, "_section", None)
+            if section is not None and getattr(section, "attr", None) == attr:
+                return widget
+        cs.logging.warning("fitting controls: no field %r in the view spec", attr)
+        return None
+
+    @staticmethod
+    def _emphasise(button) -> None:
+        """Make an action button read as the action it is.
+
+        The designer file gave Fit and Sample a bold font and let them span
+        their group; rendered from a spec they come out the size of a
+        text field's spin arrows, which is not what the panel is for.
+
+        Parameters
+        ----------
+        button : QtWidgets.QAbstractButton or None
+            The button to emphasise.
+        """
+        if button is None:
+            return
+        font = button.font()
+        font.setBold(True)
+        button.setFont(font)
+        button.setMinimumHeight(28)
+        button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+        button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+
+    def _set_fitting_controls_visible(self, visible: bool) -> None:
+        """Show or hide the controls that only make sense for a fitted model.
+
+        A ProteinMC fit runs its own algorithm, so the optimiser button and the
+        result selector do not apply to it -- but its *sampling* does, which is
+        why this hides controls rather than the whole box.
+
+        Parameters
+        ----------
+        visible : bool
+            Whether the fitting controls should be shown.
+        """
+        if self.button_fit is not None:
+            self.button_fit.setVisible(bool(visible))
+        for attr in ('result_index', 'local_first'):
+            self._set_field_visible(attr, visible)
+
+    def _move_toggle_into_action_row(self, attr: str) -> None:
+        """Put a toggle on the row of buttons instead of on a row of its own.
+
+        A single checkbox occupies a whole two-column row, which is a lot of
+        panel for one word. Beside the buttons it costs nothing and sits next
+        to the action it qualifies.
+
+        Parameters
+        ----------
+        attr : str
+            The ``attr`` of the toggle to move.
+        """
+        field = self._field(attr)
+        if field is None or self.button_fit is None:
+            return
+        # Remember where it went: the container is about to be destroyed, and
+        # a later lookup by attribute must still find the control.
+        self._moved_fields[attr] = self._editor(attr) or field
+        row = self.button_fit.parent()
+        layout = row.layout() if row is not None else None
+        if layout is None:
+            return
+        label = getattr(field, "_autoform_label", None)
+        if label is not None:
+            label.setParent(None)
+            label.deleteLater()
+        editor = self._editor(attr)
+        if editor is not None and editor is not field:
+            # The checkbox alone, with the label it never had, so the row stays
+            # one line high.
+            editor.setText(getattr(field, "form_label", "") or editor.text())
+            field.setParent(None)
+            field.deleteLater()
+            layout.addWidget(editor)
+        else:
+            layout.addWidget(field)
+
+    def show_optimization_settings(self) -> None:
+        """Open the sampling and fitting settings as a modal dialog.
+
+        The settings a run is configured by -- which sampler, how it thins,
+        where the chains go, the optimiser tolerances -- are shared by every
+        fit, so they are edited once, in one place, and written to the user
+        settings rather than held for the session.
+        """
+        from chisurf.gui.widgets.fitting.fitting_controls import (
+            show_optimization_settings,
+        )
+
+        if not show_optimization_settings(self):
+            return
+        # The panel shows two of them; take the new values.
+        try:
+            sampling = cs.core.settings.cs_settings['optimization']['sampling']
+            self.controls.chain_format = str(sampling.get('chain_format', 'er4'))
+        except (KeyError, TypeError, AttributeError):
+            pass
+
+    def _editor(self, attr: str):
+        """Return the Qt editor AutoForm built for one bound attribute.
+
+        Parameters
+        ----------
+        attr : str
+            The ``attr`` of a ``value``/``choice``/``toggle`` section.
+
+        Returns
+        -------
+        QtWidgets.QWidget or None
+            The spin box, combo or check box itself -- not its container -- or
+            ``None`` when the spec has no such field.
+        """
+        widget = self._field(attr)
+        if widget is None:
+            return None
+        for name in ("editor", "combo", "checkbox", "toggle"):
+            inner = getattr(widget, name, None)
+            # ``toggle`` is also QAbstractButton's *method*; only a widget is
+            # the editor we are after.
+            if isinstance(inner, QtWidgets.QWidget):
+                return inner
+        return widget
+
+    def _set_field_visible(self, attr: str, visible: bool) -> None:
+        """Show or hide a field *and its label*.
+
+        Hiding only the editor leaves its label behind pointing at nothing,
+        which is what a second fit-range row looks like on one-dimensional data.
+
+        Parameters
+        ----------
+        attr : str
+            The ``attr`` of the field.
+        visible : bool
+            Whether the field should be shown.
+        """
+        widget = self._field(attr)
+        if widget is None:
+            return
+        widget.setVisible(bool(visible))
+        label = getattr(widget, "_autoform_label", None)
+        if label is not None:
+            label.setVisible(bool(visible))
+
+    def _button(self, action: str):
+        """Return the button AutoForm built for one action.
+
+        Parameters
+        ----------
+        action : str
+            The ``action`` named in a ``button_row`` entry.
+
+        Returns
+        -------
+        QtWidgets.QAbstractButton or None
+            The button, or ``None`` when the spec declares no such action.
+        """
+        for widget in self.form.findChildren(QtWidgets.QAbstractButton):
+            if getattr(widget, "_autoform_action", None) == action:
+                return widget
+        # Fall back to the label, which is what the spec pairs with the action.
+        labels = {
+            'fit': 'Fit', 'sample': 'Sample', 'auto_range': 'auto',
+            'select_dataset': '…',
+        }
+        wanted = labels.get(action)
+        for widget in self.form.findChildren(QtWidgets.QAbstractButton):
+            if wanted is not None and widget.text() == wanted:
+                return widget
+        cs.logging.warning("fitting controls: no button for action %r", action)
+        return None
+
+    @property
+    def chain_format(self) -> str:
+        """Return the chain storage format chosen in the sampling panel.
+
+        Falls back to the configured default when the controls are not built --
+        a controller can be constructed without its widgets in tests.
+        """
+        try:
+            return str(self.controls.chain_format)
+        except (AttributeError, RuntimeError):
+            pass
+        try:
+            return str(cs.core.settings.cs_settings['optimization']['sampling'].get(
+                'chain_format', 'er4'
+            ))
+        except (KeyError, TypeError, AttributeError):
+            return 'er4' 
+
     @property
     def selected_fit(self) -> int:
         return int(self.comboBox.currentIndex())
@@ -137,13 +441,38 @@ class FittingControllerWidget(Controller):
     def local_first(self) -> bool:
         return self.checkBox.isChecked()
 
+    def _sampling_setting(self, key: str, default):
+        """Return one configured sampling setting.
+
+        Steps and runs configure a *run*, not a fit, so they live with the rest
+        of the sampling settings rather than in the fit's controls -- one place
+        to set them, and the same value whether the run is started from the
+        panel, a macro or the server.
+
+        Parameters
+        ----------
+        key : str
+            Setting name under ``optimization.sampling``.
+        default : object
+            Value to use when the setting is missing.
+
+        Returns
+        -------
+        object
+            The configured value, or ``default``.
+        """
+        try:
+            return cs.core.settings.cs_settings['optimization']['sampling'].get(key, default)
+        except (KeyError, TypeError, AttributeError):
+            return default
+
     @property
     def n_steps(self) -> int:
-        return int(self.doubleSpinBox.value() * 1000)
+        return int(self._sampling_setting('steps', 1000))
 
     @property
     def n_runs(self) -> int:
-        return self.spinBox_5.value()
+        return int(self._sampling_setting('n_runs', 10))
 
     def _format_dataset_label(self, name: str, max_length: int = 40) -> str:
         try:
@@ -223,9 +552,7 @@ class FittingControllerWidget(Controller):
             experiment=fit.data.experiment.__class__
         )
 
-        uic.loadUi(pathlib.Path(__file__).parent / "fittingWidget.ui", self)
-
-        self.curve_select.hide()
+        labels = []
         if fit is not None:
             for f in fit:
                 data = getattr(f, 'data', None)
@@ -235,13 +562,15 @@ class FittingControllerWidget(Controller):
                     )
                 except Exception:
                     base_name = getattr(data, 'name', 'Unknown')
-                display_name = self._format_dataset_label(base_name)
-                self.comboBox.addItem(display_name)
-                idx = self.comboBox.count() - 1
-                try:
-                    self.comboBox.setItemData(idx, base_name, QtCore.Qt.ToolTipRole)
-                except Exception:
-                    pass
+                labels.append((self._format_dataset_label(base_name), base_name))
+        self._build_controls(labels)
+
+        self.curve_select.hide()
+        for idx, (_display, base_name) in enumerate(labels):
+            try:
+                self.comboBox.setItemData(idx, base_name, QtCore.Qt.ToolTipRole)
+            except Exception:
+                pass
         try:
             self.comboBox.currentIndexChanged.connect(self._update_combo_tooltip)
             self._update_combo_tooltip(self.comboBox.currentIndex())
@@ -285,8 +614,8 @@ class FittingControllerWidget(Controller):
             self.button_fit.hide()
         if hide_range:
             self.button_auto_fit_range.hide()
-            self.spinBox.hide()
-            self.spinBox_2.hide()
+            self._set_field_visible('xmax', False)
+            self._set_field_visible('xmin', False)
         if hide_fitting:
             self.hide()
 
@@ -307,9 +636,9 @@ class FittingControllerWidget(Controller):
 
         if self._is_proteinmc_fit():
             self.actionFit.setEnabled(False)
-            self.groupBox.hide()
+            self._set_fitting_controls_visible(False)
         else:
-            self.groupBox.show()
+            self._set_fitting_controls_visible(True)
             self.actionFit.setEnabled(True)
             self.button_fit.setEnabled(True)
 
@@ -319,27 +648,14 @@ class FittingControllerWidget(Controller):
                 "by the MC trials, Save every, and Max frames fields below."
             )
         if self._is_proteinmc_fit():
-            self.doubleSpinBox.setEnabled(True)
-            self.doubleSpinBox.setToolTip("ProteinMC MC trials, in thousands.")
-            self.spinBox_5.setEnabled(True)
-            self.spinBox_5.setToolTip("Number of independent ProteinMC runs to launch.")
-            steps_label = getattr(self, "label", None)
-            if steps_label is not None:
-                steps_label.setEnabled(True)
-                steps_label.setToolTip("ProteinMC MC trials, in thousands.")
-            runs_label = getattr(self, "label_2", None)
-            if runs_label is not None:
-                runs_label.setEnabled(True)
-                runs_label.setToolTip("Number of independent ProteinMC runs to launch.")
+            # ProteinMC reads the same steps/runs as everything else; they are
+            # set with the other sampling settings, so there is nothing here to
+            # enable or explain any more.
+            pass
         else:
-            for widget in (self.doubleSpinBox, self.spinBox_5):
-                widget.setEnabled(True)
-                widget.setToolTip("")
-            for widget_name in ("label", "label_2"):
-                widget = getattr(self, widget_name, None)
-                if widget is not None:
-                    widget.setEnabled(True)
-                    widget.setToolTip("")
+            # Steps and runs used to live here as spin boxes; they are sampling
+            # settings now, so there is nothing left to re-enable.
+            pass
     def _candidate_sampling_models(self) -> list:
         """Return models that may handle the Sampling button themselves."""
 
@@ -509,6 +825,10 @@ class FittingControllerWidget(Controller):
         kw = cs.core.settings.cs_settings['optimization']['sampling'].copy()
         kw['n_runs'] = self.n_runs
         kw['steps'] = self.n_steps
+        # The panel's choice wins over the setting: it is the one the user just
+        # made, and it decides whether the run leaves behind text or a table a
+        # quarter of the size.
+        kw['chain_format'] = self.chain_format
         
         fc = get_fitting_client()
         if fc is not None:
@@ -1066,8 +1386,8 @@ class FittingControllerWidget(Controller):
                 # Make sure the secondary spin boxes are visible and enabled
                 self.spinBox_4.setEnabled(True)
                 self.spinBox_6.setEnabled(True)
-                self.spinBox_4.show()
-                self.spinBox_6.show()
+                self._set_field_visible('xmin2', True)
+                self._set_field_visible('xmax2', True)
 
                 # Update mask when any of the 2D range spin boxes changes.
                 try:
@@ -1083,8 +1403,8 @@ class FittingControllerWidget(Controller):
                 # suggesting a 2D selection.
                 self.spinBox_4.setEnabled(False)
                 self.spinBox_6.setEnabled(False)
-                self.spinBox_4.hide()
-                self.spinBox_6.hide()
+                self._set_field_visible('xmin2', False)
+                self._set_field_visible('xmax2', False)
         except Exception:
             pass
 
