@@ -529,8 +529,34 @@ than fixed because they span five unrelated subsystems:
   Monte-Carlo noise rather than by real skew. It samples with `method='de'`,
   which the ensemble-sampler change did not touch; recorded rather than fixed
   because the fix is a re-derivation of the threshold in `derived.py`.
+- `test_sampling_diagnostics_report.py::test_posterior_summary_prefers_a_converged_chain`
+  (noted 2026-07-28) — **flaky, roughly one failure in four** on an unchanged
+  tree. It asserts that every posterior entry reports `method == 'mcmc'` after
+  sampling; on a failing run they report `'laplace'`, i.e. the MCMC result was
+  not adopted and the Laplace approximation stood. Measured by running the test
+  alone five times: 2 failed, 3 passed, no edits in between.
+
+  Worth knowing *how* this was established, because a single controlled run said
+  the opposite. It first appeared while checking whether the atom-dtype change
+  had caused it: reverted, the test passed; restored, it failed — a clean-looking
+  A/B that was pure coincidence. Only repetition showed it flips on its own.
+  A one-shot before/after cannot tell causation from flakiness, and a flaky test
+  will happily frame whatever change is in flight.
 - ~~`test_group_polarization_any_size.py` errors at collection.~~ — fixed
   2026-07-26.
+
+**`test/gui` cannot currently run to completion (noted 2026-07-28).** It
+**segfaults** (exit 139) about 19% in, at `test_channel_definition_lut_box.py`
+— a file whose 8 tests all pass when it is run *alone*, so the crash is
+cross-test state and not that file's doing. 17 failures precede it. Everything
+after the crash is simply unrun, which is the worse part: the suite reports
+nothing about roughly four fifths of itself.
+
+Established as independent of the atom-dtype change by running the whole area
+with the old `|U1` field and the new `|U4` one: **byte-identical** progress,
+the same 17 failures, the same crash at the same point. The TTTR
+channel-definition wizard and LUT tools had several files under concurrent edit
+at the time, which is the first place to look.
 
 **Found 2026-07-26 while closing [RF-182](/reviews/findings.md#rf-182).**
 `test/core/test_curve.py::Tests::test_reading` passes when `test/core` runs on
