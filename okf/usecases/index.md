@@ -229,6 +229,17 @@ The workflows a first pass should cover — expand as the tester discovers more:
   previous state on screen, and the predicted decay cannot leave the window.
   *(last driven 2026-07-28; RF-689..RF-695)*
 
+- [Preparing an MD trajectory for FRET analysis](/usecases/trajectory-preparation.md)
+  — the seven Traj Tools tabs a user works through *before* the FRET tab:
+  export the topology, superpose out the tumbling, drop the clashed frames,
+  place the molecule, join the runs, convert the format and check the result
+  with a potential. The maths is exact (rotation, translation and superposition
+  all verified to 3–4 decimals) but the reporting is not: aligning with the
+  **default empty atom selection** writes a 100 %-NaN trajectory and calls it
+  saved, a too-large clash distance writes a 0-frame one and calls it saved, and
+  Align/Rot-Translate silently replace the time axis with a frame counter that
+  ignores the stride. *(last driven 2026-07-28; RF-706..RF-710)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

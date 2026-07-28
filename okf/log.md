@@ -2,6 +2,33 @@
 
 ## 2026-07-28
 
+* **QA — the trajectory bench everyone walks through and nobody has driven.**
+  New use case [preparing an MD trajectory for FRET analysis](/usecases/trajectory-preparation.md):
+  the seven Traj Tools tabs *before* the FRET tab (Save Topol → Align → Remove
+  Clashed → Rot Translate → Join → Convert → Energy Calc), driven headlessly on
+  `hgbp1_transition.h5` with every output re-loaded and checked numerically. The
+  arithmetic is right everywhere it runs — a typed 90° z-rotation maps
+  `(7.0639, −1.3604, 0.3497)` to `(1.3604, 7.0639, 0.3497)` exactly, a 10 Å
+  translation moves every atom by 1 nm, superposition on 200 Cα reduces the raw
+  deviation from frame 0 to the RMSD to three decimals, join/convert/energy all
+  return what they promise — but three tools mis-report their own result, and
+  one does it on the path the UI invites: **Align with the default empty atom
+  selection writes a 100 %-NaN trajectory and logs "Aligned trajectory saved"**
+  (`np.fromstring("")` → empty array → `superpose(atom_indices=[])`, which is
+  *no* atoms, not all of them, contradicting both the docstring and the field's
+  own placeholder). Also filed: a clash distance that rejects every frame writes
+  a 0-frame file and calls it saved with no kept/removed count anywhere;
+  Align and Rot Translate discard the time axis for a frame counter that ignores
+  the stride, so a 32×-subsampled trajectory claims unit frame spacing and the
+  sibling FRET tab's `RDA(t)` inherits a 32×-wrong time base; Energy Calc is the
+  one single-trajectory panel that refuses a window drop (it spells the property
+  `trajectory_file`, the window routes to `trajectory_filename`); and the
+  converter titles its dialogs "MC-Converter". RF-706..RF-710 OPEN in
+  [/reviews/findings.md]; UX notes (two incompatible meanings of "Atom
+  selection" in adjacent tabs, missing units, no progress on the streaming
+  operations, a tab bar that overflows at the window's own default size) in the
+  use case.
+
 * **Metaballs play at 26 fps, and finally look wet.** A trajectory wants 20 fps
   (50 ms); a full build is ~220 ms on one nuclear-pore spoke, nearly all of it
   the per-vertex transfer of colour and normals from the atoms -- spent on a
