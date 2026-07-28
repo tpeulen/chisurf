@@ -193,6 +193,14 @@ The workflows a first pass should cover — expand as the tester discovers more:
   housekeeping controls are solid; the restore hands back the storage schema, so
   the session comes back with empty datasets and no fits — and one *Save* click
   writes two versions. *(last driven 2026-07-28; RF-616..RF-620)*
+- [Simulate a TCSPC decay and recover its lifetimes](/usecases/tcspc-simulate-and-recover.md)
+  — the validation loop before trusting any lifetime fit: type a known
+  bi-exponential spectrum into the `Simulator` file type, convolve it with a
+  measured prompt, add it to the session and fit it back. The round trip is
+  exact (0.75/4.0 ns and 0.25/1.0 ns returned at χ²ᵣ = 1.00), but the panel's
+  own **Add** and the header's **+ Data** generate different decays, and the
+  **+ Data** one cannot be fitted at all. *(last driven 2026-07-28;
+  RF-636..RF-639)*
 
 ## Per-workflow file format
 

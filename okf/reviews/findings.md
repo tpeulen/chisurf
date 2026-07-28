@@ -7418,3 +7418,42 @@ Findings RF-628..RF-635.
 - **Location:** `chisurf/core/fitting/support_plane.py:43-64` (`varied_parameter.fixed = True` … the `for` loop calling `fit.run()` at `:59` … the restore at `:62-64` is straight-line code, not a `finally`), against the adaptive path, which guards every evaluation (`:317-324`, `try: … except Exception: return xs, ys, v_cross`)
 - **Finding:** `scan_parameter` mutates fit state (fixes the parameter, overwrites `fit.model.parameter_values` each iteration) and restores it only if the loop completes. Verified by making the third `fit.run()` raise: the parameter goes in with `fixed=False, value=-1.20211` and comes out with **`fixed=True, value=-1.06854`** — the fit is silently left mis-parameterised and one of its parameters frozen, and the GUI swallows the exception into a log line (`chisurf/gui/plots/parameter_scan/parameter_scan.py:185-187`), so the user sees only that the scan "did not work". Wrap the loop in `try/finally` with the existing restore in the `finally`.
 - **Fix note:**
+
+## QA 2026-07-28 — the TCSPC Simulator setup: two "load" buttons, two different decays
+
+Drove *Read data → Experiment `TCSPC` → File type `Simulator`* headlessly as a
+user validating a fit: type a known bi-exponential spectrum, convolve it with a
+measured prompt, add it to the session, fit it back with the `Lifetime` model.
+**The round trip is exact** — ground truth `x = 0.75/0.25`, `τ = 4.0/1.0 ns` came
+back as `0.7566 / 0.2434` and `3.9948 / 1.0022 ns` at χ²ᵣ = 0.9999, DW = 1.9801.
+Everything below is about the panel around that generator. Recorded as
+[usecases/tcspc-simulate-and-recover.md](/usecases/tcspc-simulate-and-recover.md).
+RF-636..RF-639.
+
+### RF-636
+- **Status:** OPEN
+- **Severity:** S1 (the standard **+ Data** button and the panel's own **Add** button produce different data from identical settings; the **+ Data** curve is unfittable and fits to τ = 268 ns at χ²ᵣ = 2.3e-4)
+- **Location:** `chisurf/core/experiments/tcspc/simulator.py:66-123` (`TCSPCSimulatorSetup.read()`) against `chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py:451-534` (`TCSPCSimulatorSetupWidget._simulate_decay`), the generator behind the same panel's **Simulate** / **Add** buttons
+- **Finding:** the reader's `read()` — what the *Read data* header's **+ Data** button calls — ignores three of the panel's own controls. It never reads `p0` (**Peak count**), never uses `self.instrument_response_function` or the widget's Gaussian IRF (`_build_irf`), and applies no Poisson noise; it returns `synthetic_decay(...) / Σamplitudes`, i.e. an amplitude-normalised curve, with `ey = counting_noise(y)` whose zero-floor makes the error bar **1.0** on a peak of **1.0**. Verified in the GUI with `spectrum = 0.75, 4.0, 0.25, 1.0`, `n TAC = 4096`, `Peak count = 20000`, `dt = 0.0141`: **Add** produced integer counts `y.max = 20 150`, `Σy = 5.14e6`, `ey(peak) = 142`; **+ Data**, with the same settings one second later, produced `y.max = 1.0`, `Σy = 231`, `ey(peak) = 1.0`, non-integer. Both rows land in the dataset list under the same name and the same *TCSPC* type. Forcing a sane fit range on the **+ Data** curve (10…3000) fits it to `tL1 = 268.05` ns and reports **χ²ᵣ = 0.000228** while the weighted residuals reach 100 — a meaningless answer with a flattering goodness-of-fit. The control in the same process fits the **Add** curve correctly (χ²ᵣ = 8.66, τ = 3.73 ns), so this is the data, not the transport. Either make `read()` call the same generator the widget uses (peak scaling, IRF, Poisson), or drop the reader-level `read()` path for this setup.
+- **Fix note:**
+
+### RF-637
+- **Status:** OPEN
+- **Severity:** S1 (a fit created from a simulator-loaded curve opens at range (0, 0) with χ²ᵣ = -0.0 and the **Fit** button silently does nothing; the same signature as RF-013/RF-014 but a different cause)
+- **Location:** `chisurf/core/experiments/tcspc/simulator.py:111-118` — `DataCurve(x=…, y=…, ey=…, setup=self, name=name, experiment=self.experiment)` passes `setup=` but not `data_reader=`, and `read()` does not run the annotation loop that `TCSPCReader` applies at `chisurf/core/experiments/tcspc/reader.py:112-118` (`if getattr(curve, 'data_reader', None) is None: curve.data_reader = self`)
+- **Finding:** the curve reaches `chisurf.imported_datasets` with `data_reader = None`, so the auto-range step that a new fit performs through `data_reader.autofitrange(data)` cannot run. Verified in the GUI: after **+ Data** on the Simulator, `fit.data.data_reader` is `None`, `fit.data.data_reader.autofitrange(...)` raises `AttributeError: 'NoneType' object has no attribute 'autofitrange'`, and the fit opens with `fit_range = (0, 0)`, both range spin boxes at 0 and the annotation *"Range 0, 0 · chi2r=-0.0000 · DW=0.0000"*. The *Fit* tab draws the model line but **no data curve**; clicking **Fit** returns instantly, the status bar reads *"Fitting finished!"* and every parameter is unchanged. The reader itself computes a correct range for the same curve — `reader.autofitrange(curve)` returns `(0, 4095)` — so only the missing back-reference is at fault. Set `data_reader=self` on the curve (and/or route the simulator through the base reader's annotation step). No test covers a simulator-produced dataset reaching a fit.
+- **Fix note:**
+
+### RF-638
+- **Status:** OPEN
+- **Severity:** S2 (a typo in the lifetime-spectrum field yields an all-zero decay that is still added as a dataset, with no message)
+- **Location:** `chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py:324-335` (`_parse_lifetime_spectrum`, `except Exception: continue`) and `:462-464` / `:584-604` (`_simulate_decay` / `_on_add_clicked`, which only test `size == 0`)
+- **Finding:** non-numeric tokens are dropped silently and the result is never checked for the interleaved `(amplitude, lifetime)` pairing the generator requires. Verified in the GUI: typing `abc, 4.0` parses to `[4.0]` and is written straight to `setup.lifetime_spectrum`; **Simulate** then produces `n = 4096, peak = 0` — an all-zero array — the preview stays blank, and no dialog, log line or status-bar text appears. With the field empty, **Simulate** and **Add** are complete no-ops (`_sim_y` stays `None`, the dataset count does not change, the status bar still reads *"Background startup complete."*) while both buttons remain enabled. Reject an odd-length spectrum and a token that does not parse, and disable the two buttons (or say why) when the field is not a valid spectrum.
+- **Fix note:**
+
+### RF-639
+- **Status:** OPEN
+- **Severity:** S2 (an IRF dataset whose x axis does not overlap the simulator's time axis silently produces an empty decay, which **Add** stores as a dataset)
+- **Location:** `chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py:394-449` (`_build_irf`: `np.interp(time_axis, x_sorted, y_sorted, left=0.0, right=0.0)` with no overlap check, and `if max_val > 0.0: irf_interp /= max_val` — an all-zero interpolation is returned unnormalised and unremarked)
+- **Finding:** the simulator's time axis is `arange(n_tac) * dt`, but the IRF dataset's x axis comes from whatever the loading reader was configured with. Verified in the GUI: `test/data/tcspc/ibh_sample/Prompt.txt` loaded at the TXT/CSV reader's default `dt = 1 ns/ch` has x = 1…4094 while the simulator axis (`n_tac = 4096, dt = 0.0141`) is 0…57.7 ns, so the interpolation samples the first 58 channels of the prompt — all zeros — and the "simulation" comes out `peak = 0, Σ = 0`. **Simulate** clears the preview and says nothing; **Add** then appends the all-zero curve to `imported_datasets` as a normal TCSPC dataset. The identical prompt loaded at `dt = 0.0141` works perfectly (peak 20 174 at 7.727 ns), so the only signal a user gets that they mis-set `dt` is an empty plot. Warn when the IRF's x range does not cover the simulator's time axis (or when the built IRF sums to zero), and refuse to add an empty decay.
+- **Fix note:**

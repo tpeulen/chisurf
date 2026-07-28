@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **QA: simulate a TCSPC decay and fit it back — the round trip is exact, the
+  panel around it is not (RF-636..RF-639).** Drove *Read data → Experiment
+  `TCSPC` → File type `Simulator`* headlessly the way a user validates a fitting
+  model: typed `0.75, 4.0, 0.25, 1.0` into the lifetime-spectrum field, picked
+  the measured `Prompt.txt` as the IRF, simulated 4096 channels at a 20 000-count
+  peak, added it to the session and fitted it with the `Lifetime` model. The
+  numbers come back: `xL2 = 0.7566 / tL2 = 3.9948 ns`, `xL1 = 0.2434 /
+  tL1 = 1.0022 ns` at χ²ᵣ = 0.9999, DW = 1.9801, against χ²ᵣ = 5.36 for the
+  one-component fit — and the prompt's ≈30 ns reflection is carried into the
+  simulated decay. Four defects around it: the *Read data* header's **+ Data**
+  button runs a **different generator** from the panel's own **Add** button
+  (`read()` ignores *Peak count*, the IRF and shot noise, returning an
+  amplitude-normalised max-1 curve with error bars of 1.0), that curve carries
+  `data_reader = None` so its fit opens at range (0, 0) with χ²ᵣ = -0.0 and a
+  **Fit** button that silently does nothing, a typo in the spectrum field
+  (`abc, 4.0` → `[4.0]`) yields an all-zero decay that is still added, and an IRF
+  whose x axis does not overlap the simulator's time axis is interpolated to
+  zeros with no warning. Recorded as
+  [usecases/tcspc-simulate-and-recover.md](/usecases/tcspc-simulate-and-recover.md)
+  with the numbered manual test script and the UX list (a ~90 px preview plot
+  above 350 px of empty dock, `Gaussian IRF mean [ns]:` truncated to
+  `Gaussian IRF`, no way to export the simulated decay, and no way to close the
+  simulate-then-fit loop without a prompt from disk because the built-in Gaussian
+  IRF is never offered as a dataset).
+
 * **Docs reconciled with the source tree (scheduled pass).** Every suspected
   mismatch was checked against the code before it was changed. The
   `chisurf.*` → `chisurf.core.*` move had left the file-format reference
