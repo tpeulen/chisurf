@@ -84,7 +84,38 @@ one residue, so `spectrum count` runs over beads and `resi 40-60` selects them.
 
 ```text
 fetch PDBDEV_00000012            # the nuclear pore, all eight spokes
-spectrum chain                   # 234,184 beads, one colour per chain
+spectrum molecule, lightblue_palecyan_palegreen_paleyellow_wheat_salmon_lightpink
+```
+
+**Colour by what the model is made of.** `spectrum molecule` takes its values
+from the entry's own hierarchy, so all sixteen copies of a nucleoporin get one
+colour and the eight-fold symmetry appears as a repeating pattern. `spectrum
+chain` gives every copy its own colour instead, and `spectrum count` — ramping
+over 234,184 beads in file order — says nothing about the structure at all.
+`molecule`, `chain_node` and `state` are the hierarchy levels; everything else
+is a per-atom property as usual.
+
+**Beads are shaded by how enclosed they are.** A quarter of a million spheres
+drawn flat is unreadable: nothing casts a shadow, and at this scale perspective
+separates nothing, so the picture carries no cue about what is in front.
+Ambient occlusion darkens a bead that has neighbours in every direction and
+leaves an exposed one bright, which is what makes the rings and the channel
+read as solid. It is baked into the colours once, so it costs nothing per frame
+and cannot shimmer as the camera moves; `balls.ao_strength` in the display
+configuration controls it, and `0` turns it off.
+
+A pale ramp is worth choosing deliberately here — occlusion works by darkening,
+and a fully saturated hue has little room left to darken.
+
+```{figure} figures/chimol_npc_molecule.png
+:name: fig-chimol-npc
+:width: 620px
+
+The eight-spoke nuclear pore, all 234,184 beads, exactly as the demo draws it.
+Colour comes from the entry's hierarchy — one per nucleoporin, shared by all
+sixteen copies — so the eight-fold symmetry shows as a repeating pattern rather
+than as a mosaic. The depth is ambient occlusion: beads buried inside the
+assembly darken, exposed ones stay bright.
 ```
 
 An entry that deposits both resolved atoms and beads — the common case — gets

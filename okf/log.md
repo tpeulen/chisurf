@@ -2,6 +2,37 @@
 
 ## 2026-07-28
 
+* **A bead model had no depth cue at all, and the demo's colours said nothing.**
+  Ambient occlusion reaches every other sphere path in the viewer and never
+  reached the bead path, so an integrative model was a flat sheet of coloured
+  dots: nothing casts a shadow, and at 234,184 beads spanning 11,000 scene units
+  perspective separates nothing either, so the picture carried no information
+  about what was in front. `_shade_beads_by_crowding` bakes a crowding estimate
+  into the colours — a bead with neighbours in every direction is buried and
+  darkens, an exposed one stays bright — which costs **0.19 s** on the whole
+  nuclear pore and works for the impostor path exactly as for a mesh, because it
+  is one scalar per bead rather than a per-vertex attribute.
+  - **The radius has to scale with the model.** `ao_radius` is 4 Å, and after
+    scaling a nuclear-pore bead has a *radius* of ~30 scene units — so the
+    neighbourhood contained nothing and the shading silently did nothing. That
+    is what the first attempt looked like, and it is indistinguishable from "not
+    wired up". The radius now takes the larger of the configured value and a
+    fraction of the model's own extent; a test pins it on a model scaled ten×.
+  - Two bugs found while doing it: the code read `balls_cfg["max_neighbors"]`
+    where the config defines `ao_max_neighbors`, so that setting had never done
+    anything; and my first version of the method **shadowed an existing
+    `_shade_by_occlusion`** with a different signature, silently breaking its
+    three callers (only the bead path was exercised, so nothing failed).
+  - **`spectrum molecule`** colours from the structure's own hierarchy, so all
+    sixteen copies of a nucleoporin share a colour and the pore's eight-fold
+    symmetry appears as a repeating pattern. `spectrum count`, which the demo
+    used, ramps over beads in file order and says nothing about the structure.
+    `MolView.hierarchy_labels(level)` reads the tree out per row; `molecule`,
+    `chain_node` and `state` are the levels.
+  - The demo is updated, the guide gains both features and a figure of the pore
+    as the demo draws it, and the whole demo was run through the real command
+    path (no errors, 31 distinct colours over 234,184 rows).
+
 * **RF-676 — un-ticking "Dipole (κ2)" set κ² to zero, not to 2/3.** The
   distance-only branch of `CalculateTransfer.calc`
   (`plugins/traj/fret_trajectory/traj2fret.py`) filled `ks` with zeros and then

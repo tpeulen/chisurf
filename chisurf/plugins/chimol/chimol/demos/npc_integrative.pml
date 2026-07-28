@@ -10,7 +10,16 @@
 # because the viewer splined a cartoon ribbon through beads that have no
 # backbone; drawn as what they are it takes about two seconds. One spoke on its
 # own is PDBDEV_00000010.
+# Colour by MOLECULE, not by position in the file. `spectrum count` ramps over
+# 234,184 beads in file order, which says nothing about the structure; colouring
+# by molecule gives all sixteen copies of a nucleoporin one colour, so the
+# eight-fold symmetry appears as a repeating pattern rather than a smear. The
+# names come from the entry's own hierarchy -- Nup84, Nsp1, Mlp1 and 28 others.
+#
+# The pale ramp is deliberate: ambient occlusion darkens beads by how enclosed
+# they are, and a saturated hue has little room left to darken. Pale colours let
+# the crevices read as depth.
 delete all
 fetch PDBDEV_00000012
-spectrum count, rainbow
+spectrum molecule, lightblue_palecyan_palegreen_paleyellow_wheat_salmon_lightpink
 zoom all

@@ -1211,6 +1211,20 @@ class RenderingMixin(BaseCmd):
                                       str(expression).strip().lower())
         if prop in ("", "count"):
             values = list(range(chosen.size))
+        elif prop in ("molecule", "chain_node", "state", "copy"):
+            # Levels of the structure's own hierarchy rather than fields of the
+            # atom array. `molecule` is the useful one: every copy of a
+            # nucleoporin shares a colour, so an assembly's symmetry shows as a
+            # repeating pattern instead of a mosaic of unrelated hues.
+            level = {"molecule": "MOLECULE", "chain_node": "CHAIN",
+                     "state": "STATE", "copy": "CHAIN"}[prop]
+            labels = viewer.hierarchy_labels(level, object_id=object_id)
+            if labels is None:
+                self._emit_error(
+                    f"spectrum: this object has no {prop} hierarchy to colour by"
+                )
+                return
+            values = [labels[int(i)] for i in chosen]
         else:
             try:
                 values = [

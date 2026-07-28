@@ -3677,6 +3677,61 @@ class MolView(QtWidgets.QWidget):
         else:
             self._representation_mask = np.ones(n_rows, dtype=bool)
 
+    def hierarchy_labels(
+        self,
+        node_type: str = "MOLECULE",
+        *,
+        object_id: str | None = None,
+    ) -> np.ndarray | None:
+        """One label per coordinate row, naming the node of *node_type* it is under.
+
+        The tree already knows which rows belong to each node -- that is what
+        makes it useful rather than decorative -- so this is the same knowledge
+        the panel's check boxes use, read out per row. It is what lets colour be
+        assigned by **molecule** rather than by chain: every copy of a
+        nucleoporin then shares a colour, and the eight-fold symmetry of a pore
+        appears as a repeating pattern instead of a mosaic of 544 unrelated
+        hues.
+
+        Parameters
+        ----------
+        node_type : str
+            Which level to label by; one of
+            :data:`~chisurf.plugins.chimol.chimol.io.hierarchy.NODE_TYPES`.
+        object_id : str, optional
+            Which object; the active one by default.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            Labels of length ``n_rows``, or ``None`` when the object has no
+            hierarchy or no node of that type. Rows under no such node get an
+            empty string rather than being dropped, so the array always lines up
+            with the coordinates.
+        """
+        with self._activate_object(object_id):
+            root = self._rmf_hierarchy
+            coords = self._all_atom_coords
+            if root is None or coords is None:
+                return None
+            n_rows = int(np.asarray(coords).shape[0])
+            if n_rows == 0:
+                return None
+
+            labels = np.full(n_rows, "", dtype=object)
+            wanted = str(node_type).upper()
+            found = False
+            for node in [root, *root.descendants()]:
+                if str(getattr(node, "node_type", "")).upper() != wanted:
+                    continue
+                rows = np.asarray(getattr(node, "atom_indices", ()), dtype=int)
+                rows = rows[(rows >= 0) & (rows < n_rows)]
+                if rows.size == 0:
+                    continue
+                found = True
+                labels[rows] = str(getattr(node, "name", "") or "")
+            return labels if found else None
+
     def available_resolutions(self, *, object_id: str | None = None) -> list[float]:
         """The resolutions this object holds, coarsest last.
 
@@ -4791,6 +4846,72 @@ class MolView(QtWidgets.QWidget):
         return scene_objects
 
     @staticmethod
+    def _shade_beads_by_crowding(
+        pts: np.ndarray,
+        rgb: np.ndarray,
+        balls_cfg: dict,
+    ) -> np.ndarray:
+        """Darken crowded spheres, leaving exposed ones bright.
+
+        The estimate counts neighbours within a radius rather than sampling a
+        hemisphere: for a cloud of spheres that *is* the question, since a bead
+        surrounded on all sides is buried whichever way its surface faces. It is
+        also O(n) through a cell list, which matters at 234,184 beads.
+
+        Baked into the colours rather than sent as a separate attribute, so it
+        reaches every backend that draws the result -- the mesh path, the
+        impostor path, and the ray tracer, which reads the same colours.
+
+        Parameters
+        ----------
+        pts : numpy.ndarray
+            ``(N, 3)`` sphere centres, in scene coordinates.
+        rgb : numpy.ndarray
+            ``(N, 3)`` colours to shade.
+        balls_cfg : dict
+            The ``balls`` section: ``ao_strength`` (0 disables), ``ao_radius``
+            and ``ao_max_neighbors``.
+
+        Returns
+        -------
+        numpy.ndarray
+            The shaded colours, or ``rgb`` unchanged when occlusion is off or
+            could not be computed.
+        """
+        strength = float(balls_cfg.get("ao_strength", 0.5))
+        if strength <= 0.0 or pts.shape[0] < 2:
+            return rgb
+
+        # The scene is scaled, so a radius written in Angstrom has to be scaled
+        # with it or the neighbourhood is the wrong size -- too small and every
+        # bead reads as exposed, too large and the whole model darkens evenly.
+        # Both failures look like "the occlusion does nothing".
+        radius = float(balls_cfg.get("ao_radius", 4.0))
+        try:
+            spread = float(np.percentile(np.linalg.norm(pts - pts.mean(axis=0), axis=1), 95))
+        except Exception:
+            spread = 0.0
+        if spread > 0.0:
+            radius = max(radius, spread * float(balls_cfg.get("ao_radius_fraction", 0.02)))
+
+        try:
+            occ = _estimate_ambient_occlusion(
+                pts,
+                radius=radius,
+                # The config key is `ao_max_neighbors`; reading `max_neighbors`
+                # here found nothing and silently used the default forever.
+                max_neighbors=int(balls_cfg.get("ao_max_neighbors", 24)),
+            )
+        except Exception:
+            return rgb
+        occ = np.asarray(occ, dtype=float)
+        if occ.shape[0] != pts.shape[0]:
+            return rgb
+
+        shade = (1.0 - strength) + strength * (1.0 - occ)
+        return np.clip(rgb * shade.reshape(-1, 1), 0.0, 1.0)
+
+    @staticmethod
     def _balls_sphere_segments() -> tuple[int, int]:
         """Return the (lat, lon) tessellation for atom-ball glyphs.
 
@@ -4965,6 +5086,17 @@ class MolView(QtWidgets.QWidget):
             rgb = rgb.copy()
             rgb[good] = ov[good, :3]
         rgb = np.clip(rgb, 0.0, 1.0)
+
+        # Ambient occlusion, baked into the colours. Every other sphere path in
+        # the viewer does this and the bead path did not, which is why an
+        # integrative model came out as a flat sheet of coloured dots: with no
+        # shadow, no specular separation between neighbours and no perspective
+        # cue at this scale, *nothing* in the picture said which beads were in
+        # front. A crowding estimate is the right one here -- a bead deep inside
+        # the assembly has neighbours in every direction and darkens, one on the
+        # outside stays bright -- and it costs one scalar per bead, so it works
+        # for impostors exactly as it does for a mesh.
+        rgb = self._shade_beads_by_crowding(pts, rgb, balls_cfg)
 
         impostor_min = int(balls_cfg.get("impostor_min_atoms", 20000))
         if impostor_min > 0 and pts.shape[0] >= impostor_min:
