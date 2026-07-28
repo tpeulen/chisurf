@@ -314,7 +314,8 @@ screenshot/qtbot verification after each cluster.
   diagnostic plots. Grew the native API with **line markers**
   (`plot.line(..., symbol=…)`) as a real call site (lcurve) demanded it.
   Deferred `plots/av_plot.py` — it is 3-D `pyqtgraph.opengl` + dockarea, owned by
-  [PRD-57](prd-57.md), not 2-D chiplot.
+  [PRD-57](prd-57.md), not 2-D chiplot. *(Batch 31 resolved it by deletion: the
+  module had no importer at all.)*
 - **Batch 3** — migrated the FCS MaxEnt L-curve model widget (`maxent_widget`)
   and the micro-time `shift_dialog`. Grew the native API with handle
   `hide()`/`show()` and `Curve.get_data()` as those call sites needed them, and
@@ -596,7 +597,9 @@ screenshot/qtbot verification after each cluster.
   heavy to construct headless, so the three plots were screenshot-verified via an
   isolated repro of the exact draw calls plus a module import-clean check.
   (`fcs_filter_calculator/test/test_widgets.py` still imports pyqtgraph — a
-  separate test-only entry.)
+  separate test-only entry. *Since ported to chiplot handles; its allow-list
+  line was left behind and removed in Batch 31, which the stale-entry guard had
+  been failing on.*)
 - **Seam capabilities for the linked-panel family** (prep for `lineplot`/
   `distribution`/`residual_image`, no allow-list change yet): added
   **`Plot.link_x`/`link_y`** (shared pan/zoom across stacked panels — the
@@ -655,6 +658,25 @@ screenshot/qtbot verification after each cluster.
   contract test now asserts the pyqtgraph canvases accept every parameter
   `backends/base.py` declares (RF-135). Verified by driving the BVA tool
   headlessly on a real burst folder (2257/2495 bursts) and inspecting the render.
+- **Batch 31** (allow-list 19 → 17) — a *dead-module* entry rather than a port.
+  `gui/plots/av_plot.py` was on the allow-list as a `pyqtgraph.opengl` file
+  deferred to PRD-57, but it has **no importer anywhere**: nothing lists
+  `AvPlot` in a `plot_classes` tuple, `gui/plots/__init__.py` does not import
+  it, and no plot module is discovered dynamically. Its `update()` also ignored
+  `self.fit` entirely and rebuilt an ACV from a hard-coded
+  `./test/data/.../hGBP1_closed.pdb` path — a prototype, not a plot. Deleted.
+  The sibling orphan `gui/plots/surfaceplot/` (guiqwt-shim `SurfacePlot` +
+  a runtime `chi2Hist.ui`, referenced only from a commented-out `plot_classes`
+  line and the retired `modules/quest/simulation_old`) went with it, which also
+  removes one runtime `.ui` form ([INC-13](../specs/assessment.md#inc-13)) and
+  leaves `_qwt_compat` with the single consumer `global_tcspc`. New guard
+  `test/test_plots_no_orphan_modules.py` AST-scans `chisurf/` and fails when a
+  module under `gui/plots` has no importer outside its own subtree, so a dead
+  plot module cannot silently keep an obsolete dependency alive again.
+  Fixed in passing: `test_allowlist_has_no_stale_entries` was **already red** —
+  `fcs/fcs_filter_calculator/test/test_widgets.py` had been ported to chiplot
+  handles (Batch 28) without its allow-list line being removed, so the guard
+  meant to shrink the list was itself failing. Removed.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

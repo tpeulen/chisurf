@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **Two plot modules nobody could reach, and the guard that says so.**
+  `gui/plots/av_plot.py` sat on the [PRD-64](/prds/prd-64.md) pyqtgraph
+  allow-list as a 3-D `pyqtgraph.opengl` file "deferred to PRD-57" — but it had
+  **no importer at all**: no `plot_classes` tuple names `AvPlot`,
+  `gui/plots/__init__.py` never imports it, and nothing discovers plot modules
+  dynamically. Its `update()` ignored `self.fit` and rebuilt an ACV from a
+  hard-coded `./test/data/.../hGBP1_closed.pdb`; it was a prototype wearing a
+  plot's clothes, and the deferral was really a deletion nobody had checked for.
+  Its sibling `gui/plots/surfaceplot/` was orphaned the same way (guiqwt-shim
+  `SurfacePlot`, reachable only from a commented-out `plot_classes` line and the
+  retired `modules/quest/simulation_old`), and took a runtime `chi2Hist.ui` with
+  it — so [INC-13](/specs/assessment.md#inc-13) goes 43 → 42 `.ui` forms without
+  a port, and `_qwt_compat` is down to one consumer (`global_tcspc`). Allow-list
+  19 → 17: the stale-entry half of the seam guard turned out to be **already
+  red** at HEAD — `fcs_filter_calculator/test/test_widgets.py` was ported to
+  chiplot handles in Batch 28 but kept its allow-list line, so the test whose
+  job is to shrink the list was failing on the list not shrinking. Removed with
+  the rest. The real lesson is that dead code is not inert: it keeps an obsolete
+  dependency on a migration tracker and a dead form on a porting backlog,
+  costing attention in both. New guard
+  `test/test_plots_no_orphan_modules.py` AST-scans `chisurf/` for imports and
+  fails when a module under `gui/plots` has no importer outside its own subtree
+  (parsing each source once, pre-filtered — 1.3 s), so the next orphan is caught
+  while it is still one file.
+
 * **"Plot through chiplot, never pyqtgraph" is now a repo rule.** The state-wise
   MLE panel reached for `Plot.plot(...)` — a pyqtgraph name chiplot does not
   have — and the passthrough duly fell through to pyqtgraph, which cannot read a

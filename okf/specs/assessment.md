@@ -69,7 +69,7 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-11](#inc-11) | S3 | INC | Plugins | Help browser's "Core" category rglobs the whole repo: 576 entries, 331 from `junk/`, 151 from `okf/`, 41 from `.opencode/` | ~~VERIFIED~~ ✅ FIXED |
 | [INC-12](#inc-12) | S3 | INC | Docs | A published page links into `okf/`, which is excluded from the docs build — one of the two warnings in an otherwise clean build | ~~VERIFIED~~ ✅ FIXED |
 | [I18N-01](#i18n-01) | S3 | INC | GUI | i18n follow-ups: ~4000 imperative `setText`/`QMessageBox` strings unwrapped; menu-path `display_name`/`categories` not localized; `.ui` terminology not converged to the [glossary](../references/ui-glossary.md) | PARTIAL (PRD-63) |
-| [INC-13](#inc-13) | S3 | INC | GUI | ~43 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED |
+| [INC-13](#inc-13) | S3 | INC | GUI | ~42 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED (43 → 42: one orphan form deleted) |
 | [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | ~~VERIFIED~~ ✅ FIXED |
 | [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-13](#bug-13) | S3 | BUG | Plugins | The plugin-metadata AST reader returns 3 values where every caller unpacks 5 when the source will not decode as UTF-8, so a plugin declaring another source encoding disappears from the menu and from `csc` without a word | ~~VERIFIED~~ ✅ FIXED |
@@ -478,7 +478,7 @@ landed the translation kit and localized the data-driven (view.json/manifest) an
 ### INC-13
 
 **S3 · Runtime `.ui` forms are a prototyping carry-over; the target is zero of
-them.** 43 Qt Designer `.ui` files are still loaded at runtime via `uic.loadUi`
+them.** 42 Qt Designer `.ui` files are still loaded at runtime via `uic.loadUi`
 (`chisurf/gui/decorators.py:_compiled_ui_class`); AutoForm + `*.view.json` is the
 one intended UI mechanism ([PRD-40](../prds/prd-40.md), [GUI & AutoForm](../subsystems/gui-autoform.md)).
 Each form should be ported to a `view.json` (+ a view-model where it carries
@@ -497,13 +497,16 @@ logic) and the `.ui` deleted. Why it is debt, not style:
   parameter registry, and the AutoForm section library (tables, `path_list`,
   `image`, `waterfall`, …) that already replaces most hand-built widgets.
 
-Locations (43 files): densest under `chisurf/gui/widgets/models/tcspc/` (3),
+Locations (42 files): densest under `chisurf/gui/widgets/models/tcspc/` (3),
 `chisurf/plugins/tttr/tttr_correlate/` (3), `chisurf/gui/widgets/{pdb,fio,experiments/tcspc}/`
 (2 each), `chisurf/plugins/tttr/tttr_histogram/` (2), plus the main-window
 `chisurf/gui/gui.ui` and singletons across the wizard, vv_vh_g_factor, burst and
 microtime-histogram plugins. Status: **VERIFIED** (`find chisurf -name '*.ui' | wc -l`
-= 43). Migrate opportunistically as each form is touched; keep every un-migrated
+= 42). Migrate opportunistically as each form is touched; keep every un-migrated
 form on the `retranslate_from_ui` path so language switching keeps working meanwhile.
+The 43rd was `gui/plots/surfaceplot/chi2Hist.ui`, deleted with its orphaned
+module in [PRD-64](../prds/prd-64.md) Batch 31 — a form nothing could open is a
+port that never needed doing, so check reachability before porting a form.
 
 ## How to work this list
 

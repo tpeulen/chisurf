@@ -3,7 +3,6 @@
 # is NOT listed. Remove a path here as it migrates to chisurf.gui.chiplot;
 # adding a NEW path is a test failure. Goal: empty (bar the ChiMOL GL file).
 chisurf/gui/autoform/sections/builtin.py
-chisurf/gui/plots/av_plot.py
 chisurf/gui/plots/distribution.py
 chisurf/gui/plots/residual_image.py
 chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py
@@ -19,7 +18,6 @@ chisurf/plugins/core/acq/gui/tool.py
 chisurf/plugins/core/acq/gui/windows.py
 chisurf/plugins/core/globalview/graphplotwidget.py
 chisurf/plugins/core/globalview/gui/tool.py
-chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
 chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui.py
 chisurf/plugins/fluorescence_decay/maxent_decay/gui/qt_stack.py
 chisurf/plugins/tttr/intensity_trace/__init__.py
