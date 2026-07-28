@@ -27,7 +27,7 @@ dimmest-first, defines a dwell time (never continued across a sequence
 boundary), converts a transition matrix into rates, and scans state counts. Two
 tools that both drive the estimator directly would disagree on all four; that is
 why the plugin core, not the estimator, is the seam. The GUI tool, the
-`csg-hmm` CLI, the `hmm.fit`/`hmm.scan` RPC methods and the intensity-trace
+`csc hmm` CLI, the `hmm.fit`/`hmm.scan` RPC methods and the intensity-trace
 tool all go through it.
 
 ## Why it is in-tree

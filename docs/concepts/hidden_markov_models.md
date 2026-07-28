@@ -127,7 +127,7 @@ trade-off in this analysis.
 
 The estimator is `chisurf.core.math.hmm.GaussianHMM`; the shared analysis
 (state ordering, dwell times, model selection) is
-`chisurf.plugins.core.hmm.core`, reachable from the GUI tool, the `csg-hmm`
+`chisurf.plugins.core.hmm.core`, reachable from the GUI tool, the `csc hmm`
 command line and the `hmm.fit` / `hmm.scan` RPC methods. See the guide
 [Hidden Markov models of binned traces](../guides/54_hidden_markov_models.md).
 

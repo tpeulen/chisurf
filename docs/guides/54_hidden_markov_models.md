@@ -110,8 +110,8 @@ offers: it says the level hides more than one state.
 Everything above is scriptable. From the command line:
 
 ```bash
-csg-hmm fit trace.csv --states 3 --time-step 1e-3 -o fit.json
-csg-hmm scan trace.csv --min-states 1 --max-states 6
+csc hmm fit trace.csv --states 3 --time-step 1e-3 -o fit.json
+csc hmm scan trace.csv --min-states 1 --max-states 6
 ```
 
 From Python:

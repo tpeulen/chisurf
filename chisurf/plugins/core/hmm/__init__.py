@@ -9,7 +9,7 @@ The plugin is the seam, not a private analysis: the Qt-free core
 (:mod:`.core.analysis`) is what other plugins call so that state ordering,
 dwell-time definition and model selection are the same everywhere states are
 reported, and the same code answers the ``hmm.fit`` / ``hmm.scan`` RPC methods
-and the ``csg-hmm`` command line.
+and the ``csc hmm`` command line.
 
 For photon-by-photon kinetics without binning use the H2MM plugin; for an
 empirical-Bayes treatment of many short FRET traces, ebFRET.

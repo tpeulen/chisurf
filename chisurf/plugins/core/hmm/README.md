@@ -22,7 +22,7 @@ in every fit, table and figure.
 | Surface | How |
 | --- | --- |
 | GUI | *Analysis → Kinetics → Hidden Markov model* |
-| CLI | `csg-hmm fit trace.csv --states 3 --time-step 1e-3 -o fit.json` |
+| CLI | `csc hmm fit trace.csv --states 3 --time-step 1e-3 -o fit.json` |
 | RPC | `hmm.fit`, `hmm.scan` (JSON in, JSON out) |
 | Python | `from chisurf.plugins.core.hmm.core import fit_traces, scan_state_counts` |
 
@@ -45,7 +45,7 @@ The GUI tool takes the same shortcut through `HmmTool.set_traces(...)`.
 api/       transport-agnostic dataclasses (settings, fit, scan)
 core/      Qt-free analysis — the seam other plugins call
 backend/   ZMQ/JSON-RPC handlers
-cli/       csg-hmm entrypoint
+cli/       csc hmm entrypoint
 gui/       AutoForm view-model + hmm.view.json (plots via chiplot)
 ```
 

@@ -4,8 +4,8 @@ Reads a trace from a text or ``.npy`` file (rows = time bins, columns =
 channels) and writes the fit as JSON, so the analysis is scriptable without a
 display::
 
-    csg-hmm fit trace.csv --states 3 --time-step 0.001 -o fit.json
-    csg-hmm scan trace.csv --min-states 1 --max-states 6
+    csc hmm fit trace.csv --states 3 --time-step 0.001 -o fit.json
+    csc hmm scan trace.csv --min-states 1 --max-states 6
 """
 
 from __future__ import annotations

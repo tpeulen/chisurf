@@ -81,7 +81,7 @@
   enumeration.
 * **One HMM for all of ChiSurf, not one per plugin.** New `hmm` plugin
   (`chisurf/plugins/core/hmm/`) with the four surfaces: Qt-free `core.analysis`
-  (the seam), `hmm.fit`/`hmm.scan` RPC, a `csg-hmm` CLI, and an AutoForm GUI
+  (the seam), `hmm.fit`/`hmm.scan` RPC, a `csc hmm` CLI, and an AutoForm GUI
   whose plots go through chiplot. It owns the decisions that must not differ
   between tools — states relabelled dimmest-first, dwell times never continued
   across a sequence boundary, rates as `A_ij/dt`, model selection by AIC/BIC —

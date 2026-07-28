@@ -53,7 +53,7 @@ bleaching, drift, or a continuum of states rather than discrete ones.
 
 The same analysis is reachable without the GUI:
 
-* `csg-hmm fit trace.csv --states 3` on the command line,
+* `csc hmm fit trace.csv --states 3` on the command line,
 * the `hmm.fit` / `hmm.scan` RPC methods,
 * `chisurf.plugins.core.hmm.core.fit_traces` in Python,
 
