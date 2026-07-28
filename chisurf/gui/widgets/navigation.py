@@ -493,6 +493,14 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         self._settings_key = settings_key
         self._status_logger_name = status_logger
         self._status_log_handler: _StatusLogHandler | None = None
+        #: Walking the whole pipeline: every completion re-arms the advance.
+        self._fast_forward = False
+        #: Set once the walk has started its *last* step. There is nothing to
+        #: advance to afterwards, so that step's completion ends the walk
+        #: instead of continuing it (without this, the end state "no next step"
+        #: is indistinguishable from "about to run the last step", and the walk
+        #: would either skip it or run it forever).
+        self._fast_forward_final = False
         #: Set by a Next click that had to wait for the step's run to finish.
         self._pending_advance = False
         #: True while the current step has background work in flight.
@@ -700,7 +708,16 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             "Process all loaded files in this step, then go to the next step"
         )
         self._btn_next.clicked.connect(self._on_next_clicked)
+        self._btn_ff = QtWidgets.QToolButton()
+        self._btn_ff.setText("⏩")
+        self._btn_ff.setToolTip(
+            "Fast-forward — run every remaining step of the pipeline in order, "
+            "waiting for each to finish. Click again to stop after the current "
+            "step; Back or picking a step by hand also stops it."
+        )
+        self._btn_ff.clicked.connect(self._on_fast_forward_clicked)
         bar.addPermanentWidget(self._btn_prev)
+        bar.addPermanentWidget(self._btn_ff)
         bar.addPermanentWidget(self._btn_next)
 
         self.status_logged.connect(self._on_log_status)
@@ -877,6 +894,82 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         # panel is (re)shown).
         self._restore_active_window()
         self.goto_next_step()
+        self._advance_fast_forward()
+
+    def _on_fast_forward_clicked(self) -> None:
+        """Run the rest of the pipeline, one step at a time.
+
+        Not a loop: each step's run is asynchronous, and starting the next one
+        before the previous has finished is the crash :meth:`_on_next_clicked`
+        exists to avoid. Fast-forward is therefore the same armed advance, kept
+        armed — every completion re-arms it until the pipeline ends or the user
+        stops it. A second click stops after the step in flight, so the button
+        is its own cancel.
+        """
+        if self._fast_forward:
+            self._stop_fast_forward("Fast-forward stopped — finishing this step")
+            return
+        self._fast_forward = True
+        self._fast_forward_final = False
+        self._btn_ff.setText("⏸")
+        self._btn_ff.setToolTip("Stop fast-forward after the running step")
+        if self._has_next_step():
+            self._on_next_clicked()
+        else:
+            # Already on the last step: "the rest of the pipeline" is this one.
+            self._advance_fast_forward()
+
+    def _stop_fast_forward(self, message: str = "") -> None:
+        """Leave fast-forward mode (the running step is left to finish)."""
+        if not self._fast_forward:
+            return
+        self._fast_forward = False
+        self._fast_forward_final = False
+        self._pending_advance = False
+        self._btn_ff.setText("⏩")
+        self._btn_ff.setToolTip(
+            "Fast-forward — run every remaining step of the pipeline in order, "
+            "waiting for each to finish. Click again to stop after the current "
+            "step; Back or picking a step by hand also stops it."
+        )
+        if message:
+            self.report_status(message)
+
+    def _advance_fast_forward(self) -> None:
+        """Continue the walk after a step completed — or run the last step and end.
+
+        The last step needs its own case. ``Next`` *processes then advances*, so
+        walking with it alone arrives at the final panel having processed every
+        step but that one — the one the user is left looking at. Here the order
+        is reversed: process it, then finish, because there is nowhere to go.
+        """
+        if not self._fast_forward:
+            return
+        if self._fast_forward_final:
+            # The last step has now finished: the walk is over.
+            self._stop_fast_forward("Fast-forward finished — the pipeline is done")
+            return
+        if self._has_next_step():
+            self._on_next_clicked()
+            return
+        self._fast_forward_final = True
+        if not self._step_is_busy():
+            self.process_current_step()
+        if self._step_is_busy():
+            # Its completion comes back here, and the branch above ends the walk.
+            self._pending_advance = True
+            return
+        self._stop_fast_forward("Fast-forward finished — the pipeline is done")
+
+    def _has_next_step(self) -> bool:
+        """Whether a further non-separator panel exists after the current one.
+
+        Asked of the panel list, not of the Next button: the button's enabled
+        state is a *rendering* of this, updated on selection change, and reading
+        it back made the fast-forward stop after one step.
+        """
+        cur = self.nav_list.currentRow()
+        return any(not p.get("separator") for p in self.panels[cur + 1:])
 
     # ── busy gating ─────────────────────────────────────────────────────────
     def _step_is_busy(self) -> bool:
@@ -899,6 +992,7 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
             self._pending_advance = False
             self._restore_active_window()
             self.goto_next_step()
+            self._advance_fast_forward()
 
     def _set_steps_blocked(self, blocked: bool) -> None:
         """Enable/disable the step selector and the stepper buttons.
@@ -907,7 +1001,8 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         user can reach it by hand as easily as by clicking Next — so the shell
         simply refuses it for the duration, rather than leaving a way to walk
         into it. Everything else (the panel, its Cancel button, the status bar)
-        stays live.
+        stays live — including ⏩, which must stay clickable while a step runs
+        because it is the only way to stop the walk it started.
         """
         self._steps_blocked = bool(blocked)
         enabled = not blocked
@@ -945,6 +1040,8 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         """
         if self._steps_blocked:
             return False
+        # Going back is a change of mind; it ends a fast-forward.
+        self._stop_fast_forward("Fast-forward stopped")
         cur = self.nav_list.currentRow()
         for i in range(cur - 1, -1, -1):
             if not self.panels[i].get("separator"):

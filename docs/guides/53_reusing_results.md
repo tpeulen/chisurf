@@ -77,6 +77,24 @@ Arriving at a step whose result is already there costs nothing — that is the
 rule above doing its job, and it is what makes starting on arrival reasonable in
 the first place.
 
+## Walking the whole pipeline (⏩)
+
+**⏩**, between **◀ Back** and **Next ▶**, runs every remaining step in order,
+including the one you are on and the one it ends on. It is not a loop that fires
+them off together: each step is started only once the previous has finished, the
+same wait **Next ▶** performs — starting a step while another is in flight is
+what the wait exists to prevent. So a fast-forward takes as long as the steps do,
+and the panel you are watching is always the one working.
+
+The button is its own cancel: while it is walking it reads **⏸**, and a second
+click stops it *after* the step in flight (a running analysis is never killed
+half-way — use the step's own **Stop** for that). **◀ Back**, or picking a step
+in the list yourself, also ends it: both are a change of mind.
+
+Everything above still holds while it walks, which is what makes it cheap on a
+second pass — a step whose four inputs are unchanged reports *Unchanged* and the
+walk moves straight on.
+
 ## Everything downstream is handed the same files
 
 The steps below the separator do not ask you to find the analysis again — the

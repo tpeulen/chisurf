@@ -1073,15 +1073,3 @@ the dwell-time histogram, which therefore plots burst durations for slow states.
 
 **Global τ per state.** The pooled per-(state, colour) fit — the robust headline
 number — is designed but not implemented; only the per-burst columns landed.
-
-## Fast-forward button (in flight, uncommitted)
-
-A ⏩ button beside Back/Next that walks the remaining pipeline: it re-arms the
-existing `_pending_advance` after every completion, so exactly one step runs at
-a time (starting a step while another is in flight is the SIGSEGV the armed
-advance exists to prevent). A second click stops it; Back stops it.
-`test/gui/test_fast_forward.py` covers stop-on-second-click, stop-on-Back, and
-never-two-at-once — those pass. The chaining test
-(`test_fast_forward_runs_every_remaining_step`) fails with only the first step
-processed, and the cause is not yet found: `goto_next_step()` advances correctly
-in isolation. **Not committed** until that is understood.

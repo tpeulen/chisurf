@@ -25,6 +25,31 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **⏩ walks the pipeline, and the step it ends on is the one it used to skip.**
+  A fast-forward button between ◀ Back and Next ▶ runs every remaining step of a
+  `NavigationPanelTool` pipeline in order. Not a loop: each step is started only
+  once the previous has finished, because starting one while another is in
+  flight is the SIGSEGV the armed advance exists to prevent — so it re-arms the
+  existing `_pending_advance` after every completion. A second click stops it
+  after the step in flight (the button reads ⏸ while walking), and ◀ Back or a
+  hand-picked step ends it too. ⏩ deliberately stays enabled while a step runs:
+  it is the only way to stop the walk it started.
+  - The chaining bug that held this back: `Next` *processes then advances*, so
+    walking with it alone arrives at the final panel having processed every step
+    **but that one** — the one the user is left looking at. The last step needs
+    the opposite order, and it also needs to be distinguishable from "about to
+    run the last step", or its own completion signal comes back to the code that
+    starts a step and runs it forever. `_fast_forward_final` marks it: process,
+    then end. Clicking ⏩ *on* the last step now runs it rather than doing
+    nothing.
+  - `test/gui/test_fast_forward.py` (**5 pass**): every remaining step is
+    processed including the last, the last step runs exactly once when it works
+    asynchronously and its completion ends the walk, second-click stops,
+    Back stops, and never two at once. Documented in
+    [guides/53](../docs/guides/53_reusing_results.md) (§ Walking the whole
+    pipeline) and [plugins/burst.md](plugins/burst.md); the known-issues entry
+    is removed.
+
 * **The burst pipeline now names its two grains, and the sub-burst fit is back
   where it belongs.** The step names hid the logic — *first the burst, then
   inside it*. Renamed in `BURST_PANELS`
