@@ -2,6 +2,21 @@
 
 ## 2026-07-28
 
+* **The row that is not a measurement, handed to the file loader.** A
+  Seidel/PARIS `.bur` is `2n+1` interleaved and the all-zero sentinel rows are
+  kept on purpose, so `"0"` is the *first* unique `First File` value in the
+  frame. `load_tttrs_for_dataframe` resolved it like any other name, `tttrlib`
+  returned an empty object instead of raising, and every caller that read "the
+  first file's header" read the header of nothing — photon-by-photon kinetics
+  could not load a single real burst analysis, from the GUI panel or the `csc`
+  CLI alike ([RF-563](/reviews/findings.md#rf-563), closed). Fixed at the shared
+  seam: `is_sentinel_file_reference` recognises those cells and the loader skips
+  them; `burst_gs.core.load_photons` takes the resolution from the first entry
+  with a positive one rather than from `next(iter(...))`. Pinned on the repo's
+  own Becker&Hickl fixture, because the existing loading tests monkeypatch the
+  loader away and could never have seen it. The read side of the interleave rule
+  is now part of [/subsystems/burst-companions.md](/subsystems/burst-companions.md).
+
 * **A fix that could not reach the person it was for, and a reader that opened a
   trajectory as text.** Two independent silent-degradation bugs, both surfaced by
   the same report -- a metaball still tearing after it had been fixed twice.

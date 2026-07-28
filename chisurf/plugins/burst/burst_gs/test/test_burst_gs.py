@@ -188,6 +188,43 @@ def test_loading_converts_ticks_to_seconds(tmp_path, monkeypatch):
     assert info["photons_per_stream"] == [10, 10]
 
 
+def test_the_sentinel_rows_of_a_bur_table_are_not_looked_up():
+    """The ``2n+1`` interleave must not send ``"0"`` to the TTTR loader.
+
+    A sentinel row's ``First File`` is not a measurement, and ``tttrlib`` does
+    not raise on the resulting path — it returns an empty object whose header
+    reports a negative macro-time resolution.
+    """
+    import pandas as pd
+
+    from chisurf.core.fluorescence.burst.photons import load_tttrs_for_dataframe
+
+    frame = pd.DataFrame(
+        {"First File": ["0", "", "nan"], "First Photon": [0, 0, 0], "Last Photon": [0, 0, 0]}
+    )
+    assert load_tttrs_for_dataframe(frame, ".", file_type="auto") == {}
+
+
+def test_a_real_bur_table_loads_despite_its_sentinel_rows():
+    """The guardrail the monkeypatched loading tests above cannot give.
+
+    Reads the repo's own Becker&Hickl fixture, whose first unique ``First File``
+    value is the sentinel ``"0"``: the resolution has to come from a real
+    measurement, not from the empty object that placeholder loads as.
+    """
+    plugins_burst = pathlib.Path(__file__).resolve().parents[2]
+    data_dir = plugins_burst / "burst_selection/tests/data/bh_spc132_sm_dna"
+    bur = data_dir / "burstwise_All 0.1000#15" / "bi4_bur" / "m000.bur"
+    if not bur.exists():
+        pytest.skip("burst fixture not available")
+
+    bursts, info = core.load_photons([bur], data_dir, file_type="auto")
+    assert info["macro_time_resolution"] == pytest.approx(1.35e-08)
+    assert info["n_bursts"] == 201
+    assert info["n_photons"] == 15291
+    assert bursts.times[-1] > 0.0
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # RPC
 # ──────────────────────────────────────────────────────────────────────────────

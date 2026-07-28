@@ -86,6 +86,19 @@ Two real failures, both silent:
   `Tau (green)` in the *existing* `bg4`, keeping one row per burst and one
   unambiguous name per quantity. The separate plugin was retired.
 
+# The read side of rule 4
+
+Rule 4 has a mirror image every *reader* has to honour: the zero rows are kept
+in the frame, so their `First File` cell is not a measurement — it is `"0"`. A
+loader that resolves the column's unique values against the data directory
+therefore asks for a file named `0`, and `tttrlib` does not raise on it: it
+prints a note and hands back an **empty** object whose header reports a negative
+macro-time resolution. Anything reading "the first file's header" then reads the
+header of nothing. `is_sentinel_file_reference` in
+[`photons.py`](../../chisurf/core/fluorescence/burst/photons.py) is the single
+place that recognises those cells, and `load_tttrs_for_dataframe` skips them, so
+the mapping it returns holds real measurements only (RF-563).
+
 # Related
 
 * [/plugins/burst.md](../plugins/burst.md) — the burst workflow and its steps.

@@ -33,6 +33,7 @@ __all__ = [
     "StreamDef",
     "default_streams",
     "extract_burst_photons",
+    "is_sentinel_file_reference",
     "load_bur_dataframe",
     "load_tttrs_for_dataframe",
     "stream_index_arrays",
@@ -301,12 +302,41 @@ def load_bur_dataframe(paths: Sequence[str | pathlib.Path]) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True)
 
 
+def is_sentinel_file_reference(value: object) -> bool:
+    """Return ``True`` for the ``First File`` value of an empty ``.bur`` row.
+
+    A Seidel/PARIS ``.bur`` table is ``2n+1`` interleaved: every other row is an
+    all-zero sentinel that :func:`chisurf.core.fio.fluorescence.burst.read_bur_file`
+    keeps on purpose, because the ``…4`` companion files align to it by position.
+    Those rows carry ``"0"`` (or an empty cell) instead of a measurement name, and
+    ``tttrlib`` does *not* raise on the resulting non-existent path — it returns an
+    empty object — so a caller that reads the header of "the first file" silently
+    reads the header of nothing.
+
+    Parameters
+    ----------
+    value : object
+        A ``First File`` cell.
+
+    Returns
+    -------
+    bool
+    """
+    text = str(value).strip()
+    return text in {"", "0"} or text.lower() == "nan"
+
+
 def load_tttrs_for_dataframe(
     df: pd.DataFrame,
     data_dir: str | pathlib.Path,
     file_type: str = "SPC-130",
 ) -> dict[str, tttrlib.TTTR]:
     """Load the TTTR object referenced by each unique ``First File`` value.
+
+    Sentinel rows (see :func:`is_sentinel_file_reference`) are skipped, so the
+    returned mapping contains real measurements only and the *first* entry is a
+    real measurement — which is what callers deriving the macro-time resolution
+    from a header depend on.
 
     Parameters
     ----------
@@ -325,7 +355,7 @@ def load_tttrs_for_dataframe(
     data_dir = pathlib.Path(data_dir)
     tttrs: dict[str, tttrlib.TTTR] = {}
     for ff in df["First File"].unique():
-        if ff in tttrs:
+        if ff in tttrs or is_sentinel_file_reference(ff):
             continue
         candidate = pathlib.Path(ff)
         path = candidate if candidate.is_absolute() and candidate.exists() else data_dir / ff

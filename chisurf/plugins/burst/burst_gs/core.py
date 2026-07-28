@@ -108,8 +108,14 @@ def load_photons(
         raise ValueError("none of the TTTR files referenced by the burst table could be loaded")
 
     if macro_time_resolution is None:
-        first = next(iter(tttrs.values()))
-        macro_time_resolution = float(getattr(first.header, "macro_time_resolution", 0.0))
+        # The first entry that actually knows: a file that failed to open comes
+        # back as an empty object whose header reports a negative resolution.
+        macro_time_resolution = 0.0
+        for tttr in tttrs.values():
+            resolution = float(getattr(tttr.header, "macro_time_resolution", 0.0))
+            if np.isfinite(resolution) and resolution > 0.0:
+                macro_time_resolution = resolution
+                break
     macro_time_resolution = float(macro_time_resolution)
     if not np.isfinite(macro_time_resolution) or macro_time_resolution <= 0.0:
         raise ValueError(
@@ -148,7 +154,7 @@ def simulate_two_state(
     photons_per_burst: int = 200,
     seed: int = 1,
 ) -> gs.PhotonBursts:
-    """Simulate coloured photons from a two-state interconverting molecule.
+    r"""Simulate coloured photons from a two-state interconverting molecule.
 
     Exact rather than approximate: the state trajectory is sampled by Gillespie
     between photon arrivals, so a fit of this data has a known right answer and
@@ -157,11 +163,11 @@ def simulate_two_state(
     Parameters
     ----------
     k_forward, k_backward : float
-        ``1 -> 2`` and ``2 -> 1`` rates in s\\ :sup:`-1`.
+        ``1 -> 2`` and ``2 -> 1`` rates in s\ :sup:`-1`.
     efficiencies : sequence of float
         Apparent FRET efficiency of each state.
     photon_rate : float
-        Mean photon detection rate within a burst, s\\ :sup:`-1`.
+        Mean photon detection rate within a burst, s\ :sup:`-1`.
     n_bursts : int
         Number of bursts.
     photons_per_burst : int

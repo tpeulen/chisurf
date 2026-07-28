@@ -6801,11 +6801,28 @@ panels are given files without the settings that say how to read them.
 Findings RF-563..RF-568.
 
 ### RF-563
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (photon-by-photon kinetics cannot load *any* real `.bur` burst analysis — GUI panel, workflow panel and CLI alike — and always fails with a message about the macro-time resolution)
 - **Location:** `chisurf/plugins/burst/burst_gs/core.py:106-115` (`load_photons`: `tttrs = load_tttrs_for_dataframe(table, data_dir, …)` then `first = next(iter(tttrs.values()))` / `macro_time_resolution = float(getattr(first.header, "macro_time_resolution", 0.0))`)
 - **Finding:** a Seidel/PARIS `.bur` is a `2n+1` interleaved table — every other row is an all-zero sentinel whose `First File` cell is the string `"0"` — and `read_bur_file` keeps those rows on purpose, because the `…4` companions align to them by position (documented at `chisurf/core/fio/fluorescence/burst.py:696-712`). So `"0"` is the **first** unique `First File` value, `load_tttrs_for_dataframe` dutifully builds an entry for it, `tttrlib` does not raise on the missing path (it prints `File …/0 not supported.` and returns an empty object), and `next(iter(tttrs.values()))` reads *that* object's header. Verified on the repo's own fixture (`chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/burstwise_All 0.1000#15`, 10 `.bur`, 5970 rows): `unique First File = ['0', 'm000.spc', …]`; `'0' → macro_time_resolution -1.0, 0 photons` against `'m000.spc' → 1.35e-08, 174 438 photons`; every load ends in `ValueError: the macro-time resolution is unknown`. The shipped CLI fails identically *with the correct* `--data-dir`: `burst-gs …/bi4_bur/m000.bur --data-dir …/bh_spc132_sm_dna` → `Could not load the photons: the macro-time resolution is unknown`. Dropping the sentinel rows (`Last Photon > First Photon`) before the TTTR lookup makes the very same call succeed: **2972 bursts, 225 289 photons, resolution 1.35e-08**. Filter the sentinel rows in `load_photons` (or take the resolution from the first entry with a positive one). The suite cannot see this: `chisurf/plugins/burst/burst_gs/test/test_burst_gs.py:162,183` monkeypatch `load_tttrs_for_dataframe` with a one-entry fake, so the guardrail has to run on a real `.bur`.
-- **Fix note:**
+- **Fix note:** Fixed at the shared seam rather than in the one plugin that
+  tripped over it: `is_sentinel_file_reference` (new, in
+  `chisurf/core/fluorescence/burst/photons.py`) recognises the sentinel row's
+  `First File` cell (`"0"`, empty, `nan`) and `load_tttrs_for_dataframe` skips
+  those values, so the mapping it returns holds real measurements only and its
+  *first* entry is a real one — which is what every caller deriving a header
+  quantity from it assumed. `burst_gs.core.load_photons` additionally now takes
+  the resolution from the first entry with a **positive** one instead of from
+  `next(iter(...))`, so a genuinely missing file cannot resurrect the same
+  failure. Pinned by two tests in
+  `chisurf/plugins/burst/burst_gs/test/test_burst_gs.py`: a fast one asserting
+  the sentinel values are never looked up, and
+  `test_a_real_bur_table_loads_despite_its_sentinel_rows`, which runs on the
+  repo's Becker&Hickl fixture (`m000.bur`) and asserts the finding's own
+  numbers — 201 bursts, 15 291 photons, `1.35e-08` s per tick. Verified against
+  the full 10-file folder as well: 2972 bursts, 225 289 photons. The read side
+  of the interleave rule is now written down in
+  [/subsystems/burst-companions.md](../subsystems/burst-companions.md).
 
 ### RF-564
 - **Status:** OPEN
