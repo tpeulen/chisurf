@@ -2119,6 +2119,29 @@
   both dynamic routes and that the old positional slice fails it; 309 passed in
   `test/models/` and 21 in `test/gui/test_pda3c_model_editor.py`.
 
+* **The FCS calculator's results looked exactly like its inputs (RF-736,
+  RF-738).** Three of the *Diffusion/Volume Calculator*'s six identical spin
+  boxes hold values the active constraint derives, and nothing said so -- the
+  line meant to grey them (`pal.setColor(sb.backgroundRole(), pal.base().color())`)
+  painted the `Window` role of a widget that draws its editor with `Base`, so a
+  computed field read as an input that silently refuses every keystroke. It is
+  now `_mark_computed`, which gives a derived box the greyed `Base` Qt paints a
+  *disabled* one with -- the vocabulary the η box beside it already used -- takes
+  its step arrows away, and hands both back when the field becomes an input, so
+  the marking follows the radio button instead of accumulating. The colours come
+  from `QApplication.palette(sb)`, not from the box's own palette, which is the
+  surface being overwritten. In the same panel, the *Aspect* box stayed editable
+  for the default *Sphere*, which ignores it: `Sphere` is index 0, so
+  `currentIndexChanged` never fired for it and `_on_shape_changed` first ran only
+  when the user picked something else -- `_setup_ui` now runs it once at
+  construction, beside the two initialisers already there. Both states
+  screenshotted offscreen and inspected (Fix D, Fix Veff, and the expanded
+  *Molecular shape* section). The generated field table already documented the
+  three as read-only, so docs need no change -- the panel now shows what they
+  say. Tests: `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py` (+2,
+  pinning both directions of the marking and both shape transitions); 97 passed
+  across the calculator, toolbox, diffusion and reference-dye suites.
+
 ## 2026-07-27
 
 * **chimol: the hierarchy panel can switch parts of a model off.** Each node

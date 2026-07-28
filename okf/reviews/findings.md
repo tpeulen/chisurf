@@ -8611,11 +8611,28 @@ around it.
 - **Fix note:**
 
 ### RF-736
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the calculator's three computed fields are visually identical to its inputs; the code that should distinguish them assigns a colour role to itself)
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:303-317` (`_update_field_enable`: `pal = sb.palette()` → `if sb.isReadOnly(): pal.setColor(sb.backgroundRole(), pal.base().color())` → `sb.setPalette(pal)`, under the comment *"Make read-only fields visually distinct"*)
 - **Finding:** a `QDoubleSpinBox`'s `backgroundRole()` **is** `QPalette::Base`, so the line sets Base to Base — a no-op — and the widget stays exactly as it was. Verified on the live widget under the default *Fix D*: `D` (an input) and `rh` / `Veff` (outputs) all report `palette().base() == #ffffff`, the same `buttonSymbols`, empty style sheets, and `isEnabled() == True`; the read-only ones correctly refuse `stepUp()` and typed keys (`rh` stayed 0.535862, `Veff` stayed 1.043571) but give no indication why, so the field reads as broken rather than computed. The widget already has the right vocabulary one row below: with *Use water η(T)* ticked, the η box is `setEnabled(False)` and renders properly greyed in the screenshot. Grey the read-only fields the same way (or hide their spin arrows with `setButtonSymbols(NoButtons)`), and re-apply on every constraint change — this is the central confusion of a panel with six identical spin boxes of which three are results.
-- **Fix note:**
+- **Fix note:** the marking is now a function of its own, `_mark_computed`, and
+  it says both halves out loud: a computed field gets the greyed `QPalette::Base`
+  Qt paints a *disabled* box with — the vocabulary the η box next to it already
+  uses — and loses its step arrows (`QAbstractSpinBox::NoButtons`), while an
+  input gets both back. Restoring the input look is what the old branch could
+  not do at all: it only ever painted, so nothing could have un-marked a field
+  when the constraint moved. (Measured, the old line was worse than a Base→Base
+  no-op: `backgroundRole()` reports `Window` for these boxes, so it painted the
+  *window* role white — invisible on a spin box, which draws its editor with
+  `Base`.) The two colours are read from `QApplication.palette(sb)`, not from the
+  box's own palette, which is the surface being overwritten — reading that back
+  would let the "editable" colour drift to whatever the previous call painted.
+  Screenshotted offscreen under *Fix D* and *Fix Veff*: `rₕ` and `Veff` are grey
+  and arrow-less against a white, arrowed `D`, and the marking follows the radio
+  button. Docs need no change — the generated field table already documents
+  these three as "read-only unless '<constraint>'"; the panel now shows it.
+  Tests: `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py::test_a_computed_field_does_not_look_like_an_input`
+  (pins both directions, including the switch back).
 
 ### RF-737
 - **Status:** OPEN
@@ -8625,11 +8642,19 @@ around it.
 - **Fix note:**
 
 ### RF-738
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (the *Aspect* box is editable and ignored in the shape estimator's default state, because the handler that disables it never runs at construction)
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:407-416` (`_on_shape_changed`: `self.shape_aspect.setEnabled(shape != "Sphere")`), wired at `:282` to `currentIndexChanged` only, against `_setup_ui`'s init block at `:242-244`, which calls `_update_field_enable()` and `_on_use_water_eta(...)` but not `_on_shape_changed(...)`
 - **Finding:** `_ShapeSection` builds the combo with *Sphere* at index 0 (`:108`), so the first `currentIndexChanged` cannot fire for the default selection and the handler never runs until the user picks something else. Verified on a freshly constructed widget: with *Sphere* selected, `shape_aspect.isEnabled()` is `True`, so the user can type an aspect ratio that `_apply_shape_to_D` (`:431-434`) never reads — a sphere's D depends only on the size. Selecting *Ellipsoid* and returning to *Sphere* fixes it for the rest of the session, which makes the inconsistency harder to notice, not easier. Call `_on_shape_changed(self.shape_combo.currentIndex())` once at the end of `_setup_ui`, beside the two initialisers that are already there.
-- **Fix note:**
+- **Fix note:** done as suggested — `_setup_ui` now runs the handler once for the
+  initial shape, beside `_update_field_enable()` and `_on_use_water_eta(...)`,
+  with a comment naming the reason (index 0 cannot emit `currentIndexChanged`).
+  *Aspect* is greyed for the default sphere, enables for *Ellipsoid* and greys
+  again on the way back — screenshotted offscreen with the *Molecular shape*
+  section expanded. Tests:
+  `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py::test_the_aspect_box_is_disabled_for_the_default_sphere`
+  (construction state plus both transitions, so the fix cannot be mistaken for
+  the signal that was already there).
 
 ## Review 2026-07-28 — chimol display defaults: a migration that stamps only when it moves something
 
