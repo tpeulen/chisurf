@@ -8210,3 +8210,69 @@ Verified against the real burst folder in the tree,
 - **Location:** `chisurf/plugins/burst/burst_h2mm/core/export.py:139` (`cols["Mean Macro Time (s)"].append(float(meta.macro_time[s]) * base_time_s)`, where `s = int(offsets[b])` is the burst's first photon) against `:234-235` in `build_dwell_table` (`float(macro[s0:s1].mean()) * base_time_s`)
 - **Finding:** the per-burst table's time axis is the burst **start** time, not the mean macro time its column name promises — `offsets[b]` is the first photon of the burst and the arrays are sorted, so it is the minimum. The name is not incidental: `Mean Macro Time (s)` is the column ndX auto-selects as the time axis (`export.py:8-9`) and the name it gives the `.bur`'s own `Mean Macro Time (ms)`, which *is* a mean — so a plot mixing the two compares a mean against a start, offset by roughly half a burst duration. `build_dwell_table` computes the mean over the same arrays, so the two tables written by the same call disagree about what the column means. Either take the mean here as well, or rename the column — but then it stops being the axis ndX picks up, so the mean is the fix.
 - **Fix note:**
+
+## Review 2026-07-28 — state-split MLE: the key that joins two analyses is never written down
+
+Slice: `c0a9489a4` (*a sub-population is a column, not a row — state-split MLE*),
+reviewed the day it landed. The design is right — a burst stays the unit of
+observation and a state becomes a suffixed column on its row, which is the only
+shape a positionally-merged companion can carry — and the worker that implements
+it (`_mp_worker.process_one_file_worker`) is correct: `st_slice = state_full[sl]`
+is indexed exactly as `mt_bins`/`rc_slice` are, the fit-window zeroing is
+idempotent across the extra passes, a state below its floor keeps its row with
+the photon counts, and `extract_burst_photons`'s new `photon_index`
+(`first + np.nonzero(keep)[0][order]`) really is the photon's position in its
+measurement's raw arrays.
+
+What is not right is the **join**: the path from H2MM's per-photon `State` back
+to the MLE wizard's photons. That path has three hops — `Source` index → source
+order → measurement stem — and two of them are broken, both silently, in the
+direction that produces plausible numbers rather than an error.
+
+Verified by running `write_result_tables` on the tree's own H2MM fixture
+(`tests/test_ndx_compat._dataset_via_tttrlib`, 12 bursts) and reading the JSON
+back: in-memory `output_paths` holds
+`['bursts_csv', 'dwells_csv', 'photons_csv', 'photons_hdf5', 'result_json',
+'state_decays_csv']`, on-disk `output_paths` is `{}`.
+
+### RF-700
+- **Status:** OPEN
+- **Severity:** S2 (the measurement order the state join depends on is recorded into a dict that has already been serialised, so it never reaches disk and the reader always falls back to a guess)
+- **Location:** `chisurf/plugins/burst/burst_h2mm/backend/services.py:209-212` (`json.dump(result.to_dict(), fh)` at `:211`, then `result.output_paths["result_json"] = …` at `:212`) against `:230-232` (`result.output_paths.setdefault("sources", ",".join(source_names))`), read by `chisurf/core/fio/fluorescence/burst_states.py:175-183` (`_source_order`: `payload.get("output_paths").get("sources")`)
+- **Finding:** `h2mm_result.json` is written **before** anything is put in `output_paths`, so every key set afterwards — `sources`, and `result_json` itself, and every table path — exists only in the returned object. Verified on the fixture above: the file's `output_paths` is literally `{}` while the in-memory dict has six entries, and nothing re-dumps the JSON (`grep json.dump` in the plugin finds this one call). `_source_order` therefore *always* takes its `except (OSError, ValueError)` / missing-key fallback and returns the caller's own stem order, which is not the order `_burst_sources` numbered the sources in. The `Source` column that `c0a9489a4` added to the photon table is thus written correctly and then decoded against an order that was never persisted. Fix by moving the JSON dump to the end of `write_result_tables` (after the companions), which also makes `output_paths` in the file actually name the files. Note that `sources` is a comma-joined name list, not a path, in a dict the CLI prints as `label: path` (`cli/main.py:107`) and a test iterates as paths (`tests/test_ndx_compat.py:136`) — it belongs in its own result field, not in `output_paths`.
+- **Fix note:**
+
+### RF-701
+- **Status:** OPEN
+- **Severity:** S2 (the per-photon state arrays are built for every TTTR the wizard has ever registered — IRF and background files included — so the fallback source order is not the measurement order and states are attached to the wrong file, or to none)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:257-262` (`for stem, tttr in (self.tttrs or {}).items(): sizes[str(stem)] = …`) feeding `chisurf/core/fio/fluorescence/burst_states.py:144-165` (`order = _source_order(analysis_dir, list(sizes))`, then `for i, stem in enumerate(order)`), with `self.tttrs` = `LazyTTTRDict(self._tttr_paths, …)` (`wizard.py:2454`) populated from **three** places: the burst measurements at `:4770`, and the IRF *and* background histogram files at `:1770` (`_update_hist_files`: `self._tttr_paths[key] = fp`)
+- **Finding:** `sizes` is keyed by "every stem the wizard has registered", not "the measurements of this burst table". With an IRF and a background file loaded — the normal state of the panel by the time a batch runs — `list(sizes)` contains their stems interleaved with the measurements', in registration order, and that list is what `state_arrays` uses to map `Source == i` to a stem (RF-700 guarantees the recorded order is never available). So `Source 0` can be written into the IRF file's array, and the measurement's array stays all-`UNASSIGNED`; the out-of-range guard `keep = (idx >= 0) & (idx < arr.size)` then quietly drops whatever does not fit a shorter file. The failure is invisible from the GUI: `_load_state_arrays` reports `"{n_states} states, {labelled:,} photons labelled"` summed over **all** arrays, so the status line looks healthy while `state_arrays_by_stem.get(key)` (`:4310`) returns `None` or an all-`-1` array for the real measurement — every state pass then falls below its floor and every `Tau S0/S1` column is NaN with no message. Independently, `.items()` on `LazyTTTRDict` (`utils.py:74-75` — `__iter__` over `_paths`, `MutableMapping.items` calling `__getitem__`) defeats the laziness the class exists for: it loads every registered TTTR, including the IRF and background ones, just to read `.size`. Build `sizes` from `self.df_bursts["First File"].unique()` — the measurements this batch is actually fitting, in burst-table order — not from the registration dict.
+- **Fix note:**
+
+### RF-702
+- **Status:** OPEN
+- **Severity:** S2 (two of the five new per-state columns carry no colour, so the green and red companions emit the same names and the positional merge drops one detector's per-state photon counts)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:192` (`cols += [f"Ng-p{sfx}", f"Ng-s{sfx}", …]` in `_state_result_columns`) and `chisurf/plugins/burst/burst_mle_analysis/_mp_worker.py:112-113` (`rec[f'Ng-p{sfx}'] = cp_sum`, `rec[f'Ng-s{sfx}'] = cs_sum`), against `chisurf/core/fio/fluorescence/burst_companion.py:36-38` (contract rule 6) and `modules/ndxplorer/ndxplorer/io/reader.py:581` (`combined.loc[:, ~combined.columns.duplicated()]`)
+- **Finding:** every other new state column is namespaced by colour — `Tau S0 (green)`, `2I* S0 (green)`, `Number of Photons (fit window) S0 (green)` — but `Ng-p S0` and `Ng-s S0` are not, so `bg4/m000.bg4`, `br4/m000.br4` and `by4/m000.by4` all write those two names and ndX keeps only the first. This is exactly the failure the commit message identifies as what killed the old `burst_state_mle` design ("each still emitted `Tau (green)` … both mergers drop a duplicate"), reproduced in the new columns; the all-photon `Ng-p-all` collides the same way but is historical format and cannot be renamed, while these names are new and free. Per-state photon counts per detector are also the numbers a user most wants from a split (how many green photons the burst spent in state 0), and they are the only signal distinguishing "this state was too thin to fit" from "this fit failed". `write_companion` would have refused a duplicate outright — see RF-703 for why it is not on this path. Rename to `Ng-p S0 ({color})` / `Ng-s S0 ({color})` in both places, and update `tests/test_state_split.py:114`, which asserts the current names.
+- **Fix note:**
+
+### RF-703
+- **Status:** OPEN
+- **Severity:** S3 (the `.b?4` writer is the one companion writer left hand-rolled after the shared writer landed, so none of the contract guards apply to the file whose column list just became dynamic)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:431-441` (`arr = df_g.reindex(columns=cols)…`, `out[1::2] = arr`, `f.write('\t'.join(cols) + '\t\n')`, `np.savetxt`) against `chisurf/core/fio/fluorescence/burst_companion.py:97-158` (`write_companion`), which the same commit introduced and wired into H2MM's `write_burst_companions`
+- **Finding:** the burst-wise MLE export re-implements interleaving, the trailing-tab header and the `%.6f` write inline instead of calling `write_companion`, so it gets none of its three guards at exactly the moment they became load-bearing: the column list is no longer a fixed literal but `_state_result_columns(...)`, whose width depends on `_exported_state_count`, and whose duplicate-name check (`CompanionError`, and the one thing that would have caught RF-702) is skipped. Two concrete divergences from every companion written through the shared path: (a) no duplicate-column rejection — a non-`fit23` model whose schema names a parameter `Tau` would emit `Tau S0 (green)` twice and `reindex` would happily duplicate the column; (b) `write_companion` deliberately `nan_to_num`s ("NaN/inf survive the write but poison a positional merge downstream differently per reader"), while this path writes literal `nan` cells — rare before, and now the *normal* content of every state column of every burst whose state fell below `state_min_photons`. Route the write through `write_companion(out_dir.parent, f"b{letter}4", stem, cols, arr)`.
+- **Fix note:**
+
+### RF-704
+- **Status:** OPEN
+- **Severity:** S3 (the new feature's tests cover the arithmetic and none of the join, which is where both of its defects are)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/tests/test_state_split.py` (all four tests hand-build the state array and drive `process_one_file_worker` directly, at `:69-72`), against the untested `chisurf/core/fio/fluorescence/burst_states.py` (`state_arrays`, `_source_order`, `read_photon_table`) and `wizard._load_state_arrays`
+- **Finding:** `burst_states.py` is new, is the only thing that turns an H2MM run into the arrays the worker consumes, and has no test at all — `grep -rn burst_states test/ chisurf/**/tests/` finds only the wizard's import. The four new tests all start *after* the join, from a synthetic `st` array passed straight into shared memory, so they pass whether or not the `Photon`/`Source`/source-order path works; both RF-700 and RF-701 live in that untested gap. The test that would have caught them is small and does not need the GUI: write an H2MM run over **two** measurements with different photon counts, call `state_arrays` on the folder, and assert each stem's array carries that measurement's states and only its own (e.g. that the labelled count per stem equals the photon table's per-`Source` count) — plus a case where the caller's stem dict is a subset or in a different order, which is the realistic one.
+- **Fix note:**
+
+### RF-705
+- **Status:** OPEN
+- **Severity:** S3 (a debug `print` on a GUI path, under a comment describing a clearing step that does not happen — so registrations from a previously loaded burst folder stay live)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:4763-4770` (`# clear any old registrations` / `print("self._tttr_paths:", self._tttr_paths)` / `for fn in raw_files: self._tttr_paths[stem] = base_dir / filename`)
+- **Finding:** the comment announces that old registrations are cleared and the next statement is a `print` of the dict — a debug line left in, dumping every registered path to stdout each time a burst folder is read. Nothing clears `_tttr_paths`, so loading a second burst folder leaves the first folder's stems registered (and the IRF/background stems from `_update_hist_files` beside them). That is inert for the batch loop, which looks up by the current `First File` stem, but it is precisely what makes `sizes` in RF-701 wrong, and it means `self.tttrs` can hand back a TTTR from a folder the user has moved on from. Drop the `print` and either clear the measurement registrations before re-registering, or delete the comment because the overwrite-by-stem is intended.
+- **Fix note:**
