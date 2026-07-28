@@ -348,6 +348,11 @@ class MolView(QtWidgets.QWidget):
     # Emitted when atoms are selected via picking in the 3D view. The
     # payload is a list of integer atom indices.
     atomSelectionChanged = QtCore.Signal(object)
+    # A short line for the status bar, for things the view does that have no
+    # other trace. A mouse gesture that changes a mode silently -- clipping,
+    # say -- is undiagnosable when it is triggered by accident, and clipping
+    # was: a slab cut into a closed surface reads as broken transparency.
+    statusMessage = QtCore.Signal(str)
     """Minimal 3D protein viewer widget (Chimol).
 
     This widget embeds a :class:`QtWidgets.QOpenGLWidget`-based renderer and
@@ -3041,6 +3046,19 @@ class MolView(QtWidgets.QWidget):
         r = self._renderer
         if r is not None and hasattr(r, "move"):
             r.move(axis, dist)
+
+    def report_status(self, text: str) -> None:
+        """Show *text* in the host's status bar, if it is listening."""
+        try:
+            self.statusMessage.emit(str(text))
+        except Exception:
+            pass
+
+    def reset_clipping(self) -> None:
+        """Put the clip planes back where framing left them."""
+        r = self._renderer
+        if r is not None and hasattr(r, "reset_clipping"):
+            r.reset_clipping()
 
     def clip(self, mode: str, dist: float) -> None:
         """Move the clipping planes (PyMOL ``clip``)."""

@@ -2,6 +2,37 @@
 
 ## 2026-07-28
 
+* **A clipped surface does not look clipped -- it looks broken, and the gesture
+  that clips it said nothing.** Reported three times as "transparency is broken
+  when a cartoon is inside a metaball", and it was not the transparency at all.
+  Cutting the near plane into a closed surface opens it: what you see then is
+  the *inside*, so the cartoon within renders unblended at full brightness with
+  hard edges where the surface was sliced. Reproduced exactly with
+  `clip near, -25`, and proven not to be geometry -- with the metaball opaque
+  the ribbon is hidden completely, so it is inside the surface and the
+  transparent path is behaving.
+  - The real defect is that **shift+wheel** (and ctrl+wheel, which on a trackpad
+    is easy to hit by accident) changed a sticky mode with no trace anywhere: no
+    status line, no visible control, nothing in the log. The picture changed and
+    nothing said why, which is what made it undiagnosable rather than merely
+    wrong. It now reports the near plane and names the way back, and says
+    `Clipping: off` once it is.
+  - `clip reset` (also `off`/`none`, no distance needed -- it is what someone
+    types when they do not know what they pressed) restores the planes, and
+    **framing restores them too**: `fit_to_radius` now records what it chose as
+    the definition of "not clipped", so `zoom` and `orient` undo a stray slice
+    on their own. That matters more than the command, because someone whose view
+    has gone strange reaches for zoom long before suspecting a clipping plane.
+  - `MolView.statusMessage` is a general channel for this: anything the view
+    does that leaves no other trace should say so.
+
+* **The A/S/H/L/C boxes on a loaded molecule are one strip now, not five
+  loose buttons.** Zero spacing meant zeroing two things -- the row layout's
+  gap *and* the per-button stylesheet margin, which kept them 2px apart
+  however tight the layout was. They are built once as a strip widget and
+  used by the group row, the member row and the `all` header alike, so the
+  columns cannot drift apart between them.
+
 * **RF-722 — the server-mode list proxies swallowed every insertion.**
   `ProxyList` (the object that replaces `cs.fits` / `cs.imported_datasets` in
   server mode) had no `append` at all, `_add_item` was `pass` in both

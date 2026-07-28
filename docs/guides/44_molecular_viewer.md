@@ -530,6 +530,27 @@ show metaballs
 set metaball.alpha, 0.45
 ```
 
+### Clipping, and how to get out of it
+
+**Shift+wheel** (or ctrl+wheel) moves the near clipping plane, slicing away
+whatever is in front of it. It is the fastest way to look inside a structure —
+and the fastest way to make the viewer look broken, because a *cut* closed
+surface does not look cut. Everything inside it becomes fully visible and
+unblended, so a translucent surface with a cartoon inside suddenly shows a stark
+white ribbon with hard edges, which reads as transparency having failed.
+
+If a view has gone strange, this is the first thing to suspect:
+
+```text
+clip reset                   # planes back where framing put them
+zoom                         # re-frames, and therefore also unclips
+clip near, -5                # or move it yourself
+clip slab, 20
+```
+
+The status bar reports the near plane whenever the wheel moves it, and says
+`Clipping: off` once it is back — so the gesture is never silent.
+
 ### When a new version changes a default
 
 Your settings live in `~/.chisurf/chimol_display.json`, and they are yours —

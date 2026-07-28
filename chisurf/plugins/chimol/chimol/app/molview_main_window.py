@@ -214,6 +214,12 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
 
         # ── Status bar ────────────────────────────────────────────────
         self.status_bar = self.statusBar()
+        try:
+            self.viewer.statusMessage.connect(
+                lambda text: self.status_bar.showMessage(text, 6000)
+            )
+        except Exception:
+            pass
         self._status_label = QtWidgets.QLabel("Ready")
         self.status_bar.addPermanentWidget(self._status_label)
         self._status_timer = QtCore.QTimer(self)

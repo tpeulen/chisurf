@@ -873,8 +873,15 @@ class RenderingMixin(BaseCmd):
             self._emit_error(f"move failed: {exc}")
 
     @command("clip")
-    def clip(self, mode: str, dist: float) -> None:
-        """Move the clipping planes (PyMOL ``clip mode, dist``)."""
+    def clip(self, mode: str, dist: float = 0.0) -> None:
+        """Move the clipping planes (PyMOL ``clip mode, dist``).
+
+        ``clip reset`` (also ``off``/``none``) puts them back where framing left
+        them, and takes no distance -- which matters because it is what someone
+        types when they do not know what they pressed. A slab cut into a closed
+        surface does not look cut: it looks as though transparency stopped
+        working, since everything inside is suddenly unblended.
+        """
         _, viewer = self._require_window_and_viewer()
         if viewer is None or not hasattr(viewer, "clip"):
             return

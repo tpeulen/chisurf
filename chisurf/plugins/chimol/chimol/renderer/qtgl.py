@@ -233,6 +233,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._rot = self._make_rot(20.0, 45.0)
         self._target_radius = 10.0
         self._near_clip = 0.1
+        #: Where framing last put the planes -- what `clip reset` returns to.
+        self._framed_near_clip = 0.1
+        self._framed_far_clip = 1000.0
         self._far_clip = 1000.0
         self._min_near_clip = 0.01
         self._max_near_clip = 10.0
@@ -580,6 +583,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._max_near_clip = max(float(max_near_clip), self._min_near_clip * 1.01)
         self._clip_wheel_scale = clip_wheel_scale if 0.0 < clip_wheel_scale < 1.0 else 0.85
         self._near_clip = self._clamp_near_clip(float(near_clip))
+        self._framed_near_clip = self._near_clip
+        self._framed_far_clip = self._far_clip
         far_val = max(float(far_clip), self._near_clip * 10.0)
         self._far_clip = far_val
         self.update()
@@ -624,6 +629,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         max_extent = self._distance + self._target_radius
         far_min = self._near_clip * 10.0
         self._far_clip = max(float(max_extent) * 1.2, far_min)
+
+        # Framing is what defines "not clipped": `clip reset` comes back here,
+        # and `zoom` therefore undoes a stray shift-scroll on its own.
+        self._framed_near_clip = self._near_clip
+        self._framed_far_clip = self._far_clip
 
         self.update()
 
@@ -734,9 +744,54 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._update_center_opt()
         self.update()
 
+    def _announce_clipping(self) -> None:
+        """Say that the slab moved, and how to put it back.
+
+        Shift+wheel is one stray gesture away from slicing the model open, and a
+        cut closed surface does not look cut -- it looks like the transparency
+        stopped working, because everything inside it is suddenly unblended and
+        at full brightness. Reported as exactly that, more than once. A silent,
+        sticky mode change with no way back is the actual defect; saying what
+        happened costs one line in the status bar.
+        """
+        controller = getattr(self, "_controller", None)
+        report = getattr(controller, "report_status", None)
+        if not callable(report):
+            return
+        try:
+            if self.clipping_is_default():
+                report("Clipping: off")
+            else:
+                report(
+                    f"Clipping: near plane at {self._near_clip:.3g} "
+                    "\N{EM DASH} shift+wheel to adjust, 'clip reset' to restore"
+                )
+        except Exception:
+            pass
+
+    def clipping_is_default(self) -> bool:
+        """Whether the near plane still sits where framing put it."""
+        return abs(self._near_clip - self._framed_near_clip) < 1e-9
+
+    def reset_clipping(self) -> None:
+        """Put the clip planes back where framing left them.
+
+        A slab cut into a closed surface opens it, and what you then see is the
+        *inside*: everything within renders unblended at full brightness, which
+        reads as broken transparency rather than as a cut. Since the gesture is
+        one stray shift-scroll away, there has to be a way back that does not
+        require knowing what happened.
+        """
+        self._near_clip = self._clamp_near_clip(self._framed_near_clip)
+        self._far_clip = self._framed_far_clip
+        self.update()
+
     def adjust_clip(self, mode: str, dist: float) -> None:
         """Move the near/far clip planes (PyMOL ``clip``)."""
         m = str(mode).lower()
+        if m in ("reset", "off", "none"):
+            self.reset_clipping()
+            return
         d = float(dist)
         if m in ("near", "front"):
             self._near_clip = self._clamp_near_clip(self._near_clip + d)
@@ -2001,6 +2056,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                     else:
                         new_near = self._near_clip / self._clip_wheel_scale
                     self._near_clip = self._clamp_near_clip(new_near)
+                self._announce_clipping()
                 self.update()
             event.accept()
             return

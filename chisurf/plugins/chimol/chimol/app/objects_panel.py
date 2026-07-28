@@ -47,7 +47,7 @@ QToolButton {{
     font-family: {_MONO};
     font-weight: bold;
     padding: 0px;
-    margin: 0px 1px;
+    margin: 0px;
     min-width: 16px;
     max-width: 18px;
     min-height: 16px;
@@ -67,7 +67,7 @@ QToolButton {{
     font-family: {_MONO};
     font-weight: bold;
     padding: 0px;
-    margin: 0px 1px;
+    margin: 0px;
     min-width: 16px;
     max-width: 18px;
     min-height: 16px;
@@ -115,6 +115,22 @@ class _MenuHost(QtCore.QObject):
             )
             button.setMenu(self._build_menu(button, f"{title}:", entries))
             self.buttons[key] = button
+
+    def strip(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        """Return the five buttons as one gap-free strip.
+
+        A single widget rather than five loose ones, for two reasons: the
+        buttons read as one control -- they are five menus over the same
+        selection -- and every row then gets the identical strip, so the columns
+        cannot drift apart between a group row, a member row and the header.
+        """
+        holder = QtWidgets.QWidget(parent)
+        layout = QtWidgets.QHBoxLayout(holder)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        for key, _, _ in OBJECT_MENUS:
+            layout.addWidget(self.buttons[key])
+        return holder
 
     def _build_menu(
         self,
@@ -218,8 +234,7 @@ class GroupRow(QtWidgets.QWidget):
         layout.addStretch(1)
 
         self._menus = _MenuHost(self, lambda: self._group, run_command)
-        for key, _, _ in OBJECT_MENUS:
-            layout.addWidget(self._menus.buttons[key])
+        layout.addWidget(self._menus.strip(self))
 
     @property
     def group(self) -> str:
@@ -283,8 +298,7 @@ class ObjectRow(QtWidgets.QWidget):
         layout.addStretch(1)
 
         self._menus = _MenuHost(self, lambda: self._name, run_command)
-        for key, _, _ in OBJECT_MENUS:
-            layout.addWidget(self._menus.buttons[key])
+        layout.addWidget(self._menus.strip(self))
 
     @property
     def object_id(self) -> str:
@@ -368,8 +382,7 @@ class ObjectsDock(QtCore.QObject):
         header_layout.addStretch(1)
         self._header_layout = header_layout
         self._all_menus = _MenuHost(header, lambda: "all", self._run_entry)
-        for key, _, _ in OBJECT_MENUS:
-            header_layout.addWidget(self._all_menus.buttons[key])
+        header_layout.addWidget(self._all_menus.strip(header))
         objects_layout.addWidget(header)
 
         self.object_list = QtWidgets.QListWidget(objects_group)
