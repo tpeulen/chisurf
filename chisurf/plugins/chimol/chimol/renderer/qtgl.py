@@ -1336,7 +1336,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
             // Fresnel for jelly/bubble look: edges are more opaque and reflective
             float fresnel = pow(clamp(1.0 - dot(n, viewDir), 0.0, 1.0), 2.5);
-            
+
+            // How much of a *surface* this fragment is. A translucent sheet is
+            // not a mirror: reflection, rim and specular are surface effects,
+            // and a metaball is a stack of many sheets, so adding them at full
+            // strength on each one accumulates white until a coloured jelly
+            // reads as milk. Opaque fragments (alpha 1) are unaffected.
+            float sheet = mix(0.3, 1.0, clamp(v_color.a, 0.0, 1.0));
+
             // 1. Shading (Diffuse + Ambient)
             // Use a slightly lower ambient to make rim and reflections pop
             float ambient = ambientStrength * 0.7 * exposure;
@@ -1345,7 +1352,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             
             // 2. Rim lighting (edge glow)
             float rim = pow(clamp(1.0 - dot(n, viewDir), 0.0, 1.0), rimPower);
-            shaded += baseColor * rim * rimStrength * exposure;
+            shaded += baseColor * rim * rimStrength * exposure * sheet;
             
             // 3. Procedural Environment Reflection (Fake MatCap)
             vec3 R = reflect(-viewDir, n);
@@ -1359,11 +1366,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             envReflection += vec3(1.5) * sun;
             
             // Blend reflection based on Fresnel
-            float reflectMul = clamp(specStrength * (0.1 + 0.6 * fresnel), 0.0, 1.0) * exposure;
+            float reflectMul = clamp(specStrength * (0.1 + 0.6 * fresnel), 0.0, 1.0) * exposure * sheet;
             vec3 finalColor = mix(shaded, envReflection, reflectMul);
             
             // Point-source specular highlight
-            finalColor += spec * exposure * vec3(1.0);
+            finalColor += spec * exposure * sheet * vec3(1.0);
             
             // 4. Fog
             float fogFactor = clamp(1.0 - exp(-fogDensity * length(v_viewPos)), 0.0, 1.0);
@@ -1372,7 +1379,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             // 5. Transparency with Fresnel
             float finalAlpha = v_color.a;
             if (finalAlpha < 0.99) {
-                finalAlpha = mix(finalAlpha * 0.3, clamp(finalAlpha + 0.5, 0.0, 1.0), fresnel);
+                // The edge of a jelly is more opaque than its middle, but the
+                // boost has to stay *proportional* to the alpha asked for. The
+                // old form added a flat 0.5 at the edges, and a metaball is
+                // nearly all edge -- every lump presents its rim to the camera
+                // -- so alpha saturated across the whole surface and 0.3 and
+                // 0.6 rendered indistinguishably. Scaling the boost by the
+                // room left keeps the look and restores the knob.
+                float a = finalAlpha;
+                finalAlpha = mix(a * 0.55, a + (1.0 - a) * 0.55, fresnel);
             }
             
             // Highlights are opaque -- a glint on wet glass hides what is behind

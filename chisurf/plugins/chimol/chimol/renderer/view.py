@@ -4392,7 +4392,13 @@ class MolView(QtWidgets.QWidget):
     #: is smooth by construction and has no fine detail to lose at this step --
     #: while the shading skipped in draft is what actually dominated the build.
     _DRAFT_METABALL = {
-        "max_dim": 96,
+        # 96 was chosen when the field was wide enough that the mesh cost little;
+        # a tighter sigma follows the molecule, which is the point of it, and
+        # costs more triangles to do so. At the shipped width 96 builds 148L at
+        # 18.8 fps -- under the 20 the scrub path exists to hold -- and 80 builds
+        # it at 29. The elongated trajectory molecule is cheaper either way (46
+        # and 64 fps), so this is sized by the worst case, not the average.
+        "max_dim": 80,
     }
 
     def _metaball_config(self, config: dict) -> dict:

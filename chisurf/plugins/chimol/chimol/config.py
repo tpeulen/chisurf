@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 5
+DISPLAY_CONFIG_VERSION: int = 6
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -58,6 +58,22 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # so this is the point where the fold is still legible.
             "sigma_factor": (2.8, 6.5),
             "iso_value": (0.1, 0.06),
+        },
+    },
+    6: {
+        "metaball": {
+            # 6.5 went too far, and measuring says why: at that width the
+            # surface encloses ~93,700 A^3 around a 165-residue protein whose
+            # own envelope is ~25,000 -- the blob was not merely smooth, it sat
+            # far off the molecule, and at 6.5 no iso_value can pull it back
+            # (even 0.95 bottoms out at 71,400). 3.0 keeps the coherent gel skin
+            # while the fold's lobes read again, and it builds ~6x faster.
+            "sigma_factor": (6.5, 4.0),
+            "iso_value": (0.06, 0.10),
+            # And a jelly is translucent. This is only shippable now that the
+            # normals point outward and the surface terms scale with alpha;
+            # before either fix, a sub-1 alpha gave opaque milk.
+            "alpha": (1.0, 0.55),
         },
     },
 }
@@ -330,25 +346,32 @@ def _load_display_config() -> dict:
             # Density field function: "wyvill" (compact support, faster) or "gaussian"
             "field_function": "wyvill",
             # Isosurface threshold for marching cubes (lower = larger, blobbier surface)
-            "iso_value": 0.06,
-            # Per-atom Gaussian sigma multiplier (higher = rounder, more fused
-            # blobs). A gel has no lumps: neighbouring beads should merge into
-            # one smooth body rather than read as a heap of spheres.
-            "sigma_factor": 6.5,
+            "iso_value": 0.10,
+            # Per-atom sigma multiplier (higher = rounder, more fused blobs).
+            # A gel should have no *beads*, but it must still have a shape: at
+            # 6.5 the surface enclosed ~93,700 A^3 around a protein whose own
+            # envelope is ~25,000 and the fold disappeared into an egg -- and no
+            # iso_value could pull it back, since even 0.95 bottomed out at
+            # 71,400. Set from the hard case, a helical stalk rather than a
+            # globular protein: below 3.5 the surface wraps each helix on its
+            # own and the envelope tears open between them.
+            "sigma_factor": 4.0,
             # Grid resolution in Angstroms (smaller = finer mesh, slower)
             "grid_spacing": 0.6,
             # Extra space around bounding box in Angstroms
             "padding": 5.0,
             # Maximum grid dimension (auto-coarsens spacing if exceeded)
             "max_dim": 128,
-            # Mesh transparency (1.0 = opaque, <1.0 = transparent). **Opaque.**
-            # A gel looks translucent, but alpha here routes the mesh to the
-            # transparent pass, and an isosurface folds over itself many times
-            # -- blending all those layers gives cotton wool, not jelly: a soft
-            # matte cloud with no silhouette. What reads as translucency is the
-            # rim light below, which brightens grazing edges the way light
-            # carried through a body leaves it. Solid geometry, glassy shading.
-            "alpha": 1.0,
+            # Mesh transparency (1.0 = opaque, <1.0 = transparent). A gel is
+            # translucent, and this is only shippable now that two things are
+            # fixed. The mesh normals used to point *inward*, so the shader's
+            # fresnel term drove alpha to opaque whatever was asked for. And
+            # reflection, rim and specular were added at full strength on every
+            # one of the many sheets an isosurface folds into, which stacked up
+            # as white -- the "cotton wool" this comment used to describe. Both
+            # now scale with alpha, so the surface stays coloured and the knob
+            # does something across its range.
+            "alpha": 0.55,
             # Ambient occlusion strength (0.0 = off, 1.0 = maximum darkening in
             # crevices). Deliberately moderate: heavy occlusion reads as dust
             # settling in the creases, which is the opposite of a wet surface.

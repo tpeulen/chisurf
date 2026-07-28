@@ -107,20 +107,24 @@ def test_every_migration_matches_the_shipped_value(shipped):
     assert not wrong, "migrations disagree with the shipped config:\n  " + "\n  ".join(wrong)
 
 
-def test_a_chained_migration_lands_on_the_current_default():
-    """A copy old enough to need two steps ends on the newest value.
+def test_a_chained_migration_lands_on_the_current_default(shipped):
+    """A copy old enough to need several steps ends on the newest value.
 
-    `sigma_factor` moved 2.2 -> 2.8 -> 6.5 across two versions; someone who
-    never opened the app in between must still end up at 6.5, and someone who
-    stopped at 2.8 must be carried the rest of the way.
+    `sigma_factor` has moved 2.2 -> 2.8 -> 6.5 -> 3.0 across three versions, and
+    it went *up* and then back down: someone who never opened the app in between
+    must still arrive at what ships today, and someone who stopped part-way must
+    be carried the rest of the way. Asserted against the shipped file rather
+    than a literal, so the next change to this default does not have to edit the
+    test -- only the migration table.
     """
-    ancient = {"metaball": {"sigma_factor": 2.2}}
-    cfg_mod.apply_display_config_migrations(ancient, from_version=0)
-    assert ancient["metaball"]["sigma_factor"] == 6.5
+    current = shipped["metaball"]["sigma_factor"]
 
-    halfway = {"metaball": {"sigma_factor": 2.8}}
-    cfg_mod.apply_display_config_migrations(halfway, from_version=4)
-    assert halfway["metaball"]["sigma_factor"] == 6.5
+    for start_version, start_value in ((0, 2.2), (4, 2.8), (5, 6.5)):
+        stale = {"metaball": {"sigma_factor": start_value}}
+        cfg_mod.apply_display_config_migrations(stale, from_version=start_version)
+        assert stale["metaball"]["sigma_factor"] == current, (
+            f"a copy at version {start_version} did not reach the shipped value"
+        )
 
 
 # --------------------------------------------------------------------------- #

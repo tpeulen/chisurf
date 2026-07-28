@@ -2,6 +2,42 @@
 
 ## 2026-07-28
 
+* **The metaball was tuned on the wrong molecule, twice, and the shader could
+  not have shown transparency anyway.** Three linked changes, each found by
+  rendering rather than reasoning:
+  - **Smoothing had run away.** At `sigma_factor` 6.5 the surface enclosed
+    ~93,700 A^3 around a 165-residue protein whose own envelope is ~25,000: not
+    merely smooth but sitting well off the molecule, and unrecoverable, since
+    even `iso_value` 0.95 only got it to 71,400. Tightening it recovered the
+    fold -- and broke something a globular test cannot see. On the helical stalk
+    of the trajectory demo the tighter field wraps *each helix* separately and
+    the envelope tears open into background between them: measured, it breaks
+    into 39 pieces at 2.5, 6 at 3.0, 4 at 3.5, and 2 at the shipped **4.0**,
+    which is exactly the topology the old 6.5 had. Tuned on the hard case, not
+    the pretty one.
+  - **Nothing was translucent, at any alpha.** Two independent causes. The
+    fresnel term added a flat `+0.5` to alpha at grazing angles, and a metaball
+    is nearly all grazing angle -- every lump presents its rim -- so alpha
+    saturated across the whole surface and 0.3 rendered identically to 0.6. And
+    reflection, rim and specular were each added at full strength on every one
+    of the many sheets an isosurface folds into, stacking up as white: the
+    "cotton wool" the config comment described as a reason to stay opaque was
+    this, not a property of transparency. Both now scale with the fragment's
+    alpha, the surface keeps its colour, the knob works across its range, and
+    the shipped default is translucent (0.55).
+  - **The scrub path fell under its own floor.** A field that follows the
+    molecule costs more triangles to do it, so the draft grid was resized from
+    96 to 80: 148L now builds at 29 fps where the shipped width at 96 managed
+    18.8, under the 20 the draft path exists to hold.
+  - Guardrails, all against the **shipped** JSON rather than `_DISPLAY_CONFIG`
+    (which prefers the developer's own `~/.chisurf` copy, so the tests were
+    quietly asking "what does this machine do"): the surface must stay near the
+    molecule by volume, `iso_value` must still control it, a waist between two
+    lobes must survive, and the helical molecule must not fragment beyond what a
+    deliberately over-smooth field gives. The volume bound is measured on a real
+    protein -- a sparse synthetic cloud lets the field fill space a fold does not
+    have and inflates the same settings from 3.8x to 4.8x.
+
 * **Three-colour PDA is a setting of the PDA experiment, not an experiment.**
   `pda2c` and `pda3c` merged back into one `pda` section holding all three
   readers (TTTR, burst table, simulator) and both model families: one reader

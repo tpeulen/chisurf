@@ -1,5 +1,5 @@
 {
-  "_version": 5,
+  "_version": 6,
   "background": "k",
   "defaults": {
     "color_mode": "by_sequence"
@@ -156,12 +156,12 @@
   },
   "metaball": {
     "field_function": "wyvill",
-    "iso_value": 0.06,
-    "sigma_factor": 6.5,
+    "iso_value": 0.1,
+    "sigma_factor": 4.0,
     "grid_spacing": 0.6,
     "padding": 5.0,
     "max_dim": 128,
-    "alpha": 1.0,
+    "alpha": 0.55,
     "ao_strength": 0.35,
     "ao_radius": 7.0,
     "shininess": 96.0,

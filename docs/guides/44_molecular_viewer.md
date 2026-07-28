@@ -530,6 +530,37 @@ show metaballs
 set metaball.alpha, 0.45
 ```
 
+### Tuning a metaball
+
+A metaball is a density field around the atoms, contoured at a threshold. Two
+settings decide what it looks like, and they pull against each other:
+
+```text
+set metaball.sigma_factor, 4.0   # how far each atom's field reaches
+set metaball.iso_value, 0.10     # where the surface is drawn in that field
+set metaball.alpha, 0.55         # translucency
+```
+
+`sigma_factor` is the smoothing. Raise it and neighbours fuse into rounder
+lobes; raise it too far and the surface stops following the molecule at all —
+at 6.5 it enclosed roughly **6.5×** the atoms' own volume, the fold vanished
+into a featureless egg, and no `iso_value` could pull it back, because past a
+certain width even the highest threshold still encloses everything. Lower it too
+far and the opposite happens: the surface wraps each helix on its own and the
+envelope tears open into the background between them, which zoomed in reads as a
+shredded surface rather than as detail.
+
+The shipped 4.0 sits between those, chosen on a helical bundle rather than a
+compact protein — a globular fold survives a much tighter field than a stalk
+does, so tuning on one hides what the other would show.
+
+:::{tip}
+Smoothing is not free. A wider field costs more per atom *and* enlarges the
+padded box; with `max_dim` capped, the grid then coarsens, so a wide sigma loses
+detail twice over. The shipped width builds a scrubbing trajectory at ~33 fps
+where 6.5 managed ~11.
+:::
+
 :::{note}
 Use `bg_image` with silhouettes and you get the opposite of the `bg_color white`
 advice above: against a dark sky, outlines want to be light. `bg_image off`
