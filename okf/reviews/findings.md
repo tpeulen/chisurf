@@ -8671,3 +8671,68 @@ measured. Findings RF-739..RF-744.
 - **Location:** `chisurf/plugins/chimol/chimol/config.py:168-184` (`_write_user_display_config` opens the live file with `"w"` and swallows every exception into a `debug` log), called from `:612-613` inside `_load_display_config`, which runs at module import (`:634`) — against the read at `:594-598` (`except: return default`)
 - **Finding:** the truncate-then-write happens on the single file that holds all of a user's display settings, with no temp-file-and-rename and no backup. Because the read side catches everything and falls back to `default`, a write interrupted midway (process killed, full disk, two chisurf processes importing the module at once — the normal state of this tree) leaves invalid JSON that the next session reports as no error at all: the viewer simply comes up with package defaults and the user's customisations gone, and `default` is additionally missing the thirteen keys of RF-742. Write to `path.with_suffix(".json.tmp")` and `os.replace` onto the target, which is atomic on both platforms, and keep the pre-migration content as `.bak` on first migration.
 - **Fix note:**
+
+## Review 2026-07-28 — sampling chains as HDF5, and a fit controller built from a spec
+
+Slice: `e4fe67594` (*"chains as an HDF5 table, and a fit controller built from a
+spec"*) — `sample_fit`'s new `CHAIN_FORMATS` / `chain_frame` /
+`save_chain_to_hdf5` in `chisurf/core/fitting/fit.py`, the ported
+`fit_controller.py` + `fitting_controls.py` + `fitting_controls.view.json`, and
+the reading end in `modules/ndxplorer`. Both new test files pass (12 passed) and
+the rendered panel is right: four panels, the second fit-range pair correctly
+hidden on one-dimensional data, nothing clipped, the format combo readable. What
+the review found sits on either side of the new format. nDXplorer routes an
+opened *file* by suffix, so a `.h5` chain reaches the MFD reader instead of the
+sampling one and silently keeps one chain in three; and the widget port left two
+seams behind — the two sampling spin boxes have their spec tooltips cleared at
+construction, and the ProteinMC branch still looks up two label names that the
+retired `.ui` owned. Findings RF-745..RF-751.
+
+### RF-745
+- **Status:** OPEN
+- **Severity:** S1 (a `.h5` chain opened as a file yields one chain in three, with no `chain`/`draw` columns and no error)
+- **Location:** `modules/ndxplorer/ndxplorer/__main__.py:56-57` and `modules/ndxplorer/ndxplorer/utils/working_path_helpers.py:63,81-85` (both route `.h5`/`.hdf5` to `onOpenMfdHdf5`), against `read_csv_sampling` / `_read_chain_frame` at `modules/ndxplorer/ndxplorer/io/reader.py:654-754`, which does understand the new chain
+- **Finding:** measured with three chisurf-format chains (a `results` table with columns `chi2r`, `lnprior`, `c`, `a`) of 100 draws each: `read_csv_sampling` returns **(300, 6)** with the `chain` and `draw` columns; `read_mfd_hdf5`, where every by-file `.h5` open lands, returns **(100, 4)**. It merges its inputs *column-wise* (`reader.py:996-1007`: a second file whose columns all duplicate the first is dropped to nothing), which is right for MFD tables and wrong for chains, which stack by rows — so two of the three chains contribute nothing at all. `chain`/`draw` are never added either, i.e. exactly the columns `read_csv_sampling`'s own docstring calls the difference between a posterior and "a bag of numbers". With chains of unequal length (a cancelled run) the same path additionally pops a modal *"Row Count Mismatch … Skipping"* per file (`reader.py:1000-1004`). The folder path is fine — `_sampling_chain_files` already accepts `.h5` — so what is broken is drag-and-drop and the command line, which is how a single chain is normally looked at. Detect a chisurf chain the way `read_mfd_hdf5` already detects an ensemble one (`is_ensemble_sampling_hdf5`, `reader.py:984`) — a `results` table carrying `chi2r` and `lnprior` — and hand it to `read_csv_sampling`.
+- **Fix note:**
+
+### RF-746
+- **Status:** OPEN
+- **Severity:** S3 (the one dialog that reaches the correct chain reader hides every HDF5 chain chisurf writes)
+- **Location:** `modules/ndxplorer/ndxplorer/io/file_operations.py:91-99` (`file_type == "er4"` → `"Sampling files (*.er4);;All files (*.*)"` → `reader.read_csv_sampling`)
+- **Finding:** the *ChiSurf sampling files* dialog is the route that goes through `read_csv_sampling`, and hence the way around RF-745 — but its filter is `*.er4` only, so a chain written under `chain_format: hdf5` is invisible in it and the user has to switch to *All files* to find a file the tool wrote itself. The reader behind the dialog already handles both suffixes (`_read_chain_frame`, `reader.py:654-678`), so this is only the filter string: widen it to `*.er4 *.h5 *.hdf5` and name it for chains rather than for one extension.
+- **Fix note:**
+
+### RF-747
+- **Status:** OPEN
+- **Severity:** S2 (the log says "Sampling started on server" when the call failed and nothing is running)
+- **Location:** `chisurf/gui/widgets/fitting/fit_controller.py:704-726` (`result = fc.start_sampling(...)` → `cs.logging.info(f"Sampling started on server (method={method}).")` → `job_id = (result or {}).get("job_id")`), against `FittingClient.start_sampling` at `chisurf/gui/widgets/fitting/fitting_client.py:921-944` and `_try_rpc` at `:125-154`
+- **Finding:** `start_sampling` returns `{"ok": False}` whenever the RPC is unavailable or the call fails, and `chisurf/gui/__init__.py:1580-1582` installs a *client-less* adapter whenever the embedded server could not be reached — which is exactly the state in which every RPC returns that. The controller never looks at `ok`: it logs that sampling started, finds no `job_id`, installs no watcher and returns. The user has picked an output directory and been told the run began; there are no chains, no `diagnostics.json` and no error message tying the two together. The same block has no `else` for `fc is None` at `:704`, so with no adapter installed at all the button silently does nothing. Check `ok` and report the failure where the success is reported.
+- **Fix note:**
+
+### RF-748
+- **Status:** OPEN
+- **Severity:** S2 (the two sampling controls are the only ones with no tooltip, because their spec text is cleared at construction)
+- **Location:** `chisurf/gui/widgets/fitting/fit_controller.py:521-524` (`for widget in (self.doubleSpinBox, self.spinBox_5): widget.setEnabled(True); widget.setToolTip("")`), reached from `_apply_proteinmc_controls()` at `:480` for every non-ProteinMC fit, against the `description` fields of `steps_k` and `n_runs` in `chisurf/gui/widgets/fitting/fitting_controls.view.json:95,104`
+- **Finding:** verified on a freshly constructed controller: `doubleSpinBox.toolTip()` and `spinBox_5.toolTip()` are both `''`, while every other editor carries its spec text (`spinBox_2` → *"First channel included in the fit."*, the format combo → *"How the chains are stored…"*). The `else` branch restores the *designer file's* state, which was no tooltip at all — so the two controls whose meaning is least guessable from their label (Steps is thousands of steps **per walker**; Runs is what makes a cross-chain R-hat computable at all) end up the only two with nothing to hover, in the same commit whose point was that the controls now carry tooltips. It also breaks the project rule that a control's `description` *is* its tooltip. Re-apply the spec text rather than clearing it — the labels still hold it (`self._field('steps_k')._autoform_label.toolTip()`).
+- **Fix note:**
+
+### RF-749
+- **Status:** OPEN
+- **Severity:** S3 (dead code: two label lookups name widgets the retired `.ui` owned, so the ProteinMC label tooltips can never appear)
+- **Location:** `chisurf/gui/widgets/fitting/fit_controller.py:513-520` and `:525-529` (`getattr(self, "label", None)` / `getattr(self, "label_2", None)`)
+- **Finding:** `label` and `label_2` were object names in `fittingWidget.ui`, which this commit deleted. On a built controller `hasattr(controller, "label")` is now `False`, so both blocks are permanent no-ops and a ProteinMC fit no longer gets *"ProteinMC MC trials, in thousands."* on the Steps label or *"Number of independent ProteinMC runs to launch."* on Runs. The `getattr(..., None)` guard written for safety is what makes the loss silent. Either delete the two blocks or point them at the AutoForm labels, which are reachable through the accessor the same commit added: `self._field('steps_k')._autoform_label` / `self._field('n_runs')._autoform_label`.
+- **Fix note:**
+
+### RF-750
+- **Status:** OPEN
+- **Severity:** S3 (an empty HDF5 chain is written without error as a file no reader can open)
+- **Location:** `chisurf/core/fitting/fit.py:2075-2100` (`save_chain_to_hdf5` → `frame.to_hdf(fn_target, key='results', format='table', …)`) with the row filter at `:2071` (`keep = np.isfinite(chi2)`)
+- **Finding:** `chain_frame` drops every draw whose `chi2r` is not finite, so a run whose model returns NaN — the case a user is most likely to be investigating — yields a zero-row frame. `to_hdf(..., format='table')` writes such a frame with no error and **without creating the key**: verified against the environment's pandas 2.3.3 / pytables 3.11.1, where the following `pd.read_hdf(path, key='results')` raises `KeyError: 'No object named results in the file'`. nDXplorer reports that as *"Could not read sampling file … skipping"* (`modules/ndxplorer/ndxplorer/io/reader.py:704-707`), i.e. as an unreadable file rather than as an empty chain. The text path writes a header-only file that reads back as zero rows, so the two formats disagree exactly where the answer matters. Write an empty frame through `format='fixed'`, or refuse to write a chain with no draws and log why.
+- **Fix note:**
+
+### RF-751
+- **Status:** OPEN
+- **Severity:** S3 (a non-collapsible AutoForm panel is drawn as a *disabled* one — its title greys out and keeps a fold arrow)
+- **Location:** `chisurf/gui/autoform/auto_form.py:531-535` (`box = CollapsibleBox(...)` then `if not getattr(section, "collapsible", True): box._btn.setEnabled(False)`, under the comment *"the header is purely cosmetic when not collapsible"*), against `CollapsibleBox._build_ui` at `chisurf/gui/widgets/collapsible_box.py:97-110`, where the header is a checkable `QPushButton` whose text carries the ▼/▶ fold arrow
+- **Finding:** disabling the header button is how "not collapsible" is expressed, so Qt paints the section *title* in the disabled palette while its contents stay fully enabled. In the headless render of the ported fit controller all four titles — *Dataset*, *Fit range*, *Sampling*, *Fitting* — come out pale grey above black field labels and still show a ▼ that does nothing, which reads as four disabled panels of live controls. This is not specific to that widget: 20 `.view.json` files ship `"collapsible": false`. Keep the button enabled and make it non-checkable (or render the header as a plain label with no arrow) so a section that cannot fold does not announce itself as switched off.
+- **Fix note:**
