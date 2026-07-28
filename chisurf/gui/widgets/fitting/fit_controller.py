@@ -152,6 +152,14 @@ class FittingControllerWidget(Controller):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
         layout.addWidget(self.form)
+        # These are controls, not a view: they must take the height they need
+        # and no more. Left at the default the box grows into whatever room the
+        # dock has spare, which is how a five-row panel ends up half empty above
+        # the model editor.
+        for widget in (self.form, self):
+            widget.setSizePolicy(
+                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum
+            )
 
         # The names the rest of the controller was written against. Binding the
         # concrete editors keeps one source of truth for the layout (the spec)
