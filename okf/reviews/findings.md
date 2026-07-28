@@ -3569,11 +3569,11 @@ Findings RF-269..RF-277.
 - **Fix note:**
 
 ### RF-270
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the most common FRET dye family cannot be selected, and the documented calibration workflow names exactly those dyes)
 - **Location:** `chisurf/plugins/core/lightpath_simulator/core/workflow.py:373` (`"has_abs": "absorption" in types`), consumed by `chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py:1078` and `gui/node_types.py:298` (`if p.get("has_abs") and p.get("has_em")`); simulator side `backend/crosstalk.py:159` (`get_probe_spectrum(probe_id, "absorption")`)
 - **Finding:** the fluorophore tables keep only probes that have a spectrum row typed `absorption`, but the catalogue stores an absorption curve as `excitation` for **165 of 2165 probes**, including **all 16 Alexa Fluor entries** (`Alexa Fluor 488™` = probe 1039, `Alexa Fluor 647™` = 1048 — both `excitation` + `emission`, no `absorption`) and the whole Abberior Star/Live/Cage family. Verified live: the dye table holds 696 rows and typing `alexa` in its filter returns **0**. The simulator has the same blind spot with no fallback, so selecting such a probe by id would give a zero absorption spectrum, zero excitation probability and R₀ = 0. `docs/guides/fret_calibration.md:97` instructs the user to feed this tool's crosstalk matrices with `donor="Alexa488", acceptor="Alexa647"` — a workflow that cannot be performed in the GUI. Treat `excitation` as absorption (normalised) at both places, or normalise the catalogue; pin it with a test asserting `Alexa Fluor 488` appears in the dye table and yields a non-zero R₀ against `Alexa Fluor 647`.
-- **Fix note:**
+- **Fix note:** absorption is now a *family* of spectrum types rather than one string: `core/workflow.py` gained `ABSORPTION_SPECTRUM_TYPES = ("absorption", "excitation")` with `has_absorption()` behind the palette's `has_abs`, and `MFDatabaseAdapter.get_probe_spectrum` falls back from `absorption` to the excitation scan — peak-normalised, because stored absorption rows all peak at 1.0 while excitation rows range 0.23–1.26 and the simulator scales them by ε. Both consumers (`gui/easy_mode.py`, `gui/node_types.py`) read `has_abs` and needed no change. Against the shipped catalogue the dye table goes 696 → **861** rows with all 16 Alexa entries present, and R₀(Alexa 488 → Alexa 647) comes out **54.8 Å**. Pinned by `tests/test_headless.py::test_a_dye_whose_absorption_is_filed_as_excitation_still_works`, which builds the same dye twice — once as `absorption`, once as `excitation` scaled by 0.4 — and asserts `has_abs`, a non-empty detector signal, and *identical* crosstalk matrices; each of the three parts of the fix was verified to fail it on its own.
 
 ### RF-271
 - **Status:** OPEN

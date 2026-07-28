@@ -175,28 +175,13 @@ def test_lightpath_save_list_get_roundtrip(tmp_path):
     assert "crosstalk_matrices" in loaded_result
 
 
-def test_lightpath_simulates_from_mmfdb_probe_spectra(tmp_path):
-    """Simulation should read spectra from canonical MMFDB probe records."""
-    from mmfdb.repository import MFDatabase
-    from chisurf.plugins.core.lightpath_simulator.core.workflow import simulate_lightpath
+#: Wavelength grid shared by the MMFDB-backed light-path tests below.
+_PROBE_WAVELENGTHS = np.array([480.0, 488.0, 500.0, 520.0], dtype=np.float64)
 
-    db_path = tmp_path / "spectra.db"
-    wavelengths = np.array([480.0, 488.0, 500.0, 520.0], dtype=np.float64)
-    with MFDatabase(str(db_path)) as db:
-        cursor = db.conn.execute(
-            "INSERT INTO probe_types (type_name, display_name) VALUES (?, ?)",
-            ("test", "Test probes"),
-        )
-        type_id = cursor.lastrowid
-        dye_id = db.add_probe("MMFDB Dye", type_id, category="organic_dye")
-        detector_id = db.add_probe("MMFDB Detector", type_id, category="other")
-        db.add_optical_property(dye_id, "qy", "0.8")
-        db.add_optical_property(dye_id, "ext_coeff", "100000")
-        db.add_spectrum(dye_id, "absorption", wavelengths, np.array([0.2, 1.0, 0.5, 0.0]))
-        db.add_spectrum(dye_id, "emission", wavelengths, np.array([0.0, 0.2, 0.8, 1.0]))
-        db.add_spectrum(detector_id, "quantum_efficiency", wavelengths, np.ones_like(wavelengths))
 
-    graph = {
+def _dye_detector_graph(dye_id: int, detector_id: int) -> dict:
+    """Return a laser → dye → detector graph for the two given MMFDB probes."""
+    return {
         "nodes": [
             {
                 "id": "laser",
@@ -232,6 +217,64 @@ def test_lightpath_simulates_from_mmfdb_probe_spectra(tmp_path):
         ],
     }
 
+
+def _build_probe_db(db_path, absorption_type: str, absorption_scale: float = 1.0):
+    """Create a two-probe MMFDB whose dye stores its absorption under a given type.
+
+    Parameters
+    ----------
+    db_path : path-like
+        Location of the database to create.
+    absorption_type : str
+        Spectrum type the dye's absorption curve is filed under — the catalogue
+        uses ``"absorption"`` for most probes and ``"excitation"`` for others.
+    absorption_scale : float
+        Factor applied to the absorption curve, so a record that does not peak
+        at one can be told apart from one that does.
+
+    Returns
+    -------
+    tuple of int
+        ``(dye_id, detector_id)``.
+    """
+    from mmfdb.repository import MFDatabase
+
+    with MFDatabase(str(db_path)) as db:
+        cursor = db.conn.execute(
+            "INSERT INTO probe_types (type_name, display_name) VALUES (?, ?)",
+            ("test", "Test probes"),
+        )
+        type_id = cursor.lastrowid
+        dye_id = db.add_probe("MMFDB Dye", type_id, category="organic_dye")
+        detector_id = db.add_probe("MMFDB Detector", type_id, category="other")
+        db.add_optical_property(dye_id, "qy", "0.8")
+        db.add_optical_property(dye_id, "ext_coeff", "100000")
+        db.add_spectrum(
+            dye_id,
+            absorption_type,
+            _PROBE_WAVELENGTHS,
+            np.array([0.2, 1.0, 0.5, 0.0]) * absorption_scale,
+        )
+        db.add_spectrum(
+            dye_id, "emission", _PROBE_WAVELENGTHS, np.array([0.0, 0.2, 0.8, 1.0])
+        )
+        db.add_spectrum(
+            detector_id,
+            "quantum_efficiency",
+            _PROBE_WAVELENGTHS,
+            np.ones_like(_PROBE_WAVELENGTHS),
+        )
+    return dye_id, detector_id
+
+
+def test_lightpath_simulates_from_mmfdb_probe_spectra(tmp_path):
+    """Simulation should read spectra from canonical MMFDB probe records."""
+    from chisurf.plugins.core.lightpath_simulator.core.workflow import simulate_lightpath
+
+    db_path = tmp_path / "spectra.db"
+    dye_id, detector_id = _build_probe_db(db_path, "absorption")
+    graph = _dye_detector_graph(dye_id, detector_id)
+
     result = simulate_lightpath(graph, db_path=str(db_path))
     signals = result["detector_signals"]
     assert signals
@@ -245,6 +288,47 @@ def test_lightpath_simulates_from_mmfdb_probe_spectra(tmp_path):
     assert matrices["emission"]["columns"] == ["MMFDB detector"]
     assert matrices["detected"]["columns"] == ["MMFDB detector"]
     assert result["instrument_setting"]["fluorophores"][0]["probe_id"] == dye_id
+
+
+def test_a_dye_whose_absorption_is_filed_as_excitation_still_works(tmp_path):
+    """An excitation scan is the dye's absorption curve, and must be read as one.
+
+    Most of the catalogue files a dye's absorption under ``absorption``, but a
+    large minority — every Alexa Fluor entry among them — files the same
+    measurement under ``excitation``. Those dyes used to be filtered out of the
+    palette and to absorb nothing when addressed by id, so the whole family was
+    unusable.
+    """
+    from chisurf.plugins.core.lightpath_simulator.core.workflow import (
+        get_probes_info,
+        simulate_lightpath,
+    )
+
+    reference_path = tmp_path / "absorption.db"
+    excitation_path = tmp_path / "excitation.db"
+    reference_ids = _build_probe_db(reference_path, "absorption")
+    # the same curve, filed as an excitation scan and not peak-normalised
+    excitation_ids = _build_probe_db(excitation_path, "excitation", absorption_scale=0.4)
+    assert reference_ids == excitation_ids
+
+    dyes = [
+        probe
+        for probe in get_probes_info(str(excitation_path))["probes"]
+        if probe["name"] == "MMFDB Dye"
+    ]
+    assert dyes and dyes[0]["has_abs"], "the dye is missing from the palette"
+
+    reference = simulate_lightpath(
+        _dye_detector_graph(*reference_ids), db_path=str(reference_path)
+    )
+    excitation = simulate_lightpath(
+        _dye_detector_graph(*excitation_ids), db_path=str(excitation_path)
+    )
+
+    assert excitation["detector_signals"], "no light reaches the detector"
+    assert excitation["detector_signals"][0]["intensity"] > 0.0
+    # peak-normalised on the way in, so the two databases describe one dye
+    assert excitation["crosstalk_matrices"] == reference["crosstalk_matrices"]
 
 
 def test_plugin_manifest_declares_registered_rpc_methods():

@@ -54,6 +54,16 @@ PYTHONPATH="modules/chinet:modules/imp-tricks/src:." python3 -m pytest chisurf/p
 
 # Known Gotchas
 
+- **A dye's absorption may be filed as an excitation scan.** The catalogue is not
+  uniform: 165 of its 2165 probes — every Alexa Fluor entry, the whole Abberior
+  family — store their absorption curve under the spectrum type `excitation`
+  rather than `absorption`. Both the palette filter and the simulator read
+  absorption through `core/workflow.py`
+  (`ABSORPTION_SPECTRUM_TYPES` / `has_absorption` / `MFDatabaseAdapter`), which
+  accepts either and peak-normalises the excitation fallback, because an
+  absorption spectrum is scaled by the extinction coefficient downstream and so
+  has to arrive peaked at one. Never test a spectrum type by string equality at a
+  call site.
 - **Two preset formats coexist.** The Full Simulator saves optical-path presets
   as a node/edge **graph dict** (`{"nodes":…, "edges":…}`) under
   `~/.chisurf/presets/lightpath_optical/`, while Easy Mode's `_populate_form()`

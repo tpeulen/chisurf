@@ -2,6 +2,26 @@
 
 ## 2026-07-28
 
+* **Every Alexa Fluor dye was invisible to the Light Path Simulator, because a
+  spectrum type was tested by string equality** (RF-270). The catalogue is not
+  uniform: 165 of its 2165 probes file their absorption curve under the type
+  `excitation` rather than `absorption` -- all 16 Alexa entries, the whole
+  Abberior family -- and both the palette filter (`"absorption" in types`) and
+  the simulator's spectrum lookup asked for the one string. So the dyes named by
+  `docs/guides/fret_calibration.md` could not be picked in the GUI, and picking
+  one by id gave a zero absorption spectrum, zero excitation probability and
+  R0 = 0, silently. Absorption is now a family of types
+  (`ABSORPTION_SPECTRUM_TYPES`, `has_absorption`) resolved in one place,
+  `core/workflow.py`, with `MFDatabaseAdapter.get_probe_spectrum` falling back
+  to the excitation scan **peak-normalised** -- stored absorption rows all peak
+  at exactly 1.0 while excitation rows range 0.23-1.26, and the simulator scales
+  an absorption spectrum by the extinction coefficient, so an unnormalised
+  fallback would quietly rescale the dye. Against the shipped catalogue the dye
+  table goes 696 -> 861 rows and R0(Alexa 488 -> Alexa 647) comes out 54.8 A.
+  Pinned by `test_a_dye_whose_absorption_is_filed_as_excitation_still_works`,
+  which builds the same dye under both types and asserts identical crosstalk
+  matrices; each of the three parts of the fix was checked to fail it alone.
+  Gotcha recorded in [lightpath-simulator](/plugins/profiles/lightpath-simulator.md).
 * **QA — rates from a binned trace (hidden Markov model).** Drove the
   `Analysis ▸ Kinetics ▸ Hidden Markov model` tool headlessly on a three-state
   simulated trace with known rates and on a real SPC-132 single-molecule photon

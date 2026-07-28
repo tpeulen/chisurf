@@ -9,14 +9,58 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-
-from mmfdb.store.database_resolver import resolve_database_path
 from mmfdb.repository import MFDatabase
+from mmfdb.store.database_resolver import resolve_database_path
+
 from chisurf.plugins.core.lightpath_simulator.backend.simulator import (
     OpticalPathSimulator,
 )
 
+#: Spectrum types that describe how strongly a probe absorbs, most specific
+#: first.  A large part of the catalogue stores a dye's absorption curve as an
+#: *excitation* scan instead — 165 of 2165 probes, including every Alexa Fluor
+#: and the whole Abberior family — which is the same spectrum measured the
+#: other way round, so the simulator reads it as absorption.
+ABSORPTION_SPECTRUM_TYPES = ("absorption", "excitation")
 
+
+def has_absorption(spectrum_types) -> bool:
+    """Return whether a probe's spectrum types include an absorption curve.
+
+    Parameters
+    ----------
+    spectrum_types : collection of str
+        Spectrum types stored for one probe.
+
+    Returns
+    -------
+    bool
+        ``True`` when any of :data:`ABSORPTION_SPECTRUM_TYPES` is present.
+    """
+    return any(name in spectrum_types for name in ABSORPTION_SPECTRUM_TYPES)
+
+
+def _peak_normalised(values: np.ndarray) -> np.ndarray:
+    """Return *values* scaled to a peak of one, unchanged when that is undefined.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Spectrum intensities.
+
+    Returns
+    -------
+    numpy.ndarray
+        The intensities divided by their maximum, or the input when the
+        maximum is not a positive finite number.
+    """
+    array = np.asarray(values, dtype=np.float64)
+    if array.size == 0:
+        return array
+    peak = float(np.nanmax(array))
+    if not np.isfinite(peak) or peak <= 0.0:
+        return array
+    return array / peak
 
 
 class MFDatabaseAdapter:
@@ -39,11 +83,24 @@ class MFDatabaseAdapter:
         probe_id: int,
         spectrum_type: str,
     ) -> tuple[np.ndarray, np.ndarray] | None:
-        """Return one MMFDB probe spectrum as ``(wavelengths, values)`` arrays."""
+        """Return one MMFDB probe spectrum as ``(wavelengths, values)`` arrays.
+
+        A request for ``"absorption"`` falls back to the probe's excitation
+        scan (see :data:`ABSORPTION_SPECTRUM_TYPES`), peak-normalised onto the
+        convention the stored absorption curves follow — the simulator scales
+        an absorption spectrum by the extinction coefficient, so it has to
+        arrive with a peak of one, which excitation records do not guarantee.
+        """
         rec = self.db.get_spectrum_record(probe_id, spectrum_type)
-        if rec is None:
+        if rec is not None:
+            return (rec["wavelengths"], rec["intensity_values"])
+        if spectrum_type != ABSORPTION_SPECTRUM_TYPES[0]:
             return None
-        return (rec["wavelengths"], rec["intensity_values"])
+        for fallback in ABSORPTION_SPECTRUM_TYPES[1:]:
+            rec = self.db.get_spectrum_record(probe_id, fallback)
+            if rec is not None:
+                return (rec["wavelengths"], _peak_normalised(rec["intensity_values"]))
+        return None
 
     def get_standardized_optical_properties(self, probe_id: int) -> dict[str, Any]:
         """Return simulator-relevant optical properties under canonical keys."""
@@ -370,7 +427,7 @@ def get_probes_info(db_path: str | None = None) -> dict[str, Any]:
                     "probe_id": probe_id,
                     "name": probe.get("chromophore_name") or probe.get("name") or f"Probe {probe_id}",
                     "category": probe.get("category", "other"),
-                    "has_abs": "absorption" in types,
+                    "has_abs": has_absorption(types),
                     "has_em": "emission" in types,
                     "has_trans": "transmission" in types,
                     "has_qe": "quantum_efficiency" in types,
