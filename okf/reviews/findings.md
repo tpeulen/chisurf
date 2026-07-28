@@ -9850,3 +9850,87 @@ earlier catalogue-uniformity findings RF-269/RF-270. Findings RF-863..RF-867.
 - **Location:** `chisurf/plugins/core/lightpath_simulator/core/workflow.py:94-103` (`MFDatabaseAdapter.get_probe_spectrum`: the stored-`absorption` return at `:96` versus the `_peak_normalised` fallback at `:102`)
 - **Finding:** the fallback landed in `a7566eb8` normalises on the stated premise that "stored absorption rows all peak at exactly 1.0". They do not: **15 of the catalogue's 825 `absorption` rows** peak away from 1.0 — `Perylene` (probe 1984) at **1.3584**, `ATTO465` (1740) at 1.1520, `3 Quinoline carboxaldehyde` (1844) at 1.0491, `Nile Red` (1932) at 1.0220, `ATTO 550` (1722) at 0.9960, down to `Pyropheophorbide a` (2077) at 0.9730. The simulator multiplies whatever comes back by the extinction coefficient (`backend/crosstalk.py:200`, `cur_abs_scaled = cur_abs_norm * ec`), so Perylene absorbs 36 % too strongly — a 36 % error in excitation probability and, since R₀ ∝ J^(1/6), 5.2 % in R₀ — while the *same* dye filed as an excitation scan would be normalised. Two branches of one function, two conventions. Route both through `_peak_normalised`; a test asserting `max(get_probe_spectrum(pid, "absorption")[1]) == 1.0` for a deliberately un-normalised stored row pins it.
 - **Fix note:**
+
+### Review 2026-07-28 — the viewport that is no longer the whole widget
+
+Slice: the two newest chimol landings — the sequence strip (`9169f891`) and the
+in-viewport mouse-mode block (`17d2db86`, new `mouse_modes.py`) — plus the seam
+they both push on. Complements RF-846..RF-852, which reviewed the panel's menus;
+this pass looks at *geometry*.
+
+One theme runs through most of it. The scene used to fill the widget, so
+`self.width()` / `self.height()` were the scene's size and every helper could
+use them. `95d260d80` took a column off the right (`scene_width()`) and
+`9169f891` took a band off the top (`scene_height()`), and the call sites were
+converted **one at a time**: `_build_matrices` and `_aspect` were updated, the
+label projector, the impostor scale, the pan/trackball rates, the post-process
+buffer and the picking projector were not. Every one of them now maps the same
+NDC through a different rectangle than the one GL drew into, and each fails
+silently — a label a little high, a sphere a little large, a click that finds
+nothing. RF-868 is the worst of them and predates the strip: with the *default*
+220 px column, atom picking is 110 px out at the centre of the view against an
+8 px click radius. Findings RF-868..RF-876; geometry verified by driving
+`InternalGui` headlessly, the rest read against the source.
+
+### RF-868
+- **Status:** OPEN
+- **Severity:** S1 (atom/residue picking is projected into the widget rectangle while the scene is drawn into the narrower/shorter scene rectangle — a click on an atom at the centre of the view lands 110 px away from where picking thinks it is, with an 8 px click radius)
+- **Location:** `chisurf/plugins/chimol/chimol/app/picking.py:95-96` (`_project_points_to_screen`: `w = float(view.width())`, `h = float(view.height())`) and `:127-128` (`sx = 0.5 * w * (1.0 + nx)`, `sy = 0.5 * h * (1.0 - ny)`), against `chisurf/plugins/chimol/chimol/renderer/qtgl.py:1044` (`glViewport(0, 0, scene_width() * ratio, (height() - strip) * ratio)`) and `:1655-1657` (`_build_matrices` projects with `scene_width()` / `scene_height()`)
+- **Finding:** the projector's docstring names its argument `view : QtGLRenderer`, and `qtgl.py:265` (`self.opts = self._opts  # Compatibility with picking helpers`) confirms the renderer is what it is handed — so this runs against the docked viewport, not some legacy widget. GL draws the scene into `[0, scene_width) × [strip, height)` in widget pixels; the projector maps the identical NDC into `[0, width) × [0, height)` and then compares the result against the raw `ev.pos()` (`picking.py:272-274`). For an atom on the camera axis (`nx = ny = 0`) the two disagree by exactly `column_width / 2` horizontally: at 900 px wide with the default 220 px column, GL draws it at x = 340 and picking places it at x = 450. The error is zero at the left edge and grows to the full column width at the right. `click_radius_px` defaults to 8. The strip adds the same failure vertically (`strip * (1 + ndc.y) / 2`, up to 66 px with two sequences shown). Read `view.scene_width()` / `view.scene_height()` and offset `sy` by the strip; the aspect on `:104` has to come from the same pair. A test can pin it without GL by projecting the camera-axis point and asserting it lands at the centre of the *scene* rect.
+- **Fix note:**
+
+### RF-869
+- **Status:** OPEN
+- **Severity:** S2 (with the sequence strip open and silhouettes on, the molecule is rendered into the full widget height while its projection was built for the shorter scene — a 16 % vertical stretch, and the scene is painted into the strip's band)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:1056` (`buffer_h = max(1, int(self.height() * ratio))`) feeding `:1063` (`self._post.begin(buffer_w, buffer_h)`), against `:1044-1048` (the correct viewport, set immediately above) and `chisurf/plugins/chimol/chimol/renderer/postprocess.py:264` / `:272` (`GL.glViewport(0, 0, *self._size)` in both `begin` and `end`)
+- **Finding:** `buffer_w` was converted to `scene_width()`; `buffer_h` still reads the whole widget. When a post-process pass is wanted, `begin()` **overrides** the viewport that `:1044` just set correctly with its own `self._size`, and `end()` restores that same over-tall viewport on the default framebuffer before blitting the copy quad. So the moment silhouettes are enabled with the strip visible, the scene is rendered and blitted into `height` rather than `height - strip`, while `_build_matrices` (`:1656`) still builds the projection from `scene_height()` — the aspect mismatch is `height / (height - strip)`, 470/404 = **1.16** with two sequences shown at 470 px. That is precisely the squashed-molecule failure `e67d4e8c2` fixed for width, reintroduced on the other axis. It also paints the molecule underneath the strip band, which the strip's `SEQ_BG` alpha of 210/255 only partly hides — undoing the `seq_view_overlay off` the commit message argues for. With every effect off, `begin()` declines and the correct viewport stands, so this only bites once an effect is on.
+- **Fix note:**
+
+### RF-870
+- **Status:** OPEN
+- **Severity:** S2 (3-D labels drift upward by up to the full height of the sequence strip — 66 px with two sequences shown — and detach from the atoms they name)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:1601` (`_paint_labels`: `h = self.height()`) with `:1615` (`win_y = (1.0 - ndc.y()) * 0.5 * h`)
+- **Finding:** the sibling line `w = self.scene_width()` carries a comment explaining exactly why the widget's width is the wrong rectangle — "a label is projected through the same matrices the scene is drawn with, so it must be mapped into the same rectangle" — and the height beside it was left as the widget's. Since `9169f891` the scene occupies widget rows `strip … height`, so the correct mapping is `strip + (1 - ndc.y) * 0.5 * scene_height()`. The error is `strip * (1 + ndc.y) / 2`: zero at the bottom of the scene, half the strip (33 px) at the centre, the whole strip (66 px for two sequences) at the top. Labels on the part of the molecule nearest the strip are the ones that move most, which is also where they are most likely to be read. One line, same fix as RF-869's.
+- **Fix note:**
+
+### RF-871
+- **Status:** OPEN
+- **Severity:** S2 (sphere impostors are sized from the widget's height and mesh geometry from the projection's, so opening the sequence strip makes impostor atoms ~16 % larger than the mesh atoms beside them)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:1646` (`_point_scale`: `height = max(1.0, float(self.height()) * ratio)`), and the same substitution at `:2220` (`_pan_from_delta`) and `:2161` (`_trackball_delta(last, cur, self.scene_width(), self.height())`)
+- **Finding:** `_point_scale` turns a world radius into a sprite size in pixels as `0.5 * height / tan(fov/2)`, which is only the inverse of the projection if `height` is the height the projection maps onto — `scene_height()`, since `_build_matrices` uses it. Its own docstring makes the point that a sprite must cover the same solid angle as "a mesh sphere covering the same solid angle does", and with the strip open it no longer does: the factor is `height / (height - strip)`, 470/404 = **1.16** with two sequences. The two motion helpers have the same substitution with a different symptom — `_pan_from_delta` scales a pixel drag by `2·distance·tan(fov/2)/height` and derives its aspect from `scene_width()/height()`, so a pan under-travels vertically by the same 16 % and mis-scales horizontally; `_trackball_delta` is already passed `scene_width()` for x and the raw `height()` for y, which is the inconsistency in one call. Three one-line substitutions.
+- **Fix note:**
+
+### RF-872
+- **Status:** OPEN
+- **Severity:** S2 (dragging the splitter narrower than ~180 px pushes the A/S/H/L/C buttons and the right half of the mouse-mode table off the right edge of the window, where they cannot be clicked)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:268-290` (`layout`: `panel_w = max(panel_w, column)` then rows and buttons placed from `self._panel.x + panel_w`) and `:415-424` (`layout_block`: `block_w = max(block_w, self.column_width)` then `Rect(width - self.column_width, …, block_w, …)`), with `MIN_COLUMN = 120.0` at `:181`
+- **Finding:** both rectangles are anchored at `width - column_width` but sized `max(natural, column_width)`, so as soon as the natural width exceeds the column they overflow the window to the right by the difference — and `MIN_COLUMN` (120) is below both natural widths. Driven headlessly at 900×470 with the column dragged to its minimum: the block is `Rect(x=780, w=181.88)`, i.e. **62 px past the 900 px edge**, taking the whole *Wheel* column and most of *R* of the mouse-mode table with it; the five object buttons land at 882/899/916/933/950 → only **A** is fully on screen, **H, L and C are entirely outside the window**, and `hit_test(899, …)` is still reporting `Hit(kind='button', key='S')` at the last visible pixel. This is not tied to the default name width: `panel_w` has a floor of `PAD + 60 + PAD + 85 + PAD = 163`, always wider than `MIN_COLUMN`. Either clamp `MIN_COLUMN` to the widest of the two natural widths, or right-align both rects on `width` rather than on the column's left edge.
+- **Fix note:**
+
+### RF-873
+- **Status:** OPEN
+- **Severity:** S2 (with enough objects the lower panel rows sit behind the mouse-mode block: they are drawn, then covered, and a click on one cycles the mouse mode instead of toggling the object)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:271` (`panel_h = self.ROW_H * len(self.rows) + 2 * self.PAD`, unbounded) against `:422-424` (the block is anchored at `height - block_h`) and `:493-499` (`hit_test` tests the block *before* the rows), with the paint order at `:754-757` (`_paint_panel` then `_paint_block`)
+- **Finding:** the row list grows downward with no limit and no scrolling, while the block occupies a fixed 205 px at the bottom of the same column. Driven headlessly at 900×470 with 20 objects: the block's top is y = 265 and the panel is 352 px tall, so rows 15..19 fall inside it — `hit_test` on row 15 returns `Hit('block')` (swallowed, does nothing) and on row 16 `Hit('mode')`, which runs `cycle_mouse_mode()`. Clicking an object name changes the mouse mode. The rows are painted first and then covered by the block's own 75 %-opaque fill, so they are visible enough to invite the click. Sixteen objects at a 470 px viewport is an ordinary session. At minimum stop laying out rows that would fall inside `self._block` (and say so, e.g. a "+3 more" line); properly, give the list the height the block leaves it and scroll.
+- **Fix note:**
+
+### RF-874
+- **Status:** OPEN
+- **Severity:** S2 (loading or showing a shorter molecule while the sequence strip is scrolled leaves the strip blank and unclickable, and only the wheel recovers it)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:296-298` (`set_sequences`, which replaces `self.sequences` and touches nothing else) against `:364` (`scroll_sequence`, the only place `_seq_scroll` is clamped) and the caller `chisurf/plugins/chimol/chimol/app/molview_main_window.py:2081` (`_sync_internal_sequences` → `gui.set_sequences(rows)`, followed by a full `gui.layout(...)`)
+- **Finding:** `_seq_scroll` survives a change of sequences and is never re-clamped against the new `max_scroll()`; `layout_sequence` recomputes the rects and the thumb from it but does not bound it. Driven headlessly: a 400-residue sequence scrolled to its maximum (`_seq_scroll = 298`), then `set_sequences` with a 20-residue one **followed by the production `layout(900, 470)`**, leaves `_seq_scroll = 298` with `max_scroll() == 0` — the paint loop's `range(298, min(298 + 103, 20))` is empty, so the strip draws the object's name and no residues at all, and `sequence_index_at` returns `None` for every cell in the row. Nothing in the strip says why. `scroll_sequence(-1)` then jumps straight to 0 (the `min(max(...))` clamp), which is the only way out. Unlike RF-850 the intervening `layout()` does *not* rescue this one. Clamp `_seq_scroll` in `set_sequences` (or at the top of `layout_sequence`), and pin it with a shrink-then-layout test.
+- **Fix note:**
+
+### RF-875
+- **Status:** OPEN
+- **Severity:** S3 (two copies of one formula have drifted by the padding term, so the strip paints one more column than the scrollbar and `max_scroll` account for)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:351-354` (`visible_columns`: `(self._seq_strip.w - self._seq_origin - self.PAD) / char_w`) against `:817` (`_paint_sequence`: `visible = max(int((strip.w - self._seq_origin) / char_w), 1)`, no `- self.PAD`)
+- **Finding:** the painter's count is derived independently of the one the model uses. At 900×470 with the default column they come out 103 and 102, so the last painted residue sits in the right-hand padding, past the end of the scrollbar track (which is sized `w - origin - PAD`), and both `max_scroll()` and the thumb's span/offset are computed from a viewport one column narrower than what is drawn. The visible consequence is small — a column of dead scroll range at the right-hand end — but the duplication is the defect: the layout already publishes `visible_columns()`, and the painter should call it rather than re-derive it slightly differently.
+- **Fix note:**
+
+### RF-876
+- **Status:** OPEN
+- **Severity:** S3 (the mouse-mode table mixes action *codes* with rendered *labels*, so the same binding compares unequal in two modes; only a case-insensitive fallback in the one reader hides it)
+- **Location:** `chisurf/plugins/chimol/chimol/mouse_modes.py:161-167` (`three_button_viewing`: `'+Box'`, `'-Box'`, `'Sele'`), `:248-254` (`three_button_maestro`), `:305-307` (`two_button_selecting`), `:388-400` (`one_button_viewing`: `'movZ'`, `'+Box'`, `'-Box'`) against `:283` (`two_button_viewing`: `'sele'`) and the reader at `:451` (`ACTION_LABELS.get(action, ACTION_LABELS.get(action.lower(), action))`)
+- **Finding:** `MODE_BINDINGS` is documented as `{mode: {(button, modifier): action}}` "transcribed from `pymol.controlling.mode_dict`", i.e. action codes, and `ACTION_LABELS` is the code→label map. Nine cells across four modes hold the *label* instead: `'+Box'`, `'-Box'`, `'Sele'`, `'movZ'`. They render correctly only because `action_for` falls back to `action.lower()` — remove that fallback and the table renders raw. The consequence today is a table that contradicts itself: `MODE_BINDINGS['three_button_viewing'][('l','ctsh')] == 'Sele'` while `MODE_BINDINGS['two_button_viewing'][('l','ctsh')] == 'sele'`, so the same binding compares unequal, and any consumer that does what the module's name invites — dispatching on the code rather than drawing it — has to know which spelling each mode used. The module's own docstring argues this table is worth having exactly right because it is reference material. Normalise the nine values to their lowercase codes; a test asserting `set(MODE_BINDINGS[m].values()) <= set(ACTION_LABELS)` for every mode pins it and is what the `.lower()` fallback is standing in for.
+- **Fix note:**
