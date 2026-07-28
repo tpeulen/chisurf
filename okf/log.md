@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **Metaballs play at 26 fps, and finally look wet.** A trajectory wants 20 fps
+  (50 ms); a full build is ~220 ms on one nuclear-pore spoke, nearly all of it
+  the per-vertex transfer of colour and normals from the atoms -- spent on a
+  picture replaced before anyone can look at it. Metaballs now honour the
+  **existing** `_draft_quality` mechanism the cartoon uses (rate-based, with a
+  settle timer), skipping that transfer and coarsening the grid to `max_dim` 96
+  while frames arrive quickly: **37.9 ms, 26.4 fps**, against 217.7 ms settled.
+  Grid cost falls with the *cube* of resolution, so 128 -> 96 is 42% of the
+  voxels.
+  - **The draft may be coarser, never different.** The first version fell back
+    to the representation's base colour, so a green model turned blue for the
+    duration of every scrub and snapped back on settle -- exactly the flicker
+    the cartoon's draft rules exist to prevent. It takes the mean of the atom
+    colours instead, which keeps whatever `color`/`spectrum` set.
+  - **`normals: isosurface` is why it looks wet now.** The builder replaced the
+    isosurface's own normals with a Gaussian-weighted density gradient averaged
+    over a cutoff of several bead radii. Far smoother -- and smoother is worse:
+    it airbrushed the surface into a soft glow that no specular highlight
+    survived. Comparing the two side by side in the viewport made it obvious;
+    the *draft*, which never did the replacement, looked more like jelly than
+    the full-quality build did.
+  - Pruned `modules/imp-tricks/_old` (5.6 GB, 0 tracked files, already ignored
+    by the imp-tricks repo). It held a stale IMP build with another project's
+    path compiled in as its data directory, which is what made every PDB load
+    fall back to the built-in parser with a `top.lib` traceback.
+
 * **A 2CDE result is labelled by the run that produced it, not by where the
   combo box happens to be when it lands (RF-533).** The 2CDE worker is
   parameterised by a settings snapshot and the frame it returns carries **only**

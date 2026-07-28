@@ -259,6 +259,13 @@ def _load_display_config() -> dict:
             "rim_strength": 0.55,
             # Rim lighting falloff power (higher = sharper edge)
             "rim_power": 2.2,
+            # Which normals to shade with. "isosurface" takes them from the
+            # density field at each vertex; "density" replaces them with a
+            # Gaussian-weighted average over several bead radii, which is far
+            # smoother -- and smoother is not better: it airbrushes the surface
+            # into a soft glow that no specular highlight survives, which is why
+            # a metaball never looked wet.
+            "normals": "isosurface",
             # Use only surface-exposed atoms (faster, cleaner surface)
             "surface_only": True,
             # Neighbor search radius for surface classification (Angstroms)

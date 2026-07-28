@@ -4285,6 +4285,23 @@ class MolView(QtWidgets.QWidget):
         coarse.update(self._DRAFT_CARTOON)
         return coarse
 
+    #: Metaball settings while scrubbing. The isosurface is sampled on a grid,
+    #: so the cost falls with the **cube** of the resolution: 128 -> 96 is 42% of
+    #: the voxels. The blob's shape survives -- an isosurface of fused Gaussians
+    #: is smooth by construction and has no fine detail to lose at this step --
+    #: while the shading skipped in draft is what actually dominated the build.
+    _DRAFT_METABALL = {
+        "max_dim": 96,
+    }
+
+    def _metaball_config(self, config: dict) -> dict:
+        """The metaball settings to draw with, coarsened while scrubbing."""
+        if not getattr(self, "_draft_quality", False):
+            return config
+        coarse = dict(config)
+        coarse.update(self._DRAFT_METABALL)
+        return coarse
+
     #: A frame change arriving sooner than this after the previous one counts as
     #: a scrub rather than a look. Comfortably longer than a bake, so a
     #: trajectory played at any watchable rate stays in the cheap path.
@@ -6749,6 +6766,44 @@ class MolView(QtWidgets.QWidget):
                 if i_global < ov.shape[0] and np.isfinite(ov[i_global]).all():
                     atom_colors[i_local] = ov[i_global]
 
+        # While the frame is being scrubbed, the per-vertex transfer from atoms
+        # is the whole cost of a rebuild -- and it is spent on a picture that is
+        # replaced before anyone can look at it. Draft keeps the geometry, which
+        # is what actually moves, and takes its colour and normals from the
+        # isosurface itself. The settle timer bakes the good version as soon as
+        # the frame stops changing, so what you end up *looking* at is never the
+        # draft. This is the same trade the cartoon makes; see
+        # `_note_frame_change`.
+        if getattr(self, "_draft_quality", False):
+            # The *object's* colour, not the type's default. `atom_colors`
+            # already carries whatever `color` and `spectrum` put there, so its
+            # mean keeps the hue; taking `base_color` instead turned a green
+            # model blue for the duration of every scrub and snapped it back on
+            # settle, which is precisely the flicker the cartoon's draft rules
+            # exist to avoid. A model coloured *per atom* does flatten to its
+            # average while moving -- the per-vertex transfer that spreads those
+            # colours over the surface is the cost being skipped.
+            draft_color = (
+                np.asarray(atom_colors, dtype=float).mean(axis=0)
+                if len(atom_colors)
+                else base_color
+            )
+            mesh_colors = np.tile(draft_color, (verts.shape[0], 1))
+            mesh_colors[:, 3] = alpha if alpha < 1.0 else 1.0
+            geom = Geometry(
+                kind="mesh",
+                positions=verts,
+                indices=faces,
+                normals=norms,
+                colors=mesh_colors,
+            )
+            return [SceneObject(
+                id="metaballs",
+                geometry=geom,
+                render_mode="transparent" if alpha < 1.0 else "opaque",
+                material=material,
+            )]
+
         try:
             max_sigma = float(np.max(sigmas))
             cutoff = max_sigma * 2.5
@@ -6773,11 +6828,19 @@ class MolView(QtWidgets.QWidget):
             # outward direction), and a surface lit from inside its own volume
             # renders nearly black. The surface builder, which uses the same
             # helper, had the sign right; these two disagreed.
-            mag = np.linalg.norm(grad_sum, axis=1, keepdims=True)
-            good = mag[:, 0] > 1e-6
-            new_norms = norms.copy()
-            new_norms[good] = grad_sum[good] / mag[good]
-            norms = new_norms
+            # The isosurface's own normals are sampled from the density field
+            # at the vertex; these are a Gaussian-weighted average over a cutoff
+            # of several bead radii, which is far smoother. Smoother is not
+            # better here: it airbrushes the surface into a soft glow and no
+            # specular highlight survives it, which is why a metaball never
+            # looked wet. `metaball.normals` chooses; the isosurface wins by
+            # default.
+            if str(cfg.get("normals", "isosurface")).lower() != "isosurface":
+                mag = np.linalg.norm(grad_sum, axis=1, keepdims=True)
+                good = mag[:, 0] > 1e-6
+                new_norms = norms.copy()
+                new_norms[good] = grad_sum[good] / mag[good]
+                norms = new_norms
 
             if ao_strength > 0:
                 occ = _estimate_ambient_occlusion(
@@ -7702,7 +7765,7 @@ class MolView(QtWidgets.QWidget):
         scene_objects += self._update_labels()
         scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca) or []
 
-        metaball_cfg = _DISPLAY_CONFIG.get("metaball", {})
+        metaball_cfg = self._metaball_config(_DISPLAY_CONFIG.get("metaball", {}))
         scene_objects += self._update_metaballs(coords, metaball_cfg, self._colors_per_ca) or []
 
         scene_objects += self._update_dots(coords, self._colors_per_ca) or []
