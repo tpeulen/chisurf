@@ -111,11 +111,13 @@ class ICSReader(ExperimentReader):
         channel : int
             Default routing channel index.
         pixel_duration : float, optional
-            Pixel dwell time in microseconds. Inferred from the TTTR header
-            when available.
+            Pixel dwell time in microseconds. Left unset (``None``) it is taken
+            from the TTTR header of the file being read; a value given here
+            wins over the header.
         line_duration : float, optional
-            Line duration in milliseconds. Inferred from the TTTR header when
-            available.
+            Line duration in milliseconds. Left unset (``None``) it is taken
+            from the TTTR header of the file being read; a value given here
+            wins over the header.
         frame_duration : float, optional
             Frame duration in milliseconds. When unset it is estimated as
             ``n_lines * line_duration``.
@@ -151,13 +153,18 @@ class ICSReader(ExperimentReader):
         self.name = name
         self.reading_routine = reading_routine
         self.channel = int(channel)
-        # Optional per-dataset imaging timing parameters. For TTTR data these
-        # are refined from the header; otherwise they may be provided by the
-        # GUI/controller and are propagated into the ICS metadata so the models
+        # Optional per-dataset imaging timing parameters. These hold what the
+        # user configured — ``None`` means "auto-detect" — and are never
+        # overwritten by a file: a header value is kept apart (below) and only
+        # used where nothing was configured, so a corrected dwell time survives
+        # every re-read. They are propagated into the ICS metadata so the models
         # can convert carpet lags into lag times.
         self.pixel_duration = pixel_duration
         self.line_duration = line_duration
         self.frame_duration = frame_duration
+        # Timing seeded from the last TTTR header read, in the same units.
+        self._header_pixel_duration: float | None = None
+        self._header_line_duration: float | None = None
         self.pixel_size_nm = float(pixel_size_nm)
         # Optional list of TTTR routing channels defining this logical
         # tttr_channeldefinition. When present, the TTTR reader will use all of
@@ -253,11 +260,13 @@ class ICSReader(ExperimentReader):
             return None
 
     def _seed_timing_from_header(self, tttr_all) -> None:
-        """Refine pixel/line durations from a TTTR header when possible.
+        """Read pixel/line durations from a TTTR header when possible.
 
         For PTU files this uses the pixel/line duration tags together with the
         global macro-time resolution. Values are stored in µs (pixel) and ms
-        (line).
+        (line), on the ``_header_*`` attributes only: they are the fallback for
+        an unset (auto-detect) setting, never a replacement for one the user
+        configured. See :meth:`_effective_timing`.
 
         Parameters
         ----------
@@ -285,9 +294,26 @@ class ICSReader(ExperimentReader):
         except Exception:
             ld_clk = None
         if isinstance(pd_clk, (int, float)) and pd_clk > 0:
-            self.pixel_duration = float(pd_clk) * macro_res * 1.0e6
+            self._header_pixel_duration = float(pd_clk) * macro_res * 1.0e6
         if isinstance(ld_clk, (int, float)) and ld_clk > 0:
-            self.line_duration = float(ld_clk) * macro_res * 1.0e3
+            self._header_line_duration = float(ld_clk) * macro_res * 1.0e3
+
+    def _effective_timing(self) -> tuple[float, float]:
+        """Return the pixel dwell (µs) and line time (ms) a read will use.
+
+        An explicitly configured value wins over the header of the file being
+        read, which in turn wins over the scanner-agnostic defaults; that is the
+        precedence the editable fields promise with their "0.0 means auto-detect
+        from TTTR header" semantics.
+
+        Returns
+        -------
+        tuple of float
+            ``(pixel_duration_us, line_duration_ms)``.
+        """
+        pixel_us = self.pixel_duration_us or self._header_pixel_duration or 11.1
+        line_ms = self.line_duration_ms or self._header_line_duration or 3.33
+        return float(pixel_us), float(line_ms)
 
     def _load_images(self, fn: pathlib.Path, channels: tuple[int, ...], mtr_norm):
         """Return the image stack for a file, reading TIFF or TTTR as needed.
@@ -440,9 +466,10 @@ class ICSReader(ExperimentReader):
             images, drift_shifts = correct_drift(images, reference=drift_mode, roi=roi)
 
         max_lag = max(0, int(getattr(self, "max_frame_lag", 0) or 0))
+        pixel_duration_us, line_duration_ms = self._effective_timing()
         timing = IcsTiming(
-            pixel_duration_us=self.pixel_duration_us or 11.1,
-            line_duration_ms=self.line_duration_ms or 3.33,
+            pixel_duration_us=pixel_duration_us,
+            line_duration_ms=line_duration_ms,
             frame_duration_ms=self.frame_duration_ms,
             pixel_size_nm=float(getattr(self, "pixel_size_nm", 40.0) or 40.0),
         )

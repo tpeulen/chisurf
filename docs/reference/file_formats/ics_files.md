@@ -70,8 +70,11 @@ The timing fields convert carpet lags into lag times through
 `tau = |xi*t_pixel + psi*t_line + Delta*t_frame|`, so they set the physical
 meaning of the whole measurement:
 
-- **Pixel dur [µs]** and **Line dur [ms]** — read from the TTTR header when
-  available, otherwise entered by hand. Required for any RICS-region fit.
+- **Pixel dur [µs]** and **Line dur [ms]** — leave both at `0` to read them from
+  the TTTR header of each file; anything you enter overrides the header and is
+  kept across reads, which is how a wrong or missing scanner tag is corrected.
+  The values a read actually used are reported above the settings. Required for
+  any RICS-region fit.
 - **Frame dur [ms]** — only matters once `max_frame_lag > 0`. Leaving it at `0`
   estimates it as (lines per frame) × (line time), which is exact only for a
   scanner without inter-frame dead time.

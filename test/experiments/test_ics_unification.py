@@ -7,6 +7,8 @@ identities breaks, the subsystem has quietly become four methods again.
 """
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -298,3 +300,54 @@ def test_an_empty_region_is_rejected(stack):
             stack, IcsSettings(frame_lags=(0,)),
             mask=ThresholdROI(low=float(stack.max()) + 1.0),
         )
+
+
+# --- a configured dwell time is the user's, not the file's ------------------
+_CLSM_HT3 = pathlib.Path(__file__).parents[1] / "data" / "clsm" / "PQ_Olympus_MFIS.ht3"
+
+
+def _seeded(**reader_kwargs):
+    """Return an ICS reader after seeding it from the shipped HT3 header."""
+    import tttrlib
+    from chisurf.core.experiments.ics import ICSReader
+
+    reader = ICSReader(reading_routine="HT3", **reader_kwargs)
+    reader._seed_timing_from_header(tttrlib.TTTR(_CLSM_HT3.as_posix(), "HT3"))
+    return reader
+
+
+@pytest.mark.skipif(not _CLSM_HT3.exists(), reason="CLSM test file not available")
+def test_an_unset_dwell_time_is_taken_from_the_header():
+    """0 means auto-detect: the header supplies what the user left unset."""
+    reader = _seeded()
+    assert reader.pixel_duration is None and reader.line_duration is None
+    pixel_us, line_ms = reader._effective_timing()
+    # 0.03125 µs per pixel, 256 pixels to the 8 µs line, up to the clock.
+    assert pixel_us == pytest.approx(0.03125, rel=1e-5)
+    assert line_ms == pytest.approx(0.008, rel=1e-5)
+
+
+@pytest.mark.skipif(not _CLSM_HT3.exists(), reason="CLSM test file not available")
+def test_a_configured_dwell_time_survives_reading_the_header():
+    """A typed pixel/line time wins over the file, on this read and the next.
+
+    The fields are editable precisely so a wrong or missing header tag can be
+    corrected; seeding used to overwrite them on every read, so the corrected
+    value was gone before it was ever used.
+    """
+    import tttrlib
+
+    reader = _seeded(pixel_duration=7.0, line_duration=2.0)
+    assert (reader.pixel_duration, reader.line_duration) == (7.0, 2.0)
+    assert reader._effective_timing() == (7.0, 2.0)
+
+    # Re-reading the same header does not erode the setting either.
+    reader._seed_timing_from_header(tttrlib.TTTR(_CLSM_HT3.as_posix(), "HT3"))
+    assert reader._effective_timing() == (7.0, 2.0)
+
+
+def test_timing_falls_back_to_the_defaults_without_a_header():
+    """A TIFF stack has no timing tags, so the documented defaults apply."""
+    from chisurf.core.experiments.ics import ICSReader
+
+    assert ICSReader()._effective_timing() == (11.1, 3.33)

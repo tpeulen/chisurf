@@ -6912,8 +6912,29 @@ geometry it reconstructs from a Leica file. Findings RF-580..RF-587.
 - **Fix note:**
 
 ### RF-587
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (an explicitly configured pixel dwell / line time is silently overwritten by the file header on every read, contradicting both the property docstring and the editable field in the view spec)
 - **Location:** `chisurf/core/experiments/ics/__init__.py:255-290` (`_seed_timing_from_header`: `if isinstance(pd_clk, (int, float)) and pd_clk > 0: self.pixel_duration = …`), called unconditionally from `_load_images` at `:339`, against the properties at `:202-220` (*"0.0 means auto-detect from TTTR header"*) and the two editable fields in `ics.view.json` (`pixel_duration_us`, `line_duration_ms`)
 - **Finding:** the guard tests whether the *header* has a value, never whether the *user* set one, so "auto-detect when 0" is only half implemented: a non-zero value is not honoured. Verified with the shipped HT3 file — `ICSReader(pixel_duration=7.0, line_duration=2.0)` reads `7.0 µs / 2.0 ms` before and **`0.03125 µs / 0.008 ms`** after `_seed_timing_from_header(TTTR('test/data/clsm/PQ_Olympus_MFIS.ht3', 'HT3'))`. The header values happen to be self-consistent here (256 pixels × 0.03125 µs = the 8 µs line), but a user correcting a wrong or missing tag — the reason the fields are editable — cannot: the GUI clears the image cache on every parameter change (`gui/widgets/experiments/ics.py:541-542`), so the next read re-seeds and the typed value is gone. Seed only when the corresponding attribute is `None`, which is exactly what the property setters already encode.
-- **Fix note:**
+- **Fix note:** the two meanings are now separate values.
+  `_seed_timing_from_header` writes to `_header_pixel_duration` /
+  `_header_line_duration` only, and a read resolves the timing through the new
+  `_effective_timing()`: a configured value wins over the header of the file
+  being read, which wins over the class defaults (11.1 µs / 3.33 ms). Nothing
+  ever overwrites the user's setting, and the header is still re-read per file
+  rather than sticking to the first one. The same overwrite existed a second
+  time in the GUI, which wrote the resolved timing back onto the reader after
+  every preview (`gui/widgets/experiments/ics.py`, "AutoForm rebuild() will
+  reflect them"); that write is replaced by `_report_detected_timing`, which
+  shows the timing a read used next to the drop hint ("Timing in use: 0.03125
+  µs/pixel, 0.008 ms/line") and leaves the fields alone. Both editable fields
+  now say in their `description` that `0` means "take it from the header", and
+  [the ICS file-format page](../../docs/reference/file_formats/ics_files.md)
+  says the same. Pinned by three tests in
+  `test/experiments/test_ics_unification.py`: an unset dwell time comes from the
+  header (0.03125 µs / 0.008 ms on the shipped HT3 file), a configured 7.0 µs /
+  2.0 ms survives seeding and re-seeding, and a reader with no header at all
+  falls back to the defaults. Verified in the GUI headlessly on the same file:
+  with the fields at 0 the panel reports the detected timing and leaves them at
+  0; with 7.0/2.0 typed in, both the fields and the reported timing still read
+  7 µs / 2 ms after a preview read.

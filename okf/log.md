@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **ICS: a typed pixel dwell / line time is no longer overwritten by the file
+  (RF-587).** The scan-timing fields promise "0 means auto-detect from the TTTR
+  header", but seeding tested only whether the *header* had a value, so a
+  correction typed into the field was gone on the next read — measured on the
+  shipped HT3 file, `ICSReader(pixel_duration=7.0, line_duration=2.0)` came back
+  as `0.03125 µs / 0.008 ms`. Header values now live apart from the setting
+  (`_header_pixel_duration`/`_header_line_duration`) and a read resolves them
+  through `_effective_timing()`: setting > header of the file being read >
+  defaults. The GUI wrote the same overwrite a second time after every preview;
+  it now *reports* the timing a read used next to the drop hint instead of
+  assigning it, and both field descriptions plus the
+  [ICS file-format page](../docs/reference/file_formats/ics_files.md)
+  state the precedence. Pinned by three tests in `test_ics_unification.py`
+  (header-supplied, user-set survives re-seeding, defaults without a header) and
+  checked headlessly in the reader panel.
+
 * **ICS: the lag grids follow the maps (RF-583).** `compute_ics_carpet` applied
   the `fftshift` to the correlation maps only when asked, but always built
   `pixel_shift`/`line_shift` as `index - n//2` — the coordinates of a *centred*

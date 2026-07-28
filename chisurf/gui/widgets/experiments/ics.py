@@ -14,6 +14,9 @@ from chisurf.gui import chiplot as cp
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
 
 
+_HINT_TEXT = "Image correlation: drop TTTR (PTU/HT3) or a TIFF stack here."
+
+
 class _IcsDetectorWidget(QtWidgets.QWidget):
     """Detector cascade: Setup → Detector → Routine + read-only routing channels."""
 
@@ -319,9 +322,9 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        label = QtWidgets.QLabel("Image correlation: drop TTTR (PTU/HT3) or a TIFF stack here.")
-        label.setWordWrap(True)
-        layout.addWidget(label)
+        self._hint_label = QtWidgets.QLabel(_HINT_TEXT)
+        self._hint_label.setWordWrap(True)
+        layout.addWidget(self._hint_label)
 
         # AutoForm for Detector and Acquisition settings
         reader_obj = getattr(self, "experiment_reader", None)
@@ -710,6 +713,28 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
             payload={"filename": s, "experiment_reader": None},
         )
 
+    def _report_detected_timing(self, ics_meta: dict) -> None:
+        """Show the timing a read actually used next to the drop hint.
+
+        The pixel dwell and line time are editable settings where ``0`` means
+        "take it from the file header". Reporting the resolved values keeps that
+        detection visible without writing it into the fields, which would turn a
+        detection into a setting and discard a value the user typed.
+
+        Parameters
+        ----------
+        ics_meta : dict
+            The ``ics`` sub-dictionary of the read dataset's metadata.
+        """
+        pd = ics_meta.get('pixel_duration_us', None)
+        ld = ics_meta.get('line_duration_ms', None)
+        if not isinstance(pd, (int, float)) or not isinstance(ld, (int, float)):
+            return
+        self._hint_label.setText(
+            f"{_HINT_TEXT}  Timing in use: {float(pd):.4g} µs/pixel, "
+            f"{float(ld):.4g} ms/line."
+        )
+
     def _load_preview_from_file(self, path: pathlib.Path) -> None:
         try:
             self.onParametersChanged()
@@ -745,19 +770,11 @@ class ICSController(reader.ExperimentReaderController, QtWidgets.QWidget):
         self._preview_corr_map = ics_meta.get('ics_mean', None)
         self._preview_corr_carpet = ics_meta.get('correlation', None)
 
-        # Update timing attrs on reader; AutoForm rebuild() will reflect them
-        pd = ics_meta.get('pixel_duration_us', None)
-        ld = ics_meta.get('line_duration_ms', None)
-        try:
-            if isinstance(pd, (int, float)) and pd > 0.0:
-                reader_obj.pixel_duration_us = float(pd)
-        except Exception:
-            pass
-        try:
-            if isinstance(ld, (int, float)) and ld > 0.0:
-                reader_obj.line_duration_ms = float(ld)
-        except Exception:
-            pass
+        # The timing fields are the user's own setting, where 0 means
+        # "auto-detect from the header": writing the detected value back would
+        # turn a detection into a fixed setting and overwrite whatever the user
+        # typed, so the read values are only reported, never assigned.
+        self._report_detected_timing(ics_meta)
         if self._settings_form is not None:
             try:
                 self._settings_form.rebuild()
