@@ -2049,11 +2049,29 @@ All findings were verified by running the real model on the simulator reader
   the module is now consistent.
 
 ### RF-148
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (with two of the model's own toggles on, the "two exchanging states" are a species and its own mirror image; the multistate route raises and is swallowed by RF-147)
 - **Location:** `chisurf/core/models/pda3c/tcpda.py:732-733` (`exchanging, static = species[:2], species[2:]`) and `:652-653` (`_multistate_log_likelihood` stacking one row per species), against `TcPdaSpecies.as_species` at `:240-254`
 - **Finding:** `as_species` interleaves each population with its label-swapped mirror when `stochastic_labeling` is on and `F(labeling) < 1`, so the returned list is `[s1, s1_mirror, s2, s2_mirror, …]` — but `_per_burst_log_likelihood` still slices `species[:2]` as "the first two species", which the view-spec panel describes as *"Treat the first two species as two conformational states"*. Verified on a two-species model with `dynamic = True`, `K_ex = 2`, `F(labeling) = 0.8`: `as_species` returns four components and `species[:2]` is `(55, 50, 65)` and its mirror `(55, 65, 50)`, while the **real** second state `(52, 66, 48)` and its mirror are handed to the static branch; the log likelihood moves from -8241.8 to -7898.1 with no warning. Both toggles are user-reachable in `tcpda.view.json` (*Corrections* and *Exchange (dynamic)* panels). The same seam breaks the multistate route harder: with a 2x2 rate matrix and labelling on, `fractions @ blue` gets 4 rows for 2 states and raises `ValueError: matmul: … size 4 is different from 2`, which RF-147 turns into an empty residual. Either expand the mirrors *after* the exchanging pair is chosen, or carry the state identity on the component instead of relying on list position.
-- **Fix note:**
+- **Fix note:** Still real after the `tcpda.py` -> `pda3c.py` rename (the slice
+  had moved to `chisurf/core/models/pda3c/pda3c.py:910`). Fixed by evaluating the
+  dynamic routes **per labelling configuration** instead of on the flat mixture:
+  `Pda3cSpecies.as_labeling_variants` returns `(weight, states)` -- the intended
+  components at weight `F`, the mirrors at `1 - F`, each a complete set of states
+  in population order -- and `_per_burst_log_likelihood` runs the two-state
+  `K_ex` route (extracted as `_two_state_mixture_log_likelihood`) or the
+  multistate route on each, then mixes the results. That is exact rather than an
+  approximation: a molecule keeps its labels for its lifetime, so labelling and
+  conformation are independent. Consequences: "the first two species" are again
+  two *populations*; the rate matrix is sized by the populations, so a 2x2 scheme
+  with the correction on no longer raises (the message's "the correction doubles
+  them" hint went with it); and a single population with a mirror is static
+  rather than exchanging with itself. `as_species` is untouched -- the static
+  routes and the plots still read the flat mixture. Pinned by
+  `test/models/test_pda3c_labeling_states.py` (8 tests), whose core assertion is
+  the mixture identity `L(F) == logsumexp([log F + L_intended, log(1-F) +
+  L_mirrored])` per burst for both dynamic routes, plus a test that the old
+  positional slice does *not* satisfy it.
 
 ### RF-149
 - **Status:** OPEN

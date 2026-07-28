@@ -80,6 +80,12 @@ per observation window, and species three onward stay static; zero is the static
 limit, so the dynamic model nests the static one exactly. Entering rates
 switches to the full scheme — see below.
 
+The states are the species you entered, *not* the mirror populations that
+*Swapped labels* adds: a molecule keeps its labels for its lifetime, so the
+mirrors interconvert among themselves. Switching both on therefore runs the
+exchange twice — once per labelling — and mixes the two by $F_{labeling}$; the
+rate scheme stays the size of the species table.
+
 **Quadrature** — Gauss–Hermite nodes per distance axis. Five is ample; raise it
 only if a fit looks resolution-limited.
 

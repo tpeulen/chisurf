@@ -1325,6 +1325,25 @@
   the already-open RF-161 reaching a sixth Image Tools step. Use case recorded in
   [usecases/frc-resolution.md](/usecases/frc-resolution.md).
 
+* **PDA3c: a population was exchanging with its own mirror image (RF-148).**
+  With *Stochastic labelling* on, `as_species` interleaves every distance
+  population with its label-swapped mirror, so the flat list is
+  `[s1, s1_mirror, s2, s2_mirror, ...]` -- but the dynamic route still read
+  `species[:2]` as "the two exchanging states". With both toggles on (both
+  reachable from `pda3c.view.json`) the model therefore exchanged population one
+  with its own mirror and handed the *real* second state to the static branch,
+  silently, and the multistate route raised `ValueError` because a 2x2 scheme met
+  four species. The dynamic routes are now evaluated **per labelling
+  configuration** -- `Pda3cSpecies.as_labeling_variants` hands out
+  `(weight, states)`, the intended components at `F` and the mirrors at `1 - F`,
+  each a complete set of states in population order -- and the two results are
+  mixed. Exact, not an approximation: a molecule keeps its labels for its
+  lifetime, so labelling and conformation are independent. `as_species` is
+  unchanged, since the static routes and the plots want the flat mixture.
+  `test/models/test_pda3c_labeling_states.py` (8) pins the mixture identity for
+  both dynamic routes and that the old positional slice fails it; 309 passed in
+  `test/models/` and 21 in `test/gui/test_pda3c_model_editor.py`.
+
 ## 2026-07-27
 
 * **chimol: the hierarchy panel can switch parts of a model off.** Each node

@@ -150,6 +150,13 @@ of molecules carries the mirror geometry: $R_{BG}$ and $R_{BR}$ exchanged, with
 $R_{GR}$ untouched — it is the distance *between* the two swapped dyes. The
 correlations with $R_{GR}$ trade places for the same reason.
 
+Being a permutation and not a state has a consequence for the dynamics below: a
+molecule keeps its labels for its lifetime, so the mirror populations are the
+same states seen under the other labelling rather than states of their own. The
+exchange is therefore evaluated once per labelling — over the intended species,
+and over their mirrors — and the two are mixed by the labelling fraction. That
+is exact, since labelling and conformation are independent.
+
 **Brightness** follows from the optics. Energy transfer moves photons between
 channels whose detection efficiencies differ, so a high-FRET species can be
 genuinely dimmer and produce smaller bursts. Ignoring that over-weights it — it

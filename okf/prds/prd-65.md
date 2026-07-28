@@ -144,8 +144,15 @@ parameter table; `test/models/test_c3pda_rates.py` (16).
 Three things this uncovered:
 
 - **A mismatch between scheme size and species count now raises.** It used to
-  broadcast into a finite, plausible, wrong likelihood — and the swapped-label
-  correction doubles the species, so it was easy to reach.
+  broadcast into a finite, plausible, wrong likelihood. The swapped-label
+  correction made it easy to reach, because it doubles the species — until the
+  dynamic routes stopped reading the flat mixture at all (RF-148): they are
+  evaluated once per labelling configuration, `as_labeling_variants` handing out
+  the states of each in population order, and the results mixed by the labelling
+  fraction. A molecule keeps its labels for its lifetime, so labelling and
+  conformation are independent and the split is exact. Before it, "the first two
+  species" of a labelled dynamic model were a population and its own mirror
+  image.
 - **`transitions_per_window` was spelling-dependent.** The estimate summed
   `|K|` down a column, which double-counts for a matrix carrying its generator
   diagonal — the one part every other consumer discards. Two spellings of one

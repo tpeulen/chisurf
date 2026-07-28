@@ -235,6 +235,48 @@ class Pda3cSpecies(FittingParameterGroup):
         """Return the three pairwise correlations per species (``row_width = 3``)."""
         return list(self._correlations)
 
+    def _component_pair(self, index: int) -> tuple:
+        """Return one population's ``(intended, label-swapped)`` components.
+
+        Both carry the population's raw amplitude — the labelling fraction is
+        applied by the caller, so a caller that needs the *states* rather than
+        the flat mixture can keep the two apart.
+
+        Parameters
+        ----------
+        index : int
+            Zero-based population index.
+
+        Returns
+        -------
+        tuple of ThreeColorSpecies
+        """
+        mu = np.array([float(p.value) for p in self.means_of(index)])
+        sigma = np.array([max(float(p.value), 1e-6) for p in self.sigmas_of(index)])
+        rho = np.clip(
+            [float(p.value) for p in self.correlations_of(index)], -0.999, 0.999
+        )
+        weight = max(float(self._amplitudes[index].value), 0.0)
+        # Swapping the green and red labels swaps which site each is on, so
+        # R_BG <-> R_BR (with their widths). R_GR is the distance *between* the
+        # two swapped dyes and is unchanged, as is their mutual correlation; the
+        # two correlations with GR trade places.
+        return (
+            ThreeColorSpecies(
+                amplitude=weight,
+                means=mu,
+                covariance=covariance_from_statistics(sigma, rho),
+            ),
+            ThreeColorSpecies(
+                amplitude=weight,
+                means=np.array([mu[0], mu[2], mu[1]]),
+                covariance=covariance_from_statistics(
+                    np.array([sigma[0], sigma[2], sigma[1]]),
+                    np.array([rho[1], rho[0], rho[2]]),
+                ),
+            ),
+        )
+
     def as_species(self, labeling_fraction: float = 1.0) -> list:
         """Return the compute-core species for the current parameter values.
 
@@ -250,39 +292,48 @@ class Pda3cSpecies(FittingParameterGroup):
         Returns
         -------
         list of ThreeColorSpecies
+            The flat mixture, interleaved ``[s1, s1_mirror, s2, s2_mirror, …]``.
+            List position is therefore **not** state identity; a caller that
+            needs the states must use :meth:`as_labeling_variants`.
         """
         labeling_fraction = float(np.clip(labeling_fraction, 0.0, 1.0))
         out = []
-        for index, amplitude in enumerate(self._amplitudes):
-            mu = np.array([float(p.value) for p in self.means_of(index)])
-            sigma = np.array([max(float(p.value), 1e-6) for p in self.sigmas_of(index)])
-            rho = np.clip(
-                [float(p.value) for p in self.correlations_of(index)], -0.999, 0.999
-            )
-            weight = max(float(amplitude.value), 0.0)
-            out.append(
-                ThreeColorSpecies(
-                    amplitude=weight * labeling_fraction,
-                    means=mu,
-                    covariance=covariance_from_statistics(sigma, rho),
-                )
-            )
+        for index in range(len(self)):
+            intended, swapped = self._component_pair(index)
+            intended.amplitude *= labeling_fraction
+            out.append(intended)
             if labeling_fraction < 1.0:
-                # Swapping the green and red labels swaps which site each is on,
-                # so R_BG <-> R_BR (with their widths). R_GR is the distance
-                # *between* the two swapped dyes and is unchanged, as is their
-                # mutual correlation; the two correlations with GR trade places.
-                out.append(
-                    ThreeColorSpecies(
-                        amplitude=weight * (1.0 - labeling_fraction),
-                        means=np.array([mu[0], mu[2], mu[1]]),
-                        covariance=covariance_from_statistics(
-                            np.array([sigma[0], sigma[2], sigma[1]]),
-                            np.array([rho[1], rho[0], rho[2]]),
-                        ),
-                    )
-                )
+                swapped.amplitude *= 1.0 - labeling_fraction
+                out.append(swapped)
         return out
+
+    def as_labeling_variants(self, labeling_fraction: float = 1.0) -> list:
+        """Return ``(weight, states)`` for each labelling configuration.
+
+        A molecule's labels are fixed for its lifetime, so a transition is a
+        change of *conformation* and never of labelling: the mirror populations
+        are a complete set of states in their own right, exchanging among
+        themselves, rather than extra states beside the intended ones. Splitting
+        the flat :meth:`as_species` mixture back into configurations is what
+        lets the dynamic routes keep list position meaning state identity.
+
+        Parameters
+        ----------
+        labeling_fraction : float
+            Fraction of molecules carrying the intended dye assignment.
+
+        Returns
+        -------
+        list of (float, list of ThreeColorSpecies)
+            One entry per labelling configuration, its weight and its states in
+            population order. Zero-weight configurations are dropped.
+        """
+        labeling_fraction = float(np.clip(labeling_fraction, 0.0, 1.0))
+        pairs = [self._component_pair(index) for index in range(len(self))]
+        variants = [(labeling_fraction, [pair[0] for pair in pairs])]
+        if labeling_fraction < 1.0:
+            variants.append((1.0 - labeling_fraction, [pair[1] for pair in pairs]))
+        return [(weight, states) for weight, states in variants if weight > 0.0]
 
 
 class Pda3cSetup(FittingParameterGroup):
@@ -790,6 +841,10 @@ class Pda3cModel(ModelCurve):
         deliberately not taken here; the reason is in the body, and it is about
         the joint rather than the marginals.
 
+        ``species`` is one labelling configuration's states, in population
+        order — not the flat mixture, whose mirrors are the *same* states under
+        different labels rather than states of their own.
+
         Accuracy of a *fitted* rate is limited by the approximation this route
         makes elsewhere, not by the sampling: see the module docstring.
         """
@@ -800,13 +855,10 @@ class Pda3cModel(ModelCurve):
         rates = np.asarray(self.rate_matrix, dtype=float)
         if rates.shape[0] != len(species):
             # Silently averaging over the wrong number of states would produce
-            # a finite, plausible, wrong likelihood -- and the mismatch is easy
-            # to reach, since the swapped-label correction doubles the species.
+            # a finite, plausible, wrong likelihood.
             raise ValueError(
                 f"the exchange scheme has {rates.shape[0]} states but there are "
                 f"{len(species)} species to exchange between"
-                + (" (the swapped-label correction doubles them)"
-                   if getattr(self, "stochastic_labeling", False) else "")
             )
 
         blue = np.stack([self._mean_channel_probabilities(s, setup)[0] for s in species])
@@ -894,59 +946,94 @@ class Pda3cModel(ModelCurve):
         )
         return logsumexp(np.log(weights)[:, None] + node, axis=0)
 
-    def _per_burst_log_likelihood(self, counts: BurstCounts) -> np.ndarray:
-        """Return the per-burst log likelihood under the current parameters."""
+    @staticmethod
+    def _mixture_log_likelihood(pieces: list, weights: list) -> np.ndarray:
+        """Combine per-burst log likelihoods under (unnormalised) weights.
+
+        Parameters
+        ----------
+        pieces : list of numpy.ndarray
+            One per-burst log-likelihood vector per mixture component.
+        weights : list of float
+            Their relative weights; normalised here. All-zero weights fall back
+            to an equal split, so a model with every amplitude at zero still
+            returns a finite objective rather than ``nan``.
+
+        Returns
+        -------
+        numpy.ndarray
+        """
         from scipy.special import logsumexp
 
+        weights = np.asarray(weights, dtype=float)
+        total = weights.sum()
+        weights = weights / total if total > 0 else np.full(weights.shape, 1.0 / weights.size)
+        with np.errstate(divide="ignore"):
+            return logsumexp(np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0)
+
+    def _two_state_mixture_log_likelihood(self, counts: BurstCounts, states, setup):
+        """Return the likelihood of the first two states exchanging, rest static.
+
+        The convention the incumbent uses, and what the *Exchange (dynamic)*
+        panel promises: states one and two swap at ``K_ex``, state three onward
+        stay static and enter as an ordinary mixture.
+        """
+        from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
+
+        exchanging, static = states[:2], states[2:]
+        pieces = [self._dynamic_log_likelihood(counts, exchanging, setup)]
+        weights = [exchanging[0].amplitude + exchanging[1].amplitude]
+        for component in static:
+            pieces.append(
+                _species_log_likelihood(
+                    counts, component, setup,
+                    self.setup.background_blue, self.setup.background_green,
+                    *self._species_photon_number_pmfs(counts, component),
+                    self.n_nodes, self.truncate,
+                )
+            )
+            weights.append(component.amplitude)
+        return self._mixture_log_likelihood(pieces, weights)
+
+    def _per_burst_log_likelihood(self, counts: BurstCounts) -> np.ndarray:
+        """Return the per-burst log likelihood under the current parameters.
+
+        The dynamic routes are evaluated **per labelling configuration** rather
+        than on the flat species mixture: a molecule keeps its labels, so the
+        mirror populations exchange among themselves. Reading the flat list
+        positionally would otherwise make "the first two states" a population
+        and its own mirror image.
+        """
         from chisurf.core.fluorescence.pda3c.model import _species_log_likelihood
 
         setup = self.setup.as_setup()
-        species = self.species.as_species(self._labeling_weight())
+        labeling = self._labeling_weight()
 
-        if getattr(self, "dynamic", False) and self.rate_matrix is not None:
-            return self._multistate_log_likelihood(counts, species, setup)
-
-        if getattr(self, "dynamic", False) and len(species) >= 2:
-            exchanging, static = species[:2], species[2:]
-            pieces = [self._dynamic_log_likelihood(counts, exchanging, setup)]
-            weights = [exchanging[0].amplitude + exchanging[1].amplitude]
-            for component in static:
-                pieces.append(
-                    _species_log_likelihood(
-                        counts, component, setup,
-                        self.setup.background_blue, self.setup.background_green,
-                        *self._species_photon_number_pmfs(counts, component),
-                        self.n_nodes, self.truncate,
+        if getattr(self, "dynamic", False):
+            variants = self.species.as_labeling_variants(labeling)
+            multistate = self.rate_matrix is not None
+            if multistate or len(variants[0][1]) >= 2:
+                pieces, weights = [], []
+                for weight, states in variants:
+                    pieces.append(
+                        self._multistate_log_likelihood(counts, states, setup)
+                        if multistate
+                        else self._two_state_mixture_log_likelihood(counts, states, setup)
                     )
-                )
-                weights.append(component.amplitude)
-            weights = np.array(weights, dtype=float)
-            total = weights.sum()
-            weights = weights / total if total > 0 else np.ones_like(weights)
-            with np.errstate(divide="ignore"):
-                return logsumexp(
-                    np.log(weights)[:, None] + np.stack(pieces, axis=0), axis=0
-                )
+                    weights.append(weight)
+                return self._mixture_log_likelihood(pieces, weights)
 
-        amplitudes = np.array([max(s.amplitude, 0.0) for s in species], dtype=float)
-        if amplitudes.sum() <= 0.0:
-            amplitudes = np.ones_like(amplitudes)
-        amplitudes = amplitudes / amplitudes.sum()
-
-        per_species = np.stack(
-            [
-                _species_log_likelihood(
-                    counts, s, setup,
-                    self.setup.background_blue, self.setup.background_green,
-                    *self._species_photon_number_pmfs(counts, s),
-                    self.n_nodes, self.truncate,
-                )
-                for s in species
-            ],
-            axis=0,
-        )
-        with np.errstate(divide="ignore"):
-            return logsumexp(np.log(amplitudes)[:, None] + per_species, axis=0)
+        species = self.species.as_species(labeling)
+        per_species = [
+            _species_log_likelihood(
+                counts, s, setup,
+                self.setup.background_blue, self.setup.background_green,
+                *self._species_photon_number_pmfs(counts, s),
+                self.n_nodes, self.truncate,
+            )
+            for s in species
+        ]
+        return self._mixture_log_likelihood(per_species, [max(s.amplitude, 0.0) for s in species])
 
     def total_log_likelihood(self) -> float:
         """Return the total log likelihood of the dataset.
