@@ -31,10 +31,23 @@ def test_atom_indices_parses_csv():
     np.testing.assert_array_equal(model.atom_indices(), np.array([0, 2, 5], dtype=np.int32))
 
 
-def test_atom_indices_empty_is_empty():
+def test_atom_indices_empty_is_none():
+    """An empty selection must be ``None`` — mdtraj's "all atoms", not "no atoms"."""
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
-    assert AlignTrajectoryViewModel().atom_indices().size == 0
+    model = AlignTrajectoryViewModel()
+    assert model.atom_indices() is None
+    model.atom_selection = "   "
+    assert model.atom_indices() is None
+
+
+def test_atom_indices_rejects_non_numeric():
+    from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
+
+    model = AlignTrajectoryViewModel()
+    model.atom_selection = "CA"
+    with pytest.raises(ValueError, match="atom ids"):
+        model.atom_indices()
 
 
 def test_set_trajectory_notifies():
@@ -92,6 +105,48 @@ def test_save_aligned_respects_stride(tmp_path):
     model.save_aligned(str(target))
 
     assert md.load(str(target)).n_frames == 3
+
+
+def test_save_aligned_with_empty_selection_is_finite(tmp_path):
+    """The default (empty) selection must superpose on all atoms, not on none.
+
+    Handing ``superpose`` an empty index array leaves the Theobald solver
+    unconverged and writes a trajectory of pure ``NaN`` while still reporting
+    success (RF-706).
+    """
+    md = pytest.importorskip("mdtraj")
+    from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
+
+    source = tmp_path / "traj.h5"
+    target = tmp_path / "aligned.h5"
+    _tiny_trajectory(str(source), n_frames=5)
+
+    model = AlignTrajectoryViewModel()
+    model.set_trajectory(str(source))
+    model.save_aligned(str(target))
+
+    aligned = md.load(str(target))
+    assert aligned.n_frames == 5
+    assert np.isfinite(aligned.xyz).all()
+
+
+def test_save_aligned_rejects_malformed_selection(tmp_path):
+    """A non-numeric selection is reported in the log, not written out."""
+    pytest.importorskip("mdtraj")
+    from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
+
+    source = tmp_path / "traj.h5"
+    target = tmp_path / "aligned.h5"
+    _tiny_trajectory(str(source), n_frames=3)
+
+    model = AlignTrajectoryViewModel()
+    model.set_trajectory(str(source))
+    model.atom_selection = "CA, CB"
+    model.save_aligned(str(target))
+
+    assert "atom ids" in model.log_html()
+    assert "Aligned trajectory saved" not in model.log_html()
+    assert not target.exists()
 
 
 def test_view_spec_loads():

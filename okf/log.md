@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **Align Trajectory: the default setting wrote 5235 atoms of NaN and called it
+  saved** (review finding **RF-706**, S1, now `FIXED`). `atom_indices` parsed the
+  atom selection with `np.fromstring`, which turns an empty string into a
+  zero-length array — and `mdtraj`'s `superpose` falls back to "all atoms" only
+  for `None`. Given an empty array it superposed on **no** atoms, the Theobald
+  solver never converged, and every rotated coordinate came out `NaN` while the
+  log still read *"Aligned trajectory saved"*. That was the tool's out-of-the-box
+  configuration, and the field's own placeholder ("empty = all atoms") invites it.
+  Parsing is now explicit: `None` for an empty selection, a `ValueError` naming
+  the offending tokens for a non-numeric one, which `save_aligned` reports in the
+  log instead of writing a file. On `hgbp1_transition.h5` at stride 32 the output
+  goes from 235575/235575 NaN to **0**. Pinned by four tests in the plugin's
+  `test_view_model.py`, the load-bearing one asserting `np.isfinite(xyz).all()`
+  after an empty-selection run; the old test that asserted the empty *array* was
+  pinning the defect and is gone.
+
 * **QuEst: three quarters of the D–A decay were photons that were never
   emitted** (review finding **RF-689**, S1, now `FIXED`). The fix lives in the
   companion **quest** repository (`a4d7f56`), which is where the code is:

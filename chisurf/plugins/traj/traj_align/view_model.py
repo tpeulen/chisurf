@@ -16,6 +16,7 @@ from __future__ import annotations
 import html
 import logging
 import pathlib
+import re
 import time
 from collections.abc import Callable
 
@@ -70,13 +71,41 @@ class AlignTrajectoryViewModel:
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
     # ── derived state ───────────────────────────────────────────────────
-    def atom_indices(self) -> np.ndarray:
+    def atom_indices(self) -> np.ndarray | None:
         """Parse :attr:`atom_selection` into an ``int32`` array of atom ids.
 
-        An empty or malformed selection yields an empty array (mdtraj then
-        superposes on all atoms).
+        Returns
+        -------
+        numpy.ndarray or None
+            The selected atom ids, or ``None`` when the selection is empty.
+            ``None`` is what :meth:`mdtraj.Trajectory.superpose` reads as "use
+            every atom"; an empty *array* instead superposes on **no** atoms,
+            which leaves the Theobald solver unconverged and every rotated
+            coordinate ``NaN``.
+
+        Raises
+        ------
+        ValueError
+            If the selection holds a token that is not an atom id. Silently
+            dropping such a token would superpose on fewer atoms than asked
+            for — or, for a wholly non-numeric selection, on none at all.
         """
-        return np.fromstring(self.atom_selection, dtype=np.int32, sep=",")
+        tokens = [t for t in re.split(r"[,;\s]+", self.atom_selection.strip()) if t]
+        if not tokens:
+            return None
+        indices: list[int] = []
+        bad: list[str] = []
+        for token in tokens:
+            try:
+                indices.append(int(token))
+            except ValueError:
+                bad.append(token)
+        if bad:
+            raise ValueError(
+                "Atom selection must be a comma-separated list of atom ids; "
+                f"cannot parse {', '.join(repr(t) for t in bad)}"
+            )
+        return np.asarray(indices, dtype=np.int32)
 
     # ── file wiring ─────────────────────────────────────────────────────
     def set_trajectory(self, filename: str) -> None:
@@ -106,7 +135,11 @@ class AlignTrajectoryViewModel:
             self.append_log("No trajectory selected")
             return
 
-        atom_indices = self.atom_indices()
+        try:
+            atom_indices = self.atom_indices()
+        except ValueError as error:
+            self.append_log(str(error))
+            return
         stride = int(self.stride)
         chunk_size = 1000
 

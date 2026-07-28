@@ -38,8 +38,11 @@ class AlignTrajectoryWidget(QtWidgets.QWidget):
         return int(self.model.stride)
 
     @property
-    def atom_list(self) -> np.ndarray:
-        """Parsed atom-id array from the atom selection (delegates to the view-model)."""
+    def atom_list(self) -> np.ndarray | None:
+        """Parsed atom ids from the atom selection, ``None`` for "all atoms".
+
+        Delegates to :meth:`AlignTrajectoryViewModel.atom_indices`.
+        """
         return self.model.atom_indices()
 
     @property

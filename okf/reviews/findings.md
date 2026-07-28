@@ -8315,11 +8315,33 @@ back: in-memory `output_paths` holds
 - **Fix note:**
 
 ### RF-706
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the Align tool's *default* configuration writes a trajectory whose every coordinate is NaN, and reports it as saved)
 - **Location:** `chisurf/plugins/traj/traj_align/view_model.py:79` (`atom_indices`: `return np.fromstring(self.atom_selection, dtype=np.int32, sep=",")`) feeding `:123` (`chunk.superpose(frame_0, frame=0, atom_indices=atom_indices)`), with the promise made at `:76-77` (docstring: *"An empty or malformed selection yields an empty array (mdtraj then superposes on all atoms)"*) and repeated to the user in `chisurf/plugins/traj/traj_align/align_trajectory.view.json` (`"placeholder": "e.g. 0, 1, 2, 3 (empty = all atoms)"`)
 - **Finding:** `np.fromstring("", sep=",")` returns a **zero-length** array, not `None`. `mdtraj.Trajectory.superpose` only falls back to all atoms when `atom_indices is None`; given an empty array it superposes on **no** atoms, the Theobald solver fails to converge (`UNCONVERGED ROTATION MATRIX`, plus `Mean of empty slice` / `invalid value encountered in divide`) and every rotated coordinate comes out NaN. Verified by driving the real GUI headlessly: dropped `test/data/atomic_coordinates/trajectory/h5-file/hgbp1_transition.h5` on the Align tab, left **Atom selection** at its default (empty), set stride 32, pressed **💾 Save aligned…**; the log printed `Aligned trajectory saved: …` and the file reloads as 15 frames × 5235 atoms with **235575 / 235575 coordinates NaN (100 %)**. The same run with 200 explicit `CA` ids typed in produced a correct, NaN-free superposition, so only the empty-selection path is broken — which is the path the placeholder actively invites. Fix by returning `None` (or `slice(None)`) from `atom_indices` when the parsed array is empty, and add a guard test that aligns with an empty selection and asserts `np.isfinite(out.xyz).all()`. Note `np.fromstring` also swallows malformed input silently (`"CA"` → empty array → the same NaN output); parsing should reject non-numeric text with a message instead.
-- **Fix note:**
+- **Fix note:** `atom_indices` no longer goes through `np.fromstring`. It splits
+  on commas/semicolons/whitespace and returns **`None`** for an empty selection —
+  the only value `mdtraj.Trajectory.superpose` reads as "use every atom" — and
+  raises `ValueError` naming the offending tokens for a non-numeric one, which
+  `save_aligned` catches, writes to the log, and returns on without creating a
+  file. (On the pinned numpy, `np.fromstring("CA", sep=",")` raises rather than
+  returning an empty array, so the malformed path was an unhandled traceback out
+  of the Save button rather than silent NaN; both readings are now closed.)
+  Return type widened to `np.ndarray | None` here and on
+  `AlignTrajectoryWidget.atom_list`. Verified on the finding's own case: the real
+  `hgbp1_transition.h5` at stride 32 with an empty selection now writes 15 frames
+  × 5235 atoms with **0 / 235575** NaN (was 100 %). Pinned by four tests in
+  `chisurf/plugins/traj/traj_align/test/test_view_model.py`:
+  `test_save_aligned_with_empty_selection_is_finite` (the regression guard —
+  asserts `np.isfinite(aligned.xyz).all()`),
+  `test_save_aligned_rejects_malformed_selection`, `test_atom_indices_empty_is_none`
+  and `test_atom_indices_rejects_non_numeric`; the old
+  `test_atom_indices_empty_is_empty` pinned the defect and was replaced. Plugin
+  suite 14 passed; `ruff check` / `ruff format --check` clean on the three touched
+  files (the package's other files carry pre-existing E402/I001/D103, untouched).
+  Docs already promised the fixed behaviour ("Leave empty to align on all atoms"),
+  so no docs change. The sibling "log the path, never the count" gap is RF-707 and
+  stays open.
 
 ### RF-707
 - **Status:** OPEN
