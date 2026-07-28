@@ -2,6 +2,24 @@
 
 ## 2026-07-28
 
+* **The mouse-mode block and the movie transport are in the viewport too, and
+  the table is PyMOL's own.** The block in the bottom-right corner is reference
+  material -- someone reads it to find out what ctrl-shift-middle does -- so a
+  table that is nearly right is worse than none. `chimol/mouse_modes.py` is
+  therefore **generated from `pymol.controlling.mode_dict`**, the way the object
+  menus were taken from its `menu.py`, and a test compares the two wherever
+  PyMOL is installed, so the transcription cannot drift silently.
+  - PyMOL stores the bindings as a list applied in order and one mode rebinds a
+    cell (`three_button_motions` sets double-left to `menu`, then `torf`). The
+    later binding wins; keeping both in a dict literal would have relied on the
+    same rule by accident.
+  - The action labels are PyMOL's own casing -- `MovZ`, `PkAt`, `MvSZ`, `Pk1` --
+    which no rule recovers from the codes, so that map is written out.
+  - Clicking the mode line cycles modes, the transport runs `frame`/`mplay`/
+    `mstop`, and clicking the table itself is swallowed rather than passed to
+    the camera: reading the reference must not drag the molecule out from under
+    it.
+
 * **Every Alexa Fluor dye was invisible to the Light Path Simulator, because a
   spectrum type was tested by string equality** (RF-270). The catalogue is not
   uniform: 165 of its 2165 probes file their absorption curve under the type

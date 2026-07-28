@@ -22,6 +22,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
+from ..mouse_modes import BUTTON_COLUMNS, MODE_NAMES, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry
 
 # PyMOL's palette, read off its internal GUI.
@@ -39,6 +40,27 @@ MENU_FG = (240, 240, 240)
 MENU_DISABLED_FG = (144, 144, 144)
 MENU_SEL_BG = (74, 74, 138)
 MENU_EDGE = (144, 144, 144)
+
+# The bottom-right block's palette, read off PyMOL's own.
+MODE_TITLE_FG = (0, 224, 0)
+MODE_HEAD_FG = (240, 128, 128)
+MODE_KEY_FG = (128, 128, 255)
+MODE_ACTION_FG = (224, 224, 224)
+SELECT_FG = (0, 224, 0)
+SELECT_MODE_FG = (0, 224, 224)
+STATE_FG = (0, 224, 0)
+MOVIE_FG = (240, 128, 128)
+MOVIE_BG = (48, 48, 48, 230)
+
+#: The movie transport, left to right: glyph and the command it runs.
+MOVIE_BUTTONS: tuple[tuple[str, str], ...] = (
+    ("|<", "frame 1"),
+    ("<", "frame -1"),
+    ("\u25a0", "mstop"),
+    ("\u25b6", "mplay"),
+    (">", "frame +1"),
+    (">|", "frame last"),
+)
 
 #: The C button's rainbow, left to right.
 COLOR_BUTTON_STOPS = ("#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff")
@@ -125,6 +147,14 @@ class InternalGui:
         self._height = 0
         #: Widest name seen, so the panel does not change width every frame.
         self._name_width = 90.0
+        #: The mouse mode the bottom-right block describes.
+        self.mouse_mode = "three_button_viewing"
+        #: What a click selects, and where the movie is -- both shown there.
+        self.selecting = "Residues"
+        self.state = (1, 1)
+        self._mode_rect = Rect(0, 0, 0, 0)
+        self._movie_rects: list[tuple[Rect, str]] = []
+        self._block = Rect(0, 0, 0, 0)
 
     # ── model ────────────────────────────────────────────────────────────
     def set_run_command(self, run_command: Callable[[str], None] | None) -> None:
@@ -177,6 +207,55 @@ class InternalGui:
             self._button_rects.append(keys)
             y += self.ROW_H
 
+        self.layout_block(width, height)
+
+    def layout_block(self, width: int, height: int) -> None:
+        """Place the mouse-mode block and the movie transport, bottom-right.
+
+        Where PyMOL puts them, and for the same reason: it is reference material
+        you glance at without leaving the view, so it belongs in the view.
+        """
+        char_w = self.FONT_PT * 0.62
+        line_h = self.ROW_H
+        label_w = 8 * char_w
+        cell_w = 6 * char_w
+        block_w = self.PAD + label_w + 4 * cell_w + self.PAD
+        # title, the L/M/R/Wheel heading, six binding rows, selecting, state
+        rows = len(rows_for(self.mouse_mode))
+        block_h = self.PAD + line_h * (rows + 4) + self.PAD + self.ROW_H + self.PAD
+
+        self._block = Rect(
+            width - self.MARGIN - block_w,
+            height - self.MARGIN - block_h,
+            block_w,
+            block_h,
+        )
+        self._mode_rect = Rect(
+            self._block.x + self.PAD, self._block.y + self.PAD, block_w, line_h
+        )
+
+        # The transport sits on the block's last line, spread across its width.
+        self._movie_rects = []
+        count = len(MOVIE_BUTTONS)
+        button_w = min(28.0, (block_w - 2 * self.PAD) / count - 2)
+        gap = ((block_w - 2 * self.PAD) - button_w * count) / max(count - 1, 1)
+        bx = self._block.x + self.PAD
+        by = self._block.y + block_h - self.PAD - self.ROW_H
+        for glyph, command in MOVIE_BUTTONS:
+            self._movie_rects.append((Rect(bx, by, button_w, self.ROW_H), command))
+            bx += button_w + gap
+
+    @property
+    def block_rect(self) -> Rect:
+        """Where the mouse-mode block currently sits."""
+        return self._block
+
+    def cycle_mouse_mode(self) -> None:
+        """Step to the next mode, as clicking PyMOL's mode line does."""
+        names = list(MODE_NAMES)
+        if self.mouse_mode in names:
+            self.mouse_mode = names[(names.index(self.mouse_mode) + 1) % len(names)]
+
     @property
     def panel_rect(self) -> Rect:
         """Where the panel currently sits."""
@@ -199,6 +278,15 @@ class InternalGui:
 
         if not self.visible:
             return Hit("")
+
+        if self._mode_rect.contains(x, y):
+            return Hit("mode")
+        for rect, command in self._movie_rects:
+            if rect.contains(x, y):
+                return Hit("movie", key=command)
+        if self._block.contains(x, y):
+            return Hit("block")     # reference text: takes the click, does nothing
+
         for index, rect in enumerate(self._row_rects):
             if not rect.contains(x, y):
                 continue
@@ -253,6 +341,18 @@ class InternalGui:
                     rect = self._button_rects[hit.row][key]
                     self._open_menu(f"{title}:", row.name, entries, rect.x, rect.y + rect.h)
                     break
+            return True
+
+        if hit.kind == "mode":
+            self.cycle_mouse_mode()
+            return True
+
+        if hit.kind == "movie":
+            self.close_menus()
+            self._emit(hit.key, "")
+            return True
+
+        if hit.kind == "block":
             return True
 
         if hit.kind == "name":
@@ -378,6 +478,8 @@ class InternalGui:
 
         if self.visible and self.rows:
             self._paint_panel(painter, QtGui, QtCore, metrics)
+        if self.visible:
+            self._paint_block(painter, QtGui, QtCore)
         for menu in self._menus:
             self._paint_menu(painter, QtGui, QtCore, menu)
 
@@ -417,6 +519,61 @@ class InternalGui:
                                    hovered=(self._hover.kind == "button"
                                             and self._hover.row == index
                                             and self._hover.key == key))
+
+    def _paint_block(self, painter, QtGui, QtCore) -> None:
+        """Draw the mouse-mode reference, the state, and the transport."""
+        rect = self._block
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(*PANEL_BG))
+        painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
+
+        char_w = self.FONT_PT * 0.62
+        label_w = 8 * char_w
+        cell_w = 6 * char_w
+        left = rect.x + self.PAD
+        line = rect.y + self.PAD
+
+        def draw(x, y, text, colour, width=None):
+            painter.setPen(QtGui.QColor(*colour))
+            painter.drawText(
+                QtCore.QRectF(x, y, width or cell_w, self.ROW_H),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), text,
+            )
+
+        draw(left, line, "Mouse Mode", MODE_TITLE_FG, label_w + cell_w)
+        draw(left + label_w + cell_w * 0.6, line,
+             MODE_NAMES.get(self.mouse_mode, self.mouse_mode), MODE_TITLE_FG,
+             rect.w)
+        line += self.ROW_H
+
+        draw(left, line, "Buttons", MODE_HEAD_FG, label_w)
+        for index, (_key, heading) in enumerate(BUTTON_COLUMNS):
+            draw(left + label_w + index * cell_w, line, heading, MODE_HEAD_FG)
+        line += self.ROW_H
+
+        for label, cells in rows_for(self.mouse_mode):
+            colour = MODE_HEAD_FG if label == "& Keys" else MODE_KEY_FG
+            draw(left, line, label, colour, label_w)
+            for index, cell in enumerate(cells):
+                if cell:
+                    draw(left + label_w + index * cell_w, line, cell, MODE_ACTION_FG)
+            line += self.ROW_H
+
+        draw(left, line, "Selecting", SELECT_FG, label_w + cell_w)
+        draw(left + label_w + cell_w * 0.6, line, self.selecting, SELECT_MODE_FG, rect.w)
+        line += self.ROW_H
+        current, total = self.state
+        draw(left, line, "State", STATE_FG, label_w)
+        draw(left + label_w, line, f"{current} / {total}", MODE_ACTION_FG, cell_w * 3)
+
+        for button_rect, _command in self._movie_rects:
+            box = QtCore.QRectF(button_rect.x, button_rect.y,
+                                button_rect.w, button_rect.h)
+            painter.setBrush(QtGui.QColor(*MOVIE_BG))
+            painter.setPen(QtGui.QColor(*BUTTON_EDGE))
+            painter.drawRect(box)
+            painter.setPen(QtGui.QColor(*MOVIE_FG))
+            painter.drawText(box, int(QtCore.Qt.AlignCenter), _glyph_of(_command))
 
     def _paint_button(self, painter, QtGui, QtCore, key, rect, hovered) -> None:
         box = QtCore.QRectF(rect.x, rect.y + 1, rect.w, rect.h - 2)
@@ -474,3 +631,11 @@ class InternalGui:
                                   item_rect.w - self.MENU_PAD, item_rect.h),
                     int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), "▸",
                 )
+
+
+def _glyph_of(command: str) -> str:
+    """Return the transport glyph bound to *command*."""
+    for glyph, bound in MOVIE_BUTTONS:
+        if bound == command:
+            return glyph
+    return "?"

@@ -215,3 +215,81 @@ def test_every_entry_of_a_wrapped_menu_can_still_be_clicked(gui):
 # Both are held by initialising the anchor in `__init__` and by keeping the
 # grab until release, and both are verified by driving a real window in
 # `test/screenshot.py`-style probes rather than in-process.
+
+
+# --------------------------------------------------------------------------- #
+# The mouse-mode block, bottom-right
+# --------------------------------------------------------------------------- #
+def test_the_block_sits_in_the_bottom_right(gui):
+    block = gui.block_rect
+    assert block.x + block.w <= WIDTH
+    assert block.y + block.h <= HEIGHT
+    assert block.x > WIDTH / 2, "not on the right"
+    assert block.y > HEIGHT / 2, "not at the bottom"
+
+
+def test_the_block_shows_pymols_own_matrix(gui):
+    """The rows are reference material, so they have to be exactly right.
+
+    Someone reads this to find out what ctrl-shift-middle does; a table that is
+    nearly right is worse than none.
+    """
+    from chisurf.plugins.chimol.chimol.mouse_modes import rows_for
+
+    labels = [label for label, _cells in rows_for(gui.mouse_mode)]
+    assert labels == ["& Keys", "Shft", "Ctrl", "CtSh", "SnglClk", "DblClk"]
+
+    cells = dict(rows_for("three_button_viewing"))
+    assert cells["& Keys"] == ["Rota", "Move", "MovZ", "Slab"]
+    assert cells["Shft"] == ["+Box", "-Box", "Clip", "MovS"]
+    assert cells["Ctrl"] == ["Move", "PkAt", "Pk1", "MvSZ"]
+    assert cells["CtSh"] == ["Sele", "Orig", "Clip", "MovZ"]
+
+
+def test_the_transcription_still_matches_pymol():
+    """Checked against the source it was taken from, where that is installed.
+
+    The tables were generated from `pymol.controlling`, not copied off a
+    screenshot. This is what keeps them honest as PyMOL moves: skipped where
+    PyMOL is absent, which is most machines, and decisive where it is not.
+    """
+    controlling = pytest.importorskip("pymol.controlling")
+
+    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_BINDINGS, MODE_NAMES
+
+    for mode, bindings in MODE_BINDINGS.items():
+        theirs = {(b, m): a for b, m, a in controlling.mode_dict[mode]}
+        assert bindings == theirs, f"{mode} drifted from PyMOL's table"
+        assert MODE_NAMES[mode] == controlling.mode_name_dict[mode]
+
+
+def test_clicking_the_mode_line_cycles_it(gui):
+    """As PyMOL's does -- and it must not run a command to do it."""
+    rect = gui._mode_rect
+    before = gui.mouse_mode
+
+    gui.mouse_press(rect.x + 4, rect.y + 4)
+
+    assert gui.mouse_mode != before
+    assert gui.commands == []
+
+
+def test_the_transport_runs_the_movie_commands(gui):
+    for rect, command in gui._movie_rects:
+        gui.commands.clear()
+        gui.mouse_press(*_centre(rect))
+        assert gui.commands == [command]
+
+
+def test_the_block_swallows_clicks_that_land_on_its_text(gui):
+    """Clicking the table does nothing, and must not rotate the scene either.
+
+    Otherwise reading the reference would drag the molecule out from under it.
+    """
+    block = gui.block_rect
+    point = (block.x + block.w / 2, block.y + block.h / 2)
+
+    assert gui.wants(*point) is True
+    gui.commands.clear()
+    assert gui.mouse_press(*point) is True
+    assert gui.commands == []
