@@ -323,3 +323,96 @@ def test_the_wheel_reaches_zero_and_crosses_it(table):
     for _ in range(11):
         turn_wheel(view, 0, value_column, -1)
     assert params[0].value == pytest.approx(-0.1, abs=1e-9)
+
+
+# --- what a changed parameter must actually do -----------------------------
+
+def test_changing_a_parameter_recomputes_the_curve(qtbot):
+    """The plot has to follow the value. Changing is not fitting.
+
+    Nothing is optimised: the model is evaluated again at the value the user
+    just set. Without this the table moved the number and left the curve, the
+    residuals and chi2r on the old one.
+    """
+    import numpy as np
+
+    import chisurf.core.data
+    import chisurf.core.fitting.fit as fit_module
+    import chisurf.core.models.parse
+
+    rng = np.random.default_rng(0)
+    x = np.linspace(0, 10, 64)
+    y = 2.0 + 0.5 * x ** 2 + rng.normal(0, 0.5, x.size)
+    data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y))
+    fit = fit_module.FitGroup(
+        data=chisurf.core.data.DataGroup([data]),
+        model_class=chisurf.core.models.parse.ParseModel,
+    )
+    fit.fit_range = 0, len(fit.model.y)
+    fit.model.func = 'c+a*x**2'
+    fit.model.find_parameters()
+    chisurf.fits.append(fit)
+    try:
+        params = list(fit.model.parameters_all)
+        widget = ParameterGroupTableWidget(params)
+        qtbot.addWidget(widget)
+        widget.show()
+
+        before_curve = np.array(fit.model.y[:6])
+        before_chi2 = float(fit.chi2r)
+        turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
+
+        assert not np.allclose(before_curve, fit.model.y[:6]), "the curve did not follow"
+        assert float(fit.chi2r) != before_chi2
+    finally:
+        chisurf.fits.remove(fit)
+
+
+def test_a_host_can_decline_the_backend(qtbot, monkeypatch):
+    """nDXplorer's constants are rendered by this table and belong to no fit.
+
+    Every edit used to attempt ``parameter.set_value`` for them, and the server
+    answered "fit not found" — once per keystroke, or per wheel notch, with a
+    stack trace each time.
+    """
+    import chisurf.gui.widgets.fitting.parameter_widgets as pw
+
+    calls = []
+
+    class _Client:
+        """Stand-in fitting client that records what it was asked to do."""
+
+        def __getattr__(self, name):
+            def record(**_kw):
+                calls.append(name)
+            return record
+
+    monkeypatch.setattr(pw, "get_fitting_client", lambda: _Client())
+
+    params = [FittingParameter(name="R0", value=52.0)]
+    widget = ParameterGroupTableWidget(params, remote=False)
+    qtbot.addWidget(widget)
+    widget.show()
+
+    turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
+
+    assert params[0].value == pytest.approx(53.0), "the edit itself must still happen"
+    assert calls == [], f"the backend was called for a host that declined it: {calls}"
+
+
+def test_the_host_is_told_about_an_edit(qtbot):
+    """The table's own controller notification is what redraws it.
+
+    nDXplorer hangs its recompute on the same callback, so a missing
+    notification is a stale plot there as much as a stale cell here.
+    """
+    params = [FittingParameter(name="R0", value=52.0)]
+    notified = []
+    widget = ParameterGroupTableWidget(
+        params, remote=False, on_change=lambda: notified.append(True)
+    )
+    qtbot.addWidget(widget)
+    widget.show()
+
+    turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
+    assert notified, "the host was not told the parameter changed"

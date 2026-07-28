@@ -823,7 +823,11 @@ class ParameterActionsMixin:
             write()
         except Exception:
             pass
-        fc = get_fitting_client()
+        # A host can declare that its parameters have no backend counterpart:
+        # nDXplorer's constants are rendered by the same table and belong to no
+        # fit, so the call could only ever come back "fit not found" -- once per
+        # keystroke, or per wheel notch, with a stack trace each time.
+        fc = get_fitting_client() if getattr(self, "remote", True) else None
         if fc is not None:
             try:
                 rpc(fc, source)

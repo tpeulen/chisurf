@@ -23,6 +23,7 @@ from typing import Callable, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+import chisurf as cs
 from chisurf import typing
 from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.gui.glyphs import Glyphs
@@ -335,7 +336,76 @@ def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) ->
             return False
     except Exception:
         return False
+
+    _notify_edited(param, ctrl)
     return True
+
+
+def _notify_edited(param: FittingParameter, ctrl) -> None:
+    """Carry a table edit through to the model, the view and the plots.
+
+    A row widget does four things when its value changes: apply, refresh the
+    followers of a link, tell its view, and ask the model to recompute. A cell
+    edit did only the first, so a parameter changed from a table -- typed or
+    wheeled -- moved the number and left the curve, the plots and any
+    constants-driven recomputation on the old value.
+
+    Parameters
+    ----------
+    param : FittingParameter
+        The parameter that was just written.
+    ctrl : object or None
+        Its controller, or ``None`` when it has none.
+    """
+    if ctrl is None:
+        return
+    # ``finalize`` is deliberately not called: the widget already dispatches its
+    # host callback from ``dataChanged``, and calling it here repaints the row
+    # a second time for one edit.
+    for step in ("_update_linked_parameters", "_trigger_model_update"):
+        action = getattr(ctrl, step, None)
+        if not callable(action):
+            continue
+        try:
+            action()
+        except Exception:
+            cs.logging.exception("parameter table: %s failed after an edit", step)
+    _recompute_owning_model(param)
+
+
+def _recompute_owning_model(param: FittingParameter) -> None:
+    """Recompute the model this parameter belongs to, so the plots follow.
+
+    ``_trigger_model_update`` asks the *backend* to recompute, which is right
+    when there is one and does nothing at all when there is not -- the curve
+    then keeps the value the parameter no longer has. Changing a parameter is
+    not fitting it: nothing is optimised here, the model is simply evaluated
+    again at the value the user just set.
+
+    Parameters
+    ----------
+    param : FittingParameter
+        The parameter that changed.
+    """
+    try:
+        index = param.fit_idx
+    except Exception:
+        return
+    if index is None or index < 0:
+        return
+    try:
+        fit = cs.fits[index]
+    except (IndexError, TypeError, AttributeError):
+        return
+    for member in list(getattr(fit, "grouped_fits", None) or [fit]):
+        model = getattr(member, "model", None)
+        update = getattr(model, "update_model", None) or getattr(model, "update", None)
+        if not callable(update):
+            continue
+        try:
+            update()
+        except Exception:
+            cs.logging.exception("parameter table: could not recompute %s", model)
 
 
 # ── delegates ───────────────────────────────────────────────────────────
@@ -622,11 +692,16 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         section: typing.Any = None,
         parent: typing.Optional[QtWidgets.QWidget] = None,
         on_change: typing.Optional[Callable[[], None]] = None,
+        remote: bool = True,
     ):
         super().__init__(parent)
         self._section = section
         self._on_change = on_change
         self._params = params
+        #: Whether edits are also sent to the fitting backend. A host whose
+        #: parameters are not part of any fit -- nDXplorer's constants, say --
+        #: passes ``False`` so an edit is not answered with "fit not found".
+        self._remote = bool(remote)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -739,6 +814,12 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         for row in range(self._model.rowCount()):
             param = self._model.parameters[row]
             ctrl = self._controller(row)
+            # A host whose parameters are not part of any fit says so once, here,
+            # rather than having every edit ask a backend that cannot know them.
+            try:
+                ctrl.remote = bool(getattr(self, "_remote", True))
+            except Exception:
+                pass
             try:
                 param.controller = ctrl
             except Exception:
