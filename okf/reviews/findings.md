@@ -9475,3 +9475,61 @@ does not. Findings RF-819..RF-827.
 - **Location:** `chisurf/plugins/core/acq/standalone.py:57` (`from .main import SMAcquisitionManager` inside `run_standalone`), reached from `chisurf/plugins/core/acq/__main__.py:12` and from `run_as_plugin`'s no-QApplication fallback at `:99-103`
 - **Finding:** there is no `chisurf/plugins/core/acq/main.py` — the manager lives in `gui/tool.py`, which is what the manifest's `entrypoints.gui` and `run_as_plugin` both use. So `python -m chisurf.plugins.core.acq` and `python -m chisurf.plugins.core.acq --standalone`, both documented in the plugin README, die with `ModuleNotFoundError: No module named 'chisurf.plugins.core.acq.main'` (verified). Because `run_as_plugin` falls back to `run_standalone` whenever no Qt application is running — which is always, from a shell — *every* command-line route to this GUI is dead. One-line fix (`from .gui.tool import SMAcquisitionManager`); the same README also documents an "Initialize the device" button and end-of-run data saving that the current tool does not have (`_save_data` is `pass`), so it needs a pass anyway.
 - **Fix note:**
+
+## Review 2026-07-28 — chimol asks about the shipped defaults, and what it asks about
+
+Slice: `7f17da548` (*"ask when your settings disagree with the ones shipped"*) —
+the new `diff_against_package` / `get_update_prompt_enabled` /
+`set_update_prompt_enabled` / `adopt_package_values` / `_merge_in_place` in
+`chisurf/plugins/chimol/chimol/config.py`, the start-up prompt at
+`chisurf/plugins/chimol/chimol/app/molview_main_window.py:609-679`, and the tick
+box in `app/config_editor.py`. The in-place merge is a real fix and its
+guardrails are sound. What the review found sits around the edges of the new
+preference: it is erased by the very migration it was ticked to survive, the
+five new functions resolve "the user's config" by a different route than the
+loader does, and the difference the dialog lists is one level too coarse to
+read. Findings RF-828..RF-833. Related earlier findings on this file: RF-739
+(the `_version` stamp), RF-740/RF-741 (override and legacy paths), RF-744 (the
+non-atomic write).
+
+### RF-828
+- **Status:** OPEN
+- **Severity:** S2 ("Don't ask again" is erased by the next migration, so the prompt returns at exactly the release the tick was meant to silence)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:803` (`cfg.pop(UPDATE_PROMPT_KEY, None)`) against `:810-811` (`if migrated and path != package_path: _write_user_display_config(path, cfg)`) and `_write_user_display_config` at `:358-374` (`payload = dict(cfg)`)
+- **Finding:** `_load_display_config` strips the meta keys from `cfg` *before* running the migrations, and then hands that same stripped dict to the writer — so the file it rewrites no longer carries `_ask_about_package_defaults`, and `get_update_prompt_enabled()` (`:276-279`, default `True`) reads "ask" again. The write only happens when a migration moved something, which is precisely the launch after a version that shipped new defaults, i.e. the one launch where the prompt would fire. Verified with the real loader against a temp settings dir: a copy holding `_version: 6`, `metaball.sigma_factor: 3.0` and `"_ask_about_package_defaults": false` reads `get_update_prompt_enabled() == False` before `_load_display_config()` and `True` after it, with the key gone from the file on disk. `_version` survives because the writer re-adds it explicitly; nothing re-adds this one. Preserve the meta keys across the migration write (carry them in the payload, or pop them from a copy rather than from `cfg`), and add a guardrail beside `test_the_preference_does_not_reach_the_rendered_config`.
+- **Fix note:**
+
+### RF-829
+- **Status:** OPEN
+- **Severity:** S2 (with `CHIMOL_DISPLAY_CONFIG` in force the prompt reads and writes a file that is not the one being rendered from: it lists a difference the viewer does not have, hides the one it does, and reports adopting values that changed nothing)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:265-273` (`_read_user_display_config` → `get_user_display_config_path()`), used by `diff_against_package` (`:241-242`), `get_update_prompt_enabled` (`:278`), `set_update_prompt_enabled` (`:296-297`) and `adopt_package_values` (`:324-325`) — against the loader's own path resolution at `:758-789` (the `CHIMOL_DISPLAY_CONFIG` branch and the `molview_display.json` / `protview_display.json` legacy branch), and the caller at `chisurf/plugins/chimol/chimol/app/molview_main_window.py:672-679`
+- **Finding:** the five new functions all assume the config in force is `<settings>/chimol_display.json`, but the loader picks the file by a different rule. Verified with the documented env override pointing at a preset whose `metaball.sigma_factor` is `9.0` while the settings-dir copy differs only in `metaball.alpha`: the rendered config has `sigma_factor 9.0, alpha 0.55`, and the prompt reports `{'metaball.alpha': (0.99, 0.55)}` — a value the viewer is not using — while `sigma_factor 9.0` vs the shipped `4.0`, the one difference actually in force, is never mentioned. Pressing **Use the new defaults** then writes `alpha` into the unloaded file, `reload_display_config()` re-reads the override and changes nothing, and the status bar still says "Adopted 1 display default from this version". The legacy-filename branch fails the other way: with only `molview_display.json` present there is no `chimol_display.json`, so `diff_against_package()` is `{}` and the users with the oldest copies are the ones never asked (same root as RF-741, now with four more callers). Resolve the active path once — a `get_active_display_config_path()` the loader and these functions share — and have the prompt use it.
+- **Fix note:**
+
+### RF-830
+- **Status:** OPEN
+- **Severity:** S3 (a nested block is compared as one value, so one changed colour is presented as two 200-character dicts and "Use the new defaults" replaces the whole block)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:250-262` (`diff_against_package` iterates one level and calls `_same_value` on whatever it finds), `_same_value` at `:202-210` (falls through to `current == old` for dicts), `adopt_package_values` at `:336-344` (`target[key] = source[key]`), rendered by `chisurf/plugins/chimol/chimol/app/molview_main_window.py:647-650` (`f"  {name}: {yours!r} → {shipped!r}"`)
+- **Finding:** the shipped config nests dicts inside sections — `colors.aa_groups`, `colors.secondary_structure`, `colors.sequence_gradient`, `colors.element_cpk`, `cartoon.ss_shapes` — and the diff stops at the section's immediate keys. Verified: changing only `colors.element_cpk.C` and `cartoon.ss_shapes.helix.width` produces two entries named `colors.element_cpk` and `cartoon.ss_shapes`, whose dialog lines are **417** and **458** characters of repr'd dicts that the user is asked to compare by eye to find the one number that moved. Adopting either replaces the entire block: `adopt_package_values(["colors.element_cpk"])` reset all seven element colours, not the one that differed. Recurse into nested dicts so the name is `colors.element_cpk.C` and the values are the two colours, which is also what makes the adoption surgical.
+- **Fix note:**
+
+### RF-831
+- **Status:** OPEN
+- **Severity:** S3 (the prompt is once per *window*, not once per start; keeping your settings means being asked again every time ChiMOL is opened in the session)
+- **Location:** `chisurf/plugins/chimol/chimol/app/molview_main_window.py:609-618` (`showEvent`: the guard is the per-instance `self._dock_area_restored`, set in `__init__` at `:166`, then `QTimer.singleShot(0, self._offer_package_display_defaults)`), whose docstring at `:621-633` says "once per start", against `chisurf/plugins/chimol/__init__.py:47-49` (`if __name__ == "plugin": win = MolViewPluginWindow()`) and `chisurf/gui/misc_helpers.py:326-351` (`run_plugin_from_dir` re-execs `__init__.py` on every launch)
+- **Finding:** nothing outside the widget records that the question was asked, and **Keep mine** deliberately persists nothing (`test_keeping_yours_changes_nothing` pins that), so each new window asks again. Verified headlessly: three successive `MolViewPluginWindow()` instances shown in one process raised three identical prompts ("1 display setting differ from the ones this version ships with"), and the plugin launcher builds a fresh window on every activation from the toolbar. The existing tests all call `_offer_package_display_defaults()` directly, so the "once per start" claim is untested. A module-level "asked this session" flag in `config.py` (checked alongside `get_update_prompt_enabled()`) restores what the docstring promises.
+- **Fix note:**
+
+### RF-832
+- **Status:** OPEN
+- **Severity:** S3 (the one sentence the feature exists to show does not agree with itself in the singular)
+- **Location:** `chisurf/plugins/chimol/chimol/app/molview_main_window.py:655-656` (`f"{count} display setting{'s' if count != 1 else ''} " "differ from the ones this version ships with."`)
+- **Finding:** the noun is pluralised and the verb is not, so a single difference — the common case, and the case the whole mechanism was written for — reads "**1 display setting differ from the ones this version ships with.**" Verified in the rendered dialog text captured from a live window with one differing value. The status-bar message twelve lines below gets the same construction right (`display default{'s' if len(adopted) != 1 else ''}`) because there the inflected word is the last one. Make the verb agree too (`setting differs` / `settings differ`).
+- **Fix note:**
+
+### RF-833
+- **Status:** OPEN
+- **Severity:** S3 (both writes behind the prompt swallow their failure and the caller discards the result, so a settings file that cannot be written produces a dialog that appears to work and does nothing)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:303-307` (`set_update_prompt_enabled`: `except: … debug(…); return False`) and `:350-354` (`adopt_package_values`: the same, `return []`), against the caller at `chisurf/plugins/chimol/chimol/app/molview_main_window.py:667-679` (`if answer.checked: _config.set_update_prompt_enabled(False)` — return value dropped; `if adopted:` with no `else`)
+- **Finding:** both functions report failure by return value and both call sites throw it away, and the only trace is a `debug` record. Verified with the settings file made read-only: `diff_against_package()` reports `metaball.sigma_factor 3.0 → 4.0`, `set_update_prompt_enabled(False)` returns `False`, `adopt_package_values(...)` returns `[]`, and the difference is still there afterwards — from the GUI that is a user pressing **Use the new defaults** with **Don't ask again** ticked, getting no status message, no warning, a viewer that has not changed, and the identical prompt at the next start, forever. Surface it: `dialogs.warning` (or at minimum a status-bar line and a `warning`-level log) when either call reports it did not reach the disk. See RF-744 for the write itself.
+- **Fix note:**
