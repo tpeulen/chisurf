@@ -1,0 +1,44 @@
+{
+  "_comment": "Display settings of the burst-selection diagnostics, moved out of the main toolbar (which was full, and holds actions rather than settings). Binds to BurstDisplayViewModel, which proxies to the tool's own widgets so nothing is duplicated.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Display",
+      "collapsible": true,
+      "collapsed": false,
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "toggle",
+          "label": "All photons",
+          "attr": "show_all_photons",
+          "description": "Show the diagnostic layers computed from every photon in the range."
+        },
+        {
+          "type": "toggle",
+          "label": "Selected photons",
+          "attr": "show_selected_photons",
+          "description": "Show the diagnostic layers computed from the photons the burst search kept."
+        },
+        {
+          "type": "value",
+          "label": "First photon",
+          "attr": "photon_first",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99999999,
+          "description": "First photon index to process. 0 is the start of the file."
+        },
+        {
+          "type": "value",
+          "label": "Last photon",
+          "attr": "photon_last",
+          "kind": "int",
+          "minimum": 0,
+          "maximum": 99999999,
+          "description": "Last photon index to process. The default is the end of the file."
+        }
+      ]
+    }
+  ]
+}

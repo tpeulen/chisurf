@@ -47,11 +47,11 @@ class AccurateFretTool(ChisurfDockTool):
             "from them (combined with the optics prior)."
         )
         a_run.triggered.connect(self.run_with_progress)
-        a_ndx = toolbar.addAction("📥 From ndXplorer")
-        a_ndx.setToolTip("Take the burst columns from an open ndXplorer window.")
+        a_ndx = toolbar.addAction("📥 From ndX")
+        a_ndx.setToolTip("Take the burst columns from an open ndX window.")
         a_ndx.triggered.connect(self._load_from_ndx)
-        a_push = toolbar.addAction("📤 To ndXplorer")
-        a_push.setToolTip("Push the calibrated factors into ndXplorer's MFD constants.")
+        a_push = toolbar.addAction("📤 To ndX")
+        a_push.setToolTip("Push the calibrated factors into ndX's MFD constants.")
         a_push.triggered.connect(self._push_to_ndx)
         a_register = toolbar.addAction("🔗 Share in session")
         a_register.setToolTip(

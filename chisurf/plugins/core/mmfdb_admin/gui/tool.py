@@ -14,6 +14,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import QUrl
 
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 try:
     from qtpy import sip
@@ -305,17 +306,17 @@ class PasswordChangeDialog(QtWidgets.QDialog):
         """Validate matching passwords and close the dialog."""
         password = self.password_edit.text()
         if password != self.confirm_edit.text():
-            QtWidgets.QMessageBox.warning(self, "Validation Error", "Passwords do not match.")
+            dialogs.warning(self, "Validation Error", "Passwords do not match.")
             return
         if self.is_admin and not password:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Validation Error",
                 "Administrator passwords cannot be empty.",
             )
             return
         if self.is_admin and password and self.score < 4:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Validation Error",
                 "Administrator passwords must be at least medium strength.",
@@ -328,13 +329,13 @@ class PasswordChangeDialog(QtWidgets.QDialog):
     def _clear_password(self) -> None:
         """Confirm and accept the dialog with an empty (cleared) password."""
         if self.is_admin:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Not allowed",
                 "Administrator passwords cannot be cleared.",
             )
             return
-        confirm = QtWidgets.QMessageBox.question(
+        confirm = dialogs.question(
             self,
             "Clear password",
             (
@@ -584,7 +585,7 @@ class MMFDBWidget(NavigationPanelTool):
         # Only show error if password was explicitly provided and non-empty
         # If password is empty or None, prompt for it
         if password is not None and password != "":
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "MMFDB login failed",
                 "Invalid credentials. Please try again.",
@@ -641,7 +642,7 @@ class MMFDBWidget(NavigationPanelTool):
                     client_metadata=client_metadata,
                 )
             except Exception as exc:
-                QtWidgets.QMessageBox.warning(
+                dialogs.warning(
                     self, "MMFDB login failed", str(exc)
                 )
                 continue
@@ -651,7 +652,7 @@ class MMFDBWidget(NavigationPanelTool):
                     user_id, getattr(self.client, "token", None), _host, _cmd, _pub,
                 )
                 return
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "MMFDB login failed",
                 "Invalid credentials. Please try again.",
@@ -1123,7 +1124,7 @@ class MMFDBWidget(NavigationPanelTool):
     ) -> None:
         ids = self._checked_row_ids(table, id_col=id_col)
         if not ids:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Nothing checked",
                 f"Check at least one {item_kind} first (use the checkboxes in the first column).",
@@ -1133,7 +1134,7 @@ class MMFDBWidget(NavigationPanelTool):
         preview = "\n  • ".join(ids[:10])
         if len(ids) > 10:
             preview += f"\n  …(+{len(ids) - 10} more)"
-        first = QtWidgets.QMessageBox.question(
+        first = dialogs.question(
             self,
             f"Delete {item_kind}s",
             f"You are about to delete {len(ids)} {item_kind}(s):\n\n  • {preview}\n\nProceed?",
@@ -1152,24 +1153,17 @@ class MMFDBWidget(NavigationPanelTool):
 
         if usages:
             details = "\n".join(f"  • {k}: {v}" for k, v in usages.items())
-            warn = QtWidgets.QMessageBox(self)
-            warn.setIcon(QtWidgets.QMessageBox.Warning)
-            warn.setWindowTitle(f"⚠️ {item_kind.capitalize()}s in use")
-            warn.setText(
+            answer = dialogs.choice(
+                self,
+                f"⚠️ {item_kind.capitalize()}s in use",
                 f"The following {item_kind}(s) are referenced elsewhere in MMFDB.\n"
-                "Deleting them may cascade or fail:\n\n" + details
+                "Deleting them may cascade or fail:\n\n" + details,
+                {"delete": "Delete anyway", "cancel": "Cancel"},
+                kind="warning",
+                informative="You must tick the box below to confirm you understand the consequences.",
+                checkbox=f"I understand — delete these {item_kind}(s) anyway",
             )
-            warn.setInformativeText(
-                "You must tick the box below to confirm you understand the consequences."
-            )
-            confirm_cb = QtWidgets.QCheckBox(
-                f"I understand — delete these {item_kind}(s) anyway"
-            )
-            warn.setCheckBox(confirm_cb)
-            proceed_btn = warn.addButton("Delete anyway", QtWidgets.QMessageBox.DestructiveRole)
-            warn.addButton(QtWidgets.QMessageBox.Cancel)
-            warn.exec()
-            if warn.clickedButton() is not proceed_btn or not confirm_cb.isChecked():
+            if answer.key != "delete" or not answer.checked:
                 self.status_label.setText("Deletion cancelled.")
                 return
 
@@ -1181,7 +1175,7 @@ class MMFDBWidget(NavigationPanelTool):
                 failures.append(f"{item_id}: {exc}")
 
         if failures:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Some deletes failed",
                 "\n".join(failures[:10])
@@ -1420,7 +1414,7 @@ class MMFDBWidget(NavigationPanelTool):
             return
         user_id = dock.selected_row_id() if isinstance(dock, EntityDock) else None
         if not user_id:
-            QtWidgets.QMessageBox.information(self, "No user selected", "Select a user row first.")
+            dialogs.information(self, "No user selected", "Select a user row first.")
             return
         dlg = PasswordChangeDialog(user_id=user_id, client=self.client, parent=self)
         dlg.exec()
@@ -1432,7 +1426,7 @@ class MMFDBWidget(NavigationPanelTool):
             return
         branch_uuid = dock.selected_row_id() if isinstance(dock, EntityDock) else None
         if not branch_uuid:
-            QtWidgets.QMessageBox.information(self, "No branch selected", "Select a branch row first.")
+            dialogs.information(self, "No branch selected", "Select a branch row first.")
             return
         op_id, ok = QtWidgets.QInputDialog.getText(
             self, "Set branch head", "Operation ID (leave empty to reset to None):"
@@ -1445,7 +1439,7 @@ class MMFDBWidget(NavigationPanelTool):
             if isinstance(dock, EntityDock):
                 dock.refresh()
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Update failed", str(exc))
+            dialogs.error(self, "Update failed", str(exc))
 
     def _selected_entity_dock_data(self, entity_key: str) -> dict[str, Any]:
         """Return form or cached row data for the selected visible EntityDock row."""
@@ -1483,7 +1477,7 @@ class MMFDBWidget(NavigationPanelTool):
             path.write_bytes(payload)
             QtGui.QDesktopServices.openUrl(_qurl_for_location(str(path)))
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Reveal failed", str(exc))
+            dialogs.warning(self, "Reveal failed", str(exc))
 
     def _delete_selected_object_entity(self) -> None:
         """Delete or dereference the selected object from the visible Objects entity dock."""
@@ -1493,7 +1487,7 @@ class MMFDBWidget(NavigationPanelTool):
         data = self._selected_object_entity_data()
         object_uuid = str(data.get("object_uuid") or dock.selected_row_id() or "")
         if not object_uuid:
-            QtWidgets.QMessageBox.warning(self, "No object selected", "Select an object to delete.")
+            dialogs.warning(self, "No object selected", "Select an object to delete.")
             return
         filename = data.get("original_filename") or object_uuid
         refcount = int(data.get("refcount") or 0)
@@ -1502,7 +1496,7 @@ class MMFDBWidget(NavigationPanelTool):
             msg += "\n\nThis will only decrement the refcount; the blob will remain."
         else:
             msg += "\n\nThis will permanently delete the blob from disk."
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self,
             "Delete object",
             msg,
@@ -1515,7 +1509,7 @@ class MMFDBWidget(NavigationPanelTool):
             dock.refresh()
             self.status_label.setText(f"Object delete result: {result}")
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Delete failed", str(exc))
+            dialogs.warning(self, "Delete failed", str(exc))
 
     def _copy_selected_raw_data_id(self) -> None:
         """Copy the selected raw-data artifact ID from the visible EntityDock."""
@@ -1607,7 +1601,7 @@ class MMFDBWidget(NavigationPanelTool):
             fallback_id_key=fallback_id_key,
         )
         if not artifact_id:
-            QtWidgets.QMessageBox.information(self, "No artifact selected", "Select an artifact row first.")
+            dialogs.information(self, "No artifact selected", "Select an artifact row first.")
             return
         current = str(self._selected_entity_dock_data(entity_key).get("validation_status") or "unvalidated")
         choices = list(VALIDATION_STATUS_VALUES)
@@ -1628,7 +1622,7 @@ class MMFDBWidget(NavigationPanelTool):
                 dock.refresh()
             self.status_label.setText(f"Artifact {artifact_id} validation set to {status}.")
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Validation update failed", str(exc))
+            dialogs.warning(self, "Validation update failed", str(exc))
 
     def _delete_selected_artifact(
         self,
@@ -1645,9 +1639,9 @@ class MMFDBWidget(NavigationPanelTool):
             fallback_id_key=fallback_id_key,
         )
         if not artifact_id:
-            QtWidgets.QMessageBox.information(self, "No artifact selected", "Select an artifact row first.")
+            dialogs.information(self, "No artifact selected", "Select an artifact row first.")
             return
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self,
             "Delete artifact",
             f"Delete {label} '{artifact_id}'?\n\nThis soft-deletes the artifact and direct provenance links.",
@@ -1662,7 +1656,7 @@ class MMFDBWidget(NavigationPanelTool):
                 dock.refresh()
             self.status_label.setText(f"Artifact {artifact_id} deleted.")
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Artifact delete failed", str(exc))
+            dialogs.warning(self, "Artifact delete failed", str(exc))
 
     def _copy_selected_analysis_id(self) -> None:
         """Copy the selected analysis run ID from the visible EntityDock."""
@@ -1701,15 +1695,15 @@ class MMFDBWidget(NavigationPanelTool):
         """Show parameters and linked products for the selected analysis run."""
         analysis_id = str(self._selected_entity_dock_data("analysis").get("analysis_id") or "")
         if not analysis_id:
-            QtWidgets.QMessageBox.information(self, "No analysis selected", "Select an analysis row first.")
+            dialogs.information(self, "No analysis selected", "Select an analysis row first.")
             return
         try:
             detail = self.client.get_analysis_run_full(analysis_id)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Analysis details failed", str(exc))
+            dialogs.warning(self, "Analysis details failed", str(exc))
             return
         if not detail:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Analysis not found",
                 f"No analysis details were found for {analysis_id}.",
@@ -2173,14 +2167,14 @@ class MMFDBWidget(NavigationPanelTool):
                     mode="embedded", host=host, cmd_port=port, pub_port=port + 1
                 )
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Connection failed", str(exc))
+            dialogs.error(self, "Connection failed", str(exc))
             self._update_login_actions(logged_in=False, connecting=False)
             return
         
         try:
             self._verify_admin_access()
         except PermissionError as exc:
-            QtWidgets.QMessageBox.critical(self, "Access denied", str(exc))
+            dialogs.error(self, "Access denied", str(exc))
             self._update_login_actions(logged_in=False, connecting=False)
             return
         
@@ -2720,7 +2714,7 @@ class MMFDBWidget(NavigationPanelTool):
         self._restore_dock_layout()
 
     def show_about(self) -> None:
-        QtWidgets.QMessageBox.about(
+        dialogs.about(
             self,
             "About mmfdb-admin",
             "mmfdb-admin\n\nMultiparametric Fluorescence Database\n\nBrowse, edit, import, and export fluorescence measurements, samples, setups, and analysis runs.",
@@ -2734,7 +2728,7 @@ class MMFDBWidget(NavigationPanelTool):
         if self._mock_data_click_count < 10:
             return
         self._mock_data_click_count = 0
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self,
             "Populate mock MMFDB data",
             "Populate the MMFDB with bundled smFRET mock data from test fixtures?",
@@ -3371,7 +3365,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.status_label.setText(f"Created FRET pair: {result.get('fret_pair', {}).get('forster_radius_id', '')}")
             self._refresh_fret_pairs_tab()
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Failed to create FRET pair", str(exc))
+            dialogs.warning(self, "Failed to create FRET pair", str(exc))
 
     def _delete_fret_pair_standalone(self) -> None:
         """Delete the selected FRET pair."""
@@ -3381,7 +3375,7 @@ class MMFDBWidget(NavigationPanelTool):
             return
         row = selected[0].row()
         pair_id = self.standalone_fret_pairs_table.item(row, 0).text()
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self, "Delete FRET pair",
             f"Delete FRET pair '{pair_id}'?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
@@ -3393,7 +3387,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.status_label.setText(f"Deleted FRET pair {pair_id}")
             self._refresh_fret_pairs_tab()
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Delete failed", str(exc))
+            dialogs.warning(self, "Delete failed", str(exc))
 
     def _fill_fp_sample_combo(self) -> None:
         """Populate the FRET Pairs tab sample combo."""
@@ -3492,7 +3486,7 @@ class MMFDBWidget(NavigationPanelTool):
         sample_id = (self.current_sample_id or self.sample_id_edit.text()).strip()
         if not sample_id:
             self.status_label.setText("Select or save a sample before saving metadata")
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "No sample selected",
                 "Select or create a sample first; metadata is stored per sample.",
@@ -3501,7 +3495,7 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             self.client.save_sample_key_values(sample_id, self.metadata_editor.get_data())
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Save metadata failed", str(exc))
+            dialogs.error(self, "Save metadata failed", str(exc))
             return
         self.status_label.setText(f"Metadata saved for sample '{sample_id}'")
 
@@ -3755,7 +3749,7 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             details_dict = json.loads(details) if details else {}
         except json.JSONDecodeError:
-            QtWidgets.QMessageBox.warning(self, "Invalid JSON", "Details field must be valid JSON.")
+            dialogs.warning(self, "Invalid JSON", "Details field must be valid JSON.")
             return
         
         payload = {
@@ -3768,10 +3762,10 @@ class MMFDBWidget(NavigationPanelTool):
         }
         try:
             self.client._call("mmfdb.raw_data.save", {"raw_data": payload})
-            QtWidgets.QMessageBox.information(self, "Success", "Saved successfully.")
+            dialogs.information(self, "Success", "Saved successfully.")
             self.fill_raw_data_table()
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to save: {e}")
+            dialogs.warning(self, "Error", f"Failed to save: {e}")
 
     def save_processed_product(self) -> None:
         data = self.processed_product_detail_widget.get_data()
@@ -3794,10 +3788,10 @@ class MMFDBWidget(NavigationPanelTool):
         }
         try:
             self.client._call("mmfdb.processed_data.save", {"product": payload})
-            QtWidgets.QMessageBox.information(self, "Success", "Saved successfully.")
+            dialogs.information(self, "Success", "Saved successfully.")
             self.fill_processed_products_table()
         except Exception as e:
-            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to save: {e}")
+            dialogs.warning(self, "Error", f"Failed to save: {e}")
 
     def save_processing_run(self) -> None:
         pass # To be implemented via client._call
@@ -4132,7 +4126,7 @@ class MMFDBWidget(NavigationPanelTool):
         probe_id = data.get("probe_id")
         if not probe_id:
             return
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self, "Delete probe", f"Delete probe {probe_id}?"
         )
         if answer == QtWidgets.QMessageBox.Yes:
@@ -4259,7 +4253,7 @@ class MMFDBWidget(NavigationPanelTool):
         entity_id = _table_text(self.entities_table, row, 0)
         if not entity_id:
             return
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self,
             "Delete entity",
             f"Delete entity {entity_id}?",
@@ -4562,7 +4556,7 @@ class MMFDBWidget(NavigationPanelTool):
         """Set or clear the selected user's MMFDB password."""
         user_id = self.user_detail_widget.get_data().get("user_id")
         if not user_id:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self, "Selection Required", "Please select or save a user first."
             )
             return
@@ -4579,13 +4573,13 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             self.client.save_user(payload)
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Could not change password: {exc}")
+            dialogs.error(self, "Error", f"Could not change password: {exc}")
             return
         self.refresh()
         if dialog.cleared:
-            QtWidgets.QMessageBox.information(self, "Success", f"Password cleared for '{user_id}'.")
+            dialogs.information(self, "Success", f"Password cleared for '{user_id}'.")
         else:
-            QtWidgets.QMessageBox.information(self, "Success", f"Password updated for '{user_id}'.")
+            dialogs.information(self, "Success", f"Password updated for '{user_id}'.")
 
     def load_user(self) -> None:
         rows = self.users_table.selectionModel().selectedRows()
@@ -4683,15 +4677,15 @@ class MMFDBWidget(NavigationPanelTool):
                 description=data.get("description"),
             )
             self.refresh()
-            QtWidgets.QMessageBox.information(self, "Success", f"Branch '{data.get('name')}' saved successfully.")
+            dialogs.information(self, "Success", f"Branch '{data.get('name')}' saved successfully.")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Could not save branch: {e}")
+            dialogs.error(self, "Error", f"Could not save branch: {e}")
 
     def delete_branch(self) -> None:
         uuid_val = self.branch_detail_widget.get_data().get("branch_uuid")
         if not uuid_val:
             return
-        if QtWidgets.QMessageBox.question(
+        if dialogs.question(
             self, "Confirm Delete", f"Are you sure you want to delete branch with UUID {uuid_val}?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
         ) != QtWidgets.QMessageBox.Yes:
@@ -4699,9 +4693,9 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             self.client.delete_branch(uuid_val)
             self.refresh()
-            QtWidgets.QMessageBox.information(self, "Success", "Branch deleted.")
+            dialogs.information(self, "Success", "Branch deleted.")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Could not delete branch: {e}")
+            dialogs.error(self, "Error", f"Could not delete branch: {e}")
 
     def fill_branch_user_combo(self) -> None:
         current = self.branch_user_combo.currentData()
@@ -4743,27 +4737,27 @@ class MMFDBWidget(NavigationPanelTool):
         user_id = self.branch_user_combo.currentData()
         rows = self.branches_table.selectionModel().selectedRows()
         if not user_id:
-            QtWidgets.QMessageBox.warning(self, "Warning", "Please select a user first.")
+            dialogs.warning(self, "Warning", "Please select a user first.")
             return
         if not rows:
-            QtWidgets.QMessageBox.warning(self, "Warning", "Please select a branch from the table first.")
+            dialogs.warning(self, "Warning", "Please select a branch from the table first.")
             return
         branch_uuid = self.branches_table.item(rows[0].row(), 1).text()
         branch_name = self.branches_table.item(rows[0].row(), 0).text()
         try:
             self.client.set_user_active_branch(user_id, branch_uuid)
             self.on_branch_user_changed(0)
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Success", f"Active branch for user '{user_id}' switched to '{branch_name}'."
             )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Could not switch active branch: {e}")
+            dialogs.error(self, "Error", f"Could not switch active branch: {e}")
 
     def prefill_branch_fork(self) -> None:
         """Populate branch fields from the selected branch head."""
         rows = self.branches_table.selectionModel().selectedRows()
         if not rows:
-            QtWidgets.QMessageBox.warning(self, "Warning", "Please select a branch from the table first.")
+            dialogs.warning(self, "Warning", "Please select a branch from the table first.")
             return
         row = rows[0].row()
         name = self.branches_table.item(row, 0).text()
@@ -4787,10 +4781,10 @@ class MMFDBWidget(NavigationPanelTool):
         parent_uuid = data.get("parent_branch_uuid")
         description = data.get("description")
         if not user_id:
-            QtWidgets.QMessageBox.warning(self, "Warning", "Please select a user first.")
+            dialogs.warning(self, "Warning", "Please select a user first.")
             return
         if not operation_id:
-            QtWidgets.QMessageBox.warning(self, "Warning", "Head Operation ID is required.")
+            dialogs.warning(self, "Warning", "Head Operation ID is required.")
             return
         try:
             branch = self.client.jump_user_to_operation(
@@ -4803,13 +4797,13 @@ class MMFDBWidget(NavigationPanelTool):
             )
             self.refresh()
             self.on_branch_user_changed(0)
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Success",
                 f"User '{user_id}' jumped to branch '{branch.get('name')}'.",
             )
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Could not create time branch: {e}")
+            dialogs.error(self, "Error", f"Could not create time branch: {e}")
 
     def collect_device(self) -> dict[str, Any]:
         return self.device_detail_widget.get_data()
@@ -4847,7 +4841,7 @@ class MMFDBWidget(NavigationPanelTool):
         type_id = data.get("type_id")
         if type_id is None:
             return
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self, "Delete experiment type", f"Delete experiment type {type_id}?"
         )
         if answer == QtWidgets.QMessageBox.Yes:
@@ -4879,7 +4873,7 @@ class MMFDBWidget(NavigationPanelTool):
         experiment_id = data.get("experiment_id")
         if not experiment_id:
             return
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self, "Delete experiment", f"Delete experiment {experiment_id}?"
         )
         if answer == QtWidgets.QMessageBox.Yes:
@@ -4944,7 +4938,7 @@ class MMFDBWidget(NavigationPanelTool):
         data_id = self.experiment_data_table.item(row, 0).text()
         if not data_id:
             return
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self, "Delete experiment data", f"Delete data record {data_id}?"
         )
         if answer == QtWidgets.QMessageBox.Yes:
@@ -4957,14 +4951,14 @@ class MMFDBWidget(NavigationPanelTool):
             return
         location = self.experiment_data_table.item(row, 3).text() or ""
         if not location:
-            QtWidgets.QMessageBox.information(self, "Experiment data", "No data location is set")
+            dialogs.information(self, "Experiment data", "No data location is set")
             return
         if location.startswith(("http://", "https://", "file://")):
             QtGui.QDesktopServices.openUrl(QUrl(location))
             return
         path = QtCore.QFileInfo(location).absoluteFilePath()
         if not QtCore.QFile(path).exists():
-            QtWidgets.QMessageBox.warning(self, "Data path not found", f"Missing: {path}")
+            dialogs.warning(self, "Data path not found", f"Missing: {path}")
             return
         QtGui.QDesktopServices.openUrl(QUrl.fromLocalFile(path))
 
@@ -5261,7 +5255,7 @@ class MMFDBWidget(NavigationPanelTool):
         sample_id = self.sample_id_edit.text().strip()
         if not sample_id:
             return
-        answer = QtWidgets.QMessageBox.question(self, "Delete sample", f"Delete {sample_id}?")
+        answer = dialogs.question(self, "Delete sample", f"Delete {sample_id}?")
         if answer == QtWidgets.QMessageBox.Yes:
             self.client.delete_sample(sample_id)
             self.refresh()
@@ -5305,7 +5299,7 @@ class MMFDBWidget(NavigationPanelTool):
                 for w in warnings:
                     msg += f"\n• {w}"
                 msg += "\n\nExport anyway?"
-                reply = QtWidgets.QMessageBox.question(
+                reply = dialogs.question(
                     self, "Export validation warnings", msg,
                     QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
                 )
@@ -5337,14 +5331,14 @@ class MMFDBWidget(NavigationPanelTool):
             self.preview_edit.setPlainText(text)
             self.status_label.setText(f"CIF preview for {sample_id}")
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Preview failed", str(exc))
+            dialogs.warning(self, "Preview failed", str(exc))
 
     def backup_database(self) -> None:
         path = self.client.backup()
         self.status_label.setText(f"Backup: {path}")
 
     def reset_from_source(self) -> None:
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self, "Reset database", "Replace the user database with the curated source database?"
         )
         if answer != QtWidgets.QMessageBox.Yes:
@@ -5437,7 +5431,7 @@ class MMFDBWidget(NavigationPanelTool):
         data = self.project_detail_widget.get_data()
         project_id = data.get("project_id")
         if not project_id:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a project to restore.")
+            dialogs.warning(self, "No Selection", "Please select a project to restore.")
             return
 
         try:
@@ -5449,13 +5443,13 @@ class MMFDBWidget(NavigationPanelTool):
                 cs.cs._current_project_version_id = result.get("version_id")
                 cs.cs._current_project_name = result.get("project_name")
                 cs.cs._current_project_visibility = result.get("visibility", "private")
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Project Restored",
                 "Successfully restored project state from database."
             )
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self,
                 "Restore Failed",
                 f"Failed to restore project: {exc}"
@@ -5465,10 +5459,10 @@ class MMFDBWidget(NavigationPanelTool):
         data = self.project_detail_widget.get_data()
         project_id = data.get("project_id")
         if not project_id:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a project version to delete.")
+            dialogs.warning(self, "No Selection", "Please select a project version to delete.")
             return
 
-        confirm = QtWidgets.QMessageBox.question(
+        confirm = dialogs.question(
             self,
             "Delete Project Version",
             f"Are you sure you want to delete the archived project version '{project_id}' from the database?",
@@ -5480,14 +5474,14 @@ class MMFDBWidget(NavigationPanelTool):
 
         try:
             self.client.delete_project(project_id)
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Project Version Deleted",
                 "Project version successfully deleted from the database."
             )
             self.refresh()
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self,
                 "Delete Failed",
                 f"Failed to delete project version: {exc}"
@@ -5575,17 +5569,17 @@ class MMFDBWidget(NavigationPanelTool):
         try:
             setup = self.collect_setup()
             self.client._call("mmfdb.setups.save", {"setup": setup})
-            QtWidgets.QMessageBox.information(self, "Setup Saved", "Setup definition successfully saved.")
+            dialogs.information(self, "Setup Saved", "Setup definition successfully saved.")
             self.fill_setup_table()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Save Failed", f"Failed to save setup:\n{e}")
+            dialogs.error(self, "Save Failed", f"Failed to save setup:\n{e}")
 
     def delete_setup(self) -> None:
         data = self.setup_detail_widget.get_data()
         setup_id = data.get("setup_id")
         if not setup_id:
             return
-        confirm = QtWidgets.QMessageBox.question(
+        confirm = dialogs.question(
             self,
             "Delete Setup",
             f"Are you sure you want to delete the setup definition '{setup_id}'?",
@@ -5596,10 +5590,10 @@ class MMFDBWidget(NavigationPanelTool):
             return
         try:
             self.client._call("mmfdb.setups.delete", {"setup_id": setup_id})
-            QtWidgets.QMessageBox.information(self, "Setup Deleted", "Setup definition successfully deleted.")
+            dialogs.information(self, "Setup Deleted", "Setup definition successfully deleted.")
             self.fill_setup_table()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Delete Failed", f"Failed to delete setup:\n{e}")
+            dialogs.error(self, "Delete Failed", f"Failed to delete setup:\n{e}")
 
     def validate_setup(self) -> None:
         data = self.setup_detail_widget.get_data()
@@ -5947,7 +5941,7 @@ class MMFDBWidget(NavigationPanelTool):
     def open_in_ndxplorer(self) -> None:
         selected = self.processed_products_table.selectedItems()
         if not selected:
-            QtWidgets.QMessageBox.warning(self, "No Selection", "Please select a processed product.")
+            dialogs.warning(self, "No Selection", "Please select a processed product.")
             return
         row = selected[0].row()
         prod_id = self.processed_products_table.item(row, 0).text()
@@ -5955,13 +5949,13 @@ class MMFDBWidget(NavigationPanelTool):
         prod_data = self.processed_product_detail_widget.get_data()
         exp_id = prod_data.get("experiment_id") or ""
         if not path_str:
-            QtWidgets.QMessageBox.warning(self, "No Path", "Selected product has no associated file path.")
+            dialogs.warning(self, "No Path", "Selected product has no associated file path.")
             return
 
         from pathlib import Path
         path = Path(path_str)
         if not path.exists():
-            QtWidgets.QMessageBox.critical(self, "File Not Found", f"The file or directory does not exist:\n{path_str}")
+            dialogs.error(self, "File Not Found", f"The file or directory does not exist:\n{path_str}")
             return
 
         import sys
@@ -5972,18 +5966,18 @@ class MMFDBWidget(NavigationPanelTool):
 
         try:
             import ndxplorer.io.reader as ndx_reader
-            from ndxplorer import NDXplorer
+            from ndxplorer import ndX
 
             if path.is_dir():
                 ds = ndx_reader.read_burst_analysis(str(path))
-                ndx = NDXplorer(
+                ndx = ndX(
                     data_source=ds,
                     zmq_cmd_port=8765,
                     processed_data_id=prod_id,
                     experiment_id=exp_id,
                 )
                 ndx.working_path = str(path)
-                ndx.setWindowTitle(f"NDXplorer - {path.name}")
+                ndx.setWindowTitle(f"ndX - {path.name}")
                 ndx.show()
                 ndx.raise_()
                 ndx.activateWindow()
@@ -5992,12 +5986,12 @@ class MMFDBWidget(NavigationPanelTool):
                 except Exception as exc:
                     chisurf.logging.warning("Operation failed: %s", exc)
             else:
-                ndx = NDXplorer(
+                ndx = ndX(
                     zmq_cmd_port=8765,
                     processed_data_id=prod_id,
                     experiment_id=exp_id,
                 )
-                ndx.setWindowTitle(f"NDXplorer - {path.name}")
+                ndx.setWindowTitle(f"ndX - {path.name}")
                 ndx.show()
                 ndx.raise_()
                 ndx.activateWindow()
@@ -6010,9 +6004,9 @@ class MMFDBWidget(NavigationPanelTool):
             if not hasattr(self, "_ndxplorer_windows"):
                 self._ndxplorer_windows = []
             self._ndxplorer_windows.append(ndx)
-            self.statusBar().showMessage(f"Opened {path.name} in NDXplorer")
+            self.statusBar().showMessage(f"Opened {path.name} in ndX")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Failed to open in NDXplorer:\n{e}")
+            dialogs.error(self, "Error", f"Failed to open in NDXplorer:\n{e}")
 
     def objects_tab(self) -> QtWidgets.QWidget:
         """Create the object store management tab."""
@@ -6123,7 +6117,7 @@ class MMFDBWidget(NavigationPanelTool):
         """Delete the selected object or decrement its refcount."""
         selected = self.objects_table.selectedItems()
         if not selected:
-            QtWidgets.QMessageBox.warning(self, "No object selected", "Select an object to delete.")
+            dialogs.warning(self, "No object selected", "Select an object to delete.")
             return
         row = selected[0].row()
         object_uuid = self.objects_table.item(row, 0).text()
@@ -6135,7 +6129,7 @@ class MMFDBWidget(NavigationPanelTool):
             msg += "\n\nThis will only decrement the refcount; the blob will remain."
         else:
             msg += "\n\nThis will permanently delete the blob from disk."
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self,
             "Delete object",
             msg,
@@ -6148,7 +6142,7 @@ class MMFDBWidget(NavigationPanelTool):
             self.status_label.setText(f"Object delete result: {result}")
             self.fill_object_table()
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Delete failed", str(exc))
+            dialogs.warning(self, "Delete failed", str(exc))
 
     def _on_object_copy_clicked(self) -> None:
         """Copy selected object UUID to clipboard."""
@@ -6168,7 +6162,7 @@ class MMFDBWidget(NavigationPanelTool):
             path = object_store_root() / storage_path
             QtGui.QDesktopServices.openUrl(_qurl_for_location(str(path)))
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Reveal failed", str(exc))
+            dialogs.warning(self, "Reveal failed", str(exc))
 
     def analyses_tab(self) -> QtWidgets.QWidget:
         self.analyses_table = QtWidgets.QTableWidget(0, 5)
@@ -6367,38 +6361,38 @@ class MMFDBWidget(NavigationPanelTool):
         seed_id = self.prov_seed_id_edit.text().strip()
         seed_type = self.prov_seed_type_combo.currentText()
         if not seed_id:
-            QtWidgets.QMessageBox.warning(self, "No Seed ID", "Please enter a seed node ID.")
+            dialogs.warning(self, "No Seed ID", "Please enter a seed node ID.")
             return
         try:
             res = self.client.dependencies_upstream(node_type=seed_type, node_id=seed_id)
             self._display_provenance_graph(res)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Trace Failed", f"Failed to trace upstream:\n{e}")
+            dialogs.error(self, "Trace Failed", f"Failed to trace upstream:\n{e}")
 
     def load_provenance_downstream(self) -> None:
         seed_id = self.prov_seed_id_edit.text().strip()
         seed_type = self.prov_seed_type_combo.currentText()
         if not seed_id:
-            QtWidgets.QMessageBox.warning(self, "No Seed ID", "Please enter a seed node ID.")
+            dialogs.warning(self, "No Seed ID", "Please enter a seed node ID.")
             return
         try:
             res = self.client.dependencies_downstream(node_type=seed_type, node_id=seed_id)
             self._display_provenance_graph(res)
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Trace Failed", f"Failed to trace downstream:\n{e}")
+            dialogs.error(self, "Trace Failed", f"Failed to trace downstream:\n{e}")
 
     def load_provenance_full_graph(self) -> None:
         seed_id = self.prov_seed_id_edit.text().strip()
         seed_type = self.prov_seed_type_combo.currentText()
         if not seed_id:
-            QtWidgets.QMessageBox.warning(self, "No Seed ID", "Please enter a seed node ID.")
+            dialogs.warning(self, "No Seed ID", "Please enter a seed node ID.")
             return
         try:
             res = self.client.export_provenance_graph(seed_node_type=seed_type, seed_node_id=seed_id)
             self._display_provenance_graph(_unwrap_provenance_graph_response(res))
         except Exception as e:
             chisurf.logging.error("Failed to load MMFDB provenance graph", exc_info=True)
-            QtWidgets.QMessageBox.critical(self, "Load Failed", f"Failed to load full graph:\n{e}")
+            dialogs.error(self, "Load Failed", f"Failed to load full graph:\n{e}")
 
     def _display_provenance_graph(self, graph: dict) -> None:
         from chisurf.plugins.core.mmfdb_admin.gui.provenance_graph import (
@@ -6427,7 +6421,7 @@ class MMFDBWidget(NavigationPanelTool):
         seed_id = self.prov_seed_id_edit.text().strip()
         seed_type = self.prov_seed_type_combo.currentText()
         if not seed_id:
-            QtWidgets.QMessageBox.warning(self, "No Seed ID", "Please enter a seed node ID.")
+            dialogs.warning(self, "No Seed ID", "Please enter a seed node ID.")
             return
         path_str, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Export Provenance JSON", "", "JSON Files (*.json)"
@@ -6438,15 +6432,15 @@ class MMFDBWidget(NavigationPanelTool):
             res = self.client.export_provenance_graph(seed_node_type=seed_type, seed_node_id=seed_id)
             with open(path_str, "w") as f:
                 json.dump(res, f, indent=2)
-            QtWidgets.QMessageBox.information(self, "Export Complete", f"Exported successfully to:\n{path_str}")
+            dialogs.information(self, "Export Complete", f"Exported successfully to:\n{path_str}")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Export Failed", f"Failed to export provenance JSON:\n{e}")
+            dialogs.error(self, "Export Failed", f"Failed to export provenance JSON:\n{e}")
 
     def export_provenance_zip_action(self) -> None:
         seed_id = self.prov_seed_id_edit.text().strip()
         seed_type = self.prov_seed_type_combo.currentText()
         if not seed_id:
-            QtWidgets.QMessageBox.warning(self, "No Seed ID", "Please enter a seed node ID.")
+            dialogs.warning(self, "No Seed ID", "Please enter a seed node ID.")
             return
         path_str, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Export Provenance ZIP Archive", "", "ZIP Archives (*.zip)"
@@ -6460,6 +6454,6 @@ class MMFDBWidget(NavigationPanelTool):
                 seed_node_id=seed_id,
                 include_external_data=False
             )
-            QtWidgets.QMessageBox.information(self, "Export Complete", f"Exported successfully to:\n{path_str}")
+            dialogs.information(self, "Export Complete", f"Exported successfully to:\n{path_str}")
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Export Failed", f"Failed to export zip archive:\n{e}")
+            dialogs.error(self, "Export Failed", f"Failed to export zip archive:\n{e}")

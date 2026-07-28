@@ -191,9 +191,9 @@ class ImagingMapTool(QtWidgets.QWidget):
             return
         try:
             try:
-                from ndxplorer import NDXplorer
+                from ndxplorer import ndX
             except Exception:
-                from ndxplorer.core.plot_main import NDXplorer
+                from ndxplorer.core.plot_main import ndX
 
             from .base import build_ndx_data_source
 
@@ -205,8 +205,8 @@ class ImagingMapTool(QtWidgets.QWidget):
 
                     win = self._ndx_window = make_ndxplorer()
                 except Exception:
-                    win = self._ndx_window = NDXplorer()
-                win.setWindowTitle("NDXplorer — imaging")
+                    win = self._ndx_window = ndX()
+                win.setWindowTitle("ndX — imaging")
             win.show()
             win.raise_()
             win.activateWindow()

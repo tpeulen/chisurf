@@ -113,8 +113,8 @@ the dynamic range.
 ## Afterwards
 
 *Share in session* publishes the calibration so any fit can link its correction
-parameters to it — one calibration, many datasets. *To ndXplorer* writes the
-factors into an open ndXplorer window's MFD constants and recomputes its derived
+parameters to it — one calibration, many datasets. *To ndX* writes the
+factors into an open ndX window's MFD constants and recomputes its derived
 columns. *Export CSV* writes the per-burst accurate values with the calibration
 in the file header, so the numbers stay traceable to how they were produced.
 

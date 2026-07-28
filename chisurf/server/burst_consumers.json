@@ -2,7 +2,7 @@
   "$comment": [
     "What a burst explorer can hand a gated population to.",
     "",
-    "ChiSurf advertises this list over `bursts.consumers`; ndXplorer (or any",
+    "ChiSurf advertises this list over `bursts.consumers`; ndX (or any",
     "other explorer) discovers it and builds its 'Send selection to' menu from",
     "what it is told. The explorer therefore knows no ChiSurf method names, and",
     "adding an analysis is a row here plus a service - no change on the client.",

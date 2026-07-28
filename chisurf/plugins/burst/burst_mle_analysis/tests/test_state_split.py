@@ -142,3 +142,31 @@ def test_without_state_info_the_worker_behaves_exactly_as_before():
     assert len(out) == 1
     assert not [c for c in out[0] if " S0" in c or " S1" in c]
     assert "Tau (green)" in out[0]
+
+
+def test_ticking_the_split_invalidates_the_reuse_gate(qapp):
+    """Otherwise Run reports 'Unchanged' and never produces the state columns.
+
+    The export is skipped when the fingerprint matches what is already on disk.
+    Splitting by state changes what is fitted *and* what is written, so it must
+    move the fingerprint — the whole workflow is walked with Next, and the
+    natural order is to fit, run H2MM, then come back and tick the box.
+    """
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    w = MLELifetimeAnalysisWizard()
+    try:
+        w.checkBox_split_by_state.setChecked(False)
+        plain = w.batch_settings()
+        w.checkBox_split_by_state.setChecked(True)
+        split = w.batch_settings()
+        assert plain != split, "the split must be part of the settings fingerprint"
+        assert split["split_by_state"] is True
+
+        before = dict(split)
+        w.spinBox_state_min_photons.setValue(w.state_min_photons + 5)
+        assert w.batch_settings() != before, "the state floor changes the fit too"
+    finally:
+        w.close()

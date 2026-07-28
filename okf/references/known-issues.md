@@ -1043,3 +1043,40 @@ be, because three of them were defects in the code rather than in the tests.
   the dependency); it is recorded rather than fixed here because it belongs to
   the burst subsystem and not to the PDA finding this run closed.
 
+## Burst GUI follow-ups (opened 2026-07-28)
+
+**ndX rename — the prose half.** Every *GUI-visible* "ndXplorer" is now "ndX"
+(window titles, actions, tooltips, status lines, the accurate-FRET help modal,
+`server/burst_consumers.json`). Not done, and deliberately left: docstrings,
+comments and READMEs still say ndXplorer, as do identifiers (`NDXplorer` class,
+`ndxplorer` package/RPC ids), which are not user-facing. A first attempt used a
+quote-matching regex and **silently skipped files** — it missed
+`burst_selection/gui/tool.py` entirely — so the remaining sweep should enumerate
+call sites explicitly (`setToolTip|addAction|QLabel|setText|setWindowTitle|
+showMessage|QAction`) rather than trust a regex over whole files.
+
+**Burst-selection toolbar → AutoForm.** The layer toggles (*Show: All photons /
+Selected photons*) and the *Photon Range* spin boxes are settings, not actions,
+and they crowd the toolbar enough to push the action buttons out of view. The
+groundwork is in: `gui/display_view_model.py` (a proxy view-model — it holds no
+state, it reads and writes the tool's own widgets, so nothing can drift) and
+`gui/burst_display.view.json`. **Blocked:** the rendered `AutoForm` comes out as
+an empty collapsed "Display" header (100×15) — the `toggle`/`value` sections do
+not bind to the view-model's plain properties as authored. The controls are
+therefore still in the toolbar. Resolve the section binding first, verify by
+rendering the form and *looking* at it, then remove them from the toolbar.
+
+**H2MM ↔ ndX.** Raised but not investigated: the H2MM outputs open in ndX and
+the per-burst `bh4` merges, but the dwell grain has no automated consumer
+(`h2mm_dwells.csv` is a manual CSV open) and `Is Edge` is written yet unused by
+the dwell-time histogram, which therefore plots burst durations for slow states.
+
+**MLE-Burstwise ordering.** *Split by H2MM state* lives in step 5, but the H2MM
+run it needs is step 6 — so a linear Next-walk reaches the option before the
+data it consumes exists. It degrades correctly (a status line, then an ordinary
+fit) and the fingerprint now includes the split, so returning to step 5 and
+ticking the box does refit. Consider reordering the steps, or offering the split
+from step 6.
+
+**Global τ per state.** The pooled per-(state, colour) fit — the robust headline
+number — is designed but not implemented; only the per-burst columns landed.

@@ -833,6 +833,28 @@ class BurstSelectionTool(ChisurfDockTool):
         )
         return panel
 
+    def _build_display_form(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+        """The display settings, rendered by AutoForm from ``burst_display.view.json``.
+
+        These were toolbar widgets. They are settings — which layers to draw and
+        over which slice of the file — so they belong in a form, and the toolbar
+        (which holds the actions) was full enough that they pushed the actions
+        out of view. The form binds to a view-model that proxies to the very same
+        widgets, so nothing is duplicated and every existing reader of
+        ``plot_min_spin`` / ``show_all_photons_check`` is untouched.
+        """
+        from chisurf.gui.autoform import AutoForm
+
+        from .display_view_model import BurstDisplayViewModel
+
+        self._display_view_model = BurstDisplayViewModel(self)
+        form = AutoForm(self._display_view_model, parent)
+        form.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Maximum,
+        )
+        return form
+
     def _build_histogram_controls_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
         """Create histogram controls panel for separate dock."""
         panel = QtWidgets.QWidget(parent)
@@ -3027,7 +3049,11 @@ class BurstSelectionTool(ChisurfDockTool):
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
 
-        show_label = QtWidgets.QLabel("Show:")
+        # The layer toggles and the photon range live in a form, not here: they
+        # are settings, the toolbar holds actions, and a wide "Show: … Photon
+        # Range: … to …" run pushed the actions themselves off to the left. The
+        # widgets are still built (every existing call site and test reads them);
+        # only their placement moved — see _build_display_form.
         self.show_all_photons_check = QtWidgets.QCheckBox("All photons", self)
         self.show_all_photons_check.setChecked(True)
         self.show_all_photons_check.setToolTip("Show diagnostic layers computed from all photons.")
@@ -3038,13 +3064,7 @@ class BurstSelectionTool(ChisurfDockTool):
         # the original MCS-local controls.
         self.mcs_show_all_check = self.show_all_photons_check
         self.mcs_show_selected_check = self.show_selected_photons_check
-        toolbar.addWidget(show_label)
-        toolbar.addWidget(self.show_all_photons_check)
-        toolbar.addWidget(self.show_selected_photons_check)
-        toolbar.addSeparator()
 
-        # Add plot range controls to toolbar
-        plot_range_label = QtWidgets.QLabel("Photon Range:")
         self.plot_min_spin = QtWidgets.QSpinBox()
         self.plot_min_spin.setRange(0, 99_999_999)
         self.plot_min_spin.setValue(0)
@@ -3053,7 +3073,15 @@ class BurstSelectionTool(ChisurfDockTool):
         self.plot_max_spin.setRange(0, 99_999_999)
         self.plot_max_spin.setValue(DEFAULT_PLOT_MAX)
         self.plot_max_spin.setToolTip("Maximum photon index to process (default = end of file)")
-        toolbar.addWidget(plot_range_label)
+
+        # TODO(ndx/autoform): these belong in burst_display.view.json, which is
+        # written but does not yet render its sections; until it does they stay
+        # here so they remain reachable.
+        toolbar.addWidget(QtWidgets.QLabel("Show:"))
+        toolbar.addWidget(self.show_all_photons_check)
+        toolbar.addWidget(self.show_selected_photons_check)
+        toolbar.addSeparator()
+        toolbar.addWidget(QtWidgets.QLabel("Photon Range:"))
         toolbar.addWidget(self.plot_min_spin)
         toolbar.addWidget(QtWidgets.QLabel("to"))
         toolbar.addWidget(self.plot_max_spin)
@@ -3065,9 +3093,9 @@ class BurstSelectionTool(ChisurfDockTool):
         )
         toolbar.addWidget(spacer)
 
-        ndx_action = QtWidgets.QAction("🔬 to ndXplorer", self)
+        ndx_action = QtWidgets.QAction("🔬 to ndX", self)
         ndx_action.setToolTip(
-            "Open a registered burst selection from MMFDB in ndXplorer"
+            "Open a registered burst selection from MMFDB in ndX"
         )
         ndx_action.triggered.connect(self._open_in_ndxplorer)
         toolbar.addAction(ndx_action)
@@ -3101,7 +3129,7 @@ class BurstSelectionTool(ChisurfDockTool):
                 client=self._mmfdb_client,
             )
         except Exception as exc:
-            self._status_bar.showMessage(f"Could not open ndXplorer: {exc}")
+            self._status_bar.showMessage(f"Could not open ndX: {exc}")
 
     def _show_metadata_dialog(self) -> None:
         """Show metadata dialog for editing analysis metadata."""

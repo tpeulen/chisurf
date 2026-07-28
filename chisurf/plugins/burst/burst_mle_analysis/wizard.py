@@ -4073,6 +4073,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             "fixed": list(fixed) if fixed is not None else [],
             "min_photons": float(self.min_photons),
             "channels": self.channel_settings,
+            # Splitting by state changes what is fitted and what is written, so
+            # it has to change the fingerprint: without it, ticking the box
+            # after an H2MM run would report "Unchanged" and skip the refit.
+            "split_by_state": bool(self.split_by_state),
+            "state_min_photons": int(self.state_min_photons)
+            if self.split_by_state else 0,
             # The LUTs and micro-time shifts applied inside the reader are not a
             # setting of this step, and they change every decay it fits.
             "_read_context": analysis_cache.photon_read_context(),
