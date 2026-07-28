@@ -262,6 +262,19 @@ The workflows a first pass should cover — expand as the tester discovers more:
   "the best dwell" on curves that never turned around.
   *(last driven 2026-07-28; RF-793..RF-797)*
 
+- [Running a measurement — simulated single-molecule acquisition](/usecases/acquisition-simulated-measurement.md)
+  — the workflow *before* every file-based one: configure the sample, optics and
+  detection of a confocal single-molecule experiment, run the acquisition
+  against the built-in tttrlib photon simulator, watch the live decay,
+  correlation, count-rate and MCS readouts, and pick the recorded SPC stream up
+  for a burst search or an FCS fit. The simulated physics is sound (the
+  correlation amplitude reproduces the configured occupancy exactly and the
+  written files read back as valid streams); everything between the settings and
+  that stream is not — the recordings ignore the configured folder and land in
+  the working directory, a 20 000-photon budget returns 190 671 photons, half
+  the detectors never reach the decay window, and that decay is drawn backwards
+  on an axis six times too wide. *(last driven 2026-07-28; RF-810..RF-818)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

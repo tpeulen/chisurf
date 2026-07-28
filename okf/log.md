@@ -2,6 +2,28 @@
 
 ## 2026-07-28
 
+* **QA — running a measurement: the acquisition tool against its own photon
+  simulator.** Drove *Main ▸ Tools ▸ Acquisition* headlessly on the real main
+  window: configured the simulated confocal experiment through the unified
+  settings panel, ran three acquisitions to completion, exercised **Stop** and
+  the settings round trip, and read the recorded SPC files back with tttrlib.
+  Recorded as [running a measurement](/usecases/acquisition-simulated-measurement.md).
+  The simulated physics and the written files are sound — `G(0) ≈ 2.2`
+  reproduces the configured occupancy (`N ≈ 0.75`) exactly, the count-rate and
+  MCS traces agree, and `m000.spc` reads back as a valid SPC-130 stream with
+  both detectors present. Everything between the user's settings and that stream
+  does not: the configured output folder is blanked by the settings snapshot so
+  147 SPC files landed in the repository working tree, a 20 000-photon budget
+  returned 190 671 photons, half the detectors never reach the decay window, that
+  decay is drawn backwards on a hard-coded 0–100 ns axis (true span 16.7 ns),
+  the dock's output folder and Save/Load buttons are covered by the *Show* group
+  box, **Save Settings** raises, and both command-line entry points fail on a
+  missing module. Findings [RF-810..RF-818](/reviews/findings.md); softer items
+  (three output-folder fields for one destination, five interacting photon
+  budgets across two windows, no progress during the 23 s generation phase, an
+  unlabelled count-rate LCD, nothing carrying the measurement forward into an
+  analysis) in the use case's UX section.
+
 * **Browsing a folder of TTTR images crashed the application, and the crash could
   not be caught.** `tttrlib.TTTR(path, None)` hands a null `const char *` to C++
   and **segfaults** — it does not raise, so the `except Exception` wrapped around
