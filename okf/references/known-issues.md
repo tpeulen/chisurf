@@ -1183,3 +1183,25 @@ generations in one process. The fix belongs in the offscreen-Qt test fixture or
 in the image-browser section's teardown, not in this plugin's tests, so it is
 recorded rather than patched around; the plugin's own suite is green under
 `-p no:randomly` and green about two runs in three otherwise.
+
+## An unregistered fit's curve input dispatches nothing, and a test still expects it to
+
+**Found 2026-07-29** while checking that a shared-table change had not broken
+anything: `test/gui/test_auto_model_widget.py::test_curve_input_widget_renders_and_dispatches`
+is red on HEAD, with no uncommitted work in the code it exercises.
+
+`CurveInputWidget._on_change` dispatches `section.select_action` only
+`if section.select_action and fit_index >= 0`, and `_own_fit_index()` answers
+`-1` when the bound model's fit is not in `chisurf.fits`. Its docstring says
+this is deliberate — the method used to answer `0`, which is not "unknown" but
+*another fit*, so an edit could land on whichever fit happened to be first. The
+test builds a model that is not registered and asserts `model.change_irf` is
+dispatched, i.e. the older contract.
+
+Both readings are defensible and they conflict: either the widget should still
+apply the selection to its own model when no fit index can be resolved (a
+headless or scripted fit otherwise gets a picker that silently does nothing), or
+the test should assert that an unresolvable fit dispatches nothing. That is the
+call of whoever made the `-1` change; it is recorded here rather than decided
+from the outside, since guessing wrong re-introduces the "edit lands on the
+wrong fit" bug the docstring describes.

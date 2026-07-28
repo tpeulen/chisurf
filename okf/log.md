@@ -2,6 +2,26 @@
 
 ## 2026-07-29
 
+* **A model widget that could not be defined.** `EtModelFreeWidget` inherited
+  `QtWidgets.QWidget` directly while its model is an abstract base class, and
+  `ABCMeta` + Qt's `wrappertype` is a metaclass conflict raised while the class
+  is being *defined* -- so `chisurf/gui/widgets/models/tcspc/et.py` failed to
+  import at all and the Et model-free entry was simply absent from the model
+  menu. `ModelWidget` exists to carry the combined metaclass; the widget now
+  uses it. Found while checking that a parameter-table change had broken
+  nothing, with `test_every_configured_tcspc_model_resolves_with_a_name` red on
+  HEAD and no uncommitted work in that area.
+  - Guardrail: `test/gui/test_model_widget_metaclass.py` imports **every** module
+    under `chisurf/gui/widgets/models` (39 checks) and states why the combined
+    metaclass has to exist, so a model widget that inherits `QWidget` directly
+    fails here rather than vanishing from the menu.
+  - The second red test found in the same sweep is a genuine contract conflict
+    someone else owns (a curve input no longer dispatches when the model's fit is
+    not registered, deliberately); recorded in
+    [known-issues](/references/known-issues.md) rather than decided from outside.
+
+## 2026-07-29
+
 * **QA — the Converter hub, end to end** (RF-896..RF-906). Drove
   *Tools → Converter* headlessly on `BH_SPC132.spc` (183 657 photons, 62.328 s):
   transcoded SPC→PTU, cut the stream into 100 ms time-window BIDs, converted

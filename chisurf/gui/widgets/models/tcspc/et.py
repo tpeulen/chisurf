@@ -13,6 +13,7 @@ from chisurf.gui import plots
 from chisurf.core.fluorescence.tcspc.phasor import Phasor
 from chisurf.gui.widgets.fluorescence.tcspc import PhasorWidget
 from chisurf.core.models.model import Model
+from chisurf.gui.widgets.models.model_widget import ModelWidget
 from chisurf.core.math.optimization import solve_richardson_lucy, maxent
 from chisurf.core.math.optimization.nnls import solve_nnls
 from chisurf.core.models.tcspc.lifetime import LifetimeModel
@@ -580,7 +581,12 @@ class EtModelFree(
 
 class EtModelFreeWidget(
     EtModelFree,
-    QtWidgets.QWidget
+    # Not ``QtWidgets.QWidget`` directly: ``Model`` is an ABC, and mixing
+    # ``ABCMeta`` with Qt's ``wrappertype`` is a metaclass conflict raised while
+    # the class is being *defined* -- this module failed to import at all, so
+    # the Et model-free entry was missing from the model menu. ``ModelWidget``
+    # is the base that carries the metaclass combining the two.
+    ModelWidget
 ):
 
     model_update = QtCore.Signal()
