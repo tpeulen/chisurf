@@ -1073,3 +1073,27 @@ be, because three of them were defects in the code rather than in the tests.
 
 ## Burst GUI follow-ups (opened 2026-07-28)
 
+
+## tttr_image_browser: the widget suite aborts at teardown, about one run in three
+
+**Found 2026-07-28** while migrating the tool onto the shared dockable-tool base
+(PRD-36). `chisurf/plugins/tttr/tttr_image_browser/test/test_widgets.py` aborts
+with `libc++abi: Pure virtual function called!` inside `pytest-qt`'s
+`_process_events`, after the body of `test_tttr_image_browser_tool_creation` has
+already passed — so it is a **teardown** crash, not a test failure, and it takes
+the whole pytest process with it.
+
+It needs the *sequence*: the two Qt-free view-model tests, then a bare
+`TTTRImageBrowser`, then a second one inside `TTTRImageBrowserTool`. Constructing
+either widget four times on its own never crashes. Measured alone-vs-alone over
+five runs each with the pre-migration `gui/tool.py` loaded side by side with the
+new one: **2/5 crashes on the old class, 3/5 on the new** — the rate is the same,
+so the migration neither caused nor cured it. `-p no:randomly` does not help; the
+order is already fixed, the crash is simply intermittent.
+
+The shape (a pure-virtual call while deferred deletions are processed) points at
+a `pyqtgraph` item outliving the C++ half of its owner across two widget
+generations in one process. The fix belongs in the offscreen-Qt test fixture or
+in the image-browser section's teardown, not in this plugin's tests, so it is
+recorded rather than patched around; the plugin's own suite is green under
+`-p no:randomly` and green about two runs in three otherwise.

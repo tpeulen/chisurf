@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; fifteen tools are on the base and a backlog of ~12 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; sixteen tools are on the base and a backlog of ~11 tools remains.
 
 # Goal
 
@@ -111,6 +111,29 @@ read-only-construction guard already exist.
       `__getattr__`, so `api`/`backend`/`cli` import with no Qt binding — pinned by a
       clean-subprocess boundary check alongside the construction smoke test.
 
+- [x] `tttr/tttr_image_browser` — priority-B rollout, and the first tool whose
+      workspace already handled its own drops: `TTTRImageBrowser` accepts a dropped
+      folder itself and is also embedded bare in the Image Tools shell, so its
+      widget-level handlers stay. What was missing is the window: a drop that landed
+      on the toolbar or the chrome reached nothing, and a dropped *file* was ignored
+      twice over — the workspace's `dragEnterEvent` declines a non-directory, and the
+      plain `QMainWindow` above it did not accept drops at all. `on_paths_dropped`
+      now opens the first dropped directory through the view model's own
+      `on_drop` seam (no second copy of "find the first directory") and reports a
+      declared `Information` message for anything else. Geometry stays owned by the
+      manifest-declared window statefulness, as for `calculator/fret_calculator`
+      and `pch`, so the base's `save/restore_window_geometry` are deliberately left
+      uncalled; `tool_settings_name` is set per the recipe. Recipe step 5 (lazy GUI
+      import) does not apply: this plugin's `__init__.py` *is* the workspace widget,
+      so there is no Qt-free root to protect until that module is split.
+      The tool's `__getattr__` workspace delegation was hardened to read
+      `__dict__` — a plain `self._workspace` there recurses without end for any
+      attribute missed before `__init__` assigns it, which is exactly the window
+      during which the base class initialises itself.
+      Tests: `test/test_widgets.py` (+3; the blanket `except Exception →
+      pytest.skip` around construction was narrowed to `ImportError`, so a
+      constructor that raises is red rather than skipped).
+
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
 
@@ -127,7 +150,6 @@ handlers):**
 read-only-construction guarantee; no drop list to dedupe):**
 
 - [ ] `tttr/trace_browser/gui/tool.py`
-- [ ] `tttr/tttr_image_browser/gui/tool.py`
 - [ ] `tttr/tttr_lut_tools/gui/tool.py`
 - [ ] `fluorescence_decay/irf_estimator/gui/tool.py`
 - [ ] `fluorescence_decay/lltf/lltf_gui.py`

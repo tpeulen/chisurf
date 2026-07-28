@@ -2,6 +2,35 @@
 
 ## 2026-07-28
 
+* **Browsing a folder of TTTR images crashed the application, and the crash could
+  not be caught.** `tttrlib.TTTR(path, None)` hands a null `const char *` to C++
+  and **segfaults** — it does not raise, so the `except Exception` wrapped around
+  the call in `tttr_image_browser/core/image.py` was never going to see it. The
+  reading routine is `None` whenever no detector setup pins a container type,
+  which is exactly the state the browser is in the moment a folder is dropped, so
+  the first preview took the whole process down. Both call sites now open through
+  `chisurf.core.fio.staging.open_tttr`, the one seam that already resolves a
+  missing routine to auto-detection (and that makes the read LUT-aware, which the
+  browser was not). Pinned two ways in
+  `tttr_image_browser/test/test_image_reading.py`: an AST guard that fails on any
+  direct `tttrlib.TTTR(...)` in that module, and a functional test that an
+  unreadable file with no routine returns `None`.
+* **`tttr/tttr_image_browser` is on the shared dockable-tool base** ([PRD-36](/prds/prd-36.md),
+  sixteenth tool). The workspace already accepted a dropped folder, but the window
+  above it accepted nothing: a drop on the toolbar or the chrome reached no handler,
+  and a dropped *file* was declined by the workspace and then ignored by a plain
+  `QMainWindow`. `on_paths_dropped` opens the first dropped directory through the
+  view model's own `on_drop` seam and reports a declared `Information` message for
+  anything else — shown in the tool's status bar, which the base creates only when
+  there is something to say (screenshotted offscreen: unchanged panel by default,
+  one status line after a file drop). Geometry stays owned by the manifest-declared
+  window statefulness, as for `pch`. The tool's `__getattr__` workspace delegation
+  now reads `__dict__`, so an attribute missed before `__init__` assigns the
+  workspace raises `AttributeError` instead of recursing without end.
+  Recorded in [known issues](/references/known-issues.md): the plugin's widget
+  suite aborts at Qt teardown roughly one run in three — measured at the same rate
+  with the pre-migration class loaded side by side (2/5 vs 3/5), so the migration
+  neither caused nor cured it.
 * **BVA without the C++ engine returned a column shorter than the burst frame**
   ([RF-805](/reviews/findings.md)). The NumPy fallback in
   `burst/burst_bva/core/computation.py` appended one value per *processed* row,

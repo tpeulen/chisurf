@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from qtpy.QtWidgets import (
     QAction,
     QCheckBox,
     QDialog,
     QDialogButtonBox,
-    QMainWindow,
     QPlainTextEdit,
     QSizePolicy,
     QToolBar,
@@ -18,6 +19,8 @@ from qtpy.QtWidgets import (
 from chisurf.core import i18n
 from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area.dock_area import DockArea
+from chisurf.gui.widgets.messages import Msg
+from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.plugins.tttr.tttr_image_browser import TTTRImageBrowser
 from chisurf.plugins.tttr.tttr_image_browser.gui.client import TTTRImageBrowserClient
 
@@ -32,8 +35,25 @@ except ImportError:
 
 
 @persist_plugin_state("tttr_image_browser")
-class TTTRImageBrowserTool(QMainWindow):
-    """Toolbar-backed TTTR Image Browser window."""
+class TTTRImageBrowserTool(ChisurfDockTool):
+    """Toolbar-backed TTTR Image Browser window.
+
+    A :class:`~chisurf.gui.widgets.tools.ChisurfDockTool` (PRD-23 / PRD-36), so
+    the window-level path drag-drop, the geometry helpers, the lazy MMFDB
+    accessors and the declared-message status bar come from the shared base
+    instead of being re-implemented here.
+    """
+
+    #: QSettings key for the base's geometry helpers (PRD-36 recipe step 1). The
+    #: manifest declares window statefulness, and that mechanism owns geometry
+    #: for this tool, so ``save/restore_window_geometry`` are left uncalled and
+    #: the two do not both write a geometry key.
+    tool_settings_name: str = "TTTRImageBrowserTool"
+
+    class Information(ChisurfDockTool.Information):
+        """Conditions worth reporting that do not stop the tool."""
+
+        no_folder_dropped = Msg("Drop a folder of TTTR files, not a single file.")
 
     def __init__(self, parent=None):
         """Create the toolbar/dock shell and embed the TTTR Image Browser workspace.
@@ -81,6 +101,11 @@ class TTTRImageBrowserTool(QMainWindow):
     def __getattr__(self, name: str):
         """Delegate workspace attributes for legacy tests and callers.
 
+        The workspace is looked up in ``__dict__`` rather than through ``self``:
+        a plain ``self._workspace`` here recurses without end for every attribute
+        missed before ``__init__`` has assigned it — which is exactly when the
+        base class initialises itself.
+
         Parameters
         ----------
         name : str
@@ -90,8 +115,32 @@ class TTTRImageBrowserTool(QMainWindow):
         -------
         Any
             The workspace attribute.
+
+        Raises
+        ------
+        AttributeError
+            If the workspace does not exist yet, or does not carry *name*.
         """
-        return getattr(self._workspace, name)
+        workspace = self.__dict__.get("_workspace")
+        if workspace is None:
+            raise AttributeError(name)
+        return getattr(workspace, name)
+
+    def on_paths_dropped(self, paths: list[Path]) -> None:
+        """Open the first dropped folder in the browser.
+
+        The base enables window-level path drag-drop for every dock tool, so a
+        drop that lands on the toolbar or the window chrome — rather than on the
+        workspace, which handles its own folder drops — reaches here. This tool
+        browses a *folder*, so anything else is reported in the status bar
+        instead of being accepted and dropped on the floor.
+        """
+        if any(path.is_dir() for path in paths):
+            self.Information.no_folder_dropped.clear()
+            self._workspace.model.on_drop(paths)
+            return
+        if paths:
+            self.Information.no_folder_dropped()
 
     def _on_next_step(self) -> None:
         """Send the current/selected image to the imaging pipeline (Intensity step)."""
