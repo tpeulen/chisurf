@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **The "openable in ndX" claim is now checked with ndX's own reader.**
+  `burst_h2mm/core/export.py` has always asserted its tables open directly in
+  ndXplorer; nothing verified it, and the ways it can be false are quiet — CSV
+  and HDF5 load whatever is in them, ndX *drops* a non-numeric column without
+  error, and a table with no `Mean Macro Time (s)` opens with no axis to select.
+  New `tests/test_ndx_compat.py` reads every written table back through
+  `ndxplorer.io.reader` (not pandas) and asserts: all four open, every column is
+  numeric, the per-event tables (photons/bursts/dwells) carry ndX's own time-axis
+  column, the HDF5 is under the key its MFD reader looks for, and every written
+  file is named in `output_paths`. Verified on the real
+  `sliding_window_All 0.1500#60` run as well: 275 973 photons, 2 495 bursts,
+  2 628 dwells, 3 072 decay rows, no non-numeric column anywhere. Writing the
+  test corrected a wrong assumption of mine: the photon table is HDF5 **or** CSV
+  (the CSV is the no-pytables fallback), never both — which is why every consumer
+  must look for either, as `state_mle.read_photon_table` does. The new
+  `h2mm_state_decays.csv` is deliberately the one table *without* a time axis: it
+  is binned counts, not events, and the test says so rather than leaving it
+  looking like an omission.
+
 * **The last undeclared runtime dependency: an HTTP client in 200 lines.**
   Everything ChiSurf sends over HTTP is one JSON round trip — a model provider's
   `/chat/completions`, the plugin registry's file listing, an icon download — and
