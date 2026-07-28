@@ -262,6 +262,18 @@ The workflows a first pass should cover — expand as the tester discovers more:
   binning makes the arrays unusable, and the two PIE detectors receive one and
   the same answer. *(last driven 2026-07-28; RF-752..RF-759)*
 
+- [FRET-restrained rigid-body docking](/usecases/fret-docking-rigid-body.md) —
+  what the `fps.json` is *for*: load the two-body HIV-RT + DNA docking project,
+  score the reference arrangement, minimise the mobile body against the 20
+  measured distances, repeat the run for a score spread, and rank a structure
+  library. **Nothing runs** — all four operations die in the same line on an
+  `IMP.bff` restraint class the plugin cannot reach (the shipped one is not
+  re-exported, and imp-tricks shadows it), while `screen` turns that total
+  failure into a successful ranking of `nan`. The accessible-volume machinery
+  under it is healthy (8 AVs in 0.64 s, ⟨R_DA⟩ = 57.25 Å) and so is the
+  OLGA pair-selection wizard, which has no entry point in the application.
+  *(last driven 2026-07-28; RF-771..RF-778)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

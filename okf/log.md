@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+* **QA (GUI tester): FRET-restrained rigid-body docking is dead end to end.**
+  Drove Structure Tools -> *2. Docking & Screening* headlessly on the plugin's
+  own HIV-RT + DNA example (20 measured distances, IMP 2.24.0): `dock`, `score`,
+  `refine` and the 3-trial error estimation all raise
+  `AttributeError: module 'IMP.bff.restraints' has no attribute
+  'AVNetworkRestraintWrapper'` within ~2 s. The class is installed, in a
+  `restraints/` directory with no `__init__.py` (so nothing is re-exported), and
+  the imp-tricks source on `PYTHONPATH` replaces that namespace portion so the
+  submodule cannot be imported at all -- verified both ways. `screen` reports
+  that total failure as "ranked 2 structures" over an all-`nan` CSV, and its
+  ranking never reaches the results table. Around the broken seam everything is
+  healthy: the AV machinery gives 8 AVs in 0.64 s with `<R_DA> = 57.25 A`, and
+  the OLGA pair-selection wizard returns a sensible greedy `<RMSD>` decay -- but
+  it has no entry point in the application, blocks the GUI thread for 53 s and
+  labels its y axis `^ (A)`. New use case
+  [FRET-restrained rigid-body docking](/usecases/fret-docking-rigid-body.md);
+  RF-771..RF-778 filed OPEN.
 * **ndX: the marginals described a larger population than the map below them,
   and four silent failures around them.** A per-state lifetime column (defined
   for the bursts one H2MM state claims) against a proximity ratio (defined for
