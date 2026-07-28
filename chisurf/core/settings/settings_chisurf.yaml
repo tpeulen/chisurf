@@ -364,6 +364,10 @@ plugins:
   hide_disabled_plugins: true
   icons_enabled: true
   plugin_order: {}
+  # Offer plugins whose manifest says "demo": true (the built-in games) in the
+  # menus. They ship with the application but are not what it is for, so plugin
+  # discovery hides them by default.
+  show_demo_plugins: false
   statefulness:
     mode: plugin_default
     per_plugin: {}

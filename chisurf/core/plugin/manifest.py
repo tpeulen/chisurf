@@ -94,6 +94,13 @@ class PluginManifest:
     deprecated: bool = False
     deprecation_message: str = ""
 
+    #: Mark a tool as a demonstration/toy rather than something the application is
+    #: for. Unlike the maturity flags this carries no banner: plugin discovery keeps
+    #: a demo out of the generated menus entirely unless the ``plugins.show_demo_plugins``
+    #: setting is on, so demos can ship without competing with analysis tools for
+    #: menu space.
+    demo: bool = False
+
     @staticmethod
     def _parse_statefulness(data: dict[str, Any]) -> PluginStatefulness:
         """Parse plugin statefulness settings from manifest data."""
@@ -177,6 +184,7 @@ class PluginManifest:
             menu_hidden=data.get("menu_hidden", False),
             deprecated=data.get("deprecated", False),
             deprecation_message=tr(data.get("deprecation_message", "")),
+            demo=data.get("demo", False),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -231,6 +239,7 @@ class PluginManifest:
             "menu_hidden": self.menu_hidden,
             "deprecated": self.deprecated,
             "deprecation_message": self.deprecation_message,
+            "demo": self.demo,
         }
 
     def to_json(self, indent: int = 2) -> str:
@@ -367,6 +376,7 @@ _MANIFEST_SCHEMA = {
         "menu_hidden": {"type": "boolean"},
         "deprecated": {"type": "boolean"},
         "deprecation_message": {"type": "string"},
+        "demo": {"type": "boolean"},
     },
 }
 

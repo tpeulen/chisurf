@@ -211,7 +211,36 @@ def _read_manifest_metadata(plugin_dir: pathlib.Path):
         "experimental_message": manifest.experimental_message,
         "deprecated": bool(manifest.deprecated),
         "deprecation_message": manifest.deprecation_message,
+        # A demo declares what it is; whether it reaches a menu is decided once,
+        # in _iter_plugins_uncached, so every host gets the same answer.
+        "demo": bool(manifest.demo),
     }
+
+
+def demo_plugins_enabled() -> bool:
+    """Whether demo plugins are offered in the generated menus.
+
+    Demos (the built-in games) ship with the application but are not what it is
+    for, so discovery hides them from every menu unless the user opts in with the
+    ``plugins.show_demo_plugins`` setting. Discovery is cached, so a change takes
+    effect after :func:`invalidate_plugin_cache` or a restart.
+
+    Returns
+    -------
+    bool
+        ``True`` when ``plugins.show_demo_plugins`` is set, ``False`` otherwise
+        (including when settings are unavailable, as in a headless test).
+
+    """
+    try:
+        import chisurf as cs
+
+        plugin_settings = cs.core.settings.cs_settings.get("plugins", {})
+    except Exception:
+        return False
+    if not isinstance(plugin_settings, dict):
+        return False
+    return bool(plugin_settings.get("show_demo_plugins", False))
 
 
 #: Cached result of :func:`_iter_plugins_uncached`. Discovery walks the whole
@@ -244,6 +273,7 @@ def iter_plugins():
 
 def _iter_plugins_uncached():
     base_prefix = __name__ + "."
+    show_demos = demo_plugins_enabled()
     try:
         user_root = user_plugins_dir.resolve()
     except Exception:
@@ -290,6 +320,7 @@ def _iter_plugins_uncached():
                     continue
                 manifest_metadata = _read_manifest_metadata(package_dir)
                 maturity = dict(_MATURITY_DEFAULTS)
+                demo = False
                 if manifest_metadata is not None:
                     plugin_name = manifest_metadata["plugin_name"]
                     description = manifest_metadata["description"]
@@ -299,6 +330,7 @@ def _iter_plugins_uncached():
                     manifest_id = manifest_metadata["manifest_id"]
                     manifest_version = manifest_metadata["manifest_version"]
                     state_namespace = manifest_metadata["state_namespace"]
+                    demo = manifest_metadata["demo"]
                     maturity.update({k: manifest_metadata[k] for k in _MATURITY_DEFAULTS})
                 else:
                     (
@@ -330,6 +362,12 @@ def _iter_plugins_uncached():
                 # while still allowing it to be managed as a plugin if needed.
                 if "cookiecutter-chisurf-plugin" in parts and "{{cookiecutter.plugin_name}}" in parts:
                     menu_hidden = True
+
+                # One gate for every menu: the ribbon, the plugin menu and the
+                # ribbon categories all filter on ``menu_hidden``, so deciding it
+                # here is the only way a demo cannot leak into one of them.
+                if demo and not show_demos:
+                    menu_hidden = True
                 yield {
                     "module_path": module_path,
                     "module_name": local_name,
@@ -343,6 +381,7 @@ def _iter_plugins_uncached():
                     "manifest_id": manifest_id,
                     "manifest_version": manifest_version,
                     "state_namespace": state_namespace,
+                    "demo": bool(demo),
                     **maturity,
                 }
             except Exception:

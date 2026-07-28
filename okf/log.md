@@ -2,6 +2,20 @@
 
 ## 2026-07-29
 
+* **INC-07 — a demo is gated where every menu already looks.** The five built-in
+  games and their hub sat in the generated menus beside the analysis tools, with
+  no way in the tree to *say* they are demonstrations. A manifest now declares
+  `"demo": true` (a declared key of the closed manifest schema, carried verbatim
+  in the discovery record), and plugin discovery turns it into `menu_hidden`
+  unless `plugins.show_demo_plugins` is set — one gate covering the ribbon, the
+  plugin menu and both ribbon-category builders, rather than the same filter
+  written four times and forgotten by the fifth host. It is deliberately not a
+  maturity flag: it carries no banner and makes no claim about trust. The Plugin
+  Manager and help browser do not filter `menu_hidden`, so a demo stays
+  inspectable there. Tests: `test/plugins/test_plugin_demo_gating.py` (9),
+  including that the gate changes no non-demo plugin's visibility. Docs:
+  `docs/development/plugin_architecture.md` §3.1.2.
+
 * **RF-846 — the compound line is the interpreter's, not the panel's.** The
   object menus separate statements with `;`, the docked panel split on it and
   `cmd.do()` did not, so the four Action ▸ preset entries — the only compound

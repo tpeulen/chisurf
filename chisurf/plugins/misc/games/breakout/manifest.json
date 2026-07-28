@@ -28,5 +28,6 @@
   "events": [],
   "dependencies": {},
   "menu_hidden": true,
-  "deprecated": false
+  "deprecated": false,
+  "demo": true
 }

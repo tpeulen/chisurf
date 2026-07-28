@@ -265,6 +265,20 @@ way wherever it is opened from:
 Hosts that need the presentation without a panel use
 `maturity_markers()` / `maturity_warnings()` from the same module.
 
+### 3.1.2 Demo plugins
+
+`"demo": true` marks a plugin as a demonstration rather than something the
+application is for — the built-in games are the only ones in the tree. Unlike a
+maturity flag it carries no banner: plugin discovery
+(`chisurf.plugins.iter_plugins()`) turns it into `menu_hidden` unless the
+`plugins.show_demo_plugins` setting is on, so the demo is absent from the
+ribbon, the plugin menu and the ribbon categories at once rather than being
+filtered again in each of them. The Plugin Manager and the help browser do not
+filter on `menu_hidden`, so a demo stays inspectable and installable there.
+
+Discovery is cached, so flipping the setting takes effect after
+`chisurf.plugins.invalidate_plugin_cache()` or a restart.
+
 ### 3.2 Schema files
 
 Plugin schemas live under `schemas/` and are JSON Schema draft-07 files referenced from the manifest:
