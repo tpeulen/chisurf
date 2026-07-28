@@ -180,7 +180,7 @@ def _call_llm(prompt: str, provider: str | None = None) -> str | None:
     """Call the configured LLM and return the response text.
 
     Uses the existing ``chisurf.core.settings.ai_settings`` infrastructure
-    with the same ``requests.post`` pattern as ``agent_panel.py``.
+    with the same :func:`chisurf.core.http.post` pattern as ``agent_panel.py``.
 
     Parameters
     ----------
@@ -194,7 +194,7 @@ def _call_llm(prompt: str, provider: str | None = None) -> str | None:
     str or None
         Response text, or None on failure.
     """
-    import requests
+    from chisurf.core import http
 
     from chisurf.core.settings.ai_settings import get_api_settings
 
@@ -219,7 +219,7 @@ def _call_llm(prompt: str, provider: str | None = None) -> str | None:
         headers["Authorization"] = f"Bearer {api_key}"
 
     try:
-        resp = requests.post(
+        resp = http.post(
             f"{base_url}/chat/completions",
             headers=headers,
             json=payload,

@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **The last undeclared runtime dependency: an HTTP client in 200 lines.**
+  Everything ChiSurf sends over HTTP is one JSON round trip — a model provider's
+  `/chat/completions`, the plugin registry's file listing, an icon download — and
+  all of it went through a third-party client that **no manifest declared**, lazily
+  imported inside six functions so the guardrail for module-level imports could
+  not see it. Installed on every developer machine, absent from a packaged
+  install, and the failure lands on the user as "the AI panel does nothing".
+  `chisurf.core.http` replaces it over `urllib.request`, deliberately mirroring
+  the surface the call sites were written against: `get`/`post` with `headers`,
+  `json`, `params`, `timeout`, and a `Response` with `status_code`, `text`,
+  `content`, `json()` and `raise_for_status()`. Two details are behaviour, not
+  decoration: a 4xx/5xx arrives as a *returned response* (only a transport
+  failure raises, as `RequestError`), because the call sites read the error body
+  to explain what went wrong; and headers are case-insensitive, because the
+  Mistral retry path reads `Retry-After` and `urllib` hands back whatever
+  spelling the server used. Ported: the agent LLM transport (its injected
+  `session` seam is unchanged, so the test fakes still work), AI triage, the AI
+  settings model list, the code-editor agent panel, and the plugin manager's icon
+  generation — whose `_post_mistral_json_with_retries` no longer takes the HTTP
+  module as an argument. What is intentionally absent: sessions, streaming,
+  multipart, retries. `test/core/test_http_client.py` (9 tests) drives a real
+  local `http.server`. The scrapers under `spectra_downloader/download/` keep the
+  third-party client under the `scrape` extra — they are not part of the
+  application — and the retired-imports guardrail knows that, so it polices the
+  application and exempts them.
+
 * **A GUI H2MM fit now leaves its results on disk (pipeline fix).** Step 7
   reported *"Photon table: missing — run H2MM first"* on a folder where H2MM had
   just been run. The panel was right and the pipeline was broken, in two places,

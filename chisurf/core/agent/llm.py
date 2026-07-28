@@ -274,7 +274,8 @@ class LLMClient:
     settings : LLMSettings
         Connection settings.
     session : object, optional
-        A ``requests``-compatible session, injected by tests.
+        An object with a ``post`` method like :mod:`chisurf.core.http`,
+        injected by tests.
     """
 
     def __init__(self, settings: LLMSettings, session: Any = None):
@@ -456,9 +457,9 @@ class LLMClient:
         """POST *payload* to *url* and return the HTTP response object."""
         session = self._session
         if session is None:
-            import requests
+            from chisurf.core import http
 
-            session = requests
+            session = http
         return session.post(
             url,
             headers=self._headers(),

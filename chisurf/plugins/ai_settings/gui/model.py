@@ -262,13 +262,13 @@ class AISettingsModel:
     @staticmethod
     def _get_models(base_url: str, api_key: str) -> dict:
         """GET ``{base_url}/models`` and return the parsed JSON (raises on error)."""
-        import requests
+        from chisurf.core import http
 
         headers = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         url = base_url.rstrip("/") + "/models"
-        response = requests.get(url, headers=headers, timeout=15)
+        response = http.get(url, headers=headers, timeout=15)
         if response.status_code != 200:
             raise RuntimeError(f"API error {response.status_code}: {response.text[:100]}")
         return response.json()

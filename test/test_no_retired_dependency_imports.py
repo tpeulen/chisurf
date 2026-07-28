@@ -43,10 +43,24 @@ RETIRED = {
     ),
     "pytools": ("pytools", "it was never imported"),
     "jsonschema": ("jsonschema", "it was never imported"),
+    "requests": (
+        "requests",
+        "use chisurf.core.http",
+    ),
 }
+
+#: Retired from the *application* but still declared as an optional extra, so
+#: only the import check applies: ``requests`` backs the spectra scrapers under
+#: the ``scrape`` extra, which the application never imports.
+_IMPORT_ONLY = {"requests"}
 
 #: Files whose only mention of the names is this test itself.
 _ALLOWED = {"test/test_no_retired_dependency_imports.py"}
+
+#: Paths exempt from one module's import check, with the reason.
+_ALLOWED_PREFIXES = {
+    "requests": ("chisurf/plugins/spectra_downloader/download/",),
+}
 
 #: Packaging manifests that describe the chisurf runtime.
 _MANIFESTS = (
@@ -102,12 +116,14 @@ def test_no_module_imports_retired_package(module):
     """No shipped source imports the retired package."""
     packaging_name, hint = RETIRED[module]
     pattern = re.compile(rf"^\s*(?:import\s+{module}\b|from\s+{module}[\s.])", re.MULTILINE)
-    offenders = [
-        str(path.relative_to(REPO_ROOT))
-        for path in _python_sources()
-        if str(path.relative_to(REPO_ROOT)) not in _ALLOWED
-        and pattern.search(path.read_text(encoding="utf-8", errors="ignore"))
-    ]
+    exempt = _ALLOWED_PREFIXES.get(module, ())
+    offenders = []
+    for path in _python_sources():
+        rel = str(path.relative_to(REPO_ROOT))
+        if rel in _ALLOWED or rel.startswith(exempt):
+            continue
+        if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
+            offenders.append(rel)
     assert not offenders, (
         f"{packaging_name} is no longer a dependency ({hint}). Importing modules: {offenders}"
     )
@@ -116,6 +132,8 @@ def test_no_module_imports_retired_package(module):
 @pytest.mark.parametrize("module", sorted(RETIRED))
 def test_packaging_does_not_declare_retired_package(module):
     """No packaging manifest declares the retired package."""
+    if module in _IMPORT_ONLY:
+        pytest.skip(f"{module} stays declared as an optional extra")
     packaging_name, hint = RETIRED[module]
     offenders = []
     for rel in _MANIFESTS:

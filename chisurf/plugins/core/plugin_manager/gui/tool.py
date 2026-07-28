@@ -1482,7 +1482,7 @@ class PluginManagerWidget(QWidget):
 
     def _request_openai_compatible_icon_bytes(self, plugin_info, prompt=None):
         """Request an icon through an OpenAI-compatible image endpoint."""
-        import requests
+        from chisurf.core import http
 
         provider = self._selected_icon_provider()
         base_url = self.icon_endpoint_edit.text().strip().rstrip("/")
@@ -1507,11 +1507,11 @@ class PluginManagerWidget(QWidget):
             "output_format": "png",
         }
         url = f"{base_url}/images/generations"
-        response = requests.post(url, headers=headers, json=payload, timeout=90)
+        response = http.post(url, headers=headers, json=payload, timeout=90)
         if response.status_code >= 400:
             minimal_payload = dict(payload)
             minimal_payload.pop("output_format", None)
-            response = requests.post(url, headers=headers, json=minimal_payload, timeout=90)
+            response = http.post(url, headers=headers, json=minimal_payload, timeout=90)
         if response.status_code >= 400:
             raise RuntimeError(f"{response.status_code}: {response.text[:300]}")
 
@@ -1523,14 +1523,14 @@ class PluginManagerWidget(QWidget):
         if first.get("b64_json"):
             return base64.b64decode(first["b64_json"])
         if first.get("url"):
-            image_response = requests.get(first["url"], timeout=60)
+            image_response = http.get(first["url"], timeout=60)
             image_response.raise_for_status()
             return image_response.content
         raise ValueError("AI provider returned neither b64_json nor url")
 
     def _request_mistral_generated_icon_bytes(self, plugin_info, prompt=None):
         """Request an icon through Mistral Agents image generation."""
-        import requests
+        from chisurf.core import http
 
         model = self.icon_model_edit.text().strip()
         api_key = self._api_key_for_provider("mistral")
@@ -1558,7 +1558,6 @@ class PluginManagerWidget(QWidget):
             "completion_args": {"temperature": 0.3, "top_p": 0.95},
         }
         agent_response = self._post_mistral_json_with_retries(
-            requests,
             "agents",
             headers=headers,
             payload=agent_payload,
@@ -1571,7 +1570,6 @@ class PluginManagerWidget(QWidget):
         if not prompt:
             prompt = self._ai_icon_prompt(plugin_info)
         conversation_response = self._post_mistral_json_with_retries(
-            requests,
             "conversations",
             headers=headers,
             payload={
@@ -1585,13 +1583,13 @@ class PluginManagerWidget(QWidget):
         if not file_id:
             raise ValueError("Mistral response did not contain a generated image file id")
 
-        file_response = requests.get(
+        file_response = http.get(
             self._mistral_endpoint_url(f"files/{file_id}/content"),
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=60,
         )
         if file_response.status_code == 404:
-            file_response = requests.get(
+            file_response = http.get(
                 self._mistral_endpoint_url(f"files/{file_id}/download"),
                 headers={"Authorization": f"Bearer {api_key}"},
                 timeout=60,
@@ -1599,14 +1597,16 @@ class PluginManagerWidget(QWidget):
         file_response.raise_for_status()
         return file_response.content
 
-    def _post_mistral_json_with_retries(self, requests_module, path, headers, payload, timeout):
+    def _post_mistral_json_with_retries(self, path, headers, payload, timeout):
         """POST JSON to Mistral with bounded retry handling for HTTP 429."""
         import time
+
+        from chisurf.core import http
 
         max_attempts = 3
         last_response = None
         for attempt in range(max_attempts):
-            response = requests_module.post(
+            response = http.post(
                 self._mistral_endpoint_url(path),
                 headers=headers,
                 json=payload,

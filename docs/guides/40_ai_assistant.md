@@ -266,3 +266,22 @@ Whatever you choose, check your provider's retention and training terms: a
 default consumer plan may retain prompts and use them for training, while
 business terms typically do not. None of this is legal advice — if your data
 is sensitive, the local model removes the question entirely.
+
+### How the request is sent
+
+ChiSurf talks to providers over its own small HTTP client
+(`chisurf.core.http`, a wrapper around Python's `urllib.request`), so there is
+no third-party networking stack in the picture. Two consequences are worth
+knowing:
+
+* **Proxies come from the environment.** `HTTP_PROXY`, `HTTPS_PROXY` and
+  `NO_PROXY` are honoured, which is usually what an institutional network
+  needs. There is no proxy setting in the GUI.
+* **Certificates come from your Python environment.** If your site
+  intercepts TLS, install its root certificate where that environment looks
+  for it; the client does not skip verification, and there is no switch to
+  make it.
+
+A request that never reaches the provider (no route, blocked port, wrong proxy)
+is reported as a connection error rather than a model error — worth checking
+before you blame the model or the key.

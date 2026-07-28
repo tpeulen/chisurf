@@ -32,7 +32,9 @@ what stays is code we could not sensibly write ourselves (the numerical, Qt and
 file-format stacks). Retired so far: the deprecation-decorator package
 (`chisurf.core.decorators.deprecated`), the click *did-you-mean* extension
 (`chisurf.core.cli_support.DidYouMeanGroup`), the terminal progress bar
-(`chisurf.core.progress`), the in-tree graph layer's predecessor
+(`chisurf.core.progress`), the HTTP client (`chisurf.core.http`, a
+``urllib.request`` wrapper for the JSON round trips the model providers and the
+plugin registry need), the in-tree graph layer's predecessor
 (`chinet.graph`), the Gaussian-HMM package (`chisurf.core.math.hmm`), the
 ensemble sampler (`chisurf.core.fitting.ensemble`) and the third-party GUI
 toolkit (the `chitable` widget family). Declared-but-never-imported packages went
