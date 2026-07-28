@@ -339,3 +339,108 @@ def test_the_splitter_takes_its_own_press_only(gui):
     handle = gui._splitter
     assert gui.hit_test(handle.x + handle.w / 2, HEIGHT / 2).kind == "splitter"
     assert gui.hit_test(handle.x - 20, HEIGHT / 2).kind == ""
+
+
+# --------------------------------------------------------------------------- #
+# The sequence strip
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def sequences(gui):
+    """Return the panel with two sequences shown."""
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import SequenceRow
+
+    gui.sequence_visible = True
+    gui.set_sequences([
+        SequenceRow(name="148l", codes="MNIFEMLRIDEGLRLKIYKD",
+                    numbers=list(range(1, 21))),
+        SequenceRow(name="pep", codes="ACDEFGHIK", numbers=list(range(1, 10))),
+    ])
+    gui.layout(WIDTH, HEIGHT)
+    return gui
+
+
+def test_the_strip_takes_a_band_rather_than_covering_the_scene(sequences):
+    """The strip gets a band of its own rather than covering the scene.
+
+    PyMOL's `seq_view_overlay` is off by default for a good reason: a sequence
+    drawn over the molecule hides the thing it is indexing.
+    """
+    assert sequences.sequence_height() > 0
+    assert sequences._seq_strip.y == 0, "the strip belongs at the top"
+    assert sequences._seq_strip.w <= WIDTH - sequences.column_width + 1e-6
+
+
+def test_no_sequences_means_no_band(gui):
+    """The scene keeps its full height when there is nothing to show."""
+    gui.sequence_visible = True
+    gui.set_sequences([])
+    assert gui.sequence_height() == 0
+
+
+def test_switching_the_strip_off_gives_the_height_back(sequences):
+    sequences.sequence_visible = False
+    assert sequences.sequence_height() == 0
+
+
+def test_clicking_a_residue_selects_it(sequences):
+    picked: list[tuple] = []
+    sequences.on_select = lambda name, indices, additive: picked.append(
+        (name, list(indices), additive)
+    )
+    row = sequences._seq_rows[0]
+    char_w = sequences.FONT_PT * 0.62
+
+    sequences.mouse_press(sequences._seq_origin + char_w * 3.5, row.y + 4)
+
+    assert picked, "nothing was selected"
+    name, indices, _additive = picked[-1]
+    assert name == "148l"
+    assert indices == [3]
+    assert sequences.sequences[0].selected == {3}
+
+
+def test_dragging_selects_a_range(sequences):
+    picked: list[list[int]] = []
+    sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
+    row = sequences._seq_rows[0]
+    char_w = sequences.FONT_PT * 0.62
+
+    sequences.mouse_press(sequences._seq_origin + char_w * 2.5, row.y + 4)
+    sequences.drag(sequences._seq_origin + char_w * 7.5, row.y + 4)
+    sequences.release()
+
+    assert picked[-1] == [2, 3, 4, 5, 6, 7]
+    assert sequences.is_dragging() is False
+
+
+def test_a_drag_does_not_stray_onto_the_other_object(sequences):
+    """A range belongs to one sequence.
+
+    An object is not a continuation of the one above it, and joining them would
+    select residues nobody pointed at.
+    """
+    sequences.on_select = lambda *a: None
+    first, second = sequences._seq_rows
+    char_w = sequences.FONT_PT * 0.62
+
+    sequences.mouse_press(sequences._seq_origin + char_w * 2.5, first.y + 4)
+    sequences.drag(sequences._seq_origin + char_w * 5.5, second.y + 4)
+
+    assert sequences.sequences[1].selected == set()
+
+
+def test_the_strip_takes_its_own_clicks(sequences):
+    """Selecting a residue must not also rotate the molecule."""
+    row = sequences._seq_rows[0]
+    assert sequences.wants(sequences._seq_origin + 4, row.y + 4) is True
+
+
+def test_clicking_past_the_end_of_a_sequence_selects_nothing(sequences):
+    picked: list = []
+    sequences.on_select = lambda *a: picked.append(a)
+    row = sequences._seq_rows[1]          # the nine-residue one
+    char_w = sequences.FONT_PT * 0.62
+
+    sequences.mouse_press(sequences._seq_origin + char_w * 40, row.y + 4)
+
+    assert picked == []

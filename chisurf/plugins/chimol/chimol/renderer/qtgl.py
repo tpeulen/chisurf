@@ -612,10 +612,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             return max(self.width(), 1)
         return max(int(self.width() - gui.column_width), 1)
 
+    def scene_height(self) -> int:
+        """Height left for the scene once the sequence strip has its band."""
+        gui = getattr(self, "_internal_gui", None)
+        strip = gui.sequence_height() if gui is not None else 0.0
+        return max(int(self.height() - strip), 1)
+
     def _aspect(self) -> float:
         """Viewport width over height, for PyMOL's portrait framing correction."""
-        height = max(self.height(), 1)
-        return max(self.scene_width(), 1) / float(height)
+        return max(self.scene_width(), 1) / float(max(self.scene_height(), 1))
 
     def set_field_of_view(self, fov: float) -> None:
         """Set the vertical field of view in degrees, re-framing the scene.
@@ -1031,10 +1036,15 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # screen the two differ by the device pixel ratio, which would render
         # the scene into a quarter of the window.
         ratio = float(self.devicePixelRatioF())
+        # The sequence strip takes a band off the top. GL's origin is the bottom
+        # left, so a shorter viewport leaves exactly that band free -- the strip
+        # is beside the scene, not over it, which is what `seq_view_overlay off`
+        # means in PyMOL.
+        strip = self._internal_gui.sequence_height()
         gl.glViewport(
             0, 0,
             max(int(self.scene_width() * ratio), 1),
-            max(int(self.height() * ratio), 1),
+            max(int((self.height() - strip) * ratio), 1),
         )
 
         # Effects that read the scene back -- silhouettes now, occlusion and
@@ -1626,7 +1636,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # full width stretches the same picture into a narrower viewport, which
         # is exactly the squashed molecule that reported this.
         width = max(self.scene_width(), 1)
-        height = max(self.height(), 1)
+        height = max(self.scene_height(), 1)
         aspect = width / float(height)
         proj = QtGui.QMatrix4x4()
         proj.perspective(self._fov, aspect, self._near_clip, self._far_clip)

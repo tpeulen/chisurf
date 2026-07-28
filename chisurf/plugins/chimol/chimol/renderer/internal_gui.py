@@ -280,6 +280,70 @@ class InternalGui:
             y += self.ROW_H
 
         self.layout_block(width, height)
+        self.layout_sequence(width, height)
+
+    def set_sequences(self, rows: Sequence[SequenceRow]) -> None:
+        """Replace the sequences the strip shows."""
+        self.sequences = list(rows)
+
+    def sequence_height(self) -> float:
+        """Height the strip takes from the top of the scene.
+
+        Zero when there is nothing to show. PyMOL's ``seq_view_overlay`` is off
+        by default, meaning the sequence gets a band of its own rather than
+        covering the molecule -- so this is height the scene does not get, and
+        the renderer has to know it.
+        """
+        if not (self.sequence_visible and self.sequences):
+            return 0.0
+        return self.SEQ_ROW_H * (len(self.sequences) + 1) + 2 * self.PAD
+
+    def layout_sequence(self, width: int, height: int) -> None:
+        """Place the strip across the top of the scene, left of the column."""
+        strip_h = self.sequence_height()
+        scene_w = width - (self.column_width if self.docked else 0.0)
+        self._seq_strip = Rect(0.0, 0.0, max(scene_w, 1.0), strip_h)
+        self._seq_rows = []
+        if not strip_h:
+            return
+
+        char_w = self.FONT_PT * 0.62
+        name_w = max(
+            [len(row.name) for row in self.sequences] + [4]
+        ) * char_w + self.PAD
+        self._seq_origin = self.PAD + name_w
+        y = self.PAD + self.SEQ_ROW_H          # below the number line
+        for _row in self.sequences:
+            self._seq_rows.append(
+                Rect(self._seq_origin, y, self._seq_strip.w - self._seq_origin,
+                     self.SEQ_ROW_H)
+            )
+            y += self.SEQ_ROW_H
+
+    def sequence_index_at(self, x: float, y: float) -> tuple[int, int] | None:
+        """Return ``(row, residue index)`` under the cursor, or ``None``."""
+        char_w = self.FONT_PT * 0.62
+        for index, rect in enumerate(self._seq_rows):
+            if not rect.contains(x, y):
+                continue
+            column = int((x - rect.x) / char_w) + self._seq_scroll
+            row = self.sequences[index]
+            if 0 <= column < len(row.codes):
+                return index, column
+            return None
+        return None
+
+    def _select_range(self, row_index: int, start: int, end: int, additive: bool) -> None:
+        """Select the residues between *start* and *end* on one row."""
+        row = self.sequences[row_index]
+        lo, hi = (start, end) if start <= end else (end, start)
+        chosen = set(range(lo, hi + 1))
+        row.selected = (row.selected | chosen) if additive else chosen
+        if self.on_select is not None:
+            try:
+                self.on_select(row.name, sorted(row.selected), additive)
+            except Exception:
+                pass
 
     def layout_block(self, width: int, height: int) -> None:
         """Place the mouse-mode block and the movie transport, bottom-right.
@@ -357,6 +421,12 @@ class InternalGui:
         if not self.visible:
             return Hit("")
 
+        if self.sequence_visible and self._seq_strip.contains(x, y):
+            found = self.sequence_index_at(x, y)
+            if found is not None:
+                return Hit("residue", row=found[0], key=str(found[1]))
+            return Hit("sequence")
+
         if self.docked and self._splitter.contains(x, y):
             return Hit("splitter")
 
@@ -388,6 +458,14 @@ class InternalGui:
     # ── interaction ──────────────────────────────────────────────────────
     def drag(self, x: float, y: float) -> bool:
         """Continue a splitter drag. Returns whether anything moved."""
+        if self._seq_drag is not None:
+            found = self.sequence_index_at(x, y)
+            if found is not None and found[0] == self._seq_drag[0]:
+                self._select_range(self._seq_drag[0], self._seq_drag[1], found[1],
+                                   additive=False)
+                return True
+            return False
+
         if not self._dragging_splitter:
             return False
         widest = self._width * self.MAX_COLUMN_FRACTION
@@ -396,12 +474,13 @@ class InternalGui:
         return True
 
     def release(self) -> None:
-        """End a splitter drag."""
+        """End a splitter or sequence drag."""
         self._dragging_splitter = False
+        self._seq_drag = None
 
     def is_dragging(self) -> bool:
-        """Whether the splitter is being dragged."""
-        return self._dragging_splitter
+        """Whether a drag the panel owns is in progress."""
+        return self._dragging_splitter or self._seq_drag is not None
 
     def mouse_move(self, x: float, y: float) -> bool:
         """Track hover. Returns whether a redraw is needed."""
@@ -439,6 +518,15 @@ class InternalGui:
                     rect = self._button_rects[hit.row][key]
                     self._open_menu(f"{title}:", row.name, entries, rect.x, rect.y + rect.h)
                     break
+            return True
+
+        if hit.kind == "residue":
+            row_index, column = hit.row, int(hit.key)
+            self._seq_drag = (row_index, column)
+            self._select_range(row_index, column, column, additive=right)
+            return True
+
+        if hit.kind == "sequence":
             return True
 
         if hit.kind == "splitter":
@@ -578,6 +666,8 @@ class InternalGui:
         painter.setFont(font)
         metrics = QtGui.QFontMetrics(font)
 
+        if self.sequence_visible and self.sequences:
+            self._paint_sequence(painter, QtGui, QtCore)
         if self.visible and self.docked:
             # One continuous column, not two floating boxes with the scene
             # showing between them: the gap reads as a hole in the panel.
@@ -636,6 +726,60 @@ class InternalGui:
                                    hovered=(self._hover.kind == "button"
                                             and self._hover.row == index
                                             and self._hover.key == key))
+
+    def _paint_sequence(self, painter, QtGui, QtCore) -> None:
+        """Draw the sequence strip: numbers, names, residues, selection.
+
+        One-letter codes with a number every fifth column, which is PyMOL's
+        default (``seq_view_format 0``, ``seq_view_label_mode 2``,
+        ``seq_view_label_spacing 5``).
+        """
+        strip = self._seq_strip
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(*SEQ_BG))
+        painter.drawRect(QtCore.QRectF(strip.x, strip.y, strip.w, strip.h))
+
+        char_w = self.FONT_PT * 0.62
+        visible = max(int((strip.w - self._seq_origin) / char_w), 1)
+
+        # The number line, above the rows it labels.
+        first = self.sequences[0] if self.sequences else None
+        if first is not None:
+            painter.setPen(QtGui.QColor(*SEQ_NUMBER_FG))
+            for column in range(self._seq_scroll, min(self._seq_scroll + visible,
+                                                      len(first.codes))):
+                if column % self.LABEL_SPACING:
+                    continue
+                number = (
+                    first.numbers[column] if column < len(first.numbers) else column + 1
+                )
+                painter.drawText(
+                    QtCore.QRectF(
+                        self._seq_origin + (column - self._seq_scroll) * char_w,
+                        self.PAD, char_w * 6, self.SEQ_ROW_H,
+                    ),
+                    int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), str(number),
+                )
+
+        for index, row in enumerate(self.sequences):
+            rect = self._seq_rows[index]
+            painter.setPen(QtGui.QColor(*SEQ_NAME_FG))
+            painter.drawText(
+                QtCore.QRectF(self.PAD, rect.y, self._seq_origin - self.PAD, rect.h),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), row.name,
+            )
+            for column in range(self._seq_scroll,
+                                min(self._seq_scroll + visible, len(row.codes))):
+                x = self._seq_origin + (column - self._seq_scroll) * char_w
+                cell = QtCore.QRectF(x, rect.y, char_w, rect.h)
+                if column in row.selected:
+                    painter.setPen(QtCore.Qt.NoPen)
+                    painter.setBrush(QtGui.QColor(*SEQ_SELECTED_BG))
+                    painter.drawRect(cell)
+                    painter.setPen(QtGui.QColor(*SEQ_SELECTED_FG))
+                else:
+                    painter.setPen(QtGui.QColor(*SEQ_FG))
+                painter.drawText(cell, int(QtCore.Qt.AlignCenter), row.codes[column])
 
     def _paint_block(self, painter, QtGui, QtCore) -> None:
         """Draw the mouse-mode reference, the state, and the transport."""

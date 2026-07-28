@@ -2,6 +2,27 @@
 
 ## 2026-07-28
 
+* **The sequence is in the viewport now, and selecting in it selects in the
+  molecule.** Built to PyMOL's model, read off its own settings rather than
+  guessed: one-letter codes (`seq_view_format 0`), a residue number every fifth
+  column (`seq_view_label_mode 2`, `seq_view_label_spacing 5`), the strip at the
+  top (`seq_view_location 0`), and -- the part that matters -- **not** an
+  overlay (`seq_view_overlay off`). It takes a band off the scene instead of
+  covering it, because a sequence drawn over the molecule hides the thing it is
+  indexing. GL's origin is bottom-left, so a shorter viewport leaves exactly
+  that band free.
+  - Clicking a residue selects it and dragging selects a range, through
+    `set_selected_residues` -- the same path the docked widget uses, so a
+    residue picked in the strip and one picked in the dock are the same
+    selection rather than two ideas of one. A range stays inside one object: a
+    sequence is not a continuation of the one above it.
+  - **Hiding an object hides its sequence.** The strip describes what is on
+    screen, and a row for something invisible is a row you cannot relate to
+    anything.
+  - The scene's *height* now has to be agreed on as well as its width -- the
+    projection and the aspect both use it, or the molecule stretches the moment
+    the strip appears.
+
 * **A filter that amplifies, because the catalogue mixes percent with fractions
   (RF-863).** 119 of the 757 `transmission` spectra hold percentages and the
   other 638 hold fractions, all tagged `intensity_unit = 'normalized'` — so the

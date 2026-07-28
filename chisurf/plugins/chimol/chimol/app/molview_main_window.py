@@ -46,6 +46,7 @@ except Exception:  # pragma: no cover - standalone moview
 from .. import config as _config
 from ..config import _DISPLAY_CONFIG
 from ..renderer.internal_gui import GuiRow as InternalGuiRow
+from ..renderer.internal_gui import SequenceRow as InternalSequenceRow
 from ..colors import _SEQ_COLOR_ROLE, _OBJECT_ID_ROLE
 from ..io import (
     open_structure_files,
@@ -2077,11 +2078,67 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             )
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)
+        self._sync_internal_sequences(gui)
         # Monospace, so the widest name in characters decides the column.
         widest = max((len(row.name) for row in rows), default=4)
         gui.layout(renderer.width(), renderer.height(),
                    name_width=max(60.0, widest * gui.FONT_PT * 0.62 + 8))
         renderer.update()
+
+    def _sync_internal_sequences(self, gui) -> None:
+        """Give the strip one row per *shown* object.
+
+        Hiding an object hides its sequence with it: the strip describes what is
+        on screen, and a row for something invisible is a row you cannot relate
+        to anything.
+        """
+        try:
+            from ..settings import get_setting
+
+            gui.sequence_visible = bool(get_setting("seq_view"))
+        except Exception:
+            gui.sequence_visible = True
+
+        rows = []
+        for object_id, entry in self._object_store.items():
+            if not bool(entry.get("visible", True)):
+                continue
+            try:
+                codes, _names = self.viewer.get_sequence_arrays(object_id)
+                numbers = self.viewer.get_residue_numbers(object_id)
+            except Exception:
+                continue
+            if codes is None or len(codes) == 0:
+                continue
+            rows.append(
+                InternalSequenceRow(
+                    name=str(entry.get("name", object_id)),
+                    codes="".join(str(c) for c in codes),
+                    numbers=[int(n) for n in (numbers if numbers is not None else [])],
+                )
+            )
+        gui.set_sequences(rows)
+        gui.on_select = self._on_internal_sequence_selection
+
+    def _on_internal_sequence_selection(self, name: str, indices, additive: bool) -> None:
+        """Apply a selection made in the strip to the 3-D view.
+
+        Through `set_selected_residues`, which is the same path the docked
+        sequence widget uses -- so a residue picked in the strip and one picked
+        in the dock end up as the same selection rather than two ideas of one.
+        """
+        object_id = next(
+            (oid for oid, entry in self._object_store.items()
+             if str(entry.get("name", oid)) == name),
+            None,
+        )
+        try:
+            self.viewer.set_selected_residues(list(indices), object_id=object_id)
+            self.viewer.update()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Could not apply a sequence-strip selection", exc_info=True
+            )
 
     def _run_internal_gui_command(self, line: str) -> None:
         """Run a command the in-viewport panel produced, echoing it.
