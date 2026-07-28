@@ -376,10 +376,19 @@ def test_widget_sizes_to_content_no_scroll(qapp):
 
     params = _make_params()
     widget = ParameterGroupTableWidget(params=params)
-    # No internal vertical scrollbar, and height fits header + the four rows
-    # (no big empty area below the last row).
-    assert widget.table_view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
-    assert widget.table_view.height() < 22 + widget._row_h * len(params) + 12
+    view = widget.table_view
+    # No internal vertical scrollbar, and the height is exactly header + rows:
+    # no empty area below the last row, and -- since there is no scrollbar to
+    # reach them with -- no row left below the bottom edge either.
+    #
+    # Measured from the rows the style actually paints, not from the
+    # ``table_row_height()`` estimate: the style gives a row with checkboxes
+    # more height than the estimate asks for, and sizing from the estimate cut
+    # the last row or two off every parameter table.
+    assert view.verticalScrollBarPolicy() == QtCore.Qt.ScrollBarAlwaysOff
+    rows = sum(view.rowHeight(r) for r in range(len(params)))
+    header = view.horizontalHeader().height()
+    assert view.height() == header + rows + 2 * view.frameWidth()
 
 
 def test_name_column_renders_html_labels(qapp):

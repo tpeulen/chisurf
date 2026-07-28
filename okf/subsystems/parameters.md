@@ -80,6 +80,14 @@ The **Global View** Parameters tab renders all of this: an AutoForm
 [`global_parameter_table`](/subsystems/gui-autoform.md) section spanning every fit
 parameter plus every registered out-of-fit group, with Owner and cross-owner Link columns.
 
+The seam is what makes a *drawn* quantity a first-class parameter. An ndX overlay
+curve — a static FRET line, a Gaussian on E — holds its free parameters in a group
+registered as `ndxplorer.curve.<n>`, so its `tau_d0` can follow the donor lifetime of
+a real TCSPC fit, and re-fitting that lifetime redraws the line. The same group is
+what a fit of the curve to the displayed data optimises: fix/free and bounds are set
+once, in the table the user is looking at, and a *linked* parameter is held (its value
+belongs to its master) rather than fitted and written over.
+
 # Description registry scoping
 
 When a `Parameter` is constructed without an explicit `description=`, it

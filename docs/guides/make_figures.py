@@ -1235,7 +1235,7 @@ def fig_ndxplorer():
     ndx = str(root / "modules" / "ndxplorer")
     if ndx not in sys.path:
         sys.path.insert(0, ndx)
-    from ndxplorer.analysis.marginal_fit import bin_centers, fit_equation_to_marginal
+    from ndxplorer.analysis.curve_fit import bin_centers, fit_equation_to_marginal
     from scipy.optimize import curve_fit
 
     rng = np.random.default_rng(3)

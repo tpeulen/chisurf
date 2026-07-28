@@ -662,6 +662,22 @@ def _release_controllers_when_destroyed(widget, owned) -> None:
 # ── table widget ────────────────────────────────────────────────────────
 
 
+def _content_height(table, model, header_fallback: int, row_fallback: int) -> int:
+    """Height that shows the header and *every* row of ``table``.
+
+    Measured, not assumed. The style gives a row more height than the central
+    ``table_row_height()`` estimate asks for (a checkbox row is taller than a
+    text row), and the header is taller than its estimate too; sizing from the
+    estimates silently cut the last row or two off every parameter table --
+    which reads as "this parameter does not exist", not as "scroll down". The
+    estimates stay as the fallback for a table that has not been laid out yet.
+    """
+    header = table.horizontalHeader().height() or header_fallback
+    n = model.rowCount()
+    rows = sum(table.rowHeight(r) or row_fallback for r in range(n))
+    return header + max(rows, row_fallback) + 2 * table.frameWidth()
+
+
 class ParameterGroupTableWidget(QtWidgets.QWidget):
     """A ``QTableView`` that edits a list of :class:`FittingParameter` objects.
 
@@ -801,6 +817,17 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._size_to_content()
 
     # -- parameter controllers ---------------------------------------------
+    def claim_controllers(self) -> None:
+        """Re-claim ``parameter.controller`` for this table's rows.
+
+        A parameter can be shown in two tables at once — an overlay curve's own
+        table and the dialog that fits it — and the second one to be built holds
+        the back-reference. When that second table is destroyed it clears it,
+        which would leave the surviving table unable to repaint from a
+        ``finalize()``. The survivor calls this to take its rows back.
+        """
+        self._install_controllers()
+
     def _install_controllers(self) -> None:
         """Claim each parameter's ``controller`` so the row repaints on change.
 
@@ -831,9 +858,8 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
 
     def _size_to_content(self) -> None:
         """Fix the table height to header + visible rows so it wastes no space."""
-        header_h = self._table.horizontalHeader().height() or self._header_h
-        n = self._model.rowCount()
-        self._table.setFixedHeight(header_h + self._row_h * max(1, n) + 2)
+        self._table.setFixedHeight(_content_height(self._table, self._model,
+                                                   self._header_h, self._row_h))
 
     # -- per-parameter controller ------------------------------------------
     def _controller(self, row: int):
@@ -1470,9 +1496,9 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
             _resize(col, mode)
 
     def _size_to_content(self) -> None:
-        header_h = self._table.horizontalHeader().height() or self._header_h
-        n = self._model.rowCount()
-        self._table.setFixedHeight(header_h + self._row_h * max(1, n) + 2)
+        """Fix the table height to header + visible rows so it wastes no space."""
+        self._table.setFixedHeight(_content_height(self._table, self._model,
+                                                   self._header_h, self._row_h))
 
     # -- controllers --------------------------------------------------------
     def _install_controllers(self) -> None:

@@ -2,6 +2,38 @@
 
 ## 2026-07-28
 
+* **An overlay curve's parameters are parameters.** The Overlays panel built its
+  own grid of slider widgets, so a FRET line's `forster_radius` was a different
+  kind of thing from a fit's -- it could not be bounded, fixed, wheel-edited,
+  copied, or **linked**, and its label was elided to `for...ius` for want of
+  room. Each curve now owns a `FittingParameterGroup` rendered in the shared
+  fitting-parameter table and registered as `ndxplorer.curve.<n>`, so a curve
+  parameter can follow a real fit: pin a line's `tau_d0` to a measured donor
+  lifetime and re-fitting the lifetime redraws the line. Parameters that survive
+  an equation edit keep their value, bounds *and* link -- retyping one term must
+  not silently unpin what the user pinned.
+  - **A curve is fitted to the data that is displayed**, not only to a marginal.
+    `analysis/marginal_fit.py` was a lie once it could do more than a marginal
+    and is now `analysis/curve_fit.py`: the 2-D target reduces the displayed
+    histogram to one point per populated x column (count-weighted mean y,
+    weighted by its standard error, sparse columns dropped -- two bursts in a
+    column is noise, and an unweighted point there drags the curve). That is
+    what fits a static FRET line to the cloud it is drawn over. The dialog
+    chooses the target and rebuilds; the curve's own table supplies value,
+    bounds and fix/free, and a linked parameter is held and not written back.
+  - **A range is a bound again.** The slider grid made a range a hard limit, and
+    the predefined curves were written against that (a width's range starts at
+    zero). Storing the range without arming it let a fit walk a Gaussian to
+    `sig = -0.08` -- the identical curve, read as nonsense.
+  - **Every parameter table was clipping its last row.** The shared widget sized
+    itself from the `table_row_height()` *estimate* (18 px) while the style paints
+    24, so a four-parameter curve showed three, which reads as "that parameter
+    does not exist" rather than "scroll down". It now measures the rows it has.
+    Fixed at the root, so the constants table and the fit panels stop clipping
+    too; the fit dialog's local workaround for it is gone.
+  - Also fixed in passing: `test_parameter_widget_link_visuals` had been red
+    since the file moved into `test/gui/` with its path arithmetic unchanged.
+
 * **The lazy fitter fitted the right model and returned the wrong one.** Drove
   the *Decay Analysis* hub's panel 3, **Lazy Lifetime Analysis**, headlessly on
   the plugin's own shipped example, plus the same engine through `csc lltf`. The
