@@ -183,19 +183,11 @@ def write_result_tables(
     ana = bundle.analysis
     micro_ns = getattr(bundle, "micro_time_ns", None)
 
-    # Name each base-stream role by its detector name for the per-colour
-    # "Mean Microtime (<name>)" columns (donor, acceptor, optional Aex).
-    stream_settings = list(getattr(bundle.settings, "streams", []) or [])
+    # One definition of "which streams are green", shared with the plot, so a
+    # written table and a drawn curve cannot disagree about what a colour is.
+    from ..core.decays import colour_groups, decay_table, state_decays
 
-    def _stream_name(i: int, default: str) -> str:
-        return stream_settings[i].name if i < len(stream_settings) else default
-
-    stream_groups = [
-        (_stream_name(0, "green"), getattr(ana, "donor_streams", (0,))),
-        (_stream_name(1, "red"), getattr(ana, "acceptor_streams", (1,))),
-    ]
-    if getattr(ana, "aex_streams", None):
-        stream_groups.append((_stream_name(2, "yellow"), ana.aex_streams))
+    stream_groups = colour_groups(ana, bundle.settings)
 
     tables = build_tables(
         bundle.data, meta, ana.path, ana.fret, ana.base_time_s,
@@ -216,6 +208,18 @@ def write_result_tables(
         micro_time_ns=(micro_ns if micro_ns else None),
     )
     result.output_paths["dwells_csv"] = write_csv(dwells_df, out_dir / "h2mm_dwells.csv")
+
+    # Per-state decays, kept per detector. A decay is only defined within one
+    # detection colour, so this is written at the finest meaningful key --
+    # (state, stream, routing channel) -- and merged upwards by the reader.
+    decays = state_decays(
+        meta.micro_time, meta.channel, bundle.data.streams, ana.path,
+        n_states=int(ana.fret.shape[0]), groups=stream_groups,
+        micro_time_ns=(micro_ns if micro_ns else None),
+    )
+    result.output_paths["state_decays_csv"] = write_csv(
+        decay_table(decays), out_dir / "h2mm_state_decays.csv"
+    )
 
 
 def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:

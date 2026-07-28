@@ -527,7 +527,11 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self._p_nano = w_nano.getPlotItem()
         self._p_nano.setLabels(bottom="Micro time (channel)", left="Counts")
         self._p_nano.setLogMode(y=True)
-        self._nano_legend = self._p_nano.addLegend(offset=(-5, 5))
+        # The legend names the detection colours only — one entry each, laid out
+        # in a single row. Naming all colour×state curves put a block of text
+        # across the middle of a small plot; the state is carried by the line
+        # style and spelled out in the title instead.
+        self._nano_legend = self._p_nano.addLegend(offset=(-5, 5), labelTextSize="7pt")
 
         w_rates = self._new_plot(self._DOCK_RATES)
         self._p_rates = w_rates.getPlotItem()
@@ -1357,12 +1361,44 @@ class H2mmTool(MessagesMixin, QMainWindow):
             self._p_dwell.plot(centers, counts, pen=pg.mkPen(self._state_color(i), width=2),
                                name=f"S{i}")
 
+    #: Pen colour per detection colour. A decay is drawn in the colour of the
+    #: light that produced it, so a green curve is green photons — the state is
+    #: carried by the line style instead.
+    _COLOUR_PENS = {
+        "green": "#2ca02c", "donor": "#2ca02c",
+        "red": "#d62728", "acceptor": "#d62728",
+        "yellow": "#e8b400", "aex": "#e8b400",
+    }
+    #: Line style per state, so one plot can hold states × colours curves.
+    _STATE_DASHES = [
+        QtCore.Qt.SolidLine, QtCore.Qt.DashLine, QtCore.Qt.DotLine,
+        QtCore.Qt.DashDotLine, QtCore.Qt.DashDotDotLine,
+    ]
+    #: How to say those styles in the title, since the legend names colours.
+    _DASH_NAMES = ["solid", "dashed", "dotted", "dash-dot", "dash-dot-dot"]
+
+    def _colour_pen(self, name: str, state: int):
+        """A pen whose colour is the detection channel and whose dash is the state."""
+        rgb = self._COLOUR_PENS.get(str(name).strip().lower(), "#999999")
+        style = self._STATE_DASHES[state % len(self._STATE_DASHES)]
+        return pg.mkPen(rgb, width=2, style=style)
+
     def _plot_nanotime(self, ana):
-        """Row 2, left: per-state fluorescence decay (micro-time histogram by state).
+        """Row 2, left: per-state fluorescence decays, one curve per colour.
+
+        A decay is only defined *within* a detection colour. Histogramming every
+        photon of a state — donor and acceptor together — gives a curve whose
+        shape is set by the green:red mixing ratio, i.e. by the FRET efficiency,
+        and which is the decay of nothing. The photons are therefore split by
+        stream (which separates colours that share a detector under PIE) and
+        merged only within one colour; :mod:`..core.decays` does both, and writes
+        the underlying per-detector histograms to ``h2mm_state_decays.csv``.
 
         Requires the per-photon micro times (``bundle.meta``); when absent (e.g. a
         result loaded without photon metadata) the panel is left empty.
         """
+        from ..core.decays import colour_groups, state_decays
+
         p = self._p_nano
         p.clear()
         self._nano_legend.clear()
@@ -1371,21 +1407,41 @@ class H2mmTool(MessagesMixin, QMainWindow):
         if meta is None or getattr(meta, "micro_time", None) is None:
             return
         micro = np.asarray(meta.micro_time)
-        if micro.shape[0] != path.shape[0] or micro.size == 0:
+        if micro.shape[0] != path.shape[0] or micro.size == 0 or int(micro.max()) <= 0:
             return
-        mx = int(micro.max())
-        if mx <= 0:
-            return
-        bins = int(min(256, max(16, mx)))
-        for i in range(int(ana.fret.shape[0])):
-            m = micro[path == i]
-            if m.size == 0:
-                continue
-            counts, edges = np.histogram(m, bins=bins, range=(0, mx + 1))
-            centers = (edges[:-1] + edges[1:]) / 2
-            keep = counts > 0
-            p.plot(centers[keep], counts[keep], pen=pg.mkPen(self._state_color(i), width=2),
-                   name=f"S{i}")
+
+        decays = state_decays(
+            micro, meta.channel, self._bundle.data.streams, path,
+            n_states=int(ana.fret.shape[0]),
+            groups=colour_groups(ana, self._bundle.settings),
+            micro_time_ns=getattr(self._bundle, "micro_time_ns", None),
+        )
+        x = decays.centers_ns()
+        p.setLabel("bottom", "Micro time (ns)" if decays.micro_time_ns else "Micro time")
+        named: set[str] = set()
+        states_drawn: set[int] = set()
+        for k, colour in enumerate(decays.colours):
+            for s in range(decays.n_states):
+                y = decays.colour_counts[s, k]
+                keep = y > 0
+                if not keep.any():
+                    continue
+                # Name one curve per colour: the legend answers "which colour is
+                # which", the title answers "which line style is which state".
+                name = colour if colour not in named else None
+                named.add(colour)
+                states_drawn.add(s)
+                p.plot(x[keep], y[keep], pen=self._colour_pen(colour, s), name=name)
+        try:
+            self._nano_legend.setColumnCount(max(1, len(named)))
+        except Exception:  # pragma: no cover - older pyqtgraph
+            pass
+        key = " · ".join(
+            f"{self._DASH_NAMES[s % len(self._DASH_NAMES)]} S{s}"
+            for s in sorted(states_drawn)
+        )
+        p.setTitle(f"Per-state decay<br><span style='font-size:7pt'>{key}</span>"
+                   if key else "Per-state decay")
 
     # ── burst state-path viewer ──────────────────────────────────────
 

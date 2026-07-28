@@ -56,6 +56,52 @@ result is robust rather than lucky, change the seed and refit: an answer that
 survives several seeds is one you can report. Pressing **🔁 Restart** does *not*
 do this — it reproduces the same fit, by design.
 
+## Per-state decays
+
+Once every photon carries a state, each state has a fluorescence decay — but
+**only within one detection colour**. Donor and acceptor photons have different
+instrument responses and different meaning, and the ratio in which they arrive
+*is* the FRET efficiency. Histogramming all of a state's photons together
+therefore produces a curve whose shape is set by the efficiency rather than by
+any lifetime: two states with identical lifetimes but different E would show
+different "decays". It is not a decay of anything.
+
+The *Per-state decay* panel splits photons by stream and merges only within a
+colour: one curve per (colour, state), drawn in the colour of the light that
+produced it, with the line style giving the state (solid S0, dashed S1, …).
+
+Splitting by *stream* rather than by detector matters under PIE/ALEX, where the
+acceptor-excitation stream shares its detectors with the acceptor stream and is
+separated only by a micro-time window. In the panel below you can see it
+directly: the red curve stops at ~6.8 ns and the yellow one begins there.
+
+```{figure} figures/h2mm_state_decays.png
+:name: fig-h2mm-state-decays
+:width: 90%
+
+Per-state decays of a two-state fit, one curve per detection colour. Green is
+the donor, red the sensitised acceptor, yellow the directly excited acceptor —
+red and yellow share the same detectors and are separated by the PIE window at
+~6.8 ns. Solid is S0 (low FRET: little red), dashed is S1 (high FRET).
+```
+
+The underlying histograms are written to **`h2mm_state_decays.csv`**, at the
+finest key that is physically meaningful:
+
+| Column | Meaning |
+|---|---|
+| `State` | Viterbi state |
+| `Stream` | stream index (what separates red from yellow on one detector) |
+| `Channel` | TCSPC routing channel — the physical detector |
+| `Micro Time`, `Micro Time (ns)` | bin centre |
+| `Counts` | photons in that bin |
+
+Per detector, not per colour, so the merge stays yours to make and to check.
+Summing several detectors of one colour assumes their responses are aligned; two
+detectors of the same colour can still differ by an IRF shift, and this table is
+what you look at to find out. (ChiSurf can correct such a shift when the data is
+read — see the per-channel micro-time shifts in the channel-definition editor.)
+
 ## Result
 
 A two-state Viterbi state path and the resulting per-dwell FRET-efficiency

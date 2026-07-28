@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **A per-state decay is only defined within one detection colour (RF-656).**
+  The H2MM *Per-state decay* panel histogrammed every photon assigned to a
+  state, donor and acceptor together. That is not a decay: donor and acceptor
+  photons carry different instrument responses and different meaning, and the
+  ratio in which they arrive *is* the FRET efficiency, so the curve's shape was
+  set by E rather than by any lifetime — two states with identical lifetimes and
+  different efficiencies drew two different "decays" (pinned as a regression
+  test: merged peaks >40 channels apart, per-colour peaks within 15). New
+  `burst_h2mm/core/decays.py` histograms at `(state, stream, routing channel)`,
+  the finest physically meaningful key, and merges upward: per colour for the
+  plot, per detector for the new `h2mm_state_decays.csv` output. Splitting by
+  **stream** rather than by routing channel is what keeps PIE/ALEX honest — on
+  the real `bh_spc132_sm_dna` data the red and yellow streams share detectors 1
+  and 9 and differ only by a micro-time window, visible in the rendered panel as
+  red stopping at ~6.8 ns where yellow starts. The plot now draws one curve per
+  (colour, state): pen colour is the detection colour, line style the state.
+  Guide [19](../docs/guides/19_h2mm_hidden_markov.md) gained a *Per-state
+  decays* section, the output-table schema and a real screenshot.
+
 * **The PDA3c background series is now primitive in log space (RF-539).** The
   per-burst reference path built the per-channel series
   `u(b) = Pois(b;B) F!/(F-b)! p^-b` in *linear* space and convolved it there.
