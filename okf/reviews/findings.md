@@ -6938,3 +6938,76 @@ geometry it reconstructs from a Leica file. Findings RF-580..RF-587.
   with the fields at 0 the panel reports the detected timing and leaves them at
   0; with 7.0/2.0 typed in, both the fields and the reported timing still read
   7 µs / 2 ms after a preview read.
+
+## Review 2026-07-28 (3) — the CLSM generator: what it simulates, and what it saves
+
+Slice: the imaging simulators `chisurf/core/fluorescence/imaging/simulate.py`
+and their only GUI consumer, the *Imaging → Simulate → CLSM Generator* plugin
+(`chisurf/plugins/microscopy/clsm_generator/`). Everything below was measured in
+the `arm64` env against tttrlib 0.27.0's photon simulator. **Three things hold
+and are worth recording**, because they are what the rest is built on: the scan
+geometry is right (an emitter placed at `iy = 3, ix = 11` reconstructs at
+`[3, 11]`, intensity centroid `(3.01, 11.00)`, and a map-based bright pixel at
+`[3, 10]` comes back at `[3, 10]`); the diffusion scanner's window→pixel mapping
+is exact (three 8×8 frames consume windows `0…191` — exactly `n_pixel²` per
+frame, no flyback, not one photon outside the range — so `line_time` and
+`frame_time` really are the physical times the RICS fit reads `D` from); and
+`TTTR.write` preserves the frame/line/pixel markers for every container. What
+does not hold is the *photometry* of the map-based generator, and almost
+everything the tool does with the result. Findings RF-588..RF-595.
+
+### RF-588
+- **Status:** OPEN
+- **Severity:** S1 (every pixel is simulated at the top of its intensity bin, so a 2 % background is generated at 12 % of peak — six times too bright, whatever the input)
+- **Location:** `chisurf/core/fluorescence/imaging/simulate.py:608` (`bright_levels = np.linspace(brightness_scale / n_intensity_levels, brightness_scale, n_intensity_levels)`) with `:628` (`bi = min(int(inorm[iy, ix] * n_intensity_levels), n_intensity_levels - 1)`), against the lifetime axis five lines below at `:633` (`li = int(np.argmin(np.abs(life_levels - tau)))`)
+- **Finding:** the two quantised axes of `simulate_clsm_from_maps` disagree with each other. The lifetime axis picks the **nearest** level; the intensity axis floors a pixel into bin `k` and then emits it at `(k + 1) / n × brightness_scale` — the bin's **upper edge** — so every pixel is rounded *up*, by half a level on average and by a full level (12.5 % of peak at the shipped `n_intensity_levels = 8`) at the bottom of the range. The dim end is where a synthetic ground-truth image is actually used, and that is where it fails: measured on a 32×32 map with a 2 % background and two pixels at 1.0, the reconstruction comes back with `background/peak = 0.120` against the input's `0.020`, and every input value below `1/8` of the maximum maps to the same emitted brightness — the generated dynamic range is capped at 8:1 no matter what was loaded. That is the tool's one promise ("The photon image reproduces the input intensity and lifetime", `clsm_generator/gui/view_model.py:244`) failing exactly for the image someone would generate to test a threshold, a background estimator or a segmentation. Use bin centres (`(np.arange(n) + 0.5) / n * brightness_scale`) or the nearest-level rule the lifetime axis already uses. Nothing pins it: `test_simulate_from_maps_reproduces_intensity_and_lifetime` (`test/fluorescence/test_imaging_simulate.py:54`) asserts only `corrcoef > 0.8`, which any monotone distortion passes.
+- **Fix note:**
+
+### RF-589
+- **Status:** OPEN
+- **Severity:** S2 (of the four save formats the dialog offers, only `.ptu` can be read back; `.ht3` and `.spc` reopen as an empty file with no error)
+- **Location:** `chisurf/plugins/microscopy/clsm_generator/gui/tool.py:99-101` (`getSaveFileName(..., "Photon stream (*.npz *.ptu *.spc *.ht3)")`) with `gui/view_model.py:186` (`tttr.write(str(p))`) and `:193` (`status_text = f"Saved photon stream to {p.name}"`)
+- **Finding:** a generated stream of 6 677 events was written to each offered extension and reopened through chisurf's own seam `chisurf.core.fio.staging.open_tttr`: `.ptu` → 6 677 events, `.ht3` → **0**, `.spc` → **0**, no exception raised in either case (tttrlib prints `File … not supported` to stdout and hands back an empty object — precisely the trap `open_tttr`'s own docstring warns about, "tttrlib … answers an unknown type with an empty object rather than an error"). The bytes on disk are fine: `tttrlib.TTTR(path, 'HT3')` and `tttrlib.TTTR(path, 'SPC-130')` both recover all 6 677 events with the 121 markers intact. It is auto-detection that fails, and `open_tttr` passes `routine=None` **by design** ("Prefer `None`: the library identifies the container from the file"). The visible difference is the header the writer emits — `HydraHarp\0…2.0\0\0\0tttrlib` where the shipped `test/data/clsm/PQ_Olympus_MFIS.ht3` carries `1.0\0\0\0SymPhoTime` — so the root fix is a companion-repo (tttrlib) one; what belongs here is not offering a format the app cannot reopen, or verifying a save by re-opening it. Note also that the default file name is `clsm_sim.npz` and chisurf has no reader for that array layout either (no npz photon-stream loader exists under `chisurf/core/fio/`), so the one working export is the one the dialog does not default to.
+- **Fix note:**
+
+### RF-590
+- **Status:** OPEN
+- **Severity:** S2 (a failed save is reported as a successful one, complete with a sidecar TIFF beside the file that was never written)
+- **Location:** `chisurf/plugins/microscopy/clsm_generator/gui/view_model.py:185-195` (`else: tttr.write(str(p))` … `self._save_intensity_tif(p)` … `self.status_text = f"Saved photon stream to {p.name}"; return str(p)`)
+- **Finding:** `tttrlib.TTTR.write` reports failure through its **return value**, not an exception, and the call discards it — so the `try/except` guarding this block cannot see the one failure mode it needs to. Verified through the view model: `vm.save('<dir>/clsm_sim')` — a path with no extension, which the save dialog's editable name field allows and macOS does not auto-complete — prints `ERROR in TTTR::write: invalid container record combination.`, writes **no file at all**, and still returns the path with `status_text = 'Saved photon stream to clsm_sim'`. `_save_intensity_tif` then writes `clsm_sim_intensity.tif` beside it, so the directory holds an intensity image and no photons and looks like a completed export. Check the returned bool and route a false through the same status / `return ""` path the exception branch uses (and supply the missing extension rather than handing the library a bare stem).
+- **Fix note:**
+
+### RF-591
+- **Status:** OPEN
+- **Severity:** S2 (a 3-D stack with more frames than columns is silently collapsed to one image column per frame instead of the frame sum, contradicting the function's own docstring)
+- **Location:** `chisurf/core/fluorescence/imaging/simulate.py:526` (`arr = arr.sum(axis=0) if arr.shape[0] <= arr.shape[-1] else arr[..., 0]`) against the docstring at `:502-507` (*"A 3-D stack is collapsed to 2-D by summing over the leading axis"*)
+- **Finding:** `load_image_map` decides "stack or RGB image?" by comparing the leading axis to the trailing one, so any real time series longer than it is wide takes the RGB branch. Measured: `(10, 64, 64)` → `(64, 64)`, summed, correct; `(100, 64, 64)` → **`(100, 64)`**; `(600, 512, 512)` → **`(600, 512)`**. The result is still two-dimensional, so the `arr.ndim != 2` check on the next line passes and the simulation runs on a slice of one image column per frame, laid out as a picture. In the GUI the intensity map and the lifetime map normally come from the same acquisition, so both are mangled identically and `can_generate`'s shape comparison (`clsm_generator/gui/view_model.py:117-119`) agrees with itself — nothing anywhere objects. Decide from the dimension order (or take the reduction as an argument) rather than from which axis is longer. `test_load_image_map_npy_and_tif` (`test/fluorescence/test_imaging_simulate.py:93`) covers only 2-D inputs, so the whole branch is untested.
+- **Fix note:**
+
+### RF-592
+- **Status:** OPEN
+- **Severity:** S2 (a lifetime map that fails to load is dropped without a word, and every detector after it shifts down one channel)
+- **Location:** `chisurf/plugins/microscopy/clsm_generator/gui/view_model.py:88` (`self._lifetime_in = [m for m in (self._load(p) for p in self.lifetime_paths) if m is not None]`) with `_load` at `:91-101` (`except Exception: logger.debug(...); return None`) and the index-is-position convention at `:214-216` and `simulate.py:613-635`
+- **Finding:** `lifetime_paths` and `_lifetime_in` are allowed to differ in length, while the detector a map belongs to is nothing but its **position** in the loaded list. Verified with three selected maps whose second path does not exist: `lifetime_paths` holds 3 entries, `_lifetime_in` holds 2, `can_generate()` returns `(True, '')`, `view_entries()` labels the survivors *Lifetime d0* and *Lifetime d1*, and `status_text` is still `''`. The map the user picked for detector 2 is therefore simulated into routing channel 1, and every photon in that channel carries the wrong lifetime — with nothing on screen to say a file was dropped, and the offending path still listed in the picker. The exception is already caught in the one place that knows which path failed; report it there, and keep the detector index tied to the selection (keep the `None` slot and refuse to generate).
+- **Fix note:**
+
+### RF-593
+- **Status:** OPEN
+- **Severity:** S3 (a lifetime map with no positive pixel dies inside numpy instead of saying what is wrong)
+- **Location:** `chisurf/core/fluorescence/imaging/simulate.py:604-606` (`all_tau = np.concatenate([m[(np.isfinite(m)) & (m > 0)].ravel() for m in maps]) if any(np.isfinite(m).any() for m in maps) else np.array([1.0])`, then `all_tau.min()`)
+- **Finding:** the fallback guard tests only `np.isfinite`, while the comprehension it guards also filters `m > 0` — so a map that is finite everywhere and positive nowhere takes the *first* branch, concatenates to an empty array, and `min()` raises. Verified: an all-zero 8×8 lifetime map gives `ValueError: zero-size array to reduction operation minimum which has no identity`, which the panel shows as *"Generation failed: zero-size array to reduction operation minimum which has no identity"* (`clsm_generator/gui/view_model.py:143-146`); an all-NaN map, by contrast, takes the fallback and quietly simulates a scan with zero photons. Make the guard match its own filter (`(np.isfinite(m) & (m > 0)).any()`) and raise the `ValueError` the docstring already promises, naming the real reason — no lifetime map has a positive value — and decide whether the silent zero-photon run deserves the same message.
+- **Fix note:**
+
+### RF-594
+- **Status:** OPEN
+- **Severity:** S3 (a rectangular map is padded into a square scan, so the reconstruction the tool shows and exports is not the shape of the input it is meant to reproduce)
+- **Location:** `chisurf/core/fluorescence/imaging/simulate.py:598` (`n_pixel = max(h, w)`) feeding `_run_scan` at `:637-639`, which scans `SimScanner.uniform(n_pixel, n_pixel, …)` (`:478-481`)
+- **Finding:** the scanner is always square. Verified with an 8×20 intensity map: the emitters land at their correct pixels but the reconstruction comes back **20×20** with twelve blank lines appended, `SimulatedImage.n_pixel` reads 20, the browser then shows a picture 2.5× taller than the *Intensity (input)* view beside it, and `_save_intensity_tif` (`clsm_generator/gui/view_model.py:197-206`) exports the padded square as the ground-truth intensity. The padding is scanned too, so it also costs dwell time in proportion to the aspect ratio. The scanner takes both dimensions — pass `w` and `h` — or state the constraint and reject a non-square map in `can_generate`. Every simulate-from-maps test uses a square map, so nothing covers this.
+- **Fix note:**
+
+### RF-595
+- **Status:** OPEN
+- **Severity:** S3 (the "Generating…" status is written and never displayed, so a run of minutes leaves the window unchanged and a second press of Generate does nothing visible)
+- **Location:** `chisurf/plugins/microscopy/clsm_generator/gui/tool.py:62-71` (`_on_model_event`, `if QtCore.QThread.currentThread() is not self.thread(): return`) against `gui/view_model.py:131-132` (`self.status_text = "Generating CLSM photon image…"; self.notify("progress")`)
+- **Finding:** `generate()` is dispatched to the global thread pool (`tool.py:80-87`), so every event it emits arrives on the worker thread and is dropped by the guard. The guard is right — the handler touches Qt — but nothing marshals the event back, so the message is composed and thrown away and the panel refreshes only when the queued `_JobSignals.done` fires at the very end. Verified by instrumenting the observer: `('loaded', UI) → ('start_generate', UI) → ('progress', WORKER, 'Generating CLSM photon image…') → ('done', WORKER, 'Generated 58682 photons (1 detector(s)).')`. The wait is real: measured on this machine the generator takes 1.2 s for a 64×64 map, 8.1 s for 128×128 and **81 s for 256×256**, so a 512×512 microscope image is several minutes of a window that shows nothing, during which `_running` (`tool.py:83`) makes every further press of *Generate* a silent no-op. Marshal the status onto the UI thread the way `done` already is (`tool.py:85`); the same seam would then let the run report which file/stage it is in.
+- **Fix note:**
