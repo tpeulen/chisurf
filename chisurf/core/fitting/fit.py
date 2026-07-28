@@ -1886,6 +1886,16 @@ class FitGroup(Fit):
             return self.grouped_fits.__getitem__(key)
 
 
+#: Chain file formats ``sample_fit`` can write, and the suffix each uses.
+#: ``er4`` is tab-separated text -- readable by anything, and the reason a long
+#: run fills a disk, since a float64 costs ~25 characters there and 8 in
+#: ``hdf5``. Both open in nDXplorer.
+CHAIN_FORMATS = {
+    'er4': '.er4',
+    'hdf5': '.h5',
+}
+
+
 def sample_fit(
         fit: Fit,
         target_directory: str,
@@ -1899,6 +1909,7 @@ def sample_fit(
         temp: float = 1.0,
         check_cancel: typing.Callable = None,
         progress_callback: typing.Callable = None,
+        chain_format: str = None,
         **kwargs
 ):
     """Sample free parameters of a fit and save the chain to disk.
@@ -1949,6 +1960,12 @@ def sample_fit(
     steps, thin, chi2max, n_runs, step_size, temp : float or int, optional
         Sampling configuration passed through to
         :mod:`cs.core.fitting.sample`.
+    chain_format : {"er4", "hdf5"}, optional
+        Format of the stored chains, see :data:`CHAIN_FORMATS`. Defaults to the
+        ``optimization.sampling.chain_format`` setting. ``er4`` is tab-separated
+        text that any tool reads; ``hdf5`` is a compressed table roughly a
+        quarter of the size, which is what a long run needs. Both open in
+        nDXplorer.
 
     Returns
     -------
@@ -2012,6 +2029,75 @@ def sample_fit(
     chains_dir = os.path.join(sampling_dir, "chains")
     os.makedirs(chains_dir, exist_ok=True)
 
+    if chain_format is None:
+        try:
+            chain_format = cs.core.settings.cs_settings['optimization']['sampling'].get(
+                'chain_format', 'er4'
+            )
+        except (KeyError, TypeError):
+            chain_format = 'er4'
+    chain_format = str(chain_format or 'er4').strip().lower()
+    if chain_format not in CHAIN_FORMATS:
+        cs.logging.warning(
+            "unknown chain format %r; writing %s", chain_format, 'er4'
+        )
+        chain_format = 'er4'
+    chain_suffix = CHAIN_FORMATS[chain_format]
+
+    def chain_frame(r):
+        """Return a sampling result as one row per draw.
+
+        Parameters
+        ----------
+        r : dict
+            Result dict with ``'chi2r'``, ``'parameter_values'``,
+            ``'parameter_names'`` and optionally ``'lnprior'``.
+
+        Returns
+        -------
+        names : list of str
+            Column names: ``chi2r``, ``lnprior``, then the parameters.
+        rows : numpy.ndarray
+            Finite draws, shape ``(n_draws, 2 + n_parameters)``.
+        """
+        chi2 = np.asarray(r['chi2r'], dtype=np.float64)
+        parameter_values = np.asarray(r['parameter_values'], dtype=np.float64)
+        lnprior = r.get('lnprior')
+        if lnprior is None:
+            lnprior = np.zeros_like(chi2)
+        lnprior = np.asarray(lnprior, dtype=np.float64)
+
+        keep = np.isfinite(chi2)
+        rows = np.column_stack([chi2[keep], lnprior[keep], parameter_values[keep]])
+        return ['chi2r', 'lnprior'] + list(r['parameter_names']), rows
+
+    def save_chain_to_hdf5(r, fn_target):
+        """Save a sampling result to a compressed HDF5 table.
+
+        Text chains are the default because they need nothing to read, but they
+        are also the reason a long run fills a disk: every number costs ~25
+        characters where a float64 costs 8, before compression. A chain worth
+        keeping is usually one that ran long enough for that to matter.
+
+        Written under the ``results`` key, which is where the readers that
+        matter -- nDXplorer's among them -- look first.
+
+        Parameters
+        ----------
+        r : dict
+            Result dict, see :func:`chain_frame`.
+        fn_target : str
+            Target file path.
+        """
+        import pandas as pd
+
+        names, rows = chain_frame(r)
+        frame = pd.DataFrame(rows, columns=names)
+        frame.to_hdf(
+            fn_target, key='results', mode='w', format='table',
+            complib='zlib', complevel=5,
+        )
+
     def save_chain_to_file(r, fn_target):
         """Save a sampling result dict to a tab-separated text file.
 
@@ -2029,25 +2115,29 @@ def sample_fit(
         fn_target : str
             Target file path.
         """
-        chi2 = np.asarray(r['chi2r'], dtype=np.float64)
-        parameter_values = np.asarray(r['parameter_values'], dtype=np.float64)
-        parameter_names = r['parameter_names']
-        lnprior = r.get('lnprior')
-        if lnprior is None:
-            lnprior = np.zeros_like(chi2)
-        lnprior = np.asarray(lnprior, dtype=np.float64)
-
-        mask = np.where(np.isfinite(chi2))
-        scan = np.vstack([chi2[mask], lnprior[mask], parameter_values[mask].T])
-        header = "chi2r\tlnprior\t"
-        header += "\t".join(parameter_names)
+        names, rows = chain_frame(r)
         cs.core.fio.ascii.Csv().save(
-            scan,
+            rows.T,
             fn_target,
             delimiter='\t',
             file_type='txt',
-            header=header
+            header="\t".join(names)
         )
+
+    def save_chain(r, fn_target):
+        """Write a chain in the configured format.
+
+        Parameters
+        ----------
+        r : dict
+            Result dict, see :func:`chain_frame`.
+        fn_target : str
+            Target file path; its suffix already matches the format.
+        """
+        if chain_format == 'hdf5':
+            save_chain_to_hdf5(r, fn_target)
+        else:
+            save_chain_to_file(r, fn_target)
 
     total_steps = int(n_runs * steps)
     done_steps = 0
@@ -2062,8 +2152,8 @@ def sample_fit(
             break
             
         base_fn = f"{safe_fit_name}_{i_run}"
-        fn_final = os.path.join(chains_dir, base_fn + '.er4')
-        fn_partial = os.path.join(chains_dir, base_fn + '.partial.er4')
+        fn_final = os.path.join(chains_dir, base_fn + chain_suffix)
+        fn_partial = os.path.join(chains_dir, base_fn + '.partial' + chain_suffix)
 
         def sampler_callback(done, run_total, sampler=None, **cb_kwargs):
             """Callback invoked during ensemble sampling for intermediate saves.
@@ -2082,7 +2172,7 @@ def sample_fit(
                 # Partial save of an unfinished ensemble chain.
                 try:
                     r_partial = cs.core.fitting.sample.ensemble_result(sampler, fit)
-                    save_chain_to_file(r_partial, fn_partial)
+                    save_chain(r_partial, fn_partial)
                 except Exception:
                     pass
             
@@ -2159,7 +2249,7 @@ def sample_fit(
             )
 
         if success:
-            save_chain_to_file(r, fn_final)
+            save_chain(r, fn_final)
             run_results.append(r)
 
             if os.path.exists(fn_partial):

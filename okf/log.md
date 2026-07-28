@@ -2,6 +2,40 @@
 
 ## 2026-07-28
 
+* **Sampling chains can be an HDF5 table, and the fit controller is a view spec.**
+  A long run's chains are the bulk of what sampling leaves on disk, and text
+  spends ~25 characters on every float64. `sample_fit` gains
+  `chain_format` (`optimization.sampling.chain_format`): `er4` stays the
+  default because text reads anywhere, `hdf5` writes the same draws as a
+  compressed table under the `results` key -- **5.9 MB against 1.2 MB** for
+  3 x 2000 draws of a two-parameter fit, a 4.8x saving, with the values
+  identical float64 either way. nDXplorer reads both, and its folder reader
+  now matches either suffix.
+  **The fit controller's `fittingWidget.ui` is retired.** Its controls were
+  called `spinBox_2` .. `spinBox_6`, its steps field was labelled `Stps` and
+  none of them carried a tooltip; the layout was only editable in a GUI
+  designer. They are now declared in
+  `chisurf/gui/widgets/fitting/fitting_controls.view.json` and rendered by
+  AutoForm, with the new **Format** choice sitting next to Steps and Runs where
+  sampling is started. The four panels mirror the old group boxes exactly,
+  because the controller hides *groups* by name -- a ProteinMC fit hides
+  Fitting and keeps Sampling -- and a merged panel would have hidden the
+  sampling controls of the fits that need them most.
+  The widgets AutoForm builds are bound back to the names the controller was
+  written against, so ~40 call sites (tooltips, ranges, enable/disable, the
+  ProteinMC special-casing) keep working untouched; what moved is where the
+  layout lives. One real fix fell out: hiding the second fit-range pair on
+  one-dimensional data used to leave its *labels* behind pointing at nothing,
+  since only the editors were hidden.
+  Rendered headlessly and inspected at every step -- the first attempt put the
+  four panels in a horizontal dock area, which clipped "Runs", truncated the
+  format combo to "HDF5 (.h" and grew scrollbars; the screenshot is what said
+  so. Covered by `test/fitting/test_chain_formats.py` (6) and
+  `test/gui/test_fitting_controls_form.py` (6: every legacy control still
+  resolves, values round-trip to the fit, both formats are offered, choosing
+  HDF5 is what the run is told, labels hide with their fields, the actions
+  still exist).
+
 * **A deposition bundle kept one of two same-named files, and never read the
   object store** (DATA-06, mmfdb `9e2f6fa`). `archive.zip.export` named every
   bundled payload after its basename alone, so two artifacts called `data.ptu`

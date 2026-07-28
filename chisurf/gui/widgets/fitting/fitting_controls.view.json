@@ -1,0 +1,165 @@
+{
+  "_comment": "Fit controller: dataset, fit range, sampling and fitting controls. Replaces the hand-drawn fittingWidget.ui, whose controls were named spinBox_2..spinBox_6 and whose steps field was labelled 'Stps'. The four panels mirror its group boxes, so the controller's per-group show/hide (ProteinMC hides Fitting, keeping Sampling) still means what it meant.",
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Dataset",
+      "collapsible": false,
+      "n_col": 1,
+      "sections": [
+        {
+          "type": "choice",
+          "attr": "dataset_index",
+          "label": "Dataset",
+          "kind": "combo",
+          "options_source": "dataset_options",
+          "description": "Which fit of this window the controls below act on."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "…",
+              "action": "select_dataset",
+              "description": "Attach a different dataset to this fit."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Fit range",
+      "collapsible": false,
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "xmin",
+          "kind": "int",
+          "label": "First",
+          "minimum": 0,
+          "description": "First channel included in the fit."
+        },
+        {
+          "type": "value",
+          "attr": "xmax",
+          "kind": "int",
+          "label": "Last",
+          "minimum": 0,
+          "description": "Last channel included in the fit."
+        },
+        {
+          "type": "value",
+          "attr": "xmin2",
+          "kind": "int",
+          "label": "First (2)",
+          "minimum": 0,
+          "description": "First channel of the second axis, for two-dimensional data."
+        },
+        {
+          "type": "value",
+          "attr": "xmax2",
+          "kind": "int",
+          "label": "Last (2)",
+          "minimum": 0,
+          "description": "Last channel of the second axis, for two-dimensional data."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "auto",
+              "action": "auto_range",
+              "description": "Choose the fit range from the data: the rising edge to where the signal reaches the background."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Sampling",
+      "collapsible": false,
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "steps_k",
+          "kind": "float",
+          "label": "Steps",
+          "minimum": 0.001,
+          "maximum": 10000.0,
+          "decimals": 2,
+          "suffix": " k",
+          "description": "Steps per walker, in thousands. The diagnostics report whether it was enough."
+        },
+        {
+          "type": "value",
+          "attr": "n_runs",
+          "kind": "int",
+          "label": "Runs",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Independent runs. Their disagreement is the R-hat that says whether the chain converged, so more than one is the point."
+        },
+        {
+          "type": "choice",
+          "attr": "chain_format",
+          "label": "Format",
+          "options": [
+            "er4",
+            "hdf5"
+          ],
+          "labels": [
+            "Text (.er4)",
+            "HDF5 (.h5)"
+          ],
+          "description": "How the chains are stored. Text reads anywhere; HDF5 is a compressed table about four times smaller, which is what a long run needs. Both open in nDXplorer."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "Sample",
+              "action": "sample",
+              "description": "Sample the posterior of the free parameters and write the chains, the diagnostics and the project to a folder."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Fitting",
+      "collapsible": false,
+      "n_col": 2,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "result_index",
+          "kind": "int",
+          "label": "Result",
+          "minimum": 1,
+          "description": "Which stored result of this fit is shown."
+        },
+        {
+          "type": "toggle",
+          "attr": "local_first",
+          "label": "Local first",
+          "description": "Optimise each dataset on its own before the global fit, which usually starts the global step much closer to the optimum."
+        },
+        {
+          "type": "button_row",
+          "buttons": [
+            {
+              "label": "Fit",
+              "action": "fit",
+              "description": "Run the optimiser on the selected fit."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
