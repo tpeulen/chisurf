@@ -143,6 +143,16 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **Collecting the burst plugins in one pytest run failed on a name clash.**
+  `pytest chisurf/plugins/burst` aborted with *import file mismatch* — two
+  `test_construction_smoke.py` in directories that were not packages, so the
+  second could not be imported under its own name and collection stopped before
+  a single test ran. Five test directories were missing `__init__.py`
+  (`burst_analysis`, `burst_bva`, `burst_mle_analysis`, `burst_selection` tests
+  and `burst_background/test`); the others already had one. Added, and the tree
+  now collects 438 tests. Pre-existing and unrelated to the burst work of today
+  — found by running the whole tree at the end of it.
+
 * **The review of this morning's pooled-state work found five, and they are
   fixed (RF-760..RF-764).** All in code that landed hours earlier, which is the
   argument for the review pass.
