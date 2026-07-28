@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **Two buttons, one simulator** (RF-636). The TCSPC simulator panel had two
+  generators: the panel's **Simulate**/**Add** path convolved with the IRF,
+  scaled to the **Peak count** and Poisson-sampled, while the *Read data*
+  header's **+ Data** button went through `TCSPCSimulatorSetup.read()`, which
+  ignored `p0`, ignored the IRF entirely and added no noise — an
+  amplitude-normalised curve whose error bar was 1.0 on a peak of 1.0, fitting
+  to τ = 268 ns at a flattering χ²ᵣ = 2.3e-4. The generator now lives once, in
+  the core setup: `chisurf/core/experiments/tcspc/simulator.py` gained
+  `gaussian_irf`, `resolve_irf` and `simulate_decay` (deterministic decay from
+  the canonical `synthetic_decay` *with* the response, peak-scaled, then
+  Poisson-sampled) plus `irf_mean`/`irf_sigma`/`add_noise`/`seed`, and the
+  widget delegates to them rather than duplicating the convolution.
+  `onParametersChanged` also pushes the IRF curve and the Gaussian mean/sigma
+  into the setup, so the reader sees the settings on screen. Both paths now
+  produce the same curve (integer counts, `y.max ≈ 20 100`, `Σy ≈ 5.57e6`,
+  `ey(peak) = 142.1`); the panel was re-rendered offscreen and inspected.
+  Pinned by eight new tests in `test/tcspc/test_tcspc_simulator_reader.py`; the
+  synthetic-decay plugin test that pinned the old amplitude-normalised contract
+  now compares against the peak-scaled convolved reference.
 * **A behaviour fix in a companion repo left a stale test here.** ndXplorer
   `4913cd6` (RF-470) stopped `.bur` reading from blanket-dropping the last
   column — the blanket rule was deleting *real* measurements (`Red Count Rate

@@ -12,6 +12,165 @@ from chisurf import typing
 from .reader import TCSPCReader
 
 
+def gaussian_irf(
+        time_axis: np.ndarray,
+        mean: float = 5.0,
+        sigma: float = 0.2
+) -> np.ndarray:
+    """Return a peak-normalised Gaussian instrument response.
+
+    Parameters
+    ----------
+    time_axis : numpy.ndarray
+        Time axis of the decay histogram in nanoseconds.
+    mean : float
+        Position of the IRF maximum in nanoseconds.
+    sigma : float
+        Width of the IRF in nanoseconds; non-positive widths are clamped to a
+        narrow but finite value so the response stays a valid photon-count
+        distribution.
+
+    Returns
+    -------
+    numpy.ndarray
+        Gaussian response scaled to a maximum of one.
+    """
+    t = np.asarray(time_axis, dtype=np.float64)
+    s = float(sigma) if float(sigma) > 0.0 else 1e-3
+    irf = np.exp(-0.5 * ((t - float(mean)) / s) ** 2)
+    max_value = float(np.max(irf)) if irf.size else 0.0
+    if max_value > 0.0:
+        irf = irf / max_value
+    return irf
+
+
+def resolve_irf(
+        time_axis: np.ndarray,
+        irf: typing.Any = None,
+        mean: float = 5.0,
+        sigma: float = 0.2
+) -> np.ndarray:
+    """Return an instrument response sampled on *time_axis*.
+
+    A curve-like ``irf`` (anything carrying ``x``/``y``, e.g. a
+    :class:`~chisurf.core.data.DataCurve`) is interpolated onto the time axis;
+    a plain array is used as-is when its length matches. Everything else falls
+    back to a Gaussian defined by *mean* and *sigma*.
+
+    Parameters
+    ----------
+    time_axis : numpy.ndarray
+        Time axis of the decay histogram in nanoseconds.
+    irf : object, optional
+        Measured IRF as a curve or as a bare intensity array.
+    mean : float
+        Mean of the Gaussian fallback in nanoseconds.
+    sigma : float
+        Width of the Gaussian fallback in nanoseconds.
+
+    Returns
+    -------
+    numpy.ndarray
+        Peak-normalised response of the same length as *time_axis*.
+    """
+    t = np.asarray(time_axis, dtype=np.float64)
+    if irf is not None:
+        x_irf = np.asarray(getattr(irf, 'x', []), dtype=np.float64).ravel()
+        y_irf = np.asarray(getattr(irf, 'y', irf), dtype=np.float64).ravel()
+        if x_irf.size > 1 and y_irf.size == x_irf.size:
+            order = np.argsort(x_irf)
+            response = np.interp(t, x_irf[order], y_irf[order], left=0.0, right=0.0)
+        elif x_irf.size == 0 and y_irf.size == t.size:
+            response = y_irf.copy()
+        else:
+            response = np.zeros(0, dtype=np.float64)
+        max_value = float(np.max(response)) if response.size else 0.0
+        if max_value > 0.0:
+            return response / max_value
+    return gaussian_irf(t, mean=mean, sigma=sigma)
+
+
+def simulate_decay(
+        lifetime_spectrum: typing.Any,
+        n_tac: int = 4096,
+        dt: float = 0.0141,
+        p0: float = 10000.0,
+        irf: typing.Any = None,
+        irf_mean: float = 5.0,
+        irf_sigma: float = 0.2,
+        add_noise: bool = True,
+        seed: int = None
+) -> typing.Tuple[np.ndarray, np.ndarray]:
+    """Simulate a TCSPC decay histogram.
+
+    This is *the* generator behind the simulator setup: the deterministic decay
+    is built from the interleaved lifetime spectrum and convolved with the
+    instrument response by the canonical
+    :func:`chisurf.core.fluorescence.decay.synthetic_decay`, scaled to the
+    requested peak count and finally Poisson-sampled — so the reader-level
+    ``read()`` path (**+ Data**) and the panel's **Simulate**/**Add** buttons
+    return the same curve for the same settings.
+
+    ``allow_rise_terms=True`` keeps this acquisition simulator's ability to
+    model rise terms (negative amplitudes) and zero-lifetime components, which
+    the strict default of the interactive generator rejects.
+
+    Parameters
+    ----------
+    lifetime_spectrum : array_like
+        Interleaved ``(amplitude, lifetime, ...)`` spectrum; lifetimes in
+        nanoseconds. An empty or odd-length spectrum yields a zero decay.
+    n_tac : int
+        Number of TAC bins (time channels).
+    dt : float
+        Time resolution per bin in nanoseconds.
+    p0 : float
+        Peak photon count the deterministic decay is scaled to. Non-positive
+        values leave the decay unscaled.
+    irf : object, optional
+        Measured IRF (curve or array); a Gaussian is used when absent.
+    irf_mean : float
+        Mean of the Gaussian fallback IRF in nanoseconds.
+    irf_sigma : float
+        Width of the Gaussian fallback IRF in nanoseconds.
+    add_noise : bool
+        Poisson-sample the scaled decay to obtain photon counts.
+    seed : int, optional
+        Seed for the Poisson sampling; makes a simulation reproducible.
+
+    Returns
+    -------
+    (numpy.ndarray, numpy.ndarray)
+        Time axis in nanoseconds and the simulated decay.
+    """
+    n = int(max(1, int(n_tac)))
+    x = np.arange(n, dtype=np.float64) * float(dt)
+    spectrum = np.asarray(lifetime_spectrum, dtype=np.float64).ravel()
+    if spectrum.size < 2:
+        return x, np.zeros(n, dtype=np.float64)
+
+    response = resolve_irf(x, irf, mean=irf_mean, sigma=irf_sigma)
+    y = chisurf.core.fluorescence.decay.synthetic_decay(
+        n_bins=n,
+        lifetimes=spectrum[1::2],
+        amplitudes=spectrum[0::2],
+        bin_width=float(dt),
+        start_bin=0,
+        irf=response,
+        normalize=False,
+        allow_rise_terms=True,
+    )
+    y = np.clip(np.asarray(y, dtype=np.float64), 0.0, None)
+
+    y_max = float(np.max(y)) if y.size else 0.0
+    if y_max > 0.0 and float(p0) > 0.0:
+        y = y * (float(p0) / y_max)
+
+    if add_noise and np.any(y > 0.0):
+        y = chisurf.core.fluorescence.decay.sample_decay_shot_noise(y, seed=seed)
+    return x, y
+
+
 class TCSPCSimulatorSetup(TCSPCReader):
 
     name = "TCSPC-Simulator"
@@ -25,6 +184,10 @@ class TCSPCSimulatorSetup(TCSPCReader):
             rep_rate: float = 10.0,
             lifetime_spectrum: typing.List[float] = None,
             instrument_response_function: chisurf.core.data.DataCurve = None,
+            irf_mean: float = 5.0,
+            irf_sigma: float = 0.2,
+            add_noise: bool = True,
+            seed: int = None,
             sample_name: str = 'TCSPC-Dummy',
             **kwargs
     ):
@@ -44,6 +207,14 @@ class TCSPCSimulatorSetup(TCSPCReader):
             Lifetime components for the simulated decay.
         instrument_response_function : DataCurve, optional
             IRF to convolve with the decay.
+        irf_mean : float
+            Mean of the Gaussian IRF used when no IRF curve is set, in ns.
+        irf_sigma : float
+            Width of the Gaussian IRF used when no IRF curve is set, in ns.
+        add_noise : bool
+            Poisson-sample the simulated decay.
+        seed : int, optional
+            Seed of the Poisson sampling; makes the simulation reproducible.
         sample_name : str
             Name for the simulated dataset.
         """
@@ -65,9 +236,37 @@ class TCSPCSimulatorSetup(TCSPCReader):
         self.dt = dt
         self.p0 = p0
         self.rep_rate = rep_rate
+        self.irf_mean = irf_mean
+        self.irf_sigma = irf_sigma
+        self.add_noise = add_noise
+        self.seed = seed
+
+    def simulate(self) -> typing.Tuple[np.ndarray, np.ndarray]:
+        """Simulate a decay from the setup's current parameters.
+
+        Returns
+        -------
+        (numpy.ndarray, numpy.ndarray)
+            Time axis in nanoseconds and the simulated photon counts.
+        """
+        return simulate_decay(
+            self.lifetime_spectrum,
+            n_tac=self.n_tac,
+            dt=self.dt,
+            p0=self.p0,
+            irf=self.instrument_response_function,
+            irf_mean=self.irf_mean,
+            irf_sigma=self.irf_sigma,
+            add_noise=self.add_noise,
+            seed=self.seed,
+        )
 
     def read(self, filename: str = None, *args, **kwargs) -> chisurf.core.data.DataCurveGroup:
         """Generate a simulated TCSPC decay curve.
+
+        The curve is produced by :meth:`simulate`, i.e. by the same generator
+        the simulator panel's **Simulate**/**Add** buttons use, so identical
+        settings yield identical data on both paths.
 
         Parameters
         ----------
@@ -82,35 +281,7 @@ class TCSPCSimulatorSetup(TCSPCReader):
         if filename is None:
             filename = self.sample_name
         name = kwargs.get('name', filename)
-        x = np.arange(self.n_tac) * self.dt
-        # The decay is generated through the canonical generator
-        # ``core.fluorescence.decay.synthetic_decay`` — the same entry point the
-        # interactive Synthetic Decay tool uses — so the exponential/convolution
-        # math is shared, not duplicated. ``allow_rise_terms=True`` keeps this
-        # acquisition simulator's ability to model rise terms (negative
-        # amplitudes) and zero-lifetime components, which the strict default
-        # rejects. ``normalize=False`` returns the raw decay, which is then
-        # amplitude-normalised (÷Σamp) to reproduce the previous builder call's
-        # ``normalize=True`` exactly (by linearity), without mutating the spectrum.
-        # ``counting_noise`` is the fitting-weight error model, not shot noise.
-        spectrum = np.asarray(self.lifetime_spectrum, dtype=np.float64)
-        if spectrum.size >= 2:
-            amps = spectrum[0::2]
-            taus = spectrum[1::2]
-            y = chisurf.core.fluorescence.decay.synthetic_decay(
-                n_bins=int(self.n_tac),
-                lifetimes=taus,
-                amplitudes=amps,
-                bin_width=float(self.dt),
-                start_bin=0,
-                normalize=False,
-                allow_rise_terms=True,
-            )
-            amp_sum = float(np.sum(amps))
-            if amp_sum != 0.0:
-                y = y / amp_sum
-        else:
-            y = np.zeros(self.n_tac, dtype=np.float64)
+        x, y = self.simulate()
         # ``data_reader`` is the back-reference a new fit needs to auto-range
         # the curve (``data_reader.autofitrange(data)``). Without it the fit
         # opens at range (0, 0) and fitting is a silent no-op.

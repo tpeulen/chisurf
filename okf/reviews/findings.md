@@ -7518,11 +7518,30 @@ Everything below is about the panel around that generator. Recorded as
 RF-636..RF-639.
 
 ### RF-636
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the standard **+ Data** button and the panel's own **Add** button produce different data from identical settings; the **+ Data** curve is unfittable and fits to τ = 268 ns at χ²ᵣ = 2.3e-4)
 - **Location:** `chisurf/core/experiments/tcspc/simulator.py:66-123` (`TCSPCSimulatorSetup.read()`) against `chisurf/gui/widgets/experiments/tcspc/tcspc_simulator_setup_widget.py:451-534` (`TCSPCSimulatorSetupWidget._simulate_decay`), the generator behind the same panel's **Simulate** / **Add** buttons
 - **Finding:** the reader's `read()` — what the *Read data* header's **+ Data** button calls — ignores three of the panel's own controls. It never reads `p0` (**Peak count**), never uses `self.instrument_response_function` or the widget's Gaussian IRF (`_build_irf`), and applies no Poisson noise; it returns `synthetic_decay(...) / Σamplitudes`, i.e. an amplitude-normalised curve, with `ey = counting_noise(y)` whose zero-floor makes the error bar **1.0** on a peak of **1.0**. Verified in the GUI with `spectrum = 0.75, 4.0, 0.25, 1.0`, `n TAC = 4096`, `Peak count = 20000`, `dt = 0.0141`: **Add** produced integer counts `y.max = 20 150`, `Σy = 5.14e6`, `ey(peak) = 142`; **+ Data**, with the same settings one second later, produced `y.max = 1.0`, `Σy = 231`, `ey(peak) = 1.0`, non-integer. Both rows land in the dataset list under the same name and the same *TCSPC* type. Forcing a sane fit range on the **+ Data** curve (10…3000) fits it to `tL1 = 268.05` ns and reports **χ²ᵣ = 0.000228** while the weighted residuals reach 100 — a meaningless answer with a flattering goodness-of-fit. The control in the same process fits the **Add** curve correctly (χ²ᵣ = 8.66, τ = 3.73 ns), so this is the data, not the transport. Either make `read()` call the same generator the widget uses (peak scaling, IRF, Poisson), or drop the reader-level `read()` path for this setup.
-- **Fix note:**
+- **Fix note:** The generator moved into the core setup and both buttons now call
+  it. `chisurf/core/experiments/tcspc/simulator.py` gains `gaussian_irf`,
+  `resolve_irf` and `simulate_decay` — the deterministic decay is built by the
+  canonical `synthetic_decay` *with* the instrument response, scaled to the
+  **Peak count** `p0`, then Poisson-sampled — plus the `irf_mean`/`irf_sigma`/
+  `add_noise`/`seed` settings the panel needs and a `TCSPCSimulatorSetup.simulate()`
+  that `read()` uses. The widget's `_build_irf`/`_simulate_decay` delegate to those
+  functions instead of duplicating the convolution, and `onParametersChanged` now
+  also pushes the IRF curve and the Gaussian mean/sigma into the setup, so
+  **+ Data** sees exactly the settings on screen. Driven headlessly with the
+  finding's settings, **Add** and **+ Data** now agree: integer counts,
+  `y.max ≈ 20 100`, `Σy ≈ 5.57e6`, `ey(peak) = 142.1`, peak at the 5 ns IRF (the
+  panel was re-rendered and inspected; the preview is unchanged). Pinned by six
+  new tests in `test/tcspc/test_tcspc_simulator_reader.py` (peak scaling, √N error
+  bars, generator parity with `simulate_decay`, IRF-convolved rise,
+  `add_noise=False` determinism, empty spectrum) plus two for `resolve_irf`;
+  `test_tcspc_simulator_reader_uses_canonical_generator` in the synthetic-decay
+  plugin, which pinned the old amplitude-normalised contract, now compares against
+  the peak-scaled convolved reference. 11 + 10 passed; `ruff check` on the touched
+  files reports findings identical to `HEAD` (all pre-existing).
 
 ### RF-637
 - **Status:** FIXED

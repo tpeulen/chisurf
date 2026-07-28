@@ -124,22 +124,41 @@ def test_synthetic_decay_allow_rise_terms_matches_low_level_builder():
 
 
 def test_tcspc_simulator_reader_uses_canonical_generator():
-    """The TCSPC simulator experiment reader produces the canonical decay."""
+    """The TCSPC simulator experiment reader produces the canonical decay.
+
+    The reader convolves with the instrument response and scales to the peak
+    count, so the reference is the canonical generator driven with the same
+    response — not a bare multi-exponential.
+    """
     import numpy as np
 
-    from chisurf.core.experiments.tcspc.simulator import TCSPCSimulatorSetup
-    from chisurf.core.fluorescence.general import calculate_fluorescence_decay
+    from chisurf.core.experiments.tcspc.simulator import (
+        TCSPCSimulatorSetup,
+        gaussian_irf,
+    )
+    from chisurf.core.fluorescence.decay import synthetic_decay
 
     spectrum = [1.0, 1.2, 0.5, 4.0]
     # Construct without a spectrum (avoids the GUI controller coupling in __init__),
     # then set it directly — read() is the code path under test.
-    reader = TCSPCSimulatorSetup(n_tac=1024, dt=0.0141)
+    reader = TCSPCSimulatorSetup(n_tac=1024, dt=0.0141, p0=5000.0, add_noise=False)
     reader.lifetime_spectrum = np.asarray(spectrum, dtype=np.float64)
     group = reader.read()
     y = np.asarray(group[0].y, dtype=float)
 
-    _, y_ref = calculate_fluorescence_decay(np.asarray(spectrum, float), np.arange(1024) * 0.0141)
-    assert np.max(np.abs(y - y_ref)) < 1e-12
+    time_axis = np.arange(1024) * 0.0141
+    y_ref = synthetic_decay(
+        n_bins=1024,
+        lifetimes=np.asarray(spectrum, float)[1::2],
+        amplitudes=np.asarray(spectrum, float)[0::2],
+        bin_width=0.0141,
+        start_bin=0,
+        irf=gaussian_irf(time_axis, mean=reader.irf_mean, sigma=reader.irf_sigma),
+        normalize=False,
+        allow_rise_terms=True,
+    )
+    y_ref = y_ref * (5000.0 / y_ref.max())
+    assert np.max(np.abs(y - y_ref)) < 1e-9
 
 
 def test_view_model_load_spectrum(tmp_path):
