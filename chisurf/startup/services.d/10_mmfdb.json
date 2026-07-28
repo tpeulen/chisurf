@@ -6,6 +6,7 @@
       "surface": "server",
       "phase": "pre_server_listen",
       "thread": "background",
+      "ready_timeout": 30,
       "methods": [
         "mmfdb.status",
         "mmfdb.samples.list",

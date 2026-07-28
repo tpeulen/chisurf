@@ -25,11 +25,46 @@ insertion routes it altered), and diagnosing a startup-timeout-plus-hang is its
 own change. The proxy behaviour itself is covered by `test_proxy.py` and
 `test_proxy_integration.py`, which are green.
 
-**To close it:** decide whether `mmfdb` should be started at all for a test
-server (a fixture flag would remove the timing race entirely) or give the stage
-a timeout that survives a loaded machine, then find the blocking call behind
-`test_linked_info` — a client-side receive timeout there would at least turn a
-hang into a failure.
+**Update 2026-07-28 — the startup half is fixed; two other faults were behind
+it.** The `mmfdb` stage now declares `"ready_timeout": 30` in
+`chisurf/startup/services.d/10_mmfdb.json`. Measured, the stage costs **3.8 s**
+on an *idle* machine for its first import, so the 5 s default was never a budget
+— it was a hang-detector consuming 76 % of itself on a good day. Raising it
+costs nothing in failure latency: `_run_service` records the exception and sets
+`ready_event` on the way out, so a service that *fails* still surfaces at once
+and only a service that truly *hangs* waits out the budget
+(`test_app_startup_manager_reports_background_failure_without_waiting` pins
+that, and `test_config_background_services_budget_a_cold_import` stops a new
+background stage from silently inheriting the bare default). The server now
+constructs, and `TestProxyLifecycle`/`TestLargePayload` run to completion in 8 s.
+
+What that uncovered, both still open:
+
+1. **The fit tests ask for a model that does not exist.** Every
+   `client.fit__create(..., model_name="TCSPC")` returns `model 'TCSPC' not
+   found`. `fit_create` (`chisurf/server/services/fits.py:410`) resolves a model
+   by walking `Model.__subclasses__()` for one whose `name` matches; after
+   importing `chisurf.core.models` the only reachable names are `Global fit` and
+   `Model name not available`, so no spelling of that call can succeed. Two
+   faults stacked: the name is stale, *and* the subclass walk only sees models
+   some other import happened to pull in.
+2. **The intended skip guard is dead.** `TestParameterLifecycle._setup` writes
+   `if not ft.get("ok"): pytest.skip(...)`, but since [SV-04](../specs/assessment.md#sv-04)
+   moved service errors into the JSON-RPC `error` member, `fit__create` *raises*
+   `RemoteError` instead of returning `{"ok": False}`. So the guard never runs
+   and 7 tests fail where the author meant them to skip. Do **not** patch the
+   guard to swallow `RemoteError` — that would hide finding 1 rather than fix it.
+
+**The hang is still unexplained**, and it is not specific to `test_linked_info`:
+with the timeout raised the run now stalls in the same class at
+`TestParameterLifecycle::test_set_bounds` (>5 min, no output), while
+`test_set_value` and `test_set_fixed` — which reach the identical `_setup` —
+fail fast a moment earlier.
+
+**To close it:** give `fit.create` a model lookup that does not depend on what
+happens to have been imported (an explicit registry, as the model/UI split
+already needs), fix the test's model name, then give the client a receive
+timeout so the remaining stall is a failure with a traceback instead of silence.
 
 ## quest: the plugin's RPC layer targets a backend the package does not have
 

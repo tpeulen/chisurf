@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from chisurf.startup.services import (
@@ -121,6 +123,35 @@ def test_app_startup_manager_starts_background_services_in_order():
 
     assert calls == [("pkg:mmfdb", []), ("pkg:password", ["mmfdb"])]
     assert manager.entrypoints == {"pkg:mmfdb", "pkg:password"}
+    manager.stop()
+
+
+@pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
+def test_app_startup_manager_reports_background_failure_without_waiting():
+    """A background service that raises fails at once, not after ``ready_timeout``.
+
+    This is what makes a generous ``ready_timeout`` safe: the budget only bounds a
+    *hung* service, because a failing one marks itself ready on the way out.
+    """
+    def load(entrypoint: str):
+        """Return an entrypoint that raises instead of becoming ready."""
+        def register(context):
+            """Fail before marking the service ready."""
+            raise RuntimeError("boom")
+
+        return register
+
+    specs = [
+        AppStartupServiceSpec(
+            id="mmfdb", entrypoint="pkg:mmfdb", thread="background", ready_timeout=30.0
+        ),
+    ]
+    manager = AppStartupServiceManager.from_specs(specs, loader=load)
+
+    started = time.perf_counter()
+    with pytest.raises(AppStartupError, match="failed"):
+        manager.start()
+    assert time.perf_counter() - started < 5.0
     manager.stop()
 
 
@@ -671,6 +702,28 @@ def test_config_has_jupyter_enabled_if():
     assert jupyter.enabled_if.source_type == "setting"
     assert jupyter.enabled_if.source_key == "gui.start_jupyter_on_startup"
     assert jupyter.enabled_if.equals is True
+
+
+def test_config_background_services_budget_a_cold_import():
+    """Every background stage in the default config states its own ready budget.
+
+    Only a background stage is waited on, and the bare 5 s default is a
+    hang-detector rather than a budget: the ``mmfdb`` stage alone costs ~3.8 s on
+    an idle machine for its first import, so a machine running several suites in
+    parallel turned that stage into an ``AppStartupError`` and took every
+    ``test/server`` integration test down with it. A failing service marks itself
+    ready on the way out, so a larger budget still surfaces real errors at once.
+    """
+    default_timeout = AppStartupServiceSpec(id="x", entrypoint="pkg:x").ready_timeout
+    background = [s for s in load_app_startup_services() if s.thread == "background"]
+    assert background, "expected at least one background startup stage"
+    for spec in background:
+        assert spec.ready_timeout > default_timeout, (
+            f"background stage {spec.id!r} inherits the {default_timeout}s default; "
+            "declare a ready_timeout that survives a loaded machine"
+        )
+    mmfdb = next(s for s in background if s.id == "mmfdb")
+    assert mmfdb.ready_timeout >= 20.0
 
 
 # ── Deprecated background alias ─────────────────────────────────────────

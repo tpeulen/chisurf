@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **A 5-second budget for a 3.8-second import is not a budget, it is a coin
+  toss.** `pytest test/server` had been erroring in *setup* with
+  `AppStartupError: service 'mmfdb' did not become ready within 5.0s` — a
+  failure that came and went with machine load, which is how the whole
+  `test_integration_lifecycle.py` file went red whenever several suites (or
+  several agent instances) ran at once. The stage was measured, not guessed: its
+  first import costs **3.8 s on an idle machine**, so the shipped default was
+  spending 76 % of itself before anything went wrong. `10_mmfdb.json` now
+  declares `"ready_timeout": 30`. Nothing is lost by the larger number, and this
+  is the part worth remembering: `_run_service` records the exception and sets
+  `ready_event` on its way out, so a service that *fails* still surfaces
+  immediately and only one that truly *hangs* waits out the budget — the
+  timeout was never the error path, only the deadlock path. Two tests pin it:
+  one proves a raising background service fails in well under its 30 s budget,
+  the other refuses to let a new background stage inherit the bare default.
+  With the server constructing again, `TestProxyLifecycle`/`TestLargePayload`
+  finish in 8 s and two faults the startup error had been masking became
+  visible — `fit.create` resolves models by walking `Model.__subclasses__()`,
+  where the name the tests ask for (`TCSPC`) does not exist at all, and the
+  `pytest.skip` guard meant to cover exactly that has been dead since SV-04
+  moved service errors into the JSON-RPC `error` member, so it checks a return
+  value that now arrives as a raised `RemoteError`. Both recorded in
+  [known-issues](references/known-issues.md) rather than patched: silencing the
+  guard would have hidden the missing model instead of fixing it.
+
 * **A clipped surface does not look clipped -- it looks broken, and the gesture
   that clips it said nothing.** Reported three times as "transparency is broken
   when a cartoon is inside a metaball", and it was not the transparency at all.
