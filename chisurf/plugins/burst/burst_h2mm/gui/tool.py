@@ -52,7 +52,7 @@ from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.gui.widgets.tool_buttons import flag_attention
 
 from ..api.models import H2mmSettings, StreamSettings
-from ..backend.services import run_analysis
+from ..backend.services import run_analysis, write_result_tables
 from ..core.engines import ENGINE_LABELS
 from ..core.engines import ENGINES as H2mmEngines
 from chisurf.gui import dialogs
@@ -940,9 +940,22 @@ class H2mmTool(MessagesMixin, QMainWindow):
             if float(done).is_integer() and fits:
                 task.set_partial(list(fits))
 
-        return run_analysis(
+        result, bundle = run_analysis(
             settings, analysis_folder=str(self.data_folder), progress=_progress
         )
+
+        # Write the result tables, as the CLI and the RPC service already do.
+        # Without this a GUI fit left *nothing* on disk: the per-photon state
+        # assignment lived only in this panel, so the state-wise MLE step could
+        # not see that H2MM had run at all, and neither could ndX. Written here,
+        # in the worker, because it is one more pass over every photon.
+        if getattr(settings, "write_photons", True) and self.data_folder:
+            task.set_progress(95, "Writing H2MM tables …")
+            try:
+                write_result_tables(result, bundle, pathlib.Path(self.data_folder) / "h2mm")
+            except Exception as exc:  # pragma: no cover - disk/permission path
+                logging.warning("could not write the H2MM tables: %s", exc)
+        return result, bundle
 
     @staticmethod
     def _fmt_eta(seconds: float) -> str:

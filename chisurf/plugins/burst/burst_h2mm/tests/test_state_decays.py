@@ -8,6 +8,8 @@ different efficiencies produced two different "decays". These pin the split.
 
 from __future__ import annotations
 
+import pathlib
+
 import numpy as np
 import pytest
 
@@ -214,5 +216,49 @@ def test_the_decay_panel_filters_by_colour_and_state(qapp, tmp_path):
         tool._rebuild_nano_filters(decays)
         assert tool._nano_colour_boxes["red"].isChecked()
         assert not tool._nano_colour_boxes["green"].isChecked()
+    finally:
+        tool.close()
+
+
+def test_a_gui_fit_writes_its_tables_where_the_next_step_looks(qapp, tmp_path,
+                                                               monkeypatch):
+    """A fit that leaves nothing on disk is invisible to everything downstream.
+
+    Regression: only the CLI and the RPC service wrote the result tables, so a
+    fit run from the panel left the per-photon state assignment in memory alone
+    — and the state-wise MLE step reported a finished H2MM as "run H2MM first".
+    """
+    from chisurf.plugins.burst.burst_h2mm.gui import tool as tool_mod
+    from chisurf.plugins.burst.burst_state_mle.core.state_mle import h2mm_output_dir
+
+    written: list = []
+
+    def _fake_run(settings, **kwargs):
+        return "result", "bundle"
+
+    def _fake_write(result, bundle, out_dir):
+        written.append(pathlib.Path(out_dir))
+        pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
+        (pathlib.Path(out_dir) / "h2mm_result.json").write_text("{}")
+
+    monkeypatch.setattr(tool_mod, "run_analysis", _fake_run)
+    monkeypatch.setattr(tool_mod, "write_result_tables", _fake_write)
+
+    tool = tool_mod.H2mmTool(embedded=True)
+    try:
+        tool._set_folder(str(tmp_path))
+        tool._fit_t0 = 0.0
+
+        class _Task:
+            def set_range(self, *a): pass
+            def set_text(self, *a): pass
+            def set_progress(self, *a): pass
+            def set_partial(self, *a): pass
+            def raise_if_cancelled(self): pass
+
+        tool._fit_worker(tool._gather_settings(), _Task())
+        assert written == [tmp_path / "h2mm"], written
+        # …and that is exactly where the state-wise step goes looking.
+        assert h2mm_output_dir(tmp_path) == tmp_path / "h2mm"
     finally:
         tool.close()

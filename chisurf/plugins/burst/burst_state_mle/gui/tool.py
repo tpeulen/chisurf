@@ -157,9 +157,10 @@ class BurstStateMleTool(QtWidgets.QMainWindow):
         root = self._folder()
         if root is None:
             return []
+        h2mm = core.h2mm_output_dir(root)
         files = [
-            root / "h2mm_photons.h5", root / "h2mm_photons.csv",
-            root / "h2mm_result.json", root / "Info" / "experiment_settings.json",
+            h2mm / "h2mm_photons.h5", h2mm / "h2mm_photons.csv",
+            h2mm / "h2mm_result.json", root / "Info" / "experiment_settings.json",
         ]
         files += sorted(root.glob("b?4/channel_settings.json"))
         return [f for f in files if f.exists()] or files

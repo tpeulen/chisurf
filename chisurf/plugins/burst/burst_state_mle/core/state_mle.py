@@ -48,6 +48,7 @@ __all__ = [
     "DetectorFit",
     "STATE_FOLDER_TEMPLATE",
     "detectors_from_analysis",
+    "h2mm_output_dir",
     "read_experiment_settings",
     "fit_state_wise",
     "read_photon_table",
@@ -141,6 +142,33 @@ class DetectorFit:
         return list(self.channels[1::2])
 
 
+def h2mm_output_dir(analysis_dir) -> pathlib.Path:
+    """Where an H2MM run left its tables, under *analysis_dir*.
+
+    The CLI, the RPC service and the GUI all write into an ``h2mm/`` subfolder of
+    the analysis folder, but a hand-run export may have written into the folder
+    itself. Both are searched, subfolder first, so "H2MM has been run" is
+    answered by looking rather than by assuming a layout — the mistake that made
+    the state-wise step report a finished H2MM as missing.
+
+    Parameters
+    ----------
+    analysis_dir : path-like
+
+    Returns
+    -------
+    pathlib.Path
+        The directory holding the tables, or *analysis_dir* itself when neither
+        candidate has any (so callers raise against a sensible path).
+    """
+    root = pathlib.Path(analysis_dir)
+    marks = ("h2mm_photons.h5", "h2mm_photons.csv", "h2mm_result.json")
+    for candidate in (root / "h2mm", root):
+        if any((candidate / m).is_file() for m in marks):
+            return candidate
+    return root
+
+
 def read_photon_table(analysis_dir):
     """Load H2MM's per-photon table from an analysis folder.
 
@@ -166,7 +194,7 @@ def read_photon_table(analysis_dir):
     """
     import pandas as pd
 
-    root = pathlib.Path(analysis_dir)
+    root = h2mm_output_dir(analysis_dir)
     h5 = root / "h2mm_photons.h5"
     csv = root / "h2mm_photons.csv"
     if h5.is_file():
@@ -198,7 +226,7 @@ def read_stream_channels(analysis_dir) -> dict[str, list[int]]:
         Empty when the result file is absent or carries no stream settings, in
         which case the caller must supply the mapping itself.
     """
-    p = pathlib.Path(analysis_dir) / "h2mm_result.json"
+    p = h2mm_output_dir(analysis_dir) / "h2mm_result.json"
     try:
         payload = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):

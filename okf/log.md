@@ -2,6 +2,24 @@
 
 ## 2026-07-28
 
+* **A GUI H2MM fit now leaves its results on disk (pipeline fix).** Step 7
+  reported *"Photon table: missing — run H2MM first"* on a folder where H2MM had
+  just been run. The panel was right and the pipeline was broken, in two places,
+  both introduced with the step: (1) **only the CLI and the RPC service wrote the
+  result tables** — a fit run from the H2MM panel kept the per-photon state
+  assignment in memory alone, so nothing downstream (the state-wise MLE, ndX)
+  could see that H2MM had run at all; `_fit_worker` now writes them, in the
+  worker, since it is one more pass over every photon. (2) Those writers use an
+  **`h2mm/` subfolder** of the analysis folder while the new reader looked in the
+  folder root, so even a written table would have been missed —
+  `state_mle.h2mm_output_dir()` now *looks* in both, subfolder first, instead of
+  assuming a layout. Verified end to end on a copy of the real
+  `sliding_window_All 0.1500#60`: the GUI fit writes six files into `h2mm/`, and
+  step 7 then reports 275 973 photons, states S0/S1, detectors
+  `green [8,0,3] · red [9,1,2] · yellow [9,1,2]` and 3 IRFs of 128 bins.
+  Regression test asserts a panel fit writes to exactly the directory the next
+  step reads.
+
 * **The other half of the dependency audit: imports nothing declares.** Retiring
   packages fixed the list; this fixes the tree. A new guardrail,
   `test/test_declared_dependencies.py`, asserts that every **module-level**
