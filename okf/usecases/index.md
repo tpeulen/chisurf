@@ -275,6 +275,20 @@ The workflows a first pass should cover — expand as the tester discovers more:
   the detectors never reach the decay window, and that decay is drawn backwards
   on an axis six times too wide. *(last driven 2026-07-28; RF-819..RF-827)*
 
+- [How certain is that lifetime? — posterior sampling](/usecases/mcmc-posterior-sampling.md)
+  — the step after every fit: press **Sample** beside **Fit**, sample the
+  posterior of the free parameters, and read credible intervals that need no
+  Gaussian assumption. The engine is excellent — ten chains over a 4094-channel
+  two-exponential fit in 2 s, honest rank-normalised R̂ / bulk-and-tail ESS, a
+  self-contained output folder with the project that produced it — and almost
+  none of it reaches the user: pressing **OK** in the settings dialog without
+  changing anything switches proposal adaptation off for good, the two plots
+  that exist to judge a chain cannot be opened from any model, a four-minute run
+  shows no progress and can be started twice over itself, and the shipped
+  defaults cannot pass the convergence gate, so the chain is discarded and the
+  covariance error bar is quoted instead. *(last driven 2026-07-28;
+  RF-840..RF-845)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

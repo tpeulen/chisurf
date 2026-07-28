@@ -2,6 +2,32 @@
 
 ## 2026-07-28
 
+* **QA — how certain is that lifetime? Posterior sampling of a fit.** Drove the
+  **Sample** button beside **Fit** headlessly on the real main window: fitted the
+  IBH two-exponential decay (χ²ᵣ = 1.1340, τ = 1.66/4.22 ns), then ran thirteen
+  sampling runs across the blocked and ensemble samplers, the ⚙ settings dialog
+  and the job API. Recorded as
+  [posterior sampling](/usecases/mcmc-posterior-sampling.md). The engine is
+  excellent — 10 chains × 1000 draws over 4094 channels in 2 s, rank-normalised
+  split-R̂ with bulk *and* tail ESS, automatic burn-in, and an output folder that
+  keeps the chains beside the `project.csp` that produced them; the *Info* tab
+  refuses to quote an unconverged chain and says why. Almost none of it reaches
+  the user: pressing **OK** in the settings dialog without changing anything
+  persists `n_adapt: 0` (the `None` default renders as `0`, and `None` means
+  *adapt*, `0` means *never*), taking R̂ from 1.2 to 10.9 and a posterior width
+  from 0.31 to 41; the `Chain diagnostics` and `Posterior graph` plots are
+  listed only in the abstract base's `plot_classes` and registered under no
+  AutoForm plot name, so no model can open them; a 260 s run shows no progress
+  and a second click starts a concurrent job on the same fit (both chains
+  corrupted, `frozen_structure` warnings, R̂ 3.1/1.7 against 1.02); and the
+  shipped defaults sit two orders of magnitude below the convergence gate, so
+  the chain is discarded and the covariance interval — for `sc` a
+  `[-1.46, 1.47]` on a parameter bounded at `(0, 100)` — is quoted instead.
+  Findings [RF-840..RF-845](/reviews/findings.md); softer items (the verdict
+  buried 40 lines down the *Info* tab, no R̂/ESS table next to the thresholds, a
+  `Chunk` knob the blocked sampler logs that it ignores, unnamed run folders) in
+  the use case's UX section.
+
 * **The object panel is drawn inside the viewport now, PyMOL-style, menus and
   all** (first half of moving the internal GUI into GL; the sequence strip is
   the other half and is not done yet). A panel docked beside the view is a
