@@ -2,6 +2,16 @@
 
 ## 2026-07-28
 
+* **BVA without the C++ engine returned a column shorter than the burst frame**
+  ([RF-805](/reviews/findings.md)). The NumPy fallback in
+  `burst/burst_bva/core/computation.py` appended one value per *processed* row,
+  but skipped every row whose `First File` is not a loaded measurement — and a
+  `.bur` frame is `2n+1` interleaved, so half its rows are exactly that. The two
+  lengths never matched, and `compute_bva` raised on assignment for any build
+  without `tttrlib.BVA` (it would have been *silent misalignment* had the counts
+  ever coincided). Both result arrays are now pre-filled with NaN and written by
+  original row index, the way the C++ path already did it. Pinned by
+  `burst_bva/tests/test_bva_numpy_fallback.py`.
 * **The row that is not a measurement, handed to the file loader.** A
   Seidel/PARIS `.bur` is `2n+1` interleaved and the all-zero sentinel rows are
   kept on purpose, so `"0"` is the *first* unique `First File` value in the

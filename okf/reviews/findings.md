@@ -9284,11 +9284,11 @@ source was changed. Findings RF-804..RF-809.
 - **Fix note:**
 
 ### RF-805
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the BVA NumPy fallback raises on every real `.bur`, because it skips rows without emitting a value for them)
 - **Location:** `chisurf/plugins/burst/burst_bva/core/computation.py:176-177` (`if ff not in tttr_arrays: continue`) against `:240-241` (`df['Proximity Ratio Mean'] = np.array(prox_means)`)
 - **Finding:** the fallback appends one value per *processed* row but `continue`s without appending for any row whose `First File` is not in `tttrs` — and every real `.bur` is `2n+1` interleaved, so **half** the rows are sentinels carrying `First File == "0"`, which `load_tttrs_for_dataframe` deliberately skips (RF-563). The two lengths therefore always differ. Verified on two files of the repo's fixture: `compute_bva` with the C++ engine hidden raises `ValueError: Length of values (496) does not match length of index (994)`. This is not inside the `try` that guards the C++ path (`:141-153`) — that one only wraps `_compute_bva_tttrlib` — so the exception propagates to the caller and BVA is simply unavailable on any build without `tttrlib.BVA`. Note the failure mode would be *silent misalignment* rather than a crash if the counts ever coincided; the C++ path already does it right (`means = np.full(n, np.nan)` indexed by original row). Pre-fill both arrays with NaN and assign by row index, exactly as `_compute_bva_tttrlib` does.
-- **Fix note:**
+- **Fix note:** FIXED — the NumPy fallback now pre-fills `prox_means` / `proxt_stds` with `np.full(len(df), np.nan)` and assigns by the original row index, like `_compute_bva_tttrlib`; a skipped row (unknown file, empty burst, no usable window) simply stays NaN instead of shifting every later burst's result up one row. Pinned by `chisurf/plugins/burst/burst_bva/tests/test_bva_numpy_fallback.py::test_numpy_fallback_keeps_sentinel_rows`, which runs an interleaved frame (two real bursts, two `First File == "0"` sentinels) through `compute_bva` with `tttrlib.BVA` removed and asserts both the frame length and that each burst's mean/std lands on its own row. The exclusive `[first:last]` slice in the same loop is RF-806 and is left open.
 
 ### RF-806
 - **Status:** OPEN

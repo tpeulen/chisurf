@@ -169,8 +169,13 @@ def compute_bva(
         except Exception as e:  # pragma: no cover - fall back to numpy
             logging.info(f"compute_bva: tttrlib BVA path failed ({e}); using numpy")
 
-    prox_means: List[float] = []
-    proxt_stds: List[float] = []
+    # Results are addressed by *original* row index, exactly as the C++ path
+    # does: a ``.bur`` frame is interleaved (every other row is a sentinel whose
+    # ``First File`` names no measurement), and appending only for the rows that
+    # were processed would hand back a shorter column than the frame is long.
+    n_rows = len(df)
+    prox_means = np.full(n_rows, np.nan)
+    proxt_stds = np.full(n_rows, np.nan)
 
     tttr_arrays = {}
     time_calibrations = {}
@@ -201,8 +206,6 @@ def compute_bva(
 
         n_events = len(macro_burst)
         if n_events == 0:
-            prox_means.append(np.nan)
-            proxt_stds.append(np.nan)
             continue
 
         if number_of_photons_per_slice < 0:
@@ -244,17 +247,14 @@ def compute_bva(
             window_ratios.append(ac / total if total > 0 else 0.0)
 
         if window_ratios:
-            prox_means.append(float(np.nanmean(window_ratios)))
-            proxt_stds.append(float(np.nanstd(window_ratios)))
-        else:
-            prox_means.append(np.nan)
-            proxt_stds.append(np.nan)
+            prox_means[i] = float(np.nanmean(window_ratios))
+            proxt_stds[i] = float(np.nanstd(window_ratios))
 
         if progress_window:
             progress_window.set_value(i + 1)
 
-    df['Proximity Ratio Mean'] = np.array(prox_means)
-    df['Proximity Ratio Std'] = np.array(proxt_stds)
+    df['Proximity Ratio Mean'] = prox_means
+    df['Proximity Ratio Std'] = proxt_stds
     return df
 
 
