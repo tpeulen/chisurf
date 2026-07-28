@@ -2,6 +2,30 @@
 
 ## 2026-07-28
 
+* **The fixed-grid support-plane scan honours its own contract (RF-633, RF-634,
+  RF-635).** `scan_parameter` in
+  [`chisurf/core/fitting/support_plane.py`](../chisurf/core/fitting/support_plane.py)
+  is what *Scan* on the parameter-scan plot, `Fit.chi2_scan`, `FittingParameter.scan`
+  and the `parameter.scan` action all reach. Three defects of its window and its
+  state handling: a half-specified `scan_range` was discarded whole (`(1.0, None)`
+  and `(None, 2.0)` produced the identical, unrequested window), the window was built
+  *multiplicatively* from the value so it collapsed to five identical points at zero
+  and ran **descending** for a negative parameter, and the restore of `fixed` /
+  `parameter_values` sat after the loop rather than in a `finally`, so a raising
+  `fit.run()` left the user's parameter permanently fixed on a scan point while the
+  GUI reported only that the scan "did not work". Now each end of `scan_range` is
+  filled independently (as `adaptive_scan_parameter` already did) and the endpoints
+  are ordered; the default half width is `|value| * rel_range`, falling back to an
+  *absolute* `rel_range` when a value of zero leaves no relative scale; and the loop
+  is wrapped in `try/finally`. A positive parameter keeps exactly the window it had.
+  The old `:param:` docstring — which documented none of this — is now NumPy-style,
+  and the empty module docstring says what the module is. Pinned by eight new tests
+  in `test/fitting/test_support_plane_scan.py`, seven of which are red on the
+  pre-fix module. `test/fitting/` 771 passed with the change and 763 without it, the
+  same nine pre-existing failures in both runs (other instances' in-flight edits to
+  `curve.py` / `parameter.py` / model state — untouched here). RF-628..RF-632, the
+  S1/S2 sampling and degrees-of-freedom defects of the *adaptive* scan, stay open.
+
 * **QA: simulate a TCSPC decay and fit it back — the round trip is exact, the
   panel around it is not (RF-636..RF-639).** Drove *Read data → Experiment
   `TCSPC` → File type `Simulator`* headlessly the way a user validates a fitting

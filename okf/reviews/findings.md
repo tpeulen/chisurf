@@ -7399,25 +7399,44 @@ Findings RF-628..RF-635.
 - **Fix note:**
 
 ### RF-633
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (a half-specified `scan_range` is silently discarded — `(1.0, None)` and `(None, 2.0)` produce the identical, unrequested window)
 - **Location:** `chisurf/core/fitting/support_plane.py:49-52` (`if p_min is None or p_max is None: p_min = parameter_value * (1. - rel_range); p_max = parameter_value * (1. + rel_range)`) against the documented contract at `:32-33` ("*scan_range: the range within the parameter is scanned if not provided 'rel_range' is used*"), reached from `Fit.chi2_scan` (`chisurf/core/fitting/fit.py:1243-1249`) and the `parameter.scan` action (`chisurf/core/actions/parameter_actions.py:46-49`)
 - **Finding:** the `or` overwrites *both* ends as soon as *either* is `None`, so a caller who pins one end has it thrown away with no warning. Verified on the same fit: `scan_parameter(..., scan_range=(1.0, None), rel_range=0.2)` and `scan_parameter(..., scan_range=(None, 2.0), rel_range=0.2)` both return the range `0.96169 … 1.44253` — neither 1.0 nor 2.0 appears. `adaptive_scan_parameter` handles the same input correctly (`:404-415` fills each end independently). Fill each end separately here too. `test/fitting/test_fit.py:402-410` calls `scan_parameter` only with the default `(None, None)`.
-- **Fix note:**
+- **Fix note:** `scan_parameter` now fills each end of `scan_range` on its own from
+  the default window, the way `adaptive_scan_parameter` already did, and orders the
+  endpoints afterwards so an inverted pair no longer produces a descending axis.
+  Pinned by `test/fitting/test_support_plane_scan.py::SupportPlaneScanRangeTests`
+  (pinned lower end, pinned upper end, both open, inverted) — the first two and the
+  inverted case are red on the pre-fix module.
 
 ### RF-634
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (the fixed-grid scan degenerates to a single repeated point for a zero-valued parameter and produces a descending axis for a negative one)
 - **Location:** `chisurf/core/fitting/support_plane.py:50-52` (`p_min = parameter_value * (1. - rel_range)`, `p_max = parameter_value * (1. + rel_range)`, `np.linspace(p_min, p_max, n_steps)`)
 - **Finding:** the window is built multiplicatively from the value, so it collapses at zero and inverts for negatives. Verified: with the parameter at 0.0, `scan_parameter(..., rel_range=0.2, n_steps=5)` returns `[0., 0., 0., 0., 0.]` — five identical refits at the same point, stored as `parameter.parameter_scan` and plotted as a single dot; with the parameter at −2.0 it returns `[-1.6, -1.8, -2.0, -2.2, -2.4]`, i.e. `p_min > p_max` and a **descending** axis (`Fit.chi2_scan` hands that pair straight to `parameter.parameter_scan`, and the F-test helper only survives it because `_find_side_crossing` re-sorts). Build the window from `abs(parameter_value)` with an additive floor when the value is ~0, and order the endpoints. Neither case is covered — the only test uses a positive parameter.
-- **Fix note:**
+- **Fix note:** the default window moved into `_default_scan_window`, which takes the
+  half width as `|value| * rel_range` — ascending for a negative value — and falls
+  back to `rel_range` as an *absolute* span when that product is at or below `EPS`,
+  because a value of zero carries no relative scale. A positive parameter keeps the
+  window it had. Measured after the fix: value 0.0 → `[-0.2 … 0.2]` (five distinct
+  points, was five identical zeros); value −2.0 → `[-2.4 … -1.6]` ascending (was
+  descending). Pinned by
+  `test/fitting/test_support_plane_scan.py::SupportPlaneScanWindowTests`.
 
 ### RF-635
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (an exception anywhere in the scan loop leaves the user's parameter permanently `fixed` and the model sitting on a scan point, not the best fit)
 - **Location:** `chisurf/core/fitting/support_plane.py:43-64` (`varied_parameter.fixed = True` … the `for` loop calling `fit.run()` at `:59` … the restore at `:62-64` is straight-line code, not a `finally`), against the adaptive path, which guards every evaluation (`:317-324`, `try: … except Exception: return xs, ys, v_cross`)
 - **Finding:** `scan_parameter` mutates fit state (fixes the parameter, overwrites `fit.model.parameter_values` each iteration) and restores it only if the loop completes. Verified by making the third `fit.run()` raise: the parameter goes in with `fixed=False, value=-1.20211` and comes out with **`fixed=True, value=-1.06854`** — the fit is silently left mis-parameterised and one of its parameters frozen, and the GUI swallows the exception into a log line (`chisurf/gui/plots/parameter_scan/parameter_scan.py:185-187`), so the user sees only that the scan "did not work". Wrap the loop in `try/finally` with the existing restore in the `finally`.
-- **Fix note:**
+- **Fix note:** the scan loop is wrapped in `try/finally` with the existing three
+  restore statements (`fixed`, `parameter_values`, `update()`) moved into the
+  `finally`, and `varied_parameter.fixed = True` moved below the window arithmetic so
+  a bad `scan_range` cannot fix the parameter before the guarded block is entered.
+  Pinned by
+  `test/fitting/test_support_plane_scan.py::SupportPlaneScanRestoreTests::test_failing_fit_restores_parameter_state`,
+  which makes the third `fit.run()` raise and asserts the parameter comes back
+  unfixed and at its entry value; it is red on the pre-fix module.
 
 ## QA 2026-07-28 — the TCSPC Simulator setup: two "load" buttons, two different decays
 

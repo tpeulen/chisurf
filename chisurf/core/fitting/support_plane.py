@@ -1,6 +1,4 @@
-"""
-
-"""
+"""Support-plane (profile-likelihood) chi2 scans of a single fit parameter."""
 from __future__ import annotations
 from chisurf import typing
 
@@ -18,6 +16,35 @@ if TYPE_CHECKING:
 EPS = 1e-15
 
 
+def _default_scan_window(
+        parameter_value: float,
+        rel_range: float
+) -> typing.Tuple[float, float]:
+    """Symmetric scan window around a value for the fixed-grid scan.
+
+    The half width is ``|parameter_value| * rel_range`` so that the window is
+    ascending for negative values as well. A value of (numerically) zero has no
+    relative scale, so the half width falls back to ``rel_range`` as an absolute
+    span instead of collapsing the window onto a single point.
+
+    Parameters
+    ----------
+    parameter_value : float
+        Value the window is centred on.
+    rel_range : float
+        Half width of the window as a fraction of ``|parameter_value|``.
+
+    Returns
+    -------
+    tuple of float
+        ``(p_min, p_max)`` with ``p_min < p_max``.
+    """
+    span = abs(float(parameter_value)) * abs(float(rel_range))
+    if span <= EPS:
+        span = max(abs(float(rel_range)), EPS)
+    return parameter_value - span, parameter_value + span
+
+
 def scan_parameter(
         fit: Fit,
         parameter_name: str,
@@ -25,14 +52,27 @@ def scan_parameter(
         rel_range: float = 0.2,
         n_steps: int = 30
 ) -> typing.Dict:
-    """Performs a chi2-scan for the parameter
+    """Perform a fixed-grid chi2-scan for a parameter.
 
-    :param fit: the fit of type 'fitting.Fit'
-    :param parameter_name: the name of the parameter (in the parameter dictionary)
-    :param scan_range: the range within the parameter is scanned if not provided 'rel_range' is used
-    :param rel_range: defines +/- values for scanning
-    :param n_steps: number of steps between +/-
-    :return:
+    Parameters
+    ----------
+    fit : Fit
+        The fit whose model carries the parameter.
+    parameter_name : str
+        Name of the parameter in the model's parameter dictionary.
+    scan_range : tuple, optional
+        ``(p_min, p_max)`` absolute scan limits. Each end is optional and is
+        filled independently from ``rel_range`` when it is ``None``, so pinning
+        one end keeps the other relative. The endpoints are ordered ascending.
+    rel_range : float, optional
+        Half width of the default window as a fraction of the parameter value.
+    n_steps : int, optional
+        Number of grid points between the limits.
+
+    Returns
+    -------
+    dict
+        Keys ``chi2r``, ``parameter_values`` and ``parameter_names``.
     """
     # Store initial values before varying the parameter
     initial_parameter_values = fit.model.parameter_values
@@ -40,28 +80,35 @@ def scan_parameter(
     varied_parameter = fit.model.parameters_all_dict[parameter_name]
     is_fixed = varied_parameter.fixed
 
-    varied_parameter.fixed = True
     chi2r_array = np.empty(n_steps, dtype=float)
 
-    # Determine range within the parameter is varied
+    # Determine range within the parameter is varied. Each end of scan_range is
+    # honoured on its own; only the missing ends come from rel_range.
     parameter_value = varied_parameter.value
-    p_min, p_max = scan_range
-    if p_min is None or p_max is None:
-        p_min = parameter_value * (1. - rel_range)
-        p_max = parameter_value * (1. + rel_range)
+    p_min, p_max = scan_range if scan_range is not None else (None, None)
+    default_min, default_max = _default_scan_window(parameter_value, rel_range)
+    if p_min is None:
+        p_min = default_min
+    if p_max is None:
+        p_max = default_max
+    if p_min > p_max:
+        p_min, p_max = p_max, p_min
     parameter_array = np.linspace(p_min, p_max, n_steps)
 
-    for i, p in enumerate(parameter_array):
+    varied_parameter.fixed = True
+    try:
+        for i, p in enumerate(parameter_array):
+            varied_parameter.fixed = is_fixed
+            fit.model.parameter_values = initial_parameter_values
+            varied_parameter.fixed = True
+            varied_parameter.value = p
+            fit.run()
+            chi2r_array[i] = fit.chi2r
+    finally:
+        # A raising fit must not leave the parameter fixed on a scan point.
         varied_parameter.fixed = is_fixed
         fit.model.parameter_values = initial_parameter_values
-        varied_parameter.fixed = True
-        varied_parameter.value = p
-        fit.run()
-        chi2r_array[i] = fit.chi2r
-
-    varied_parameter.fixed = is_fixed
-    fit.model.parameter_values = initial_parameter_values
-    fit.update()
+        fit.update()
 
     return {
         'chi2r': chi2r_array,
