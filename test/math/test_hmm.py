@@ -11,10 +11,12 @@ from scipy.special import logsumexp
 
 from chisurf.core.math.hmm import (
     COVARIANCE_TYPES,
+    LOG_DOMAIN_FASTMATH,
     ConvergenceMonitor,
     GaussianHMM,
     _backward_log,
     _forward_log,
+    _logsumexp,
     _viterbi,
 )
 
@@ -65,6 +67,55 @@ def _sorted_by_mean(model):
 # ---------------------------------------------------------------------------
 # kernels against a direct implementation
 # ---------------------------------------------------------------------------
+
+
+def test_an_unexplainable_frame_stays_minus_inf_after_compilation():
+    """The ``-inf`` guards must survive the compiler's fast-math licence.
+
+    ``fastmath=True`` implies LLVM's ``ninf``, under which the compiler may
+    assume no operand is infinite and folds ``if vmax == -np.inf`` away, so an
+    all ``-inf`` frame -- what a structurally constrained model produces -- comes
+    back as ``nan`` and poisons the whole lattice. The log-domain kernels are
+    therefore compiled with every fast-math flag *except* ``nnan``/``ninf``.
+    """
+    assert not {"nnan", "ninf"} & LOG_DOMAIN_FASTMATH
+    values = np.full(3, -np.inf)
+    assert _logsumexp(values) == -np.inf
+    assert _logsumexp(values) == _logsumexp.py_func(values)
+
+
+def test_a_structurally_constrained_chain_fits_without_nan():
+    """A left-to-right chain must stay constrained *and* keep a finite likelihood.
+
+    Its forbidden transitions are exact zeros, i.e. ``-inf`` in log space, and
+    the M-step keeps them at zero; the E-step has to carry whole ``-inf``
+    columns through the lattice without turning them into ``nan``.
+    """
+    rng = np.random.default_rng(5)
+    X = np.concatenate(
+        [rng.normal(0.0, 0.3, 300), rng.normal(5.0, 0.3, 300), rng.normal(10.0, 0.3, 300)]
+    )[:, None]
+
+    model = GaussianHMM(
+        n_components=3,
+        covariance_type="diag",
+        n_iter=100,
+        random_state=0,
+        params="mc",
+        init_params="c",
+    )
+    model.n_features = 1
+    model.startprob_ = np.array([1.0, 0.0, 0.0])
+    model.transmat_ = np.array([[0.9, 0.1, 0.0], [0.0, 0.9, 0.1], [0.0, 0.0, 1.0]])
+    model.means_ = np.array([[1.0], [4.0], [9.0]])
+    model.fit(X)
+
+    assert np.isfinite(model.score(X))
+    assert np.isfinite(model.aic(X)) and np.isfinite(model.bic(X))
+    np.testing.assert_allclose(model.means_.ravel(), [0.0, 5.0, 10.0], atol=0.1)
+    # the constraint itself is untouched by the fit
+    np.testing.assert_allclose(model.transmat_[np.tril_indices(3, -1)], 0.0)
+    np.testing.assert_allclose(model.transmat_[0, 2], 0.0)
 
 
 def test_forward_matches_the_recursion_written_out():

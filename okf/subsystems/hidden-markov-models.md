@@ -69,6 +69,11 @@ better optimum. Three decisions account for that:
   transition matrix is preserved by the M-step (that is how a constrained model
   stays constrained), so nothing in the initialisation or in SQUAREM's
   projection is allowed to *create* one.
+* **The compiler is not allowed to assume finiteness.** The two invariants above
+  are `-inf` guards in compiled kernels, and `fastmath=True` implies LLVM's
+  `ninf`/`nnan`, which deletes them — an unexplainable frame then returns `nan`
+  and a constrained fit collapses silently. The log-domain kernels therefore opt
+  in to `LOG_DOMAIN_FASTMATH`, every fast-math flag *except* those two.
 
 ## Related
 

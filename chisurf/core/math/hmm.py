@@ -79,8 +79,16 @@ SQUAREM_PATIENCE = 4
 # compiled kernels
 # ---------------------------------------------------------------------------
 
+#: ``fastmath`` flags for the log-domain kernels: everything LLVM offers except
+#: ``nnan``/``ninf``. Those two license the compiler to assume no operand is NaN
+#: or infinite, which folds away the ``-inf`` guards these kernels depend on --
+#: with ``fastmath=True`` an all ``-inf`` frame (a structurally constrained model
+#: has whole columns of them) makes :func:`_logsumexp` return ``nan`` instead of
+#: ``-inf``, and the ``nan`` then spreads through the whole lattice.
+LOG_DOMAIN_FASTMATH = {"nsz", "arcp", "contract", "afn", "reassoc"}
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
+
+@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _logsumexp(values: np.ndarray) -> float:
     """Return ``log(sum(exp(values)))`` computed without overflow."""
     vmax = -np.inf
@@ -95,7 +103,7 @@ def _logsumexp(values: np.ndarray) -> float:
     return np.log(acc) + vmax
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
+@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _forward_log(
     log_startprob: np.ndarray,
     log_transmat: np.ndarray,
@@ -118,7 +126,7 @@ def _forward_log(
     return _logsumexp(fwd[n_samples - 1])
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
+@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _backward_log(
     log_transmat: np.ndarray,
     log_frameprob: np.ndarray,
@@ -141,7 +149,7 @@ def _backward_log(
             bwd[t, i] = _logsumexp(work)
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
+@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _backward_posteriors_xi(
     log_transmat: np.ndarray,
     log_frameprob: np.ndarray,
@@ -209,7 +217,7 @@ def _backward_posteriors_xi(
             bwd_next[j] = bwd_current[j]
 
 
-@nb.jit(nopython=True, nogil=True, fastmath=True)
+@nb.jit(nopython=True, nogil=True, fastmath=LOG_DOMAIN_FASTMATH)
 def _viterbi(
     log_startprob: np.ndarray,
     log_transmat: np.ndarray,

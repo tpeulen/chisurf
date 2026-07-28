@@ -7831,11 +7831,27 @@ boundary. Findings RF-670..RF-672 are about the edges. Probes run in the `arm64`
 env.
 
 ### RF-670
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a documented model configuration fits silently to a degenerate answer with a `nan` likelihood)
 - **Location:** `chisurf/core/math/hmm.py:83` and `:144` (`@nb.jit(..., fastmath=True)`), against the `-inf` guards those kernels rely on at `:90-91` (`if vmax == -np.inf: return -np.inf`) and `:188-190` (`if maximum == -np.inf: … continue`), reached from `_forward_log` `:117` and `_backward_posteriors_xi` `:198`
 - **Finding:** `fastmath=True` implies LLVM's `ninf`, so the compiler is licensed to assume no operand is infinite and **both** `-inf` guards are folded away. Verified directly: `_logsumexp(np.array([-inf, -inf]))` returns **`nan`**, while `_logsumexp.py_func(...)` on the same input returns `-inf`; the same loop compiled with `fastmath=False` fires the guard and with `fastmath=True` does not. Consequence for a **structurally constrained model** — which `_do_mstep` documents as supported at `:1386-1387` (*"Parameters that are exactly zero are kept at zero so that a structurally constrained model (a left-to-right chain, say) stays constrained"*) — a 3-state strict left-to-right chain (`startprob_ = [1,0,0]`, no skip transitions) fitted with `params="mc"` to well-separated data at 0/5/10 returns `score = nan`, `aic = bic = nan`, and `means_ = [4.989, 4.989, 4.989]`: all three states collapsed onto the global mean, because `-inf` columns turn the forward lattice into `nan`, `total > 0.0` then fails and every posterior falls back to uniform. `fit()` raises nothing and warns nothing (its only check, `:863`, looks for zero *rows*). Independently, the backward guard fails on its own: with a finite forward pass and a transmat row of zeros — the exact case `:863` warns about — `xi_sum` comes back all-`nan` (`exp(-inf − -inf)`), so the M-step gets `nan` transitions. The commit message claims this path was fixed (*"an all -inf frame turned into nan through -inf minus -inf … fixed here"*); the fix is inert as compiled. Spell the flags out on these two kernels — `fastmath={"nsz", "arcp", "contract", "afn", "reassoc"}`, i.e. everything except `nnan`/`ninf` — or carry an explicit "no state can explain this" flag instead of relying on `-inf` arithmetic. `test/math/test_hmm.py` never fits a model containing an exact zero (`test_invalid_configurations_are_rejected` sets `transmat_ = np.eye(2)` but only calls `_check_parameters`), so the guardrail test is missing too.
-- **Fix note:**
+- **Fix note:** The five log-domain kernels (`_logsumexp`, `_forward_log`,
+  `_backward_log`, `_backward_posteriors_xi`, `_viterbi`) now opt in to the new
+  module constant `LOG_DOMAIN_FASTMATH = {"nsz", "arcp", "contract", "afn",
+  "reassoc"}` instead of `fastmath=True` — every LLVM fast-math relaxation
+  except `nnan`/`ninf`, the two that license the compiler to delete the `-inf`
+  guards. The k-means/emission kernels, which never see an infinity, keep
+  `fastmath=True`. Verified: `_logsumexp([-inf, -inf])` is `-inf` again (was
+  `nan`), and the finding's left-to-right chain now fits to
+  `means_ = [0, 5, 10]` with a finite `score`/`aic`/`bic`. Cost measured on a
+  3-state × 12 000-sample `full`-covariance fit: 18.8 ms against 17.9 ms, same
+  log-likelihood to every digit. Pinned by two tests in `test/math/test_hmm.py`:
+  `test_an_unexplainable_frame_stays_minus_inf_after_compilation` (jit result
+  equals `py_func`, and the flag set excludes `nnan`/`ninf`) and
+  `test_a_structurally_constrained_chain_fits_without_nan` (the constrained fit
+  recovers the three means, keeps its structural zeros, and scores finite) —
+  both fail on the old decorator. OKF concept
+  `/subsystems/hidden-markov-models.md` records the invariant.
 
 ### RF-671
 - **Status:** OPEN

@@ -2,6 +2,21 @@
 
 ## 2026-07-28
 
+* **Fast math deleted the HMM's `-inf` guards** (RF-670). `fastmath=True`
+  implies LLVM's `ninf`/`nnan`, so the compiler was free to assume no operand is
+  infinite and folded away both guards the log-domain kernels in
+  `chisurf/core/math/hmm.py` depend on — `_logsumexp` returned `nan` for an all
+  `-inf` frame instead of `-inf`, and the `nan` then spread through the lattice.
+  A structurally constrained model (a left-to-right chain, which `_do_mstep`
+  documents as supported) therefore fitted to `score = aic = bic = nan` with all
+  states collapsed onto the global mean, silently. The five kernels that reason
+  in log space now carry the new `LOG_DOMAIN_FASTMATH` flag set — every LLVM
+  relaxation except `nnan`/`ninf` — while the k-means and emission kernels, which
+  never see an infinity, keep `fastmath=True`. The constrained fit now recovers
+  `means_ = [0, 5, 10]` with a finite likelihood, at 18.8 ms against 17.9 ms on a
+  3-state × 12 000-sample `full`-covariance fit and an identical log-likelihood.
+  Two pinning tests in `test/math/test_hmm.py`; invariant recorded in
+  [hidden Markov models](/subsystems/hidden-markov-models.md).
 * **Two buttons, one simulator** (RF-636). The TCSPC simulator panel had two
   generators: the panel's **Simulate**/**Add** path convolved with the IRF,
   scaled to the **Peak count** and Poisson-sampled, while the *Read data*
