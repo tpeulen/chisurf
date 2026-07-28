@@ -1156,7 +1156,12 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 gl.glDepthMask(True)
 
             for call in call_set:
-                glyph_mode = 1 if (call.glyph == "sphere" and call.primitive == GL_POINTS) else 0
+                if call.primitive == GL_POINTS and call.glyph == "square_outline":
+                    glyph_mode = 2
+                elif call.glyph == "sphere" and call.primitive == GL_POINTS:
+                    glyph_mode = 1
+                else:
+                    glyph_mode = 0
                 self._program.setUniformValue(self._glyph_mode_uniform, glyph_mode)
                 self._program.setUniformValue(
                     self._two_sided_uniform, 1 if call.two_sided else 0
@@ -1393,6 +1398,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 }
                 float z = sqrt(max(0.0, 1.0 - dist2));
                 n = normalize(vec3(coord, z));
+            } else if (glyphMode == 2) {
+                // A hollow square, which is what PyMOL draws a selection with:
+                // `selection_round_points` is off by default, and the marker is
+                // an outline so it frames an atom instead of hiding it. A solid
+                // dot -- or worse a sphere -- covers the thing being pointed at.
+                vec2 coord = abs(gl_PointCoord * 2.0 - 1.0);
+                float edge = max(coord.x, coord.y);
+                if (edge > 1.0 || edge < 0.62) {
+                    discard;
+                }
+                gl_FragColor = v_color;
+                return;
             }
             vec3 l = normalize(lightDir);
             // Two-sided lighting for flat plates (e.g. nucleic base rings):
@@ -2160,6 +2177,16 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         mods = event.modifiers()
         delta_steps = int(event.angleDelta().y() / 120.0)
+
+        # Over the sequence, the wheel scrolls it. Zooming the molecule because
+        # the cursor happened to be on the strip is never what was meant.
+        pos = event.position() if hasattr(event, "position") else event.posF()
+        gui = self._internal_gui
+        if gui.sequence_visible and gui.sequence_strip_contains(pos.x(), pos.y()):
+            if delta_steps and gui.scroll_sequence(-delta_steps * 5):
+                self.update()
+            event.accept()
+            return
         # Shift+wheel moves the near clipping plane, as PyMOL's shifted wheel
         # works the slab. Ctrl+wheel does the same thing and is kept: it was the
         # only binding for it, and silently taking it away from anyone with it

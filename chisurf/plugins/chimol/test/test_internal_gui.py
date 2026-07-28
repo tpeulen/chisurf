@@ -444,3 +444,100 @@ def test_clicking_past_the_end_of_a_sequence_selects_nothing(sequences):
     sequences.mouse_press(sequences._seq_origin + char_w * 40, row.y + 4)
 
     assert picked == []
+
+
+# --------------------------------------------------------------------------- #
+# Scrolling a long sequence
+# --------------------------------------------------------------------------- #
+@pytest.fixture
+def long_sequence(gui):
+    """Return the panel with a sequence far longer than the strip."""
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import SequenceRow
+
+    gui.sequence_visible = True
+    gui.set_sequences([
+        SequenceRow(name="148l", codes="ACDEFGHIKLMNPQRSTVWY" * 20,
+                    numbers=list(range(1, 401)))
+    ])
+    gui.layout(WIDTH, HEIGHT)
+    return gui
+
+
+def test_a_long_sequence_can_be_scrolled(long_sequence):
+    """A sequence wider than the strip must be reachable.
+
+    Otherwise it just ends at the edge of the window with nothing to say there
+    is more of it.
+    """
+    assert long_sequence.max_scroll() > 0
+
+    moved = long_sequence.scroll_sequence(10)
+    assert moved is True
+    assert long_sequence._seq_scroll == 10
+
+
+def test_scrolling_stops_at_both_ends(long_sequence):
+    long_sequence.scroll_sequence(-100)
+    assert long_sequence._seq_scroll == 0
+
+    long_sequence.scroll_sequence(10_000)
+    assert long_sequence._seq_scroll == long_sequence.max_scroll()
+
+
+def test_a_sequence_that_fits_does_not_scroll(sequences):
+    assert sequences.max_scroll() == 0
+    assert sequences.scroll_sequence(5) is False
+
+
+def test_dragging_the_scrollbar_scrolls(long_sequence):
+    track = long_sequence._seq_track
+    long_sequence.mouse_press(track.x + track.w * 0.5, track.y + 2)
+    assert long_sequence._seq_scroll == pytest.approx(long_sequence.max_scroll() // 2, abs=1)
+
+    long_sequence.drag(track.x + track.w, track.y + 2)
+    assert long_sequence._seq_scroll == long_sequence.max_scroll()
+    long_sequence.release()
+
+
+def test_the_thumb_shows_how_much_is_off_screen(long_sequence):
+    """A full-width thumb would say the whole sequence is visible."""
+    assert long_sequence._seq_thumb.w < long_sequence._seq_track.w
+
+
+def test_a_scrolled_click_selects_the_residue_under_the_cursor(long_sequence):
+    """The column under the cursor is an offset into the *scrolled* sequence.
+
+    Getting this wrong selects a residue some fixed distance from the one that
+    was clicked, which looks like the selection being off by a random amount.
+    """
+    picked: list[list[int]] = []
+    long_sequence.on_select = lambda name, indices, additive: picked.append(list(indices))
+    long_sequence.scroll_sequence(30)
+    row = long_sequence._seq_rows[0]
+    char_w = long_sequence.FONT_PT * 0.62
+
+    long_sequence.mouse_press(long_sequence._seq_origin + char_w * 2.5, row.y + 4)
+
+    assert picked[-1] == [32]
+
+
+def test_clearing_drops_every_highlight(sequences):
+    sequences.sequences[0].selected = {1, 2, 3}
+    sequences.clear_selection()
+    assert all(not row.selected for row in sequences.sequences)
+
+
+def test_the_letters_take_the_structures_colours(sequences):
+    """The letters follow the structure's own colours.
+
+    A sequence in one flat colour says nothing about a molecule coloured by
+    chain or by spectrum.
+    """
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import _residue_color
+
+    row = sequences.sequences[0]
+    row.colors = [(1.0, 0.0, 0.0)] * len(row.codes)
+    assert _residue_color(row, 0) == (255, 0, 0)
+
+    row.colors = []
+    assert _residue_color(row, 0) != (255, 0, 0), "should fall back, not crash"

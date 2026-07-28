@@ -2,6 +2,28 @@
 
 ## 2026-07-28
 
+* **The sequence scrolls, takes the structure's colours, and the selection
+  marker stopped hiding what it points at.** Three things the strip needed to be
+  usable rather than decorative.
+  - **A scrollbar under the strip.** A sequence wider than the window simply
+    ended at the edge with nothing to say there was more of it. The thumb is
+    sized to the fraction on screen, so it also says *how much* is missing.
+    Dragging it and the wheel both scroll, and the wheel over the strip scrolls
+    rather than zooming -- dollying the camera because the cursor happened to be
+    on the sequence is never what was meant.
+  - **The letters take their colour from the structure.** A sequence in one flat
+    colour is a different picture from the molecule it indexes: colouring by
+    chain or by spectrum means nothing if the strip does not show it.
+  - **The selection marker is a hollow square, not a sphere**, and PyMOL's own:
+    `selection_round_points` is off, `sele` is (1.0, 0.63, 0.0), and the width
+    comes from `selection_width` x `selection_width_scale` clamped by
+    `selection_width_max`. The point of a marker is to *frame* an atom; a solid
+    blob covers the thing it is pointing at.
+  - Clicking empty space clears the selection, which the picker already did --
+    the strip now mirrors the viewer instead of keeping its own idea of what is
+    selected, so the highlight goes with it. One source of truth, which is also
+    why a residue picked in the 3-D view lights up in the sequence.
+
 * **The sequence is in the viewport now, and selecting in it selects in the
   molecule.** Built to PyMOL's model, read off its own settings rather than
   guessed: one-letter codes (`seq_view_format 0`), a residue number every fifth

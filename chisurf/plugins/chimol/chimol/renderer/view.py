@@ -7620,6 +7620,18 @@ class MolView(QtWidgets.QWidget):
         return scene_objects
 
     def _update_selection_highlight(self, coords: np.ndarray) -> list[SceneObject] | None:
+        """Mark the selected residues the way PyMOL marks a selection.
+
+        Hollow squares at the selected positions, not spheres. PyMOL's marker
+        *frames* an atom rather than covering it -- `selection_round_points` is
+        off, so the dots are square, and they are drawn as an outline. A solid
+        blob hides the thing it is pointing at, which is the opposite of what a
+        selection indicator is for.
+
+        Colour and size are PyMOL's own: `sele` is (1.0, 0.63, 0.0), and
+        `selection_width` 3 scaled by `selection_width_scale` 2 and clamped by
+        `selection_width_max` 10.
+        """
         sel = getattr(self, "_selected_residues", None)
         if not sel or self._coords is None:
             return None
@@ -7627,94 +7639,48 @@ class MolView(QtWidgets.QWidget):
         try:
             idx_sel = np.asarray(list(sel), dtype=int)
         except Exception:
-            idx_sel = np.zeros(0, dtype=int)
+            return None
         n = self._coords.shape[0]
-        if idx_sel.size and n > 0:
-            idx_sel = idx_sel[(idx_sel >= 0) & (idx_sel < n)]
-        if idx_sel.size:
-            try:
-                centers = coords[idx_sel]
-            except Exception:
-                centers = None
-            if centers is not None and centers.size:
-                try:
-                    sel_cfg = _DISPLAY_CONFIG.get("selection", {})
-                except Exception:
-                    sel_cfg = {}
-                try:
-                    col = np.asarray(
-                        sel_cfg.get("color", [1.0, 1.0, 0.0, 1.0]),
-                        dtype=float,
-                    )
-                except Exception:
-                    col = np.array([1.0, 1.0, 0.0, 1.0], dtype=float)
-                if col.shape[0] != 4:
-                    col = np.array([1.0, 1.0, 0.0, 1.0], dtype=float)
-                size_scale = float(sel_cfg.get("size_scale", 0.08))
-                min_size = float(sel_cfg.get("min_size", 6.0))
-                px_mode = bool(sel_cfg.get("px_mode", False))
-                size = max(self._radius * size_scale, min_size)
-                color_arr = np.tile(col, (centers.shape[0], 1))
+        if not idx_sel.size or n <= 0:
+            return None
+        idx_sel = idx_sel[(idx_sel >= 0) & (idx_sel < n)]
+        if not idx_sel.size:
+            return None
 
-                if px_mode:
-                    geom = Geometry(
-                        kind="points",
-                        positions=centers,
-                        colors=color_arr,
-                        meta={
-                            "glyph": "sphere",
-                            "radius": size * 0.1,
-                            "size": size,
-                            "px_mode": True,
-                        },
-                    )
-                    scene_objects = [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
-                else:
-                    template = _build_sphere_mesh(radius=1.0)
-                    verts = template.get("vertices") if template else None
-                    norms = template.get("normals") if template else None
-                    faces = template.get("faces") if template else None
-                    if (
-                        verts is not None
-                        and norms is not None
-                        and faces is not None
-                        and verts.size
-                        and faces.size
-                    ):
-                        n_sel = centers.shape[0]
-                        n_verts = verts.shape[0]
-                        radius_ws = max(size * 0.5, 1e-3)
-                        verts_scaled = verts[np.newaxis, :, :] * radius_ws
-                        verts_translated = verts_scaled + centers[:, np.newaxis, :]
-                        positions = verts_translated.reshape(-1, 3)
+        try:
+            centers = coords[idx_sel]
+        except Exception:
+            return None
+        if centers is None or not centers.size:
+            return None
 
-                        faces_rep = np.repeat(faces[np.newaxis, :, :], n_sel, axis=0)
-                        idx_offsets = (
-                            np.arange(n_sel, dtype=faces.dtype) * n_verts
-                        )[:, np.newaxis, np.newaxis]
-                        faces_rep = (faces_rep + idx_offsets).reshape(-1, 3)
+        try:
+            sel_cfg = _DISPLAY_CONFIG.get("selection", {})
+        except Exception:
+            sel_cfg = {}
+        try:
+            col = np.asarray(sel_cfg.get("color", [1.0, 0.631, 0.0, 1.0]), dtype=float)
+        except Exception:
+            col = np.array([1.0, 0.631, 0.0, 1.0], dtype=float)
+        if col.shape[0] != 4:
+            col = np.array([1.0, 0.631, 0.0, 1.0], dtype=float)
 
-                        normals = np.repeat(
-                            norms[np.newaxis, :, :], n_sel, axis=0
-                        ).reshape(-1, 3)
-                        colors = np.repeat(
-                            color_arr[:, np.newaxis, :], n_verts, axis=1
-                        ).reshape(-1, 4)
+        width = float(sel_cfg.get("width", 3.0))
+        scale = float(sel_cfg.get("width_scale", 2.0))
+        width_max = float(sel_cfg.get("width_max", 10.0))
+        size = min(max(width * scale, width), width_max)
 
-                        geom = Geometry(
-                            kind="mesh",
-                            positions=positions,
-                            indices=faces_rep,
-                            normals=normals,
-                            colors=colors,
-                        )
-                        scene_objects = [
-                            SceneObject(id="selection", geometry=geom, render_mode="overlay")
-                        ]
-
-                return scene_objects
-
-        return None
+        geom = Geometry(
+            kind="points",
+            positions=centers,
+            colors=np.tile(col, (centers.shape[0], 1)),
+            meta={
+                "glyph": "square_outline",
+                "size": size,
+                "px_mode": True,
+            },
+        )
+        return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
 
     def _update_view(self, fit_camera: bool = True) -> None:
         if self._renderer is None:

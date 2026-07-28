@@ -2106,6 +2106,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             try:
                 codes, _names = self.viewer.get_sequence_arrays(object_id)
                 numbers = self.viewer.get_residue_numbers(object_id)
+                colors = self.viewer.get_residue_colors(object_id)
             except Exception:
                 continue
             if codes is None or len(codes) == 0:
@@ -2115,10 +2116,42 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     name=str(entry.get("name", object_id)),
                     codes="".join(str(c) for c in codes),
                     numbers=[int(n) for n in (numbers if numbers is not None else [])],
+                    colors=[
+                        tuple(float(c) for c in rgba[:3])
+                        for rgba in (colors if colors is not None else [])
+                    ],
                 )
             )
         gui.set_sequences(rows)
         gui.on_select = self._on_internal_sequence_selection
+        if not getattr(self, "_sequence_selection_connected", False):
+            # The viewer's selection is the single source of truth, and the
+            # strip mirrors it. That is what makes clicking empty space clear
+            # the highlight too: the miss already empties the selection, and
+            # the strip has no business keeping its own idea of it.
+            try:
+                self.viewer.objectResidueSelectionChanged.connect(
+                    self._mirror_selection_in_sequence
+                )
+                self._sequence_selection_connected = True
+            except Exception:
+                pass
+
+    def _mirror_selection_in_sequence(self, object_id, indices) -> None:
+        """Show the viewer's selection in the strip."""
+        renderer = getattr(self.viewer, "_renderer", None)
+        gui = getattr(renderer, "_internal_gui", None)
+        if gui is None:
+            return
+        entry = self._object_store.get(object_id) or {}
+        name = str(entry.get("name", object_id))
+        chosen = {int(i) for i in (indices or [])}
+        for row in gui.sequences:
+            if row.name == name:
+                row.selected = set(chosen)
+            elif not chosen:
+                row.selected = set()
+        renderer.update()
 
     def _on_internal_sequence_selection(self, name: str, indices, additive: bool) -> None:
         """Apply a selection made in the strip to the 3-D view.

@@ -47,6 +47,8 @@ SEQ_NAME_FG = (0, 224, 0)
 SEQ_NUMBER_FG = (144, 144, 144)
 SEQ_SELECTED_BG = (255, 96, 176)
 SEQ_SELECTED_FG = (0, 0, 0)
+SEQ_TRACK_BG = (64, 64, 64, 230)
+SEQ_THUMB_BG = (128, 128, 128, 240)
 
 # The bottom-right block's palette, read off PyMOL's own.
 MODE_TITLE_FG = (0, 224, 0)
@@ -93,6 +95,10 @@ class SequenceRow:
     codes: str
     numbers: list[int] = field(default_factory=list)
     selected: set[int] = field(default_factory=set)
+    #: Per-residue RGB, as the structure is coloured. A sequence in one colour
+    #: is a different picture from the molecule it indexes: colouring by chain
+    #: or by spectrum means nothing if the strip does not show it.
+    colors: list[tuple[float, float, float]] = field(default_factory=list)
 
 
 @dataclass
@@ -167,6 +173,8 @@ class InternalGui:
     LABEL_SPACING = 5
     #: Height of one sequence line.
     SEQ_ROW_H = 15
+    #: Height of the scrollbar under the strip.
+    SEQ_BAR_H = 9
     #: Grab width of the splitter, in pixels.
     SPLITTER_W = 6
     #: How narrow and how wide the column may be dragged.
@@ -210,6 +218,9 @@ class InternalGui:
         self._seq_origin = 0.0
         self._seq_scroll = 0
         self._seq_drag: tuple[int, int] | None = None
+        self._seq_track = Rect(0, 0, 0, 0)
+        self._seq_thumb = Rect(0, 0, 0, 0)
+        self._dragging_thumb = False
         #: Called with ``(object name, indices, additive)`` when the strip
         #: selects. Kept separate from `run_command`: a selection is not a
         #: command string, and round-tripping one through the parser would lose
@@ -296,7 +307,7 @@ class InternalGui:
         """
         if not (self.sequence_visible and self.sequences):
             return 0.0
-        return self.SEQ_ROW_H * (len(self.sequences) + 1) + 2 * self.PAD
+        return self.SEQ_ROW_H * (len(self.sequences) + 1) + self.SEQ_BAR_H + 2 * self.PAD
 
     def layout_sequence(self, width: int, height: int) -> None:
         """Place the strip across the top of the scene, left of the column."""
@@ -320,6 +331,61 @@ class InternalGui:
             )
             y += self.SEQ_ROW_H
 
+        # The scrollbar, under the rows. Without it a long sequence simply ends
+        # at the edge of the window with nothing to say there is more of it.
+        track_w = self._seq_strip.w - self._seq_origin - self.PAD
+        self._seq_track = Rect(self._seq_origin, y + 2, max(track_w, 1.0), self.SEQ_BAR_H)
+        longest = max((len(row.codes) for row in self.sequences), default=0)
+        visible = self.visible_columns()
+        if longest > visible > 0:
+            span = track_w * visible / float(longest)
+            offset = track_w * self._seq_scroll / float(longest)
+            self._seq_thumb = Rect(
+                self._seq_track.x + offset, self._seq_track.y,
+                max(span, 12.0), self.SEQ_BAR_H,
+            )
+        else:
+            self._seq_thumb = Rect(self._seq_track.x, self._seq_track.y,
+                                   self._seq_track.w, self.SEQ_BAR_H)
+
+    def sequence_strip_contains(self, x: float, y: float) -> bool:
+        """Whether ``(x, y)`` is over the sequence strip."""
+        return bool(self.sequence_visible and self._seq_strip.contains(x, y))
+
+    def clear_selection(self) -> None:
+        """Drop every selected residue and tell whoever is listening.
+
+        Clicking empty space clears the selection, as it does in PyMOL: a
+        selection you cannot see the edges of is one you cannot get rid of.
+        """
+        changed = any(row.selected for row in self.sequences)
+        for row in self.sequences:
+            row.selected = set()
+        if changed and self.on_select is not None:
+            for row in self.sequences:
+                try:
+                    self.on_select(row.name, [], False)
+                except Exception:
+                    pass
+
+    def visible_columns(self) -> int:
+        """How many residues fit across the strip."""
+        char_w = self.FONT_PT * 0.62
+        return max(int((self._seq_strip.w - self._seq_origin - self.PAD) / char_w), 1)
+
+    def max_scroll(self) -> int:
+        """Return the furthest the sequence can be scrolled."""
+        longest = max((len(row.codes) for row in self.sequences), default=0)
+        return max(longest - self.visible_columns(), 0)
+
+    def scroll_sequence(self, columns: int) -> bool:
+        """Scroll by *columns*; returns whether anything moved."""
+        before = self._seq_scroll
+        self._seq_scroll = min(max(self._seq_scroll + int(columns), 0), self.max_scroll())
+        if self._seq_scroll != before:
+            self.layout_sequence(self._width, self._height)
+        return self._seq_scroll != before
+
     def sequence_index_at(self, x: float, y: float) -> tuple[int, int] | None:
         """Return ``(row, residue index)`` under the cursor, or ``None``."""
         char_w = self.FONT_PT * 0.62
@@ -332,6 +398,17 @@ class InternalGui:
                 return index, column
             return None
         return None
+
+    def _scroll_to(self, x: float) -> None:
+        """Put the thumb under the cursor and scroll to match."""
+        track = self._seq_track
+        if track.w <= 0:
+            return
+        fraction = min(max((x - track.x) / track.w, 0.0), 1.0)
+        target = int(round(fraction * self.max_scroll()))
+        if target != self._seq_scroll:
+            self._seq_scroll = target
+            self.layout_sequence(self._width, self._height)
 
     def _select_range(self, row_index: int, start: int, end: int, additive: bool) -> None:
         """Select the residues between *start* and *end* on one row."""
@@ -421,6 +498,9 @@ class InternalGui:
         if not self.visible:
             return Hit("")
 
+        if self.sequence_visible and self._seq_track.contains(x, y):
+            return Hit("scrollbar")
+
         if self.sequence_visible and self._seq_strip.contains(x, y):
             found = self.sequence_index_at(x, y)
             if found is not None:
@@ -458,6 +538,10 @@ class InternalGui:
     # ── interaction ──────────────────────────────────────────────────────
     def drag(self, x: float, y: float) -> bool:
         """Continue a splitter drag. Returns whether anything moved."""
+        if self._dragging_thumb:
+            self._scroll_to(x)
+            return True
+
         if self._seq_drag is not None:
             found = self.sequence_index_at(x, y)
             if found is not None and found[0] == self._seq_drag[0]:
@@ -477,10 +561,15 @@ class InternalGui:
         """End a splitter or sequence drag."""
         self._dragging_splitter = False
         self._seq_drag = None
+        self._dragging_thumb = False
 
     def is_dragging(self) -> bool:
         """Whether a drag the panel owns is in progress."""
-        return self._dragging_splitter or self._seq_drag is not None
+        return (
+            self._dragging_splitter
+            or self._seq_drag is not None
+            or self._dragging_thumb
+        )
 
     def mouse_move(self, x: float, y: float) -> bool:
         """Track hover. Returns whether a redraw is needed."""
@@ -518,6 +607,11 @@ class InternalGui:
                     rect = self._button_rects[hit.row][key]
                     self._open_menu(f"{title}:", row.name, entries, rect.x, rect.y + rect.h)
                     break
+            return True
+
+        if hit.kind == "scrollbar":
+            self._dragging_thumb = True
+            self._scroll_to(x)
             return True
 
         if hit.kind == "residue":
@@ -778,8 +872,15 @@ class InternalGui:
                     painter.drawRect(cell)
                     painter.setPen(QtGui.QColor(*SEQ_SELECTED_FG))
                 else:
-                    painter.setPen(QtGui.QColor(*SEQ_FG))
+                    painter.setPen(QtGui.QColor(*_residue_color(row, column)))
                 painter.drawText(cell, int(QtCore.Qt.AlignCenter), row.codes[column])
+
+        track, thumb = self._seq_track, self._seq_thumb
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(*SEQ_TRACK_BG))
+        painter.drawRect(QtCore.QRectF(track.x, track.y, track.w, track.h))
+        painter.setBrush(QtGui.QColor(*SEQ_THUMB_BG))
+        painter.drawRect(QtCore.QRectF(thumb.x, thumb.y, thumb.w, thumb.h))
 
     def _paint_block(self, painter, QtGui, QtCore) -> None:
         """Draw the mouse-mode reference, the state, and the transport."""
@@ -900,3 +1001,20 @@ def _glyph_of(command: str) -> str:
         if bound == command:
             return glyph
     return "?"
+
+
+def _residue_color(row: SequenceRow, index: int) -> tuple[int, int, int]:
+    """Return the colour a residue is drawn in, from the structure's own.
+
+    A sequence in one flat colour is a different picture from the molecule it
+    indexes: colouring by chain or by spectrum says nothing if the strip does
+    not show the same thing.
+    """
+    if index < len(row.colors):
+        red, green, blue = row.colors[index][:3]
+        return (
+            int(max(0.0, min(1.0, red)) * 255),
+            int(max(0.0, min(1.0, green)) * 255),
+            int(max(0.0, min(1.0, blue)) * 255),
+        )
+    return SEQ_FG
