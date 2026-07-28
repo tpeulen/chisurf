@@ -7679,15 +7679,22 @@ class MolView(QtWidgets.QWidget):
                 "px_mode": True,
             },
         )
-        # Drawn as an overlay. Depth-testing it was tried and is worse than the
-        # problem it solves: the markers sit at CA positions, *inside* the
-        # cartoon, so the ribbon covers every one of them and the selection
-        # becomes invisible. A ring that shows through from the far side is a
-        # smaller cost than a selection you cannot see.
+        # An overlay, deliberately. Two cheaper routes to Chimera's outline were
+        # tried and neither works from *point* markers:
         #
-        # The faithful version of Chimera's outline is a silhouette of the
-        # selected geometry -- render it to a mask, dilate, draw the fringe --
-        # which needs a pass this renderer does not have yet.
+        #   * depth-testing them hides every one, because the markers sit at CA
+        #     positions and the cartoon surface is nearer to the camera than the
+        #     CA it was built from; and
+        #   * drawing a wider filled disc first does not help either -- with
+        #     depth testing on, draw order decides nothing, the nearer fragment
+        #     wins, so the ribbon covers the rim as well as the middle.
+        #
+        # A real silhouette has to come from the *selected geometry*, not from
+        # points standing in for it: render that geometry's depth to a texture
+        # and run the existing outline shader (`postprocess._OUTLINE_FRAGMENT`,
+        # a min-dilate plus a depth-jump test) over it in green. That shader is
+        # directly reusable; what is missing is the second depth target to feed
+        # it, which is the piece of work this needs.
         return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
 
     def _update_view(self, fit_camera: bool = True) -> None:

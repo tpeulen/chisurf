@@ -22,6 +22,20 @@
 
 ## 2026-07-28
 
+* **Two cheap routes to Chimera's selection outline, both measured and both
+  dead ends -- written down where the marker is built so the next attempt does
+  not repeat them.** Depth-testing the markers hides every one: they sit at CA
+  positions and the cartoon surface is *nearer* to the camera than the CA it was
+  built from. Widening them into filled discs drawn first does not help either,
+  because with depth testing on the draw order decides nothing -- the nearer
+  fragment wins, so the ribbon covers the rim as well as the middle.
+  - A real silhouette has to come from the **selected geometry**, not from
+    points standing in for it. The shader for it already exists:
+    `postprocess._OUTLINE_FRAGMENT` is a min-dilate plus a depth-jump test, and
+    it outlines whatever depth texture it is handed. What is missing is a second
+    depth target holding only the selected geometry -- that is the piece of work,
+    and it is small now that the shader is known to be reusable.
+
 * **The timeline thumb follows the movie, not only its own clicks.** The panel
   reads the frame every time it is drawn rather than being told when it changes,
   because there is no one place a frame changes: playback advances it on a
