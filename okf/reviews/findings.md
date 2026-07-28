@@ -5998,21 +5998,21 @@ defects are. Findings RF-484..RF-492.
   full chimol suite (1532 tests) is green.
 
 ### RF-488
-- **Status:** OPEN
+- **Status:** FIXED 2026-07-28 — `.bcif` is opened in binary mode and read with `format="BCIF"`; a round-trip test writes the same three-bead model as mmCIF and BinaryCIF and asserts identical payloads.
 - **Severity:** S3 (`.bcif` is routed to the mmCIF reader and can never be read by it; the user is told the file has no coordinates)
 - **Location:** `chisurf/plugins/chimol/chimol/io/structure.py:566` and `:607` (`if str(path).lower().endswith((".cif", ".mmcif", ".bcif")): backbone = _parse_mmcif_backbone(...)`) with `:117-121` (`import ihm.reader` / `open(path, encoding="utf-8", errors="ignore")` / `ihm.reader.read(handle)`)
 - **Finding:** BinaryCIF is a binary format and is opened here in **text** mode with `errors="ignore"`, and `ihm.reader.read` is called without `format="BCIF"` — its signature is `read(fh, model_class=…, format='mmCIF', …)` and `ihm.format_bcif` is present in the installed `ihm` 2.11. Verified: a binary file named `.bcif` raises `ValueError: No coordinates found in '/tmp/rev_bin.bcif'`, i.e. the failure is reported as a property of the file rather than of the reader, so the user has nothing to act on. Either read it properly — open `"rb"` and pass `format="BCIF"` — or drop `.bcif` from both extension tuples so the file falls through with an honest "unsupported format".
 - **Fix note:**
 
 ### RF-489
-- **Status:** OPEN
+- **Status:** FIXED — the `.cif` branch is an `if`/`elif`, so choosing the mmCIF reader no longer falls through to the missing-factory warning. Confirmed stale when re-verified 2026-07-28.
 - **Severity:** S3 (every successful `.cif` load reports that the structure reader is unavailable, and logs a warning saying no factory was available — both untrue)
 - **Location:** `chisurf/plugins/chimol/chimol/io/structure.py:566-573` (the `.cif` branch sets `structure_factory = None`, which then falls into `logger.warning("No structure factory available for %s; falling back to the built-in PDB parser (no radius of gyration).")`) and `chisurf/plugins/chimol/chimol/app/molview_main_window.py:1776` (`self._report_degraded_load(path, primary_exc)`, reached on every backbone-only load)
 - **Finding:** bypassing the core reader for mmCIF is deliberate and correct — `chisurf.core.structure.Structure` is a PDB reader and has no mmCIF path — but it is implemented by overwriting the caller's argument, so both diagnostics fire as though something had gone wrong. On the mmCIF path `primary_exc` is `None` and `_STRUCTURE_IMPORT_ERROR` is `None` (the import succeeds), so `_report_degraded_load` composes exactly: *"…loaded with the built-in parser (the structure reader is unavailable; see the log). The cartoon, secondary structure and hetero atoms are recovered from the file, but sequence metadata and the radius of gyration are not available."* — printed into the command panel for every `.cif`, including the shipped `npc_integrative` demo, where using the mmCIF reader is the intended and only correct outcome. Route the decision explicitly (a `reader` choice made before the try) so a deliberate mmCIF load reports what it did rather than apologising for a failure that did not happen.
 - **Fix note:**
 
 ### RF-490
-- **Status:** OPEN
+- **Status:** FIXED 2026-07-28 — `pdb-ihm` matches `PDBDEV_…` and precedes the `pdb` catch-all; a guard test asserts every repository is reachable and that the catch-all is tried last.
 - **Severity:** S3 (the `pdb-ihm` auto-detect pattern is unreachable, and the canonical `PDBDEV_########` identifier is sent to RCSB and reported as a PDB failure)
 - **Location:** `chisurf/plugins/chimol/chimol/cmd/loader.py:45-70` (`REPOSITORIES`, insertion order `pdb`, `emdb`, `pdb-ihm`) and `:117-122` (`_repository_for`: first `re.match` wins, else `return "pdb"`)
 - **Finding:** two problems in one table. First, `pdb-ihm`'s pattern `^\d[0-9a-z]{3}$` is a strict subset of `pdb`'s `^[0-9a-z]{4}$`, and `pdb` is tried first, so no identifier can ever auto-detect as PDB-IHM — the branch is dead, which is why the command's own docstring has to write `fetch 8zzz, pdb-ihm` with the repository spelled out. Second, `PDBDEV_00000010` — the identifier form PDB-IHM itself publishes, and the one the new `npc_integrative.pml` demo uses — matches no pattern at all, so `_repository_for` falls through to `return "pdb"` and the fetch goes to `https://files.rcsb.org/download/pdbdev_00000010.pdb`, failing with *"could not get pdbdev_00000010 from RCSB PDB"* for an entry that is not in RCSB and was never asked for. The shipped demo works only because it passes `, pdb-ihm` explicitly. Add `^pdbdev_?\d+$` to the `pdb-ihm` pattern, and either order the table so the more specific pattern is tried first or make the silent `return "pdb"` fallback say that it guessed.

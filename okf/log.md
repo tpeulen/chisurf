@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **The front door to an integrative model had two holes in it (RF-488,
+  RF-490).** Both were confirmed by measurement, not by reading:
+  `fetch PDBDEV_00000012` — the canonical identifier, the one in our own demo and
+  guide — resolved to **RCSB PDB** and came back as a PDB failure, because
+  `pdb-ihm` had no pattern for `PDBDEV_…` at all. Its only pattern,
+  `^\d[0-9a-z]{3}$`, was also unreachable: it sat *behind* `pdb`'s "any four
+  characters", and would have been wrong if reached, since `148l` and `8zzc` are
+  ordinary PDB codes that start with a digit. The table is now ordered
+  specific-first with the catch-all last, and a guard test asserts both that every
+  repository is reachable and that `pdb` is tried last — the property that made the
+  old pattern dead configuration lived in dict *order*, invisible in the patterns
+  themselves.
+  - **`.bcif` could never be read.** BinaryCIF is msgpack, and it was routed to
+    the mmCIF reader and opened in *text* mode with `errors="ignore"` — which
+    cannot work and cannot fail honestly, since the decoder discards every byte it
+    cannot turn into UTF-8 and the reader then reports "no coordinates". Opened
+    binary with `format="BCIF"` now. Pinned by writing one three-bead model in
+    both encodings and asserting identical payloads (the fixture checks its own
+    file really is binary, or the test would pass on a renamed text file).
+  - RF-489 (`.cif` loads warning about a missing structure factory) was
+    re-verified and is **stale** — the `if`/`elif` fixed it earlier. Flipped to
+    FIXED rather than left claiming a defect that is gone.
+  - The demo and the guide drop the now-redundant `, pdb-ihm`; the guide gains
+    BinaryCIF and the real identifier shapes per repository.
+
 * **RF-175 fix — the GUI scheduler now works from the thread that calls it.**
   Debounced actions defer their trailing edge onto a `threading.Timer` thread
   and re-issue it through the dispatcher's scheduler; the GUI's `qt_scheduler`

@@ -279,8 +279,19 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
     """
     import ihm.reader
 
-    with open(path, encoding="utf-8", errors="ignore") as handle:
-        systems = ihm.reader.read(handle)
+    # BinaryCIF is msgpack, not text. It was routed here along with `.cif` and
+    # then opened in **text** mode with `errors="ignore"` -- which cannot work
+    # and, worse, cannot fail honestly: the decoder discards every byte it
+    # cannot make into UTF-8, so the reader saw a truncated nonsense document
+    # and reported "no coordinates" rather than "this is a binary format".
+    # `ihm` reads it given a binary handle and `format="BCIF"`.
+    binary = str(path).lower().endswith(".bcif")
+    if binary:
+        with open(path, "rb") as handle:
+            systems = ihm.reader.read(handle, format="BCIF")
+    else:
+        with open(path, encoding="utf-8", errors="ignore") as handle:
+            systems = ihm.reader.read(handle)
     if not systems:
         raise ValueError(f"No structure found in {path!r}")
     system = systems[0]

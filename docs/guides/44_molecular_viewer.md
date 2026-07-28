@@ -36,19 +36,25 @@ viewer:
 load 148l.pdb
 fetch 1rtd                  # from the PDB, by accession code
 fetch EMD-3061              # ...or a density map from EMDB
-fetch 8zzz, pdb-ihm         # ...or an integrative model from PDB-IHM
+fetch PDBDEV_00000012       # ...or an integrative model from PDB-IHM
 ```
 
 `fetch` recognises the repository from the identifier — a four-character code is
-a PDB entry, `EMD-…` is an EMDB map — and naming one explicitly settles the cases
-where the identifiers look alike. An EMDB map arrives as a **map object** with a
+a PDB entry, `EMD-…` is an EMDB map, `PDBDEV_…` is an integrative model — so the
+canonical identifier is all you need. Naming a repository explicitly
+(`fetch 8zzz, pdb-ihm`) still works, and is how you reach an entry whose id
+looks like another repository's. An EMDB map arrives as a **map object** with a
 contour on it, not as a structure; see [voxel maps](#voxel-maps).
 
 | Repository | Looks like | Gives you |
 | --- | --- | --- |
 | `pdb` | `148l`, `pdb_00001abc` | a structure |
-| `emdb` | `EMD-3061` | a density map |
-| `pdb-ihm` | `8zzz` (name it explicitly) | an integrative model |
+| `emdb` | `EMD-3061`, `emd_1234` | a density map |
+| `pdb-ihm` | `PDBDEV_00000012`, `ihm-12` | an integrative model |
+
+Structure files load as PDB, mmCIF or **BinaryCIF** (`.bcif`) — the last is the
+same content as an mmCIF in a compact binary encoding, and reads to exactly the
+same model.
 
 Objects appear in the **Objects** panel, one row each. Every row carries the same
 five menus PyMOL uses, and the grey `all` row applies them to everything at once:
@@ -77,7 +83,7 @@ measuring and superposing work as they do anywhere else — one bead behaves as
 one residue, so `spectrum count` runs over beads and `resi 40-60` selects them.
 
 ```text
-fetch PDBDEV_00000012, pdb-ihm   # the nuclear pore, all eight spokes
+fetch PDBDEV_00000012            # the nuclear pore, all eight spokes
 spectrum chain                   # 234,184 beads, one colour per chain
 ```
 

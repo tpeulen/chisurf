@@ -11,6 +11,6 @@
 # backbone; drawn as what they are it takes about two seconds. One spoke on its
 # own is PDBDEV_00000010.
 delete all
-fetch PDBDEV_00000012, pdb-ihm
+fetch PDBDEV_00000012
 spectrum count, rainbow
 zoom all

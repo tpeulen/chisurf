@@ -93,18 +93,17 @@ class LoaderCommands(BaseCmd):
             else:
                 self._emit_message(f"Loaded: {path}")
 
-    #: The repositories `fetch` knows, in the order an unlabelled id is tried
-    #: against them. One table rather than three near-identical commands: the
-    #: three that were here had drifted, and one of them had never worked at all.
+    #: The repositories `fetch` knows. One table rather than three near-identical
+    #: commands: the three that were here had drifted, and one of them had never
+    #: worked at all.
+    #:
+    #: **Order matters, and ``pdb`` must come last.** Its pattern is the loosest
+    #: -- any four characters -- so anything ahead of it in this table is only
+    #: reachable if it is tried first. PDB-IHM used to sit *after* ``pdb`` with
+    #: the pattern ``^\d[0-9a-z]{3}$``, which is a strict subset of "any four
+    #: characters": unreachable, and wrong even if reached, since `148l` and
+    #: `8zzc` are ordinary PDB codes that happen to start with a digit.
     REPOSITORIES = {
-        "pdb": {
-            "label": "RCSB PDB",
-            "url": "https://files.rcsb.org/download/{id}.pdb",
-            "suffix": ".pdb",
-            "normalise": str.lower,
-            #: 4-character PDB codes, and the newer extended ones.
-            "pattern": r"^[0-9a-z]{4}$|^pdb_[0-9a-z]{8}$",
-        },
         "emdb": {
             "label": "EMDB",
             "url": (
@@ -120,7 +119,21 @@ class LoaderCommands(BaseCmd):
             "url": "https://pdb-ihm.org/cif/{id}.cif",
             "suffix": ".cif",
             "normalise": str.lower,
-            "pattern": r"^\d[0-9a-z]{3}$|^ihm[-_]?\d+$",
+            #: ``PDBDEV_00000012`` is the canonical form -- it is what the entry
+            #: is called on the site, in our own demo and in the guide -- and it
+            #: matched nothing here, so `fetch PDBDEV_00000012` asked RCSB for a
+            #: PDB entry and reported a PDB failure. The short ``ihm-12`` spelling
+            #: is kept because it was already accepted.
+            "pattern": r"^pdbdev[-_]?\d+$|^ihm[-_]?\d+$",
+        },
+        "pdb": {
+            "label": "RCSB PDB",
+            "url": "https://files.rcsb.org/download/{id}.pdb",
+            "suffix": ".pdb",
+            "normalise": str.lower,
+            #: 4-character PDB codes, and the newer extended ones. Deliberately
+            #: last: this is the catch-all.
+            "pattern": r"^[0-9a-z]{4}$|^pdb_[0-9a-z]{8}$",
         },
     }
 
@@ -168,7 +181,22 @@ class LoaderCommands(BaseCmd):
             self._fetch_one(code, "pdb-ihm")
 
     def _repository_for(self, code: str) -> str:
-        """Which repository an identifier looks like it belongs to."""
+        """Which repository an identifier looks like it belongs to.
+
+        First match wins, so :data:`REPOSITORIES` is ordered specific-first with
+        ``pdb`` last -- see the note there.
+
+        Parameters
+        ----------
+        code : str
+            The identifier as typed.
+
+        Returns
+        -------
+        str
+            A key of :data:`REPOSITORIES`; ``"pdb"`` when nothing matches, since
+            a bare code is a PDB code far more often than anything else.
+        """
         lowered = code.lower()
         for name, spec in self.REPOSITORIES.items():
             if re.match(spec["pattern"], lowered):
