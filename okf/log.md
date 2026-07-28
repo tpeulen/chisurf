@@ -2,6 +2,18 @@
 
 ## 2026-07-28
 
+* **FCS merge: the `.cor` count rate survives the round trip again (RF-621).**
+  `_correlation_from_cor_array` converted the file's **kHz** count rate to counts
+  as `0.5 * count_rate * duration`, while `compute_average_correlations` reads it
+  back as `(counts_a + counts_b) / 2 / duration / 1000` — a factor 2000 lost on
+  every `.cor`-sourced merge (CLI, RPC and the correlator's merger panel). Since
+  the merged file's Suren column then feeds `noise(weight_type='suren')`, the
+  error reweighted the whole curve non-uniformly (~1900× at 1 µs, ~1.1× at 1 s),
+  changing fitted parameters and not just χ². The per-channel count is now
+  `count_rate * 1e3 * duration`, the exact inverse of the consumer, with the unit
+  convention stated at the seam; pinned by
+  `test_count_rate_survives_the_cor_round_trip` in the FCS-Merger plugin tests.
+
 * **QA: drove project save / version / export / restore (RF-616..RF-620).** Built
   a TCSPC session in the real main window, stored it as a versioned MMFDB project
   through the *Project Browser*, read the version history, exported and

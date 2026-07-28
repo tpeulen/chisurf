@@ -70,8 +70,11 @@ def _correlation_from_cor_array(arr: np.ndarray) -> Dict[str, Any]:
     duration = float(arr[0, 2]) if arr.shape[1] > 2 and arr.shape[0] >= 1 else 0.0
     count_rate = float(arr[1, 2]) if arr.shape[1] > 2 and arr.shape[0] >= 2 else 0.0
     ey = arr[:, 3] if arr.shape[1] > 3 else np.zeros_like(x)
-    total_counts = count_rate * duration
-    half_counts = 0.5 * total_counts
+    # ``count_rate`` is the mean *per-channel* rate in kHz (Kristine convention),
+    # while ``compute_average_correlations`` re-derives it as
+    # ``(counts_a + counts_b) / 2 / duration / 1000`` — so a channel holds
+    # ``count_rate * 1e3 * duration`` counts. Anything else loses a factor 2000.
+    half_counts = count_rate * 1e3 * duration
     return {
         "x": x.tolist(),
         "y": y.tolist(),

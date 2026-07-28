@@ -7286,11 +7286,21 @@ better than 0.01 % over the informative lag range. What does not hold is the
 Merger — and the *volume* half of the Enderlein module. Findings RF-621..RF-627.
 
 ### RF-621
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (merging `.cor` chunks reports a count rate **2000× too small**, which propagates into the merged file and reweights every fit made from it — non-uniformly, so it changes the fitted parameters, not just χ²)
 - **Location:** `chisurf/core/fluorescence/fcs/merge.py:73-74` (`_correlation_from_cor_array`: `total_counts = count_rate * duration`, `half_counts = 0.5 * total_counts`, stored as `channel_a/b["counts"]` at `:81-82`) against the consumer twenty lines above at `:37-40` (`compute_average_correlations`: `counts = channel_a["counts"] + channel_b["counts"]`, `cr = (counts / 2.0) / duration / 1000.0`); the file's count-rate unit is fixed as kHz by the writer `:113-132` (`save_mean_correlation`, `suren_column[1] = correlation["count_rate"]`) and by `chisurf/core/fio/fluorescence/fcs/kristine.py:38-39,62` ("*Mean count rate of the experiment in kHz*")
 - **Finding:** the reader converts a **kHz** count rate to **counts** as `cr * duration`, missing both the kHz→Hz factor of 1000 and the fact that `compute_average_correlations` halves the summed counts to get a per-channel rate — so the round trip loses a factor of exactly **2000**. Verified end-to-end: `compute_average_correlations` on two in-memory curves (5e5 counts per channel, 10 s each) gives `count_rate = 50.0` kHz; `save_mean_correlation` writes it; `parse_correlation_folder` reads it back as `counts = 1000`; and `merge_folder` on that folder returns **`count_rate = 0.025`**. Every `.cor`-sourced merge is affected — the CLI (`chisurf/plugins/fcs/fcs_merger/cli/main.py:18`), the RPC (`fcs_merger.merge_folder`), and the GUI merger panel's folder path (`chisurf/plugins/fcs/fcs_correlator/merger_panel.py:105`). The wrong rate is then written into the merged file's Suren column, read back by `read_kristine` as `mean_count_rate` (`kristine.py:106,134`), and fed to `noise(..., weight_type='suren')` (`kristine.py:116`): measured on a 64-point log lag axis, the resulting σ is **1895×** larger at 1 µs but only **1.08×** larger at 1 s (median 205×), i.e. the weighting *shape* across the curve is destroyed, not merely rescaled. It also drives the CPM output of the Parse-FCS widget (`chisurf/gui/widgets/models/fcs/parse_fcs_widget.py:408,436`). Fix `total_counts = count_rate * 1000.0 * duration * 2.0` (or, better, store the rate directly and stop laundering it through counts). `chisurf/plugins/fcs/fcs_merger/test/test_core.py:19-33` round-trips a merge through a `.cor` file but never asserts the count rate.
-- **Fix note:**
+- **Fix note:** `_correlation_from_cor_array` now stores the per-channel count as
+  `count_rate * 1e3 * duration` — the exact inverse of the consumer's
+  `(counts_a + counts_b) / 2 / duration / 1000` — instead of `0.5 * count_rate *
+  duration`, and a comment at the seam states which unit and which convention
+  each side uses. Reproduced before the fix: a 50.0 kHz merged curve written by
+  `save_mean_correlation` came back through `merge_folder` as `0.025`; it now
+  round-trips to `50.0`. Pinned by
+  `chisurf/plugins/fcs/fcs_merger/test/test_core.py::test_count_rate_survives_the_cor_round_trip`,
+  which asserts the parsed per-channel counts, the round-tripped rate, and that
+  `compute_average_correlations(_correlation_from_cor_array(arr))` returns the
+  rate written into the `.cor` Suren column.
 
 ### RF-622
 - **Status:** OPEN

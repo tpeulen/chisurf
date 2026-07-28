@@ -33,6 +33,32 @@ def test_core_average_and_merge_folder(tmp_path):
     assert (tmp_path / "out.cor").exists()
 
 
+def test_count_rate_survives_the_cor_round_trip(tmp_path):
+    """The kHz count rate written to a ``.cor`` chunk must come back unchanged (RF-621)."""
+    from chisurf.core.fluorescence.fcs.merge import _correlation_from_cor_array
+    from chisurf.plugins.fcs.fcs_merger.core import (
+        compute_average_correlations,
+        merge_folder,
+        parse_correlation_folder,
+        save_mean_correlation,
+    )
+
+    m = compute_average_correlations([_corr(1), _corr(2)])
+    assert m["count_rate"] == 50.0  # (5e5 + 5e5) / 2 / 10 s / 1000
+
+    save_mean_correlation(m, tmp_path / "a.cor")
+    parsed = parse_correlation_folder(tmp_path)
+    assert len(parsed) == 1
+    # counts are per channel: count_rate [kHz] * 1e3 * duration [s]
+    assert parsed[0]["channel_a"]["counts"] == 50.0 * 1e3 * 20.0
+    assert merge_folder(tmp_path)["count_rate"] == 50.0
+
+    # the counts <-> rate conversion is the exact inverse of the consumer's
+    arr = np.array([[1e-3, 1.5, 4.0], [1e-2, 1.4, 25.0], [1e-1, 1.2, 0.0]])
+    c = _correlation_from_cor_array(arr)
+    assert compute_average_correlations([c])["count_rate"] == 25.0
+
+
 def test_inprocess_rpc_client(tmp_path):
     from chisurf.plugins.fcs.fcs_merger.gui.client import FcsMergerClient
 
