@@ -83,24 +83,52 @@ def test_the_values_the_fit_reads_round_trip(controller):
     assert controller.local_first is False
 
 
-def test_the_sampling_panel_offers_both_chain_formats(controller):
-    """The point of the new control: text or HDF5, chosen where sampling starts."""
-    combo = controller.comboBox_chain_format
-    assert combo is not None
-    labels = [combo.itemText(i) for i in range(combo.count())]
-    assert any("er4" in text for text in labels)
-    assert any("h5" in text or "HDF5" in text for text in labels)
+def test_the_settings_offer_every_sampler_and_format_that_exists(controller):
+    """The selectors are populated by the samplers, not by a list in a file.
+
+    Adding a sampler must make it selectable without anyone editing a combo
+    box, so the options are compared against the registry itself.
+    """
+    from chisurf.core.fitting import sample as sample_module
+    from chisurf.gui.widgets.fitting.fitting_controls import OptimizationSettingsModel
+
+    model = OptimizationSettingsModel()
+    assert [name for name, _ in model.sampler_options()] == list(sample_module.SAMPLERS)
+    assert [name for name, _ in model.chain_format_options()] == list(
+        fit_module.CHAIN_FORMATS
+    )
 
 
-def test_choosing_hdf5_is_what_the_run_is_told(controller):
-    """A control nobody reads is decoration."""
-    combo = controller.comboBox_chain_format
-    for index in range(combo.count()):
-        if "h5" in combo.itemText(index) or "HDF5" in combo.itemText(index):
-            combo.setCurrentIndex(index)
-            break
-    assert controller.chain_format == 'hdf5'
-    assert controller.chain_format in fit_module.CHAIN_FORMATS
+def test_each_sampler_advertises_its_own_settings(controller):
+    """Choosing a sampler shows what *it* takes, derived from its signature."""
+    from chisurf.gui.widgets.fitting.fitting_controls import OptimizationSettingsModel
+
+    model = OptimizationSettingsModel()
+    model.method = 'blocked'
+    model.sampler_changed()
+    blocked = {s['attr'] for s in model._sampler_sections()}
+    model.method = 'slice'
+    model.sampler_changed()
+    slice_ = {s['attr'] for s in model._sampler_sections()}
+
+    assert 'step_size' in blocked and 'step_size' not in slice_
+    assert 'tune' in slice_ and 'tune' not in blocked
+    # ...and every one of them carries the docstring text as its tooltip.
+    assert all(s['description'] for s in model._sampler_sections())
+
+
+def test_the_settings_are_what_the_run_is_told(controller):
+    """A dialog that changed nothing the run reads would be decoration."""
+    from chisurf.gui.widgets.fitting.fitting_controls import OptimizationSettingsModel
+
+    model = OptimizationSettingsModel()
+    model.method = 'slice'
+    model.chain_format = 'hdf5'
+    model.sampler_changed()
+    values = model.sampling_settings()
+    assert values['method'] == 'slice'
+    assert values['chain_format'] == 'hdf5'
+    assert values['chain_format'] in fit_module.CHAIN_FORMATS
 
 
 def test_a_second_range_row_hides_its_label_with_its_field(controller):

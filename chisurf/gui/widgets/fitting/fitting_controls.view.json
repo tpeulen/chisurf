@@ -1,5 +1,5 @@
 {
-  "_comment": "Fit controller: one foldable box holding the two actions that matter (Fit, Distribution) above the fields they use. Replaces the hand-drawn fittingWidget.ui, whose controls were named spinBox_2..spinBox_6 and whose steps field read 'Stps'. The actions come first and stay big because they are what the panel is for; everything else is a setting for them.",
+  "_comment": "Fit controller: one foldable box, laid out as compactly as the hand-drawn fittingWidget.ui it replaces. The actions come first and stay big; the two fields a fit is driven by day to day (Steps, Runs) stay inline; everything that is configuration -- which sampler, thinning, chunking, chi2 cutoff, chain format, optimiser tolerances -- lives behind the settings button, in optimization_settings.view.json, and is written to the user settings.",
   "sections": [
     {
       "type": "panel",
@@ -17,9 +17,24 @@
               "description": "Run the optimiser on the selected fit."
             },
             {
-              "label": "📊  Distribution",
+              "label": "Sample",
               "action": "sample",
-              "description": "Sample the posterior of the free parameters — the distribution behind the error bars. Writes the chains, the diagnostics and the project to a folder."
+              "description": "Sample the posterior of the free parameters. Writes the chains, the diagnostics and the project to a folder."
+            },
+            {
+              "label": "⚙",
+              "action": "settings",
+              "description": "Sampling and fitting settings: which sampler, thinning, chunk size, χ² cutoff, chain format and the optimiser tolerances. Saved to your settings."
+            },
+            {
+              "label": "auto",
+              "action": "auto_range",
+              "description": "Choose the fit range from the data: the rising edge to where the signal reaches the background."
+            },
+            {
+              "label": "…",
+              "action": "select_dataset",
+              "description": "Attach a different dataset to this fit."
             }
           ]
         },
@@ -32,18 +47,12 @@
           "description": "Which fit of this window the controls act on."
         },
         {
-          "type": "choice",
-          "attr": "chain_format",
-          "label": "Chains",
-          "options": [
-            "er4",
-            "hdf5"
-          ],
-          "labels": [
-            "Text (.er4)",
-            "HDF5 (.h5)"
-          ],
-          "description": "How sampled chains are stored. Text reads anywhere; HDF5 is a compressed table about four times smaller, which is what a long run needs. Both open in nDXplorer."
+          "type": "value",
+          "attr": "result_index",
+          "kind": "int",
+          "label": "Result",
+          "minimum": 1,
+          "description": "Which stored result of this fit is shown."
         },
         {
           "type": "value",
@@ -98,33 +107,10 @@
           "description": "Independent sampling runs. Their disagreement is the R-hat that says whether the chain converged, so more than one is the point."
         },
         {
-          "type": "value",
-          "attr": "result_index",
-          "kind": "int",
-          "label": "Result",
-          "minimum": 1,
-          "description": "Which stored result of this fit is shown."
-        },
-        {
           "type": "toggle",
           "attr": "local_first",
           "label": "Local first",
           "description": "Optimise each dataset on its own before the global fit, which usually starts the global step much closer to the optimum."
-        },
-        {
-          "type": "button_row",
-          "buttons": [
-            {
-              "label": "auto range",
-              "action": "auto_range",
-              "description": "Choose the fit range from the data: the rising edge to where the signal reaches the background."
-            },
-            {
-              "label": "change data",
-              "action": "select_dataset",
-              "description": "Attach a different dataset to this fit."
-            }
-          ]
         }
       ]
     }

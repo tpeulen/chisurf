@@ -502,8 +502,8 @@ Sub‑sections:
 - **`sampling`** (MCMC / error‑estimation sampling)  
   Used by `FittingControllerWidget.onErrorEstimate` and
   `chisurf.core.fitting.fit.sample_fit`:
-  - **`method`** – sampling backend: `blocked`, `collapsed`, `de`, `ensemble`, `slice` or `mcmc` (`emcee` is accepted as the old name of `ensemble`)
-  - **`chain_format`** – how the chains are stored: `er4` (tab-separated text) or `hdf5` (compressed table, ~4x smaller). Both open in nDXplorer
+  - **`method`** – sampling backend. The list is not maintained here: the samplers advertise themselves in `chisurf.core.fitting.sample.SAMPLERS`, and the settings dialog is populated from it (`emcee` is accepted as the old name of `ensemble`)
+  - **`chain_format`** – how the chains are stored: `er4` (tab-separated text) or `hdf5` (compressed table, ~4x smaller). Both open in nDXplorer. Editable from the fit controls (⚙), which writes it back here
   - **`steps`** – number of steps per walker / chain
   - **`n_runs`** – number of independent chains or restarts
   - **`thin`** – thinning factor for recorded samples

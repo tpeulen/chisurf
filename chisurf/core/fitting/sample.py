@@ -1,6 +1,7 @@
 """Parameter-space sampling backends (Metropolis and ensemble MCMC)."""
 from __future__ import annotations
 
+import inspect
 import math
 import typing
 
@@ -2116,3 +2117,250 @@ def ensemble_result(
         'acceptance_rate': acceptance,
         'n_evaluations': int(getattr(sampler, 'n_evaluations', 0)),
     }
+
+
+#: The samplers this module advertises: name -> what it is, what it does, and
+#: the function that runs it. One list, so the dispatcher in
+#: :func:`chisurf.core.fitting.fit.sample_fit`, the engine and every selector in
+#: the GUI agree on what exists -- a sampler added here shows up in all three
+#: without anyone editing a combo box.
+SAMPLERS = {
+    'blocked': {
+        'label': 'Blocked (covariance)',
+        'function': 'sample_independent_components',
+        'description': (
+            'Proposes from a per-block covariance seeded by the curvature at '
+            'the optimum, with independent sub-problems sampled apart and '
+            'merged exactly. The one to reach for on a correlated posterior.'
+        ),
+    },
+    'collapsed': {
+        'label': 'Collapsed (linked global fit)',
+        'function': 'sample_marginal_shared',
+        'description': (
+            'Integrates each dataset\'s private parameters out analytically '
+            'and samples only the shared ones -- the right choice for a linked '
+            'global fit, where linking lowers the dimension but makes the '
+            'posterior harder to sample.'
+        ),
+    },
+    'de': {
+        'label': 'Differential evolution',
+        'function': 'sample_differential_evolution',
+        'description': (
+            'Proposes from the differences between a population of chains, so '
+            'it needs neither a gradient nor a covariance and cannot be misled '
+            'by one taken at the wrong point.'
+        ),
+    },
+    'ensemble': {
+        'label': 'Ensemble (stretch)',
+        'function': 'sample_ensemble',
+        'description': (
+            'Affine-invariant walkers that stretch towards each other: the '
+            'proposal takes its scale and correlations from the ensemble, so '
+            'nothing has to be known about the posterior in advance.'
+        ),
+    },
+    'slice': {
+        'label': 'Ensemble slice',
+        'function': 'sample_ensemble_slice',
+        'description': (
+            'The same ensemble directions, sampled by slice sampling instead '
+            'of accept/reject: no step size, every walker moves every step, at '
+            'several model evaluations per step.'
+        ),
+    },
+    'mcmc': {
+        'label': 'Metropolis (diagonal)',
+        'function': 'walk_mcmc',
+        'description': (
+            'The historical diagonal random walk. Kept for compatibility; on a '
+            'correlated posterior it crawls.'
+        ),
+    },
+}
+
+#: Names accepted for a sampler that is not called that any more.
+SAMPLER_ALIASES = {'emcee': 'ensemble'}
+
+
+def resolve_sampler(name: str) -> str:
+    """Return the canonical name of a sampler, following any alias.
+
+    Parameters
+    ----------
+    name : str
+        Sampler name as configured or requested.
+
+    Returns
+    -------
+    str
+        A key of :data:`SAMPLERS`. Unknown names fall back to ``ensemble``
+        with a warning: a typo in a setting should cost a different sampler,
+        not the run.
+    """
+    key = str(name or '').strip().lower()
+    key = SAMPLER_ALIASES.get(key, key)
+    if key not in SAMPLERS:
+        cs.logging.warning("unknown sampler %r; using 'ensemble'", name)
+        return 'ensemble'
+    return key
+
+
+def sampler_function(name: str):
+    """Return the function that runs a sampler.
+
+    Parameters
+    ----------
+    name : str
+        Sampler name, alias-resolved by :func:`resolve_sampler`.
+
+    Returns
+    -------
+    callable
+        The sampling function from this module.
+    """
+    return globals()[SAMPLERS[resolve_sampler(name)]['function']]
+
+
+def sampler_choices():
+    """Return the samplers as ``(name, label)`` pairs for a selector.
+
+    Returns
+    -------
+    list of tuple
+        One pair per advertised sampler, in declaration order.
+    """
+    return [(name, entry['label']) for name, entry in SAMPLERS.items()]
+
+
+#: Arguments every sampler takes that are plumbing, not settings: the thing
+#: being sampled, the progress/cancel hooks, and the seams a caller wires up.
+#: They are excluded from what a sampler advertises.
+_SAMPLER_PLUMBING = frozenset({
+    'fit', 'model', 'progress_bar', 'callback', 'check_cancel', 'seed',
+    'moves', 'kwargs', 'args', 'self',
+})
+
+#: Display names for parameters whose spelling is not a label. Data, not
+#: logic: everything else is derived from the parameter name itself.
+_SETTING_LABELS = {
+    'chi2max': 'χ² max',
+    'step_size': 'Step size',
+    'std': 'Initial spread',
+    'temp': 'Temperature',
+    'n_chains': 'Chains',
+    'nwalkers': 'Walkers',
+    'stretch_scale': 'Stretch',
+}
+
+#: Annotation -> the ``kind`` a view spec uses for it.
+_SETTING_KINDS = {
+    int: 'int',
+    float: 'float',
+    bool: 'toggle',
+    str: 'str',
+}
+
+
+def _docstring_parameters(func) -> dict:
+    """Return the ``Parameters`` section of a NumPy-style docstring as a dict.
+
+    Parameters
+    ----------
+    func : callable
+        The function to read.
+
+    Returns
+    -------
+    dict
+        Parameter name -> its description, joined into one line. Names written
+        together (``steps, thin, chi2max : int``) share the text, which is what
+        the docstring meant.
+    """
+    doc = inspect.getdoc(func) or ''
+    lines = doc.splitlines()
+    try:
+        start = next(
+            i for i, line in enumerate(lines)
+            if line.strip() == 'Parameters' and i + 1 < len(lines)
+            and set(lines[i + 1].strip()) == {'-'}
+        ) + 2
+    except StopIteration:
+        return {}
+
+    descriptions, names, buffer = {}, [], []
+
+    def flush():
+        """Attach the collected text to the names it was written for."""
+        if names and buffer:
+            text = ' '.join(part.strip() for part in buffer if part.strip())
+            for name in names:
+                descriptions[name] = text
+
+    for line in lines[start:]:
+        if line.strip() and not line.startswith((' ', '\t')):
+            if set(line.strip()) == {'-'}:      # the next section's underline
+                break
+            if ':' not in line:
+                break
+            flush()
+            names = [n.strip() for n in line.split(':', 1)[0].split(',')]
+            buffer = []
+        else:
+            buffer.append(line)
+    flush()
+    return descriptions
+
+
+def sampler_settings(name: str) -> list:
+    """Return the settings one sampler advertises, as view-spec sections.
+
+    The list is *derived*, not written down twice: the parameters come from the
+    function's signature, their types from its annotations, their defaults from
+    the defaults, and their descriptions from its docstring. A sampler that
+    grows a knob grows it in the GUI, and one that renames a parameter cannot
+    leave a selector behind pointing at a name that no longer exists.
+
+    Parameters
+    ----------
+    name : str
+        Sampler name, alias-resolved by :func:`resolve_sampler`.
+
+    Returns
+    -------
+    list of dict
+        Sections ready for a view spec, one per configurable parameter.
+    """
+    func = sampler_function(name)
+    descriptions = _docstring_parameters(func)
+    sections = []
+    for param in inspect.signature(func).parameters.values():
+        if param.name in _SAMPLER_PLUMBING or param.kind in (
+                param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            continue
+        kind = _SETTING_KINDS.get(param.annotation)
+        if kind is None and param.default is not inspect.Parameter.empty:
+            kind = _SETTING_KINDS.get(type(param.default))
+        if kind is None:
+            continue
+        default = None if param.default is inspect.Parameter.empty else param.default
+        if isinstance(default, float) and not math.isfinite(default):
+            default = None
+        section = {
+            'type': 'toggle' if kind == 'toggle' else 'value',
+            'attr': param.name,
+            'label': _SETTING_LABELS.get(
+                param.name, param.name.replace('_', ' ').capitalize()
+            ),
+            'description': descriptions.get(param.name, ''),
+        }
+        if kind != 'toggle':
+            section['kind'] = kind
+        if kind == 'float':
+            section['decimals'] = 4
+        if default is not None:
+            section['default'] = default
+        sections.append(section)
+    return sections

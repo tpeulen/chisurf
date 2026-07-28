@@ -2,6 +2,31 @@
 
 ## 2026-07-28
 
+* **Samplers advertise their own settings, and the GUI is built from that.**
+  The settings dialog behind the fit controls' ⚙ contains no list of fields.
+  `chisurf/core/fitting/sample.py` gains a `SAMPLERS` registry (name, label,
+  function, description) plus `sampler_settings(name)`, which **derives** each
+  sampler's knobs from its own signature: parameters from
+  `inspect.signature`, types from the annotations, defaults from the defaults
+  and the tooltips from the `Parameters` section of its docstring. Choosing
+  *Blocked* offers step size and temperature; choosing *Ensemble slice* offers
+  the initial spread and tuning -- neither list is written down anywhere. The
+  chain formats come from `CHAIN_FORMATS` and the optimiser panel from the
+  `optimization.leastsq` settings that exist, so a new sampler, a new knob or a
+  new format appears in the GUI without anyone editing a combo box, and a
+  renamed parameter cannot leave a dead control behind. `resolve_sampler`
+  folds the `emcee` alias and warns on a typo instead of silently sampling
+  something else. Accepting the dialog writes to the **user** settings
+  (`set_optimization_settings`), because these are what the next run is
+  configured by.
+  **The inline strip is one foldable box again, laid out like the designer file
+  it replaced**: ▶ Fit, Sample, ⚙, auto and … on one row, then Dataset|Result,
+  First|Last, Steps|Runs, Local first. 173 px against the original's 133 (the
+  first attempt was 432), and the button that samples is called *Sample* again
+  -- "Distribution" is what it produces, not what it is.
+  Screenshots before/after in the app's own dark theme; the compare image is
+  what drove each revision.
+
 * **A zero uncertainty is a missing one, and it was becoming an infinite weight
   (RF-731).** The standard error a merged FCS curve carries is exactly zero at
   every lag where its repeats agreed — common at long lags, where G is quantised

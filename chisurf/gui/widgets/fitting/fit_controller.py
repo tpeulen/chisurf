@@ -163,7 +163,6 @@ class FittingControllerWidget(Controller):
         self.spinBox_6 = self._editor('xmax2')
         self.doubleSpinBox = self._editor('steps_k')
         self.spinBox_5 = self._editor('n_runs')
-        self.comboBox_chain_format = self._editor('chain_format')
         self.spinBox_3 = self._editor('result_index')
         self.checkBox = self._editor('local_first')
 
@@ -175,6 +174,7 @@ class FittingControllerWidget(Controller):
         # gone; what it meant -- "this fit is not optimised from here" -- is the
         # Fit button and the two fields that belong to it.
         self.groupBox = self.form.section_widget(title="Fit")
+        self.button_settings = self._button('settings')
         self._emphasise(self.button_fit)
         self._emphasise(self.button_sample)
 
@@ -259,6 +259,27 @@ class FittingControllerWidget(Controller):
             self.button_fit.setVisible(bool(visible))
         for attr in ('result_index', 'local_first'):
             self._set_field_visible(attr, visible)
+
+    def show_optimization_settings(self) -> None:
+        """Open the sampling and fitting settings as a modal dialog.
+
+        The settings a run is configured by -- which sampler, how it thins,
+        where the chains go, the optimiser tolerances -- are shared by every
+        fit, so they are edited once, in one place, and written to the user
+        settings rather than held for the session.
+        """
+        from chisurf.gui.widgets.fitting.fitting_controls import (
+            show_optimization_settings,
+        )
+
+        if not show_optimization_settings(self):
+            return
+        # The panel shows two of them; take the new values.
+        try:
+            sampling = cs.core.settings.cs_settings['optimization']['sampling']
+            self.controls.chain_format = str(sampling.get('chain_format', 'er4'))
+        except (KeyError, TypeError, AttributeError):
+            pass
 
     def _editor(self, attr: str):
         """Return the Qt editor AutoForm built for one bound attribute.
