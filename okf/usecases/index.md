@@ -178,6 +178,14 @@ The workflows a first pass should cover — expand as the tester discovers more:
   the middle; the measured outlines never reach the canvas and the shipped fit
   window turns a handful of photons into a confident lifetime.
   *(last driven 2026-07-28; RF-576..RF-579)*
+- [TTTR file preparation](/usecases/tttr-file-preparation.md) — everything a user
+  does to a raw photon file before an analysis window is opened, in one window:
+  read and correct the file header, split a long acquisition into chunks and
+  convert the container, check the count rate per detector across a whole folder,
+  and apply the stream-level corrections (micro-time shift, ALEX→micro-time).
+  Fast and photon-exact where it works; a header edit quietly breaks a scan file
+  and the count rates are reported without a plausibility check.
+  *(last driven 2026-07-28; RF-596..RF-603)*
 
 ## Per-workflow file format
 

@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **QA: drove the TTTR Tools toolbox as a file-preparation workflow
+  (RF-596..RF-603).** Walked all six panels of *Tools → TTTR Tools* headlessly on
+  the shipped HydraHarp and Becker & Hickl files: read and edited a 61-tag
+  header, split a 15.6 M-photon HT3 into eight PTU chunks, ran the count-rate
+  sweep over the chunks, and converted a file through the ALEX creator. The
+  photon paths are fast and exact (split preserved 15 604 430/15 604 430 events;
+  the header round-trip is bit-identical on macro times, micro times and routing
+  channels), but eight defects surfaced: a header edit drops the `ImgHdr`
+  binary blob so a scan file no longer reconstructs as an image while the GUI
+  reports success, a tag added through *Add* is written as `tyEmpty8` and loses
+  its value, the count-rate reading-routine combo is inert, the derived
+  measurement time has no plausibility guard (18 453 kHz reported on one
+  detector), the results table's mean disagrees with its own photons/time, a
+  finished split leaves the bar at 0 % and the status stuck on "Parsing …", the
+  header table stretches *Idx* and elides *Value*, and the ALEX conversion
+  overwrites a real TCSPC micro-time axis without warning. Recorded as
+  [TTTR file preparation](/usecases/tttr-file-preparation.md) with the UX
+  suggestions, and filed into the [findings queue](/reviews/findings.md).
+
 * **CLSM generator: a dim background is no longer generated six times too
   bright (RF-588).** The two quantised axes of `simulate_clsm_from_maps`
   disagreed: the lifetime axis snapped to the *nearest* level, while the
