@@ -2,6 +2,21 @@
 
 ## 2026-07-28
 
+* **Taking a column for the panel squashed the molecule, because only the
+  viewport knew about it.** `glViewport` was narrowed but the projection still
+  divided by the *widget's* width, so the same picture was stretched into a
+  narrower rectangle. Everything that maps between the scene and the window has
+  to agree on how wide the scene is: the projection, the offscreen buffer the
+  post effects render into, the label projection, the trackball and the pan all
+  use `scene_width()` now. Reported as "squishing ugly", which is exactly what
+  it was.
+  - The block's columns were also too wide -- six characters of gap is a lot of
+    empty panel -- and the column is PyMOL's own `internal_gui_width` (220)
+    rather than a number I picked.
+  - A disabled object keeps its A/S/H/L/C boxes: only the name greys out. The
+    controls are how you switch it back on, so hiding them with the object would
+    be a trap.
+
 * **One plugin was filed under "Uncategorized" because its manifest dropped the
   menu path its own module declares** (INC-07). `display_name` is the only live
   identity field -- discovery prefers it over the legacy module-level `name`,

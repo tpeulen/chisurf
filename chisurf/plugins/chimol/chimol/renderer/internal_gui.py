@@ -41,6 +41,12 @@ MENU_DISABLED_FG = (144, 144, 144)
 MENU_SEL_BG = (74, 74, 138)
 MENU_EDGE = (144, 144, 144)
 SPLITTER_FG = (96, 96, 96, 230)
+SEQ_BG = (0, 0, 0, 210)
+SEQ_FG = (224, 224, 224)
+SEQ_NAME_FG = (0, 224, 0)
+SEQ_NUMBER_FG = (144, 144, 144)
+SEQ_SELECTED_BG = (255, 96, 176)
+SEQ_SELECTED_FG = (0, 0, 0)
 
 # The bottom-right block's palette, read off PyMOL's own.
 MODE_TITLE_FG = (0, 224, 0)
@@ -65,6 +71,28 @@ MOVIE_BUTTONS: tuple[tuple[str, str], ...] = (
 
 #: The C button's rainbow, left to right.
 COLOR_BUTTON_STOPS = ("#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff")
+
+
+@dataclass
+class SequenceRow:
+    """One object's sequence, as the strip shows it.
+
+    Attributes
+    ----------
+    name : str
+        Object name, drawn at the left as PyMOL's ``seq_view_label_mode 0`` does.
+    codes : str
+        One-letter residue codes -- PyMOL's ``seq_view_format 0``, its default.
+    numbers : list of int
+        Residue numbers, labelled every ``LABEL_SPACING`` as PyMOL labels them.
+    selected : set of int
+        Indices currently selected, highlighted the way PyMOL highlights them.
+    """
+
+    name: str
+    codes: str
+    numbers: list[int] = field(default_factory=list)
+    selected: set[int] = field(default_factory=set)
 
 
 @dataclass
@@ -134,6 +162,11 @@ class InternalGui:
     FONT_PT = 10
     MENU_ITEM_H = 18
     MENU_PAD = 6
+    #: Residue numbers every this many columns -- PyMOL's
+    #: ``seq_view_label_spacing``, whose default is 5.
+    LABEL_SPACING = 5
+    #: Height of one sequence line.
+    SEQ_ROW_H = 15
     #: Grab width of the splitter, in pixels.
     SPLITTER_W = 6
     #: How narrow and how wide the column may be dragged.
@@ -166,9 +199,22 @@ class InternalGui:
         #: rendered to the *left* of it, as PyMOL does, rather than under it:
         #: an overlay hides the molecule it is describing, and the part it hides
         #: is the part you just moved out of the way.
-        self.column_width = 230.0
+        self.column_width = 220.0   # PyMOL's `internal_gui_width`
         self._splitter = Rect(0, 0, 0, 0)
         self._dragging_splitter = False
+        #: PyMOL's `seq_view`, off by default there and here.
+        self.sequence_visible = False
+        self.sequences: list[SequenceRow] = []
+        self._seq_strip = Rect(0, 0, 0, 0)
+        self._seq_rows: list[Rect] = []
+        self._seq_origin = 0.0
+        self._seq_scroll = 0
+        self._seq_drag: tuple[int, int] | None = None
+        #: Called with ``(object name, indices, additive)`` when the strip
+        #: selects. Kept separate from `run_command`: a selection is not a
+        #: command string, and round-tripping one through the parser would lose
+        #: the indices.
+        self.on_select: Callable[[str, list[int], bool], None] | None = None
         self._movie_rects: list[tuple[Rect, str]] = []
         self._block = Rect(0, 0, 0, 0)
 
@@ -243,8 +289,8 @@ class InternalGui:
         """
         char_w = self.FONT_PT * 0.62
         line_h = self.ROW_H
-        label_w = 8 * char_w
-        cell_w = 6 * char_w
+        label_w = 7.4 * char_w
+        cell_w = 5 * char_w
         block_w = self.PAD + label_w + 4 * cell_w + self.PAD
         # title, the L/M/R/Wheel heading, six binding rows, selecting, state
         rows = len(rows_for(self.mouse_mode))
@@ -599,8 +645,8 @@ class InternalGui:
         painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
 
         char_w = self.FONT_PT * 0.62
-        label_w = 8 * char_w
-        cell_w = 6 * char_w
+        label_w = 7.4 * char_w
+        cell_w = 5 * char_w
         left = rect.x + self.PAD
         line = rect.y + self.PAD
 

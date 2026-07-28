@@ -1042,7 +1042,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # them on, `begin` declines and everything below draws straight to the
         # widget exactly as before, so the scaffolding costs nothing unused.
         ratio = float(self.devicePixelRatioF()) if hasattr(self, "devicePixelRatioF") else 1.0
-        buffer_w = max(1, int(self.width() * ratio))
+        buffer_w = max(1, int(self.scene_width() * ratio))
         buffer_h = max(1, int(self.height() * ratio))
         # The depth-linearisation factor needs the near/far ratio, and collapses
         # to 1 under an orthographic projection.
@@ -1568,7 +1568,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         painter.setFont(font)
 
         mvp, _ = self._build_matrices()
-        w = self.width()
+        # Scene width: a label is projected through the same matrices the scene
+        # is drawn with, so it must be mapped into the same rectangle.
+        w = self.scene_width()
         h = self.height()
 
         for label in self._labels:
@@ -1619,7 +1621,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         return 0.5 * height / max(math.tan(half_fov), 1e-6)
 
     def _build_matrices(self) -> tuple[QtGui.QMatrix4x4, QtGui.QMatrix4x4]:
-        width = max(self.width(), 1)
+        # The width the *scene* has, not the widget's: the panel takes a column
+        # and the viewport was already narrowed to match. Projecting with the
+        # full width stretches the same picture into a narrower viewport, which
+        # is exactly the squashed molecule that reported this.
+        width = max(self.scene_width(), 1)
         height = max(self.height(), 1)
         aspect = width / float(height)
         proj = QtGui.QMatrix4x4()
@@ -2125,7 +2131,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             # object follows the cursor and the view can roll.
             last = (float(self._last_mouse_pos.x()), float(self._last_mouse_pos.y()))
             cur = (float(event.pos().x()), float(event.pos().y()))
-            delta_rot = self._trackball_delta(last, cur, self.width(), self.height())
+            delta_rot = self._trackball_delta(last, cur, self.scene_width(), self.height())
             rot = delta_rot @ self._rot
             # Re-orthonormalise to prevent numerical drift over many drags.
             u, _, vt = np.linalg.svd(rot)
@@ -2173,7 +2179,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         return val
 
     def _pan_from_delta(self, dx: float, dy: float) -> None:
-        width = max(self.width(), 1)
+        width = max(self.scene_width(), 1)
         height = max(self.height(), 1)
         if width <= 0 or height <= 0:
             return
