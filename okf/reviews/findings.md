@@ -7457,11 +7457,11 @@ RF-636..RF-639.
 - **Fix note:**
 
 ### RF-637
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a fit created from a simulator-loaded curve opens at range (0, 0) with χ²ᵣ = -0.0 and the **Fit** button silently does nothing; the same signature as RF-013/RF-014 but a different cause)
 - **Location:** `chisurf/core/experiments/tcspc/simulator.py:111-118` — `DataCurve(x=…, y=…, ey=…, setup=self, name=name, experiment=self.experiment)` passes `setup=` but not `data_reader=`, and `read()` does not run the annotation loop that `TCSPCReader` applies at `chisurf/core/experiments/tcspc/reader.py:112-118` (`if getattr(curve, 'data_reader', None) is None: curve.data_reader = self`)
 - **Finding:** the curve reaches `chisurf.imported_datasets` with `data_reader = None`, so the auto-range step that a new fit performs through `data_reader.autofitrange(data)` cannot run. Verified in the GUI: after **+ Data** on the Simulator, `fit.data.data_reader` is `None`, `fit.data.data_reader.autofitrange(...)` raises `AttributeError: 'NoneType' object has no attribute 'autofitrange'`, and the fit opens with `fit_range = (0, 0)`, both range spin boxes at 0 and the annotation *"Range 0, 0 · chi2r=-0.0000 · DW=0.0000"*. The *Fit* tab draws the model line but **no data curve**; clicking **Fit** returns instantly, the status bar reads *"Fitting finished!"* and every parameter is unchanged. The reader itself computes a correct range for the same curve — `reader.autofitrange(curve)` returns `(0, 4095)` — so only the missing back-reference is at fault. Set `data_reader=self` on the curve (and/or route the simulator through the base reader's annotation step). No test covers a simulator-produced dataset reaching a fit.
-- **Fix note:**
+- **Fix note:** `TCSPCSimulatorSetup.read()` now passes `data_reader=self` to the `DataCurve` it builds, so the **+ Data** curve carries the back-reference a new fit needs for `data_reader.autofitrange(data)`. Found and fixed alongside it: `__init__` unconditionally poked `self.controller.lineEdit_2`, so constructing the setup with a `lifetime_spectrum` headlessly (no controller) raised `AttributeError` — the mirror is now guarded. Pinned by `test/tcspc/test_tcspc_simulator_reader.py` (headless construction, `curve.data_reader is setup`, and `apply_auto_fit_range` producing a non-`(0, 0)` range from the simulated curve).
 
 ### RF-638
 - **Status:** OPEN

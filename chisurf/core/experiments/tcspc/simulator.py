@@ -50,8 +50,11 @@ class TCSPCSimulatorSetup(TCSPCReader):
         super().__init__(*args, **kwargs)
         self.experiment = kwargs.get('experiment', None)
         if lifetime_spectrum:
-            t = ','.join([str(x) for x in lifetime_spectrum])
-            self.controller.lineEdit_2.setText(t)
+            # Mirror the spectrum into the controller's line edit when a GUI
+            # controller is attached. Headless/API use has no controller.
+            line_edit = getattr(self.controller, 'lineEdit_2', None)
+            if line_edit is not None:
+                line_edit.setText(','.join([str(x) for x in lifetime_spectrum]))
         self.instrument_response_function = instrument_response_function
         self.sample_name = sample_name
         if lifetime_spectrum is None:
@@ -108,11 +111,15 @@ class TCSPCSimulatorSetup(TCSPCReader):
                 y = y / amp_sum
         else:
             y = np.zeros(self.n_tac, dtype=np.float64)
+        # ``data_reader`` is the back-reference a new fit needs to auto-range
+        # the curve (``data_reader.autofitrange(data)``). Without it the fit
+        # opens at range (0, 0) and fitting is a silent no-op.
         data_set = chisurf.core.data.DataCurve(
             x=x,
             y=y,
             ey=chisurf.core.fluorescence.tcspc.counting_noise(y),
             setup=self,
+            data_reader=self,
             name=name,
             experiment=self.experiment
         )

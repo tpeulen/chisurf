@@ -2,6 +2,18 @@
 
 ## 2026-07-28
 
+* **A simulated decay carries the reader that made it (RF-637).** The
+  reader-level `TCSPCSimulatorSetup.read()` — the *Read data* header's **+ Data**
+  button — built its `DataCurve` with `setup=self` but no `data_reader=`, so the
+  curve reached the dataset list with `data_reader = None`. A fit created from it
+  could not run `data_reader.autofitrange(data)`, opened at range (0, 0) with
+  χ²ᵣ = -0.0 and drew no data curve, and **Fit** was a silent no-op. The curve is
+  now annotated with `data_reader=self`. Found alongside it: `__init__`
+  unconditionally poked `self.controller.lineEdit_2`, so building the setup with
+  a `lifetime_spectrum` outside the GUI raised `AttributeError` — the mirror into
+  the controller is now guarded, keeping the headless/API path usable. Pinned by
+  `test/tcspc/test_tcspc_simulator_reader.py`.
+
 * **A global fit keeps its parameter links whichever curve is selected
   (RF-544).** Saving a fit resolved a link target that lives in another member
   of the same group through `cs.fits`, i.e. through `FitGroup.model` — the model
