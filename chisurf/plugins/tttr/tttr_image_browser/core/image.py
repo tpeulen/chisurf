@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 
+from chisurf.core.fio.staging import open_tttr
+
 try:
     import tttrlib
 except Exception:
@@ -352,7 +354,7 @@ def render_mosaic_array(
     if tttrlib is None:
         return None
     try:
-        tttr_obj = tttrlib.TTTR(str(path), reading_routine)
+        tttr_obj = open_tttr(path, reading_routine)
         if not is_clsm_compatible(tttr_obj):
             return None
     except Exception:
@@ -517,7 +519,7 @@ def save_tiff_stacks(
     for path_str in paths:
         p = pathlib.Path(path_str)
         try:
-            tttr_obj = tttrlib.TTTR(str(p), reading_routine)
+            tttr_obj = open_tttr(p, reading_routine)
             for combo_name, entries in channels_map.items():
                 stack = get_combo_stack(tttr_obj, p, entries, reading_routine)
                 if stack is None:
