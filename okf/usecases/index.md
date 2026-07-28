@@ -332,6 +332,20 @@ The workflows a first pass should cover — expand as the tester discovers more:
   "the pipeline is done", and one unreadable BID aborts the batch with an
   unhandled exception. *(last driven 2026-07-29; RF-896..RF-906)*
 
+- [VV/VH G-factor and l1/l2 detection calibration](/usecases/vv-vh-g-factor-calibration.md)
+  — where the `G`, `l1` and `l2` that every anisotropy fit takes as *given*
+  actually come from: tail-match a fast-rotating dye against its own VH channel,
+  subtract the pre-pulse background, estimate the channel mixing from a
+  slow-rotating sample via Perrin, read `r(t)`, and batch a folder. The tail
+  match is quick (0.08 s per file) and its overlay makes a good `G` obvious, but
+  the l1/l2 half never runs — a transport method with **no `return`** makes every
+  FP load raise, and poisons every later click on the window — the shipped
+  background region is sampled from the **decay** rather than the baseline (so
+  the "corrected" `G` is 1.0048 instead of 1.2866, and 0.2173 instead of 1.7418
+  on the water file), the `l1/l2` it does determine never reaches the `r(t)` it
+  corrects, and the batch turns an unreadable file and an out-of-range region
+  into the same silent `nan`. *(last driven 2026-07-29; RF-918..RF-925)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

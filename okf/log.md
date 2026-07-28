@@ -2,6 +2,31 @@
 
 ## 2026-07-29
 
+* **QA use case — the VV/VH G-factor and l1/l2 calibration window** (RF-918..RF-925).
+  Drove `chisurf/plugins/vv_vh_g_factor/` offscreen end to end against the four real
+  VV/VH files in the tree and wrote it up as
+  [/usecases/vv-vh-g-factor-calibration.md](/usecases/vv-vh-g-factor-calibration.md) —
+  the workflow that produces the `G`, `l1` and `l2` that the anisotropy wizard, every
+  VV/VH fit and the channel definition all consume as *given*, and of which only the
+  first two clicks had ever been exercised (RF-173). The tail match itself is quick
+  and its `VH × G` overlay makes a good calibration visually obvious; the rest is
+  not. `VvVhGFactorClient.solve_linked_l` **falls off the end without a `return`**,
+  so the whole l1/l2 half raises `TypeError` on every FP load and, because the same
+  estimator sits in the manual-G handler, poisons every later click on the window
+  (RF-918). The shipped background region is `[5 %, 15 %]` of the *record length*
+  rather than of the baseline, and every VV/VH file in the tree rises before 15 %:
+  the "corrected" `G` is 1.0048 instead of 1.2866 on the reference dye and 0.2173
+  instead of 1.7418 on the water file, the free dye's `r(t)` plateau goes negative,
+  and nothing warns (RF-919). The `l1/l2` the panel does determine never reaches the
+  `r(t)` it corrects until an unrelated checkbox is toggled (RF-920), the batch turns
+  an unreadable file and an out-of-range region into the same silent `nan` while
+  reporting success (RF-921) and cannot display its own numbers (RF-922), the CLI
+  calls `sys.exit` without importing `sys` (RF-923), `dt` defaults to 1 ns/ch so a
+  170 ns "lifetime" is accepted unflagged (RF-924), and the calibration cannot leave
+  the window although its MMFDB archive service is implemented, tested and wired to
+  the client (RF-925). RF-173 reconfirmed with two new symptoms — the displayed
+  *StdDev* is 24× the standard error, and **Flip** does not return `1/G`.
+
 * **A burst's total count rate was in MHz under a kHz header** (RF-052, RF-896).
   `generate_burst_dataframe` computes the burst duration in **milliseconds**, so
   photons-per-duration is already kilohertz; the extra `/1e3` wrote megahertz into
