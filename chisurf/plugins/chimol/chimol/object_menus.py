@@ -17,6 +17,12 @@ honest middle, and it keeps the menu navigable by muscle memory.
 
 ``{sele}`` in a command is replaced by the object or selection the menu was
 opened on. ``{text}`` marks a command that first asks for a value.
+
+This table sits above ``app/`` because it has two consumers now: the docked
+Qt panel and the panel the renderer draws inside the viewport. Left in
+``app/``, the renderer importing it pulled in ``app/__init__``, which imports
+the main window, which imports the renderer -- a cycle, for a module that is
+nothing but data.
 """
 
 from __future__ import annotations

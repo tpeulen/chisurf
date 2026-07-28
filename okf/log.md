@@ -2,6 +2,43 @@
 
 ## 2026-07-28
 
+* **The object panel is drawn inside the viewport now, PyMOL-style, menus and
+  all** (first half of moving the internal GUI into GL; the sequence strip is
+  the other half and is not done yet). A panel docked beside the view is a
+  second widget with its own font, its own metrics and its own idea of how much
+  room it needs, and it drifts out of step with the thing it describes -- which
+  is how the spacing of five buttons became a question at all. Drawn in the
+  view it is part of the picture: it scales with it, costs no layout
+  negotiation, and a screenshot of the viewport contains it.
+  - `renderer/internal_gui.py` keeps **geometry apart from drawing**. Layout and
+    hit-testing are arithmetic over rectangles and are tested without a GL
+    context or a window; only `paint` needs a painter. Every click becomes a
+    **command string** rather than a direct call, so the panel drives the viewer
+    down exactly the path a typed command takes and nothing can be done by
+    clicking that could not be scripted.
+  - Rows carry the `all` header, each molecule's name (green when on, grey when
+    off) and the five A/S/H/L/C boxes, flush. Clicking a name toggles it,
+    clicking a box opens that menu **in the viewport**, and right-clicking a
+    name opens the action menu, as PyMOL's does. Entries chimol has no
+    equivalent for stay visible and greyed, and clicking one does nothing rather
+    than guessing.
+  - Long menus **wrap into columns**. PyMOL's Action menu is two dozen entries,
+    taller than a viewport that shares its height with a console: entries that
+    run off the bottom are unreachable and nothing says they are there. The item
+    rectangles remain the single source of truth for drawing *and* hit testing,
+    so the two cannot disagree about where an entry is.
+  - Presses are offered to the panel before the camera. Without that, the click
+    that opens a menu also starts a rotation and the model spins away under the
+    menu that just opened.
+  - Two things had to move for it. `object_menus.py` now sits above `app/`,
+    because the renderer importing it from there pulled in `app/__init__`, which
+    imports the main window, which imports the renderer -- a cycle, for a module
+    that is nothing but data. And the overlay pass now **resets GL state before
+    opening the painter**: `QPainter` draws through the same context, so it
+    inherited face culling from the scene pass and every filled rectangle
+    vanished while the text still drew, which reads as a broken painter rather
+    than as leftover state.
+
 * **A burst-MLE fit ended one photon before the burst did** (RF-808). Both
   multiprocessing workers of the burst-MLE plugin sliced `(First Photon,
   Last Photon)` exclusively, while the table's `Last Photon` is inclusive and

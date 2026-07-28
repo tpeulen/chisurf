@@ -14,6 +14,7 @@ except Exception:  # pragma: no cover - handled at runtime
     GL = None
 
 from ..config import _DISPLAY_CONFIG
+from .internal_gui import InternalGui
 from .base import Renderer
 from .scene import Geometry, Material, Scene, SceneObject
 from .view_state import (
@@ -157,6 +158,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._draw_data: list[_DrawData] = []
         self._gpu_calls: list[_GpuDrawCall] = []
         self._labels: list[_LabelData] = []
+        #: PyMOL's object panel, drawn in the viewport rather than beside it.
+        self._internal_gui = InternalGui()
         self._needs_upload: bool = False
         self._program: Optional[QtGui.QOpenGLShaderProgram] = None
         self._pos_attr = -1
@@ -1254,7 +1257,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._program.setUniformValue(self._rim_power_uniform, float(self._rim_power))
 
         self._program.release()
-        self._render_labels()
+        self._render_overlay()
 
         # Back to the widget, then the effect passes. `defaultFramebufferObject`,
         # not 0: QOpenGLWidget composites through its own framebuffer, so binding
@@ -1492,13 +1495,41 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._radius_attr = program.attributeLocation("radius")
         self._occlusion_attr = program.attributeLocation("occlusion")
 
-    def _render_labels(self) -> None:
-        if not self._labels:
+    def _render_overlay(self) -> None:
+        """Draw everything that lives in screen space, in one painter pass.
+
+        Labels and the object panel share it because they share a cost: opening
+        a QPainter on a QOpenGLWidget flushes the GL pipeline, so doing it twice
+        per frame is twice the stall for no reason.
+        """
+        gui = self._internal_gui
+        if not self._labels and not (gui.visible and gui.rows) and not gui.has_menu():
             return
+
+        # QPainter draws through the same GL context, so it inherits whatever
+        # state the scene pass left behind. Face culling was the one that bit:
+        # the panel's filled rectangles vanished while its *text* still drew,
+        # which reads as a broken painter rather than as leftover state.
+        gl = self._gl
+        if gl is not None:
+            gl.glDisable(GL_DEPTH_TEST)
+            gl.glDisable(GL_CULL_FACE)
+            gl.glDepthMask(True)
+            gl.glDisable(GL_BLEND)
 
         painter = QtGui.QPainter(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        
+        try:
+            if self._labels:
+                self._paint_labels(painter)
+            gui.layout(self.width(), self.height())
+            gui.paint(painter)
+        finally:
+            painter.end()
+
+    def _paint_labels(self, painter) -> None:
+        """Draw the 3-D labels, projected to the window."""
+        painter.save()
         font = painter.font()
         font.setPointSize(10)
         font.setBold(True)
@@ -1529,7 +1560,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             painter.setPen(label.color)
             painter.drawText(int(win_x), int(win_y), label.text)
 
-        painter.end()
+        painter.restore()
 
     def _point_scale(self) -> float:
         """Pixels per unit of model size at unit camera distance.
@@ -1955,7 +1986,23 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     # ------------------------------------------------------------------
     # Input handling (basic orbit controls)
     # ------------------------------------------------------------------
+    def _gui_pos(self, event) -> tuple[float, float]:
+        """The event position in widget pixels, for the in-viewport panel."""
+        pos = event.pos()
+        return float(pos.x()), float(pos.y())
+
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
+        # The panel is drawn over the scene, so it is offered the press first.
+        # Otherwise a click meant for a menu also starts rotating the molecule,
+        # and the model spins away under the menu that just opened.
+        x, y = self._gui_pos(event)
+        if self._internal_gui.mouse_press(
+            x, y, right=event.button() == QtCore.Qt.RightButton
+        ):
+            self.update()
+            event.accept()
+            return
+
         if event.button() == QtCore.Qt.RightButton:
             # Defer: a right *drag* dollies (see mouseMoveEvent); a right *click*
             # opens the context menu on release.
@@ -1994,6 +2041,20 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
+        # Hover feedback, and the same precedence as the press: while the
+        # cursor is over the panel it must not be dragging the camera.
+        x, y = self._gui_pos(event)
+        if not event.buttons():
+            if self._internal_gui.mouse_move(x, y):
+                self.update()
+            if self._internal_gui.wants(x, y):
+                event.accept()
+                return
+        elif self._internal_gui.has_menu():
+            event.accept()
+            return
+
+
         if self._drag_selecting and self._drag_start is not None:
             rect = QtCore.QRect(self._drag_start, event.pos()).normalized()
             self._rubber_band.setGeometry(rect)

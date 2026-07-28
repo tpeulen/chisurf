@@ -20,7 +20,7 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.app import object_menus as om
+from chisurf.plugins.chimol.chimol import object_menus as om
 from chisurf.plugins.chimol.chimol.config import _DISPLAY_CONFIG
 
 

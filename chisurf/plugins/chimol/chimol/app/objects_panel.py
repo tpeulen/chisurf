@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 from qtpy import QtCore, QtGui, QtWidgets
 
 from ..colors import _OBJECT_ID_ROLE
-from .object_menus import OBJECT_MENUS, MenuEntry
+from ..object_menus import OBJECT_MENUS, MenuEntry
 
 #: PyMOL's panel palette, read off its internal GUI.
 _PANEL_BG = "#000000"

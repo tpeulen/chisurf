@@ -275,7 +275,7 @@ def test_labelling_nothing_is_reported(loaded):
 
 def test_the_label_menu_is_no_longer_disabled():
     """It was greyed out in its entirety because there was no label support."""
-    from chisurf.plugins.chimol.chimol.app.object_menus import LABEL_MENU
+    from chisurf.plugins.chimol.chimol.object_menus import LABEL_MENU
 
     live = [
         e for e in LABEL_MENU

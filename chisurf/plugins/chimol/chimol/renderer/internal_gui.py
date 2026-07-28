@@ -1,0 +1,476 @@
+"""PyMOL's object panel, drawn inside the viewport instead of beside it.
+
+PyMOL puts its object list *in* the 3-D window: the names and their A/S/H/L/C
+menus sit over the scene in the top-right corner, and the sequence runs along
+the top. That is not decoration. A panel docked next to the view is a second
+widget with its own font, its own metrics and its own idea of how much room it
+needs, and it drifts out of step with the thing it is describing -- which is why
+the spacing of five buttons became a question at all.
+
+Drawn here, the panel is part of the picture: it scales with the view, it costs
+no layout negotiation, and a screenshot of the viewport contains it.
+
+The geometry is deliberately separate from the drawing. Layout and hit-testing
+are plain arithmetic over rectangles and can be tested without a GL context or a
+window; only :meth:`InternalGui.paint` needs a painter. Every click is turned
+into a **command string** rather than a direct call, so the panel drives the
+viewer through exactly the path a typed command takes, and nothing can be done
+here that could not be scripted.
+"""
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+
+from ..object_menus import OBJECT_MENUS, MenuEntry
+
+# PyMOL's palette, read off its internal GUI.
+PANEL_BG = (0, 0, 0, 190)
+HEADER_BG = (128, 128, 128, 220)
+HEADER_FG = (0, 0, 0)
+ENABLED_FG = (0, 224, 0)
+DISABLED_FG = (112, 112, 112)
+BUTTON_BG = (157, 157, 255)
+BUTTON_FG = (16, 16, 96)
+BUTTON_EDGE = (32, 32, 96)
+HOVER_BG = (192, 192, 255)
+MENU_BG = (58, 58, 58, 244)
+MENU_FG = (240, 240, 240)
+MENU_DISABLED_FG = (144, 144, 144)
+MENU_SEL_BG = (74, 74, 138)
+MENU_EDGE = (144, 144, 144)
+
+#: The C button's rainbow, left to right.
+COLOR_BUTTON_STOPS = ("#ff0000", "#ffff00", "#00ff00", "#00ffff", "#0000ff")
+
+
+@dataclass
+class GuiRow:
+    """One line of the panel: a molecule, a group, or the ``all`` header."""
+
+    name: str
+    enabled: bool = True
+    is_header: bool = False
+    is_group: bool = False
+    indent: int = 0
+    detail: str = ""
+
+
+@dataclass(frozen=True)
+class Rect:
+    """An axis-aligned rectangle in widget pixels."""
+
+    x: float
+    y: float
+    w: float
+    h: float
+
+    def contains(self, px: float, py: float) -> bool:
+        """Whether ``(px, py)`` lies inside."""
+        return self.x <= px < self.x + self.w and self.y <= py < self.y + self.h
+
+
+@dataclass(frozen=True)
+class Hit:
+    """What sits under the cursor."""
+
+    kind: str            # "name" | "button" | "menu" | "" (nothing)
+    row: int = -1
+    key: str = ""        # button key, for kind == "button"
+    entry: MenuEntry | None = None
+    submenu: bool = False
+
+
+@dataclass
+class _OpenMenu:
+    """A menu currently on screen."""
+
+    title: str
+    target: str
+    entries: Sequence[MenuEntry]
+    x: float
+    y: float
+    parent: _OpenMenu | None = None
+    item_rects: list[tuple[Rect, MenuEntry]] = field(default_factory=list)
+    rect: Rect = Rect(0, 0, 0, 0)
+
+
+class InternalGui:
+    """The object panel, laid out and drawn in the viewport.
+
+    Parameters
+    ----------
+    run_command : callable, optional
+        Receives a command string. Everything the panel does goes through it.
+    """
+
+    ROW_H = 17
+    BUTTON_W = 17
+    PAD = 6
+    MARGIN = 8
+    FONT_PT = 10
+    MENU_ITEM_H = 18
+    MENU_PAD = 6
+
+    def __init__(self, run_command: Callable[[str], None] | None = None) -> None:
+        self.visible = True
+        self.rows: list[GuiRow] = []
+        self._run_command = run_command
+        self._row_rects: list[Rect] = []
+        self._button_rects: list[dict[str, Rect]] = []
+        self._panel = Rect(0, 0, 0, 0)
+        self._hover = Hit("")
+        self._menus: list[_OpenMenu] = []
+        self._width = 0
+        self._height = 0
+        #: Widest name seen, so the panel does not change width every frame.
+        self._name_width = 90.0
+
+    # ── model ────────────────────────────────────────────────────────────
+    def set_run_command(self, run_command: Callable[[str], None] | None) -> None:
+        """Set the sink every click is turned into a command for."""
+        self._run_command = run_command
+
+    def set_rows(self, rows: Sequence[GuiRow]) -> None:
+        """Replace the panel's contents."""
+        self.rows = list(rows)
+        self.close_menus()
+
+    def has_menu(self) -> bool:
+        """Whether a menu is currently open."""
+        return bool(self._menus)
+
+    def close_menus(self) -> None:
+        """Dismiss any open menu."""
+        self._menus = []
+
+    # ── layout ───────────────────────────────────────────────────────────
+    def layout(self, width: int, height: int, name_width: float | None = None) -> None:
+        """Place the rows for a viewport of *width* x *height*.
+
+        Anchored top-right, as PyMOL's is. Rows are laid out downward from the
+        top margin; the panel is exactly as wide as it needs to be, because a
+        fixed width either truncates a long name or wastes the view.
+        """
+        self._width, self._height = int(width), int(height)
+        if name_width is not None:
+            self._name_width = float(name_width)
+
+        buttons_w = self.BUTTON_W * len(OBJECT_MENUS)
+        panel_w = self.PAD + self._name_width + self.PAD + buttons_w + self.PAD
+        panel_h = self.ROW_H * len(self.rows) + 2 * self.PAD if self.rows else 0
+        self._panel = Rect(
+            width - self.MARGIN - panel_w, self.MARGIN, panel_w, panel_h
+        )
+
+        self._row_rects = []
+        self._button_rects = []
+        y = self._panel.y + self.PAD
+        for row in self.rows:
+            self._row_rects.append(Rect(self._panel.x, y, panel_w, self.ROW_H))
+            bx = self._panel.x + panel_w - self.PAD - buttons_w
+            keys: dict[str, Rect] = {}
+            for index, (key, _title, _entries) in enumerate(OBJECT_MENUS):
+                keys[key] = Rect(
+                    bx + index * self.BUTTON_W, y, self.BUTTON_W, self.ROW_H
+                )
+            self._button_rects.append(keys)
+            y += self.ROW_H
+
+    @property
+    def panel_rect(self) -> Rect:
+        """Where the panel currently sits."""
+        return self._panel
+
+    # ── hit testing ──────────────────────────────────────────────────────
+    def hit_test(self, x: float, y: float) -> Hit:
+        """Return what is under ``(x, y)``, menus first.
+
+        Menus are tested before the panel and the panel before the scene, which
+        is simply front-to-back: an open menu is drawn over everything, so it
+        must also receive the click that lands on it.
+        """
+        for menu in reversed(self._menus):
+            for rect, entry in menu.item_rects:
+                if rect.contains(x, y):
+                    return Hit("menu", entry=entry, submenu=entry.is_submenu)
+            if menu.rect.contains(x, y):
+                return Hit("menu")
+
+        if not self.visible:
+            return Hit("")
+        for index, rect in enumerate(self._row_rects):
+            if not rect.contains(x, y):
+                continue
+            for key, brect in self._button_rects[index].items():
+                if brect.contains(x, y):
+                    return Hit("button", row=index, key=key)
+            return Hit("name", row=index)
+        return Hit("")
+
+    def wants(self, x: float, y: float) -> bool:
+        """Whether the panel would take a click here, rather than the camera.
+
+        The whole reason a mouse press has to be offered to the panel first: a
+        click that opens a menu must not also start rotating the molecule.
+        """
+        return bool(self.hit_test(x, y).kind)
+
+    # ── interaction ──────────────────────────────────────────────────────
+    def mouse_move(self, x: float, y: float) -> bool:
+        """Track hover. Returns whether a redraw is needed."""
+        hit = self.hit_test(x, y)
+        changed = hit != self._hover
+        self._hover = hit
+        # Hovering a submenu opens it, the way a menu behaves everywhere.
+        if hit.kind == "menu" and hit.entry is not None and hit.entry.is_submenu:
+            self._open_submenu(hit.entry)
+            changed = True
+        return changed
+
+    def mouse_press(self, x: float, y: float, right: bool = False) -> bool:
+        """Handle a press. Returns whether the panel consumed it."""
+        hit = self.hit_test(x, y)
+
+        if hit.kind == "menu":
+            if hit.entry is None or hit.entry.is_separator:
+                return True
+            if hit.entry.is_submenu:
+                self._open_submenu(hit.entry)
+                return True
+            if hit.entry.command is None:
+                return True          # shown, disabled, and says why
+            target = self._menus[-1].target if self._menus else ""
+            self._emit(hit.entry.command, target)
+            self.close_menus()
+            return True
+
+        if hit.kind == "button":
+            row = self.rows[hit.row]
+            self.close_menus()
+            for key, title, entries in OBJECT_MENUS:
+                if key == hit.key:
+                    rect = self._button_rects[hit.row][key]
+                    self._open_menu(f"{title}:", row.name, entries, rect.x, rect.y + rect.h)
+                    break
+            return True
+
+        if hit.kind == "name":
+            row = self.rows[hit.row]
+            self.close_menus()
+            if right:
+                # PyMOL's right-click on a name is its action menu.
+                _key, title, entries = OBJECT_MENUS[0]
+                self._open_menu(f"{title}:", row.name, entries, x, y)
+            else:
+                self._emit("disable {sele}" if row.enabled else "enable {sele}", row.name)
+            return True
+
+        if self._menus:
+            self.close_menus()
+            return True
+        return False
+
+    def _emit(self, command: str, target: str) -> None:
+        """Run *command* with ``{sele}`` bound to *target*."""
+        if self._run_command is None:
+            return
+        for line in str(command).splitlines():
+            line = line.strip()
+            if not line or "{text}" in line:
+                # A prompted value has no place to be typed in the viewport; the
+                # docked panel still offers those entries.
+                continue
+            try:
+                self._run_command(line.replace("{sele}", target))
+            except Exception:
+                pass
+
+    # ── menus ────────────────────────────────────────────────────────────
+    def _open_menu(self, title, target, entries, x, y, parent=None) -> None:
+        menu = _OpenMenu(title=title, target=target, entries=list(entries), x=x, y=y,
+                         parent=parent)
+        self._layout_menu(menu)
+        self._menus.append(menu)
+
+    def _open_submenu(self, entry: MenuEntry) -> None:
+        if not self._menus:
+            return
+        # Already open under this parent? Then leave it be.
+        for menu in self._menus:
+            if menu.title == entry.label:
+                return
+        parent = self._menus[-1]
+        for rect, candidate in parent.item_rects:
+            if candidate is entry:
+                self._open_menu(entry.label, parent.target, entry.children,
+                                parent.rect.x + parent.rect.w - 4, rect.y, parent)
+                return
+
+    def _layout_menu(self, menu: _OpenMenu) -> None:
+        """Size a menu from its entries and keep every item on screen.
+
+        PyMOL's Action menu is two dozen entries long, which is taller than a
+        viewport that is sharing its height with a sequence strip and a console.
+        A menu that runs off the bottom is worse than a small font: the entries
+        are simply unreachable, and nothing says they are there. So it wraps
+        into columns, the way a long menu does everywhere, and the item
+        rectangles stay the single source of truth for both drawing and hit
+        testing -- they cannot disagree about where an entry is.
+        """
+        char_w = self.FONT_PT * 0.62
+        col_w = max(
+            [len(menu.title) * char_w]
+            + [len(e.label) * char_w + (18 if e.is_submenu else 0) for e in menu.entries]
+        ) + 2 * self.MENU_PAD + 12
+
+        title_h = self.MENU_ITEM_H
+        available = max(self._height - 2 * self.MENU_PAD - title_h, self.MENU_ITEM_H)
+        clickable = [e for e in menu.entries if not e.is_separator]
+        per_column = max(int(available // self.MENU_ITEM_H), 1)
+        columns = max(1, -(-len(clickable) // per_column))    # ceil
+
+        # Separators only cost height while the menu still fits in one column;
+        # once it wraps, they would push the columns out of alignment.
+        wrapped = columns > 1
+        if not wrapped:
+            height = title_h + 2 * self.MENU_PAD + sum(
+                5 if e.is_separator else self.MENU_ITEM_H for e in menu.entries
+            )
+        else:
+            height = title_h + 2 * self.MENU_PAD + per_column * self.MENU_ITEM_H
+
+        width = col_w * columns
+        x = min(max(menu.x, 0.0), max(self._width - width, 0.0))
+        y = min(max(menu.y, 0.0), max(self._height - height, 0.0))
+        menu.rect = Rect(x, y, width, height)
+
+        menu.item_rects = []
+        column, iy = 0, y + self.MENU_PAD + title_h
+        placed = 0
+        for entry in menu.entries:
+            if entry.is_separator:
+                if not wrapped:
+                    iy += 5
+                continue
+            if wrapped and placed and placed % per_column == 0:
+                column += 1
+                iy = y + self.MENU_PAD + title_h
+            menu.item_rects.append(
+                (Rect(x + column * col_w, iy, col_w, self.MENU_ITEM_H), entry)
+            )
+            iy += self.MENU_ITEM_H
+            placed += 1
+
+    # ── drawing ──────────────────────────────────────────────────────────
+    def paint(self, painter) -> None:
+        """Draw the panel and any open menu with *painter*."""
+        from qtpy import QtCore, QtGui
+
+        if not self.visible and not self._menus:
+            return
+
+        font = QtGui.QFont("Menlo")
+        font.setStyleHint(QtGui.QFont.Monospace)
+        font.setPointSize(self.FONT_PT)
+        painter.setFont(font)
+        metrics = QtGui.QFontMetrics(font)
+
+        if self.visible and self.rows:
+            self._paint_panel(painter, QtGui, QtCore, metrics)
+        for menu in self._menus:
+            self._paint_menu(painter, QtGui, QtCore, menu)
+
+    def _paint_panel(self, painter, QtGui, QtCore, metrics) -> None:
+        painter.setPen(QtCore.Qt.NoPen)
+        painter.setBrush(QtGui.QColor(*PANEL_BG))
+        painter.drawRect(
+            QtCore.QRectF(self._panel.x, self._panel.y, self._panel.w, self._panel.h)
+        )
+
+        for index, row in enumerate(self.rows):
+            rect = self._row_rects[index]
+            if row.is_header:
+                painter.setBrush(QtGui.QColor(*HEADER_BG))
+                painter.setPen(QtCore.Qt.NoPen)
+                painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
+
+            label = ("▾ " if row.is_group else "") + row.name
+            if row.detail:
+                label = f"{label} {row.detail}"
+            colour = (
+                HEADER_FG if row.is_header
+                else (ENABLED_FG if row.enabled else DISABLED_FG)
+            )
+            painter.setPen(QtGui.QColor(*colour))
+            painter.drawText(
+                QtCore.QRectF(
+                    rect.x + self.PAD + row.indent * 10, rect.y,
+                    self._name_width, rect.h,
+                ),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft),
+                label,
+            )
+
+            for key, brect in self._button_rects[index].items():
+                self._paint_button(painter, QtGui, QtCore, key, brect,
+                                   hovered=(self._hover.kind == "button"
+                                            and self._hover.row == index
+                                            and self._hover.key == key))
+
+    def _paint_button(self, painter, QtGui, QtCore, key, rect, hovered) -> None:
+        box = QtCore.QRectF(rect.x, rect.y + 1, rect.w, rect.h - 2)
+        if key == "C":
+            gradient = QtGui.QLinearGradient(box.left(), 0.0, box.right(), 0.0)
+            for index, stop in enumerate(COLOR_BUTTON_STOPS):
+                gradient.setColorAt(index / (len(COLOR_BUTTON_STOPS) - 1),
+                                    QtGui.QColor(stop))
+            painter.setBrush(QtGui.QBrush(gradient))
+        else:
+            painter.setBrush(QtGui.QColor(*(HOVER_BG if hovered else BUTTON_BG)))
+        painter.setPen(QtGui.QColor(*BUTTON_EDGE))
+        painter.drawRect(box)
+        painter.setPen(QtGui.QColor(0, 0, 0) if key == "C" else QtGui.QColor(*BUTTON_FG))
+        painter.drawText(box, int(QtCore.Qt.AlignCenter), key)
+
+    def _paint_menu(self, painter, QtGui, QtCore, menu: _OpenMenu) -> None:
+        rect = QtCore.QRectF(menu.rect.x, menu.rect.y, menu.rect.w, menu.rect.h)
+        painter.setBrush(QtGui.QColor(*MENU_BG))
+        painter.setPen(QtGui.QColor(*MENU_EDGE))
+        painter.drawRect(rect)
+
+        painter.setPen(QtGui.QColor(*MENU_FG))
+        font = painter.font()
+        font.setBold(True)
+        painter.setFont(font)
+        painter.drawText(
+            QtCore.QRectF(menu.rect.x + self.MENU_PAD, menu.rect.y + self.MENU_PAD,
+                          menu.rect.w, self.MENU_ITEM_H),
+            int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft), menu.title,
+        )
+        font.setBold(False)
+        painter.setFont(font)
+
+        for item_rect, entry in menu.item_rects:
+            hovered = (self._hover.kind == "menu" and self._hover.entry is entry)
+            if hovered and entry.command is not None or (hovered and entry.is_submenu):
+                painter.setBrush(QtGui.QColor(*MENU_SEL_BG))
+                painter.setPen(QtCore.Qt.NoPen)
+                painter.drawRect(
+                    QtCore.QRectF(item_rect.x + 1, item_rect.y,
+                                  item_rect.w - 2, item_rect.h)
+                )
+            enabled = entry.is_submenu or entry.command is not None
+            painter.setPen(QtGui.QColor(*(MENU_FG if enabled else MENU_DISABLED_FG)))
+            painter.drawText(
+                QtCore.QRectF(item_rect.x + self.MENU_PAD, item_rect.y,
+                              item_rect.w - 2 * self.MENU_PAD, item_rect.h),
+                int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft),
+                entry.label,
+            )
+            if entry.is_submenu:
+                painter.drawText(
+                    QtCore.QRectF(item_rect.x, item_rect.y,
+                                  item_rect.w - self.MENU_PAD, item_rect.h),
+                    int(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignRight), "▸",
+                )

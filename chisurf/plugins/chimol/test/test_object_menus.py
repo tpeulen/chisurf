@@ -19,7 +19,7 @@ import pathlib
 
 import pytest
 
-from chisurf.plugins.chimol.chimol.app.object_menus import (
+from chisurf.plugins.chimol.chimol.object_menus import (
     ACTION_MENU,
     COLOR_MENU,
     HIDE_MENU,

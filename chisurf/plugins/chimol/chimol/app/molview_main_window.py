@@ -45,6 +45,7 @@ except Exception:  # pragma: no cover - standalone moview
 
 from .. import config as _config
 from ..config import _DISPLAY_CONFIG
+from ..renderer.internal_gui import GuiRow as InternalGuiRow
 from ..colors import _SEQ_COLOR_ROLE, _OBJECT_ID_ROLE
 from ..io import (
     open_structure_files,
@@ -2052,6 +2053,44 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         # The row widget can only be hosted once the item exists in the list.
         self.objects.attach_row(item, object_id, entry, indent=indent)
         entry["item"] = item
+        self.sync_internal_gui()
+
+    def sync_internal_gui(self) -> None:
+        """Mirror the object list into the panel drawn inside the viewport.
+
+        The docked panel and the in-viewport one are two views of one list, and
+        they are fed from the same place so they cannot disagree about what is
+        loaded or what is switched on.
+        """
+        renderer = getattr(self.viewer, "_renderer", None)
+        gui = getattr(renderer, "_internal_gui", None)
+        if gui is None:
+            return
+
+        rows = [InternalGuiRow(name="all", is_header=True)]
+        for object_id, entry in self._object_store.items():
+            rows.append(
+                InternalGuiRow(
+                    name=str(entry.get("name", object_id)),
+                    enabled=bool(entry.get("visible", True)),
+                )
+            )
+        gui.set_rows(rows)
+        gui.set_run_command(self._run_internal_gui_command)
+        # Monospace, so the widest name in characters decides the column.
+        widest = max((len(row.name) for row in rows), default=4)
+        gui.layout(renderer.width(), renderer.height(),
+                   name_width=max(60.0, widest * gui.FONT_PT * 0.62 + 8))
+        renderer.update()
+
+    def _run_internal_gui_command(self, line: str) -> None:
+        """Run a command the in-viewport panel produced, echoing it.
+
+        Echoed like a menu click for the same reason: it is how someone learns
+        which command the thing they clicked corresponds to.
+        """
+        self._run_object_menu_command(str(line))
+        self.sync_internal_gui()
 
     @staticmethod
     def _grouped_display_order(objects: list[dict[str, Any]]) -> list[dict[str, Any]]:

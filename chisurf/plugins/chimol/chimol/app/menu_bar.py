@@ -18,7 +18,7 @@ from collections.abc import Callable
 
 from qtpy import QtWidgets
 
-from .object_menus import SEP, MenuEntry
+from ..object_menus import SEP, MenuEntry
 
 #: Menus PyMOL has that chimol cannot fill at all, and why.
 OMITTED_MENUS: dict[str, str] = {
