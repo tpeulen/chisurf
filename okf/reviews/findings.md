@@ -7343,3 +7343,78 @@ Merger — and the *volume* half of the Enderlein module. Findings RF-621..RF-62
 - **Location:** `chisurf/core/fluorescence/fcs/__init__.py:181-182` (`elif weight_type == 'uniform': sd = np.ones_like(correlation)` — rebinding `sd` *after* `correlation` was sliced at `:129-130`, instead of writing into `sd[skip_points:]` the way the `suren` and `starchev` branches do at `:166` and `:180`), plus `:72-74` ("*Options include 'suren', 'starchev', and 'uniform'. Default is 'starchev'*") against the signature default `weight_type: str = 'suren'` at `:26`
 - **Finding:** verified on a 64-point curve with `skip_points=4`: `suren` and `starchev` return 64 values, `uniform` returns **60**. Callers that index the result against the original curve therefore misalign or raise; `compute_weights` happens to be immune (it returns unit weights for `"uniform"` before reaching `noise`, `:444-445`, and length-checks the result at `:517-519`), which is exactly why the bug can sit here unnoticed. The docstring's "Default is 'starchev'" is wrong in the same breath. Build `sd` from the *un-sliced* correlation once and assign into `sd[skip_points:]` in all three branches, and correct the documented default.
 - **Fix note:**
+
+## Review 2026-07-28 (4) — the support-plane scan: how ChiSurf quotes a confidence interval
+
+`chisurf/core/fitting/support_plane.py` is the profile-likelihood machinery behind
+the parameter-scan plot's **Scan** and **Smart scan** buttons, the
+`parameter.scan` / `parameter.adaptive_scan` actions, and `ProfileEngine` in
+`chisurf/core/fitting/engine.py` — i.e. it is where a quoted asymmetric error bar
+comes from. It carried one finding. Reviewed against its callers and measured in
+the `arm64` env on a linear-in-parameters `ParseModel` fit (`c + a·x²`, 64 points,
+known σ) where the exact profile interval is known analytically. **What holds**:
+`_interpolate_threshold_crossing` (its degenerate branches are all correct),
+`_find_side_crossing` (walking outward from `v0` and taking the first crossing on
+each side), `confidence_intervals_from_scan_result`'s plumbing, and the
+`chi2_threshold` F-test formula itself. What does not hold is the sampling policy
+of `adaptive_scan_parameter` — on the test fit the *upper* bound came out at the
+correct 2.66 σ while the *lower* bound came out at 0.55 σ, from the same curve —
+plus a degrees-of-freedom mismatch between the scan and its own reference
+minimum, and four smaller contract defects in the fixed-grid `scan_parameter`.
+Findings RF-628..RF-635.
+
+### RF-628
+- **Status:** OPEN
+- **Severity:** S1 (for any *positive*-valued parameter the lower confidence bound is fabricated by extrapolating across one huge step — measured 4.8× too small, on a fit whose true interval is symmetric)
+- **Location:** `chisurf/core/fitting/support_plane.py:411-412` (`if p_min is None and v0 >= 0: p_min = max(0.0, v0 * 1e-6)`) feeding `:414` (`neg_boundary = p_min if p_min is not None and p_min < v0 else None`), which switches `_scan_one_side` into its bounded mode at `:300` (`max_expansions = 1 if p_boundary is not None else 10`) where the whole side is one `np.linspace(previous_x, end_x, segment_points + 1)` at `:315`
+- **Finding:** the auto lower clamp puts the negative boundary at ~0 for every positive parameter, and the bounded branch then sweeps the *entire* range `[~0, v0]` in a single segment of `max(max_points_per_side, 25)` steps. The first step down is therefore `v0/51`, which for a well-determined parameter is many σ; χ² leaps over the threshold in one step and the lower crossing becomes a linear interpolation across that leap. Measured on `c + a·x²` (64 points, σ = 5, `a = 1.2021`, covariance σ_a = 2.095e-3, p = 0.99): the scan spends **1 point** below `v0` and 12 above, and returns crossings `(1.20096, 1.20768)` — **−0.55 σ** and **+2.66 σ**. The model is linear in `a`, so the true profile interval is symmetric; the control experiment is decisive — refitting the *same data* with `c - a·x²` (so `v0 < 0`, no auto clamp, both sides unbounded) gives 12 points per side and crossings at **±2.660 σ**. The sign of the parameter must not decide whether its lower error bar is right. This is what the GUI *Smart scan* shows and what `ProfileEngine` returns as `Marginal.low` (`engine.py:1337-1345`), so it reaches every quoted asymmetric error. The same two lines have a second hole: when a bounded parameter sits *at* its lower bound, `p_min < v0` is false, `neg_boundary` becomes `None`, and the scan runs **unbounded below the declared bound**. Fix the boundary policy: keep the adaptive geometric expansion on a bounded side (clamped by the boundary) instead of collapsing it to one uniform segment, and treat `p_min == v0` as a boundary rather than as "no boundary". Nothing in `test/` exercises `adaptive_scan_parameter` on a parameter with a known analytic interval.
+- **Fix note:**
+
+### RF-629
+- **Status:** OPEN
+- **Severity:** S2 (the scan curve and the threshold it is compared against are reduced by *different* degrees of freedom, so every profile interval is systematically too wide and the plotted curve has a step discontinuity at the best-fit point)
+- **Location:** `chisurf/core/fitting/support_plane.py:390-397` (`chi2r_min = fit.chi2r`; `nu = n_points - n_free - 1`; `threshold = chi2_threshold(chi2r_min, ..., nu=nu, ...)`) against `_eval_scan_point:83,88` (`parameter.fixed = True` … `return fit.chi2r`) and `chisurf/core/fitting/fit.py:2695` (`chi2r = chi2 / float(model.n_points - model.n_free - 1.0)`), with the two spliced together at `support_plane.py:435-436` (`all_y = list(reversed(neg_ys[1:])) + [chi2r_min] + pos_ys[1:]`)
+- **Finding:** `model.n_free` is `len(self.parameters)` and `parameters` excludes fixed ones (`chisurf/core/models/model.py:44`), so fixing the scanned parameter *changes the divisor of `fit.chi2r`*. `chi2r_min` and `threshold` are computed with the parameter free (divisor `nu`); every scan point is computed with it fixed (divisor `nu + 1`). Measured on the same fit: `fit.chi2r` = 0.8649118 free and 0.8507329 fixed — the identical residuals, rescaled by 60/61. Consequences, both verified: (1) the merged curve carries a **notch at its own centre** — `ys` at `v0` is the injected 0.864912 while its immediate neighbours are 0.851597, so the plotted minimum is *not* at the best-fit value and the χ²-min/threshold guides drawn on the plot do not line up with the curve; (2) the crossing moves — the reported half width is **2.660 σ** where the F-test the code is implementing (Δχ² = χ²_min·F/ν, i.e. `sqrt(chi2r_min · F)` in σ) gives **2.474 σ**, so the 99 % interval is **7.5 % too wide**. The error is roughly a constant `+1` added to Δχ², so it grows as ν shrinks. Evaluate the scan points against a χ²r normalised by the *same* `nu` as the reference (compute the raw χ² and divide by `nu` explicitly rather than reading `fit.chi2r` while the parameter is fixed).
+- **Fix note:**
+
+### RF-630
+- **Status:** OPEN
+- **Severity:** S2 (a smart scan silently redefines the parameter's `error_estimate` from one sigma to a 99 %-confidence half-width — 2.7× larger — and everything downstream keeps calling it one sigma)
+- **Location:** `chisurf/core/fitting/fit.py:1276-1285` (`Fit.adaptive_chi2_scan`: `errors.append(abs(float(crossing) - float(parameter.value)))` for both crossings, then `parameter.error_estimate = float(max(errors))`) against `chisurf/core/fitting/parameter.py:127-128` ("*One-sigma error estimate associated with the parameter*") and the covariance path that normally sets it, `fit.py:1179-1188` (`err = np.sqrt(np.diag(cov_m))`)
+- **Finding:** the adaptive scan defaults to `p_value = 0.99` (the GUI passes `max(p_value_levels)`, `chisurf/gui/plots/parameter_scan/parameter_scan.py:215`), so the value written into `error_estimate` is the 99 % profile half-width. Measured: `error_estimate` for `a` goes from 2.0948e-3 (covariance, 1 σ) to 5.5722e-3 after one `adaptive_chi2_scan` — a factor **2.66**, exactly the F-test multiplier. Nothing records the confidence level, so every consumer keeps reading it as 1 σ: the parameter table and `__str__` (`parameter.py:216-221`, which prints the number with the label `[support plane]` but no p-value), `chisurf/core/api/__init__.py:351,690`, `chisurf/server/services/parameters.py:176`, the agent DTO `chisurf/core/agent/tools/_dto.py:204`, the project save `chisurf/core/project/fit_state.py:63-71`, and `Fit.chi2_scan:1239-1242`, which sizes the *next* scan window from it. Taking `max` of the two sides also discards the asymmetry the scan exists to measure — and, given RF-628, it is the `max` that hides the broken lower bound. Either store the profile interval separately (`parameter.scan_result` already holds it) and leave `error_estimate` meaning 1 σ, or convert the crossing to a 1 σ equivalent before assigning.
+- **Fix note:**
+
+### RF-631
+- **Status:** OPEN
+- **Severity:** S3 (`max_points_per_side` is documented as a per-direction cap and is actually a per-*segment* density — a flat parameter costs 550 refits at the documented cap of 50)
+- **Location:** `chisurf/core/fitting/support_plane.py:299-300` (`segment_points = max(int(max_points), 25)`; `max_expansions = 1 if p_boundary is not None else 10`) with the segment loop at `:304-338`, against the documented contract at `:375-376` ("*max_points_per_side : int, optional — Soft cap on the number of evaluations per direction (default 50)*")
+- **Finding:** the unbounded side runs up to 10 expansions, each of `segment_points` fresh evaluations, so the real ceiling is `10 × max(max_points_per_side, 25)` = **500 full refits per direction**, not 50. Measured with a parameter χ² does not depend on (`c + a·x² + 0.0·b`): `_eval_scan_point` is called **550** times for one `adaptive_scan_parameter(..., max_points_per_side=50)` — 50 on the clamped negative side plus 500 on the unbounded positive one — and the scan still returns `crossings = (None, None)`. The GUI wires this number to a spin box (`parameter_scan.py:196,216`), so a user asking for 50 points per side gets a run an order of magnitude longer than requested, with no cancel and no progress. Make the cap a real budget across all expansions of one side (and stop early when the curve is flat), or document the number for what it is.
+- **Fix note:**
+
+### RF-632
+- **Status:** OPEN
+- **Severity:** S3 (the two docstrings describe an adaptive stepping scheme and a secant refinement that are not in the code; the parameter that would implement them is computed, threaded through the call, and never read)
+- **Location:** `chisurf/core/fitting/support_plane.py:401` (`target_dchi2 = max((threshold - chi2r_min) / max(float(max_points_per_side), 10.0), 1e-10)`), passed at `:421,426` into `_scan_one_side(..., target_dchi2, ...)` declared at `:269` and referenced nowhere in that function's body (`:292-343`); the claims live at `:280-288` ("*Step sizes start small and grow… A short warmup with geometric growth is followed by delta-chi² guided adaptation (step sized to produce roughly target_dchi2 change in chi² per step)*") and `:357-360` ("*Step sizes are adjusted dynamically… A secant (Newton-like) step refines the exact threshold crossing*")
+- **Finding:** `_scan_one_side` steps on a plain `np.linspace` per expansion — there is no χ²-guided step control and no secant step anywhere in the module (the crossing is a straight linear interpolation, `_interpolate_threshold_crossing:153`). `target_dchi2` is dead, and so is `min_step` (`:292`), whose only use is `min_step * 10.0` inside `span = max(abs(v0) * 0.02, 1e-4, min_step * 10.0)` at `:297`, where it is `max(abs(v0)*1e-9, 1e-13)` and thus can never be the maximum. Either implement the documented adaptation or delete the dead parameter and correct both docstrings — as it stands the documentation asserts a numerical quality the code does not deliver, which is how RF-628 stayed invisible.
+- **Fix note:**
+
+### RF-633
+- **Status:** OPEN
+- **Severity:** S3 (a half-specified `scan_range` is silently discarded — `(1.0, None)` and `(None, 2.0)` produce the identical, unrequested window)
+- **Location:** `chisurf/core/fitting/support_plane.py:49-52` (`if p_min is None or p_max is None: p_min = parameter_value * (1. - rel_range); p_max = parameter_value * (1. + rel_range)`) against the documented contract at `:32-33` ("*scan_range: the range within the parameter is scanned if not provided 'rel_range' is used*"), reached from `Fit.chi2_scan` (`chisurf/core/fitting/fit.py:1243-1249`) and the `parameter.scan` action (`chisurf/core/actions/parameter_actions.py:46-49`)
+- **Finding:** the `or` overwrites *both* ends as soon as *either* is `None`, so a caller who pins one end has it thrown away with no warning. Verified on the same fit: `scan_parameter(..., scan_range=(1.0, None), rel_range=0.2)` and `scan_parameter(..., scan_range=(None, 2.0), rel_range=0.2)` both return the range `0.96169 … 1.44253` — neither 1.0 nor 2.0 appears. `adaptive_scan_parameter` handles the same input correctly (`:404-415` fills each end independently). Fill each end separately here too. `test/fitting/test_fit.py:402-410` calls `scan_parameter` only with the default `(None, None)`.
+- **Fix note:**
+
+### RF-634
+- **Status:** OPEN
+- **Severity:** S3 (the fixed-grid scan degenerates to a single repeated point for a zero-valued parameter and produces a descending axis for a negative one)
+- **Location:** `chisurf/core/fitting/support_plane.py:50-52` (`p_min = parameter_value * (1. - rel_range)`, `p_max = parameter_value * (1. + rel_range)`, `np.linspace(p_min, p_max, n_steps)`)
+- **Finding:** the window is built multiplicatively from the value, so it collapses at zero and inverts for negatives. Verified: with the parameter at 0.0, `scan_parameter(..., rel_range=0.2, n_steps=5)` returns `[0., 0., 0., 0., 0.]` — five identical refits at the same point, stored as `parameter.parameter_scan` and plotted as a single dot; with the parameter at −2.0 it returns `[-1.6, -1.8, -2.0, -2.2, -2.4]`, i.e. `p_min > p_max` and a **descending** axis (`Fit.chi2_scan` hands that pair straight to `parameter.parameter_scan`, and the F-test helper only survives it because `_find_side_crossing` re-sorts). Build the window from `abs(parameter_value)` with an additive floor when the value is ~0, and order the endpoints. Neither case is covered — the only test uses a positive parameter.
+- **Fix note:**
+
+### RF-635
+- **Status:** OPEN
+- **Severity:** S3 (an exception anywhere in the scan loop leaves the user's parameter permanently `fixed` and the model sitting on a scan point, not the best fit)
+- **Location:** `chisurf/core/fitting/support_plane.py:43-64` (`varied_parameter.fixed = True` … the `for` loop calling `fit.run()` at `:59` … the restore at `:62-64` is straight-line code, not a `finally`), against the adaptive path, which guards every evaluation (`:317-324`, `try: … except Exception: return xs, ys, v_cross`)
+- **Finding:** `scan_parameter` mutates fit state (fixes the parameter, overwrites `fit.model.parameter_values` each iteration) and restores it only if the loop completes. Verified by making the third `fit.run()` raise: the parameter goes in with `fixed=False, value=-1.20211` and comes out with **`fixed=True, value=-1.06854`** — the fit is silently left mis-parameterised and one of its parameters frozen, and the GUI swallows the exception into a log line (`chisurf/gui/plots/parameter_scan/parameter_scan.py:185-187`), so the user sees only that the scan "did not work". Wrap the loop in `try/finally` with the existing restore in the `finally`.
+- **Fix note:**
