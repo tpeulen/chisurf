@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 from functools import partial
+from math import copysign, floor, isfinite, log10
 from typing import Callable, List, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -76,6 +77,140 @@ def _editor(param: FittingParameter):
     """
     ctrl = getattr(param, "controller", None)
     return ctrl if hasattr(ctrl, "apply_value") else None
+
+
+#: Columns a wheel over the table steps. A name is not a number and an error
+#: is not editable, so only these three respond.
+WHEEL_COLUMNS = ("value", "bounds_lo", "bounds_hi")
+
+
+def wheel_step(value: float, modifiers=None) -> float:
+    """Return the increment one wheel notch applies to ``value``.
+
+    A parameter table holds numbers spanning many decades -- a lifetime of 4,
+    an amplitude of 1e-3, a count of 1e6 -- so a fixed step is either useless
+    or destructive. The step is one percent of the value's own magnitude,
+    snapped to a decade, which moves every parameter at the same *relative*
+    rate. ``Ctrl`` makes it ten times coarser and ``Shift`` ten times finer,
+    as in the scientific spin boxes.
+
+    Parameters
+    ----------
+    value : float
+        The current value.
+    modifiers : QtCore.Qt.KeyboardModifiers, optional
+        Modifiers held during the wheel event.
+
+    Returns
+    -------
+    float
+        The increment for one notch, always positive.
+    """
+    magnitude = abs(float(value))
+    if magnitude > 0 and isfinite(magnitude):
+        step = 10.0 ** (floor(log10(magnitude)) - 1)
+    else:
+        # Nothing to be relative to: a tenth is small enough to be safe and
+        # large enough to leave zero.
+        step = 0.1
+    if modifiers is not None:
+        if modifiers & QtCore.Qt.ControlModifier:
+            step *= 10.0
+        if modifiers & QtCore.Qt.ShiftModifier:
+            step /= 10.0
+    return step
+
+
+class WheelValueFilter(QtCore.QObject):
+    """Steps the value under the mouse when the wheel turns over a table.
+
+    Reaching for a parameter, then clicking into the cell, then typing, then
+    pressing Enter is four actions to try a number. Hovering it and turning the
+    wheel is one, and the fit follows immediately -- which is how a parameter
+    gets *explored* rather than merely set.
+
+    The event is consumed only when it actually changed something, so the wheel
+    still scrolls the table over its name and error columns, and over a
+    parameter that refuses the edit (fixed, or a linked follower).
+    """
+
+    def __init__(self, view: QtWidgets.QTableView, parent=None):
+        super().__init__(parent or view)
+        self._view = view
+
+    def eventFilter(self, obj, event) -> bool:
+        """Turn a wheel notch over an editable numeric cell into an edit."""
+        if event.type() != QtCore.QEvent.Wheel:
+            return False
+        view = self._view
+        model = view.model()
+        if model is None:
+            return False
+        try:
+            position = event.position().toPoint()      # Qt6
+        except AttributeError:
+            position = event.pos()                     # Qt5
+        index = view.indexAt(position)
+        if not index.isValid():
+            return False
+        column_id = self._column_id(model, index)
+        if column_id not in WHEEL_COLUMNS:
+            return False
+
+        try:
+            current = float(model.data(index, QtCore.Qt.EditRole))
+        except (TypeError, ValueError):
+            return False
+        notches = event.angleDelta().y()
+        if not notches:
+            return False
+        step = wheel_step(current, event.modifiers())
+        new_value = current + copysign(step, notches)
+        if not model.setData(index, new_value, QtCore.Qt.EditRole):
+            return False
+        return True
+
+    @staticmethod
+    def _column_id(model, index) -> str:
+        """Return the column identifier of an index, for either table model.
+
+        Parameters
+        ----------
+        model : QtCore.QAbstractTableModel
+            The table's model.
+        index : QtCore.QModelIndex
+            The index under the cursor.
+
+        Returns
+        -------
+        str
+            The column id (``value``, ``bounds_lo`` …), or ``""``.
+        """
+        column_id = getattr(model, "column_id", None)
+        if callable(column_id):
+            return str(column_id(index.column()) or "")
+        if index.column() < len(COLUMN_META):
+            return COLUMN_META[index.column()][0]
+        return ""
+
+
+def install_wheel_editing(view: QtWidgets.QTableView) -> WheelValueFilter:
+    """Let the wheel edit the numeric cell under the mouse in ``view``.
+
+    Parameters
+    ----------
+    view : QtWidgets.QTableView
+        The table to equip.
+
+    Returns
+    -------
+    WheelValueFilter
+        The installed filter, kept alive by the view.
+    """
+    handler = WheelValueFilter(view, parent=view)
+    view.viewport().installEventFilter(handler)
+    view.setFocusPolicy(QtCore.Qt.StrongFocus)
+    return handler
 
 
 def _set_param_value(param: FittingParameter, col_id: str, value: typing.Any) -> bool:
@@ -387,6 +522,9 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._table.verticalHeader().setDefaultSectionSize(self._row_h)
         self._table.verticalHeader().setMinimumSectionSize(self._row_h)
         self._table.verticalHeader().hide()
+        # The wheel over a numeric cell steps its value, so a parameter can be
+        # explored by hovering it rather than by clicking, typing and entering.
+        install_wheel_editing(self._table)
         self._table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self._table.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
         self._table.setShowGrid(True)
@@ -776,6 +914,28 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
 
     _N_SLOT_COLS = len(SLOT_COLUMN_META)
 
+    def column_id(self, column: int) -> str:
+        """Return the column identifier of a column index.
+
+        Column 0 is the component index; the rest repeat
+        :data:`SLOT_COLUMN_IDS` once per parameter slot. Naming them is what
+        lets a shared helper -- the wheel-editing filter, say -- work on this
+        table without knowing its slot layout.
+
+        Parameters
+        ----------
+        column : int
+            Column index.
+
+        Returns
+        -------
+        str
+            The column id, or ``""`` for the index column.
+        """
+        if column <= 0:
+            return ""
+        return SLOT_COLUMN_IDS[(column - 1) % self._N_SLOT_COLS]
+
     def __init__(
         self,
         params: typing.List[FittingParameter],
@@ -964,6 +1124,8 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         self._table = QtWidgets.QTableView()
         self._table.setModel(self._model)
         self._table.setHorizontalHeader(_RichTextHeaderView(self._table))
+        # Same wheel-to-edit as the single-parameter table.
+        install_wheel_editing(self._table)
         self._table.setAlternatingRowColors(False)
         self._table.setWordWrap(False)
         self._table.setHorizontalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
