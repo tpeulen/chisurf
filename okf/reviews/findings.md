@@ -8611,28 +8611,11 @@ around it.
 - **Fix note:**
 
 ### RF-736
-- **Status:** FIXED
+- **Status:** OPEN
 - **Severity:** S2 (the calculator's three computed fields are visually identical to its inputs; the code that should distinguish them assigns a colour role to itself)
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:303-317` (`_update_field_enable`: `pal = sb.palette()` → `if sb.isReadOnly(): pal.setColor(sb.backgroundRole(), pal.base().color())` → `sb.setPalette(pal)`, under the comment *"Make read-only fields visually distinct"*)
 - **Finding:** a `QDoubleSpinBox`'s `backgroundRole()` **is** `QPalette::Base`, so the line sets Base to Base — a no-op — and the widget stays exactly as it was. Verified on the live widget under the default *Fix D*: `D` (an input) and `rh` / `Veff` (outputs) all report `palette().base() == #ffffff`, the same `buttonSymbols`, empty style sheets, and `isEnabled() == True`; the read-only ones correctly refuse `stepUp()` and typed keys (`rh` stayed 0.535862, `Veff` stayed 1.043571) but give no indication why, so the field reads as broken rather than computed. The widget already has the right vocabulary one row below: with *Use water η(T)* ticked, the η box is `setEnabled(False)` and renders properly greyed in the screenshot. Grey the read-only fields the same way (or hide their spin arrows with `setButtonSymbols(NoButtons)`), and re-apply on every constraint change — this is the central confusion of a panel with six identical spin boxes of which three are results.
-- **Fix note:** the marking is now a function of its own, `_mark_computed`, and
-  it says both halves out loud: a computed field gets the greyed `QPalette::Base`
-  Qt paints a *disabled* box with — the vocabulary the η box next to it already
-  uses — and loses its step arrows (`QAbstractSpinBox::NoButtons`), while an
-  input gets both back. Restoring the input look is what the old branch could
-  not do at all: it only ever painted, so nothing could have un-marked a field
-  when the constraint moved. (Measured, the old line was worse than a Base→Base
-  no-op: `backgroundRole()` reports `Window` for these boxes, so it painted the
-  *window* role white — invisible on a spin box, which draws its editor with
-  `Base`.) The two colours are read from `QApplication.palette(sb)`, not from the
-  box's own palette, which is the surface being overwritten — reading that back
-  would let the "editable" colour drift to whatever the previous call painted.
-  Screenshotted offscreen under *Fix D* and *Fix Veff*: `rₕ` and `Veff` are grey
-  and arrow-less against a white, arrowed `D`, and the marking follows the radio
-  button. Docs need no change — the generated field table already documents
-  these three as "read-only unless '<constraint>'"; the panel now shows it.
-  Tests: `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py::test_a_computed_field_does_not_look_like_an_input`
-  (pins both directions, including the switch back).
+- **Fix note:**
 
 ### RF-737
 - **Status:** OPEN
@@ -8642,19 +8625,11 @@ around it.
 - **Fix note:**
 
 ### RF-738
-- **Status:** FIXED
+- **Status:** OPEN
 - **Severity:** S3 (the *Aspect* box is editable and ignored in the shape estimator's default state, because the handler that disables it never runs at construction)
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:407-416` (`_on_shape_changed`: `self.shape_aspect.setEnabled(shape != "Sphere")`), wired at `:282` to `currentIndexChanged` only, against `_setup_ui`'s init block at `:242-244`, which calls `_update_field_enable()` and `_on_use_water_eta(...)` but not `_on_shape_changed(...)`
 - **Finding:** `_ShapeSection` builds the combo with *Sphere* at index 0 (`:108`), so the first `currentIndexChanged` cannot fire for the default selection and the handler never runs until the user picks something else. Verified on a freshly constructed widget: with *Sphere* selected, `shape_aspect.isEnabled()` is `True`, so the user can type an aspect ratio that `_apply_shape_to_D` (`:431-434`) never reads — a sphere's D depends only on the size. Selecting *Ellipsoid* and returning to *Sphere* fixes it for the rest of the session, which makes the inconsistency harder to notice, not easier. Call `_on_shape_changed(self.shape_combo.currentIndex())` once at the end of `_setup_ui`, beside the two initialisers that are already there.
-- **Fix note:** done as suggested — `_setup_ui` now runs the handler once for the
-  initial shape, beside `_update_field_enable()` and `_on_use_water_eta(...)`,
-  with a comment naming the reason (index 0 cannot emit `currentIndexChanged`).
-  *Aspect* is greyed for the default sphere, enables for *Ellipsoid* and greys
-  again on the way back — screenshotted offscreen with the *Molecular shape*
-  section expanded. Tests:
-  `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py::test_the_aspect_box_is_disabled_for_the_default_sphere`
-  (construction state plus both transitions, so the fix cannot be mistaken for
-  the signal that was already there).
+- **Fix note:**
 
 ## Review 2026-07-28 — chimol display defaults: a migration that stamps only when it moves something
 
@@ -8962,60 +8937,4 @@ Findings RF-765..RF-770.
 - **Severity:** S3 (dead defensive branch that cannot fire, guarding against the one case its default silently mislabels)
 - **Location:** `chisurf/plugins/burst/burst_h2mm/core/export.py:267-270` (`edge = getattr(d, "is_edge", None); if edge is None: edge = s0 == burst_start or s1 == burst_end`) with the now-unused locals at `:245-246`, against `chisurf/plugins/burst/burst_h2mm/core/analysis.py:90` (`is_edge: bool = False`)
 - **Finding:** `Dwell` is a dataclass with `is_edge` declared and defaulted, so every instance carries the attribute and `getattr(d, "is_edge", None)` can never return `None` — the recompute fallback is unreachable, and `burst_start` / `burst_end` are now computed once per dwell solely to feed it (nothing in the tree pickles `Dwell`; only `core/surrogate.py` pickles anything). The case the fallback was meant to cover — a `Dwell` built without the flag — instead lands on the field default `False`, i.e. the table reports a censored dwell as **not** censored, which is exactly the disagreement the comment above it says it is preventing. Drop the branch and the two locals and read `d.is_edge` directly; if an unflagged record must stay tolerable, make the default detectable (`is_edge: bool | None = None`) so the fallback can actually run.
-- **Fix note:**
-
-### RF-771
-- **Status:** OPEN
-- **Severity:** S1 (the entire FRET-docking plugin is dead: `dock`, `score`, `refine`, `screen` and the repeated-run error estimation every one raise the same `AttributeError` within ~2 s of pressing Run)
-- **Location:** `chisurf/plugins/modelling/fret/core/imp_engine.py:551` (`fret = IMP.bff.restraints.AVNetworkRestraintWrapper(...)` in `build_assembly`, reached by `dock_minimize:928`, `score:759`, `refine:1160` and `estimate_errors:1307`), with the import at `:56` (`import IMP.bff.restraints`) and the capability probe at `:63` (`_HAS_IMP = bool(hasattr(IMP.bff, "AV"))`)
-- **Finding:** driven through the real GUI (Structure Tools → *2. Docking & Screening* → **📂 Project** `examples/fps_hiv_rt/docking_project.json` → **▶️ Run**), every operation ends in `AttributeError: module 'IMP.bff.restraints' has no attribute 'AVNetworkRestraintWrapper'` — score, dock (1 run), dock (3 runs / error estimation) and refine, all four, on IMP **2.24.0**. The class is not missing from the installation: it lives in `<env>/lib/python3.12/site-packages/IMP/bff/restraints/AVNetworkRestraint.py:66` (`class AVNetworkRestraintWrapper(IMP.pmi.restraints.RestraintBase)`). Two things keep the plugin from reaching it, and both must be handled: **(a)** that `restraints/` directory ships **without an `__init__.py`**, so `IMP.bff.restraints` is an implicit namespace package that re-exports nothing — verified with a clean `PYTHONPATH` (no imp-tricks): `import IMP.bff.restraints` succeeds, `r.__file__ is None`, `dir(r)` is empty, and `ops.score(...)` on the shipped HIV-RT example still fails with the identical `AttributeError`; the name is only reachable as `IMP.bff.restraints.AVNetworkRestraint.AVNetworkRestraintWrapper`, i.e. the submodule has to be imported explicitly. **(b)** With `modules/imp-tricks/src` on `PYTHONPATH` — the run recipe `CLAUDE.md` prescribes — imp-tricks' own regular package `src/IMP/bff/restraints/__init__.py` **replaces** the namespace portion (`IMP.bff.restraints.__path__ == ['/…/imp-tricks/src/IMP/bff/restraints']`), so `import IMP.bff.restraints.AVNetworkRestraint` raises `ModuleNotFoundError` and the installed module is unreachable under any spelling. imp-tricks exports `SimpleAVNetworkRestraint` instead, which is **not** the same object — it is a pure-Python chi² helper with no hierarchy/fps.json ingestion, no `.rs` and no `add_to_model()`, so it is not a drop-in rename. The plugin's own guard does not catch any of this: `_HAS_IMP` only tests `hasattr(IMP.bff, "AV")`, so `fret.info_backends` cheerfully returns `{"has_imp_bff": true}` and `require_imp()` passes. Import the concrete submodule (`import IMP.bff.restraints.AVNetworkRestraint as _avnr`) and check for the wrapper class in `_HAS_IMP`, and decide what imp-tricks' `IMP/bff/restraints/__init__.py` should re-export so it stops shadowing the shipped module. The plugin's test suite already carries **16 failures** from this (noted in RF-477's fix note) — they are this bug, not environment noise.
-- **Fix note:**
-
-### RF-772
-- **Status:** OPEN
-- **Severity:** S2 (a total scoring failure is reported to the user as a successful ranking — `screen.csv` is written with `nan` in every row and the status bar says "ranked 2 structures")
-- **Location:** `chisurf/plugins/modelling/fret/core/imp_engine.py:1229-1231` (`except Exception as exc: results.append((pdb, float("nan")))` inside `screen`'s per-structure loop) → `api/operations.py:131-141` (`OperationResult(status="ok", operation="screen", …)`) → `gui/dock_tool.py:774-776` (`elif "ranked" in data: self._set_status(f"ranked {len(data['ranked'])} structures")`)
-- **Finding:** `screen` swallows every per-structure exception so one unreadable PDB cannot kill a library run — but it records the failure as the score `nan` and no one downstream distinguishes that from a real score. Observed with RF-771 active: screening the two shipped HIV-RT bodies took 1.4 s, the status bar read **"ranked 2 structures"**, and `screen.csv` contained `protein_1R0A.pdb,nan` and `dna.pdb,nan` — the same message and the same file shape a successful screen produces, with nothing anywhere indicating that scoring never ran once. A library of 500 structures would behave identically. Count the failures and surface them (`"ranked 498 structures, 2 failed"`), keep the exception text per structure, and treat an all-`nan` result as an error rather than an "ok" `OperationResult`.
-- **Fix note:**
-
-### RF-773
-- **Status:** OPEN
-- **Severity:** S3 (the `screen` operation produces no visible result in the window that ran it — the ranking exists only in a CSV the user must locate)
-- **Location:** `chisurf/plugins/modelling/fret/gui/dock_tool.py:774-776` (`elif "ranked" in data: self._model.n_distances = len(data["ranked"]); self._set_status(...)`) against the `dock`/`refine`/`score` branches at `:737-773` which call `_fill_table(...)`
-- **Finding:** the tool's dock area is *Results · Score · Structure*, and the Results table has exactly the columns a ranking needs, but the `ranked` branch never fills it — verified: after a `screen` run `self._table.rowCount() == 0` while `screen.csv` held both rows. The user is left with a one-line status count and has to open the output directory by hand to see which structure won; the *Score* tab stays empty too, although a ranked score distribution is the natural plot. Also note the branch stores the number of *structures* into `n_distances`, the field whose name (and the Results column) means the number of distance restraints. Fill the table with `(rank, "screen", score, n_distances, pdb)` rows so row selection shows the structure in the 3-D preview like the docking results do.
-- **Fix note:**
-
-### RF-774
-- **Status:** OPEN
-- **Severity:** S3 (pressing Run on an empty panel creates a directory in whatever folder ChiSurf was started from, then reports a Python traceback)
-- **Location:** `chisurf/plugins/modelling/fret/gui/dock_tool.py:674-681` (`_on_run` → `self._model.ensure_output_dir()` then straight into `_start_progress`/`_Worker`) with `_DockingModel.ensure_output_dir:124-134` (`base = pathlib.Path(anchor).parent if anchor else pathlib.Path.cwd()`) and `core/imp_engine.py:109` (`os.makedirs(output_dir, exist_ok=True)` in `_ensure_output_dir`, called *before* `build_assembly` validates the inputs)
-- **Finding:** with nothing loaded, **▶️ Run** does not validate: it defaults `output_dir` to `<cwd>/dock_out` (no anchor file exists, so the fallback is the process working directory), opens the modal progress dialog, spawns the worker, and only then does `build_assembly:513` raise `ValueError("At least one PDB file is required.")` into a raw-traceback error dialog. By that point `_ensure_output_dir` has already run — verified: a fresh `dock_out/` directory appeared in the repository root after one click on a freshly constructed tool, and the panel's Output field silently changed to `/Users/…/dev/chisurf/dock_out`. Check the PDB list, the fps.json path and the output directory at click time and say what is missing, before creating anything; and when defaulting the output directory with no anchor, ask rather than writing into the launch directory.
-- **Fix note:**
-
-### RF-775
-- **Status:** OPEN
-- **Severity:** S3 (a successful project load produces no visible feedback anywhere in the window)
-- **Location:** `chisurf/plugins/modelling/fret/gui/dock_tool.py:479-485` (`_load_project`: `m.status = f"loaded {pathlib.Path(f).name} …"` then `self._form.sync_fields()`, with no `_set_status`) against `_save_project:511` (`self._set_status(f"saved {pathlib.Path(f).name}")`) and `gui/fret_dock.view.json` (no section binds `status`)
-- **Finding:** `_load_project` reports its outcome by writing `model.status`, but `status` is not one of the fields in `fret_dock.view.json`, so `sync_fields()` renders it nowhere and the bottom status bar — the widget the tool uses for exactly this — is never touched. Verified: after a successful **📂 Project** load of `fps_hiv_rt/docking_project.json` the model carries `status='loaded docking_project.json'` while `self._statusbar.currentMessage()` is `''` and the screenshot shows an empty status strip; the sibling **💾 Save** action, one method below, does call `_set_status` and does show. The load *does* report the interesting part in that string (`"… (N docked bodies)"`, which is also the only signal that **Resume** has been armed) — route it through `_set_status` like Save, and drop the unrendered `status`/`score`/`n_distances` model fields or give them view sections.
-- **Fix note:**
-
-### RF-776
-- **Status:** OPEN
-- **Severity:** S3 (the pair-selection plot's y axis is labelled `∧ (Å)` — the quantity name is eaten as an HTML tag)
-- **Location:** `chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py:138` (`self.plot.set_labels(bottom="Pairs added", left="<<RMSD>> (Å)")`)
-- **Finding:** axis labels are rendered as rich text, so the ASCII stand-in `<<RMSD>>` is parsed as a stray `<` followed by an unknown `<RMSD>` element and its closing `>`; what survives on screen is `∧ (Å)` — verified in a rendered grab of the wizard after a real run on the shipped T4L trajectory. The table beside it, which is plain text, shows `<<RMSD>> (Å)` correctly, so the two halves of the same result disagree. Use the Unicode angle brackets (`⟨RMSD⟩ (Å)`) or escape the markup; the same ASCII spelling appears in the table header at `:131` and in the export at `:313`, and is worth unifying.
-- **Fix note:**
-
-### RF-777
-- **Status:** OPEN
-- **Severity:** S3 (the FRET pair-selection run blocks the GUI thread for ~1 min with no progress and no way to cancel)
-- **Location:** `chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py:190-291` (`_run`, connected at `:158` directly to `run_btn.clicked`, does trajectory loading, AV computation over every frame, the RMSD matrix and the greedy selection inline, guarded only by `setOverrideCursor(Qt.WaitCursor)`)
-- **Finding:** measured on the plugin's own tutorial data (`examples/olga_t4l`, 894-frame DCD at **stride 20**, 5 pairs, AV backend on): **52.8 s** during which the window cannot repaint and the only feedback is a wait cursor — at the default stride 1 that is twenty times longer. Everything in the method runs on the UI thread; there is no progress, no ETA, no partial result and no Cancel, and a user cannot tell a long computation from a hang. The sibling docking tool in the same plugin already does this correctly (`ChiSurfProgress` with ETA + Cancel driven by a `QThread` worker, `gui/dock_tool.py:594-696`) — move the selection onto the same handle.
-- **Fix note:**
-
-### RF-778
-- **Status:** OPEN
-- **Severity:** S3 (a complete, working GUI feature — OLGA-style optimal FRET pair selection — has no entry point in the application)
-- **Location:** `chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py:37` (`class FRETPairSelectionWindow`), not referenced by `chisurf/plugins/modelling/fret/manifest.json` (`entrypoints.gui` is `gui.dock_tool:FretDockingTool` only), not in `chisurf/plugins/modelling/structure_tools/gui/tool.py:STRUCTURE_PANELS`, and not offered by the docking tool's `Op` combo (`gui/fret_dock.view.json`: `dock / refine / screen / score`)
-- **Finding:** the only reference to the class in the tree is its construction test (`test/test_fret_pair_selection.py:8`) — verified by grepping every `.py`/`.json`/`.md` under `chisurf/` and `docs/`. It is not dead code: driven directly it runs the whole pipeline on the shipped `examples/olga_t4l` tutorial (which exists precisely for it, complete with `pair_selection_tutorial.fps.json` and a `pair_select` block in the example `project.json`) and returns a sensible greedy ⟨RMSD⟩ decay — `A48_A119 3.94 → A37_A86 3.24 → A48_A89 3.15 → A37_A116 2.98 → A37_A85 2.42 Å` — with a working Export. A user planning which residue pairs to label, the question the OLGA half of this plugin exists to answer, cannot reach any of it from the running application. Give it a panel in the Structure Tools navigation (next to the FPS JSON Editor whose output it consumes) or a fifth `Op` in the docking tool.
 - **Fix note:**

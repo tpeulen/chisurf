@@ -2,23 +2,6 @@
 
 ## 2026-07-28
 
-* **QA (GUI tester): FRET-restrained rigid-body docking is dead end to end.**
-  Drove Structure Tools -> *2. Docking & Screening* headlessly on the plugin's
-  own HIV-RT + DNA example (20 measured distances, IMP 2.24.0): `dock`, `score`,
-  `refine` and the 3-trial error estimation all raise
-  `AttributeError: module 'IMP.bff.restraints' has no attribute
-  'AVNetworkRestraintWrapper'` within ~2 s. The class is installed, in a
-  `restraints/` directory with no `__init__.py` (so nothing is re-exported), and
-  the imp-tricks source on `PYTHONPATH` replaces that namespace portion so the
-  submodule cannot be imported at all -- verified both ways. `screen` reports
-  that total failure as "ranked 2 structures" over an all-`nan` CSV, and its
-  ranking never reaches the results table. Around the broken seam everything is
-  healthy: the AV machinery gives 8 AVs in 0.64 s with `<R_DA> = 57.25 A`, and
-  the OLGA pair-selection wizard returns a sensible greedy `<RMSD>` decay -- but
-  it has no entry point in the application, blocks the GUI thread for 53 s and
-  labels its y axis `^ (A)`. New use case
-  [FRET-restrained rigid-body docking](/usecases/fret-docking-rigid-body.md);
-  RF-771..RF-778 filed OPEN.
 * **ndX: the marginals described a larger population than the map below them,
   and four silent failures around them.** A per-state lifetime column (defined
   for the bursts one H2MM state claims) against a proximity ratio (defined for
@@ -46,31 +29,6 @@
   methods are unreachable and startup logs a registration error. See
   [known issues](/references/known-issues.md); it closes in the quest
   repository, not here.
-
-* **Samplers advertise their own settings, and the GUI is built from that.**
-  The settings dialog behind the fit controls' ⚙ contains no list of fields.
-  `chisurf/core/fitting/sample.py` gains a `SAMPLERS` registry (name, label,
-  function, description) plus `sampler_settings(name)`, which **derives** each
-  sampler's knobs from its own signature: parameters from
-  `inspect.signature`, types from the annotations, defaults from the defaults
-  and the tooltips from the `Parameters` section of its docstring. Choosing
-  *Blocked* offers step size and temperature; choosing *Ensemble slice* offers
-  the initial spread and tuning -- neither list is written down anywhere. The
-  chain formats come from `CHAIN_FORMATS` and the optimiser panel from the
-  `optimization.leastsq` settings that exist, so a new sampler, a new knob or a
-  new format appears in the GUI without anyone editing a combo box, and a
-  renamed parameter cannot leave a dead control behind. `resolve_sampler`
-  folds the `emcee` alias and warns on a typo instead of silently sampling
-  something else. Accepting the dialog writes to the **user** settings
-  (`set_optimization_settings`), because these are what the next run is
-  configured by.
-  **The inline strip is one foldable box again, laid out like the designer file
-  it replaced**: ▶ Fit, Sample, ⚙, auto and … on one row, then Dataset|Result,
-  First|Last, Steps|Runs, Local first. 173 px against the original's 133 (the
-  first attempt was 432), and the button that samples is called *Sample* again
-  -- "Distribution" is what it produces, not what it is.
-  Screenshots before/after in the app's own dark theme; the compare image is
-  what drove each revision.
 
 * **A zero uncertainty is a missing one, and it was becoming an infinite weight
   (RF-731).** The standard error a merged FCS curve carries is exactly zero at
@@ -2188,29 +2146,6 @@
   `test/models/test_pda3c_labeling_states.py` (8) pins the mixture identity for
   both dynamic routes and that the old positional slice fails it; 309 passed in
   `test/models/` and 21 in `test/gui/test_pda3c_model_editor.py`.
-
-* **The FCS calculator's results looked exactly like its inputs (RF-736,
-  RF-738).** Three of the *Diffusion/Volume Calculator*'s six identical spin
-  boxes hold values the active constraint derives, and nothing said so -- the
-  line meant to grey them (`pal.setColor(sb.backgroundRole(), pal.base().color())`)
-  painted the `Window` role of a widget that draws its editor with `Base`, so a
-  computed field read as an input that silently refuses every keystroke. It is
-  now `_mark_computed`, which gives a derived box the greyed `Base` Qt paints a
-  *disabled* one with -- the vocabulary the η box beside it already used -- takes
-  its step arrows away, and hands both back when the field becomes an input, so
-  the marking follows the radio button instead of accumulating. The colours come
-  from `QApplication.palette(sb)`, not from the box's own palette, which is the
-  surface being overwritten. In the same panel, the *Aspect* box stayed editable
-  for the default *Sphere*, which ignores it: `Sphere` is index 0, so
-  `currentIndexChanged` never fired for it and `_on_shape_changed` first ran only
-  when the user picked something else -- `_setup_ui` now runs it once at
-  construction, beside the two initialisers already there. Both states
-  screenshotted offscreen and inspected (Fix D, Fix Veff, and the expanded
-  *Molecular shape* section). The generated field table already documented the
-  three as read-only, so docs need no change -- the panel now shows what they
-  say. Tests: `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py` (+2,
-  pinning both directions of the marking and both shape transitions); 97 passed
-  across the calculator, toolbox, diffusion and reference-dye suites.
 
 ## 2026-07-27
 

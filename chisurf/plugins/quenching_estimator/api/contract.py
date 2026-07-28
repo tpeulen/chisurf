@@ -3,7 +3,7 @@
 `chisurf/plugins/modelling/fps_json_editor/api/contract.py` *defines* its
 plugin's contract because that plugin's logic lives in ChiSurf. QuEst is the
 other case: the logic is an installable package, so the contract is
-`quest.backend.contract` and this module only re-exports it.
+`quest.rpc.contract` and this module only re-exports it.
 
 Everything is imported **lazily**, inside functions. Importing `quest` reaches
 IMP and numba, and ChiSurf's plugin discovery imports every plugin at startup —
@@ -32,15 +32,15 @@ def __getattr__(name: str) -> Any:
     """Resolve the re-exported names on first access, not at import."""
 
     if name == "CONTRACT_VERSION":
-        from quest.backend.contract import CONTRACT_VERSION
+        from quest.rpc.contract import CONTRACT_VERSION
 
         return CONTRACT_VERSION
     if name == "ERROR_CODES":
-        from quest.backend.contract import ERROR_CODES
+        from quest.rpc.contract import ERROR_CODES
 
         return ERROR_CODES
     if name == "METHOD_NAMES":
-        from quest.backend.services import METHODS
+        from quest.rpc.services import METHODS
 
         return tuple(METHODS)
     raise AttributeError(name)
@@ -49,7 +49,7 @@ def __getattr__(name: str) -> Any:
 def contract_descriptor() -> dict[str, Any]:
     """QuEst's descriptor, with the host-side identity added."""
 
-    from quest.backend.contract import contract_descriptor as _descriptor
+    from quest.rpc.contract import contract_descriptor as _descriptor
 
     descriptor = _descriptor()
     descriptor["host_plugin_id"] = PLUGIN_ID
@@ -60,12 +60,12 @@ def contract_descriptor() -> dict[str, Any]:
 
 
 def service_success(result: Any) -> dict[str, Any]:
-    from quest.backend.contract import service_success as _ok
+    from quest.rpc.contract import service_success as _ok
 
     return _ok(result)
 
 
 def service_error(error: str, error_code: str = "operation_failed", **kwargs: Any):
-    from quest.backend.contract import service_error as _fail
+    from quest.rpc.contract import service_error as _fail
 
     return _fail(error, error_code, **kwargs)

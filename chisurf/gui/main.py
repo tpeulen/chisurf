@@ -935,12 +935,6 @@ class Main(
                 pass
         try:
             self.analysisHeaderWidget = QtWidgets.QWidget(self.dockWidgetAnalysis)
-            # The header holds the fit controls, which are controls: they take
-            # the height they need. Left to grow, they take the dock's spare
-            # room and the model editor below them starts halfway down.
-            self.analysisHeaderWidget.setSizePolicy(
-                QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum
-            )
             self.analysisHeaderLayout = QtWidgets.QVBoxLayout(self.analysisHeaderWidget)
             self.analysisHeaderLayout.setContentsMargins(0, 0, 0, 0)
             self.analysisHeaderLayout.setSpacing(0)

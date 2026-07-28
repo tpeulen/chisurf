@@ -9,9 +9,9 @@ to proteins by flexible linkers. Peulen, Opanasyuk & Seidel, *J. Phys. Chem. B*
 | path | what it is |
 |---|---|
 | `manifest.json` | Identity, entry points, and the RPC method table **copied from `quest/manifest.json`** |
-| `api/contract.py` | Re-exports `quest.backend.contract`. Defines nothing |
+| `api/contract.py` | Re-exports `quest.rpc.contract`. Defines nothing |
 | `api/client.py` | Thin client over `quest.api` |
-| `rpc/services.py` | Hands ChiSurf's dispatcher to `quest.backend.services.register_services` |
+| `rpc/services.py` | Hands ChiSurf's dispatcher to `quest.rpc.services.register_services` |
 | `cli/cli.py` | Delegates to `quest.cli:cli` |
 | `gui/tool.py` | Embeds `quest.gui`'s AutoForm in a `ChisurfDockTool` |
 

@@ -699,12 +699,6 @@ class ButtonRowWidget(QtWidgets.QWidget):
                 if desc:
                     btn.setToolTip(desc)
                 action = item.get("action", "")
-                # Name the button after what it does, so a host that has to
-                # reach one (to emphasise it, hide it, drive it from a test)
-                # can ask for it by action instead of by its label -- a label
-                # is a translation and a decoration away from changing.
-                btn._autoform_action = action
-                btn.setObjectName(f"button_{action}" if action else "")
                 btn.clicked.connect(lambda checked=False, a=action: self._call(a))
                 layout.addWidget(btn)
         layout.addStretch(1)

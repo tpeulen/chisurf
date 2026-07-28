@@ -105,7 +105,7 @@ class TestTheServicesRegisterIntoAHostDispatcher:
     def test_quests_handlers_serve_the_host(self) -> None:
         """No handler is written in the plugin.
 
-        `quest.backend.services.register_services` is duck-typed on
+        `quest.rpc.services.register_services` is duck-typed on
         `register(name, handler)` for exactly this, so both surfaces run the
         same code rather than two copies that can drift (`LAY-01`).
         """
@@ -139,7 +139,7 @@ class TestTheServicesRegisterIntoAHostDispatcher:
 
 class TestTheContractIsQuestsOwn:
     def test_it_reexports_rather_than_restates(self) -> None:
-        from quest.backend.contract import CONTRACT_VERSION, ERROR_CODES
+        from quest.rpc.contract import CONTRACT_VERSION, ERROR_CODES
 
         from chisurf.plugins.quenching_estimator.api import contract
 

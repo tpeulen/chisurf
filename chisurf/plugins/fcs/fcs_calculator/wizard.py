@@ -4,13 +4,12 @@ import json
 from typing import Dict, List
 
 from qtpy.QtWidgets import (
-    QAbstractSpinBox, QApplication, QWidget, QGridLayout, QLabel, QDoubleSpinBox,
-    QRadioButton, QGroupBox, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy,
-    QComboBox, QTextEdit, QPushButton, QDialog, QDialogButtonBox, QButtonGroup,
-    QCheckBox, QFileDialog,
+    QApplication, QWidget, QGridLayout, QLabel, QDoubleSpinBox, QRadioButton,
+    QGroupBox, QHBoxLayout, QVBoxLayout, QSpacerItem, QSizePolicy, QComboBox,
+    QTextEdit, QPushButton, QDialog, QDialogButtonBox, QButtonGroup, QCheckBox,
+    QFileDialog,
 )
 from qtpy.QtCore import Qt
-from qtpy.QtGui import QPalette
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -25,42 +24,6 @@ from .core.algorithms import compute_confocal, dye_names, get_dye, N_PER_nM_fL
 import pathlib
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "fcs_calculator.view.json"
-
-
-def _mark_computed(sb: QDoubleSpinBox, computed: bool) -> None:
-    """Make a computed spin box read as a result rather than an input.
-
-    Three of the calculator's spin boxes hold values the active constraint
-    *derives*; the other three are typed in. Without a visual difference the
-    derived ones read as broken inputs — they silently refuse every keystroke.
-    A read-only box therefore gets the greyed background Qt gives a disabled
-    one and loses its step arrows, and an editable box gets both back, so the
-    marking follows the constraint rather than accumulating.
-
-    Parameters
-    ----------
-    sb : QDoubleSpinBox
-        The spin box to mark.
-    computed : bool
-        Whether the field is currently derived (read-only) rather than an input.
-
-    Notes
-    -----
-    The colours are read from the *application* palette, not from ``sb``'s own,
-    because ``sb``'s is what this function overwrites — reading it back would
-    make the editable colour drift to whatever the last call painted.
-    """
-    app_palette = QApplication.palette(sb)
-    colour = app_palette.color(
-        QPalette.Disabled if computed else QPalette.Active, QPalette.Base
-    )
-    pal = sb.palette()
-    for group in (QPalette.Active, QPalette.Inactive):
-        pal.setColor(group, QPalette.Base, colour)
-    sb.setPalette(pal)
-    sb.setButtonSymbols(
-        QAbstractSpinBox.NoButtons if computed else QAbstractSpinBox.UpDownArrows
-    )
 
 
 class _ConfocalModel:
@@ -279,10 +242,6 @@ class ConfocalCalcWidget(QWidget):
         self._update_field_enable()
         # Initialize water viscosity mode default
         self._on_use_water_eta(self.use_water_eta.isChecked())
-        # ``Sphere`` is index 0, so ``currentIndexChanged`` never fires for the
-        # default selection and the aspect box would stay editable while the
-        # sphere estimator ignores it. Run the handler once for the initial shape.
-        self._on_shape_changed(self.shape_combo.currentIndex())
 
     def _cfg(self, sb: QDoubleSpinBox, lo: float, hi: float, dec: int, val: float):
         """Configure a ``QDoubleSpinBox`` with range, decimals, and value.
@@ -352,7 +311,10 @@ class ConfocalCalcWidget(QWidget):
         self.veff_fL.setReadOnly(fixV is False)
         # Make read-only fields visually distinct
         for sb in (self.D_um2_s, self.rh_nm, self.veff_fL):
-            _mark_computed(sb, sb.isReadOnly())
+            pal = sb.palette()
+            if sb.isReadOnly():
+                pal.setColor(sb.backgroundRole(), pal.base().color())
+            sb.setPalette(pal)
 
     def _on_use_water_eta(self, checked: bool):
         """Enable/disable the manual viscosity spin box and recompute.

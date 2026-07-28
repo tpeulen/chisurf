@@ -10,7 +10,7 @@ Peulen, Opanasyuk & Seidel, *J. Phys. Chem. B* **2017**, 121, 8211
 `manifest.json` carries the identity, the entry points and the RPC method table
 — **copied from `quest/manifest.json`**, so the host reads exactly what QuEst
 offers and there is no second hand-maintained list to drift. `rpc/services.py`
-hands ChiSurf's dispatcher to `quest.backend.services.register_services`, which
+hands ChiSurf's dispatcher to `quest.rpc.services.register_services`, which
 was built duck-typed for that. `gui/tool.py` embeds `quest.gui`'s AutoForm in a
 `ChisurfDockTool`. There is no `core/`: QuEst is the core.
 
