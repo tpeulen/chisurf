@@ -219,6 +219,16 @@ The workflows a first pass should cover — expand as the tester discovers more:
   untouched **Process** writes 464 rows of `nan` and calls it finished.
   *(last driven 2026-07-28; RF-676..RF-681)*
 
+- [QuEst — the decay a structure predicts](/usecases/quest-dye-quenching-decay.md)
+  — the structural side of a lifetime: diffuse a tethered dye through its
+  accessible volume on a PDB, quench it on contact with the aromatic residues it
+  meets, transfer to an acceptor, and read the predicted quantum yield, mean
+  lifetime, FRET efficiency and decay — the τ₀ every other TCSPC workflow assumes.
+  Fast (7 s at the shipped defaults) and beautifully labelled; the decay plot is
+  72 % a spike of photons that were never emitted, **▶ Simulate** leaves the
+  previous state on screen, and the predicted decay cannot leave the window.
+  *(last driven 2026-07-28; RF-689..RF-695)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

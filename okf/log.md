@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+* **A decay plot that is three quarters photons which were never emitted.** The
+  hourly GUI-tester drove **Structure Tools → QuEst** headlessly on T4 Lysozyme
+  (`3GUN`, donor A/132/CB, acceptor A/55/CB) and recorded it as
+  [/usecases/quest-dye-quenching-decay.md]. The physics is fast and the form is
+  the best-labelled in the tree — every control names its unit, the tooltips are
+  real, the **?** modal is accurate, the project round-trips byte-for-byte and a
+  set seed reproduces a run exactly. Around it: the decay histograms count the
+  quenched and transferred photons at `t = 0` (`fret_counts[0]` = 72.4 % of that
+  curve, exactly `1 − QY_DA`), so both curves carry the same area whatever the
+  transfer efficiency; **▶ Simulate** runs but never refreshes the form, which is
+  an `AutoForm` `button_row` seam that affects *every* plugin; the trajectory time
+  axis is `parallel_trajectories × t_max` and so depends on the machine's core
+  count; a saved project names two different donor sites; and the predicted decay
+  cannot leave the window at all. Findings RF-689..RF-695 in
+  [/reviews/findings.md]; most fixes belong in the companion **quest** repository,
+  RF-690 in `chisurf/gui/autoform/sections/builtin.py`.
+
 * **A representation toggle cost 6.2 s; it costs 0.31 s. None of it was where
   it looked.** Benchmarked per representation on one nuclear-pore spoke
   (`PDBDEV_00000010`, 29,273 beads) -- `test/benchmarks/benchmark_chimol_representations.py`,

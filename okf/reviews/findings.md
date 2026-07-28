@@ -8075,3 +8075,66 @@ so the error path leaks no socket. Findings RF-685..RF-688.
 - **Location:** `chisurf/core/http.py:64-89` (`Headers`: `_folded` is built once in `__init__` at `:74`; `__setitem__`, `update`, `setdefault` and `pop` are inherited from `dict` and never refresh it)
 - **Finding:** the class is in `__all__` and documented as *"looked up without regard to case"*, but the fold map is a snapshot of the keys present at construction. Verified: `h = Headers({"Content-Type": "application/json"}); h["Retry-After"] = "5"` then raises `KeyError: 'retry-after'` on `h["retry-after"]`, reports `"retry-after" in h` as **False** and `h.get("retry-after")` as `None`, while `h["Retry-After"]` works — i.e. the guarantee holds for exactly the subset of keys that happened to be there first, with no error to say so. Nothing in the tree mutates a `Headers` today (`Response.__init__` builds one and leaves it), so this is latent rather than broken, but it is a trap left in a public class for the first caller that stashes a header on a response. Either fold on write (override `__setitem__`/`update`/`pop`/`setdefault`) or drop `_folded` and fold the key in `__getitem__` against `super().keys()`.
 - **Fix note:**
+
+## GUI-tester run — Structure Tools → QuEst (2026-07-28)
+
+Slice: the **QuEst** quenching/decay simulator, driven headlessly through
+`StructureToolsTool` and through the standalone `QuEstWindow` on T4 Lysozyme
+(`examples/projects/t4l_proteinmc/data/3GUN.pdb`, donor A/132/CB, acceptor
+A/55/CB). Use case: [/usecases/quest-dye-quenching-decay.md]. The plugin shell is
+in this repo (`chisurf/plugins/quenching_estimator`); the form and the physics are
+in the companion **quest** repository (`/Users/tpeulen/dev/quest`, imported as
+`quest.gui` / `quest.core`), so most fixes belong there and must be committed
+there. Checked and clean: the project round-trips through *Save*/*Load project…*
+byte-for-byte, a set **Random seed** makes a run exactly reproducible, every
+control names its unit, the tooltips are real, and the **?** help modal is
+accurate. Findings RF-689..RF-695.
+
+### RF-689
+- **Status:** OPEN
+- **Severity:** S1 (the plotted and exported decay curves are contaminated by a spike of photons that were never emitted; the D–A curve's amplitude is meaningless)
+- **Location:** `quest/core/dye_diffusion.py:1236-1239` (`get_histogram`) and `:1501-1507` (`get_histogram_fret`) — both do `np.histogram(dts, …)` over the whole trace, while `quest/core/photon.py:33-39` (`_photon_rate_walk`) returns `dt = 0.0, ph = 0` for a photon lost to quenching or transfer; consumed at `quest/core/simulation.py:1071-1089` and written to `decay.csv` at `:1247-1249`
+- **Finding:** the emitted flag `phs` is computed and then ignored by the histograms, so every non-emitted photon is counted at `t = 0`. Verified (seed 7, 20,000 photons, T4L A/132 → A/55): `fret_counts[0] = 14479` = **72.4 %** of that curve's counts, exactly `1 - QY_DA = 0.721`, and `donor_counts[0] = 685` = 3.4 % = `1 - QY_D = 0.0314`; both curves then total ~20,000 counts *whatever* the transfer efficiency, so the Results decay plot carries no amplitude information and opens with a ~300× spike on the log axis. Excluding bin 0 the arrays are correct — sums 5516 and 19308 against `QY×N` of 5580 and 19372, and `1 - ⟨τ_DA⟩/⟨τ_D⟩ = 0.574` — so the fix is to histogram `dts[phs == 1]`, exactly as `simulation.py:1156` already does for `lifetime_donor`.
+- **Fix note:**
+
+### RF-690
+- **Status:** OPEN
+- **Severity:** S2 (an AutoForm `button_row` action mutates the model and the form keeps showing the previous state, so the primary action of a plugin looks like it did nothing)
+- **Location:** `chisurf/gui/autoform/sections/builtin.py:724-735` (`ButtonRowWidget._call` — calls `fn()` and returns), against `chisurf/gui/autoform/auto_form.py:272-304` (`sync_fields`, `refresh_plots`, which nothing calls after an action); reached from `quest/gui/generate_view_spec.py:332-339` (`"action": "run_simulation"`) and `quest/gui/form_model.py:387-411`
+- **Finding:** the renderer has no model→view push after a button action. `ProjectFormModel.run_simulation` sets `status`, stores `results` and calls `_notify()`, but the listener hook it offers (`set_changed_callback`, `form_model.py:203-205`) is **never called by AutoForm** — `grep -rn set_changed_callback chisurf/gui/autoform chisurf/core/dataspec` returns nothing — so only an explicit `TransientDecayGenerator.refresh()` updates anything. Verified twice, from two entry points: after `Simulate.click()` the model held `QY = 0.969  ⟨τ⟩ = 4.15 ns  E = 0.712` while the read-only **State** field still read `Not simulated yet.` and all three plots were empty; a following `refresh()` populated them. This is not QuEst-specific — every plugin whose `button_row` action changes the model is affected. Either call `sync_fields()` + `refresh_plots()` after `fn()` in `_call`, or have `AutoForm` register itself through `set_changed_callback` when the model offers it.
+- **Fix note:**
+
+### RF-691
+- **Status:** OPEN
+- **Severity:** S2 (the trajectory time axis is `parallel_trajectories × t_max`, so it disagrees with the control the user set and varies with the machine's core count; the autocorrelation is computed across the joins between independent trajectories)
+- **Location:** `quest/core/simulation.py:1116-1122` (`frame_times = np.arange(len(distances)) * t_step_ns` and `trajectory_autocorr = autocorr_to_tau_window(distances, …)`, where `distances = model.diffusion.distance_to_mean` is the concatenation of all parallel trajectories), with `quest/core/av.py:849-852` (`n_samples = int(t_max / t_step)` *per trajectory*) and the shipped default `parallel_trajectories = -1` (`quest/project.py:158`)
+- **Finding:** with the default `-1` (all cores) the trajectory plot's "Time (ns)" axis ran to **31,999.97 ns** for a stated *Simulation time* of 4000 ns on this 8-core machine, and to **128,000 ns** for the shipped default of 16,000 ns; with `parallel_trajectories = 1` it ends at 3999.97 ns exactly. The N independent trajectories are laid end to end on one continuous axis, so the N−1 joins appear as instantaneous ~10 Å jumps in `|r − ⟨r⟩|` (clearly visible in the screenshots), and `autocorr_to_tau_window` correlates straight through them — the ACF is the one plot whose entire content is *"how fast does the dye forget"*. Correlate (and plot) per trajectory and average, or at minimum reset the time axis per segment and mark the boundaries.
+- **Fix note:**
+
+### RF-692
+- **Status:** OPEN
+- **Severity:** S2 (a project saved from the GUI states two different donor attachment sites; the run uses one and the file advertises the other)
+- **Location:** `quest/gui/form_model.py:56-60` (`FIELD_PATHS` binds `attachment_chain/residue/atom` to the **top-level** `attachment` only) against `quest/project.py:165-174` (`template_project` gives `fret.dyes[0]` its own `attachment`) and `quest/core/simulation.py:737,758-761` (`build_donor_from_project` reads the top-level one)
+- **Finding:** no control touches `fret.dyes[0].attachment`, so it keeps the template's `{chain A, residue 1, atom CB}` for the life of the project. Verified: after setting residue 132 in the form and saving, the JSON contains `attachment: {chain A, residue 132, atom CB}` **and** `fret.dyes[0].attachment: {chain A, residue 1, atom CB}`. The simulation is right, but the saved project is self-contradictory, and any consumer reading the dye list (the web UI, a future multi-dye path, a plotting script) gets residue 1. Either mirror the top-level attachment into `dyes[0]` on write, or drop the donor entry's `attachment` from the template so there is one place it can live.
+- **Fix note:**
+
+### RF-693
+- **Status:** OPEN
+- **Severity:** S2 (a failed simulation reports only through a read-only line too narrow for its own text, with the traceback going to the console and no dialog)
+- **Location:** `quest/gui/form_model.py:400-411` (`run_simulation` sets `status` and re-raises) reaching `chisurf/gui/autoform/sections/builtin.py:702,735` (the `clicked` lambda lets the exception escape into Qt), with the status rendered as a read-only field from `quest/gui/generate_view_spec.py` (the *State* row)
+- **Finding:** clicking **▶ Simulate** on the **shipped default project** — whose `pdb` is the placeholder `structure.pdb` — raises `FileNotFoundError: Structure path does not exist: structure.pdb` out of the button handler; verified that `QApplication.activeModalWidget()` stays `None` (no dialog at all) and the traceback lands on the console, where a GUI user never looks. The only on-screen feedback is the *State* line, which is **332 px wide against 388 px of text** at the Structure Tools default window size, scrolled to the end — so the leading `Failed: ` (and, on success, the leading `QY = `) is invisible. Report the failure through `dialogs.error` / `ChiSurfMessageBox` as the rest of the tree does, and let the state line elide or wrap rather than scroll.
+- **Fix note:**
+
+### RF-694
+- **Status:** OPEN
+- **Severity:** S3 (the only multi-series plot in the tool draws both series in the same colour, legend swatches included)
+- **Location:** `quest/gui/generate_view_spec.py:322-323` (the `decay_series` plot section) over `quest/gui/form_model.py:423-435` (`decay_series` returns the *Donor* and *FRET* series without a colour), rendered by `chisurf/gui/autoform/sections/builtin.py:1297` (`PlotWidget`)
+- **Finding:** the decay plot's legend reads `— Donor` and `— FRET` with two identical yellow swatches, and the two traces are drawn in the same yellow, so the donor-only and donor–acceptor decays cannot be told apart at a glance or in a saved screenshot. The other two plots carry a single series each, so this is the one place it matters. Either have `decay_series` supply per-series colours, or have `PlotWidget` cycle a palette when a section returns more than one series.
+- **Fix note:**
+
+### RF-695
+- **Status:** OPEN
+- **Severity:** S2 (the tool's only output — the predicted decay — cannot leave the window)
+- **Location:** `quest/gui/form_model.py:403` (`simulate_project(self._project, save_outputs=False)`) and `quest/gui/generate_view_spec.py:332-350` (the button row offers only `run_simulation`, `load_project_dialog`, `save_project_dialog`); compare `quest/core/simulation.py:1240-1266`, which writes `decay.csv` and `result.csv` when `save_outputs=True`
+- **Finding:** the GUI deliberately runs with `save_outputs=False` (so a click does not litter `jobs/`), but nothing replaces it: the window can save its **inputs** and nothing else. There is no *Export decay*, no CSV, and no push into a ChiSurf dataset, so the predicted donor and D–A decays cannot be plotted next to a measured one — which is the reason to predict them, and what every neighbouring tool (Filter Calc, the Simulator file type, the burst tools) does offer. Add an export action that writes the same `decay.csv` the CLI writes, and an *add to ChiSurf* action that lands the two curves as datasets.
+- **Fix note:**
