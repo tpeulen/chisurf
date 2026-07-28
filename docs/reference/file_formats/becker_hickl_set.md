@@ -7,7 +7,7 @@ The `BeckerHicklSetReader` class provides functionality to read and parse Becker
 ## Usage
 
 ```python
-from chisurf.fio.fluorescence import BeckerHicklSetReader
+from chisurf.core.fio.fluorescence import BeckerHicklSetReader
 
 # Create a reader for a .set file
 reader = BeckerHicklSetReader("path/to/file.set")

@@ -1,7 +1,7 @@
 # ChiSurf Global Settings
 
 This document describes the main user-configurable settings used by ChiSurf.
-Values are loaded from YAML files in `chisurf/settings` into `chisurf.settings`
+Values are loaded from YAML files in `chisurf/core/settings` into `chisurf.settings`
 (e.g. `chisurf.settings.cs_settings`, `chisurf.settings.gui`, `chisurf.settings.fret`).
 
 Settings are grouped and ordered as in the YAML files:
@@ -22,7 +22,7 @@ here.
 Used by:
 - `chisurf.plugins.tttr.tttr_correlate.gui.CorrelatorWidget` / `Correlator`
 - `chisurf.gui.widgets.wizard.tttr_correlator.WizardTTTRCorrelator`
-- `chisurf.plugins.burst_fcs_correlator`
+- `chisurf.plugins.burst.burst_fcs_correlator`
 
 Keys:
 
@@ -69,9 +69,9 @@ Keys:
 
 ---
 
-### 1.2 `database` (embedded data handling in `chisurf.base.Data`)
+### 1.2 `database` (embedded data handling in `chisurf.core.base.Data`)
 
-Used by: `chisurf.base.Data` for embedding raw files into YAML/JSON save files.
+Used by: `chisurf.core.base.Data` for embedding raw files into YAML/JSON save files.
 
 - **`embed_data`**  
   If true, small files loaded through `Data.filename` are embedded in memory
@@ -168,7 +168,7 @@ Used by: `chisurf.gui.widgets.general.MyMessageBox` and
 
 ### 1.6 `fps` (structure accessible‑volume / flexible protein simulations)
 
-Used by: `chisurf.structure.av.*` and related structure modelling code.
+Used by: `chisurf.core.structure.av.*` and related structure modelling code.
 
 - **`allowed_sphere_radius`**  
   Radius (nm) of the sphere around the attachment point that defines the
@@ -412,7 +412,8 @@ These values are mapped to environment variables for NumPy/Numba/MKL/OMP.
 
 ### 1.10 `mc_settings` (protein Monte‑Carlo / AV simulations)
 
-Used by: `chisurf.plugins.modelling.proteinmc.core.ProteinMCWorker` and related tools.
+Used by: `chisurf.plugins.modelling.proteinmc.model` (`normalize_settings` /
+`ProteinMCRunner`) and `chisurf.core.models.structure.proteinmc`.
 
 - **`append_new_structures`**  
   If true, newly generated structures are appended to existing trajectories
@@ -470,7 +471,7 @@ Used by: `chisurf.plugins.modelling.proteinmc.core.ProteinMCWorker` and related 
 
 ### 1.11 `optimization` (global & local fitting)
 
-Used by: `chisurf.fitting.fit.Fit` / `FitGroup`, global‑fit machinery, MEM
+Used by: `chisurf.core.fitting.fit.Fit` / `FitGroup`, global‑fit machinery, MEM
 regularization, and sampling routines.
 
 - **`global_optimize_local_first`**  
@@ -484,7 +485,7 @@ regularization, and sampling routines.
 Sub‑sections:
 
 - **`leastsq`** (used in local and global least‑squares)  
-  Passed into `chisurf.math.optimization.leastsqbound` and SciPy‑style
+  Passed into `chisurf.core.math.optimization.leastsqbound` and SciPy‑style
   optimizers:
   - **`ftol`**, **`xtol`**, **`gtol`** – standard convergence tolerances
   - **`maxfev`** – max. number of function evaluations (0 = auto)
@@ -500,7 +501,7 @@ Sub‑sections:
 
 - **`sampling`** (MCMC / error‑estimation sampling)  
   Used by `FittingControllerWidget.onErrorEstimate` and
-  `chisurf.fitting.fit.sample_fit`:
+  `chisurf.core.fitting.fit.sample_fit`:
   - **`method`** – sampling backend (e.g. `emcee`)
   - **`steps`** – number of steps per walker / chain
   - **`n_runs`** – number of independent chains or restarts
@@ -512,7 +513,7 @@ Sub‑sections:
 ### 1.12 `parameter` (per‑parameter GUI defaults)
 
 Used by: `chisurf.gui.widgets.fitting.widgets.parameter_settings` and
-`chisurf.fitting.parameter.FittingParameter`.
+`chisurf.core.fitting.parameter.FittingParameter`.
 
 - **`bounds_on`**  
   Global default for whether parameter bounds are active.
@@ -595,7 +596,7 @@ Used by: plugin manager, help browser, GUI menu construction, updater plugin.
 
 ### 1.15 `tcspc` (global TCSPC reader and model defaults)
 
-Used by: `chisurf.experiments.tcspc.TCSPCReader` and various TCSPC models.
+Used by: `chisurf.core.experiments.tcspc.TCSPCReader` and various TCSPC models.
 
 - **`dt`**  
   Default time resolution (ns per bin) for TCSPC decays when not explicitly
@@ -663,7 +664,7 @@ Used by: `chisurf.experiments.tcspc.TCSPCReader` and various TCSPC models.
 
 ### 1.16 `tcspc_csv` (ASCII/CSV TCSPC reader defaults)
 
-Used by: `chisurf.experiments.tcspc.TCSPCReader` and its GUI controller via
+Used by: `chisurf.core.experiments.tcspc.TCSPCReader` and its GUI controller via
 `experiment_configs.yaml` `settings_key: tcspc_csv`.
 
 - **`skiprows`**  
@@ -688,9 +689,9 @@ Used by: Measurement File Database APIs and repository code.
 
 This file defines how high‑level "experiment types" are mapped to
 reader/controller classes and model widgets. It is read through
-`chisurf.experiments.load_experiment_types()` and by various GUI wizards.
+`chisurf.core.experiments.load_experiment_types()` and by various GUI wizards.
 
-### 3.1 `experiment_types`
+### 2.1 `experiment_types`
 
 Top‑level mapping from experiment keys to display names and visibility:
 
@@ -701,7 +702,7 @@ Top‑level mapping from experiment keys to display names and visibility:
   If true, the experiment type is not shown in generic experiment selectors
   but can still be constructed programmatically.
 
-### 3.2 Per‑experiment sections (`tcspc`, `fcs`, `pda`, `rics`, `pch`, `structure`, `stopped_flow`, `global`)
+### 2.2 Per‑experiment sections (`tcspc`, `fcs`, `pcf`, `ics`, `pch`, `pda2c`, `pda3c`, `deer`, `stopped_flow`, `structure`, `global`)
 
 Each experiment key has:
 
@@ -780,8 +781,8 @@ preferred settings between sessions without re-entering them on every startup.
   },
   "experiments": {
     "TCSPC": {
-      "TTTR Reader": {
-        "module": "chisurf.experiments.tcspc",
+      "TTTR-file": {
+        "module": "chisurf.core.experiments.tcspc",
         "class": "TCSPCTTTRReader",
         "state": {
           "reading_routine": "PTU",
@@ -791,10 +792,10 @@ preferred settings between sessions without re-entering them on every startup.
         }
       }
     },
-    "RICS": {
-      "RICS Reader": {
-        "module": "chisurf.experiments.rics",
-        "class": "RICSReader",
+    "Image correlation": {
+      "Image correlation (RICS/STICS/TICS/iMSD)": {
+        "module": "chisurf.core.experiments.ics",
+        "class": "ICSReader",
         "state": {
           "reading_routine": "PTU",
           "x_range": [0, 256],

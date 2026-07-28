@@ -12,7 +12,7 @@ This module replaces the separate `becker_hickl_set` and `sdtfile` modules, prov
 ## Usage
 
 ```python
-from chisurf.fio.fluorescence.bhfiles import BeckerHicklSetReader, SdtFile
+from chisurf.core.fio.fluorescence.bhfiles import BeckerHicklSetReader, SdtFile
 
 # Reading .set files
 set_reader = BeckerHicklSetReader("path/to/file.set")
@@ -59,15 +59,15 @@ If you were previously using `becker_hickl_set` or `sdtfile` modules directly, y
 
 ```python
 # Old code still works
-from chisurf.fio.fluorescence import BeckerHicklSetReader
-from chisurf.fio.fluorescence import SdtFile
+from chisurf.core.fio.fluorescence import BeckerHicklSetReader
+from chisurf.core.fio.fluorescence import SdtFile
 ```
 
 For new code, it's recommended to import directly from the unified module:
 
 ```python
 # Recommended for new code
-from chisurf.fio.fluorescence.bhfiles import BeckerHicklSetReader, SdtFile
+from chisurf.core.fio.fluorescence.bhfiles import BeckerHicklSetReader, SdtFile
 ```
 
 ## Implementation Details

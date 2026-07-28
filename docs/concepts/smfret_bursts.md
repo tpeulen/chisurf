@@ -158,7 +158,7 @@ even with no heterogeneity at all. Two states are therefore only resolvable as
 separate peaks when they differ by more than ~$2\sigma_E$; closer states merge
 into one broadened peak, which is exactly the situation that
 {doc}`BVA </guides/08_burst_variance_analysis>`,
-{doc}`PDA </guides/11_pda>` and {doc}`H2MM </guides/19_h2mm_hidden_markov>` exist
+{doc}`PDA </guides/11_pda2c>` and {doc}`H2MM </guides/19_h2mm_hidden_markov>` exist
 to resolve. The *mean* of a population is far better determined — it improves as
 $\sigma_E/\sqrt{n_\text{bursts}}$ — which is why population centres are quoted,
 not individual bursts.

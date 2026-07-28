@@ -10,7 +10,7 @@ Overview
 
 The registry lives in::
 
-    chisurf/settings/constants/parameter_registry.json
+    chisurf/core/settings/constants/parameter_registry.json
 
 The JSON structure is::
 

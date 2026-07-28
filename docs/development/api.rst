@@ -53,11 +53,6 @@ Server Infrastructure
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: chisurf.server.dto
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 .. automodule:: chisurf.server.protocol
    :members:
    :undoc-members:

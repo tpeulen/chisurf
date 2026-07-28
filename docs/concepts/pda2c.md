@@ -10,7 +10,7 @@ photon-by-photon, so a fitted histogram tells you whether a broad peak is just
 counting noise around one distance, a genuine mixture of states, or the
 signature of conformational dynamics.
 
-For the step-by-step workflow in ChiSurf, see the guide {doc}`/guides/11_pda`.
+For the step-by-step workflow in ChiSurf, see the guide {doc}`/guides/11_pda2c`.
 
 ## Why an E-histogram is broad: shot noise
 
@@ -278,7 +278,7 @@ the burst-size diagnostic above and, for dynamics, the characteristic valley
 
 ## See also
 
-- Guide: {doc}`/guides/11_pda`.
+- Guide: {doc}`/guides/11_pda2c`.
 - Models: `chisurf/core/models/pda2c/` — discrete (`simple.py`),
   Gaussian-distance (`pdagauss.py`), dynamic two-state and N-state (`dynamic.py`,
   `dynamic_mc.py`), anisotropy (`anisotropy.py`), SAW-$\nu$ polymer

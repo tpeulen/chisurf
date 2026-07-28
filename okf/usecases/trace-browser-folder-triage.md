@@ -14,7 +14,7 @@ trace, decide which measurements are worth analysing, record that judgement
 (0–3 stars plus a free-text note that persists in the folder), and pass the
 keepers on — as copied raw files, as binned CSV traces, as a DOCX report, or
 straight into the [time-window](/usecases/burst-selection-fret.md),
-intensity-trace HMM or [ndXplorer](/architecture/plugins.md) tools.
+intensity-trace HMM or [ndXplorer](/architecture/plugin-system.md) tools.
 
 This is the "Correlation / TTTR tools" coverage entry for **file triage**; it sits
 upstream of [micro-time histograms](/usecases/tttr-microtime-histogram.md),

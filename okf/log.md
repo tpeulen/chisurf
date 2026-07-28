@@ -2,6 +2,37 @@
 
 ## 2026-07-28
 
+* **Docs reconciled with the source tree (scheduled pass).** Every suspected
+  mismatch was checked against the code before it was changed. The
+  `chisurf.*` → `chisurf.core.*` move had left the file-format reference
+  (`chisurf.fio.*`, `chisurf.experiments.*`, `chisurf.data.*`) and
+  `docs/reference/settings.md` (`chisurf.base`, `chisurf.fitting`,
+  `chisurf.math.optimization`, `chisurf.structure.av`) naming packages that no
+  longer exist. The settings page also placed the YAML in `chisurf/settings`
+  (it is `chisurf/core/settings` — `chisurf.settings` survives only as a lazy
+  module alias), credited `mc_settings` to a `ProteinMCWorker` that is nowhere
+  in the tree (the readers are `proteinmc.model.normalize_settings` /
+  `ProteinMCRunner` and `chisurf.core.models.structure.proteinmc`), and listed
+  the per-experiment sections as `pda`/`rics` where `experiment_configs.yaml`
+  has `pcf`, `ics`, `pda2c`, `pda3c` and `deer`; its `setup_defaults.json`
+  example now uses the reader names and modules actually persisted
+  (`TTTR-file`, `chisurf.core.experiments.ics.ICSReader`).
+  `docs/development/api.rst` still autodoc'd `chisurf.server.dto`, deleted under
+  SV-02, and `parameter_registry_tools.rst` pointed at `chisurf/settings/constants/`.
+* **Sphinx is warning-free again: 5 → 0.** Three were `{doc}` xrefs to
+  `/guides/11_pda` that the PDA2c/PDA3c rename (99d5e9ef6) missed, in
+  `concepts/pda2c.md` and `concepts/smfret_bursts.md`; two were in
+  `guides/52_send_bursts_to_analysis.md` — a `../concepts/pda.md` xref and the
+  only link anywhere in `docs/` that reaches into `okf/`, which the user build
+  excludes. `usecases/trace-browser-folder-triage.md` pointed at an
+  `/architecture/plugins.md` that has never existed (`plugin-system.md`).
+* **Left to their owners, not fixed here.** The regenerated
+  `docs/reference/plugins/*` pages track manifest and `view.json` edits that
+  another instance holds uncommitted, so committing them would put the
+  reference ahead of HEAD; and `docs/manual/*.rst` is generated from
+  `docs/_old_manual/manual.docx`, so its `chisurf.data.ExperimentalData` and
+  `chisurf.fitting.fit.sample_fit` cannot be corrected by editing the RST.
+
 * **FCS merge: the `.cor` count rate survives the round trip again (RF-621).**
   `_correlation_from_cor_array` converted the file's **kHz** count rate to counts
   as `0.5 * count_rate * duration`, while `compute_average_correlations` reads it

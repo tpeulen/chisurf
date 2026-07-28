@@ -27,7 +27,7 @@ view with the filter pre‑filled for this reader.
 
 ### Supported file formats
 
-The TCSPC TXT/CSV reader ultimately calls `chisurf.fio.fluorescence.tcspc.read_tcspc_csv`,
+The TCSPC TXT/CSV reader ultimately calls `chisurf.core.fio.fluorescence.tcspc.read_tcspc_csv`,
 which accepts data in the following forms:
 
 - **Two‑column decay**
@@ -44,7 +44,7 @@ which accepts data in the following forms:
 - **VV/VH format (fast‑rotating dye)**
   - Special case used for anisotropy calibration.
   - Select **VV/VH mode** in the TCSPC panel (`is_vv_vh`), then load the VV/VH file.
-  - The reader uses `chisurf.fio.vv_vh.read_vv_vh` and can derive `g_factor` and VV/VH/VM
+  - The reader uses `chisurf.core.fio.vv_vh.read_vv_vh` and can derive `g_factor` and VV/VH/VM
     channels directly from the file.
 
 Delimiters (comma, semicolon, tab, space) are usually detected automatically when
@@ -128,7 +128,7 @@ is interpreted as a TCSPC experiment:
 
 - **VV/VH mode (`is_vv_vh`) and header usage (`use_header`)**
   - When **VV/VH mode** is enabled:
-    - The reader switches to `chisurf.fio.vv_vh.read_vv_vh` and ignores
+    - The reader switches to `chisurf.core.fio.vv_vh.read_vv_vh` and ignores
       standard `matrix_columns`.
     - Available polarization channels (VV, VH, VM) are taken from the VV/VH
       file, and `g_factor` can be read from metadata.
@@ -157,7 +157,7 @@ They typically contain a single column of intensity values which is interpreted 
 In the **TCSPC TXT/CSV** reader, VV/VH files are handled by enabling **VV/VH mode**
 in the TCSPC panel (`is_vv_vh`). When this mode is active:
 
-- The reader uses `chisurf.fio.vv_vh.read_vv_vh` under the hood.
+- The reader uses `chisurf.core.fio.vv_vh.read_vv_vh` under the hood.
 - Available polarization channels (VV, VH, VM) are taken directly from the VV/VH file.
 - `g_factor` and related anisotropy parameters can be read from the file metadata
   when present.
@@ -217,7 +217,7 @@ reader is active.
 
 The **TTTR-file** reader converts time-tagged, time-resolved (TTTR) photon
 streams into TCSPC decay histograms using `tttrlib`. It is implemented by
-`chisurf.experiments.tcspc.TCSPCTTTRReader` and the
+`chisurf.core.experiments.tcspc.TCSPCTTTRReader` and the
 `TCSPCTTTRReaderControlWidget` controller.
 
 Use this reader when you have photon-stream data from hardware that stores
@@ -251,7 +251,7 @@ For each selected TTTR file, the reader:
 3. Computes a micro-time histogram with the configured coarsening factor.
 4. Converts the micro-time axis from seconds to nanoseconds (`x *= 1e9`).
 5. Trims trailing zero bins so the decay stops at the last non-zero count.
-6. Creates a `chisurf.data.DataCurve` with:
+6. Creates a `chisurf.core.data.DataCurve` with:
    - `x`: micro-time in ns,
    - `y`: counts per bin,
    - `ey`: Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise(y)`,
@@ -284,7 +284,7 @@ The curve name is derived from the filename and channel list, e.g.
 ### Purpose
 
 The **Becker-SDT** reader loads Becker & Hickl `.sdt` histogram files using
-`chisurf.fio.fluorescence.sdtfile.SdtFile`. It is implemented by
+`chisurf.core.fio.fluorescence.sdtfile.SdtFile`. It is implemented by
 `TCSPCSetupSDTWidget`, which wraps a `TcspcSDTWidget` for inspecting and
 selecting curves.
 
@@ -312,7 +312,7 @@ histograms rather than raw TTTR streams or ASCII/CSV files.
     `1.0 / (rep_t * 1e-3)` → **MHz**.
 
 - **Curve construction**
-  - `curve` builds a `chisurf.data.DataCurve` with:
+  - `curve` builds a `chisurf.core.data.DataCurve` with:
     - `x`: time in ns,
     - `y`: photon counts,
     - `ey`: Poisson noise via `chisurf.core.fluorescence.tcspc.counting_noise`,
@@ -348,7 +348,7 @@ separate dataset.
 
 The **TCSPC Simulator** reader generates synthetic TCSPC decays based on a
 user-defined lifetime spectrum. It is implemented by
-`chisurf.experiments.tcspc.TCSPCSimulatorSetup` and configured via the
+`chisurf.core.experiments.tcspc.TCSPCSimulatorSetup` and configured via the
 `TCSPCSimulatorSetupWidget`.
 
 Use this when you want to test models, fitting routines, or instrument

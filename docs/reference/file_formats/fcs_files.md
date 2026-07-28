@@ -2,8 +2,8 @@
 
 This page describes the file formats supported by the **FCS** experiment in
 ChiSurf and how their columns are interpreted, based strictly on the
-implementation in `chisurf.experiments.fcs` and
-`chisurf.fio.fluorescence.fcs.*`.
+implementation in `chisurf.core.experiments.fcs` and
+`chisurf.core.fio.fluorescence.fcs.*`.
 
 Configured FCS readers (see `experiment_configs.yaml`):
 
@@ -23,7 +23,7 @@ on-disk column conventions differ per format.
 
 ## Seidel Kristine `.cor` {#fcs-kristine}
 
-Implemented in `chisurf.fio.fluorescence.fcs.kristine` as
+Implemented in `chisurf.core.fio.fluorescence.fcs.kristine` as
 `read_kristine` / `write_kristine`.
 
 ### Column layout (write side)
@@ -83,10 +83,10 @@ from `x`, `y`, `acquisition_time` and `mean_count_rate`.
 ## FCS-CSV (generic ASCII) {#fcs-csv}
 
 When `experiment_reader: csv`, `read_fcs` uses the generic `Csv` loader in
-`chisurf.fio.ascii` and then interprets the first three data rows as:
+`chisurf.core.fio.ascii` and then interprets the first three data rows as:
 
 ```python
-csv = chisurf.fio.ascii.Csv()
+csv = chisurf.core.fio.ascii.Csv()
 csv.load(filename=filename, ...)
 x, y = csv.data[0], csv.data[1]
 ey = csv.data[2]
@@ -105,13 +105,13 @@ The CSV file must contain at least **three numeric columns** after any header:
 
 Additional columns may be present but are ignored by this reader. Header
 handling, delimiter and decimal-comma support are provided by the
-`chisurf.fio.ascii.Csv` class.
+`chisurf.core.fio.ascii.Csv` class.
 
 ---
 
 ## Zeiss Confocor3 `.fcs` {#fcs-confocor3}
 
-Implemented in `chisurf.fio.fluorescence.fcs.confocor3` as
+Implemented in `chisurf.core.fio.fluorescence.fcs.confocor3` as
 `read_zeiss_fcs` on top of `openFCS` / `openFCS_Multiple` / `openFCS_Single`.
 
 The `.fcs` files are text-based and contain different labeled sections.
@@ -208,7 +208,7 @@ together. Fitting the group creates one fit with one member per curve.
 
 ## China FCS MATLAB `.mat` {#fcs-china-mat}
 
-Implemented in `chisurf.fio.fluorescence.fcs.china` as `read_china_mat`.
+Implemented in `chisurf.core.fio.fluorescence.fcs.china` as `read_china_mat`.
 
 The MATLAB file is expected to contain arrays with specific names, for example:
 
@@ -273,7 +273,7 @@ These are used with the correlation data to compute
 
 ## PyCorrFit CSV {#fcs-pycorrfit}
 
-Implemented in `chisurf.fio.fluorescence.fcs.pycorrfit` as `read_pycorrfit`
+Implemented in `chisurf.core.fio.fluorescence.fcs.pycorrfit` as `read_pycorrfit`
 (on top of `openCSV`). The format is flexible but the reader assumes a
 PyCorrFit-style structure:
 
@@ -339,7 +339,7 @@ These are combined to compute noise-based
 
 ## ALV-Correlator `.asc` {#fcs-alv}
 
-Implemented in `chisurf.fio.fluorescence.fcs.asc_alv` as `read_asc`, built on
+Implemented in `chisurf.core.fio.fluorescence.fcs.asc_alv` as `read_asc`, built on
 `openASC` / `openASC_old` / `openASC_ALV_7004`.
 
 Two related text formats are supported:
@@ -426,7 +426,7 @@ The low-level `read_fcs` dispatcher also supports:
     - Col 1: `G(τ)`.
     - Col 2: error `σ_G(τ)` (0 values replaced by large errors internally).
 - YAML FCS (`reader_name: 'yaml'` → `fcs_yaml.read_yaml`, currently stubbed).
-- PicoQuant **`.pqres`** (`reader_name: 'pqres'` → `chisurf.fio.fluorescence.pqres.read_pqres_fcs`).
+- PicoQuant **`.pqres`** (`reader_name: 'pqres'` → `chisurf.core.fio.fluorescence.pqres.read_pqres_fcs`).
 
 These are not exposed as separate FCS readers in the default GUI, but follow
 similar conventions: correlation times and amplitudes in the first two columns
