@@ -7816,3 +7816,37 @@ Findings RF-664..RF-669 are about what surrounds that. Use case recorded in
 - **Location:** `chisurf/plugins/microscopy/img_frc/gui/view_model.py:1-6` (module docstring: *"drives the Qt-free compute through the plugin client (so the GUI takes the same RPC path as the CLI)"*), `:94-101` (the `client` property) and `:224` (`compute` calls `_core.analyse` directly)
 - **Finding:** `compute()` calls `_core.analyse(...)` in the GUI process; `self.client` is never read by it or by anything else in the module. Verified by constructing `FrcViewModel(client=spy)` with a spy that raises on any attribute call and running a full measurement: it returned `True` with the correct 6.329 px and the spy recorded **zero** calls. So the property and the lazily imported `FrcClient` are dead in the GUI path, the docstring's claim is false, and the plugin's own client-server standard (heavy compute on the backend, GUI over ZMQ JSON-RPC) is not met by the one caller that matters — a 68 MB photon-stream read happens in the GUI process. Either route `compute()` through `self.client.resolution(...)` (which is what the CLI does) or delete the property and correct the docstring.
 - **Fix note:**
+
+## Review 2026-07-28 — the in-tree Gaussian HMM: two guards that the compiler deletes
+
+Slice: `3a18e9b67` (*ChiSurf fits its own hidden Markov models*) —
+`chisurf/core/math/hmm.py` and the `hmm` plugin core/GUI around it. The maths is
+sound where I checked it: the fused backward sweep's `xi` accumulation is exactly
+`exp(α_t(i) + log a_ij + log b_j(x_{t+1}) + β_{t+1}(j) − log P)`, the SQUAREM
+cycle matches Varadhan–Roland S3, the covariance round trip through
+`_covars_to_free`/`_covars_from_free` is exact in all four layouts, the
+dimmest-first relabelling in `fit_traces` permutes `startprob`/`transmat`/`means`/
+`covars` consistently, and dwell runs are never continued across a sequence
+boundary. Findings RF-670..RF-672 are about the edges. Probes run in the `arm64`
+env.
+
+### RF-670
+- **Status:** OPEN
+- **Severity:** S1 (a documented model configuration fits silently to a degenerate answer with a `nan` likelihood)
+- **Location:** `chisurf/core/math/hmm.py:83` and `:144` (`@nb.jit(..., fastmath=True)`), against the `-inf` guards those kernels rely on at `:90-91` (`if vmax == -np.inf: return -np.inf`) and `:188-190` (`if maximum == -np.inf: … continue`), reached from `_forward_log` `:117` and `_backward_posteriors_xi` `:198`
+- **Finding:** `fastmath=True` implies LLVM's `ninf`, so the compiler is licensed to assume no operand is infinite and **both** `-inf` guards are folded away. Verified directly: `_logsumexp(np.array([-inf, -inf]))` returns **`nan`**, while `_logsumexp.py_func(...)` on the same input returns `-inf`; the same loop compiled with `fastmath=False` fires the guard and with `fastmath=True` does not. Consequence for a **structurally constrained model** — which `_do_mstep` documents as supported at `:1386-1387` (*"Parameters that are exactly zero are kept at zero so that a structurally constrained model (a left-to-right chain, say) stays constrained"*) — a 3-state strict left-to-right chain (`startprob_ = [1,0,0]`, no skip transitions) fitted with `params="mc"` to well-separated data at 0/5/10 returns `score = nan`, `aic = bic = nan`, and `means_ = [4.989, 4.989, 4.989]`: all three states collapsed onto the global mean, because `-inf` columns turn the forward lattice into `nan`, `total > 0.0` then fails and every posterior falls back to uniform. `fit()` raises nothing and warns nothing (its only check, `:863`, looks for zero *rows*). Independently, the backward guard fails on its own: with a finite forward pass and a transmat row of zeros — the exact case `:863` warns about — `xi_sum` comes back all-`nan` (`exp(-inf − -inf)`), so the M-step gets `nan` transitions. The commit message claims this path was fixed (*"an all -inf frame turned into nan through -inf minus -inf … fixed here"*); the fix is inert as compiled. Spell the flags out on these two kernels — `fastmath={"nsz", "arcp", "contract", "afn", "reassoc"}`, i.e. everything except `nnan`/`ninf` — or carry an explicit "no state can explain this" flag instead of relying on `-inf` arithmetic. `test/math/test_hmm.py` never fits a model containing an exact zero (`test_invalid_configurations_are_rejected` sets `transmat_ = np.eye(2)` but only calls `_check_parameters`), so the guardrail test is missing too.
+- **Fix note:**
+
+### RF-671
+- **Status:** OPEN
+- **Severity:** S2 (`HmmFit.converged` is `True` precisely when the fit ran out of iterations — the opposite of its documented meaning)
+- **Location:** `chisurf/core/math/hmm.py:666` (`ConvergenceMonitor.converged`: `self.iter == self.n_iter or …`), surfaced by `chisurf/plugins/core/hmm/core/analysis.py:229` (`converged=bool(model.monitor_.converged)`), documented at `chisurf/plugins/core/hmm/api/models.py:121-122` (*"Whether EM met ``tol`` before exhausting ``n_iter``"*) and shown at `chisurf/plugins/core/hmm/gui/view_model.py:232`
+- **Finding:** the monitor conflates "the tolerance was met" with "the iteration cap was reached" — correct for terminating `_fit_em`'s loop, wrong as a result field. Verified through the plugin seam on two overlapping Gaussians (means 0 and 0.7, σ = 1, 800 bins), `tol = 1e-8`: `fit_traces` with `accelerate=False, n_iter=3` returns `converged=True` at `logL = -1167.65`, and with `n_iter=10` `converged=True` at `-1159.67`, against a true optimum of `-1121.76` — 46 nats short, with the last per-iteration gain still 23 nats. The accelerated run that got *closer* (`-1139.91`) is the one honestly labelled `converged=False`, so the flag is anti-correlated with fit quality here, and the GUI status line appends "· did not converge" only in that better case. Reachable from every surface: the **Accelerate (SQUAREM)** toggle in `hmm.view.json:32`, the `accelerate` key in `manifest.json:41`, and `csc hmm fit --no-accelerate`. Report the two conditions separately — return `converged` only for the tolerance branch, and let the caller see budget exhaustion from `n_iterations` — or have `fit()` record which branch ended it.
+- **Fix note:**
+
+### RF-672
+- **Status:** OPEN
+- **Severity:** S3 (a documented parameter type raises `ValueError` for every non-scalar array)
+- **Location:** `chisurf/core/math/hmm.py:1425` (`c_d = max(self.covars_weight - 1, 0)`) and `:1442` (`cvweight = max(self.covars_weight - self.n_features, 0)`) — the *builtin* `max` — against the class docstring at `:698-700` (*"covars_prior, covars_weight : float or numpy.ndarray"*)
+- **Finding:** `max(array, 0)` evaluates `array > 0` and calls `bool()` on the result, so any `covars_weight` with more than one element dies with *"The truth value of an array with more than one element is ambiguous"* — verified for `covars_weight=np.full((2,1), 1.0)` with both `diag` and `full` covariances, while `np.array(1.0)` (0-d) passes. Its four documented siblings do accept arrays: `covars_prior=np.full((2,1), 1e-2)`, `means_prior`/`means_weight` of shape `(n_components, n_features)`, `startprob_prior` and `transmat_prior` all fit without complaint, so `covars_weight` is the lone exception and nothing in the signature or the error says so. Use `np.maximum(...)` in both places (both results are already broadcast against `denom` / `stats["post"]`), or narrow the docstring to `float` for this one parameter.
+- **Fix note:**
