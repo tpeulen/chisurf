@@ -23,15 +23,27 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
     bur_subdir = bur_dir / "bi4_bur"
     bur_subdir.mkdir(parents=True, exist_ok=True)
     
-    # Write a dummy .bur file
-    # columns: Mean Macro Time (ms), N_ph, duration, dummy (which will be dropped)
+    # A .bur file shaped like the ones the writers produce: every line ends in a
+    # **trailing tab**, which parses as an extra, nameless column. That artefact
+    # is what the reader's "drop the last column" behaviour existed for.
+    #
+    # It used to drop the last column unconditionally, and this fixture was
+    # written against that: a populated `dummy_col` was expected to vanish. It no
+    # longer does, and should not -- ndXplorer RF-470 ("keep the last .bur column
+    # instead of blanket-dropping it") found the blanket rule deleting *real*
+    # measurements, `Red Count Rate (KHz)` and `S delayed yellow (kHz)` among
+    # them, and with them every derived red/FRET quantity. Only trailing
+    # empty/`Unnamed` columns are dropped now.
+    #
+    # So the fixture carries both cases at once: a phantom column that must go,
+    # and a real named one that must survive.
     dummy_bur = bur_subdir / "measurement_1.bur"
     dummy_bur.write_text(
-        "Mean Macro Time (ms)\tN_ph\tduration\tdummy_col\n"
-        "1000\t10\t0.1\t0\n"
-        "2000\t20\t0.2\t0\n"
-        "3000\t30\t0.3\t0\n"
-        "4000\t40\t0.4\t0\n",
+        "Mean Macro Time (ms)\tN_ph\tduration\tdummy_col\t\n"
+        "1000\t10\t0.1\t5\t\n"
+        "2000\t20\t0.2\t6\t\n"
+        "3000\t30\t0.3\t7\t\n"
+        "4000\t40\t0.4\t8\t\n",
         encoding="utf-8",
     )
 
@@ -80,18 +92,26 @@ def test_ndxplorer_load_and_record(tmp_path: pathlib.Path) -> None:
         assert result.get("ok") is True, f"Failed with: {result}"
         assert result["processed_data_id"] == prod_id
         
-        # Mean Macro Time (ms) is converted to Mean Macro Time (s), and dummy_col is dropped
-        expected_params = ["Mean Macro Time (s)", "N_ph", "duration"]
+        # Mean Macro Time (ms) becomes Mean Macro Time (s); the nameless column
+        # from the trailing tab is dropped; `dummy_col` is a real column and
+        # stays.
+        expected_params = ["Mean Macro Time (s)", "N_ph", "duration", "dummy_col"]
         assert result["parameter_names"] == expected_params
-        
-        # The values should be a 2D float32 array of shape (3, 2)
+        assert not any(
+            str(name).lower().startswith("unnamed") or not str(name).strip()
+            for name in result["parameter_names"]
+        ), "a placeholder column survived the merge"
+
+        # One row per parameter, one column per kept burst.
         values = result["values"]
         assert isinstance(values, np.ndarray)
-        assert values.shape == (3, 2)
-        # Check conversion of macro time from ms to seconds for kept rows (indices 1 and 3)
+        assert values.shape == (4, 2)
+        # Macro time converted ms → s, on the rows `skip_nth_row=2` keeps (1 and 3)
         assert np.allclose(values[0], [2.0, 4.0])
         assert np.allclose(values[1], [20.0, 40.0])
         assert np.allclose(values[2], [0.2, 0.4])
+        # The real last column keeps its own values rather than being discarded.
+        assert np.allclose(values[3], [6.0, 8.0])
 
         # 2. Test record_analysis_handler
         analysis_settings = {"gate": {"min_N_ph": 15}}

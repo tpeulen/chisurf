@@ -2,6 +2,17 @@
 
 ## 2026-07-28
 
+* **A behaviour fix in a companion repo left a stale test here.** ndXplorer
+  `4913cd6` (RF-470) stopped `.bur` reading from blanket-dropping the last
+  column — the blanket rule was deleting *real* measurements (`Red Count Rate
+  (KHz)`, `S delayed yellow (kHz)`) and with them every derived red/FRET
+  quantity; only trailing empty/`Unnamed` columns are dropped now.
+  `test/fio/test_fdb_ndxplorer.py` still asserted the old behaviour, expecting a
+  populated `dummy_col` to vanish, and had been red since. The fixture now
+  carries both cases at once — a trailing tab, which parses as the nameless
+  column the rule exists for and must go, and a real named last column that must
+  survive — so it pins the corrected semantics rather than the old ones.
+
 * **A deprecation that could never say "unsupported"** (RF-662). Retiring the
   third-party `deprecation` package dropped the frozen `current_version` that
   had made all twelve `@deprecated` decorations inert since 2019 — but dropped
