@@ -52,6 +52,13 @@ gui/       AutoForm view-model + hmm.view.json (plots via chiplot)
 The estimator itself is `chisurf.core.math.hmm.GaussianHMM`; its performance is
 tracked in [docs/development/benchmarks.md](../../../../docs/development/benchmarks.md).
 
+## Worked example
+
+`examples/notebooks/HMM_Binned_Traces.ipynb` — simulate a three-state trace with
+known rates, choose the state count by BIC, decode it, and check the recovered
+dwell times and rates against the truth. Also shows the two standard failure
+modes: too many states, and bins too coarse for the kinetics.
+
 ## Related
 
 - **H2MM** — photon-by-photon kinetics, no binning.

@@ -1,4 +1,4 @@
-"""Hidden-Markov-model analysis of binned time series (Qt-free).
+r"""Hidden-Markov-model analysis of binned time series (Qt-free).
 
 The one place in ChiSurf where a binned trace is turned into states, dwell
 times and a transition matrix. Everything above it -- the GUI tool, the RPC
@@ -7,9 +7,25 @@ functions rather than driving :class:`chisurf.core.math.hmm.GaussianHMM`
 themselves, so that state ordering, dwell-time definition and model selection
 stay the same wherever states are reported.
 
-States are always relabelled by increasing total emission mean, so state 0 is
-the dimmest. EM assigns labels arbitrarily, and without that convention "state
-1" would mean something different in every fit and every figure.
+Four conventions are fixed here, and they are the reason this module exists
+rather than each tool calling the estimator itself:
+
+1. **States are ordered by increasing total emission mean**, so state 0 is the
+   dimmest. EM assigns labels arbitrarily; without the convention, "state 1"
+   would mean something different in every fit, table and figure, and no two
+   tools could be compared.
+2. **A dwell is never continued across a sequence boundary.** Two traces that
+   happen to end and start in the same state are two visits, not one -- the gap
+   between them is not observed time.
+3. **Rates are the short-bin limit** :math:`k_{ij} \approx A_{ij}/\Delta t`,
+   reported with the diagonal set to the negative row sum so the result reads
+   as a generator matrix. The approximation is documented on
+   :func:`transition_rates`, including where it fails.
+4. **The state count is chosen by AIC/BIC**, never by the likelihood, which
+   always improves when a state is added.
+
+Anything that needs states out of a measurement calls these functions; the
+estimator (:mod:`chisurf.core.math.hmm`) stays free of analysis policy.
 """
 
 from __future__ import annotations
@@ -59,20 +75,31 @@ def as_matrix(traces) -> tuple[np.ndarray, list[int]]:
     Notes
     -----
     ``[[1, 2], [3, 4]]`` is ambiguous -- two bins of two channels, or two
-    single-channel sequences? It is read as **one matrix**, the convention
-    everywhere else here: rows are time bins. Pass 2-D arrays (or ragged 1-D
-    ones) to mean several sequences.
+    single-channel sequences of two bins? It is resolved by *what the elements
+    are*, which turns out to separate the two real callers cleanly:
+
+    * a **list of arrays** means several sequences -- a caller holding traces
+      holds arrays, and passing a list of them is how joint fitting is asked
+      for;
+    * a **nested list of numbers** means one matrix, rows being time bins --
+      that is the JSON shape the RPC service receives.
+
+    Getting this wrong is not a small error: three 1-D traces read as one matrix
+    become three bins of six thousand channels, and the fit then quietly
+    estimates millions of parameters from a handful of points. Passing 2-D
+    arrays is unambiguous under either rule.
     """
     if isinstance(traces, np.ndarray):
         sequences = [traces]
     elif isinstance(traces, (list, tuple)) and len(traces):
-        if np.ndim(traces[0]) >= 2:
+        holds_arrays = any(isinstance(t, np.ndarray) for t in traces)
+        if holds_arrays or np.ndim(traces[0]) >= 2:
             sequences = list(traces)
         else:
             try:
                 sequences = [np.asarray(traces, dtype=float)]
             except ValueError:
-                # Ragged: single-channel sequences of differing length.
+                # Ragged nested lists can only be separate sequences.
                 sequences = list(traces)
     else:
         sequences = [np.asarray(traces, dtype=float)]
@@ -90,6 +117,17 @@ def as_matrix(traces) -> tuple[np.ndarray, list[int]]:
     n_features = matrices[0].shape[1]
     if any(m.shape[1] != n_features for m in matrices):
         raise ValueError("all traces must have the same number of features")
+    total_bins = sum(len(m) for m in matrices)
+    if n_features > total_bins:
+        # Almost always a transposed trace: detection channels outnumber time
+        # bins in no real measurement, and the fit that follows would estimate
+        # far more parameters than there are data points.
+        logger.warning(
+            "%d features but only %d time bins -- is the trace transposed? "
+            "Rows are time bins, columns are channels.",
+            n_features,
+            total_bins,
+        )
     return np.concatenate(matrices), [len(m) for m in matrices]
 
 
@@ -190,6 +228,24 @@ def fit_traces(traces, settings: HmmSettings | None = None) -> HmmFit:
     HmmFit
         The fitted model, the decoded path and the derived per-state summaries,
         with states ordered from dimmest to brightest.
+
+    Notes
+    -----
+    Several traces passed together are fitted **jointly as separate
+    sequences**: they share one set of states and transitions, but no transition
+    is counted across the seam between two of them. That is what repeats of one
+    experiment need, and it is not the same as concatenating them.
+
+    The returned object is complete enough to hand across a process boundary --
+    :meth:`~...api.models.HmmFit.to_dict` is what the RPC service returns -- so
+    a caller never needs the live model back to report a result.
+
+    Examples
+    --------
+    >>> from chisurf.plugins.core.hmm.api import HmmSettings
+    >>> fit = fit_traces(counts, HmmSettings(n_states=2, time_step=1e-3))  # doctest: +SKIP
+    >>> fit.summaries[0].mean_dwell     # seconds in the dimmest state  # doctest: +SKIP
+    >>> fit.transition_rates            # 1/s, rows summing to zero     # doctest: +SKIP
     """
     settings = settings or HmmSettings()
     X, lengths = as_matrix(traces)
@@ -243,7 +299,7 @@ def fit_traces(traces, settings: HmmSettings | None = None) -> HmmFit:
 
 
 def transition_rates(transmat, time_step: float = 1.0) -> np.ndarray:
-    """Convert a per-bin transition matrix into a rate matrix.
+    r"""Convert a per-bin transition matrix into a rate matrix.
 
     Parameters
     ----------
@@ -261,7 +317,7 @@ def transition_rates(transmat, time_step: float = 1.0) -> np.ndarray:
 
     Notes
     -----
-    This is the short-bin approximation :math:`P \\approx I + K\\,\\Delta t`,
+    This is the short-bin approximation :math:`P \approx I + K\,\Delta t`,
     which holds while a state survives many bins. It becomes wrong once the
     off-diagonal probabilities are no longer small -- bin faster, or take the
     matrix logarithm, if a state turns over within a few bins.
@@ -294,6 +350,17 @@ def scan_state_counts(
         parameter count; BIC charges more per parameter and so tends to pick
         the smaller model, which is usually what a kinetic interpretation
         wants.
+
+    Notes
+    -----
+    Take the **minimum** of the criterion, not the elbow of the likelihood: the
+    likelihood improves with every state added and can never choose. A fit that
+    fails scores ``nan`` rather than aborting the scan, so one pathological
+    state count does not cost the whole curve.
+
+    A criterion still falling at the top of the range is evidence against the
+    model rather than for many states -- bleaching, drift, or a continuum of
+    states instead of discrete ones will all show up that way.
     """
     settings = settings or HmmSettings()
     X, lengths = as_matrix(traces)

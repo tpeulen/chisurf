@@ -114,21 +114,55 @@ csc hmm fit trace.csv --states 3 --time-step 1e-3 -o fit.json
 csc hmm scan trace.csv --min-states 1 --max-states 6
 ```
 
-From Python:
+From Python — the whole workflow, from a trace to rates:
 
 ```python
+import numpy as np
 from chisurf.plugins.core.hmm.api import HmmSettings
-from chisurf.plugins.core.hmm.core import fit_traces, scan_state_counts
+from chisurf.plugins.core.hmm.core import dwell_times, fit_traces, scan_state_counts
 
-scan = scan_state_counts(trace, min_states=1, max_states=6)
-fit = fit_traces(trace, HmmSettings(n_states=scan.best_bic, time_step=1e-3))
+BIN = 1e-3                                    # 1 ms bins
+settings = HmmSettings(time_step=BIN)
 
-fit.summaries[1].mean_dwell   # seconds in state 1 per visit
-fit.transition_rates          # 1/s, rows summing to zero
-fit.state_array               # decoded state per bin
+# 1. how many states does the trace support?
+scan = scan_state_counts(trace, settings, min_states=1, max_states=6)
+print(f"BIC prefers {scan.best_bic} states")
+
+# 2. fit that many and decode the path
+settings.n_states = scan.best_bic
+fit = fit_traces(trace, settings)
+
+# 3. read the kinetics off the result
+for s in fit.summaries:                       # states are ordered dimmest first
+    print(f"state {s.index}: {s.mean[0]:.1f} counts, "
+          f"{s.occupancy:.1%} of the time, "
+          f"{s.mean_dwell * 1e3:.1f} ms per visit ({s.n_dwells} visits)")
+
+rates = np.asarray(fit.transition_rates)      # 1/s, rows summing to zero
+print("0 → 1:", round(rates[0, 1], 1), "s⁻¹")
+
+states = fit.state_array                      # decoded state per bin
+durations = dwell_times(states, BIN)          # {state: [dwell, ...]} in seconds
+```
+
+Several traces are fitted jointly by passing a list; `fit.lengths` then says
+where each one ended, so the concatenated path can be split back up:
+
+```python
+fit = fit_traces([trace_a, trace_b, trace_c], settings)
+per_trace = np.split(fit.state_array, np.cumsum(fit.lengths)[:-1])
 ```
 
 Over RPC, the same result comes back as JSON from `hmm.fit` and `hmm.scan`.
+
+## A worked example
+
+`examples/notebooks/HMM_Binned_Traces.ipynb` (with its `.py` cell-script twin)
+runs the full loop on a simulated three-state trace whose rates are known, so
+every recovered number can be checked against what went in: the BIC scan, the
+fit and the decoded path, dwell-time histograms against the fitted exit rates,
+a joint fit of three repeats, and the two ways this analysis goes wrong —
+asking for too many states, and binning too coarsely for the kinetics.
 
 ## Settings reference
 

@@ -66,6 +66,13 @@ class PathListWidget(QtWidgets.QWidget):
     (e.g. a homodimer that reuses one structure for two rigid bodies whose order
     encodes body id); removal is then by row position. It cannot be combined with
     ``checkable``. Use :meth:`set_paths` to load a stored list verbatim.
+
+    ``max_height`` (option) caps the list in pixels, for a settings panel where
+    the files are one input among many rather than the subject of the tool. The
+    cap has to bring the size policy and the ``_autoform_expanding`` marker down
+    with it -- a widget that still claims the spare space is handed a tall cell
+    and then *centred* in it, which puts a gap above and below the very list the
+    cap was meant to shrink.
     """
 
     #: marker so a hosting dock panel gives this section the spare vertical space.

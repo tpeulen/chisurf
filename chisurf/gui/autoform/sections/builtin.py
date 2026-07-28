@@ -1299,8 +1299,21 @@ class PlotWidget(QtWidgets.QWidget):
 
     Reads the data by calling ``getattr(model, section.source)()``, which must
     return a list of series mappings (``{"x", "y", "name", "color", "width",
-    "style"}``). Call :meth:`refresh` (e.g. via ``AutoForm.refresh_plots``) to
-    re-read the source after the model changes.
+    "style"}``, plus ``symbol``/``symbol_size``/``no_line`` for markers). Call
+    :meth:`refresh` (e.g. via ``AutoForm.refresh_plots``) to re-read the source
+    after the model changes.
+
+    Rendering goes through :mod:`chisurf.gui.chiplot`, so every declarative plot
+    in ChiSurf follows the backend seam rather than importing a plotting library
+    (PRD-64). Anything chiplot cannot express belongs *in* chiplot: reaching
+    past the seam here would silently opt every plugin's plot out of the
+    migration at once.
+
+    A section without an explicit ``height`` marks itself
+    ``_autoform_expanding``, which is how the hosting panel knows to give it the
+    spare vertical space. Without that marker the panel adds a trailing stretch
+    that wins over the plot's own size policy and leaves it a few dozen pixels
+    tall next to a form.
     """
 
     is_form_field = False

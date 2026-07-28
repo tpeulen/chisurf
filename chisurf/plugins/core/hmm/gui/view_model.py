@@ -16,7 +16,7 @@ import numpy as np
 
 from ..api.models import HmmSettings
 from ..cli.main import load_trace
-from ..core.analysis import fit_traces, scan_state_counts, state_segments
+from ..core.analysis import fit_traces, scan_state_counts
 
 logger = logging.getLogger(__name__)
 

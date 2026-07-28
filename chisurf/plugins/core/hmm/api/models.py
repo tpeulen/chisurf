@@ -69,7 +69,7 @@ class HmmSettings:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, payload: dict[str, Any] | None) -> "HmmSettings":
+    def from_dict(cls, payload: dict[str, Any] | None) -> HmmSettings:
         """Build settings from a dictionary, ignoring unknown keys."""
         payload = payload or {}
         known = {f for f in cls.__dataclass_fields__}

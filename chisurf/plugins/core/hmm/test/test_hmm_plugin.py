@@ -45,6 +45,21 @@ def test_as_matrix_accepts_the_shapes_callers_actually_pass():
         as_matrix([])
 
 
+def test_a_list_of_one_dimensional_traces_is_several_sequences():
+    """The shape a caller with three repeats actually passes.
+
+    Read as one matrix instead, three 6000-bin traces become three bins of 6000
+    channels and the fit silently estimates millions of parameters.
+    """
+    X, lengths = as_matrix([np.zeros(40), np.ones(60), np.zeros(50)])
+    assert X.shape == (150, 1)
+    assert lengths == [40, 60, 50]
+    # A nested list of plain numbers is still one matrix: that is the JSON shape
+    # the RPC service receives, rows being time bins.
+    X, lengths = as_matrix([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
+    assert X.shape == (3, 2) and lengths == [3]
+
+
 def test_dwell_times_do_not_run_across_a_sequence_boundary():
     states = [0, 0, 1, 1, 1, 0, 0, 0]
     dwells = dwell_times(states, time_step=2.0)

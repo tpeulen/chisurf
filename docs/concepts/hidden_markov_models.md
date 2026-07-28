@@ -131,6 +131,12 @@ The estimator is `chisurf.core.math.hmm.GaussianHMM`; the shared analysis
 command line and the `hmm.fit` / `hmm.scan` RPC methods. See the guide
 [Hidden Markov models of binned traces](../guides/54_hidden_markov_models.md).
 
+For runnable code, `examples/notebooks/HMM_Binned_Traces.ipynb` (and its `.py`
+cell-script twin) works through every point on this page against a simulated
+trace with known rates: choosing the state count by BIC, decoding, dwell-time
+exponentials, the short-bin rate approximation and where it breaks, and what
+too many states looks like.
+
 [^rabiner]: L. R. Rabiner, "A tutorial on hidden Markov models and selected
     applications in speech recognition", *Proc. IEEE* **77**, 257-286 (1989).
     <https://doi.org/10.1109/5.18626>
