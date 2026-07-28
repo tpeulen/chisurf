@@ -2,6 +2,21 @@
 
 ## 2026-07-28
 
+* **QuEst: three quarters of the D–A decay were photons that were never
+  emitted** (review finding **RF-689**, S1, now `FIXED`). The fix lives in the
+  companion **quest** repository (`a4d7f56`), which is where the code is:
+  `get_histogram`/`get_histogram_fret` histogrammed the whole photon trace,
+  while a photon lost to quenching or transfer comes back as `dt = 0.0` with its
+  emitted flag clear — so the non-emitted fraction piled into bin 0 and both
+  curves totalled `n_photons` whatever the transfer efficiency. They now count
+  `dts[phs == 1]`, so a decay sums to `QY × n_photons` and carries amplitude
+  information. Number-moving, so quest's baselines were regenerated and every
+  moved number accounted for there: `donor_counts_total` alone, in eight places,
+  each new value `quantum_yield_donor × 4000` to within one out-of-range photon.
+  Pinned by quest's new `tests/test_decay_histogram.py`; suite 531 passed,
+  1 skipped. Nothing in this repo changed — the
+  `chisurf/plugins/quenching_estimator` shell only plots what quest returns.
+
 * **Trajectories: a step control, a smoothing window, and the grey blob fixed.**
   Reported from the running app: metaballs went grey during playback. That was
   my own draft path -- it averaged the atom colours, and **the mean of a

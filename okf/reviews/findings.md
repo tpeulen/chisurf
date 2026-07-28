@@ -8112,11 +8112,28 @@ control names its unit, the tooltips are real, and the **?** help modal is
 accurate. Findings RF-689..RF-695.
 
 ### RF-689
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the plotted and exported decay curves are contaminated by a spike of photons that were never emitted; the D–A curve's amplitude is meaningless)
 - **Location:** `quest/core/dye_diffusion.py:1236-1239` (`get_histogram`) and `:1501-1507` (`get_histogram_fret`) — both do `np.histogram(dts, …)` over the whole trace, while `quest/core/photon.py:33-39` (`_photon_rate_walk`) returns `dt = 0.0, ph = 0` for a photon lost to quenching or transfer; consumed at `quest/core/simulation.py:1071-1089` and written to `decay.csv` at `:1247-1249`
 - **Finding:** the emitted flag `phs` is computed and then ignored by the histograms, so every non-emitted photon is counted at `t = 0`. Verified (seed 7, 20,000 photons, T4L A/132 → A/55): `fret_counts[0] = 14479` = **72.4 %** of that curve's counts, exactly `1 - QY_DA = 0.721`, and `donor_counts[0] = 685` = 3.4 % = `1 - QY_D = 0.0314`; both curves then total ~20,000 counts *whatever* the transfer efficiency, so the Results decay plot carries no amplitude information and opens with a ~300× spike on the log axis. Excluding bin 0 the arrays are correct — sums 5516 and 19308 against `QY×N` of 5580 and 19372, and `1 - ⟨τ_DA⟩/⟨τ_D⟩ = 0.574` — so the fix is to histogram `dts[phs == 1]`, exactly as `simulation.py:1156` already does for `lifetime_donor`.
-- **Fix note:**
+- **Fix note:** Fixed in the companion **quest** repository (`a4d7f56`), where the
+  code lives. Both `get_histogram` and `get_histogram_fret` now histogram
+  `dts[nph == 1]` — the emitted photons only — so a decay curve sums to
+  `QY × n_photons` instead of `n_photons` and carries amplitude information for
+  the first time. Because this moves numbers, `tests/baselines/*.json` was
+  regenerated and every moved number accounted for in quest's `okf/log.md`
+  (decision 13): `donor_counts_total` **alone** moved, in eight places, each new
+  value `quantum_yield_donor × 4000` to within the 0–1 photon whose lifetime
+  falls outside the 0–50 ns `tac_range` — `imp_bff` E96 4000→339, E129
+  3999→1327, E139 3999→3275, fret 4000→3955; `labellib` E96 3999→290, E129
+  4000→3878, E139 4000→3959, fret 4000→3783. No yield, lifetime, efficiency,
+  volume or geometry number moved, which is the check that the fix touches the
+  histogram and nothing else. Pinned by the new
+  `tests/test_decay_histogram.py` (the total is the emitted count, bin 0 holds
+  no quenched photon, a genuine zero-lifetime photon is *still* counted — the
+  filter is on the flag, not on `dt == 0` — and a lower yield gives a smaller
+  curve, on both the donor and the D–A channel). Suite: 531 passed, 1 skipped.
+  Documented in quest's `okf/subsystems/photon-decay.md`.
 
 ### RF-690
 - **Status:** OPEN
