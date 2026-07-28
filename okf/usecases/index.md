@@ -210,6 +210,15 @@ The workflows a first pass should cover — expand as the tester discovers more:
   and correlates another, and calls an empty detector "resolved beyond what this
   sampling can show". *(last driven 2026-07-28; RF-664..RF-669)*
 
+- [FRET observables from an MD trajectory](/usecases/md-trajectory-fret.md) —
+  the simulation side of a FRET experiment: drop an MD trajectory into the
+  *Traj Tools* FRET tab, pick the two dipole atoms of the donor and of the
+  acceptor, and export `RDA(t)`, `κ²(t)` and the FRET-rate constant frame by
+  frame. The distances are exact to 0.0000 Å; unticking *Dipole (κ2)* zeroes
+  every FRET rate, and the atom pickers come up on one and the same atom, so an
+  untouched **Process** writes 464 rows of `nan` and calls it finished.
+  *(last driven 2026-07-28; RF-676..RF-681)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

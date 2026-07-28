@@ -2,6 +2,30 @@
 
 ## 2026-07-28
 
+* **QA — FRET observables from an MD trajectory** (RF-676..RF-681). Drove the
+  *Structure → Traj Tools* ▸ **FRET** panel
+  (`chisurf/plugins/traj/fret_trajectory`) headlessly on
+  `hgbp1_transition.h5` (464 frames, 5235 atoms, chains A 1–151 / B 152–570):
+  all eight workspace tabs visited, the trajectory dropped with a real
+  `QDropEvent`, the twelve atom combos clicked through to a donor (A/18 CA+CB)
+  and an acceptor (B/344 CA+CB), R0/τ0/t-step/stride set and **▶ Process
+  trajectory** run. **The compute is exact and quick**: `RDA` reproduced an
+  independent mdtraj dipole-centre distance to 0.0000 Å over all 464 frames
+  (mean 44.05 Å, κ² 0.000–0.662, E 0.00–0.81), the distance-only branch matched
+  the plain first-atom distance to 0.000 Å, stride 10 gave 47 correctly
+  renumbered rows, and the whole trajectory processed in 0.17–0.72 s. The
+  controls around it are where it goes wrong: unticking **Dipole (κ2)** writes
+  `FRETrate = 0` for every frame instead of the documented κ² = 2/3 (RF-676);
+  straight after a load all four dipole pickers sit on the *same* atom, so an
+  untouched **Process** writes 464 `nan` rows and logs *"Finished … (464
+  frames)"* (RF-677); a file that fails to load is logged as *"Loaded 1
+  trajectory file(s)"* and leaves the panel showing the previous trajectory
+  while the model points at the broken one (RF-678); the chain drop-down is
+  built from a `set`, so its order and the default selection change between runs
+  (RF-679); **t-step** ignores the 1 ps frame spacing the tool has just read
+  (RF-680); and the plugin README advertises histograms, time traces, AV dye
+  models and a menu path that do not exist (RF-681). Use case recorded in
+  [/usecases/md-trajectory-fret.md](/usecases/md-trajectory-fret.md).
 * **The PCH tool joins the shared dockable-tool base, and its window now takes a
   drop** ([PRD-36](/prds/prd-36.md)). `PCHApp` was the last plain
   `MessagesMixin, QMainWindow` tool in the priority-B backlog; it is now a
