@@ -22,6 +22,20 @@ decorators read `chisurf.action_registry` and so re-enter `chisurf.__getattr__`;
 the lazy branches therefore hand back the already-cached instance instead of
 building a second dispatcher whose registry would be empty.
 
+# Trailing edge
+
+A call swallowed by the debounce window is not discarded: `_schedule_trailing_edge`
+re-issues it after `debounce_ms` from a `threading.Timer` thread, through the
+dispatcher's optional *scheduler*. The scheduler exists so that a GUI front end
+can move the deferred handler back onto its own thread, and it is therefore
+always invoked **off** that thread — a scheduler that only works when called
+from the GUI thread (a bare `QTimer`, which needs an event loop in the calling
+thread) drops every trailing edge silently, because nothing raises and no
+fallback triggers. The GUI installs `qt_scheduler`
+(`chisurf/gui/__init__.py`), which posts through the queued-signal
+`_GuiExecutor` from a worker thread and defers via `QTimer.singleShot(0, …)`
+when it is already on the GUI thread.
+
 # Layout
 
 | File | Role |

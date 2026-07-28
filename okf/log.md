@@ -2,6 +2,18 @@
 
 ## 2026-07-28
 
+* **RF-175 fix — the GUI scheduler now works from the thread that calls it.**
+  Debounced actions defer their trailing edge onto a `threading.Timer` thread
+  and re-issue it through the dispatcher's scheduler; the GUI's `qt_scheduler`
+  answered with a bare `QTimer.singleShot`, which needs an event loop in the
+  *calling* thread, so in the running GUI every trailing edge was dropped
+  without an exception, a log line, or the fallback direct call. It now routes
+  off-thread calls through the queued-signal `_GuiExecutor` (`run_on_gui_thread`)
+  and keeps the `singleShot` deferral when it is already on the GUI thread.
+  Pinned by `test/macros/test_action_scheduler_thread.py`;
+  [action layer](/architecture/action-layer.md) gained a *Trailing edge*
+  section stating the invariant.
+
 * **QA — FRET observables from an MD trajectory** (RF-676..RF-681). Drove the
   *Structure → Traj Tools* ▸ **FRET** panel
   (`chisurf/plugins/traj/fret_trajectory`) headlessly on

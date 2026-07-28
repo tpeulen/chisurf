@@ -63,9 +63,20 @@ def _setup_action_dispatcher_scheduler():
             return
         
         def qt_scheduler(func, **kwargs):
-            """Schedule function to run on the GUI thread via QTimer.singleShot."""
+            """Schedule *func* on the GUI thread, from whichever thread asks.
+
+            Debounced trailing edges are scheduled from a ``threading.Timer``
+            thread, which has no Qt event loop — a ``QTimer`` started there
+            never fires and the deferred action is lost. Off the GUI thread the
+            call therefore goes through the queued-signal executor; on the GUI
+            thread it stays deferred to the next event-loop turn.
+            """
             try:
-                QtCore.QTimer.singleShot(0, lambda: func(**kwargs))
+                app = QtWidgets.QApplication.instance()
+                if app is not None and QtCore.QThread.currentThread() is app.thread():
+                    QtCore.QTimer.singleShot(0, lambda: func(**kwargs))
+                else:
+                    run_on_gui_thread(func, **kwargs)
             except Exception:
                 # Fallback to direct execution if scheduling fails
                 try:

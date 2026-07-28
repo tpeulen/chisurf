@@ -2342,11 +2342,22 @@ identity, or concurrency. Findings RF-174..RF-180.
   the one-dispatcher invariant.
 
 ### RF-175
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (in the GUI every debounced trailing-edge action is silently dropped, so the swallowed state change is lost rather than deferred)
 - **Location:** `chisurf/gui/__init__.py:66-73` (`qt_scheduler`) driven from `chisurf/core/actions/_infra.py:232-255` (`_schedule_trailing_edge`)
 - **Finding:** `_schedule_trailing_edge` runs `delayed_execute` on a `threading.Timer` thread, and that callback invokes the scheduler, whose whole body is `QtCore.QTimer.singleShot(0, lambda: func(**kwargs))`. A `QTimer` started on a plain Python thread has no event loop to fire it, so the callback **never runs** — and the `except` around it only catches a raised exception, which there is none, so the fallback direct call never triggers either. Verified with an offscreen `QApplication`: `singleShot(0, cb)` called from the main thread fires within one `processEvents` round, the identical call made from a `threading.Timer` thread has still not fired after 1.5 s of `processEvents`. End to end through the real dispatcher (`initialize_gui_executors()` then two `execute()` calls inside the window): the handler runs **once** — the debounced second call is swallowed at `:278` and its trailing edge is dropped. So in the GUI a debounced action (`parameter.value`, `parameter.fixed`, `parameter.bounds.*`, `fit.update`, `model.update`, `fit.mask_set`, `fit.range.set`) whose repeat lands inside the window loses that change permanently and silently. The scheduler must post to the GUI thread from any thread — `QMetaObject.invokeMethod` on a main-thread `QObject` with `Qt.QueuedConnection`, or the `_GuiExecutor` signal that already exists two functions above.
-- **Fix note:**
+- **Fix note:** `qt_scheduler` now asks which thread it is on: on the GUI thread
+  it keeps the `QTimer.singleShot(0, …)` deferral (so a scheduled call still
+  never runs synchronously), and from any other thread — which is where the
+  trailing edge always comes from, a `threading.Timer` — it hands the call to
+  `run_on_gui_thread`, i.e. the queued-signal `_GuiExecutor` that already lived
+  two functions below. Pinned by `test/macros/test_action_scheduler_thread.py`:
+  the scheduler called from a worker thread runs its callback *on the
+  application thread*, a call made on the GUI thread is still deferred, and a
+  debounced action repeated inside its window delivers its trailing edge to the
+  handler once the event loop is pumped. Against the pre-fix scheduler the
+  trailing edge never arrives (verified with the old body: one handler call,
+  none after 3 s of `processEvents`).
 
 ### RF-176
 - **Status:** FIXED
