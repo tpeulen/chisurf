@@ -54,16 +54,20 @@ def mask_zero_photon_bins(fit, xmin: int, wres: np.ndarray) -> np.ndarray:
 
 
 def get_pda_distance_distribution(fit) -> list:
-    """Return the P(R) distance-distribution curves for a Gaussian-distance PDA fit.
+    """Return the P(R) distance-distribution curves for a PDA fit.
 
     Qt-free accessor for the data-driven (AutoForm) ``distribution`` plot. The
-    first curve is the summed distribution; one curve per Gaussian component
-    follows (restoring the per-component overlay of the legacy widget).
+    first curve is always the summed distribution the model actually uses; one
+    curve per Gaussian component follows when the distance group exposes
+    components (restoring the per-component overlay of the legacy widget).
+    A group holding a single continuous distribution — the SAW-ν polymer model,
+    which has no ``means``/``sigmas``/``amplitudes`` — yields the summed curve
+    alone instead of nothing.
 
     Parameters
     ----------
     fit : chisurf.core.fitting.fit.Fit
-        Fit whose ``model.distances`` provides the Gaussian components.
+        Fit whose ``model.distances`` provides the distance distribution.
 
     Returns
     -------
@@ -76,23 +80,30 @@ def get_pda_distance_distribution(fit) -> list:
         return []
     try:
         dist = np.asarray(distances.distribution, dtype=float)
-        if dist.ndim != 2 or dist.shape[1] == 0:
-            return []
-        r, p_sum = dist[0], dist[1]
-        curves = [[p_sum, r]]
-        means = distances.means
-        sigmas = distances.sigmas
-        amplitudes = distances.amplitudes
-        if getattr(distances, "limited_width", False) and means.size:
-            sigmas = (sigmas / 100.0) * means
-        for mean, sigma, amp in zip(means, sigmas, amplitudes):
-            if sigma <= 0.0 or amp <= 0.0:
-                continue
-            y = amp * normal_distribution(x=r, loc=float(mean), scale=float(sigma), norm=False)
-            curves.append([y, r])
-        return curves
     except Exception:
         return []
+    if dist.ndim != 2 or dist.shape[0] < 2 or dist.shape[1] == 0:
+        return []
+    r, p_sum = dist[0], dist[1]
+    curves = [[p_sum, r]]
+
+    # Per-component overlay only for groups that are a sum of Gaussians.
+    means = getattr(distances, "means", None)
+    sigmas = getattr(distances, "sigmas", None)
+    amplitudes = getattr(distances, "amplitudes", None)
+    if means is None or sigmas is None or amplitudes is None:
+        return curves
+    means = np.atleast_1d(np.asarray(means, dtype=float))
+    sigmas = np.atleast_1d(np.asarray(sigmas, dtype=float))
+    amplitudes = np.atleast_1d(np.asarray(amplitudes, dtype=float))
+    if getattr(distances, "limited_width", False) and means.size:
+        sigmas = (sigmas / 100.0) * means
+    for mean, sigma, amp in zip(means, sigmas, amplitudes):
+        if sigma <= 0.0 or amp <= 0.0:
+            continue
+        y = amp * normal_distribution(x=r, loc=float(mean), scale=float(sigma), norm=False)
+        curves.append([y, r])
+    return curves
 
 
 def get_pda_residual_image(fit_group, weighted: bool = True):

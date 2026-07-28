@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **PDA: the SAW-ν model's *Distance P(R)* panel can draw at all (RF-606).**
+  `pda2c/common.py::get_pda_distance_distribution` was written against the
+  Gaussian-component group and read `means`/`sigmas`/`amplitudes` — three
+  attributes `Pda2cSawNuDistances` does not have — *after* it had already built
+  the summed curve, so the `AttributeError` hit a blanket `except Exception:
+  return []` and the one panel that shows what the polymer model is for rendered
+  blank, silently, for as long as the model has existed. The accessor now
+  returns the summed curve first and only *adds* the per-component overlay when
+  the group actually offers components, and the `try` narrows to the
+  `distribution` access so a broken group contract raises instead of blanking
+  the plot. Confirmed by rendering the real `DistributionPlot` for
+  `Pda2cSawNuModel` headlessly with *Distance P(R)* selected: the SAW-ν curve
+  draws, peaking near 50 Å at the default `R_rms = 55 Å`. Pinned by
+  `test/models/test_pda2c_saw_nu.py::test_saw_nu_distance_distribution_accessor_returns_the_summed_curve`;
+  the Gaussian overlay stays pinned by `test_pda_gaussian_plots_pr_and_residual2d`.
+
 * **PDA consistency check: the verdict now depends on the data on every axis
   (RF-604).** The kinetic consistency check bound the *fitted* histogram
   callback but binned it on a hard-coded 0–1 linear grid

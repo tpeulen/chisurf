@@ -33,6 +33,29 @@ def test_saw_nu_model_resolves_and_declares_view():
     assert Pda2cSawNuModel.view_spec_file == "saw_nu.view.json"
 
 
+def test_saw_nu_distance_distribution_accessor_returns_the_summed_curve():
+    """The P(R) plot accessor draws the SAW-ν curve (no Gaussian components)."""
+    import types
+
+    from chisurf.core.models.pda2c.common import get_pda_distance_distribution
+    from chisurf.core.models.pda2c.saw_nu import Pda2cSawNuDistances
+
+    g = Pda2cSawNuDistances(fit=None)
+    fit = types.SimpleNamespace(model=types.SimpleNamespace(distances=g))
+
+    curves = get_pda_distance_distribution(fit)
+    assert len(curves) == 1, "SAW-ν has one continuous component, not zero curves"
+    y, x = curves[0]
+    r, p = g.distribution
+    assert np.allclose(x, r)
+    assert np.allclose(y, p)
+    assert float(np.asarray(y).sum()) > 0.0
+
+    # A group without a distribution at all still degrades to an empty plot.
+    empty = types.SimpleNamespace(model=types.SimpleNamespace(distances=None))
+    assert get_pda_distance_distribution(empty) == []
+
+
 def test_saw_nu_view_spec_is_valid_and_targets_distances():
     p = pathlib.Path("chisurf/core/models/pda2c/saw_nu.view.json")
     v = json.loads(p.read_text())

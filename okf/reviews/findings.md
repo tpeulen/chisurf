@@ -7126,11 +7126,26 @@ that has never been able to draw. Findings RF-604..RF-609.
 - **Fix note:**
 
 ### RF-606
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the SAW-ν model's *Distance P(R)* plot is always empty — the one panel that shows what the model is for)
 - **Location:** `chisurf/core/models/pda2c/common.py:83-85` (`get_pda_distance_distribution`: `means = distances.means; sigmas = distances.sigmas; amplitudes = distances.amplitudes`) with the bare `except Exception: return []` at `:94-95`, against `chisurf/core/models/pda2c/saw_nu.py:23-69` (`Pda2cSawNuDistances` defines `distribution`, `r_rms`, `nu` — and no `means`/`sigmas`/`amplitudes`) and its view spec `chisurf/core/models/pda2c/saw_nu.view.json:238-247` (`"Distance P(R)": {"accessor": "...common:get_pda_distance_distribution"}`)
 - **Finding:** the accessor is written against the Gaussian-component group and reads three attributes the SAW-ν group does not have; `AttributeError` on `distances.means` is swallowed by the catch-all and the plot renders blank. Verified in the `arm64` env: `Pda2cSawNuDistances().distribution` is a valid `(2, 96)` array, `hasattr(d, "means")` is `False`, and `get_pda_distance_distribution(fit)` returns `[]` — so even the *summed* curve, which was already built at `:82` before the per-component loop, is lost. Build the summed curve first and return it, adding the per-component overlay only when the group offers components (or give `Pda2cSawNuDistances` empty `means`/`sigmas`/`amplitudes`). The blanket `except` is what makes this invisible; it should not swallow attribute errors from the group contract.
-- **Fix note:**
+- **Fix note:** `get_pda_distance_distribution` now builds and returns the summed
+  curve first and only *adds* the per-component overlay when the distance group
+  actually offers components — `means`/`sigmas`/`amplitudes` are read with
+  `getattr(..., None)` and a group missing any of them (the SAW-ν case) yields
+  the single continuous curve instead of `[]`. The blanket `except` is gone: the
+  narrow `try` now wraps only the `distances.distribution` access, so a broken
+  group contract raises rather than rendering a silently blank panel; the shape
+  guard also rejects a `(1, N)` array. Verified headlessly by rendering the real
+  `DistributionPlot` for `Pda2cSawNuModel` with *Distance P(R)* selected — the
+  SAW-ν curve draws, peaking near 50 Å at the default `R_rms = 55 Å`, where the
+  panel was blank before. Pinned by
+  `test_saw_nu_distance_distribution_accessor_returns_the_summed_curve` in
+  `test/models/test_pda2c_saw_nu.py` (one curve, equal to the group's own
+  `distribution`, and a `distances is None` model still degrades to `[]`); the
+  Gaussian path stays covered by `test_pda_gaussian_plots_pr_and_residual2d`
+  (`test/gui/test_pda2c_model_editor.py`, summed + two components).
 
 ### RF-607
 - **Status:** OPEN
