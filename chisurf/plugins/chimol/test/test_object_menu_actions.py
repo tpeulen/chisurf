@@ -177,12 +177,15 @@ def _fill(template: str) -> str:
 
 @pytest.mark.parametrize("template", _runnable())
 def test_a_menu_entry_runs(window, template):
-    """Every entry with a command must run without reporting an error."""
+    """Every entry with a command must run without reporting an error.
+
+    The entry goes in **whole**, ``;`` and all, because that is what the panel
+    inside the viewport emits — splitting it here is what hid RF-846, where the
+    four ``preset`` entries (the only ones that are compound) each answered
+    "too many positional arguments" from the viewport and worked from the dock.
+    """
     win, errors = window
-    for part in _fill(template).split(";"):
-        part = part.strip()
-        if part:
-            win._run_object_menu_command(part)
+    win._run_object_menu_command(_fill(template))
 
     from qtpy import QtWidgets
 

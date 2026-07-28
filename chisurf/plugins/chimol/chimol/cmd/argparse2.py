@@ -23,8 +23,8 @@ _OPEN = {"(": ")", "[": "]", "{": "}"}
 _CLOSE = set(")]}")
 
 
-def _split_top_level(arg_str: str, max_parts: int | None = None) -> list[str]:
-    """Split on top-level commas, ignoring commas inside brackets/quotes.
+def _split_top_level(arg_str: str, max_parts: int | None = None, sep: str = ",") -> list[str]:
+    """Split on top-level *sep*, ignoring separators inside brackets/quotes.
 
     When ``max_parts`` is given, splitting stops after that many parts and the
     remainder (verbatim) becomes the final element — used for the raw modes.
@@ -51,9 +51,9 @@ def _split_top_level(arg_str: str, max_parts: int | None = None) -> list[str]:
             depth = max(0, depth - 1)
             buf.append(ch)
             continue
-        if ch == "," and depth == 0:
+        if ch == sep and depth == 0:
             if max_parts is not None and len(parts) + 1 >= max_parts:
-                buf.append(ch)  # keep remaining commas verbatim in the last part
+                buf.append(ch)  # keep remaining separators verbatim in the last part
                 continue
             parts.append("".join(buf))
             buf = []
@@ -61,6 +61,20 @@ def _split_top_level(arg_str: str, max_parts: int | None = None) -> list[str]:
         buf.append(ch)
     parts.append("".join(buf))
     return parts
+
+
+def split_statements(line: str) -> list[str]:
+    """Split a command line into its ``;``-separated statements.
+
+    PyMOL's compound line — ``hide everything, obj; show cartoon, obj`` is two
+    commands. A ``;`` inside quotes or brackets belongs to an argument and is
+    kept. Empty statements are dropped, so a trailing ``;`` is harmless.
+
+    This is the one place the separator is defined; every panel that turns a
+    menu entry into commands routes through it (see ``BaseCmd.do``).
+    """
+    parts = _split_top_level(line or "", sep=";")
+    return [stripped for stripped in (part.strip() for part in parts) if stripped]
 
 
 def tokenize(arg_str: str, mode: str = "normal") -> list[tuple[str | None, str]]:

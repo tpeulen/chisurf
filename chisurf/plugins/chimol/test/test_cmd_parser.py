@@ -7,8 +7,10 @@ import pytest
 from chisurf.plugins.chimol.chimol.cmd.argparse2 import (
     CommandError,
     bind_and_call,
+    split_statements,
     tokenize,
 )
+from chisurf.plugins.chimol.chimol.cmd.base import BaseCmd
 from chisurf.plugins.chimol.chimol.cmd.registry import collect_commands, command
 from chisurf.plugins.chimol.chimol.cmd.selection_types import Selection
 
@@ -101,3 +103,66 @@ def test_raw_mode_command_passes_expression_verbatim():
         "(chain A)",
         "b=0+1",
     )
+
+
+# --------------------------------------------------------------------------- #
+# compound lines
+# --------------------------------------------------------------------------- #
+class _RecordingCmd(BaseCmd):
+    """A cmd whose commands only record that they were reached."""
+
+    def __init__(self):
+        self.calls: list[tuple] = []
+        self.errors: list[str] = []
+        super().__init__()
+        self.set_error_callback(self.errors.append)
+
+    @command("hide")
+    def hide(self, representation: str = "", selection: Selection = "all"):
+        self.calls.append(("hide", representation, selection))
+
+    @command("show")
+    def show(self, representation: str = "", selection: Selection = "all"):
+        self.calls.append(("show", representation, selection))
+
+    @command("iterate", mode="raw1")
+    def iterate(self, selection: Selection = "", expression: str = ""):
+        self.calls.append(("iterate", selection, expression))
+
+
+def test_split_statements_keeps_separators_inside_quotes_and_brackets():
+    assert split_statements("hide everything, x; show cartoon, x") == [
+        "hide everything, x",
+        "show cartoon, x",
+    ]
+    assert split_statements("label sel, 'a; b'") == ["label sel, 'a; b'"]
+    assert split_statements("set_color c, [1; 0; 0]") == ["set_color c, [1; 0; 0]"]
+    assert split_statements("zoom all;  ; ") == ["zoom all"]
+    assert split_statements("") == []
+
+
+def test_do_runs_every_statement_of_a_compound_line():
+    """The object menus' presets are one ``;``-separated line (RF-846).
+
+    Without the split the whole line reached ``hide`` as its arguments and every
+    preset answered "too many positional arguments" — dead in the viewport panel,
+    which emits the entry verbatim, and alive in the docked one, which happened
+    to split it itself.
+    """
+    cmd = _RecordingCmd()
+    cmd.do("hide everything, 1abc; show cartoon, 1abc")
+    assert cmd.calls == [
+        ("hide", "everything", "1abc"),
+        ("show", "cartoon", "1abc"),
+    ]
+    assert cmd.errors == []
+
+
+def test_do_leaves_a_raw_command_its_own_semicolons():
+    """``iterate``/``alter``/``mdo`` are handed a statement list of their own."""
+    cmd = _RecordingCmd()
+    cmd.do("iterate name CA, stored.a.append(b); stored.c.append(q)")
+    assert cmd.calls == [
+        ("iterate", "name CA", "stored.a.append(b); stored.c.append(q)")
+    ]
+    assert cmd.errors == []

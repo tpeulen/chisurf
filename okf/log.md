@@ -2,6 +2,19 @@
 
 ## 2026-07-29
 
+* **RF-846 — the compound line is the interpreter's, not the panel's.** The
+  object menus separate statements with `;`, the docked panel split on it and
+  `cmd.do()` did not, so the four Action ▸ preset entries — the only compound
+  ones in the table — answered `hide: too many positional arguments` from the
+  panel drawn inside the viewport and worked from the dock. `do()` now splits
+  through the new `argparse2.split_statements` (the bracket/quote-aware scanner
+  reused with a `sep`), keeping the whole line for a command that takes its tail
+  verbatim (`iterate`/`alter`/`mdo`, where the `;` is the argument), and the
+  docked panel calls the same helper. `test_object_menu_actions.py` no longer
+  splits the entry itself — that copy of the rule is what let 163 menu entries
+  run green over a dead one — plus three splitter/dispatch tests in
+  `test_cmd_parser.py`. See [/plugins/profiles/chimol.md](/plugins/profiles/chimol.md).
+
 * **QA use case — the VV/VH G-factor and l1/l2 calibration window** (RF-918..RF-925).
   Drove `chisurf/plugins/vv_vh_g_factor/` offscreen end to end against the four real
   VV/VH files in the tree and wrote it up as

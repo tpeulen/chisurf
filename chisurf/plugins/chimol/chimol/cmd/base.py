@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .argparse2 import CommandError, bind_and_call, tokenize
+from .argparse2 import CommandError, bind_and_call, split_statements, tokenize
 from .registry import collect_commands, command
 
 if TYPE_CHECKING:
@@ -43,6 +43,7 @@ class BaseCmd:
         return self._registry.names()
 
     def do(self, line: str) -> None:
+        """Execute *line*, which may hold several ``;``-separated statements."""
         line = (line or "").strip()
         if not line:
             return
@@ -56,6 +57,25 @@ class BaseCmd:
             self._run_script_file(script_path)
             return
 
+        for statement in self._statements(line):
+            self._do_one(statement)
+
+    def _statements(self, line: str) -> list[str]:
+        """Split *line* on top-level ``;``, unless the command captures it.
+
+        A command whose tail is taken verbatim (``mode="raw1"``/``"raw2"`` —
+        ``iterate``, ``alter``, ``mdo``, …) is handed a Python expression or a
+        command list of its own, and a ``;`` in there is part of the argument.
+        """
+        if ";" not in line:
+            return [line]
+        spec = self._registry.resolve(line.split(None, 1)[0].lower())
+        if spec is not None and spec.mode != "normal":
+            return [line]
+        return split_statements(line)
+
+    def _do_one(self, line: str) -> None:
+        """Execute a single statement (no ``;`` handling — see :meth:`do`)."""
         head_rest = line.split(None, 1)
         name = head_rest[0].lower()
         rest = head_rest[1] if len(head_rest) > 1 else ""

@@ -38,10 +38,16 @@ adapted to Python introspection:
   `alter`/`iterate`) and `bind_and_call(func, pairs)` which maps positionals/
   keywords to the method's `inspect.signature` and coerces each string per the
   parameter annotation (`int`/`float`/`bool`/`str`/`Selection`, PEP-563 aware).
-- **`base.py:do()`** — the single driver: `@script` execution, then resolve the
-  head token in the registry and tokenize+bind+call. There is **one** dispatch
-  path; the legacy `_cmd_x(args: List[str])` + `_mixin_commands()` pattern and its
-  adapter have been fully removed.
+- **`base.py:do()`** — the single driver: `@script` execution, then the line is
+  split into its `;`-separated statements and each is resolved in the registry
+  and tokenized+bound+called. There is **one** dispatch path; the legacy
+  `_cmd_x(args: List[str])` + `_mixin_commands()` pattern and its adapter have
+  been fully removed. The compound line is PyMOL's (`hide everything, x; show
+  cartoon, x`), and the separator is defined once, in
+  `argparse2.split_statements` — every panel that turns a menu entry into
+  commands routes through it, rather than splitting for itself. A command whose
+  tail is captured verbatim (`raw1`/`raw2`) keeps its `;`: there it is part of
+  the Python expression (`iterate`, `alter`) or the command list (`mdo`).
 
 Adding a command is therefore writing one annotated method
 (`def zoom(self, sel: str = "all", buffer: float = 2.0)`); parsing, keyword args

@@ -9676,11 +9676,23 @@ apart: the separator the table uses, the prompt it declares, the note and the
 tint it carries are each honoured on one side only. RF-846..RF-852.
 
 ### RF-846
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (correctness)
 - **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:274` (`InternalGui._emit`), against `chisurf/plugins/chimol/chimol/object_menus.py:109-117` (`ACTION_MENU`'s `preset` children)
 - **Finding:** the menu table uses `;` as its statement separator — the docked panel splits on it (`app/objects_panel.py:482`, `for line in entry.command.split(";")`) and the command interpreter does **not** (`cmd/base.py:45`, `do()` splits off the head word and hands the whole rest to the argument binder). `_emit` splits only on `splitlines()`, so the compound string arrives at `cmd.do()` intact. Verified end to end: Action ▸ preset ▸ *simple* in the viewport panel emits `hide everything, 1abc; show cartoon, 1abc` and the interpreter answers `hide: too many positional arguments`. All four presets (*simple*, *ball and stick*, *ligand sites*, *technical*) are dead in the in-viewport panel and work in the docked one — the only entries in the whole table that use `;`. Fix: split on `;` where the two panels can share it — best inside `cmd.do()`, so a typed compound line behaves the same and neither panel carries its own copy of the rule.
-- **Fix note:**
+- **Fix note:** the separator is now the interpreter's, defined once:
+  `argparse2.split_statements` (the existing bracket/quote-aware scanner, given a
+  `sep` argument) and `BaseCmd.do`, which splits a line into statements and runs
+  each through the unchanged `_do_one`. A command that takes its tail verbatim
+  (`mode="raw1"`/`"raw2"` — `iterate`, `alter`, `mdo`) keeps its `;`, because
+  there the separator is part of the Python expression or command list it is
+  handed. The docked panel now calls the same helper instead of `.split(";")`, so
+  neither panel carries its own copy. Pinned by three tests in
+  `test_cmd_parser.py` (the splitter's quote/bracket cases, a compound line
+  dispatching to both commands, a raw command keeping its own `;`) and by
+  `test_object_menu_actions.py::test_a_menu_entry_runs`, which no longer splits
+  the entry itself — that test-side split is what hid the defect from the 163
+  menu entries it runs. All four `preset` entries fail there without the fix.
 
 ### RF-847
 - **Status:** OPEN

@@ -19,6 +19,7 @@ from typing import Any, Dict, Optional
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ..cmd.argparse2 import split_statements
 from ..colors import _OBJECT_ID_ROLE
 from ..object_menus import OBJECT_MENUS, MenuEntry
 
@@ -479,10 +480,7 @@ class ObjectsDock(QtCore.QObject):
             text = str(text).strip()
 
         name = target()
-        for line in entry.command.split(";"):
-            line = line.strip()
-            if not line:
-                continue
+        for line in split_statements(entry.command):
             if text is not None:
                 line = line.replace("{text}", text)
             for target_name in self._targets_for(line, name):
