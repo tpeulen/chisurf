@@ -9653,3 +9653,65 @@ headlessly against the real table.
 - **Location:** `chisurf/core/fitting/fit.py:648-660` (`__str__`: `err = f"±{ee:.3g}({rel:.1f}%)"`, `src = "cov"`) and `:669-700` (`_prior_posterior_report`, which prints `name / value / interval / method` and never reads `entry['warning']` or `entry['asymmetry']`), fed by `posterior_summary` at `:797-880`
 - **Finding:** on a converged fit, `sc` — declared on bounds `(0, 100)` — is printed as `±1.47 (32765.6 %)` with the interval `[-1.4635, 1.4724]`, i.e. 98 % of the quoted range lies outside the parameter's own domain; `ts` is printed as `±104 (55485.9 %)`. Both are the Laplace/covariance estimate, so the numbers are arithmetically what they are, but the interval is reported without being clipped to the bounds that the fit itself enforces. The same rows carry, from the stored chain, `warning: "posterior is skewed (0.00662454 +0.00554 -0.00475); a symmetric interval misstates both ends"` and `asymmetry: 1.166` — `posterior_summary()` computes them and the *Info* tab prints neither, so the reader sees a symmetric interval with no hint that the measured posterior is not. Clip a `laplace` interval to `bounds` when the parameter has them, and print the `warning` column that the data already carries.
 - **Fix note:**
+
+## Review 2026-07-28 — the object panel drawn inside the viewport
+
+Slice: `68667bbb8` (*draw the object panel inside the viewport, menus and all*) —
+`chisurf/plugins/chimol/chimol/renderer/internal_gui.py`, its seam in
+`renderer/qtgl.py` and `app/molview_main_window.sync_internal_gui`, read against
+the shared menu table (`chimol/object_menus.py`), the command interpreter
+(`cmd/base.py`) and the table's older consumer, the docked `app/objects_panel.py`.
+The geometry is deliberately GL-free, so every claim below was reproduced by
+driving `InternalGui` directly in the `arm64` env with no window. The panel is the
+*second* consumer of a table written for the first, and that is where it comes
+apart: the separator the table uses, the prompt it declares, the note and the
+tint it carries are each honoured on one side only. RF-846..RF-852.
+
+### RF-846
+- **Status:** OPEN
+- **Severity:** S1 (correctness)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:274` (`InternalGui._emit`), against `chisurf/plugins/chimol/chimol/object_menus.py:109-117` (`ACTION_MENU`'s `preset` children)
+- **Finding:** the menu table uses `;` as its statement separator — the docked panel splits on it (`app/objects_panel.py:482`, `for line in entry.command.split(";")`) and the command interpreter does **not** (`cmd/base.py:45`, `do()` splits off the head word and hands the whole rest to the argument binder). `_emit` splits only on `splitlines()`, so the compound string arrives at `cmd.do()` intact. Verified end to end: Action ▸ preset ▸ *simple* in the viewport panel emits `hide everything, 1abc; show cartoon, 1abc` and the interpreter answers `hide: too many positional arguments`. All four presets (*simple*, *ball and stick*, *ligand sites*, *technical*) are dead in the in-viewport panel and work in the docked one — the only entries in the whole table that use `;`. Fix: split on `;` where the two panels can share it — best inside `cmd.do()`, so a typed compound line behaves the same and neither panel carries its own copy of the rule.
+- **Fix note:**
+
+### RF-847
+- **Status:** OPEN
+- **Severity:** S2 (correctness/contract)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:310` (`InternalGui._layout_menu`); test at `chisurf/plugins/chimol/test/test_internal_gui.py:172`
+- **Finding:** the wrap decision counts only clickable entries (`per_column = available // MENU_ITEM_H`, `columns = ceil(len(clickable) / per_column)`) while the single-column height it then computes *also* charges 5 px per separator. A menu whose separators push it past the edge is therefore laid out unwrapped and taller than the viewport; `y` is clamped to `max(self._height - height, 0) == 0` and the bottom entries end up below the window — undrawn and unreachable, which is exactly the failure the method's docstring says wrapping prevents. Verified at 900×470: the Action menu lays out 497 px tall at `y=0`, with `movement` at y=455 and `compute` at y=473 off the bottom, and `hit_test` still reporting them. The viewport-height windows where each menu does this: A 462–496, S 462–506, H 480–534, L 336–360, C 300–309 px. `test_a_long_menu_stays_inside_the_viewport` asserts the right invariant but only at height 300, deep inside the wrapped regime, so it never sees it. Fix: take the wrap decision on the same height the unwrapped branch computes (separators included) and add a near-threshold height to that test.
+- **Fix note:**
+
+### RF-848
+- **Status:** OPEN
+- **Severity:** S2 (contract)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:278-283` (`_emit`) and `:463` (`_paint_menu`'s `enabled`)
+- **Finding:** `_emit` drops any command line containing `{text}`, while `_paint_menu` paints an entry enabled whenever `command is not None`. The four prompted entries — Action ▸ `rename object`, `copy to object`, `align ▸ align to ...`, `align ▸ super to ...` — are therefore drawn live, swallow the click, close the menu and do nothing; nothing reaches the command echo either, so there is no trace that a click happened. The docked panel asks for the value (`app/objects_panel.py:472`, `QInputDialog.getText`). Verified: clicking `rename object` emits no command and leaves `has_menu() == False`. Fix: in the viewport renderer treat `entry.prompt is not None` as not-runnable-here — grey, with the reason (see RF-851) — or open the same input dialog. An entry that looks live and does nothing is the one state the menu must not have.
+- **Fix note:**
+
+### RF-849
+- **Status:** OPEN
+- **Severity:** S2 (correctness)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:296-308` (`_open_submenu`)
+- **Finding:** `_open_submenu` looks the hovered entry up in `self._menus[-1]`, but once a submenu is open `self._menus[-1]` *is* that submenu, and nothing ever pops one (`close_menus()` clears the whole stack or nothing). So the first submenu hovered is the only one reachable: it stays on screen and every other submenu of the same parent is dead until the user clicks outside and starts the menu again. Verified: hover `preset` → menus `['Action:', 'preset']`; move the cursor to `align` → still `['Action:', 'preset']`, no `align` menu, `preset` still drawn. Fix: locate the entry in whichever open menu owns it, truncate `self._menus` to that menu, then open the child; and drop a stale child when the cursor moves to a non-submenu sibling.
+- **Fix note:**
+
+### RF-850
+- **Status:** OPEN
+- **Severity:** S3 (invariant)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:134` (`set_rows`) and `:231` (`mouse_press`)
+- **Finding:** `set_rows` replaces `self.rows` and closes the menus but leaves `_row_rects`/`_button_rects` from the previous `layout()`, so between the two calls the panel hit-tests rows that no longer exist — and `mouse_press` indexes `self.rows[hit.row]` unguarded. Verified: six rows → `layout(900, 700)` → `set_rows` with one row → a press on the old row 5 gives `hit_test → Hit("name", row=5)` and then `IndexError: list index out of range`, raised inside `QtGLRenderer.mousePressEvent`. The single production caller (`app/molview_main_window.py:2078-2083`) re-lays out on the next line, so this is latent rather than live, but the invariant is currently held by call-site convention across two public methods of a class whose whole point is that it can be driven without a window. Fix: clear the two rect lists and `_hover` in `set_rows`, and bounds-check `hit.row` in `mouse_press`.
+- **Fix note:**
+
+### RF-851
+- **Status:** OPEN
+- **Severity:** S3 (parity)
+- **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:436` (`_paint_menu`), against `chisurf/plugins/chimol/chimol/app/objects_panel.py:161-175`
+- **Finding:** `MenuEntry` carries `note` (why an entry is disabled) and `color` (PyMOL's `933` tint on the destructive ones). The docked panel renders both — tooltip and a colour swatch — and the in-viewport menu renders neither. A greyed entry in the viewport gives no reason at all, which is the one thing `object_menus`' module docstring says a disabled entry exists to do ("a disabled entry with a reason is the honest middle"), and `delete object`, `remove waters` and `hydrogens ▸ remove` lose the red warning the same docstring calls worth keeping — three of the four irreversible entries in the table. A hand-drawn menu has no tooltip, so the note needs somewhere to live: a footer line inside the menu rect showing the hovered entry's note is enough, and the tint goes straight on the label pen.
+- **Fix note:**
+
+### RF-852
+- **Status:** OPEN
+- **Severity:** S3 (parity)
+- **Location:** `chisurf/plugins/chimol/chimol/app/molview_main_window.py:2058` (`sync_internal_gui`)
+- **Finding:** the docstring promises the two panels are "two views of one list … fed from the same place so they cannot disagree", but they are fed from different places: the docked list is built by `_grouped_display_order` with a header row per group and the members of a *collapsed* group skipped (`:1974-1997`), while `sync_internal_gui` walks `_object_store`, which deliberately keeps every object "whether or not its row is drawn" (`:1987-1990`), and emits one flat row each. So the in-viewport panel shows the members of collapsed groups, has no group row, and cannot address a group at all — and the `{sele}`-to-members expansion the docked panel does for a group (`objects_panel._targets_for`) has no counterpart. `GuiRow.is_group`, `.indent` and `.detail` are painted (`internal_gui.py:398-408`) but have no producer anywhere in the tree. Fix: build the rows from the same display order, set `is_group`/`indent`, and skip a collapsed group's members.
+- **Fix note:**
