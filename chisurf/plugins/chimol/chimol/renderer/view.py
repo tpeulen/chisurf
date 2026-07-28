@@ -4846,6 +4846,56 @@ class MolView(QtWidgets.QWidget):
         return scene_objects
 
     @staticmethod
+    def scene_radius_for(points: np.ndarray, configured: float, fraction: float = 0.02) -> float:
+        """Turn a radius written in Angstrom into one that means something here.
+
+        Every neighbourhood radius in the display configuration -- the ambient
+        occlusion radii, the surface-only cull, the shadow reach -- is written
+        in Angstrom, and every one of them is then applied to **scaled scene
+        coordinates**. On one spoke of the nuclear pore that is a 5 A
+        neighbourhood inside a 6,000-unit model, and it fails twice over:
+
+        * it selects nothing, so the work it guards is not skipped. The
+          "surface only" cull kept **100%** of 29,273 beads -- it had never
+          culled anything;
+        * it is *slow*, because a cell list built at 5 units across a 6,000-unit
+          model is millions of near-empty cells. That mask cost **2.0 s**; at a
+          radius the model's own size it costs 0.03 s and keeps 3%.
+
+        So the radius is the larger of what was configured and a fraction of the
+        model's own extent. Configured values still win on a model small enough
+        for them to mean what they say -- a protein a few tens of Angstrom
+        across -- which is the case they were chosen for.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            ``(N, 3)`` positions the neighbourhood will be searched over.
+        configured : float
+            The radius from the display configuration, in Angstrom.
+        fraction : float
+            Share of the model's spread to use as the floor.
+
+        Returns
+        -------
+        float
+            A radius in the same units as ``points``.
+        """
+        radius = float(configured)
+        pts = np.asarray(points, dtype=float)
+        if pts.ndim != 2 or pts.shape[0] < 2:
+            return radius
+        try:
+            spread = float(
+                np.percentile(np.linalg.norm(pts - pts.mean(axis=0), axis=1), 95)
+            )
+        except Exception:
+            return radius
+        if spread <= 0.0:
+            return radius
+        return max(radius, spread * float(fraction))
+
+    @staticmethod
     def _shade_beads_by_crowding(
         pts: np.ndarray,
         rgb: np.ndarray,
@@ -6626,16 +6676,23 @@ class MolView(QtWidgets.QWidget):
         else:
             sigmas_all = np.ones(n_all, dtype=float) * sigma_factor
 
+        # Computed once. This was evaluated twice with identical arguments --
+        # here, and again below to index the colours -- and it was the single
+        # most expensive thing in the whole representation: 2.7 s of a 4.0 s
+        # build, for a result that was already in hand.
+        surf_mask = None
         if surface_only and n_all > surface_max_neighbors:
             surf_mask = _get_surface_atom_mask(
-                pts_all, radius=surface_radius, max_neighbors=surface_max_neighbors
+                pts_all,
+                radius=self.scene_radius_for(pts_all, surface_radius),
+                max_neighbors=surface_max_neighbors,
             )
-            if surf_mask.any():
-                pts_surface = pts_all[surf_mask]
-                sigmas = sigmas_all[surf_mask]
-            else:
-                pts_surface = pts_all
-                sigmas = sigmas_all
+            if not surf_mask.any():
+                surf_mask = None
+
+        if surf_mask is not None:
+            pts_surface = pts_all[surf_mask]
+            sigmas = sigmas_all[surf_mask]
         else:
             pts_surface = pts_all
             sigmas = sigmas_all
@@ -6664,11 +6721,9 @@ class MolView(QtWidgets.QWidget):
 
         atom_colors = np.tile(base_color, (n_pts, 1))
 
-        if surface_only and n_all > surface_max_neighbors:
-            surf_mask_full = _get_surface_atom_mask(
-                pts_all, radius=surface_radius, max_neighbors=surface_max_neighbors
-            )
-            surf_indices = np.where(surf_mask_full)[0]
+        # The same mask as above, not a second computation of it.
+        if surf_mask is not None:
+            surf_indices = np.where(surf_mask)[0]
         else:
             surf_indices = np.arange(n_all)
 
@@ -6711,14 +6766,25 @@ class MolView(QtWidgets.QWidget):
             if no_neighbors.any():
                 mesh_colors[no_neighbors] = atom_colors[nearest[no_neighbors]]
 
+            # `shade_from_atoms` accumulates ``(vertex - atom) * w``, which is
+            # **minus** the density gradient -- so it already points away from
+            # the matter, i.e. outward. Negating it turned two thirds of the
+            # normals inward (measured: 35% outward, mean dot -0.22 against the
+            # outward direction), and a surface lit from inside its own volume
+            # renders nearly black. The surface builder, which uses the same
+            # helper, had the sign right; these two disagreed.
             mag = np.linalg.norm(grad_sum, axis=1, keepdims=True)
             good = mag[:, 0] > 1e-6
             new_norms = norms.copy()
-            new_norms[good] = -grad_sum[good] / mag[good]
+            new_norms[good] = grad_sum[good] / mag[good]
             norms = new_norms
 
             if ao_strength > 0:
-                occ = _estimate_ambient_occlusion(verts, radius=ao_radius, max_neighbors=32)
+                occ = _estimate_ambient_occlusion(
+                    verts,
+                    radius=self.scene_radius_for(verts, ao_radius),
+                    max_neighbors=32,
+                )
                 if occ is not None:
                     darken = 1.0 - (occ * ao_strength)
                     mesh_colors[:, :3] *= darken[:, np.newaxis]
@@ -6970,7 +7036,11 @@ class MolView(QtWidgets.QWidget):
                 norms = new_norms
 
             if surface_ao_strength > 0:
-                occ = _estimate_ambient_occlusion(verts, radius=surface_ao_radius, max_neighbors=32)
+                occ = _estimate_ambient_occlusion(
+                    verts,
+                    radius=self.scene_radius_for(verts, surface_ao_radius),
+                    max_neighbors=32,
+                )
                 if occ is not None:
                     darken = 1.0 - (occ * surface_ao_strength)
                     mesh_colors[:, :3] *= darken[:, np.newaxis]

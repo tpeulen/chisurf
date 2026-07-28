@@ -223,30 +223,38 @@ def _load_display_config() -> dict:
             "field_function": "wyvill",
             # Isosurface threshold for marching cubes (lower = larger, blobbier surface)
             "iso_value": 0.1,
-            # Per-atom Gaussian sigma multiplier (higher = rounder, more fused blobs)
-            "sigma_factor": 2.2,
+            # Per-atom Gaussian sigma multiplier (higher = rounder, more fused
+            # blobs). A gel has no lumps: neighbouring beads should merge into
+            # one smooth body rather than read as a heap of spheres.
+            "sigma_factor": 2.8,
             # Grid resolution in Angstroms (smaller = finer mesh, slower)
             "grid_spacing": 0.6,
             # Extra space around bounding box in Angstroms
             "padding": 5.0,
             # Maximum grid dimension (auto-coarsens spacing if exceeded)
             "max_dim": 128,
-            # Mesh transparency (1.0 = opaque, <1.0 = transparent). Opaque reads
-            # the ambient-occlusion shading far more clearly than a glassy blend.
-            "alpha": 1.0,
-            # Ambient occlusion strength (0.0 = off, 1.0 = maximum darkening in crevices)
-            "ao_strength": 0.9,
+            # Mesh transparency (1.0 = opaque, <1.0 = transparent). A metaball
+            # is a gel, not clay: letting the far wall show through faintly is
+            # most of what reads as "wet" to the eye.
+            "alpha": 0.82,
+            # Ambient occlusion strength (0.0 = off, 1.0 = maximum darkening in
+            # crevices). Deliberately moderate: heavy occlusion reads as dust
+            # settling in the creases, which is the opposite of a wet surface.
+            "ao_strength": 0.35,
             # AO search radius in Angstroms (larger = broader, softer crevice shadows)
             "ao_radius": 7.0,
-            # Material shininess (higher = sharper specular highlights)
-            "shininess": 22.0,
-            # Specular highlight intensity (0.0 = matte, 1.0 = mirror-like). Kept low
-            # for a soft, clay-like surface instead of wet plastic.
-            "specular_strength": 0.12,
-            # Rim lighting strength (edge glow effect)
-            "rim_strength": 0.2,
+            # Material shininess (higher = sharper specular highlights). High:
+            # a gel's highlight is a small hard glint, not a broad sheen.
+            "shininess": 96.0,
+            # Specular highlight intensity (0.0 = matte, 1.0 = mirror-like).
+            # High: this *is* meant to look like wet plastic.
+            "specular_strength": 0.85,
+            # Rim lighting strength (edge glow). Strong, because light carried
+            # through a translucent body and out at a grazing edge is the other
+            # half of what makes something look like jelly rather than stone.
+            "rim_strength": 0.55,
             # Rim lighting falloff power (higher = sharper edge)
-            "rim_power": 3.0,
+            "rim_power": 2.2,
             # Use only surface-exposed atoms (faster, cleaner surface)
             "surface_only": True,
             # Neighbor search radius for surface classification (Angstroms)
