@@ -25,12 +25,39 @@ def test_the_controls_are_the_transport_symbols_everyone_knows(qapp):
     assert tb.TOOL_ACTIONS["pause"].icon == Glyphs.PAUSE    # ⏸
     assert tb.TOOL_ACTIONS["stop"].icon == Glyphs.STOP      # ⏹
     assert tb.TOOL_ACTIONS["restart"].icon == Glyphs.RESTART  # 🔁
-    assert tb.TOOL_ACTIONS["run"].kind == "run"
-    # Each control carries its own accent, so the row reads as a colour language
-    # even where the glyph itself has no colour presentation.
+    # The background is what carries the meaning, so each control owns its own
+    # accent. Sharing one is what made restart indistinguishable from run.
     kinds = {k: tb.TOOL_ACTIONS[k].kind for k in ("run", "pause", "stop", "restart")}
-    assert kinds["pause"] == "pause" and kinds["stop"] == "clear"
-    assert len(set(kinds.values())) == 3, "play and restart share the 'go' accent"
+    assert len(set(kinds.values())) == 4, "each transport control needs its own accent"
+    assert set(kinds.values()) <= set(tb.BTN_STYLES), "every accent must be defined"
+
+
+def test_the_control_accents_are_told_apart_by_colour(qapp):
+    """Adjacent buttons must not look alike — glyphs are small and read second.
+
+    Two collisions this pins: restart used to reuse run's green, and stop used to
+    reuse clear's red while sitting next to it in the BVA toolbar.
+    """
+    import colorsys
+    import re
+
+    def accent(kind):
+        css = tb.BTN_STYLES[kind]
+        hexcol = re.search(r"background-color: #([0-9a-fA-F]{6})", css).group(1)
+        rgb = [int(hexcol[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        return colorsys.rgb_to_hsv(*rgb)
+
+    controls = {k: accent(tb.TOOL_ACTIONS[k].kind)
+                for k in ("run", "pause", "stop", "restart")}
+    hues = sorted(h * 360 for h, _, _ in controls.values())
+    gaps = [b - a for a, b in zip(hues, hues[1:])]
+    assert min(gaps) > 30, f"transport hues too close: {hues}"
+
+    # Same hue family is fine when the weight differs: stop is the bright red,
+    # clear the dark one.
+    _, s_stop, v_stop = accent("stop")
+    _, s_clear, v_clear = accent("clear")
+    assert v_stop > v_clear and s_stop > s_clear, "stop must out-weigh clear"
 
 
 def test_restart_is_not_refresh(qapp):

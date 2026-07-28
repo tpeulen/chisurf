@@ -2,6 +2,24 @@
 
 ## 2026-07-28
 
+* **Each transport control owns its own button colour.** The accent behind a
+  glyph is what the eye lands on — a monochrome `▶` is read second — so sharing
+  one made two different actions look like one button. Two collisions existed:
+  `restart` reused `run`'s green, putting two identical "go" buttons side by
+  side, and `stop` reused `clear`'s red while sitting *next to it* in the BVA
+  toolbar. The four controls now hold four hues at least 30° apart — run green
+  135°, restart teal 180°, pause amber 39°, stop red 0° — and where a hue family
+  is genuinely shared the weight separates them: stop is the bright saturated
+  red (val 0.60 / sat 0.69), clear the dark one (0.42 / 0.60), the same trick
+  that keeps bright-gold `pause` off dull-olive `save`. `restart` and `refresh`
+  are both blue circular-arrow glyphs and are told apart by accent (teal vs the
+  muted settings blue-grey), which is the case that matters, since the burst
+  search shows both. `test/gui/test_tool_buttons.py` now pins the hue spacing
+  and the stop-outweighs-clear relation so a future accent cannot quietly
+  collide; concept
+  [/subsystems/gui-action-vocabulary.md](subsystems/gui-action-vocabulary.md)
+  updated with the palette and the reasoning.
+
 * **The controls that drive a computation read as media controls.** Run was a
   rocket, which says "launch" rather than "play" and matched nothing else on the
   toolbar, and the reuse override added earlier the same day used `⟳` — a plain

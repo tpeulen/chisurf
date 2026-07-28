@@ -35,29 +35,38 @@ address it.
 Four actions drive a long computation, and they read as the media controls
 everyone already knows rather than as invented iconography:
 
-| Key | Glyph | Accent | Means |
-|---|---|---|---|
-| `run` | ▶ | green | start the computation |
-| `restart` | 🔁 | green | run it again from scratch, even if nothing changed |
-| `pause` | ⏸ | amber | suspend a running job |
-| `stop` | ⏹ | red | end a running job; its partial result is discarded |
+| Key | Glyph | Accent | Hue | Means |
+|---|---|---|---|---|
+| `run` | ▶ | green `#2a6a3a` | 135° | start the computation |
+| `restart` | 🔁 | teal `#1a6a6a` | 180° | run it again from scratch, even if nothing changed |
+| `pause` | ⏸ | amber `#9a6a10` | 39° | suspend a running job |
+| `stop` | ⏹ | red `#9a2f2f` | 0° | end a running job; its partial result is discarded |
 
-Two things about this table are deliberate.
+**The background carries the meaning, not the glyph.** A glyph is small and read
+second; the accent is what the eye lands on. `▶`, `⏸` and `⏹` have no colour
+presentation in the shipped emoji font — they take the button's text colour, so
+they also grey out correctly when the button is disabled — which means the
+colour language *has* to live in the background. Each control therefore owns its
+own hue, at least 30° from its neighbours.
 
-**The shapes are standard and the colour is the accent.** `▶`, `⏸` and `⏹` have
-no colour presentation in the shipped emoji font — rendering them and looking at
-the result is the only way to know this, and it is worth doing before choosing a
-glyph. So the colour language lives in the button behind the glyph: green means
-*go*, amber means *held*, red means *ended*. `restart` is the exception, because
-`🔁` **is** a colour glyph; the difference is useful rather than inconsistent,
-since restart is the one control that repeats work instead of starting or ending
-it.
+Two collisions this replaced, both of which put identical buttons side by side:
+
+* `restart` reused `run`'s green, so the two "go" buttons differed only by a
+  small monochrome glyph.
+* `stop` reused `clear`'s red — and they are adjacent in the BVA toolbar. They
+  still share the red *family*, which is right (both end or discard something),
+  but are now separated by weight: stop is the bright, saturated red
+  (`val 0.60 / sat 0.69`), clear the dark one (`0.42 / 0.60`).
+
+The same weight trick separates `pause` (bright gold) from `save` (dull olive),
+which are close in hue. `test/gui/test_tool_buttons.py` pins the hue spacing and
+the stop-outweighs-clear relation, so a future accent cannot quietly collide.
 
 **`restart` is not `refresh`.** `refresh` (`🔄`) redraws a view from a result
 that already exists; `restart` recomputes the result. They are adjacent in some
-toolbars (the burst search has both), and they are told apart by accent — a
-`run`-green button computes, a `settings`-purple one does not — as much as by
-glyph. Do not use one for the other.
+toolbars (the burst search has both), their glyphs are both blue circular
+arrows, and what tells them apart is the accent: restart is teal, refresh sits
+on the muted `settings` blue-grey. Do not use one for the other.
 
 `pause` is in the vocabulary but wired to nothing: the task layer
 (`chisurf/gui/task.py`) offers `cancel()` and `is_running()`, with no suspend or
@@ -85,11 +94,17 @@ outline at all — a failure a test asserting on the property would have passed.
 Add a `ToolAction` to `TOOL_ACTIONS` with a key, a glyph from
 [`chisurf/gui/glyphs.py`](../../chisurf/gui/glyphs.py), a label, a canonical
 tooltip, an accent `kind` from `BTN_STYLES`, and an `order` that places it
-sensibly relative to its neighbours. Then **render it and look at it**: glyph
-size, colour presentation and confusability with the buttons beside it are not
-visible in any assertion. A plain text glyph (`⟳`, `↺`) obeys `font-size` and
-comes out visibly smaller than the emoji next to it; prefer an emoji, or accept
-that the glyph will need its own size.
+sensibly relative to its neighbours. A control that drives work needs its **own**
+`kind`, not a borrowed one — sharing an accent is what made restart look like
+run.
+
+Then **render it and look at it**: glyph size, colour presentation and
+confusability with the buttons beside it are not visible in any assertion. A
+plain text glyph (`⟳`, `↺`) obeys `font-size` and comes out visibly smaller than
+the emoji next to it; prefer an emoji, or accept that the glyph will need its own
+size. When judging contrast, check whether the button is *disabled* first —
+`:disabled { color: #666 }` greys the glyph, which reads as a contrast bug in a
+screenshot and is not one.
 
 # Related
 

@@ -22,22 +22,44 @@ from __future__ import annotations
 from qtpy import QtCore, QtWidgets
 
 #: Per-kind accent colours (background / border / hover / pressed / checked).
+#:
+#: The background is what carries the meaning — a glyph is small, monochrome and
+#: read second. The four transport controls therefore own four *distinct* hues
+#: rather than sharing them with their neighbours: green go, teal again, amber
+#: held, red ended. Two collisions this fixes: ``restart`` used to be the same
+#: green as ``run`` (two identical buttons side by side), and ``stop`` the same
+#: red as ``clear`` — which sit next to each other in the BVA toolbar.
 BTN_STYLES: dict[str, str] = {
     "folder": """
 QToolButton { background-color: #2a4a7a; border: 1px solid #4a7aba; }
 QToolButton:hover { background-color: #3a5a9a; border-color: #6a9ada; }
 QToolButton:pressed { background-color: #1a3a6a; }
 """,
+    #: Play — start it.
     "run": """
 QToolButton { background-color: #2a6a3a; border: 1px solid #4a9a5a; }
 QToolButton:hover { background-color: #3a8a4a; border-color: #6aba7a; }
 QToolButton:pressed { background-color: #1a5a2a; }
 """,
+    #: Restart — start it *again*. Teal: a "go" colour, plainly not the play
+    #: green and plainly not the folder blue.
+    "restart": """
+QToolButton { background-color: #1a6a6a; border: 1px solid #3a9a9a; }
+QToolButton:hover { background-color: #2a8a8a; border-color: #5ababa; }
+QToolButton:pressed { background-color: #0a5a5a; }
+""",
     #: Pause sits between "going" and "stopped", and reads that way: amber.
     "pause": """
-QToolButton { background-color: #8a6a1a; border: 1px solid #baa04a; }
-QToolButton:hover { background-color: #aa8a2a; border-color: #d0c070; }
-QToolButton:pressed { background-color: #6a4a0a; }
+QToolButton { background-color: #9a6a10; border: 1px solid #cfa53a; }
+QToolButton:hover { background-color: #b88420; border-color: #e0c060; }
+QToolButton:pressed { background-color: #7a5000; }
+""",
+    #: Stop — ends a running job. A brighter, more saturated red than ``clear``,
+    #: which discards data rather than stopping work; the two are adjacent.
+    "stop": """
+QToolButton { background-color: #9a2f2f; border: 1px solid #d06060; }
+QToolButton:hover { background-color: #b84040; border-color: #e88080; }
+QToolButton:pressed { background-color: #7a1f1f; }
 """,
     "toggle": """
 QToolButton { background-color: #5a3a6a; border: 1px solid #8a5a9a; }
@@ -250,11 +272,11 @@ TOOL_ACTIONS: dict[str, ToolAction] = {
     "run":      ToolAction("run", Glyphs.RUN, "Run", "Run — process all loaded data", "run", 30),
     "restart":  ToolAction(
         "restart", Glyphs.RESTART, "Restart",
-        "Run again from scratch, even if nothing changed", "run", 32,
+        "Run again from scratch, even if nothing changed", "restart", 32,
     ),
     "auto":     ToolAction("auto", "⚡", "Auto", "Auto-run / auto-optimize", "toggle", 34),
     "pause":    ToolAction("pause", Glyphs.PAUSE, "Pause", "Pause the running job", "pause", 36),
-    "stop":     ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "clear", 38),
+    "stop":     ToolAction("stop", Glyphs.STOP, "Stop", "Stop the running job", "stop", 38),
     "clear":    ToolAction("clear", Glyphs.DELETE, "Clear", "Clear loaded data", "clear", 50),
     "refresh":  ToolAction("refresh", Glyphs.REFRESH, "Refresh", "Refresh plots", "settings", 60),
     "save":     ToolAction("save", Glyphs.SAVE, "Save", "Save results", "save", 70),
