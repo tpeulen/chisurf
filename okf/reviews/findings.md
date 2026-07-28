@@ -7100,11 +7100,23 @@ does with that axis, what the residual does to the engine's cache, and one plot
 that has never been able to draw. Findings RF-604..RF-609.
 
 ### RF-604
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (on the `R` axis the consistency check reports "consistent" for every dataset, including one the model could not have produced)
 - **Location:** `chisurf/core/models/pda2c/consistency.py:29-35` (`DEFAULT_HIST_KWARGS = {x_min: 0.0, x_max: 1.0, log_x: False, ...}`) used unconditionally at `:190` (`kw_hist = dict(DEFAULT_HIST_KWARGS if kw_hist is None else kw_hist)`), against `:194-195` (`model.update(); model.get_wres(fit)` — run precisely so *the model's own* axis callback is installed) and the axis choice at `chisurf/core/models/pda2c/common.py:250-255` (`PDA_AXIS_RANGES`: `S0/S1 → (0.01, 500.0, log)`, `R → (20.0, 100.0)`)
 - **Finding:** the check binds the *fitted* axis callback but bins it on a hard-coded 0–1 linear grid, so any axis that is not a 0–1 ratio falls outside every bin and is dropped by the engine (`Pda.cpp:264`, `if ((binf < Nbinsf) && (binf >= 0.))`). Measured directly on a `tttrlib.Pda` (n_max = 200, two species) with the four callbacks `build_pda_histogram_function` produces and `DEFAULT_HIST_KWARGS`: `S1/(S0+S1)` and `E` keep **1.000** of the probability mass in 79 bins, `S0/S1` keeps **0.402**, and `R` keeps **0.000** in **0** bins. With `R` selected, `hist_measured` and `hist_expected` are therefore both all-zero, `_poisson_chi2` returns 0.0 for the data *and* for every resample, `n_worse == n_resamples`, and `p_value = (n + 1)/(n + 1) = 1.0` → `consistent: True` — the verdict the panel prints ("the data are consistent with the fitted scheme") is independent of the data. On `S0/S1` the check silently scores only the 40 % of bursts below a ratio of 1. Every FRET PDA editor offers all four axes (`pdagauss.view.json`, `saw_nu`, `dynamic`, `simple`, `dynamic_mc`: `options: ["S1/(S0+S1)", "E", "S0/S1", "R"]`) next to the *🎲 Consistency check* button in the same *Diagnostics* panel. Take the binning from `resolve_fit_settings(model).kw_hist` instead of the constant, and refuse rather than pass when the histograms come back empty. `test/models/test_pda2c_diagnostics.py` runs the check only on the default axis, so nothing catches it.
-- **Fix note:**
+- **Fix note:** `DEFAULT_HIST_KWARGS` is gone; `kinetic_consistency_check` now
+  takes its binning from `resolve_fit_settings(model).kw_hist`, i.e. the binning
+  the model is actually fitted with, and an explicit `kw_hist` still overrides
+  it. Empty histograms are refused with a `ValueError` naming the axis and the
+  range instead of being scored — the model editor already routes that into its
+  "Consistency check failed: …" status line. Measured on a Gaussian-distance fit
+  with 196 165 bursts, the four axes now keep 196 165 / 196 165 / 196 160 /
+  196 160 counts (was 196 165 / 196 165 / 35 423 / **0**). Pinned by
+  `test/gui/test_pda2c_consistency.py::test_check_bins_on_the_fitted_axis`,
+  which asserts on all four axes that >90 % of the bursts survive the binning
+  **and** that the deliberately wrong (static) scheme is still rejected — the
+  old behaviour accepted it on `R` with p = 1.0 — plus
+  `::test_check_refuses_an_empty_histogram` for the guard.
 
 ### RF-605
 - **Status:** OPEN

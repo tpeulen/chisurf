@@ -25,14 +25,7 @@ from __future__ import annotations
 
 import numpy as np
 
-#: 1D E-histogram settings used by the PDA residual (mirrors ``common``).
-DEFAULT_HIST_KWARGS = {
-    "x_max": 1.0,
-    "x_min": 0.0,
-    "log_x": False,
-    "n_bins": 81,
-    "n_min": 10,
-}
+from chisurf.core.models.pda2c.common import resolve_fit_settings
 
 
 def resample_s1s2(
@@ -162,7 +155,8 @@ def kinetic_consistency_check(
     seed : int, optional
         Base seed; resample ``i`` uses ``seed + i``. Default 1.
     kw_hist : dict, optional
-        1D-histogram settings; defaults to :data:`DEFAULT_HIST_KWARGS`.
+        1D-histogram settings; defaults to the binning the model is *fitted*
+        with (``model.fit_settings.kw_hist``).
 
     Returns
     -------
@@ -171,6 +165,11 @@ def kinetic_consistency_check(
         ``consistent`` (``p_value >= 0.05``), ``n_bursts``, and the histograms
         ``hist_measured`` / ``hist_expected`` for plotting.
 
+    Raises
+    ------
+    ValueError
+        If the histograms come back empty -- see the notes.
+
     Notes
     -----
     The p-value is the fraction of resamples scoring at least as badly as the
@@ -178,6 +177,15 @@ def kinetic_consistency_check(
     never exactly zero -- with ``n_resamples`` draws nothing finer than
     ``1 / (n_resamples + 1)`` is resolvable, and reporting 0 would overstate
     what the bootstrap can support.
+
+    The binning has to come from the fit settings rather than from a constant,
+    because the axis is selectable and only two of the four axes are 0-1
+    ratios: on ``R`` (Angstrom) or ``S0/S1`` (decades) a hard-coded 0-1 linear
+    grid puts every burst outside every bin, the engine drops them
+    (``Pda.cpp``: ``if ((binf < Nbinsf) && (binf >= 0.))``), and both histograms
+    come back all-zero -- which scores 0.0 for the data *and* for every
+    resample, i.e. ``p_value = 1.0`` and a verdict independent of the data.
+    That case is refused rather than passed.
     """
     model = fit.model
     pda_obj = getattr(model, "pda", None)
@@ -187,7 +195,8 @@ def kinetic_consistency_check(
     if not isinstance(pda_meta, dict) or pda_meta.get("s1s2") is None:
         raise ValueError("fit.data carries no PDA S1S2 histogram")
 
-    kw_hist = dict(DEFAULT_HIST_KWARGS if kw_hist is None else kw_hist)
+    settings = resolve_fit_settings(model)
+    kw_hist = dict(settings.kw_hist if kw_hist is None else kw_hist)
 
     # Make sure the engine reflects the current parameters, and that the
     # histogram callback the residual installs is in place.
@@ -203,6 +212,12 @@ def kinetic_consistency_check(
 
     hist_expected = _histogram_1d(pda_obj, expected_s1s2, kw_hist)
     hist_measured = _histogram_1d(pda_obj, measured, kw_hist)
+    if hist_measured.sum() <= 0.0 or hist_expected.sum() <= 0.0:
+        raise ValueError(
+            f"the {settings.axis!r} axis puts no counts inside the histogram range "
+            f"[{kw_hist.get('x_min')}, {kw_hist.get('x_max')}]; there is nothing to "
+            "test -- widen the range in the fit settings"
+        )
     chi2_measured = _poisson_chi2(hist_measured, hist_expected)
 
     amplitudes = np.asarray(pda_obj.get_amplitudes(), dtype=float)

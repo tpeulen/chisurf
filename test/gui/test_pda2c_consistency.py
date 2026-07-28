@@ -198,6 +198,41 @@ def test_p_value_is_never_zero(qapp):
     assert result["p_value"] >= 1.0 / 21.0
 
 
+@pytest.mark.parametrize("axis", ["S1/(S0+S1)", "E", "S0/S1", "R"])
+def test_check_bins_on_the_fitted_axis(qapp, axis):
+    """The binning must follow the selected axis, not a hard-coded 0-1 grid.
+
+    Only two of the four selectable axes are 0-1 ratios; a distance (Angstrom)
+    or an intensity ratio (decades) falls outside every bin of a 0-1 linear
+    grid and the engine drops it. Both histograms then come back all-zero,
+    which scores 0.0 for the data *and* for every resample -- ``p_value = 1.0``,
+    "consistent", for any dataset whatsoever. Asserted on the *wrong* scheme,
+    so an axis that silently throws its bursts away cannot pass.
+    """
+    from chisurf.core.models.pda2c.consistency import kinetic_consistency_check
+
+    fit, m = _dynamic_fit(free_kex=False)
+    m.fit_settings.axis = axis
+    result = kinetic_consistency_check(fit, n_resamples=100, seed=7)
+
+    kept = result["hist_measured"].sum() / fit.data.pda["s1s2"].sum()
+    assert kept > 0.9, f"axis {axis!r} keeps only {kept:.1%} of the bursts"
+    assert not result["consistent"], f"wrong scheme accepted on {axis!r}"
+
+
+def test_check_refuses_an_empty_histogram(qapp):
+    """A binning that excludes every burst is refused, not scored as a pass."""
+    from chisurf.core.models.pda2c.consistency import kinetic_consistency_check
+
+    fit, m = _dynamic_fit(free_kex=False)
+    with pytest.raises(ValueError, match="nothing to"):
+        kinetic_consistency_check(
+            fit,
+            n_resamples=2,
+            kw_hist={"x_min": 1e3, "x_max": 2e3, "log_x": False, "n_bins": 81, "n_min": 10},
+        )
+
+
 def test_rejects_a_non_pda_model(qapp):
     """A model with no engine is a programming error, not a silent pass."""
     import chisurf.core.data

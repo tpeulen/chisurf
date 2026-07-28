@@ -910,3 +910,17 @@ be, because three of them were defects in the code rather than in the tests.
   fix belongs in the companion correlator repository (a C++ change), so it is
   recorded here rather than patched around in `compute_ics_carpet`; the flaky
   test is the symptom, not the bug.
+
+- **`import chisurf.core.fluorescence.burst` fails: `tqdm` is undeclared.** Met
+  on 2026-07-28 while closing [RF-604](../reviews/findings.md#rf-604).
+  `chisurf/core/fluorescence/burst/bva.py:3` imports `tqdm` at module level for
+  a single progress bar (`:117`), but `tqdm` appears in neither `pixi.toml` nor
+  `pyproject.toml` and is absent from both the `default` and the `test`
+  environment — so the package `__init__` raises `ModuleNotFoundError` and
+  everything downstream of it goes with it, e.g.
+  `test/gui/test_pda2c_model_editor.py::test_pda_model_editor_renders_and_computes[...Pda2cSimpleModel]`
+  via `chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py:22`.
+  The sibling use in `maxent_decay/core/solver.py:8-9` already treats `tqdm` as
+  optional behind a `try`, which is the shape the fix should take (or declare
+  the dependency); it is recorded rather than fixed here because it belongs to
+  the burst subsystem and not to the PDA finding this run closed.

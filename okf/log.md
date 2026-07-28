@@ -2,6 +2,26 @@
 
 ## 2026-07-28
 
+* **PDA consistency check: the verdict now depends on the data on every axis
+  (RF-604).** The kinetic consistency check bound the *fitted* histogram
+  callback but binned it on a hard-coded 0–1 linear grid
+  (`DEFAULT_HIST_KWARGS`), while only two of the four selectable axes are 0–1
+  ratios. On `R` (Å) every burst fell outside every bin, the engine dropped
+  them all, and both histograms came back zero — which scores 0.0 for the data
+  *and* for every resample, so `p = 1.0`, "the data are consistent with the
+  fitted scheme", for any dataset whatsoever; on `S0/S1` (decades) only the
+  bursts below a ratio of 1 were scored. Measured on a Gaussian-distance fit
+  of 196 165 bursts the four axes kept 196 165 / 196 165 / **35 423** / **0**
+  counts. The binning now comes from `resolve_fit_settings(model).kw_hist`, so
+  the check bins what the fit fits (196 165 / 196 165 / 196 160 / 196 160), and
+  an empty histogram is refused with a `ValueError` naming the axis and the
+  range rather than scored as a pass — the model editor already renders that as
+  its "Consistency check failed: …" line. Pinned by
+  `test/gui/test_pda2c_consistency.py::test_check_bins_on_the_fitted_axis`,
+  which asserts on all four axes that the binning keeps the bursts *and* that
+  the deliberately wrong (static) scheme is still rejected.
+
+
 * **QA: drove the TTTR Tools toolbox as a file-preparation workflow
   (RF-596..RF-603).** Walked all six panels of *Tools → TTTR Tools* headlessly on
   the shipped HydraHarp and Becker & Hickl files: read and edited a 61-tag
