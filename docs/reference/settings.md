@@ -708,7 +708,7 @@ Top‑level mapping from experiment keys to display names and visibility:
   If true, the experiment type is not shown in generic experiment selectors
   but can still be constructed programmatically.
 
-### 2.2 Per‑experiment sections (`tcspc`, `fcs`, `pcf`, `ics`, `pch`, `pda2c`, `pda3c`, `deer`, `stopped_flow`, `structure`, `global`)
+### 2.2 Per‑experiment sections (`tcspc`, `fcs`, `pcf`, `ics`, `pch`, `pda`, `deer`, `stopped_flow`, `structure`, `global`)
 
 Each experiment key has:
 
@@ -731,6 +731,20 @@ Each experiment key has:
 
 These mappings allow new experiment types, readers, or models to be added or
 reordered without changing Python code, by editing the YAML instead.
+
+One experiment may cover data of more than one shape — `pda` reads two-colour
+S1S2 histograms and three-colour burst tables with the same reader — so a model
+class can declare which datasets it accepts via `supports_data`, and the model
+list offered for a dataset is filtered by it.
+
+:::{note}
+The copy of this file in your settings folder is merged **on top of** the
+packaged one, so a section only your copy still knows about would shadow the
+shipped one — including the readers and models added since. Sections that were
+superseded are therefore dropped on load: `pda2c` and `pda3c` were merged into
+the single `pda` experiment, and any customization inside them is not carried
+over.
+:::
 
 ---
 

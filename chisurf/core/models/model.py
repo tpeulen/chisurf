@@ -31,6 +31,33 @@ class Model(FittingParameterGroup, metaclass=abc.ABCMeta):
     #: When set, :meth:`view_spec` loads it instead of auto-deriving.
     view_spec_file: typing.Optional[str] = None
 
+    @classmethod
+    def supports_data(cls, data) -> bool:
+        """Whether this model can fit *data*.
+
+        One experiment can hold datasets of more than one shape — a PDA
+        experiment reads two-colour S1S2 histograms and three-colour burst
+        tables with the same reader, and only the colour count tells them
+        apart. The model list a user picks from is filtered through this, so a
+        model that would raise on the selected dataset is never offered.
+
+        The default answer is ``True``: a model that does not care declares
+        nothing, and the check can only ever *remove* entries that would fail.
+
+        Parameters
+        ----------
+        data : object
+            The dataset a fit would be built on, typically a
+            :class:`chisurf.core.data.DataCurve`. May be ``None``, which means
+            "nothing selected" and must not filter anything out.
+
+        Returns
+        -------
+        bool
+            ``True`` when the model can be fitted against *data*.
+        """
+        return True
+
     @property
     def n_free(self) -> int:
         """Number of free (non-linked or fixed) fitting parameters.

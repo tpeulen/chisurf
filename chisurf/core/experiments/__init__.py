@@ -1,10 +1,12 @@
 import copy
+import logging
 import pathlib
+
 import yaml
 
 import chisurf.core.experiments.fcs
 import chisurf.core.experiments.tcspc
-import chisurf.core.experiments.pda
+import chisurf.core.experiments.pda2c
 import chisurf.core.experiments.deer
 import chisurf.core.experiments.globalfit
 import chisurf.core.experiments.modelling
@@ -12,8 +14,72 @@ from chisurf.core.experiments.core import Experiment
 from chisurf.core.settings import get_path
 
 
+#: Experiment sections that no longer exist, with the section that replaced them.
+#:
+#: The per-user settings file is a full copy of the packaged one, and it is
+#: merged *on top* of it — so a section only the old copy knows about survives
+#: forever unless it is dropped. Two things then go wrong at once: the stale key
+#: is registered as an experiment of its own (:func:`load_experiment_types`
+#: gives every unknown top-level section an :class:`Experiment`, so the user
+#: sees two PDA entries), and its reader and model *lists* shadow the packaged
+#: ones, because merging replaces a list rather than extending it — the
+#: experiment silently loses everything that was added since.
+#:
+#: A stale section is therefore discarded rather than merged: its content was
+#: written against a layout that no longer exists, so the packaged section is
+#: the only one that can be right. Customizations inside it (a detector's
+#: channels, a time window) are lost once, at the version that renames it.
+SUPERSEDED_SECTIONS: dict[str, str] = {
+    # Three-colour PDA stopped being an experiment of its own: the colour count
+    # is a setting of the one PDA reader, so both colour counts live in `pda`.
+    'pda2c': 'pda',
+    'pda3c': 'pda',
+}
+
+
+def migrate_experiment_config(config: dict) -> dict:
+    """Drop superseded experiment sections from a loaded configuration mapping.
+
+    Applied to every configuration file as it is read, so no consumer of
+    ``experiment_configs.yaml`` has to know the history.
+
+    Parameters
+    ----------
+    config : dict
+        Parsed ``experiment_configs.yaml`` content.
+
+    Returns
+    -------
+    dict
+        The same mapping without the sections listed in
+        :data:`SUPERSEDED_SECTIONS`, at the top level and under
+        ``experiment_types``. Modified in place and returned for convenience.
+
+    Examples
+    --------
+    >>> migrate_experiment_config({'pda2c': {'models': ['m']}, 'pda': {}})
+    {'pda': {}}
+    """
+    if not isinstance(config, dict):
+        return config
+    types_section = config.get('experiment_types')
+    for stale, successor in SUPERSEDED_SECTIONS.items():
+        dropped = config.pop(stale, None)
+        if isinstance(types_section, dict):
+            dropped = types_section.pop(stale, None) or dropped
+        if dropped is not None:
+            logging.info(
+                "experiment configuration: dropping the superseded '%s' section; "
+                "'%s' replaces it", stale, successor
+            )
+    return config
+
+
 def _load_yaml_config(path: pathlib.Path) -> dict:
     """Load a YAML configuration file and return its contents as a dict.
+
+    Superseded experiment sections are dropped on the way out (see
+    :func:`migrate_experiment_config`).
 
     Parameters
     ----------
@@ -27,7 +93,7 @@ def _load_yaml_config(path: pathlib.Path) -> dict:
     """
     try:
         with open(str(path), 'r', encoding='utf-8') as fp:
-            return yaml.safe_load(fp) or {}
+            return migrate_experiment_config(yaml.safe_load(fp) or {})
     except Exception:
         return {}
 

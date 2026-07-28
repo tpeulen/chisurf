@@ -21,24 +21,36 @@ There is no histogram to bin and no burst-size distribution to supply.
 
 ## In ChiSurf
 
-PDA3c is its own experiment type (`PDA3c (3-colour)`) with an AutoForm-rendered
-model in `chisurf/core/models/pda3c/`.
+Three colours is a **setting of the PDA experiment**, not an experiment of its
+own: pick `PDA`, set **Colours** to 3, and the AutoForm-rendered model in
+`chisurf/core/models/pda3c/` appears in the model list. The colour count is what
+decides whether a burst becomes a cell of an S1S2 histogram or a row of a
+five-column photon table — everything before that (the files, the burst search,
+the time windows) is shared.
+
+The model list follows the loaded dataset: a three-colour dataset offers
+`PDA3c (three-colour)` and a two-colour one offers the `PDA2c-*` models, so a
+model that cannot fit what you loaded is never on the menu.
 
 ### Loading data
 
-Three readers, all under the same experiment:
+Three readers, all under the PDA experiment:
 
 | reader | use it for |
 | --- | --- |
-| **PTU/HT3/SPC** | real measurements — the *same* reader as two-colour PDA, with three detection channels and two excitation windows |
+| **PTU/HT3/SPC** | real measurements — the *same* reader as two-colour PDA, with **Colours** set to 3 |
 | **Burst table (CSV/NPZ)** | a five-column table produced elsewhere |
-| **Simulator** | trying the model, or checking a fit against a known truth |
+| **Simulator (3-colour)** | trying the model, or checking a fit against a known truth |
 
 The TTTR reader picks its path from the **Colours** selector, which defaults to
 the number of configured detection-channel groups — so a three-channel setup
-selects PDA3c on its own. With three colours the micro-time ranges are the
+selects the three-colour path on its own. Setting it to 3 grows the detector
+panel a third (blue) row and turns the micro-time fields into the two
 **excitation periods** (the blue and green halves of the PIE cycle) rather than
-photon-selection windows.
+per-detector photon-selection windows. Because those are different quantities,
+changing the selector re-derives the windows from the micro-time span and moves
+the green and red detectors into their roles; the new blue row is left empty for
+you to fill rather than guessed.
 
 :::{admonition} Burst selection is not identical between the two paths
 :class: warning

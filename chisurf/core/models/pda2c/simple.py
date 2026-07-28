@@ -27,7 +27,7 @@ from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda2c.nusiance import Background, Pda2cPhotonRange
 
 from .common import (
-    Pda2cDiagnosticsMixin,
+    Pda2cModelMixin,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
     resolve_fit_settings,
@@ -290,7 +290,7 @@ class ProbCh0(FittingParameterGroup):
         return self.n
 
 
-class Pda2cSimpleModel(Pda2cDiagnosticsMixin, ModelCurve):
+class Pda2cSimpleModel(Pda2cModelMixin, ModelCurve):
     """Discrete-species PDA model working on S1S2 histograms.
 
     This model combines a :class:`Background` group with a

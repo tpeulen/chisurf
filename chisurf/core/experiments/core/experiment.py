@@ -164,10 +164,51 @@ class Experiment(chisurf.core.base.Base):
                 names.append(s.name)
         return names
 
-    def get_model_names(self) -> typing.List[str]:
-        """Return the names of all registered model classes."""
+    def get_model_classes(self, data=None) -> typing.List[typing.Type[chisurf.core.models.Model]]:
+        """Return the model classes applicable to *data*.
+
+        An experiment may cover datasets of more than one shape — PDA reads
+        two-colour S1S2 histograms and three-colour burst tables through the
+        same reader — so the model list is filtered by each class'
+        :meth:`~chisurf.core.models.model.Model.supports_data`.
+
+        Parameters
+        ----------
+        data : object, optional
+            Dataset a fit would be built on. When omitted, every registered
+            model class is returned.
+
+        Returns
+        -------
+        list of type
+            The registered model classes that accept *data*.
+        """
+        if data is None:
+            return self.model_classes
+        applicable = list()
+        for model_class in self.model_classes:
+            if model_class is None:
+                continue
+            supports = getattr(model_class, "supports_data", None)
+            try:
+                # A model that cannot answer is kept: the filter exists to hide
+                # certain failures, not to hide models with an unusual base.
+                if supports is None or supports(data):
+                    applicable.append(model_class)
+            except Exception:
+                applicable.append(model_class)
+        return applicable
+
+    def get_model_names(self, data=None) -> typing.List[str]:
+        """Return the names of the model classes applicable to *data*.
+
+        Parameters
+        ----------
+        data : object, optional
+            Dataset a fit would be built on; see :meth:`get_model_classes`.
+        """
         names = list()
-        for s in self.model_classes:
+        for s in self.get_model_classes(data):
             if s is not None:
                 names.append(str(s.name))
         return names

@@ -29,6 +29,10 @@ distributions, dynamic two-state and N-state models, an anisotropy model, and th
 [SAW-ν polymer](03_polymer_distance_distributions.md) distance model. The
 histograms are computed by the `tttrlib.Pda` engine.
 
+The number of colours is a **reader setting**, not a separate experiment: the
+same PDA experiment reads three-colour data when its **Colours** selector says 3
+(see {doc}`42_pda3c`), and the model list follows the dataset you loaded.
+
 ```python
 import numpy as np
 import tttrlib

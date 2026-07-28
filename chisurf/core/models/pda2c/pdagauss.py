@@ -20,7 +20,7 @@ from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGro
 from chisurf.core.fluorescence.general import distance_to_fret_efficiency
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda2c.common import (
-    Pda2cDiagnosticsMixin,
+    Pda2cModelMixin,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
     resolve_fit_settings,
@@ -202,7 +202,7 @@ class Pda2cGaussianDistances(FittingParameterGroup):
         self.limited_width = False
 
 
-class Pda2cGaussianDistanceModel(Pda2cDiagnosticsMixin, ModelCurve):
+class Pda2cGaussianDistanceModel(Pda2cModelMixin, ModelCurve):
     """PDA model with a Gaussian distance distribution."""
 
     name = "PDA2c-Gaussian-distance"

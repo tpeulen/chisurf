@@ -1049,9 +1049,15 @@ def add_fit(
                 model_class = cls
                 break
 
-    # Fallback to experiment's default model if still not found and no specific name requested
-    if model_class is None and exp.model_classes:
-        model_class = exp.model_classes[0]
+    # Fallback to the experiment's default model if still not found and no
+    # specific name requested. Filtered by the dataset: one experiment can hold
+    # data of more than one shape (PDA reads two-colour histograms and
+    # three-colour burst tables), and the first model overall may be one that
+    # cannot fit this dataset at all.
+    if model_class is None:
+        applicable = exp.get_model_classes(data_sets[0]) or exp.model_classes
+        if applicable:
+            model_class = applicable[0]
 
     if model_class is None:
         cs.logging.warning(f"add_fit: could not resolve model '{model_name}'; aborting")

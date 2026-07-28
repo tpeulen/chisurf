@@ -387,7 +387,11 @@ class Main(
         ds = self.current_dataset
         if cs.imported_datasets and ds is not None:
             experiment = self._experiment_for_dataset(ds)
-            all_model_names = experiment.get_model_names() if experiment is not None else []
+            # Filtered by the selected dataset: one experiment can hold data of
+            # more than one shape (PDA reads two-colour histograms and
+            # three-colour burst tables), and a model that cannot fit the
+            # selection must not be offered for it.
+            all_model_names = experiment.get_model_names(ds) if experiment is not None else []
             disabled_models = cs.core.settings.cs_settings.get(
                 'plugins', {}
             ).get('disabled_models', [])

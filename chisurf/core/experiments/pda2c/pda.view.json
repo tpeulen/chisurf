@@ -4,7 +4,7 @@
       "type": "panel",
       "title": "Colours",
       "collapsed": false,
-      "description": "Two colours build the S1S2 histogram two-colour PDA fits; three build the per-burst photon table three-colour PDA fits. The micro-time ranges are photon-selection windows for two colours and the blue/green excitation periods for three.",
+      "description": "Two colours build the S1S2 histogram two-colour PDA fits; three build the per-burst photon table three-colour PDA fits. Three colours is a setting of the one PDA experiment, not an experiment of its own — the same reader reads the same files either way, and the loaded dataset decides which models are offered. The micro-time ranges are photon-selection windows for two colours and the blue/green excitation periods for three.",
       "sections": [
         {
           "type": "choice",
@@ -18,7 +18,7 @@
             "2 \u2014 PDA (S1S2 histogram)",
             "3 \u2014 PDA3c (burst table)"
           ],
-          "description": "Defaults to the number of configured detection-channel groups, so a three-colour setup selects PDA3c on its own.",
+          "description": "Defaults to the number of configured detection-channel groups, so a three-colour setup selects PDA3c on its own. Changing it rebuilds the detector rows and re-derives the micro-time windows, because a window is a detector's photon selection at two colours and an excitation period at three.",
           "rebuild_on_change": true
         }
       ]

@@ -819,10 +819,10 @@ def pda_1d_residuals_from_s1s2(
         return np.zeros(0, dtype=np.float64)
 
 
-class Pda2cDiagnosticsMixin:
-    """Diagnostics every PDA model shares, reachable from its editor.
+class Pda2cModelMixin:
+    """What every two-colour PDA model shares: its data contract and diagnostics.
 
-    Two things that had headless APIs and no way to reach them from the GUI: the
+    Two diagnostics had headless APIs and no way to reach them from the GUI: the
     kinetic consistency check, and the light-path connection that fills the
     correction factors from a simulated optical setup. Both are model methods
     here rather than a bespoke widget, so a ``button_row`` in the view spec is
@@ -830,7 +830,31 @@ class Pda2cDiagnosticsMixin:
 
     Each action leaves a short HTML summary the editor's ``info`` section shows,
     and stores its full result on the model for the plot accessors.
+
+    :meth:`supports_data` states the other shared thing — these models fit an
+    S1S2 histogram, which is what keeps them out of the model list of a
+    three-colour dataset read by the same PDA reader.
     """
+
+    @classmethod
+    def supports_data(cls, data) -> bool:
+        """Whether *data* is a two-colour PDA dataset.
+
+        PDA is one experiment for both colour counts, so the model list is
+        filtered by what the reader actually produced: a two-colour read
+        attaches the S1S2 payload as ``data.pda``, a three-colour one attaches a
+        burst table as ``data.pda3c`` instead. Data carrying neither (a curve
+        loaded through some other route) is accepted — the S1S2 payload is
+        looked up lazily, and refusing here would hide these models from a
+        dataset that a user assembled by hand.
+        """
+        if data is None:
+            return True
+        meta = getattr(data, "meta_data", None)
+        three_colour = getattr(data, "pda3c", None)
+        if three_colour is None and isinstance(meta, dict):
+            three_colour = meta.get("pda3c")
+        return three_colour is None
 
     #: Path to a light-path graph (or easy-mode config) JSON. Empty means the
     #: light-path plugin's last session, which is what makes this one click.
@@ -990,7 +1014,7 @@ def get_pda_consistency(fit) -> list:
     """Return the consistency check's measured/expected histograms as curves.
 
     Plot accessor for the view spec. Empty until
-    :meth:`Pda2cDiagnosticsMixin.run_consistency_check` has run, so the panel is
+    :meth:`Pda2cModelMixin.run_consistency_check` has run, so the panel is
     blank rather than misleading before the check exists.
     """
     result = getattr(fit.model, "_consistency_result", None)

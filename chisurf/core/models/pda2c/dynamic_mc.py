@@ -57,7 +57,7 @@ from chisurf.core.fluorescence.kinetics import occupation_time_fractions
 from chisurf.core.math.functions.distributions import normal_distribution
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda2c.common import (
-    Pda2cDiagnosticsMixin,
+    Pda2cModelMixin,
     green_probability_from_efficiency,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
@@ -158,7 +158,7 @@ class Pda2cDynamicNStates(RateMatrixMixin, FittingParameterGroup):
         return int(round(float(self._n_windows.value)))
 
 
-class Pda2cDynamicNStateModel(Pda2cDiagnosticsMixin, ModelCurve):
+class Pda2cDynamicNStateModel(Pda2cModelMixin, ModelCurve):
     """Dynamic N-state (dual-colour) PDA model with a free rate matrix."""
 
     name = "PDA2c-dynamic-N-state"

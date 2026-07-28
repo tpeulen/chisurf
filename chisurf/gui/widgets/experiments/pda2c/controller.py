@@ -15,17 +15,163 @@ from chisurf.macros import core_data as core_data_macros
 _TTTR_INDEX_CACHE = {}
 
 
-class _PdaDetectorWidget(QtWidgets.QWidget):
-    """Container for the PDA two-detector cascade (Setup / Routine / Ch0 / Ch1).
+#: Row label per detection colour, by colour count. Two-colour PDA counts a
+#: green and a red channel; three-colour adds the blue donor.
+COLOUR_LABELS = {2: ("Green", "Red"), 3: ("Blue", "Green", "Red")}
 
-    This is a pure layout widget: it builds and exposes the combo boxes and
-    line edits. All wiring and business logic live on the controller, which
-    grabs the child widgets via ``findChildren`` after AutoForm builds this.
+#: Detector name preferred for each row when the selected setup defines one.
+COLOUR_DEFAULTS = {2: ("green", "red"), 3: ("blue", "green", "red")}
+
+#: Default routing channels per row, used when no setup is available.
+COLOUR_CHANNELS = {2: ("0,3", "1,2"), 3: ("0", "1", "2")}
+
+#: Default micro-time windows per row (two colours) and the two excitation
+#: periods of the PIE cycle (three colours).
+COLOUR_WINDOWS = {2: ("1-16000", "1-16000"), 3: ("0-8000", "8000-16000")}
+
+
+def _parse_micro_time_ranges(text: str) -> list:
+    """Parse ``"start-end;start-end"`` into a list of ``[start, end]`` pairs.
+
+    Parameters
+    ----------
+    text : str
+        Field content. Empty or unparsable segments are skipped.
+
+    Returns
+    -------
+    list of list of int
+        The parsed windows, in the order they were written.
     """
+    text = (text or "").strip()
+    if not text:
+        return []
+    windows = []
+    for segment in text.split(';'):
+        segment = segment.strip()
+        if not segment:
+            continue
+        try:
+            bounds = [int(j) for j in segment.split('-')]
+        except ValueError:
+            continue
+        if len(bounds) >= 2:
+            windows.append([bounds[0], bounds[1]])
+    return windows
+
+
+def _format_micro_time_ranges(value) -> str:
+    """Render a micro-time window as the ``"start-end;start-end"`` a field shows.
+
+    Accepts a single ``(start, stop)`` pair, a list of them, or a bare integer
+    (mirroring ``PhotonFilter.update_pie_windows``).
+
+    Parameters
+    ----------
+    value : tuple or list or int
+        The window(s) to render.
+
+    Returns
+    -------
+    str
+        Field text; empty when *value* describes no window.
+    """
+    if isinstance(value, (list, tuple)):
+        if len(value) == 2 and all(isinstance(x, int) for x in value):
+            return f"{value[0]}-{value[1]}"
+        parts = []
+        for item in value:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                parts.append(f"{item[0]}-{item[1]}")
+            elif isinstance(item, int):
+                parts.append(f"{item}-{item}")
+        return ";".join(parts)
+    if isinstance(value, int):
+        return f"{value}-{value}"
+    return ""
+
+
+class _PdaDetectorWidget(QtWidgets.QWidget):
+    """Container for the PDA detector cascade (Setup / Routine / one row per colour).
+
+    The number of detector rows follows the reader's ``n_colors`` setting —
+    three-colour PDA is a setting of the PDA experiment, not an experiment of
+    its own, and the setting is what decides whether a burst becomes a row of an
+    S1S2 histogram or a row of a five-column photon table.
+
+    The micro-time fields mean different things at the two colour counts, so
+    they are not laid out the same way. With two colours each detector has its
+    own photon-selection window and the field sits on its row. With three the
+    windows are the **excitation periods** of the PIE cycle: the blue pulse is
+    seen in all three detectors and the green pulse in two, so a window belongs
+    to no single detector and gets its own labelled row.
+
+    This is a pure layout widget: it builds and exposes the combo boxes and line
+    edits as ``detector_combos`` / ``channel_edits`` / ``window_edits``. All
+    wiring and business logic live on the controller, which grabs the child
+    widgets via ``findChildren`` after AutoForm builds this.
+    """
+
+    def _configured(self, attr: str, defaults, render) -> list:
+        """Return field texts for *attr*, falling back to *defaults* per row.
+
+        Parameters
+        ----------
+        attr : str
+            Reader attribute holding one entry per row (``channels``,
+            ``micro_time_ranges``).
+        defaults : sequence of str
+            Field text used where the reader has no entry.
+        render : callable
+            Turns one entry into field text.
+
+        Returns
+        -------
+        list of str
+            One text per default, in row order.
+        """
+        try:
+            values = list(getattr(self._model, attr, None) or [])
+        except Exception:
+            values = []
+        texts = []
+        for index, default in enumerate(defaults):
+            if index >= len(values):
+                texts.append(default)
+                continue
+            # An entry the reader has but left empty stays empty: that is a
+            # colour whose detector nobody has chosen yet (see
+            # ``Pda2cReader.default_channels``), and filling it with a default
+            # would hand the user a plausible wrong channel.
+            try:
+                texts.append(render(values[index]))
+            except Exception:
+                texts.append(default)
+        return texts
 
     def __init__(self, model, target=None, parent=None, **kwargs):
         super().__init__(parent)
         self._model = model
+        n_colors = 2
+        try:
+            n_colors = int(getattr(model, "n_colors", 2) or 2)
+        except Exception:
+            n_colors = 2
+        self.n_colors = 3 if n_colors >= 3 else 2
+
+        labels = COLOUR_LABELS[self.n_colors]
+        # Start from what the reader is configured with, so the panel and the
+        # reader agree before anything is touched — the fields are pushed back
+        # to the reader on the first change, and a default that disagreed would
+        # quietly overwrite the configured channels.
+        channels = self._configured(
+            "channels", COLOUR_CHANNELS[self.n_colors],
+            lambda group: ", ".join(str(c) for c in group),
+        )
+        windows = self._configured(
+            "micro_time_ranges", COLOUR_WINDOWS[self.n_colors],
+            _format_micro_time_ranges,
+        )
 
         grid = QtWidgets.QGridLayout(self)
         grid.setContentsMargins(0, 2, 0, 2)
@@ -42,29 +188,51 @@ class _PdaDetectorWidget(QtWidgets.QWidget):
 
         grid.addWidget(QtWidgets.QLabel("Detector"), 2, 1)
         grid.addWidget(QtWidgets.QLabel("Channels"), 2, 2)
-        grid.addWidget(QtWidgets.QLabel("Micro time"), 2, 3)
+        if self.n_colors == 2:
+            grid.addWidget(QtWidgets.QLabel("Micro time"), 2, 3)
 
-        grid.addWidget(QtWidgets.QLabel("Ch0:"), 3, 0)
-        self.comboBox_det1 = QtWidgets.QComboBox()
-        grid.addWidget(self.comboBox_det1, 3, 1)
-        self.lineEdit = QtWidgets.QLineEdit("0,3")
-        grid.addWidget(self.lineEdit, 3, 2)
-        self.lineEdit_2 = QtWidgets.QLineEdit("1-16000")
-        self.lineEdit_2.setToolTip(
-            "Microtime ranges for Ch0: start-end; separate multiple ranges with ';'."
-        )
-        grid.addWidget(self.lineEdit_2, 3, 3)
+        self.detector_combos = []
+        self.channel_edits = []
+        self.window_edits = []
 
-        grid.addWidget(QtWidgets.QLabel("Ch1:"), 4, 0)
-        self.comboBox_det2 = QtWidgets.QComboBox()
-        grid.addWidget(self.comboBox_det2, 4, 1)
-        self.lineEdit_4 = QtWidgets.QLineEdit("1,2")
-        grid.addWidget(self.lineEdit_4, 4, 2)
-        self.lineEdit_3 = QtWidgets.QLineEdit("1-16000")
-        self.lineEdit_3.setToolTip(
-            "Microtime ranges for Ch1: start-end; separate multiple ranges with ';'."
-        )
-        grid.addWidget(self.lineEdit_3, 4, 3)
+        for index, label in enumerate(labels):
+            row = 3 + index
+            grid.addWidget(QtWidgets.QLabel(f"{label}:"), row, 0)
+            combo = QtWidgets.QComboBox()
+            grid.addWidget(combo, row, 1)
+            self.detector_combos.append(combo)
+            edit = QtWidgets.QLineEdit(channels[index])
+            edit.setToolTip(f"Routing channels of the {label.lower()} detector, comma separated.")
+            grid.addWidget(edit, row, 2)
+            self.channel_edits.append(edit)
+            if self.n_colors == 2:
+                window = QtWidgets.QLineEdit(windows[index])
+                window.setToolTip(
+                    f"Micro-time ranges for the {label.lower()} detector: start-end; "
+                    "separate multiple ranges with ';'."
+                )
+                grid.addWidget(window, row, 3)
+                self.window_edits.append(window)
+
+        if self.n_colors == 3:
+            row = 3 + len(labels)
+            grid.addWidget(QtWidgets.QLabel("Excitation:"), row, 0)
+            excitation = QtWidgets.QWidget()
+            box = QtWidgets.QHBoxLayout(excitation)
+            box.setContentsMargins(0, 0, 0, 0)
+            box.setSpacing(3)
+            for label, default in zip(("Blue", "Green"), windows):
+                caption = QtWidgets.QLabel(label)
+                window = QtWidgets.QLineEdit(default)
+                window.setToolTip(
+                    f"Micro-time range of the {label.lower()} excitation period. "
+                    "Photons inside it are counted in every detector that can see "
+                    f"the {label.lower()} pulse."
+                )
+                box.addWidget(caption)
+                box.addWidget(window, 1)
+                self.window_edits.append(window)
+            grid.addWidget(excitation, row, 1, 1, 3)
 
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(2, 1)
@@ -401,29 +569,19 @@ class Pda2cTTTRWidget(
             main_layout.addWidget(self._settings_form)
 
         self._grab_section_refs()
+        self._wire_section_widgets()
+        # Switching the colour count rebuilds the whole form (the choice section
+        # is declared ``rebuild_on_change``), which deletes every widget grabbed
+        # above. Without re-grabbing, the next parameter change would reach into
+        # a destroyed C++ object.
+        if self._settings_form is not None:
+            self._settings_form.rebuilt.connect(self._on_form_rebuilt)
 
         # File drop area (kept below the AutoForm panels)
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setSpacing(2)
         main_layout.addLayout(self.verticalLayout)
-
-        # Wire signal connections on the grabbed child widgets
-        self.comboBox.currentTextChanged.connect(self.actionParametersChanged.trigger)
-        self.comboBox_setup.currentTextChanged.connect(self._on_setup_changed)
-        self.comboBox_det1.currentTextChanged.connect(self._on_detector_combo_changed)
-        self.comboBox_det2.currentTextChanged.connect(self._on_detector_combo_changed)
-        self.lineEdit.editingFinished.connect(self.actionParametersChanged.trigger)
-        self.lineEdit_2.editingFinished.connect(self.actionParametersChanged.trigger)
-        self.lineEdit_3.editingFinished.connect(self.actionParametersChanged.trigger)
-        self.lineEdit_4.editingFinished.connect(self.actionParametersChanged.trigger)
-        self.doubleSpinBox.valueChanged.connect(self.actionParametersChanged.trigger)
-
-        # Multi-TW controls
-        self.toolButton_add_tw.clicked.connect(self._on_add_tw_clicked)
-        self.listWidget_tw.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
-        self.listWidget_tw.customContextMenuRequested.connect(self._on_tw_list_context_menu)
-        self.listWidget_tw.itemDoubleClicked.connect(self._on_tw_item_double_clicked)
 
         for n_ph, tw_ms in ((10, 1.0), (20, 2.0), (30, 3.0)):
             item = QtWidgets.QListWidgetItem(f"{n_ph} ph @ {tw_ms:g} ms")
@@ -442,9 +600,14 @@ class Pda2cTTTRWidget(
     def _grab_section_refs(self) -> None:
         """Expose the AutoForm-built custom-section child widgets as attributes.
 
-        Keeps the existing handler/load logic working unchanged: it still reads
-        ``self.comboBox_setup`` / ``self.lineEdit`` / ``self.listWidget_tw`` etc.
+        The detector rows are lists rather than numbered attributes, because how
+        many of them exist is the colour-count setting: two detectors with a
+        photon-selection window each, or three detectors and the two excitation
+        periods of the PIE cycle.
         """
+        self.detector_combos = []
+        self.channel_edits = []
+        self.window_edits = []
         if self._settings_form is None:
             return
         det = self._settings_form.findChildren(_PdaDetectorWidget)
@@ -452,12 +615,9 @@ class Pda2cTTTRWidget(
             d = det[0]
             self.comboBox_setup = d.comboBox_setup
             self.comboBox = d.comboBox
-            self.comboBox_det1 = d.comboBox_det1
-            self.comboBox_det2 = d.comboBox_det2
-            self.lineEdit = d.lineEdit
-            self.lineEdit_2 = d.lineEdit_2
-            self.lineEdit_3 = d.lineEdit_3
-            self.lineEdit_4 = d.lineEdit_4
+            self.detector_combos = list(d.detector_combos)
+            self.channel_edits = list(d.channel_edits)
+            self.window_edits = list(d.window_edits)
         tw = self._settings_form.findChildren(_PdaTimeWindowWidget)
         if tw:
             t = tw[0]
@@ -465,6 +625,43 @@ class Pda2cTTTRWidget(
             self.toolButton_add_tw = t.toolButton_add_tw
             self.checkBox = t.checkBox
             self.listWidget_tw = t.listWidget_tw
+
+    def _wire_section_widgets(self) -> None:
+        """Connect the freshly built custom-section widgets to the handlers."""
+        if self._settings_form is None:
+            return
+        self.comboBox.currentTextChanged.connect(self.actionParametersChanged.trigger)
+        self.comboBox_setup.currentTextChanged.connect(self._on_setup_changed)
+        for combo in self.detector_combos:
+            combo.currentTextChanged.connect(self._on_detector_combo_changed)
+        for edit in self.channel_edits + self.window_edits:
+            edit.editingFinished.connect(self.actionParametersChanged.trigger)
+        self.doubleSpinBox.valueChanged.connect(self.actionParametersChanged.trigger)
+
+        self.toolButton_add_tw.clicked.connect(self._on_add_tw_clicked)
+        self.listWidget_tw.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.listWidget_tw.customContextMenuRequested.connect(self._on_tw_list_context_menu)
+        self.listWidget_tw.itemDoubleClicked.connect(self._on_tw_item_double_clicked)
+
+    def _on_form_rebuilt(self) -> None:
+        """Re-adopt the custom-section widgets after AutoForm rebuilt the panel.
+
+        A rebuild is how the colour count takes effect: the detector section
+        comes back with a different number of rows, and the time-window list
+        comes back empty. Everything the controller cached about the old widgets
+        is gone with them, so the references, the connections and the list
+        contents are all restored here.
+        """
+        tw_configs = list(getattr(self, "_tw_configs", []) or [])
+        self._grab_section_refs()
+        self._wire_section_widgets()
+        for n_ph, tw_s in tw_configs:
+            item = QtWidgets.QListWidgetItem(f"{n_ph} ph @ {float(tw_s) * 1e3:g} ms")
+            item.setData(QtCore.Qt.UserRole, (n_ph, tw_s))
+            self.listWidget_tw.addItem(item)
+        self._load_available_setups_into_combobox()
+        self._apply_current_setup_and_detectors()
+        self.onParametersChanged()
 
     def _db(self):
         """Return the MMFDB connection from the current reader when available."""
@@ -1093,32 +1290,35 @@ class Pda2cTTTRWidget(
         else:
             self._populate_detector_combos()
 
+    @property
+    def n_colors(self) -> int:
+        """Number of detection colours the reader is configured for (2 or 3)."""
+        try:
+            value = int(getattr(self.experiment_reader, "n_colors", 2) or 2)
+        except Exception:
+            value = 2
+        return 3 if value >= 3 else 2
+
     # ---- Detector selection -> channels and microtime ----
     def _populate_detector_combos(self):
-        # Fill both detector selection combos with available detector names
+        """Fill one detector combo per colour, preferring the conventional names."""
         names = list(self._detectors.keys())
-        self.comboBox_det1.blockSignals(True)
-        self.comboBox_det2.blockSignals(True)
-        self.comboBox_det1.clear()
-        self.comboBox_det2.clear()
-        if names:
-            self.comboBox_det1.addItems(names)
-            self.comboBox_det2.addItems(names)
-            # Prefer conventional defaults if available
-            if "green" in names:
-                self.comboBox_det1.setCurrentText("green")
+        preferred = COLOUR_DEFAULTS[self.n_colors]
+        for index, combo in enumerate(self.detector_combos):
+            combo.blockSignals(True)
+            combo.clear()
+            if names:
+                combo.addItems(names)
+                wanted = preferred[index] if index < len(preferred) else None
+                if wanted in names:
+                    combo.setCurrentText(wanted)
+                else:
+                    # Fall back to distinct detectors in declaration order, so
+                    # two rows never silently point at the same channels.
+                    combo.setCurrentIndex(min(index, len(names) - 1))
             else:
-                self.comboBox_det1.setCurrentIndex(0)
-            # Choose a different detector for det2 if possible, prefer red
-            if "red" in names:
-                self.comboBox_det2.setCurrentText("red")
-            else:
-                self.comboBox_det2.setCurrentIndex(min(1, len(names)-1))
-        else:
-            self.comboBox_det1.addItem("")
-            self.comboBox_det2.addItem("")
-        self.comboBox_det1.blockSignals(False)
-        self.comboBox_det2.blockSignals(False)
+                combo.addItem("")
+            combo.blockSignals(False)
         # After populating, sync all dependent fields
         self._update_from_detector_selection()
 
@@ -1128,57 +1328,30 @@ class Pda2cTTTRWidget(
         self.actionParametersChanged.trigger()
 
     def _format_window_value(self, win_val) -> str:
-        # Accept tuple/list/int, mirror logic from PhotonFilter.update_pie_windows
-        if isinstance(win_val, (list, tuple)):
-            # Single [start, end]
-            if len(win_val) == 2 and all(isinstance(x, int) for x in win_val):
-                return f"{win_val[0]}-{win_val[1]}"
-            parts = []
-            for i in win_val:
-                if isinstance(i, (list, tuple)) and len(i) >= 2:
-                    parts.append(f"{i[0]}-{i[1]}")
-                elif isinstance(i, int):
-                    parts.append(f"{i}-{i}")
-            return ";".join(parts)
-        elif isinstance(win_val, int):
-            return f"{win_val}-{win_val}"
-        return ""
+        """Render a micro-time window for a field; see :func:`_format_micro_time_ranges`."""
+        return _format_micro_time_ranges(win_val)
 
     def _update_from_detector_selection(self):
-        # Map selected detector names to routing channels and microtime ranges
-        name1 = self.comboBox_det1.currentText()
-        name2 = self.comboBox_det2.currentText()
-        det1 = self._detectors.get(name1, {}) or {}
-        det2 = self._detectors.get(name2, {}) or {}
-        # Update channels
-        chs1 = ", ".join(str(i) for i in det1.get("chs", []))
-        chs2 = ", ".join(str(i) for i in det2.get("chs", []))
-        self.lineEdit.setText(chs1)
-        self.lineEdit_4.setText(chs2)
-        # Update micro-time ranges
-        self.lineEdit_2.setText(self._format_window_value(det1.get("micro_time_ranges", [])))
-        self.lineEdit_3.setText(self._format_window_value(det2.get("micro_time_ranges", [])))
+        """Map the selected detectors onto the channel and micro-time fields.
 
-    # ---- Detectors -> routing channels ----
-    def _populate_channels_from_detectors(self):
-        # Choose two detectors (prefer green/red), and apply their channel lists
+        The micro-time fields only follow a detector at two colours, where each
+        detector has its own photon-selection window. At three colours they are
+        the excitation periods of the PIE cycle and belong to no detector, so a
+        detector change leaves them alone.
+        """
         if not self._detectors:
+            # Nothing to map from: leave whatever is in the fields alone rather
+            # than blanking a hand-entered channel list.
             return
-        names = list(self._detectors.keys())
-        def pick(name_pref: str, fallback_idx: int):
-            if name_pref in self._detectors:
-                return name_pref
-            return names[fallback_idx] if fallback_idx < len(names) else names[0]
-        d1_name = pick("green", 0)
-        # Avoid same detector twice
-        if "red" in self._detectors:
-            d2_name = "red"
-        else:
-            d2_name = names[1] if len(names) > 1 else names[0]
-        chs1 = ", ".join(str(i) for i in self._detectors[d1_name].get("chs", []))
-        chs2 = ", ".join(str(i) for i in self._detectors[d2_name].get("chs", []))
-        self.lineEdit.setText(chs1)
-        self.lineEdit_4.setText(chs2)
+        selected = [
+            self._detectors.get(combo.currentText(), {}) or {}
+            for combo in self.detector_combos
+        ]
+        for detector, edit in zip(selected, self.channel_edits):
+            edit.setText(", ".join(str(i) for i in detector.get("chs", [])))
+        if self.n_colors == 2:
+            for detector, edit in zip(selected, self.window_edits):
+                edit.setText(self._format_window_value(detector.get("micro_time_ranges", [])))
 
     # ---- TTTR reading routine ----
     def _apply_tttr_reading_to_combo(self):
@@ -1207,25 +1380,20 @@ class Pda2cTTTRWidget(
         except Exception:
             pass
 
-        # channels [ch0, ch1]
+        # one channel group per colour
         try:
-            channels = getattr(setup, 'channels', None)
-            if channels and len(channels) >= 1:
-                ch0 = channels[0] if channels[0] else []
-                ch1 = channels[1] if len(channels) > 1 and channels[1] else []
-                self.lineEdit.setText(", ".join(str(c) for c in ch0))
-                self.lineEdit_4.setText(", ".join(str(c) for c in ch1))
+            channels = list(getattr(setup, 'channels', None) or [])
+            for group, edit in zip(channels, self.channel_edits):
+                edit.setText(", ".join(str(c) for c in (group or [])))
         except Exception:
             pass
 
-        # micro_time_ranges [mt0, mt1]
+        # micro-time windows: one per detector (two colours) or one per
+        # excitation period (three)
         try:
-            mtr = getattr(setup, 'micro_time_ranges', None)
-            if mtr and len(mtr) >= 1:
-                mt0 = mtr[0] if mtr[0] else []
-                mt1 = mtr[1] if len(mtr) > 1 and mtr[1] else []
-                self.lineEdit_2.setText(self._format_window_value(mt0))
-                self.lineEdit_3.setText(self._format_window_value(mt1))
+            ranges = list(getattr(setup, 'micro_time_ranges', None) or [])
+            for window, edit in zip(ranges, self.window_edits):
+                edit.setText(self._format_window_value(window or []))
         except Exception:
             pass
 
@@ -1240,30 +1408,32 @@ class Pda2cTTTRWidget(
         except Exception:
             pass
 
+    def _parse_channels(self) -> list:
+        """Return the routing-channel list of every detector row."""
+        groups = []
+        for edit in self.channel_edits:
+            text = edit.text().strip()
+            groups.append([int(k) for k in text.split(',')] if text else [])
+        return groups
+
+    def _parse_windows(self) -> list:
+        """Return the micro-time windows of every window field.
+
+        A two-colour field is a detector's photon selection and may list several
+        ranges, so it stays a list of them. A three-colour field is one
+        excitation period of the PIE cycle and is a single ``[start, stop]``
+        pair, which is what
+        :meth:`~chisurf.core.experiments.pda2c.Pda2cReader.detection_windows`
+        pairs with the detectors that can see that pulse.
+        """
+        windows = [_parse_micro_time_ranges(edit.text()) for edit in self.window_edits]
+        if self.n_colors == 3:
+            return [window[0] if window else [] for window in windows]
+        return windows
+
     def onParametersChanged(self):
-        # Parse channels
-        ch0_text = self.lineEdit.text().strip()
-        ch1_text = self.lineEdit_4.text().strip()
-        ch0 = [int(k) for k in ch0_text.split(',')] if ch0_text else []
-        ch1 = [int(k) for k in ch1_text.split(',')] if ch1_text else []
-        # Parse microtime ranges
-        def parse_mtr(s: str):
-            s = s.strip()
-            if not s:
-                return []
-            parts = []
-            for seg in s.split(';'):
-                seg = seg.strip()
-                if not seg:
-                    continue
-                ab = [int(j) for j in seg.split('-')]
-                if len(ab) >= 2:
-                    parts.append([ab[0], ab[1]])
-            return parts
-        mt0 = parse_mtr(self.lineEdit_2.text())
-        mt1 = parse_mtr(self.lineEdit_3.text())
-        micro_time_ranges = [mt0, mt1]
-        channels = [ch0, ch1]
+        channels = self._parse_channels()
+        micro_time_ranges = self._parse_windows()
         minimum_number_of_photons = int(getattr(self.experiment_reader, 'minimum_number_of_photons', 15) or 15)
         maximum_number_of_photons = int(getattr(self.experiment_reader, 'maximum_number_of_photons', 500) or 500)
         base_tw_ms = float(self.doubleSpinBox.value())
@@ -1567,28 +1737,8 @@ class Pda2cTTTRWidget(
                                           "(e.g., .ptu, .ht3, .spc, .sdt, .t3r, .t2r, .phu, .phd) to load.")
                     return
 
-                ch0_text = self.lineEdit.text().strip()
-                ch1_text = self.lineEdit_4.text().strip()
-                ch0 = [int(k) for k in ch0_text.split(',')] if ch0_text else []
-                ch1 = [int(k) for k in ch1_text.split(',')] if ch1_text else []
-
-                def parse_mtr(s: str):
-                    s = s.strip()
-                    if not s:
-                        return []
-                    parts = []
-                    for seg in s.split(';'):
-                        seg = seg.strip()
-                        if not seg:
-                            continue
-                        ab = [int(j) for j in seg.split('-')]
-                        if len(ab) >= 2:
-                            parts.append((ab[0], ab[1]))
-                    return parts
-
-                mt0 = parse_mtr(self.lineEdit_2.text())
-                mt1 = parse_mtr(self.lineEdit_3.text())
-                micro_time_ranges = [mt0, mt1]
+                channels = self._parse_channels()
+                micro_time_ranges = self._parse_windows()
                 maximum_number_of_photons = int(getattr(self.experiment_reader, 'maximum_number_of_photons', 500) or 500)
                 minimum_number_of_photons = int(getattr(self.experiment_reader, 'minimum_number_of_photons', 15) or 15)
                 base_tw_ms = float(self.doubleSpinBox.value())
@@ -1605,7 +1755,8 @@ class Pda2cTTTRWidget(
 
                 logging.info(f"PDA: Preparing to load {len(tttr_files)} TTTR file(s) with routine '{reading_routine}'.")
                 logging.debug({
-                    'channels': (ch0, ch1),
+                    'n_colors': self.n_colors,
+                    'channels': channels,
                     'micro_time_ranges': micro_time_ranges,
                     'max_photons': maximum_number_of_photons,
                     'min_photons': minimum_number_of_photons,
@@ -1613,18 +1764,20 @@ class Pda2cTTTRWidget(
                     'tw_configs': tw_cfgs,
                 })
                 pda_reader = Pda2cReader(
-                    channels=(ch0, ch1),
+                    channels=channels,
                     micro_time_ranges=micro_time_ranges,
                     reading_routine=reading_routine,
                     maximum_number_of_photons=maximum_number_of_photons,
                     minimum_number_of_photons=minimum_number_of_photons,
                     minimum_time_window_length=minimum_time_window_length,
-                    tw_configs=tw_cfgs
+                    tw_configs=tw_cfgs,
+                    n_colors=self.n_colors,
+                    segmentation=getattr(self.experiment_reader, 'segmentation', 'burst'),
                 )
                 # Attach the correct experiment to the reader so get_data can set d.experiment
                 try:
                     bound_experiment = getattr(self.experiment_reader, 'experiment', None)
-                    pda_reader.experiment = cs.core.experiments.types.get('pda') or bound_experiment
+                    pda_reader.experiment = bound_experiment or cs.core.experiments.types.get('pda')
                 except Exception:
                     # Fallback to the bound reader's experiment if types lookup fails
                     pda_reader.experiment = getattr(self.experiment_reader, 'experiment', None)

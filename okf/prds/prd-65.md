@@ -198,14 +198,17 @@ it is built by a downhill recursion over any number of dyes, so a four-colour
 construct needs no new algebra. Verified by the A/B: the matrix form reproduces
 the incumbent's scalar-correction model to 1e-12.
 
-**Reachable from the GUI (2026-07-25).** `chisurf/core/models/c3pda/` +
-`c3pda.view.json` + `chisurf/core/experiments/c3pda/`, registered as the
-`c3pda` experiment type, so c3PDA appears in the add-fit flow like any other
-model. Two readers: a burst-table loader (`.npz`/`.npy`/text, five columns) and
+**Reachable from the GUI (2026-07-25).** `chisurf/core/models/pda3c/` +
+`pda3c.view.json` + `chisurf/core/experiments/pda3c/`, so PDA3c appears in the
+add-fit flow like any other model. It was first registered as a `pda3c`
+experiment type of its own; since 2026-07-28 it is registered in the single
+`pda` experiment beside the two-colour models, because the colour count is a
+setting of the shared reader rather than a different experiment (see *One
+experiment, two colour counts* below). Two readers: a burst-table loader (`.npz`/`.npy`/text, five columns) and
 a **simulator** — three-colour data is scarce, and a model nobody can open is a
 model nobody checks, so the simulator makes the editor exercisable and lets a
 fit be scored against a truth the reader itself set.
-`test/gui/test_c3pda_model_editor.py` (10 tests) covers registration, both
+`test/gui/test_pda3c_model_editor.py` (10 tests) covers registration, both
 readers, editor rendering, and an end-to-end `fit.run()` that recovers
 (52.09, 46.10, 68.95) from a start of (47, 51, 62) against a truth of
 (52, 46, 68).
@@ -262,11 +265,38 @@ Two things measurement decided, not convention:
   interchangeable — documented on the method rather than left to surprise
   someone comparing a two- and a three-colour analysis of the same file.
 
+**One experiment, two colour counts (2026-07-28).** The separate `pda3c`
+experiment type was retired: one reader reading one file cannot sensibly sit in
+two experiments, and the split made the user choose the colour count twice — once
+by picking an experiment and again in the reader's own selector. The
+`experiment_configs.yaml` sections merged back into a single `pda`, holding the
+three readers (TTTR, burst table, simulator) and both model families. Three
+consequences:
+
+- **The model list is filtered by the dataset.**
+  `Model.supports_data(data)` (default `True`) and
+  `Experiment.get_model_names(data)` mean a model that would raise on the
+  selection is not offered: `PDA3c` needs a burst-table payload, the `PDA2c-*`
+  models refuse one.
+- **The reader panel follows the colour count.** `_PdaDetectorWidget` builds one
+  detector row per colour and, at three, a separate *excitation* row — the two
+  windows are periods of the PIE cycle, not per-detector selections. Changing
+  the count rebuilds the AutoForm panel, so the controller re-adopts its widgets
+  on the new `AutoForm.rebuilt` signal; the reader's `n_colors` setter
+  re-derives the windows from the micro-time span and rolls the channel groups
+  into their colour roles, leaving a new blue row empty rather than guessed.
+- **A stale user settings file is migrated.** The per-user
+  `experiment_configs.yaml` is merged *on top of* the packaged one and merging
+  replaces lists, so an old `pda2c`/`pda3c` section would both appear as an
+  experiment of its own and hide everything added since. Superseded sections are
+  dropped on load (`experiments.SUPERSEDED_SECTIONS`), and the GUI, the headless
+  bootstrap and `load_experiment_types` now share one loader instead of three.
+
 **Stages 3, 4 and 6 landed (2026-07-25).**
 
 - **Priors and posteriors (stage 3)** — nothing built. [PRD-61](prd-61.md)
   already supplies per-parameter priors with a selector and modal, and
-  `fitting/sample.py` the samplers; what was missing was evidence that c3PDA
+  `fitting/sample.py` the samplers; what was missing was evidence that PDA3c
   parameters are ordinary enough to use them, since the objective is a
   likelihood deviance rather than a histogram chi-square. A Gaussian prior moves
   the estimate monotonically in its width and correctly does *not* enter the

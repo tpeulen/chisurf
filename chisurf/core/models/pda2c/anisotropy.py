@@ -8,7 +8,7 @@ import chisurf.core.math.datatools
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.models.model import ModelCurve
 from chisurf.core.models.pda2c.common import (
-    Pda2cDiagnosticsMixin,
+    Pda2cModelMixin,
     mask_zero_photon_bins,
     pda_1d_residuals_from_s1s2,
     resolve_fit_settings,
@@ -262,7 +262,7 @@ def anisotropy_to_p_parallel(r: float, G: float, l1: float, l2: float) -> float:
     return float(np.clip(num / den, eps, 1.0 - eps))
 
 
-class Pda2cAnisotropyModel(Pda2cDiagnosticsMixin, ModelCurve):
+class Pda2cAnisotropyModel(Pda2cModelMixin, ModelCurve):
     """PDA model for single-species fluorescence anisotropy.
 
     Uses :class:`tttrlib.Pda` with channel-1 = parallel, channel-2 =

@@ -37,7 +37,12 @@ def _simulated_fit(correlation: float = 0.0, n_bursts: int = 1500, seed: int = 3
 
 
 def test_the_experiment_type_and_model_are_registered():
-    """It has to be reachable from the add-fit flow, not just importable."""
+    """It has to be reachable from the add-fit flow, not just importable.
+
+    Three colours is a *setting* of the PDA experiment, not an experiment of its
+    own, so the readers and the model are registered in the one ``pda`` section
+    beside the two-colour ones.
+    """
     import pathlib
 
     import yaml
@@ -45,14 +50,16 @@ def test_the_experiment_type_and_model_are_registered():
     config = yaml.safe_load(
         pathlib.Path("chisurf/core/settings/experiment_configs.yaml").read_text()
     )
-    assert "pda3c" in config["experiment_types"]
-    assert config["experiment_types"]["pda3c"]["hidden"] is False
+    assert "pda3c" not in config, "three-colour PDA must not be a separate experiment"
+    assert "pda3c" not in config["experiment_types"]
+    assert config["experiment_types"]["pda"]["hidden"] is False
 
-    block = config["pda3c"]
+    block = config["pda"]
     readers = [r["reader_class"] for r in block["readers"]]
     assert "chisurf.core.experiments.pda3c.Pda3cSimulatorReader" in readers
     assert "chisurf.core.experiments.pda3c.Pda3cBurstTableReader" in readers
     assert "chisurf.core.models.pda3c.pda3c.Pda3cModel" in block["models"]
+    assert "chisurf.core.models.pda2c.simple.Pda2cSimpleModel" in block["models"]
 
 
 # ── the reader ─────────────────────────────────────────────────────────────

@@ -134,6 +134,31 @@ from chisurf.core.models.model import ModelCurve
 N_RATIO_BINS = 41
 
 
+def burst_payload(data) -> dict | None:
+    """Return the three-colour burst table attached to *data*, or ``None``.
+
+    Both PDA readers write the payload the same way — into
+    ``meta_data['pda3c']`` and, mirroring the two-colour reader, onto the curve
+    as a plain attribute — so this is the one place that knows where to look.
+
+    Parameters
+    ----------
+    data : object
+        A dataset, typically a :class:`chisurf.core.data.DataCurve`.
+
+    Returns
+    -------
+    dict or None
+        The payload mapping (``blue``/``green`` count tables), or ``None`` when
+        *data* is not three-colour PDA data.
+    """
+    meta = getattr(data, "meta_data", None)
+    payload = meta.get("pda3c") if isinstance(meta, dict) else None
+    if payload is None:
+        payload = getattr(data, "pda3c", None)
+    return payload if isinstance(payload, dict) else None
+
+
 class Pda3cSpecies(FittingParameterGroup):
     """Trivariate-Gaussian distance populations of a three-colour sample.
 
@@ -608,6 +633,17 @@ class Pda3cModel(ModelCurve):
 
     # -- data ------------------------------------------------------------
 
+    @classmethod
+    def supports_data(cls, data) -> bool:
+        """Whether *data* carries a three-colour burst table.
+
+        PDA is a single experiment whose reader produces either an S1S2
+        histogram (two colours) or the five-column burst table this model fits,
+        so the model list is filtered by which payload actually arrived rather
+        than by which experiment the dataset came from.
+        """
+        return data is None or burst_payload(data) is not None
+
     def burst_counts(self) -> BurstCounts | None:
         """Return the (collapsed) burst table from the fit's dataset.
 
@@ -619,14 +655,9 @@ class Pda3cModel(ModelCurve):
         """
         if self._counts_cache is not None:
             return self._counts_cache
-        payload = None
         data = getattr(self.fit, "data", None)
-        meta = getattr(data, "meta_data", None)
-        if isinstance(meta, dict):
-            payload = meta.get("pda3c")
+        payload = burst_payload(data)
         if payload is None:
-            payload = getattr(data, "pda3c", None)
-        if not isinstance(payload, dict):
             return None
         try:
             counts = BurstCounts(blue=payload["blue"], green=payload["green"]).collapsed()

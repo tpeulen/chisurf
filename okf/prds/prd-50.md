@@ -282,7 +282,7 @@ highest-reuse gap: the math exists; we need the model+UI+fit integration.
 - **Both diagnostics are reachable from the editor (2026-07-25).** The kinetic
   consistency check and the light-path bridge were headless APIs with no way to
   reach them from a model editor. Both are now methods on a shared
-  `common.PdaDiagnosticsMixin` that all five PDA models (plus SAW-ν) inherit, so a
+  `common.Pda2cModelMixin` that all five PDA models (plus SAW-ν) inherit, so a
   `button_row` in each view spec is the entire user interface and the scripted and
   clicked paths are the same code.
   `run_consistency_check()` bootstraps from the fitted spectrum and reports the

@@ -144,15 +144,118 @@ class Pda2cReader(ExperimentReader):
         self.minimum_time_window_length = minimum_time_window_length
         self.tw_configs = tw_configs
         self.channels = channels
-        self.n_colors = int(n_colors) if n_colors else len(channels)
+        # Set behind the property: at construction the windows were given for
+        # this colour count, and the setter's job is to fix them up when the
+        # count *changes* under them.
+        self._n_colors = 3 if int(n_colors or len(channels)) >= 3 else 2
         self.segmentation = str(segmentation)
 
     # -- three-colour path ------------------------------------------------
 
+    @property
+    def n_colors(self) -> int:
+        """Number of detection colours, 2 or 3.
+
+        Changing it re-derives :attr:`micro_time_ranges`, because the windows
+        are not the same quantity at the two counts: with two colours a window
+        is a *detector's* photon selection, with three it is an *excitation
+        period* of the PIE cycle. Carrying the old values across would leave
+        three-colour reading with two identical excitation periods — a setting
+        that is not merely a poor default but physically meaningless, and one
+        whose effect (every photon counted under both pulses) is invisible until
+        the fitted efficiencies come out wrong.
+        """
+        return self._n_colors
+
+    @n_colors.setter
+    def n_colors(self, value: int):
+        """Set the colour count, re-deriving the micro-time windows on a change."""
+        try:
+            value = 3 if int(value) >= 3 else 2
+        except (TypeError, ValueError):
+            return
+        if value == getattr(self, "_n_colors", None):
+            return
+        self._n_colors = value
+        self.micro_time_ranges = self.default_micro_time_ranges(value)
+        self.channels = self.default_channels(value)
+
+    def default_channels(self, n_colors: int) -> list:
+        """Return the channel groups for *n_colors*, keeping the colours' roles.
+
+        The groups are ordered ``(green, red)`` with two colours and
+        ``(blue, green, red)`` with three, so they are *rolled* rather than
+        truncated or padded at the end: the detector that was green stays green.
+        A colour with nobody to inherit from — blue, when a two-colour setup
+        grows a third — comes back empty rather than guessed, because a guessed
+        routing channel counts the wrong detector's photons and nothing in the
+        analysis complains about it.
+
+        Parameters
+        ----------
+        n_colors : int
+            Colour count the groups should describe.
+
+        Returns
+        -------
+        list of list of int
+            One channel group per colour.
+        """
+        groups = [list(group) for group in (self.channels or [])]
+        if n_colors >= 3:
+            if len(groups) >= 3:
+                return groups[:3]
+            return [[]] + groups[:2] + [[]] * (2 - len(groups[:2]))
+        if len(groups) >= 3:
+            return groups[1:3]
+        return (groups + [[], []])[:2]
+
+    def default_micro_time_ranges(self, n_colors: int) -> list:
+        """Return default windows for *n_colors*, spanning the configured range.
+
+        The span is taken from the windows currently set, so switching colour
+        counts keeps the instrument's micro-time range and only changes how it
+        is divided: halved into a blue and a green excitation period for three
+        colours, given whole to each detector for two.
+
+        Parameters
+        ----------
+        n_colors : int
+            Colour count the windows should describe.
+
+        Returns
+        -------
+        list of list of int
+            Two ``[start, stop]`` windows.
+        """
+        flat = []
+        for window in (self.micro_time_ranges or []):
+            if len(window) and isinstance(window[0], (list, tuple)):
+                flat.extend(window)
+            elif len(window) >= 2:
+                flat.append(window)
+        start = min(int(w[0]) for w in flat) if flat else 0
+        stop = max(int(w[1]) for w in flat) if flat else 2 ** 15
+        if n_colors >= 3:
+            middle = start + (stop - start) // 2
+            return [[start, middle], [middle, stop]]
+        return [[start, stop], [start, stop]]
+
     def _micro_time_range(self, index: int) -> tuple:
-        """Return micro-time window ``index``, falling back to the first."""
+        """Return micro-time window ``index`` as a ``(start, stop)`` pair.
+
+        Falls back to the first window when fewer are configured than asked
+        for. A window may arrive as a *list of* ranges — that is how the
+        two-colour detector fields spell a multi-range photon selection — in
+        which case the first range is used: a detection window is one interval,
+        and silently keeping the nested list would build a window that unpacks
+        into nothing rather than one that is merely wrong.
+        """
         ranges = list(self.micro_time_ranges or [(0, 2 ** 31)])
-        return tuple(ranges[min(index, len(ranges) - 1)])
+        window = ranges[min(index, len(ranges) - 1)]
+        if len(window) and isinstance(window[0], (list, tuple)):
+            window = window[0]
+        return tuple(window)
 
     def detection_windows(self) -> list:
         """Return the ``(channels, micro_time_range)`` pairs a burst is counted in.

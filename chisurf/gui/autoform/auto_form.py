@@ -120,6 +120,12 @@ class AutoForm(QtWidgets.QWidget):
         Parent widget.
     """
 
+    #: Emitted after :meth:`rebuild` has replaced the panel's widgets. A
+    #: ``rebuild_on_change`` control (a colour count, a detector layout) deletes
+    #: every widget a host grabbed out of a custom section, so a host that keeps
+    #: references has to re-adopt them; without a signal it cannot know when.
+    rebuilt = QtCore.Signal()
+
     @classmethod
     def from_parameter_group(cls, group, parent=None, **kwargs):
         """Render a ``FittingParameterGroup`` directly, without authored JSON.
@@ -220,6 +226,7 @@ class AutoForm(QtWidgets.QWidget):
                 expanding = True
         if not expanding:
             self._layout.addStretch(1)  # push panels to the top; prevent height distribution
+        self.rebuilt.emit()
 
     def set_field_label(self, target: str, text: str = None, html: str = None) -> bool:
         """Retitle a field's caption at run time.

@@ -2,6 +2,60 @@
 
 ## 2026-07-28
 
+* **Three-colour PDA is a setting of the PDA experiment, not an experiment.**
+  `pda2c` and `pda3c` merged back into one `pda` section holding all three
+  readers (TTTR, burst table, simulator) and both model families: one reader
+  reads one file the same way at either colour count, so the split made the user
+  choose the colour count twice -- once by picking an experiment and again in the
+  reader's own **Colours** selector -- and made the wrong pairing possible.
+  Merging exposed four things that had to be built for it to work:
+  `Model.supports_data(data)` + `Experiment.get_model_names(data)`, so the model
+  list is filtered by the payload the dataset actually carries rather than by
+  which experiment it came from; a detector panel with one row per colour and,
+  at three, a separate *excitation* row, since those two windows are periods of
+  the PIE cycle rather than per-detector selections; an `AutoForm.rebuilt`
+  signal, because `rebuild_on_change` deletes every widget a host grabbed out of
+  a custom section and the PDA controller kept references to all of them; and a
+  migration for the per-user `experiment_configs.yaml`, which is merged *on top
+  of* the packaged one -- a stale `pda2c` section would both appear as an
+  experiment of its own and, since merging replaces lists, hide every model
+  added since (`experiments.SUPERSEDED_SECTIONS`; the GUI, the headless
+  bootstrap and `load_experiment_types` now share one loader instead of three).
+
+  Found while doing it, all silent: the fresh `Pda2cReader` built on *Load
+  dropped files* never received `segmentation`, so choosing **Fixed time bins**
+  in the panel read a burst search anyway; `_micro_time_range` unpacked a
+  multi-range field into a window that raises rather than one that is merely
+  wrong; and switching colour count carried the old micro-time windows across,
+  which at three colours means two identical "excitation periods" -- physically
+  meaningless and invisible until the fitted efficiencies come out wrong. The
+  `n_colors` setter now re-derives the windows from the micro-time span and
+  rolls the channel groups into their colour roles, leaving a new blue row empty
+  rather than guessed. `Pda2cDiagnosticsMixin` -> `Pda2cModelMixin`, since it now
+  carries the two-colour data contract as well as the diagnostics.
+  `test/gui/test_pda_colour_setting.py` (8 tests) plus the reader-panel
+  screenshots at both counts; docs in
+  [guides/42_pda3c](../docs/guides/42_pda3c.md), `11_pda2c` and
+  `reference/settings.md`; [PRD-65](/prds/prd-65.md) and
+  [subsystems/models](/subsystems/models.md) updated.
+
+* **QA (GUI tester): FRET-restrained rigid-body docking is dead end to end.**
+  Drove Structure Tools -> *2. Docking & Screening* headlessly on the plugin's
+  own HIV-RT + DNA example (20 measured distances, IMP 2.24.0): `dock`, `score`,
+  `refine` and the 3-trial error estimation all raise
+  `AttributeError: module 'IMP.bff.restraints' has no attribute
+  'AVNetworkRestraintWrapper'` within ~2 s. The class is installed, in a
+  `restraints/` directory with no `__init__.py` (so nothing is re-exported), and
+  the imp-tricks source on `PYTHONPATH` replaces that namespace portion so the
+  submodule cannot be imported at all -- verified both ways. `screen` reports
+  that total failure as "ranked 2 structures" over an all-`nan` CSV, and its
+  ranking never reaches the results table. Around the broken seam everything is
+  healthy: the AV machinery gives 8 AVs in 0.64 s with `<R_DA> = 57.25 A`, and
+  the OLGA pair-selection wizard returns a sensible greedy `<RMSD>` decay -- but
+  it has no entry point in the application, blocks the GUI thread for 53 s and
+  labels its y axis `^ (A)`. New use case
+  [FRET-restrained rigid-body docking](/usecases/fret-docking-rigid-body.md);
+  RF-771..RF-778 filed OPEN.
 * **ndX: the marginals described a larger population than the map below them,
   and four silent failures around them.** A per-state lifetime column (defined
   for the bursts one H2MM state claims) against a proximity ratio (defined for

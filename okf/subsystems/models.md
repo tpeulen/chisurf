@@ -45,7 +45,11 @@ path in `chisurf/core/settings/experiment_configs.yaml` (per `tcspc`, `fcs`,
 `rics`, `pch`, `pda`, `deer`, `structure`, `global`). At startup
 `chisurf/gui/main_helper.py` imports each path and calls
 `Experiment.add_model_class` (`chisurf/core/experiments/core/experiment.py`);
-`Experiment.model_names` then feeds the add-fit UI. A `Fit` instantiates the
+`Experiment.get_model_names(data)` then feeds the add-fit UI. One experiment may
+hold data of more than one shape — PDA reads two-colour histograms and
+three-colour burst tables through the same reader — so that call filters by each
+class' `Model.supports_data(data)` (default `True`) and a model that would raise
+on the selected dataset is never offered. A `Fit` instantiates the
 chosen class as `model_class(self, **model_kw)`. Users can also drop
 `*__override__*.py` files into their settings `models/` dir
 (`inject_user_models`) or wrap a callable via `function_to_model_decorator`

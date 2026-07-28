@@ -564,30 +564,17 @@ class SetupMixin:
         """
         Initialize experiment setups based on configuration from YAML file.
         """
-        import copy
-        import yaml
         import pathlib
         import shutil
         import chisurf.core.experiments
 
-        def _load_yaml_config(path: pathlib.Path) -> dict:
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    return yaml.safe_load(f) or {}
-            except Exception:
-                return {}
-
-        def _deep_merge_dicts(base: dict, override: dict) -> dict:
-            result = copy.deepcopy(base) if base else {}
-            for key, value in (override or {}).items():
-                if (
-                    isinstance(value, dict)
-                    and isinstance(result.get(key), dict)
-                ):
-                    result[key] = _deep_merge_dicts(result[key], value)
-                else:
-                    result[key] = copy.deepcopy(value)
-            return result
+        # One loader, one merger: the settings file is also read by the headless
+        # bootstrap and by ``load_experiment_types``, and a private copy here
+        # would silently miss the section migrations they apply.
+        from chisurf.core.experiments import (
+            _deep_merge_dicts,
+            _load_yaml_config,
+        )
 
         def _summarize_experiment_config_diff(default_cfg: dict, user_cfg: dict, max_lines: int = 10) -> str:
             default_cfg = default_cfg or {}
