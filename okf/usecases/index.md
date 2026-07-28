@@ -316,6 +316,22 @@ The workflows a first pass should cover — expand as the tester discovers more:
   0.032 ns; the only route to the settings aborts the application; and the
   saved plot is a green block. *(last driven 2026-07-28; RF-877..RF-884)*
 
+- [The Converter hub — raw stream → time-window BIDs → analysis folder](/usecases/converter-time-window-bids.md)
+  — the burst-search-free route to a `.bur` table, all three steps in one window:
+  transcode/split the container, cut the measurement into fixed-duration
+  time-window BID (`.bst`) files, and turn those into `bi4_bur/<stem>.bur` plus
+  `Info/`. The transcode is bit-exact (183 657 photons, micro-times identical,
+  0.02 s) and the `.bst` writer is right, but the two panels disagree about their
+  own contract: the BIDs are written half-open (`[start, stop)`) and read closed,
+  so every window gains a photon, every boundary photon is counted twice and the
+  final window is silently dropped (624 windows → 623 rows) — a *missing* row in
+  a format merged column-wise by position; and the total `Count Rate (KHz)` is
+  1000× too small next to per-detector kHz columns that are correct. Around that,
+  the preview draws one white line per window (6233 at the default, hiding the
+  trace and costing 1.8 s a redraw), the ⏭ pipeline-walk runs nothing and reports
+  "the pipeline is done", and one unreadable BID aborts the batch with an
+  unhandled exception. *(last driven 2026-07-29; RF-896..RF-906)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

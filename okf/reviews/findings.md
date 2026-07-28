@@ -10110,3 +10110,89 @@ offscreen Qt. RF-889..RF-895.
 - **Location:** `chisurf/gui/chiplot/canvas.py:1101-1114` (`PanelPlot.__init__`, which calls `self._canvas.on_click(...)` and nothing else) against `Plot.__init__` at `:78-79` (which wires both `on_click` and `on_mouse_move`) and the signal documented for the whole class at `:54-59`
 - **Finding:** `PanelPlot` deliberately bypasses `Plot.__init__` and re-does its wiring by hand, but only re-does half of it: `on_mouse_move` is never registered, so `mouse_moved` is dead on every panel returned by `Grid.add_plot`. `grep -rn "on_mouse_move" chisurf/gui/chiplot` shows the single `Plot.__init__` call site. Nothing consumes `mouse_moved` today (the one crosshair implementation, `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:130`, reaches past the seam to `plot.native.scene().sigMouseMoved` instead — itself a chiplot gap worth closing), so this is latent: the first caller to connect a grid panel's `mouse_moved` gets silence with no error. Add the missing `on_mouse_move` wiring in `PanelPlot.__init__` and pin it the way RF-131's fix pinned `on_click` (emit a scene `sigMouseMoved` inside a panel's rect, assert only that panel reports).
 - **Fix note:**
+### QA 2026-07-29 — the Converter hub (raw stream → time-window BIDs → analysis folder)
+
+Slice: driving *Tools → 🔁 Converter* headlessly end-to-end on
+`test/data/tttr/BH/132/BH_SPC132.spc` (183 657 photons, 62.328 s) — transcode to
+PTU, cut into 100 ms time-window BIDs, convert the BIDs into an analysis folder,
+then read the produced `.bur` back off disk. The transcode is bit-exact and the
+`.bst` writer is correct; the row bookkeeping between the two panels is not.
+Use case: [/usecases/converter-time-window-bids.md](/usecases/converter-time-window-bids.md).
+Findings RF-896..RF-906.
+
+### RF-896
+- **Status:** OPEN
+- **Severity:** S1 (every `.bur` ChiSurf writes states a total count rate 1000× too small, in a column labelled kHz, while the per-detector kHz columns beside it are right)
+- **Location:** `chisurf/core/fio/fluorescence/burst.py:442` (`generate_burst_dataframe`: `crate = (npix / dur)/1e3 if dur>0 else np.nan`, written to `"Count Rate (KHz)"` at `:449`) against the per-detector rate at `:475` (`rate = (idxs.size / d_ms) if d_ms>0 else np.nan`, written to `"{d} Count Rate (KHz)"`)
+- **Finding:** `dur` is already in **milliseconds** (`dur = (macro[stop] - macro[start]) * res * 1e3`, `:439`), so `npix / dur` is photons-per-ms — i.e. **kHz already**. The extra `/1e3` turns it into MHz under a `(KHz)` header. The per-detector branch does the same division *without* the `/1e3` and is correct, so the two column families in one row disagree by exactly 1000×. Verified on a real file: a time window with 664 photons over 100.035567 ms is written as `Count Rate (KHz) = 0.006637639190868984` (664/100.0356 = 6.6376 kHz), while `Green Count Rate (KHz)` on the same row is `5.96668177774029` for 594 photons over 99.5528205 ms (= 5.9667 kHz, correct). This is the shared burst core, so every writer that goes through it is affected — `bid_to_analysis`, the burst wizard, and anything reading `Count Rate (KHz)` back for a rate filter. Drop the `/1e3`; pin with a synthetic two-photon burst whose rate is exact.
+- **Fix note:**
+
+### RF-897
+- **Status:** OPEN
+- **Severity:** S1 (BID windows are written half-open and read closed: every window gains a photon, every boundary photon is counted twice, and the last window is silently dropped — a *missing row* in a format merged column-wise by position)
+- **Location:** `chisurf/plugins/tttr/tttr_time_windows/api/selection.py:57` (`compute_bids_from_tttr`, documented at `:21` as returning `[start_idx, stop_idx)`) consumed by `chisurf/core/fio/fluorescence/burst.py:441` (`npix = stop - start + 1`), `:456` (`sl = slice(start, stop + 1)`) and `:431` (`if stop <= start or stop>=n_ph or start<0: continue`), wired together by `chisurf/plugins/burst/bid_to_analysis/__init__.py:373-380` (`_per_file_process` → `generate_burst_dataframe`) — the two panels are steps 2 and 3 of the same Converter hub
+- **Finding:** `generate_burst_dataframe`'s docstring states "*``stop_index`` is the index of the burst's **last** photon (inclusive)*"; `compute_bids_from_tttr`'s states `[start_idx, stop_idx)`. Nothing converts between them. Verified end-to-end on `BH_SPC132.spc` → PTU → 100 ms windows: the `.bst` has **624** rows starting `0→663`, `663→903` (photon 663 shared), and the `.bur` reports window 1 as **664** photons (should be 663) with photon 663 counted again in window 2. The final window `183604→183657` has `stop == n_ph == 183657`, so `stop >= n_ph` skips it and the file ends with **623** real rows for 624 windows. Per the [burst-companion contract](/subsystems/burst-companions.md) a skipped burst must still emit a *sentinel row*, never a missing one — any companion computed from the same `.bst` has 624 entries and will merge one row out of step from the end. Fix by converting at the seam (`start_stop = [(s, e - 1) for s, e in ...]` in `_per_file_process`, or an explicit `stop_inclusive=` flag), and make the `continue` at `:431` append a sentinel row instead of dropping one; pin with a BID whose last window ends at `n_ph`.
+- **Fix note:**
+
+### RF-898
+- **Status:** OPEN
+- **Severity:** S2 (the shell's ⏭ fast-forward walks the whole Converter pipeline, runs nothing, and reports "the pipeline is done")
+- **Location:** `chisurf/gui/widgets/navigation.py:863` (`process_current_step`: `btn = inst.findChild(QtWidgets.QToolButton, "toolAction_run")`, returning `False` when absent) and `:967` (`self._stop_fast_forward("Fast-forward finished — the pipeline is done")`), against the three panels declared in `chisurf/plugins/tttr/converter/gui/panels.json` — `PTUSplitter` (whose run button is an unnamed `QToolButton` "✂️ Convert / Split", `chisurf/plugins/tttr/tttr_splitter/gui/sections.py:203`), `TTTRTimeWindowTool` (a `QAction` "🕐 Process" named `twToolbarProcess`, `gui/tool.py:419`) and `BidToAnalysisGUI` (a `QPushButton` "Process", `bid_to_analysis/__init__.py:622`)
+- **Finding:** the docstring promises "*Every plugin's primary action is the canonical ``toolAction_run`` button*" — no Converter panel has one. Verified: `process_current_step()` returns `False` for rows 0, 1 and 2, and clicking ⏭ from row 0 advances to row 2 and sets the status bar to *"Fast-forward finished — the pipeline is done"* having executed no conversion at all. A user who presses the pipeline-walk button on an empty hub is told the pipeline ran. Either give the three run controls the canonical `toolAction_run` object name, or have `_stop_fast_forward` report how many steps actually ran ("0 of 3 steps had a run action") instead of claiming completion.
+- **Fix note:**
+
+### RF-899
+- **Status:** OPEN
+- **Severity:** S2 (a documented control on the splitter's Split-options panel is never read; the file is written unbinned whatever the user picks)
+- **Location:** `chisurf/plugins/tttr/tttr_splitter/gui/view_model.py:146-162` (`micro_time_binning`, computed and clamped) and `:53` (`self.microtime_binning = "1"`), bound by `chisurf/plugins/tttr/tttr_splitter/gui/splitter.view.json:50-56` ("*Micro-time binning factor (clamped to ≥8 for SPC containers)*"), against `do_split` at `:174-254` and `run_batch` at `:256+` — neither reads either attribute
+- **Finding:** `grep -n "micro_time_binning\|microtime_binning" chisurf/plugins/tttr/tttr_splitter/` returns exactly four hits: the initialiser, the property, the property's own `int()` cast, and the view-spec entry. Nothing consumes it. Verified: setting `microtime_binning = "16"` and running `do_split` on `BH_SPC132.spc → PTU` produced a file with `number_of_micro_time_channels == 4096` and `micro_times.max() == 3663`, identical to the source and to a run with binning `1`. The description also promises a clamp the user cannot see — `micro_time_binning` returns `8` for an SPC input while the combo still reads `1`. Either apply the factor in `do_split` (rebinning `micro_times` and the header's channel count before `write`) or remove the control from the view spec; a round-trip test asserting the output channel count pins whichever is chosen.
+- **Fix note:**
+
+### RF-900
+- **Status:** OPEN
+- **Severity:** S3 (at the tool's own default setting the preview plot is a solid white block with the data invisible underneath, and each redraw takes 1.8 s)
+- **Location:** `chisurf/plugins/tttr/tttr_time_windows/gui/tool.py:506-511` (`_on_select_file`: `for t in np.arange(0, time_axis[-1] + tw_s, tw_s): ... self.preview_plot.vline(t, pen=dashed)`), driven by the `Time window` spin box default of `10.0` ms at `:262`
+- **Finding:** one dashed vertical line is drawn per time window, with no cap. On a 62.328 s measurement at the default 10 ms that is **6233 lines** across ~1150 px — the boundaries merge into an opaque white field and the yellow intensity trace cannot be seen at all (`06_tw_preview.png`). Verified timings on the same file: rebuilding the preview took **1.79 s** at 10 ms, 0.11 s at 100 ms and 0.01 s at 1 s, and `_on_settings_changed` fires the rebuild on *every* spin-box step, so dragging the value through 10 ms is a multi-second stall. Cap the markers (draw them only below a few hundred windows, else shade alternating windows or draw none) and say in the plot title how many windows the current setting produces.
+- **Fix note:**
+
+### RF-901
+- **Status:** OPEN
+- **Severity:** S3 (all four dock tabs of the Time-Window tool show a ✗ close button that does nothing)
+- **Location:** `chisurf/plugins/tttr/tttr_time_windows/gui/tool.py:245` (`self.dock_area.setTabsClosable(True)`) with no connection to `DockArea.tabCloseRequested` (declared `chisurf/gui/widgets/dock_area/dock_area.py:250`, emitted from `_on_tab_close_requested` at `:1047-1056` when `_close_tab_callback` is `None`)
+- **Finding:** `setTabsClosable(True)` puts a ✗ on `⚙️ Settings`, `📁 Files`, `👁️ Preview` and `📋 Summary`, the click reaches `DockArea.tabCloseRequested`, and nothing is listening — `grep -n "tabCloseRequested" chisurf/plugins/tttr/tttr_time_windows/gui/tool.py` is empty. Verified: emitting `tabCloseRequested(0)` on the populated `DockTabWidget` leaves all four tabs in place. Four dead affordances on the tool's primary navigation. Note that *making* them work needs a way back first: the tool's only menu is `File → Exit` / `Help → About`, and `embed_mainwindow` (`chisurf/gui/widgets/navigation.py:66-74`) drops the menu bar when the tool is embedded in the Converter hub, so a genuinely closed Settings tab would take the time-window control with it. Simplest correct fix is `setTabsClosable(False)`.
+- **Fix note:**
+
+### RF-902
+- **Status:** OPEN
+- **Severity:** S3 (a window title shipped with a raw control character in place of an arrow)
+- **Location:** `chisurf/plugins/burst/bid_to_analysis/__init__.py:570` (`self.setWindowTitle("BID \x12 Analysis Converter")`)
+- **Finding:** the byte between "BID" and "Analysis" is **U+0012 (DC2)**, not `→`. Verified with `xxd`: `2242 4944 2012 2041 6e61 6c79 7369 73` — `"BID <0x12> Analysis"`. Confirmed at runtime: `BidToAnalysisGUI().windowTitle()` is `'BID \x12 Analysis Converter'`. The module docstring (`:2`) and the plugin's `name` (`:59`) both spell it `BID → Analysis` correctly, so this is a single mangled literal. Restore the `→`; the same file is worth a sweep for other non-ASCII damage.
+- **Fix note:**
+
+### RF-903
+- **Status:** OPEN
+- **Severity:** S2 (the plugin README's documented multi-file API raises `TypeError` on every call)
+- **Location:** `chisurf/plugins/burst/bid_to_analysis/__init__.py:520` (`convert_many`: `output_dir = _prepare_output_dir(first_tttr, analysis_folder, target_path, unique_folder)`) against the definition at `:205` (`def _prepare_output_dir(base_dir, target_folder_name, unique_folder)`) and the working call in `convert_bid_file` at `:475` (`_prepare_output_dir(tttr_path.parent, bid_path.stem, unique_folder)`)
+- **Finding:** four positional arguments into a three-parameter function. Verified: `convert_many(['<a real .bst>'])` raises `TypeError: _prepare_output_dir() takes 3 positional arguments but 4 were given` before touching any data. The call is also wrong in kind — it passes `first_tttr` (a **file** path) where `convert_bid_file` passes `tttr_path.parent` (a directory), so even with the arity fixed the analysis folder would be created inside a path that is not a directory. `chisurf/plugins/burst/bid_to_analysis/README.md:28-34` advertises `convert_many` as the batch entry point, and the GUI does not use it (`process_all` loops over `convert_bid_file`), so nothing in-tree covers it. Fix the call to `(first_tttr.parent, analysis_folder or bid_paths[0].stem, unique_folder)` and add a two-BID test.
+- **Fix note:**
+
+### RF-904
+- **Status:** OPEN
+- **Severity:** S2 (one unreadable BID aborts the whole batch with an unhandled exception, strands its row on "Processing", and skips every file queued behind it)
+- **Location:** `chisurf/plugins/burst/bid_to_analysis/__init__.py:749-751` and `:762-764` (`BidToAnalysisGUI.process_all` — the `try:` before `convert_bid_file` and the whole `except Exception as exc: self._set_status(row, f"Error: {exc}", error=True)` handler are commented out), plus `_set_status` at `:701-706` which accepts `error: bool` and never uses it
+- **Finding:** with the handler commented out, any failure inside `convert_bid_file` propagates out of the `clicked` slot. Verified: queueing a `.bst` containing `not a number<TAB>at all` followed by a valid `.bst` makes `process_all` raise `ValueError: could not convert string 'not' to int64 at row 0, column 1`, leaves row 0 reading **`Processing`**, never touches row 1, and leaves the log pane completely empty — no "Finished: n/m" line either. The dead `error=True` flag means even the intended path would not have coloured the row. Restore the per-row `try/except`, make `_set_status` use its `error` flag (a red `BackgroundRole`), and add a malformed-BID test asserting that the *second* file still processes.
+- **Fix note:**
+
+### RF-905
+- **Status:** OPEN
+- **Severity:** S3 (the Converter's navigation pane is narrower than its own size hint, so a horizontal scroll bar is permanently visible and a step label is clipped mid-word)
+- **Location:** `chisurf/plugins/tttr/converter/gui/tool.py:43` (`navigation_width=220`) feeding `chisurf/gui/widgets/navigation.py:596-599` (`self.nav_list.setMinimumWidth(self._navigation_min_width)`) and `:645-651` (`self.splitter.setSizes([max(navigation_width, ...), ...])`)
+- **Finding:** the list's own `sizeHintForColumn(0)` is **232 px** for the three entries (`✂️ TTTR Split / Convert`, `⏱️ TTTR → Time Windows`, `📦 BID → Analysis`) — 12 px more than the pane it is given, so `nav_list.horizontalScrollBar().isVisible()` is `True` on a freshly opened window and *"TTTR → Time Windows"* is cut off after "Window" in every screenshot. A scroll bar under three items reads as a broken layout. Either widen the pane to the size hint (`navigation_width` ≥ `sizeHintForColumn(0)`), or set `setHorizontalScrollBarPolicy(ScrollBarAlwaysOff)` with `setTextElideMode(Qt.ElideRight)` in `NavigationPanelTool._build_ui` so any hub with a long label degrades to an ellipsis instead.
+- **Fix note:**
+
+### RF-906
+- **Status:** OPEN
+- **Severity:** S3 (the BID→Analysis file table hides all three of its informative columns behind a one-word Status column)
+- **Location:** `chisurf/plugins/burst/bid_to_analysis/__init__.py:616` (`self.table.horizontalHeader().setStretchLastSection(True)` with no `setSectionResizeMode` on columns 0–2), table built at `:609-611` with headers `["BID file", "TTTR file", "Output folder", "Status"]`
+- **Finding:** stretching the *last* section gives all spare width to `Status`, whose only values are `Ready` / `Processing` / `Done` / `TTTR not found`. Verified in a 1400×850 window with one row: `Status` occupies roughly 55 % of the table while **BID file**, **TTTR file** and **Output folder** are each elided to `/tmp/qa-...` (`11_bid_done.png`) — the TTTR-resolution result, which is the one thing the user must check before pressing Process, is unreadable. Give `Status` a fixed width (`ResizeToContents`) and stretch the path columns instead, or set `setTextElideMode(Qt.ElideLeft)` so the file name survives.
+- **Fix note:**

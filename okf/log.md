@@ -2,6 +2,28 @@
 
 ## 2026-07-29
 
+* **QA — the Converter hub, end to end** (RF-896..RF-906). Drove
+  *Tools → Converter* headlessly on `BH_SPC132.spc` (183 657 photons, 62.328 s):
+  transcoded SPC→PTU, cut the stream into 100 ms time-window BIDs, converted
+  those into an analysis folder, and read the produced `.bur` back off disk. The
+  transcode is bit-exact (micro-times identical, 0.02 s) and the `.bst` writer is
+  right, but the two panels of the same hub disagree about their own contract:
+  the BIDs are written half-open (`[start, stop)`, `compute_bids_from_tttr`) and
+  read closed (`generate_burst_dataframe`), so every window gains a photon,
+  every boundary photon is counted twice, and the last window is `continue`-d on
+  `stop >= n_ph` — 624 windows produced 623 rows, a *missing* row in a format the
+  rest of ChiSurf merges column-wise by position. In the same table the total
+  `Count Rate (KHz)` is 1000× too small (`(npix/dur)/1e3` where `dur` is already
+  in ms) beside per-detector kHz columns that are correct. Around that: the
+  preview draws one dashed line per window (6233 at the shipped 10 ms default,
+  hiding the trace under a white block and costing 1.8 s a redraw), the shell's
+  ⏭ pipeline-walk finds no `toolAction_run` on any of the three panels and
+  reports "the pipeline is done" having run nothing, the documented
+  `convert_many` API raises `TypeError` on every call, and one unreadable BID
+  aborts the whole batch with an unhandled exception because its `try/except` is
+  commented out. New use case
+  [converter-time-window-bids](/usecases/converter-time-window-bids.md). No
+  application source touched.
 * **An IRF shift asked for in nanoseconds was applied in half-nanoseconds**
   (RF-880). The LLTF decay model converted `irf_shift` to channels with a
   hard-coded `2.0`, so on the shipped example (0.008 ns per channel) 8 ns moved
