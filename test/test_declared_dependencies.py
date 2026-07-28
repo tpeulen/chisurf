@@ -96,6 +96,78 @@ def _allowed_modules() -> set[str]:
     return modules
 
 
+#: Packages the dev env needs only to build the compiled modules.
+_BUILD_ONLY = {
+    "pip", "cmake", "ninja", "swig", "scikit-build-core", "pybind11",
+    "llvm-openmp", "cmake-build-extension", "python",
+}
+
+#: In the dev env but deliberately not in the released package, with the reason.
+_NOT_SHIPPED = {
+    "latexify-py": "conda-forge has no Python 3.12 build; the parse-model LaTeX "
+                   "view falls back to its in-tree converter",
+    "pdb2pqr": "+14 packages including an HTTP stack, for structure preparation "
+               "that ProteinMC asks for by name when it is missing",
+}
+
+#: In the released package but not the dev env, with the reason.
+_SHIPPED_ONLY = {
+    "micromamba": "the updater drives it as an executable in an installed app; "
+                  "developers already have a solver",
+}
+
+
+def _pixi_dependencies() -> set[str]:
+    """Return the names in ``pixi.toml`` ``[dependencies]``/``[pypi-dependencies]``."""
+    names = set()
+    in_deps = False
+    for line in (REPO_ROOT / "pixi.toml").read_text(encoding="utf-8").splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if stripped.startswith("["):
+            in_deps = stripped in ("[dependencies]", "[pypi-dependencies]")
+            continue
+        if in_deps and "=" in stripped:
+            names.add(stripped.split("=", 1)[0].strip().strip('"').lower())
+    return names
+
+
+def _recipe_run_dependencies() -> set[str]:
+    """Return the names in the recipe's ``requirements.run`` list."""
+    text = (REPO_ROOT / "rattler-recipe" / "recipe.yaml").read_text(encoding="utf-8")
+    run = text.split("  run:", 1)[1].split("\ntests:", 1)[0]
+    names = set()
+    for line in run.splitlines():
+        stripped = line.split("#", 1)[0].strip()
+        if stripped.startswith("- ") and "${{" not in stripped:
+            names.add(stripped[2:].split()[0].lower())
+    return names
+
+
+def test_dev_env_and_released_package_declare_the_same_runtime():
+    """``pixi.toml`` and the recipe's ``run:`` describe one runtime.
+
+    They are read by different consumers -- developers and the conda package --
+    and drift between them is invisible until an install that only has one of
+    them fails. Every difference must be a deliberate, explained one.
+    """
+    pixi = _pixi_dependencies() - _BUILD_ONLY
+    recipe = _recipe_run_dependencies() - _BUILD_ONLY
+
+    missing_from_package = sorted(pixi - recipe - set(_NOT_SHIPPED))
+    missing_from_dev_env = sorted(recipe - pixi - set(_SHIPPED_ONLY))
+
+    assert not missing_from_package, (
+        "declared for development but not shipped in the conda package -- add "
+        f"them to rattler-recipe/recipe.yaml run:, or to _NOT_SHIPPED with a "
+        f"reason: {missing_from_package}"
+    )
+    assert not missing_from_dev_env, (
+        "shipped in the conda package but not declared for development -- add "
+        f"them to pixi.toml [dependencies], or to _SHIPPED_ONLY with a reason: "
+        f"{missing_from_dev_env}"
+    )
+
+
 class _ModuleLevelImports(ast.NodeVisitor):
     """Collect the top-level packages a module imports unconditionally."""
 

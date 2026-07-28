@@ -69,6 +69,12 @@ pygments = "*"
 pyarrow-core = "*"
 boost-histogram = "*"
 sqlalchemy = ">=2.0"
+# Imported directly, so declared directly rather than left to arrive with
+# something else: the ZMQ transport, the AV quenching kernel, and the version
+# comparison in the startup shim.
+pyzmq = ">=25.0"
+numexpr = "*"
+packaging = "*"
 # The conda-forge package providing the `msgpack` module is named
 # msgpack-python (`msgpack` does not exist as a conda package).
 msgpack-python = ">=1.1.2"

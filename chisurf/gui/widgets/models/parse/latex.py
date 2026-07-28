@@ -5,9 +5,6 @@ from __future__ import annotations
 import ast
 import re
 
-from latexify import ast_utils
-from latexify.codegen import ExpressionCodegen
-
 
 def sanitize_latex_for_mathtext(latex: str) -> str:
     """Return LaTeX that Matplotlib's mathtext parser can render.
@@ -120,6 +117,13 @@ def convert_python_expression_to_latex(expression: str) -> str:
         return expression
 
     try:
+        # Imported here, not at module scope: the conda-forge build of the
+        # converter has no Python 3.12 package, so a top-level import made this
+        # module -- and with it the whole parse-model widget -- unimportable in a
+        # packaged install. The local fallback below covers that case.
+        from latexify import ast_utils
+        from latexify.codegen import ExpressionCodegen
+
         node = ast_utils.parse_expr(expression)
         return ExpressionCodegen(use_math_symbols=True).visit(node)
     except Exception:

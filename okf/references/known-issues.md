@@ -1,3 +1,23 @@
+## packaging: the LaTeX converter has no Python 3.12 conda build
+
+**Found 2026-07-28.** `chisurf/gui/widgets/models/parse/latex.py` renders a
+parse-model formula through the third-party `latexify` converter. The
+conda-forge package for it stops at Python 3.11, so it cannot go into the
+recipe's `run:` list, and the module-level `from latexify import ...` therefore
+made the module -- and with it the whole parse-model widget -- unimportable in
+the released conda package. Only a pip install ever had it.
+
+The import is now inside the conversion function, next to the `except` that
+already fell back to `_convert_python_expression_to_latex_fallback`, the in-tree
+AST converter. A conda install renders through the fallback instead of failing:
+it covers the operators the parse models use, and is less complete than
+`latexify` for anything exotic.
+
+**To close it:** either a Python 3.12 build lands on conda-forge (then declare it
+in the recipe and drop the fallback path from the hot path), or the in-tree
+converter grows to full parity and the dependency goes for good -- it is one
+`ast.NodeVisitor`, so the second is the more likely end state.
+
 ## RESOLVED — chimol: large integrative models, and the "fix" that killed them
 
 **Opened and closed 2026-07-27.** The nuclear pore complex was the case that
@@ -1022,3 +1042,4 @@ be, because three of them were defects in the code rather than in the tests.
   optional behind a `try`, which is the shape the fix should take (or declare
   the dependency); it is recorded rather than fixed here because it belongs to
   the burst subsystem and not to the PDA finding this run closed.
+

@@ -2,6 +2,38 @@
 
 ## 2026-07-28
 
+* **What a dependency costs is a solve, not an opinion — and pytables costs
+  nothing.** The question was why `pytables` and not `h5py`. Answered by asking
+  conda-forge rather than reasoning about it: `conda create --dry-run --json`
+  over the recipe's `run:` list gives **301 packages**, and removing `pytables`
+  removes **zero** — `mdtraj` requires it (its HDF5 trajectory reader does
+  `import_("tables")`, and the traj plugins append straight into
+  `table.root.coordinates`), so it is already paid for. `h5py` would be a *new*
+  package on top, and the heavy part of either is the shared `hdf5` C library,
+  which `_tttrlib.so` links directly anyway. Ranked marginal costs of the rest:
+  `notebook` **59**, `pyarrow-core` **37** (libarrow's AWS/Azure/GCS/gRPC/ORC
+  stack), `scikit-image` 20, `boost-cpp` 8, `python-docx` 3, `mdtraj` 2,
+  `hdbscan`/`micromamba`/`boost-histogram` 1. Notebook and pyarrow were put to
+  the user as "feature vs 96 packages" and **both kept**, so the closure stands.
+  Two measurements overturned what looked obvious. Dropping `boost-cpp` from
+  `run:` — a *devel* package in a runtime list, linked by none of the compiled
+  modules (tttrlib pulls libhdf5/libomp, chinet is pure Python now, quest only
+  libc++) — **grows** the closure by 8 net, because its `xz` pin was holding the
+  solve on a branch where Pillow needs no cairo/pango/font stack. It stays, with
+  the reason recorded. And the recipe was **missing eight packages the tree
+  imports** — `pyzmq` (the entire ZMQ client/server), `sqlalchemy` (the MMFDB
+  ORM), `numexpr`, `packaging`, `imageio`, `tifffile`, `imagecodecs`, `pillow` —
+  present in a release only by luck, via whatever else happened to pull them.
+  Declaring them costs **+2** (SQLAlchemy and its greenlet). `pdb2pqr` stays out
+  (+14, including an HTTP stack; ProteinMC names it when missing), and
+  `latexify-py` cannot go in at all: conda-forge stops at Python 3.11, so the
+  module-level import made the parse-model widget unimportable in the packaged
+  app — now lazy, falling back to the in-tree AST converter that was already
+  there ([known-issues](/references/known-issues.md)).
+  `test/test_declared_dependencies.py` gains a test that `pixi.toml` and the
+  recipe describe *one* runtime, with every deliberate difference named and
+  explained.
+
 * **A sampling result opens in nDXplorer from the folder you actually have.**
   `sample_fit` writes `<target>/<timestamp>/chains/*.er4`, and nDXplorer's
   sampling reader looked only in `<folder>/chains/` or `<folder>/*.er4` -- so

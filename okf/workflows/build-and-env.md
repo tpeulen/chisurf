@@ -43,6 +43,24 @@ packaging declaration that brings one back — a re-added import would work on a
 developer machine, where the package is usually still installed transitively, and
 fail only in a packaged install.
 
+**Decide with a solve, not an opinion.** What a dependency costs is its
+*transitive* closure, and that is only knowable by asking the solver:
+`conda create --dry-run --json --override-channels -c conda-forge -n probe <specs>`
+and counting `actions.LINK`, then again without the candidate. Measured
+2026-07-28 against the recipe's `run:` list (**301 packages** in total):
+`notebook` **59** (the Jupyter server stack; kept — the GUI starts it), `pyarrow-core`
+**37** (libarrow's AWS/Azure/GCS/gRPC/ORC stack; kept), `scikit-image` **20**,
+`boost-cpp` **8**, `python-docx` 3, `mdtraj` 2, `hdbscan`/`micromamba`/
+`boost-histogram` 1, and **`pytables` 0** — mdtraj requires it, so it is already
+paid for, and swapping it for a different HDF5 binding would only *add* packages.
+Two results were counter-intuitive and are the reason for measuring: removing
+`boost-cpp` **grew** the closure by 8 net, because its `xz` pin was holding the
+solve on a branch where Pillow needs no font/cairo stack; and declaring the eight
+runtime packages the tree imports but the recipe had left to arrive transitively
+(`pyzmq`, `sqlalchemy`, `numexpr`, `packaging`, `imageio`, `tifffile`,
+`imagecodecs`, `pillow`) cost **+2**, since only SQLAlchemy and its greenlet were
+genuinely absent.
+
 The mirror image of an undeclared *dependency* is an undeclared *import*, and it
 fails the same way: on a developer machine the package is there transitively, in
 a packaged install the plugin does not load. `test/test_declared_dependencies.py`
