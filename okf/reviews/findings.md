@@ -6957,11 +6957,24 @@ does not hold is the *photometry* of the map-based generator, and almost
 everything the tool does with the result. Findings RF-588..RF-595.
 
 ### RF-588
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every pixel is simulated at the top of its intensity bin, so a 2 % background is generated at 12 % of peak — six times too bright, whatever the input)
 - **Location:** `chisurf/core/fluorescence/imaging/simulate.py:608` (`bright_levels = np.linspace(brightness_scale / n_intensity_levels, brightness_scale, n_intensity_levels)`) with `:628` (`bi = min(int(inorm[iy, ix] * n_intensity_levels), n_intensity_levels - 1)`), against the lifetime axis five lines below at `:633` (`li = int(np.argmin(np.abs(life_levels - tau)))`)
 - **Finding:** the two quantised axes of `simulate_clsm_from_maps` disagree with each other. The lifetime axis picks the **nearest** level; the intensity axis floors a pixel into bin `k` and then emits it at `(k + 1) / n × brightness_scale` — the bin's **upper edge** — so every pixel is rounded *up*, by half a level on average and by a full level (12.5 % of peak at the shipped `n_intensity_levels = 8`) at the bottom of the range. The dim end is where a synthetic ground-truth image is actually used, and that is where it fails: measured on a 32×32 map with a 2 % background and two pixels at 1.0, the reconstruction comes back with `background/peak = 0.120` against the input's `0.020`, and every input value below `1/8` of the maximum maps to the same emitted brightness — the generated dynamic range is capped at 8:1 no matter what was loaded. That is the tool's one promise ("The photon image reproduces the input intensity and lifetime", `clsm_generator/gui/view_model.py:244`) failing exactly for the image someone would generate to test a threshold, a background estimator or a segmentation. Use bin centres (`(np.arange(n) + 0.5) / n * brightness_scale`) or the nearest-level rule the lifetime axis already uses. Nothing pins it: `test_simulate_from_maps_reproduces_intensity_and_lifetime` (`test/fluorescence/test_imaging_simulate.py:54`) asserts only `corrcoef > 0.8`, which any monotone distortion passes.
-- **Fix note:**
+- **Fix note:** Both quantised axes now go through one helper,
+  `simulate.py::_quantise(values, n_levels)`, which spans the observed range of
+  the values and returns the **nearest** level per value — the rule the lifetime
+  axis already used. The intensity grid therefore runs from the dimmest lit
+  pixel to the brightest instead of from `1/n` of peak, so a dim background
+  keeps its ratio to the peak and the generated dynamic range is no longer
+  capped at `n_intensity_levels`:1. The per-pixel index is precomputed
+  vectorised (`bright_index`) rather than floored inside the scan loop. Pinned
+  by two tests in `test/fluorescence/test_imaging_simulate.py`:
+  `test_quantise_snaps_to_nearest_level_without_bias` (unit: the extremes are
+  exact, every value moves by at most half a step, a constant map still gives a
+  usable grid) and `test_simulate_from_maps_preserves_dim_to_bright_ratio`
+  (end-to-end: two flat half-fields at 0.02 and 1.0 reconstruct with a count
+  ratio of 0.0205, `rel=0.25` of the input 0.02; the pre-fix grid gave 0.127).
 
 ### RF-589
 - **Status:** OPEN

@@ -10,6 +10,7 @@ pytest.importorskip("tttrlib")
 from chisurf.core.fluorescence.imaging.simulate import (
     Molecule,
     SimulatedImage,
+    _quantise,
     have_simulator,
     load_image_map,
     simulate_clsm_from_maps,
@@ -88,6 +89,41 @@ def test_simulate_from_maps_multi_detector():
     # The reconstructed image sums both detector channels.
     assert sim.intensity.shape == (n, n)
     assert sim.intensity.sum() > 0
+
+
+def test_quantise_snaps_to_nearest_level_without_bias():
+    # RF-588: the intensity axis used to floor into a bin and emit the bin's
+    # upper edge, rounding every value up by a full level at the dim end.
+    values = np.array([0.02] * 4 + [0.5, 1.0])
+    levels, index = _quantise(values, 8)
+    snapped = levels[index]
+    # The extremes of the range are levels themselves, so they are exact.
+    assert snapped[0] == pytest.approx(0.02)
+    assert snapped[-1] == pytest.approx(1.0)
+    # No value moves by more than half a step, and the error is not one-sided.
+    step = levels[1] - levels[0]
+    assert np.all(np.abs(snapped - values) <= step / 2 + 1e-12)
+    # A constant map still yields a usable (degenerate) grid.
+    flat_levels, flat_index = _quantise(np.full(5, 3.0), 4)
+    assert np.allclose(flat_levels[flat_index], 3.0)
+
+
+def test_simulate_from_maps_preserves_dim_to_bright_ratio():
+    # RF-588: a dim background must stay dim.  Two flat half-fields avoid PSF
+    # edge effects, so the reconstructed count ratio is the input ratio.
+    n = 32
+    dim_level = 0.02
+    intensity = np.full((n, n), dim_level)
+    intensity[:, n // 2:] = 1.0
+    sim = simulate_clsm_from_maps(
+        intensity, np.full((n, n), 2.0), n_intensity_levels=8, n_lifetime_levels=4
+    )
+    rec = sim.intensity.astype(float)
+    dim = rec[4:28, 4:12].mean()
+    bright = rec[4:28, 20:28].mean()
+    assert bright > 0
+    # The pre-fix grid emitted the dim half at 1/8 of peak — ratio ~0.13.
+    assert dim / bright == pytest.approx(dim_level, rel=0.25)
 
 
 def test_load_image_map_npy_and_tif(tmp_path):

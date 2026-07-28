@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+* **CLSM generator: a dim background is no longer generated six times too
+  bright (RF-588).** The two quantised axes of `simulate_clsm_from_maps`
+  disagreed: the lifetime axis snapped to the *nearest* level, while the
+  intensity axis floored a pixel into bin `k` and emitted it at the bin's
+  **upper edge**, rounding every pixel up — by a full level at the dim end and
+  capping the generated dynamic range at `n_intensity_levels`:1 whatever was
+  loaded. Measured on two flat half-fields at 0.02 and 1.0, the reconstruction
+  came back at a ratio of 0.127 against the input's 0.020. Both axes now go
+  through one helper, `simulate.py::_quantise`, whose grid spans the observed
+  range of its map and returns the nearest level, so the dimmest lit pixel keeps
+  its ratio to the brightest (measured 0.0205); the per-pixel index is
+  precomputed vectorised instead of floored inside the scan loop. Pinned by
+  `test_quantise_snaps_to_nearest_level_without_bias` and
+  `test_simulate_from_maps_preserves_dim_to_bright_ratio` in
+  `test/fluorescence/test_imaging_simulate.py`, and recorded in the
+  [imaging plugins concept](/plugins/imaging.md).
+
 * **ICS: a typed pixel dwell / line time is no longer overwritten by the file
   (RF-587).** The scan-timing fields promise "0 means auto-detect from the TTTR
   header", but seeding tested only whether the *header* had a value, so a

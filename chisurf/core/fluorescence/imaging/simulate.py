@@ -436,6 +436,36 @@ def _gaussian_irf(n_micro: int, center: float, sigma: float) -> np.ndarray:
     return irf / irf.sum()
 
 
+def _quantise(values: np.ndarray, n_levels: int) -> tuple[np.ndarray, np.ndarray]:
+    """Snap *values* onto equally spaced levels spanning their range.
+
+    Every value takes the **nearest** level, so the quantisation error is at
+    most half a step and has no systematic sign — flooring into a bin and then
+    emitting the bin's upper edge would round every value up, by a full level
+    at the bottom of the range.
+
+    Parameters
+    ----------
+    values : numpy.ndarray
+        Samples to quantise; must be non-empty and finite.
+    n_levels : int
+        Number of levels in the grid.
+
+    Returns
+    -------
+    levels : numpy.ndarray
+        The ``n_levels`` levels, from ``values.min()`` to ``values.max()``
+        (widened by a small epsilon when the samples are all equal).
+    index : numpy.ndarray
+        Index of the nearest level for each value, shaped like *values*.
+    """
+    lo = float(np.min(values))
+    hi = float(max(np.max(values), lo + 1e-6))
+    levels = np.linspace(lo, hi, n_levels)
+    index = np.abs(np.asarray(values)[..., None] - levels).argmin(axis=-1)
+    return levels, index
+
+
 def _lifetime_species(tttrlib, tau: float, irf: np.ndarray, dt: float, q):
     """Build an immobile ``SimSpecies`` with a mono-exponential decay + IRF.
 
@@ -551,7 +581,10 @@ def simulate_clsm_from_maps(
     intensities and lifetimes are quantised (``n_intensity_levels`` ×
     ``n_lifetime_levels`` per detector) into ``SimSpecies``, and one immobile
     fluorophore is placed per non-empty (pixel, detector); detector ``d``'s
-    species emit only into routing channel ``d``.
+    species emit only into routing channel ``d``.  Both quantisation axes span
+    the observed range of their map and snap each pixel to the *nearest* level,
+    so the emitted brightness is unbiased and the dimmest lit pixel keeps its
+    ratio to the brightest one.
 
     Parameters
     ----------
@@ -600,12 +633,17 @@ def simulate_clsm_from_maps(
     inorm = intensity / intensity.max() if intensity.max() > 0 else intensity
     irf = _gaussian_irf(n_micro, irf_center, irf_sigma)
 
-    # Quantisation grids for lifetime (per map) and intensity.
+    # Quantisation grids for lifetime (per map) and intensity: both axes span
+    # the observed range and snap to the nearest level (see :func:`_quantise`).
     all_tau = np.concatenate([m[(np.isfinite(m)) & (m > 0)].ravel() for m in maps]) \
         if any(np.isfinite(m).any() for m in maps) else np.array([1.0])
-    tau_lo, tau_hi = float(all_tau.min()), float(max(all_tau.max(), all_tau.min() + 1e-6))
-    life_levels = np.linspace(tau_lo, tau_hi, n_lifetime_levels)
-    bright_levels = np.linspace(brightness_scale / n_intensity_levels, brightness_scale, n_intensity_levels)
+    life_levels, _ = _quantise(all_tau, n_lifetime_levels)
+    lit = inorm[inorm > 0]
+    level_norm, index_lit = _quantise(lit if lit.size else np.array([1.0]), n_intensity_levels)
+    bright_levels = level_norm * brightness_scale
+    # Map the flat "lit pixel" indices back onto the image grid.
+    bright_index = np.zeros(inorm.shape, dtype=int)
+    bright_index[inorm > 0] = index_lit if lit.size else 0
 
     # One species per (detector, lifetime level, intensity level).
     sample = tttrlib.SimSystem()
@@ -625,7 +663,7 @@ def simulate_clsm_from_maps(
         for ix in range(w):
             if inorm[iy, ix] <= 0:
                 continue
-            bi = min(int(inorm[iy, ix] * n_intensity_levels), n_intensity_levels - 1)
+            bi = int(bright_index[iy, ix])
             for d, tmap in enumerate(maps):
                 tau = tmap[iy, ix]
                 if not np.isfinite(tau) or tau <= 0:
