@@ -430,6 +430,11 @@ def _background_factors(counts, background, photon_number_pmf, boxes):
     and the bracket together with :math:`w` depends only on the burst while
     :math:`\prod_c p_c^{-b_c}` depends only on the model point.
 
+    The burst factor is returned **in log space**. Its two halves fight each
+    other — the falling factorials grow like :math:`F_c^{b_c}` while
+    :math:`w_{\sum_c b_c}` falls like :math:`N^{-m}` — so a bright burst
+    overflows a float64 between them even though their product is small.
+
     Parameters
     ----------
     counts : numpy.ndarray
@@ -444,17 +449,18 @@ def _background_factors(counts, background, photon_number_pmf, boxes):
 
     Returns
     -------
-    kernel : numpy.ndarray
-        Shape ``(n_bursts, prod(boxes))`` — the burst factor over the flattened
-        background box.
+    log_kernel : numpy.ndarray
+        Shape ``(n_bursts, prod(boxes))`` — the log of the burst factor over the
+        flattened background box; ``-inf`` where the burst cannot supply that
+        many background photons.
     exponents : numpy.ndarray
         Shape ``(prod(boxes), K)`` — the background counts each column stands
         for.
     """
     n_bursts, n_ch = counts.shape
 
-    # a[j, c, b] = Pois(b; B_c) * falling_factorial(F_jc, b), padded to the
-    # widest channel box; a burst that cannot supply b photons gets a zero.
+    # log_a[j, c, b] = log[Pois(b; B_c) * falling_factorial(F_jc, b)], padded to
+    # the widest channel box; a burst that cannot supply b photons gets -inf.
     width = max(boxes)
     b = np.arange(width, dtype=float)
     with np.errstate(divide="ignore", invalid="ignore"):
@@ -464,35 +470,36 @@ def _background_factors(counts, background, photon_number_pmf, boxes):
             - gammaln(counts[:, :, None] - b[None, None, :] + 1.0)
         )
     log_a = np.where(b[None, None, :] <= counts[:, :, None], log_a, -np.inf)
-    a = np.exp(log_a)
-    a[~np.isfinite(a)] = 0.0
 
-    # Outer product over channels -> the (b_1, ..., b_K) box, per burst.
-    kernel = a[:, 0, : boxes[0]]
+    # Outer sum over channels -> the (b_1, ..., b_K) box, per burst.
+    log_kernel = log_a[:, 0, : boxes[0]]
     for c in range(1, n_ch):
-        slab = a[:, c, : boxes[c]].reshape((n_bursts,) + (1,) * c + (boxes[c],))
-        kernel = kernel[..., None] * slab
-    kernel = kernel.reshape(n_bursts, -1)
+        slab = log_a[:, c, : boxes[c]].reshape((n_bursts,) + (1,) * c + (boxes[c],))
+        log_kernel = log_kernel[..., None] + slab
+    log_kernel = log_kernel.reshape(n_bursts, -1)
 
     # Exponent bookkeeping for the box, and its total m per column.
     grids = np.meshgrid(*[np.arange(n) for n in boxes], indexing="ij")
     exponents = np.stack([g.ravel() for g in grids], axis=1)
     m = exponents.sum(axis=1)
 
-    # w_m = P(N - m) (N - m)! / N!, zero where the burst has fewer photons.
+    # w_m = P(N - m) (N - m)! / N!, impossible where the burst has fewer photons.
     total = counts.sum(axis=1)
     valid = m[None, :] <= total[:, None]
     with np.errstate(invalid="ignore"):
         log_w = gammaln(total[:, None] - m[None, :] + 1.0) - gammaln(total[:, None] + 1.0)
-    w = np.where(valid, np.exp(np.where(valid, log_w, 0.0)), 0.0)
+    log_kernel = log_kernel + np.where(valid, log_w, -np.inf)
 
     if photon_number_pmf is not None:
         pn = np.asarray(photon_number_pmf, dtype=float)
         n_signal = (total[:, None] - m[None, :]).astype(int)
         in_range = valid & (n_signal < pn.size)
-        w = w * np.where(in_range, pn[np.clip(n_signal, 0, pn.size - 1)], 0.0)
+        with np.errstate(divide="ignore"):
+            log_kernel = log_kernel + np.log(
+                np.where(in_range, pn[np.clip(n_signal, 0, pn.size - 1)], 0.0)
+            )
 
-    return kernel * w, exponents
+    return log_kernel, exponents
 
 
 def burst_log_likelihood(
@@ -566,27 +573,54 @@ def burst_log_likelihood(
         return out
 
     boxes = _channel_boxes(counts, background, p, tolerance)
-    # model[i, col] = prod_c p[i, c] ** -exponents[col, c]; built once, since the
-    # box is fixed for the whole call.
+    # log model[i, col] = -sum_c exponents[col, c] log p[i, c]; built once, since
+    # the box is fixed for the whole call.
     _, exponents = _background_factors(counts[:1], background, photon_number_pmf, boxes)
-    model = np.exp(-(np.log(p) @ exponents.T))
+    log_model = -(np.log(p) @ exponents.T)
+
+    # Neither half may be exponentiated as it stands: the model half is the
+    # *unscaled* product prod_c p_c**-b_c, which is cancelled only later by the
+    # burst factor's falling factorials, so it overflows to `inf` — and `out +
+    # log(inf)` is a `+inf` log-likelihood, a "perfect" fit — as soon as
+    # b·log(1/p_c) > 709. That is reachable in an ordinary fit: a Gauss-Hermite
+    # node at a short distance gives p ~ 1e-17 and a handful of photons in that
+    # channel is enough. So each half is peak-shifted onto (0, 1] first and the
+    # two shifts are added back in log space afterwards; the GEMM itself is
+    # unchanged, and the identity is exact because the shifts are per row.
+    model_shift = log_model.max(axis=1)
+    model = np.exp(log_model - model_shift[:, None])
 
     # The burst factor is (n_bursts x prod(boxes)) and the box grows as the K-th
     # power of the cutoff, so chunk under a fixed element budget rather than a
     # fixed burst count — one of the two places this can exhaust memory (the
     # other is the multinomial broadcast above, chunked the same way).
     chunk = max(1, _KERNEL_ELEMENT_BUDGET // max(exponents.shape[0], 1))
-    correction = np.empty(out.shape, dtype=float)
+    log_correction = np.empty(out.shape, dtype=float)
     for start in range(0, counts.shape[0], chunk):
         stop = min(start + chunk, counts.shape[0])
-        kernel, _ = _background_factors(
+        log_kernel, _ = _background_factors(
             counts[start:stop], background, photon_number_pmf, boxes
         )
-        correction[:, start:stop] = model @ kernel.T
+        kernel_shift = log_kernel.max(axis=1)
+        # An all-impossible burst shifts by nothing; its row stays zero and the
+        # exact path below owns the answer.
+        kernel_shift = np.where(np.isfinite(kernel_shift), kernel_shift, 0.0)
+        kernel = np.exp(log_kernel - kernel_shift[:, None])
+        with np.errstate(divide="ignore"):
+            log_correction[:, start:stop] = (
+                model_shift[:, None] + kernel_shift[None, :] + np.log(model @ kernel.T)
+            )
 
-    with np.errstate(divide="ignore"):
-        out = out + np.log(correction)
-    return out
+    # A shifted sum can still underflow to zero where the two peaks sit in
+    # different corners of the box. That is not evidence the correction vanishes
+    # — recompute those cells on the untruncated per-burst path, which is exact
+    # in log space (and returns -inf where -inf is genuinely the answer).
+    for i, j in zip(*np.nonzero(~np.isfinite(log_correction))):
+        log_correction[i, j] = log_background_correction(
+            counts[j], background, p[i], photon_number_pmf
+        )
+
+    return out + log_correction
 
 
 def burst_log_likelihood_reference(

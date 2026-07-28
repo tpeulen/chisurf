@@ -278,6 +278,64 @@ def test_truncation_survives_a_channel_the_model_says_is_nearly_impossible():
     assert fast == pytest.approx(exact, rel=1e-9)
 
 
+def test_a_vanishing_channel_probability_is_not_a_perfect_fit():
+    """Regression (RF-538): the GEMM's two halves must not be exponentiated raw.
+
+    The model half of the factorisation is the *unscaled* product
+    ``prod_c p_c**-b_c``, cancelled only later by the burst factor's falling
+    factorials. Exponentiating it on its own overflows to ``inf`` as soon as
+    ``b log(1/p_c) > 709``, and ``out + log(inf)`` is a ``+inf``
+    log-likelihood — a burst the model explains *perfectly* precisely where it
+    explains it worst. One such node poisons the whole logsumexp over the
+    Gauss-Hermite grid, and a broad species puts nodes at ``R ~ 0``, i.e.
+    ``p ~ 1e-17``, in an ordinary fit.
+
+    The two halves are peak-shifted before the GEMM now, so the fast path
+    tracks the nested-sum reference all the way down.
+    """
+    from chisurf.core.fluorescence.pda3c import (
+        burst_log_likelihood,
+        burst_log_likelihood_reference,
+    )
+
+    counts = np.array([[20, 6, 5]])
+    background = np.array([0.5, 0.5, 0.5])
+    for p_blue in (1e-3, 1e-8, 1e-14, 1e-18, 1e-40):
+        p = np.array([[p_blue, 0.5, 0.5 - p_blue]])
+        fast = burst_log_likelihood(counts, p, background)[0, 0]
+        exact = burst_log_likelihood_reference(counts, p, background)[0, 0]
+        assert np.isfinite(fast)
+        assert fast == pytest.approx(exact, rel=1e-9)
+
+
+def test_a_bright_burst_with_an_impossible_channel_stays_finite():
+    """Regression (RF-538): hundreds of photons overflowed *both* halves.
+
+    The burst factor fights itself — the falling factorials grow like
+    ``F_c**b_c`` while ``w_m`` falls like ``N**-m`` — so a burst of a few
+    hundred photons overflowed the kernel too, and ``inf * 0`` in the GEMM
+    turned the log-likelihood into ``nan``. The kernel is built in log space
+    now, and the rare cell whose shifted sum underflows falls back to the
+    untruncated per-burst path rather than reporting ``-inf``.
+    """
+    from chisurf.core.fluorescence.pda3c import (
+        burst_log_likelihood,
+        log_background_correction,
+        log_multinomial_pmf,
+    )
+
+    counts = np.array([[277, 192, 278]])
+    p = np.array([[2.1837035e-06, 1.8429948e-02, 9.8156787e-01]])
+    background = np.array([3.05477163, 1.93704628, 3.95854105])
+
+    fast = burst_log_likelihood(counts, p, background)[0, 0]
+    exact = log_multinomial_pmf(counts[0], p[0]) + log_background_correction(
+        counts[0], background, p[0]
+    )
+    assert np.isfinite(fast)
+    assert fast == pytest.approx(exact, rel=1e-9)
+
+
 # ── normalisation ──────────────────────────────────────────────────────────
 
 

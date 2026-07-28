@@ -575,6 +575,19 @@ reformulations, not approximations, except where noted.
    optimum and large exactly where it must be. This matters even though the
    absolute likelihood there is negligible: MCMC and support-plane scans read
    the *shape* of the surface away from the optimum.
+
+   **Neither half of the GEMM may be exponentiated on its own** (RF-538). Each
+   is astronomically out of float64 range and only their *product* is small: the
+   model half is the unscaled $\prod_c p_c^{-b_c}$, cancelled later by the burst
+   half's falling factorials, while inside the burst half $F_c^{b_c}$ and
+   $w_m\sim N^{-m}$ fight the same way. Exponentiated raw, a Gauss–Hermite node
+   at a short distance ($p\sim10^{-17}$) gave $\texttt{out}+\log(\infty)=+\infty$
+   — a *perfect* fit exactly where the model fits worst — and a burst of a few
+   hundred photons gave `nan` from $\infty\times0$. Both arrays are therefore
+   built in log space and peak-shifted per row onto $(0,1]$ before the GEMM, the
+   two shifts being added back afterwards (exact, since each shift is constant
+   along a row); the rare cell whose shifted sum underflows falls back to the
+   untruncated per-burst convolution rather than reporting $-\infty$.
 4. **Quadrature instead of a uniform distance grid.** The species *is* a
    trivariate Gaussian, so integrating it on a uniform 3-D grid is the wrong
    quadrature: cost is $O(n^3)$ in the grid resolution. Transform by the

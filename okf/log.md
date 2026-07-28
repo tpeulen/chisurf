@@ -2,6 +2,24 @@
 
 ## 2026-07-28
 
+* **A "perfect" three-colour PDA burst was a float64 overflow** (RF-538). The
+  GEMM factorisation in `chisurf/core/fluorescence/pda3c/likelihood.py`
+  exponentiated its two halves separately, but each is astronomically out of
+  range on its own and only their product is small — the model half is the
+  unscaled `prod_c p_c**-b_c`, the burst half pits `F_c**b_c` against
+  `w_m ~ N**-m`. A Gauss–Hermite node at a short distance (`p ~ 1e-17`) gave
+  `out + log(inf) = +inf`, i.e. a burst the model explains *perfectly* exactly
+  where it explains it worst, and one such node poisoned the whole logsumexp;
+  a few-hundred-photon burst gave `nan` from `inf * 0`. Both arrays are built
+  in log space now and peak-shifted per row onto `(0, 1]` before the product,
+  the shifts added back afterwards (exact — a shift constant along a row
+  factors out of the sum), so the GEMM, its chunking and its cost are
+  unchanged; the rare cell whose shifted sum underflows falls back to the
+  untruncated per-burst convolution instead of reporting `-inf`. The fast path
+  now tracks `burst_log_likelihood_reference` down to `p = 1e-40`. Pinned by
+  two new cases in `test/models/test_pda3c_likelihood.py`;
+  [PRD-65](/prds/prd-65.md) *Performance strategy* records the dynamic-range
+  constraint next to the truncation one.
 * **Six packages left the dependency lists; two of them were a page of code.**
   An audit of the recipe's `run:` list against what the tree actually imports
   retired `deprecation`, `click-didyoumean`, `tqdm`, `pytools`, `msgpack-numpy`

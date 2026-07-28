@@ -6483,11 +6483,36 @@ is very small, exactly zero, or negative, and all three are reachable inside the
 model's own parameter bounds. Findings RF-538..RF-543.
 
 ### RF-538
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the fast path returns `+inf` log-likelihood — a "perfect" fit — where the reference returns a finite value)
 - **Location:** `chisurf/core/fluorescence/pda3c/likelihood.py:497` (`model = np.exp(-(np.log(p) @ exponents.T))`) and `:510-513` (`correction = model @ kernel.T`, then `out + np.log(correction)`)
 - **Finding:** the burst/model split evaluates the model half as the *unscaled* product `prod_c p_c**-b_c`. That factor is huge by construction — it is cancelled only later by the burst factor's falling factorials — so it overflows to `inf` as soon as `b·log10(1/p_c) > 308`, and `out + log(inf)` is `+inf`. Verified: `burst_log_likelihood([[20, 6, 5]], [[1e-18, 0.5, 0.5-1e-18]], background=[0.5]*3)` returns **`inf`** while `burst_log_likelihood_reference` on the same input returns **`-58.1876`** (the fast path tracks the reference to 1e-6 at `p_blue = 1e-14` and then flips to `inf` at `1e-18`). Reachable in an ordinary fit: `pda3c.py:198-199` bounds mean distances at `lb=1.0` Å, so with `R0 = 52` Å a distance near the lower bound gives `p ≈ (R/R0)**6 ≈ 6e-11` and ~30 photons in that channel overflows; a broad species (`s` is bounded `ub=60` Å at `:202-203`) puts Gauss–Hermite nodes at `R ≈ 0` and produces `p ≈ 8e-18` directly — measured on a σ = 20 Å species, 2150 of 9400 (node × burst) cells came back non-finite where the per-burst path is finite. One `+inf` node makes the whole burst `+inf` through `logsumexp`, and the total log-likelihood with it. Do the product in log space and fold it into the burst factor before exponentiating (a per-column `log model + log kernel` peak shift), rather than exponentiating the two halves separately.
-- **Fix note:**
+- **Fix note:** Fixed at the seam rather than by clamping: **neither half of the
+  GEMM is exponentiated on its own any more**. `_background_factors` now returns
+  the burst factor in **log** space (its own two halves fight the same way —
+  `F_c**b_c` up against `w_m ~ N**-m` — so a few-hundred-photon burst overflowed
+  the kernel too, and `inf * 0` in the GEMM turned the result into `nan`; the
+  `a[~isfinite] = 0` hack that silently zeroed those entries is gone), and
+  `burst_log_likelihood` builds `log_model` instead of `model`. Each array is
+  peak-shifted per row onto `(0, 1]` before the product and the two shifts are
+  added back in log space afterwards — exact, because a shift constant along a
+  row factors straight out of the sum — so the GEMM itself, its chunking and its
+  cost are unchanged. The rare cell whose shifted sum underflows to zero (the
+  two peaks in different corners of the box) falls back to the untruncated
+  per-burst convolution rather than reporting `-inf`. Verified against `HEAD`:
+  the finding's own case returned `inf` and now returns `-58.187614167861625`,
+  equal to `burst_log_likelihood_reference` to 1e-9, and it tracks the reference
+  down to `p_blue = 1e-40`; a 277/192/278-photon burst with a near-impossible
+  channel returned `nan` and now matches the exact per-burst path. Pinned by
+  `test/models/test_pda3c_likelihood.py::test_a_vanishing_channel_probability_is_not_a_perfect_fit`
+  (five decades of `p_blue` against the nested-sum reference) and
+  `::test_a_bright_burst_with_an_impossible_channel_stays_finite` (the `nan`
+  case, which also exercises the underflow fallback). `test/models` green (306
+  tests) apart from the pre-existing, unrelated
+  `test_detector_setups.py::test_a_missing_setups_file_never_blocks_a_headless_run`,
+  which fails on another instance's in-flight `chisurf/gui/dialogs.py` edits;
+  `ruff check` clean on both touched files (their `ruff format` drift is
+  pre-existing at `HEAD`).
 
 ### RF-539
 - **Status:** FIXED
