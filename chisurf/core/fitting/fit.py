@@ -1889,7 +1889,7 @@ class FitGroup(Fit):
 def sample_fit(
         fit: Fit,
         target_directory: str,
-        method: str = 'emcee',
+        method: str = 'ensemble',
         global_posterior: bool = False,
         steps: int = 1000,
         thin: int = 1,
@@ -1910,8 +1910,9 @@ def sample_fit(
     target_directory : str
         Target directory for the sampling results. A timestamped
         subdirectory will be created within this directory.
-    method : {"emcee", "blocked", "de", "collapsed", "mcmc"}, optional
-        Sampling backend. ``de``
+    method : {"ensemble", "slice", "blocked", "de", "collapsed", "mcmc"}, optional
+        Sampling backend; ``emcee`` is accepted as the historical name of
+        ``ensemble``. ``de``
         (:func:`chisurf.core.fitting.sample.sample_differential_evolution`)
         proposes from the differences between a population of chains, so it
         needs neither a gradient nor a covariance and cannot be misled by one
@@ -1929,8 +1930,15 @@ def sample_fit(
         per-block *covariance* seeded by the curvature at the optimum, and is
         the one to reach for on a correlated posterior: on a deliberately
         collinear three-parameter fit it delivered ~64 effective samples per
-        1000 model evaluations against ~26 for ``emcee`` and ~0.4 for ``mcmc``,
-        whose diagonal proposal produced 4 effective samples out of 8000 draws.
+        1000 model evaluations against ~26 for ``ensemble`` and ~0.4 for
+        ``mcmc``, whose diagonal proposal produced 4 effective samples out of
+        8000 draws. ``ensemble``
+        (:func:`chisurf.core.fitting.sample.sample_ensemble`) needs no
+        covariance at all -- its walkers take their scale from each other --
+        which makes it the fallback when nothing is known about the posterior.
+        ``slice`` (:func:`chisurf.core.fitting.sample.sample_ensemble_slice`) is
+        the same ensemble idea without an accept/reject step: every walker moves
+        every step, at the price of several model evaluations per step.
         ``mcmc`` is the historical diagonal random walk.
     global_posterior : bool, optional
         Sample the *joint* posterior of a :class:`FitGroup` rather than the
@@ -1955,7 +1963,7 @@ def sample_fit(
     ------
     ValueError
         If ``fit.model`` is not a curve-based model (e.g. ProteinMC) and
-        therefore cannot be sampled with the generic emcee backend.
+        therefore cannot be sampled with the generic ensemble backend.
 
     Notes
     -----
@@ -1979,7 +1987,7 @@ def sample_fit(
         if method not in ('blocked', 'collapsed', 'de'):
             raise ValueError(
                 "global_posterior=True requires method='blocked', 'collapsed' or 'de'; "
-                "the emcee and mcmc backends sample fit.model only."
+                "the ensemble, slice and mcmc backends sample fit.model only."
             )
         sample_model.update_model()
 
@@ -2058,7 +2066,7 @@ def sample_fit(
         fn_partial = os.path.join(chains_dir, base_fn + '.partial.er4')
 
         def sampler_callback(done, run_total, sampler=None, **cb_kwargs):
-            """Callback invoked during emcee sampling for intermediate saves.
+            """Callback invoked during ensemble sampling for intermediate saves.
 
             Parameters
             ----------
@@ -2066,14 +2074,14 @@ def sample_fit(
                 Number of completed steps in the current run.
             run_total : int
                 Total steps in the current run.
-            sampler : emcee.EnsembleSampler, optional
-                The emcee sampler instance, used to extract intermediate
+            sampler : chisurf.core.fitting.ensemble.EnsembleSampler, optional
+                The ensemble sampler instance, used to extract intermediate
                 chains when not None.
             """
             if sampler is not None:
-                # emcee intermediate save
+                # Partial save of an unfinished ensemble chain.
                 try:
-                    r_partial = cs.core.fitting.sample.emcee_result(sampler, fit)
+                    r_partial = cs.core.fitting.sample.ensemble_result(sampler, fit)
                     save_chain_to_file(r_partial, fn_partial)
                 except Exception:
                     pass
@@ -2125,10 +2133,21 @@ def sample_fit(
                 temp=temp,
                 check_cancel=check_cancel
             )
-        else: #'emcee'
+        elif method == 'slice':
+            r = cs.core.fitting.sample.sample_ensemble_slice(
+                fit,
+                steps=steps,
+                nwalkers=max(int(fit.n_free * 2) + 2, 10),
+                thin=thin,
+                chi2max=chi2max,
+                callback=sampler_callback,
+                check_cancel=check_cancel,
+                **kwargs
+            )
+        else:  # 'ensemble' (and the legacy name 'emcee')
             # Ensure at least 10 walkers and at least 2*ndim+2 for robustness
             n_walkers = max(int(fit.n_free * 2) + 2, 10)
-            r = cs.core.fitting.sample.sample_emcee(
+            r = cs.core.fitting.sample.sample_ensemble(
                 fit,
                 steps=steps,
                 nwalkers=n_walkers,

@@ -315,9 +315,12 @@ optimization:
     # blocked: per-block covariance proposal seeded from the curvature at the
     # optimum, with independent sub-problems sampled apart and merged exactly.
     # Measured on a collinear posterior it delivers ~64 effective samples per
-    # 1000 model evaluations against ~26 for emcee and ~0.4 for mcmc. Use
+    # 1000 model evaluations against ~26 for ensemble and ~0.4 for mcmc. Use
     # 'collapsed' for a linked global fit, where the private parameters are
-    # integrated out and only the shared ones sampled.
+    # integrated out and only the shared ones sampled. 'ensemble' (walkers that
+    # stretch towards each other) and 'slice' (the same directions, sampled by
+    # slice sampling instead of accept/reject) need no covariance at all and are
+    # the fallback when nothing is known about the posterior.
     method: blocked
     n_runs: 10
     steps: 1000

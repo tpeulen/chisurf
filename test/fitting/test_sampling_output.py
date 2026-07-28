@@ -54,20 +54,20 @@ def test_sampling_directory_structure(tmp_path):
     
     # 3. Mock the sampling backends to do nothing but return dummy results
     import chisurf.core.fitting.sample
-    def mock_sample_emcee(fit, **kwargs):
+    def mock_sample_ensemble(fit, **kwargs):
         return {
             'chi2r': np.array([1.0, 1.1]),
             'parameter_values': np.array([[1.0, 2.0], [1.1, 2.1]]),
             'parameter_names': ["p1", "p2"]
         }
     
-    original_emcee = chisurf.core.fitting.sample.sample_emcee
-    chisurf.core.fitting.sample.sample_emcee = mock_sample_emcee
+    original_ensemble = chisurf.core.fitting.sample.sample_ensemble
+    chisurf.core.fitting.sample.sample_ensemble = mock_sample_ensemble
     
     try:
         output_base = str(tmp_path / "test_sample")
         # Run sample_fit with n_runs=1
-        fit_module.sample_fit(fit, output_base, method='emcee', n_runs=1, steps=10)
+        fit_module.sample_fit(fit, output_base, method='ensemble', n_runs=1, steps=10)
         
         # 4. Verify directory structure. ``sample_fit`` creates a timestamped
         # sub-directory *inside* the target directory.
@@ -93,7 +93,7 @@ def test_sampling_directory_structure(tmp_path):
     finally:
         # Restore mocks
         chisurf.macros.core_fit.save_project = original_save
-        chisurf.core.fitting.sample.sample_emcee = original_emcee
+        chisurf.core.fitting.sample.sample_ensemble = original_ensemble
 
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -266,6 +266,16 @@ These are the patterns; each caused more than one bug.
 
 Grouped by area; captured June 2026.
 
+**The generated manual still names the retired emcee dependency at its source
+(2026-07-28).** `docs/manual/*.rst` are generated from
+`docs/_old_manual/manual.docx` by `pixi run -e docs docs-manual`. The three
+places that said ChiSurf "uses emcee" (and showed `method: emcee` in the settings
+listing) were corrected **in the generated RST**, because the sampler is now
+in-tree; the `.docx` still says it, so a regeneration reintroduces the wrong
+statement. Fixing it properly means editing the binary source or retiring that
+manual page in favour of `docs/concepts/parameter_uncertainty.md`, which now
+covers the same ground.
+
 **Anisotropy now follows Schaffer/Eggeling throughout (settled 2026-07-27).**
 `r = (Fp - G Fs) / ((1 - 3 l2) Fp + (2 - 3 l1) G Fs)` with **G = S_par/S_perp**,
 the ratio a paper quotes and the one tttrlib's estimators already took. Four
@@ -513,6 +523,12 @@ than fixed because they span five unrelated subsystems:
   `test_parameter.py::test_equality`,
   `test_fit.py::test_fit_save_full_length_curves_have_nan_padding`,
   `test_reference_models.py::test_lifetime_model_convergence`.
+- `test_derived_quantities.py::test_a_well_determined_ratio_is_where_the_delta_method_is_right`
+  (noted 2026-07-28) — the skew diagnostic fires on a ratio it is meant to pass
+  (`0.771 +0.0207 -0.0236`), so the asymmetry threshold is tripped by ordinary
+  Monte-Carlo noise rather than by real skew. It samples with `method='de'`,
+  which the ensemble-sampler change did not touch; recorded rather than fixed
+  because the fix is a re-derivation of the threshold in `derived.py`.
 - ~~`test_group_polarization_any_size.py` errors at collection.~~ — fixed
   2026-07-26.
 

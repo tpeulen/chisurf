@@ -53,12 +53,11 @@ def test_walk_mcmc_returns_its_chain_structure():
     assert len(dg.summarize(chains, names=r['parameter_names'])) == chains.shape[2]
 
 
-def test_emcee_returns_one_chain_per_walker():
+def test_ensemble_returns_one_chain_per_walker():
     """Walkers are the natural chains of an ensemble sampler."""
-    pytest.importorskip("emcee")
     np.random.seed(1)
     fit = _quadratic_fit()
-    r = chisurf.core.fitting.sample.sample_emcee(
+    r = chisurf.core.fitting.sample.sample_ensemble(
         fit, steps=60, nwalkers=8, thin=1
     )
     chains = np.asarray(r['chains'])
@@ -79,7 +78,6 @@ def test_pool_chains_stacks_runs_and_truncates_to_the_shortest():
 
 def test_sample_fit_writes_a_pooled_diagnostics_report(tmp_path, monkeypatch):
     """The run must leave behind evidence about its own convergence."""
-    pytest.importorskip("emcee")
     np.random.seed(2)
     fit = _quadratic_fit()
 
@@ -93,7 +91,7 @@ def test_sample_fit_writes_a_pooled_diagnostics_report(tmp_path, monkeypatch):
     report = chisurf.core.fitting.fit.sample_fit(
         fit=fit,
         target_directory=str(tmp_path),
-        method='emcee',
+        method='ensemble',
         steps=60,
         thin=1,
         n_runs=3,
@@ -125,7 +123,6 @@ def test_sample_fit_writes_a_pooled_diagnostics_report(tmp_path, monkeypatch):
 
 def test_sample_fit_chain_files_keep_every_draw(tmp_path, monkeypatch):
     """The burn-in is a recommendation; the stored chain must stay complete."""
-    pytest.importorskip("emcee")
     np.random.seed(3)
     fit = _quadratic_fit()
 
@@ -136,7 +133,7 @@ def test_sample_fit_chain_files_keep_every_draw(tmp_path, monkeypatch):
     )
 
     report = chisurf.core.fitting.fit.sample_fit(
-        fit=fit, target_directory=str(tmp_path), method='emcee',
+        fit=fit, target_directory=str(tmp_path), method='ensemble',
         steps=60, thin=1, n_runs=1,
     )
     run_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
@@ -174,7 +171,6 @@ def test_a_deliberately_stuck_sampler_is_reported_as_such(tmp_path, monkeypatch)
 
 def test_posterior_summary_prefers_a_converged_chain(tmp_path, monkeypatch):
     """A chain describes the whole posterior, so it outranks the covariance."""
-    pytest.importorskip("emcee")
     np.random.seed(5)
     fit = _quadratic_fit()
 
@@ -188,7 +184,7 @@ def test_posterior_summary_prefers_a_converged_chain(tmp_path, monkeypatch):
     assert {e['method'] for e in before} <= {'laplace', 'none'}
 
     chisurf.core.fitting.fit.sample_fit(
-        fit=fit, target_directory=str(tmp_path), method='emcee',
+        fit=fit, target_directory=str(tmp_path), method='ensemble',
         steps=4000, thin=1, n_runs=2,
     )
     after = fit.posterior_summary(p_value=0.68)

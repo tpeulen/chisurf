@@ -238,7 +238,7 @@ def test_global_posterior_requires_the_blocked_backend(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="blocked"):
         chisurf.core.fitting.fit.sample_fit(
-            fit=fit, target_directory=str(tmp_path), method='emcee',
+            fit=fit, target_directory=str(tmp_path), method='ensemble',
             steps=50, n_runs=1, global_posterior=True,
         )
 

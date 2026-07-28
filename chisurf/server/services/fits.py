@@ -1129,7 +1129,7 @@ def fit_sample_start(
     Extra keyword arguments are merged over the ``optimization.sampling``
     settings and forwarded to
     :func:`chisurf.core.fitting.fit.sample_fit` -- notably ``method``
-    (``blocked`` / ``collapsed`` / ``emcee`` / ``mcmc``) and
+    (``blocked`` / ``collapsed`` / ``ensemble`` / ``slice`` / ``mcmc``) and
     ``global_posterior``.
 
     ``fit.sample.status`` reports the resulting convergence verdict, so a caller

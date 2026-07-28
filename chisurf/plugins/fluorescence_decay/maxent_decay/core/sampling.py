@@ -1,9 +1,10 @@
 """MCMC sampling utilities for the MaxEnt TCSPC lifetime / FRET plugin.
 
-This module implements Q-based sampling of an existing MEM solution using
-``emcee``. It operates purely on the result dictionary returned by the
-MaxEnt solvers and contains no GUI/Qt code so it can be reused from
-scripts, notebooks, or the plugin GUI.
+This module implements Q-based sampling of an existing MEM solution with the
+affine-invariant ensemble sampler in :mod:`chisurf.core.fitting.ensemble`. It
+operates purely on the result dictionary returned by the MaxEnt solvers and
+contains no GUI/Qt code so it can be reused from scripts, notebooks, or the
+plugin GUI.
 """
 
 from __future__ import annotations
@@ -16,10 +17,7 @@ import sys
 import numpy as np
 import tables
 
-try:  # optional dependency; checked at call time
-    import emcee  # type: ignore
-except Exception:  # pragma: no cover - handled lazily in the sampler
-    emcee = None  # type: ignore[assignment]
+from chisurf.core.fitting.ensemble import EnsembleSampler
 
 from .solver import MIN_PROB
 
@@ -39,7 +37,8 @@ def _log_prob_mem(
     """Log-posterior for MEM Q-MCMC.
 
     Defined at module scope so that it can be pickled when using a
-    multiprocessing pool with :class:`emcee.EnsembleSampler`.
+    multiprocessing pool with
+    :class:`chisurf.core.fitting.ensemble.EnsembleSampler`.
     """
 
     u_arr = np.asarray(u_vec, dtype=float).ravel()
@@ -104,7 +103,7 @@ def _log_prob_mem_vectorized(
 ProgressCallback = Optional[Callable[[int, int], bool]]
 
 
-def sample_mem_distribution_emcee(
+def sample_mem_distribution_mcmc(
     result: Mapping[str, Any],
     *,
     filename: Optional[str] = None,
@@ -117,7 +116,7 @@ def sample_mem_distribution_emcee(
     csv_prefix: Optional[str] = None,
     vectorized: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Sample the MEM distribution ``p`` using an ``emcee`` ensemble sampler.
+    """Sample the MEM distribution ``p`` with an affine-invariant ensemble sampler.
 
     The log-posterior is defined from the MaxEnt objective ``Q = chi^2 - 0.5 * nu * S``
     (up to an additive constant). The state is the distribution ``p`` over the
@@ -140,7 +139,8 @@ def sample_mem_distribution_emcee(
     steps_total:
         Total number of MCMC steps per walker.
     thin:
-        Thinning factor passed to ``emcee.EnsembleSampler.run_mcmc``.
+        Thinning factor passed to
+        :meth:`chisurf.core.fitting.ensemble.EnsembleSampler.run_mcmc`.
     substeps:
         Number of steps per chunk. After each chunk the progress callback is
         invoked.
@@ -174,13 +174,6 @@ def sample_mem_distribution_emcee(
 
         Additional keys may be added in the future.
     """
-
-    if emcee is None:
-        raise RuntimeError(
-            "The 'emcee' package is required for MEM Q-MCMC sampling. "
-            "Install 'emcee' (e.g. via the ChiSurf conda environment) to "
-            "enable this feature."
-        )
 
     if vectorized is None:
         try:
@@ -224,7 +217,7 @@ def sample_mem_distribution_emcee(
     if ndim <= 0:
         raise RuntimeError("MEM distribution has zero length")
 
-    # emcee's red-blue moves require at least ``2 * ndim`` walkers. For MEM
+    # The red-blue split requires at least ``2 * ndim`` walkers. For MEM
     # grids this can be sizable, but still tractable for the default
     # ``steps_total``. We therefore always enforce this lower bound.
     if nwalkers is None:
@@ -264,7 +257,7 @@ def sample_mem_distribution_emcee(
 
     try:
         if vectorized:
-            sampler = emcee.EnsembleSampler(
+            sampler = EnsembleSampler(
                 nwalkers,
                 ndim,
                 _log_prob_mem_vectorized,
@@ -273,7 +266,7 @@ def sample_mem_distribution_emcee(
                 vectorize=True,
             )
         else:
-            sampler = emcee.EnsembleSampler(
+            sampler = EnsembleSampler(
                 nwalkers,
                 ndim,
                 _log_prob_mem,
@@ -296,14 +289,13 @@ def sample_mem_distribution_emcee(
                     nsteps=steps_here,
                     thin_by=thin,
                     skip_initial_state_check=(i > 0),
-                    tune=True,
                 )
             except ValueError as exc:
                 msg = str(exc)
                 if "Initial state has a large condition number" in msg:
                     logger.warning(
-                        "emcee warning during MEM sampling: %s; "
-                        "continuing with skip_initial_state_check=True",
+                        "MEM sampling: %s; continuing with "
+                        "skip_initial_state_check=True",
                         msg,
                     )
                     previous_state = sampler.run_mcmc(
@@ -311,7 +303,6 @@ def sample_mem_distribution_emcee(
                         nsteps=steps_here,
                         thin_by=thin,
                         skip_initial_state_check=True,
-                        tune=True,
                     )
                 else:
                     raise
@@ -325,7 +316,7 @@ def sample_mem_distribution_emcee(
                 if cancel:
                     raise RuntimeError("MEM sampling cancelled")
 
-        chain = sampler.flatchain
+        chain = sampler.get_chain(flat=True)
     finally:
         if pool is not None:
             try:
@@ -457,4 +448,4 @@ def _write_sampling_tsv_stack(prefix: str, samples: np.ndarray, max_cols: int = 
             logger.warning("MEM sampling: failed to write TSV '%s': %s", fn, exc)
 
 
-__all__ = ["sample_mem_distribution_emcee", "ProgressCallback"]
+__all__ = ["sample_mem_distribution_mcmc", "ProgressCallback"]

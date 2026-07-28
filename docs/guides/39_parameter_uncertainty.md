@@ -125,13 +125,16 @@ for e in fit.posterior_summary(p_value=0.68):
 | --- | --- |
 | `collapsed` | a **linked** global fit — integrates each dataset's private parameters out and samples only the shared ones |
 | `blocked` | correlated parameters, unlinked groups, single decays |
-| `emcee` | many well-scaled parameters, or as an independent cross-check |
+| `ensemble` | many well-scaled parameters, or as an independent cross-check — walkers that stretch towards each other, no covariance needed |
+| `slice` | same walkers, no accept/reject: every walker moves every step, at several model evaluations per step. Reach for it when the posterior is badly scaled and `ensemble` creeps |
 | `mcmc` | only for an uncorrelated, well-conditioned posterior |
 
 On a deliberately collinear three-parameter fit, effective samples per 1000
-model evaluations: `blocked` 64, `emcee` 26, `mcmc` 0.4. The diagonal proposal
-of `mcmc` produced 4 effective samples out of 8000 draws — it is kept for
-compatibility, not recommended.
+model evaluations: `blocked` 64, `ensemble` 26, `mcmc` 0.4. The diagonal
+proposal of `mcmc` produced 4 effective samples out of 8000 draws — it is kept
+for compatibility, not recommended. `emcee` is still accepted as the historical
+name of `ensemble`; the sampler itself is in-tree (`chisurf.core.fitting.ensemble`)
+and pulls in no external package.
 
 ## 6. Global fits
 

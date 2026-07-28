@@ -8,6 +8,7 @@ import numpy as np
 
 import chisurf as cs
 import chisurf.core.fitting
+import chisurf.core.fitting.ensemble
 
 #: Relative forward-difference step for the conditional Jacobian of a local fit.
 #: The square root of the machine epsilon balances truncation against
@@ -537,7 +538,7 @@ def sample_differential_evolution(
     [autodiff assessment](/references/autodiff-assessment.md)), and a systematic
     benchmark of gradient-free samplers found differential evolution at a ~25 %
     acceptance target to outperform every alternative tested -- including the
-    affine-invariant stretch move that :func:`sample_emcee` uses.
+    affine-invariant stretch move that :func:`sample_ensemble` uses.
 
     Two refinements from the literature are included. Every tenth generation
     uses :math:`\gamma = 1`, which turns the difference vector into a direct
@@ -1664,128 +1665,168 @@ def _default_blocks(
     return [np.arange(dim, dtype=int)]
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
-def sample_emcee(
-        fit: cs.core.fitting.fit.Fit,
-        steps: int,
+def _ensemble_log_prob(parameter_values, fit, model=None, bounds=None, chi2max=np.inf):
+    """Log-posterior plus ``(lnprior, chi2)`` for one walker state.
+
+    Returning the two terms as sampler *blobs* keeps the data misfit and the
+    prior separable in the stored chain instead of only their sum, so a chain
+    can afterwards be reweighted under a different prior without resampling.
+
+    Parameters
+    ----------
+    parameter_values : array_like
+        Free-parameter vector to evaluate.
+    fit : chisurf.core.fitting.fit.Fit
+        Fit supplying the priors and the default bounds.
+    model : chisurf.core.models.Model, optional
+        Model to evaluate; defaults to ``fit.model``.
+    bounds : list of tuple, optional
+        Box bounds checked before the model is evaluated.
+    chi2max : float, optional
+        Hard cutoff on chi²; above it the log-likelihood is ``-inf``.
+
+    Returns
+    -------
+    tuple of float
+        ``(log_posterior, lnprior, chi2)``.
+    """
+    lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
+        parameter_values=parameter_values,
+        fit=fit,
+        chi2max=chi2max,
+        bounds=bounds,
+        model=model,
+    )
+    if not np.isfinite(lnpr):
+        return -np.inf, -np.inf, np.inf
+    return lnlike + lnpr, lnpr, c2
+
+
+def _ensemble_walker_start(
+        model,
         nwalkers: int,
-        thin: int = 10,
-        std: float = 1e-3,
-        chi2max: float = np.inf,
-        progress_bar = None,
+        std: float,
+        random: np.random.Generator
+) -> np.ndarray:
+    """Spread walkers around the current parameter values, inside the bounds.
+
+    An ensemble sampler learns its step size from the spread of its own
+    walkers, so a badly chosen initial spread is not a cosmetic detail: all
+    walkers on top of each other cannot move at all, and a spread of ``1e-3``
+    applied to a parameter of order ``1e6`` is the same thing numerically.
+    The scale is therefore taken from the bounded range where the parameter has
+    one, and relative to the value otherwise.
+
+    Parameters
+    ----------
+    model : chisurf.core.models.Model
+        Model whose free parameters are sampled.
+    nwalkers : int
+        Number of walkers to place.
+    std : float
+        Relative spread used for parameters without finite bounds.
+    random : numpy.random.Generator
+        Random generator to draw the offsets from.
+
+    Returns
+    -------
+    numpy.ndarray
+        Initial walker positions, shape ``(nwalkers, ndim)``, each within the
+        model's parameter bounds.
+    """
+    p0 = np.asarray(model.parameter_values, dtype=np.float64)
+    ndim = len(p0)
+    bounds = list(model.parameter_bounds)
+    lower = np.array(
+        [b[0] if b[0] is not None else -np.inf for b in bounds], dtype=np.float64
+    )
+    upper = np.array(
+        [b[1] if b[1] is not None else np.inf for b in bounds], dtype=np.float64
+    )
+
+    spread = np.where(
+        np.isfinite(lower) & np.isfinite(upper),
+        (upper - lower) * 1e-4,
+        np.where(np.abs(p0) > 1e-15, np.abs(p0) * std, std),
+    )
+    start = p0[None, :] + spread[None, :] * random.standard_normal((nwalkers, ndim))
+    return np.clip(start, lower, upper)
+
+
+def _sample_ensemble(
+        sampler,
+        start: np.ndarray,
+        fit,
+        model,
+        steps: int,
+        thin: int,
         substeps: int = None,
+        progress_bar=None,
         callback: typing.Callable = None,
         check_cancel: typing.Callable = None
 ) -> dict:
-    """Sample the parameter space by emcee using a number of 'walkers'.
+    """Drive an ensemble sampler in chunks and return its chain as a result dict.
 
-    :param fit: the fit to be samples
-    :param steps: the number of steps of each walker
-    :param thin: an integer (only every ith step is saved)
-    :param nwalkers: the number of walkers
-    :param chi2max: maximum allowed chi2
-    :param std: the standard deviation of the parameters used to randomize the initial set of the walkers
-    :return: a dict with the *data* ``chi2r``, the ``lnprior``, the sampled
-        ``parameter_values`` and the ``parameter_names``
+    The run is broken into chunks of ``substeps`` so that a long sampling run
+    stays cancellable and reports progress, and so that a partially finished
+    chain can be written to disk by ``callback``.
 
-    Notes
-    -----
-    ``steps`` counts the steps actually taken by each walker, so
-    ``steps // thin`` states per walker are returned. Note that the underlying
-    ensemble sampler counts ``nsteps`` in *stored* states when it thins, hence
-    the loop below iterates in stored states rather than in raw steps.
+    Parameters
+    ----------
+    sampler : chisurf.core.fitting.ensemble.EnsembleSampler or EnsembleSliceSampler
+        Sampler to drive.
+    start : numpy.ndarray
+        Initial walker positions.
+    fit : chisurf.core.fitting.fit.Fit
+        Fit the sampler was built for; supplies the degrees of freedom.
+    model : chisurf.core.models.Model
+        Model being sampled; supplies the parameter names.
+    steps : int
+        Number of steps taken by each walker.
+    thin : int
+        Store only every ``thin``-th step.
+    substeps : int, optional
+        Steps per chunk. Defaults to the ``optimization.sampling.substeps``
+        setting.
+    progress_bar : object, optional
+        Anything with ``setMaximum``/``setValue``.
+    callback : callable, optional
+        Called as ``callback(done, total, sampler=...)`` after every chunk.
+    check_cancel : callable, optional
+        Polled after every chunk; a true return ends the run early.
+
+    Returns
+    -------
+    dict
+        See :func:`ensemble_result`.
     """
-    # Imported lazily so that a missing ``emcee`` only disables ensemble
-    # sampling rather than breaking the whole fitting stack (and, transitively,
-    # every model widget that imports it).
-    import emcee
-
     if substeps is None:
         try:
-            substeps = int(cs.core.settings.cs_settings['optimization']['sampling'].get('substeps', 100))
+            substeps = int(
+                cs.core.settings.cs_settings['optimization']['sampling'].get('substeps', 100)
+            )
         except (KeyError, TypeError):
             substeps = 100
-
-    model = fit.model
-    ndim = fit.n_free  # Number of free parameters to be sampled (number of dimensions)
-    kw = {
-        'bounds': fit.model.parameter_bounds,
-        'chi2max': chi2max
-    }
-
-    def _log_prob(parameter_values, fit, bounds=None, chi2max=np.inf):
-        """Log-posterior plus ``(lnprior, chi2)`` blobs for one walker state.
-
-        Returning the two terms as emcee *blobs* keeps the data misfit and the
-        prior separable in the stored chain, instead of only their sum.
-        """
-        lnlike, lnpr, c2 = cs.core.fitting.fit.lnprob_parts(
-            parameter_values=parameter_values,
-            fit=fit,
-            chi2max=chi2max,
-            bounds=bounds
-        )
-        if not np.isfinite(lnpr):
-            return -np.inf, -np.inf, np.inf
-        return lnlike + lnpr, lnpr, c2
-
-    sampler = emcee.EnsembleSampler(
-        nwalkers=nwalkers,
-        ndim=ndim,
-        log_prob_fn=_log_prob,
-        args=[fit],
-        kwargs=kw
-    )
-    # Initialize walkers with a robust standard deviation estimate
-    p0 = np.array(model.parameter_values)
-    bounds = np.array(kw['bounds'])
-    std_input = std # input float, e.g., 1e-3
-    std_vec = np.zeros(ndim)
-
-    for i in range(ndim):
-        lb, ub = bounds[i]
-        # 1. Use width of narrow bounds as scale if finite
-        if lb is not None and ub is not None and np.isfinite(lb) and np.isfinite(ub):
-            # Use 1/1000th of the range as jitter
-            std_vec[i] = (ub - lb) * 1e-4
-        # 2. Else use relative scale if parameter is non-zero
-        elif abs(p0[i]) > 1e-15:
-            std_vec[i] = abs(p0[i]) * std_input
-        # 3. Last fallback: use absolute input value
-        else:
-            std_vec[i] = std_input
 
     if progress_bar is not None and hasattr(progress_bar, 'setMaximum'):
         progress_bar.setMaximum(steps)
 
-    previous_state = []
-    for _ in range(nwalkers):
-        p = p0 + std_vec * np.random.randn(ndim)
-        # Ensure initial state stays within user-provided bounds.
-        # Clip lb if lb > -inf and ub if ub < inf.
-        for j in range(ndim):
-            lb, ub = bounds[j]
-            if lb is not None and np.isfinite(lb):
-                p[j] = max(p[j], lb)
-            if ub is not None and np.isfinite(ub):
-                p[j] = min(p[j], ub)
-        previous_state.append(p)
-
-    # ``run_mcmc`` counts ``nsteps`` in stored states when ``thin_by`` is used,
-    # so the loop below is driven in stored states and only the progress
-    # reporting is converted back to raw steps.
+    # ``run_mcmc`` counts its ``nsteps`` in *stored* states when thinning, so
+    # the loop below is driven in stored states and only the progress reporting
+    # is converted back to raw steps.
     thin = max(1, int(thin))
     n_stored = max(1, int(steps) // thin)
     stored_per_chunk = max(1, int(substeps) // thin)
 
+    state = start
     current_stored = 0
     while current_stored < n_stored:
         n_to_run = min(stored_per_chunk, n_stored - current_stored)
-        previous_state = sampler.run_mcmc(
-            previous_state,
+        state = sampler.run_mcmc(
+            state,
             nsteps=n_to_run,
             thin_by=thin,
-            skip_initial_state_check=True
+            skip_initial_state_check=True,
         )
         current_stored += n_to_run
         current_step = current_stored * thin
@@ -1805,30 +1846,220 @@ def sample_emcee(
         if check_cancel and check_cancel():
             break
 
-    return emcee_result(sampler, fit)
+    return ensemble_result(sampler, fit, model=model)
 
 
-def emcee_result(sampler, fit: cs.core.fitting.fit.Fit) -> dict:
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
+def sample_ensemble(
+        fit: cs.core.fitting.fit.Fit,
+        steps: int,
+        nwalkers: int = None,
+        thin: int = 10,
+        std: float = 1e-3,
+        chi2max: float = np.inf,
+        progress_bar = None,
+        substeps: int = None,
+        callback: typing.Callable = None,
+        check_cancel: typing.Callable = None,
+        model: cs.core.models.Model = None,
+        seed=None,
+        stretch_scale: float = 2.0
+) -> dict:
+    """Sample the parameter space with an affine-invariant ensemble of walkers.
+
+    Each walker is moved along the line joining it to another walker (the
+    *stretch* move of :class:`chisurf.core.fitting.ensemble.EnsembleSampler`),
+    so the proposal takes its scale and its correlations from the ensemble
+    itself and no covariance has to be supplied. That makes this the sampler to
+    reach for when nothing is known about the shape of the posterior, at the
+    price of needing many walkers.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit to sample.
+    steps : int
+        Number of steps taken by each walker.
+    nwalkers : int, optional
+        Number of walkers. Defaults to ``max(2 * n_free + 2, 10)``, which is
+        the smallest ensemble that can span the parameter space.
+    thin : int, optional
+        Store only every ``thin``-th step.
+    std : float, optional
+        Relative spread of the initial walker positions for parameters without
+        finite bounds.
+    chi2max : float, optional
+        Hard cutoff on chi²; above it a state is rejected outright.
+    progress_bar : object, optional
+        Anything with ``setMaximum``/``setValue``.
+    substeps : int, optional
+        Steps per chunk between progress reports and cancellation checks.
+    callback : callable, optional
+        Called as ``callback(done, total, sampler=...)`` after every chunk, used
+        to write partial chains.
+    check_cancel : callable, optional
+        Polled after every chunk; a true return ends the run early.
+    model : chisurf.core.models.Model, optional
+        Model to sample; defaults to ``fit.model``.
+    seed : int or numpy.random.Generator, optional
+        Seed for a reproducible run.
+    stretch_scale : float, optional
+        The stretch parameter ``a``; larger values propose bolder moves.
+
+    Returns
+    -------
+    dict
+        See :func:`ensemble_result`.
+
+    Notes
+    -----
+    ``steps`` counts the steps actually taken by each walker, so ``steps //
+    thin`` states per walker are returned.
+    """
+    model = fit.model if model is None else model
+    ndim = len(model.parameter_values)
+    if nwalkers is None:
+        nwalkers = max(2 * ndim + 2, 10)
+    random = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
+
+    sampler = cs.core.fitting.ensemble.EnsembleSampler(
+        nwalkers=int(nwalkers),
+        ndim=ndim,
+        log_prob_fn=_ensemble_log_prob,
+        args=[fit],
+        kwargs={'model': model, 'bounds': model.parameter_bounds, 'chi2max': chi2max},
+        stretch_scale=stretch_scale,
+        seed=random,
+    )
+    start = _ensemble_walker_start(model, int(nwalkers), std, random)
+    return _sample_ensemble(
+        sampler, start, fit, model, steps, thin,
+        substeps=substeps, progress_bar=progress_bar,
+        callback=callback, check_cancel=check_cancel,
+    )
+
+
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
+def sample_ensemble_slice(
+        fit: cs.core.fitting.fit.Fit,
+        steps: int,
+        nwalkers: int = None,
+        thin: int = 1,
+        std: float = 1e-3,
+        chi2max: float = np.inf,
+        progress_bar = None,
+        substeps: int = None,
+        callback: typing.Callable = None,
+        check_cancel: typing.Callable = None,
+        model: cs.core.models.Model = None,
+        seed=None,
+        moves=None,
+        tune: bool = True
+) -> dict:
+    """Sample the parameter space by ensemble *slice* sampling.
+
+    Like :func:`sample_ensemble` the direction of each move comes from the other
+    walkers, but the walker is then moved by one-dimensional slice sampling
+    along that direction
+    (:class:`chisurf.core.fitting.ensemble.EnsembleSliceSampler`): there is no
+    accept/reject and no step size, and every walker moves at every step. Each
+    step costs several model evaluations rather than one, and buys a much longer
+    move -- the trade that pays off on a strongly correlated or badly scaled
+    posterior, where the stretch move creeps.
+
+    Parameters
+    ----------
+    fit : chisurf.core.fitting.fit.Fit
+        Fit to sample.
+    steps : int
+        Number of steps taken by each walker.
+    nwalkers : int, optional
+        Number of walkers. Defaults to ``max(2 * n_free + 2, 10)``.
+    thin : int, optional
+        Store only every ``thin``-th step. A slice step decorrelates far better
+        than a stretch step, so thinning is rarely needed here.
+    std : float, optional
+        Relative spread of the initial walker positions for parameters without
+        finite bounds.
+    chi2max : float, optional
+        Hard cutoff on chi²; above it a state is outside every slice.
+    progress_bar : object, optional
+        Anything with ``setMaximum``/``setValue``.
+    substeps : int, optional
+        Steps per chunk between progress reports and cancellation checks.
+    callback : callable, optional
+        Called as ``callback(done, total, sampler=...)`` after every chunk.
+    check_cancel : callable, optional
+        Polled after every chunk; a true return ends the run early.
+    model : chisurf.core.models.Model, optional
+        Model to sample; defaults to ``fit.model``.
+    seed : int or numpy.random.Generator, optional
+        Seed for a reproducible run.
+    moves : object or list, optional
+        Direction proposals, see
+        :class:`chisurf.core.fitting.ensemble.EnsembleSliceSampler`.
+    tune : bool, optional
+        Adapt the length scale of the proposals. Adaptation stops on its own
+        once the expansion statistics settle.
+
+    Returns
+    -------
+    dict
+        See :func:`ensemble_result`.
+    """
+    model = fit.model if model is None else model
+    ndim = len(model.parameter_values)
+    if nwalkers is None:
+        nwalkers = max(2 * ndim + 2, 10)
+    random = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
+
+    sampler = cs.core.fitting.ensemble.EnsembleSliceSampler(
+        nwalkers=int(nwalkers),
+        ndim=ndim,
+        log_prob_fn=_ensemble_log_prob,
+        args=[fit],
+        kwargs={'model': model, 'bounds': model.parameter_bounds, 'chi2max': chi2max},
+        moves=moves,
+        tune=tune,
+        seed=random,
+    )
+    start = _ensemble_walker_start(model, int(nwalkers), std, random)
+    return _sample_ensemble(
+        sampler, start, fit, model, steps, thin,
+        substeps=substeps, progress_bar=progress_bar,
+        callback=callback, check_cancel=check_cancel,
+    )
+
+
+def ensemble_result(
+        sampler,
+        fit: cs.core.fitting.fit.Fit,
+        model: cs.core.models.Model = None
+) -> dict:
     """Extract the flattened chain of an ensemble sampler as a result dict.
 
-    Shared by :func:`sample_emcee` and the intermediate-save callback in
+    Shared by :func:`sample_ensemble`, :func:`sample_ensemble_slice` and the
+    intermediate-save callback in
     :func:`chisurf.core.fitting.fit.sample_fit`, so a partially written chain
     has exactly the same columns as a finished one.
 
     Parameters
     ----------
-    sampler : emcee.EnsembleSampler
+    sampler : chisurf.core.fitting.ensemble.EnsembleSampler or EnsembleSliceSampler
         Sampler to read the chain from.
     fit : chisurf.core.fitting.fit.Fit
-        Fit the sampler was built for; supplies the degrees of freedom and the
-        parameter names.
+        Fit the sampler was built for; supplies the degrees of freedom.
+    model : chisurf.core.models.Model, optional
+        Model that was sampled; supplies the parameter names. Defaults to
+        ``fit.model``.
 
     Returns
     -------
     dict
         ``chi2r`` (data misfit only), ``lnprior``, ``parameter_values``,
-        ``parameter_names``, the per-walker ``chains`` and the
-        ``acceptance_rate``.
+        ``parameter_names``, the per-walker ``chains``, the
+        ``acceptance_rate`` and the number of model evaluations
+        ``n_evaluations``.
 
     Notes
     -----
@@ -1838,7 +2069,7 @@ def emcee_result(sampler, fit: cs.core.fitting.fit.Fit) -> dict:
     (a large value is conclusive) but the decisive comparison is across the
     independent runs that :func:`chisurf.core.fitting.fit.sample_fit` performs.
     """
-    model = fit.model
+    model = fit.model if model is None else model
     dof = float(model.n_points - model.n_free - 1.0)
     chain = sampler.get_chain(flat=True)
     blobs = sampler.get_blobs(flat=True)
@@ -1870,4 +2101,5 @@ def emcee_result(sampler, fit: cs.core.fitting.fit.Fit) -> dict:
         'parameter_names': model.parameter_names,
         'chains': per_walker,
         'acceptance_rate': acceptance,
+        'n_evaluations': int(getattr(sampler, 'n_evaluations', 0)),
     }

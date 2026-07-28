@@ -316,7 +316,7 @@ class FitTests(unittest.TestCase):
         model = fit.model
         model.func = 'c+a*x**2'
         fit.model.find_parameters()
-        r = chisurf.core.fitting.sample.sample_emcee(
+        r = chisurf.core.fitting.sample.sample_ensemble(
             fit=fit,
             steps=100,
             nwalkers=5,
@@ -347,7 +347,7 @@ class FitTests(unittest.TestCase):
         # creates a timestamped sub-directory holding the chains.
         target_directory = tempfile.mkdtemp()
         n_runs = 5
-        sampling_method = 'emcee'
+        sampling_method = 'ensemble'
         chisurf.core.fitting.fit.sample_fit(
             fit=fit,
             target_directory=target_directory,

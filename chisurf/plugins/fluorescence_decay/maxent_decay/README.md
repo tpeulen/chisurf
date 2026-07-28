@@ -20,7 +20,8 @@ core `chisurf` models.
   - `api.py`: convenience helpers for scripts/notebooks (grid builders and `run_*` helpers).
   - `gui.py`: Qt/pyqtgraph front-end (`MaxentDecayWidget`).
   - `settings.py`: JSON-based user defaults.
-  - `sampling.py`: optional `emcee`-based sampling utilities.
+  - `sampling.py`: Q-MCMC sampling utilities built on the ensemble sampler in
+    `chisurf.core.fitting.ensemble`.
 
 ## GUI usage
 

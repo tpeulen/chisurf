@@ -168,14 +168,13 @@ def test_flat_prior_chain_is_unchanged_by_the_fix():
     assert np.allclose(lnprior, 0.0)
 
 
-def test_emcee_chain_carries_the_prior_blob():
+def test_ensemble_chain_carries_the_prior_blob():
     """The ensemble sampler must report ``lnprior`` alongside the data chi2."""
-    pytest.importorskip("emcee")
     np.random.seed(3)
     fit = _quadratic_fit()
     _parameter(fit, 'c').prior = NormalPrior(mu=C_TRUE, sigma=0.05)
 
-    r = chisurf.core.fitting.sample.sample_emcee(
+    r = chisurf.core.fitting.sample.sample_ensemble(
         fit, steps=40, nwalkers=8, thin=1
     )
     lnprior = np.asarray(r['lnprior'], dtype=float)

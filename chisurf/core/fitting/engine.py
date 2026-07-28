@@ -1401,6 +1401,9 @@ class SamplingEngine(PosteriorEngine):
             "blocked": cs.core.fitting.sample.sample_independent_components,
             "collapsed": cs.core.fitting.sample.sample_marginal_shared,
             "de": cs.core.fitting.sample.sample_differential_evolution,
+            "ensemble": cs.core.fitting.sample.sample_ensemble,
+            "emcee": cs.core.fitting.sample.sample_ensemble,
+            "slice": cs.core.fitting.sample.sample_ensemble_slice,
             "mcmc": cs.core.fitting.sample.walk_mcmc,
         }.get(backend)
         if sampler is None:

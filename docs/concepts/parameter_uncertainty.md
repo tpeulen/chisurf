@@ -148,12 +148,46 @@ collinear three-parameter fit (parameter correlations $\approx 0.99$):
 | Sampler | Proposal | $\tau$ | Effective samples per 1000 model evaluations |
 | --- | --- | --- | --- |
 | `mcmc` | diagonal | 2024 | 0.4 |
-| `emcee` | affine-invariant ensemble | 39 | 26 |
+| `ensemble` | affine-invariant ensemble (stretch) | 39 | 26 |
 | `blocked` | per-block covariance | 12 | 64 |
 
 The diagonal sampler produced **4** effective samples out of 8000 draws. This is
 why `blocked` is the recommended backend for anything with correlated
 parameters.
+
+### The ensemble samplers
+
+The covariance proposal has to get its covariance from somewhere — the curvature
+at the optimum — and that is exactly what is missing when the optimum is not
+where the posterior's mass is. The **ensemble** samplers avoid the question
+entirely: they run many *walkers* at once and build each proposal out of the
+positions of the other walkers, so the proposal inherits the posterior's scale
+and correlations without anyone estimating them. Both are *affine invariant* —
+they behave identically on a posterior and on any linear reparameterisation of
+it — and both live in `chisurf.core.fitting.ensemble`, with no external MCMC
+package involved.
+
+- **`ensemble`** — the **stretch move** (Goodman & Weare). A walker is moved
+  along the line joining it to another walker, by a factor $z$ drawn from
+  $g(z)\propto z^{-1/2}$ on $[1/a, a]$, and accepted with probability
+  $\min(1, z^{n-1} p(y)/p(x))$. One model evaluation per walker per step.
+  Needs at least $2n$ walkers to span an $n$-dimensional space.
+- **`slice`** — **ensemble slice sampling** (Karamanis & Beutler). The direction
+  still comes from the other walkers, but the walker is then moved by
+  one-dimensional [slice sampling](https://doi.org/10.1214/aos/1056562461) along
+  it: a level $y$ is drawn below the density, an interval is stepped out until
+  both ends fall below $y$, and points are drawn from it — shrinking it on each
+  miss — until one lands above $y$. There is no accept/reject and no step size;
+  every walker moves at every step, and the length scale is learnt from the
+  ratio of expansions to contractions. It costs several model evaluations per
+  walker per step and buys a much longer move: on a $\rho = 0.95$ Gaussian it
+  delivered ~1.5x the effective samples per model evaluation of the stretch
+  move.
+
+Neither needs a gradient, a covariance, or a per-parameter step size, which
+makes them the honest fallback when nothing is known about the posterior's
+shape. What they do need is walkers — and an initial spread that is neither
+degenerate nor tiny, since the ensemble takes its step size from itself.
 
 ## Blocking, and why a global fit has structure
 
@@ -476,6 +510,9 @@ Two rules keep the report honest:
   Communications in Applied Mathematics and Computational Science **5**, 65–80
   (2010).
 - Foreman-Mackey, D. *et al.* *emcee: the MCMC hammer.* PASP **125**, 306 (2013).
+- Karamanis, M. & Beutler, F. *Ensemble slice sampling.* Statistics and
+  Computing **31**, 61 (2021).
+- Neal, R. M. *Slice sampling.* Annals of Statistics **31**, 705–767 (2003).
 - Vehtari, A., Simpson, D., Gelman, A., Yao, Y. & Gabry, J. *Pareto smoothed
   importance sampling.* Journal of Machine Learning Research **25**, 1–58 (2024).
 - Zhang, J. & Stephens, M. A. *A new and efficient estimation method for the

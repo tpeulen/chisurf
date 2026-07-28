@@ -8,7 +8,7 @@ from typing import Optional
 
 import numpy as np
 
-from chisurf.plugins.fluorescence_decay.maxent_decay.core.sampling import sample_mem_distribution_emcee
+from chisurf.plugins.fluorescence_decay.maxent_decay.core.sampling import sample_mem_distribution_mcmc
 from .qt_stack import ensure_qt_stack
 
 
@@ -178,7 +178,7 @@ class _MaxentActionsMixin:
                         self.progress.emit(int(done), int(total))
                         return False
 
-                    stats = sample_mem_distribution_emcee(
+                    stats = sample_mem_distribution_mcmc(
                         result,
                         nwalkers=walkers_val,
                         filename=str(h5_path),
@@ -195,7 +195,7 @@ class _MaxentActionsMixin:
                     self.finished.emit({}, str(exc))
 
         progress = QtWidgets.QProgressDialog(
-            "Sampling MEM distribution (emcee)...",
+            "Sampling MEM distribution...",
             "Cancel",
             0,
             int(steps_total),
@@ -227,7 +227,7 @@ class _MaxentActionsMixin:
                     else:
                         eta_str = f" (ETA: {int(remaining)}s)"
                     
-                    label = f"Sampling MEM distribution (emcee)...{eta_str}"
+                    label = f"Sampling MEM distribution...{eta_str}"
                     progress.setLabelText(label)
             except Exception:
                 pass

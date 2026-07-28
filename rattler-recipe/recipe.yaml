@@ -107,7 +107,8 @@ requirements:
     - mdtraj
     - ipython
     - notebook <7
-    - emcee
+    # emcee removed: the affine-invariant ensemble sampler it provided now lives
+    # in chisurf.core.fitting.ensemble, alongside an ensemble slice sampler.
     - pyopengl
     - pytables
     # guidata/guiqwt removed: guiqwt's users (global_tcspc, surfaceplot) were

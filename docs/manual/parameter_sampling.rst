@@ -1,7 +1,7 @@
 Parameter sampling
 ------------------
 
-ChiSurf uses emcee to efficiently sample over free model parameters. The sampling over the free model parameters can initiated using the "Distribution" button next to the "Fit" button in the fitting and optimization interface (:strong:`Fig.15`).
+ChiSurf uses an affine-invariant ensemble sampler to efficiently sample over free model parameters. The sampling over the free model parameters can initiated using the "Distribution" button next to the "Fit" button in the fitting and optimization interface (:strong:`Fig.15`).
 
 .. image:: _images/image_rId23.png
   :align: center
@@ -24,7 +24,7 @@ The settings of the sampling from the shell can be adjusted using the parameters
   def sample_fit(
   fit: Fit,
   filename: str,
-  method: str = 'emcee',
+  method: str = 'ensemble',
   steps: int = 1000,
   thin: int = 1,
   chi2max: float = float("inf"),

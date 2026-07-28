@@ -481,7 +481,7 @@ class FittingControllerWidget(Controller):
                 cs.logging.info("Model-defined sampling canceled!")
                 return
             # Model-specific sampling (e.g. ProteinMC) must run its own
-            # algorithm instead of the generic emcee server path, which
+            # algorithm instead of the generic ensemble server path, which
             # assumes a curve-based model.
             try:
                 sampling_handler(
@@ -494,7 +494,7 @@ class FittingControllerWidget(Controller):
                 cs.logging.exception("Model-defined sampling failed")
             return
         if self._is_proteinmc_fit():
-            cs.logging.warning("ProteinMC must handle Sampling itself; refusing to run generic emcee sampling.")
+            cs.logging.warning("ProteinMC must handle Sampling itself; refusing to run generic ensemble sampling.")
             return
 
         fit_name = str(getattr(self.fit, "name", ""))
@@ -513,7 +513,7 @@ class FittingControllerWidget(Controller):
         fc = get_fitting_client()
         if fc is not None:
             # Forward the configured backend (``method``: blocked / collapsed /
-            # emcee / mcmc) and the rest of ``optimization.sampling``. These used
+            # ensemble / slice / mcmc) and the rest of ``optimization.sampling``. These used
             # to be assembled here and then dropped, so the choice of sampler
             # never left the GUI.
             extra = {
@@ -527,7 +527,7 @@ class FittingControllerWidget(Controller):
                 target_directory=target_dir_str,
                 **extra,
             )
-            method = extra.get('method', 'emcee')
+            method = extra.get('method', 'ensemble')
             cs.logging.info(f"Sampling started on server (method={method}).")
             job_id = (result or {}).get("job_id")
             if job_id:

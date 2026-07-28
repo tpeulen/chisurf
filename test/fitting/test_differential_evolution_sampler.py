@@ -206,12 +206,12 @@ def test_it_is_competitive_on_a_collinear_posterior():
         ess = dg.effective_sample_size(np.asarray(r['chains']))
         return float(ess.min()) / max(1, calls[0])
 
-    emcee_ess = _ess_per_eval(lambda f: chisurf.core.fitting.sample.sample_emcee(
+    stretch_ess = _ess_per_eval(lambda f: chisurf.core.fitting.sample.sample_ensemble(
         f, steps=800, nwalkers=10, thin=1))
     de = _ess_per_eval(lambda f: chisurf.core.fitting.sample.sample_differential_evolution(
         fit=f, steps=800, thin=1, seed=3))
     # Measured at ~2.3x the affine-invariant stretch move.
-    assert de > 1.5 * emcee_ess
+    assert de > 1.5 * stretch_ess
 
 
 def test_the_population_size_is_configurable_and_defaults_sensibly():

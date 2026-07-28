@@ -9,7 +9,7 @@ from qtpy import QtWidgets
 def test_proteinmc_sample_button_runs_model_handler(qapp, qtbot, monkeypatch, tmp_path):
     """Sample on ProteinMC must invoke the model's run_sampling handler.
 
-    It must not fall through to the generic emcee server sampler, which
+    It must not fall through to the generic ensemble server sampler, which
     assumes a curve-based model.
     """
     import chisurf.gui.widgets
@@ -65,7 +65,7 @@ def test_generic_sample_button_still_uses_server_for_curve_models(qapp, qtbot, m
     """Curve models without a custom handler fall through to server sampling.
 
     This ensures the new model-handler branch does not intercept ordinary
-    fits that should use the generic emcee path.
+    fits that should use the generic ensemble path.
     """
     import chisurf.gui.widgets
     from chisurf.gui.widgets.fitting.fit_controller import FittingControllerWidget

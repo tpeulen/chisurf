@@ -50,7 +50,6 @@ dependencies = [
     "scipy",
     "labellib",
     "deprecation",
-    "emcee",
     "PyYAML",
     "packaging",
     "typing-extensions",

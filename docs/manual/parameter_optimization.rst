@@ -43,7 +43,7 @@ The effect of optimizing (fitting) variable model parameters to data for a fluor
   factr: 10
   reg_scale: 1
   sampling:
-  method: emcee
+  method: blocked
   steps: 1000
   thin: 1
   chi2max: 1000000000
@@ -72,7 +72,7 @@ The effect of optimizing (fitting) variable model parameters to data for a fluor
   factr: 10
   reg_scale: 1
   sampling:
-  method: emcee
+  method: blocked
   steps: 1000
   thin: 1
   chi2max: 1000000000

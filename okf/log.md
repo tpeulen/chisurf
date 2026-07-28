@@ -2,6 +2,46 @@
 
 ## 2026-07-28
 
+* **emcee is no longer a dependency: two ensemble samplers now live in-tree.**
+  `chisurf/core/fitting/ensemble.py` implements the Goodman & Weare
+  affine-invariant **stretch** move with the Foreman-Mackey red-blue parallel
+  split (`EnsembleSampler`) and, beside it, **ensemble slice sampling** after
+  Karamanis & Beutler (`EnsembleSliceSampler`, ported from the ucfret sampler and
+  fixed, see below). Both share one storage layer -- chain, log-probability,
+  blobs, `thin`/`discard`/`flat` reads, resumable state, pool and `vectorize`
+  support, seeded reproducibility -- so `ensemble_result` reads either.
+  `sample_emcee`/`emcee_result` become `sample_ensemble`/`ensemble_result`, and
+  the new `sample_ensemble_slice` is reachable as `method='slice'`;
+  `method='emcee'` still resolves to the stretch sampler so saved settings and
+  projects keep working. Removed from `pyproject.toml`, `pixi.toml`,
+  `rattler-recipe/recipe.yaml` and the py314 settings fixture; the MaxEnt
+  Q-MCMC plugin (`sample_mem_distribution_mcmc`) uses the in-tree sampler too,
+  and no longer degrades to a `RuntimeError` when a package is missing.
+  **Stepping out must overshoot the slice.** The ported implementation probed
+  the *prospective* endpoint and moved the bound only if it was inside the
+  slice, so the interval came to rest with its endpoints *inside* -- one step
+  short of covering the slice. The chain then truncates the slice's tails on
+  every step: measured on a rho=0.95 3D Gaussian the mean was perfect and the
+  variance came back **0.64 against 1.00**, a 30 %-too-narrow posterior that no
+  mean-based test would catch. Probing the current endpoint instead recovers
+  var 1.03 and corr 0.949 (target 0.95).
+  Cost is recorded as `n_evaluations`, because effective samples *per model
+  evaluation* is the only currency in which the two compare: a slice step costs
+  several evaluations and buys a much longer move, measured at ~1.5x the stretch
+  move's ESS per evaluation on that posterior. Slice directions come from
+  pluggable moves (`DifferentialMove`, `CovarianceMove`,
+  `AdaptiveCovarianceMove`), each pinned to sample the same target.
+  `test/fitting/test_ensemble_samplers.py` (22 tests) checks both against
+  Gaussians known in closed form -- mean, variance *and* correlation, the width
+  being the assertion that matters -- plus blobs staying aligned with the states
+  they belong to, chunked resumption, thinning, hard `-inf` walls, degenerate
+  ensembles refused, and the pool path reproducing the serial chain exactly.
+  Docs: `docs/concepts/parameter_uncertainty.md` gains an ensemble-sampler
+  section, `docs/guides/39_parameter_uncertainty.md` and
+  `docs/reference/settings.md` the new `method` values.
+  Suites: 22 (new) + 799 (`test/fitting`, 10 pre-existing failures unrelated to
+  sampling, all recorded in [known issues](/references/known-issues.md)).
+
 * **MLE-Statewise is step 7 of the burst workflow.** The state-wise fit added
   earlier today now has a panel and a place: `7. MLE-Statewise`, directly after
   H2MM and before the separator, handed the analysis folder by the workflow
