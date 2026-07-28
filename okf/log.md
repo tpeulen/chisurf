@@ -124,6 +124,36 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **The review of this morning's pooled-state work found five, and they are
+  fixed (RF-760..RF-764).** All in code that landed hours earlier, which is the
+  argument for the review pass.
+  - **RF-760 (S2):** the pooled fit read its per-detector configuration from
+    `jobs[0]`, and job zero is not guaranteed to be a real job — a measurement
+    whose raw TTTR is missing contributes one carrying an empty mapping, and
+    jobs follow the burst table's file order. The whole step then produced no
+    fit, no `Info/state_lifetimes.csv` and no start values while the run
+    otherwise completed: every per-burst state fit silently fell back to the
+    panel's one guess, which is the bias the seeding exists to remove. It now
+    takes the first *non-empty* configuration, with a test that puts a
+    raw-data-less file first.
+  - **RF-761 (S3):** the pooling pass is a second sweep over every photon and
+    touched neither the progress bar nor the cancel flag, so the window sat at
+    0 % and ignored Cancel for its duration. It now reads the cancel per
+    completed file (where it can still shorten the pass), names the file count
+    on the bar, and pumps the UI.
+  - **RF-762 (S3):** `write_state_lifetimes` returns the files it wrote and the
+    caller dropped them, so the table never entered the stamp's outputs —
+    deleting it left the next run reporting *Unchanged* and never rewriting it.
+    The sidecars now join `written`.
+  - **RF-763 (S3):** a dead `n_states` parameter (the count that shapes the
+    arrays comes from each job's own `state_info`) and a `seeded` counter that
+    was computed and dropped. The parameter is gone; the count is now in the
+    status line.
+  - **RF-764 (S3):** `_save_burst_results_fast` was annotated `-> None` while
+    returning `list[Path] | None`, and the reuse gate branches on exactly that
+    value. Annotated and documented.
+  `burst_mle_analysis` suite: 31 pass.
+
 * **The dwell-time histogram was plotting burst durations, and the flag that
   says so was written but unused.** A dwell touching its burst's first or last
   photon is **censored**: it did not end, the burst did. Its duration is a lower

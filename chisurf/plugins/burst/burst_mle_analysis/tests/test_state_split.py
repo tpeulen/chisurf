@@ -263,8 +263,8 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(qapp, tmp_path):
                  mt_sh.name, mt.shape, str(mt.dtype), ["green"], {"green": cfg}, 0,
                  (st_sh.name, st.shape, str(st.dtype), 2))]
         w.burst_files_list.get_selected_files = lambda: [str(bur)]
-        rows = w._apply_pooled_state_fits(
-            jobs, ["green"], 2, mp.get_context("spawn"), 2, "fit23",
+        rows, written = w._apply_pooled_state_fits(
+            jobs, ["green"], mp.get_context("spawn"), 2, "fit23",
             ["tau", "gamma", "r0", "rho"],
         )
     finally:
@@ -275,13 +275,69 @@ def test_the_pooled_step_fits_writes_and_seeds_in_one_go(qapp, tmp_path):
 
     assert [r["State"] for r in rows] == [0, 1]
     assert abs(rows[0]["Tau"] - 3.6) < 0.25, rows[0]["Tau"]
-    assert (analysis / "Info" / "state_lifetimes.csv").exists()
+    table = analysis / "Info" / "state_lifetimes.csv"
+    assert table.exists()
+    # The files it wrote come back, so the reuse gate can cover them: a stamp
+    # that names only the b?4 exports reports "Unchanged" after this table is
+    # deleted, and never rewrites it.
+    assert written == [table]
 
     seeds = jobs[0][9]["green"]["state_x0"]
     assert set(seeds) == {0, 1}
     assert seeds[0][0] == rows[0]["Tau"], "the seed is the pooled lifetime itself"
     # ...and only the lifetime is seeded; the rest of the start vector stands.
     assert list(seeds[0][1:]) == list(cfg["x0"][1:])
+
+
+def test_a_file_without_raw_data_does_not_cost_the_pooled_fit(qapp, tmp_path):
+    """The shared configuration must come from a *real* job, not from job zero.
+
+    Jobs follow the burst table's file order, and a measurement whose raw TTTR
+    is missing contributes a job carrying an empty per-detector mapping. Reading
+    the configuration from that one produced no fit, no table and no start
+    values while the run otherwise completed and exported a full table — the
+    per-burst state fits then fell back to the panel's single guess, which is
+    the bias the seeding exists to remove.
+    """
+    import multiprocessing as mp
+
+    from chisurf.plugins.burst.burst_mle_analysis.wizard import (
+        MLELifetimeAnalysisWizard,
+    )
+
+    analysis = tmp_path / "burstwise_All 0.1000#15"
+    (analysis / "bi4_bur").mkdir(parents=True)
+    bur = analysis / "bi4_bur" / "m000.bur"
+    bur.write_text("")
+
+    mt, rc, st, bursts = _synth()
+    blocks = _in_shared_memory([rc, mt, st])
+    w = MLELifetimeAnalysisWizard()
+    try:
+        rc_sh, mt_sh, st_sh = blocks
+        cfg = _cfg()
+        # First: a file whose raw measurement could not be read (this is exactly
+        # what ``process_bursts`` appends for it — no shm names, no config).
+        broken = ("missing.spc", bursts, None, None, None, None, None, None,
+                  ["green"], {}, 0, None)
+        real = ("m000.spc", bursts, rc_sh.name, rc.shape, str(rc.dtype),
+                mt_sh.name, mt.shape, str(mt.dtype), ["green"], {"green": cfg}, 0,
+                (st_sh.name, st.shape, str(st.dtype), 2))
+        jobs = [broken, real]
+        w.burst_files_list.get_selected_files = lambda: [str(bur)]
+        rows, written = w._apply_pooled_state_fits(
+            jobs, ["green"], mp.get_context("spawn"), 2, "fit23",
+            ["tau", "gamma", "r0", "rho"],
+        )
+    finally:
+        for sh in blocks:
+            sh.close()
+            sh.unlink()
+        w.close()
+
+    assert [r["State"] for r in rows] == [0, 1], "the good file still describes the states"
+    assert written, "the table is written"
+    assert set(real[9]["green"]["state_x0"]) == {0, 1}, "and the real job is seeded"
 
 
 def test_state_lifetimes_are_written_beside_the_analysis_not_as_a_companion(

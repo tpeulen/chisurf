@@ -276,7 +276,7 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         )
         return arrays, n_states
 
-    def _pool_state_decays(self, jobs, det_order, n_states, ctx, max_workers):
+    def _pool_state_decays(self, jobs, det_order, ctx, max_workers, progress=None):
         """Sum every burst's photons into one decay per ``(detector, state)``.
 
         Runs the cheap binning-only pass of :func:`pool_states_worker` over the
@@ -284,8 +284,12 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         results up across files: the pooled decay of a state is *the whole
         measurement's* photons of that state.
 
+        ``progress`` (when given) is moved as the files land and read for
+        cancellation between them — this is a second pass over every photon, and
+        without it the window sits at 0 % and ignores Cancel until the pass ends.
+
         Returns ``{detector: ndarray(n_states, 2, half_len)}``, empty when there
-        is nothing to pool.
+        is nothing to pool or the user cancelled.
         """
         from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -301,21 +305,37 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                  state_info) in jobs
         ]
         totals: dict[str, np.ndarray] = {}
+        done = 0
         with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
             futures = [ex.submit(pool_states_worker, j) for j in pool_jobs]
             for fut in as_completed(futures):
+                # Read the cancel *here*: after the loop it is read once every
+                # future has been joined, which cannot shorten the pass at all.
+                if self.stop_processing or (progress is not None and progress.wasCanceled()):
+                    for pending in futures:
+                        pending.cancel()
+                    return {}
                 try:
                     part = fut.result()
                 except Exception as exc:
                     # One unreadable file must not cost the pooled fit: the
                     # remaining files still describe the states.
                     cs.logging.warning(f"Pooled state decays: a file failed ({exc})")
-                    continue
+                    part = None
                 for det, arr in (part or {}).items():
                     if det in totals:
                         totals[det] += arr
                     else:
                         totals[det] = np.asarray(arr, dtype=np.int64).copy()
+                done += 1
+                if progress is not None:
+                    try:
+                        progress.setLabelText(
+                            f"Pooling state decays … {done}/{len(pool_jobs)} files"
+                        )
+                    except Exception:
+                        pass
+                QtWidgets.QApplication.processEvents()
         return totals
 
     @staticmethod
@@ -419,28 +439,36 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         return rows
 
     def _apply_pooled_state_fits(
-        self, jobs, det_order, n_states, ctx, max_workers, model, param_names
+        self, jobs, det_order, ctx, max_workers, model, param_names, progress=None
     ) -> list[dict]:
         """Pool, fit, record and seed — the whole global-lifetime step.
 
         Writes ``Info/state_lifetimes.csv``, keeps the rows on
         ``self.state_lifetimes``, and writes each state's fitted lifetime into
         the job payloads as the start value for that state's per-burst fits.
-        Returns the rows (empty when there was nothing to pool).
+        Returns the rows and the files it wrote (empty when there was nothing to
+        pool).
         """
-        pooled = self._pool_state_decays(jobs, det_order, n_states, ctx, max_workers)
+        pooled = self._pool_state_decays(
+            jobs, det_order, ctx, max_workers, progress=progress
+        )
         if not pooled:
             self.state_lifetimes = []
-            return []
+            return [], []
         # Every job carries the same per-detector configuration (IRF, background,
-        # window, model) — only the channel lookup table is sized per file — so
-        # the first one describes the pooled fit.
+        # window, model) — only the channel lookup table is sized per file. Any
+        # *real* job therefore describes the pooled fit, but a file whose raw
+        # measurement is missing carries an empty mapping, and it can be first
+        # (jobs follow the burst table's file order). Taking that one silently
+        # produced no fit, no table and no seeds while the run otherwise
+        # completed — the exact bias the seeding exists to remove.
+        shared_cfg = next((j[9] for j in jobs if j[9]), {})
         fits = self._fit_pooled_state_decays(
-            pooled, det_order, jobs[0][9], int(self.shift or 0)
+            pooled, det_order, shared_cfg, int(self.shift or 0)
         )
         rows = self._state_lifetime_rows(fits, model, param_names)
         self.state_lifetimes = rows
-        self.write_state_lifetimes(rows)
+        written = self.write_state_lifetimes(rows)
 
         seeded = 0
         for job in jobs:
@@ -465,10 +493,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             for r in rows if np.isfinite(r["Tau"])
         )
         self._set_status(
-            f"Pooled state lifetimes: {taus}" if taus
+            f"Pooled state lifetimes ({seeded} seeded): {taus}" if taus
             else "Pooled state lifetimes: none could be fitted."
         )
-        return rows
+        return rows, written
 
     def write_state_lifetimes(self, rows) -> list[Path]:
         """Write the pooled per-state lifetimes to ``Info/state_lifetimes.csv``.
@@ -557,9 +585,14 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
     #: Rows of the last pooled per-state fit (see ``write_state_lifetimes``).
     state_lifetimes: list = []
 
-    def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:
+    def _save_burst_results_fast(self, result_df: pd.DataFrame) -> list[Path] | None:
         """
         Save burst-fit results grouped by (file stem, detector) with a fast, vectorized path.
+
+        Returns the files written, or ``None`` when there was nothing to save or
+        the user cancelled the save. The caller branches on exactly that: a
+        stamp is written only when this returned files, so "cancelled" and
+        "wrote everything" must stay distinguishable.
         - Builds zero-interleaved rows (zero, data, zero, data, ..., zero) via NumPy.
         - Writes each output once with np.savetxt.
         - Writes channel_settings.json once per output folder.
@@ -4634,6 +4667,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         # inside the `try` so a failure cannot leave the wizard frozen.
         cancelled = False
         failed_files: list[str] = []
+        #: Files the pooled-state step wrote, so the reuse gate covers them too.
+        sidecars: list = []
         try:
             self._set_inputs_frozen(True)
             # The global fit comes first, and not only to have it: a state's
@@ -4643,10 +4678,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             # the bursts it could only be reported; fitted here it also steers
             # them.
             if n_states > 0 and jobs and not self.stop_processing:
-                progress.setLabelText("Fitting the pooled decay of each state...")
+                progress.setLabelText("Pooling state decays …")
                 ui_pump(0)
-                self._apply_pooled_state_fits(
-                    jobs, det_order, n_states, ctx, max_workers, model, param_names
+                _rows, sidecars = self._apply_pooled_state_fits(
+                    jobs, det_order, ctx, max_workers, model, param_names,
+                    progress=progress,
                 )
                 progress.setLabelText("Processing bursts...")
             with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
@@ -4745,6 +4781,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             self._set_status("MLE fitted τ: " + " · ".join(summary_bits))
 
         written = self._save_burst_results_fast(result_df)
+        if written and sidecars:
+            # Everything the step produced belongs in the stamp, or the gate
+            # validates only part of it: delete Info/state_lifetimes.csv and the
+            # next run still reports "Unchanged" and never rewrites it.
+            written = list(written) + [p for p in sidecars if p not in written]
         if written and stamp_path is not None:
             # Stamp with the settings *as the batch used them*, not as they were
             # when it started: reading the burst data settles per-detector state
