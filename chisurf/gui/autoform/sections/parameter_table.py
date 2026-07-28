@@ -17,6 +17,7 @@ attribute on the section descriptor.
 from __future__ import annotations
 
 import re
+import weakref
 from functools import partial
 from math import copysign, floor, isfinite, log10
 from typing import Callable, List, Optional
@@ -136,13 +137,24 @@ class WheelValueFilter(QtCore.QObject):
 
     def __init__(self, view: QtWidgets.QTableView, parent=None):
         super().__init__(parent or view)
-        self._view = view
+        # Weak, deliberately. A strong reference here keeps a table (and the
+        # parameters behind it) alive past the point its owner dropped it, and
+        # a repaint of that corpse reads freed parameters -- which surfaced as
+        # another test's table painting an AttributeError from headerData.
+        self._view_ref = weakref.ref(view)
+
+    @property
+    def _view(self):
+        """Return the table this filter serves, or ``None`` once it is gone."""
+        return self._view_ref()
 
     def eventFilter(self, obj, event) -> bool:
         """Turn a wheel notch over an editable numeric cell into an edit."""
         if event.type() != QtCore.QEvent.Wheel:
             return False
         view = self._view
+        if view is None:
+            return False
         model = view.model()
         if model is None:
             return False
@@ -207,9 +219,16 @@ def install_wheel_editing(view: QtWidgets.QTableView) -> WheelValueFilter:
     WheelValueFilter
         The installed filter, kept alive by the view.
     """
-    handler = WheelValueFilter(view, parent=view)
-    view.viewport().installEventFilter(handler)
-    view.setFocusPolicy(QtCore.Qt.StrongFocus)
+    # Parented to the object it filters, not to the view: a filter that
+    # outlives its viewport is a filter Qt tears down in the wrong order, and
+    # the table's own deletion then takes the process with it.
+    viewport = view.viewport()
+    handler = WheelValueFilter(view, parent=viewport)
+    viewport.installEventFilter(handler)
+    # The view's focus policy is left alone. Narrowing it to StrongFocus (it
+    # ships as WheelFocus) changed how the view answers a right-click, which
+    # broke the guard that says only the left button may toggle a checkbox
+    # cell -- the wheel needs no focus to be filtered.
     return handler
 
 

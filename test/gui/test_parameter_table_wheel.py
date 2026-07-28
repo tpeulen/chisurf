@@ -9,7 +9,6 @@ The step has to be relative: a parameter table holds a lifetime of 4, an
 amplitude of 1e-3 and a count of 1e6 at the same time, and a fixed step is
 either useless on one or destructive on another.
 """
-import numpy as np
 import pytest
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -148,48 +147,37 @@ def test_a_linked_follower_is_left_alone(table):
     master = FittingParameter(name="master", value=9.0)
     params[0].link = master
     assert params[0].is_linked
+    try:
+        before = params[0].value
+        turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
+        assert params[0].value == before
+    finally:
+        # The link is a reference the follower's port holds across into the
+        # master. Leaving it dangling when this frame drops ``master`` takes
+        # the process down later, in whichever test next repaints a table.
+        params[0].link = None
 
-    before = params[0].value
-    turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
-    assert params[0].value == before
 
-
-def test_the_wheel_writes_through_the_same_path_as_typing(qtbot):
+def test_the_wheel_writes_through_the_same_path_as_typing(table):
     """It is an edit, not a poke at the object: the controller carries it.
 
     That is what makes the value reach the backend and the provenance trace,
-    exactly as a typed edit does.
+    exactly as a typed edit does. A wheel that assigned the attribute directly
+    would look identical here and be invisible everywhere else.
     """
-    import chisurf.core.data
-    import chisurf.core.models.parse
-
-    rng = np.random.default_rng(0)
-    x = np.linspace(0, 10, 64)
-    y = 2.0 + 0.5 * x ** 2 + rng.normal(0, 0.5, x.size)
-    data = chisurf.core.data.DataCurve(x=x, y=y, ey=np.ones_like(y))
-    fit = chisurf.core.fitting.fit.FitGroup(
-        data=chisurf.core.data.DataGroup([data]),
-        model_class=chisurf.core.models.parse.ParseModel,
-    )
-    fit.fit_range = 0, len(fit.model.y)
-    fit.model.func = 'c+a*x**2'
-    fit.model.find_parameters()
-
-    params = list(fit.model.parameters_all)
-    widget = ParameterGroupTableWidget(params)
-    qtbot.addWidget(widget)
-    widget.resize(520, 140)
-    widget.show()
-
-    applied = []
     from chisurf.gui.autoform.sections.parameter_table import _editor
 
+    widget, params = table
     controller = _editor(params[0])
     assert controller is not None, "the table installs a controller on every parameter"
+
+    applied = []
     original = controller.apply_value
     controller.apply_value = lambda value, parameter=None: (
         applied.append(value), original(value, parameter)
     )[1]
-
-    turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
-    assert applied, "the wheel edit did not go through the parameter's controller"
+    try:
+        turn_wheel(widget.table_view, 0, COLUMN_IDS.index("value"), +1)
+        assert applied == [pytest.approx(4.1)]
+    finally:
+        controller.apply_value = original
