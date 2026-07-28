@@ -8524,3 +8524,83 @@ half about another. RF-718..RF-729.
 - **Location:** `chisurf/core/api/__init__.py:323` and `:375` — `str(getattr(fit.data, "experiment", "") or getattr(getattr(fit.data, "experiment", None), "name", "") or "")` — against `list_datasets` at `:143`, which uses `str(getattr(getattr(d, "experiment", None), "name", "") or "")`
 - **Finding:** the `or` chain is evaluated *inside* `str()`, and an `Experiment` is a plain truthy object, so the first operand always wins and the `.name` branch is dead code. Verified on a real `Experiment(name='TCSPC')` attached to one dataset used by one fit: `get_fit_info(...)['fit']['data']['experiment']` is `'Experiment(TCSPC)'` while `list_datasets()[0]['experiment']` is `'TCSPC'`. Both are consumed as the same thing downstream — `DataProxy.experiment` (`_proxies.py:40-42`) and `DatasetProxy.experiment` (`:329-331`) are both typed `-> str` and both feed display code. Fix: use the `list_datasets` spelling in all three places (`:323`, `:375`, and the identical `get_dataset_info` path), and delete the dead fallback.
 - **Fix note:**
+
+## QA 2026-07-28 — merging FCS repeats and calibrating the confocal volume
+
+Use case recorded in
+[/usecases/fcs-merge-and-calibrate.md](/usecases/fcs-merge-and-calibrate.md).
+Drove the real *FCS-Merger* wizard (`ChisurfWizard` → `WizardFcsMerger`) and the
+*Diffusion/Volume Calculator* (`ConfocalCalcWidget`) offscreen in the `arm64` env:
+loaded a scratch chunk folder holding `test/data/fcs/kristine/Kristine_with_error.cor`
+and `Kristine_without_error.cor` (207 lags, 58.66 s, 18.264 kHz each), triaged
+rows by double-click, saved the merged `.cor`, pushed it into ChiSurf with the
+page's own *add to ChiSurf*, then calibrated Veff on Rhodamine 110 and read D,
+r_h and a concentration back out. **The maths is right** — every calculator
+quantity reproduced an independent hand calculation to all printed digits
+(Veff from τ and D, D and r_h from a fixed Veff, Stokes–Einstein over 5–60 °C,
+the water-viscosity model, the T/η scaling of D_ref, N ↔ 1/N ↔ c), and the merged
+`y` matches the mean of the inputs exactly. RF-730..RF-738 are the plumbing
+around it.
+
+### RF-730
+- **Status:** OPEN
+- **Severity:** S1 (data corruption: every count rate the FCS-Merger displays and writes is exactly 2000× too small, because the GUI keeps an older copy of a parser the shared core has since fixed)
+- **Location:** `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py:155-156` (`total_counts = count_rate * duration` / `half_counts = 0.5 * total_counts`, stored into `channel_a`/`channel_b` at `:163-164`) against `chisurf/core/fluorescence/fcs/merge.py:74-77` (`half_counts = count_rate * 1e3 * duration`, preceded by the comment *"a channel holds ``count_rate * 1e3 * duration`` counts. Anything else loses a factor 2000"*), consumed by `append_correlation` at `fcs_merger.py:102-103` and by `compute_average_correlations` at `merge.py:37-38`
+- **Finding:** `WizardFcsMerger.open_correlation_folder` re-implements `_correlation_from_cor_array` inline instead of calling it, and its per-channel counts are `0.5 * count_rate * duration` where the core's are `count_rate * 1e3 * duration`. Both downstream consumers then divide by `duration * 1000` again, so the GUI's count rate comes out as `count_rate / 2000`. Verified end to end through the widget: a `.cor` whose metadata row says **18.2639 kHz** shows as `0.01` in the table's *CR A (kHz)* and *CR B (kHz)* columns, `mean_correlation['count_rate']` is **0.00913195**, and the saved file's row-1 metadata field reads `9.132e-03`; calling `merge.merge_folder()` on the identical folder returns **18.2639** — the ratio is exactly 2000.0. Consequences: the only column that lets a user spot the repeat whose count rate collapsed is unreadable (all repeats show `0.01`); the merged `.cor` is written with a corrupt mean count rate that `read_kristine` stores as `mean_count_rate` and that the Suren weighting model (`kristine.py:116`) uses to build fit weights whenever no error column is present. Delete the inline copy and call `chisurf.core.fluorescence.fcs.merge._correlation_from_cor_array` / `parse_correlation_folder`, which is the primitive the plugin's own CLI and RPC path already use.
+- **Fix note:**
+
+### RF-731
+- **Status:** OPEN
+- **Severity:** S1 (the merged curve poisons the fit that consumes it: exact zeros in the error column become infinite fit weights, with only a stderr RuntimeWarning)
+- **Location:** `chisurf/core/fio/fluorescence/fcs/kristine.py:110-117` (`w = 1. / data[:, 3][i]` inside a `try` that catches only `IndexError`/`ValueError`), fed by `chisurf/core/fluorescence/fcs/merge.py:53` (`ey = np.std(ys, axis=0) / np.sqrt(n_curves)`) and `:131` / `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py:222` (`if np.any(ey != 0)` → write the 4th column)
+- **Finding:** `std` over the merged repeats is **exactly 0** at every lag where the curves happen to agree — common at long lags, where G is quantised and the repeats converge to 1.0. The writer's guard is `np.any(ey != 0)`, i.e. *any* non-zero value makes it emit the whole column including the zeros, and the reader inverts it elementwise with no guard. Verified through the GUI on the real merged file: `save` produced a 4-column `.cor` with **24 zeros in 206 error values**, and `read_kristine` on it returned `correlation_amplitude_weights` with **24 `inf` entries** (largest finite weight 2.8 × 10¹⁰) — while the only signal to the user was `RuntimeWarning: divide by zero encountered in divide` on stderr, invisible in the GUI. The page's own *add to ChiSurf* path (`fcs_merger.py:255-298`) carries this straight into a dataset, so a χ² is then decided almost entirely by 24 lag channels. Guard the inversion (`np.divide(1.0, ey, out=…, where=ey > 0)` and fall back to the Suren noise model for the affected points, or clamp to the smallest positive error), and have the merger refuse to write an error column with zeros in it.
+- **Fix note:**
+
+### RF-732
+- **Status:** OPEN
+- **Severity:** S2 (merging silently deletes the first lag channel of every curve, undocumented and unconditional — so a merge is not a no-op even for one input)
+- **Location:** `chisurf/core/fluorescence/fcs/merge.py:55-59` (the returned `"x"`, `"y"` and `"ey"` are all sliced `[1:]`), reached from `compute_average_correlations`'s only two callers — `merge_folder` at `:136` and `WizardFcsMerger.compute_average_correlations` at `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py:32-38`
+- **Finding:** the three `[1:]` slices are the only place the lag axis changes length, and nothing in the docstring (*"the acquisition time is summed, and the count rate is duration-weighted"*), the RPC summary or the GUI mentions them. Verified: a folder holding one 207-row `.cor` merges to **206** rows, and the shortest lag **1.3596e-05 s** is gone from the output — the input's `x[0]`/`y[0]` pair simply does not appear. The intent is presumably to discard the after-pulsing channel, but that is a per-instrument decision, it is applied even when the correlator already excluded it, and it makes "re-merge this folder" lossy in a way that compounds across repeated passes. Either drop the slices and expose an explicit *skip first N lag channels* control (defaulting to 0), or document the behaviour in the docstring, the RPC summary and the wizard page.
+- **Fix note:**
+
+### RF-733
+- **Status:** OPEN
+- **Severity:** S2 (merging a folder that holds a single `.cor` deletes the per-point errors that file arrived with)
+- **Location:** `chisurf/core/fluorescence/fcs/merge.py:50-51` (`if n_curves == 1: ey = np.zeros_like(ys[0])`) together with `:129-133` (`if np.any(ey != 0): … else: 3-column write`), mirrored in `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py:222-226`
+- **Finding:** `compute_average_correlations` derives `ey` only from the scatter *between* curves and ignores each input's own `ey`, which `_correlation_from_cor_array` (`merge.py:80`) does read and carry. With one input curve the scatter is undefined, so `ey` is zeroed, `np.any(ey != 0)` is False, and the writer emits three columns. Verified: `Kristine_with_error.cor` goes in with **4 columns and a real error column**, and comes out of `merge_folder` with **3** — the errors are gone, and a fit on the result silently falls back to the Suren noise model. This is the normal way a user reorganises or renames a measurement. Propagate the input `ey` when `n_curves == 1` (and combine per-curve errors with the between-curve scatter when there are more), rather than zeroing it.
+- **Fix note:**
+
+### RF-734
+- **Status:** OPEN
+- **Severity:** S2 (two of the FCS-Merger page's three toolbar buttons do nothing: *clear* is connected to no slot, *help* opens an empty panel)
+- **Location:** `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger_ui.py:34-41` (`setup_ui` wires only `tableWidget.itemDoubleClicked`, `actionRowSingleClick` and `toolButton_3` → `save_mean_correlation`), `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.ui:151-155` (`toolButton_2`, text *clear*) and `:36-47` + `:197-206` (`textEdit`, no `html`/`plainText` property, shown by `toolButton`'s `toggled(bool)`), plus the orphaned handler `WizardFcsMerger.onClearFiles` at `fcs_merger.py:78-82`
+- **Finding:** verified by clicking both with `QTest.mouseClick` on the live page. **clear**: nothing happens — the path box, the table (2 rows) and `self.correlations` are byte-identical before and after, because no `connect` for `toolButton_2` exists anywhere. The handler that was presumably meant for it, `onClearFiles`, is dead code copied from the TTTR-correlator page and raises `AttributeError: 'WizardFcsMerger' object has no attribute 'settings'` on its first line (`self.settings['tttr_filenames'].clear()`) — so wiring it as-is would swap a dead button for a crashing one. **help**: the button is checkable and does toggle `textEdit` visible, but the widget has no text (`toPlainText()` is `''`), so it opens a blank 210 px panel that only narrows the already-cramped table (see the screenshot in the use case). Either give the page real help text and a working clear (`lineEdit.clear()`, `tableWidget.setRowCount(0)`, `correlations.clear()`, `update_plots()`), or remove both buttons and the dead handler.
+- **Fix note:**
+
+### RF-735
+- **Status:** OPEN
+- **Severity:** S2 (unticking every curve merges all of them anyway, and the two plots in the same window then contradict each other)
+- **Location:** `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.py:48-50` (`if not selected_correlations: selected_correlations = self.correlations` in the `mean_correlation` property) against `update_plots` at `:62-76`, which draws unticked curves dashed grey and the mean panel from that same property
+- **Finding:** the silent fallback means "exclude everything" is indistinguishable from "exclude nothing". Verified on the live page: with **both** *Use* boxes cleared, `mean_correlation['duration']` is **117.33 s** — the sum of both curves, i.e. both were merged — while the left plot renders both as dashed grey "not used". The screenshot shows the two panels disagreeing side by side, and **save** writes the average of all curves without a word. A user unticking rows one at a time to isolate a single repeat reaches this state on the last click and gets a merge of everything. Return an empty/undefined mean and disable **save** with a message (*"No curves selected"*), or keep at least one row ticked by construction.
+- **Fix note:**
+
+### RF-736
+- **Status:** OPEN
+- **Severity:** S2 (the calculator's three computed fields are visually identical to its inputs; the code that should distinguish them assigns a colour role to itself)
+- **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:303-317` (`_update_field_enable`: `pal = sb.palette()` → `if sb.isReadOnly(): pal.setColor(sb.backgroundRole(), pal.base().color())` → `sb.setPalette(pal)`, under the comment *"Make read-only fields visually distinct"*)
+- **Finding:** a `QDoubleSpinBox`'s `backgroundRole()` **is** `QPalette::Base`, so the line sets Base to Base — a no-op — and the widget stays exactly as it was. Verified on the live widget under the default *Fix D*: `D` (an input) and `rh` / `Veff` (outputs) all report `palette().base() == #ffffff`, the same `buttonSymbols`, empty style sheets, and `isEnabled() == True`; the read-only ones correctly refuse `stepUp()` and typed keys (`rh` stayed 0.535862, `Veff` stayed 1.043571) but give no indication why, so the field reads as broken rather than computed. The widget already has the right vocabulary one row below: with *Use water η(T)* ticked, the η box is `setEnabled(False)` and renders properly greyed in the screenshot. Grey the read-only fields the same way (or hide their spin arrows with `setButtonSymbols(NoButtons)`), and re-apply on every constraint change — this is the central confusion of a panel with six identical spin boxes of which three are results.
+- **Fix note:**
+
+### RF-737
+- **Status:** OPEN
+- **Severity:** S3 (*Apply Dref* and *Apply shape→D* silently switch the constraint back to *Fix D*, destroying a calibrated Veff with no warning and no undo)
+- **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:401-404` (`_apply_dref_to_D`: `self.rb_fix_D.setChecked(True)` / `_update_field_enable()` / `_set_spin(self.D_um2_s, D_use)` / `_recompute()`) and `:449-452` (the identical block in `_apply_shape_to_D`)
+- **Finding:** the calibrated effective volume is the one number in the widget a user cannot recompute — it comes from a separate measurement of a reference dye — and it is the field these two buttons overwrite. Verified on the live widget: with *Fix Veff* selected and the calibration entered (`Veff = 0.298067 fL`, τ = 220 µs), one click on **Apply shape→D** left `rb_fix_V` unchecked, `rb_fix_D` checked and **Veff = 1.097465 fL**; the panel gives no dialog, no status line and no way back. The comment *"Switch to Fix D so D is authoritative"* explains the mechanism but not why it should be allowed to discard the user's constraint choice. Either apply the value into the D field without touching the constraint (leaving the user to switch if they want), or confirm before overwriting a Veff that was entered under *Fix Veff*.
+- **Fix note:**
+
+### RF-738
+- **Status:** OPEN
+- **Severity:** S3 (the *Aspect* box is editable and ignored in the shape estimator's default state, because the handler that disables it never runs at construction)
+- **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:407-416` (`_on_shape_changed`: `self.shape_aspect.setEnabled(shape != "Sphere")`), wired at `:282` to `currentIndexChanged` only, against `_setup_ui`'s init block at `:242-244`, which calls `_update_field_enable()` and `_on_use_water_eta(...)` but not `_on_shape_changed(...)`
+- **Finding:** `_ShapeSection` builds the combo with *Sphere* at index 0 (`:108`), so the first `currentIndexChanged` cannot fire for the default selection and the handler never runs until the user picks something else. Verified on a freshly constructed widget: with *Sphere* selected, `shape_aspect.isEnabled()` is `True`, so the user can type an aspect ratio that `_apply_shape_to_D` (`:431-434`) never reads — a sphere's D depends only on the size. Selecting *Ellipsoid* and returning to *Sphere* fixes it for the rest of the session, which makes the inconsistency harder to notice, not easier. Call `_on_shape_changed(self.shape_combo.currentIndex())` once at the end of `_setup_ui`, beside the two initialisers that are already there.
+- **Fix note:**

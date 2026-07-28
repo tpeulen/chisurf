@@ -240,6 +240,17 @@ The workflows a first pass should cover — expand as the tester discovers more:
   Align/Rot-Translate silently replace the time axis with a frame counter that
   ignores the stride. *(last driven 2026-07-28; RF-706..RF-710)*
 
+- [Merging FCS repeats and calibrating the confocal volume](/usecases/fcs-merge-and-calibrate.md)
+  — the two steps that bracket the FCS fit: average a folder of repeat
+  correlation chunks into one `.cor` with per-point errors, then calibrate *Veff*
+  on a reference dye of known *D* and turn the fitted τ_D, S and G(0) of an
+  unknown sample into a diffusion coefficient, a hydrodynamic radius and an
+  absolute concentration. Every closed-form quantity checks out by hand, but the
+  merger shows and writes **every count rate 2000× too small**, its zero error
+  values become **infinite fit weights** in the curve it hands to ChiSurf,
+  unticking every row merges all of them anyway, and two of its three buttons do
+  nothing. *(last driven 2026-07-28; RF-730..RF-738)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

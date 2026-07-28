@@ -2,6 +2,38 @@
 
 ## 2026-07-28
 
+* **QA — the two steps that bracket every FCS fit, driven for the first time.**
+  New use case
+  [merging FCS repeats and calibrating the confocal volume](/usecases/fcs-merge-and-calibrate.md):
+  the *FCS-Merger* wizard and the *Diffusion/Volume Calculator*, both driven
+  offscreen on `test/data/fcs/kristine/*.cor` and the MMFDB reference-dye table.
+  Every closed-form quantity the calculator produces reproduced an independent
+  hand calculation to all printed digits — Veff from τ and D, D and r_h back out
+  of a fixed Veff, the Stokes–Einstein inversion over 5–60 °C, the water-viscosity
+  model, the T/η scaling of D_ref, and N ↔ 1/N ↔ c — and the merged `y` is the
+  mean of its inputs exactly. The plumbing around that is not: **RF-730** (S1) the
+  merger's GUI page keeps its own older copy of the `.cor` parser, so every count
+  rate it shows and writes is exactly **2000×** too small — 18.264 kHz reads as
+  `0.01` — while the shared core primitive it should be calling gets it right and
+  carries a comment warning about that exact factor; **RF-731** (S1) exact zeros in
+  the merged error column become **`inf` fit weights** in `read_kristine`
+  (24 of 206 points, on the file the page's own *add to ChiSurf* hands over),
+  announced only by a stderr `RuntimeWarning`; **RF-732/733** (S2) the round trip
+  is not the identity — the first lag channel is dropped unconditionally and a
+  single-curve merge deletes the input's error column; **RF-734** (S2) *clear* is
+  connected to no slot and *help* opens a blank panel; **RF-735** (S2) unticking
+  every row merges all of them while the plot draws them as excluded;
+  **RF-736** (S2) the calculator's computed fields are indistinguishable from its
+  inputs, because the palette line meant to grey them assigns `Base` to `Base`;
+  **RF-737/738** (S3) *Apply Dref* / *Apply shape→D* silently discard a calibrated
+  Veff, and *Aspect* is editable and ignored for the default *Sphere*. UX notes in
+  the use case: the merger's table is pinned at ~125 px for 500 px of columns at
+  every window size, so repeats sharing a filename prefix are indistinguishable
+  and the count-rate columns are off-screen; neither correlation plot is labelled;
+  and the whole workflow is *read τ_D, S and 1/N off a fit and retype them*, which
+  a **From selected fit** button would remove. Tester only — no application source
+  touched.
+
 * **BVA is on the shared dockable-tool base, and its folder drop stops lying**
   ([PRD-36](prds/prd-36.md), priority-A rollout). `BVATool` now subclasses
   `ChisurfDockTool` instead of forking `MessagesMixin, QMainWindow`, and the
