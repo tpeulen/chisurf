@@ -533,6 +533,34 @@ class H2mmTool(MessagesMixin, QMainWindow):
         # style and spelled out in the title instead.
         self._nano_legend = self._p_nano.addLegend(offset=(-5, 5), labelTextSize="7pt")
 
+        # states × colours curves is more than a small plot can carry, so the
+        # dock owns a filter bar: which colours, which states. Built empty and
+        # populated from the fit, because neither set is known until then.
+        nano_page = QWidget()
+        nano_v = QVBoxLayout(nano_page)
+        nano_v.setContentsMargins(0, 0, 0, 0)
+        nano_v.setSpacing(2)
+        nano_v.addWidget(w_nano, 1)
+        # A flow layout, not a row: with three colours and up to five states the
+        # bar is wider than this dock at its default width, and a control that
+        # has fallen off the edge cannot be ticked. Wrapping keeps every one
+        # reachable however narrow the dock is dragged.
+        from chisurf.gui.widgets.dock_area.dock_stacked_tab_bar import FlowLayout
+
+        self._nano_filter_bar = QWidget()
+        # Compact type, like the other in-plot toggles: the bar is chrome around
+        # a small plot, and every pixel it takes comes off the decay.
+        self._nano_filter_bar.setStyleSheet(
+            "QCheckBox, QLabel { color: #aaa; font-size: 11px; }"
+        )
+        self._nano_filter_layout = FlowLayout(
+            self._nano_filter_bar, margin=1, h_spacing=5, v_spacing=1
+        )
+        nano_v.addWidget(self._nano_filter_bar)
+        self._nano_colour_boxes: dict[str, QCheckBox] = {}
+        self._nano_state_boxes: dict[int, QCheckBox] = {}
+        self._nano_decays = None
+
         w_rates = self._new_plot(self._DOCK_RATES)
         self._p_rates = w_rates.getPlotItem()
         self._p_rates.setLabels(bottom="to state", left="from state")
@@ -586,7 +614,7 @@ class H2mmTool(MessagesMixin, QMainWindow):
             self._DOCK_TDP: w_tdp,
             self._DOCK_SEL: w_sel,
             self._DOCK_DWELL: w_dwell,
-            self._DOCK_NANO: w_nano,
+            self._DOCK_NANO: nano_page,
             self._DOCK_RATES: w_rates,
             self._DOCK_PATH: path_page,
         }
@@ -1410,25 +1438,90 @@ class H2mmTool(MessagesMixin, QMainWindow):
         if micro.shape[0] != path.shape[0] or micro.size == 0 or int(micro.max()) <= 0:
             return
 
-        decays = state_decays(
+        self._nano_decays = state_decays(
             micro, meta.channel, self._bundle.data.streams, path,
             n_states=int(ana.fret.shape[0]),
             groups=colour_groups(ana, self._bundle.settings),
             micro_time_ns=getattr(self._bundle, "micro_time_ns", None),
         )
+        self._rebuild_nano_filters(self._nano_decays)
+        self._draw_nanotime()
+
+    def _rebuild_nano_filters(self, decays) -> None:
+        """Offer one checkbox per colour and per state, for *this* fit.
+
+        Rebuilt rather than reused: a refit can change the state count, and a
+        stale "S3" box would filter on a state that no longer exists. A colour or
+        state already on screen keeps its tick, so a refit does not silently
+        change what is being looked at.
+        """
+        previous_colours = {n: b.isChecked() for n, b in self._nano_colour_boxes.items()}
+        previous_states = {s: b.isChecked() for s, b in self._nano_state_boxes.items()}
+        while self._nano_filter_layout.count():
+            item = self._nano_filter_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._nano_colour_boxes = {}
+        self._nano_state_boxes = {}
+
+        self._nano_filter_layout.addWidget(QLabel("Colour:"))
+        for i, colour in enumerate(decays.colours):
+            box = QCheckBox(colour)
+            # Default to the donor alone: every colour at once is what made this
+            # plot unreadable. The rest are one tick away, and visibly so.
+            box.setChecked(previous_colours.get(colour, i == 0))
+            box.setToolTip(
+                f"Show the {colour} decays "
+                f"(detectors {decays.colour_channels.get(colour, [])})"
+            )
+            box.toggled.connect(self._draw_nanotime)
+            self._nano_filter_layout.addWidget(box)
+            self._nano_colour_boxes[colour] = box
+
+        self._nano_filter_layout.addWidget(QLabel("State:"))
+        for s in range(decays.n_states):
+            box = QCheckBox(f"S{s}")
+            box.setChecked(previous_states.get(s, True))
+            box.setToolTip(f"Show state {s} ({self._DASH_NAMES[s % len(self._DASH_NAMES)]})")
+            box.toggled.connect(self._draw_nanotime)
+            self._nano_filter_layout.addWidget(box)
+            self._nano_state_boxes[s] = box
+
+    def _draw_nanotime(self) -> None:
+        """Draw the decays the filter bar selects. Cheap: nothing is recomputed."""
+        decays = self._nano_decays
+        p = self._p_nano
+        p.clear()
+        self._nano_legend.clear()
+        if decays is None:
+            return
         x = decays.centers_ns()
         p.setLabel("bottom", "Micro time (ns)" if decays.micro_time_ns else "Micro time")
         named: set[str] = set()
         states_drawn: set[int] = set()
+        # With one colour on screen the legend only repeats what the ticked
+        # checkbox already says, while sitting on top of the curve it names.
+        selected = [
+            c for c in decays.colours
+            if (b := self._nano_colour_boxes.get(c)) is None or b.isChecked()
+        ]
+        label_curves = len(selected) > 1
         for k, colour in enumerate(decays.colours):
+            box = self._nano_colour_boxes.get(colour)
+            if box is not None and not box.isChecked():
+                continue
             for s in range(decays.n_states):
+                s_box = self._nano_state_boxes.get(s)
+                if s_box is not None and not s_box.isChecked():
+                    continue
                 y = decays.colour_counts[s, k]
                 keep = y > 0
                 if not keep.any():
                     continue
                 # Name one curve per colour: the legend answers "which colour is
                 # which", the title answers "which line style is which state".
-                name = colour if colour not in named else None
+                name = colour if (label_curves and colour not in named) else None
                 named.add(colour)
                 states_drawn.add(s)
                 p.plot(x[keep], y[keep], pen=self._colour_pen(colour, s), name=name)

@@ -70,6 +70,13 @@ The *Per-state decay* panel splits photons by stream and merges only within a
 colour: one curve per (colour, state), drawn in the colour of the light that
 produced it, with the line style giving the state (solid S0, dashed S1, …).
 
+Colours × states is more curves than a small plot can carry, so the panel has a
+**filter bar**: a checkbox per detection colour and one per state. It opens
+showing the **donor alone, all states** — the per-state donor lifetime is the
+FRET readout, and everything at once is unreadable — with the other colours one
+tick away. The legend appears only when more than one colour is shown; with a
+single colour it would just sit on top of the curve it names.
+
 Splitting by *stream* rather than by detector matters under PIE/ALEX, where the
 acceptor-excitation stream shares its detectors with the acceptor stream and is
 separated only by a micro-time window. In the panel below you can see it
@@ -79,7 +86,7 @@ directly: the red curve stops at ~6.8 ns and the yellow one begins there.
 :name: fig-h2mm-state-decays
 :width: 90%
 
-Per-state decays of a two-state fit, one curve per detection colour. Green is
+Per-state decays of a two-state fit with **every colour ticked**. Green is
 the donor, red the sensitised acceptor, yellow the directly excited acceptor —
 red and yellow share the same detectors and are separated by the PIE window at
 ~6.8 ns. Solid is S0 (low FRET: little red), dashed is S1 (high FRET).

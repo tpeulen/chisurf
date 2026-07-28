@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **The per-state decay plot is a choice, not a dump.** Splitting the decays per
+  colour made them meaningful but left the panel drawing colours × states curves
+  at once — on a two-state PIE fit that is six, on a small dock unreadable. The
+  *Per-state decay* dock now carries a filter bar: one checkbox per detection
+  colour, one per state, rebuilt from each fit (a refit can change the state
+  count, and a stale "S3" would filter on a state that no longer exists) while
+  keeping whatever is already ticked. It opens on the **donor alone, all
+  states** — the per-state donor lifetime is the FRET readout — with the rest one
+  visible tick away. Compute and draw are now separate, so a toggle redraws
+  without re-histogramming. Three things came out of *looking* at it rather than
+  asserting: the bar is a `FlowLayout` (the repo already had one) because a plain
+  row put the state boxes off the edge of the dock at its default width, where
+  they cannot be ticked; the type is compact because the bar's height came
+  straight off the plot and left the log-axis decades colliding; and the legend
+  is drawn only when more than one colour is shown, since with one it merely sits
+  on the curve it names. Pinned by
+  `test_the_decay_panel_filters_by_colour_and_state`; guide 19 updated with the
+  filter and a re-shot figure.
+
 * **Two plot modules nobody could reach, and the guard that says so.**
   `gui/plots/av_plot.py` sat on the [PRD-64](/prds/prd-64.md) pyqtgraph
   allow-list as a 3-D `pyqtgraph.opengl` file "deferred to PRD-57" — but it had

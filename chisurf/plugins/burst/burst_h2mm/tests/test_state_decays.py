@@ -159,3 +159,60 @@ def test_colour_groups_names_come_from_the_detectors():
         aex_streams = ()
 
     assert colour_groups(_NoAex(), _Settings()) == [("gg", (0,)), ("rr", (1,))]
+
+
+def test_the_decay_panel_filters_by_colour_and_state(qapp, tmp_path):
+    """states × colours is more than one small plot can carry — so it is a choice.
+
+    Defaults to the donor alone (every colour at once is what made the plot
+    unreadable) with all states shown, and every control stays reachable.
+    """
+    import numpy as np
+
+    from chisurf.plugins.burst.burst_h2mm.gui.tool import H2mmTool
+    from chisurf.plugins.burst.burst_h2mm.core.decays import state_decays
+
+    tool = H2mmTool(embedded=True)
+    try:
+        rng = np.random.default_rng(0)
+        n = 600
+        micro = rng.integers(0, 400, n)
+        chan = rng.integers(0, 2, n)
+        strm = chan.copy()
+        path = rng.integers(0, 2, n)
+        decays = state_decays(
+            micro, chan, strm, path, n_states=2,
+            groups=[("green", (0,)), ("red", (1,))], n_bins=64,
+        )
+        tool._nano_decays = decays
+        tool._rebuild_nano_filters(decays)
+
+        assert set(tool._nano_colour_boxes) == {"green", "red"}
+        assert set(tool._nano_state_boxes) == {0, 1}
+        assert tool._nano_colour_boxes["green"].isChecked(), "the donor shows by default"
+        assert not tool._nano_colour_boxes["red"].isChecked(), "the rest are a tick away"
+        assert all(b.isChecked() for b in tool._nano_state_boxes.values())
+
+        def drawn():
+            return len([i for i in tool._p_nano.listDataItems()])
+
+        tool._draw_nanotime()
+        assert drawn() == 2, "one green curve per state"
+
+        tool._nano_colour_boxes["red"].setChecked(True)
+        assert drawn() == 4, "both colours, both states"
+
+        tool._nano_state_boxes[1].setChecked(False)
+        assert drawn() == 2, "one state, both colours"
+
+        tool._nano_colour_boxes["green"].setChecked(False)
+        tool._nano_colour_boxes["red"].setChecked(False)
+        assert drawn() == 0, "nothing selected draws nothing, rather than everything"
+
+        # A refit keeps what is on screen rather than silently changing it.
+        tool._nano_colour_boxes["red"].setChecked(True)
+        tool._rebuild_nano_filters(decays)
+        assert tool._nano_colour_boxes["red"].isChecked()
+        assert not tool._nano_colour_boxes["green"].isChecked()
+    finally:
+        tool.close()
