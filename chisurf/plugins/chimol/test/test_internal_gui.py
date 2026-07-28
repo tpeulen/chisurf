@@ -196,3 +196,22 @@ def test_every_entry_of_a_wrapped_menu_can_still_be_clicked(gui):
     assert len(menu.item_rects) == len(clickable), "entries were dropped, not wrapped"
     for rect, entry in menu.item_rects:
         assert gui.hit_test(*_centre(rect)).entry is entry
+
+
+# --------------------------------------------------------------------------- #
+# The renderer's side of it
+# --------------------------------------------------------------------------- #
+# Not tested here, deliberately. Constructing a QOpenGLWidget inside pytest
+# aborts the interpreter in this environment -- not an error, an abort that
+# takes the whole run with it -- so a test for the mouse routing would cost
+# every other test in the suite. The two things that go wrong there are:
+#
+#   * the drag anchor was only ever *assigned* on a press the camera handled,
+#     so a press taken by the panel left it unset and the following move raised
+#     AttributeError on the first click of a session; and
+#   * a drag begun on the panel also swung the camera, spinning the model out
+#     from under the menu that had just opened.
+#
+# Both are held by initialising the anchor in `__init__` and by keeping the
+# grab until release, and both are verified by driving a real window in
+# `test/screenshot.py`-style probes rather than in-process.

@@ -2,6 +2,26 @@
 
 ## 2026-07-28
 
+* **A click on the in-viewport panel crashed the next drag, and a duplicate
+  method is why the fix did not take the first time.** `_last_mouse_pos` was
+  only ever *assigned* on a press the camera handled. A press taken by the panel
+  skipped that, so the move that followed read an attribute that had never
+  existed -- an `AttributeError` on the first click of a session. It is
+  initialised now, which it should always have been.
+  - The panel also has to keep the drag it started: without that, dragging off a
+    button swings the camera and the model spins out from under the menu that
+    just opened. A grab flag is set on press and cleared on release.
+  - Except it was never cleared, because **`QtGLRenderer` defines
+    `mouseReleaseEvent` twice** and Python keeps the last one -- so the earlier
+    definition, where the clearing code went, is dead. The flag latched on and
+    the camera went deaf to dragging for the rest of the session. The clear now
+    lives in the handler that actually runs, with a note above the duplicate.
+  - Verified by driving a real window rather than in a test: constructing a
+    `QOpenGLWidget` inside pytest aborts the interpreter here, and a test that
+    kills the run costs more than it catches. The probe checks all four
+    behaviours -- no exception, the camera still while the panel is dragged, a
+    scene click dismissing the menu, and the camera rotating again afterwards.
+
 * **QA — how certain is that lifetime? Posterior sampling of a fit.** Drove the
   **Sample** button beside **Fit** headlessly on the real main window: fitted the
   IBH two-exponential decay (χ²ᵣ = 1.1340, τ = 1.66/4.22 ns), then ran thirteen

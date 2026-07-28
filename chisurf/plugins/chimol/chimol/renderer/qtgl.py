@@ -158,6 +158,14 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._draw_data: list[_DrawData] = []
         self._gpu_calls: list[_GpuDrawCall] = []
         self._labels: list[_LabelData] = []
+        #: Last cursor position of a drag. Only ever *assigned* on press, so it
+        #: has to exist before one: a drag whose press went somewhere else --
+        #: the in-viewport panel, say -- reaches the move handler with nothing
+        #: recorded, and reading it then is an AttributeError, not a no-op.
+        self._last_mouse_pos = None
+        #: Set while a press has been taken by the panel, so the drag that
+        #: follows does not also swing the camera.
+        self._gui_grab = False
         #: PyMOL's object panel, drawn in the viewport rather than beside it.
         self._internal_gui = InternalGui()
         self._needs_upload: bool = False
@@ -1999,6 +2007,8 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         if self._internal_gui.mouse_press(
             x, y, right=event.button() == QtCore.Qt.RightButton
         ):
+            self._gui_grab = True
+            self._last_mouse_pos = event.pos()
             self.update()
             event.accept()
             return
@@ -2044,6 +2054,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # Hover feedback, and the same precedence as the press: while the
         # cursor is over the panel it must not be dragging the camera.
         x, y = self._gui_pos(event)
+        if self._gui_grab:
+            event.accept()
+            return
         if not event.buttons():
             if self._internal_gui.mouse_move(x, y):
                 self.update()
@@ -2169,6 +2182,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         return np.asarray(self._rot[1], dtype=float)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        # NOTE: this class defines `mouseReleaseEvent` twice and Python keeps
+        # the last one, so the earlier definition above never runs. Anything
+        # added there is dead code -- which is how the panel's grab flag came to
+        # be set on every press and cleared on none, leaving the camera deaf to
+        # dragging for the rest of the session.
+        if self._gui_grab:
+            # The press belonged to the panel, so the release does too:
+            # otherwise letting go over the scene picks whatever is under it.
+            self._gui_grab = False
+            event.accept()
+            return
+
         if event.button() == QtCore.Qt.RightButton:
             if not getattr(self, "_right_dragged", False):
                 menu = QtWidgets.QMenu(self)
