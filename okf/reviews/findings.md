@@ -9533,3 +9533,59 @@ non-atomic write).
 - **Location:** `chisurf/plugins/chimol/chimol/config.py:303-307` (`set_update_prompt_enabled`: `except: … debug(…); return False`) and `:350-354` (`adopt_package_values`: the same, `return []`), against the caller at `chisurf/plugins/chimol/chimol/app/molview_main_window.py:667-679` (`if answer.checked: _config.set_update_prompt_enabled(False)` — return value dropped; `if adopted:` with no `else`)
 - **Finding:** both functions report failure by return value and both call sites throw it away, and the only trace is a `debug` record. Verified with the settings file made read-only: `diff_against_package()` reports `metaball.sigma_factor 3.0 → 4.0`, `set_update_prompt_enabled(False)` returns `False`, `adopt_package_values(...)` returns `[]`, and the difference is still there afterwards — from the GUI that is a user pressing **Use the new defaults** with **Don't ask again** ticked, getting no status message, no warning, a viewer that has not changed, and the identical prompt at the next start, forever. Surface it: `dialogs.warning` (or at minimum a status-bar line and a `warning`-level log) when either call reports it did not reach the disk. See RF-744 for the write itself.
 - **Fix note:**
+
+## Review 2026-07-28 — the wheel that edits the parameter under the mouse
+
+Slice: `ecb0263fa` (*"the wheel edits the parameter under the mouse"*) and its
+follow-up `b937e1b54`, i.e. `wheel_step` / `WheelValueFilter` /
+`install_wheel_editing` in `chisurf/gui/autoform/sections/parameter_table.py:83-232`
+and the two tables that install them (`:546`, `:1147`), against `_set_param_value`
+(`:235-276`), the two models' `flags`/`setData`, and
+`test/gui/test_parameter_table_wheel.py`. The relative step is the right idea and
+the write really does go through the controller. What the review found is that the
+filter is the one editing path in this file that does **not** consult `flags()` —
+`_paste_selection` (`:797`, `:804`) does — and that one wheel *event* means one
+step no matter how far the wheel turned. Findings RF-834..RF-839, all verified
+headlessly against the real table.
+
+### RF-834
+- **Status:** OPEN
+- **Severity:** S1 (the wheel writes a bound into a cell both models declare read-only and paint blank; the parameter is then silently clamped — value 0.001 → 0.1 — the moment the user ticks *Bounds*)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:168-183` (`WheelValueFilter.eventFilter`: `column_id not in WHEEL_COLUMNS` is the only gate before `model.setData`), against `ParameterGroupTableModel.flags:424-425` and `PairedParameterTableModel.flags:1091-1092` (`if col_id in ("bounds_lo", "bounds_hi") and not param.bounds_on: return base` — no `ItemIsEditable`) and `_edit_value:384-389` (returns `0.0` for an unset bound), with `_paste_selection:797` / `:804` (`if self._model.flags(i) & editable`) as the same file's correct precedent
+- **Finding:** the filter never asks whether the cell is editable, so the wheel edits cells that nothing else can. Verified headlessly on a real `ParameterGroupTableWidget` over `FittingParameter(name="x", value=0.001)` with bounds off: `flags(bounds_lo) & ItemIsEditable` is `False` and the cell's `DisplayRole` is `''`, yet one wheel notch over it takes the `EditRole` placeholder `0.0`, adds a step and writes — the history records `parameter_bounds_set: set bounds for parameter 'x' to (0.1, None)`, `p.lb` goes `-inf → 0.1`, and the cell still paints blank because `_display_value` suppresses bounds while `bounds_on` is False. Nothing on screen changed and the event was consumed, so the table did not scroll either. Ticking **Bounds** afterwards then clamps the parameter: `p.bounds == (0.1, nan)` and `p.value == 0.1`, a hundredfold jump out of a scroll the user never saw land. Gate the wheel on `model.flags(index) & QtCore.Qt.ItemIsEditable`, exactly as the paste path does. See RF-835 for the `nan`.
+- **Fix note:**
+
+### RF-835
+- **Status:** OPEN
+- **Severity:** S2 (editing one bound of a parameter whose bounds are not enforced writes `nan` into the other, and the history record says `None` while `nan` is what lands)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:260-266` (`_set_param_value`: `b = list(param.bounds)`, one element replaced, then `ctrl.apply_bounds(b[0], b[1], param)`), against `chisurf/core/parameter.py:144-155` (`bounds` reports `(None, None)` while `bounds_on` is False even though the values are stored, and the setter is `np.array(b, dtype=np.float64)`, which turns `None` into `nan`)
+- **Finding:** the partner bound is read back from `param.bounds`, which is `(None, None)` for a parameter with enforcement off, so the untouched half is written as `nan`. Verified: one edit of `bounds_lo` on a fresh parameter leaves `p.lb == 0.1` and `p.ub == nan`, and after `bounds_on = True` the parameter reports `bounds == (0.1, nan)`. The trace is misleading too — it records `set bounds for parameter 'x' to (0.1, None)`. Read the partner through `param.lb` / `param.ub`, which are precisely the accessors that survive `bounds_on` (see their docstring at `chisurf/core/parameter.py:168-182`), instead of through the enforcement-masked `bounds` tuple, so an unset partner stays `∓inf`.
+- **Fix note:**
+
+### RF-836
+- **Status:** OPEN
+- **Severity:** S2 (one wheel *event* is one step regardless of how far the wheel turned: a partial high-resolution notch applies a full step, and ten notches merged into one event apply one)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:176-180` (`notches = event.angleDelta().y()`; `if not notches: return False`; `new_value = current + copysign(step, notches)` — only the *sign* of `angleDelta` is used)
+- **Finding:** Qt reports wheel motion in eighths of a degree, 120 per detent, and free-spinning wheels and trackpads deliver both fractions and multiples of that; the usual handling is to accumulate and divide by 120. This filter treats every non-zero delta as exactly one detent. Verified on a live table: a `QWheelEvent` with `angleDelta = 15` (a high-resolution fraction, of which one trackpad gesture delivers dozens) moved `x` from `0.001` to `0.0011` — a full step — while `angleDelta = 1200`, ten detents merged into one event, moved it exactly one step as well. The same physical gesture therefore edits by an order of magnitude too much on a trackpad and too little on a fast wheel, and every one of those events also dispatches the change (`_on_data_changed` → refit). The test suite only ever sends `120 * notches` (`test/gui/test_parameter_table_wheel.py:46`), so neither case is covered.
+- **Fix note:**
+
+### RF-837
+- **Status:** OPEN
+- **Severity:** S2 (a parameter table taller than its viewport cannot be scrolled over its numeric columns at all, and the attempt silently retunes whichever parameter is under the cursor)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:181-183` (`if not model.setData(...): return False` / `return True` — every successful step consumes the event), with the mitigation as stated in `WheelValueFilter`'s docstring at `:133-135` and pinned by `test_the_wheel_still_scrolls_where_there_is_nothing_to_edit`
+- **Finding:** the escape hatch is the *name* and *error* columns, which is too small a target in a long table: `value`, `bounds_lo` and `bounds_hi` are three of the seven columns, and the whole right-hand side of the paired table. Verified on a 40-row `ParameterGroupTableWidget` in a 120 px viewport (vertical scrollbar range 0..240): three wheel-downs with the cursor over the **Value** column left the scroll position at **0** and changed the first parameter from `1.0` to `0.88`, while the same three events over the **Name** column scrolled to **207** and touched nothing. Global View's parameter table holds 77 rows (see RF-284), so this is the ordinary case rather than a corner: a user scrolling to reach a parameter retunes the ones under the cursor on the way, refitting after each. Require the cell to be current/selected (or a modifier held) before the wheel edits, or fall through to scrolling while the view still has somewhere to scroll.
+- **Fix note:**
+
+### RF-838
+- **Status:** OPEN
+- **Severity:** S3 (the filter's docstring names two escape hatches and neither exists: a *fixed* parameter takes the wheel, and an edit that changes nothing still swallows the event)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:133-135` ("The event is consumed only when it actually changed something, so the wheel still scrolls … over a parameter that refuses the edit (fixed, or a linked follower)") against `_set_param_value:245-254` (the `value` branch tests `is_linked` only — `fixed` is never consulted) and `:181` (`setData` returns True for a write the controller then clamps away)
+- **Finding:** only the linked-follower half of that sentence is true. Verified: a parameter constructed `fixed=True` moved `4.0 → 4.1` on one notch, with the event consumed; and on a parameter pinned at its upper bound (`value 5.0`, `bounds (1.0, 5.0)`, `bounds_on`), five wheel-ups left the value at `5.0` *and* the scroll position at `0` — the wheel neither edited nor scrolled. Either make the docstring describe the code, or the code the docstring: `fixed` is deliberately editable by typing, so the docstring is the likelier error, while the clamped case argues for comparing the value before and after and returning `False` when it did not move. The tests cover the follower case only.
+- **Fix note:**
+
+### RF-839
+- **Status:** OPEN
+- **Severity:** S3 (the wheel can never reach zero or cross it, so a parameter that is legitimately negative — the IRF time shift `ts` — cannot be wheeled back once nudged positive)
+- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:110-116` (`wheel_step`: `step = 10.0 ** (floor(log10(magnitude)) - 1)`), against `chisurf/core/models/tcspc/nusiance.py:1029-1033` (`ts`, `value=0.0`, `bounds_on=False`) and `:1041-1046` (`ik`, `value=-0.31`)
+- **Finding:** the step shrinks with the value it is subtracted from, so the descent is asymptotic: verified numerically, 2000 downward notches from `1.0` land at `2.95e-23`, and 500 downward notches from `0.1` at `4.1e-07` — the sign never changes and zero is never reached. `ts` starts at exactly `0.0` (where the fallback step of 0.1 applies), so one notch up puts it at `0.1`, after which the wheel can never take it back through zero to the negative shifts an IRF routinely needs; the user has to type. Basing the step on the magnitude *before* the notch and snapping the result onto that step grid (or flooring the step at an absolute minimum) restores the round trip. While in this function: its docstring says "one percent of the value's own magnitude", and the test that pins it repeats the claim, but the rule is one decade below the magnitude, i.e. between 1 % and 10 % — `wheel_step(4.0) == 0.1` is 2.5 % — which the commit message states correctly and the docstring does not.
+- **Fix note:**
