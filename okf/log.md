@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **A manifest nothing checks is not a contract.** MMFDB registers 222 RPC
+  handlers in code and *declares* them in the host's `mmfdb_admin` manifest --
+  the file every client reads to build its forms and its generated docs. The
+  only guard compared the manifest against 40 of them, so the other ~180 could
+  drift either way: an undeclared handler is invisible to every manifest-driven
+  client, and a declared method with no handler is an advertised call that fails
+  at dispatch. The one test that ran even that narrow check had **never run** --
+  it looked for the host checkout at `parents[3]` of its own resolved path,
+  which lands one directory above the repository, and `modules/mmfdb` is a
+  symlink, so `resolve()` walked it out of the tree from inside ChiSurf too. It
+  skipped silently on every run. `registered_service_names()` now enumerates the
+  real surface through a recording dispatcher -- optional runners stubbed, so
+  the conditionally registered handlers count -- and
+  `validate_manifest_rpc_surface()` diffs it against the manifest both ways; a
+  `host_manifest_path` fixture finds the manifest and skips only when there is
+  genuinely no host checkout. Green at 222 today, and confirmed to bite when one
+  entry is doctored out. mmfdb `035abae`; recorded as
+  [INC-16](specs/assessment.md#inc-16).
+
 * **The transport was missing three of PyMOL's buttons, the block wasted its
   space, and a switched-off object looked identical to a live one.**
   - `S`, `▼` and `F` are back: the sequence, rocking and full screen. Two of

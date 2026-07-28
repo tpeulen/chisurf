@@ -72,9 +72,10 @@ recorded in the cited spec's steering notes, not independently re-run here.
 | [INC-13](#inc-13) | S3 | INC | GUI | ~42 runtime `.ui` forms are prototyping-only; should be ported to AutoForm `view.json` and removed (target: zero `.ui`) | VERIFIED (43 → 42: one orphan form deleted) |
 | [INC-14](#inc-14) | S3 | INC | Core | `chisurf/core/fio/mmcif/db/` is a dead compatibility package: six of its seven modules have no importer left, and its `__init__` warns on every import of the one that is live | ~~VERIFIED~~ ✅ FIXED |
 | [INC-15](#inc-15) | S3 | INC | MMFDB | The curated 815 KB `sample_management.db` shipped by ChiSurf is orphaned: the live resolver looks for it under `mmfdb/data/` and falls back to a 0-byte `example.db`, so no user ever gets the curated seed | ~~VERIFIED~~ ✅ FIXED |
+| [INC-16](#inc-16) | S3 | INC | MMFDB | The mmfdb-admin RPC surface is declared in a manifest almost nothing checked: the guard covered 40 of 222 methods, and the one test that ran it had never run — it looked for the host checkout one directory above the repository | ~~VERIFIED~~ ✅ FIXED |
 | [BUG-13](#bug-13) | S3 | BUG | Plugins | The plugin-metadata AST reader returns 3 values where every caller unpacks 5 when the source will not decode as UTF-8, so a plugin declaring another source encoding disappears from the menu and from `csc` without a word | ~~VERIFIED~~ ✅ FIXED |
 
-40 findings (28 FIXED): 1 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 6 PARTIAL, 1 OPEN.
+41 findings (29 FIXED): 1 VERIFIED, 2 REPORTED, 1 ADDRESSED, 1 IN PROGRESS, 6 PARTIAL, 1 OPEN.
 Of the 12 open: 1×S1 (BUG-10), 4×S2, 7×S3.
 
 ---
@@ -706,3 +707,37 @@ along with its malformed return; every remaining failure branch returns the full
 ends the deprecation warnings. Guardrail tests:
 `test/core/test_plugin_metadata_reader.py` (8) pin the tuple arity of every failure branch of
 both readers and the non-UTF-8 round trip.
+
+### INC-16
+**S3 · The RPC surface and the manifest that declares it were kept in step by hand.** Found
+2026-07-28 while reading the `mmfdb.*` / `mmfdb.v1.*` split for [INC-03](#inc-03). MMFDB
+registers its handlers in code (`mmfdb/admin/backend/services.py::register_services`) but
+*declares* them in the host's plugin manifest
+(`chisurf/plugins/core/mmfdb_admin/manifest.json`) — the manifest is what clients read to
+build AutoForm forms and generated documentation, and the package ships no copy of it. The
+only consistency check, `_validate_mmfdb_methods_in_manifest`, compared the manifest against
+the 40 entries of `VERSIONED_MMFDB_METHODS` and nothing else, leaving the other ~180
+registrations free to drift in either direction: a registered-but-undeclared handler is
+invisible to every manifest-driven client, and a declared method with no handler is an
+advertised call that fails at dispatch.
+
+The check was also **dead**. `test_manifest_contains_all_fdb_methods` located the host
+checkout with `parents[3]` of its own `resolve()`d path, which lands one directory *above*
+the repository, so the `is_file()` guard was always false and the test skipped on every run —
+including when run from inside the ChiSurf repo, because `modules/mmfdb` is a symlink and
+`resolve()` follows it out of the tree. It had therefore never asserted anything.
+
+**✅ Fixed 2026-07-28** (mmfdb `035abae`). `registered_service_names()` enumerates the real
+surface by running `register_services` against a recording dispatcher — no database, no
+transport — with the optional runners stubbed so the conditionally registered handlers
+(`processing.burst_selection.run`, `mmfdb.pipelines.*`, `fluorophores.ai_triage`) are counted
+too. `validate_manifest_rpc_surface()` diffs that against a manifest in both directions. A
+`host_manifest_path` fixture in `modules/mmfdb/tests/conftest.py` locates the manifest via a
+`MMFDB_HOST_MANIFEST` override then a walk up both the resolved and unresolved paths, and
+skips only when there genuinely is no host checkout; the previously-dead versioned test now
+runs. The surface is exactly in step today at **222 methods**, verified by doctoring one
+entry out of a manifest copy and watching the guard fail. Also removes
+`_validate_fdb_methods_in_manifest` (an alias with no callers) and the default
+`manifest_path`, which pointed at a file that does not exist in the package. Tests:
+`modules/mmfdb/tests/test_rpc_surface_manifest.py` (4).
+
