@@ -79,12 +79,19 @@ the first place.
 
 ## Walking the whole pipeline (⏩)
 
-**⏩**, between **◀ Back** and **Next ▶**, runs every remaining step in order,
-including the one you are on and the one it ends on. It is not a loop that fires
-them off together: each step is started only once the previous has finished, the
-same wait **Next ▶** performs — starting a step while another is in flight is
-what the wait exists to prevent. So a fast-forward takes as long as the steps do,
-and the panel you are watching is always the one working.
+**⏩**, between **◀ Back** and **Next ▶**, runs the remaining **numbered** steps
+in order, including the one you are on. It stops at the separator: what follows
+are tools you reach *with* the result (Browser, Accurate FRET, Burst FCS) or that
+feed the pipeline from the raw files (Background, IRF & Background), and running
+those unasked is not what fast-forward means.
+
+The click decides what will run — the steps become a queue, taken one at a time.
+It is not a loop that fires them off together: each is started only once the
+previous has finished, the same wait **Next ▶** performs, because starting a step
+while another is in flight is what that wait exists to prevent. So a
+fast-forward takes as long as the steps do, the panel you are watching is always
+the one working, and the status bar counts them off (*Fast-forward 3/7: 5. Burst
+MLE*).
 
 The button is its own cancel: while it is walking it reads **⏸**, and a second
 click stops it *after* the step in flight (a running analysis is never killed

@@ -35,8 +35,15 @@ def shell(qapp):
     tool.close()
 
 
-def test_fast_forward_runs_every_remaining_step(shell, monkeypatch):
-    """One click walks to the end, processing each step on the way."""
+def test_fast_forward_runs_the_numbered_steps_and_stops_at_the_separator(
+    shell, monkeypatch
+):
+    """One click walks the pipeline — and only the pipeline.
+
+    What follows the separator are tools you reach *with* the result, or that
+    feed the pipeline from the raw files. They are not steps of the walk, and
+    running them unasked is not what "fast-forward" means.
+    """
     processed: list = []
     monkeypatch.setattr(type(shell), "process_current_step",
                         lambda self: processed.append(self.nav_list.currentRow()) or True)
@@ -44,20 +51,34 @@ def test_fast_forward_runs_every_remaining_step(shell, monkeypatch):
     shell.nav_list.setCurrentRow(0)
     shell._on_fast_forward_clicked()
 
-    # Every step from the first to the last (the separator is skipped, and the
-    # unnumbered panel after it is still a step the stepper reaches).
-    assert processed == [0, 1, 2, 4], processed
-    assert shell.nav_list.currentRow() == 4
+    assert processed == [0, 1, 2], processed
+    assert shell.nav_list.currentRow() == 2, "it ends on the last numbered step"
     assert not shell._fast_forward, "it stops itself at the end"
     assert shell._btn_ff.text() == "⏩"
 
 
-def test_the_last_step_runs_once_when_it_works_asynchronously(shell, monkeypatch):
-    """The final step is processed exactly once, and its completion ends the walk.
+def test_the_queue_is_decided_at_the_click(shell, monkeypatch):
+    """The walk is a stack of steps taken one at a time, fixed when it starts."""
+    monkeypatch.setattr(type(shell), "process_current_step", lambda self: True)
+    monkeypatch.setattr(type(shell), "_step_is_busy", lambda self: True)
 
-    The last step is the only one the walk cannot follow with an advance, so its
-    "done" signal comes back to the same place that would otherwise start a step
-    — running it again, forever. It must end instead.
+    shell.nav_list.setCurrentRow(1)
+    shell._on_fast_forward_clicked()
+
+    # Row 1 was taken off the queue and is running; rows 2 and onwards wait.
+    # Nothing after the separator is in it.
+    assert shell._ff_queue == [2], shell._ff_queue
+    assert shell._ff_total == 2
+
+
+def test_the_last_step_runs_once_when_it_works_asynchronously(shell, monkeypatch):
+    """The last queued step is processed exactly once, and its end ends the walk.
+
+    Its "done" signal comes back to the same place that starts a step, so an
+    empty queue has to mean *stop* rather than "run this one again".
+
+    Started below the separator, the walk also covers only that group — row 4 is
+    a tool, not part of the numbered pipeline, so it is a queue of one.
     """
     processed: list = []
     busy = {"value": False}

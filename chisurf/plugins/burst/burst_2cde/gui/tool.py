@@ -297,7 +297,10 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
 
     def _is_running(self) -> bool:
         """Whether a computation started by this panel is still going."""
-        return self._task is not None and self._task.is_running()
+        # ``is_running`` is a property of the task handle, not a method:
+        # calling it raised TypeError on every auto-run, which fast-forward
+        # is the first thing to do repeatedly.
+        return self._task is not None and self._task.is_running
 
     def _analysis_worker(self, folder, settings, fingerprint, inputs, params, task):
         """Worker: read, compute, write the companion. No GUI here."""

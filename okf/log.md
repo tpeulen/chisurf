@@ -124,6 +124,30 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **⏩ was walking past the end of the pipeline, and the first step it ran
+  crashed.** Three things, all reported from a real run:
+  - `TypeError: 'bool' object is not callable` in `burst_2cde`'s auto-run.
+    `Task.is_running` is a **property**; two panels called it
+    (`burst_2cde._is_running`, `burst_h2mm._fit_is_running`). Every auto-run
+    raised — invisible until fast-forward made it happen on every step.
+  - The walk is now an explicit **queue**: the click decides which rows will run
+    (`_pipeline_queue`) and `_run_queued_step` takes them one at a time, waiting
+    for each to report done. Same one-in-flight guarantee as before, but the walk
+    can no longer drift with whatever a running step does to the panel list, the
+    end condition is simply "the queue is empty" (`_fast_forward_final` is gone),
+    and the status bar counts the steps off — *Fast-forward 3/7: 5. Burst MLE*.
+  - It **stops at the separator**. What follows are tools you reach *with* the
+    result (Browser, Accurate FRET, Burst FCS, Kinetics) or that feed the
+    pipeline from the raw files (Background, IRF & Background); running those
+    unasked is not what fast-forward means. Started below a separator it covers
+    only that group.
+  - Verified on the real shell headlessly: from step 1 the queue is rows 0–6, the
+    walk ends on *7. Burst segment MLE* with "Fast-forward finished — the
+    pipeline is done" and never enters the tools below. `test/gui/test_fast_forward.py`
+    (**6 pass**) pins the stop-at-separator, the queue decided at the click, the
+    last step running once, second-click and Back stopping it, and never two at
+    once. [guides/53](../docs/guides/53_reusing_results.md) updated.
+
 * **The burst-selection display settings are a form now, and the "section
   binding" that blocked it was never broken.** The layer toggles (*All photons* /
   *Selected photons*) and the *Photon Range* spin boxes are settings, not

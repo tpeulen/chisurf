@@ -935,7 +935,8 @@ class H2mmTool(MessagesMixin, QMainWindow):
     def _fit_is_running(self) -> bool:
         """Whether a fit started by this panel is still going."""
         task = self._fit_task
-        return task is not None and task.is_running()
+        # ``is_running`` is a property of the task handle, not a method.
+        return task is not None and task.is_running
 
     def _fit_worker(self, settings, task):
         """Worker: fit every state count, reporting through *task*. No GUI here.
