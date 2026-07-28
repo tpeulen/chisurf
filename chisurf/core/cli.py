@@ -12,9 +12,15 @@ from typing import Dict, Iterable, Optional, Tuple
 
 import click
 
+from chisurf.core.cli_support import DidYouMeanGroup
 
-class PluginCLI(click.Group):
-    """Click group that registers plugin CLIs before parsing arguments."""
+
+class PluginCLI(DidYouMeanGroup):
+    """Click group that registers plugin CLIs before parsing arguments.
+
+    Inherits the *did you mean* suggestions, so a mistyped plugin subcommand
+    (``csc burst-backgroud``) lists the closest registered names.
+    """
 
     def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
         """Register plugin CLIs before Click resolves subcommands."""

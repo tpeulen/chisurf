@@ -25,6 +25,22 @@ each for a distinct consumer and kept in sync by cross-referencing comments:
 (the released conda package). The runtime is numpy 2.x (the canonical pixi env
 resolves numpy 2.4), so numpy is unpinned across all three.
 
+A dependency has to earn its place in those three lists. When the whole of what a
+package provides is a few lines — a decorator, a `difflib` call, a terminal
+progress bar — it is **reimplemented in the tree** and the dependency dropped;
+what stays is code we could not sensibly write ourselves (the numerical, Qt and
+file-format stacks). Retired so far: the deprecation-decorator package
+(`chisurf.core.decorators.deprecated`), the click *did-you-mean* extension
+(`chisurf.core.cli_support.DidYouMeanGroup`), the terminal progress bar
+(`chisurf.core.progress`), the in-tree graph layer's predecessor
+(`chinet.graph`), the Gaussian-HMM package (`chisurf.core.math.hmm`), the
+ensemble sampler (`chisurf.core.fitting.ensemble`) and the third-party GUI
+toolkit (the `chitable` widget family). Declared-but-never-imported packages went
+with them. `test/test_no_retired_dependency_imports.py` fails on any import or
+packaging declaration that brings one back — a re-added import would work on a
+developer machine, where the package is usually still installed transitively, and
+fail only in a packaged install.
+
 Pixi environments are **detached** from the source tree: with
 `detached-environments = true` set in the global pixi config, the multi-GB solved
 env lives under the central pixi cache instead of `<repo>/.pixi/envs`, so the repo

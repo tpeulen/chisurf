@@ -1,6 +1,6 @@
 from __future__ import annotations
 from chisurf import typing
-import deprecation
+from chisurf.core.decorators import deprecated
 
 import fnmatch
 import tempfile
@@ -31,9 +31,8 @@ class Header(tables.IsDescription):
     routine = tables.StringCol(10)
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 @nb.jit(nopython=True)
@@ -91,9 +90,8 @@ def pq_photons(
     return g, mt, tac, can
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 @nb.jit(nopython=True)
@@ -150,9 +148,8 @@ def bh132_photons(
     return g, mt, tac, can
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 @nb.jit(nopython=True)
@@ -198,9 +195,8 @@ def ht3_photons(
     return g, mt, tac, can
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 @nb.jit(nopython=True)
@@ -421,10 +417,9 @@ def iss_photons(
     return k, mt[:k], tac[:k], can[:k]
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
         removed_in="20.01.01",
-        current_version="19.08.23",
         details="the reading of BH132 headers is now in tttrlib"
     )
 def bh123_header(
@@ -475,9 +470,8 @@ def iss_header(
     return MTclock, False
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 def ht3_header(
@@ -672,9 +666,8 @@ def make_tp_photon_hdf(
     return h5
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 def spc2hdf(
@@ -859,9 +852,8 @@ filetypes = dict([
 )
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 @nb.jit(nopython=True)
@@ -926,9 +918,8 @@ def read_hht3(
     return sb[:nph], mt[:nph], mi[:nph], cn[:nph]
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 @nb.jit(nopython=True)
@@ -1110,9 +1101,8 @@ pq_hardware = {
 }
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Reading of TTTR files should be done using tttrlib"
     )
 def read_ptu(

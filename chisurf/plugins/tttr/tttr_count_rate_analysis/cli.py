@@ -13,6 +13,8 @@ import click
 import numpy as np
 import tttrlib
 
+from chisurf.core.cli_support import DidYouMeanGroup
+
 # Import from chisurf if available, otherwise handle standalone usage
 try:
     from chisurf.gui.widgets.wizard.tttr_channeldefinition import load_detector_setups
@@ -242,7 +244,11 @@ def save_results_as_txt(
 
 
 # Set up the Click command group with "did you mean" suggestions
-@click.group(context_settings=dict(help_option_names=["-h", "--help"]), invoke_without_command=True)
+@click.group(
+    cls=DidYouMeanGroup,
+    context_settings=dict(help_option_names=["-h", "--help"]),
+    invoke_without_command=True,
+)
 @click.option("--version", is_flag=True, help="Show the version and exit.")
 @click.pass_context
 def cli(ctx, version):
@@ -371,10 +377,4 @@ def list_setups(setup_file):
 
 
 if __name__ == "__main__":
-    # Enable "did you mean" suggestions
-    from click.core import Context
-
-    Context.fail = lambda self, message: self._fail_with_didyoumean(message)
-
-    # Run the CLI
     cli()

@@ -83,23 +83,24 @@ requirements:
     - python 3.12.*
     - numpy
     - typing-extensions >=4.14
-    - pytools >=2024.0
     - pyyaml
     # msgpack-python provides `import msgpack` (the plain `msgpack` conda pkg is
-    # the C lib); both back the MMFDB payload codec / JSON-RPC service.
+    # the C lib); it backs the MMFDB payload codec / JSON-RPC service.
     - msgpack-python >=1.1.2
-    - msgpack-numpy
     - markdown
+    # click-didyoumean removed: chisurf.core.cli_support.DidYouMeanGroup is the
+    # in-tree replacement (a difflib call over the group's own command names).
     - click
-    - click-didyoumean
-    - jsonschema
-    - tqdm
+    # pytools, msgpack-numpy and jsonschema removed: nothing in the tree (or in
+    # MMFDB) imports them. tqdm removed: chisurf.core.progress draws the two
+    # terminal progress bars the tree needs.
     - qtpy
     - pyqt
     - pyqtgraph
     - matplotlib
     - scikit-image
-    - deprecation
+    # deprecation removed: chisurf.core.decorators.deprecated is the in-tree
+    # replacement for the decorator, warning classes and docstring note.
     - pandas
     - scipy
     - numba

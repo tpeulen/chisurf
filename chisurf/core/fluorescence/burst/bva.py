@@ -1,6 +1,7 @@
 import numpy as np
 from typing import List, Tuple, Dict
-import tqdm
+
+from chisurf.core.progress import progress
 
 
 def compute_static_bva_line(
@@ -114,7 +115,7 @@ def compute_bva(
     proximity_ratios_mean, proximity_ratios_sd = list(), list()
 
     # Iterate through rows using iterrows()
-    for index, row in tqdm.tqdm(df.iterrows(), total=df.shape[0]):
+    for index, row in progress(df.iterrows(), total=df.shape[0], desc="BVA bursts"):
         # Select tttr data of burst out of dictionary
         ff, fl = row['First File'], row['Last File']
         tttr = tttrs[ff]

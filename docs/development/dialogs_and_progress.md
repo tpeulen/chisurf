@@ -303,3 +303,28 @@ spans) and its attribute name, and the replacement answers the plain
 `QProgressBar` calls — so nothing else in the tool changes. It also becomes a
 progress host, so `ChiSurfProgress` started anywhere in that window renders
 there.
+
+## Progress with no GUI at all — `chisurf.core.progress`
+
+`ChiSurfProgress` lives in `chisurf/gui/` and takes a widget, so Qt-free code —
+`chisurf.core.*`, the ZMQ server, a CLI — cannot use it. Those loops draw a plain
+terminal bar instead:
+
+```python
+from chisurf.core.progress import progress, trange
+
+for index, row in progress(df.iterrows(), total=len(df), desc="BVA bursts"):
+    ...
+
+for iteration in trange(1, max_iter + 1, desc="MaxEnt"):
+    ...
+```
+
+The bar redraws in place on `sys.stderr` (at most ten times a second) and prints
+nothing at all unless that stream is a terminal, so headless tests, log files and
+the server stay clean. It replaces `tqdm`, which core code imported without ever
+declaring it as a dependency — the bar was therefore a bar on a developer machine
+and an `ImportError` in a packaged install.
+
+Use the GUI class whenever there *is* a widget: only that one can render into a
+panel, a status bar or a dialog, and only that one can be cancelled.

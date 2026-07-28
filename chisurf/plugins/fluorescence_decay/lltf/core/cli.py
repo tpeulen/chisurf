@@ -10,12 +10,13 @@ import sys
 
 import click
 import yaml
-from click_didyoumean import DYMGroup
+
+from chisurf.core.cli_support import DidYouMeanGroup
 
 from .fitter import fit_lifetime
 
 
-@click.group(cls=DYMGroup)
+@click.group(cls=DidYouMeanGroup)
 def cli():
     """Lifetime fitter command-line interface."""
     pass

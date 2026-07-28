@@ -4,10 +4,7 @@ from typing import Any, Callable, Dict, Iterable, Optional, Sequence, Tuple
 import numpy as np
 from numba import njit
 
-try:
-    from tqdm import trange as _mem_trange
-except Exception:  # tqdm is optional; fall back to a plain range
-    _mem_trange = range
+from chisurf.core.progress import trange as _mem_trange
 
 
 MIN_PROB = 1e-12

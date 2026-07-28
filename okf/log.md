@@ -2,6 +2,39 @@
 
 ## 2026-07-28
 
+* **Six packages left the dependency lists; two of them were a page of code.**
+  An audit of the recipe's `run:` list against what the tree actually imports
+  retired `deprecation`, `click-didyoumean`, `tqdm`, `pytools`, `msgpack-numpy`
+  and `jsonschema` from `rattler-recipe/recipe.yaml`, `pixi.toml` and
+  `pyproject.toml`. The last three were declared and **never imported** by
+  chisurf or MMFDB. The other three were reimplemented where they belong:
+  `chisurf.core.decorators.deprecated` (the decorator, both warning classes and
+  the `.. deprecated::` docstring note), `chisurf.core.cli_support.DidYouMeanGroup`
+  (a `difflib.get_close_matches` over the group's own command names) and
+  `chisurf.core.progress` (a stderr bar that draws only on a terminal).
+  Three defects fell out of doing it. Every one of the twelve `@deprecation.deprecated`
+  decorations in the tree was **inert**: they pass `current_version="19.08.23"`
+  against `deprecated_in="19.10.31"`, so the package correctly concluded the
+  deprecation period had not started — in 2019 — and the tree has warned about
+  none of them since. Dropping the frozen argument (no `current_version` means
+  "deprecated now", the package's own semantics) makes the warnings and the
+  docstring notes real. `chisurf/core/fluorescence/burst/bva.py` imported `tqdm`,
+  which is in **no** dependency list — a bar on a developer machine and an
+  `ImportError` in a packaged install. And the three tools that wanted
+  suggestions without the package did it with
+  `Context.fail = lambda self, msg: self._fail_with_didyoumean(msg)`, a method
+  click has never had, so *any* usage error in `count-rate`, `burst-background`
+  or `python -m …tttr_count_rate_analysis` raised `AttributeError` instead of
+  printing the error. They now declare `cls=DidYouMeanGroup`, as does `csc`
+  itself, which never had suggestions at all. Guardrail:
+  `test/test_no_retired_dependency_imports.py` (12 tests) fails on an import or a
+  packaging declaration of any retired name, matching declarations only so the
+  explanatory comments left behind in the manifests do not trip it. Documented in
+  [build & environment](/workflows/build-and-env.md), `docs/development/dialogs_and_progress.md`
+  (core vs GUI progress) and `docs/development/plugin_architecture.md` (CLI groups).
+  Suites: 308 passed (bva, fio, plugin-CLI registration + entrypoint resolution,
+  count-rate CLI, maxent, tcspc) plus the new guardrail.
+
 * **The per-state decay plot is a choice, not a dump.** Splitting the decays per
   colour made them meaningful but left the panel drawing colours × states curves
   at once — on a two-state PIE fit that is six, on a small dock unreadable. The

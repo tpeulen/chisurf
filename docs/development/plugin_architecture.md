@@ -680,6 +680,25 @@ The same trade-off applies to `register_gui`: the navigation menus are built fro
 manifest metadata alone, without importing plugin code, so item 4 stays open by
 design rather than by neglect.
 
+**Mistyped subcommands.** A plugin CLI that is a group declares
+`cls=DidYouMeanGroup`:
+
+```python
+from chisurf.core.cli_support import DidYouMeanGroup
+
+@click.group(cls=DidYouMeanGroup)
+def cli():
+    """Lifetime fitter command-line interface."""
+```
+
+`csc` itself inherits it (`PluginCLI`), so `csc burst-backgroud` lists the
+closest registered plugin commands instead of only saying the command does not
+exist. The class is `difflib.get_close_matches` over the group's own command
+names — it replaces the `click-didyoumean` package, and the three tools that
+previously reached for the same feature by monkey-patching `click.Context.fail`
+with a method click does not have (turning every usage error in those tools into
+an `AttributeError`).
+
 ### Phase 3 — State serialization
 
 1. [ ] Make `SessionState.datasets` and `.fits` hold JSON-safe dicts (DTOs) only

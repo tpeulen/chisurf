@@ -10,7 +10,7 @@ Rev. Sci. Instrum. 66, 4276 (1995).
 
 from __future__ import annotations
 from typing import Dict
-import deprecation
+from chisurf.core.decorators import deprecated
 
 from math import floor, pow
 import numba as nb
@@ -85,9 +85,8 @@ def correlate(
     return corr
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Correlation should be done using tttrlib"
     )
 def normalize(
@@ -365,9 +364,8 @@ def coarsen(
     compact(times, weights, False)
 
 
-@deprecation.deprecated(
+@deprecated(
         deprecated_in="19.10.31",
-        current_version="19.08.23",
         details="Correlation should be done using tttrlib"
     )
 def log_corr(

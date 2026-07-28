@@ -14,6 +14,7 @@ import numpy as np
 import tttrlib
 
 import chisurf.core.fluorescence.burst as cs_burst
+from chisurf.core.cli_support import DidYouMeanGroup
 
 # Import from chisurf if available, otherwise handle standalone usage
 try:  # pragma: no cover - convenience import
@@ -111,7 +112,9 @@ def save_results_as_txt(
 
 
 @click.group(
-    context_settings={"help_option_names": ["-h", "--help"]}, invoke_without_command=True
+    cls=DidYouMeanGroup,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    invoke_without_command=True,
 )
 @click.option("--version", is_flag=True, help="Show the version and exit.")
 @click.pass_context
@@ -299,9 +302,4 @@ def list_setups_cmd(setup_file: str) -> None:
 
 
 if __name__ == "__main__":  # pragma: no cover - manual invocation helper
-    from click.core import Context
-
-    # Enable "did you mean" suggestions when run as a script
-    Context.fail = lambda self, message: self._fail_with_didyoumean(message)
-
     cli()

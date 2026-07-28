@@ -4,7 +4,6 @@ from math import sqrt
 
 import numba as nb
 import numpy as np
-import deprecation
 
 import chisurf.core.math
 import chisurf.core.math.datatools
