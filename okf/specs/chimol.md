@@ -66,6 +66,15 @@ polyhedron, at one vertex instead of a hundred and sixty. Nothing is dropped and
 nothing is subsampled: a model is not allowed to be quietly shown as a fraction
 of itself.
 
+**One row shape, owned by the core.** The atom row a reader produces is defined
+in `chisurf.core.fio.structure.coordinates`, and chimol imports it. Transcribing
+it is not a shortcut but a fork: three copies existed here, two of them
+captioned as matching the original, none of them equal to it. Structured arrays
+are silent about the difference — a field the other definition had reads as
+zeros, and a field too narrow for its data truncates — so a fork is discovered
+by its consequences rather than by anything failing. It cost 544 chains, stored
+as 26.
+
 **One route from a file into the viewer.** "Every reader applies the rule" is
 not achieved by teaching each reader the rule; it is achieved by giving them
 nowhere else to go. Readers produce one payload and the viewer has one method

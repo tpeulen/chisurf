@@ -9,7 +9,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from ..analysis.atom_classes import ATOMIC_NUMBER
-from .beads import ATOM_DTYPE as _ATOM_DTYPE, BEAD_RES_NAME, bead_row
+from .atoms import ATOM_DTYPE, BEAD_RES_NAME, atom_row, bead_row, empty_atoms
 
 logger = logging.getLogger(__name__)
 
@@ -333,7 +333,14 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
         coords.append(xyz)
         radii.append(0.0)
         atom_rows.append(
-            (str(atom.atom_id), res_name, chain, res_id, element, xyz)
+            atom_row(
+                atom_name=str(atom.atom_id),
+                res_name=res_name,
+                chain=chain,
+                res_id=res_id,
+                element=element,
+                xyz=xyz,
+            )
         )
         if atom.atom_id != "CA" or getattr(atom, "het", False) or res_id < 0:
             continue
@@ -360,7 +367,7 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
         coords.append(xyz)
         radii.append(radius)
         # A bead is not an atom, but every per-atom path downstream wants a row.
-        # What one looks like is defined once, in `io/beads.py`, because the RMF
+        # What one looks like is defined once, in `io/atoms.py`, because the RMF
         # reader has to produce exactly the same thing.
         atom_rows.append(bead_row(chain, res_id, xyz))
         if (chain, res_id) in seen:
@@ -381,7 +388,7 @@ def _parse_mmcif_backbone(path: str) -> StructurePayload:
         res_ids=np.asarray(res_ids, dtype=int) if has_trace else None,
         res_names=np.asarray(res_names, dtype=object) if has_trace else None,
         chain_ids=np.asarray(chain_ids, dtype=object) if has_trace else None,
-        atoms=np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None,
+        atoms=np.array(atom_rows, dtype=ATOM_DTYPE) if atom_rows else None,
         reader="mmcif",
         hierarchy=_mmcif_hierarchy(system, row_asym),
     )
@@ -504,7 +511,25 @@ def _parse_pdb_backbone(path: str) -> StructurePayload:
             # classes all read this field at face value.
             element = _element_symbol_from_pdb_line(line)
 
-            atom_rows.append((atom_name, res_name, chain, res_id, element, xyz))
+            # Columns 77-78 carry the B-factor's neighbours; the occupancy and
+            # B-factor themselves are read because the canonical row has fields
+            # for them and `spectrum b` is the reason anyone wants them.
+            try:
+                bfactor = float(line[60:66])
+            except ValueError:
+                bfactor = 0.0
+
+            atom_rows.append(
+                atom_row(
+                    atom_name=atom_name,
+                    res_name=res_name,
+                    chain=chain,
+                    res_id=res_id,
+                    element=element,
+                    xyz=xyz,
+                    bfactor=bfactor,
+                )
+            )
 
             # The CA trace drives the cartoon/trace geometry, so it must come
             # from polymer records only -- ligands and waters are not backbone.
@@ -527,7 +552,7 @@ def _parse_pdb_backbone(path: str) -> StructurePayload:
     if not coords:
         raise ValueError(f"No atom coordinates found in {path!r}")
 
-    atoms = np.array(atom_rows, dtype=_ATOM_DTYPE) if atom_rows else None
+    atoms = np.array(atom_rows, dtype=ATOM_DTYPE) if atom_rows else None
 
     if len(trace) >= 2:
         return StructurePayload(
@@ -644,15 +669,6 @@ def load_trajectory_frames(path: Path) -> np.ndarray:
     return arr
 
 
-#: The atom dtype the rest of ChiMOL expects, matching what every reader
-#: produces (``keys_formats`` in ``chisurf/core/fio/structure/coordinates.py``).
-_MDTRAJ_ATOM_DTYPE = np.dtype([
-    ("i", "i4"), ("chain", "|U1"), ("res_id", "i4"), ("res_name", "|U5"),
-    ("atom_id", "i4"), ("atom_name", "|U5"), ("element", "|U2"),
-    ("xyz", "3f8"), ("charge", "f8"), ("radius", "f8"),
-    ("bfactor", "f8"), ("mass", "f8"),
-])
-
 #: Van-der-Waals radii, in Angstrom, for the elements a trajectory carries.
 _VDW = {"H": 1.20, "C": 1.70, "N": 1.55, "O": 1.52, "S": 1.80, "P": 1.80}
 
@@ -700,7 +716,7 @@ def load_trajectory_atoms(path: Path, first_frame: np.ndarray):
     if not atoms or len(atoms) != int(np.asarray(first_frame).shape[0]):
         return None
 
-    array = np.zeros(len(atoms), dtype=_MDTRAJ_ATOM_DTYPE)
+    array = empty_atoms(len(atoms))
     for index, atom in enumerate(atoms):
         residue = atom.residue
         element = getattr(atom.element, "symbol", "") or ""

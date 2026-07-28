@@ -44,17 +44,35 @@ from the trajectory work generalises), and depth-cue fog.
 
 ---
 
-## chimol: two atom dtypes, and only one of them is the bead row
+## chimol: three atom dtypes — RESOLVED 2026-07-28
 
-**2026-07-28.** `chimol/io/beads.py` now owns the six-field `ATOM_DTYPE` that the
-PDB, mmCIF and RMF readers all produce. `chimol/io/structure.py` separately
-defines a twelve-field `_MDTRAJ_ATOM_DTYPE` for trajectory topologies, whose
-comment claims it is "the atom dtype the rest of ChiMOL expects" — which is not
-true of the other three readers. Nothing is broken by this: every consumer
-guards on `atoms.dtype.fields` rather than assuming either shape. But the two
-have never been reconciled, and the MDTraj one carries a `radius` field that
-duplicates what now travels as `atom_radii`. Reconciling them is a separate
-change from the RMF unification and was deliberately not folded into it.
+Chimol carried **three** transcriptions of "the atom dtype every reader
+produces", no two of them the same: a six-field one in `io/beads.py` for the
+PDB/mmCIF/RMF readers, a twelve-field `_MDTRAJ_ATOM_DTYPE` for trajectory
+topologies, and a twelve-field `PSEUDOATOM_DTYPE` in `cmd/editing.py`. Two of
+the three carried a comment asserting they matched the core's `keys_formats`.
+
+All three are gone. `chimol/io/atoms.py` (renamed from `beads.py`, since it now
+owns the atom row and not only the bead) imports
+`chisurf.core.fio.structure.coordinates.atom_dtype`. Rows are built by field
+name (`atom_row(**fields)`) rather than as twelve-long positional tuples.
+
+**The interesting part was not the duplication but what it hid.** The canonical
+dtype had `chain` as `|U1`. An mmCIF asym id runs `A..Z` then `AA`, `AB`, …, so
+on the eight-spoke nuclear pore 518 of 544 chains needed two characters and
+every one was stored as its first letter: **544 chains became 26**, silently.
+`chain AB` selected the whole of A and colouring by chain painted twenty
+molecules alike. The field is `|U4` now. Widening it made the PDB *writer* a
+hazard in turn — `%1s` is a minimum width in Python, not a truncation, so a
+two-character id would have shifted every following column — so the writer uses
+`%1.1s` and warns, naming the chains whose identity a PDB file cannot carry.
+
+**`modules/quest` still carries two more copies of that PDB format string**
+(`quest/lib/io/PDB.py`, `quest/lib/structure/Structure.py`), with the same `%1s`
+that does not truncate. They are deliberately untouched: quest builds its own
+atom arrays, so the core's widened `chain` cannot reach them, and quest is
+slated for deprecation rather than repair. If any of it is kept, the writer goes
+with the rest of the duplication — it should not be ported forward as it is.
 
 ---
 

@@ -22,7 +22,7 @@ from ..colors import (
     _three_to_one_array,
 )
 from ..config import _DISPLAY_CONFIG, register_update_listener, unregister_update_listener
-from ..io.beads import bead_mask
+from ..io.atoms import bead_mask
 from ..io.structure import parse_pdb_secondary_structure
 from ..geometry import (
     bond_line_segments,

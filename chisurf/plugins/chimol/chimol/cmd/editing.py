@@ -10,6 +10,7 @@ from ..analysis.labels import (
     atom_namespace,
     evaluate_labels,
 )
+from ..io.atoms import ATOM_DTYPE
 from .base import BaseCmd
 from .registry import command
 
@@ -17,23 +18,11 @@ if TYPE_CHECKING:
     pass
 
 
-#: The atom dtype every chisurf reader produces (``keys_formats`` in
-#: ``chisurf/core/fio/structure/coordinates.py``). A pseudoatom has to match it,
-#: or the object it creates is incompatible with everything that reads atoms.
-PSEUDOATOM_DTYPE = np.dtype([
-    ("i", "i4"),
-    ("chain", "|U1"),
-    ("res_id", "i4"),
-    ("res_name", "|U5"),
-    ("atom_id", "i4"),
-    ("atom_name", "|U5"),
-    ("element", "|U2"),
-    ("xyz", "3f8"),
-    ("charge", "f8"),
-    ("radius", "f8"),
-    ("bfactor", "f8"),
-    ("mass", "f8"),
-])
+#: A pseudoatom is an atom row like any other. This used to be a *transcription*
+#: of the reader dtype -- one of three in chimol, none of them agreeing -- which
+#: is exactly how a pseudoatom ends up incompatible with everything that reads
+#: atoms. Imported now, so it cannot drift.
+PSEUDOATOM_DTYPE = ATOM_DTYPE
 
 
 def _fmt(pos) -> str:

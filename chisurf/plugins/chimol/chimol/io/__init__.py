@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .beads import ATOM_DTYPE, BEAD_RES_NAME, bead_mask, bead_row, make_bead_rows
+from .atoms import ATOM_DTYPE, BEAD_RES_NAME, bead_mask, bead_row, make_bead_rows
 from .structure import (
     open_structure_files,
     load_structure_payload,

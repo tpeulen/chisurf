@@ -22,7 +22,7 @@ import math
 import numpy as np
 import pytest
 
-from chisurf.plugins.chimol.chimol.io.beads import make_bead_rows
+from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
 from chisurf.plugins.chimol.chimol.renderer.view import (
     MolView,
     _bead_mask,

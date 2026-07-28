@@ -640,6 +640,17 @@ empty result therefore means *your selection matched nothing*, not *this keyword
 is unimplemented*.
 :::
 
+**Chain identifiers of more than one character work.** A PDB file has a single
+column for the chain, but an mmCIF asym id runs `A`…`Z` and then `AA`, `AB`, …,
+which is what any large assembly needs: the eight-spoke nuclear pore has 544
+chains, 518 of them two characters. `chain AB` selects that chain and nothing
+else, and `spectrum chain` gives 544 colours rather than 26.
+
+Writing such a structure back out as **PDB** cannot preserve them — the format
+has one column and no more — so `save` truncates the ids to their first
+character and warns, naming the chains that become indistinguishable. Save as
+mmCIF to keep them.
+
 ## Drawing
 
 ```text

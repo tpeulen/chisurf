@@ -1,22 +1,23 @@
-"""What a *bead* is, in one place.
+"""What an atom row is -- and what a *bead* is, which is a row too.
 
-A coarse-grained model does not have atoms. It has beads: spheres that each
-stand for a stretch of sequence, with a radius that says how much of it. Two
-readers produce them -- the integrative-mmCIF reader from
-``_ihm_sphere_obj_site``, and the RMF reader from IMP's particles -- and
-everything downstream has to be able to tell a bead from an atom, because a
-bead model must never be splined into a cartoon and a 200,000-bead model must
-never be drawn as 200,000 meshes.
+Every reader here produces the same structured array, and that array's shape is
+**not defined here**: it is `chisurf.core.fio.structure.coordinates.keys_formats`,
+the one chisurf's own structure readers fill. Importing it rather than
+transcribing it is the whole point. There were three transcriptions in chimol
+alone -- a six-field one for the PDB/mmCIF/RMF readers, a twelve-field one for
+MDTraj topologies, and a third for pseudoatoms -- each claiming in a comment to
+be "the atom dtype every reader produces", and no two of them the same. A
+structured array does not complain when the shapes disagree; consumers just
+grew ``dtype.fields`` guards, and the fields nobody guarded went missing.
 
-That test is a string comparison against one residue name, which is a fragile
-thing to have written down in four places. It *was* written down in four
-places: twice in the mmCIF reader's row construction and twice in the renderer.
-The RMF reader, which had its own private route into the viewer, did not write
-it down at all -- and so an RMF model was never recognised as beads, drew every
-particle at one default radius, ignored the hierarchy's visibility check boxes,
-and got silently decimated to a fraction of its particles.
-
-So the definition lives here, once, and both readers call it.
+A coarse-grained model has no atoms. It has **beads**: spheres that each stand
+for a stretch of sequence, with a radius that says how much of it. Two readers
+produce them -- the integrative-mmCIF reader from ``_ihm_sphere_obj_site``, and
+the RMF reader from IMP's particles -- and everything downstream has to tell a
+bead from an atom, because a bead model must never be splined into a cartoon
+and a 200,000-bead model must never be drawn as 200,000 meshes. That test is a
+string comparison against one residue name, which was itself written out in
+four places and not at all by the RMF reader. It lives here now, once.
 
 Notes
 -----
@@ -30,28 +31,19 @@ from __future__ import annotations
 
 import numpy as np
 
+from chisurf.core.fio.structure.coordinates import atom_dtype as ATOM_DTYPE
+
 __all__ = [
     "ATOM_DTYPE",
     "BEAD_ATOM_NAME",
     "BEAD_ELEMENT",
     "BEAD_RES_NAME",
+    "atom_row",
     "bead_mask",
     "bead_row",
+    "empty_atoms",
     "make_bead_rows",
 ]
-
-#: The structured per-atom array every non-trajectory reader produces. Note
-#: that :mod:`chimol.io.structure` also defines a wider MDTraj-specific dtype
-#: for trajectory topologies; the two have never been reconciled, and consumers
-#: guard on ``atoms.dtype.fields`` rather than assuming either.
-ATOM_DTYPE = np.dtype([
-    ("atom_name", "U4"),
-    ("res_name", "U4"),
-    ("chain", "U2"),
-    ("res_id", np.int64),
-    ("element", "U2"),
-    ("xyz", float, (3,)),
-])
 
 #: Named so the trace and cartoon machinery can follow a chain of beads.
 BEAD_ATOM_NAME = "CA"
@@ -62,6 +54,56 @@ BEAD_RES_NAME = "BEA"
 #: and radius tables, which would otherwise fall through to an unknown-element
 #: default that differs between them.
 BEAD_ELEMENT = "C"
+
+
+def empty_atoms(n: int) -> np.ndarray:
+    """Return an all-zero atom array of ``n`` rows, for a reader to fill by name.
+
+    Parameters
+    ----------
+    n : int
+        Number of rows.
+
+    Returns
+    -------
+    numpy.ndarray
+        Structured array of :data:`ATOM_DTYPE`.
+    """
+    return np.zeros(int(n), dtype=ATOM_DTYPE)
+
+
+def atom_row(**fields) -> tuple:
+    """Build one row **by field name**, for a reader that appends as it parses.
+
+    The row is a tuple in dtype order, and that order is now twelve fields long
+    -- which is more than anyone should be asked to keep in their head while
+    reading a PDB line. Passing the fields by name means adding a field to the
+    dtype cannot silently shift a reader's values into the wrong columns; an
+    unknown name is refused rather than dropped.
+
+    Parameters
+    ----------
+    **fields
+        Any subset of :data:`ATOM_DTYPE`'s field names. Anything not given keeps
+        the type's zero.
+
+    Returns
+    -------
+    tuple
+        A row in :data:`ATOM_DTYPE` order.
+
+    Raises
+    ------
+    KeyError
+        If a name is not a field of the dtype.
+    """
+    unknown = set(fields) - set(ATOM_DTYPE.names)
+    if unknown:
+        raise KeyError(f"not atom fields: {', '.join(sorted(unknown))}")
+    row = np.zeros(1, dtype=ATOM_DTYPE)
+    for name, value in fields.items():
+        row[name] = value
+    return tuple(row[0])
 
 
 def bead_row(chain: str, res_id: int, xyz) -> tuple:
@@ -82,7 +124,14 @@ def bead_row(chain: str, res_id: int, xyz) -> tuple:
     tuple
         A row in :data:`ATOM_DTYPE` order.
     """
-    return (BEAD_ATOM_NAME, BEAD_RES_NAME, str(chain), int(res_id), BEAD_ELEMENT, xyz)
+    return atom_row(
+        atom_name=BEAD_ATOM_NAME,
+        res_name=BEAD_RES_NAME,
+        chain=str(chain),
+        res_id=int(res_id),
+        element=BEAD_ELEMENT,
+        xyz=xyz,
+    )
 
 
 def make_bead_rows(xyz, *, chain_ids=None, res_ids=None) -> np.ndarray:
@@ -122,7 +171,7 @@ def make_bead_rows(xyz, *, chain_ids=None, res_ids=None) -> np.ndarray:
         raise ValueError("xyz must have shape (N, 3)")
     n = int(coords.shape[0])
 
-    rows = np.zeros(n, dtype=ATOM_DTYPE)
+    rows = empty_atoms(n)
     rows["atom_name"] = BEAD_ATOM_NAME
     rows["res_name"] = BEAD_RES_NAME
     rows["element"] = BEAD_ELEMENT

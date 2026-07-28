@@ -164,7 +164,7 @@ def test_a_trajectory_payload_scales_frames_and_radii_consistently(_qt_app) -> N
     else, but the property it was fixed to have is exactly as load-bearing, so
     it is pinned here against the new seam.
     """
-    from chisurf.plugins.chimol.chimol.io.beads import make_bead_rows
+    from chisurf.plugins.chimol.chimol.io.atoms import make_bead_rows
     from chisurf.plugins.chimol.chimol.io.structure import StructurePayload
 
     widget = MolView()

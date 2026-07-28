@@ -5,7 +5,7 @@ from typing import Optional, Sequence, List, Dict, Any, Tuple
 import numpy as np
 import copy
 
-from .beads import BEAD_RES_NAME, make_bead_rows
+from .atoms import BEAD_RES_NAME, make_bead_rows
 from .hierarchy import HierarchyNode
 
 try:

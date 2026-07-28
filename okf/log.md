@@ -2,6 +2,41 @@
 
 ## 2026-07-28
 
+* **One atom row, and it turns out 544 chains were 26.** Chimol carried three
+  transcriptions of "the atom dtype every reader produces" — six fields for the
+  PDB/mmCIF/RMF readers, twelve for MDTraj topologies, twelve for pseudoatoms —
+  no two the same, and two of them captioned as matching the core's
+  `keys_formats`. All three are gone: `chimol/io/atoms.py` (renamed from
+  `beads.py`, since it owns the atom row now and not only the bead) imports
+  `chisurf.core.fio.structure.coordinates.atom_dtype`, and rows are built by
+  field name via `atom_row(**fields)` rather than as twelve-long positional
+  tuples. `PSEUDOATOM_DTYPE` is now that dtype rather than a copy of it.
+  - **What the duplication hid.** The canonical dtype had `chain` as `|U1`. An
+    mmCIF asym id runs `A..Z` then `AA`, `AB`, …, so on the eight-spoke nuclear
+    pore **518 of 544 chains need two characters and every one was stored as its
+    first letter** — 544 chains collapsed to 26, with nothing raised. `chain AB`
+    selected the whole of A; colouring by chain painted twenty molecules alike.
+    Widened to `|U4` in the core, where the definition lives. Verified on the
+    real entry: 544 distinct chains kept, 234,184 rows at 132 bytes (30.9 MB,
+    against 18.7 for the old six-field row).
+  - **The widening made the PDB writers a hazard**, so that is fixed in the same
+    change. `%1s` is a *minimum* width in Python, not a truncation: a
+    two-character chain id would have shifted every following column and
+    produced a file no reader parses. Both writers that share that format string
+    (`fio/structure/coordinates.py::write_pdb` and `Structure.__str__`) now use
+    `%1.1s`, and `write_pdb` logs a warning naming the chains whose identity the
+    format cannot carry. ChiMOL's own PDB exporter already truncated explicitly,
+    so it was never misaligned, but it lost the distinction in silence and now
+    says so too; its mmCIF writer keeps the ids whole, which is the answer.
+    Verified: an 80-column line with the chain, residue number and coordinates
+    all in their proper columns. `modules/quest` has two more copies of the same
+    format string; they are left alone, since quest builds its own atom arrays
+    (so the widened field cannot reach them) and is slated for deprecation —
+    noted in known-issues so it is not ported forward as it is.
+  - Test fixtures that invented their own atom dtype now use the shared one;
+    `test_chimol_editing`'s fixture had already been fixed once for making up
+    field *names*, which is the same mistake one level down.
+
 * **A state-wise MLE, and the experiment record it needed.** The burst-wise MLE
   step (renamed **MLE-Burstwise**, since "lifetime" said nothing the other steps
   do not also fit) fits one decay per burst per colour. For a burst with

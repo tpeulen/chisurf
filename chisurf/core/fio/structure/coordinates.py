@@ -28,6 +28,7 @@ Examples
 
 from __future__ import annotations
 
+import logging
 import os
 import typing
 import urllib.request
@@ -37,6 +38,8 @@ import chisurf.core.fio as io
 
 import chisurf as cs
 import chisurf.core.common
+
+logger = logging.getLogger(__name__)
 
 try:
     import IMP
@@ -72,13 +75,39 @@ def write_pdb(
     mode = 'a+' if append_model or append_coordinates else 'w'
     if verbose:
         print("Writing to file: ", filename)
+
+    # A PDB file has exactly one column for the chain, and `%1s` is a *minimum*
+    # width in Python -- it does not truncate. A two-character chain id written
+    # through it shifts every column after it, which turns the whole file into
+    # something no reader parses correctly. The format simply cannot represent
+    # these ids, so say so rather than emitting a corrupt file or dropping the
+    # distinction in silence; mmCIF is the format that can.
+    if atoms is not None and len(atoms):
+        try:
+            long_chains = sorted(
+                {c for c in np.asarray(atoms['chain']).astype(str) if len(c) > 1}
+            )
+        except Exception:
+            long_chains = []
+        if long_chains:
+            logger.warning(
+                "%s: %d chain identifier(s) are longer than the single column a "
+                "PDB file has and are truncated to their first character (%s%s). "
+                "Chains that differ only after the first character become "
+                "indistinguishable -- write mmCIF to keep them.",
+                filename, len(long_chains), ", ".join(long_chains[:5]),
+                ", ..." if len(long_chains) > 5 else "",
+            )
+
     with io.zipped.open_maybe_zipped(
             filename=filename,
             mode=mode
     ) as fp:
         # http://cupnet.net/pdb_format/
+        # `%1.1s` for the chain, not `%1s`: the precision is what truncates, and
+        # without it a wider chain id silently shifts every following column.
         al = [
-            "%-6s%5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" %
+            "%-6s%5d %4s%1s%3s %1.1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" %
             (
                 "ATOM ", at['atom_id'], at['atom_name'], " ", at['res_name'],
                 at['chain'], at['res_id'], " ",
@@ -94,9 +123,19 @@ def write_pdb(
             fp.write('ENDMDL')
 
 
+#: The atom row every reader in chisurf produces. This is the single definition
+#: of it: transcribing it elsewhere is how the copies drift, and a structured
+#: array does not complain when a field is too narrow -- it truncates, silently,
+#: and the loss looks like the file.
 keys_formats = [
     ('i', 'i4'),
-    ('chain', '|U1'),
+    # Four characters, because a chain id is not one. A PDB file's is, but an
+    # mmCIF asym id runs A..Z then AA, AB, ... and a one-character field mapped
+    # every one of those onto its first letter: on the eight-spoke nuclear pore
+    # (PDBDEV_00000012), 518 of 544 chains need two characters, so 544 chains
+    # became 26. Nothing raised -- `chain AB` simply selected the whole of A,
+    # and per-chain colouring painted twenty molecules alike.
+    ('chain', '|U4'),
     ('res_id', 'i4'),
     ('res_name', '|U5'),
     ('atom_id', 'i4'),
@@ -114,6 +153,10 @@ keys_formats = [
 ]
 
 keys, formats = list(zip(*keys_formats))
+
+#: The same thing as a ``np.dtype``, for the readers that want one directly
+#: rather than the ``names``/``formats`` pair.
+atom_dtype = np.dtype({'names': keys, 'formats': formats})
 
 
 _STANDARD_RESIDUES = {

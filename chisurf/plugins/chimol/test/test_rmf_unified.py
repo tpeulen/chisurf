@@ -25,7 +25,7 @@ import numpy as np
 import pytest
 from rmf_fixture import COARSE_RESOLUTION, FINE_RESOLUTION, write_multiresolution_rmf
 
-from chisurf.plugins.chimol.chimol.io.beads import bead_mask
+from chisurf.plugins.chimol.chimol.io.atoms import bead_mask
 from chisurf.plugins.chimol.chimol.io.structure import load_structure_payload
 from chisurf.plugins.chimol.chimol.renderer.view import MolView, _is_bead_model
 

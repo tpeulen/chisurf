@@ -388,7 +388,12 @@ class Structure(chisurf.core.base.Base):
         if self.atoms is not None:
             s = ""
             for at in self.atoms:
-                s += "%-6s%5d %4s%1s%3s %1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" % \
+                # `%1.1s` for the chain, not `%1s`: `%1s` is a *minimum* width in
+                # Python and does not truncate, so a chain id wider than the one
+                # column a PDB file has would shift every following field. Chain
+                # ids of two or more characters are ordinary in mmCIF -- the
+                # eight-spoke nuclear pore has 518 of them.
+                s += "%-6s%5d %4s%1s%3s %1.1s%4d%1s   %8.3f%8.3f%8.3f%6.2f%6.2f          %2s%2s\n" % \
                      ("ATOM ",
                       at['atom_id'], at['atom_name'], " ", at['res_name'], at['chain'],
                       at['res_id'], " ",

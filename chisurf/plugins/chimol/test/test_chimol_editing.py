@@ -6,6 +6,7 @@ from pathlib import Path
 
 from chisurf.plugins.chimol.chimol.testing.mock_viewer import MockViewer
 from chisurf.plugins.chimol.chimol.cmd.command import Cmd
+from chisurf.plugins.chimol.chimol.io.atoms import empty_atoms
 
 class MockWindow:
     def __init__(self, viewer):
@@ -22,20 +23,14 @@ def editing_context():
     window = MockWindow(viewer)
     cmd = Cmd(window)
     
-    # The field names every chisurf reader produces. This fixture used to invent
-    # its own -- `chain_id`, `b_factor` -- which happened to match the names
-    # `alter` looked for, so both were wrong together and the test passed while
-    # `alter sele, b=42` did nothing at all on a real structure.
-    atom_dtype = [
-        ('xyz', 'f4', (3,)),
-        ('atom_name', 'U5'),
-        ('res_id', 'i4'),
-        ('res_name', 'U5'),
-        ('chain', 'U1'),
-        ('bfactor', 'f4'),
-    ]
-
-    data = np.zeros(10, dtype=atom_dtype)
+    # The atom row every chisurf reader produces -- imported, not invented. This
+    # fixture used to make up its own field *names* (`chain_id`, `b_factor`),
+    # which happened to match what `alter` looked for, so both were wrong
+    # together and the test passed while `alter sele, b=42` did nothing at all on
+    # a real structure. It then made up its own *dtype*, which is the same
+    # mistake with the same failure mode: a fixture that cannot notice the
+    # readers changing shape underneath it.
+    data = empty_atoms(10)
     data['xyz'] = np.random.rand(10, 3)
     data['atom_name'] = [f'A{i}' for i in range(10)]
     data['res_id'] = np.arange(10)

@@ -179,8 +179,20 @@ class Tests(unittest.TestCase):
         )
         len(traj_write)
 
-    @unittest.expectedFailure
     def test_labeled_structure(self):
+        """An AV distance distribution between two labelling sites.
+
+        This was marked ``expectedFailure`` from a time when the call raised.
+        It stopped raising, and an expected failure that succeeds is itself a
+        red test -- so it reported failure while the code under it worked.
+        Verified stale independently of the atom-dtype change that found it:
+        it succeeds with the old field widths too.
+
+        It also asserted nothing: "passing" meant "did not raise". A
+        distribution is now checked for being a distribution -- normalised,
+        finite, and over positive distances -- so the test can fail for a
+        reason.
+        """
         import chisurf.core.structure
         import chisurf.core.structure.labeled_structure
         structure = chisurf.core.structure.Structure('./test/data/atomic_coordinates/pdb_files/hGBP1_closed.pdb')
@@ -191,3 +203,11 @@ class Tests(unittest.TestCase):
             donor_av_parameter=donor_description,
             acceptor_av_parameter=acceptor_description
         )
+
+        self.assertEqual(len(pRDA), len(rda))
+        self.assertTrue(np.all(np.isfinite(pRDA)))
+        self.assertTrue(np.all(rda >= 0.0))
+        self.assertGreater(pRDA.sum(), 0.0, "the distribution has no weight")
+        # The two sites are far apart in the closed structure; a distribution
+        # collapsed onto one bin would mean the AV clouds degenerated.
+        self.assertGreater(np.count_nonzero(pRDA), 1)

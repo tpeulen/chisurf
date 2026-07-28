@@ -20,9 +20,12 @@ unrecognised extension writes PDB rather than failing (``pymol/exporting.py``:
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "format_for_path",
@@ -163,6 +166,20 @@ def write_pdb(
     names = _field(atoms, "atom_name", "C").astype(str)
     res_names = _field(atoms, "res_name", "UNK").astype(str)
     chains = _field(atoms, "chain", "A").astype(str)
+    # A PDB file has one column for the chain; an mmCIF asym id runs A..Z then
+    # AA, AB, ... The truncation below is forced by the format, but two chains
+    # that differ only after the first character become one here, and that is
+    # worth saying rather than leaving to be discovered in whatever reads the
+    # file. The mmCIF writer below keeps them whole.
+    long_chains = sorted({c.strip() for c in chains if len(c.strip()) > 1})
+    if long_chains:
+        logger.warning(
+            "PDB has one column for the chain: %d identifier(s) are truncated to "
+            "their first character (%s%s), so chains differing only after it "
+            "become indistinguishable. Export mmCIF to keep them.",
+            len(long_chains), ", ".join(long_chains[:5]),
+            ", ..." if len(long_chains) > 5 else "",
+        )
     res_ids = np.asarray(_field(atoms, "res_id", 1)).astype(int, copy=False)
     elements = _field(atoms, "element", "").astype(str)
     hetatm = _is_hetatm(res_names, elements)
