@@ -2,6 +2,33 @@
 
 ## 2026-07-28
 
+* **The lazy fitter fitted the right model and returned the wrong one.** Drove
+  the *Decay Analysis* hub's panel 3, **Lazy Lifetime Analysis**, headlessly on
+  the plugin's own shipped example, plus the same engine through `csc lltf`. The
+  engine is real and quick -- a 1..4 component scan over 4948 channels in 31 s,
+  and an explicit two-exponential fit returns 0.998 / 3.962 ns at chi2r = 1.54.
+  **Find Optimal Number of Lifetimes**, its headline feature, returned **one**
+  lifetime at chi2r = 9.07 out of its own scan scores 7.97 / 3.95 / 12.88 /
+  68.78: the `'lower'` selection loop breaks only where chi2 improved *and* the
+  F-test calls that improvement insignificant, so while every added component
+  keeps helping it runs off the end with `best_idx` still at its initial `0`,
+  and separately the CLI's `--find-optimal` branch overwrites the config file's
+  `selection_mode` with its own default -- the config in use said `upper`, and
+  forcing `-sm upper` on that same file gives chi2r = 1.19. Around it: the IRF
+  shift is converted to channels by a literal `/ 2.0`, so on 0.008 ns data a
+  requested 8 ns moves the prompt 0.032 ns and the estimator rails at its own
+  scan edge; *Config File > Edit...*, the only route to the ~25 settings the fit
+  obeys, raises `NameError` and takes the process down with SIGABRT; the config's
+  `verbose` overrides the `-v` flag, so the panel's checkbox is inert; the saved
+  fit PNG clips the IRF's 3714 zero channels to the log-axis floor and covers
+  itself in green; the probability-versus-n plot that justifies the component
+  count is built in the fit subprocess and handed to `plt.show()`; and a failed
+  fit leaves the previous run's numbers in the *Results* tab. Recorded as
+  [Lazy Lifetime Analysis](usecases/lltf-lazy-lifetime-analysis.md) with the
+  softer UX notes (no fit-quality flag on chi2r = 9.07, chi2r below the fold in
+  a fixed 150 px pane, 31 s with no progress, no hand-off into ChiSurf);
+  RF-877..RF-884 filed.
+
 * **A manifest nothing checks is not a contract.** MMFDB registers 222 RPC
   handlers in code and *declares* them in the host's `mmfdb_admin` manifest --
   the file every client reads to build its forms and its generated docs. The
