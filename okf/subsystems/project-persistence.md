@@ -30,6 +30,14 @@ pre-v4 projects at load time. Core sections are `datasets`, `experiments`,
 and fit lookups are by UID, matching the migration away from Python object
 identity in the [API facade](/architecture/api-facade.md) and [server DTOs](/architecture/server.md).
 
+A parameter link is stored as the target parameter's UID plus the UID of the fit
+that owns it. A fit group is addressed through its **members**, never through the
+group itself: the group only exposes the currently selected member's model, so a
+global fit — whose followers all link into the first member — would otherwise
+save its links as `null` whenever another curve is selected. Restoring resolves
+the target UID against every fit and group member, using the recorded fit UID as
+a hint only, which also reads projects that recorded the group's UID.
+
 # Runtime use
 
 Project save/load is exposed through macros, the [action layer](/architecture/action-layer.md),

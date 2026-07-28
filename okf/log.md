@@ -2,6 +2,21 @@
 
 ## 2026-07-28
 
+* **A global fit keeps its parameter links whichever curve is selected
+  (RF-544).** Saving a fit resolved a link target that lives in another member
+  of the same group through `cs.fits`, i.e. through `FitGroup.model` — the model
+  of the *currently selected* member. Select any curve but the first and the
+  master's parameters were invisible, so
+  [`fit_state.py`](../chisurf/core/project/fit_state.py) wrote `link_target: null`
+  for every follower without a warning and the reloaded project fitted every
+  curve independently. Both the save and the restore side now address group
+  **members** (new `_local_fits()` helper), the member's uid is recorded instead
+  of the group's, and restore treats that uid as a hint so older projects still
+  load. Pinned by `test/fitting/test_fit_state_group_links.py`; the pre-v4
+  name-keyed assertions in `test/project/test_cross_fit_linking.py` and
+  `test_global_parameter_serialization.py` were repaired in the same change.
+  [Project persistence](/subsystems/project-persistence.md) documents the rule.
+
 * **The fixed-grid support-plane scan honours its own contract (RF-633, RF-634,
   RF-635).** `scan_parameter` in
   [`chisurf/core/fitting/support_plane.py`](../chisurf/core/fitting/support_plane.py)

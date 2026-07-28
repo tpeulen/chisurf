@@ -17,6 +17,31 @@ if TYPE_CHECKING:
     from chisurf.core.fitting.fit import Fit
 
 
+def _local_fits() -> list:
+    """List every fit that can own a link target, groups expanded.
+
+    A :class:`cs.core.fitting.fit.FitGroup` exposes only the *currently
+    selected* member through its ``model`` property, so walking ``cs.fits``
+    alone hides the models of all other members — and a global fit links its
+    followers to a parameter of the group's first member. Expanding the
+    groups makes every candidate model visible regardless of the selection.
+
+    Returns
+    -------
+    list
+        The plain fits of ``cs.fits`` plus the members of every fit group,
+        in registration order.
+    """
+    fits: list = []
+    for fit in getattr(cs, "fits", []) or []:
+        grouped = getattr(fit, "grouped_fits", None)
+        if isinstance(grouped, (list, tuple)) and grouped:
+            fits.extend(grouped)
+        else:
+            fits.append(fit)
+    return fits
+
+
 def _model_to_state(model: Any) -> Dict[str, Any]:
     """Extract a JSON‑serializable snapshot of a model's state.
 
@@ -93,8 +118,12 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
         if target_uid in uid_to_obj:
             p_state["link_target"] = target_uid
         else:
-            # Inter-fit link discovery (cross-fit)
-            for other_fit in getattr(cs, "fits", []):
+            # Inter-fit link discovery (cross-fit). The target of a global
+            # fit's link lives in another *member* of the same group, so the
+            # group members are searched individually and the member's uid is
+            # recorded — the group's own uid would only resolve back to
+            # whichever member happens to be selected on restore.
+            for other_fit in _local_fits():
                 for op in getattr(other_fit.model, "parameters_all", []):
                     if str(getattr(op, "unique_identifier", "")) == target_uid:
                         p_state["link_target"] = target_uid
@@ -287,21 +316,29 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
                 except Exception:
                     pass
         else:
-            # Inter-fit link restoration by UID
-            target_fit = next((f for f in getattr(cs, "fits", []) 
-                               if str(getattr(f, "unique_identifier", "")) == target_fit_uid), None)
-            if target_fit:
+            # Inter-fit link restoration by UID. Parameter uids are globally
+            # unique, so the recorded fit uid is only a hint: it is tried
+            # first and every other fit (group members included) afterwards.
+            # That also reads projects written before the group members were
+            # saved individually, which recorded the group's uid.
+            candidates = _local_fits()
+            preferred = [f for f in candidates
+                         if str(getattr(f, "unique_identifier", "")) == target_fit_uid]
+            target = None
+            for target_fit in preferred + candidates:
                 target_params = getattr(target_fit.model, "parameters_all", []) or []
                 target = next(
                     (op for op in target_params
                      if str(getattr(op, "unique_identifier", "")) == target_uid),
                     None
                 )
-                if target:
-                    try:
-                        p.link = target
-                    except Exception:
-                        pass
+                if target is not None:
+                    break
+            if target is not None:
+                try:
+                    p.link = target
+                except Exception:
+                    pass
 
     # TCSPC-specific extras (e.g. IRF and linearization state) restored via
     # dedicated set_state helpers, if present on the model's sub-groups.
