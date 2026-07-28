@@ -2,6 +2,30 @@
 
 ## 2026-07-28
 
+* **The 3-D view can be photographed now, and the metaball material was tuned
+  against the wrong renderer until it could.** Qt's offscreen platform cannot
+  create an OpenGL context at all, so a grab of the viewport was a black
+  rectangle -- and the one part of ChiMOL where appearance matters most was
+  judged either through the ray tracer (a different renderer, with no materials
+  and no transparency) or by asking a person to look. Both misled: the metaball
+  material looked plausible traced and came out as **cotton wool** in the
+  viewport.
+  - `chisurf/plugins/chimol/test/screenshot.py` uses the *ordinary* platform with
+    `WA_DontShowOnScreen`: the window is realised -- real GL context, renders
+    exactly as a user sees -- and never mapped onto the display. `grab_window`
+    composites the GL children in at their own geometry, because `QWidget.grab()`
+    does not read back a child GL surface and a whole-window grab of a 3-D
+    application otherwise comes out with a hole where the interesting part is.
+    It refuses `QT_QPA_PLATFORM=offscreen` rather than returning black, since a
+    black image reads as a broken renderer rather than a broken camera. Five
+    tests, skipped where there is no window server.
+  - **`alpha` was the mistake.** Anything below 1.0 routes the mesh to the
+    transparent pass, and an isosurface folds over itself many times, so
+    blending those layers gives a soft matte cloud with no silhouette. Back to
+    opaque; what reads as translucency is the rim light, which brightens grazing
+    edges the way light leaves a body it passed through. Verified in the
+    viewport at last: solid silhouette, specular glints, recognisably jelly.
+
 * **A decay plot that is three quarters photons which were never emitted.** The
   hourly GUI-tester drove **Structure Tools → QuEst** headlessly on T4 Lysozyme
   (`3GUN`, donor A/132/CB, acceptor A/55/CB) and recorded it as

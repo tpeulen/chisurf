@@ -233,10 +233,14 @@ def _load_display_config() -> dict:
             "padding": 5.0,
             # Maximum grid dimension (auto-coarsens spacing if exceeded)
             "max_dim": 128,
-            # Mesh transparency (1.0 = opaque, <1.0 = transparent). A metaball
-            # is a gel, not clay: letting the far wall show through faintly is
-            # most of what reads as "wet" to the eye.
-            "alpha": 0.82,
+            # Mesh transparency (1.0 = opaque, <1.0 = transparent). **Opaque.**
+            # A gel looks translucent, but alpha here routes the mesh to the
+            # transparent pass, and an isosurface folds over itself many times
+            # -- blending all those layers gives cotton wool, not jelly: a soft
+            # matte cloud with no silhouette. What reads as translucency is the
+            # rim light below, which brightens grazing edges the way light
+            # carried through a body leaves it. Solid geometry, glassy shading.
+            "alpha": 1.0,
             # Ambient occlusion strength (0.0 = off, 1.0 = maximum darkening in
             # crevices). Deliberately moderate: heavy occlusion reads as dust
             # settling in the creases, which is the opposite of a wet surface.

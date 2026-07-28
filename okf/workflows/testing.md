@@ -81,6 +81,32 @@ nested handler is a direct-execution fallback. Anything genuinely optional goes
 in the test's `OPTIONAL` map **with a reason**, so "this may be absent" is a
 decision on the record rather than an anonymous `except`.
 
+# A failure path must not open a dialog nobody can close
+
+`QMessageBox.critical(...)` spins its own event loop until a button is pressed.
+Under `QT_QPA_PLATFORM=offscreen` — every headless suite, every CI job, every
+screenshot script — no button can ever be pressed, so a dialog on an `except`
+branch does not report the error: it **wedges the process**, and the traceback
+is never seen. That is worse than a crash, because a hung run is
+indistinguishable from a slow one. The fFCS filter-calculator module was hanging
+this way and had to be diagnosed with `sample(1)` and
+`faulthandler.dump_traceback_later`, which is the tell: if a suite stops
+producing dots and no test has failed, suspect a modal dialog before suspecting
+the machine.
+
+Report through [`chisurf/gui/dialogs.py`](../../chisurf/gui/dialogs.py) —
+`report_error` / `report_warning` / `report_information`. They log
+unconditionally and raise the box only when `QGuiApplication.platformName()` is
+a real window system, so interactive behaviour is unchanged. The same
+`is_interactive()` predicate is the right guard for any modal built by hand:
+"a `QApplication` exists" is *not* the same question as "a person is there".
+
+`test/test_headless_dialog_seam.py` fails when a **new** file calls a raw
+`QMessageBox` static from inside an `except` handler, tracking the remaining
+ones in `test/headless_dialog_allowlist.txt` (the same allow-list-as-tracker
+convention as the pyqtgraph seam). A confirmation prompt on a button click is
+deliberately not flagged: there the user is right there, which is the point.
+
 # GUI work is never blind — screenshot and look at it
 
 **Any change that touches a GUI is unfinished until the widget has been rendered
@@ -102,10 +128,39 @@ The loop, for every GUI change:
 4. Fix what looks wrong and repeat until it looks right. Resize once before the
    final grab — some layout artefacts only settle after the first real resize.
 
-Two practical notes: the offscreen platform refuses to create an OpenGL context,
-so a GL viewport must be grabbed under `cocoa` with an offscreen surface instead;
-and interactive behaviour (a dragged ROI, a picked point) is verified by driving
-the signal programmatically and asserting the model changed, not by looking.
+**A 3-D viewport needs a different shutter.** The offscreen platform cannot
+create an OpenGL context at all — it says so, once, and then every grab of a
+`QOpenGLWidget` is a black rectangle, which reads as a broken renderer rather
+than a broken camera. A `QOffscreenSurface` under that platform does not help:
+context creation still fails.
+
+What works is the *ordinary* platform with `WA_DontShowOnScreen`. The window is
+realised — real backing store, real GL context, everything renders exactly as a
+user would see it — and is never mapped onto the display, so nothing appears and
+nothing steals focus. `chisurf/plugins/chimol/test/screenshot.py` wraps it:
+
+```python
+from chisurf.plugins.chimol.test.screenshot import ensure_app, shoot
+
+app = ensure_app()          # refuses QT_QPA_PLATFORM=offscreen rather than lying
+paths = shoot(window, "npc_demo")   # {"window": ..., "view": ...}
+```
+
+`grab_window` composites the GL children in at their own geometry, because
+`QWidget.grab()` renders the widget tree and does *not* read back a child GL
+surface — a plain whole-window grab of a 3-D application comes out with a hole
+where the interesting part is. It needs a logged-in session, so it is skipped
+rather than failed where there is no window server.
+
+Until this existed, the appearance of the one part of ChiMOL where appearance
+matters most was judged either through the ray tracer — a different renderer,
+with no materials and no transparency — or by asking a human to look. Both were
+misleading in practice: a metaball material tuned against the ray tracer looked
+entirely different in the viewport.
+
+Interactive behaviour (a dragged ROI, a picked point) is still verified by
+driving the signal programmatically and asserting the model changed, not by
+looking.
 
 Screenshots that end up in `docs/guides/` are produced the same way from the real
 widget — see `docs/guides/make_screenshots.py` — never as mockups.
