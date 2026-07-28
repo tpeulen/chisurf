@@ -58,7 +58,7 @@
   decay is drawn backwards on a hard-coded 0–100 ns axis (true span 16.7 ns),
   the dock's output folder and Save/Load buttons are covered by the *Show* group
   box, **Save Settings** raises, and both command-line entry points fail on a
-  missing module. Findings [RF-810..RF-818](/reviews/findings.md); softer items
+  missing module. Findings [RF-819..RF-827](/reviews/findings.md); softer items
   (three output-folder fields for one destination, five interacting photon
   budgets across two windows, no progress during the 23 s generation phase, an
   unlabelled count-rate LCD, nothing carrying the measurement forward into an

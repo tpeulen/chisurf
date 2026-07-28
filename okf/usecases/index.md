@@ -273,7 +273,7 @@ The workflows a first pass should cover — expand as the tester discovers more:
   that stream is not — the recordings ignore the configured folder and land in
   the working directory, a 20 000-photon budget returns 190 671 photons, half
   the detectors never reach the decay window, and that decay is drawn backwards
-  on an axis six times too wide. *(last driven 2026-07-28; RF-810..RF-818)*
+  on an axis six times too wide. *(last driven 2026-07-28; RF-819..RF-827)*
 
 ## Per-workflow file format
 

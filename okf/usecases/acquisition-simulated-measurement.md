@@ -115,7 +115,7 @@ ignores what the user asked for:
   stayed **empty** and the files were written to a timestamped
   `simulation_output_<stamp>/` directory **relative to the process working
   directory**. In the first run that put **147 SPC files into the repository
-  working tree**. Root cause is a two-line ordering bug (RF-810): the dock's
+  working tree**. Root cause is a two-line ordering bug (RF-819): the dock's
   path is written into `simulation_params["spc_output_path"]`, and the saved
   settings-panel snapshot — which carries `spc_output_path: ""` — is applied
   *after* it and blanks it again. The embedded form has its own, second, empty
@@ -126,7 +126,7 @@ ignores what the user asked for:
   `N_ph_max` batch in one blocking call *before* streaming any of it, so the
   stop check fires 56 times in a row — "Photon limit reached (20,847 …)",
   "(24,315 …)" … "(190,671 photons)" — while the already-generated stream keeps
-  draining (RF-812). In a second run with `N_ph_max = 40 000` and the same 20 kPh
+  draining (RF-821). In a second run with `N_ph_max = 40 000` and the same 20 kPh
   limit, exactly 40 000 photons came back.
 - **Nothing happens for the first 23 s.** Because generation is up front, the
   default 1 000 000-photon run showed an empty screen and a progress bar reading
@@ -139,37 +139,37 @@ ignores what the user asked for:
   puts the two detectors on routing channels **8 and 0**, but the decay window's
   channel mapping defaults to 0, 1, 2, 3 — so only channel 0 is histogrammed
   (93 458 counts of 187 207 photons) and the second curve sits flat at zero for
-  the whole measurement (RF-816). The spin boxes that would fix it exist in the
+  the whole measurement (RF-825). The spin boxes that would fix it exist in the
   code but are not on screen.
 - **The decay plot is wrong on both axes** (screenshot `06_decay.png`): the x
   axis is a hard-coded `linspace(0, 100)` ns regardless of the configured TAC
   resolution — the true span here is 4096 × 0.004069 ns = **16.7 ns**, so the
   axis is 6× too wide and sits well past the 13.6 ns laser period — and the raw
   inverted Becker & Hickl TAC is plotted as-is, so the fluorescence decay is
-  drawn **rising** from 20 ns to 100 ns (RF-815). Confirmed against the file:
+  drawn **rising** from 20 ns to 100 ns (RF-824). Confirmed against the file:
   the micro-time histogram genuinely peaks at TAC channel ~4032.
 - **The dock hides its own controls.** The output-folder row and the
   **Save Settings** / **Load Settings** buttons are placed in the same grid cell
   as the **Show** group box, which is added last and covers them completely
-  (RF-813, screenshots `01_dock.png` / `05_dock_after_run.png`). The device-type
+  (RF-822, screenshots `01_dock.png` / `05_dock_after_run.png`). The device-type
   combo is constructed but never added to any layout at all (parent `None`,
   `isVisible() == False`), and the **Simulation Setup…** button never unhides
   because the check compares the device's `"SIMULATION"` against the literal
-  `"Simulation"` (RF-814). The visible dock is therefore four widgets wide:
+  `"Simulation"` (RF-823). The visible dock is therefore four widgets wide:
   Time, Nbr Ph, Start, Stop — plus five checkboxes.
 - **Save Settings raises.** `_get_current_settings()` reads
   `acquisition_dock.chunk_size`, an attribute the dock never defines →
-  `AttributeError` (RF-811). The button is occluded, so this has never been hit
+  `AttributeError` (RF-820). The button is occluded, so this has never been hit
   from the UI.
 - **Photons/file is silently overridden.** The Simulation Setup's
   *Photons/file = 100000* was replaced by the *Chunk Size* advanced setting: a
   40 000-photon run with chunk 5000 produced eight 5000-photon files, and the
   `simulation_config.json` written beside them records `N_ph_per_file: 5000`
-  (RF-817).
+  (RF-826).
 - **The documented command-line entry points do not start.**
   `python -m chisurf.plugins.core.acq` and `--standalone` both die with
   `ModuleNotFoundError: No module named 'chisurf.plugins.core.acq.main'`
-  (RF-818).
+  (RF-827).
 - Two further things a user would notice and this run could not fully pin down:
   the correlation curve's half-decay reads ≈ 0.03 ms against an analytic
   `τ_D = w0²/4D = 7.5 µs` for the configured optics (read off the plot, not
@@ -218,21 +218,21 @@ ignores what the user asked for:
 
 ## Bugs filed
 
-- RF-810 — the configured output folder is overwritten by the settings snapshot,
+- RF-819 — the configured output folder is overwritten by the settings snapshot,
   so recordings land in the process working directory.
-- RF-811 — **Save Settings** raises `AttributeError` on a dock attribute that
+- RF-820 — **Save Settings** raises `AttributeError` on a dock attribute that
   does not exist.
-- RF-812 — the photon stop condition overshoots by up to 10×; the whole
+- RF-821 — the photon stop condition overshoots by up to 10×; the whole
   `N_ph_max` batch is generated and written regardless.
-- RF-813 — the dock's output-folder row and Save/Load Settings buttons are
+- RF-822 — the dock's output-folder row and Save/Load Settings buttons are
   covered by the *Show* group box.
-- RF-814 — the device-type combo is never laid out, and the `"SIMULATION"` vs
+- RF-823 — the device-type combo is never laid out, and the `"SIMULATION"` vs
   `"Simulation"` mismatch keeps *Simulation Setup…* hidden and rebuilds the
   device on every Start.
-- RF-815 — the live decay is drawn on a hard-coded 0–100 ns axis and with the
+- RF-824 — the live decay is drawn on a hard-coded 0–100 ns axis and with the
   raw inverted TAC, so it rises with time.
-- RF-816 — the default channel mapping misses the simulator's routing channels,
+- RF-825 — the default channel mapping misses the simulator's routing channels,
   so half the photons never reach the decay window.
-- RF-817 — *Photons/file* is silently replaced by the *Chunk Size* setting.
-- RF-818 — `python -m chisurf.plugins.core.acq [--standalone]` fails on a
+- RF-826 — *Photons/file* is silently replaced by the *Chunk Size* setting.
+- RF-827 — `python -m chisurf.plugins.core.acq [--standalone]` fails on a
   missing `.main` module.

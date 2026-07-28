@@ -9397,65 +9397,65 @@ with the written SPC files read back in tttrlib. Use case:
 The simulated physics and the recorded files are sound — the correlation
 amplitude reproduces the configured occupancy exactly and the SPC output reads
 back as a valid stream. Everything between the user's settings and that stream
-does not. Findings RF-810..RF-818.
+does not. Findings RF-819..RF-827.
 
-### RF-810
+### RF-819
 - **Status:** OPEN
 - **Severity:** S1 (a recorded measurement is written to the process working directory instead of the folder the user configured — 147 SPC files landed in the repository working tree during this run)
 - **Location:** `chisurf/plugins/core/acq/gui/tool.py:1760` (`self.device.simulation_params["spc_output_path"] = output_path`) against `:1767-1770` (`saved_sim_params = acq_config.get("simulation_params")` … `simulation_params.update(copy.deepcopy(saved_sim_params))`), landing in `chisurf/plugins/core/acq/tcspc_devices/simulation/wrapper.py:204-211` (`_ensure_output_path`)
 - **Finding:** `start_acquisition` writes the resolved output folder into the device's `simulation_params` and then, ~10 lines later, applies the settings-panel snapshot over the same dict. The snapshot carries the embedded simulation form's own (empty) `spc_output_path`, so the user's folder is blanked before the device starts; `_ensure_output_path` then invents `simulation_output_{timestamp}` and `os.makedirs` it **relative to the process CWD**. Verified twice: with the folder set in the settings panel *and* typed into the dock, the configured directory stayed empty (`n = 0`) and the files appeared in the working directory (`simulation_output_20260728_205054/`, 8 files; an earlier default run wrote 145 SPC files + config into the chisurf checkout). Fix by applying the saved snapshot *first* and the explicit output path last, and by dropping `spc_output_path` from the persisted snapshot (a stored empty path should never beat a live one). `_ensure_output_path`'s invented fallback should also be absolute — a relative default means a GUI launched from any directory scatters measurements there.
 - **Fix note:**
 
-### RF-811
+### RF-820
 - **Status:** OPEN
 - **Severity:** S1 (the *Save Settings* button raises `AttributeError` — the acquisition configuration cannot be saved at all)
 - **Location:** `chisurf/plugins/core/acq/gui/tool.py:2586` (`'chunk_size': self.acquisition_dock.chunk_size` in `_get_current_settings`), wired from `:812-819` (`save_json_button.clicked.connect(… parent().save_settings_json())`)
-- **Finding:** `AcquisitionDockWidget` defines properties for `duration`, `photon_limit`, `output_path` and the five `show_*` flags, but never a `chunk_size` — that setting lives in the settings panel (`AcquisitionSettingsWidget.chunk_size_spinbox`). Calling `_get_current_settings()` therefore raises `AttributeError: 'AcquisitionDockWidget' object has no attribute 'chunk_size'` before it returns, so both **Save Settings** and any caller of `_apply_settings` round-tripping through it fail. Verified by calling it on a live manager. This has never surfaced from the UI only because the button itself is invisible (RF-813). Read the value from `gui_settings["acquisition"]["chunk_size"]`, which is where the settings panel persists it.
+- **Finding:** `AcquisitionDockWidget` defines properties for `duration`, `photon_limit`, `output_path` and the five `show_*` flags, but never a `chunk_size` — that setting lives in the settings panel (`AcquisitionSettingsWidget.chunk_size_spinbox`). Calling `_get_current_settings()` therefore raises `AttributeError: 'AcquisitionDockWidget' object has no attribute 'chunk_size'` before it returns, so both **Save Settings** and any caller of `_apply_settings` round-tripping through it fail. Verified by calling it on a live manager. This has never surfaced from the UI only because the button itself is invisible (RF-822). Read the value from `gui_settings["acquisition"]["chunk_size"]`, which is where the settings panel persists it.
 - **Fix note:**
 
-### RF-812
+### RF-821
 - **Status:** OPEN
 - **Severity:** S1 (the photon stop condition does not bound the measurement — a 20 000-photon request returned 190 671 photons)
 - **Location:** `chisurf/plugins/core/acq/tcspc_devices/simulation/core/streaming.py:130-154` (`_generate`: `words = self.simulate_photons(params)` generates the whole `N_ph_max` batch, then `_write_output`, and only then the `data_queue.put` loop) with `chisurf/plugins/core/acq/gui/tool.py:683-692` (`_check_stop`) and `:1895-1899` (`_on_processing_stop` → `QTimer.singleShot(0, self.stop_acquisition)`)
 - **Finding:** the simulator is not a stream: it materialises all `N_ph_max` photons in one blocking call and writes every SPC file *before* the first chunk reaches the queue, and `stop_event` is only consulted in the streaming loop afterwards — hence the "Background generation thread did not stop gracefully" line on every stop. The consequence at the GUI level is that the photon budget is unenforceable: with **Nbr Ph [k] = 20** (20 000 photons) and the default `N_ph_max = 1e6`, `_check_stop` emitted `stop_requested` **56 consecutive times**, from "Photon limit reached (20,847 photons)" to "(190,671 photons)", while the pre-generated stream drained — 9.5× the requested measurement. A control run with `N_ph_max = 40 000` and the same limit returned exactly 40 000. Two second-order effects: the flood overruns the processing queue ("DataProcessingThread queue full, dropping chunk"), so the live decay/correlation/count-rate are computed on a silently truncated subset; and `_check_stop` should latch (emit once) rather than re-emit per chunk. The real fix is generating in bounded batches so `N_ph_max`, the stop conditions and cancellation all act on the same loop.
 - **Fix note:**
 
-### RF-813
+### RF-822
 - **Status:** OPEN
 - **Severity:** S2 (the acquisition dock's output-folder row and its Save/Load Settings buttons are drawn underneath the *Show* group box and are invisible and unclickable)
 - **Location:** `chisurf/plugins/core/acq/gui/tool.py:807` (`control_layout.addLayout(output_layout, 4, 0, 1, 4)`), `:827` (`control_layout.addLayout(json_layout, 4, 4, 1, 2)`) and `:852` (`control_layout.addWidget(windows_group, 4, 0, 1, 6)`)
 - **Finding:** three items are added to **row 4** of the same `QGridLayout`, the last spanning all six columns, so the *Show* group box is stacked on top of the output-folder line edit, its "…" browse button, and the **Save Settings** / **Load Settings** buttons. Verified by screenshot at two dock sizes: the row simply is not there (row 2 of the grid is unused, and row 1 holds the never-shown *Simulation Setup…* button, so there is space). `isVisible()` still returns `True` for the occluded widgets, which is why no construction test catches it. Move `windows_group` to row 5 (or the output/json rows to rows 1-2).
 - **Fix note:**
 
-### RF-814
+### RF-823
 - **Status:** OPEN
 - **Severity:** S2 (the dock offers no device selection and no simulation setup: one widget is never laid out and the other never unhides, because two spellings of the device type are compared)
 - **Location:** `chisurf/plugins/core/acq/gui/tool.py:714-718` (`self.device_type_combo = QComboBox()` … never passed to `addWidget`), `:1566-1573` (`update_ui_for_device_type`: `self.device_type = self.device.device_type` then `if self.device_type == "Simulation"`) and `:1743` (`if self.device.device_type != device_type`), against `chisurf/plugins/core/acq/tcspc_devices/device_factory.py:23-48` (`TCSPCDevice("SIMULATION")` → `self.device_type = "SIMULATION"`)
 - **Finding:** two independent defects that combine into "the dock has no configuration". (a) `device_type_combo` is constructed with three items and then never added to any layout — measured on a live dock: `parent() is None`, `isVisible() == False` — yet it is read at four places (`:1753`, `:2056`, `:2115`, `:2582`), including the settings JSON, where it records a vocabulary (`"BH SPC 830"`) that `start_acquisition` does not even recognise (it tests for `"Becker-Hickl"`). The real selector is `AcquisitionSettingsWidget.device_type_combo`. (b) the device object reports `"SIMULATION"` while the GUI compares against `"Simulation"`, so `update_ui_for_device_type` never sets `sim_setup_button.setVisible(True)` (verified: still `False` after an explicit call) and `start_acquisition`'s guard is always true, tearing down and rebuilding the device on **every** Start. Compare case-insensitively (or normalise once) and either lay the combo out or delete it and read the settings panel.
 - **Fix note:**
 
-### RF-815
+### RF-824
 - **Status:** OPEN
 - **Severity:** S2 (the live decay window plots a hard-coded 0–100 ns axis and the raw inverted TAC, so the fluorescence decay is drawn rising with time on an axis 6× too wide)
 - **Location:** `chisurf/plugins/core/acq/gui/tool.py:2416` and `:2421` (`x = np.linspace(0, 100, len(...))  # Assuming 100 ns time range`), with the axis label set at `chisurf/plugins/core/acq/gui/windows.py:44` (`setLabel('bottom', 'Time (ns)')`)
 - **Finding:** the decay x axis ignores the device's micro-time calibration entirely. For the shipped simulation (`N_tac_channels = 4096`, `tac_dt = 0.004069 ns`) the true span is **16.67 ns** and the laser period is 13.596 ns, so a decay is stretched over 0–100 ns — six times too wide, and most of the axis lies beyond one laser period. On top of that the raw Becker & Hickl TAC is plotted unreversed: verified against the file the tool itself wrote, the micro-time histogram peaks at TAC channel ~4032, so the window (screenshot in the use case) shows counts *growing* from 20 ns to 100 ns — a decay drawn backwards, under a label that says "Time (ns)". Build the axis from `N_tac_channels × tac_dt` read off the device (`_read_device_timing_parameters` already reads the macro-time clock the same way) and invert BH TAC values as the rest of the TCSPC stack does.
 - **Fix note:**
 
-### RF-816
+### RF-825
 - **Status:** OPEN
 - **Severity:** S2 (the live decay window shows only half the photons of the shipped simulated device, and the control that would fix it is not on screen)
-- **Location:** `chisurf/plugins/core/acq/gui/tool.py:748-753` (`channel_spinboxes`, four `QSpinBox`es defaulting to 0, 1, 2, 3 and — like RF-814's combo — never added to a layout) feeding `:1788` (`channel_mapping=[s.value() for s in self.acquisition_dock.channel_spinboxes]`) and `:507-517` (`_update_decay`: `mask = channels == ch`), against `chisurf/plugins/core/acq/tcspc_devices/simulation/wrapper.py:83` (`"ch_conversion": [8, 0, 9, 1, 10, 2]`)
+- **Location:** `chisurf/plugins/core/acq/gui/tool.py:748-753` (`channel_spinboxes`, four `QSpinBox`es defaulting to 0, 1, 2, 3 and — like RF-823's combo — never added to a layout) feeding `:1788` (`channel_mapping=[s.value() for s in self.acquisition_dock.channel_spinboxes]`) and `:507-517` (`_update_decay`: `mask = channels == ch`), against `chisurf/plugins/core/acq/tcspc_devices/simulation/wrapper.py:83` (`"ch_conversion": [8, 0, 9, 1, 10, 2]`)
 - **Finding:** the simulated device emits its two detectors on routing channels **8 and 0** — verified by reading its own output back with tttrlib: `m000.spc` holds 3448 photons on channel 0 and 3508 on channel 8. The decay histogrammer's channel mapping defaults to `0, 1, 2, 3`, so channel 8 matches nothing: after a 187 207-photon run the first decay held 93 458 counts and the other three were exactly zero, with a flat blue curve across the plot for the whole measurement. The mapping should default to the active device's own `ch_conversion` (`update_decay_plot` at `:2389-2394` already knows the `8/9/10 → 0/1/2` correspondence, which is precisely the mapping the processing thread is missing), and the four spin boxes need to be laid out so a user can correct it.
 - **Fix note:**
 
-### RF-817
+### RF-826
 - **Status:** OPEN
 - **Severity:** S2 (the *Photons/file* the user sets in the simulation setup is silently replaced by the unrelated *Chunk Size* performance setting)
 - **Location:** `chisurf/plugins/core/acq/gui/tool.py:1772-1774` (`target_photons = max(1, chunk_size_photons)` … `self.device.simulation_params["N_ph_per_file"] = target_photons`), where `chunk_size_photons = acq_config.get("chunk_size", 16384)` (`:1795` region), consumed by `chisurf/plugins/core/acq/tcspc_devices/simulation/core/streaming.py:180-186`
 - **Finding:** *Chunk Size* is documented and presented as a read-granularity knob ("Number of photons to read per chunk"), but `start_acquisition` also assigns it to the simulator's `N_ph_per_file`, overriding the *Photons/file* field of the simulation setup form on every run. Verified: with *Photons/file* = 100 000 and *Chunk Size* = 5000, a 40 000-photon run produced **eight** files and the `simulation_config.json` written beside them records `"N_ph_per_file": 5000`. Either honour the form's value, or remove the field from the form so one setting has one meaning.
 - **Fix note:**
 
-### RF-818
+### RF-827
 - **Status:** OPEN
 - **Severity:** S2 (both documented command-line entry points of the acquisition plugin fail at import on a module that does not exist)
 - **Location:** `chisurf/plugins/core/acq/standalone.py:57` (`from .main import SMAcquisitionManager` inside `run_standalone`), reached from `chisurf/plugins/core/acq/__main__.py:12` and from `run_as_plugin`'s no-QApplication fallback at `:99-103`
