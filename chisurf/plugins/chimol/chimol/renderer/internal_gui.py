@@ -22,7 +22,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-from ..mouse_modes import BUTTON_COLUMNS, MODE_NAMES, rows_for
+from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry
 
 # PyMOL's palette, read off its internal GUI.
@@ -211,9 +211,21 @@ class InternalGui:
         self._name_width = 90.0
         #: The mouse mode the bottom-right block describes.
         self.mouse_mode = "three_button_viewing"
+        #: Which ring the mode line cycles within.
+        self.mouse_ring = DEFAULT_RING
         #: What a click selects, and where the movie is -- both shown there.
         self.selecting = "Residues"
         self.state = (1, 1)
+        #: Frames advanced per playback step, and the window a trajectory is
+        #: averaged over. PyMOL has neither: a long trajectory is watched at
+        #: whatever rate it was written, and a noisy one jitters. Both are
+        #: shown in the block and clicking cycles them.
+        self.stride = 1
+        self.average = 0
+        self._stride_rect = Rect(0, 0, 0, 0)
+        self._average_rect = Rect(0, 0, 0, 0)
+        #: Called with ``(stride, average)`` when either is clicked.
+        self.on_playback_change: Callable[[int, int], None] | None = None
         self._mode_rect = Rect(0, 0, 0, 0)
         #: Width of the column the panel and the block live in. The scene is
         #: rendered to the *left* of it, as PyMOL does, rather than under it:
@@ -447,7 +459,7 @@ class InternalGui:
         block_w = self.PAD + label_w + 4 * cell_w + self.PAD
         # title, the L/M/R/Wheel heading, six binding rows, selecting, state
         rows = len(rows_for(self.mouse_mode))
-        block_h = self.PAD + line_h * (rows + 4) + self.PAD + self.ROW_H + self.PAD
+        block_h = self.PAD + line_h * (rows + 5) + self.PAD + self.ROW_H + self.PAD
 
         if self.docked:
             block_w = max(block_w, self.column_width)
@@ -463,6 +475,15 @@ class InternalGui:
             )
         self._mode_rect = Rect(
             self._block.x + self.PAD, self._block.y + self.PAD, block_w, line_h
+        )
+
+        # Stride and average share the line under the state.
+        stride_y = self._block.y + self.PAD + line_h * (rows + 4)
+        char_w = self.FONT_PT * 0.62
+        split = self.PAD + 10.0 * char_w + 5 * char_w      # label column + one cell
+        self._stride_rect = Rect(self._block.x, stride_y, split, line_h)
+        self._average_rect = Rect(
+            self._block.x + split, stride_y, block_w - split, line_h
         )
 
         # The transport sits on the block's last line, spread across its width.
@@ -482,10 +503,13 @@ class InternalGui:
         return self._block
 
     def cycle_mouse_mode(self) -> None:
-        """Step to the next mode, as clicking PyMOL's mode line does."""
-        names = list(MODE_NAMES)
-        if self.mouse_mode in names:
-            self.mouse_mode = names[(names.index(self.mouse_mode) + 1) % len(names)]
+        """Step to the next mode in the ring, as PyMOL's mode line does.
+
+        Within the ring, not through all ten modes: a viewing ring steps
+        viewing -> editing -> viewing and never lands on lights or maestro
+        unless the ring is changed, which is the point of having one.
+        """
+        self.mouse_mode = next_mode(self.mouse_mode, self.mouse_ring)
 
     @property
     def panel_rect(self) -> Rect:
@@ -524,6 +548,10 @@ class InternalGui:
 
         if self._mode_rect.contains(x, y):
             return Hit("mode")
+        if self._stride_rect.contains(x, y):
+            return Hit("stride")
+        if self._average_rect.contains(x, y):
+            return Hit("average")
         for rect, command in self._movie_rects:
             if rect.contains(x, y):
                 return Hit("movie", key=command)
@@ -641,6 +669,21 @@ class InternalGui:
 
         if hit.kind == "mode":
             self.cycle_mouse_mode()
+            return True
+
+        if hit.kind in ("stride", "average"):
+            # Right-click steps back, so a value overshot is one click away
+            # rather than a full trip round the cycle.
+            step = -1 if right else 1
+            if hit.kind == "stride":
+                self.stride = max(1, self.stride + step)
+            else:
+                self.average = max(0, self.average + step)
+            if self.on_playback_change is not None:
+                try:
+                    self.on_playback_change(self.stride, self.average)
+                except Exception:
+                    pass
             return True
 
         if hit.kind == "movie":
@@ -948,6 +991,17 @@ class InternalGui:
         current, total = self.state
         draw(left, line, "State", STATE_FG, label_w, right=True)
         draw(left + label_w, line, f"{current} / {total}", MODE_ACTION_FG, cell_w * 3)
+        line += self.BLOCK_ROW_H
+
+        # Stride and averaging: PyMOL has neither, and a long or noisy
+        # trajectory needs both -- one to watch it end to end without waiting,
+        # the other to see the motion rather than the jitter.
+        draw(left, line, "Stride", STATE_FG, label_w, right=True)
+        draw(left + label_w, line, f"x{self.stride}", MODE_ACTION_FG, cell_w)
+        draw(left + label_w + cell_w, line, "Avg", STATE_FG, cell_w)
+        draw(left + label_w + cell_w * 2, line,
+             "off" if self.average <= 1 else str(self.average),
+             MODE_ACTION_FG, cell_w * 2)
 
         for button_rect, _command in self._movie_rects:
             box = QtCore.QRectF(button_rect.x, button_rect.y,

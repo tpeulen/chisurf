@@ -2078,12 +2078,41 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             )
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)
+        gui.on_playback_change = self._apply_playback_settings
+        try:
+            gui.stride = int(self.viewer.get_frame_step())
+            gui.average = int(self.viewer.get_trajectory_smoothing())
+        except Exception:
+            pass
+        try:
+            gui.state = (
+                int(self.viewer.get_current_frame()) + 1,
+                max(int(self.viewer.get_total_frames()), 1),
+            )
+        except Exception:
+            pass
         self._sync_internal_sequences(gui)
         # Monospace, so the widest name in characters decides the column.
         widest = max((len(row.name) for row in rows), default=4)
         gui.layout(renderer.width(), renderer.height(),
                    name_width=max(60.0, widest * gui.FONT_PT * 0.62 + 8))
         renderer.update()
+
+    def _apply_playback_settings(self, stride: int, average: int) -> None:
+        """Apply the stride and averaging window chosen in the viewport block.
+
+        Neither exists in PyMOL. A long trajectory is otherwise watched at
+        whatever rate it was written -- and a noisy one jitters so much that the
+        motion everyone is looking for is buried in it.
+        """
+        try:
+            self.viewer.set_frame_step(int(stride))
+            self.viewer.set_trajectory_smoothing(int(average))
+            self.viewer.update()
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Could not apply playback settings", exc_info=True
+            )
 
     def _sync_internal_sequences(self, gui) -> None:
         """Give the strip one row per *shown* object.

@@ -541,3 +541,69 @@ def test_the_letters_take_the_structures_colours(sequences):
 
     row.colors = []
     assert _residue_color(row, 0) != (255, 0, 0), "should fall back, not crash"
+
+
+# --------------------------------------------------------------------------- #
+# Mouse-mode rings, stride and averaging
+# --------------------------------------------------------------------------- #
+def test_the_mode_line_cycles_within_pymols_ring(gui):
+    """Not through every mode it knows.
+
+    A viewing ring steps viewing -> editing -> viewing and never lands on the
+    lights or maestro modes, which is the point of having a ring: cycling all
+    ten walks someone through modes they did not choose.
+    """
+    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_RINGS
+
+    ring = MODE_RINGS[gui.mouse_ring]
+    seen = []
+    for _ in range(len(ring) + 1):
+        gui.cycle_mouse_mode()
+        seen.append(gui.mouse_mode)
+
+    assert set(seen) <= set(ring), f"cycled outside the ring: {set(seen) - set(ring)}"
+    assert seen[len(ring)] == seen[0], "the ring did not wrap round"
+
+
+def test_the_ring_matches_pymols():
+    """Checked against the source it came from, where PyMOL is installed."""
+    controlling = pytest.importorskip("pymol.controlling")
+
+    from chisurf.plugins.chimol.chimol.mouse_modes import MODE_RINGS
+
+    for name, modes in MODE_RINGS.items():
+        assert list(modes) == list(controlling.ring_dict[name]), f"{name} drifted"
+
+
+def test_stride_and_averaging_are_clickable(gui):
+    """PyMOL has neither, and a long or noisy trajectory needs both."""
+    applied: list[tuple[int, int]] = []
+    gui.on_playback_change = lambda stride, average: applied.append((stride, average))
+
+    gui.mouse_press(*_centre(gui._stride_rect))
+    assert gui.stride == 2
+    gui.mouse_press(*_centre(gui._average_rect))
+    assert gui.average == 1
+    assert applied == [(2, 0), (2, 1)]
+
+
+def test_right_clicking_steps_them_back(gui):
+    """A value overshot is one click away, not a trip round the whole cycle."""
+    gui.on_playback_change = lambda *a: None
+    gui.stride, gui.average = 4, 3
+
+    gui.mouse_press(*_centre(gui._stride_rect), right=True)
+    gui.mouse_press(*_centre(gui._average_rect), right=True)
+
+    assert (gui.stride, gui.average) == (3, 2)
+
+
+def test_neither_goes_below_its_floor(gui):
+    """A stride of zero would advance nothing; a negative window is meaningless."""
+    gui.on_playback_change = lambda *a: None
+    for _ in range(5):
+        gui.mouse_press(*_centre(gui._stride_rect), right=True)
+        gui.mouse_press(*_centre(gui._average_rect), right=True)
+
+    assert gui.stride == 1
+    assert gui.average == 0

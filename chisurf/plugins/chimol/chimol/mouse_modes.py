@@ -80,6 +80,25 @@ ACTION_LABELS: dict[str, str] = {
     "rotz": "RotZ",
 }
 
+#: PyMOL's mouse-configuration rings: which modes the mode line cycles
+#: through, from `pymol.controlling.ring_dict`. Cycling every mode there is
+#: would step through editing modes nobody asked for; the ring is the point.
+MODE_RINGS: dict[str, tuple[str, ...]] = {
+    'maestro': ('three_button_maestro',),
+    'one_button': ('one_button_viewing',),
+    'three_button': ('three_button_viewing', 'three_button_editing'),
+    'three_button_all_modes': ('three_button_editing', 'three_button_motions', 'three_button_viewing', 'three_button_lights'),
+    'three_button_editing': ('three_button_editing', 'three_button_viewing'),
+    'three_button_motions': ('three_button_motions', 'three_button_viewing'),
+    'three_button_viewing': ('three_button_viewing', 'three_button_editing'),
+    'two_button': ('two_button_viewing', 'two_button_selecting'),
+    'two_button_editing': ('two_button_editing', 'two_button_viewing', 'two_button_selecting'),
+    'two_button_viewing': ('two_button_viewing', 'two_button_selecting'),
+}
+
+#: The default ring, as `config_mouse` starts on.
+DEFAULT_RING = "three_button"
+
 #: The rows of the block, top to bottom: the modifier, and how PyMOL labels it.
 MODIFIER_ROWS: tuple[tuple[str, str], ...] = (
     ("none", "& Keys"),
@@ -465,3 +484,19 @@ def rows_for(mode: str) -> list[tuple[str, list[str]]]:
         ]
         rows.append((label, cells + [""]))     # no wheel column for a click
     return rows
+
+
+def next_mode(mode: str, ring: str = DEFAULT_RING) -> str:
+    """Return the mode after *mode* in *ring*, wrapping around.
+
+    PyMOL cycles within a configured ring rather than through every mode it
+    knows: the mode line on a viewing ring steps viewing -> editing -> viewing,
+    and never lands on the lights or maestro modes unless you ask for them.
+    Cycling all ten would walk someone through modes they did not choose.
+    """
+    modes = MODE_RINGS.get(ring) or MODE_RINGS.get(DEFAULT_RING) or ()
+    if not modes:
+        return mode
+    if mode not in modes:
+        return modes[0]
+    return modes[(modes.index(mode) + 1) % len(modes)]

@@ -2,6 +2,20 @@
 
 ## 2026-07-28
 
+* **The mode line cycles PyMOL's ring, and the block gained two things PyMOL
+  does not have.**
+  - `MODE_RINGS` is transcribed from `pymol.controlling.ring_dict` and checked
+    against it by a test. Cycling every mode chimol knows would walk someone
+    through editing, lights and maestro modes they never asked for; a viewing
+    ring steps viewing -> editing -> viewing, which is the point of a ring.
+  - **Stride and averaging**, on their own line under the state. PyMOL has
+    neither, and both are what a real trajectory needs: a long one is otherwise
+    watched at whatever rate it was written, and a noisy one jitters so much
+    that the motion everyone is looking for is buried in it. Clicking steps
+    each up, right-clicking steps it back -- a value overshot is one click away
+    rather than a trip round the whole cycle -- and they drive the viewer's
+    existing `set_frame_step` / `set_trajectory_smoothing`.
+
 * **An overlay curve's parameters are parameters.** The Overlays panel built its
   own grid of slider widgets, so a FRET line's `forster_radius` was a different
   kind of thing from a fit's -- it could not be bounded, fixed, wheel-edited,
