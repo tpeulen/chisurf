@@ -79,6 +79,43 @@
     Plus backdrop tests -- dark overall, sparse bright stars, reproducible from
     its seed, generated at the size asked for.
 
+* **A state's lifetime is now fitted from the state, not averaged over bursts —
+  and that fit steers the per-burst ones.** A split-by-state run pools first:
+  `pool_states_worker` (a second, binning-only pass over the same bursts and the
+  same shared memory) sums every burst's photons per `(detector, state)`, and
+  `_fit_pooled_state_decays` fits each sum once with the same model, IRF and
+  background. One burst's state holds tens of photons; the pooled state holds
+  all of them, so this is the number to quote. It is written to
+  `Info/state_lifetimes.csv` — one row per *state*, therefore deliberately **not**
+  a `…4` companion: merged by position onto a burst table it would shift every
+  burst after the first ([subsystems/burst-companions.md](subsystems/burst-companions.md),
+  which now says so).
+  - Order matters: the pooled fit runs **before** the per-burst pass, so each
+    state's lifetime becomes that state's `state_x0` — the start value of its own
+    per-burst fits. Started from the panel's one guess instead, every state is
+    pulled toward the same answer, which is what the split exists to tell apart.
+    Only the lifetime is seeded; the rest of the start vector stands.
+    `ALGORITHM_VERSION` 1 → 2, because v1's exported per-burst fits are no longer
+    what this code produces.
+  - The extra pass is binning, not fitting, so it costs a fraction of the run it
+    improves.
+  - **Trap found while testing:** fit23 looked wildly scale-dependent (τ 3.6 ns
+    per burst → 8.5 ns pooled). The estimator was innocent — the test generator
+    *clipped* arrival times at the last micro-time bin instead of wrapping them
+    into the excitation period, and a decay pooled over forty bursts has enough
+    counts for that spike to dominate, while one burst is too noisy to notice.
+    With IRF-convolved, period-wrapped photons the fit is stable to 0.1 ns from
+    300 to 120 000 counts. The generator in
+    `burst_mle_analysis/tests/test_state_split.py` is fixed and says why.
+  - Tests (**10 pass** in that file): the pooled decay holds every burst photon
+    of its state, the pooled fit recovers 3.6/1.0 ns to better than half the
+    per-burst spread, a state's per-burst fits start from its pooled lifetime
+    (pinned with τ fixed, so the estimator reports the seed it was given), the
+    whole step fits/writes/seeds over the real process pool, and the table lands
+    in `Info/` rather than in a `b?4` folder. Documented in
+    [guides/21](../docs/guides/21_lifetime_from_bursts.md) and
+    [plugins/burst.md](plugins/burst.md); the known-issues entry is removed.
+
 * **⏩ walks the pipeline, and the step it ends on is the one it used to skip.**
   A fast-forward button between ◀ Back and Next ▶ runs every remaining step of a
   `NavigationPanelTool` pipeline in order. Not a loop: each step is started only

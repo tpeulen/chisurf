@@ -29,7 +29,9 @@ from chisurf.gui.widgets.tool_buttons import action_button, flag_attention
 #: burst fits of the previous version stop reading as current. This is the only
 #: step whose reuse survives a restart, so it is the one that would otherwise
 #: inherit an old estimator's results across an upgrade without saying so.
-ALGORITHM_VERSION = 1
+#: 2: a split-by-state run first fits each state's pooled decay and starts that
+#: state's per-burst fits from it, so its per-burst lifetimes differ from v1's.
+ALGORITHM_VERSION = 2
 
 
 def _mle_progress(widget, text: str, maximum: int) -> ChiSurfProgress:
@@ -274,6 +276,229 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         )
         return arrays, n_states
 
+    def _pool_state_decays(self, jobs, det_order, n_states, ctx, max_workers):
+        """Sum every burst's photons into one decay per ``(detector, state)``.
+
+        Runs the cheap binning-only pass of :func:`pool_states_worker` over the
+        same files and the same shared memory the fit pass uses, and adds the
+        results up across files: the pooled decay of a state is *the whole
+        measurement's* photons of that state.
+
+        Returns ``{detector: ndarray(n_states, 2, half_len)}``, empty when there
+        is nothing to pool.
+        """
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+
+        from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (
+            pool_states_worker,
+        )
+
+        pool_jobs = [
+            (bursts, rc_name, rc_shape, rc_dtype, mt_name, mt_shape, mt_dtype,
+             det_order, perdet_cfg, state_info)
+            for (_fname, bursts, rc_name, rc_shape, rc_dtype,
+                 mt_name, mt_shape, mt_dtype, _det_order, perdet_cfg, _shift,
+                 state_info) in jobs
+        ]
+        totals: dict[str, np.ndarray] = {}
+        with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
+            futures = [ex.submit(pool_states_worker, j) for j in pool_jobs]
+            for fut in as_completed(futures):
+                try:
+                    part = fut.result()
+                except Exception as exc:
+                    # One unreadable file must not cost the pooled fit: the
+                    # remaining files still describe the states.
+                    cs.logging.warning(f"Pooled state decays: a file failed ({exc})")
+                    continue
+                for det, arr in (part or {}).items():
+                    if det in totals:
+                        totals[det] += arr
+                    else:
+                        totals[det] = np.asarray(arr, dtype=np.int64).copy()
+        return totals
+
+    @staticmethod
+    def _fit_pooled_state_decays(pooled, det_order, perdet_cfg, shift):
+        """Fit each pooled ``(detector, state)`` decay: the state's global lifetime.
+
+        The headline number of a split-by-state run. A single burst's state
+        holds tens of photons and its lifetime is correspondingly uncertain;
+        pooled over the measurement the same state holds all of them, so this is
+        the lifetime to quote — and, because it is fitted first, the start value
+        every per-burst fit of that state is given.
+
+        The window and the perpendicular-channel shift are applied here, once,
+        to the sum rather than per burst: both are linear, so the result is
+        identical and the pass that produced the sum stays a plain bin count.
+
+        Returns ``{detector: {state: {"x": ndarray, "two_istar": float,
+        "cp": int, "cs": int}}}``; a state below the detector's photon floor is
+        recorded with ``x=None`` rather than dropped, so the table says which
+        state could not be fitted.
+        """
+        from chisurf.plugins.burst.burst_mle_analysis._mp_worker import (
+            _build_fitter,
+            _copy_shifted,
+        )
+
+        out: dict[str, dict[int, dict]] = {}
+        do_shift = int(shift or 0)
+        for det in det_order:
+            arr = pooled.get(det)
+            cfg = perdet_cfg.get(det)
+            if arr is None or cfg is None:
+                continue
+            n = int(cfg['half_len'])
+            s0 = max(0, int(cfg['sb']))
+            s1 = min(n, int(cfg['eb']))
+            fitter = _build_fitter(cfg)
+            per_state: dict[int, dict] = {}
+            for state in range(arr.shape[0]):
+                cp = np.asarray(arr[state, 0], dtype=np.uint32)
+                cs_ = np.asarray(arr[state, 1], dtype=np.uint32)
+                cp_sum, cs_sum = int(cp.sum()), int(cs_.sum())
+                entry = {"x": None, "two_istar": float("nan"),
+                         "cp": cp_sum, "cs": cs_sum}
+                if (cp_sum + cs_sum) < int(cfg['min_photons']) or s1 <= s0:
+                    per_state[state] = entry
+                    continue
+                d = np.zeros(2 * n, dtype=np.float64)
+                d[s0:s1] = cp[s0:s1]
+                if do_shift:
+                    _copy_shifted(cs_, d, n, s0, s1, do_shift, n)
+                else:
+                    d[n + s0: n + s1] = cs_[s0:s1]
+                try:
+                    res = fitter(data=d, initial_values=cfg['x0'], fixed=cfg['fixed'])
+                except Exception as exc:
+                    cs.logging.warning(
+                        f"Pooled fit failed for {det} state {state}: {exc}"
+                    )
+                    per_state[state] = entry
+                    continue
+                entry["x"] = np.asarray(res['x'], dtype=np.float64)
+                entry["two_istar"] = float(res.get('twoIstar', float('nan')))
+                per_state[state] = entry
+            out[det] = per_state
+        return out
+
+    @staticmethod
+    def _state_lifetime_rows(fits, model, param_names) -> list[dict]:
+        """The pooled per-state fits as plain rows, one per (detector, state)."""
+        rows: list[dict] = []
+        for det, per_state in fits.items():
+            for state in sorted(per_state):
+                entry = per_state[state]
+                x = entry["x"]
+
+                def g(i, x=x):
+                    try:
+                        return float(x[i])
+                    except (TypeError, IndexError):
+                        return float("nan")
+
+                row = {
+                    "Detector": det,
+                    "Colour": det.lower(),
+                    "State": int(state),
+                    "Photons (parallel)": entry["cp"],
+                    "Photons (perpendicular)": entry["cs"],
+                    "Photons": entry["cp"] + entry["cs"],
+                    "Tau": g(0),
+                    "2I*": entry["two_istar"],
+                }
+                if model == "fit23":
+                    row["gamma"] = g(1)
+                    row["r0"] = g(2)
+                    row["rho"] = g(3)
+                else:
+                    for i, nm in enumerate(param_names or ()):
+                        row[nm] = g(i)
+                rows.append(row)
+        return rows
+
+    def _apply_pooled_state_fits(
+        self, jobs, det_order, n_states, ctx, max_workers, model, param_names
+    ) -> list[dict]:
+        """Pool, fit, record and seed — the whole global-lifetime step.
+
+        Writes ``Info/state_lifetimes.csv``, keeps the rows on
+        ``self.state_lifetimes``, and writes each state's fitted lifetime into
+        the job payloads as the start value for that state's per-burst fits.
+        Returns the rows (empty when there was nothing to pool).
+        """
+        pooled = self._pool_state_decays(jobs, det_order, n_states, ctx, max_workers)
+        if not pooled:
+            self.state_lifetimes = []
+            return []
+        # Every job carries the same per-detector configuration (IRF, background,
+        # window, model) — only the channel lookup table is sized per file — so
+        # the first one describes the pooled fit.
+        fits = self._fit_pooled_state_decays(
+            pooled, det_order, jobs[0][9], int(self.shift or 0)
+        )
+        rows = self._state_lifetime_rows(fits, model, param_names)
+        self.state_lifetimes = rows
+        self.write_state_lifetimes(rows)
+
+        seeded = 0
+        for job in jobs:
+            cfgs = job[9]
+            for det, per_state in fits.items():
+                cfg = cfgs.get(det)
+                if cfg is None:
+                    continue
+                seeds = {}
+                for state, entry in per_state.items():
+                    x = entry["x"]
+                    if x is None or not np.isfinite(x[0]) or float(x[0]) <= 0.0:
+                        continue  # nothing was fitted; leave the panel's guess
+                    start = np.asarray(cfg['x0'], dtype=np.float64).copy()
+                    start[0] = float(x[0])
+                    seeds[int(state)] = start
+                if seeds:
+                    cfg['state_x0'] = seeds
+                    seeded = max(seeded, len(seeds))
+        taus = ", ".join(
+            f"S{r['State']} {r['Colour']} {r['Tau']:.2f} ns"
+            for r in rows if np.isfinite(r["Tau"])
+        )
+        self._set_status(
+            f"Pooled state lifetimes: {taus}" if taus
+            else "Pooled state lifetimes: none could be fitted."
+        )
+        return rows
+
+    def write_state_lifetimes(self, rows) -> list[Path]:
+        """Write the pooled per-state lifetimes to ``Info/state_lifetimes.csv``.
+
+        Beside the analysis, not inside a ``b?4`` folder and not as a companion:
+        a companion carries **one row per burst** and is merged onto the burst
+        table by position, while this table has one row per *state*. Written as
+        a companion it would misalign every burst after the first — the failure
+        mode the companion contract exists to prevent.
+        """
+        if not rows:
+            return []
+        written: list[Path] = []
+        try:
+            files = self.burst_files_list.get_selected_files()
+        except Exception:
+            files = []
+        roots = {Path(p).parent.parent for p in files}
+        for root in sorted(roots):
+            info = root / "Info"
+            try:
+                info.mkdir(parents=True, exist_ok=True)
+                target = info / "state_lifetimes.csv"
+                pd.DataFrame(rows).to_csv(target, index=False)
+            except OSError as exc:
+                cs.logging.warning(f"Could not write {info}: {exc}")
+                continue
+            written.append(target)
+        return written
+
     def experiment_settings(self) -> dict:
         """The per-detector IRF and background this fit actually used.
 
@@ -328,6 +553,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
     #: States the last batch fitted per burst (0 = the ordinary all-photon run).
     _exported_state_count = 0
+
+    #: Rows of the last pooled per-state fit (see ``write_state_lifetimes``).
+    state_lifetimes: list = []
 
     def _save_burst_results_fast(self, result_df: pd.DataFrame) -> None:
         """
@@ -4408,6 +4636,19 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         failed_files: list[str] = []
         try:
             self._set_inputs_frozen(True)
+            # The global fit comes first, and not only to have it: a state's
+            # pooled decay holds every photon the measurement assigned to that
+            # state, so its lifetime is the number to quote *and* the start
+            # value each thin per-burst state fit is then given. Fitted after
+            # the bursts it could only be reported; fitted here it also steers
+            # them.
+            if n_states > 0 and jobs and not self.stop_processing:
+                progress.setLabelText("Fitting the pooled decay of each state...")
+                ui_pump(0)
+                self._apply_pooled_state_fits(
+                    jobs, det_order, n_states, ctx, max_workers, model, param_names
+                )
+                progress.setLabelText("Processing bursts...")
             with ProcessPoolExecutor(max_workers=max_workers, mp_context=ctx) as ex:
                 # One job is one file; keep the mapping so a worker that dies can
                 # be named rather than silently subtracted from the table.

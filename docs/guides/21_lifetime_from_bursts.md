@@ -110,6 +110,35 @@ Two practical points:
 * Photons H2MM did not assign to any state (outside a burst, or dropped by its
   stream definitions) take part in the all-photon fit only.
 
+## The lifetime of a state, not of a burst
+
+A single burst's state holds tens of photons, so its per-burst lifetime is a
+noisy number — useful as a distribution, not as a value to quote. The run
+therefore starts by pooling: every burst's photons of state *i*, over the whole
+measurement, added into one decay per detector, fitted once with the same model,
+IRF and background. That is **the** lifetime of the state, and it is written to
+`Info/state_lifetimes.csv` beside the analysis:
+
+| Detector | Colour | State | Photons (parallel) | Photons (perpendicular) | Photons | Tau | 2I* | … |
+|---|---|---|---|---|---|---|---|---|
+
+One row per *state* — which is why it is a plain CSV in `Info/` and not a `…4`
+companion. A companion carries one row per burst and is merged onto the burst
+table by position; this table would misalign every burst after the first.
+
+The pooled fit also runs **first**, and each state's fitted lifetime becomes the
+start value for that state's per-burst fits. Started instead from the panel's
+single guess, every state is pulled toward the same answer — the thing the split
+exists to tell apart.
+
+```{note}
+Pooling only helps when the model describes the data. The pooled decay has tens
+of thousands of counts, so a systematic mismatch that a 300-photon burst cannot
+see — a shifted IRF, a decay that does not wrap into the excitation period —
+shows up as a biased τ rather than as noise. If the pooled τ and the median
+per-burst τ disagree strongly, look at the IRF before believing either.
+```
+
 ## See also
 
 - `chisurf/plugins/burst/burst_mle_analysis/`, `chisurf/core/fluorescence/mle/`.

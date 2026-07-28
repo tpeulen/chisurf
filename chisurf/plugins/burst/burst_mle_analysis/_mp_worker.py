@@ -132,6 +132,74 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None):
     return rec
 
 
+def pool_states_worker(args):
+    """Sum one file's burst photons into a decay per ``(detector, state)``.
+
+    The cheap first pass of a split-by-state run: no fitting, only binning. Its
+    product is the *pooled* decay of a state — every burst's photons of that
+    state, over the whole measurement — which is the robust lifetime of the
+    state (a single burst holds tens of photons; a state holds all of them) and
+    the start value the per-burst fits of that state are then given.
+
+    Photons outside a burst never enter it: the sum runs over exactly the burst
+    slices the fit pass uses, so the pooled decay is the same population, only
+    added up.
+
+    args = (bursts,
+            rc_name, rc_shape, rc_dtype_str,
+            mt_name, mt_shape, mt_dtype_str,
+            det_order, perdet_cfg, state_info)
+
+    Returns ``{detector: ndarray(n_states, 2, half_len)}`` — parallel and
+    perpendicular counts, unwindowed and unshifted, because both are cheap
+    linear operations the caller applies once to the sum rather than per burst.
+    """
+    (bursts, rc_name, rc_shape, rc_dtype_str,
+     mt_name, mt_shape, mt_dtype_str, det_order, perdet_cfg, state_info) = args
+
+    if rc_name is None or mt_name is None or state_info is None:
+        return {}
+
+    st_name, st_shape, st_dtype, n_states = state_info
+    if n_states <= 0:
+        return {}
+
+    rc_sh = _shm.SharedMemory(name=rc_name)
+    mt_sh = _shm.SharedMemory(name=mt_name)
+    st_sh = _shm.SharedMemory(name=st_name)
+    try:
+        rc_full = np.ndarray(rc_shape, dtype=np.dtype(rc_dtype_str), buffer=rc_sh.buf)
+        mt_full = np.ndarray(mt_shape, dtype=np.dtype(mt_dtype_str), buffer=mt_sh.buf)
+        state_full = np.ndarray(st_shape, dtype=np.dtype(st_dtype), buffer=st_sh.buf)
+
+        pooled = {
+            det: np.zeros((n_states, 2, int(perdet_cfg[det]['half_len'])), dtype=np.int64)
+            for det in det_order
+        }
+        for first_ph, last_ph in bursts:
+            sl = slice(int(first_ph), int(last_ph))
+            rc_slice = rc_full[sl]
+            mt_slice = mt_full[sl]
+            st_slice = state_full[sl]
+            for state in range(n_states):
+                pick = st_slice == state
+                if not pick.any():
+                    continue
+                mt_sel, rc_sel = mt_slice[pick], rc_slice[pick]
+                for det in det_order:
+                    cfg = perdet_cfg[det]
+                    cp, cs = _hist2_split_core_classlut(
+                        mt_sel, rc_sel, cfg['class_lut'], int(cfg['half_len'])
+                    )
+                    pooled[det][state, 0] += cp
+                    pooled[det][state, 1] += cs
+        return pooled
+    finally:
+        rc_sh.close()
+        mt_sh.close()
+        st_sh.close()
+
+
 def process_one_file_worker(args):
     """
     Process a single file in a separate process using shared memory
@@ -246,8 +314,17 @@ def process_one_file_worker(args):
                             d[n + s0 : n + s1] = cs_u32[s0:s1]
                     prev_ranges[det] = (s0, s1, s0, s1)
 
+                    # A state's fit starts from that state's *pooled* lifetime
+                    # when one was fitted (see ``pool_states_worker``): the
+                    # sub-population of a single burst is thin, and starting it
+                    # at the panel's one global guess pulls every state toward
+                    # the same answer, which is the thing the split exists to
+                    # tell apart.
+                    x0 = cfg['x0']
+                    if state is not None:
+                        x0 = (cfg.get('state_x0') or {}).get(state, x0)
                     res = fitters[det](
-                        data=d, initial_values=cfg['x0'], fixed=cfg['fixed'],
+                        data=d, initial_values=x0, fixed=cfg['fixed'],
                     )
                     x = np.asarray(res['x'], dtype=np.float64)
                     two_istar = float(res.get('twoIstar', float('nan')))

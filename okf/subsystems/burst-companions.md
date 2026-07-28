@@ -20,6 +20,12 @@ holds one row per burst per measurement; every analysis writes its results
 | `bg4`, `br4`, `by4` | Burst MLE, one per colour — and the segment-level fit, which adds `Tau S0`, `Tau S1`, … *columns* to the same files |
 | `bh4/<stem>.bh4` | H2MM per-burst state |
 
+Not everything a burst analysis produces is a companion. A result with a grain
+other than the burst — the pooled lifetime of each H2MM state, one row per
+*state* (`Info/state_lifetimes.csv`) — goes beside the analysis as a plain file
+in `Info/`. Written as a companion it would be merged by position onto the burst
+table and would shift every burst after the first.
+
 A reader opens the folder by concatenating the `.bur` files and merging every
 companion **column-wise, by position**, so the whole folder reads as one table
 with one row per burst. ndXplorer does exactly this, which is how a burst can be

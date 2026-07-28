@@ -1070,6 +1070,3 @@ rendering the form and *looking* at it, then remove them from the toolbar.
 the per-burst `bh4` merges, but the dwell grain has no automated consumer
 (`h2mm_dwells.csv` is a manual CSV open) and `Is Edge` is written yet unused by
 the dwell-time histogram, which therefore plots burst durations for slow states.
-
-**Global τ per state.** The pooled per-(state, colour) fit — the robust headline
-number — is designed but not implemented; only the per-burst columns landed.
