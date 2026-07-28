@@ -85,6 +85,22 @@ point glyph in the application at once, and the render fixtures would all need
 re-inspecting; that is its own change, with its own before/after images.
 
 ---
+
+## mmfdb: the shipped curated seed is two schema versions behind
+
+**2026-07-28.** `tests/test_mmcif_database_resolver.py::test_packaged_seed_is_curated_and_on_the_current_schema`
+is red at mmfdb `HEAD`: the packaged `data/sample_management.db` is stamped
+schema **45** while `schema.SCHEMA_VERSION` is **47**. Since PRD-19 removed the
+migration waterfall a stale seed is not fully migrated forward — missing
+*columns* are added, stale *table structure* is not — so an unconfigured first
+run copies a seed the current code cannot fully write to. The regenerator is
+`build_tools/regenerate_curated_db.py` in chisurf (`--replace`).
+
+Not fixed here because that script had concurrent edits from another working
+copy at the time; regenerating and re-committing the binary seed belongs to
+whoever bumped the schema.
+
+---
 type: Reference
 title: Known issues & recurring gotchas
 description: Curated open functional bugs and cross-cutting engineering pitfalls distilled from working bug logs.

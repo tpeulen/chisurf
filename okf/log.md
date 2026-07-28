@@ -313,6 +313,26 @@
   normalise) rather than merely rescaled, and a row carrying a negative entry
   is `-inf` whatever the counts. The valid path is unchanged.
 
+* **INC-09: the HTTP client an external tool needs now ships in the mmfdb
+  package.** MMFDB was packaged standalone but the only hardened network client
+  lived inside ChiSurf, so the documented advice for an outside tool was to
+  copy a ~50-line reference that had *no* URL policy and *no* size bounds. The
+  transport half moved out: `mmfdb.client` exports `validate_base_url()` and
+  `HttpJsonRpcClient` — JSON-RPC over `POST /rpc` with the token as a bearer
+  header rather than a parameter, and object bodies streamed in 64 KiB chunks
+  and bounded on both sides. It is standard-library-only and imports neither
+  the repository nor the admin host, so the import costs nothing. ChiSurf's
+  `MMFDBClient` now imports it instead of carrying a copy, which leaves one
+  implementation of the wire contract; the ergonomic layer (the ~90 named
+  method wrappers, settings/credential-store integration, the in-process and
+  message-queue transports) stays ChiSurf-side and is what remains of INC-09.
+  Tests: 21 new in `modules/mmfdb/tests/test_http_client.py` against a
+  throwaway `http.server`; the 20 existing ChiSurf tests pass unchanged against
+  the moved code. Found while verifying: the packaged curated seed is two
+  schema versions behind and its guardrail test is red at mmfdb `HEAD` —
+  recorded in [known issues](/references/known-issues.md), since the
+  regenerator was mid-edit in another working copy.
+
 ## 2026-07-27
 
 * **chimol: the hierarchy panel can switch parts of a model off.** Each node

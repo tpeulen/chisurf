@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import base64
 import binascii
-import http.client
 import io
-import json
-import urllib.error
 import urllib.parse
-import urllib.request
 from collections.abc import Mapping
-from ipaddress import ip_address
 from pathlib import Path
 from typing import Any
+
+from mmfdb.client import HttpJsonRpcClient as _HttpJsonRpcClient
+from mmfdb.client import validate_base_url as _validate_remote_base_url
 
 from chisurf import logging
 from chisurf.core.plugin.client import InProcessClient
@@ -29,36 +27,6 @@ _DEFAULT_CLIENT_CONFIG: dict[str, Any] = {
     "timeout_ms": 5000,
 }
 _CLIENT_CONFIG_KEYS = frozenset(_DEFAULT_CLIENT_CONFIG)
-
-
-def _validate_remote_base_url(base_url: str, *, allow_insecure_http: bool) -> str:
-    """Validate and normalize a credential-free MMFDB HTTP endpoint."""
-    if not isinstance(allow_insecure_http, bool):
-        raise ValueError("mmfdb.client.allow_insecure_http must be true or false")
-    normalized = base_url.rstrip("/")
-    parsed = urllib.parse.urlsplit(normalized)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
-        raise ValueError("mmfdb.client.base_url must be an absolute HTTP(S) URL")
-    if parsed.username is not None or parsed.password is not None:
-        raise ValueError("mmfdb.client.base_url must not contain user credentials")
-    if parsed.query or parsed.fragment:
-        raise ValueError("mmfdb.client.base_url must not contain a query or fragment")
-    try:
-        parsed.port
-    except ValueError as exc:
-        raise ValueError("mmfdb.client.base_url contains an invalid port") from exc
-    hostname = parsed.hostname.lower()
-    is_loopback = hostname == "localhost"
-    try:
-        is_loopback = is_loopback or ip_address(hostname).is_loopback
-    except ValueError:
-        pass
-    if parsed.scheme == "http" and not is_loopback and not allow_insecure_http:
-        raise ValueError(
-            "mmfdb.client.base_url must use HTTPS for a non-loopback host; set "
-            "allow_insecure_http only for an isolated development network"
-        )
-    return normalized
 
 
 def client_config(mmfdb_settings: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -162,171 +130,6 @@ def credential_endpoint(config: Mapping[str, Any]) -> tuple[str, int]:
         raise ValueError("mmfdb.client.base_url must be an absolute HTTP(S) URL")
     default_port = 443 if parsed.scheme == "https" else 80
     return parsed.hostname, int(parsed.port or default_port)
-
-
-class _HttpJsonRpcClient:
-    """Small synchronous JSON-RPC transport for standalone MMFDB."""
-
-    def __init__(
-        self,
-        base_url: str,
-        timeout_ms: int,
-        *,
-        allow_insecure_http: bool = False,
-    ) -> None:
-        normalized = _validate_remote_base_url(
-            base_url,
-            allow_insecure_http=allow_insecure_http,
-        )
-        self._rpc_url = f"{normalized}/rpc"
-        self._base = urllib.parse.urlsplit(normalized)
-        if self._base.scheme not in {"http", "https"} or not self._base.hostname:
-            raise ValueError("MMFDB base URL must be an absolute HTTP(S) URL")
-        self._object_path = f"{self._base.path.rstrip('/')}/objects"
-        self._timeout = timeout_ms / 1000.0
-        self._request_id = 0
-
-    def call(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
-        self._request_id += 1
-        wire_params = dict(params or {})
-        auth = wire_params.pop("auth", None)
-        headers = {"Content-Type": "application/json"}
-        if isinstance(auth, Mapping) and auth.get("token"):
-            headers["Authorization"] = f"Bearer {auth['token']}"
-        payload = json.dumps(
-            {
-                "jsonrpc": "2.0",
-                "id": self._request_id,
-                "method": method,
-                "params": wire_params,
-            }
-        ).encode("utf-8")
-        request = urllib.request.Request(
-            self._rpc_url,
-            data=payload,
-            headers=headers,
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self._timeout) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            try:
-                return json.loads(exc.read().decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                return {"ok": False, "error": f"HTTP {exc.code}: {exc.reason}"}
-        except urllib.error.URLError as exc:
-            return {"ok": False, "error": f"MMFDB server unavailable: {exc.reason}"}
-
-    def upload_object(
-        self,
-        stream: Any,
-        *,
-        length: int,
-        filename: str,
-        mime_type: str | None,
-        metadata: dict[str, Any] | None,
-        token: str | None,
-    ) -> dict[str, Any]:
-        """Stream one raw object body to the bounded HTTP object endpoint."""
-        if not token:
-            raise RuntimeError("Login required for MMFDB object upload")
-        from mmfdb.admin.backend.services import MAX_OBJECT_UPLOAD_BYTES
-
-        if length < 0 or length > MAX_OBJECT_UPLOAD_BYTES:
-            raise ValueError("MMFDB object upload exceeds the configured size limit")
-        metadata_header = None
-        if metadata is not None:
-            metadata_header = base64.urlsafe_b64encode(
-                json.dumps(metadata, separators=(",", ":")).encode("utf-8")
-            ).decode("ascii").rstrip("=")
-            if len(metadata_header) > 16 * 1024:
-                raise ValueError("MMFDB object metadata header exceeds 16 KiB")
-        connection = self._connection()
-        try:
-            connection.putrequest("POST", self._object_path)
-            connection.putheader("Content-Length", str(length))
-            connection.putheader("Content-Type", mime_type or "application/octet-stream")
-            connection.putheader("X-MMFDB-Filename", urllib.parse.quote(filename, safe=""))
-            if metadata_header is not None:
-                connection.putheader("X-MMFDB-Metadata", metadata_header)
-            if token:
-                connection.putheader("Authorization", f"Bearer {token}")
-            connection.endheaders()
-            remaining = length
-            while remaining:
-                chunk = stream.read(min(64 * 1024, remaining))
-                if not chunk:
-                    raise RuntimeError("Object source ended before its declared length")
-                connection.send(chunk)
-                remaining -= len(chunk)
-            response = connection.getresponse()
-            payload = response.read(1024 * 1024 + 1)
-            if len(payload) > 1024 * 1024:
-                raise RuntimeError("MMFDB object response exceeded 1 MiB")
-            try:
-                result = json.loads(payload.decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise RuntimeError(
-                    f"Invalid MMFDB object response (HTTP {response.status})"
-                ) from exc
-            if response.status >= 400 or not result.get("ok", False):
-                detail = result.get("error") or f"HTTP {response.status}: {response.reason}"
-                raise RuntimeError(str(detail))
-            return result
-        finally:
-            connection.close()
-
-    def download_object(self, object_uuid: str, *, token: str | None) -> bytes:
-        """Download one raw object in bounded chunks."""
-        if not token:
-            raise RuntimeError("Login required for MMFDB object download")
-        from mmfdb.admin.backend.services import MAX_OBJECT_UPLOAD_BYTES
-
-        connection = self._connection()
-        path = f"{self._object_path}/{urllib.parse.quote(object_uuid, safe='')}"
-        try:
-            connection.putrequest("GET", path)
-            if token:
-                connection.putheader("Authorization", f"Bearer {token}")
-            connection.endheaders()
-            response = connection.getresponse()
-            if response.status >= 400:
-                payload = response.read(1024 * 1024)
-                try:
-                    detail = json.loads(payload.decode("utf-8")).get("error")
-                except (UnicodeDecodeError, json.JSONDecodeError):
-                    detail = None
-                raise RuntimeError(str(detail or f"HTTP {response.status}: {response.reason}"))
-            declared = response.getheader("Content-Length")
-            if declared is None:
-                raise RuntimeError("MMFDB object download omitted Content-Length")
-            length = int(declared)
-            if length < 0 or length > MAX_OBJECT_UPLOAD_BYTES:
-                raise RuntimeError("MMFDB object download exceeds the 64 MiB limit")
-            target = io.BytesIO()
-            remaining = length
-            while remaining:
-                chunk = response.read(min(64 * 1024, remaining))
-                if not chunk:
-                    raise RuntimeError("MMFDB object download ended early")
-                target.write(chunk)
-                remaining -= len(chunk)
-            return target.getvalue()
-        finally:
-            connection.close()
-
-    def _connection(self) -> http.client.HTTPConnection:
-        connection_type = (
-            http.client.HTTPSConnection
-            if self._base.scheme == "https"
-            else http.client.HTTPConnection
-        )
-        return connection_type(
-            self._base.hostname,
-            port=self._base.port,
-            timeout=self._timeout,
-        )
 
 
 class MMFDBClient:
