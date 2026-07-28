@@ -9786,3 +9786,49 @@ tint it carries are each honoured on one side only. RF-846..RF-852.
 - **Location:** `chisurf/plugins/tttr/intensity_trace/__init__.py:1044-1054` (`_refresh_detector_checkboxes`: `for ch in [0, 1, 2, 3, 4, 5, 6, 7]`, each `setChecked(True)`) and `:1390-1395` (`fallback_channel = selected_detectors[0] if selected_detectors else "__all__"`, then `_process_routing_channels(…, fallback_channel)`)
 - **Finding:** driven on `bh_spc132_sm_dna/m005.spc` (routing channels **0, 1, 8, 9** carrying 50 896 / 27 121 / 71 174 / 29 960 = 179 151 photons) with no detector setup present: the panel added eight ticked boxes labelled *Routing Channel 0…7*, and the run logged `Processing routing channel 0 … 1 traces, 64081 bins` — 50 896 photons, **28 % of the file**. The other three channels are silently absent from the trace, and channels 8 and 9 (101 134 photons, 56 %) cannot be selected at all because the fallback list stops at 7. Nothing in the window says which channels the trace came from. Build the fallback list from the channels actually present in the file (`numpy.unique(tttr.routing_channels)`) and honour every ticked box rather than the first.
 - **Fix note:**
+
+### Review 2026-07-28 — the light-path simulator's propagation core
+
+Slice: `backend/crosstalk.py`, `backend/simulator.py`, and the absorption
+fallback that landed in `a7566eb8` (`core/workflow.py`). Checked against the
+shipped catalogue (`~/.chisurf/flr/sample_management.db`, 2723 spectra) and by
+running `OpticalPathSimulator` headlessly on synthetic graphs. The propagation
+core has no test of its own — `tests/test_headless.py` exercises it only through
+the two-dye reference path — and every defect below is silent: each produces a
+plausible-looking number or an empty table rather than an error. Complements the
+earlier catalogue-uniformity findings RF-269/RF-270. Findings RF-863..RF-867.
+
+### RF-863
+- **Status:** OPEN
+- **Severity:** S1 (16 % of the selectable filters *amplify* the light instead of attenuating it — a passive bandpass gains 58×, and every crosstalk number downstream is wrong by that factor)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/backend/crosstalk.py:235` (`out_dict[src_id] = in_spec * t_y`, the `filter` branch) and `:252` (`r_dict[src_id] = in_spec * np.clip(1.0 - t_y, 0, 1)`, the `splitter` branch)
+- **Finding:** both branches assume a transmission curve is a *fraction* in [0, 1]. The catalogue is not uniform: of its 757 `transmission` spectra, **119 are stored as percent** — every Thorlabs `FB…` bandpass (`FB340 10` … `FB550 10`) and the Semrock `NF…` notch family, peaking at 36.7 … 100.0 — while all 757 carry `intensity_unit = 'normalized'`, so the unit column cannot disambiguate them. Verified live through `propagate_node` against the shipped database: given a flat unit input, probe 1201 (`FB560 10`) leaves the `filter` node with a peak of **58.19**, whereas probe 711 (`ET667/30m`, stored as a fraction) leaves it at 0.984. In the `splitter` branch the same curve makes `1.0 - t_y` negative across the passband, so `clip(…, 0, 1)` yields exactly **0** reflection where the correct value is `1 − 0.582 = 0.418`. Nothing warns. The two conventions are cleanly separated (638 rows peak ≤ 1.02, 119 peak ≥ 36.7), so normalising on read — percent → fraction above a ~1.5 peak — is safe; alternatively fix the catalogue and reject an out-of-range curve loudly. Discriminating test: propagate one graph with probe 1201 and one with the same curve scaled to a fraction, and assert equal detector signals.
+- **Fix note:**
+
+### RF-864
+- **Status:** OPEN
+- **Severity:** S1 (choosing a light source from the database empties the emission crosstalk matrix — one of the tool's three result tables — and mangles the laser label in the other two)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/backend/simulator.py:146-152` (`get_detector_signals`: `parts = src_key.split(" (ex ")`, `laser = parts[1].rstrip(")")`) against `backend/crosstalk.py:115` (`output_spectra["Light"] = {"Light (Database)": y}`) and `:214` (`out_dict[f"{dye_name} (ex {src_id})"]`), joined at `simulator.py:238` (`excitation_by_key.get((laser, dye), 0.0)`)
+- **Finding:** the laser identity travels from the sample to the detector by string concatenation and is recovered by string surgery. In *Database Spectrum* mode the source key is `Light (Database)`, so the sample emits `MyDye (ex Light (Database))`, and `rstrip(")")` — which strips *every* trailing parenthesis, not one — recovers the laser as **`Light (Database`**. `get_crosstalk_matrices` then looks the excitation up under the unmangled `Light (Database)` the sample recorded, misses, and the `if excitation > 0.0` guard drops the row. Verified headlessly on a laser → sample → detector graph: in database mode the excitation row reads `laser='Light (Database)'`, the detector row `laser='Light (Database'`, and `crosstalk_matrices["emission"]` comes back `rows=[] columns=[] values=[]`; the identical graph in manual mode (`488:1.0`) gives `rows=['MyDye'] columns=['Det1'] values=[[0.32]]`. The mangled label is also what the *detected* matrix and the saved MMFDB artifact carry. Carry `(laser, dye)` as a structured key through propagation instead of re-parsing it (at minimum `split(" (ex ", 1)` + `removesuffix(")")`), and pin it with a database-mode graph asserting a non-empty emission matrix.
+- **Fix note:**
+
+### RF-865
+- **Status:** OPEN
+- **Severity:** S1 (a node that is re-processed re-delivers light it already delivered; a merged path is counted 1.5× and the error compounds with each merge)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/backend/simulator.py:104-131` (`propagate`'s work-queue loop — `tgt_in[src_id] += spec` at `:124` with the re-queue at `:131`)
+- **Finding:** propagation accumulates into the *target's* input with `+=`, but a node that is re-processed recomputes and re-emits its **whole** output, including the part it already delivered. Any node whose two inbound paths differ by two or more hops is therefore counted more than once, because the work queue pops it before the longer path has arrived. Verified headlessly with pass-through filters and a unit input: `L → F1 → F2 → C` plus a direct `L → C` gives the combiner the correct total 1.0 + 1.0 = 2.0, while the node *downstream* of it receives **3.0**. Stacking k such merges: k=1 → 3.0 (exact 2), k=2 → 13.0 (exact 4), k=3 → 27.0 (exact 8). The `Combiner` node type exists precisely to merge arms, so this is reachable from the node editor with no unusual wiring. Fix by propagating in topological order and processing each node once, or by keying each target's input on the contributing (node, port) so a re-emission replaces rather than adds.
+- **Fix note:**
+
+### RF-866
+- **Status:** OPEN
+- **Severity:** S2 (propagation abandons the graph after 2N queue pops and returns the half-propagated state as if it were the answer, with no log line)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/backend/simulator.py:101` (`max_iters = len(self._states) * 2`, guarding the loop at `:104`) with `:14` (`logger = logging.getLogger(__name__)`, which has no call site anywhere in the file)
+- **Finding:** the loop is bounded "to prevent infinite loops in cyclic graphs" and, on hitting the bound, simply falls out and returns `self._states`; the caller cannot tell a converged run from a truncated one, and nothing is logged — `logger` is declared at the top of the module and never used. Verified headlessly with the stacked-merge graph of RF-865: at k=4 (14 nodes, cap 28) the end node receives **9.0** and at k=5 (17 nodes, cap 34) **11.0** — *less* than the k=3 value, because propagation is cut off mid-flight rather than converging. At minimum log a warning and flag the result as truncated; detecting the cycle explicitly (or the topological ordering RF-865 asks for) removes the need for a magic cap.
+- **Fix note:**
+
+### RF-867
+- **Status:** OPEN
+- **Severity:** S2 (the peak-normalisation convention the new excitation fallback enforces is not enforced on the stored-absorption path it falls back *from*, so 15 catalogue probes carry an ε up to 36 % too large)
+- **Location:** `chisurf/plugins/core/lightpath_simulator/core/workflow.py:94-103` (`MFDatabaseAdapter.get_probe_spectrum`: the stored-`absorption` return at `:96` versus the `_peak_normalised` fallback at `:102`)
+- **Finding:** the fallback landed in `a7566eb8` normalises on the stated premise that "stored absorption rows all peak at exactly 1.0". They do not: **15 of the catalogue's 825 `absorption` rows** peak away from 1.0 — `Perylene` (probe 1984) at **1.3584**, `ATTO465` (1740) at 1.1520, `3 Quinoline carboxaldehyde` (1844) at 1.0491, `Nile Red` (1932) at 1.0220, `ATTO 550` (1722) at 0.9960, down to `Pyropheophorbide a` (2077) at 0.9730. The simulator multiplies whatever comes back by the extinction coefficient (`backend/crosstalk.py:200`, `cur_abs_scaled = cur_abs_norm * ec`), so Perylene absorbs 36 % too strongly — a 36 % error in excitation probability and, since R₀ ∝ J^(1/6), 5.2 % in R₀ — while the *same* dye filed as an excitation scan would be normalised. Two branches of one function, two conventions. Route both through `_peak_normalised`; a test asserting `max(get_probe_spectrum(pid, "absorption")[1]) == 1.0` for a deliberately un-normalised stored row pins it.
+- **Fix note:**
