@@ -8613,3 +8613,61 @@ around it.
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:407-416` (`_on_shape_changed`: `self.shape_aspect.setEnabled(shape != "Sphere")`), wired at `:282` to `currentIndexChanged` only, against `_setup_ui`'s init block at `:242-244`, which calls `_update_field_enable()` and `_on_use_water_eta(...)` but not `_on_shape_changed(...)`
 - **Finding:** `_ShapeSection` builds the combo with *Sphere* at index 0 (`:108`), so the first `currentIndexChanged` cannot fire for the default selection and the handler never runs until the user picks something else. Verified on a freshly constructed widget: with *Sphere* selected, `shape_aspect.isEnabled()` is `True`, so the user can type an aspect ratio that `_apply_shape_to_D` (`:431-434`) never reads — a sphere's D depends only on the size. Selecting *Ellipsoid* and returning to *Sphere* fixes it for the rest of the session, which makes the inconsistency harder to notice, not easier. Call `_on_shape_changed(self.shape_combo.currentIndex())` once at the end of `_setup_ui`, beside the two initialisers that are already there.
 - **Fix note:**
+
+## Review 2026-07-28 — chimol display defaults: a migration that stamps only when it moves something
+
+Slice: `735c6eb1c` (*"the display defaults had two sources, and users never saw
+either"*) — `chisurf/plugins/chimol/chimol/config.py`, the shipped
+`chimol_display.json`, the new `test/test_display_config_defaults.py`, and the
+one caller of the version check at `chisurf/gui/main_helper.py:826-868`. The
+migration mechanism itself is sound and its guardrail tests pass (18 passed,
+including `test_config_and_ss.py`). What the review found is at the edges: the
+`_version` stamp rides on a value having *moved*, so the copies the migration
+deliberately leaves alone are the ones that stay marked stale forever; the
+"is this the user's file" test also matches the `CHIMOL_DISPLAY_CONFIG`
+override and the legacy filename; 13 shipped-only keys sit outside the new
+guardrail; and the `sigma_factor` default the same commit raised for appearance
+costs 2.4× in metaball rebuild time against the figure the previous commit
+measured. Findings RF-739..RF-744.
+
+### RF-739
+- **Status:** OPEN
+- **Severity:** S2 (a copy the migration deliberately left alone is never re-stamped, so the startup dialog offering to *overwrite* it fires at every launch, forever)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:607-613` (`migrated = apply_display_config_migrations(...)` → `if migrated and path != package_path: _write_user_display_config(path, cfg)`) and `_write_user_display_config` at `:168-184`, the only place `_version` is stamped — against `check_for_display_config_update` at `:102-118` and its caller `chisurf/gui/main_helper.py:826-868` (`shutil.copyfile(package_path, user_path)` at `:853-856`)
+- **Finding:** the version stamp is written only when `migrated` is non-empty, but `migrated` is empty in exactly the case the migration exists to protect: every migrated key already holds a value the user chose. Verified with the real loader against a temp settings dir: a copy stamped `_version: 4` carrying `metaball.sigma_factor = 3.0` and `iso_value = 0.08` (neither an old default) still reads `_version: 4` after `_load_display_config()`, and `check_for_display_config_update()` returns `True`; the same for a `_version: 4` copy with no `metaball` section at all. Because untouched copies now *are* fixed and re-stamped silently, the startup dialog has inverted its meaning — it no longer appears for the users it was written for, and appears on every launch only for users who customised something, where its **Update** button is `shutil.copyfile(package → user)` and destroys precisely the choices the migration just went to the trouble of preserving, with no backup. Stamp `_version` whenever `from_version < DISPLAY_CONFIG_VERSION` and the file is the user's own, independently of whether any value moved.
+- **Fix note:**
+
+### RF-740
+- **Status:** OPEN
+- **Severity:** S3 (importing the config module rewrites whatever file `CHIMOL_DISPLAY_CONFIG` points at)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:563-569` (env override → `path = override_path`) and `:612` (the persist guard is `if migrated and path != package_path`), reached at import time from `:634` (`_DISPLAY_CONFIG = _load_display_config()`)
+- **Finding:** the "is this the user's own copy" test is `path != package_path`, which is also true for a file named by `CHIMOL_DISPLAY_CONFIG` — so the loader edits its own input. Verified: pointing the variable at a file holding `{"_version": 3, "metaball": {"sigma_factor": 2.2, "shininess": 22.0}}` and calling `_load_display_config()` rewrote that file in place to `{"metaball": {"sigma_factor": 6.5, "shininess": 96.0}, "_version": 5}`, and since the load runs on module import, merely importing chimol is enough to do it. The env override is the documented escape hatch for rendering against a fixed configuration (`chisurf/plugins/chimol/test/test_config_and_ss.py:66` uses it) and for pointing several installs at one shared preset; both stop being reproducible once the reader mutates the file. Persist only to the path resolved from the settings directory, never to an explicit override.
+- **Fix note:**
+
+### RF-741
+- **Status:** OPEN
+- **Severity:** S3 (the update check and the loader disagree about which file is the user's config)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:573-586` (legacy `molview_display.json` / `protview_display.json` fallback sets `path`) against `check_for_display_config_update` at `:109-111`, which consults only `get_user_display_config_path()` → `chimol_display.json`
+- **Finding:** when only a legacy-named file exists the loader reads it — and now also *writes* it — while the update check looks at a filename that does not exist and returns `False`. Verified: a settings dir holding only `molview_display.json` at `_version: 3` comes out of `_load_display_config()` with `sigma_factor: 6.5` and a `_version: 5` stamp written into the **legacy** file, no `chimol_display.json` is created, and `check_for_display_config_update()` returns `False`. The migration happens to carry these users, but the prompt cannot reach them and any future feature keyed on `get_user_display_config_path()` will read a file that is not the one in force. Rename the legacy file to `chimol_display.json` on first load, or have `check_for_display_config_update` resolve the same path the loader does.
+- **Fix note:**
+
+### RF-742
+- **Status:** OPEN
+- **Severity:** S3 (13 shipped-only keys keep a third set of defaults that the new guardrail cannot see)
+- **Location:** the `cartoon` block of `chisurf/plugins/chimol/chimol/chimol_display.json` against the `default` dict in `chisurf/plugins/chimol/chimol/config.py:197-555`, with the fallbacks at `chisurf/plugins/chimol/chimol/geometry/cartoon.py:2793-2822` (`cfg.get("ring_style", "pymol")`, `cfg.get("ladder_radius", 0.12)`, …), and the guardrail at `chisurf/plugins/chimol/test/test_display_config_defaults.py:61-76`
+- **Finding:** thirteen nucleic-acid cartoon keys — `backbone_quality`, `backbone_radius`, `backbone_smooth_cycles`, `backbone_smooth_window`, `ladder_radius`, `nucleic_ao_max_neighbors`, `nucleic_ao_radius`, `nucleic_ao_strength`, `nucleic_trace_atoms`, `ring_rim_quality`, `ring_rim_radius`, `ring_style`, `ring_thickness` — exist in the shipped JSON and **not** in the Python `default` dict (verified by diffing the two key sets from the module's own source). The guardrail written for exactly this class of drift iterates over the Python defaults and `continue`s on every key the JSON does not share, so it is blind in this direction. The consequence is the `return default` path at `config.py:594-598`: when the config file cannot be parsed the loader hands back a dict missing all thirteen, and the DNA/RNA cartoon silently falls through to `cartoon.py`'s inline `cfg.get(..., fallback)` values — a third source of truth for the same settings. Checked key by key, those inline values agree with the shipped JSON today, so this is a guardrail gap rather than a live defect: add the thirteen to `default` and extend the test to flag any shipped key with no Python counterpart.
+- **Fix note:**
+
+### RF-743
+- **Status:** OPEN
+- **Severity:** S2 (the new `sigma_factor` default costs 2.4× in metaball rebuild time and 46 % of the draft mesh's vertices, against a figure the previous commit measured)
+- **Location:** `chisurf/plugins/chimol/chimol/chimol_display.json:160` (`"sigma_factor": 6.5`) and the version-5 migration at `chisurf/plugins/chimol/chimol/config.py:52-62`, against `_accumulate_wyvill_nb` at `chisurf/plugins/chimol/chimol/geometry/surface.py:123-161` (the compact-support radius **is** sigma) and `_build_density_grid` at `:305-326` (`pad = max(padding, max_sigma + 2·spacing)`, then a `max_dim` rescale of `spacing`), with the playback path at `chisurf/plugins/chimol/chimol/renderer/view.py:4394-4404` (`_DRAFT_METABALL = {"max_dim": 96}`) and `:6791-6829`
+- **Finding:** under the default `field_function: "wyvill"` each atom stamps a box of `(2·sigma/spacing)³` voxels and `pad` grows with `max_sigma`, so raising `sigma_factor` enlarges both the per-atom work and the whole grid. The figure to beat is `01a6d92fc` (*"metaballs play at 26 fps"*, 37.9 ms drafting / 217.7 ms settled), and the shipped JSON in force at that commit had `sigma_factor: 2.2` — the Python dict's 2.8 was the value that reached nobody, which is the very bug `735c6eb1c` fixed. So the effective change is 2.2 → 6.5, a 2.95× support radius. Measured here over the 376 surface atoms of `test/data/atomic_coordinates/pdb_files/148l.pdb` (`_generate_surface_mesh_from_density`, best of 5, numba warm): settled (`max_dim: 128`) **41.5 ms → 99.3 ms**, i.e. 24.1 → 10.1 rebuilds/s, grid 81×86×98 → 107×112×124. On the draft path (`max_dim: 96`) the time barely moves (44.1 → 49.1 ms) because the cap absorbs it — by spending the fixed 96³ budget on padding instead: effective spacing degrades **0.612 → 0.775 Å** and the mesh falls from 49,646 to 26,652 vertices, so the configured `grid_spacing: 0.6` now buys 27 % less resolution than it asks for. The appearance change was judged from renders without re-measuring either number. Re-tune `grid_spacing`/`max_dim` alongside the new sigma, or decouple `pad` from `max_sigma` so mesh resolution stops tracking blob width.
+- **Fix note:**
+
+### RF-744
+- **Status:** OPEN
+- **Severity:** S3 (the user's only config is rewritten in place at import, non-atomically, and a torn write silently reverts every setting)
+- **Location:** `chisurf/plugins/chimol/chimol/config.py:168-184` (`_write_user_display_config` opens the live file with `"w"` and swallows every exception into a `debug` log), called from `:612-613` inside `_load_display_config`, which runs at module import (`:634`) — against the read at `:594-598` (`except: return default`)
+- **Finding:** the truncate-then-write happens on the single file that holds all of a user's display settings, with no temp-file-and-rename and no backup. Because the read side catches everything and falls back to `default`, a write interrupted midway (process killed, full disk, two chisurf processes importing the module at once — the normal state of this tree) leaves invalid JSON that the next session reports as no error at all: the viewer simply comes up with package defaults and the user's customisations gone, and `default` is additionally missing the thirteen keys of RF-742. Write to `path.with_suffix(".json.tmp")` and `os.replace` onto the target, which is atomic on both platforms, and keep the pre-migration content as `.bak` on first migration.
+- **Fix note:**
