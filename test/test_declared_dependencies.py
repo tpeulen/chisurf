@@ -116,6 +116,20 @@ _SHIPPED_ONLY = {
                   "developers already have a solver",
 }
 
+#: Runtime packages a wheel cannot or need not declare, with the reason.
+_NOT_ON_PYPI = {
+    "micromamba": "a conda package manager, not a Python distribution",
+    "boost-cpp": "a C++ library the extensions are built against, not installed by pip",
+}
+
+#: Distribution spellings that differ between conda and PyPI.
+_PYPI_NAMES = {
+    "pyqt": "pyqt5",
+    "pytables": "tables",
+    "msgpack-python": "msgpack",
+    "pyarrow-core": "pyarrow",
+}
+
 
 def _pixi_dependencies() -> set[str]:
     """Return the names in ``pixi.toml`` ``[dependencies]``/``[pypi-dependencies]``."""
@@ -165,6 +179,38 @@ def test_dev_env_and_released_package_declare_the_same_runtime():
         "shipped in the conda package but not declared for development -- add "
         f"them to pixi.toml [dependencies], or to _SHIPPED_ONLY with a reason: "
         f"{missing_from_dev_env}"
+    )
+
+
+def _pyproject_dependencies() -> set[str]:
+    """Return every distribution ``pyproject.toml`` declares, required or extra."""
+    text = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    names = set()
+    for block in re.findall(r"(?:^|\n)\w[\w.-]*\s*=\s*\[(.*?)\]", text, re.DOTALL):
+        for match in re.finditer(r'"([A-Za-z0-9_.\-]+)', block):
+            names.add(match.group(1).lower())
+    return names
+
+
+def test_the_wheel_declares_the_same_runtime_as_the_conda_package():
+    """``pyproject.toml`` covers everything the conda runtime has.
+
+    A ``pip install chisurf`` gets only this list, so anything the application
+    imports has to appear here -- as a requirement, or as an extra when the code
+    detects it at runtime and works without it.
+    """
+    conda_runtime = (_pixi_dependencies() | _recipe_run_dependencies()) - _BUILD_ONLY
+    declared = _pyproject_dependencies()
+
+    missing = sorted(
+        name
+        for conda_name in conda_runtime - set(_NOT_ON_PYPI)
+        if (name := _PYPI_NAMES.get(conda_name, conda_name)) not in declared
+    )
+    assert not missing, (
+        "in the conda runtime but not in pyproject.toml -- add them to "
+        "[project.dependencies], or to an extra if the code copes without them, "
+        f"or to _NOT_ON_PYPI with a reason: {missing}"
     )
 
 

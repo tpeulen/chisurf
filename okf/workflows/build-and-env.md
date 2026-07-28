@@ -65,7 +65,13 @@ The mirror image of an undeclared *dependency* is an undeclared *import*, and it
 fails the same way: on a developer machine the package is there transitively, in
 a packaged install the plugin does not load. `test/test_declared_dependencies.py`
 holds the line — every **module-level** import under `chisurf/` must resolve to a
-declared distribution, the standard library, or a sibling project. An import
+declared distribution, the standard library, or a sibling project, and the three
+lists must agree with each other: what the dev env declares the conda package
+ships, and what the conda runtime has the wheel declares too (as a requirement,
+or as an extra when the code detects it and works without it). Every deliberate
+difference is named in the test with its reason — `micromamba` ships but is not
+a wheel dependency, `pdb2pqr` and `latexify-py` are dev-env-only, `boost-cpp` is
+a C++ library pip cannot install. An import
 inside a `try`, a function or an `if` is an optional feature the code is expected
 to survive without, and is deliberately not policed. So a package that is genuinely
 optional gets one of two homes: a guarded import (`psutil` for the system

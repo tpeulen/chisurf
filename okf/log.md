@@ -2,6 +2,22 @@
 
 ## 2026-07-28
 
+* **The wheel was missing four things the code imports at module scope.** With
+  the dev env and the conda package now agreeing, the third list — the
+  `pip install chisurf` metadata in `pyproject.toml` — turned out to be the one
+  furthest from reality: no `pandas` (imported at module scope by dozens of
+  modules, starting with the burst reader), no `scikit-learn` (the
+  burst-selection API imports it unguarded; it was hiding in an `ml` extra), no
+  `PyOpenGL` (the molecular view) and no `scikit-image` (CLSM and the
+  single-molecule image tools). All four are requirements now. The six the code
+  genuinely detects at runtime and works without — `hdbscan`, `boost-histogram`,
+  `Pygments`, `latexify-py`, `notebook`, `pdb2pqr` — became a `full` extra, so
+  they are declared without being forced on a plain install.
+  `test/test_declared_dependencies.py` now closes the triangle: every package in
+  the conda runtime must appear in `pyproject.toml` as a requirement or an
+  extra, with the two that a wheel cannot install (`micromamba`, `boost-cpp`)
+  named and explained.
+
 * **What a dependency costs is a solve, not an opinion — and pytables costs
   nothing.** The question was why `pytables` and not `h5py`. Answered by asking
   conda-forge rather than reasoning about it: `conda create --dry-run --json`
