@@ -1,77 +1,49 @@
-# Quenching Estimator Plugin (QuEst)
+# QuEst — Quenching Estimator
 
-This plugin provides tools for simulating fluorescence quenching processes in macromolecules and analyzing time-resolved FRET measurements.
+Structure-based simulation of dynamic PET quenching and FRET for dyes tethered
+to proteins by flexible linkers. Peulen, Opanasyuk & Seidel, *J. Phys. Chem. B*
+**2017**, 121, 8211 — https://doi.org/10.1021/acs.jpcb.7b03441
 
-## Features
+## This directory declares; the `quest` package implements
 
-- Simulation of dye diffusion using accessible volume (AV) calculations
-- Calculation of fluorescence quenching based on proximity to quencher residues
-- Generation of fluorescence decay histograms
-- Visualization of diffusion trajectories and protein structures
-- Analysis of time-resolved FRET measurements of labeled macromolecules
-- Integration with molecular structure data
+| path | what it is |
+|---|---|
+| `manifest.json` | Identity, entry points, and the RPC method table **copied from `quest/manifest.json`** |
+| `api/contract.py` | Re-exports `quest.backend.contract`. Defines nothing |
+| `api/client.py` | Thin client over `quest.api` |
+| `rpc/services.py` | Hands ChiSurf's dispatcher to `quest.backend.services.register_services` |
+| `cli/cli.py` | Delegates to `quest.cli:cli` |
+| `gui/tool.py` | Embeds `quest.gui`'s AutoForm in a `ChisurfDockTool` |
 
-## Overview
+There is no `core/`. QuEst is the core, and a second implementation of anything
+here would be the drift `LAY-01` recorded when the CLI, the web backend and the
+library each grew their own `simulate_site`.
 
-The Quenching Estimator Plugin (QuEst) implements a diffusion simulation approach to analyze time-resolved FRET 
-measurements of labeled macromolecules. It simulates the diffusion of fluorescent dyes around a macromolecule and 
-calculates quenching effects based on the proximity to quencher residues such as Tryptophan, Tyrosine, and Histidine.
+## Two things that are load-bearing
 
-The plugin provides a graphical interface for setting up and running these simulations, as well as for analyzing and 
-visualizing the results. By simulating the movement of fluorescent dyes and their interactions with quencher residues, 
-researchers can gain insights into the dynamic behavior of macromolecules and interpret experimental FRET data more 
-accurately.
+**Nothing imports `quest` at module scope.** ChiSurf's discovery imports every
+plugin at startup. The previous version of this plugin was a single
+`__init__.py` doing `from quest.gui import TransientDecayGenerator` at the top,
+so launching ChiSurf pulled in QuEst, IMP and numba whether or not anyone opened
+the tool — and a broken QuEst install became a broken ChiSurf startup. Two tests
+assert the import stays clean.
 
-The diffusion simulation methodology is based on the approach described in:
-Peulen, T. O., Opanasyuk, O., & Seidel, C. A. M. (2017). "Combining Graphical and Analytical Methods with Molecular 
-Simulations To Analyze Time-Resolved FRET Measurements of Labeled Macromolecules Accurately." 
-The Journal of Physical Chemistry B, 121(35), 8211-8241.
+**The method table is copied, not restated.** If QuEst gains a method and
+`manifest.json` here is not regenerated, `test_plugin.py` fails — rather than a
+host discovering the gap at runtime.
 
-## Requirements
+## Regenerating the manifest
 
-- Python packages:
-  - PyQt5
-  - numpy
-  - quest (for dye diffusion simulation)
-  - chisurf core modules
-  - Molecular visualization libraries
+    python - <<'PY'
+    import json, pathlib, quest
+    src = json.loads((pathlib.Path(quest.__file__).parent / "manifest.json").read_text())
+    dst_path = pathlib.Path("manifest.json")
+    dst = json.loads(dst_path.read_text())
+    dst["rpc_methods"] = src["rpc_methods"]
+    dst["version"] = src["version"]
+    dst_path.write_text(json.dumps(dst, indent=2, ensure_ascii=False) + "\n")
+    PY
 
-## Usage
+## Tests
 
-1. Launch the plugin from the ChiSurf menu: Tools > QuEst (Quenching estimator)
-2. Load a molecular structure:
-   - Import a PDB file or other supported molecular structure format
-   - The structure will be displayed in the visualization panel
-3. Configure simulation parameters:
-   - Define dye attachment points on the macromolecule
-   - Set diffusion parameters (step size, number of steps, etc.)
-   - Identify quencher residues (Trp, Tyr, His) or specify custom quenchers
-4. Run the simulation:
-   - Click the "Run Simulation" button to start the diffusion simulation
-   - Monitor the progress in the status panel
-5. Analyze results:
-   - View the generated fluorescence decay histograms
-   - Examine the diffusion trajectories of the dyes
-   - Analyze quenching effects based on proximity to quencher residues
-6. Export data:
-   - Save simulation results for further analysis
-   - Export visualizations and histograms
-
-## Applications
-
-The Quenching Estimator plugin can be used for:
-- Interpreting time-resolved FRET measurements of labeled macromolecules
-- Studying the effects of quencher residues on fluorescence properties
-- Investigating the dynamic behavior of fluorescent dyes attached to macromolecules
-- Validating experimental FRET data through simulation
-- Optimizing labeling strategies for FRET experiments
-- Educational demonstrations of fluorescence quenching principles
-- Research into protein structure and dynamics
-
-## License
-
-This plugin is part of the ChiSurf package and is distributed under the same license.
-
-## Author
-
-This plugin was created as part of the ChiSurf project.
+    QT_QPA_PLATFORM=offscreen python -m pytest chisurf/plugins/quenching_estimator/test -q

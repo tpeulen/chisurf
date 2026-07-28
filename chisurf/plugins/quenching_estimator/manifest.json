@@ -1,0 +1,532 @@
+{
+  "id": "quenching_estimator",
+  "version": "19.8.13",
+  "display_name": "Structure:Computation:QuEst",
+  "description": "Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers. The science lives in the `quest` package; this plugin is the ChiSurf-side shell.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Structure",
+    "Computation"
+  ],
+  "icon": "💧",
+  "menu_hidden": true,
+  "state_namespace": "quenching_estimator",
+  "state_schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "project": {
+        "type": "object",
+        "description": "The QuEst project document (see doc/parameters.md). Every length is in Angstrom, every time in nanoseconds."
+      }
+    }
+  },
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.quenching_estimator.gui.tool:QuEstTool",
+    "cli": "quest=chisurf.plugins.quenching_estimator.cli.cli:cli",
+    "services": "chisurf.plugins.quenching_estimator.rpc.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "quest.template",
+      "summary": "Return a minimal valid project, optionally with FRET.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "with_fret": {
+            "type": "boolean",
+            "description": "Add an acceptor dye and a Forster matrix.",
+            "default": true
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.validate",
+      "summary": "Check a project and report why it is malformed.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object",
+            "description": "The project document to check."
+          },
+          "pdb_path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Structure override; a path or a bare four-character RCSB PDB ID."
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "project": {
+            "type": "object"
+          }
+        }
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.simulate",
+      "summary": "Run one simulation and return the decay and derived metrics.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object"
+          },
+          "pdb_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nbins": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "TAC histogram bins."
+          },
+          "tac_range": {
+            "type": "array",
+            "description": "Time window of the histogram in nanoseconds, [start, stop].",
+            "items": {
+              "type": "number"
+            }
+          },
+          "project_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Base directory for the jobs/<uuid> output folder."
+          },
+          "save_outputs": {
+            "type": "boolean",
+            "description": "Write the job directory. Opt-in: without it a run leaves nothing behind. When set and no project_dir is given, artefacts go to the per-user artefact root, never the working directory.",
+            "default": false
+          }
+        },
+        "required": [
+          "project"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Decay arrays, quantum yields, lifetime, AV/contact volumes, FRET channel and the per-residue-type quenching breakdown.",
+        "properties": {
+          "job_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "time_ns": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "donor_counts": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "fret_counts": {
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "quantum_yield_donor": {
+            "type": "number"
+          },
+          "fret_efficiency": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "aa_residence": {
+            "type": "array"
+          }
+        }
+      },
+      "long_running": true,
+      "cancelable": false
+    },
+    {
+      "name": "quest.scan",
+      "summary": "Simulate a set of labeling sites and return one record each.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "type": "object"
+          },
+          "positions": {
+            "type": "object",
+            "description": "fps.json-shaped positions, keyed by site name."
+          },
+          "pdb_path": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nbins": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "tac_range": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "project_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "project",
+          "positions"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "object",
+            "description": "Per site: lifetime, quantum yield, contact fraction, volumes and the dominant quencher. A site that fails is reported with status='failed' rather than aborting the scan."
+          }
+        }
+      },
+      "long_running": true,
+      "cancelable": true
+    },
+    {
+      "name": "quest.parameter_catalog",
+      "summary": "Return the parameter catalog (labels, units, help), optionally translated.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "title": "Language",
+            "description": "Locale code (en, de, fr). Omitted means English — a shared backend must not answer in whatever language its host machine is configured for."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.dyes.list",
+      "summary": "Return the dye presets.",
+      "params_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "Dye presets keyed by name."
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.dyes.save",
+      "summary": "Add or replace a dye preset.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "dye": {
+            "type": "object",
+            "description": "Dye entry; its 'name' is the key it is stored under."
+          }
+        },
+        "required": [
+          "dye"
+        ]
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.quenching_defaults",
+      "summary": "Return the residue-type PET chemistry defaults.",
+      "params_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "residues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default_interactions": {
+            "type": "object"
+          },
+          "default_quench_atoms": {
+            "type": "object"
+          },
+          "reference_pet_quenching": {
+            "type": "object"
+          }
+        }
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.structure.metadata",
+      "summary": "Return the chains, residues and atoms of a structure file.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "pdb_path": {
+            "type": "string",
+            "description": "Structure path, or a bare four-character RCSB PDB ID."
+          }
+        },
+        "required": [
+          "pdb_path"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "atom_count": {
+            "type": "integer"
+          },
+          "chains": {
+            "type": "array",
+            "description": "Per chain: its residues in sequence order, each with sorted atom names."
+          },
+          "pdb_text": {
+            "type": "string",
+            "description": "Raw file contents, for a viewer."
+          }
+        }
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.runs.list",
+      "summary": "Return run-artefact summaries, newest first.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "project_dir": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Directory holding jobs/ (default: cwd)."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Page size; clamped to the server maximum."
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "jobs": {
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.runs.get",
+      "summary": "Return a finished run's result.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "description": "The run's UUID."
+          },
+          "project_dir": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      },
+      "result_schema": {
+        "type": "object",
+        "description": "The run's result.json."
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.locales",
+      "summary": "List the languages QuEst's labels and help text are available in.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "title": "Language",
+            "description": "Locale code (en, de, fr). Omitted means English — a shared backend must not answer in whatever language its host machine is configured for."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.contract.describe",
+      "summary": "Return the contract: methods, schemas, error codes and where serialization happens.",
+      "params_schema": {
+        "type": "object",
+        "properties": {}
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.jobs.list",
+      "summary": "Return the running and recent operations.",
+      "params_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.jobs.get",
+      "summary": "Return one operation's status and progress.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "quest.jobs.cancel",
+      "summary": "Ask a running operation to stop at its next checkpoint.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ]
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    }
+  ],
+  "events": [],
+  "dependencies": {},
+  "deprecated": false
+}

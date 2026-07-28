@@ -297,33 +297,7 @@ The same is available over RPC as `fit.reweight_prior`. It needs a stored chain,
 so run a sampling job first; a fit that has never been sampled returns an error
 rather than an invented answer.
 
-## 10. Opening the chains in nDXplorer
-
-A sampling run leaves a timestamped folder behind:
-
-```
-sampling/2026-07-28_13-53-19/
-├── chains/           # one .er4 per run: chi2r, lnprior, then the parameters
-├── diagnostics.json  # R-hat, ESS, burn-in, warnings
-└── parameters.json   # what was sampled
-```
-
-In nDXplorer: **File → Open ChiSurf Sampling**, and pick the folder you gave
-`sample_fit` — not the timestamped one inside it. A folder holding several runs
-resolves to the most recent; separate timestamps are separate sessions and are
-never pooled, because stacking two posteriors makes a cloud that looks bimodal
-and never was.
-
-Two columns are added to the parameters: `chain`, which run a draw came from,
-and `draw`, its position in that run. Colour by `chain` to see whether the
-independent runs agree — the same question `diagnostics.json` answers with
-R-hat, in a form you can look at. `chi2r` and `lnprior` are separate columns, so
-you can filter on the data misfit alone.
-
-Ensemble-sampler chains stored in HDF5 (`mcmc/chain`) open the same way through
-**Open MFD HDF5**; there `chain` is the walker index and `draw` the step.
-
-## 11. Looking at the posterior instead of reading about it
+## 10. Looking at the posterior instead of reading about it
 
 Two plots are attached to every fit.
 
@@ -411,7 +385,7 @@ for row in fit.posterior_summary():
 No chain means no warning — which is *not* a claim that the posterior is
 symmetric, only that nothing has checked.
 
-## 12. In the GUI
+## 11. In the GUI
 
 The **Sampling** button on the fit controller runs the same code on the server.
 The backend comes from `optimization.sampling.method` in the settings
@@ -433,7 +407,7 @@ status['warnings']    # what went wrong, per parameter
 status['diagnostics'] # the full per-parameter report
 ```
 
-## 13. Asking directly, without picking an estimator first
+## 12. Asking directly, without picking an estimator first
 
 ```python
 from chisurf.core.fitting import engine
@@ -452,7 +426,7 @@ that actually worked — labelled with which one that was. `laplace` costs
 nothing, `profile` costs a re-fit per scan point, `mcmc` costs a sampling run;
 `stored` costs nothing at all and reports only what is already there.
 
-## 14. From a script, a macro or the server
+## 13. From a script, a macro or the server
 
 The same query is on the stable API facade, so it works from the QtConsole, a
 macro, a plugin, the CLI, and over RPC:
@@ -478,7 +452,7 @@ and `laplace` return immediately; `profile` and `mcmc` block for as long as they
 take, so use the `fit.sample.*` / `fit.parameter_scan.*` job endpoints when you
 need to poll progress.
 
-## 15. Error bars on the quantities you publish
+## 14. Error bars on the quantities you publish
 
 The FRET efficiency, `<tau>x` and `<tau>F` are *derived*: computed from the
 fitted parameters, never fitted themselves, and printed for years as bare

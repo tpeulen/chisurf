@@ -1733,11 +1733,7 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         mods = event.modifiers()
         delta_steps = int(event.angleDelta().y() / 120.0)
-        # Shift+wheel moves the near clipping plane, as PyMOL's shifted wheel
-        # works the slab. Ctrl+wheel does the same thing and is kept: it was the
-        # only binding for it, and silently taking it away from anyone with it
-        # in their fingers is worse than having two ways to clip.
-        if mods & (QtCore.Qt.ShiftModifier | QtCore.Qt.ControlModifier):
+        if mods & QtCore.Qt.ControlModifier:
             if delta_steps != 0:
                 for _ in range(abs(delta_steps)):
                     if delta_steps > 0:
