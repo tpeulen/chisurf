@@ -11,7 +11,7 @@ Of the **105 plugins**, **47** build their interface from declarative AutoForm s
 *
 ```
 
-**105 plugins** across 25 categories.
+**105 plugins** across 24 categories.
 
 ## Core
 
@@ -103,6 +103,7 @@ Of the **105 plugins**, **47** build their interface from declarative AutoForm s
 | [Decay Analysis](lifetime_analysis.md) | Integrated fluorescence lifetime analysis tools with IRF estimation, MaxEnt MEM, Lazy Lifetime Analysis, microtime histograms, and VV/VH G-factor calibration. |
 | [Image Tools](imaging_tools.md) | Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination. |
 | [Light Path Simulator](lightpath_simulator.md) | Optical light path simulator to calculate crosstalk and R0 overlap integrals. |
+| [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
 
 ## Spectroscopy → FRET
 
@@ -230,12 +231,6 @@ Of the **105 plugins**, **47** build their interface from declarative AutoForm s
 | [Count Rate Analysis](tttr_count_rate_analysis.md) *(hidden)* | Count rates per detector channel across many TTTR files, with mean/std and a per-file plot. |
 | [LUT Tools](tttr_lut_tools.md) *(hidden)* | Compute TTTR microtime LUTs and create channel LUT settings in one dockable workspace. |
 | [Microtime Shifter](microtime_shifter.md) *(hidden)* | Apply global and per-channel micro-time shifts to TTTR files. |
-
-## Uncategorized
-
-| Plugin | Summary |
-| --- | --- |
-| [Spectra Downloader](spectra_downloader.md) | Download, browse and push optical-component spectra (fluorophores, filters, dichroics, detectors, light sources) |
 
 ## {{ cookiecutter.plugin_category }}
 

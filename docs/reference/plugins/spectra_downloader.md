@@ -8,8 +8,8 @@ Download, browse and push optical-component spectra (fluorophores, filters, dich
 | Field | Value |
 | --- | --- |
 | Plugin id | `spectra_downloader` |
-| Menu path | Uncategorized → **Spectra Downloader** |
-| Categories | Spectra |
+| Menu path | Spectroscopy → **Spectra Downloader** |
+| Categories | Spectroscopy, Spectra |
 | Version | 0.2.0 |
 | Surfaces | cli, gui |
 

@@ -2,6 +2,27 @@
 
 ## 2026-07-28
 
+* **One plugin was filed under "Uncategorized" because its manifest dropped the
+  menu path its own module declares** (INC-07). `display_name` is the only live
+  identity field -- discovery prefers it over the legacy module-level `name`,
+  and its `:`-separated segments are what the ribbon and the generated
+  catalogue group by -- but nothing required it to carry a path. Of 107
+  built-in manifests exactly one did not: `spectra_downloader` said
+  `"Spectra Downloader"`, so the ribbon parser returned its `Main` fallback and
+  the catalogue generator printed `Uncategorized`, while the plugin's
+  `__init__.py` had declared `Spectroscopy:Spectra Downloader` and its
+  `categories` said `Spectra`. Three declarations, three answers, and the
+  accidental one won -- the published catalogue carried an entire
+  `## Uncategorized` section for this single plugin, on a page whose
+  `Menu path` row contradicted its `Categories` row. The two INC-07 guardrails
+  added earlier could not catch it: both skip a manifest with no parent
+  segments. The manifest now declares the path its module always did, which
+  also brings it *under* the existing categories/menu-path guard rather than
+  being waived by it. New guardrail `test_builtin_manifests_declare_a_menu_path`
+  fails on any `display_name` without a `:`, alongside a pin of the fallback on
+  the live ribbon parser. Updated
+  [specs/assessment.md](/specs/assessment.md#inc-07).
+
 * **The in-viewport panel is a column with a splitter now, not an overlay.**
   Drawn on top, the panel hides the molecule it is describing -- and the part it
   hides is the part you just moved out from under it. So the scene renders into

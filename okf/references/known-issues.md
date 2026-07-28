@@ -880,6 +880,24 @@ in the anisotropy area; neither is reachable from a production call path today.
   **Pattern: a test module whose import fails takes its whole package's
   collection with it, so one dead import hides hundreds of live tests.**
 
+- **OPEN — `test_plugin_manager_mistral_icon.py`: 6 tests red since the HTTP
+  client swap** (found 2026-07-28 while test-gating an unrelated plugin-manifest
+  fix). `085bd79b4` ("an HTTP client of our own") moved
+  `PluginManagerWidget._post_mistral_json_with_retries` and its siblings off an
+  injected session object onto the module-level `chisurf.core.http.post`, and
+  dropped the `session` parameter — but the tests still pass a
+  `SimpleNamespace(post=...)` as the second positional argument, so it binds to
+  `path`, the real path binds to `headers`, and every call raises
+  `TypeError: … got multiple values for argument 'headers'`. The signature is
+  identical in HEAD and in the working tree, so this is not an in-flight edit:
+  it is red on a clean checkout. The fix is test-side — monkeypatch
+  `chisurf.core.http.post` instead of injecting a session — and it is small, but
+  `chisurf/plugins/core/plugin_manager/gui/tool.py` has concurrent uncommitted
+  edits in exactly this HTTP path from another instance, so rewriting the tests
+  against a signature that may still be moving was left to whoever lands that
+  migration. Nothing outside these 6 tests is affected; the rest of
+  `test/plugins` (321 tests) is green.
+
 **Qt teardown in test suites**
 - `chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py` aborts with
   `libc++abi: Pure virtual function called!` when the file is run as one
