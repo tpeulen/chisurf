@@ -34,6 +34,22 @@ class MolViewConfigEditor(QtWidgets.QDialog):
         self._edit.setFont(font)
         layout.addWidget(self._edit, 1)
 
+        # The start-up comparison is switched from here, because this is where
+        # someone looks when the viewer stops matching what a release note
+        # describes. It is a shortcut for one key of the document above rather
+        # than a separate preference, so it obeys the same rule as everything
+        # else in this dialog: nothing reaches the disk until Save.
+        self._ask_box = QtWidgets.QCheckBox(
+            "Tell me when this version ships different display defaults", self
+        )
+        self._ask_box.setToolTip(
+            "On start-up, compare these settings with the ones shipped and offer "
+            "to take the new values. Settings you changed yourself are listed so "
+            "you can keep them. Unticking this is the same as 'Don't ask again'."
+        )
+        self._ask_box.toggled.connect(self._on_ask_toggled)
+        layout.addWidget(self._ask_box)
+
         btn_box = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Save | QtWidgets.QDialogButtonBox.Cancel,
             parent=self,
@@ -101,6 +117,37 @@ class MolViewConfigEditor(QtWidgets.QDialog):
 
         self._edit.setReadOnly(False)
         self._edit.setPlainText(text)
+        self._sync_ask_box()
+
+    def _sync_ask_box(self) -> None:
+        """Set the tick box from the document, without echoing back into it."""
+        from ..config import UPDATE_PROMPT_KEY
+
+        try:
+            enabled = bool(json.loads(self._edit.toPlainText()).get(UPDATE_PROMPT_KEY, True))
+        except Exception:
+            enabled = True
+        blocked = self._ask_box.blockSignals(True)
+        self._ask_box.setChecked(enabled)
+        self._ask_box.blockSignals(blocked)
+
+    def _on_ask_toggled(self, enabled: bool) -> None:
+        """Write the preference into the document being edited.
+
+        Editing the text rather than the file keeps one source of truth on
+        screen: a tick box that wrote straight to disk would be silently undone
+        by the next Save, which re-writes the whole document from this editor.
+        """
+        from ..config import UPDATE_PROMPT_KEY
+
+        try:
+            cfg = json.loads(self._edit.toPlainText())
+        except Exception:
+            return  # Invalid JSON: Save already refuses it and says why.
+        if bool(cfg.get(UPDATE_PROMPT_KEY, True)) == bool(enabled):
+            return
+        cfg[UPDATE_PROMPT_KEY] = bool(enabled)
+        self._edit.setPlainText(json.dumps(cfg, indent=2) + "\n")
 
     def _on_save(self) -> None:
         if self._json_path is None:

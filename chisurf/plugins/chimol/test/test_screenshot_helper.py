@@ -60,7 +60,13 @@ def test_a_gl_widget_can_be_grabbed_without_a_window(app):
     try:
         image = shot.grab_gl(widget, size=(160, 120))
         assert not image.isNull()
-        assert (image.width(), image.height()) == (160, 120)
+        # In *logical* pixels: on a high-DPI screen the grab is correctly 2x the
+        # size asked for, and whether it is depends on how the QApplication for
+        # the whole run happened to be created -- so an exact comparison passes
+        # this file alone and fails inside the suite, which reads as a broken
+        # helper rather than as a Retina display.
+        ratio = image.devicePixelRatio() or 1.0
+        assert (image.width() / ratio, image.height() / ratio) == (160, 120)
         # Never mapped onto the display.
         assert widget.testAttribute(QtCore.Qt.WA_DontShowOnScreen)
     finally:

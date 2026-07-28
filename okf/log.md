@@ -2,6 +2,46 @@
 
 ## 2026-07-28
 
+* **ChiMOL now asks, at start-up, when your display settings disagree with the
+  ones it ships.** The version stamp cannot answer the question that matters. A
+  file stamped with the *current* version is "up to date" as far as migration is
+  concerned, so nothing ever looks at its contents again -- and a default that
+  moved after that stamp was written leaves a value nobody intended, invisible.
+  That is how one stranded setting survived two attempts to fix it, with no
+  symptom except a viewer that looked wrong.
+  - `diff_against_package()` compares against the shipped file directly, so it
+    does not depend on the stamp being right. Meta keys (`_`-prefixed) are never
+    compared: they describe the file, not the picture.
+  - The prompt lists every difference as `section.key: yours → shipped` and
+    offers **Use the new defaults** / **Keep mine**, with a **Don't ask again**
+    tick box. The tick is honoured whichever button is pressed -- keeping your
+    settings and stopping the question are two separate statements, and
+    conflating them would make "stop asking" cost you your settings.
+  - The preference lives in the user's own config under
+    `_ask_about_package_defaults`, and the Config editor carries a tick box for
+    it. That box edits the *document in the editor* rather than the file,
+    because Save rewrites the whole file from that text -- a box that wrote
+    straight through would be silently undone by the next Save.
+  - Division of labour, deliberately: values that merely fell behind a changed
+    default are still brought forward **silently** by migration -- the user
+    never chose those. The prompt is only for what migration cannot name, which
+    is either a real choice or a stranded value.
+  - Raised on a deferred timer from the first `showEvent`, so the window is on
+    screen before anything modal is, and through `dialogs.choice` rather than a
+    hand-built box, so a headless run answers it instead of hanging. Both the
+    dialog and the editor were rendered and inspected.
+  - **And building it turned up why editing the config never seemed to do
+    anything.** `reload_display_config()` *rebound* the module global, while ten
+    modules -- including both renderers, `renderer.view` and `renderer.qtgl` --
+    hold that dict by name (`from ..config import _DISPLAY_CONFIG`). Every one
+    of them kept pointing at the dict from **before** the reload, so the config
+    was reloaded and the renderer went on drawing from the old one: pressing
+    Save in the Config editor appeared to do nothing, which is precisely the
+    docstring's promise inverted. It now merges in place, one level down as
+    well, so anything holding a single section sees the new values too. Found
+    because the new tests broke the putty tests from another file entirely --
+    the process-wide config is one dict, and that is the whole hazard.
+
 * **QA — running a measurement: the acquisition tool against its own photon
   simulator.** Drove *Main ▸ Tools ▸ Acquisition* headlessly on the real main
   window: configured the simulated confocal experiment through the unified

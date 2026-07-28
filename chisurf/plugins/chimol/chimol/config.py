@@ -210,6 +210,151 @@ def _same_value(current, old) -> bool:
     return current == old
 
 
+#: Key in the user's copy that switches the start-up comparison off.
+#: Absent means "ask" -- opting out has to be a decision someone made, not the
+#: state a file happens to be in.
+UPDATE_PROMPT_KEY = "_ask_about_package_defaults"
+
+
+def diff_against_package(cfg: dict | None = None) -> dict[str, tuple]:
+    """Return where a config disagrees with the one the package ships.
+
+    Migration can only correct values it *names*; anything else stays, whether
+    it was chosen deliberately or stranded by a default that moved twice inside
+    one version. This says what actually differs, which is the question the
+    start-up prompt asks and the only check that does not depend on the version
+    stamp being right.
+
+    Parameters
+    ----------
+    cfg : dict, optional
+        A loaded config. Defaults to the user's copy on disk; ``{}`` when there
+        is none, which reports no differences.
+
+    Returns
+    -------
+    dict
+        ``{"section.key": (yours, shipped)}``, empty when they agree. Meta keys
+        (those starting with ``_``) are never compared: they describe the file
+        rather than the rendering.
+    """
+    if cfg is None:
+        cfg = _read_user_display_config() or {}
+    try:
+        shipped = json.loads(
+            get_package_display_config_path().read_text(encoding="utf-8")
+        )
+    except Exception:  # pragma: no cover - a package without its own config
+        return {}
+
+    differences: dict[str, tuple] = {}
+    for section, block in shipped.items():
+        if section.startswith("_") or not isinstance(block, dict):
+            continue
+        mine = cfg.get(section)
+        if not isinstance(mine, dict):
+            continue
+        for key, shipped_value in block.items():
+            if key.startswith("_") or key not in mine:
+                continue
+            if not _same_value(mine[key], shipped_value):
+                differences[f"{section}.{key}"] = (mine[key], shipped_value)
+    return differences
+
+
+def _read_user_display_config() -> dict | None:
+    """Return the user's copy as a dict, or ``None`` when there is none."""
+    path = get_user_display_config_path()
+    if path is None or not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def get_update_prompt_enabled() -> bool:
+    """Return whether start-up should ask about differences from the package."""
+    cfg = _read_user_display_config() or {}
+    return bool(cfg.get(UPDATE_PROMPT_KEY, True))
+
+
+def set_update_prompt_enabled(enabled: bool) -> bool:
+    """Turn the start-up comparison on or off, persistently.
+
+    Parameters
+    ----------
+    enabled : bool
+        ``False`` to stop asking.
+
+    Returns
+    -------
+    bool
+        Whether the preference reached the disk. A settings directory that
+        cannot be written is a permissions problem, not a reason to fail.
+    """
+    path = get_user_display_config_path()
+    cfg = _read_user_display_config()
+    if path is None or cfg is None:
+        return False
+    cfg[UPDATE_PROMPT_KEY] = bool(enabled)
+    try:
+        path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+    except Exception:  # pragma: no cover - unwritable settings directory
+        logging.getLogger(__name__).debug(
+            "Could not persist the display-config update preference", exc_info=True
+        )
+        return False
+    return True
+
+
+def adopt_package_values(names) -> list[str]:
+    """Copy the shipped values for *names* into the user's config, and save.
+
+    Parameters
+    ----------
+    names : iterable of str
+        ``"section.key"`` entries, as reported by :func:`diff_against_package`.
+
+    Returns
+    -------
+    list of str
+        The names actually written.
+    """
+    path = get_user_display_config_path()
+    cfg = _read_user_display_config()
+    if path is None or cfg is None:
+        return []
+    try:
+        shipped = json.loads(
+            get_package_display_config_path().read_text(encoding="utf-8")
+        )
+    except Exception:  # pragma: no cover
+        return []
+
+    adopted: list[str] = []
+    for name in names:
+        section, _, key = str(name).partition(".")
+        source = shipped.get(section)
+        target = cfg.get(section)
+        if not isinstance(source, dict) or not isinstance(target, dict):
+            continue
+        if key in source:
+            target[key] = source[key]
+            adopted.append(name)
+
+    if adopted:
+        cfg["_version"] = DISPLAY_CONFIG_VERSION
+        try:
+            path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+        except Exception:  # pragma: no cover - unwritable settings directory
+            logging.getLogger(__name__).debug(
+                "Could not write the adopted display defaults", exc_info=True
+            )
+            return []
+    return adopted
+
+
 def _write_user_display_config(path, cfg: dict) -> None:
     """Write *cfg* back to the user's copy, stamped with the current version.
 
@@ -655,6 +800,7 @@ def _load_display_config() -> dict:
 
     # Strip meta keys that should not leak into the rendered config.
     cfg.pop("_version", None)
+    cfg.pop(UPDATE_PROMPT_KEY, None)
 
     # Bring forward defaults that changed since this copy was written.
     migrated = apply_display_config_migrations(cfg, _DISPLAY_CONFIG_USER_VERSION)
@@ -698,10 +844,34 @@ def reload_display_config() -> None:
     that open viewers recompute their representations.
     """
 
-    global _DISPLAY_CONFIG
-    _DISPLAY_CONFIG = _load_display_config()
+    _merge_in_place(_DISPLAY_CONFIG, _load_display_config())
     for listener in list(_update_listeners):
         try:
             listener()
         except Exception:
             pass
+
+
+def _merge_in_place(target: dict, fresh: dict) -> None:
+    """Make *target* hold *fresh*, without replacing the dict itself.
+
+    Ten modules -- including the two that draw, `renderer.view` and
+    `renderer.qtgl` -- hold this config by name (``from ..config import
+    _DISPLAY_CONFIG``). Rebinding the module global, which is what this used to
+    do, left every one of them pointing at the dict from *before* the reload:
+    the settings were reloaded and the renderer went on drawing from the old
+    ones, exactly contrary to what the docstring above promises. Saving in the
+    Config editor appeared to do nothing.
+
+    Sections are merged rather than swapped for the same reason one level down:
+    anything holding ``_DISPLAY_CONFIG["metaball"]`` would otherwise keep the
+    old section object.
+    """
+    for key in [k for k in target if k not in fresh]:
+        del target[key]
+    for key, value in fresh.items():
+        current = target.get(key)
+        if isinstance(current, dict) and isinstance(value, dict):
+            _merge_in_place(current, value)
+        else:
+            target[key] = value

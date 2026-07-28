@@ -530,6 +530,36 @@ show metaballs
 set metaball.alpha, 0.45
 ```
 
+### When a new version changes a default
+
+Your settings live in `~/.chisurf/chimol_display.json`, and they are yours —
+nothing rewrites them behind your back. But a default that improves between
+versions has to be able to reach you, or you keep a value nobody intended and
+the viewer quietly stops matching what the documentation describes.
+
+So ChiMOL compares your file with the one it ships with at start-up, and asks:
+
+> *3 display settings differ from the ones this version ships with.*
+> **Use the new defaults** / **Keep mine** — with every difference listed as
+> `metaball.sigma_factor: 3.0 → 4.0`, so you can see which are yours.
+
+Choosing **Keep mine** changes nothing. Ticking **Don't ask again** stops the
+question for good — independently of which button you press, so you can keep
+your settings *and* stop being asked.
+
+To turn it back on, open **Cfg** and tick *"Tell me when this version ships
+different display defaults"* at the bottom, then **Save**. (The tick box edits
+the document in the editor, like everything else there, so nothing is written
+until you save.)
+
+:::{note}
+Settings that merely fell behind a rename or a changed default are brought
+forward silently, without asking — those are values you never chose. The prompt
+is for the rest: differences that no migration can identify, which are either
+your own choices or a value stranded by a default that moved twice inside one
+version.
+:::
+
 ### Tuning a metaball
 
 A metaball is a density field around the atoms, contoured at a threshold. Two

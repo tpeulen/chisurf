@@ -43,6 +43,7 @@ try:
 except Exception:  # pragma: no cover - standalone moview
     _cs_open_files = None
 
+from .. import config as _config
 from ..config import _DISPLAY_CONFIG
 from ..colors import _SEQ_COLOR_ROLE, _OBJECT_ID_ROLE
 from ..io import (
@@ -612,7 +613,70 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 self._restore_dock_area_state()
             except Exception:
                 pass
+            # Deferred, so the window is on screen before anything modal is: a
+            # dialog raised inside the first showEvent has nothing behind it.
+            QtCore.QTimer.singleShot(0, self._offer_package_display_defaults)
         super().showEvent(event)
+
+    def _offer_package_display_defaults(self) -> None:
+        """Ask whether to take the shipped display defaults, once per start.
+
+        The settings file is the user's, so it is never rewritten behind their
+        back -- but it also must not strand them. A default that moved twice
+        inside one released version left copies holding a value nobody intended
+        and no migration could name, and the only symptom was that the viewer
+        looked wrong in a way the person reporting it could not have diagnosed.
+        Comparing against the package says what actually differs, whatever the
+        version stamp claims.
+
+        Declining is remembered only if asked for: the tick box writes the
+        preference, and the Config editor turns it back on.
+        """
+        try:
+            if not _config.get_update_prompt_enabled():
+                return
+            differences = _config.diff_against_package()
+            if not differences:
+                return
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "Could not compare the display config with the package", exc_info=True
+            )
+            return
+
+        listed = "\n".join(
+            f"  {name}: {yours!r} → {shipped!r}"
+            for name, (yours, shipped) in sorted(differences.items())
+        )
+        count = len(differences)
+        answer = dialogs.choice(
+            self,
+            "ChiMOL display settings",
+            f"{count} display setting{'s' if count != 1 else ''} "
+            "differ from the ones this version ships with.",
+            {"update": "Use the new defaults", "keep": "Keep mine"},
+            default="keep",
+            informative=(
+                "Settings you changed on purpose are worth keeping. These are "
+                "listed below so you can tell which is which."
+            ),
+            detail=listed,
+            checkbox="Don't ask again",
+        )
+
+        if answer.checked:
+            _config.set_update_prompt_enabled(False)
+        if answer.key != "update":
+            return
+
+        adopted = _config.adopt_package_values(differences)
+        if adopted:
+            _config.reload_display_config()
+            self.status_bar.showMessage(
+                f"Adopted {len(adopted)} display default"
+                f"{'s' if len(adopted) != 1 else ''} from this version",
+                5000,
+            )
 
     # ── Status bar ────────────────────────────────────────────────────
 
