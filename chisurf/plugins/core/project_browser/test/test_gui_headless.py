@@ -146,6 +146,39 @@ def test_project_browser_renders_sample_project_tree_headless(qapp, monkeypatch)
         widget.close()
 
 
+def test_project_browser_toolbar_buttons_fire_their_handler_once(qapp, monkeypatch):
+    """One click on a toolbar button must run its handler exactly once (RF-617)."""
+    from chisurf.plugins.core.project_browser.gui.tool import ProjectBrowserTool
+
+    monkeypatch.setattr(ProjectBrowserTool, "_make_client", lambda self: FakeProjectBrowserClient())
+
+    calls: dict[str, int] = {}
+    handlers = {
+        "_open_btn": "_on_open",
+        "_save_btn": "_on_save",
+        "_export_btn": "_on_export",
+        "_import_btn": "_on_import",
+        "_delete_btn": "_on_delete",
+        "_refresh_btn": "refresh",
+    }
+    for name in handlers.values():
+        monkeypatch.setattr(
+            ProjectBrowserTool,
+            name,
+            lambda self, *_args, _name=name: calls.__setitem__(_name, calls.get(_name, 0) + 1),
+        )
+
+    widget = ProjectBrowserTool()
+    try:
+        for button_name, handler_name in handlers.items():
+            calls.clear()
+            getattr(widget, button_name).click()
+            qapp.processEvents()
+            assert calls.get(handler_name, 0) == 1, f"{button_name} fired {handler_name} twice"
+    finally:
+        widget.close()
+
+
 def test_project_browser_gui_uses_inprocess_chisurf_services_with_sample_data(
     qapp,
     tmp_path,

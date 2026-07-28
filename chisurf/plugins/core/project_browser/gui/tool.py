@@ -239,14 +239,11 @@ class ProjectBrowserTool(QtWidgets.QMainWindow):
         return button
 
     def _connect_signals(self) -> None:
-        self._refresh_btn.clicked.connect(self.refresh)
+        # The toolbar buttons are already wired to their slots by
+        # ``_add_toolbar_button``; connecting them again here would run every
+        # handler twice per click (one Save click writing two versions).
         self._search_edit.textChanged.connect(self._on_search)
         self._show_public_cb.toggled.connect(self.refresh)
-        self._open_btn.clicked.connect(self._on_open)
-        self._save_btn.clicked.connect(self._on_save)
-        self._export_btn.clicked.connect(self._on_export)
-        self._import_btn.clicked.connect(self._on_import)
-        self._delete_btn.clicked.connect(self._on_delete)
         self._tree.itemDoubleClicked.connect(self._on_open)
 
     def refresh(self) -> None:

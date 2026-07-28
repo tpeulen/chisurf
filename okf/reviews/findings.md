@@ -7241,11 +7241,20 @@ restore it into a fresh ChiSurf. Use case:
 - **Fix note:**
 
 ### RF-617
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every Project Browser toolbar button runs its handler twice — one *Save* click writes two identical project versions and shows the confirmation twice)
 - **Location:** `chisurf/plugins/core/project_browser/gui/tool.py:238` (`_add_toolbar_button`: `button.clicked.connect(slot)`) together with `:242-251` (`_connect_signals`, which re-connects the same six buttons: `_refresh_btn`, `_open_btn`, `_save_btn`, `_export_btn`, `_import_btn`, `_delete_btn`)
 - **Finding:** each toolbar button is connected to its slot twice — once at construction, once in `_connect_signals` — so `_save_btn.receivers(clicked)` is **2** and every click fires the handler twice. A/B-verified against a clean database: one `.click()` on *Save Current Project* produced **two** versions (`v1` and `v2`, same notes, same second, and two *"Project 'X' saved as version N"* dialogs), while one direct `_on_save()` call produced exactly one. The same doubling was observed on *Export .csp* (the file is written twice, two *Exported* dialogs). The user-visible damage is the version history: two clicks over a session yield a four-entry history in which half the versions are duplicates, and the parent row's "(N versions)" count is twice the truth. `_on_open` and `_on_delete` are doubled too — the second `_on_open` re-enters `load_project_payload` on a window that has already closed. Drop the `connect` in `_add_toolbar_button` (or the six in `_connect_signals`), keeping exactly one. No test asserts the connection count or that one click creates one version.
-- **Fix note:**
+- **Fix note:** the six duplicate `clicked.connect` lines were dropped from
+  `_connect_signals`, which now wires only what the constructor does not (the
+  search field, *Show public*, and the tree's double-click); the single
+  connection stays in `_add_toolbar_button`, next to the slot it is given.
+  Pinned by `test_project_browser_toolbar_buttons_fire_their_handler_once` in
+  `chisurf/plugins/core/project_browser/test/test_gui_headless.py`: it patches
+  the six handlers before construction, clicks each button once, and asserts
+  the handler ran exactly once. Verified to catch the regression — restoring
+  one connection fails it with `_save_btn fired _on_save twice`. Plugin suite
+  12 passed.
 
 ### RF-618
 - **Status:** OPEN

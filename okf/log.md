@@ -498,6 +498,20 @@
   reader now builds the same tree: for the eight-spoke nuclear pore, 31
   nucleoporins in 544 copies, every one of the 234,184 rows attributed to exactly
   one copy. The node type moved to `io/hierarchy.py` as `HierarchyNode` (the RMF
+* **One click on a Project Browser button does one thing (RF-617).** Every
+  toolbar button in the project browser was connected to its slot twice — once
+  by `_add_toolbar_button` at construction, once again in `_connect_signals` —
+  so a single *Save Current Project* click wrote **two** identical versions and
+  showed the confirmation dialog twice, *Export .csp* wrote the archive twice,
+  and *Open / Restore* re-entered `load_project_payload` on a window that had
+  already closed. The version history a user sees was therefore half duplicates
+  and the parent row's "(N versions)" count twice the truth. `_connect_signals`
+  now wires only what the constructor does not (search field, *Show public*,
+  double-click), leaving exactly one connection per button. Pinned by
+  `test_project_browser_toolbar_buttons_fire_their_handler_once`, which clicks
+  each of the six buttons and asserts its handler ran once; it fails with
+  `_save_btn fired _on_save twice` if either connection is restored.
+
   name is kept as an alias) because it was never RMF's -- one tree, whichever
   reader filled it.
 
