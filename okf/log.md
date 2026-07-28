@@ -2,6 +2,25 @@
 
 ## 2026-07-28
 
+* **RF-676 — un-ticking "Dipole (κ2)" set κ² to zero, not to 2/3.** The
+  distance-only branch of `CalculateTransfer.calc`
+  (`plugins/traj/fret_trajectory/traj2fret.py`) filled `ks` with zeros and then
+  fed `ks ** 2` to `distance_to_fret_rate_constant`, so every FRET rate in the
+  written table was exactly 0 while the distances beside it were correct — the
+  one column the tool exists to produce, silently dead, with no warning. `calc`
+  now carries an explicit `k2` through both branches (`ks ** 2` with dipoles,
+  `np.full(n_frames, self._kappa2)` without, `ks = sqrt(k2)`), and `k2` is what
+  the `kappa2` column and the rate call receive. The `kappa2` property that
+  exists for precisely that branch was itself unreachable — its getter read the
+  name-mangled `self.__kappa2`, which `__init__` never assigned (it set
+  `_kappa2`), so reading it raised `AttributeError`; the three now agree on
+  `_kappa2` / `_kappa2s`. The toggle's description (view spec + the generated
+  `docs/reference/plugins/traj_fret.md` row) states the 2/3 fallback. Pinned by
+  `test_calc_without_dipoles_uses_fixed_kappa2`, which checks the `kappa2`
+  column, `kappa² == kappa2`, and the rate against
+  `distance_to_fret_rate_constant(RDA, R0, τ0, 2/3)`. Suite:
+  `chisurf/plugins/traj` 93 passed.
+
 * **The "openable in ndX" claim is now checked with ndX's own reader.**
   `burst_h2mm/core/export.py` has always asserted its tables open directly in
   ndXplorer; nothing verified it, and the ways it can be false are quiet — CSV

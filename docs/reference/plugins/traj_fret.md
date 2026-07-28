@@ -31,7 +31,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | R0 [Ang] | `forster_radius` | float |  | 0.0 … 9999.0 | Foerster radius of the donor-acceptor dye pair, in Angstrom. |
 | tau0 [ns] | `tau0` | float |  | 0.0 … 1000.0 (step 0.1) | Fluorescence lifetime of the donor in the absence of FRET, in nanoseconds. |
 | t-step [ns] | `t_step` | float |  | 0.0 … 100000.0 (step 0.1) | Time between successive trajectory frames, in nanoseconds. |
-| Dipole (kappa2) | `dipoles` | bool |  |  | If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2; otherwise only the first atom of each dye defines the distance. |
+| Dipole (kappa2) | `dipoles` | bool |  |  | If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2 per frame; otherwise only the first atom of each dye defines the distance and the fixed isotropic kappa2 = 2/3 is used. |
 
 ## Source
 

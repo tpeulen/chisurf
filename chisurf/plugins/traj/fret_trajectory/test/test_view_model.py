@@ -106,6 +106,39 @@ def test_calc_end_to_end(tmp_path):
     assert "Finished" in model.log_html()
 
 
+def test_calc_without_dipoles_uses_fixed_kappa2(tmp_path):
+    """Un-ticking *Dipole (kappa2)* must fall back to the fixed kappa2, not to zero."""
+    pytest.importorskip("mdtraj")
+    from chisurf.core.fluorescence.general import distance_to_fret_rate_constant
+    from chisurf.plugins.traj.fret_trajectory.view_model import FretTrajectoryViewModel
+
+    n_frames = 5
+    source = tmp_path / "traj.h5"
+    _fret_trajectory(str(source), n_frames=n_frames)
+
+    model = FretTrajectoryViewModel()
+    model.set_trajectory(str(source))
+    model.donor = (0, 1)
+    model.acceptor = (2, 3)
+    model.dipoles = False
+
+    result = model.calc(output_file=str(tmp_path / "transfer.csv"))
+
+    assert result.shape == (n_frames, 6)
+    # kappa2 is the engine's isotropic constant, and kappa its square root ...
+    np.testing.assert_allclose(result[:, 4], 2.0 / 3.0, rtol=1e-6)
+    np.testing.assert_allclose(result[:, 3] ** 2, result[:, 4], rtol=1e-6)
+    # ... so the rate is the one that constant implies, and never zero.
+    assert np.all(result[:, 5] > 0)
+    np.testing.assert_allclose(
+        result[:, 5],
+        distance_to_fret_rate_constant(
+            result[:, 2], model.forster_radius, model.tau0, 2.0 / 3.0
+        ),
+        rtol=1e-6,
+    )
+
+
 def test_view_spec_loads():
     from chisurf.plugins.traj.fret_trajectory.view_model import FretTrajectoryViewModel
 

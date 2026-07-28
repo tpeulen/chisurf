@@ -73,7 +73,7 @@
           "type": "toggle",
           "attr": "dipoles",
           "label": "Dipole (kappa2)",
-          "description": "If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2; otherwise only the first atom of each dye defines the distance."
+          "description": "If enabled, uses two atoms per fluorophore and computes the orientation factor kappa2 per frame; otherwise only the first atom of each dye defines the distance and the fixed isotropic kappa2 = 2/3 is used."
         }
       ]
     },

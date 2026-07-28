@@ -149,12 +149,12 @@ class CalculateTransfer(object):
         self._stride = stride
         self._t_step = t_step
         self.verbose = verbose
-        self._kappa2 = kappa2
+        self._kappa2 = float(kappa2)
         self.__forster_radius = forster_radius
 
         self.__donorAtomID = None
         self.__acceptorAtomID = None
-        self.__kappa2s = None
+        self._kappa2s = None
         self.__distances = None
 
     @property
@@ -199,17 +199,18 @@ class CalculateTransfer(object):
 
     @property
     def kappa2(self):
+        """Per-frame orientation factors if :attr:`dipoles`, else the fixed scalar."""
         if self.dipoles:
-            return self.__kappa2s
+            return self._kappa2s
         else:
-            return self.__kappa2
+            return self._kappa2
 
     @kappa2.setter
     def kappa2(self, v):
         if isinstance(v, np.ndarray):
-            self.__kappa2s = v
+            self._kappa2s = v
         else:
-            self.__kappa2 = float(v)
+            self._kappa2 = float(v)
 
     @property
     def distances(self):
@@ -254,7 +255,10 @@ class CalculateTransfer(object):
         factor ``kappa`` (and ``kappa2``) and the FRET-rate constant are computed
         and streamed as a tab-separated table to *output_file*. The stacked result
         is also returned so callers (e.g. tests) can inspect it without re-reading
-        the file.
+        the file. If :attr:`dipoles` is False only the first atom of each dye is
+        used, the orientation factor is not computed, and the fixed :attr:`kappa2`
+        (isotropic 2/3 by default) is used for the rate and written to the
+        ``kappa2`` column.
 
         Parameters
         ----------
@@ -309,8 +313,13 @@ class CalculateTransfer(object):
                     acceptor[0],
                     acceptor[1]
                 )
+                k2 = ks ** 2
             else:
-                ks = np.zeros(chunk_traj.n_frames, dtype=np.float32)
+                # Only the first atom of each dye is used, so there is no dipole
+                # orientation to compute: the fixed kappa2 (isotropic 2/3 by
+                # default) stands in for it.
+                k2 = np.full(chunk_traj.n_frames, self._kappa2, dtype=np.float64)
+                ks = np.sqrt(k2)
                 d1 = chunk_traj.xyz[:, donor[0], :]
                 a1 = chunk_traj.xyz[:, acceptor[0], :]
                 ds = np.sqrt(np.sum((a1 - d1) ** 2, axis=1))
@@ -324,12 +333,12 @@ class CalculateTransfer(object):
                     time,  # time
                     ds * 10.0,  # RDA-distance in Angstrom
                     ks,  # kappa
-                    ks ** 2,  # kappa2
+                    k2,  # kappa2
                     chisurf.core.fluorescence.general.distance_to_fret_rate_constant(
                         ds * 10.0,
                         self.forster_radius,
                         self.tau0,
-                        ks ** 2
+                        k2
                     )
                 ]  # FRET-rate constant
             ).T

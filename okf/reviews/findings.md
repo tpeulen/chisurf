@@ -7926,11 +7926,25 @@ reproduced an independent mdtraj dipole-centre distance to **0.0000 Å** over al
 about the controls and the states around it.
 
 ### RF-676
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a shipped checkbox silently turns every FRET rate into exactly zero instead of using the documented isotropic κ² = 2/3)
 - **Location:** `chisurf/plugins/traj/fret_trajectory/traj2fret.py:312-316` (the `else` branch: `ks = np.zeros(chunk_traj.n_frames, dtype=np.float32)`) and `:328-333` (`distance_to_fret_rate_constant(ds * 10.0, self.forster_radius, self.tau0, ks ** 2)`), against the constructor's `kappa2: float = 0.66666667` at `:127` documented at `:141-142` (*"This parameter defines kappa2 if dipoles is False"*) and its getter at `:200-206`; reached from the **Dipole (κ2)** toggle in `structure2transfer.view.json:72-77` and the `dipoles` proxy in `view_model.py:152-159`
 - **Finding:** when the user unticks **Dipole (κ2)** the engine takes the distance-only branch, which fills `ks` with zeros and then feeds `ks ** 2` — i.e. **κ² = 0** — into the rate formula, so `k_RET = 3/2 · 0 · (1/τ0) · (R0/r)^6 = 0` for every frame. `self.kappa2`, the parameter that exists precisely to supply 2/3 in this branch, is never read by `calc()`. Verified through the GUI: with the box unticked, the 464-frame run wrote `kappa = 0.0000e+00`, `kappa2 = 0.0000e+00` and `FRETrate = 0.0000e+00` in every row (`np.allclose(rate, 0)` is `True`, min = max = 0.0), while the same distances at κ² = 2/3 give a mean rate of **0.7655 ns⁻¹** (mean E ≈ 0.75). The distances in that branch are correct — they matched the plain first-atom mdtraj distance to 0.000 Å — so the table looks entirely plausible apart from the one column the tool exists to produce. Nothing warns; the log reports `Finished … (464 frames)`. Pass `self.kappa2` (not `ks ** 2`) into the rate call on the distance-only path, and write that constant into the `kappa2` column so the output is self-describing.
-- **Fix note:**
+- **Fix note:** `calc()` now carries an explicit `k2` array through both branches —
+  `ks ** 2` when the dipoles are computed, `np.full(n_frames, self._kappa2)` (the
+  isotropic 2/3 by default) on the distance-only path, where `ks` becomes
+  `sqrt(k2)` rather than zeros — and `k2` is what is written to the `kappa2`
+  column and fed to `distance_to_fret_rate_constant`. The `kappa2` property was
+  unreachable in exactly the branch it exists for: its getter read the
+  name-mangled `self.__kappa2`, which `__init__` never set (it set `_kappa2`), so
+  reading it raised `AttributeError`; getter, setter and `__init__` now agree on
+  `_kappa2` / `_kappa2s`. The **Dipole (κ2)** toggle description (view spec and
+  the generated `docs/reference/plugins/traj_fret.md` row) now states the 2/3
+  fallback. Pinned by
+  `chisurf/plugins/traj/fret_trajectory/test/test_view_model.py::test_calc_without_dipoles_uses_fixed_kappa2`,
+  which asserts the `kappa2` column is 2/3, `kappa² == kappa2`, and that the rate
+  column equals `distance_to_fret_rate_constant(RDA, R0, τ0, 2/3)` — the zeros
+  version fails all three.
 
 ### RF-677
 - **Status:** OPEN
