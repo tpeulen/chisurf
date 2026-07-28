@@ -10031,3 +10031,64 @@ nothing. RF-868 is the worst of them and predates the strip: with the *default*
 - **Location:** `chisurf/plugins/chimol/chimol/renderer/internal_gui.py:738` (`self.average = max(0, self.average + step)`) against the painter at `:1059-1061` (`"off" if self.average <= 1 else str(self.average)`), with `MolView.set_trajectory_smoothing`'s contract (`view.py:1420-1421`: "*``0`` or ``1`` shows the trajectory as recorded*")
 - **Finding:** the control's floor is 0 but two adjacent values mean the same thing, so clicking `Avg` on a fresh viewer (`average = 0`, synced from `get_trajectory_smoothing()`) steps to 1: the label still says `off`, `set_trajectory_smoothing(1)` is a no-op, and the user sees nothing happen. Only the second click reaches 2. The new test `test_stride_and_averaging_are_clickable` (`chisurf/plugins/chimol/test/test_internal_gui.py`) asserts exactly this (`gui.average == 1` after one click), so it pins the dead click rather than catching it. Make the step skip the redundant value (0 → 2 → 3 …, and back 2 → 0), which also gets the first click past the duplicate window of RF-887.
 - **Fix note:**
+
+## Review 2026-07-29 — chiplot's second pass: what a handle gives back, and what it never takes away
+
+Slice: the chiplot seam again — `chisurf/gui/chiplot/` (`canvas.py`,
+`handles.py`, `style.py`, `backends/base.py`, `backends/pyqtgraph_backend.py`),
+the file set with the heaviest churn of the last week (~90 touches across
+`pyqtgraph_backend.py`, `canvas.py`, `handles.py`, `base.py`) and the seam every
+migrated plot inherits (PRD-64). The first pass (RF-131..RF-137, all FIXED) and
+the colour-bar pass (RF-45x) are excluded; this run took the read-back path
+(`get_data` → CSV export), the screen-anchored text added since, and the
+handle/axis setters. Reproduced in the `arm64` env against pyqtgraph 0.14.0,
+offscreen Qt. RF-889..RF-895.
+
+### RF-889
+- **Status:** OPEN
+- **Severity:** S2 (a curve reads back its *displayed* values, not its samples — so **Export data as CSV…** on any log-scaled plot writes log₁₀ of the data under the plain column name)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:270-272` (`_Curve.get_data`: `return self._native.getData()`) and `:310-312` (`_Scatter.get_data`), against the contract in `chisurf/gui/chiplot/handles.py:96-103` ("*Return the curve's current ``(x, y)`` samples*"); consumed by `chisurf/gui/chiplot/canvas.py:555-586` (`Plot.export_csv`, `getter()` at `:575`)
+- **Finding:** `PlotDataItem.getData()` returns the *display* dataset, i.e. after log mapping, downsampling and any other display transform — not the data the caller passed to `line()`/`scatter()`. Verified: `p.line([1,10,100], [10,100,1000])` reads back `(1,10,100)/(10,100,1000)` while linear, and `[1,10,100]/[1,2,3]` after `p.set_log(y=True)`; `p.export_csv(...)` on that plot writes `decay x,decay y` / `1.0,1.0` / `10.0,2.0` / `100.0,3.0` — the counts silently replaced by their logarithms, with nothing in the header saying so. This is the main TCSPC fit plot: `chisurf/gui/plots/lineplot/lineplot.py:1391` calls `set_log(x=data_log_x, y=data_log_y)` and the shipped TCSPC model view specs all set `"d_scaley": "log"` (`chisurf/core/models/tcspc/lifetime.view.json:81`, `mix_model.view.json:52`, plus every `chisurf/gui/widgets/models/tcspc/*` default), so the CSV a user exports from a decay fit is log₁₀(counts). Keep the samples the caller handed over (store them on the wrapper in `add_curve`/`set_data`, or use pyqtgraph's `xData`/`yData` rather than `getData()`), and pin with a test that exports a log-y plot and gets the original values back. `test_curve_get_data_roundtrip` (`test/gui/test_chiplot.py:449`) only ever runs on a linear plot, so it cannot see this.
+- **Fix note:**
+
+### RF-890
+- **Status:** OPEN
+- **Severity:** S2 (a screen-anchored label can never be taken off a plot — `handle.remove()`, `Plot.remove()` and `Plot.clear()` are all silent no-ops on it)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:795-799` (`add_text`, the `anchored` branch: `item.setParentItem(self._pi)`, never `addItem`) against `_Item.remove` at `:186-188` (`self._pi.removeItem(self._native)`), `_PgCanvas.remove` at `:826-828` and `clear` at `:830-832`; public contract at `chisurf/gui/chiplot/handles.py:72-74` ("*Remove the element from its plot*") and `chisurf/gui/chiplot/canvas.py:512-515` (`Plot.clear`: "*Remove every drawn handle from the panel*")
+- **Finding:** `PlotItem.removeItem` returns immediately for an item not in `self.items`, and `PlotItem.clear` iterates that same list — an anchored label is a *child item*, so none of the three removal routes touch it. Verified: after `t = p.text("hello", (10,10), anchored=True)`, `t.native in p.native.items` is `False`, and `t.native.parentItem() is p.native` stays `True` through `t.remove()`, `p.remove(t)` **and** `p.clear()` (a data-anchored label in the same panel disappears correctly from `items` on `remove()`). Consequence: any panel that re-creates its overlay stacks an unremovable label per refresh, and no caller can drop one. Two live consumers create one each — `chisurf/gui/plots/lineplot/lineplot.py:914-923` (the fit-quality box) and `chisurf/gui/plots/distribution.py:228-232`, whose comment *relies* on surviving `clear()` — so the fix is to make `remove()` handle a parented item (`setParentItem(None)` / scene removal) while leaving `clear()`'s behaviour as it is, and to say in `Plot.clear`'s docstring that screen-anchored labels survive it. `test_anchored_text_is_screen_pinned` (`test/gui/test_chiplot.py:658`) checks the pinning and never tries to remove it.
+- **Fix note:**
+
+### RF-891
+- **Status:** OPEN
+- **Severity:** S2 (`Curve.set_symbol_brush` is documented to take a brush-like and dies with an unrelated pyqtgraph `TypeError` on chiplot's own `Color`)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:294-296` (`_Curve.set_symbol_brush`: `_brush(brush) if isinstance(brush, S.Brush) else brush`) against its sibling `set_pen` at `:274-279` (which coerces via `S.to_pen`) and the protocol at `chisurf/gui/chiplot/handles.py:135-143` ("*brush : brush-like — Marker fill colour or ``style.Brush``*")
+- **Finding:** the setter forwards anything that is not already a `style.Brush` straight to pyqtgraph, so a colour-like the chiplot API itself produces is rejected by the backend. Verified: `curve.set_symbol_brush(chiplot.int_color(3))` raises `TypeError: Not sure how to make a color from "(Color(r=0, g=255, b=0, a=255),)"` from inside `pg.functions`, while `set_symbol_brush(to_brush("r"))` and `set_symbol_brush("r")` both work — and `set_pen(int_color(2))` works, because `set_pen` coerces. `int_color` is the documented way to get a per-series colour, so the natural spelling for colouring a series' markers is exactly the one that fails, with a message naming neither chiplot nor the caller. Route through `S.to_brush(brush)` as `set_pen` routes through `S.to_pen`; the existing test (`test/gui/test_chiplot.py:633`) passes a plain string and cannot see it.
+- **Fix note:**
+
+### RF-892
+- **Status:** OPEN
+- **Severity:** S3 (re-attaching a text handle with `Plot.add` loses its `ignoreBounds`, so an annotation starts driving auto-range and the view jumps)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:822-824` (`readd`: `self._pi.addItem(handle.native)`) against `add_text` at `:800-802` (`self._pi.addItem(item, ignoreBounds=True)`), reached from `chisurf/gui/chiplot/canvas.py:488-496` (`Plot.add`, documented as "*Re-attach a previously removed handle*")
+- **Finding:** `readd` is handle-type-blind and drops the flag `add_text` was careful to set — the reason for which is spelled out in `add_text`'s own docstring ("*the annotation never drives the view's auto-range*"). Verified: a plot holding a curve over 0…2 plus a label at `(1000, 1000)` auto-ranges to `((-0.08, 2.08), (-0.10, 2.10))`; after `p.remove(t); p.add(t); p.autoscale()` the same plot ranges `((-41.9, 1040.8), (-48.3, 1046.8))` — the data is a pixel-wide smear in the corner. Record on the handle whether it was added with `ignoreBounds` (or make `readd` dispatch on `_Text`) and re-apply it; pin with a remove/add round-trip that asserts the range is unchanged.
+- **Fix note:**
+
+### RF-893
+- **Status:** OPEN
+- **Severity:** S3 (`set_tick_spacing(side, minor=…)` is accepted and silently does nothing)
+- **Location:** `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:849-855` (`set_tick_spacing`: `axis.setTickSpacing(major=major, minor=minor if minor is not None else major)`) against the contract at `chisurf/gui/chiplot/backends/base.py:225-243` and the public wrapper at `chisurf/gui/chiplot/canvas.py:653-671`, both of which declare `major` and `minor` as independent optionals
+- **Finding:** pyqtgraph's `AxisItem.setTickSpacing` builds its levels only when `major` is not `None` (`levels = [(major, 0), (minor, 0)]`, else `levels = None`), so passing a minor interval alone lands in the *restore automatic spacing* branch. Verified: `set_tick_spacing("bottom", major=2.0)` leaves `axis._tickSpacing == [(2.0, 0.0), (2.0, 0.0)]`, `set_tick_spacing("bottom", minor=1.0)` leaves it `None` — identical to the no-argument reset. The docstrings say only that *"passing neither restores automatic spacing"*, so a caller reasonably reads minor-only as "keep the automatic major ticks, add minor ones at 1". Either derive a major from the minor (or the current automatic spacing) before calling through, or reject/document minor-only explicitly; a one-line test on `_tickSpacing` pins whichever is chosen.
+- **Fix note:**
+
+### RF-894
+- **Status:** OPEN
+- **Severity:** S3 (`Plot.legend()` is documented as collecting the names of drawn handles; it collects only handles drawn *after* the call, and a second call throws away what the first collected)
+- **Location:** `chisurf/gui/chiplot/canvas.py:478-486` (`Plot.legend`: "*Show a legend collecting the ``name=`` of drawn handles*") over `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:805-820` (`add_legend`, "*Enable a legend collecting named handles (idempotent)*")
+- **Finding:** `PlotItem.addLegend` creates an empty `LegendItem`; entries are added by `PlotItem.addItem`, which only consults `self.legend` if it already exists. `add_legend` additionally *removes* any prior legend before creating a new one, so the call is not idempotent in the sense the docstring claims — it is a reset. Verified: `line(name="alpha"); scatter(name="beta"); legend()` produces a legend with **0** entries, `legend(); line(name="alpha")` produces `['alpha']`, and calling `legend()` again on the populated plot returns it to `[]`. Every live call site happens to use the working order (`clear(); legend(); redraw` — `chisurf/plugins/tttr/tttr_histogram/gui.py:88-90`, `chisurf/plugins/burst/burst_background/gui/sections.py:131-132`, `chisurf/plugins/fcs/fcs_lfcs_sim/gui/tool.py:130-131`), so this is a latent trap rather than a live defect — but the documented contract and the behaviour disagree in both directions. Either populate the legend from the already-drawn named handles when it is created, or state in both docstrings that `legend()` must precede the drawing and that a second call resets it. `test_legend_idempotent_refresh_loop` (`test/gui/test_chiplot.py:133`) exercises only the working order.
+- **Fix note:**
+
+### RF-895
+- **Status:** OPEN
+- **Severity:** S3 (a grid panel declares and documents a `mouse_moved` signal that can never fire)
+- **Location:** `chisurf/gui/chiplot/canvas.py:1101-1114` (`PanelPlot.__init__`, which calls `self._canvas.on_click(...)` and nothing else) against `Plot.__init__` at `:78-79` (which wires both `on_click` and `on_mouse_move`) and the signal documented for the whole class at `:54-59`
+- **Finding:** `PanelPlot` deliberately bypasses `Plot.__init__` and re-does its wiring by hand, but only re-does half of it: `on_mouse_move` is never registered, so `mouse_moved` is dead on every panel returned by `Grid.add_plot`. `grep -rn "on_mouse_move" chisurf/gui/chiplot` shows the single `Plot.__init__` call site. Nothing consumes `mouse_moved` today (the one crosshair implementation, `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:130`, reaches past the seam to `plot.native.scene().sigMouseMoved` instead — itself a chiplot gap worth closing), so this is latent: the first caller to connect a grid panel's `mouse_moved` gets silence with no error. Add the missing `on_mouse_move` wiring in `PanelPlot.__init__` and pin it the way RF-131's fix pinned `on_click` (emit a scene `sigMouseMoved` inside a panel's rect, assert only that panel reports).
+- **Fix note:**
