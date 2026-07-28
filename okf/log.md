@@ -2,6 +2,24 @@
 
 ## 2026-07-28
 
+* **MLE-Statewise is step 7 of the burst workflow.** The state-wise fit added
+  earlier today now has a panel and a place: `7. MLE-Statewise`, directly after
+  H2MM and before the separator, handed the analysis folder by the workflow
+  context like every other step (`state_mle` role). The panel deliberately has
+  almost no settings — the instrument description, the sample's IRF and the
+  state assignment were all decided by steps 5 and 6 and live *in* the folder,
+  and re-asking for any of them here would be a second place for them to
+  disagree — so it reports what it found instead: photon count, detectors and
+  their channels, states, IRF size. An empty folder names the step to run rather
+  than failing silently ("run H2MM first", "run MLE-Burstwise first"). It is the
+  one auto-starting step that does **not** auto-start: refitting every state of
+  every burst is the most expensive thing in the workflow. Verified by rendering
+  both states — empty and fitted — and reading them: on synthetic photons with
+  true lifetimes 3.6 / 1.1 ns the table reports medians of 3.84 and 1.04 and
+  writes `bg4_s0` / `bg4_s1`. Carries the same reuse gate as its neighbours
+  (fingerprint over the H2MM and MLE records + the read context + the estimator
+  build, stamped in `Info/state_mle.stamp.json`).
+
 * **A scan limit truncates a support-plane side; it does not replace it (RF-628).**
   `_scan_one_side` collapsed a bounded direction into one uniform segment
   spanning the whole allowed range, and `adaptive_scan_parameter` auto-clamps

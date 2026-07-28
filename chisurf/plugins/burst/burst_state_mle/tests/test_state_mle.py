@@ -180,3 +180,28 @@ def test_stream_channels_come_from_the_h2mm_result(tmp_path):
         "green": [0, 8], "red": [1, 9], "yellow": [1, 9],
     }
     assert sm.read_stream_channels(pathlib.Path(tmp_path) / "nope") == {}
+
+
+def test_the_panel_is_step_7_and_receives_the_folder(qapp, tmp_path):
+    """Wired into the workflow after H2MM, and handed the folder like every step."""
+    from chisurf.plugins.burst.burst_analysis.gui.tool import BURST_PANELS
+    from chisurf.plugins.burst.burst_state_mle.gui.tool import BurstStateMleTool
+
+    names = [p["name"] for p in BURST_PANELS]
+    assert names.index("7. MLE-Statewise") == names.index("6. H2MM") + 1
+    panel = next(p for p in BURST_PANELS if p.get("role") == "state_mle")
+    assert panel["factory"].__name__ == "_burst_state_mle"
+
+    tool = BurstStateMleTool(embedded=True)
+    try:
+        tool.set_folder(tmp_path)
+        assert tool._folder_edit.text() == str(tmp_path)
+        # An empty folder must say which step to run, not fail silently.
+        assert "run H2MM first" in tool._lbl_photons.text()
+        assert "MLE-Burstwise" in tool._lbl_detectors.text()
+        # Nothing starts by itself: refitting every state is the workflow's most
+        # expensive step, so arriving describes the folder and waits.
+        tool.run()
+        assert tool._results is None
+    finally:
+        tool.close()
