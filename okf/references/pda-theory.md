@@ -12,7 +12,7 @@ timestamp: '2026-07-24T00:00:00Z'
 This reference records the physics of **Photon Distribution Analysis (PDA)** and
 maps each concept onto the chisurf implementation, so future work on the PDA
 models does not have to re-derive the forward model. The user-facing version of
-this material is `docs/concepts/pda.md`; this note is the internal companion that
+this material is `docs/concepts/pda2c.md`; this note is the internal companion that
 names files, classes and correction parameters explicitly. PDA sits alongside the
 other single-molecule FRET burst tools; see also the BVA and 2CDE theory notes in
 this group and the FRET-calibration note for the correction-factor conventions.
@@ -176,7 +176,7 @@ statistics.
 
 # See also
 
-- User concept: `docs/concepts/pda.md`; guide `docs/guides/11_pda.md`.
+- User concept: `docs/concepts/pda2c.md`; guide `docs/guides/11_pda2c.md`.
 - `/references/bva-theory.md`, `/references/fret-calibration.md`,
   `/references/crosstalk.md` for shared correction-factor conventions.
 - Engine: `tttrlib.Pda` (S1S2 histogram, `pF`, background_ch1/ch2).

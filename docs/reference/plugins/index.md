@@ -2,7 +2,7 @@
 
 Every discoverable ChiSurf plugin, grouped by its menu category. Each page gives the plugin's identity, its editable parameters, and its JSON-RPC surface.
 
-Of the **105 plugins**, **47** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
+Of the **108 plugins**, **52** build their interface from declarative AutoForm specs and get a full per-parameter table on their page; the remainder use custom Qt widgets, so their controls are described in each plugin's guide while every named fit/model parameter is defined once in the **[parameter glossary](../parameters.md)**.
 
 ```{toctree}
 :hidden:
@@ -11,7 +11,13 @@ Of the **105 plugins**, **47** build their interface from declarative AutoForm s
 *
 ```
 
-**105 plugins** across 24 categories.
+**108 plugins** across 25 categories.
+
+## Analysis → Kinetics
+
+| Plugin | Summary |
+| --- | --- |
+| [Hidden Markov model](hmm.md) | Gaussian hidden Markov model for binned time traces: fits states and transitions by Baum-Welch, decodes the state path, and reports emissions, dwell times, transition rates and an AIC/BIC state-count scan. The shared HMM seam of ChiSurf — the same analysis is reachable from the GUI, the CLI and over RPC, and other plugins call its Qt-free core instead of fitting their own. |
 
 ## Core
 
@@ -133,6 +139,7 @@ Of the **105 plugins**, **47** build their interface from declarative AutoForm s
 | [Lazy Lifetime Analysis](lltf.md) *(hidden)* | Lazy Lifetime Analysis for TCSPC fluorescence decay data. |
 | [MaxEnt MEM](maxent_decay.md) *(hidden)* | Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance). |
 | [Synthetic Decay Generator](synthetic_decay.md) *(hidden)* | Generate synthetic TCSPC fluorescence-decay histograms from lifetimes/spectra (optional IRF convolution and Poisson shot noise) — the single canonical decay generator, exposed as API/CLI/RPC/GUI. |
+| [VV/VH Anisotropy Decay](vv_vh_anisotropy.md) *(hidden)* | Compute and plot the anisotropy decay r(t) of a VV/VH file with a g-factor, backgrounds and a fractional VH shift. |
 | [VV/VH G-Factor Calculator](vv_vh_g_factor.md) *(hidden)* | Calculate detector G-factors using tail-matching on VV/VH format files. |
 
 ## Spectroscopy → Single-Molecule
@@ -157,6 +164,7 @@ Of the **105 plugins**, **47** build their interface from declarative AutoForm s
 | Plugin | Summary |
 | --- | --- |
 | [HydroPro](hydropro.md) *(hidden)* | Graphical front-end to the HYDROPRO / HYDRO++ suite for computing hydrodynamic properties (e.g. translational diffusion coefficient) from atomic or bead-model structures. |
+| [QuEst](quenching_estimator.md) *(hidden)* | Structure-based simulation of dynamic PET quenching and FRET for dyes tethered to proteins by flexible linkers. The science lives in the `quest` package; this plugin is the ChiSurf-side shell. |
 
 ## Structure → FRET
 

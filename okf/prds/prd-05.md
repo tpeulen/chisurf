@@ -5,7 +5,7 @@ title: "PRD-05: Calibration Provenance"
 description: Track calibration parameters in MMFDB with links to the reference measurements they derive from
 status: in-progress
 phase: "4"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, fret]
 timestamp: '2026-07-05T00:00:00Z'
 ---

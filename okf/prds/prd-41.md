@@ -5,7 +5,7 @@ title: "PRD-41: FDB4ChemBio Access-Layer & Interoperability Strategy"
 description: A design note fixing the architectural boundary for MMFDB as a prototype public resource — the dictionary is the product, deposition and dissemination differ, and a future read-only GraphQL endpoint is generated from the dictionary.
 status: draft
 phase: "unassigned"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

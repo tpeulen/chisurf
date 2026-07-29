@@ -5,7 +5,7 @@ title: "PRD-25: Consistency Hardening + Correctness Primitives"
 description: A set of cross-cutting correctness changes — uniform fail-loud errors, one RPC envelope, a single sample read path, caching, N+1 removal, dead-code removal — plus typed IDs, first-class units, and boundary validation.
 status: in-progress
 phase: "1"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

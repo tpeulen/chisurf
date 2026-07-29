@@ -5,7 +5,7 @@ title: "PRD-39: Sequence Provenance & External References"
 description: Records each entity's canonical sequence/structure cross-references and its engineered mutations as structured, exportable flrCIF/PDBx data using the standard struct_ref category family.
 status: planned
 phase: "4"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

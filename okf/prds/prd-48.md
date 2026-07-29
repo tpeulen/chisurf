@@ -5,7 +5,7 @@ title: "PRD-48: Provider-Agnostic ELN Integration"
 description: A provider-agnostic ELN integration layer for MMFDB with a single gateway abstraction and two concrete electronic-lab-notebook backends, supporting bidirectional deposit, import, and reconciliation.
 status: draft
 phase: "unassigned"
-resource: chisurf/core/mmfdb/eln/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, eln]
 timestamp: '2026-07-05T00:00:00Z'
 ---

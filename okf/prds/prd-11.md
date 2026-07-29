@@ -5,7 +5,7 @@ title: "PRD-11: Transformers as Abstract Data-Operation Nodes"
 description: Model every data-manipulation step as a uniform MMFDB operation node with typed, dictionary-declared parameters and input/output ports.
 status: done
 phase: "2"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

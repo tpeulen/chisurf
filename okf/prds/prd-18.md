@@ -5,7 +5,7 @@ title: "PRD-18: Dependency Injection + Hermetic Test Harness"
 description: Makes the test suite hermetic and contracts the MMFDB client while explicit database/session injection is still being completed.
 status: in-progress
 phase: "1"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

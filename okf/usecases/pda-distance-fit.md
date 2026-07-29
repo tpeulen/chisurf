@@ -203,4 +203,4 @@ expanded, and all five fit tabs before and after the fit.
 - [burst selection and FRET histogram](/usecases/burst-selection-fret.md) — the
   step that produces the `.bur` tables this workflow consumes.
 - [PRD-65](/prds/prd-65.md) — time-correlated PDA.
-- `docs/concepts/pda.md`, `docs/guides/11_pda.md`.
+- `docs/concepts/pda2c.md`, `docs/guides/11_pda2c.md`.

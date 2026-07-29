@@ -22,15 +22,16 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| files | `files` | path_list |  |  |  |
 | Preview channel | `channel` | choice |  | choices: `channels_options` | Preview / tune THIS routing channel's histogram + region. ‘Add to Detector setup’ computes and assigns a LUT for ALL channels. |
 
 ### Parameters
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| linear_start | `linear_start` | int |  | 0 … 1000000 | First bin of the flat linear region (or drag the orange region). |
-| linear_stop | `linear_stop` | int |  | 1 … 1000000 | First bin after the flat linear region. |
-| ntac_required | `ntac_required` | int |  | 2 … 1000000 | Target number of corrected NTAC bins (defaults to the input bin count). |
+| Linear start | `linear_start` | int |  | 0 … 1000000 | First bin of the flat linear region (or drag the orange region). |
+| Linear stop | `linear_stop` | int |  | 1 … 1000000 | First bin after the flat linear region. |
+| TAC channels required | `ntac_required` | int |  | 2 … 1000000 | Target number of corrected NTAC bins (defaults to the input bin count). |
 | Noffset | `noffset` | int |  | 0 … 1000000 | Offset subtracted from corrected NTAC indices (or drag the red line). |
 | preview photons | `preview_photons` | int |  | 1000 … 100000000 | How many photons to use for the corrected-preview histogram. |
 | Normalize by region mean | `normalize` | bool |  |  | Divide the displayed histogram by the region mean (display only). |

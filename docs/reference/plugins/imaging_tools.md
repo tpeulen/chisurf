@@ -1,7 +1,7 @@
 (plugin-imaging_tools)=
 # Image Tools
 
-Unified imaging toolbox: Image Browser, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.
+Unified imaging toolbox: Image Browser, Drift Correction, CLSM Draw, Molecule-wise MLE, Pixel-wise MLE, PSF Determination.
 
 ## Identity
 

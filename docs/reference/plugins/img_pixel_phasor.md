@@ -23,6 +23,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | TTTR file | `filename` | file |  |  | PTU/HT3 imaging file; CLSM markers auto-detected. |
 | Min photons | `n_ph_min` | int |  | 1 … 10000 | Minimum photons per pixel for a valid phasor. |
 | Frequency (MHz, -1=auto) | `frequency` | float |  | -1.0 … 1000.0 (step 1.0) | Modulation frequency; -1 auto-derives from the TTTR header. |
+| Phasor cursors | `cursors` | region_list |  |  | Cursors on the (g, s) plane. Draw an ellipse round a lifetime cluster, a polygon round one that is neither round nor elliptical, or several combined; ~ selects everything outside. The Selected dock shows the pixels they pick out. |
 
 ## JSON-RPC methods
 

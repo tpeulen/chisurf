@@ -5,7 +5,7 @@ title: "PRD-08: Optical Configuration Schema"
 description: Replace opaque setup JSON blobs with structured, queryable tables describing the full optical path from source to detector.
 status: planned
 phase: "4"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

@@ -40,9 +40,16 @@ In-progress. **Phase 1 has landed**: the `chisurf.gui.chiplot` package exists
 with a clean, renderer-neutral API (`Plot`, `Grid`, style value objects, handle
 protocols), a working pyqtgraph backend behind a formal `Backend` contract, a
 CI guard (`test/test_pyqtgraph_seam.py`) with a shrinking allow-list migration
-tracker, and headless tests. One real widget (`waterfall_plot.py`) is migrated
-as proof. Phases 2–4 (migrate the remaining ~75 chisurf files + `modules/`) and
-Phase 5+ (native OpenGL backend) remain.
+tracker, and headless tests.
+
+**Phases 2–3 are well advanced.** Batches 1–33 (see the
+[migration plan](#migration-plan)) have taken
+`test/pyqtgraph_import_allowlist.txt` from its 76-file seed to **15 entries**:
+four in `chisurf/gui/**` (`autoform/sections/builtin.py` and three TTTR wizard
+files), ten plugin files (`burst_h2mm`, `burst_mle_analysis`, `burst_selection`,
+`core/acq`, `core/globalview`, `tttr/intensity_trace`), and the PRD-57-owned
+ChiMOL OpenGL entry that is a non-goal here. Phase 4 (`modules/`) and Phase 5+
+(native OpenGL backend) remain.
 
 **Design decision (revised).** The seam is *not* a pyqtgraph-shaped re-export.
 Per the maintainer's direction, chiplot exposes a **clean, purpose-built API**
@@ -800,3 +807,7 @@ both gone.
   chiplot consumers, so the seam also covers the data-driven view layer.
 - Advances the [GUI & AutoForm](/subsystems/gui-autoform.md) direction and the
   clean-dependency goal in the [assessment backlog](/specs/assessment.md).
+- The current-state description of what has landed — package layout, backend
+  registry, handle protocols, the guard and the passthrough — is the
+  [chiplot subsystem concept](/subsystems/chiplot.md); this PRD is the plan and
+  its batch log.

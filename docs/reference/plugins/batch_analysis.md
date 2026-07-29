@@ -20,6 +20,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| files | `files` | path_list |  |  | Drag-drop files (or add a folder) to fit with the template. |
 | Template fit | `selected_fit_name` | choice |  | choices: `fit_names` | The pre-optimised fit whose parameters seed every run. |
 | Results CSV | `save_path` | file |  |  | Destination CSV. A DOCX report and a ZIP of per-run exports are written alongside. |
 

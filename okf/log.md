@@ -2,6 +2,55 @@
 
 ## 2026-07-29
 
+* **Docs reconciled with the tree: 22 OKF pointers into packages that moved, a
+  plotting subsystem with no concept, and a chiplot status stuck at "Phase 1".**
+  Scheduled truth pass over `docs/` and `okf/`.
+  - **`resource:` frontmatter pointing into the retired `chisurf/core/mmfdb/`
+    tree** — 20 PRD concepts (prd-05/06/08/11..15/17..19/21/25..27/39/41/44/45/48)
+    still named the prerelease facade that
+    [architecture/mmfdb.md](/architecture/mmfdb.md) itself records as removed.
+    All now point at `modules/mmfdb/src/mmfdb/`. Two more were stale within the
+    new layout: prd-030's codec is `store/payload_codec.py`, and prd-51's
+    "existing RICS core" is `chisurf/core/models/ics/` (there is no
+    `core/models/rics/`). [subsystems/core.md](/subsystems/core.md) listed the
+    metadata store as `chisurf/core/mmfdb/` in its scope bullet and now names the
+    standalone package.
+  - **chiplot had no subsystem concept** although it is a repo-wide rule with a
+    CI guard. Added [subsystems/chiplot.md](/subsystems/chiplot.md) — package
+    layout, the verb-first `Plot` surface, handle protocols, the
+    `CHISURF_PLOT_BACKEND` registry, and the sharp edge that makes the guard
+    necessary (`__getattr__` passthrough warns rather than fails, so a wrong
+    spelling surfaces only when a chiplot `Pen` reaches a pyqtgraph function).
+    Registered in the index, cross-linked from
+    [PRD-64](/prds/prd-64.md), and [gui-autoform.md](/subsystems/gui-autoform.md)
+    no longer describes `chisurf/gui/` as "plots (pyqtgraph)".
+  - **PRD-64's Status section was 32 batches out of date** — it read "Phase 1 has
+    landed … one real widget migrated as proof … remaining ~75 chisurf files",
+    while its own migration log runs to Batch 33 and
+    `test/pyqtgraph_import_allowlist.txt` holds **15** entries, not 76. Status now
+    states what is actually left: four files in `chisurf/gui/**`, ten plugin
+    files, and the PRD-57-owned ChiMOL entry.
+  - **PDA doc names**: `docs/concepts/pda.md` / `docs/guides/11_pda.md` were
+    renamed for the two/three-colour split; [pda-theory](/references/pda-theory.md)
+    and [pda-distance-fit](/usecases/pda-distance-fit.md) now cite `pda2c.md` and
+    `11_pda2c.md`.
+  - **Plugin reference regenerated**, adding the two pages the tree had grown
+    without them (`quenching_estimator`, `vv_vh_anisotropy`) and refreshing 17.
+    Generated from a **detached-HEAD worktree**, not the shared tree: 26
+    `manifest.json`/`view.json` files carry other instances' uncommitted edits
+    (a menu-category reorganisation, new `fluorophores.*` RPC methods), and
+    generating in place would have committed documentation for source that is
+    not in HEAD. Sphinx build is warning-free.
+  - **Flagged, not guessed.** PRD-020 is `status: done` but the `orm/` package it
+    specifies exists nowhere in `modules/mmfdb` — SQLAlchemy appears in exactly
+    one file (`store/sql_backend.py`, a PostgreSQL backend, not a mapping layer)
+    and the mmfdb repo has no history for `orm/`. Whether it was superseded,
+    reverted or mis-marked is not something this pass can determine, so status
+    and `resource:` are left as they are. Likewise the dated
+    `docs/development/review_*.md` snapshots still cite `chisurf/core/mmfdb/…`
+    line numbers: they are records of a review at a point in time, not
+    current-state claims.
+
 * **PRD-36: the 2CDE tool joins the shared dockable-tool base, and the tracker is
   re-derived from the tree.** `burst_2cde` was on **neither** of this PRD's lists — it
   was written after the 2026-06-24 enumeration, so it forked a plain `QMainWindow`

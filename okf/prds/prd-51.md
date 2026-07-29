@@ -5,7 +5,7 @@ title: "PRD-51: Imaging Correlation — N&B, tICS/STICS, iMSD, Spectral RICS"
 description: Extend the existing RICS/CLSM core with Number & Brightness, temporal/spatiotemporal image correlation, iMSD, and crosstalk-free spectral RICS.
 status: stub
 phase: "unassigned"
-resource: chisurf/core/models/rics/
+resource: chisurf/core/models/ics/
 tags: [prd, imaging, fcs]
 timestamp: '2026-07-05T00:00:00Z'
 ---

@@ -5,7 +5,7 @@ title: "PRD-06: Expand the Fluorophore Database"
 description: Populate MMFDB with real, provenance-tracked spectral data for common dyes and compute Förster radii from spectral overlap.
 status: in-progress
 phase: "4"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

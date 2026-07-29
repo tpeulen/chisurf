@@ -5,7 +5,7 @@ title: "PRD-26: Model-Driven Data Layer"
 description: Extends dictionary-dictates-schema to dictionary-dictates-the-system — generating the repository/DAO, admin entity registry, RPC parameter validation, and API/schema docs from the same .dic.
 status: in-progress
 phase: "2"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

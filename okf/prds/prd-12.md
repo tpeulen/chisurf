@@ -5,7 +5,7 @@ title: "PRD-12: Lifecycle State Machines + Transition History"
 description: Turn flat entity status flags into tracked lifecycles with a recorded, validated transition log (who, when, why).
 status: done
 phase: "3"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, lims]
 timestamp: '2026-07-05T00:00:00Z'
 ---

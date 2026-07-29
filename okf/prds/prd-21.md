@@ -5,7 +5,7 @@ title: "PRD-21: Provenance/Lineage Query API + Event Model"
 description: Makes the provenance graph queryable through a first-class lineage API, stores a replayable compute spec on each derived artifact, and adds an in-process event model for reactive behaviour.
 status: done
 phase: "3"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

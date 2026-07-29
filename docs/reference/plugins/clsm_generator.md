@@ -23,6 +23,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | Intensity image | `sel_intensity` | file |  |  | Intensity image (TIFF or .npy/.npz); sets the per-pixel brightness. |
+| Lifetime map(s) | `sel_lifetime_files` | path_list |  |  | One fluorescence-lifetime map (ns) per detector channel, matching the intensity-image shape. |
 
 ### Simulation
 

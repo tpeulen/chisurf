@@ -5,7 +5,7 @@ title: "PRD-13: Study / Project Entity with Configurable Fields"
 description: Promote the loose project-id string into a real study entity that groups samples and datasets with ownership, membership, and custom fields.
 status: done
 phase: "3"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, lims]
 timestamp: '2026-07-05T00:00:00Z'
 ---

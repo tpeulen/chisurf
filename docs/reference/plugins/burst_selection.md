@@ -16,7 +16,14 @@ Burst selection and FRET analysis for single-molecule fluorescence data.
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| All photons | `show_all_photons` | bool |  |  | Show the diagnostic layers computed from every photon in the range. |
+| Selected photons | `show_selected_photons` | bool |  |  | Show the diagnostic layers computed from the photons the burst search kept. |
+| First photon | `photon_first` | int |  | 0 … 99999999 | First photon index to process. 0 is the start of the file. |
+| Last photon | `photon_last` | int |  | 0 … 99999999 | Last photon index to process. The default is the end of the file. |
 
 ## JSON-RPC methods
 
@@ -32,3 +39,4 @@ This plugin builds its interface from custom Qt widgets (no declarative `*.view.
 
 - Plugin package: `chisurf/plugins/burst/burst_selection/`
 - Manifest: `chisurf/plugins/burst/burst_selection/manifest.json`
+- UI spec: `chisurf/plugins/burst/burst_selection/gui/burst_display.view.json`

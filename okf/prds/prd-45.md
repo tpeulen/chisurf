@@ -5,7 +5,7 @@ title: "PRD-45: Chemical registry-number as a first-class chemical identity in M
 description: Promotes the chemical registry number from an ad-hoc free-text property to a dictionary-defined, validated, indexed, cross-entity chemical identity surfaced across GUI, CLI, and RPC.
 status: draft
 phase: "unassigned"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

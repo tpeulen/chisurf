@@ -15,7 +15,11 @@ Count rates per detector channel across many TTTR files, with mean/std and a per
 
 ## Parameters
 
-This plugin builds its interface from custom Qt widgets (no declarative `*.view.json` parameter sections were found). Its controls are shown in the plugin's guide; the fit/model parameters it edits are defined in the [parameter glossary](../parameters.md).
+Editable parameters exposed by the plugin's declarative (AutoForm) interface, grouped by panel.
+
+| Parameter | Attribute | Type | Default | Range / options | Meaning |
+| --- | --- | --- | --- | --- | --- |
+| files | `files` | path_list |  |  |  |
 
 ## Source
 

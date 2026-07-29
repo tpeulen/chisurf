@@ -5,7 +5,7 @@ title: "PRD-19: Single Canonical Dictionary-Driven Schema"
 description: Collapses the three overlapping table families to one canonical flrCIF-rooted schema, drives all vocabulary from the dictionary, and replaces the version-numbered migration chain with a declarative reconcile.
 status: in-progress
 phase: "1"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

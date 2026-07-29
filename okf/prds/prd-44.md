@@ -5,7 +5,7 @@ title: "PRD-44: Vendor-Neutral Dictionary Schema Namespace"
 description: Renames the MMFDB dictionary's local extension tags from an application-branded namespace to a store-keyed vendor-neutral one, behind a backward-compatible parser, so MMFDB is usable by software beyond ChiSurf.
 status: done
 phase: "unassigned"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

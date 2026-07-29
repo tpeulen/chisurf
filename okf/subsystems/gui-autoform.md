@@ -9,9 +9,10 @@ timestamp: '2026-07-05T00:00:00Z'
 
 # GUI
 
-`chisurf/gui/` is the Qt application: the main window, widgets, plots
-(pyqtgraph), resources, and GUI startup helpers. It is launched via
-`python -m chisurf` (`pixi run chisurf`).
+`chisurf/gui/` is the Qt application: the main window, widgets, plots,
+resources, and GUI startup helpers. It is launched via `python -m chisurf`
+(`pixi run chisurf`). Plotting goes through the [chiplot](/subsystems/chiplot.md)
+seam, not a plotting library directly.
 
 # AutoForm
 

@@ -22,6 +22,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
+| CLSM imaging files | `sel_files` | path_list |  |  | Confocal (CLSM) TTTR image file(s) to analyse. Drag-drop to add. |
+| IRF file | `sel_irf_files` | path_list |  |  | IRF TTTR measurement (the first file is used). |
 | Parallel channels (∥) | `channels_parallel_text` | str |  |  | Space-separated routing channels forming the parallel (VV) detection. |
 | Perpendicular channels (⊥) | `channels_perpendicular_text` | str |  |  | Space-separated routing channels forming the perpendicular (VH) detection. |
 | Fit start | `micro_time_start` | int |  | 0 … 1000000 | Fit-window start on the binned micro-time axis. |

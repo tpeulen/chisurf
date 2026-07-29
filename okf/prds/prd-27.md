@@ -5,7 +5,7 @@ title: "PRD-27: Event-Sourced, Append-Only Provenance Core"
 description: Locks the append-only-lite provenance direction and implements branch/event-log pieces while full reconstructable append-only provenance remains incomplete.
 status: in-progress
 phase: "1"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

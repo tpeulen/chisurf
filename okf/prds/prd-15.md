@@ -5,7 +5,7 @@ title: "PRD-15: Lightweight Reagent / Consumable Inventory"
 description: Track consumables (dye lots, buffers, filters, kits) with lot/expiry and link them to operations, setups, and samples for reproducibility.
 status: done
 phase: "4"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, lims]
 timestamp: '2026-07-05T00:00:00Z'
 ---

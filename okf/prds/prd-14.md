@@ -5,7 +5,7 @@ title: "PRD-14: Protocol Entity — Named, Versioned Procedures"
 description: Add named, versioned measurement/processing protocols with declared parameter schemas that operations reference for reproducibility.
 status: done
 phase: "3"
-resource: chisurf/core/mmfdb
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb, lims]
 timestamp: '2026-07-05T00:00:00Z'
 ---

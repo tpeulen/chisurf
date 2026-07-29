@@ -5,7 +5,7 @@ title: "PRD-17: Canonical Identity / Session Context"
 description: Resolves the active user and target database once at the boundary into a single SessionContext threaded explicitly through registration, browse, and ownership code.
 status: in-progress
 phase: "1"
-resource: chisurf/core/mmfdb/
+resource: modules/mmfdb/src/mmfdb/
 tags: [prd, mmfdb]
 timestamp: '2026-07-05T00:00:00Z'
 ---

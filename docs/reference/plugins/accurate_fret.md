@@ -22,8 +22,8 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| setup_name | `setup_name` | setup_selector |  |  |  |
-| Burst table | `filename` | file |  |  | Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndXplorer button instead to calibrate exactly the bursts currently open there. |
+| setup_name | `setup_name` | setup_selector |  |  | Detector setup whose named windows (green, red, yellow, …) say which detection channels this measurement has. Picking one helps the channel columns below map themselves even when the table uses site-specific names, and it names the detectors when the optical model supplies the prior. |
+| Burst table | `filename` | file |  |  | Per-burst table to calibrate: any delimited text file (.csv/.tsv/.txt/.bur) or an .npz archive, with one row per burst and one column per signal. Files can also be dropped on the window. Use the toolbar's ndX button instead to calibrate exactly the bursts currently open there. |
 
 ### Channels
 
@@ -40,7 +40,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | --- | --- | --- | --- | --- | --- |
 | Donor | `donor_dye` | choice |  | choices: `dye_names` | Donor dye, from the fluorophore database. Selecting a pair fills in the numbers that are properties of the dyes rather than of this measurement: the Förster radius computed from the stored emission and absorption spectra, both quantum yields, and the donor lifetime when it is curated. Anything the database does not have is left as you set it — the report says which is which. |
 | Acceptor | `acceptor_dye` | choice |  | choices: `dye_names` | Acceptor dye. Its absorption spectrum and molar extinction coefficient are what the overlap integral — and therefore R0 — is computed from, so an acceptor without those cannot supply an R0. |
-| kappa² | `kappa2` | float |  | 0.0 … 4.0 (step 0.01) | Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %. |
+| kappa^2 | `kappa2` | float |  | 0.0 … 4.0 (step 0.01) | Orientation factor. 2/3 is the isotropic average that free dye linkers justify; it enters R0 only as its sixth root, so even a factor-of-two error moves R0 by ~12 %. |
 | Refractive index | `refractive_index` | float |  | 1.0 … 2.0 (step 0.01) | Refractive index of the medium between the dyes: 1.33 for water, ~1.4 inside a protein. R0 scales as n^(-2/3). |
 
 ### Photophysics
@@ -48,7 +48,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | Parameter | Attribute | Type | Default | Range / options | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | tau_D(0) (ns) | `donor_lifetime` | float |  | 0.01 … 100.0 (step 0.1) | Donor-only lifetime, measured on a donor-only sample. It anchors the FRET lines: the line ends at (tau_D(0), E = 0), so an error here tilts the whole lifetime-based calibration. |
-| R0 (Å) | `forster_radius` | float |  | 1.0 … 200.0 (step 0.5) | Förster radius of the dye pair. It does not affect the efficiency at all — only the distance derived from it, and the shape of the FRET lines. |
+| R_0 (Å) | `forster_radius` | float |  | 1.0 … 200.0 (step 0.5) | Förster radius of the dye pair. It does not affect the efficiency at all — only the distance derived from it, and the shape of the FRET lines. |
 | Linker width (Å) | `linker_sigma` | float |  | 0.0 … 30.0 (step 0.5) | Width of the donor-acceptor distance distribution caused by the dye linkers. It is what bends the static FRET line away from the straight E = 1 - tau/tau_D(0) diagonal; 6 Å is typical for common linkers. |
 | Dynamic line | `show_dynamic_line` | bool |  |  | Also draw the dynamic FRET line between the two extreme populations found. Populations lying on it (rather than on the static line) exchange between two states faster than the burst duration. |
 
