@@ -346,6 +346,23 @@ The workflows a first pass should cover — expand as the tester discovers more:
   corrects, and the batch turns an unreadable file and an out-of-range region
   into the same silent `nan`. *(last driven 2026-07-29; RF-918..RF-925)*
 
+- [Lifetime-FCS (FLCS) simulator](/usecases/lifetime-fcs-simulator.md) — the
+  ground-truth loop behind every filtered-FCS measurement: simulate two
+  diffusing species that differ only in fluorescence lifetime, optionally let
+  them interconvert, and recover them as separate correlation curves. The
+  physics is the good part — the recovered τ_D reproduces `w₀²/(4D)` (11.2 µs
+  measured against 11.2 µs predicted) and the species cross-correlation excess
+  rises monotonically with the exchange rate (0.107 → 2.572 for k = 1 → 50 /ms)
+  from a flat k = 0 control. The panel is not: the **Seed** box has never seeded
+  anything — the config key is one the photon engine does not know, so every run
+  of a tool that warns about "simulated statistics" returns one and the same
+  realisation — the status line is clipped exactly across the filter condition
+  number, τ₁ = τ₂ yields three identically-named noise curves at condition
+  number 92 with no warning, the lag axis runs 2.5× past the end of the
+  measurement and plots `G = −4` there, a 20 M-photon run would freeze the
+  window for ~4 minutes behind a no-op busy cursor, and nothing can leave the
+  panel. *(last driven 2026-07-29; RF-940..RF-946)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

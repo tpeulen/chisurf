@@ -2,6 +2,46 @@
 
 ## 2026-07-29
 
+* **QA use case — the Lifetime-FCS (FLCS) simulator** (RF-940..RF-946). Drove
+  *FCS ▸ Tools ▸ 🧬 Lifetime-FCS Sim*
+  (`chisurf/plugins/fcs/fcs_lfcs_sim/`) offscreen through the real `FcsTool`
+  window and wrote it up as
+  [/usecases/lifetime-fcs-simulator.md](/usecases/lifetime-fcs-simulator.md) —
+  the ground-truth loop behind
+  [filtered FCS](/usecases/ffcs-filter-calculator.md): simulate two diffusing
+  species that differ only in fluorescence lifetime, optionally let them
+  interconvert, and recover them as separate correlation curves. The physics
+  holds up and is the tool's strength — the recovered diffusion times reproduce
+  `τ_D = w₀²/(4D)` (11.2 µs measured against 11.2 µs predicted at
+  D = 2 µm²/ms, 47.2 against 45.0 at D = 0.5), the k = 0 species
+  cross-correlation is flat (−0.027) and its excess rises monotonically with the
+  exchange rate (0.107 / 0.196 / 0.516 / 1.539 / 2.572 for k = 1, 2, 5, 20,
+  50 /ms). The panel around it does not. The **Seed** spin box has never seeded
+  anything: `simulate_lifetime_fcs` writes `"seed"` into the photon engine's
+  settings, but the engine's schema names its two RNG streams `seed_diffusion`
+  and `seed_emission` — the unknown key is dropped and seeds 1, 2, 7 and 12345
+  return a byte-identical photon stream, so a tool whose own banner warns that
+  "the recovered curves depend on the simulated statistics" can never show a
+  second realisation (RF-940; the two sibling `SimEngine` callers in the tree
+  already use the right keys). The one feedback line is laid out 25 px high
+  against 40 px of wrapped text, so every run is clipped across the filter
+  condition number — the only quality readout there is (RF-941). Setting
+  τ₁ = τ₂ makes the filter inversion singular and the panel decomposes one
+  physical species into three curves that all carry the identical legend name,
+  at condition number 92, with no warning (RF-945). The correlator is hard-coded
+  to 25 cascades, so the lag axis reaches 26.8 s whatever the photon budget: at
+  the form's minimum the top channels sit 2.5× past the end of the measurement
+  and are plotted as `G = 0` and `G = −3.99` beside a curve whose baseline is 1
+  (RF-942). `simulate()` runs on the UI thread — 0.61 / 4.75 / 17.6 s at
+  50 k / 400 k / 1.5 M photons, ~4 min at the 20 M the form allows — with no
+  progress, no cancel and a busy cursor that is a verified no-op
+  (`window.setCursor(window.cursor())`, RF-943). The τ boxes accept 50 ns
+  against a hard-coded 32.77 ns excitation period, wrapping the decay into a
+  near-flat pattern that is reported as a normal run (RF-944). And nothing can
+  leave the panel: the simulated stream is discarded when `run()` returns,
+  although *Filter Calc*, *Correlator* and *FCS Merger* sit on the same
+  navigation rail (RF-946). No application source changed.
+
 * **INC-07 — a demo is gated where every menu already looks.** The five built-in
   games and their hub sat in the generated menus beside the analysis tools, with
   no way in the tree to *say* they are demonstrations. A manifest now declares
