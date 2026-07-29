@@ -2,6 +2,18 @@
 
 ## 2026-07-29
 
+* **GUI test — CLSM Generator, the ground truth behind every FLIM analysis.**
+  Drove `Imaging → Simulate → CLSM Generator` headlessly on a two-population
+  24 × 24 phantom (τ = 1.0 / 3.5 ns) and recorded
+  [the use case](/usecases/clsm-generator-ground-truth.md). The simulation and
+  the `.ptu` round trip are exact — an intensity ratio of 2.061 against a true
+  2.0, and 1.005 / 3.402 ns recovered from the *reloaded* file — but the shipped
+  defaults give an 8.192 ns excitation period that regenerates a 3.5 ns map at
+  2.58 ns while the panel promises the opposite, `.spc` / `.ht3` are offered and
+  reported as saved but hold no readable records, a non-square image comes back
+  square, an empty run reports success, and **Generate** never raises the tab
+  holding its result. Filed RF-960..RF-966.
+
 * **chiplot Batch 33 — the MaxEnt MEM cluster, whose pyqtgraph the migration
   tracker could not see** ([PRD-64](/prds/prd-64.md)). `maxent_decay` reached
   pyqtgraph through a lazy helper (`qt_stack.ensure_qt_stack()` handed `pg`

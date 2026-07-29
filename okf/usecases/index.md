@@ -363,6 +363,19 @@ The workflows a first pass should cover — expand as the tester discovers more:
   window for ~4 minutes behind a no-op busy cursor, and nothing can leave the
   panel. *(last driven 2026-07-29; RF-940..RF-946)*
 
+- [CLSM Generator — a FLIM image with known lifetimes](/usecases/clsm-generator-ground-truth.md)
+  — the ground truth behind every pixel-wise FLIM analysis: hand the simulator an
+  intensity image and a per-detector lifetime map and get back a confocal photon
+  stream whose every pixel has the τ you chose. The physics and the `.ptu` round
+  trip are exact (an intensity ratio of 2.061 against a true 2.0, and 1.005 /
+  3.402 ns recovered from the *reloaded* file against 1.0 / 3.5 ns), but the
+  shipped defaults give an 8.192 ns excitation period, so a 3.5 ns map is
+  regenerated at 2.58 ns while the panel promises it "reproduces the input
+  lifetime"; `.spc` and `.ht3` are offered, written and reported as saved but
+  contain no readable records; a non-square image comes back square; and
+  **Generate** never raises the tab its result is on.
+  *(last driven 2026-07-29; RF-960..RF-966)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:
