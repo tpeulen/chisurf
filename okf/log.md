@@ -2,6 +2,26 @@
 
 ## 2026-07-29
 
+* **`.bur` burst tables now carry the mean micro time per detector.** First
+  non-breaking piece of [PRD-71](/prds/prd-71.md): both writer paths in
+  `chisurf/core/fio/fluorescence/burst.py` emit
+  `Mean Microtime (<detector>) (ns)`, appended after every pre-existing column
+  and before the trailing blank, so a reader keying on leading positions is not
+  shifted and the companion reader's trailing-blank strip still finds a blank.
+  Nanoseconds rather than raw channels — a raw value is meaningless without the
+  header that produced it — and a file whose header offers no positive
+  micro-time resolution writes the shared `-1.0` sentinel instead of a number in
+  unknown units. It is a first moment accumulated in a pass that already walks
+  each burst's photons, so it is free at write time, and every folder written
+  from now on carries its own lifetime axis without a companion.
+  `test/fio/test_burst_mean_microtime.py` pins the values against exact means,
+  both sentinels, the positional non-breakage, and that the ChiSurf and
+  companion readers both still behave (13 tests; 430 burst-plugin + 335 fio
+  tests green). Also documented, not changed: `Mean Macro Time (ms)` and
+  `Mean Macrotime (<detector>) (ms)` are the first/last **midpoint**, not the
+  photon mean — inherited from the reference format, so the module docstring now
+  says so rather than the value moving under everything that consumed it.
+
 * **[chiplot](/subsystems/chiplot.md) arrows: the backend implements the contract
   it was given.** `backends/base.py` had grown an abstract `add_arrow` (and
   `handles.Arrow`) with no pyqtgraph implementation, which left `_PgCanvas`

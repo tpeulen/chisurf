@@ -399,10 +399,14 @@ two numbers is *quantified* rather than assumed negligible.
 
 # Staging
 
-1. **Data side** — extend the `.bur` writer with `Mean Microtime (d)` per detector
-   (both writer paths, appended last, nanoseconds, sentinel-consistent) plus a
-   round-trip test that a legacy folder still reads and a new one carries the
-   column; `prepare.py` in core with the TTTR-resolution chain and its
+1. **Data side** — ✅ *landed*: the `.bur` writer emits
+   `Mean Microtime (<detector>) (ns)` from both writer paths, appended after every
+   pre-existing column and before the trailing blank, in nanoseconds, with the
+   same `-1.0` sentinel as its neighbours when a detector has no photons or the
+   header cannot supply a resolution (`test/fio/test_burst_mean_microtime.py`
+   pins the values, the sentinels, the positional non-breakage, and that both the
+   ChiSurf and companion readers still behave).
+   Remaining: `prepare.py` in core with the TTTR-resolution chain and its
    fail-loudly-on-sniff behaviour; D12 straight from the `.bur` columns;
    `PhotonBursts` load path for the decay-bearing sources. Headless first, then
    the plugin's four surfaces.

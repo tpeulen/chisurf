@@ -32,6 +32,63 @@ import pandas as pd
 import tttrlib
 
 
+#: Sentinel written for a per-detector column a burst has no photons in. Matches
+#: the ``-1.0`` the duration and rate columns already use, so a reader that
+#: filters one filters them all.
+DETECTOR_SENTINEL = -1.0
+
+
+def micro_time_resolution_ns(tttr, override: float = None) -> float:
+    """Nanoseconds per micro-time channel, or ``0.0`` if the file does not say.
+
+    The mean micro time is written in nanoseconds rather than raw channels so
+    the column survives a change of micro-time resolution — a raw-channel value
+    is meaningless without the header that produced it.
+
+    Parameters
+    ----------
+    tttr : object
+        TTTR-like object with ``header.micro_time_resolution`` in seconds.
+    override : float, optional
+        Resolution in seconds, used instead of the header when given.
+
+    Returns
+    -------
+    float
+        Nanoseconds per channel, or ``0.0`` when no positive resolution is
+        available — callers then write :data:`DETECTOR_SENTINEL` rather than a
+        number in unknown units.
+    """
+    if override is not None:
+        resolution = float(override)
+    else:
+        resolution = float(getattr(tttr.header, "micro_time_resolution", 0.0) or 0.0)
+    return resolution * 1e9 if resolution > 0.0 else 0.0
+
+
+def mean_micro_time_ns(micro_times, indices, ns_per_channel: float) -> float:
+    """Mean micro time of selected photons, in nanoseconds.
+
+    Parameters
+    ----------
+    micro_times : numpy.ndarray
+        Micro times, in raw channels.
+    indices : numpy.ndarray
+        Positions within *micro_times* to average over.
+    ns_per_channel : float
+        From :func:`micro_time_resolution_ns`; ``0.0`` disables the conversion.
+
+    Returns
+    -------
+    float
+        The mean in nanoseconds, or :data:`DETECTOR_SENTINEL` when there is
+        nothing to average or the resolution is unknown.
+    """
+    if ns_per_channel <= 0.0 or len(indices) == 0:
+        return DETECTOR_SENTINEL
+    return float(np.mean(micro_times[indices])) * ns_per_channel
+
+
 def write_mti_summary(
         filename: pathlib.Path,
         analysis_dir: pathlib.Path,
@@ -199,8 +256,13 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
             window_cols.append(
                 f"S {window_name} {det_name} (kHz) | {r_start}-{r_stop}"
             )
+    # Mean micro time per detector, appended after every pre-existing column and
+    # before the trailing blank: a reader keying on leading positions is not
+    # shifted, and ndX's trailing-blank strip still finds the blank.
+    micro_cols = [f"Mean Microtime ({det_name}) (ns)" for det_name in detectors]
+    micro_ns = micro_time_resolution_ns(tttr)
     # extra empty column
-    header_keys = static_cols + det_cols + window_cols + [""]
+    header_keys = static_cols + det_cols + window_cols + micro_cols + [""]
 
     summary_rows = []
 
@@ -302,6 +364,14 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
                     dur_win_ms = (burst_macro[idxs[-1]] - burst_macro[idxs[0]]) * res * 1e3
                     row_data[key] = (len(idxs) / dur_win_ms) if dur_win_ms > 0 else np.nan
 
+        # mean micro time per detector — inserted here so the dict's insertion
+        # order matches ``header_keys`` (the frame takes its columns from the
+        # rows, not from that list)
+        for det_name, mask in detector_masks.items():
+            row_data[f"Mean Microtime ({det_name}) (ns)"] = mean_micro_time_ns(
+                burst_micro, np.nonzero(mask)[0], micro_ns
+            )
+
         # append empty column
         row_data[""] = ""
 
@@ -393,8 +463,11 @@ def generate_burst_dataframe(
     for w,(r0,r1) in windows.items():
         for d in detectors:
             win_cols.append(f"S {w} {d} (kHz) | {r0}-{r1}")
+    # Mean micro time per detector, appended last (see write_bur_file_old)
+    micro_cols = [f"Mean Microtime ({d}) (ns)" for d in detectors]
+    micro_ns = micro_time_resolution_ns(tttr)
     # extra blank column
-    cols = static_cols + det_cols + win_cols + [""]
+    cols = static_cols + det_cols + win_cols + micro_cols + [""]
 
     # Per-burst confidence: the significance of the burst's photon excess over
     # the background measured around it, in sigma. tttrlib computes it from the
@@ -482,9 +555,13 @@ def generate_burst_dataframe(
 
         # slice views
         sl = slice(start, stop + 1)
+        micro_sl = micro[sl]
         for d in detectors:
             mask = det_global[d][sl]
             idxs = np.nonzero(mask)[0]
+            row[idx[f"Mean Microtime ({d}) (ns)"]] = mean_micro_time_ns(
+                micro_sl, idxs, micro_ns
+            )
             col0 = f"First Photon ({d})"
             if idxs.size == 0:
                 # these get -1 or 0 per your original logic
