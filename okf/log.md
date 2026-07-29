@@ -2,6 +2,53 @@
 
 ## 2026-07-29
 
+* **An nDXplorer constant can be fitted, by moving the data onto the curve.**
+  The overlay fit dialog now shows a second table — ndX's own parameters, the
+  ones an equation reads — beside the curve's. Freeing one puts it in the same
+  least-squares vector, where it moves the **burst population** rather than the
+  line: each step recomputes the derived columns and re-reduces them
+  (`DataParameters` + `NDXplorer.build_data_parameters`, `modules/ndxplorer`).
+  That is the geometric route to γ/β — fix the static FRET line, free `gG/gR`,
+  read off the factor for which the population sits on the line — and it is
+  written up beside the photon-statistics route in
+  [fret-calibration](/references/fret-calibration.md) and in
+  [`docs/guides/46_ndxplorer.md`](../docs/guides/46_ndxplorer.md).
+  Two traps decided the design: the reduction must return a **fixed-length**
+  residual (populated columns are pinned at build time; an emptied one comes back
+  `nan`), and it must be **continuous** in the constant — a binned column mean is
+  a staircase, so the default ~1e-8 finite-difference step measured a derivative
+  of exactly zero and the fit returned instantly without moving anything. Fixed
+  by averaging the *unbinned* values per column (`ridge_from_values`) plus a
+  per-mille `diff_step`.
+  **Made it fast enough to use.** A step used to recompute every column the
+  constant feeds (~40 of them), then rebuild the whole `(n_params, n_points)`
+  value matrix and the gate — per residual evaluation. Now the recompute is
+  narrowed to what the *plotted axes* need (a `targets` argument threaded
+  through `compute_columns` → `compute_values` → `EquationGraph.compute`, which
+  walks the dependency edges backwards from the wanted columns), the gate is
+  frozen once for the life of the fit, and the two columns are read straight off
+  the numeric frame (`DataSource.column_values`) instead of through `.values`.
+  **5.3× per step** on 200k bursts × 102 columns (26.4 → 5.0 ms; the recompute
+  alone 19.9 → 3.9 ms). The columns the fit skipped are caught up by one full
+  recompute when it ends, together with a histogram-cache invalidation — a fit
+  changes the numbers in a column without touching any key the caches are keyed
+  on, so without that the plots would redraw the population the fit started
+  from. Each step is reported through `set_progress`, which the dialog renders
+  in ChiSurf's inline progress bar (`InlineProgressWidget` + `ChiSurfProgress` —
+  no modal stacked on a modal, and a log line instead of silence headless);
+  Cancel puts the parameters and the data back.
+  Found and fixed on the way, each with a test: `plot_histogram` hands a
+  **marginal back edges-first** while the 2-D case is data-first, so every
+  marginal curve fit refused with "need at least 3 matching data points" and
+  every 1-D plot export wrote the bin edges out as its counts column;
+  `self.constants` is a live `Mapping`, not a `dict`, so an `isinstance(dict)`
+  test read it as empty and no constant was ever seeded into an equation fit or
+  held fixed there. **GUI:** the parameter table declares a fixed vertical size
+  policy, so it sits at the **top** of its panel instead of floating in the
+  middle of it (a box layout centres an item it cannot grow) — the ndX
+  Parameters tab was showing a hand's width of empty space above the first row.
+
+
 * **[PRD-72](/prds/prd-72.md) created — the non-breaking groundwork under
   [PRD-71](/prds/prd-71.md).** Splits the enabling infrastructure out of the
   modelling PRD so it is separately specified and separately testable: a

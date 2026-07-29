@@ -815,6 +815,12 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         self._install_controllers()
         layout.addWidget(self._table)
         self._size_to_content()
+        # The widget *is* its content-sized table, so it must never be handed
+        # more height than that: a box layout centres an item it cannot grow,
+        # which floated the table in the middle of a tall panel, with empty
+        # space above it. Fixed makes the host lay it out at the top and give
+        # the slack to whatever follows.
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
 
     # -- parameter controllers ---------------------------------------------
     def claim_controllers(self) -> None:
@@ -1413,6 +1419,12 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         self._install_controllers()
         layout.addWidget(self._table)
         self._size_to_content()
+        # The widget *is* its content-sized table, so it must never be handed
+        # more height than that: a box layout centres an item it cannot grow,
+        # which floated the table in the middle of a tall panel, with empty
+        # space above it. Fixed makes the host lay it out at the top and give
+        # the slack to whatever follows.
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
 
     # -- structural ---------------------------------------------------------
     def set_params(self, params: typing.List[FittingParameter]) -> None:

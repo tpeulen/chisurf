@@ -44,7 +44,8 @@ to a ChiSurf fit parameter (for example ndX's `tauD0` to the donor-only
 lifetime of a TCSPC {doc}`lifetime fit <10_lifetime_anisotropy_fitting>`). The
 linked constant then tracks the fit — re-fit the lifetime and the FRET columns
 update. Constants default to **fixed**, so fitting a curve never silently moves
-your calibration.
+your calibration; free one deliberately and it joins the fit as a
+[data parameter](#fitting-a-constant-moving-the-data-onto-the-curve).
 
 ## Overlay a curve and fit it to the data
 
@@ -63,6 +64,41 @@ your calibration.
    with Poisson weights). Free parameters are optimised, fixed ones held —
    including constants and linked parameters, whose values belong elsewhere. The
    fit reports a reduced $\chi^2_r$ and redraws the overlay.
+
+### Fitting a constant: moving the data onto the curve
+
+Below the curve's parameters the fit dialog shows a second table: nDXplorer's
+own constants — the ones an equation actually reads. Freeing one puts it in the
+same optimisation, but it does something different there. A constant is not part
+of the curve: it is an input of the equations that build the plotted axes, so
+moving it moves the **burst population**, not the line. Every step of the fit
+re-derives the derived columns and re-reduces them, on the bin edges and columns
+the fit started with.
+
+That is how a detection-correction factor is determined in the first place: fix
+the static FRET line at the donor lifetime you measured, free `gG/gR`, and the
+fit returns the $\gamma$ for which the population sits on the line. The same
+works for `alpha`, `beta`, the background rates or `PhiA`/`PhiD`.
+
+Three things worth knowing:
+
+- **It is slower** — a step costs a recompute plus a re-reduction, so this is
+  seconds where a curve-only fit is milliseconds. A progress bar with a Cancel
+  button runs in the dialog meanwhile; stopping puts every parameter back.
+  Only the columns the fit reads (the two plotted axes) are recomputed per step,
+  and only the rows visible when it started, which is what makes it seconds
+  rather than minutes.
+- **The fitted value lands in the Parameters tab**, and the plots — including
+  the histograms — are rebuilt from the data the fit ended on. The other derived
+  columns, which the fit skipped, are brought up to date in the same breath. The
+  constants table and the dialog show the same parameters, so there is nothing
+  to copy across.
+- **Free one constant at a time.** Calibration factors trade off against each
+  other and against the curve's own parameters (scaling the data is nearly the
+  same as scaling a slope), so a fit with several freed at once will find *a*
+  solution rather than *the* solution. When the factors themselves are what you
+  are after, the photon-statistics route in
+  {doc}`accurate FRET <41_accurate_fret>` estimates them jointly.
 
 The same works headlessly. Fit a curve to the displayed distribution:
 
@@ -124,6 +160,39 @@ with `build_marginal_fit(...)` / `build_histogram_fit(...)` and call
 `.set_fixed(name, True)` / `.run()`. `seed_from_group(curve.parameter_group)`
 takes the values, bounds and fix/free straight from the curve's own table, and
 `write_back(...)` returns the result to it.
+
+Constants are attached to such a handle as
+{py:class}`~ndxplorer.analysis.curve_fit.DataParameters` — the parameters plus
+the callback that re-derives the data for them:
+
+```python
+from ndxplorer.analysis.curve_fit import DataParameters
+
+def refresh(changed):                 # changed: the names that moved
+    recompute_columns(changed)        # ndX: data_source.compute_columns(...)
+    return x, y, ey                   # the fit's target, on the same x grid
+
+cf.attach_data_parameters(DataParameters(parameters=[gamma], refresh=refresh))
+gamma.fixed = False
+result = cf.run()
+print(result.data_params["gG/gR"])
+```
+
+`refresh` must return the same number of points every time — hold the columns
+with `ridge_from_values(..., keep=...)`, which reports an emptied column as
+`nan` instead of dropping it. In the GUI that plumbing is
+`NDXplorer.build_data_parameters(...)`, and `cf.set_progress(cb)` reports each
+step to `cb(step)` — return `False` there to stop the fit.
+
+Two numerical details are load-bearing, and both are easy to get wrong:
+
+- Reduce the **unbinned** values (`ridge_from_values`), not the y bins. A binned
+  column mean only moves when a burst crosses a bin edge, so the optimiser's
+  finite difference measures a derivative of exactly zero and the fit returns
+  instantly, unchanged.
+- Take that difference over a **per-mille step** (`DATA_PARAMETER_STEP`), not
+  the default ~1e-8: counting data is discrete, and a probe that small does not
+  move the population at all.
 
 ## Worked example: two smFRET populations and the static FRET line
 

@@ -277,6 +277,32 @@ back to the physically-motivated light-path prior.
   `test_calibration_ndx_bridge.py` (stub) and `test_ndxplorer_unmix_headless.py`
   (ndX's **real** DataSource + real equation/constant files: the factors are
   recovered from simulated bursts and ndX's own `FRET efficiency` column changes).
+- **The other route inside ndX: fit the constant through the overlay curve.**
+  The photon-statistics route above estimates the factors jointly from the
+  counts. The classical route is geometric — a factor is whatever puts the
+  population on the static FRET line — and that is now the overlay curve fit
+  (`modules/ndxplorer`, `analysis/curve_fit.py::DataParameters`): the fit dialog
+  offers nDXplorer's constants beside the curve's own parameters, and a freed one
+  joins the same least-squares vector. It does not reshape the curve — it is an
+  input of the equations that build the plotted axes, so every step re-derives
+  the derived columns (`data_source.compute_columns(changed_constants=…)`) and
+  re-reduces them, on the bin edges and columns the fit started with. Two
+  non-obvious constraints fall out and are the whole of the implementation:
+  (a) the reduction must return the **same number of points** every step, so the
+  populated columns are pinned at build time (`ridge_from_values(keep=…)`
+  reports an emptied one as `nan` rather than dropping it); and (b) it must be
+  **continuous** in the constant — a *binned* column mean moves in steps as
+  bursts cross bin edges, so the finite-difference Jacobian reads exactly zero
+  and the optimiser stops before it starts. `ridge_from_values` therefore
+  averages the unbinned values per column, and a data-parameter fit uses a
+  per-mille `diff_step` (the same failure mode, and the same fix, as the
+  optimiser's `epsfcn` default). Only the constants an equation actually reads
+  are offered: the rest are flat directions. Cost is the third constraint —
+  a step recomputes only the columns the plotted axes need (`targets`, walked
+  backwards through the equation graph), over a gate frozen for the life of the
+  fit, reading two columns rather than rebuilding the whole value matrix
+  (5.3× per step on 200k bursts); the rest of the derived columns and the
+  histogram caches are brought up to date once, when the fit ends.
 - **Photon-level simulation with declared parameters** —
   `chisurf/core/fluorescence/burst/simulate.py` (`SmfretParameters`,
   `simulate_smfret`) builds an ALEX smFRET measurement with tttrlib's `SimEngine`:
