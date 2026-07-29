@@ -318,8 +318,17 @@ back to the physically-motivated light-path prior.
   fitting it (seen: γ walked to a quarter of its value); and (iv) probe the
   Jacobian at a per-mille step, because both the reduction and the traced curve
   are discrete at 1e-8. With those, the line lands on the population and the
-  same answer comes out with or without the pre-fit scan
-  (τ_D0 = 3.67-3.70 ns, γ-factor 0.60-0.62).
+  same answer comes out with or without the pre-fit scan. (v) The reduction to
+  one point per column had to go entirely: a population is a *blob*, which
+  column by column becomes a horizontal streak, and no static line follows both
+  that streak and the donor-only cluster. The curve is fitted to the **cloud** —
+  every bin of the displayed distribution, weighted by its count, with a
+  redescending distance (`log1p((d/2 bins)²)`), the point set being every bin so
+  a moving population can arrive somewhere, and whatever leaves the plotted
+  range charged for (an emptied cloud otherwise matches every curve, and a free
+  γ arranges exactly that). Result on the measurement above: **τ_D0 = 3.10 ns,
+  γ-factor 0.601**, the line through the FRET population and ending on the
+  donor-only cluster.
 - **Photon-level simulation with declared parameters** —
   `chisurf/core/fluorescence/burst/simulate.py` (`SmfretParameters`,
   `simulate_smfret`) builds an ALEX smFRET measurement with tttrlib's `SimEngine`:

@@ -114,6 +114,23 @@
   Gaussian that fits at 0.6. With all of it, the same answer comes out with and
   without the scan (τ_D0 = 3.67-3.70 ns, γ-factor 0.60-0.62) and the line lands
   on the population.
+  **Then the reduction itself had to go.** Reducing a column to *one point* —
+  by any rule — cannot describe a population: a blob is round, so column by
+  column it becomes a horizontal streak across its own columns, and no static
+  FRET line follows both that streak and the donor-only population further
+  along. The default is now **fit through the cloud**: every bin of the
+  displayed distribution pulls on the curve, weighted by what it counted, with
+  a redescending (`log1p((d/2 bins)²)`) distance so the populations decide the
+  answer and the junk around them does not. On the user's measurement that is
+  the difference between τ_D0 = 4.25 ns with the line beside the population and
+  **τ_D0 = 3.10 ns with the line through the FRET population and ending on the
+  donor-only cluster** (γ-factor 0.601, i.e. the calibration was already right
+  and only the lifetime was wrong). Two things the cloud objective needs to be
+  safe: the point set is **every bin, empty ones included** (a population must
+  be able to move into a bin that was empty, and the residual vector has to keep
+  its length), and whatever leaves the plotted range is **charged for** — a
+  cloud with nothing in it matches every curve, which a free constant will
+  happily arrange (seen: γ → 0.27, cost ≈ 0).
   Found and fixed on the way, each with a test: `plot_histogram` hands a
   **marginal back edges-first** while the 2-D case is data-first, so every
   marginal curve fit refused with "need at least 3 matching data points" and

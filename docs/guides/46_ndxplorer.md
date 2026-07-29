@@ -65,23 +65,31 @@ your calibration; free one deliberately and it joins the fit as a
    values belong elsewhere. The fit reports a reduced $\chi^2_r$ and redraws the
    overlay.
 
-### Fit through the population, not through the average
+### Fit through the cloud, not through a summary of it
 
-**Fit through** decides what a column of the distribution is reduced to before
-the curve is compared with it, and it matters more than it sounds.
+**Fit through** decides what the curve is compared with, and it matters more
+than it sounds.
 
-A burst plot is a **mixture**: a FRET population, a donor-only cluster at
-$E \approx 0$, and a scatter of singles, all in the same $\tau$ columns. The
-*average* of a mixture lies where nothing is — on real data the column mean runs
-some $0.1$ in $E$ below the FRET population's ridge, and a static FRET line
-fitted through it misses the population it is supposed to describe.
+The obvious thing — reduce each x column to one point and fit the curve through
+those — cannot describe a **population**. A blob is round: reduced column by
+column it becomes a *horizontal streak* across its own columns, and no static
+FRET line follows both that streak and the donor-only population further along.
+Fitting a real measurement that way put the line beside the population and ended
+it a nanosecond past the donor-only cluster.
 
-- **through the population** (default) follows the densest population of each
-  column: its local mode, found by mean-shifting from the column's smoothed
-  density peak. A second population in the same column is left where it is
-  instead of being averaged in.
-- **through the column mean** is the plain weighted average, for a distribution
-  you know to be single-peaked.
+- **the cloud** (default) fits the curve to the distribution itself. Every
+  populated bin pulls on the curve, weighted by what it counted, and a bin more
+  than a couple of bins away stops pulling harder — so the curve follows the
+  populations and ignores the junk around them. This is what puts a static FRET
+  line through the FRET population *and* through the donor-only cluster at its
+  end.
+- **the population of each column** reduces a column to its densest
+  population (the local mode). Useful when the curve really is a function of x
+  and you want that reading.
+- **the mean of each column** is the plain weighted average, for a distribution
+  you know to be single-peaked. Note that the average of a *mixture* lies where
+  nothing is — on real data the column mean runs some $0.1$ in $E$ below the
+  FRET population's ridge.
 
 **Scan first** (on by default) evaluates a coarse grid over the free parameters
 before fitting and starts the fit at the best point, then keeps whichever of
@@ -90,7 +98,6 @@ goes downhill from where it starts, and a constant that scales the data against
 a curve parameter that scales the model is exactly the degenerate pair that
 strands it. See
 [finding the minimum](../concepts/parameter_uncertainty.md#finding-the-minimum-before-describing-it).
-
 
 ### Fitting a constant: moving the data onto the curve
 
@@ -169,11 +176,17 @@ across, the population's standard error up). Parameters named `num_points` (and
 the like) set the curve's *resolution*, not its shape, and start fixed.
 
 A distance rather than a vertical offset, because a traced curve does not span
-the whole plot. Interpolating it onto the data's x gives a point the line does
+the whole plot: interpolating it onto the data's x gives a point the line does
 not reach *no* residual at all — so the optimiser is rewarded for making the
 line **shorter** until it covers only what it already fits, which is exactly
-what a static FRET line did: it collapsed to $\tau_{D0} \approx 1$ ns, covering
+what a static FRET line did. It collapsed to $\tau_{D0} \approx 1$ ns, covering
 a third of the columns, and reported a better $\chi^2$ for it.
+
+Fitting the cloud, that same distance is weighted by what the bin counted and
+flattens off beyond a couple of bins, and everything pushed *outside* the
+plotted range is charged for — otherwise a fit with a free constant has a
+trivial way out: shove the population off the axes, and a cloud with nothing in
+it matches every curve perfectly.
 
 Two warnings that fall out of this, and are the reason the **fixed** box matters:
 
