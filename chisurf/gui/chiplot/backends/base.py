@@ -166,6 +166,29 @@ class Canvas(abc.ABC):
         """Draw a movable cursor line and return its handle."""
 
     @abc.abstractmethod
+    def add_arrow(
+        self,
+        pos: tuple[float, float],
+        *,
+        angle: float,
+        size: float,
+        tip_angle: float,
+        head_width: float | None,
+        tail_length: float | None,
+        tail_width: float,
+        pen: S.Pen | None,
+        brush: S.Brush | None,
+    ) -> H.Arrow:
+        """Draw an arrow head at a data coordinate and return its handle.
+
+        ``angle`` is chiplot's convention — degrees counter-clockwise from the
+        ``+x`` axis, pointing the way the tip faces. A backend whose native
+        arrow measures the angle differently converts here, never at the call
+        site. Lengths are in pixels: the arrow is scale-invariant, so zooming
+        does not resize it.
+        """
+
+    @abc.abstractmethod
     def add_text(
         self,
         text: str,

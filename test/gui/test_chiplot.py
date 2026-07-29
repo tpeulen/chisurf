@@ -75,6 +75,49 @@ def test_plot_draw_all_families(qapp):
     img.set_image(np.random.rand(4, 4))
 
 
+def test_arrow_angle_convention(qapp):
+    """``Plot.arrow`` places the tip and aims in chiplot's convention (RF-141).
+
+    chiplot measures the pointing angle counter-clockwise from ``+x``; the
+    pyqtgraph arrow is drawn at ``0`` pointing left and rotates clockwise on
+    screen, so the backend must convert. Getting that wrong silently mirrors
+    every directed edge (a rate arrow between two states pointing the wrong way
+    reads as the reverse transition).
+    """
+    plot = cp.Plot()
+    arrow = plot.arrow(2.0, 3.0, angle=45.0, size=18, brush="r")
+
+    assert isinstance(arrow, cp.handles.Arrow)
+    assert arrow.position == (2.0, 3.0)
+    assert arrow.angle == pytest.approx(45.0)
+    # pyqtgraph's own convention, as converted by the backend.
+    assert arrow.native.opts["angle"] == pytest.approx(135.0)
+
+    arrow.set_angle(-90.0)
+    assert arrow.angle == pytest.approx(-90.0)
+    assert arrow.native.opts["angle"] == pytest.approx(270.0)
+
+    arrow.set_position(-1.0, 0.5)
+    assert arrow.position == (-1.0, 0.5)
+
+    plot.remove(arrow)
+    assert arrow.native not in plot.native.items
+
+
+def test_arrow_from_edge_direction(qapp):
+    """An edge ``(x0, y0) -> (x1, y1)`` arrows with ``degrees(arctan2(dy, dx))``.
+
+    This is the documented call-site idiom; the tip must sit on the edge's end
+    point and face along the segment for any quadrant.
+    """
+    plot = cp.Plot()
+    for x0, y0, x1, y1 in ((0, 0, 1, 1), (0, 0, -1, 1), (0, 0, -1, -1), (0, 0, 1, -1)):
+        ang = float(np.degrees(np.arctan2(y1 - y0, x1 - x0)))
+        arrow = plot.arrow(x1, y1, angle=ang)
+        assert arrow.position == (float(x1), float(y1))
+        assert arrow.angle == pytest.approx(ang)
+
+
 def test_text_does_not_drive_autorange(qapp):
     """A text annotation must not blow the view auto-range (PRD-64 Batch 22).
 
@@ -833,7 +876,15 @@ def test_to_color_float_tuple_detection():
 
 
 def test_backend_contract_matches_implementation():
-    """The abstract Canvas signatures are what the wrapper actually calls (RF-135)."""
+    """The abstract Canvas signatures are what the wrapper actually calls (RF-135).
+
+    Also that every abstract method is *implemented*, not merely inherited
+    (RF-141): a method added to the contract without a backend body leaves the
+    concrete class abstract, and Python only complains at instantiation — i.e.
+    when a user opens the tool ("Can't instantiate abstract class _PgCanvas
+    without an implementation for abstract method 'add_arrow'"), taking every
+    chiplot panel in the application down with it.
+    """
     import inspect
 
     from chisurf.gui.chiplot.backends import base
@@ -843,7 +894,10 @@ def test_backend_contract_matches_implementation():
         (base.Canvas, pgb._PgCanvas),
         (base.GridCanvas, pgb._PgGrid),
         (base.ImageViewCanvas, pgb._PgImageView),
+        (base.Backend, pgb.PyQtGraphBackend),
     ):
+        unimplemented = sorted(getattr(concrete, "__abstractmethods__", ()))
+        assert not unimplemented, f"{concrete.__name__} does not implement {unimplemented}"
         for name, method in vars(abstract).items():
             if not getattr(method, "__isabstractmethod__", False) or isinstance(method, property):
                 continue

@@ -423,6 +423,68 @@ class Plot(QtWidgets.QWidget):
             y, orientation=H.Orientation.HORIZONTAL, movable=movable, pen=S.to_pen(pen), label=label
         )
 
+    def arrow(
+        self,
+        x,
+        y,
+        *,
+        angle=0.0,
+        size=20.0,
+        tip_angle=25.0,
+        head_width=None,
+        tail_length=None,
+        tail_width=3.0,
+        pen=None,
+        brush="w",
+    ) -> H.Arrow:
+        """Add a scale-invariant arrow head at a data coordinate.
+
+        Parameters
+        ----------
+        x, y : float
+            Position of the arrow *tip*, in data coordinates.
+        angle : float
+            Direction the tip faces, in degrees counter-clockwise from ``+x`` —
+            i.e. ``degrees(arctan2(dy, dx))`` for an edge running ``(x0, y0)`` →
+            ``(x, y)``. The backend converts to its own convention.
+        size : float
+            Length of the head from tip to base, in pixels.
+        tip_angle : float
+            Opening angle of the tip in degrees; smaller is sharper. Ignored
+            when ``head_width`` is given.
+        head_width : float, optional
+            Width of the head at its base, in pixels (overrides ``tip_angle``).
+        tail_length : float, optional
+            Length of a tail drawn behind the head, in pixels. ``None`` (default)
+            draws the head alone — the usual choice when the edge itself is
+            already drawn as a line.
+        tail_width : float
+            Width of that tail, in pixels.
+        pen : pen-like, optional
+            Outline of the arrow (``None`` = no outline).
+        brush : brush-like, optional
+            Fill of the arrow.
+
+        Returns
+        -------
+        handles.Arrow
+
+        Notes
+        -----
+        Sizes are in pixels, so the arrow keeps its size as the view zooms.
+        """
+        return self._canvas.add_arrow(
+            (float(x), float(y)),
+            angle=float(angle),
+            size=float(size),
+            tip_angle=float(tip_angle),
+            head_width=head_width,
+            tail_length=tail_length,
+            tail_width=float(tail_width),
+            pen=S.to_pen(pen) if pen is not None else None,
+            brush=S.to_brush(brush) if brush is not None else None,
+        )
+
     def text(
         self,
         text,

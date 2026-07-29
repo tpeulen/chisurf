@@ -2,6 +2,29 @@
 
 ## 2026-07-29
 
+* **[chiplot](/subsystems/chiplot.md) arrows: the backend implements the contract
+  it was given.** `backends/base.py` had grown an abstract `add_arrow` (and
+  `handles.Arrow`) with no pyqtgraph implementation, which left `_PgCanvas`
+  abstract — so *every* chiplot panel in the application failed to construct and
+  each tool reported it as its own load failure ("Failed to load 3. Burst BVA:
+  Can't instantiate abstract class _PgCanvas without an implementation for
+  abstract method 'add_arrow'"). Implemented `_PgCanvas.add_arrow` + the `_Arrow`
+  handle and added the public `Plot.arrow(x, y, angle=...)`. The angle convention
+  is chiplot's — degrees counter-clockwise from `+x`, i.e.
+  `degrees(arctan2(dy, dx))` for the edge ending at the tip — converted to
+  pyqtgraph's (`0` points left, clockwise on a y-down scene) as `180 - angle`
+  inside the backend, so no call site carries a renderer-specific sign flip; a
+  mirrored arrow is a *silent* bug, since a rate arrow drawn the wrong way reads
+  as the reverse transition. Verified by rendering the eight cardinal/diagonal
+  angles headlessly and inspecting the image, plus constructing all 13
+  Burst-analysis navigation panels (all green) and the 22 chiplot-using plugin
+  GUIs. Guardrail: `test_backend_contract_matches_implementation` now asserts
+  each concrete backend class has an empty `__abstractmethods__` — the old
+  signature-only check passed happily on a method that was never implemented,
+  because `getattr` found the ABC's own abstract one. New tests cover the angle
+  convention, the `arctan2` call-site idiom in all four quadrants, and
+  `set_angle`/`set_position`.
+
 * **[PRD-51](/prds/prd-51.md) closed out: dangling references fixed and the roadmap
   told (planning only, no code).** Verifying the PRD's own links rather than assuming
   them found three loose ends. (1) The ROI reuse line pointed at

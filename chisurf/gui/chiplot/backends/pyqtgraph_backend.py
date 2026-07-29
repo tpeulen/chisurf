@@ -461,6 +461,53 @@ class _Marker(_Item):
         sig.connect(lambda item: callback(float(item.value())))
 
 
+def _pg_angle(angle: float) -> float:
+    """Convert a chiplot pointing angle to pyqtgraph's ``ArrowItem`` angle.
+
+    chiplot measures the direction the tip faces in degrees counter-clockwise
+    from ``+x`` (``degrees(arctan2(dy, dx))``). A pyqtgraph arrow at angle ``0``
+    points *left*, and its rotation runs clockwise on screen because the scene's
+    y-axis points down — so the two conventions differ by ``180 - angle``.
+
+    Parameters
+    ----------
+    angle : float
+        Pointing direction, degrees counter-clockwise from ``+x``.
+
+    Returns
+    -------
+    float
+        The equivalent ``ArrowItem`` angle.
+    """
+    return 180.0 - float(angle)
+
+
+class _Arrow(_Item):
+    """Handle for a pyqtgraph ``ArrowItem``."""
+
+    @property
+    def position(self) -> tuple[float, float]:
+        """The ``(x, y)`` tip position in data coordinates."""
+        p = self._native.pos()
+        return (float(p.x()), float(p.y()))
+
+    @property
+    def angle(self) -> float:
+        """Pointing direction in degrees counter-clockwise from ``+x``."""
+        # Read back through the same conversion rather than caching the value the
+        # caller passed, so an angle set on the native item (passthrough) is
+        # still reported in chiplot's convention.
+        return 180.0 - float(self._native.opts["angle"])
+
+    def set_position(self, x: float, y: float) -> None:
+        """Move the arrow tip."""
+        self._native.setPos(float(x), float(y))
+
+    def set_angle(self, angle: float) -> None:
+        """Re-aim the arrow (degrees counter-clockwise from ``+x``)."""
+        self._native.setStyle(angle=_pg_angle(angle))
+
+
 class _DraggableTextItem(pg.TextItem):
     """A ``TextItem`` the user can drag with the left mouse button."""
 
@@ -777,6 +824,30 @@ class _PgCanvas(base.Canvas):
         item = pg.InfiniteLine(pos=pos, angle=angle, movable=movable, pen=_pen(pen), label=label)
         self._pi.addItem(item)
         return _Marker(item, self._pi)
+
+    def add_arrow(
+        self, pos, *, angle=0.0, size=20.0, tip_angle=25.0, head_width=None,
+        tail_length=None, tail_width=3.0, pen=None, brush=None,
+    ) -> H.Arrow:
+        """Draw a scale-invariant arrow head at a data coordinate.
+
+        ``angle`` arrives in chiplot's convention (counter-clockwise from ``+x``)
+        and is converted here — see :func:`_pg_angle` — so no call site carries a
+        renderer-specific sign flip.
+        """
+        item = pg.ArrowItem(
+            pos=(float(pos[0]), float(pos[1])),
+            angle=_pg_angle(angle),
+            headLen=float(size),
+            headWidth=None if head_width is None else float(head_width),
+            tipAngle=float(tip_angle),
+            tailLen=None if tail_length is None else float(tail_length),
+            tailWidth=float(tail_width),
+            pen=_pen(pen),
+            brush=_brush(brush),
+        )
+        self._pi.addItem(item)
+        return _Arrow(item, self._pi)
 
     def add_text(
         self, text, pos, *, color, anchor, draggable, fill=None, border=None, anchored=False

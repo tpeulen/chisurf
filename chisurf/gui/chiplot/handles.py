@@ -485,6 +485,48 @@ class Roi(Handle, Protocol):
 
 
 @runtime_checkable
+class Arrow(Handle, Protocol):
+    """A scale-invariant arrow head placed at a data coordinate.
+
+    The arrow's tip sits at :attr:`position` and it points along
+    :attr:`angle` — degrees counter-clockwise from the ``+x`` axis, the same
+    convention as :func:`numpy.arctan2` on ``(dy, dx)``. Drawing a directed
+    edge is therefore ``plot.arrow(x1, y1, angle=degrees(arctan2(dy, dx)))``,
+    with no renderer-specific sign flip at the call site.
+    """
+
+    @property
+    def position(self) -> tuple[float, float]:
+        """The ``(x, y)`` tip position in data coordinates."""
+        ...
+
+    @property
+    def angle(self) -> float:
+        """Pointing direction in degrees counter-clockwise from ``+x``."""
+        ...
+
+    def set_position(self, x: float, y: float) -> None:
+        """Move the arrow tip.
+
+        Parameters
+        ----------
+        x, y : float
+            New tip position in data coordinates.
+        """
+        ...
+
+    def set_angle(self, angle: float) -> None:
+        """Re-aim the arrow.
+
+        Parameters
+        ----------
+        angle : float
+            New pointing direction, degrees counter-clockwise from ``+x``.
+        """
+        ...
+
+
+@runtime_checkable
 class Text(Handle, Protocol):
     """A text label anchored in data coordinates."""
 

@@ -16,7 +16,7 @@ at runtime and can be swapped without touching a single call site.
 | Module | Holds |
 |--------|-------|
 | `canvas.py` | the widgets: `Plot`, `Grid` (of `PanelPlot`s, with colour bars), `ImageView` |
-| `handles.py` | the drawn-object protocols — `Curve`, `Scatter`, `Bars`, `ErrorBars`, `Image`, `ColorBar`, `Region`, `Marker`, `Roi` — plus the `Symbol` and `Orientation` enums |
+| `handles.py` | the drawn-object protocols — `Curve`, `Scatter`, `Bars`, `ErrorBars`, `Image`, `ColorBar`, `Region`, `Marker`, `Roi`, `Arrow`, `Text` — plus the `Symbol` and `Orientation` enums |
 | `style.py` | `Color`, `Pen`, `Brush`, `Colormap`, `LineStyle` and the coercers `to_color` / `to_pen` / `to_brush` / `colormap` / `to_colormap` / `int_color` |
 | `backends/base.py` | the abstract `Canvas`/`Backend` contract a renderer must satisfy |
 | `backends/pyqtgraph_backend.py` | the only module in the tree allowed to import pyqtgraph |
@@ -24,10 +24,28 @@ at runtime and can be swapped without touching a single call site.
 
 `Plot` is verb-first: `plot.line(x, y, pen="red")`, `plot.scatter`, `plot.bars`,
 `plot.image`, `plot.region(...).on_change(cb)`, `plot.vline` / `plot.hline`,
-`plot.set_labels`, `plot.set_log`, `plot.export_csv` / `plot.export_image`.
-Drawing returns a handle, and a handle is mutated through methods
-(`curve.set_data`, `set_pen`, `hide`), never by assigning to a renderer's
-attributes — that is what lets a second backend satisfy the same protocol.
+`plot.arrow`, `plot.text`, `plot.set_labels`, `plot.set_log`, `plot.export_csv` /
+`plot.export_image`. Drawing returns a handle, and a handle is mutated through
+methods (`curve.set_data`, `set_pen`, `hide`), never by assigning to a
+renderer's attributes — that is what lets a second backend satisfy the same
+protocol.
+
+Angles are chiplot's, not a renderer's: `plot.arrow(x, y, angle=...)` measures
+degrees counter-clockwise from `+x` — exactly `degrees(arctan2(dy, dx))` for the
+edge that ends at the tip — and the backend converts to whatever its own arrow
+item means by "angle". A convention that leaks to the call site is a silent bug:
+a mirrored rate arrow between two states reads as the opposite transition, and
+nothing raises.
+
+# Adding to the contract
+
+An abstract method added to `backends/base.py` **must** land with its backend
+implementation in the same change. Python only reports the omission when a
+canvas is instantiated — `Can't instantiate abstract class _PgCanvas without an
+implementation for abstract method 'add_arrow'` — so a half-landed contract does
+not break a test, it breaks *every* plot panel in the application at once, and
+each tool reports it as its own load failure. `test_backend_contract_matches_implementation`
+asserts each concrete class has an empty `__abstractmethods__` for that reason.
 
 # Backend selection
 
