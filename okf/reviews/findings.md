@@ -11087,3 +11087,91 @@ what the panel around it does. New: RF-985..RF-992.
 - **Location:** `chisurf/plugins/burst/burst_2cde/core/computation.py:285-306` (`write_2cde_analysis`: `frame = pd.DataFrame(np.zeros((2 * n + 1, 2)), columns=[column, ""])`, `frame[""] = ""`, `frame.to_csv(..., sep="\t")`) against `chisurf/core/fio/fluorescence/burst_companion.py:96-158` (`write_companion`) and its inverse at `:161-182`
 - **Finding:** the contract module exists precisely so no plugin re-implements this layout ("six writers, six chances to drift" — `burst_companion.py:14-17`), and the project rule in `CLAUDE.md` says to use it. This writer diverges twice: it carries an extra empty column, so **every data row ends in a tab** (the canonical writer puts the trailing tab on the header line only), and it writes `NaN` through `to_csv` as an **empty cell**, against contract point 6 ("every column numeric"). Verified in the `arm64` env: `read_companion('<folder>/2c4/m000.2c4')` raises `ValueError: could not convert string '' to float64 at row 0, column 2` — the repo's canonical reader cannot read the plugin's own output. ChiSurf's pandas-based folder reader tolerates both (`burst.py:699-711`, `pd.to_numeric(errors="coerce")`), which is why it has gone unnoticed. Note the one real decision hiding in the port: `write_companion` maps `NaN` to `0.0` (`:147-150`), and for 2CDE `0.0` is a *plausible* score, not an obvious sentinel — 377 of 2980 bursts in the sample folder are legitimately uncomputable (one empty colour stream). Pick the sentinel deliberately when porting, and state it in the contract.
 - **Fix note:**
+
+### Review 2026-07-29 (6) — the MLE seam (`chisurf/core/fluorescence/mle/`) and the burst-MLE wizard on top of it
+
+Slice: the `fit2x` facade (`fit2x.py`, `parallel.py`, `registry.py`, `irf.py`,
+`setup.py`) and its two consumers — the batch worker (`_mp_worker.py`) and the
+interactive wizard (`burst_mle_analysis/wizard.py`). Verified against tttrlib
+0.27.0 in the `arm64` env.
+
+**The core seam is sound.** `Fit2x` matches the tttrlib registry exactly:
+`PARAMETER_NAMES` reproduces the `params_schema` property order for fit23/24/25,
+`n_parameters` is 4/5/6 so `_parameters`' single pad slot really is fit25's `r0`
+(registry default 0.38 == `_FIT25_R0`), `_constraints`' `-1`/`0` codes hold and
+free the right parameters, and a wrong-length decay is rejected by tttrlib with a
+message rather than overrunning. `fit_matrix_threaded` is bit-identical to the
+single-threaded batch at 2/3/4/8/32 workers, preserves row order for an unordered
+subset, and returns the right empty shape. `irf.interpolate_shift` is continuous
+across integer shifts and correct in sign for both directions.
+
+**The wizard on top of it is not.** `create_fit_instance` was migrated to return
+the `Fit2x` facade, but the plotting/readout code below it still expects the raw
+tttrlib fitter it replaced (`.data`/`.model` attributes) and a `dict` result.
+Driven on real data (`bh_spc132_sm_dna`, `sliding_window_All 0.1500#60/bi4_bur/m000.bur`,
+green detector, `auto_extract_irf_bg`), the one-click Auto path and every
+`update_fit()` raise. The guardrail suite that would have caught it skips on this
+machine. RF-993..RF-1001 below.
+
+### RF-993
+- **Status:** OPEN
+- **Severity:** S1 (every interactive fit in the burst-MLE wizard raises `AttributeError`; the decay/model/residual panels never draw)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:4042-4043` (`plot_fit_result`: `data_full = np.asarray(self.fit.data)`, `model_full = np.asarray(self.fit.model)`) and `:4107-4108` (the residual block, same two reads), against `self.fit` at `:969-972` → `create_fit_instance` at `:3400`, which returns `chisurf.core.fluorescence.mle.fit2x.Fit2x` (`fit2x.py:282-433`)
+- **Finding:** `Fit2x` has no `data` attribute and its `model` attribute is the **`Fit2xModel` enum**, not the model histogram — the facade returns the realised curve on `Fit2xResult.model_curve` (only when `include_model=True`) and keeps the data inside `_problem`. These two lines date from Aug 2025 (`e3a31ecfc9`), when `self.fit` was a raw `tttrlib.Fit23` that did carry `.data`/`.model`; neither the first facade (`0626b5b3d`) nor the registry rework (`2a9740cd9`) ever provided them. Verified end to end in the `arm64` env by driving the real wizard on the BH smFRET DNA burst file: `auto_extract_irf_bg()` → `update_fit()` → `plot_fit_result()` → `AttributeError: 'Fit2x' object has no attribute 'data'`, and a bare `update_fit()` afterwards raises the same. `_run_tail_fit` is the only path that works, because it deliberately fakes the old interface (`:3542`, `SimpleNamespace(data=d, model=model)`) — its comment at `:3503` ("reads `.data`/`.model` unchanged") documents an interface the fit2x path no longer has. Fit `include_model=True` and read `Fit2xResult.model_curve` (and keep the fitted decay the wizard already built), or give `Fit2x` explicit `data`/`model_curve` accessors and stop overloading `.model`.
+- **Fix note:**
+
+### RF-994
+- **Status:** OPEN
+- **Severity:** S1 (the parameter read-back raises: `Fit2xResult` is neither a mapping nor subscriptable)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:3260-3266` (`update_fit_ui(self, res: dict)`: `x = res.get('x', res['x'])` inside a `try`, `except: x = res['x']`, then `two = float(res['twoIstar']) if 'twoIstar' in res else None`), called from `plot_fit_result`'s last line, against `Fit2xResult` (`chisurf/core/fluorescence/mle/fit2x.py:191-279`)
+- **Finding:** the fit2x path passes a `Fit2xResult` dataclass; only `_run_tail_fit` returns the `dict` the signature annotates. Measured on a real `Fit2xResult`: `res.get` → `AttributeError`, `res['x']` → `TypeError: 'Fit2xResult' object is not subscriptable`, `'twoIstar' in res` → `TypeError: argument of type 'Fit2xResult' is not iterable`. The `try`/`except` does not help — the fallback is the same failing expression. This is hidden today only because RF-993 raises three lines earlier; fixing RF-993 alone moves the crash here. Accept both shapes (or normalise the tail fit onto `Fit2xResult`) and read `res.x` / `res.twoIstar`.
+- **Fix note:**
+
+### RF-995
+- **Status:** OPEN
+- **Severity:** S2 (the *rScatter* and *rExp* boxes on the fit page can never be filled — they read a packed layout that no longer exists)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:3285-3288` (`if len(x) > 6: self.r_scatter_result = float(x[6])`, `if len(x) > 7: self.r_exp_result = float(x[7])`) against `Fit2xResult.x` (`chisurf/core/fluorescence/mle/fit2x.py:199-204`) and the labels built at `wizard.py:2518-2523`
+- **Finding:** `Fit2xResult.x` holds the free parameters *and only those* — `len(x)` is 4 for fit23, 5 for fit24, 6 for fit25 (verified) — so both guards are permanently false and the two read-only spin boxes stay at 0. The anisotropies moved to named result columns and are already exposed as `Fit2xResult.r_scatter` / `.r_experimental` (`fit2x.py:261-269`). This is exactly the trap the batch worker documents and avoided: `_mp_worker._record`'s docstring (`:113-118`) says reading them positionally "would silently write NaN into two columns of the `.b?4` export" — the worker was ported, this readout was not. Read them by name.
+- **Fix note:**
+
+### RF-996
+- **Status:** OPEN
+- **Severity:** S2 (the divergence guard is dead on the fit2x path: it always sees `2I* = 0.0`, and its second check raises)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:3475` (`two_istar = float(fit_result.get("twoIstar", 0.0))` inside `try: … except Exception: two_istar = 0.0`) and `:3481` (`model = np.asarray(getattr(self.fit, "model", []), dtype=float)`), in `_fit_diverged` (`:3462-3494`)
+- **Finding:** `Fit2xResult` has no `.get`, so the `AttributeError` is swallowed and `two_istar` is **always** 0.0 — the `not np.isfinite(...) or two_istar < 0.0` test the docstring exists for ("Fit23 returns an invalid quality (2I\* < 0) … plotting that raw blows the display up to ~1e6") can never fire for fit23/24/25. Line 3481 then feeds the `Fit2xModel` enum to `np.asarray(..., dtype=float)`: measured, `ValueError: could not convert string to float: <Fit2xModel.FIT23: 'fit23'>`, uncaught. Both were verified against a real `Fit2xResult` + `Fit2x`. Same root cause as RF-993/RF-994, but a separate site with its own failure mode (silent, then fatal); worth fixing in the same pass and pinning with a test that asserts a diverged fit is still reported as diverged.
+- **Fix note:**
+
+### RF-997
+- **Status:** OPEN
+- **Severity:** S2 (selecting a model the wizard itself offers raises `ValueError`)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:2531-2546` (the combo is populated from `registry.fit_models()`, filtered only by `_is_fit2x_constructible` → `n_patterns == 0`, `:3554-3573`) and `:3400` (`Fit2xModel(self._fit_model_name())`), against the three-member enum at `chisurf/core/fluorescence/mle/fit2x.py:60-62`
+- **Finding:** tttrlib 0.27.0's fit registry publishes five models; `fit26` is correctly filtered out (`n_patterns == 2`), but **`fit_nexp` has `n_patterns == 0`** and is therefore added to the combo as *"Multi-exponential reconvolution (N-exp)"*. `_fit_model_name()` returns it unchanged (it is in `tttrlib.fit_names()`), and `Fit2xModel("fit_nexp")` raises `ValueError: 'fit_nexp' is not a valid Fit2xModel` — verified for both `fit26` and `fit_nexp`. `_on_fit_model_changed` calls `update_fit()` immediately, so the crash is on selection, not on Run. The deeper cause is that `Fit2xModel`/`PARAMETER_NAMES` are hand-authored tables in the very module whose comment (`fit2x.py:76-81`) says a table here "would re-introduce the drift it caused": either derive the accepted set from the registry, or make `_is_fit2x_constructible` also require the name to be one this facade implements.
+- **Fix note:**
+
+### RF-998
+- **Status:** OPEN
+- **Severity:** S2 (the first-load auto-populate swallows every exception into `logging.info`, so a broken plot path looks like an empty panel)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/wizard.py:3136-3137` (`except Exception as exc: cs.logging.info(f"MLE auto-populate skipped: {exc}")`) closing `_auto_populate_plots` (`:3112-3137`), reached via the `QTimer.singleShot` at `:3108`
+- **Finding:** this is how RF-993 shipped invisibly. Verified on real data: the first burst load logs `MLE auto-populate skipped: 'Fit2x' object has no attribute 'data'` at **INFO** and leaves the decay/fit panel blank — a user sees "the plots didn't come up", not a bug. The docstring calls it "best-effort … a failure just leaves the plots blank, exactly as before", but "as before" covered *missing inputs*, which the code already checks explicitly two lines up (`df_bursts`, `_current_tttr()`, `has_irf`). With those pre-checks in place a raised exception is a defect, not a missing prerequisite: log it at `error` with the traceback (`cs.logging.exception`) and surface it through `_set_status`, so the next regression in this path is visible.
+- **Fix note:**
+
+### RF-999
+- **Status:** OPEN
+- **Severity:** S2 (the burst-MLE GUI end-to-end suite — 20 tests, the guardrail for RF-993..RF-996 — never runs, on the author's own machine included)
+- **Location:** `chisurf/plugins/burst/burst_mle_analysis/tests/test_mle_gui_end_to_end.py:19-25` (`BUR = DATA / "sliding_window_All 0.1500#60_3" / "bi4_bur" / "m000.bur"`, `HANDOFF = DATA / "burst_analysis_handoff" / "burst_analysis_handoff.json"`, `pytestmark = pytest.mark.skipif(not (BUR.exists() and HANDOFF.exists()), …)`)
+- **Finding:** both gates are wrong against the dataset that is actually present. The burst-search output directory is `sliding_window_All 0.1500#60` — the `_3` suffix in the hard-coded path does not exist — and `burst_analysis_handoff/burst_analysis_handoff.json` is absent entirely and, more tellingly, is referenced by **no test in the file**: it gates the suite and is then never opened. Verified: `pytest …/test_mle_gui_end_to_end.py -q` → `20 skipped`, reason "BH smFRET DNA test data not available", while `<DATA>/sliding_window_All 0.1500#60/bi4_bur/m000.bur` exists and the fixture runs against it when the path is corrected (that is how RF-993 was reproduced). Point `BUR` at the real directory, drop the unused `HANDOFF` gate, and re-run — the suite fails at `HEAD`, which is the point.
+- **Fix note:**
+
+### RF-1000
+- **Status:** OPEN
+- **Severity:** S2 (fit25's selected lifetime is reported under the name of candidate 1, in `as_dict()` and in the `.b?4` column it feeds)
+- **Location:** `chisurf/core/fluorescence/mle/fit2x.py:69` (`Fit2xModel.FIT25: ("tau1", "tau2", "tau3", "tau4", "gamma")`) and `:240-243` (`as_dict`, `{name: float(self.x[i]) for i, name in enumerate(names)}`), with the per-parameter columns at `chisurf/plugins/burst/burst_mle_analysis/_mp_worker.py:162-164`
+- **Finding:** tttrlib's fit25 **overwrites** `x[0]` with the best-describing lifetime rather than leaving the candidate there. Verified: fitting a 2.5 ns decay with candidates `[0.5, 1.5, 2.5, 4.0]` returns `x = [2.5, 1.5, 2.5, 4.0, 0.0, 0.38]` and `selected_index = 2`, so `as_dict()` reports `{'tau1': 2.5, …}` although the caller passed `tau1 = 0.5`. `Fit2xResult.tau` and the enum docstring are right ("the best-describing lifetime is returned in `x[0]`"); it is the *name* that is wrong, and it propagates into a burst-companion column called `tau1 (green)`. Name slot 0 for what it holds (e.g. `tau`), and expose the four candidates or `selected_index` if a caller needs to know which one won.
+- **Fix note:**
+
+### RF-1001
+- **Status:** OPEN
+- **Severity:** S3 (the documented default for `convolution_stop` is not the one tttrlib uses)
+- **Location:** `chisurf/core/fluorescence/mle/fit2x.py:133-135` (`convolution_stop : int, optional — … When omitted the tttrlib default (half the array length) is used.`) against the `fit_setup` registry entry (`convolution_stop`, `default: -1`, *"-1 uses the full IRF length"*) reached by `tttrlib.setup_vector` at `:335`
+- **Finding:** omitting `convolution_stop` leaves the slot at `-1`, which tttrlib documents as the **full** IRF length, not half of it — verified: `tttrlib.setup_vector("fit23", dt=0.05, period=16.0)` → `[0.05, 16.0, 1.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0]`. Half the array length was the old fit2x constructor default and the docstring was carried over. The distinction is not cosmetic for a VV/VH histogram, where "the array" is two channels: a reader following this docstring would size the convolution to one channel. Restate the default as the registry does, and say that `-1` is reachable by passing it explicitly.
+- **Fix note:**
