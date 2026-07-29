@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
-from .fit2x import PARAMETER_NAMES, Fit2x, Fit2xModel, Fit2xSettings
+from .fit2x import Fit2x, Fit2xModel, Fit2xSettings, parameter_names_of
 
 
 def fit_matrix_threaded(
@@ -62,7 +62,7 @@ def fit_matrix_threaded(
     """
     rows = np.asarray(rows)
     n = len(rows)
-    width = len(PARAMETER_NAMES[model]) + 1
+    width = len(parameter_names_of(model)) + 1
     params = np.empty((n, width), dtype=np.float64)
     if n == 0:
         return params

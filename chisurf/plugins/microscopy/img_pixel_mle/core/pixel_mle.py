@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 from chisurf.core.fluorescence.mle import Fit2xModel, Fit2xSettings
-from chisurf.core.fluorescence.mle.fit2x import PARAMETER_NAMES
+from chisurf.core.fluorescence.mle.fit2x import parameter_names_of
 from chisurf.core.fluorescence.mle.parallel import fit_matrix_threaded
 
 logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class PixelMleSettings:
     #: Which fit2x estimator to run per pixel (``"fit23"``/``"fit24"``/``"fit25"``).
     fit_model: str = "fit23"
     #: Model-generic start vector / fixed mask, ordered as the estimator's free
-    #: parameters (``PARAMETER_NAMES``). When ``None`` the fit23 ``tau``/``gamma``/
+    #: parameters (:func:`parameter_names_of`). When ``None`` the fit23 ``tau``/``gamma``/
     #: ``r0``/``rho`` fields below are used (back-compat for fit23 callers).
     initial_values: Sequence[float] | None = None
     fixed_flags: Sequence[int] | None = None
@@ -212,7 +212,7 @@ def _initial_and_fixed(s: PixelMleSettings) -> tuple[np.ndarray, np.ndarray]:
     otherwise falls back to the fit23 ``tau``/``gamma``/``r0``/``rho`` fields so
     existing fit23 callers keep working unchanged.
     """
-    names = PARAMETER_NAMES[Fit2xModel(s.fit_model)]
+    names = parameter_names_of(Fit2xModel(s.fit_model))
     if s.initial_values is not None:
         x0 = np.asarray(s.initial_values, dtype=np.float64)
         fixed = (
@@ -386,7 +386,7 @@ def fit_pixel_lifetimes(
 
     # Run the fits (serial or across processes).
     model = Fit2xModel(settings.fit_model)
-    names = PARAMETER_NAMES[model]
+    names = parameter_names_of(model)
     n_workers = _resolve_workers(settings.n_workers)
     if len(fit_rows) < _MIN_ROWS_FOR_THREADS:
         n_workers = 1  # threading overhead not worth it for a handful of pixels

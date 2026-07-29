@@ -17,7 +17,7 @@ from chisurf.core.fluorescence.mle import (
     Fit2xSettings,
     assemble_vv_vh,
 )
-from chisurf.core.fluorescence.mle.fit2x import HAVE_TTTRLIB, PARAMETER_NAMES
+from chisurf.core.fluorescence.mle.fit2x import HAVE_TTTRLIB, parameter_names_of
 
 
 def test_assemble_vv_vh_stacks_channels():
@@ -92,9 +92,9 @@ def test_settings_area_normalises_the_background():
 
 
 def test_parameter_name_tables():
-    assert PARAMETER_NAMES[Fit2xModel.FIT23] == ("tau", "gamma", "r0", "rho")
-    assert PARAMETER_NAMES[Fit2xModel.FIT24][0] == "tau1"
-    assert PARAMETER_NAMES[Fit2xModel.FIT25][-1] == "gamma"
+    assert parameter_names_of(Fit2xModel.FIT23) == ("tau", "gamma", "r0", "rho")
+    assert parameter_names_of(Fit2xModel.FIT24)[0] == "tau1"
+    assert parameter_names_of(Fit2xModel.FIT25)[-1] == "gamma"
 
 
 def _simulate_anisotropy_decay(n, dt, tau, rho, r0, n_photons, seed):

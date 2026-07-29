@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import functools
 from collections.abc import Sequence
 
 import numpy as np
@@ -62,16 +63,65 @@ class Fit2xModel(str, enum.Enum):
     FIT25 = "fit25"
 
 
-#: Ordered names of the *free* input parameters accepted by each estimator.
-PARAMETER_NAMES: dict[Fit2xModel, tuple[str, ...]] = {
-    Fit2xModel.FIT23: ("tau", "gamma", "r0", "rho"),
-    Fit2xModel.FIT24: ("tau1", "gamma", "tau2", "A2", "offset"),
-    Fit2xModel.FIT25: ("tau1", "tau2", "tau3", "tau4", "gamma"),
+#: Parameters this facade supplies itself, so callers neither pass nor receive
+#: them.  ``fit25``'s ``r0`` is an instrument constant rather than something to
+#: fit; the *value* is not restated here, it is read from the registry.
+_SUPPLIED_BY_FACADE: dict[str, tuple[str, ...]] = {
+    Fit2xModel.FIT25.value: ("r0",),
 }
 
-#: Fundamental anisotropy used for ``fit25``, which takes ``r0`` as a fixed input
-#: rather than a fitted parameter.
-_FIT25_R0 = 0.38
+
+@functools.lru_cache(maxsize=None)
+def registry_defaults_of(model: Fit2xModel | str) -> tuple[float, ...]:
+    """Default value of every parameter, in slot order, from the registry.
+
+    tttrlib's registry already states each parameter's default, range, unit and
+    whether it is fixed by default. Restating any of that here would be a second
+    copy that drifts — which is exactly what the packed-vector layouts this
+    module used to carry did.
+
+    Parameters
+    ----------
+    model : Fit2xModel or str
+        Registry name of the estimator.
+
+    Returns
+    -------
+    tuple of float
+        One default per parameter slot, in declaration order.
+    """
+    name = Fit2xModel(model).value
+    properties = tttrlib.registry("fit")[name]["params_schema"]["properties"]
+    return tuple(
+        float(properties[p].get("default", 0.0))
+        for p in tttrlib.decay_fit_parameter_names(name)
+    )
+
+
+@functools.lru_cache(maxsize=None)
+def parameter_names_of(model: Fit2xModel | str) -> tuple[str, ...]:
+    """Ordered names of the *free* input parameters a caller supplies.
+
+    Read from tttrlib's registry rather than restated here, minus whatever
+    :data:`_SUPPLIED_BY_FACADE` says this layer fills in on the caller's behalf.
+    A hand-written copy of this list is what previously let the facade and the
+    library disagree about which slot means what — and a disagreement about slot
+    order is silent, because every slot is a ``float``.
+
+    Parameters
+    ----------
+    model : Fit2xModel or str
+        Registry name of the estimator.
+
+    Returns
+    -------
+    tuple of str
+        Parameter names, in the order the flat vectors use.
+    """
+    name = Fit2xModel(model).value
+    names = tuple(tttrlib.decay_fit_parameter_names(name))
+    supplied = _SUPPLIED_BY_FACADE.get(name, ())
+    return tuple(n for n in names if n not in supplied)
 
 # There is deliberately no model-to-class table and no packed-vector layout here
 # any more. Both used to be necessary because each estimator was its own class
@@ -198,7 +248,7 @@ class Fit2xResult:
         Which estimator produced this result.
     x : numpy.ndarray
         The optimised parameters, and only those, ordered as
-        :data:`PARAMETER_NAMES`.  Derived quantities used to share this array —
+        :func:`parameter_names_of`.  Derived quantities used to share this array —
         ``x[6]`` and ``x[7]`` held anisotropies for ``fit23`` — which meant every
         caller had to know a per-estimator layout.  They now live in
         :attr:`results` under the names tttrlib publishes.
@@ -239,7 +289,7 @@ class Fit2xResult:
 
     def as_dict(self) -> dict[str, float]:
         """Return the named free parameters as a ``{name: value}`` mapping."""
-        names = PARAMETER_NAMES[self.model_kind]
+        names = parameter_names_of(self.model_kind)
         return {name: float(self.x[i]) for i, name in enumerate(names)}
 
     # -- convenience accessors shared across the family -----------------------
@@ -254,9 +304,13 @@ class Fit2xResult:
 
     @property
     def gamma(self) -> float:
-        """Scattered/background fraction of the fit."""
-        idx = 4 if self.model_kind is Fit2xModel.FIT25 else 1
-        return float(self.x[idx])
+        """Scattered/background fraction of the fit.
+
+        Looked up by name. It used to be ``x[4]`` for ``fit25`` and ``x[1``]
+        otherwise — a hard-coded index per model, which is the one thing the
+        registry exists to stop anyone writing.
+        """
+        return self.as_dict()["gamma"]
 
     @property
     def r_scatter(self) -> float:
@@ -347,7 +401,7 @@ class Fit2x:
     @property
     def parameter_names(self) -> tuple[str, ...]:
         """Ordered names of the free input parameters for this estimator."""
-        return PARAMETER_NAMES[self.model]
+        return parameter_names_of(self.model)
 
     def fit(
         self,
@@ -409,12 +463,13 @@ class Fit2x:
 
         ``fit25`` is the only asymmetry: it takes ``r0`` as a fixed instrument
         constant rather than something a caller tunes, so it is supplied here
-        rather than being demanded of every caller.
+        rather than being demanded of every caller. Its value comes from the
+        registry — this module does not carry a copy of it.
         """
         values = [float(v) for v in x0[: self._n_parameters]]
+        defaults = registry_defaults_of(self.model)
         while len(values) < self._n_parameters:
-            values.append(
-                _FIT25_R0 if self.model is Fit2xModel.FIT25 else 0.0)
+            values.append(defaults[len(values)])
         return values
 
     def _constraints(self, fixed_arr: np.ndarray):
@@ -455,7 +510,7 @@ class Fit2x:
             ``(n_rows, 2*n_channels)`` matrix of VV/VH-format histograms.
         initial_values : sequence of float
             Shared start values for every row — the free parameters named in
-            :data:`PARAMETER_NAMES` for this estimator (``[tau, gamma, r0, rho]``
+            :func:`parameter_names_of` for this estimator (``[tau, gamma, r0, rho]``
             for fit23; ``[tau1, gamma, tau2, A2, offset]`` for fit24;
             ``[tau1, tau2, tau3, tau4, gamma]`` for fit25).
         fixed : sequence of int, optional
@@ -489,8 +544,8 @@ class Fit2x:
         # them: fit25's r0 is an instrument constant supplied by
         # :meth:`_parameters`, not something a caller passed in or can read back
         # by position. Returning it would shift every column a caller indexes by
-        # :data:`PARAMETER_NAMES`.
-        n_named = len(PARAMETER_NAMES[self.model])
+        # :func:`parameter_names_of`.
+        n_named = len(parameter_names_of(self.model))
         out = np.empty((n_rows, n_named + 1), dtype=np.float64)
         out[:, :n_named] = parameters[:, :n_named]
         out[:, n_named] = np.asarray(batch.objective, dtype=np.float64)

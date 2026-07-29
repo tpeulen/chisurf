@@ -151,7 +151,7 @@ def test_fit_model_selector_rebuilds_parameter_rows():
     # The registry-driven selector: switching the fit model re-emits the
     # parameter editor with exactly that model's free parameters, and editing a
     # slot writes into the active model's start vector.
-    from chisurf.core.fluorescence.mle.fit2x import PARAMETER_NAMES, Fit2xModel
+    from chisurf.core.fluorescence.mle.fit2x import parameter_names_of, Fit2xModel
     from chisurf.plugins.microscopy.img_pixel_mle.gui.view_model import (
         PixelMleViewModel,
     )
@@ -162,13 +162,13 @@ def test_fit_model_selector_rebuilds_parameter_rows():
 
     # default fit23 → four parameter rows (tau, gamma, r0, rho)
     assert vm.fit_model == "fit23"
-    assert len(_param_value_attrs(vm.view_spec())) == len(PARAMETER_NAMES[Fit2xModel.FIT23])
+    assert len(_param_value_attrs(vm.view_spec())) == len(parameter_names_of(Fit2xModel.FIT23))
 
     # selecting fit25 asks the host to rebuild and re-emits five rows
     vm.set_fit_model("fit25")
     assert "rebuild" in events
     assert vm.fit_model == "fit25"
-    assert len(_param_value_attrs(vm.view_spec())) == len(PARAMETER_NAMES[Fit2xModel.FIT25])
+    assert len(_param_value_attrs(vm.view_spec())) == len(parameter_names_of(Fit2xModel.FIT25))
 
     # editing slot 3 (tau4) writes into the fit25 start vector, and each model
     # keeps its own edits independently

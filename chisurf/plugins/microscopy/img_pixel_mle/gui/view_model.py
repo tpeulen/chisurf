@@ -22,7 +22,7 @@ from collections.abc import Callable
 
 import numpy as np
 
-from chisurf.core.fluorescence.mle.fit2x import PARAMETER_NAMES, Fit2xModel
+from chisurf.core.fluorescence.mle.fit2x import parameter_names_of, Fit2xModel
 from chisurf.plugins.microscopy.mle_common.base import MleObserverMixin, scalar
 
 from ..api.models import PixelMleSettings as ApiSettings
@@ -144,7 +144,7 @@ class PixelMleViewModel(MleObserverMixin):
 
     def _fit_param_panel_dict(self) -> dict:
         """Build a value/fix row per free parameter of the selected model."""
-        names = PARAMETER_NAMES[Fit2xModel(self._fit_model)]
+        names = parameter_names_of(Fit2xModel(self._fit_model))
         sections = []
         for i, nm in enumerate(names):
             meta = _PARAM_META.get(nm, {})
@@ -183,7 +183,7 @@ class PixelMleViewModel(MleObserverMixin):
     def _ensure_model_params(self, model: str) -> tuple[list[float], list[int]]:
         """Return the (start-vector, fixed-mask) lists for *model*, seeded on first use."""
         if model not in self._model_params:
-            names = PARAMETER_NAMES[Fit2xModel(model)]
+            names = parameter_names_of(Fit2xModel(model))
             x0 = [float(_PARAM_META.get(n, {}).get("default", 1.0)) for n in names]
             fx = list(_MODEL_FIXED_DEFAULT.get(model, [0] * len(names)))
             if len(fx) != len(names):

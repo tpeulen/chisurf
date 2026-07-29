@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from .fit2x import (
     HAVE_TTTRLIB,
-    PARAMETER_NAMES,
+    parameter_names_of,
     Fit2x,
     Fit2xModel,
     Fit2xResult,
@@ -25,7 +25,7 @@ __all__ = [
     "Fit2xModel",
     "Fit2xResult",
     "Fit2xSettings",
-    "PARAMETER_NAMES",
+    "parameter_names_of",
     "assemble_vv_vh",
     "DetectorSetup",
     "parse_detector_setup",
