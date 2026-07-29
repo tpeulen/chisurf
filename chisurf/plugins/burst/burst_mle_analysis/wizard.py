@@ -15,6 +15,7 @@ from qtpy import QtWidgets, QtCore
 from qtpy.QtWidgets import QFileDialog
 import pyqtgraph as pg
 import numpy as np
+from types import SimpleNamespace
 import pandas as pd
 
 import json
@@ -3437,7 +3438,18 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if self.fit_model == "tail":
             res = self._run_tail_fit(d, det)
         else:
-            res = self.fit(data=d, initial_values=x0, fixed=fixed)
+            res = self.fit(data=d, initial_values=x0, fixed=fixed,
+                           include_model=True)
+            # What was fitted and what the model predicts belong to the *result*,
+            # not to the fitter: ``Fit2x`` is reusable and holds no per-fit state,
+            # so the curves are recorded here for the plot rather than read back
+            # off the fitter afterwards.
+            self._fit_view = SimpleNamespace(
+                data=d,
+                model=np.asarray(res.model_curve, dtype=float)
+                if res.model_curve is not None
+                else np.zeros_like(d),
+            )
         self.plot_fit_result(res)
         diverged = self._fit_diverged(res)
         if diverged is None:
@@ -3478,10 +3490,15 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if not np.isfinite(two_istar) or two_istar < 0.0:
             return "invalid fit quality (2I* < 0) — gamma is unconstrained; " \
                    "re-fix gamma or use a measured IRF/background"
-        model = np.asarray(getattr(self.fit, "model", []), dtype=float)
+        # The curves come from the recorded view, never from the fitter. A
+        # ``getattr(self.fit, "model", [])`` here was *worse* than the plain
+        # attribute read it replaced: ``Fit2x.model`` exists and is the estimator
+        # *kind*, so the default never fired and numpy was handed an enum.
+        view = getattr(self, "_fit_view", None)
+        model = np.asarray(getattr(view, "model", []), dtype=float)
         if model.size and not np.all(np.isfinite(model)):
             return "model has non-finite values"
-        data = np.asarray(getattr(self.fit, "data", []), dtype=float)
+        data = np.asarray(getattr(view, "data", []), dtype=float)
         s_dat = float(np.nansum(data)) if data.size else 0.0
         s_mod = float(np.nansum(model)) if model.size else 0.0
         if s_dat > 0.0 and s_mod > 20.0 * s_dat:
@@ -3538,8 +3555,10 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         model = np.asarray(res.model, dtype=float)
         if model.size != d.size:
             model = np.zeros_like(d)
-        # Expose the fit through the same interface the fit2x path uses.
-        self._fit = SimpleNamespace(data=d, model=model)
+        # Record the curves for the plot. This must NOT assign ``self._fit``:
+        # that attribute caches the reusable ``Fit2x`` instance, so replacing it
+        # with a namespace made every later fit2x fit call a namespace and fail.
+        self._fit_view = SimpleNamespace(data=d, model=model)
         recovered = list(res.lifetimes) if getattr(res, "lifetimes", None) else lifetimes
         # x in schema order: tail_start then the recovered lifetimes.
         x = [float(tail_start)] + [float(v) for v in recovered]
@@ -4039,8 +4058,11 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             return
 
         # plot data and model in the bottom panel, but only within channel-specific ranges
-        data_full = np.asarray(self.fit.data)
-        model_full = np.asarray(self.fit.model)
+        view = getattr(self, "_fit_view", None)
+        if view is None:
+            return
+        data_full = np.asarray(view.data, dtype=float)
+        model_full = np.asarray(view.model, dtype=float)
         n = len(data_full) // 2
         vv_sb, vv_eb, vh_sb, vh_eb = self._get_channel_ranges_bins()
         # clamp
@@ -4104,8 +4126,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         self.combined_plot.plot(bg_rng, pen='b', name='Background')
 
         # compute & plot weighted residuals
-        data = np.asarray(self.fit.data, dtype=float)
-        model = np.asarray(self.fit.model, dtype=float)
+        data = np.asarray(view.data, dtype=float)
+        model = np.asarray(view.model, dtype=float)
 
         resid = np.zeros_like(data, dtype=float)
         mask = data > 0
