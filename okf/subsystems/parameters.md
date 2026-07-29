@@ -187,6 +187,20 @@ Targets appear twice: grouped as the model presents them
 parameters". A fit with nothing to offer says so rather than opening an empty
 popup.
 
+Every parameter RPC — value, fixed, bounds, link, unlink — is addressed through
+one helper (`ParameterActionsMixin._rpc_address`) and carries the parameter's
+**UUID** plus its owner's. A name and a fit only resolve for parameters that live
+in a fit, so an out-of-fit parameter came back `parameter '<name>' not found`
+(unlinking an ndX constant) or, worse, matched a same-named parameter in whichever
+fit was asked. Unlinking runs through the same local-echo/RPC/trace path as the
+edits (`apply_unlink`), so a host that declares its parameters backend-free
+(`remote=False`, ndX's constants) unlinks locally instead of failing.
+
+**A table shows what the fit will move.** A linked follower is drawn *italic* and
+its value dimmed; a fixed parameter's value is dimmed. The dim colour comes from
+the palette's disabled role, so it follows the theme rather than assuming a
+background. The parameter tables and the Global View table share the rule.
+
 The refresh path runs the other way and is **thread-bound**: a server-side change
 (a fit run, linked-parameter propagation, any RPC that finalizes a model) reaches
 `parameter.controller.finalize()` on the RPC thread, which runs no Qt event loop.

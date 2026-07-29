@@ -211,9 +211,12 @@ def test_cell_edit_reaches_the_backend_and_the_trace(table, params, monkeypatch)
     )
 
     assert params[0].value == 4.25, "the local echo must still happen"
-    assert ("set_parameter_value", {
-        "parameter_name": "p1", "value": 4.25, "fit_uid": client.calls[0][1]["fit_uid"],
-    }) in client.calls
+    # The parameter is addressed by UUID: a name plus a fit only resolves for
+    # parameters that live in a fit, and these do not.
+    sent = dict(next(kwargs for name, kwargs in client.calls if name == "set_parameter_value"))
+    assert sent["parameter_name"] == "p1"
+    assert sent["value"] == 4.25
+    assert sent["parameter_uid"] == str(params[0].unique_identifier)
     actions = [a for a, _ in traced]
     assert "parameter_value" in actions
     payload = dict(traced[actions.index("parameter_value")][1])
@@ -222,8 +225,8 @@ def test_cell_edit_reaches_the_backend_and_the_trace(table, params, monkeypatch)
 
 def test_checkbox_edit_reaches_the_backend_and_the_trace(table, params, monkeypatch):
     """The fixed flag takes the same route as the value."""
-    from chisurf.gui.widgets.fitting import parameter_widgets
     from chisurf.gui.autoform.sections.parameter_table import COL_FIXED
+    from chisurf.gui.widgets.fitting import parameter_widgets
 
     client = _RecordingClient()
     traced = []
@@ -413,5 +416,6 @@ def test_proxy_controller_reports_parameter_context(params, qapp):
         "fit_uid",
         "local_fit_uid",
         "parameter_uid",
+        "owner_uid",
     }
     assert ctx["parameter_uid"] == str(params[0].unique_identifier)

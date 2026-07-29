@@ -2,6 +2,26 @@
 
 ## 2026-07-29
 
+* **Unlinking an out-of-fit parameter could not work, and a table did not say
+  which numbers a fit would move.** Reported from the same session:
+  `RemoteError: parameter 'gG/gR' not found` on every unlink from the ndX
+  parameter table. Unlinking addressed the backend by *name plus fit*, which an
+  ndX constant does not have — while the checkbox went on showing it as
+  unlinked. Every parameter RPC now goes through one address helper
+  (`ParameterActionsMixin._rpc_address`) carrying the parameter's **UUID** and
+  its owner's, resolved through the [group registry](/subsystems/parameters.md)
+  for parameters that belong to no fit; the same address is the reason a
+  same-named parameter in another fit can no longer be hit by accident.
+  Unlinking is now one method (`apply_unlink`) on the same local-echo/RPC/trace
+  path as the edits, so the four editors that each did it slightly differently
+  agree, and a host that declares its parameters backend-free (ndX's constants,
+  `remote=False`) unlinks locally instead of failing. **Tables now show link and
+  fixed state**: a linked follower is italic with a dimmed value, a fixed
+  parameter's value is dimmed, in the parameter tables and the Global View
+  table alike; the colour comes from the palette's disabled role so it follows
+  the theme. Rendered and inspected. 6 tests
+  (`test/gui/test_parameter_table_link_state.py`); two tests that pinned the old
+  name+fit address updated. 171 passed across the parameter/table/client suites.
 * **A fit reported no parameters at all until something updated it, and the link
   menu believed it.** Reported from a live session: **Link gG/gR to → Lifetime -
   Dummy-sample → All parameters** opened an empty submenu. Asked over RPC, the

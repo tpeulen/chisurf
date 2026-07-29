@@ -291,6 +291,17 @@ class GlobalParameterTableModel(QtCore.QAbstractTableModel):
             if col in (COL_ROW, COL_FIXED, COL_BOUNDS_ON, COL_LINK):
                 return int(QtCore.Qt.AlignCenter)
 
+        # Same reading as the parameter tables: italic where the value is
+        # borrowed from another parameter, dimmed where the fit will not move it.
+        if role == QtCore.Qt.FontRole and self._is_follower(p):
+            font = QtGui.QFont()
+            font.setItalic(True)
+            return font
+        if role == QtCore.Qt.ForegroundRole and col == COL_VALUE:
+            if bool(getattr(p, "fixed", False)) or self._is_follower(p):
+                palette = QtWidgets.QApplication.palette()
+                return palette.brush(QtGui.QPalette.Disabled, QtGui.QPalette.Text)
+
         return None
 
     def _link_target_row(self, r: int) -> Optional[int]:

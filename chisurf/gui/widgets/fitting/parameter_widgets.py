@@ -346,24 +346,8 @@ class FittingParameterDetailPopup(QtWidgets.QDialog):
                 pass
 
     def _on_unlink(self):
-        fp = self.controller.fitting_parameter
-        source = self.controller._parameter_context(fp)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.unlink_parameter(
-                parameter_name=str(fp.name),
-                fit_uid=source.get("fit_uid"),
-            )
-        self.controller._trace_operation(
-            "parameter_unlink",
-            f"unlink parameter '{fp.name}' in fit '{source['fit_group']}' / local '{source['local_fit']}'",
-            {
-                "parameter_name": str(fp.name),
-                **source,
-            },
-        )
+        self.controller.apply_unlink()
         self.controller.finalize()
-        self.controller._update_linked_parameters()
         self.refresh_from_model()
 
     def _on_fixed_toggled(self):
@@ -773,7 +757,47 @@ class ParameterActionsMixin:
             "fit_uid": str(group_uid),
             "local_fit_uid": str(local_uid),
             "parameter_uid": str(param_uid),
+            "owner_uid": str(local_uid or group_uid or self._owning_group_uid(parameter)),
         }
+
+    @staticmethod
+    def _owning_group_uid(parameter) -> str:
+        """UUID of the registered out-of-fit group holding ``parameter``, or ``""``.
+
+        A parameter that belongs to no fit — an ndX constant, a plugin's working
+        model — still has an owner, and the backend needs it to know what to
+        finalise after the parameter changes.
+        """
+        try:
+            from chisurf.core.parameter_group_registry import (
+                iter_registered_parameter_groups,
+            )
+
+            for _owner_id, _label, group in iter_registered_parameter_groups():
+                for p in getattr(group, "parameters_all", None) or []:
+                    if p is parameter:
+                        return str(getattr(group, "unique_identifier", "") or "")
+        except Exception:
+            chisurf.logging.exception("could not resolve the group owning a parameter")
+        return ""
+
+    def _rpc_address(self, parameter, source: typing.Dict[str, str] = None) -> typing.Dict[str, typing.Any]:
+        """Return the keyword arguments that address ``parameter`` on the backend.
+
+        Every parameter RPC takes the same address, and it has to carry the
+        parameter's **UUID**: a name plus a fit only resolves for parameters that
+        live in a fit, so an out-of-fit parameter (an ndX constant, a plugin's
+        working model) came back "parameter '<name>' not found" — or, worse,
+        matched a same-named parameter in whichever fit was asked.
+        """
+        source = self._parameter_context(parameter) if source is None else source
+        address = {
+            "parameter_name": str(getattr(parameter, "name", "")),
+            "fit_uid": source.get("fit_uid") or None,
+            "parameter_uid": source.get("parameter_uid") or None,
+            "owner_uid": source.get("owner_uid") or None,
+        }
+        return {k: v for k, v in address.items() if v is not None}
 
     def _trace_operation(self, action_type: str, summary: str, payload: typing.Dict[str, typing.Any] = None) -> None:
         payload_data = payload or {}
@@ -861,11 +885,7 @@ class ParameterActionsMixin:
             fp.value = value
 
         def rpc(fc, source):
-            fc.set_parameter_value(
-                parameter_name=str(fp.name),
-                value=value,
-                fit_uid=source.get("fit_uid"),
-            )
+            fc.set_parameter_value(value=value, **self._rpc_address(fp, source))
 
         self._apply(
             fp,
@@ -894,11 +914,7 @@ class ParameterActionsMixin:
             fp.fixed = fixed
 
         def rpc(fc, source):
-            fc.set_parameter_fixed(
-                parameter_name=str(fp.name),
-                fixed=fixed,
-                fit_uid=source.get("fit_uid"),
-            )
+            fc.set_parameter_fixed(fixed=fixed, **self._rpc_address(fp, source))
 
         self._apply(
             fp,
@@ -923,11 +939,7 @@ class ParameterActionsMixin:
             fp.bounds_on = bounds_on
 
         def rpc(fc, source):
-            fc.set_parameter_bounds_on(
-                parameter_name=str(fp.name),
-                bounds_on=bounds_on,
-                fit_uid=source.get("fit_uid"),
-            )
+            fc.set_parameter_bounds_on(bounds_on=bounds_on, **self._rpc_address(fp, source))
 
         self._apply(
             fp,
@@ -957,11 +969,7 @@ class ParameterActionsMixin:
             fp.bounds = (lower, upper)
 
         def rpc(fc, source):
-            fc.set_parameter_bounds(
-                parameter_name=str(fp.name),
-                bounds=(lower, upper),
-                fit_uid=source.get("fit_uid"),
-            )
+            fc.set_parameter_bounds(bounds=(lower, upper), **self._rpc_address(fp, source))
 
         self._apply(
             fp,
@@ -971,6 +979,40 @@ class ParameterActionsMixin:
             f"set bounds for parameter '{fp.name}' to ({lower}, {upper})",
             {"parameter_name": str(fp.name), "lower": lower, "upper": upper},
         )
+
+    def apply_unlink(self, parameter=None) -> None:
+        """Drop a parameter's link (local echo + RPC + trace).
+
+        The one place unlinking happens, for the same reason the edits share
+        :meth:`_apply`: every editor was doing it slightly differently, and the
+        table's version reached the backend with a name and a fit — which an
+        out-of-fit parameter does not have, so unlinking an ndX constant failed
+        with "parameter '<name>' not found" while the checkbox went right on
+        looking unlinked.
+        """
+        fp = self._target(parameter)
+
+        def write():
+            fp.link = None
+
+        def rpc(fc, source):
+            result = fc.unlink_parameter(**self._rpc_address(fp, source))
+            if isinstance(result, dict) and not result.get("ok", True):
+                chisurf.logging.warning(
+                    "could not unlink '%s' on the backend: %s",
+                    fp.name,
+                    result.get("error", "unknown error"),
+                )
+
+        self._apply(
+            fp,
+            write,
+            rpc,
+            "parameter_unlink",
+            f"unlink parameter '{fp.name}'",
+            {"parameter_name": str(fp.name)},
+        )
+        self._update_linked_parameters()
 
     def _build_details_tooltip_text(self) -> str:
         fp = self.fitting_parameter
@@ -1923,38 +1965,8 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 # parameter via ``fp.link``. Clear the link so only this
                 # parameter becomes free again.
                 try:
-                    source_group, source_local = self._locate_parameter(fp)
-                    source_group_uid, source_local_uid, source_param_uid = self._locate_parameter_uids(fp)
-                    _, source_local_idx = self._parameter_indices(fp)
-                    old_link = getattr(fp, "link", None)
-                    old_target_parameter = str(getattr(old_link, "name", "")) if old_link is not None else ""
-                    old_target_group, old_target_local = self._locate_parameter(old_link) if old_link is not None else ("", "")
-                    old_target_group_uid, old_target_local_uid, old_target_param_uid = self._locate_parameter_uids(old_link) if old_link is not None else ("", "", "")
-                    get_fitting_client().unlink_parameter(
-                        parameter_name=str(fp.name),
-                        fit_uid=source_group_uid,
-                        local_idx=source_local_idx if source_local_idx >= 0 else None,
-                    )
-                    self._trace_operation(
-                        "parameter_unlink",
-                        f"unlink parameter '{fp.name}' in fit '{source_group}' / local '{source_local}'",
-                        {
-                            "parameter_name": str(fp.name),
-                            "fit_group": source_group,
-                            "local_fit": source_local,
-                            "fit_uid": source_group_uid,
-                            "local_fit_uid": source_local_uid,
-                            "parameter_uid": source_param_uid,
-                            "old_target_parameter": old_target_parameter,
-                            "old_target_fit_group": old_target_group,
-                            "old_target_local_fit": old_target_local,
-                            "old_target_fit_uid": old_target_group_uid,
-                            "old_target_local_fit_uid": old_target_local_uid,
-                            "old_target_parameter_uid": old_target_param_uid,
-                        },
-                    )
+                    self.apply_unlink(fp)
                     # Update link/value state and role visuals for all related rows.
-                    self._update_linked_parameters()
                     self._refresh_group_link_visuals()
                 except Exception:
                     try:

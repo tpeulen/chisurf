@@ -477,7 +477,43 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
                 return int(QtCore.Qt.AlignCenter)
         if role == QtCore.Qt.ToolTipRole:
             return self._tooltip(col_id, param)
+        if role == QtCore.Qt.FontRole:
+            return self._font(param)
+        if role == QtCore.Qt.ForegroundRole:
+            return self._foreground(col_id, param)
         return None
+
+    @staticmethod
+    def _is_follower(param: FittingParameter) -> bool:
+        """``True`` when ``param`` takes its value from another parameter."""
+        return bool(getattr(param, "is_linked", False)) and not bool(
+            getattr(param, "is_link_master", False)
+        )
+
+    @staticmethod
+    def _font(param: FittingParameter):
+        """Italic for a linked follower, so a borrowed value reads as borrowed."""
+        if not ParameterGroupTableModel._is_follower(param):
+            return None
+        font = QtGui.QFont()
+        font.setItalic(True)
+        return font
+
+    @staticmethod
+    def _foreground(col_id: str, param: FittingParameter):
+        """Dim the value a fit will not move — a fixed or linked parameter.
+
+        Only the value cell: greying the name would say "this row is off", and a
+        fixed parameter is very much still part of the model. The colour comes
+        from the palette's disabled role, so it follows the theme instead of
+        picking a grey that only works on one background.
+        """
+        if col_id != "value":
+            return None
+        if not (bool(getattr(param, "fixed", False)) or ParameterGroupTableModel._is_follower(param)):
+            return None
+        palette = QtWidgets.QApplication.palette()
+        return palette.brush(QtGui.QPalette.Disabled, QtGui.QPalette.Text)
 
     @staticmethod
     def _display_value(col_id: str, kind: str, param: FittingParameter) -> str:
@@ -961,26 +997,12 @@ class ParameterGroupTableWidget(QtWidgets.QWidget):
         menu.addSeparator()
 
     def _unlink(self, row: int) -> None:
-        """Drop the link on ``row``'s parameter via the fitting client."""
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-
+        """Drop the link on ``row``'s parameter (local echo + RPC + trace)."""
         ctrl = self._controller(row)
-        param = self._model.parameters[row]
-        source = ctrl._parameter_context(param)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.unlink_parameter(
-                parameter_name=str(param.name),
-                fit_uid=source.get("fit_uid"),
-            )
-        ctrl._trace_operation(
-            "parameter_unlink",
-            f"unlink parameter '{param.name}' in fit '{source['fit_group']}' "
-            f"/ local '{source['local_fit']}'",
-            {"parameter_name": str(param.name), **source},
-        )
-        ctrl._update_linked_parameters()
+        ctrl.apply_unlink(self._model.parameters[row])
         ctrl.finalize()
+        # The row now paints as a free parameter: upright, undimmed, editable.
+        self._refresh_row(row)
 
     def _copy_selection(self) -> None:
         """Copy the selected cells as tab/newline-separated text."""
@@ -1279,6 +1301,10 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
                 return int(QtCore.Qt.AlignCenter)
         if role == QtCore.Qt.ToolTipRole:
             return ParameterGroupTableModel._tooltip(col_id, param)
+        if role == QtCore.Qt.FontRole:
+            return ParameterGroupTableModel._font(param)
+        if role == QtCore.Qt.ForegroundRole:
+            return ParameterGroupTableModel._foreground(col_id, param)
         return None
 
     # -- flags / editing ----------------------------------------------------
@@ -1600,24 +1626,11 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         menu.addSeparator()
 
     def _unlink(self, param: FittingParameter) -> None:
-        from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
-
+        """Drop the link on ``param`` (local echo + RPC + trace)."""
         ctrl = self._controller(param)
-        source = ctrl._parameter_context(param)
-        fc = get_fitting_client()
-        if fc is not None:
-            fc.unlink_parameter(
-                parameter_name=str(param.name),
-                fit_uid=source.get("fit_uid"),
-            )
-        ctrl._trace_operation(
-            "parameter_unlink",
-            f"unlink parameter '{param.name}' in fit '{source['fit_group']}' "
-            f"/ local '{source['local_fit']}'",
-            {"parameter_name": str(param.name), **source},
-        )
-        ctrl._update_linked_parameters()
+        ctrl.apply_unlink(param)
         ctrl.finalize()
+        self._refresh_all()
 
     def _open_details_popup(self, param: FittingParameter) -> None:
         from chisurf.gui.widgets.fitting.parameter_widgets import (

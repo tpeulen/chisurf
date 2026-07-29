@@ -32,7 +32,21 @@ The menu is a fit list, and under each fit its parameters:
 
 A fit that has no parameters to offer says so instead of opening an empty
 submenu. **Unlink** in the same context menu makes the parameter free again; it
-is enabled only while the parameter is linked.
+is enabled only while the parameter is linked. Both work on parameters that
+belong to no fit — an ndX calibration constant, a plugin's working model —
+because each target is addressed by its UUID rather than by a name and a fit.
+
+## Reading a parameter table
+
+A table says at a glance which numbers the fit will move:
+
+| Appearance | Meaning |
+|------------|---------|
+| upright, normal | free — the fit varies it |
+| dimmed value | **fixed**, or linked: the fit will not move this number |
+| *italic* row | **linked follower** — its value comes from its master, and the cell cannot be edited |
+
+Hovering a follower's value names its master.
 
 Recursive links are refused — a parameter cannot follow itself, directly or
 around a cycle.
