@@ -255,6 +255,24 @@ Not fixed here because that script had concurrent edits from another working
 copy at the time; regenerating and re-committing the binary seed belongs to
 whoever bumped the schema.
 
+## examples: a shipped example imports a package that moved, and no test reaches it
+
+**2026-07-29.** `examples/fdb_burst_selection_roundtrip.py` opens with
+`from chisurf.core.mmfdb import FluorescenceDatabase, BurstPipeline`. That
+package no longer exists — MMFDB lives in `modules/mmfdb/src/mmfdb/` — so the
+example fails on its second import line. It has failed silently ever since the
+move because [PRD-46](/prds/prd-46.md)'s script runner
+(`test/scripts/test_scripts.py`) discovers `examples/scripts/*.py` only:
+anything in the `examples/` root is outside the glob and is never run.
+
+Two separate repairs, which is why neither landed with the flrCIF alignment fix
+that found it: the example needs porting to the current `mmfdb` API and a
+verifying run against the `bh_spc132_sm_dna` SPC file it references, and the
+runner's discovery needs widening (or the example needs moving into
+`examples/scripts/`) so the next one cannot rot unnoticed. The other five root
+examples at least resolve every top-level import; whether they still *run* is
+exactly what nothing checks.
+
 ---
 type: Reference
 title: Known issues & recurring gotchas
