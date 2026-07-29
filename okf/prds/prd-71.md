@@ -83,25 +83,88 @@ ingredient — how much signal a burst has, and over how long — was measured.
 
 # Design
 
-## Input and derived products
+## Input: a burst folder and its photons
 
-The fit's input is the **processed burst dataset**: the burst table and its
-companion columns, plus the photon source. There is no separate 2D data file to
-load; every 2D product is derived inside the fit and cached, with the binning
-owned by the fit and changeable without re-deriving anything upstream. A 2D export
-exists for figures and for handing results to collaborators, but it is never a fit
-input — which removes an entire class of failure in which a histogram is fitted
-against a nuisance measure computed from a different burst selection.
+The fit's input is a **burst-analysis folder** plus the TTTR files it points back
+into. There is no new on-disk format, no companion, and no separate 2D data file:
+the nuisance measure is *already in the `.bur` tables*. Per detector `d`,
+`chisurf/core/fluorescence/burst/table.py` writes
 
-At setup the bursts' photons are read **once** into a packed array — the
-`PhotonBursts` layout already in
-`chisurf/core/fluorescence/burst/gopich_szabo.py`: concatenated channel and
-micro-time with per-burst offsets (≈22 MB for 50 k bursts of 150 photons; ≈600 MB
-for a million bursts of 200). D12, the observed histograms, and the pooled decay
-cube are all derived from that one structure, so they cannot disagree about which
-bursts they describe. Where the raw data is not reachable, the fit falls back to
-the companion's per-burst summary columns and is then restricted to the histogram
-source — stated loudly at fit construction, never degraded silently.
+```
+Duration (d) (ms)        = macro[last] − macro[first]   → the span t_c, exactly
+Number of Photons (d)                                   → the counts, hence S
+Mean Macrotime (d) (ms) ,  d Count Rate (KHz)
+```
+
+with `-1.0` / `0` already written for a detector a burst has nothing in — the
+sentinel convention the companion contract asks for, present. `Duration (d)` is
+the first-to-last photon span by construction, so the `(n−1)/(n+1)` shrinkage
+discussed below applies to the column as written, with no new estimator. Where the
+detector set is defined per polarization, the parallel/perpendicular counts are
+there too.
+
+What the folder does **not** yet carry is `⟨t⟩`: `.bur` is macro-time only, and
+micro-times appear in the burst writer solely to select photons into detector
+windows. `bg4` is not a substitute — it holds burst-wise *fitted* lifetimes, which
+is the biased low-photon estimator this design exists to replace.
+
+**So the burst writer is extended: `.bur` always carries the mean micro time per
+detector, alongside the fitted values rather than instead of them.** A new
+`Mean Microtime (d)` column per detector, computed over exactly the photon
+selection the other per-detector columns use (detector window *and* micro-time
+range, so a PIE-gated detector reports the mean within its own window), written
+unconditionally by both writer paths — `write_bur_file_old` and the
+`generate_burst_dataframe` / `write_bur_file_fast` path — with the same sentinel
+as its neighbours for a detector a burst has nothing in. Two constraints on how it
+lands: the column goes at the **end**, before the trailing blank column, so a
+reader keying on leading positions rather than on header names is not shifted; and
+the unit is fixed and documented (nanoseconds, not raw TAC channels) so the value
+survives a change of micro-time resolution.
+
+The mean micro time is a first moment — cheap to accumulate in the same pass that
+already walks each burst's photons — so this costs essentially nothing at write
+time and makes every burst folder carry its own lifetime axis from then on.
+
+Photons are still read for the **pooled-decay and burst-wise sources**, which need
+the individual micro times rather than their mean, and for legacy folders written
+before the column existed. The fit reads them once at setup into the
+`PhotonBursts` layout already in `chisurf/core/fluorescence/burst/gopich_szabo.py`
+(concatenated channel and micro-time with per-burst offsets; ≈22 MB for 50 k
+bursts of 150 photons, ≈600 MB for a million of 200). With the column present the
+histogram source alone needs no photons at all; without it, the fit computes
+`⟨t⟩` from the photon stream and says so, rather than degrading silently.
+
+**Finding the TTTR files is a solved problem and must not be re-solved.**
+`chisurf/core/fio/fluorescence/burst_manifest.py` records, per source file, the
+container type, routing channels and macro/micro resolutions — captured while the
+file was open, precisely so later consumers do not guess. The chain is
+manifest (`Info/analysis.json`) → the legacy `Info/*.mti` sidecar → extension
+sniffing, and the last step **must fail loudly**: that module documents the
+failure it was written against, where `.spc` → `"SPC"` is not a container type
+the reader accepts and the mistake surfaces not as an error but as *zero photons*,
+so an analysis runs on nothing and looks like a measurement with no signal.
+
+Everything binned — D12 as a histogram, the observed 2D histograms, the pooled
+decay cube — is derived inside the fit and cached in memory, never persisted. The
+binning belongs to the fit and is changeable without touching anything upstream; a
+stored copy could only go stale against its own inputs.
+
+## Preparation: one core, two surfaces
+
+The pass that turns a burst folder into fit-ready arrays — resolve the TTTR
+sources, read the `.bur` columns, load the photons, compute `⟨t⟩` per channel
+group — lives in **core**, `chisurf/core/fluorescence/mfd/prepare.py`, Qt-free and
+importing no plugin. Two thin surfaces sit over it:
+
+* a **plugin tool** giving it the four standard surfaces — GUI, CLI, API and RPC —
+  following the layered-plugin precedent of [PRD-09](prd-09.md), so a folder can be
+  prepared and inspected on its own;
+* the **experiment reader**, which calls the same core directly.
+
+The reader deliberately does *not* shim through the plugin. It is data-loading
+infrastructure on the path for every burst dataset, and routing it through plugin
+discovery would let a disabled or broken plugin present as a data-loading failure.
+One implementation, two callers, no dependency from core to plugin.
 
 ## The nuisance measure — PDA-style, resolved by time
 
@@ -336,9 +399,13 @@ two numbers is *quantified* rather than assumed negligible.
 
 # Staging
 
-1. **Data side** — per-burst `⟨t⟩` per channel group, polarized counts, spans
-   `(t_G, t_R)` with sentinels, `S`; D12 builder; `PhotonBursts` load path;
-   companion columns under the contract. Headless first.
+1. **Data side** — extend the `.bur` writer with `Mean Microtime (d)` per detector
+   (both writer paths, appended last, nanoseconds, sentinel-consistent) plus a
+   round-trip test that a legacy folder still reads and a new one carries the
+   column; `prepare.py` in core with the TTTR-resolution chain and its
+   fail-loudly-on-sniff behaviour; D12 straight from the `.bur` columns;
+   `PhotonBursts` load path for the decay-bearing sources. Headless first, then
+   the plugin's four surfaces.
 2. **Static forward model** — one state, no kinetics: non-central-chi `p(R)`,
    pattern moments with wrap-around, raw-axis histograms, PDA-style background and
    partition, Poisson deviance. **Gate: milestone 1a.**
@@ -360,9 +427,13 @@ two numbers is *quantified* rather than assumed negligible.
 
 # Placement
 
-* Compute core: `chisurf/core/fluorescence/mfd/` — Qt-free (`patterns.py`,
-  `moments.py`, `occupation.py`, `histogram.py`, `sources.py`, `fit.py`), numba
-  only where a measurement says it pays.
+* Compute core: `chisurf/core/fluorescence/mfd/` — Qt-free (`prepare.py`,
+  `patterns.py`, `moments.py`, `occupation.py`, `histogram.py`, `sources.py`,
+  `fit.py`), numba only where a measurement says it pays.
+* Preparation surfaces: a layered plugin (GUI, CLI, API, RPC) and the experiment
+  reader, both calling `prepare.py`; no dependency from core to plugin.
+* Burst writer: `Mean Microtime (d)` added in
+  `chisurf/core/fio/fluorescence/burst.py` (both writer paths).
 * Model and view spec under the model/UI split; plotted through chiplot, never
   pyqtgraph.
 * Reuses rather than reimplements: the rate-matrix parameter group, the

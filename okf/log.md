@@ -42,7 +42,16 @@
   M-estimator, so uncertainties must come from the burst-wise source or a
   bootstrap. Two-step milestone: static-on-real-data with zero free broadening,
   then a known-rate system recovered; the photon simulator is a code test, never
-  a physics test. Added to the [PRD index](/prds/index.md).
+  a physics test. Input is a burst folder: `P(S, t_G, t_R)` is *already* in the
+  `.bur` columns (`Duration (d)` is the first-to-last span by construction,
+  sentinels included), and the TTTR files are resolved by the existing
+  manifest → `.mti` → sniff chain, with the sniff step required to fail loudly.
+  Two consequences recorded: the `.bur` writer gains a `Mean Microtime (d)`
+  column per detector, written always and alongside the fitted values, so a burst
+  folder carries its own lifetime axis; and the preparation pass lives in core
+  with the plugin (GUI/CLI/API/RPC) and the experiment reader both as surfaces
+  over it, so plugin discovery is never on the burst-loading path. Added to the
+  [PRD index](/prds/index.md).
 
 * **[PRD-51](/prds/prd-51.md): pysimfcs read in full, and `junk/clone.sh` made to
   match reality (planning only, no code).** pysimfcs was already cloned and current
