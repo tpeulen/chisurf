@@ -140,6 +140,10 @@ class RateMatrixMixin:
         reporting the *old* rates: an optimiser handed them would move
         parameters that no longer belong to the scheme, and the rates that do
         would sit untouched while the fit reported success.
+
+        ``None`` is what
+        :attr:`~chisurf.core.fitting.parameter.FittingParameterGroup.parameters_all`
+        reads as "never walked", so the next read rediscovers.
         """
         self._parameters = None
         try:
@@ -148,33 +152,6 @@ class RateMatrixMixin:
             factorgraph.bump_structure_version()
         except Exception:  # pragma: no cover - the graph is optional here
             logger.debug("could not bump the structure version", exc_info=True)
-
-    @property
-    def parameters_all(self) -> list:
-        """Every fitting parameter of this group, discovered on first use.
-
-        A group only lists its parameters after ``find_parameters`` has run,
-        which the fitting machinery does when a model is built. A scheme
-        inspected on its own — from a script, the assistant, or a test —
-        therefore looked *empty*, which reads as "this model has nothing to
-        fit" rather than "ask again later".
-
-        Discovery is cached and invalidated by
-        :meth:`_invalidate_parameters`, so resizing the scheme is picked up.
-        """
-        discovered = self.__dict__.get("_parameters")
-        if discovered:
-            return discovered
-        # ``find_parameters`` clears ``_parameters`` and then reads the same
-        # property on nested groups; re-entering it here would not terminate.
-        if self.__dict__.get("_discovering_parameters"):
-            return discovered or []
-        self.__dict__["_discovering_parameters"] = True
-        try:
-            self.find_parameters()
-        finally:
-            self.__dict__.pop("_discovering_parameters", None)
-        return self.__dict__.get("_parameters") or []
 
     @staticmethod
     def _rate_pairs(n_states: int) -> list:

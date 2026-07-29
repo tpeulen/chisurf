@@ -256,8 +256,34 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
     def parameters_all(self) -> typing.List[
         chisurf.core.fitting.parameter.FittingParameter
     ]:
-        """List of all fitting parameters, including fixed and linked."""
-        return self._parameters
+        """List of all fitting parameters, including fixed and linked.
+
+        Discovery is lazy. ``_parameters`` is ``None`` until :meth:`find_parameters`
+        has walked the group once, and reading this property is what triggers that
+        first walk. Discovery cannot run in ``__init__`` — a subclass attaches its
+        parameters *after* ``super().__init__`` — so it used to happen only as a
+        side effect of :meth:`chisurf.core.models.model.Model.update` and of
+        :meth:`chisurf.core.fitting.fit.FitGroup.run`. A model that had not been
+        through either reported **no parameters at all** to everything reading it
+        from the outside (the RPC fit DTOs, and through them the parameter link
+        menu and the Global View) while its own widgets, which hold their
+        parameters directly, showed the full set.
+
+        An empty *list* is a real answer — a group that owns no parameters — and is
+        not re-walked. Only ``None`` means "never looked".
+        """
+        parameters = self.__dict__.get("_parameters")
+        if parameters is None:
+            # ``find_parameters`` reads attributes that may lead back here; the
+            # in-progress walk answers with what it has rather than recursing.
+            if self.__dict__.get("_finding_parameters"):
+                return list()
+            self.find_parameters()
+            parameters = self.__dict__.get("_parameters")
+            if parameters is None:  # a subclass that does not discover anything
+                parameters = list()
+                self._parameters = parameters
+        return parameters
 
     @property
     def parameters(self) -> typing.List[
@@ -285,15 +311,16 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             # (see factorgraph.frozen_structure), so there is nothing to check.
             return frozen["parameters"]
         from chisurf.core.fitting import factorgraph
+        all_parameters = self.parameters_all
         version = factorgraph.structure_version()
         cache = self.__dict__.get("_free_parameter_cache")
-        if cache is not None and cache[0] == version and cache[1] is self._parameters:
+        if cache is not None and cache[0] == version and cache[1] is all_parameters:
             return list(cache[2])
         free = tuple(
-            p for p in self.parameters_all
+            p for p in all_parameters
             if not (p.fixed or p.is_linked or getattr(p, "redundant", False))
         )
-        self.__dict__["_free_parameter_cache"] = (version, self._parameters, free)
+        self.__dict__["_free_parameter_cache"] = (version, all_parameters, free)
         return list(free)
 
     @property
@@ -371,7 +398,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         )
         parameters = dict()
         s['parameter'] = parameters
-        for parameter in self._parameters:
+        for parameter in self.parameters_all:
             parameters[parameter.name] = parameter.to_dict(
                 remove_protected=remove_protected,
                 copy_values=copy_values,
@@ -406,32 +433,36 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         """
         self._aggregated_parameters = None
         self._parameters = None
-        d = [v for v in self.__dict__.values() if v is not self]
-        ag = base.find_objects(
-            search_iterable=d,
-            searched_object_type=FittingParameterGroup
-        )
-        self._aggregated_parameters = ag
+        self.__dict__["_finding_parameters"] = True
+        try:
+            d = [v for v in self.__dict__.values() if v is not self]
+            ag = base.find_objects(
+                search_iterable=d,
+                searched_object_type=FittingParameterGroup
+            )
+            self._aggregated_parameters = ag
 
-        ap = list()
-        from chisurf.core.models.model import Model
-        for o in ag:
-            if not isinstance(o, Model):
-                o.find_parameters()
-                # Do NOT overwrite existing attributes with group names to avoid collisions
-                if o.name not in self.__dict__:
-                    self.__dict__[o.name] = o
-                ap += o.parameters_all
+            ap = list()
+            from chisurf.core.models.model import Model
+            for o in ag:
+                if not isinstance(o, Model):
+                    o.find_parameters()
+                    # Do NOT overwrite existing attributes with group names to avoid collisions
+                    if o.name not in self.__dict__:
+                        self.__dict__[o.name] = o
+                    ap += o.parameters_all
 
-        # Search using the base Parameter class for robustness.
-        # FittingParameter is renamed by @register so isinstance against FittingParameter
-        # can be unreliable; searching by base class always works.
-        mp = base.find_objects(
-            search_iterable=d,
-            searched_object_type=parameter.Parameter
-        )
-        seen = set()
-        self._parameters = [x for x in (mp + ap) if not (x in seen or seen.add(x))]
+            # Search using the base Parameter class for robustness.
+            # FittingParameter is renamed by @register so isinstance against FittingParameter
+            # can be unreliable; searching by base class always works.
+            mp = base.find_objects(
+                search_iterable=d,
+                searched_object_type=parameter.Parameter
+            )
+            seen = set()
+            self._parameters = [x for x in (mp + ap) if not (x in seen or seen.add(x))]
+        finally:
+            self.__dict__.pop("_finding_parameters", None)
 
         # Rediscovery can change the parameter vector (order, membership), which
         # is exactly what a cached factor graph is indexed by.
@@ -440,7 +471,7 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
 
     def append_parameter(self, p: parameter.Parameter):
         """Append a new :class:`FittingParameter` to this group."""
-        self._parameters.append(p)
+        self.parameters_all.append(p)
 
     def finalize(self):
         """Finalize parameter controllers, if present.
@@ -616,8 +647,9 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         self.model = model
         self.fit = fit
 
-        if parameters is None:
-            parameters = list()
+        # ``None`` marks the group as not yet walked, which is what makes the
+        # discovery in :attr:`parameters_all` happen on first read. An empty list
+        # here would read as "walked, owns nothing" and never be filled.
         self._parameters = parameters
         self._aggregated_parameters = list()
 

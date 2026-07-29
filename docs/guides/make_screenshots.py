@@ -71,6 +71,84 @@ def _grab_tcspc_lifetime_editor():
     _grab(editor, "tcspc_lifetime_editor.png")
 
 
+def _grab_parameter_link_menu():
+    """Grab the parameter link menu (three levels) for the linking reference.
+
+    Submenus are separate popups, so each level is grabbed on its own and the
+    chain is composed side by side — a single grab of the top menu would show
+    only the fit list.
+    """
+    import numpy as np
+    from qtpy import QtGui
+
+    import chisurf
+    from chisurf.core.data import DataCurve, DataCurveGroup
+    from chisurf.core.fitting.fit import FitGroup
+    from chisurf.gui.widgets.fitting.fitting_client import install_fitting_client
+    from chisurf.gui.widgets.fitting.parameter_widgets import (
+        FittingParameterProxyController,
+    )
+    from chisurf.gui.widgets.models.tcspc.lifetime import LifetimeModelWidget
+    from chisurf.server.services.fits import get_fit_info, list_fits
+    from chisurf.server.session import SessionState
+
+    def make(name, n_curves=1):
+        x = np.linspace(0.1, 25, 128)
+        y = 1000.0 * np.exp(-x / 4.0) + 1.0
+        curves = [
+            DataCurve(x=x, y=y, ey=np.sqrt(y), name=f"{name}-{i}") for i in range(n_curves)
+        ]
+        return FitGroup(
+            data=DataCurveGroup(curves, name=name), model_class=LifetimeModelWidget
+        )
+
+    fits = [make("Donor-only"), make("FRET-global", n_curves=2)]
+    state = SessionState(fits=fits)
+
+    class _Direct:
+        def call(self, method, params):
+            if method == "fit.list":
+                return list_fits(state)
+            return get_fit_info(state, **params)
+
+    install_fitting_client(_Direct())
+    chisurf.fits = fits
+    try:
+        parameter = fits[0].model.parameters_all_dict["sc"]
+        menu = FittingParameterProxyController(parameter).build_link_menu()
+        menu.setTitle("Link sc to")
+        fit_menu = next(a.menu() for a in menu.actions() if a.menu() is not None)
+        group_menu = next(
+            a.menu() for a in fit_menu.actions()
+            if a.menu() is not None and a.text() == "Convolve"
+        )
+
+        app = QApplication.instance()
+        shots = []
+        for popup in (menu, fit_menu, group_menu):
+            popup.show()
+            app.processEvents()
+            popup.resize(popup.sizeHint())
+            app.processEvents()
+            shots.append(popup.grab())
+
+        gap = 18
+        canvas = QtGui.QPixmap(
+            sum(s.width() for s in shots) + gap * (len(shots) - 1),
+            max(s.height() for s in shots),
+        )
+        canvas.fill(QtGui.QColor("#f4f4f4"))
+        painter = QtGui.QPainter(canvas)
+        x_offset = 0
+        for shot in shots:
+            painter.drawPixmap(x_offset, 0, shot)
+            x_offset += shot.width() + gap
+        painter.end()
+        canvas.save(str(FIG / "parameter_link_menu.png"))
+    finally:
+        install_fitting_client(None)
+
+
 def _grab_pda_editor():
     """Grab the PDA (Gaussian-distance) model editor for the PDA guide."""
     import numpy as np
@@ -745,6 +823,7 @@ def main():
     for grab in (
         _grab_fcs_model_editor,
         _grab_tcspc_lifetime_editor,
+        _grab_parameter_link_menu,
         _grab_pda_editor,
         _grab_pda3c_exchange_panel,
         _grab_burst_browser,

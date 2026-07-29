@@ -398,6 +398,7 @@ class ChiSurfAPI:
                 "model_name": str(getattr(getattr(fit, "model", None), "name", "") or ""),
                 "parameter_count": len(params),
                 "parameters": params,
+                "members": _collect_member_list(fit),
                 "data": {
                     "name": str(getattr(getattr(fit, "data", None), "name", "") or ""),
                     "uid": str(getattr(getattr(fit, "data", None), "unique_identifier", "") or ""),
@@ -962,4 +963,11 @@ class ChiSurfAPI:
         )
 
 
-from chisurf.server.services._stats import _safe_chi2, _safe_chi2r, _safe_n_points, _safe_n_free, _collect_param_list
+from chisurf.server.services._stats import (
+    _safe_chi2,
+    _safe_chi2r,
+    _safe_n_points,
+    _safe_n_free,
+    _collect_member_list,
+    _collect_param_list,
+)

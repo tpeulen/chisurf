@@ -545,19 +545,10 @@ class AutoForm(QtWidgets.QWidget):
         group = self._resolve_group(section.target)
         if group is None:
             return None
-        # Most groups define their parameters as plain attributes
-        # (``self._dt = FittingParameter(...)``) that only surface in
-        # ``parameters_all`` after ``find_parameters()`` aggregates them. The
-        # Lifetime group fills its list eagerly via ``append()``; the others do
-        # not, so without this the section would render empty.
-        if not list(getattr(group, "parameters_all", [])) and hasattr(group, "find_parameters"):
-            try:
-                group.find_parameters()
-            except Exception as exc:  # pragma: no cover - defensive
-                logging.warning(
-                    f"AutoModelWidget: find_parameters failed for {section.target!r}: {exc}"
-                )
-
+        # Groups that define their parameters as plain attributes
+        # (``self._dt = FittingParameter(...)``) surface them on the first read of
+        # ``parameters_all``, which walks the group itself — this section used to
+        # have to ask for that walk explicitly or render empty.
         if section.exclude_source:
             try:
                 excluded = {id(p) for p in getattr(group, section.exclude_source)()}
@@ -639,14 +630,6 @@ class AutoForm(QtWidgets.QWidget):
         group = self._resolve_group(section.target)
         if group is None:
             return None
-
-        if not list(getattr(group, "parameters_all", [])) and hasattr(group, "find_parameters"):
-            try:
-                group.find_parameters()
-            except Exception as exc:
-                logging.warning(
-                    f"AutoModelWidget: find_parameters failed for {section.target!r}: {exc}"
-                )
 
         if section.exclude_source:
             try:

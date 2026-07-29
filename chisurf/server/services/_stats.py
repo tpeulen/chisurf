@@ -97,26 +97,85 @@ def _safe_n_free(fit: Any) -> Optional[int]:
     return None
 
 
+def _group_names(model: Any) -> Dict[int, str]:
+    """Map ``id(parameter)`` to the name of the sub-group that owns it.
+
+    A model presents its parameters through nested
+    :class:`~chisurf.core.fitting.parameter.FittingParameterGroup` instances
+    (``convolve``, ``generic``, ``lifetimes``, …). The flat parameter list loses
+    that structure, so it is carried alongside and the link menu rebuilds the
+    per-group submenus from it.
+    """
+    names: Dict[int, str] = {}
+    for group in getattr(model, "aggregated_parameters", None) or []:
+        group_name = str(getattr(group, "name", "") or "")
+        for p in getattr(group, "parameters_all", None) or []:
+            names.setdefault(id(p), group_name)
+    return names
+
+
+def _param_entry(p: Any, fit_uid: str, group_name: str = "") -> Dict[str, Any]:
+    """Serialise one parameter for a fit DTO."""
+    return {
+        "name": str(getattr(p, "name", "")),
+        "uid": str(getattr(p, "unique_identifier", "") or ""),
+        "group": group_name,
+        "fit_uid": fit_uid,
+        "value": getattr(p, "value", None),
+        "fixed": bool(getattr(p, "fixed", False)),
+        "bounds": getattr(p, "bounds", None),
+        "bounds_on": bool(getattr(p, "bounds_on", False)),
+        "is_linked": bool(getattr(p, "is_linked", False)),
+        "linked_to": str(getattr(getattr(p, "link", None), "name", "") or ""),
+        "error_estimate": getattr(p, "error_estimate", None),
+    }
+
+
 def _collect_param_list(fit: Any, fit_uid: str = "") -> List[Dict[str, Any]]:
-    """Return parameters as an ordered list (for proxy ``parameters_all``)."""
-    result: List[Dict[str, Any]] = []
+    """Return parameters as an ordered list (for proxy ``parameters_all``).
+
+    A failure is logged rather than swallowed: an empty list here reads as "this
+    fit has no parameters" everywhere downstream — the link menu renders it as an
+    empty submenu with nothing to click — and that is indistinguishable from a
+    model that could not be read at all.
+    """
+    model = getattr(fit, "model", None)
+    if model is None:
+        return []
     try:
-        plist = list(getattr(fit.model, "parameters_all", []) or []) if hasattr(fit, "model") else []
-        for p in plist:
-            result.append({
-                "name": str(getattr(p, "name", "")),
-                "fit_uid": fit_uid,
-                "value": getattr(p, "value", None),
-                "fixed": bool(getattr(p, "fixed", False)),
-                "bounds": getattr(p, "bounds", None),
-                "bounds_on": bool(getattr(p, "bounds_on", False)),
-                "is_linked": bool(getattr(p, "is_linked", False)),
-                "linked_to": str(getattr(getattr(p, "link", None), "name", "") or ""),
-                "error_estimate": getattr(p, "error_estimate", None),
-            })
+        plist = list(getattr(model, "parameters_all", None) or [])
+        groups = _group_names(model)
+        return [_param_entry(p, fit_uid, groups.get(id(p), "")) for p in plist]
     except Exception:
-        pass
-    return result
+        import chisurf.logging
+
+        chisurf.logging.exception(
+            "could not read the parameters of fit '%s'", fit_uid or "?"
+        )
+        return []
+
+
+def _collect_member_list(fit: Any) -> List[Dict[str, Any]]:
+    """Return the member fits of a fit group, each with its own parameters.
+
+    A :class:`~chisurf.core.fitting.fit.FitGroup` answers ``model`` with the
+    *selected* member's model, so a DTO built from that alone can only ever
+    describe one curve of a global fit. The members are carried separately so a
+    caller can address a specific one by ``local_idx``.
+    """
+    grouped = getattr(fit, "grouped_fits", None)
+    if not grouped:
+        return []
+    members: List[Dict[str, Any]] = []
+    for idx, member in enumerate(grouped):
+        member_uid = str(getattr(member, "unique_identifier", "") or "")
+        members.append({
+            "local_idx": idx,
+            "uid": member_uid,
+            "name": str(getattr(member, "name", "") or f"fit {idx}"),
+            "parameters_all": _collect_param_list(member, fit_uid=member_uid),
+        })
+    return members
 
 
 def _collect_fit_params(fit: Any) -> Dict[str, Dict[str, Any]]:
@@ -141,5 +200,7 @@ def _collect_fit_params(fit: Any) -> Dict[str, Dict[str, Any]]:
                 "error_estimate": getattr(p, "error_estimate", None),
             }
     except Exception:
-        pass
+        import chisurf.logging
+
+        chisurf.logging.exception("could not read the parameters of a fit")
     return params

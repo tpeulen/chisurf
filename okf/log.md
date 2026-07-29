@@ -2,6 +2,53 @@
 
 ## 2026-07-29
 
+* **A fit reported no parameters at all until something updated it, and the link
+  menu believed it.** Reported from a live session: **Link gG/gR to → Lifetime -
+  Dummy-sample → All parameters** opened an empty submenu. Asked over RPC, the
+  running session answered `parameter_count=0` for a `LifetimeModelWidget` whose
+  own panel was showing dozens of parameters, so the menu was rendering an empty
+  DTO faithfully. `parameters_all` returns `_parameters`, which a group cannot
+  fill in `__init__` (a subclass attaches its parameters after `super().__init__`
+  returns) and which was therefore filled only as a side effect of
+  `Model.update` and `FitGroup.run`. **Discovery is now lazy and is part of the
+  group contract** ([parameters](/subsystems/parameters.md)): `None` means "never
+  walked" and the first read of `parameters_all` walks; an empty *list* is a real
+  answer and is not re-walked. Two local workarounds for the same root cause are
+  gone — `RateMatrixParameters.parameters_all` (which had solved it for kinetic
+  schemes only) and the two "if the list is empty, call `find_parameters`" blocks
+  in `AutoModelWidget`. `_collect_param_list` no longer swallows a read failure
+  silently, because an empty list downstream reads as "this fit has no
+  parameters".
+* **The link menu lost three things in the RPC port (`175cd4a27`), each of which
+  hid targets.** It now addresses targets by **UUID**, so the same-named
+  parameter in another fit — `tau1` in every curve of a global analysis, the
+  most common link there is — is reachable again; a name-only exclusion had
+  removed every one of them. It expands a **fit group into its member fits**
+  (`FitGroup.model` answers with the selected member only, so a two-curve group
+  offered one curve's parameters under the group's name). It restores the
+  **per-group submenus** (`aggregated_parameters`, carried per DTO entry as
+  `group`, titled uniformly because models spell them "convolve" beside
+  "Corrections") beside the flat, sorted "All parameters". A fit with nothing to
+  offer now says so instead of opening an empty popup, and a refused link
+  reports the server's reason instead of failing silently. Detailed fit DTOs
+  carry `members`; `fit.list` stays lean. Rendered and inspected headlessly.
+  15 tests: `test/fitting/test_parameter_discovery.py` (6),
+  `test/server/test_fit_dto_parameters.py` (4),
+  `test/gui/test_parameter_link_menu.py` (5 — all fail without the fix).
+  Suites: `test/fitting` 829 passed, `test/server` 604 passed, the parameter and
+  AutoForm GUI files green; the failures that remain are identical with the
+  change neutralised and four of them reproduce on pristine HEAD.
+  Docs: [linking parameters](../docs/reference/parameter_linking.md) with a
+  generated screenshot (`docs-screenshots`).
+* **ndX: every 2-D overlay redraw logged "'CurveOverlayWidget' object has no
+  attribute 'curve_items'".** Found in the same session's status bar. The caller
+  ended its overlay update by mirroring a `curve_items` list off the widget,
+  which stopped keeping one — the overlay plot owns the curves it is handed and
+  returns no per-item handles. Caught by an `except (…, AttributeError)`, so
+  overlays still drew and nothing failed; what broke was the mirrored list, which
+  the reset path then iterated to remove nothing. The vestigial list is gone and
+  clearing goes through `overlay_plot.clear_curves()`. Fixed in the ndX repo with
+  3 tests (`test/test_curve_overlay_update.py`).
 * **[chiplot](/subsystems/chiplot.md): the passthrough only looked at half of
   pyqtgraph.** `Plot.__getattr__` resolved unknown names against
   `Plot.native` — the `PlotItem` — but pyqtgraph splits its API between that and

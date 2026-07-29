@@ -16,6 +16,7 @@ from chisurf.server.services import (
 )
 from chisurf.server.services._stats import (
     _collect_fit_params,
+    _collect_member_list,
     _collect_param_list,
     _safe_chi2,
     _safe_chi2r,
@@ -102,7 +103,9 @@ def _fit_dto(fit: Any, index: int, *, detailed: bool = False) -> Dict[str, Any]:
     n_free = _safe_n_free(fit)
     parameters = _collect_fit_params(fit)
     parameter_count = len(parameters) if detailed else len(getattr(getattr(fit, "model", None), "parameters_all_dict", {}) or {})
+    members = _collect_member_list(fit) if detailed else []
     return {
+        "members": members,
         "index": index,
         "uid": fit_uid,
         "name": str(getattr(fit, "name", "") or ""),

@@ -24,6 +24,7 @@ from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 from chisurf.gui.widgets.general import Controller
 from chisurf.macros.core_fit import link_fit_group
+from chisurf.gui import dialogs
 
 parameter_settings = chisurf.core.settings.parameter
 
@@ -1103,47 +1104,132 @@ class ParameterActionsMixin:
         return linkcall
 
     def build_link_menu(self) -> QtWidgets.QMenu:
+        """Build the "link this parameter to …" menu over every fit in the session.
+
+        One entry per fit, and — for a fit group with more than one curve — one
+        entry per member fit, because a group answers ``model`` with whichever
+        member is selected and its parameters are not the group's. Below that the
+        targets appear twice: once grouped as the model presents them (convolve,
+        generic, lifetimes, …) and once flat under "All parameters".
+        """
         menu = QtWidgets.QMenu(self)
         menu.setTitle(
             "Link " + self.fitting_parameter.name + " to:"
         )
 
         fc = get_fitting_client()
-        if fc is not None:
-            # Build menu from DTOs via RPC
-            fits_data = fc.list_fits()
-            for fit_dto in fits_data:
-                fit_uid = fit_dto.get("uid", "")
-                fit_detail = fc.get_fit(fit_uid=fit_uid)
-                model_data = fit_detail.get("model", {})
-                params = model_data.get("parameters_all", [])
-                submenu = QtWidgets.QMenu(menu)
-                submenu.setTitle(fit_dto.get("name", "Fit"))
-                action_submenu = QtWidgets.QMenu(submenu)
-                action_submenu.setTitle("All parameters")
-                for p in params:
-                    pname = p.get("name", "")
-                    if pname != self.fitting_parameter.name:
-                        Action = action_submenu.addAction(pname)
-                        Action.triggered.connect(
-                            self.make_linkcall_by_name(pname, fit_dto)
-                        )
-                submenu.addMenu(action_submenu)
-                menu.addMenu(submenu)
+        if fc is None:
+            return menu
+
+        source_uid = str(getattr(self.fitting_parameter, "unique_identifier", "") or "")
+        for fit_dto in fc.list_fits():
+            fit_uid = fit_dto.get("uid", "")
+            fit_detail = fc.get_fit(fit_uid=fit_uid) or {}
+            members = fit_detail.get("members") or []
+            fit_menu = QtWidgets.QMenu(menu)
+            fit_menu.setTitle(str(fit_dto.get("name", "") or "Fit"))
+
+            if len(members) > 1:
+                for member in members:
+                    member_menu = QtWidgets.QMenu(fit_menu)
+                    member_menu.setTitle(
+                        str(member.get("name", "") or f"fit {member.get('local_idx', 0)}")
+                    )
+                    self._fill_link_targets(
+                        member_menu,
+                        member.get("parameters_all") or [],
+                        fit_dto,
+                        source_uid,
+                        member.get("local_idx"),
+                    )
+                    fit_menu.addMenu(member_menu)
+            else:
+                if members:
+                    params = members[0].get("parameters_all") or []
+                    local_idx = members[0].get("local_idx")
+                else:
+                    params = fit_detail.get("model", {}).get("parameters_all") or []
+                    local_idx = None
+                self._fill_link_targets(fit_menu, params, fit_dto, source_uid, local_idx)
+            menu.addMenu(fit_menu)
         return menu
 
-    def make_linkcall_by_name(self, target_name: str, target_fit_dto: dict):
-        """Create a closure that links this parameter to a target by name."""
+    def _fill_link_targets(
+        self,
+        menu: QtWidgets.QMenu,
+        parameters: typing.List[dict],
+        fit_dto: dict,
+        source_uid: str,
+        local_idx: typing.Optional[int],
+    ) -> None:
+        """Populate one fit's (or member fit's) submenu with link targets."""
+        targets = [p for p in parameters if str(p.get("uid", "") or "") != source_uid]
+        if not targets:
+            # An empty popup reads as a broken menu. Say which it is.
+            empty = menu.addAction("(no parameters)")
+            empty.setEnabled(False)
+            return
+
+        def add(into: QtWidgets.QMenu, entries: typing.List[dict]) -> None:
+            for p in sorted(entries, key=lambda e: str(e.get("name", "")).lower()):
+                action = into.addAction(str(p.get("name", "")))
+                action.triggered.connect(self.make_linkcall_by_target(p, fit_dto, local_idx))
+
+        groups: typing.Dict[str, typing.List[dict]] = {}
+        for p in targets:
+            groups.setdefault(str(p.get("group", "") or ""), []).append(p)
+        for group_name in sorted((name for name in groups if name), key=str.lower):
+            group_menu = QtWidgets.QMenu(menu)
+            # Group names are spelled inconsistently by the models themselves
+            # ("convolve" next to "Corrections"); title them uniformly here.
+            group_menu.setTitle(group_name[:1].upper() + group_name[1:])
+            add(group_menu, groups[group_name])
+            menu.addMenu(group_menu)
+        if groups.get(""):
+            add(menu, groups[""])
+
+        menu.addSeparator()
+        all_menu = QtWidgets.QMenu(menu)
+        all_menu.setTitle("All parameters")
+        add(all_menu, targets)
+        menu.addMenu(all_menu)
+
+    def make_linkcall_by_target(
+        self,
+        target: dict,
+        target_fit_dto: dict,
+        target_local_idx: typing.Optional[int] = None,
+    ):
+        """Create a closure that links this parameter to a target DTO entry.
+
+        The target is addressed by its UUID where the DTO carries one, so a name
+        that exists in several fits (``tau1`` in every curve of a global analysis)
+        still resolves to the one that was clicked.
+        """
         param_self = self.fitting_parameter
+        target_name = str(target.get("name", ""))
+        target_uid = str(target.get("uid", "") or "")
 
         def linkcall():
             fc = get_fitting_client()
             if fc is not None:
-                fc.link_parameters(
+                source = self._parameter_context(param_self)
+                result = fc.link_parameters(
                     parameter_name=str(param_self.name),
                     target_parameter_name=target_name,
-                    fit_uid=target_fit_dto.get("uid"),
+                    fit_uid=source.get("fit_uid") or None,
+                    target_fit_uid=target_fit_dto.get("uid"),
+                    target_local_idx=target_local_idx,
+                    parameter_uid=source.get("parameter_uid") or None,
+                    target_parameter_uid=target_uid or None,
                 )
+                if isinstance(result, dict) and not result.get("ok", True):
+                    dialogs.warning(
+                        self,
+                        "Linking Error",
+                        str(result.get("error", "could not link the parameters")),
+                    )
+                    return
             self.finalize()
             self._update_linked_parameters()
 

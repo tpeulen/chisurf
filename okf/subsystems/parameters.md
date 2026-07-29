@@ -132,6 +132,17 @@ distinguishes:
 - `aggregated_parameters` — nested `FittingParameterGroup`s discovered by
   `find_parameters`, enabling hierarchical models.
 
+**Discovery is lazy, and that is a contract.** A group cannot walk itself in
+`__init__` — a subclass attaches its parameters after `super().__init__` returns
+— so `_parameters` stays `None` until the first read of `parameters_all` runs
+`find_parameters`. An empty *list* is a real answer ("this group owns nothing")
+and is never re-walked; only `None` means "never looked". Before that guarantee
+existed, discovery happened solely as a side effect of `Model.update` and
+`FitGroup.run`, and a fit that had been built but not yet updated reported **no
+parameters at all** to every reader outside the model — the RPC fit DTOs, and
+through them the parameter link menu and the Global View — while its own widgets,
+which hold their parameters directly, showed the full set.
+
 # Fitting parameters and degrees of freedom
 
 `FittingParameter(Parameter)` adds fit-specific state: `error_estimate`
@@ -159,6 +170,22 @@ in that state); omitting the trace drops the edit from the history. A write of t
 value a parameter already holds is dropped — an editor refresh re-emits its
 editor's signals, and recording those as edits filled the history with no-op
 operations.
+
+# Linking a parameter from a GUI
+
+The link menu (`ParameterActionsMixin.build_link_menu`, offered by every
+parameter editor) is built from the fit DTOs, not from the object graph, so it
+inherits whatever those carry. Each entry addresses its target by **UUID**
+(`parameter.link` resolves `target_parameter_uid` first), which is what lets a
+name that exists in several fits — `tau1` in every curve of a global analysis —
+resolve to the one that was clicked; a name-only menu had to exclude every
+same-named parameter and so made the most common global-analysis link
+unreachable. A fit group is expanded into its **member fits** when it holds more
+than one curve, because `FitGroup.model` answers with the selected member only.
+Targets appear twice: grouped as the model presents them
+(`aggregated_parameters`, carried per entry as `group`) and flat under "All
+parameters". A fit with nothing to offer says so rather than opening an empty
+popup.
 
 The refresh path runs the other way and is **thread-bound**: a server-side change
 (a fit run, linked-parameter propagation, any RPC that finalizes a model) reaches

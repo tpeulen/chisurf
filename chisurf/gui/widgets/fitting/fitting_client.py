@@ -769,9 +769,11 @@ class FittingClient:
         if target_owner_uid is not None:
             params["target_owner_uid"] = target_owner_uid
         result = self._try_rpc("parameter.link", params)
-        if result is not None and result.get("ok", False):
+        if result is not None:
+            # Pass the server's refusal through — the caller reports it. A bare
+            # ``{"ok": False}`` leaves the GUI unable to say what went wrong.
             return result
-        return {"ok": False}
+        return {"ok": False, "error": "the fitting server did not answer"}
 
     def unlink_parameter(
         self,
