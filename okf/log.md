@@ -439,6 +439,22 @@
 
 ## 2026-07-28
 
+* **Selecting was rebuilding the entire scene, and that was the whole cost.**
+  Measured on 148L: `set_selected_residues` took **88.01 ms** -- the same as
+  `_update_view`, because it *was* `_update_view` -- while building the
+  selection marker itself takes **0.01 ms**. Dragging a range over the sequence
+  fires one of those per mouse move, so the highlight lagged the cursor by a
+  full rebuild of every representation, for work that had nothing to do with
+  what changed. `refresh_selection_highlight()` swaps the one scene object with
+  that id and pushes the scene back: **88.01 ms -> 0.11 ms**, about 800x.
+  - A representation *filtered* by the selection still needs the full path, and
+    a caller wanting that asks for it: the fast path is about the marker, and
+    the docstring says so rather than leaving the next person to find out.
+  - Not covered by a test, for the same reason the mouse routing is not:
+    constructing a `QOpenGLWidget` inside pytest aborts the interpreter here and
+    would take the whole run with it. The numbers and the reasoning sit in the
+    test module where the test would have been.
+
 * **Recolouring the molecule now recolours the sequence, and the Qt sequence
   tab is gone.** The strip was coloured once, when its rows were built, so a
   molecule coloured by secondary structure sat above a strip still showing the

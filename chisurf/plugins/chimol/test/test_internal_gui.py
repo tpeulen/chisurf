@@ -762,3 +762,19 @@ def test_the_wheel_bindings_come_from_the_table_too():
     assert wheel_action_of(mode, QtCore.Qt.NoModifier) == "slab"
     assert wheel_action_of(mode, QtCore.Qt.ShiftModifier) == "movs"
     assert wheel_action_of(mode, QtCore.Qt.ControlModifier) == "mvsz"
+
+
+# Selection cost is not tested here for the same reason the mouse routing is
+# not: it needs a real `MolView`, and constructing a QOpenGLWidget inside pytest
+# aborts the interpreter in this environment, taking every other test with it.
+#
+# Measured with a standalone probe instead, on 148L:
+#
+#     set_selected_residues        88.01 ms  ->  0.11 ms
+#     _update_selection_highlight   0.01 ms
+#     _update_view (full rebuild)  85.73 ms
+#
+# The first used to *be* the third: selecting rebuilt every representation. A
+# drag over the sequence fires one per mouse move, so the highlight lagged the
+# cursor by a full rebuild each step, for work that had nothing to do with what
+# changed.
