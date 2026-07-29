@@ -2,6 +2,20 @@
 
 ## 2026-07-29
 
+* **[chiplot](/subsystems/chiplot.md): the passthrough only looked at half of
+  pyqtgraph.** `Plot.__getattr__` resolved unknown names against
+  `Plot.native` — the `PlotItem` — but pyqtgraph splits its API between that and
+  the `PlotWidget` hosting it, so `plot.getPlotItem()` raised `AttributeError`
+  from the very mechanism whose job is to keep un-migrated calls working. Two
+  `test_plot_construction.py` tests had been red since the AutoForm plot section
+  was migrated (`ff4b09e8c`). The seam now consults the item and then the host
+  widget, and the missing query got a chiplot spelling — `set_menu_enabled`
+  gained its read side, `Plot.menu_enabled()` (default `False` in
+  `backends/base.py`, so no new abstract to half-land) — with those two tests
+  switched to it. Covered by `test_passthrough_reaches_the_host_widget` (which
+  also pins that an unknown name still raises rather than answering `None`) and
+  `test_menu_enabled_reads_back`.
+
 * **H2MM can decode a distribution of photons over states, not just a winner —
   and write it back into the photons.** Viterbi answers "what is the single most
   likely state sequence"; an occupancy, a per-state decay or a per-state FCS

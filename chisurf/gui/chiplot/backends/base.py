@@ -331,6 +331,15 @@ class Canvas(abc.ABC):
     def set_menu_enabled(self, enabled: bool) -> None:
         """Enable/disable the backend's own right-click menu (default no-op)."""
 
+    def menu_enabled(self) -> bool:
+        """Whether the right-click menu is currently offered.
+
+        The read side of :meth:`set_menu_enabled`, so a caller (or a test) can
+        ask without reaching through the seam for a renderer's own spelling.
+        Backends with no menu answer ``False``.
+        """
+        return False
+
     def set_interactive(self, *, mouse: bool = True, menu: bool = True) -> None:
         """Enable/disable mouse pan-zoom and the right-click menu (default no-op)."""
 

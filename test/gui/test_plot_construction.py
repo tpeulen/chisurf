@@ -76,12 +76,17 @@ class _PlotModel:
 
 
 def test_inline_plot_context_menu_on_by_default(app):
-    """A PlotSection keeps pyqtgraph's right-click menu unless it opts out."""
+    """A PlotSection keeps the right-click menu unless it opts out.
+
+    Asked through chiplot's own ``menu_enabled()`` rather than the renderer's
+    spelling: the point of the seam is that a plot answers this without the
+    caller knowing which library draws it.
+    """
     from chisurf.core.dataspec import PlotSection
     from chisurf.gui.autoform.sections.builtin import PlotWidget
 
     widget = PlotWidget(_PlotModel(), PlotSection(source="series"))
-    assert widget.plot.getPlotItem().getViewBox().menuEnabled() is True
+    assert widget.plot.menu_enabled() is True
 
 
 def test_inline_plot_context_menu_can_be_disabled(app):
@@ -90,4 +95,4 @@ def test_inline_plot_context_menu_can_be_disabled(app):
     from chisurf.gui.autoform.sections.builtin import PlotWidget
 
     widget = PlotWidget(_PlotModel(), PlotSection(source="series", context_menu=False))
-    assert widget.plot.getPlotItem().getViewBox().menuEnabled() is False
+    assert widget.plot.menu_enabled() is False

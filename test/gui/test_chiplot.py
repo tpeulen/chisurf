@@ -75,6 +75,33 @@ def test_plot_draw_all_families(qapp):
     img.set_image(np.random.rand(4, 4))
 
 
+def test_passthrough_reaches_the_host_widget(qapp):
+    """Widget-level pyqtgraph API resolves through the seam too (RF-142).
+
+    pyqtgraph splits its API between the ``PlotItem`` (``setLogMode``,
+    ``getViewBox``) and the ``PlotWidget`` that hosts it (``getPlotItem``,
+    ``plotItem``). ``Plot.native`` is the *item*, so a migrated call site
+    reaching for the widget half used to get an ``AttributeError`` from the one
+    mechanism whose job is to keep such calls working.
+    """
+    plot = cp.Plot()
+    with pytest.warns(cp.ChiplotPassthroughWarning):
+        assert plot.getPlotItem() is plot.native
+    # An attribute on neither object is still an error, not a silent None.
+    with pytest.raises(AttributeError):
+        plot.definitelyNotAPyqtgraphMethod
+
+
+def test_menu_enabled_reads_back(qapp):
+    """``set_menu_enabled`` has a read side that needs no renderer spelling."""
+    plot = cp.Plot()
+    assert plot.menu_enabled() is True
+    plot.set_menu_enabled(False)
+    assert plot.menu_enabled() is False
+    plot.set_interactive(mouse=False, menu=True)
+    assert plot.menu_enabled() is True
+
+
 def test_arrow_angle_convention(qapp):
     """``Plot.arrow`` places the tip and aims in chiplot's convention (RF-141).
 

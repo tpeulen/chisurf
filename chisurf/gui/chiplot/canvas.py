@@ -591,6 +591,14 @@ class Plot(QtWidgets.QWidget):
         self._canvas.set_menu_enabled(bool(enabled))
         return self
 
+    def menu_enabled(self) -> bool:
+        """Whether the right-click menu is currently offered.
+
+        The read side of :meth:`set_menu_enabled` — ask this rather than
+        reaching for the renderer's own spelling through the seam.
+        """
+        return bool(self._canvas.menu_enabled())
+
     def add_menu_action(self, label: str, callback) -> Plot:
         """Add a custom entry to the right-click menu. Returns ``self``.
 
@@ -860,20 +868,28 @@ class Plot(QtWidgets.QWidget):
         name : str
             Attribute not found on this :class:`Plot`.
 
+        Two objects are consulted, in order: the backend's plot object (a
+        pyqtgraph ``PlotItem``) and then the widget hosting it (a
+        ``PlotWidget``). pyqtgraph splits its API across the two — ``setLogMode``
+        and ``getViewBox`` live on the item, ``getPlotItem`` and ``plotItem``
+        only on the widget — and a migrated call site that reaches through the
+        widget-level half would otherwise get an ``AttributeError`` from a seam
+        whose whole purpose is to keep working.
+
         Raises
         ------
         AttributeError
-            During construction (before the canvas exists) or if the native
-            plot object also lacks ``name``.
+            During construction (before the canvas exists) or if neither the
+            native plot object nor its host widget has ``name``.
         """
         if name.startswith("__") or name == "_canvas":
             raise AttributeError(name)
         from chisurf.gui.chiplot._passthrough import record_and_warn
 
-        native = self._canvas.native
-        if hasattr(native, name):
-            record_and_warn("Plot", name)
-            return getattr(native, name)
+        for target in (self._canvas.native, self._canvas.widget()):
+            if hasattr(target, name):
+                record_and_warn("Plot", name)
+                return getattr(target, name)
         raise AttributeError(name)
 
 

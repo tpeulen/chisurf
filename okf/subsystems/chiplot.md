@@ -65,6 +65,15 @@ is a **shrinking migration tracker**, not a place to add oneself: it started at
 76 files and is down to 15, of which the ChiMOL OpenGL module is owned by
 [PRD-57](/prds/prd-57.md) and out of scope.
 
+The safety net has two halves, and the object one is easy to get wrong:
+`Plot.__getattr__` consults the backend's plot object **and then the widget
+hosting it**, because pyqtgraph splits its API across a `PlotItem`
+(`setLogMode`, `getViewBox`) and a `PlotWidget` (`getPlotItem`, `plotItem`).
+`Plot.native` is the *item*, so a call site reaching for the widget half used to
+get an `AttributeError` out of the one mechanism that exists to keep such calls
+working. Where a query is genuinely missing, add it: `set_menu_enabled` gained
+its read side, `menu_enabled()`, rather than leaving tests to ask pyqtgraph.
+
 The reason the rule needs a guard is the safety net. `chiplot.__getattr__`
 resolves any name chiplot does not define — `mkPen`, `PlotWidget`,
 `LinearRegionItem`, … — from the active backend's underlying module and emits a
