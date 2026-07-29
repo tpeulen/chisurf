@@ -11185,3 +11185,70 @@ machine. RF-993..RF-1001 below.
 - **Location:** `chisurf/core/fluorescence/mle/fit2x.py:133-135` (`convolution_stop : int, optional — … When omitted the tttrlib default (half the array length) is used.`) against the `fit_setup` registry entry (`convolution_stop`, `default: -1`, *"-1 uses the full IRF length"*) reached by `tttrlib.setup_vector` at `:335`
 - **Finding:** omitting `convolution_stop` leaves the slot at `-1`, which tttrlib documents as the **full** IRF length, not half of it — verified: `tttrlib.setup_vector("fit23", dt=0.05, period=16.0)` → `[0.05, 16.0, 1.0, 0.0, 0.0, -1.0, 1.0, 0.0, 0.0, -1.0]`. Half the array length was the old fit2x constructor default and the docstring was carried over. The distinction is not cosmetic for a VV/VH histogram, where "the array" is two channels: a reader following this docstring would size the convolution to one channel. Restate the default as the registry does, and say that `-1` is reachable by passing it explicitly.
 - **Fix note:**
+
+### Review 2026-07-29 — `chisurf/core/settings` (the settings package itself)
+
+Slice: the whole of `chisurf/core/settings/` — `__init__.py`, `settings_utils.py`,
+`path_utils.py`, `file_utils.py`, `cleanup.py`, `env_bootstrap.py`,
+`ai_settings.py` — plus its two nearest consumers (`TCSPCReader`'s anisotropy
+defaults and the AI-provider readers). Chosen because it is the module every
+entry point imports first and it carries only three findings on record.
+
+**What holds.** `path_utils.get_path` is correct and its `ValueError` on an
+unknown `path_type` (the RF-934/`get_path('cs')` fix) does what it claims;
+`CHISURF_SETTINGS_DIR` really is the single redirect point — a full import under
+a scratch dir touches nothing in `~/.chisurf`. `settings_utils._deep_merge`
+overlays the packaged defaults *underneath* the user file correctly (verified on
+`tcspc`, `gui`, `optimization`), and the `set_*` writers read the **user** file
+rather than the merged dict, so they do not freeze defaults into it.
+`cleanup.USER_DATA_DIRS` holds: `flr`/`objects`/`plugins`/`structures` survive a
+`clear_settings_folder()`.
+
+**What does not.** Two shipped configuration values never reach the code that
+reads them — the anisotropy calibration is read from the retired top-level
+package and lands on a `{}` stub, and an API key exported in the environment is
+invisible to half the callers. A malformed user YAML takes the whole application
+down at import. And one setting the UI offers is overwritten unconditionally two
+lines after it is loaded. RF-1002..RF-1006 below.
+
+### RF-1002
+- **Status:** OPEN
+- **Severity:** S2 (the shipped anisotropy calibration never loads; every `TCSPCReader` silently defaults to `l1 = l2 = 0`, `g_factor = 1`)
+- **Location:** `chisurf/core/settings/__init__.py:78-84` (`anisotropy_data = safe_open_file(file_path=get_path('chisurf') / "settings" / "anisotropy_corrections.json", …)`) against `chisurf/core/experiments/tcspc/reader.py:64` (`_default_anisotropy_calibration`) and `:216-222`/`:241-243` (`TCSPCReader.__init__`)
+- **Finding:** `get_path('chisurf')` is the **package** root (`path_utils.py:81`), so this reads `chisurf/settings/anisotropy_corrections.json` — the retired top-level package that `3bc869b63` ("remove legacy top-level packages") moved to `chisurf/core/settings/`. That directory still exists in the tree with exactly one file in it, containing `{}` (3 bytes); the real calibration lives at `chisurf/core/settings/anisotropy_corrections.json` and reads `{"l1": 0.12, "l2": 0.44, "g_factor": 1.16}`. Because the stub parses fine, `safe_open_file` never warns. Verified: `import chisurf.core.settings; settings.anisotropy` → `{}`, so `_default_anisotropy_calibration()` falls through to `l1 = 0.0`, `l2 = 0.0` and `g_factor = 1.0` (the latter from the unrelated `tcspc` section), and every `TCSPCReader` constructed without explicit `g_factor`/`l1`/`l2` — i.e. every reader built from the experiment config — stamps those zeros into `meta_data` via `_annotate_anisotropy_calibration`. Point the load at `package_directory / 'anisotropy_corrections.json'` (the pattern the neighbouring `structure.json` / `parameter_registry.json` loads already use), delete the `chisurf/settings/` stub directory, and pin it with a test that asserts `settings.anisotropy['g_factor'] == 1.16`. Two packaging entries point at the same retired path and should go with it: `pyproject.toml:189` (`"chisurf.settings.constants"`) and `MANIFEST.in:5-6`.
+- **Fix note:**
+
+### RF-1003
+- **Status:** OPEN
+- **Severity:** S1 (a malformed user `settings_chisurf.yaml` makes `import chisurf.core.settings` raise — GUI, `csc` and the server all fail to start, with no in-app way back)
+- **Location:** `chisurf/core/settings/file_utils.py:36` (`except (FileNotFoundError, PermissionError, IOError) as e:`) reached from `chisurf/core/settings/settings_utils.py:43-49` (`_read`) and `chisurf/core/settings/__init__.py:51` (`cs_settings = get_chisurf_settings(chisurf_settings_file, …)`)
+- **Finding:** `safe_open_file` guards the *open*, not the *processor*. `yaml.safe_load` raises `yaml.YAMLError` and `json.load` raises `JSONDecodeError`; neither is an `OSError`, so neither is caught and the `default_value={}` the caller passes is unreachable — exactly the case the argument exists for. Verified: with a truncated quoted scalar appended to `<settings>/settings_chisurf.yaml`, `import chisurf.core.settings` dies with a raw `yaml.scanner.ScannerError` traceback. The same hole covers `parameter_registry.json`, `structure.json`, `settings_colors.yaml` and `anisotropy_corrections.json`, and `UnicodeDecodeError` (a `ValueError`) on any of them. The bootstrap path is inconsistent about it — `env_bootstrap._apply_thread_env_from_settings` wraps its own `get_chisurf_settings` call in a bare `except Exception` (`:315`) and so survives the same file, while the import at `__init__.py:51` does not. Catch `Exception` from the processor (keeping the `OSError` message shape), report the offending path, and return the default so a corrupt user file degrades to the packaged one instead of bricking the install.
+- **Fix note:**
+
+### RF-1004
+- **Status:** OPEN
+- **Severity:** S2 (an API key exported in the environment reads as "no provider configured" for AI triage and for the agent-panel provider list, while the agent harness sees it)
+- **Location:** `chisurf/core/settings/ai_settings.py:110-172` (`get_api_settings`, docstring at `:112-114`: *"Load AI API settings from JSON file with env var fallbacks. Priority: settings file > environment variables > defaults."*) and its consumers `chisurf/core/fluorescence/curation/ai_triage.py:169-176` (`_llm_available`) / `:205-207` (`_call_llm`) and `chisurf/plugins/core/code_editor/agent_panel.py:489-490` (`has_key = bool(settings.get("api_key"))`)
+- **Finding:** `get_api_settings` reads the JSON file and merges `DEFAULT_PROVIDER_SETTINGS`; it never touches `os.environ`. The env fallback lives one level up, in `get_api_key()` (`:290-298`) and `get_provider_api_key()` (`:270-287`), so the docstring's stated priority is wrong for the function that carries it. Callers split on this: `chisurf/core/agent/llm.py:232-235` (`LLMSettings.from_provider`) and `plugin_manager/gui/tool.py:1683-1692` explicitly re-add the env fallback after calling it, while `ai_triage` and `agent_panel` read `settings["api_key"]` straight. Verified with `MISTRAL_API_KEY` set and no saved key: `get_api_settings()["api_key"]` → `''`, `get_api_key()` → the env value, `LLMSettings.from_provider().api_key` → the env value, but `ai_triage._llm_available()` → `False` — triage silently degrades to deterministic-only ("no usable LLM provider", logged at `debug`) and the agent panel shows the provider without its ✓. Fold the env fallback into `get_api_settings` so one function answers "what is this provider configured with", and drop the now-duplicated fallbacks at the two call sites that hand-rolled it.
+- **Fix note:**
+
+### RF-1005
+- **Status:** OPEN
+- **Severity:** S2 (`gui.start_jupyter_on_startup` is unconditionally forced back to `True`, so the settings toggle and the service's `enabled_if` gate are both inert)
+- **Location:** `chisurf/core/settings/__init__.py:95-100` (`# BETA OVERRIDES … _gui_overrides['start_jupyter_on_startup'] = True`) against `chisurf/gui/__init__.py:1361-1367` (the `start_jupyter` stage reads `cs.core.settings.cs_settings['gui']`) and `chisurf/startup/services.d/30_gui_post_show.json:40-43` (`"enabled_if": {"setting": "gui.start_jupyter_on_startup", "equals": true}`)
+- **Finding:** the override runs two lines after `locals().update(cs_settings)` and mutates the same dict every consumer reads, so a user's choice is discarded in-process, not merely ignored at one site. Verified: with `start_jupyter_on_startup: false` in the user YAML, `cs_settings['gui']['start_jupyter_on_startup']` is `True` after import. The generic settings editor renders the key — `SettingsEditor.load_file` (`chisurf/gui/widgets/settings_editor.py:1160-1174`) reads the user YAML straight off disk and `_populate_model` (`:786-822`) turns every key, booleans included, into an editable row — so the checkbox shows the user's `false`, saves `false`, survives a restart in the file, and still starts a Jupyter kernel — a control that does nothing, plus startup cost and an open port a user cannot decline. The comment scopes it to "the Antigravity (v26.1) Beta release" and carries no expiry or log line; `chisurf.core.info.__version__` should decide whether that window is still open. Either drop the override and let the setting mean what it says, or make it explicit — log it once at `info` and grey the editor control out — but not both silently.
+- **Fix note:**
+
+### RF-1006
+- **Status:** OPEN
+- **Severity:** S3 (dead code: an env var for a library that is not a dependency, naming the wrong Qt binding)
+- **Location:** `chisurf/core/settings/env_bootstrap.py:180-182` (`_init_vispy`: `os.environ.setdefault("VISPY_APP", "PyQt6")`), called unconditionally at `:378`
+- **Finding:** vispy is imported nowhere in the tree (`grep -rn "import vispy"` over `chisurf/` and `modules/` → no hits), is not declared in `pyproject.toml`, `pixi.toml` or the rattler recipe, and is not installed in the project environment. The value is also wrong for this application: `pixi.toml:34-35` pins `qtpy <2.0` + conda `pyqt`, and `qtpy.API_NAME` resolves to `PyQt5 5.15.15` — so if vispy ever did arrive as a transitive dependency, this line would point it at a binding ChiSurf does not load, which is precisely the two-Qt-stacks collision `CLAUDE.md` warns about. Delete `_init_vispy` and its call. (While in the same function neighbourhood: `_init_qt_plugins`' first two candidates, `APPROOT/Qt6/plugins` and `APPROOT/Library/Qt6/plugins`, match no conda layout either — Qt5 plugins land in `$PREFIX/plugins`, Qt6 in `$PREFIX/lib/qt6/plugins` — but that one is inert rather than wrong, since the existing-directory probe skips them.)
+- **Fix note:**
+
+### RF-1007
+- **Status:** OPEN
+- **Severity:** S3 (dead public helper whose return order is non-deterministic across runs)
+- **Location:** `chisurf/core/settings/ai_settings.py:434-452` (`get_available_providers`, `return list(providers)` at `:448` where `providers` is a `set`)
+- **Finding:** no caller anywhere in the repo (`grep -rn get_available_providers` outside its own definition → nothing), and the one branch that would matter is order-unstable: once `ai_api_settings.json` exists the function returns `list(set(data.keys()) - {'selected_provider'} | {selected})`, whose order follows string hash randomisation. Verified across `PYTHONHASHSEED=1/2/3` on the same file: `['openai', 'mistral', 'local', 'openrouter', 'custom']`, `['openrouter', 'custom', 'local', 'mistral', 'openai']`, `['openrouter', 'custom', 'local', 'openai', 'mistral']` — while the no-file branch returns the curated `DEFAULT_PROVIDER_SETTINGS` order, which `ai_settings.py:19-25` documents as deliberate (EU-hosted first). A provider combo populated from this would reshuffle itself between sessions and bury the intended default. Either delete it, or sort the result into `PROVIDERS` order before anything starts using it.
+- **Fix note:**
