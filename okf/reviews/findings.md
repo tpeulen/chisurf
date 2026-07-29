@@ -10692,3 +10692,67 @@ port and were preserved by it).
 - **Location:** `chisurf/gui/plots/residual_image.py:10` (`from chisurf.core.actions import record_action`, never referenced in the module) and `:746-756` (`cs.core.actions.dispatch(name="fit.range.set", …)` wrapped in `try: … except Exception: pass`)
 - **Finding:** `record_action` is not used anywhere in the file; what the import actually does is bind the `actions` submodule onto `chisurf.core` so that the attribute chain `cs.core.actions.dispatch` resolves at call time. Verified: in a fresh interpreter `import chisurf.core.fitting; import chisurf as cs` leaves `hasattr(cs.core, "actions")` **False**, so none of the module's other imports bring it in. Because the dispatch is swallowed by `except Exception: pass`, deleting the "unused" import — the obvious `F401` cleanup — would stop every 2-D selection from reaching `fit.range.set`, with no error, no log line, and a `regionChanged` signal still firing so the range boxes would keep moving. Import the module for what it is (`import chisurf.core.actions`) or call `dispatch` through a direct `from … import dispatch`, and let the failure be logged rather than swallowed.
 - **Fix note:**
+
+### Review 2026-07-29 — the anisotropy G convention, one site at a time
+
+Slice: the polarized-decay chain after the two G-factor landings of 2026-07-27,
+`7ca949fe5` (*Schaffer/Eggeling throughout — one G, one equation*) and
+`1ca181c22` (*the l1/l2 forward model, taken from tttrlib*) —
+`chisurf/core/fluorescence/anisotropy/{decay,integrals}.py`,
+`chisurf/core/models/tcspc/{anisotropy,lifetime}.py` and
+`docs/concepts/anisotropy.md`. Those commits moved four sites to
+`G = S_par/S_perp` on the perpendicular channel and warned that "moving fewer
+only relocates the inconsistency". Three sites did not move: the
+spectrum-domain forward model the fitting model actually calls, the
+scatter-corrected half of `anisotropy_from_integrals`, and the concept page —
+plus the test that pinned the old convention, which is red at `HEAD`. Every
+number below was executed in the project environment. Findings RF-953..RF-959.
+
+### RF-953
+- **Status:** OPEN
+- **Severity:** S1 (the anisotropy fitting model builds its perpendicular channel with the g-factor on the wrong side, so at g = 1.5 the model curves carry r = 0.08 for a rotation spectrum of r₀ = 0.38, and at g = 2.2 the anisotropy comes out negative)
+- **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:255-258` (`calculcate_spectrum`: `vh = e1tn(np.hstack([f, e1tn(d.copy(), -1.0)]), g_factor)` — VH *multiplied* by g) against `:126` (`vm_rt_to_vv_vh`: `vh_j = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g_factor` — VH *divided* by G), with the consumer at `chisurf/core/models/tcspc/anisotropy.py:264` (`Anisotropy.get_decay`) and the correction the same application applies at `chisurf/core/models/tcspc/lifetime.py:681-687` and `chisurf/core/fluorescence/anisotropy/integrals.py:176-178`
+- **Finding:** `7ca949fe5` moved four sites to `G = S_par/S_perp`, so the perpendicular channel records `1/G` of what an equally sensitive one would; `calculcate_spectrum` — the spectrum-domain sibling that `Anisotropy.get_decay` calls to build every VV/VH model curve — was not among them and still multiplies. The two forward models therefore differ by exactly `g²` in VH. Verified with `τ = 4 ns`, `ρ = 1.5 ns`, `r₀ = 0.38`: at `g = 1.5` the spectrum path gives `VH(0) = 0.930000` against the generator's `0.413333` (ratio 2.250000 = g²), and feeding the spectrum path's own VV/VH into the correction `r = (Sp − g·Ss)/((1−3l2)·Sp + (2−3l1)·g·Ss)` — the expression `_tcspc_rt_curves` uses to draw the r(t) plot beside that very fit — returns **0.080220** instead of 0.380000, where the generator returns 0.380000 exactly. At `g = 2.2, l1 = 0.05, l2 = 0.03` the same path returns **−0.179126**, a negative anisotropy for a positive rotation spectrum. The two agree only at `g = 1`, the default, which is why nothing catches it. Move the `g_factor` onto the denominator (`e1tn(..., 1.0 / g_factor)`); the docstring formulas at `:146-155` and the recorded doctest outputs at `:193-229` encode the old placement and must move with it, as must `test/fluorescence/test_fluorescence.py::test_fluorescence_anisotropy_decay_calculcate_spectrum` and `::test_calculcate_spectrum_recovers_anisotropy`, which both derive their reference from `f_VH = G·f_VM·(1−r)`. See RF-954 for the l1/l2 half of the same function.
+- **Fix note:**
+
+### RF-954
+- **Status:** OPEN
+- **Severity:** S2 (the model's l1/l2 mean something different from the l1/l2 the correction applies, so channel cross-talk biases the fitted anisotropy by ~10 % even once RF-953 is fixed)
+- **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:263-264` (`vv_mixed = hstack([e1tn(vv, 1-l1), e1tn(vh, l1)])`, `vh_mixed = hstack([e1tn(vv, l2), e1tn(vh, 1-l2)])` — the Koshioka 1995 2×2 matrix) against `:125-126` (`vv_j = vm*(1 + (2 − 3 l1)·rt)`, `vh_j = vm*(1 − (1 − 3 l2)·rt)/g_factor`) and the comment at `:118-124` that records why the generator was moved off the 2×2 form
+- **Finding:** `1ca181c22` replaced the 2×2 mixing in `vm_rt_to_vv_vh` with tttrlib's `DecayFit23` parameterisation, because the matrix is "a *different* meaning for l1/l2" than the Schaffer correction the rest of the stack applies. `calculcate_spectrum` still mixes with the 2×2 matrix, and it is the one the fitting model calls. Verified analytically with `r = 0.30, G = 1.5, l1 = 0.10, l2 = 0.05`: an ideal pair mixed the 2×2 way and then corrected with `(Sp − G·Ss)/((1−3l2)·Sp + (2−3l1)·G·Ss)` returns **0.270062** against a truth of 0.300000, while the Schaffer forward model returns 0.300000 exactly — and this is *after* granting RF-953's g placement, so the two defects do not cancel. The error scales with `l1 + l2` and vanishes at `l1 = l2 = 0`, the default. Build the mixed channels as `f·(1 + (2 − 3 l1)·r)` and `f·(1 − (1 − 3 l2)·r)/G` in the spectrum domain (i.e. scale the rotation term of the joint spectrum by `2 − 3 l1` and `−(1 − 3 l2)` rather than superposing two ideal channels), so that generator and correction share one parameterisation.
+- **Fix note:**
+
+### RF-955
+- **Status:** OPEN
+- **Severity:** S2 (`anisotropy_from_integrals` returns two anisotropies computed with *opposite* G conventions from the same call — with no scatter at all, `r_s` reads 0.58 where `r_e` reads the correct 0.30)
+- **Location:** `chisurf/core/fluorescence/anisotropy/integrals.py:185-199` (`den_chi = g*B_p + 2*B_s`, `s_ges = g*sp + 2*ss`, `num_s = (g*sp − ss) − …`, `den_s = (1−3l2)*g*sp + (2−3l1)*ss − …`) against `:176-178` in the same function (`num_e = sp − g*ss`, `den_e = (1−3l2)*sp + (2−3l1)*g*ss`)
+- **Finding:** `7ca949fe5` moved `r_e` onto the published `G = S_par/S_perp` form (G on the perpendicular channel) and left the scatter-corrected branch below it on the old "G multiplies the parallel channel" form. With `γ = 0` the scatter correction is the identity, so `r_s` must equal `r_e`; it does not. Verified with `r_true = 0.30`, `G = 1.5`, `Sp = 1.60`, `Ss = 0.70/1.5`, `γ = 0` and negligible backgrounds: `r_e = 0.300000` (correct) and `r_s = 0.580000` — 93 % high; with `l1 = 0.05, l2 = 0.03` the pair is `0.327154` / `0.634434`. At `G = 1` both give `0.300000`, which is why it survived. `chi` and `S_ges` carry the same reversal (`g·B_p + 2·B_s`, `g·Sp + 2·Ss`), so the returned `AnisotropyResult.S_ges` is not the total intensity either. The whole `scatter_corrected=True` path has no consumer in the tree today and no test — that is why the split went unnoticed, and also why it is cheap to close now: mirror `r_e`'s placement (`sp − g·ss`, `(1−3l2)·sp + (2−3l1)·g·ss`, `S_ges = sp + 2·g·ss`, `chi = 2·g·B_s/(B_p + 2·g·B_s)`) and add a `γ = 0 ⇒ r_s == r_e` test at `G ≠ 1`.
+- **Fix note:**
+
+### RF-956
+- **Status:** OPEN
+- **Severity:** S2 (a test in the default non-GUI suite has been failing since 2026-07-27 — `pixi run test` is red, on the very convention the two commits were meant to pin)
+- **Location:** `test/fluorescence/test_fluorescence.py:195-250` (`Tests::test_vm_rt_to_vv_vh_recovers_anisotropy`), collected by the `test` task (`pixi.toml:214`, `pytest test …`)
+- **Finding:** the test asserts the *old* inversion, `(vv − vh/g)/(vv + 2·vh/g) == r(t)`, which held while `vm_rt_to_vv_vh` computed `vh = g·vm·(1−r)`; `1ca181c22` made it `vh = vm·(1 − (1−3l2)·r)/G`, so the correct inversion is now `(vv − g·vh)/(vv + 2·g·vh)`. Verified: `pytest test/fluorescence/test_fluorescence.py -k "anisotropy or vv_vh or vm_vv"` gives `1 failed, 3 passed`, with `AssertionError: False != True : anisotropy not recovered for g=0.8` at line 219. The second half of the same test (`:241-250`, "VH disagrees with `calculcate_spectrum`") is the assertion that would have caught RF-953, and it cannot pass until RF-953 lands — so this is a *follow-up* to RF-953 rather than a standalone test edit: fix the generator's sibling first, then rewrite both halves against `(vv − g·vh)/((1−3l2)·vv + (2−3l1)·g·vh)`. The docstring at `:196-203` ("g is a detection sensitivity, so it scales the whole perpendicular channel") states the retired convention and goes with it.
+- **Fix note:**
+
+### RF-957
+- **Status:** OPEN
+- **Severity:** S2 (the user-facing anisotropy concept page contradicts itself — its G definition and its forward model cannot both be right, and substituting one into the other turns r₀ = 0.38 into 0.08)
+- **Location:** `docs/concepts/anisotropy.md:41` (`r = (I∥ − G·I⊥)/(I∥ + 2·G·I⊥)`) and `:51` (`G = S∥/S⊥`) against `:208-217` (`f⊥(t) = G·f_VM(t)·(1 − r(t))`, "G … multiplies the whole perpendicular channel", inverted as `r = (f∥ − f⊥/G)/(f∥ + 2·f⊥/G)`)
+- **Finding:** the page states the current convention in its definition section and the retired one in the section on how ChiSurf builds the two channels; the two are reciprocals of each other. Verified by substitution at `G = 1.5, r = 0.38`: the forward model of `:210` gives `I∥ = 1.76` and `I⊥ = 0.93`, and the page's own estimator at `:41` then returns **0.080220**, not 0.38. `:216-217` additionally argues *against* the form the code now uses (`f_VM(1 − G·r)` "is self-consistent only at G = 1"), so a reader who follows the page will conclude the shipped `vm_rt_to_vv_vh` is wrong. `7ca949fe5` changed user-visible behaviour without updating `docs/`, which the repo's "docs are part of the change" rule requires. Rewrite `:208-217` as `f∥ = f_VM(1 + (2 − 3 l1)·r)`, `f⊥ = f_VM(1 − (1 − 3 l2)·r)/G` with the inversion of `:41`, citing Schaffer *et al.*, J. Phys. Chem. A 103 (1999) 331 as `integrals.py:111-115` does. Best fixed together with RF-953, whose code the paragraph describes.
+- **Fix note:**
+
+### RF-958
+- **Status:** OPEN
+- **Severity:** S3 (the docstring of the reference forward model documents the model it was changed *away* from, four lines above the code that contradicts it)
+- **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:24-25` (`f_VV(t) = f_VM(t)*(1 + 2 r(t))`, `f_VH(t) = g * f_VM(t) * (1 - r(t))`), `:31-37` ("g … scales the *whole* perpendicular channel … and it is what `calculcate_spectrum` … uses") and `:39-43` (the 2×2 mixing) against the code at `:125-126`
+- **Finding:** `1ca181c22` replaced the body with `vv_j = vm*(1 + (2 − 3 l1)·rt)` / `vh_j = vm*(1 − (1 − 3 l2)·rt)/g_factor` and explained the change in a code comment at `:110-124`, but left the docstring above it stating the opposite for both the g placement (multiply, not divide) and the l1/l2 mixing (a 2×2 matrix, not the Schaffer factors). The docstring is the function's published contract — it is what a caller reads and what the concept page mirrors — and it now names `calculcate_spectrum` as the authority for a placement that only that function still uses (RF-953). Nothing flags the drift, because the docstring's own example runs at the default `g = 1`, `l1 = l2 = 0`, where all readings agree. Replace `:22-43` with the two equations the code implements plus the inversion `r = (f_VV − G·f_VH)/((1 − 3 l2)·f_VV + (2 − 3 l1)·G·f_VH)`.
+- **Fix note:**
+
+### RF-959
+- **Status:** OPEN
+- **Severity:** S3 (a 25-line comment explains, in the one place the G convention is written out in prose, the exact reverse of the six lines beneath it)
+- **Location:** `chisurf/core/models/tcspc/lifetime.py:655-680` (`r = (G Sp − Ss)/((1 − 3 l2) G Sp + (2 − 3 l1) Ss)`, "chisurf's `g` is its **reciprocal** … so here g multiplies the *parallel* channel") against `:681-687` (`gs = g * vh`; `r_unc = (vv − gs)/(vv + 2 gs)`; `r_cor = (vv − gs)/((1 − 3 l2) vv + (2 − 3 l1) gs)`)
+- **Finding:** `7ca949fe5` flipped the four lines of arithmetic (`gp = g*vv` → `gs = g*vh`, and the two numerators/denominators with them) and left the comment block that justifies the *old* placement untouched — verified against that commit's own diff, which touches only `:681-687` in this file. The comment also still claims `compute_g_factor_perrin` returns the reciprocal of the published G, whereas that function now returns `S_par/S_perp` and says so in its own comment (`integrals.py:111-115`). Since this convention has now drifted apart twice, a comment asserting the reciprocal reading in the file a reader is most likely to consult is an active hazard rather than a stale nicety. Rewrite `:655-680` around `r = (Sp − G·Ss)/((1 − 3 l2)·Sp + (2 − 3 l1)·G·Ss)` with `G = S_par/S_perp`, keeping the "l1/l2 apply after the sensitivity correction" paragraph, which is still true.
+- **Fix note:**
