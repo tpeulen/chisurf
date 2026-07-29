@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from build_tools.dev_utils import align_flrcif_parameters as align
 from chisurf.core.project.mmfdb_adapter import resolve_parameter_name
 from mmfdb.adapters.chinet import _lookup_flrcif_name
 from mmfdb.schema.pdbx_metadata import MmcifDictionary
@@ -21,9 +22,7 @@ REGISTRY_PATH = (
     / "parameter_registry.json"
 )
 
-from mmfdb.schema.pdbx_metadata import MmcifDictionary as _MmcifDictionary
-
-DIC_PATH = _MmcifDictionary.DATA_DIR / "mmfdb_flr_ext.dic"
+DIC_PATH = MmcifDictionary.DATA_DIR / "mmfdb_flr_ext.dic"
 
 
 def test_registry_file_exists():
@@ -157,3 +156,64 @@ def test_dic_items_have_schema_bindings():
         assert item.schema_column, (
             f"{item.name} missing schema_column"
         )
+
+
+def test_dic_uses_only_the_vendor_neutral_schema_namespace():
+    """The shipped extension dictionary carries no branded schema tags.
+
+    PRD-44 retired ``_chisurf_schema.*`` in favour of the store-keyed
+    ``_mmfdb_schema.*``; a single branded tag means something re-introduced the
+    application-specific namespace into a dictionary meant to be vendor-neutral.
+    """
+    text = DIC_PATH.read_text(encoding="utf-8")
+    assert "_chisurf_schema" not in text, (
+        "branded _chisurf_schema tags found in mmfdb_flr_ext.dic (PRD-44)"
+    )
+    assert "_mmfdb_schema" in text
+
+
+def test_generated_item_def_uses_the_vendor_neutral_schema_namespace():
+    """The generator emits the same schema namespace the dictionary ships with.
+
+    The generator is the only thing that ever appends to the extension
+    dictionary, so emitting the retired namespace would silently split the file
+    into two conventions, one parameter at a time.
+    """
+    block = align.generate_item_def("E_FRET", "Apparent FRET efficiency.")
+    assert "_chisurf_schema" not in block
+    assert "   _mmfdb_schema.table_name  flr_chisurf_parameter" in block
+    assert "   _mmfdb_schema.column_name e_fret" in block
+
+
+def test_generator_default_dic_path_is_the_shipped_dictionary():
+    """The default output path resolves to the dictionary the tests read."""
+    assert align.DEFAULT_DIC_PATH == DIC_PATH
+    assert align.DEFAULT_DIC_PATH.is_file()
+
+
+def test_dictionary_load_failure_is_not_swallowed(monkeypatch):
+    """A failed dictionary load raises instead of reporting "no items".
+
+    An empty set reads as "nothing is defined yet", which would make the
+    alignment re-append a definition for every parameter already in the file.
+    """
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("dictionary unavailable")
+
+    monkeypatch.setattr(align.MmcifDictionary, "load_bundled", _boom)
+    with pytest.raises(RuntimeError):
+        align.get_all_dic_items()
+
+
+def test_alignment_is_idempotent_on_the_shipped_registry(tmp_path):
+    """Re-running the alignment adds nothing: every parameter is already mapped.
+
+    This exercises the script end to end — import, dictionary load, item-id
+    derivation — against the real registry, so a moved dictionary API or a
+    parameter added without a ``.dic`` entry fails here rather than in a
+    hand-run script.
+    """
+    registry_copy = tmp_path / "parameter_registry.json"
+    registry_copy.write_text(REGISTRY_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+    added = align.process(registry_copy, tmp_path / "unused.dic", dry_run=True)
+    assert added == 0, f"{added} registry parameter(s) have no dictionary item"

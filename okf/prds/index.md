@@ -9,7 +9,7 @@ Status: ✅ done · 🚧 in-progress · ✏️ draft · 🌱 stub · 📋 planne
 * ✅ [PRD-02: Sample Tracking — Deep Sample Description](prd-02.md) — Link every dataset and result to a full atomistic, flrCIF-aligned sample description.
 * ✅ [PRD-02a: mmCIF Dictionary Infrastructure](prd-02a.md) — Parse bundled mmCIF dictionaries into a cached API for vocabulary validation and autocomplete.
 * ✅ [PRD-02b: MMFDB Admin Overhaul — Manual Inspection & Editing](prd-02b.md) — Make the mmfdb-admin plugin inspect, add, and edit every record the sample data model produces.
-* ✅ [PRD-02c: Aligning ChiSurf MMFDB Export to flrCIF](prd-02c.md) — Map ChiSurf's internal parameter short names to canonical flrCIF dictionary items on export.
+* 🚧 [PRD-02c: Aligning ChiSurf MMFDB Export to flrCIF](prd-02c.md) — Maps ChiSurf's internal parameter short names to canonical flrCIF dictionary items on export; the description text still lives in both the registry and the dictionary.
 * ✅ [PRD-020: SQLAlchemy MMFDB Mapping](prd-020.md) — A bounded SQLAlchemy relationship layer for the MMFDB sample, probe, and FRET-pair tables.
 * ✅ [PRD-030: Result Payload Formats & Codecs](prd-030.md) — A typed, msgpack-based, schema-validated codec layer for MMFDB scientific result payloads.
 

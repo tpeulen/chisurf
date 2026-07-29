@@ -19,7 +19,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from chisurf.core.mmfdb.pdbx_metadata import MmcifDictionary
+from mmfdb.schema.pdbx_metadata import MmcifDictionary
 
 
 CATEGORY = "flr_chisurf_parameter"
@@ -27,6 +27,15 @@ CATEGORY_ID = CATEGORY
 SAVE_CATEGORY = f"save_{CATEGORY}"
 SAVE_ITEM_PREFIX = f"save__{CATEGORY}."
 ITEM_PREFIX = f"_{CATEGORY}."
+
+#: Local extension namespace for schema bindings. PRD-44 replaced the
+#: application-branded ``_chisurf_schema.*`` tags with this store-keyed,
+#: vendor-neutral one; every entry in the shipped dictionary uses it.
+SCHEMA_TAG_PREFIX = "_mmfdb_schema"
+
+#: The extension dictionary this script appends to, resolved from the
+#: dictionary package rather than a hard-coded tree location.
+DEFAULT_DIC_PATH = MmcifDictionary.DATA_DIR / "mmfdb_flr_ext.dic"
 
 
 def sanitize_cif_attribute(name: str) -> str:
@@ -87,34 +96,18 @@ def save_parameter_registry(path: Path, data: Dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def get_existing_dic_items(mmfdb_ext_path: Path) -> Set[str]:
-    """Return the set of item names already defined in the extension .dic.
-
-    Parses the dictionary to find items in the ``flr_chisurf_parameter``
-    category and any items with schema bindings.
-    """
-    if not mmfdb_ext_path.exists():
-        return set()
-    try:
-        d = MmcifDictionary(mmfdb_ext_path)
-    except Exception:
-        return set()
-    existing: Set[str] = set()
-    for cat_name in d.categories():
-        cat = d.get_category(cat_name)
-        if cat is None:
-            continue
-        for item in cat.items.values():
-            existing.add(item.name)
-    return existing
-
-
 def get_all_dic_items() -> Set[str]:
-    """Return the set of all item names across bundled flrCIF dictionaries."""
-    try:
-        d = MmcifDictionary.load_bundled()
-    except Exception:
-        return set()
+    """Return the set of all item names across bundled flrCIF dictionaries.
+
+    Raises
+    ------
+    Exception
+        Whatever the dictionary loader raises. The failure is deliberately not
+        swallowed: an empty set here reads as "nothing is defined yet", which
+        would make :func:`process` re-append a definition for every parameter
+        and duplicate the whole category in the shipped dictionary.
+    """
+    d = MmcifDictionary.load_bundled()
     existing: Set[str] = set()
     for cat_name in d.categories():
         cat = d.get_category(cat_name)
@@ -156,8 +149,8 @@ def generate_item_def(
         f"   _item.name                \"{item_id}\"",
         f"   _item.category_id         {CATEGORY_ID}",
         "   _item_type.code           float",
-        f"   _chisurf_schema.table_name  {CATEGORY_ID}",
-        f"   _chisurf_schema.column_name {col_name}",
+        f"   {SCHEMA_TAG_PREFIX}.table_name  {CATEGORY_ID}",
+        f"   {SCHEMA_TAG_PREFIX}.column_name {col_name}",
         "   _item_description.description",
     ]
     if description:
@@ -247,7 +240,7 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help=(
             "Path to parameter_registry.json "
-            "(defaults to chisurf/settings/constants/parameter_registry.json)."
+            "(defaults to chisurf/core/settings/constants/parameter_registry.json)."
         ),
     )
     parser.add_argument(
@@ -256,7 +249,8 @@ def parse_args(argv: Optional[List[str]] = None) -> argparse.Namespace:
         default=None,
         help=(
             "Path to mmfdb_flr_ext.dic "
-            "(defaults to chisurf/core/mmfdb/data/mmfdb_flr_ext.dic)."
+            f"(defaults to the bundled {DEFAULT_DIC_PATH.name} in the "
+            "dictionary package)."
         ),
     )
     parser.add_argument(
@@ -280,14 +274,15 @@ def main(argv: Optional[List[str]] = None) -> None:
     if args.dic is not None:
         dic_path = Path(args.dic).resolve()
     else:
-        dic_path = default_root / "chisurf" / "core" / "mmfdb" / "data" / "mmfdb_flr_ext.dic"
+        dic_path = DEFAULT_DIC_PATH
 
     added = process(registry_path, dic_path, dry_run=args.dry_run)
     if args.dry_run:
-        print(f"[dry-run] Would add {added} new .dic entries")
+        print(f"[dry-run] Would add {added} new .dic entries to {dic_path}")
+        print(f"[dry-run] Would update flrcif_item_id mappings in {registry_path}")
     else:
         print(f"Added {added} new .dic entries to {dic_path}")
-    print(f"Updated flrcif_item_id mappings in {registry_path}")
+        print(f"Updated flrcif_item_id mappings in {registry_path}")
 
 
 if __name__ == "__main__":

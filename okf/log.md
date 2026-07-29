@@ -2,6 +2,38 @@
 
 ## 2026-07-29
 
+* **The flrCIF alignment tool could not run, and would have written the retired
+  namespace if it had ([PRD-02c](/prds/prd-02c.md)).**
+  `build_tools/dev_utils/align_flrcif_parameters.py` is the only thing that ever
+  appends to `mmfdb_flr_ext.dic`, and it had been dead since MMFDB moved out of
+  chisurf: it imported `chisurf.core.mmfdb.pdbx_metadata`, a package that no
+  longer exists, so the module failed at import — nothing in the suite touched
+  it, so nobody found out. Three further defects behind that one: it emitted the
+  application-branded `_chisurf_schema.*` schema-binding tags that
+  [PRD-44](/prds/prd-44.md) retired (the shipped dictionary is 1011
+  `_mmfdb_schema` tags and zero branded ones, so every future entry would have
+  split the file into two conventions); `get_all_dic_items()` answered "no items
+  exist" on **any** dictionary-load failure, which reads as "nothing is defined
+  yet" and would have re-appended a definition for all 230 parameters,
+  duplicating the whole category; and the default `--dic` path still pointed
+  into `chisurf/core/mmfdb/data/`. The import now targets
+  `mmfdb.schema.pdbx_metadata`, the output path is derived from
+  `MmcifDictionary.DATA_DIR` so it cannot point at a moved tree again, a load
+  failure raises, and the dead twin `get_existing_dic_items()` (unused, and
+  carrying the same swallowed exception) is gone. Pinned by five new tests in
+  `test/fio/test_flrcif_alignment.py` (13 → 18), including an end-to-end
+  idempotence run of `process(..., dry_run=True)` over the real registry that
+  fails if a parameter is ever added without a dictionary item.
+  **PRD-02c demoted ✅ → 🚧:** auditing its acceptance criteria against the tree
+  showed four met and one not — the parameter description is stored in both the
+  registry and the dictionary, the script generates the dictionary text *from*
+  the JSON (the reverse of the PRD's own "dictionary is canonical" requirement)
+  and never refreshes an existing entry, so `ics.alpha` and `rics.frame_dur`
+  have already drifted. The PRD now carries the ordered next steps; a drift
+  guardrail deliberately is **not** among the tests added here, because without
+  an update path it would turn any description edit into an unfixable red test.
+  `test/fio` green: 317 passed, 12 skipped.
+
 * **"Reset local settings" no longer deletes the user's data (RF-934).**
   `~/.chisurf` is not settings-only — it also holds the per-user metadata
   database (`flr/`), the content-addressed object store (`objects/`), the
