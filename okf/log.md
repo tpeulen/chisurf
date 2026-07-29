@@ -131,6 +131,11 @@
   its length), and whatever leaves the plotted range is **charged for** — a
   cloud with nothing in it matches every curve, which a free constant will
   happily arrange (seen: γ → 0.27, cost ≈ 0).
+  **Overlays follow the histogram.** A curve is drawn in *bin* coordinates, so
+  a redraw with new binning — or with a population the fit has moved — left it
+  describing the plot it was drawn for, over data it no longer matches.
+  `update_2d_plot` is the one place a new histogram becomes the displayed
+  image, so that is where the overlays are now redrawn (re-entrancy guarded).
   Found and fixed on the way, each with a test: `plot_histogram` hands a
   **marginal back edges-first** while the 2-D case is data-first, so every
   marginal curve fit refused with "need at least 3 matching data points" and

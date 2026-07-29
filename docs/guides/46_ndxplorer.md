@@ -122,8 +122,11 @@ Three things worth knowing:
   Only the columns the fit reads (the two plotted axes) are recomputed per step,
   and only the rows visible when it started, which is what makes it seconds
   rather than minutes.
-- **The fitted value lands in the Parameters tab**, and the plots — including
-  the histograms — are rebuilt from the data the fit ended on. The other derived
+- **The fitted value lands in the Parameters tab**, and the plots — the
+  histograms and the overlay curves with them — are rebuilt from the data the
+  fit ended on. (A curve is drawn in bin coordinates, so every redraw of the
+  histogram redraws the curves over it: they always describe the plot you are
+  looking at.) The other derived
   columns, which the fit skipped, are brought up to date in the same breath. The
   constants table and the dialog show the same parameters, so there is nothing
   to copy across.
