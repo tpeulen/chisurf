@@ -10624,3 +10624,60 @@ Findings RF-940..RF-946.
 - **Location:** `chisurf/plugins/fcs/fcs_lfcs_sim/gui/tool.py:53-82` (`LifetimeFcsSimModel.run`, which keeps `reference_decays`, `micro_time_resolution_ns`, `datasets` and `condition_number` and lets the `SimulatedLifetimeFCS` — `macro_times`, `micro_times`, ground-truth `species` — fall out of scope) and `:149-192` (`_LfcsSimControls`, whose only button is *Simulate + Correlate*)
 - **Finding:** the panel's whole product is a set of correlation curves in the `.cor`-shaped dataset dicts the FCS correlator already emits, plus a photon stream with ground-truth per-photon species labels. Verified: the panel exposes exactly one public method (`simulate`) and one button, and after a run the model holds no macro-/micro-time arrays. Three panels on the same navigation rail want precisely this data — *Filter Calc* (which derives lifetime filters from decays and could be checked against the known ones), *4. Correlator* and *5. FCS Merger* (which push `.cor` curves into ChiSurf for fitting). As it stands a user can see that FLCS works but cannot fit the simulated curve, cannot compare a measured filter against the ground-truth one, and cannot keep the stream. Keep the `SimulatedLifetimeFCS` on the model and add a save/push row (`.cor` for the curves, the usual photon-stream formats for the TTTR, matching the CLSM Generator's *💾 Save*).
 - **Fix note:**
+
+### Review 2026-07-29 — the 2-D residual image (`Residual2DPlot`)
+
+Slice: `chisurf/gui/plots/residual_image.py`, freshly ported to the chiplot seam
+in `acb738ce0`, together with its two consumers — the ICS/RICS correlation
+carpet (`chisurf/core/models/ics/ics.py`) and the PDA `s1s2` residual
+(`chisurf/core/models/pda2c/common.py`). Driven headlessly through the real
+widget (offscreen `QApplication`, a synthetic accessor with a marked first row
+and first column, plus screenshot grabs at 640 × 480). The port itself is clean —
+the image, the levels and the colormap all go through chiplot, and the colormap
+now resolves — but the geometry around it does not hold: the map is drawn
+transposed, the view range is taken from the other axis, and the ROI that is
+supposed to turn a 2-D selection into a 1-D fit range snaps back to the whole
+image on every drag. Findings RF-947..RF-952 (RF-947 and RF-951 pre-date the
+port and were preserved by it).
+
+### RF-947
+- **Status:** OPEN
+- **Severity:** S2 (the residual map is drawn transposed, and the view range is taken from the *other* axis — a non-square RICS carpet is drawn four-fold outside the visible box)
+- **Location:** `chisurf/gui/plots/residual_image.py:435` (`self._image_item = self._plot_widget.image(self._image, axis_order="col-major")`) against `:429-430` (`self._x` = the accessor's x axis, length `shape[1]`) and `:606-615` (`apply_ranges_from_controller`, `set_xlim(self._x…)` / `set_ylim(self._y…)`), with the accessors' contract at `chisurf/core/models/ics/ics.py:205` and `chisurf/core/models/pda2c/common.py:150` (both `return img, np.arange(n1), np.arange(n0)` for an `img` of shape `(n0, n1)`)
+- **Finding:** under `col-major` pyqtgraph reads the array as `data[x, y]`, so an `(ny, nx)` image is drawn `ny` wide and `nx` tall — the transpose of what every accessor documents. Verified offscreen on an 8 × 32 image: `ImageItem.boundingRect()` is `QRectF(0, 0, 8, 32)` while the plot's view range is set to `x ∈ [0, 31]`, `y ∈ [0, 7]` — the image occupies an eighth of the x view and overflows the y view four-fold, and the ROI, initialised to the same x/y extents (`:447-452`), does not lie on the image at all. A square map hides the geometry but not the swap: an image with a bright first *row* and a dark first *column* renders with the row down the left-hand *column* of the screen and the column along the bottom *row* (confirmed in the grab). ICS carpets are `(n_lags, ny, nx)` with the scan's own dimensions (`chisurf/core/experiments/ics/data.py:281`), so any non-square scan hits the geometry error, and *every* RICS fit — square or not — shows ξ (fast/pixel lag) and ψ (slow/line lag) on each other's axis. This is pre-existing (a bare `pg.ImageItem` defaults to col-major, and the port deliberately preserved that, `:433-435`), but the accessors are unambiguous about which axis is which: draw row-major and delete the flip, so that the axis labels, the view range and the ROI all agree with the data.
+- **Fix note:**
+
+### RF-948
+- **Status:** OPEN
+- **Severity:** S2 (any drag of the 2-D ROI snaps it straight back to the whole image, so the 2-D → 1-D fit-range selection can never restrict anything)
+- **Location:** `chisurf/gui/plots/residual_image.py:695-696` (`dx = max(abs(cx - left), abs(right - cx), 0.5)` and the same for `dy`) inside `_on_roi_changed`, bound continuously at `:646` (`roi.on_change(self._on_roi_changed, final=False)`)
+- **Finding:** the half-width is the **maximum** of the two centre-to-edge distances, so whichever edge the user did *not* move keeps its distance and the box is re-expanded to mirror it. Verified offscreen on an 8 × 8 map (full ROI = pos `(0, 0)`, size `(7, 7)`), invoking the callback once per simulated drag: dragging the bottom-right handle inward to size `(5, 5)` → back to pos `(0, 0)` size `(7, 7)`; dragging the top-left handle in to pos `(2, 2)` size `(5, 5)` → `(0, 0)` / `(7, 7)`; translating the box to pos `(2, 2)` → `(0, 0)` / `(7, 7)`. Only a geometry that is *already* symmetric survives (pos `(2, 2)` size `(3, 3)` stays put and emits `18…36`). A `pg.RectROI` moves one edge per handle and the callback is continuous, so the snap fires on the first mouse-move of a drag: with the callback left connected, even a drag whose *endpoint* is symmetric ends at the full image, because the intermediate state is not — reproduced, three consecutive emissions of `(0, 54)` for a box aimed at the centre. Every range the panel emits in the interactive path is therefore the whole map. Take the half-width as the **minimum** distance to an edge (mirroring the edge the user is holding) rather than the maximum. The one test that touches this (`test/gui/test_ics_model_editor.py:303-306`) sets a half-size ROI and asserts only `0 <= lo < hi < ny*nx`, which the snapped-to-full result satisfies.
+- **Fix note:**
+
+### RF-949
+- **Status:** OPEN
+- **Severity:** S3 (the full-extent ROI selects rows and columns `0 … n-2`, so the last row and column of the residual map drop out of the fit range as soon as the ROI is touched)
+- **Location:** `chisurf/gui/plots/residual_image.py:447-452` (`roi.set_size(xmax - xmin, ymax - ymin)`) against `:724-739` (`ix1 = int(np.ceil(x1_sym))`, then `RectangleROI.from_slices((iy0, iy1), (ix0, ix1)).to_indices((ny, nx))`) and the half-open convention `from_slices` documents at `chisurf/core/roi/roi.py:403-409`
+- **Finding:** the ROI is initialised to a box of size `(n-1) × (n-1)` starting at the first pixel *centre*, which covers centres `0 … n-1`, but the conversion floors/ceils that box into the half-open slice `[0, n-1)` — one pixel short on both axes. Verified on an 8 × 8 map: the full-image ROI emits `(0, 54)` where the flattened data vector runs `0 … 63`, i.e. `fit.range.set` receives `xmax = 54` and the last row (indices 55…63, 14 % of the points) silently leaves the fit; a 32 × 32 map loses its last 32 points the same way. The rectangle wants to be `xmax - xmin + 1` wide and tall (pixel centres `a … b` span `[a-0.5, b+0.5)`), which is exactly the convention `RectangleROI.from_slices` encodes on the other side. `test/gui/test_ics_model_editor.py:306` asserts only that the emitted range lies inside the array, so it passes either way.
+- **Fix note:**
+
+### RF-950
+- **Status:** OPEN
+- **Severity:** S3 (every refresh discards the user's contrast window, the four range boxes and any mouse zoom — including the result of the panel's own *Auto contrast* button)
+- **Location:** `chisurf/gui/plots/residual_image.py:473-476` (`self.plot_controller.set_initial_ranges(...)` followed by `apply_levels_from_controller()` / `apply_ranges_from_controller()` at the end of `_compute_image`), reached from `:765-767` (`update()`)
+- **Finding:** `set_initial_ranges` is named for a first call but runs on **every** `update()`, overwriting `vmin`/`vmax` with the symmetric 99th-percentile default and the four x/y spin boxes with the full axis extents; `apply_ranges_from_controller` then re-applies that full range to the view, so a mouse zoom goes with them. Verified offscreen: `vmin`/`vmax` set to `(-0.25, 0.25)` and x to `4…9` come back as `(-1.0, 1.0)` and `0…31` after one `update()`; a view zoomed to `x ∈ [4, 8], y ∈ [4, 8]` comes back as `[0, 31] × [0, 31]`. Plots refresh on every fit update, so a contrast window chosen to look at small residuals survives only until the fit ticks — and the *Auto contrast* button (`:535-592`) is doubly pointless, since its own result is wiped by the next refresh. Apply the data-driven defaults only on the first frame or when the image shape changes, and leave a controller the user has touched alone.
+- **Fix note:**
+
+### RF-951
+- **Status:** OPEN
+- **Severity:** S3 (the χ²/DW label is positioned with data coordinates on a screen-anchored item, so it lands in the top-left corner over the axis and its position follows the bin count rather than the panel)
+- **Location:** `chisurf/gui/plots/residual_image.py:341-351` (`self._plot_widget.text(..., anchored=True)`) and `:497-499` (`x_pos = xmin + 0.7 * (xmax - xmin)`, `y_pos = ymin + 0.9 * (ymax - ymin)`, then `self._quality_text.set_position(x_pos, y_pos)`), against `chisurf/gui/chiplot/backends/pyqtgraph_backend.py:803-807` ("*pos is a pixel offset from the PlotItem's top-left*", `item.setParentItem(self._pi)`)
+- **Finding:** an anchored label is parented to the `PlotItem`, so `set_position` takes **pixels**, not data units — the intended "70 % across, 90 % up" becomes a pixel offset numerically equal to 0.7/0.9 of the axis *values*. Verified offscreen in a 640 × 480 widget: a 32 × 32 map places the label at `(21.7, 27.9)` px and an 8 × 8 map at `(4.9, 6.3)` px, both in the top-left corner overlapping the axis (visible in the grab), while a PDA `s1s2` map with a 0…200 axis would put the same label at `(140, 180)` px — a different place in the same panel for no reason the user can see. The position is also set only once (`_quality_text_initialized`, `:483-503`), so it never follows a resize. Pre-existing — the pre-chiplot code also parented the label to the plot item and then set a data coordinate — but chiplot now states the contract in one place. Either place it in screen space (a fixed margin from a corner) or drop `anchored=True` so that the data coordinate means what the code assumes.
+- **Fix note:**
+
+### RF-952
+- **Status:** OPEN
+- **Severity:** S4 (the ROI → fit-range dispatch works only because of an import that reads as unused; removing it disables the feature silently, because the call sits in a bare `except`)
+- **Location:** `chisurf/gui/plots/residual_image.py:10` (`from chisurf.core.actions import record_action`, never referenced in the module) and `:746-756` (`cs.core.actions.dispatch(name="fit.range.set", …)` wrapped in `try: … except Exception: pass`)
+- **Finding:** `record_action` is not used anywhere in the file; what the import actually does is bind the `actions` submodule onto `chisurf.core` so that the attribute chain `cs.core.actions.dispatch` resolves at call time. Verified: in a fresh interpreter `import chisurf.core.fitting; import chisurf as cs` leaves `hasattr(cs.core, "actions")` **False**, so none of the module's other imports bring it in. Because the dispatch is swallowed by `except Exception: pass`, deleting the "unused" import — the obvious `F401` cleanup — would stop every 2-D selection from reaching `fit.range.set`, with no error, no log line, and a `regionChanged` signal still firing so the range boxes would keep moving. Import the module for what it is (`import chisurf.core.actions`) or call `dispatch` through a direct `from … import dispatch`, and let the failure be logged rather than swallowed.
+- **Fix note:**
