@@ -2,6 +2,33 @@
 
 ## 2026-07-29
 
+* **PRD-36: the 2CDE tool joins the shared dockable-tool base, and the tracker is
+  re-derived from the tree.** `burst_2cde` was on **neither** of this PRD's lists — it
+  was written after the 2026-06-24 enumeration, so it forked a plain `QMainWindow`
+  while the base already existed. Its only input is a burstwise analysis folder, and
+  the window accepted no drops at all: dragging that folder onto the panel did nothing
+  and said nothing. It now subclasses `ChisurfDockTool`, and `on_paths_dropped` takes
+  the first dropped *directory* through `_adopt_folder` — the one path the Browse
+  dialog was refactored onto, so naming a folder means the same thing both ways. A
+  dropped **file** raises the declared `Information.not_a_folder` message instead of
+  being written into the folder box, which is the silent-drop failure the `burst_bva`
+  migration removed. Geometry stays owned by the manifest-declared window statefulness,
+  as for `fret_calculator`/`pch`/`burst_bva`. Rendered offscreen in both states and
+  inspected. Re-running the PRD's own canonical greps found the backlog stale in three
+  directions at once: `quenching_estimator` had been on the base since `669fce499`
+  without being recorded, `tttr/ptu_alex_creator/wizard.py` no longer exists (that
+  plugin was rebuilt on AutoForm), and **six** `QMainWindow` tools written since —
+  `burst_fcs_correlator`, `phasor_calculator`, `f_test`, `flc_2d`, `code_editor`,
+  `chimol`'s viewer window — had never been listed, which is precisely what a tracker
+  that is not re-derived cannot catch. [PRD-36](/prds/prd-36.md) updated (Done +2,
+  backlog re-derived, out-of-scope entries recorded with their reason). Tests:
+  `chisurf/plugins/burst/burst_2cde/tests/test_gui.py` (+3).
+  Found and fixed in the same pass: `test_no_raw_message_box_outside_the_one_class` was
+  **red at HEAD** — `chimol/app/demos.py` reported a failed script open/save through a
+  raw `QtWidgets.QMessageBox.warning`, which hangs a headless run instead of reporting.
+  Both calls now go through `chisurf.gui.dialogs.warning` (same signature, so a drop-in
+  swap); the seam guard is green again.
+
 * **The anisotropy G-factor, on the one forward model the fitting path actually
   calls** (RF-953, RF-956, RF-957). `7ca949fe5` moved four sites to
   `G = S_par/S_perp` — the perpendicular channel records `1/G` of what an

@@ -95,6 +95,62 @@ def test_settings_are_locked_while_a_run_is_in_flight(qapp, tmp_path, monkeypatc
         tool.close()
 
 
+def test_tool_is_on_the_shared_dock_tool_base(qapp):
+    """PRD-36: the tool subclasses the shared base and names its settings key."""
+    from chisurf.gui.widgets.tools import ChisurfDockTool
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+
+    tool = BurstTwoCdeTool(embedded=True)
+    try:
+        assert isinstance(tool, ChisurfDockTool)
+        assert tool.tool_settings_name == "BurstTwoCdeTool"
+        # The base's window-level drop is what makes the drop reach the tool at
+        # all; a plain QMainWindow accepts none.
+        assert tool.acceptDrops()
+        # Read-only construction (PRD-23 Task 4): no MMFDB connection on init.
+        assert not tool.mmfdb_connected()
+    finally:
+        tool.close()
+
+
+def test_dropped_folder_is_adopted_and_run(qapp, tmp_path, monkeypatch):
+    """A folder dropped on the window is taken exactly as Browse takes one."""
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+
+    tool = BurstTwoCdeTool(embedded=True)
+    try:
+        runs: list[bool] = []
+        monkeypatch.setattr(
+            BurstTwoCdeTool, "run", lambda self, **kwargs: runs.append(True)
+        )
+        tool.on_paths_dropped([pathlib.Path(tmp_path)])
+        assert tool._folder_edit.text() == str(tmp_path)
+        assert runs == [True]
+        assert not tool.Information.not_a_folder.is_shown
+    finally:
+        tool.close()
+
+
+def test_dropped_file_is_reported_not_swallowed(qapp, tmp_path):
+    """A dropped *file* leaves the folder box alone and says why.
+
+    Writing a non-directory into the folder box is the failure this migration
+    removed in BVA: the box then shows a folder the analysis is not using.
+    """
+    from chisurf.plugins.burst.burst_2cde.gui.tool import BurstTwoCdeTool
+
+    tool = BurstTwoCdeTool(embedded=True)
+    try:
+        not_a_folder = pathlib.Path(tmp_path) / "bursts.spc"
+        not_a_folder.write_bytes(b"")
+        tool.on_paths_dropped([not_a_folder])
+        assert tool._folder_edit.text() == ""
+        assert tool.Information.not_a_folder.is_shown
+        assert "bursts.spc" in tool.Information.not_a_folder.text
+    finally:
+        tool.close()
+
+
 def test_column_for_variant_is_the_single_mapping():
     """``column_for_variant`` is what every consumer derives the column from."""
     from chisurf.plugins.burst.burst_2cde.core import computation as core

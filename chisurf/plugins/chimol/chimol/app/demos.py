@@ -24,6 +24,8 @@ import pathlib
 
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui import dialogs
+
 #: Where the shipped scripts live.
 DEMO_DIR = pathlib.Path(__file__).resolve().parent.parent / "demos"
 
@@ -137,7 +139,7 @@ class ScriptEditor(QtWidgets.QDialog):
         try:
             self.editor.setPlainText(self._path.read_text())
         except OSError as exc:
-            QtWidgets.QMessageBox.warning(self, "Open failed", str(exc))
+            dialogs.warning(self, "Open failed", str(exc))
 
     def save_file(self) -> None:
         """Save, asking for a name when there is not one yet."""
@@ -152,7 +154,7 @@ class ScriptEditor(QtWidgets.QDialog):
         try:
             self._path.write_text(self.editor.toPlainText())
         except OSError as exc:
-            QtWidgets.QMessageBox.warning(self, "Save failed", str(exc))
+            dialogs.warning(self, "Save failed", str(exc))
 
     def run(self) -> None:
         """Run what is in the editor, line by line."""

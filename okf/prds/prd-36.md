@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; sixteen tools are on the base and a backlog of ~11 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; eighteen tools are on the base and a backlog of ~14 tools remains.
 
 # Goal
 
@@ -134,6 +134,33 @@ read-only-construction guard already exist.
       pytest.skip` around construction was narrowed to `ImportError`, so a
       constructor that raises is red rather than skipped).
 
+- [x] `quenching_estimator` — recorded here late (2026-07-29). It was migrated in
+      `669fce499` as part of giving QuEst a manifest and moving the `quest` import off
+      module scope, and had been on the base ever since without appearing in this list —
+      exactly the drift the "keep this section in sync" note below warns about, which is
+      why re-running the canonical grep is part of each of these entries now.
+
+- [x] `burst/burst_2cde` — priority-B rollout of a tool that was **on neither list**: it
+      was written after the 2026-06-24 enumeration below, so it forked a plain
+      `QMainWindow` while the base existed. Its only input is a burstwise analysis
+      folder, named through a Browse dialog and nothing else — the window accepted no
+      drops at all, so dragging the folder onto the panel did nothing and gave no
+      reason. `on_paths_dropped` now takes the first dropped *directory* through
+      `_adopt_folder`, the single path the Browse dialog was refactored onto, so
+      "naming a folder" means the same thing both ways (set the box, then run — picking
+      a folder is a request for its 2CDE, not for a button press). A dropped **file**
+      raises the declared `Information.not_a_folder` message rather than being written
+      into the folder box, which is the silent-drop failure the `burst_bva` migration
+      removed above. Geometry stays owned by the manifest-declared window statefulness,
+      as for `calculator/fret_calculator`, `pch` and `burst_bva`, so the base's
+      `save/restore_window_geometry` are deliberately left uncalled; `tool_settings_name`
+      is set per the recipe. Recipe step 5 (lazy GUI import) does not apply: the plugin
+      root imports no Qt already. Rendered offscreen in both states (plain, and with the
+      rejected-drop message in the status bar) and inspected. Tests:
+      `tests/test_gui.py` (+3: on the base with a settings key and no MMFDB connection on
+      init; a dropped folder is adopted and run; a dropped file leaves the box alone and
+      says why).
+
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
 
@@ -142,9 +169,12 @@ chisurf/plugins`; keep this section in sync with it.
 **Priority A — drag-drop tools (highest ROI; they copied the drop widget / drop
 handlers):**
 
-- [ ] `burst/burst_mle_analysis/wizard.py` — drag-drop (verify it is a `QMainWindow`,
-      not a `QWizard`/`QWizardPage`; only the `QMainWindow` form fits this base).
-- [ ] `tttr/ptu_alex_creator/wizard.py` — drag-drop (same `QMainWindow` caveat).
+- [ ] `burst/burst_mle_analysis/wizard.py` — drag-drop; confirmed a `QMainWindow`
+      (`MLELifetimeAnalysisWizard`), so it does fit this base.
+- [x] ~~`tttr/ptu_alex_creator/wizard.py`~~ — **obsolete, not migrated**: the file no
+      longer exists. The plugin was rebuilt on AutoForm (`gui/sections.py` +
+      `gui/view_model.py`) and now has no `QMainWindow` of its own, so it leaves this
+      backlog rather than being worked down it.
 
 **Priority B — plain `QMainWindow` tools (adopt for geometry + MMFDB status + the
 read-only-construction guarantee; no drop list to dedupe):**
@@ -160,6 +190,20 @@ read-only-construction guarantee; no drop list to dedupe):**
 - [ ] `core/globalview/gui/tool.py`
 - [ ] `core/help/gui/tool.py`
 
+Written **after** the 2026-06-24 enumeration and therefore never on this list — each
+forked a plain `QMainWindow` while the base already existed, which is the failure mode
+a stale backlog produces (re-derived 2026-07-29 by the grep in *Notes* below; none of
+them handles drops today, so all are priority B):
+
+- [ ] `burst/burst_fcs_correlator/gui/tool.py` (`BurstFcsTool`)
+- [ ] `calculator/phasor_calculator/gui/tool.py` (`PhasorCalculatorTool`)
+- [ ] `core/f_test/gui/tool.py` (`FTestTool`)
+- [ ] `fcs/flc_2d/gui/tool.py` (`FlcTwoDTool`)
+- [ ] `core/code_editor/window.py` (`CodeEditorWindow`)
+- [ ] `chimol/app/molview_main_window.py` (`MolViewPluginWindow`) — last, and only once
+      [PRD-57](prd-57.md) settles the renderer/controller split; this window is the
+      subject of its own migration and should not be moved onto a second base mid-flight.
+
 **Out of scope for this base (not `QMainWindow`):**
 
 - `modelling/fret/gui/wizard.py`, `modelling/fret/gui/pair_selection_wizard.py` and
@@ -169,6 +213,11 @@ read-only-construction guarantee; no drop list to dedupe):**
   test.
 - `cookiecutter-chisurf-plugin/...` template — update the template to subclass the
   base once the API is stable so new plugins start conformant.
+- `core/acq/standalone.py` (`StandaloneMainWindow`) — the acquisition app's own
+  top-level window when it is run standalone, not a plugin tool the host docks.
+- `burst/burst_selection/gui/legacy/burst_selector.py` — the superseded copy of a tool
+  whose live form is already on the base; it is deleted, not migrated.
+- `misc/games/*` — demonstrations, gated behind the manifest `demo` flag.
 - `tttr/tttr_header_edit/gui/tool.py` — its tool is a plain `QWidget` (`TagsEditor`),
   never a `QMainWindow`; it was listed in error.
 - `core/mmfdb_admin/gui/tool.py` (`MMFDBWidget`) and `core/setup/gui/tool.py`
@@ -176,11 +225,17 @@ read-only-construction guarantee; no drop list to dedupe):**
   `QMainWindow` base carrying the navigation-panel contract. Reconciling the two bases
   is its own decision, not a per-tool migration; both were listed in error.
 
-# Notes / status (2026-06-24)
+# Notes / status (2026-06-24, re-derived 2026-07-29)
 
 - The list of `QMainWindow` tools was enumerated via
   `grep -rln "class .*(QMainWindow)" chisurf/plugins`; the `[drag-drop]` tag means the
   file references `setAcceptDrops`/`pathsDropped`/`DropListWidget`/`dropEvent`.
+- **Re-run both greps when working this PRD.** A backlog enumerated once goes stale in
+  both directions: the 2026-07-29 re-derivation found one migrated tool missing from
+  *Done* (`quenching_estimator`), one backlog entry whose file no longer exists
+  (`ptu_alex_creator`), and six `QMainWindow` tools written since that had never been
+  listed at all — a new tool forking the boilerplate is exactly what this tracker is
+  for, and it cannot catch one it does not know about.
 - The read-only-construction rule is already **enforced repo-wide** by
   `test/test_no_db_writes_in_widget_init.py` (no Qt needed), so migrations cannot
   regress it.

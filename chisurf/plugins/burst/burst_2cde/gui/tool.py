@@ -15,7 +15,9 @@ import numpy as np
 from chisurf.gui import chiplot as cp
 from qtpy import QtCore, QtWidgets
 
+from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tool_buttons import TOOLBAR_STYLE, action_button, flag_attention
+from chisurf.gui.widgets.tools import ChisurfDockTool
 from chisurf.plugins.burst.burst_2cde.core import computation as core
 from chisurf.core import analysis_cache
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
@@ -31,10 +33,19 @@ except Exception:  # pragma: no cover - optional dependency
 ALGORITHM_VERSION = 1
 
 
-class BurstTwoCdeTool(QtWidgets.QMainWindow):
+class BurstTwoCdeTool(ChisurfDockTool):
     """Compute and plot FRET-2CDE / ALEX-2CDE for a burstwise analysis folder."""
 
     name = "Spectroscopy:Single-Molecule:2CDE"
+
+    #: Window geometry stays owned by the manifest-declared window statefulness,
+    #: so the base's ``save/restore_window_geometry`` are deliberately not called.
+    tool_settings_name = "BurstTwoCdeTool"
+
+    class Information(ChisurfDockTool.Information):
+        """Context worth stating about a drop that changed nothing."""
+
+        not_a_folder = Msg("2CDE reads a burst-analysis folder; {} is not one.")
 
     def __init__(self, parent=None, embedded: bool = False, **kwargs):
         super().__init__(parent)
@@ -136,9 +147,34 @@ class BurstTwoCdeTool(QtWidgets.QMainWindow):
     def _browse(self):
         d = QtWidgets.QFileDialog.getExistingDirectory(self, "Select burstwise folder")
         if d:
-            self._folder_edit.setText(d)
-            # Picking a folder is a request for its 2CDE, not for a button press.
-            self._on_run_clicked()
+            self._adopt_folder(pathlib.Path(d))
+
+    def _adopt_folder(self, folder: pathlib.Path) -> None:
+        """Take *folder* as the analysis folder and compute its 2CDE.
+
+        The one path both ways of naming a folder go through — the Browse dialog
+        and a folder dropped on the window — so the two cannot drift over what
+        naming a folder means. Naming one is a request for its 2CDE, not for a
+        button press.
+        """
+        self._folder_edit.setText(str(folder))
+        self.Information.not_a_folder.clear()
+        self._on_run_clicked()
+
+    def on_paths_dropped(self, paths: list[pathlib.Path]) -> None:
+        """Adopt the first dropped directory; report anything else.
+
+        2CDE reads a burstwise *analysis folder*, so a dropped file names nothing
+        this tool can run on. Reporting it beats writing it into the folder box
+        and finding nothing there — the silent-drop failure the same migration
+        fixed in BVA.
+        """
+        for path in paths:
+            if path.is_dir():
+                self._adopt_folder(path)
+                return
+        if paths:
+            self.Information.not_a_folder(paths[0].name)
 
     def _channels(self, text: str):
         return [int(x) for x in str(text).split(",") if x.strip()]
