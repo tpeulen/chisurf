@@ -391,6 +391,20 @@ The workflows a first pass should cover — expand as the tester discovers more:
   reports its results in a directory it never wrote to.
   *(last driven 2026-07-29; RF-985..RF-992)*
 
+- [Scripting an analysis in the Code Editor](/usecases/code-editor-script-automation.md)
+  — the workflow that turns a click-through into something repeatable: open the
+  Code Editor, open a shipped example, lint it with Ruff, pick an execution
+  endpoint and run it. The *Process* endpoint is solid (live streamed stdout,
+  merged tracebacks, a working Stop) and Ruff, the symbol outline and the Agent
+  dock all work; but the editor never becomes part of ChiSurf — the endpoint
+  dropdown is inert, so *Console* (`exec()` with `cs` in scope) and *IPython*
+  cannot be selected and **no script can reach the live session**; every file of
+  10+ lines opens with its first character hidden under the line-number gutter;
+  the shipped colour scheme paints a dark-theme token palette on light-grey
+  paper at 1.09–2.14:1 contrast; and **Run** rewrites the file on disk without a
+  Save while still reporting the buffer as *Modified*.
+  *(last driven 2026-07-29; RF-1008..RF-1015)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

@@ -2,6 +2,23 @@
 
 ## 2026-07-29
 
+* **GUI-tester — scripting an analysis in the Code Editor.** Drove
+  `Tools ▸ Miscellaneous ▸ Code Editor` end to end (open a shipped example, symbol
+  outline, Ruff, endpoint selection, Run, Stop, settings dialog, Agent dock) and
+  recorded it as [/usecases/code-editor-script-automation.md](/usecases/code-editor-script-automation.md).
+  The *Process* endpoint is genuinely good — live streamed stdout, merged
+  tracebacks, a Stop that works — and Ruff, the outline and the Agent panel do
+  what they say. What fails is everything that would make the editor part of
+  ChiSurf: the Run-endpoint dropdown is inert (`run_endpoint` is in neither
+  `EDITOR_SETTINGS_KEYS` nor the defaults), so *Console* / *IPython* cannot be
+  selected and **no script can reach the live session**; every file of 10+ lines
+  opens with its first character under the line-number gutter (viewport margin
+  stale at the empty-document width); the shipped `ChiSurf` scheme paints a
+  VS-Code-Dark token palette on `#cfcfcf` paper at 1.09–2.14:1 contrast; and
+  **Run** rewrites the file on disk with no Save while the tab still reads
+  *Modified*. Filed RF-1008..RF-1015 in the
+  [findings queue](/reviews/findings.md).
+
 * **The F-test calculator was a window that could not answer a drop
   ([PRD-36](/prds/prd-36.md)).** `FTestTool` forked a plain `QMainWindow` — it
   postdates the 2026-06-24 enumeration, so it was on neither migration list — and

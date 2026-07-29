@@ -11263,3 +11263,75 @@ lines after it is loaded. RF-1002..RF-1006 below.
 - **Location:** `chisurf/core/settings/ai_settings.py:434-452` (`get_available_providers`, `return list(providers)` at `:448` where `providers` is a `set`)
 - **Finding:** no caller anywhere in the repo (`grep -rn get_available_providers` outside its own definition → nothing), and the one branch that would matter is order-unstable: once `ai_api_settings.json` exists the function returns `list(set(data.keys()) - {'selected_provider'} | {selected})`, whose order follows string hash randomisation. Verified across `PYTHONHASHSEED=1/2/3` on the same file: `['openai', 'mistral', 'local', 'openrouter', 'custom']`, `['openrouter', 'custom', 'local', 'mistral', 'openai']`, `['openrouter', 'custom', 'local', 'openai', 'mistral']` — while the no-file branch returns the curated `DEFAULT_PROVIDER_SETTINGS` order, which `ai_settings.py:19-25` documents as deliberate (EU-hosted first). A provider combo populated from this would reshuffle itself between sessions and bury the intended default. Either delete it, or sort the result into `PROVIDERS` order before anything starts using it.
 - **Fix note:**
+
+## GUI-tester run — scripting an analysis in the Code Editor (2026-07-29)
+
+Drove `Tools ▸ Miscellaneous ▸ Code Editor` (`CodeEditorWindow`, 1400×900,
+offscreen) the way a user reaches for it: open a shipped example, read it, lint
+it, pick an execution endpoint, run it, stop it. Use case written up in
+[/usecases/code-editor-script-automation.md](/usecases/code-editor-script-automation.md).
+
+The **Process** endpoint is solid — live streamed stdout, merged stderr with real
+tracebacks, an exit code, a working Stop — and Ruff, the symbol outline, the
+Agent dock and the settings dialog all do what they say. What fails is
+everything that would make the editor part of ChiSurf rather than a text editor
+that happens to ship with it: the endpoint that reaches the live session cannot
+be selected, files open with their first characters hidden, the default theme is
+unreadable, and Run edits the user's file behind their back.
+RF-1008..RF-1015 below.
+
+### RF-1008
+- **Status:** OPEN
+- **Severity:** S2 (the Run-endpoint dropdown is inert — *Console* and *IPython* are unreachable, so no script run from the Code Editor can touch the live ChiSurf session)
+- **Location:** `chisurf/plugins/core/code_editor/settings.py:55-92` (`EDITOR_SETTINGS_KEYS`) and `:115-149` (`default_editor_settings`) against `chisurf/plugins/core/code_editor/window.py:198-202` (`_set_run_endpoint`) and `chisurf/plugins/core/code_editor/editor.py:1435-1443` (`run_macro`)
+- **Finding:** `run_endpoint` appears in neither `EDITOR_SETTINGS_KEYS` nor `default_editor_settings()`. `save_editor_settings` starts with `editor_settings = {key: settings[key] for key in EDITOR_SETTINGS_KEYS if key in settings}` (`settings.py:187`), so the value `_set_run_endpoint` puts in the dict is dropped before it is written; `get_editor_settings` rebuilds from the defaults and filters the user YAML by the same list, so the key never comes back either. `run_macro`'s `settings.get("run_endpoint", "process")` therefore always resolves to `"process"`. Verified by driving the toolbar combo: selecting *Console*, then running a probe script, gives a **different pid** from the GUI (15952 vs 15849), `cs` absent from the namespace, the `_run_process_impl` header `▶ Running:` rather than `_run_console`'s `▶ Running (console):`, and `get_editor_settings()['run_endpoint']` → absent with the persisted `gui.editor` block holding all 36 other keys and not this one. The `# !chisurf: console` shebang (`editor.py:1405-1420`) moves the combo and changes nothing else. The two unreachable endpoints are the only ones that can see the session — `_run_console` execs in-process with `cs` in the namespace (`editor.py:1510-1517`) and `_run_ipython_impl` sends `%run -i` to `cs.console` — so the advertised "Console — exec() in-process (cs in scope)" tooltip describes a mode the GUI cannot enter. Add `run_endpoint` to both lists (default `"process"`), and pin it with a test that sets the combo, calls `run_macro` and asserts the console path was taken.
+- **Fix note:**
+
+### RF-1009
+- **Status:** OPEN
+- **Severity:** S2 (every file of 10+ lines opens with the first character of every line hidden under the line-number gutter; 100+ lines hides two)
+- **Location:** `chisurf/plugins/core/code_editor/text_editor.py:703-716` (`line_number_area_width` / `update_line_number_area_width`), connected only to `blockCountChanged` at `:585-587`, against `resizeEvent` at `:728-735`
+- **Finding:** the gutter widget's geometry is recomputed from the current `blockCount()` in `resizeEvent`, but the matching `setViewportMargins` is only re-applied on `blockCountChanged`. Loading a file into a freshly created tab sets the text before the widget is laid out, so the viewport margin keeps its empty-document (1-digit) value while the gutter grows to fit the real line count. Measured on open: 6 blocks → gutter 18 px, viewport x 19 px (correct); 13 blocks → gutter **26** px, viewport x **19** px; 151 blocks → gutter **34** px, viewport x **19** px. The overlap is painted over the text, so on the shipped `examples/scripts/protein_unfolding_fret_line.py` the user reads `mport pathlib`, `rom chisurf.core.data import DataCurve`, `AU_D0 = 4.0` and `RACS = np.linspace(0, 1, 21)`. Pressing Return anywhere fires `blockCountChanged` and the viewport jumps to 35 px, after which the file renders correctly — confirming the margin is simply stale. Call `update_line_number_area_width(0)` after the document is set (and/or on `showEvent`), and pin it with a test asserting `viewport().x() >= line_number_area.width()` right after `open_file` on a 150-line file.
+- **Fix note:**
+
+### RF-1010
+- **Status:** OPEN
+- **Severity:** S2 (the shipped default colour scheme renders syntax highlighting at 1.09–2.14:1 contrast — numbers and function names are effectively invisible)
+- **Location:** `chisurf/plugins/core/code_editor/settings.py:24-30` (`EDITOR_COLOR_SCHEMES["ChiSurf"]`, `paper_color: "#cfcfcf"`) against the hard-coded token colours in `chisurf/plugins/core/code_editor/text_editor.py:90-117` (Python), `:161-180` (JSON) and `:213-232` (YAML)
+- **Finding:** the highlighters hard-code a VS Code **Dark+** palette — keyword `#569CD6`, class `#4EC9B0`, function `#DCDCAA`, string `#CE9178`, comment `#6A9955`, number `#B5CEA8` — while the default scheme paints them on a light `#cfcfcf` paper. WCAG contrast against that paper: number **1.09:1**, function **1.10:1**, class 1.31:1, string 1.70:1, keyword 1.89:1, comment 2.14:1 (4.5:1 is the body-text minimum, 3:1 the most lenient non-text one); only unhighlighted text at `#000006` clears it, at 13.44:1. Verified visually: `y = 123` renders as `y = ` plus a ghost and `np.linspace(0, 1, 21)` shows as `np.linspace( , , )` at 100 % zoom. Because the token colours are constants they do not follow the scheme selector either — switching to `Dark` (`#1e1e1e` paper) makes the same file legible, which is the whole diagnosis. Move the token colours into `EDITOR_COLOR_SCHEMES` (one palette per scheme, light values for `ChiSurf`/`Light`), and add a check that every token colour clears 4.5:1 against its scheme's `paper_color`.
+- **Fix note:**
+
+### RF-1011
+- **Status:** OPEN
+- **Severity:** S2 (pressing **Run** overwrites the file on disk with the editor buffer, with no Save and no prompt, while the tab and status bar continue to report the buffer as unsaved)
+- **Location:** `chisurf/plugins/core/code_editor/editor.py:1390-1403` (`_write_and_get_filepath`) called from `run_macro` (`:1430`)
+- **Finding:** when the active tab is backed by a real path, Run writes `editor.toPlainText()` straight to that path and returns it; only an *Untitled* buffer goes to a `tempfile.mkstemp` scratch file. It never calls `document().setModified(False)` or `_sync_editor_document`, so the two halves disagree. Verified: opening a file containing `print('ORIGINAL')`, typing `# typed by the user` + Return, then pressing Run leaves the disk file reading `"# typed by the user\nprint('ORIGINAL')"` while `document().isModified()` is still `True`, the tab still reads `ow.py *` and the status bar still reads `Modified`. Two ways this bites: a user who edits a shipped example under `examples/scripts/` to try something has silently modified the repository copy, and a user who closes the tab afterwards and answers *Discard* to the unsaved-changes prompt believes the edit was thrown away when it is already on disk. Either run the buffer from a scratch file always (and leave the user's file alone), or make it an explicit save — write, clear the modified flag, update the tab — but not one behaviour reported as the other.
+- **Fix note:**
+
+### RF-1012
+- **Status:** OPEN
+- **Severity:** S3 (the number rule is applied last, so digits inside comments and string literals are re-coloured; the pattern also matches only the integer part of a float)
+- **Location:** `chisurf/plugins/core/code_editor/text_editor.py:66-74` (`highlightBlock`, rules applied in insertion order with `setFormat` overwriting) and `:139-147` (string, comment, then number rules added in that order); same ordering at `:186-190` (JSON) and `:242-246` (YAML)
+- **Finding:** `add_rule(r'\b[0-9]+\b', "number")` is registered after the string and comment rules, and `highlightBlock` simply re-runs `setFormat` for each rule, so the last match wins. Verified on a probe file: `x = 4.0  # donor lifetime 0.91 ns` renders the comment in `#6A9955` with `0` and `91` punched out in number-green, and `s = "abc 42"` renders the string in `#CE9178` with `42` in number-green. Separately, `\b[0-9]+\b` matches `4` and `0` in `4.0` as two independent numbers and never the dot, and misses exponents entirely (`1e-9`), so a float is drawn in two colours. Skip the number rule inside an already-formatted comment/string range (or register it first and let the comment/string rules overwrite it), and use a float-aware pattern like the JSON/YAML highlighters already carry (`-?\b\d+(\.\d+)?([eE][+-]?\d+)?\b`).
+- **Fix note:**
+
+### RF-1013
+- **Status:** OPEN
+- **Severity:** S3 (two settings offered in the Editor Settings dialog and stored in every colour scheme — *Margin color* and *Marker color* — are ignored; the gutter is always green)
+- **Location:** `chisurf/plugins/core/code_editor/text_editor.py:737-742` (`line_number_area_paint_event`: `bg_color = QtGui.QColor('green')`, `text_color = QtGui.QColor('white')`) against `chisurf/plugins/core/code_editor/settings.py:24-51` (`margins_background_color` / `marker_background_color` in all four schemes) and `:254-260` (the dialog's `color_labels`)
+- **Finding:** the gutter background and its number colour are literals; the two settings that name them are collected by the dialog, filtered through `EDITOR_SETTINGS_KEYS`, written to the user YAML and read back by `get_editor_settings` — and never consulted by the only code that paints that area. Verified across schemes: the gutter is the same saturated `green` under `ChiSurf` (`margins_background_color: #808080`) and under `Dark` (`#252526`), where it becomes the brightest element in an otherwise dark window. Read both colours from the settings dict (falling back to the current literals) so the dialog's *Margin color* / *Marker color* buttons mean something.
+- **Fix note:**
+
+### RF-1014
+- **Status:** OPEN
+- **Severity:** S3 (the Diagnostics list is read-only text: every item carries its line and column, but activating one does not move the caret)
+- **Location:** `chisurf/plugins/core/code_editor/editor.py:188-190` (`self.diagnostics_list = QtWidgets.QListWidget()` — no `itemActivated`/`itemDoubleClicked` connection anywhere) with the payload stored at `:1386` (`item.setData(QtCore.Qt.UserRole, diagnostic)`) and again for LSP diagnostics at `:908-921`; `goto_line` already exists at `:1257`
+- **Finding:** `_show_ruff_result` attaches the full diagnostic — verified payload `{'code': 'E702', 'line': 26, 'column': 3, 'end_line': 26, 'end_column': 4, 'path': …, 'severity': 'error'}` — to each row, but the list has no activation handler. Verified: emitting `itemActivated`/`itemDoubleClicked` on the last of three Ruff findings (line 26) leaves the caret on line 1. So the one thing a user does with a lint list — click the error to go to it — is unavailable, in a panel that spends most of its row width repeating the absolute path of the file already open in front of them. Connect `itemActivated` to `open_file(path, line, col)` / `goto_line`, and pin it with a test that lints a file with a known error and asserts the caret lands on that line.
+- **Fix note:**
+
+### RF-1015
+- **Status:** OPEN
+- **Severity:** S3 (the Code Editor's Project dock opens empty; the default project root does not exist in the tree, and the fallback silently creates a directory in `$HOME` regardless of `CHISURF_SETTINGS_DIR`)
+- **Location:** `chisurf/plugins/core/code_editor/editor.py:645-655` (`_default_scripts_dir`)
+- **Finding:** the primary root is `pathlib.Path(chisurf.__file__).parent.parent / "scripts"` — a repo-root `scripts/` directory that does not exist (the shipped example scripts live in `examples/scripts/`) — so every launch takes the fallback branch, which does `(Path.home() / ".chisurf" / "scripts").mkdir(parents=True, exist_ok=True)` and returns it. Verified: with `CHISURF_SETTINGS_DIR` pointed at a scratch directory the project root still resolves to `/Users/<user>/.chisurf/scripts`, the directory is created as a side effect of opening the window, and `file_model.rowCount(rootIndex)` is **0** — a new user meets an empty tree under a bare *Name* header with nothing indicating what to do. Point the primary root at the shipped `examples/scripts/` (or drop the guess and show a "choose a folder" placeholder), and derive the fallback from `chisurf.core.settings.get_path` so it honours `CHISURF_SETTINGS_DIR` instead of hard-coding `$HOME`.
+- **Fix note:**
