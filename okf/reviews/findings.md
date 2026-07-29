@@ -11335,3 +11335,67 @@ RF-1008..RF-1015 below.
 - **Location:** `chisurf/plugins/core/code_editor/editor.py:645-655` (`_default_scripts_dir`)
 - **Finding:** the primary root is `pathlib.Path(chisurf.__file__).parent.parent / "scripts"` — a repo-root `scripts/` directory that does not exist (the shipped example scripts live in `examples/scripts/`) — so every launch takes the fallback branch, which does `(Path.home() / ".chisurf" / "scripts").mkdir(parents=True, exist_ok=True)` and returns it. Verified: with `CHISURF_SETTINGS_DIR` pointed at a scratch directory the project root still resolves to `/Users/<user>/.chisurf/scripts`, the directory is created as a side effect of opening the window, and `file_model.rowCount(rootIndex)` is **0** — a new user meets an empty tree under a bare *Name* header with nothing indicating what to do. Point the primary root at the shipped `examples/scripts/` (or drop the guess and show a "choose a folder" placeholder), and derive the fallback from `chisurf.core.settings.get_path` so it honours `CHISURF_SETTINGS_DIR` instead of hard-coding `$HOME`.
 - **Fix note:**
+
+## Review 2026-07-29 — the project subsystem (`chisurf/core/project/`)
+
+Slice: `archive.py`, `project.py`, `registry.py`, `ui_state.py`, `fit_state.py` —
+the GUI-independent half of project save/load, rotated in because it carries few
+findings on record and every defect in it costs a user their saved work. The
+`.csp` container itself is sound (path traversal is blocked on both write and
+extract, `_safe_destination` resolves against the root) and the v4 UID-keyed
+parameter/link round-trip in `fit_state.py` is careful about the things that
+actually bite — bounds before value, group members expanded before a cross-fit
+link is resolved. What does not hold is the seam between this package and the
+one real writer/reader of it (`chisurf/macros/core_fit.py`): the accessors here
+key on a field the writer never emits, the save/load path helpers disagree with
+each other, and three helpers describe capabilities that the objects they poke
+at do not have. RF-1016..RF-1022 below.
+
+### RF-1016
+- **Status:** OPEN
+- **Severity:** S2 (`Project.list_fit_uids()` returns `[]` and `Project.get_fit(...)` returns `None` for every project ChiSurf actually writes)
+- **Location:** `chisurf/core/project/project.py:100-105` (`get_fit`) and `:111-114` (`list_fit_uids`), both keying on `fit.get("uid")`, against the writer at `chisurf/macros/core_fit.py:2030-2039` (`fit_record = {"id": fg_id, "name": ..., "model_name": ..., "local_fits": ...}`)
+- **Finding:** the only producer of `Project.fits` is `save_project`, and it emits fit-group records keyed `"id"` — there is no `"uid"` key anywhere in the record. The two accessors on `Project` look for `"uid"` and nothing else, so both silently answer "no fits". Verified: `Project(fits=[{'id': 'fg0', 'name': 'Fit 1', 'model_name': 'Lifetime', 'local_fits': [...]}]).list_fit_uids()` → `[]`, `.get_fit('fg0')` → `None`. The loader already knows the writer's spelling and hedges — `core_fit.py:2712` reads `rec.get("uid") or rec.get("id") or f"#{position}"` — so `project.py` is the one place that does not. The existing test pins the wrong contract rather than catching it: `test/project/test_project_v3.py:114` and `:127` build fit dicts with a hand-written `"uid"` key that no writer produces, so both accessors are green against synthetic data and dead against real data. Accept `uid` **or** `id` the way the loader does (or fix the writer to emit `uid`), and re-point the v3 test at a record produced by `save_project`.
+- **Fix note:**
+
+### RF-1017
+- **Status:** OPEN
+- **Severity:** S2 (`Project.save(p)` and `Project.load(p)` resolve the same argument to different files, and a project name containing a dot is silently truncated)
+- **Location:** `chisurf/core/project/project.py:233-241` (`_archive_output_path`) against `:244-252` (`_archive_input_path`)
+- **Finding:** the two helpers handle a path with a non-`.csp` suffix in opposite ways. `_archive_output_path` does `path.with_suffix(PROJECT_ARCHIVE_SUFFIX)` — it *replaces* the last dotted segment; `_archive_input_path` has `if path.suffix: return path` — it uses the path unchanged. Verified for the same argument: `/tmp/x.foo` → saves to `/tmp/x.csp`, loads from `/tmp/x.foo` (`ValueError: Project archive is not a valid ZIP file`); `/tmp/my.data.2026` → saves to `/tmp/my.data.csp`, loads from `/tmp/my.data.2026`. So `save_project(p, path); load_project(path)` is not a round trip for any argument whose last segment parses as a suffix, which includes the ordinary habit of dating a project: `sample_2026.07.29` is written as **`sample_2026.07.csp`**, quietly losing the day from the filename. `core_fit.py:361-368` (`_project_archive_input_path`) makes the other choice — it appends `.csp` to anything that is not already `.csp` — so the two readers in the tree disagree as well. Treat a non-`.csp` suffix as part of the stem on both sides (append, do not replace), and pin the round trip with a dotted name.
+- **Fix note:**
+
+### RF-1018
+- **Status:** OPEN
+- **Severity:** S2 (the MDI subwindow layout the docstring promises is never captured; reopening a project restores no fit-window positions)
+- **Location:** `chisurf/core/project/ui_state.py:43-54` (`get_ui_state`, `save_mdi = getattr(mdi, "saveState", None)`) and `:108-123` (`set_ui_state`, `restore_mdi = getattr(mdi, "restoreState", None)`), promised by the docstring at `:6-14` (*"mdi_area: MDI subwindow layout"*)
+- **Finding:** `QMdiArea` has no `saveState`/`restoreState` — those are `QMainWindow` methods. Verified against the installed binding (`qtpy.API_NAME == 'PyQt5'`): `hasattr(QtWidgets.QMdiArea, 'saveState')` → `False`, `restoreState` → `False`. The `callable(...)` guard therefore always fails and both branches are unreachable, silently: driving `get_ui_state` on a `QMainWindow` carrying a populated `mdiarea` returns `['dock_state', 'geometry']` and no `mdi_area` key at all. Because every step is wrapped in a nested `try`/`except: pass`, nothing warns; the docstring is the only place the feature exists. Either drop the two branches and the docstring line, or implement the capture the way the layout is actually addressable — iterate `mdi.subWindowList()` and store each subwindow's `objectName`/fit uid plus `geometry()` and `isMaximized()`, restoring by uid on load.
+- **Fix note:**
+
+### RF-1019
+- **Status:** OPEN
+- **Severity:** S3 (six exported helpers with no callers that name main-window attributes which do not exist, so they would return empty even if called)
+- **Location:** `chisurf/core/project/ui_state.py:128-211` (`get_/set_dataset_selector_state`, `get_/set_fit_selector_state`) and `:214-254` (`get_/set_active_tabs`)
+- **Finding:** no caller anywhere in the repo — the only consumers of this module are `core_fit.py:2050` and `:3183`, which use `get_ui_state`/`set_ui_state` and nothing else. The attribute names they probe are wrong for the window they are meant to read: the main window builds `self.dataset_selector` (`chisurf/gui/main.py:968`) and `self.fit_selector` (`:977`), not `datasetWidget`/`fitWidget`, and it has no `datasetPanel`/`experimentPanel`/`analysisPanel`/`plotPanel` at all (`grep` over `chisurf/` finds those four names only in this file). Verified on a `QMainWindow`: `get_active_tabs(w)` → `{}`, `get_dataset_selector_state(w)` → `{}`. Every miss is swallowed by `getattr(..., None)` plus a nested `except: pass`, so wiring them up later would look like it worked and save nothing. Delete them, or fix the attribute names and wire them into `get_ui_state`/`set_ui_state` where the rest of the UI state is captured.
+- **Fix note:**
+
+### RF-1020
+- **Status:** OPEN
+- **Severity:** S2 (`Registry._parameters` is never populated — `registry.get_parameter(uid)` returns `None` for every parameter in the session)
+- **Location:** `chisurf/core/project/registry.py:236-244` (`sync_from_runtime`, `for param in getattr(local_fit, "parameters_all", [])`) and the module-level `register_parameter` at `:187-189`
+- **Finding:** `parameters_all` is a property of the *model* (`chisurf/core/fitting/parameter.py:256`), not of `Fit`. `Fit` derives from `Base`, whose `__getattr__` (`chisurf/core/base.py:671-683`) raises `AttributeError` for any name that is not a class property, so `getattr(local_fit, "parameters_all", [])` yields `[]` for every fit and the inner loop never runs — the walk that exists to fill the parameter registry registers nothing. Two things hide it: `sync_from_runtime` itself has no callers (`grep` over the tree finds it only in its own definition), and `register_parameter` has none either — `chisurf/core/fluorescence/fret/calibration.py:721,742` is the only outside user of this module and it registers *fits*. So the parameter half of the registry — `get_parameter`, `list_parameters`, the `on_parameter_created`/`on_parameter_removed` hooks, and the `"parameters"` count in `get_stats()` — is permanently empty, and `test/core/test_registry.py` only exercises it through direct `register_parameter` calls with dict stand-ins, which is why it is green. Walk `local_fit.model.parameters_all` and pin `sync_from_runtime` against a real fit, or remove the parameter half if the registry is not meant to carry it.
+- **Fix note:**
+
+### RF-1021
+- **Status:** OPEN
+- **Severity:** S3 (`overwrite=True` appends a second ZIP entry under the same name instead of replacing it, so the superseded bytes ship inside the saved `.csp`)
+- **Location:** `chisurf/core/project/archive.py:179-186` (`write_bytes`) and `:211-223` (`write_file`), reached from `write_text` (`:160`) and `write_mmfdb_layer` (`:409-422`)
+- **Finding:** both branches of the `if archive_name in self._written` test do the same `writestr`/`open(info, "w")`; `overwrite` only decides whether to raise first. `zipfile` has no replace operation — a second write under an existing name appends a new member and emits `UserWarning: Duplicate name`. Verified: writing `project.json` twice with `overwrite=True` gives `namelist() == ['project.json', 'project.json']`, two `infolist()` entries, and one `UserWarning`; `read()` returns the newer content only because `NameToInfo` was overwritten in the dict. Consequences: the archive carries both copies (a re-written embedded data file doubles the `.csp`), the stale copy is invisible to `read_bytes`/`has_entry` but plainly there to any ZIP tool, and `_written` — a `set` that already contains the name — cannot tell the difference. Read back and short-circuit when the bytes are identical, or rebuild the archive into a fresh `ZipFile` on overwrite; at minimum document that `overwrite` appends, so callers stop treating it as a replace.
+- **Fix note:**
+
+### RF-1022
+- **Status:** OPEN
+- **Severity:** S3 (dead code: the MMFDB dependency-edge link restorer is unreachable from the load path, and could only ever restore the intra-model links that were already restored)
+- **Location:** `chisurf/core/project/fit_state.py:424-487` (`_restore_parameter_links_from_edges`) and the `dependency_edges` / `fit_record_id` arguments of `apply_state_to_fit` (`:392-421`), reached only from `chisurf/macros/core_fit.py:2770-2779` and `:3142-3153`
+- **Finding:** both call sites sit in the `else` of `set_state = getattr(new_fit, "set_state", None); if callable(set_state): ...`, and `new_fit` is a `Fit` from `fit_group.grouped_fits` — `Fit.set_state` is defined at `chisurf/core/fitting/fit.py:596`, so the guard always takes the `if` and the edge-restoring branch never executes. The `dependency_edges` list comprehension above it and the `pattern = f"fit_{version_id}:{fit_record_id}:"` filter are computed for nobody. Even if reached, the function cannot do what its docstring claims: it exists to "ensure that linked-to fits exist before the linking fit is processed", but `uid_to_param` (`:465-468`) is built solely from `model.parameters_all` of the *one* model passed in, so an edge whose `source_node_id` names a parameter in another fit — the cross-fit case that motivates the whole mechanism — resolves to `None` and is dropped at `:483`. What it can restore is exactly the intra-model subset that `_apply_state_to_model`'s second pass (`:299-322`) has already restored from `link_target`. Either resolve the edge endpoints against `_local_fits()` the way `_apply_state_to_model` does and call it unconditionally, or delete the function and the two dead arguments.
+- **Fix note:**
