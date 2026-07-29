@@ -125,12 +125,16 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 ### Image correlation
 | Incumbent capability | Status | ChiSurf location / note |
 |---|---|---|
-| RICS (+ triplet/blinking, immobile, flow) | PARITY | `chisurf/core/models/rics/`, `experiments/rics/` |
-| ICS (2D spatial) | PARTIAL | subsumed by RICS core |
-| tICS / STICS (temporal / spatiotemporal) | ABSENT | → PRD-51 |
-| Number & Brightness (N&B) | ABSENT | → PRD-51 |
-| iMSD (free/mob-immob/blinking) | ABSENT | → PRD-51 |
-| Crosstalk-free spectral RICS | ABSENT | → PRD-51 |
+| RICS (+ triplet/blinking, immobile, flow) | PARITY | `chisurf/core/models/ics/`, `experiments/ics/` |
+| ICS (2D spatial) | PARTIAL | shares the correlation array; not a separate method → PRD-51 |
+| tICS / STICS (temporal / spatiotemporal) | ABSENT | correlation array exists; the ROI×TOI velocity workflow does not → PRD-51 |
+| STICCS (two-channel cross-correlation velocity maps) | ABSENT | four maps per window; cross 12 ≠ cross 21 → PRD-51 |
+| Number & Brightness (N&B) | ABSENT | photon-counting **and** analog (own gain/offset calibration) → PRD-51 |
+| ccN&B (cross-brightness, hetero-interaction) | ABSENT | → PRD-51 |
+| iMSD (free/mob-immob/blinking) | ABSENT | must be the peak-*width* readout, not an anomalous-exponent fit → PRD-51 |
+| Crosstalk-free spectral RICS | ABSENT | no reference implementation identified yet → PRD-51 |
+| Imaging FCS / ICCS with arbitrary pixel binning | ABSENT | **no owning PRD** — see below |
+| FCS diffusion laws (`tau_D` vs observation area) | ABSENT | **no owning PRD**; distinguishes free / meshwork / domain diffusion |
 
 ### Spectral
 | Incumbent capability | Status | ChiSurf location / note |
@@ -189,7 +193,7 @@ implementer builds on.
 | Three-color c3PDA | 1/2/3D 3c distance distributions | burst tables, PRD-61 priors, sampler | L | PRD-65 |
 | Kinetic consistency check | dynamic-state burst resampling | burst tables + kinetic-PDA sim | M | PRD-50 |
 | N&B | brightness/aggregation from image fluctuations | `clsm`, RICS core | M | PRD-51 |
-| tICS / STICS | temporal / spatiotemporal ICS | RICS/ICS core | M | PRD-51 |
+| tICS / STICS | temporal / spatiotemporal ICS + velocity vector maps | ICS correlation array | **L** | PRD-51 |
 | iMSD | MSD from image correlation | RICS models | M | PRD-51 |
 | Spectral RICS | crosstalk-free spectral weighting | RICS core + spectral channels | M | PRD-51 |
 | Per-pixel phasor-FLIM imaging | phasor image, universal circle, ROI seg | `tcspc/phasor.py`, `clsm` | M | PRD-52 |

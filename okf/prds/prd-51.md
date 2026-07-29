@@ -303,7 +303,7 @@ equal size, batch the per-lag fits) land before any language change would.
 - `chisurf/core/experiments/ics/` (`ics_core.py`, `data.py`, `precision.py`,
   `calibration.py`, `tttr_loader.py`) — the correlation carpet and its timing model.
 - `chisurf/core/models/ics/` — the unified fit model and its `view.json`.
-- `chisurf/core/roi` — sub-region tiling for the vector map ([shared ROI](/subsystems/gui-autoform.md)).
+- `chisurf/core/roi` — sub-region tiling and the cell polygon ([ROI subsystem](/subsystems/roi.md)).
 - The companion photon library's CLSM image-from-stream + mask handling.
 - AutoForm + `view.json` for all UIs (PRD-49 AutoForm mandate); reuse
   `image` / `waterfall` / `region_list` sections.
@@ -383,11 +383,14 @@ Phasor imaging ([PRD-52](prd-52.md)); spectral unmixing beyond RICS weighting
 ([PRD-53](prd-53.md)); pair-correlation analysis ([PRD-54](prd-54.md), with
 `junk/ipcf/` as its chunking reference).
 
-**Deliberately parked, not forgotten:** the **FCS diffusion laws** from
-`junk/Imaging_FCS/` (`tau_D` vs binned observation area; the intercept separates free
-diffusion from meshwork-hindered and domain-partitioned). It is a genuinely distinct
-readout from everything above and belongs to whichever PRD takes imaging-FCS/ICCS with
-arbitrary pixel binning — file it there rather than losing it here.
+**Parked with a home, not a hand-wave:** imaging FCS / ICCS with arbitrary pixel
+binning, and the **FCS diffusion laws** from `junk/Imaging_FCS/` (`tau_D` vs binned
+observation area; the intercept separates free from meshwork-hindered and
+domain-partitioned diffusion). Genuinely distinct readouts, and **no PRD owns them** —
+checked, not assumed. They are now rows in the [PRD-49](prd-49.md) parity matrix
+marked *no owning PRD*, so the gap is visible in the roadmap rather than buried in
+this PRD's non-goals. Give them a PRD before anyone starts them; do not let them
+drift into PRD-51 by accident, since they share only the input data, not the method.
 
 # Relationships
 

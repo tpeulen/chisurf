@@ -2,6 +2,27 @@
 
 ## 2026-07-29
 
+* **[PRD-51](/prds/prd-51.md) closed out: dangling references fixed and the roadmap
+  told (planning only, no code).** Verifying the PRD's own links rather than assuming
+  them found three loose ends. (1) The ROI reuse line pointed at
+  `/subsystems/gui-autoform.md` when a dedicated [ROI subsystem](/subsystems/roi.md)
+  concept exists — the link resolved, so a link checker would have passed it; it was
+  simply the wrong concept. (2) The FCS diffusion laws were parked "in whichever PRD
+  takes imaging-FCS/ICCS" — **no such PRD exists** (checked across all of `okf/prds/`),
+  so that park was a slow way of losing them. (3) [PRD-49](/prds/prd-49.md)'s parity
+  matrix, the roadmap that spawns PRD-51, still described the image-correlation cluster
+  as four rows and pointed at the pre-rename `models/rics/` paths.
+  PRD-49's matrix now carries the methods this survey actually turned up — **STICCS**
+  and **ccN&B** as their own rows, iMSD annotated that it must be the peak-*width*
+  readout rather than an anomalous-exponent fit, spectral RICS flagged as having no
+  reference implementation identified yet, and imaging-FCS/ICCS plus the diffusion laws
+  listed as **no owning PRD** so the gap is visible in the roadmap instead of buried in
+  another PRD's non-goals. The STICS work item is resized M → **L**: it was scoped as
+  "temporal/spatiotemporal ICS" over an existing core, before ROI×TOI tiling, four
+  filters, three rejection stages and STICCS were known to be in it.
+  Still open and recorded as such: `Correlescence`, `FCSlib`, `PAM` and `quickfit3`
+  are not yet surveyed, and spectral RICS has no identified reference.
+
 * **[PRD-71](/prds/prd-71.md) created — fast 2D MFD fitting (design note, no code).**
   Fits kinetic models to the 2D MFD burst histograms directly from a processed
   burst dataset. The nuisance measure is PDA-style and empirical — `P(S, t_G,
