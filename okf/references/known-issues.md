@@ -1223,3 +1223,33 @@ the test should assert that an unresolvable fit dispatches nothing. That is the
 call of whoever made the `-1` change; it is recorded here rather than decided
 from the outside, since guessing wrong re-introduces the "edit lands on the
 wrong fit" bug the docstring describes.
+
+---
+
+## Three plugin GUIs die when constructed bare (no main window, no credentials)
+
+**Found 2026-07-29** while sweeping every chiplot-using plugin GUI to check that
+the [chiplot](/subsystems/chiplot.md) `add_arrow` fix had not left another panel
+broken. 22 of them construct cleanly; three do not, and none of the three is a
+chiplot fault:
+
+* `core/mmfdb_admin` — **fatal abort**. `MMFDBAdminTool.__init__` ->
+  `_ensure_authenticated` fails to log in (embedded server, no credentials),
+  and the interpreter dies with `QThread: Destroyed while thread is still
+  running` -> `Fatal Python error: Aborted`. A cancelled or failed login should
+  leave the tool unusable, not take the process down.
+* `core/acq` — `AttributeError: 'NoneType' object has no attribute
+  '_acquisition_manager'` at `gui/tool.py:1089`: the tool writes itself onto
+  `self.main_window`, which is `None` when `chisurf.cs` is not up.
+* `core/lightpath_simulator` — constructs fine, then **segfaults at
+  interpreter teardown** (exit 139 after the widget is built), around its
+  plugin RPC client.
+
+Repro: instantiate the manifest's `entrypoints.gui` class with no arguments
+under `QT_QPA_PLATFORM=offscreen`. Not fixed in the change that found them: all
+three are pre-existing on HEAD, live in plugins that change did not touch, and
+each is its own diagnosis (a thread-lifetime bug, a missing-host guard, and a
+teardown crash). What is *not* established is whether the first two also bite in
+the real application, where `chisurf.cs` exists and a login dialog is answered —
+the sweep only proves the bare-construction path is broken, which is the path a
+headless test or a standalone launcher would take.
