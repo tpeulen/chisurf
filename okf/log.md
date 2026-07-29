@@ -2,6 +2,36 @@
 
 ## 2026-07-29
 
+* **[PRD-51](/prds/prd-51.md): pysimfcs read in full, and `junk/clone.sh` made to
+  match reality (planning only, no code).** pysimfcs was already cloned and current
+  (`1bde3c2`, 2025-06-03) — but `clone.sh` listed only 12 of the **46** clones present,
+  so the mined-reference set was not reproducible and the whole image-correlation
+  family (`ICS-Tools`, `pysimfcs`, `ipcf`, `Imaging_FCS`, `Correlescence`, `FCSlib`)
+  was missing from it. Regenerated from the actual remotes, grouped by topic, and made
+  idempotent (skips what is present) so it can be re-run safely. Three clones point at
+  remotes that are clearly not their upstream (`fretica` and `PAM-sampledata` both at
+  chisurf.git, `H2MM_C` at H2MMpythonlib) and are flagged as such rather than guessed.
+  Reading `analysis_utils.py` turned the pysimfcs entry from "has N&B" into the actual
+  formulas: `B = var/avg - 1` and `N = avg/B` for photon counting; **ccN&B** as
+  `covar/sqrt(avg_a*avg_b)` **without** the `-1`, because shot noise is uncorrelated
+  between channels — copying the auto formula across is the obvious mistake and biases
+  everything silently, so it now has its own DoD test; and analog N&B as a *different*
+  formula, `B = var/(S*avg) - 1` with `avg_corr = (avg - offset)/S`, where `S` and
+  `offset` come from a gradient calibration measurement — a workflow, not a settable
+  number. Detrending turns out to be **segmented** (per-pixel lines fitted within each
+  of N time chunks) with `maintain_intensity` adding the mean back, which is required
+  rather than cosmetic since `B` is `var/avg`. Also picked up: NaN-aware map smoothing
+  (threshold to NaN *before* smoothing, or background leaks across the mask edge —
+  the same helper the STICS vector maps need for rejected vectors); `avgquadrants`,
+  a genuine SNR win for isotropic RICS that would **destroy** STICS, whose entire
+  signal is the peak being off-centre, so it must be gated per method and never
+  defaulted on; multi-log correlation binning; and the RICS profile fit that fits the
+  horizontal and vertical single-side profiles as one concatenated vector with `G(0)`
+  dropped. **The reference itself is buggy**: `ricsfunc`'s multi-component branches
+  reference undefined names (`hxvals`, `vxvals`) and raise `NameError`, and the
+  vertical radial term is built from the horizontal half's `xvals`. Port with tests —
+  the multi-component RICS test is precisely the one upstream never ran.
+
 * **[PRD-51](/prds/prd-51.md): surveyed the vendored ICS tools, and the port target
   changed (planning only, no code).** The package I had cited,
   `junk/Image-Correlation-Spectroscopy/`, is only the 2006 teaching branch.

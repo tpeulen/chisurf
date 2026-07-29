@@ -164,10 +164,75 @@ Port from the 2015 package; keep the 2006 tutorial as the fixture.
 
 | Tool | Contributes |
 | --- | --- |
-| `junk/pysimfcs/` | **N&B done properly**: photon-counting *and* **analog** detector variants (the analog `S` factor is a separate calibration), plus N&B histogram **gating** — select a region of the B-vs-N histogram and back-map it onto pixels, which is the workflow N&B is actually used for. Also `stack_detrend_linear` — per-pixel linear detrending, **mandatory before N&B**: N&B's entire signal is the variance, so photobleaching inflates `B` directly. This is a *different* correction from the immobile filter and must not be conflated with it. Also fits RICS via simultaneous horizontal+vertical profiles rather than the full 2D map — cheaper, and a useful cross-check. |
+| `junk/pysimfcs/` | The N&B and RICS reference, in Python. Formulas below. |
 | `junk/ipcf/` | Pair-correlation (pCF) over multi-gigabyte series in overlapping chunks — the out-of-core/chunking reference if vector-map cost becomes the problem. pCF itself is [PRD-54](prd-54.md). |
 | `junk/Imaging_FCS/` | Arbitrary pixel binning + ROI for imaging FCS/ICCS, TIRF/SPIM fit models, and **FCS diffusion laws** (the `tau_D` vs area intercept that distinguishes free / meshwork / domain diffusion) — a distinct readout none of the above provides. |
 | `junk/Correlescence/`, `junk/FCSlib/`, `junk/PAM/`, `junk/quickfit3/` | Not yet surveyed for this PRD; check before implementing N&B or the diffusion laws. |
+
+## What pysimfcs pins down — the formulas to port
+
+`junk/pysimfcs/analysis_utils.py` (594 lines, NumPy/SciPy only) is a readable Python
+reference. Concretely:
+
+**N&B, photon counting** (`n_and_b.ipynb`, `var`/`covar`):
+
+```
+B = var/avg - 1            # the -1 removes the shot-noise floor
+N = avg/B
+```
+
+**Cross N&B (ccN&B)** — hetero-interaction between two channels, and an easy thing to
+get subtly wrong:
+
+```
+covar  = <Ia*Ib> - <Ia><Ib>
+coavg  = sqrt(avg_a * avg_b)
+Bcross = covar/coavg       # NO -1: shot noise is uncorrelated between channels
+```
+
+**N&B, analog** (`n_and_b_analog.ipynb`) — not a variant of the above but a different
+formula plus its own calibration:
+
+```
+avg_corr = (avg - offset)/S
+B        = var/(S*avg) - 1
+```
+
+`S` (gain) and `offset` come from a **calibration measurement**: image a
+non-fluctuating intensity gradient, plot per-pixel variance against mean, and read the
+slope and intercept. That is a workflow of its own, not a settable number.
+
+**Map post-processing.** Both paths threshold to NaN *before* Gaussian-smoothing the
+maps (σ≈2 px) — hence `gaussFilterNaN`, which zero-fills, smooths, then restores NaN.
+Smoothing across a masked edge without this leaks background into the map. The same
+helper is what the STICS vector maps need for their rejected (NaN) vectors.
+
+**Detrending** (`detrendStackLinearSeg`) is **segmented**, not one line per pixel: the
+stack is cut into `segments` time chunks and a per-pixel line is fitted and subtracted
+within each. `maintain_intensity=True` adds the mean back — **required**, because `B`
+is `var/avg` and detrending without restoring the mean changes the denominator.
+`getStackTrends` does the per-pixel least-squares in closed form over the whole stack
+at once (no Python loop over pixels) — port that shape, not a per-pixel `polyfit`.
+
+**RICS by profiles** (`ricsfunc`, `getricshalf`) — fit the horizontal (pixel-time) and
+vertical (line-time) single-side profiles **simultaneously as one concatenated
+vector**, with `skipg0=True` dropping the zero-lag point (shot-noise/afterpulsing
+contaminated). Three PSF forms are offered: 3D Gaussian, Gaussian-Lorentzian²,
+and 2D Gaussian.
+
+**Also worth taking:** `avgquadrants` (average the four quadrants of a 2D correlation
+map — a real SNR win for isotropic RICS/ICS, and it would **destroy** STICS, whose
+whole signal is the peak being off-centre; gate it per method, never apply by
+default); `binmultilog`/`carpetbml` (log-binning of a correlation, bin size doubling
+every `tauwidth` points) for TICS display and fit weighting; `paircorrelation` for
+pCF; `polyContains` for the cell polygon mask.
+
+**The reference has defects — port with tests, not by transcription.** In `ricsfunc`
+the multi-component branches reference undefined names (`hxvals`, `vxvals`), so any
+fit with more than one component raises `NameError`; and the vertical radial term is
+built from `xvals[:fitsize]` where it should use `xvals[fitsize:]` (benign only
+because both halves currently carry identical values). Whatever we port must have a
+multi-component RICS test, which is exactly what the reference never ran.
 
 **Do not port the Matlab structure.** Both packages wire GUI handles (`gcbf`,
 `waitbar`, `roipoly`, `inputdlg`) into the numerics, and the 2015 driver hard-codes
@@ -216,10 +281,12 @@ equal size, batch the per-lag fits) land before any language change would.
 - **STICCS** — the two-channel extension: four vector maps per time window (two auto,
   two cross), with the inter-channel acquisition delay carried explicitly so the 12/21
   asymmetry is interpretable.
-- **N&B** — apparent/true brightness & number from pixel intensity mean/variance;
-  aggregation-state maps; **photon-counting and analog** variants; B-vs-N histogram
-  gating with back-mapping to pixels; and per-pixel **detrending** as a required
-  pre-step (a bleaching correction, distinct from the immobile filter).
+- **N&B** — brightness & number maps from pixel mean/variance; **photon-counting and
+  analog** variants (the analog path needs its own gain/offset calibration from a
+  gradient measurement); **ccN&B** cross-brightness between two channels; B-vs-N
+  histogram gating with back-mapping to pixels; NaN-aware map smoothing; and
+  segmented per-pixel **detrending** with mean restoration as a required pre-step
+  (a bleaching correction, distinct from the immobile filter).
 - **TICS decay models** — diffusion, 3D diffusion, diffusion+flow, pure flow, as
   selectable fit models over `IcsCarpet.tics_curve`.
 - **iMSD** — peak **width** `sigma^2(tau)` vs lag as its own estimator, reported as
@@ -266,12 +333,25 @@ equal size, batch the per-lag fits) land before any language change would.
 - [ ] STICCS: four vector maps per time window (auto 1, auto 2, cross 12, cross 21)
       with the inter-channel delay carried explicitly, and a test that 12 and 21 are
       **not** forced equal.
-- [ ] N&B: apparent/true `N` and `epsilon` maps; recovers a known brightness on a
-      simulated stack; analog variant with its `S` factor; B-vs-N histogram gating
+- [ ] N&B: `B = var/avg - 1`, `N = avg/B` maps; recovers a known brightness on a
+      simulated stack; **analog** variant `B = var/(S*avg) - 1` with `S`/`offset` from a
+      gradient calibration (a workflow, not a settable number); B-vs-N histogram gating
       that back-maps a selected region onto pixels.
-- [ ] Per-pixel detrending as a separate, required pre-step for N&B, with a test on a
-      bleaching stack that `B` is recovered correctly only after detrending — pinning
-      that it is not interchangeable with the immobile filter.
+- [ ] ccN&B cross-brightness `covar/sqrt(avg_a*avg_b)`, with a test pinning that the
+      `-1` shot-noise term is **absent** from the cross channel — copying the auto
+      formula here is the obvious mistake and silently biases every result.
+- [ ] Segmented per-pixel detrending with mean restoration, closed-form and vectorised
+      over the stack; test on a bleaching stack that `B` is recovered only after
+      detrending, and that omitting the mean restoration breaks `B` — pinning that it
+      is not interchangeable with the immobile filter.
+- [ ] Map smoothing is NaN-aware (threshold to NaN, then smooth without leaking
+      background across the mask edge); shared with the STICS vector maps' rejected
+      vectors.
+- [ ] `avgquadrants` quadrant averaging available for isotropic RICS/ICS and **blocked
+      for STICS**, with a test that it is not applied where the peak is off-centre.
+- [ ] RICS profile fit (horizontal + vertical concatenated, `G(0)` skipped) with a
+      **multi-component** test — the branch the reference implementation never ran and
+      that raises `NameError` there.
 - [ ] TICS decay models (diffusion / 3D diffusion / diffusion+flow / flow) selectable
       in add-fit and rendered from `view.json`.
 - [ ] iMSD implemented as a peak-**width** readout returning `sigma^2(tau)`, with a
