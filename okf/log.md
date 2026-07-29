@@ -2,6 +2,22 @@
 
 ## 2026-07-29
 
+* **[PRD-72](/prds/prd-72.md) created — the non-breaking groundwork under
+  [PRD-71](/prds/prd-71.md).** Splits the enabling infrastructure out of the
+  modelling PRD so it is separately specified and separately testable: a
+  preparation core (`chisurf/core/fluorescence/mfd/prepare.py`) with the plugin's
+  four surfaces *and* the experiment reader over it; photon-source resolution
+  through the existing manifest → `.mti` → sniff chain; D12 straight from the
+  `.bur` columns; a burst-folder → `PhotonBursts` loader; an `mfd` experiment
+  package; model filtering by data; and whatever chiplot still lacks for a 2D
+  histogram with overlay lines — added *to* chiplot, never reached around. Item 1
+  (the mean-micro-time column) is already landed. Two things are recorded as
+  needing no work at all, so nobody builds them twice: the `2I*` Poisson deviance
+  is already a `noise_model` on the shared fit layer, and the per-parameter priors
+  are PRD-61. One deliberate behaviour change is called out rather than folded in:
+  the extension-sniffing fallback must start failing loudly, because today an
+  unaccepted container type yields zero photons instead of an error.
+
 * **`.bur` burst tables now carry the mean micro time per detector.** First
   non-breaking piece of [PRD-71](/prds/prd-71.md): both writer paths in
   `chisurf/core/fio/fluorescence/burst.py` emit
