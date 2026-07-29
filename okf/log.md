@@ -2,6 +2,24 @@
 
 ## 2026-07-29
 
+* **Review fix — the l1/l2 half of the VV/VH G-factor panel raised on every
+  use** (RF-918, S1). `VvVhGFactorClient.solve_linked_l`
+  (`chisurf/plugins/vv_vh_g_factor/gui/client.py`) computed the RPC result into
+  a local and fell off the end of the function, so it returned `None`. The
+  caller's `try/except` fallback to the pure-Python
+  `solve_linked_l_from_steady_state` never fired — nothing had been raised — and
+  `np.isfinite(None)` then raised `TypeError` from *Load FP VV/VH File*, from the
+  τ and *Target rS* spin boxes and from typing in the **G-Factor** box, leaving
+  the panel showing a loaded file path beside `l1/l2 = 0.000000`. Added the
+  missing `return float(res.get("l_estimate", float('nan')))`, matching
+  `perrin_steady_state` beside it and the key
+  `solve_linked_l_handler` actually returns. The existing tests covered the core
+  function only and never crossed the client seam, which is why a missing
+  `return` in the transport survived; pinned now by a new
+  `chisurf/plugins/vv_vh_g_factor/test/test_client.py`, which drives both
+  estimators through the in-process RPC client and asserts each returns a finite
+  float equal to its core function.
+
 * **Review fix — the LLTF settings editor could not be opened** (RF-877, S1).
   The *Config File ▸ Edit…* button and *Settings ▸ Edit Configuration…* in the
   [LLTF decay-analysis panel](/plugins/fluorescence-decay.md)

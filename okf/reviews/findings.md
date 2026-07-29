@@ -10372,11 +10372,22 @@ batch window and the CLI's error paths. RF-173 (mean-of-ratios / *StdDev*) is
 reconfirmed with two new symptoms and is **not** re-filed.
 
 ### RF-918
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the whole l1/l2 half of the calibration raises on every use, and once an FP file is loaded every later interaction with the window raises too)
 - **Location:** `chisurf/plugins/vv_vh_g_factor/gui/client.py:84-92` (`VvVhGFactorClient.solve_linked_l` — `res = result.get("result", result)` at `:92` is the last statement before `def archive_g_factor` at `:93`; there is no `return`), surfaced at `chisurf/plugins/vv_vh_g_factor/gui/tool.py:703` (`if not np.isfinite(l_est)`) via `:678-691` and reached from `load_fp_vv_vh_file` (`:493`), `on_fp_tau_value_changed` (`:778`), `on_fp_rs_value_changed` (`:784`), `_apply_manual_g_from_text` (`:807`) and `calculate_g_factor` (`:602`)
 - **Finding:** `solve_linked_l` computes its result into `res` and falls off the end of the function, so it returns `None`. The caller wraps it in `try/except Exception` and falls back to the pure-python `solve_linked_l_from_steady_state` — but nothing was raised, so the fallback never fires and `l_est` is `None`. `np.isfinite(None)` then raises `TypeError: ufunc 'isfinite' not supported for the input types, and the inputs could not be safely coerced to any supported types according to the casting rule ''safe''`. Verified through the real widget offscreen: **Load FP VV/VH File** on `test/data/tcspc/Jordi_PIE/Green_Donly_ps.dat` raises at `tool.py:703` every time, and because `_apply_manual_g_from_text` calls the same estimator, typing in the **G-Factor** box afterwards raises the identical `TypeError` (three separate tracebacks in one session, from `load_fp_vv_vh_file`, `on_g_factor_text_changed` and `on_g_factor_value_changed`). The panel is left in a misleading state — the FP file path *is* written into `fp_file_label`, while `tau`, `Target rS` and `l1/l2` stay `0.000000` and the warning reverts to *"Load FP VV/VH data to estimate l1/l2."* Adding `return float(res.get("l", float('nan')))` (matching `perrin_steady_state` at `:73-82`, which does return correctly) restores the path: the same file then yields `l1 = l2 = 0.1392` at `dt = 0.032 ns/ch`. Guard with a client-level test asserting `solve_linked_l` returns a float equal to `solve_linked_l_from_steady_state` — `chisurf/plugins/vv_vh_g_factor/test/test_calculations.py` covers the core function only and never goes through the client, which is why a missing `return` in the transport survived.
-- **Fix note:**
+- **Fix note:** Added the missing `return float(res.get("l_estimate", float('nan')))`
+  to `VvVhGFactorClient.solve_linked_l`, mirroring `perrin_steady_state` above it;
+  the key is `l_estimate`, which is what `solve_linked_l_handler`
+  (`backend/services.py:100-101`) puts in the RPC payload. `l_est` is now a float,
+  so the `np.isfinite(l_est)` guard at `gui/tool.py:703` no longer raises and the
+  `try/except` fallback to `solve_linked_l_from_steady_state` is once again a real
+  fallback rather than dead code. Pinned by a new client-level test module
+  `chisurf/plugins/vv_vh_g_factor/test/test_client.py`
+  (`test_client_solve_linked_l_returns_core_value`), which drives the estimator
+  through the in-process RPC client and asserts the returned value is a finite
+  float equal to the core `solve_linked_l_from_steady_state`; a sibling test does
+  the same for `perrin_steady_state`, so the whole transport is covered.
 
 ### RF-919
 - **Status:** OPEN

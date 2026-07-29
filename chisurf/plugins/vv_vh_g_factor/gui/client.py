@@ -90,6 +90,8 @@ class VvVhGFactorClient:
         if isinstance(result, dict) and not result.get("ok", True):
             raise RuntimeError(result.get("error", "Unknown error in G-factor solve_linked_l RPC call"))
         res = result.get("result", result)
+        return float(res.get("l_estimate", float('nan')))
+
     def archive_g_factor(
         self,
         file_path: str,
