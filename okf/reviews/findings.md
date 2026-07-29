@@ -10980,11 +10980,21 @@ The defects are in the *restore* path, the coverage bookkeeping and the two
 places that read a stored chain: RF-979..RF-984.
 
 ### RF-979
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (every conditional query leaves the fit's model curve and χ²ᵣ at the conditioned re-fit — verified χ²ᵣ 0.865 → 47.99 on a fit whose parameter values were restored correctly)
 - **Location:** `chisurf/core/fitting/engine.py:493-505` (`PosteriorEngine._restore_evidence`) against the re-fit it is undoing at `:486-490` (`self.fit.run()` in `_apply_evidence`); called from `LaplaceEngine.run` (`:576`), `ProfileEngine.run` (`:1357`) and `SamplingEngine.run` (`:1420`)
 - **Finding:** `_apply_evidence` pins the conditioned parameters, sets `fixed=True` and calls `self.fit.run()`, which moves every other parameter **and** recomputes the model curve, the weighted residuals and χ². `_restore_evidence` puts the *parameter values* back and restores the `fixed` flags — but never asks the model to recompute, so the fit is left holding the conditioned curve under the unconditioned parameter values. Verified in the `arm64` env: `LaplaceEngine(fit).condition('1:c', c+0.5).add_all_targets().run()` restores both parameter values exactly (`{'c': 3.0967…, 'a': 1.2008…}` before and after) while `fit.chi2r` goes **0.8649 → 47.9896**, the model curve is off by 0.5 everywhere (`max|Δy| = 0.5`), and `sum(weighted_residuals**2)` reads 2879 instead of ~55. Nothing raises. The fit is then in a state no fit can legitimately be in — optimal parameters, non-optimal curve — and everything downstream reads it: the GUI's chi² display, `Fit.__str__`, any plot, and the very next `covariance_matrix` call. The fix is one line, and the file already contains it: `exact_conditional_scan`, which performs the same snapshot/restore dance, ends its `finally` with `self.fit.update()` (`:984-987`). Add the same to `_restore_evidence`. Note the unconditioned path is safe — `_apply_evidence` returns `None` immediately when `self._evidence` is empty (`:472-473`) — so this fires only for `condition(...)`, reachable from the `condition` argument of the `fit.posterior_query` RPC (`chisurf/server/services/fits.py:1258-1259`). No test asserts the fit is unchanged after a conditional query.
-- **Fix note:**
+- **Fix note:** `_restore_evidence` now ends with `self.fit.update()`, the same
+  closing move `exact_conditional_scan` already makes — so the restore undoes the
+  *whole* re-fit, curve and residuals included, not just the parameter values.
+  Becoming an instance method to reach `self.fit` is the only signature change;
+  all three call sites were already `self._restore_evidence(...)`. The
+  unconditioned path is untouched: `restore is None` still returns before the
+  update. Pinned by
+  `test/fitting/test_posterior_engine.py::test_conditioning_restores_the_model_curve_not_just_the_values`,
+  which snapshots `chi2r`, `model.y` and `weighted_residuals`, runs a conditional
+  Laplace query at `c + 0.5` and asserts all three come back — it reproduces the
+  reported 0.8649 → 47.9896 when the `update` is removed.
 
 ### RF-980
 - **Status:** OPEN

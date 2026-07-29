@@ -2,6 +2,21 @@
 
 ## 2026-07-29
 
+* **A conditional posterior query put the parameters back but left the fit
+  holding the conditioned curve (RF-979,
+  [PRD-70](/prds/prd-70.md)).** `PosteriorEngine._apply_evidence` pins the
+  conditioned parameters and re-runs the fit — which moves everything else *and*
+  recomputes the model curve, the weighted residuals and chi2. `_restore_evidence`
+  undid only the parameter values and the `fixed` flags, so after any
+  `condition(...)` query the fit sat at optimal parameters under a non-optimal
+  curve, with nothing raising: chi2r 0.8649 → 47.9896 on the standard
+  `c + a*x**2` fixture, the curve off by the conditioning offset everywhere. Every
+  reader downstream — the chi2 display, `Fit.__str__`, any plot, the next
+  `covariance_matrix` — took that at face value, and it is reachable from the
+  `condition` argument of the `fit.posterior_query` RPC. The restore now closes
+  with `self.fit.update()`, the same move `exact_conditional_scan` already makes
+  in its `finally`. Pinned by
+  `test/fitting/test_posterior_engine.py::test_conditioning_restores_the_model_curve_not_just_the_values`.
 * **The flrCIF alignment tool could not run, and would have written the retired
   namespace if it had ([PRD-02c](/prds/prd-02c.md)).**
   `build_tools/dev_utils/align_flrcif_parameters.py` is the only thing that ever

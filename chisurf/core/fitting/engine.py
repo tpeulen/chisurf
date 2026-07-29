@@ -490,9 +490,16 @@ class PosteriorEngine(abc.ABC):
                 cs.logging.warning(f"conditioning: re-fit failed ({e})")
         return before, fixed
 
-    @staticmethod
-    def _restore_evidence(restore) -> None:
-        """Undo :meth:`_apply_evidence`, including the re-fit it performed."""
+    def _restore_evidence(self, restore) -> None:
+        """Undo :meth:`_apply_evidence`, including the re-fit it performed.
+
+        Putting the parameter values back is only half of it: the re-fit also
+        recomputed the model curve, the weighted residuals and chi2. Without a
+        final ``update`` the fit is left in a state no fit can legitimately be
+        in -- the unconditioned parameters under the conditioned curve -- and
+        everything downstream (the chi2 display, plots, the next covariance)
+        reads it.
+        """
         if restore is None:
             return
         before, fixed = restore
@@ -503,6 +510,10 @@ class PosteriorEngine(abc.ABC):
                 p.value = value
             except Exception:
                 pass
+        try:
+            self.fit.update()
+        except Exception:
+            pass
 
 
 class LaplaceEngine(PosteriorEngine):

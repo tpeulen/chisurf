@@ -195,6 +195,32 @@ def test_conditioning_fixes_a_parameter_and_refits_the_rest():
     assert eng._evidence == {}
 
 
+def test_conditioning_restores_the_model_curve_not_just_the_values():
+    """Restoring the values is only half of undoing the conditioned re-fit.
+
+    ``_apply_evidence`` re-runs the fit, which recomputes the model curve, the
+    weighted residuals and chi2. If the restore puts the parameters back but
+    leaves the curve conditioned, the fit reads as optimal while its chi2 and
+    every plot belong to a different parameter vector.
+    """
+    np.random.seed(4)
+    fit = _fit()
+    model = fit._model
+    names = list(model.parameter_names)
+    target = names[0]
+    value = dict(zip(names, model.parameter_values))[target]
+
+    chi2r = float(fit.chi2r)
+    curve = np.array(fit.model.y, dtype=np.float64)
+    residuals = np.array(fit.weighted_residuals, dtype=np.float64)
+
+    E.LaplaceEngine(fit).condition(target, value + 0.5).add_all_targets().run()
+
+    assert float(fit.chi2r) == pytest.approx(chi2r, rel=1e-9)
+    np.testing.assert_allclose(np.asarray(fit.model.y), curve, atol=1e-9)
+    np.testing.assert_allclose(np.asarray(fit.weighted_residuals), residuals, atol=1e-9)
+
+
 def test_only_integrating_engines_report_evidence():
     """A profile scan maximises rather than integrates, so it has none."""
     fit = _fit()
