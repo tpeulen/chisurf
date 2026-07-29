@@ -36,36 +36,60 @@ and runs `claude -p "$(cat <prompt>)" --dangerously-skip-permissions`, logging t
 narrow set of files and forbids pushing / history rewrites (`--dangerously-skip-permissions`
 is needed only because an unattended run has no TTY to approve tool calls).
 
-A per-job `flock` prevents overlapping runs. Credentials come from the
-`~/.claude` login already on the machine; if that login expires the run fails and
-is logged — run `claude` once interactively to re-authenticate.
+Overlapping runs are prevented by an atomic `mkdir` lock (stock macOS has no
+`flock`), auto-cleared after 6 h so a killed run cannot wedge the schedule.
+Credentials come from the `~/.claude` login already on the machine; if that login
+expires the run fails and is logged — run `claude` once interactively to
+re-authenticate.
 
-## Install
+## Start / stop
+
+Everything goes through [`jobs.sh`](jobs.sh); with no job names it acts on all six.
 
 ```bash
 cd /Users/tpeulen/dev/chisurf
-cp build_tools/jobs/launchagents/com.chisurf.*.plist ~/Library/LaunchAgents/
-for j in translate-ui build-docs improve-prds review-code fix-issues gui-tester; do
-  launchctl load ~/Library/LaunchAgents/com.chisurf.$j.plist
-done
+
+./build_tools/jobs/jobs.sh status            # installed / loaded / disabled / running
+./build_tools/jobs/jobs.sh stop              # stop ALL jobs (durably)
+./build_tools/jobs/jobs.sh start             # start them again
+./build_tools/jobs/jobs.sh stop gui-tester   # …or just one
+
+./build_tools/jobs/jobs.sh install           # first time: copy plists + start
+./build_tools/jobs/jobs.sh uninstall         # stop + remove the plists
+
+./build_tools/jobs/jobs.sh run translate-ui  # fire one run now, ignoring the schedule
+./build_tools/jobs/jobs.sh logs translate-ui # tail today's log
 ```
 
-## Verify / run now / uninstall
+**Why stopping is two steps.** A plist sitting in `~/Library/LaunchAgents` is
+loaded again automatically at the next login, so `launchctl unload` on its own is
+a stop that quietly undoes itself after a reboot. `jobs.sh stop` therefore also
+`launchctl disable`s each label, which writes a per-user override that survives
+login. The mirror image is the footgun: once a label is disabled, a plain
+`launchctl load` **silently does nothing** — that is why `jobs.sh start` runs
+`launchctl enable` first. Reach for the raw commands only if you know both halves:
 
 ```bash
-launchctl list | grep com.chisurf                    # is it loaded?
-launchctl start com.chisurf.translate-ui             # run once, right now
-tail -f build_tools/jobs/logs/translate-ui-*.log     # watch it work
+launchctl unload ~/Library/LaunchAgents/com.chisurf.gui-tester.plist
+launchctl disable "gui/$UID/com.chisurf.gui-tester"     # persists across reboots
+launchctl print-disabled "gui/$UID" | grep chisurf      # what is disabled
 
-launchctl unload ~/Library/LaunchAgents/com.chisurf.translate-ui.plist
-rm ~/Library/LaunchAgents/com.chisurf.translate-ui.plist
+launchctl enable "gui/$UID/com.chisurf.gui-tester"      # must precede the load
+launchctl load ~/Library/LaunchAgents/com.chisurf.gui-tester.plist
 ```
+
+Stopping does **not** kill a run already in flight — the headless `claude` process
+finishes its current job. `jobs.sh status` shows it under `RUNNING` (the job's lock
+directory); wait for it, or kill the `claude_job.sh` process and `rmdir` the stale
+`build_tools/jobs/logs/<job>.lock`.
 
 ## Change the schedule
 
 Edit the `StartCalendarInterval` in the plist (add a `Day`/`Weekday` key for
-weekly, or use an array of dicts for several times a day), then `launchctl unload`
-+ `load` it again. The scripts and prompts are machine-independent; the plists
+weekly, or use an array of dicts for several times a day), then
+`jobs.sh stop <job> && jobs.sh start <job>` to reload it. Editing a **prompt**
+needs no reload — prompts are read at run time. The scripts and prompts are
+machine-independent; the plists
 and `claude_job.sh` hard-code this checkout's absolute path
 (`/Users/tpeulen/dev/chisurf`) because launchd needs absolute paths — adjust if
 the repo moves.

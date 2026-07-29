@@ -2,6 +2,25 @@
 
 ## 2026-07-29
 
+* **Scheduled maintenance jobs stopped, and given one control surface.** All six
+  Claude-driven LaunchAgents (`translate-ui`, `build-docs`, `improve-prds`,
+  `review-code`, `fix-issues`, `gui-tester`) were unloaded **and** persistently
+  disabled at the user's request; none was mid-run at the time (no lock dirs, no
+  `claude_job.sh` process). They stay off until someone runs `jobs.sh start`.
+  New `build_tools/jobs/jobs.sh` (`status`/`start`/`stop`/`install`/`uninstall`/
+  `run`/`logs`, all six jobs or named ones) replaces the loose `launchctl`
+  incantations, because a stop and a start each need **two** launchd steps and
+  either half alone fails silently: a plist in `~/Library/LaunchAgents` is
+  re-loaded at every login, so `unload` without `disable` reverts itself after a
+  reboot, and once a label is disabled a plain `load` is a no-op until `enable`
+  runs first. Round-trip verified (stop → start → stop) on `translate-ui`.
+  Documented in `build_tools/jobs/README.md` and
+  [/workflows/scheduled-jobs.md](/workflows/scheduled-jobs.md); fixed three stale
+  claims found there while writing it — the README credited a `flock` the script
+  does not use (it is an atomic `mkdir` lock, 6 h stale-clear), and the concept
+  said "all three" of what are now six jobs and had a blank line splitting the
+  `gui-tester` row out of the job table.
+
 * **GUI-tester — scripting an analysis in the Code Editor.** Drove
   `Tools ▸ Miscellaneous ▸ Code Editor` end to end (open a shipped example, symbol
   outline, Ruff, endpoint selection, Run, Stop, settings dialog, Agent dock) and

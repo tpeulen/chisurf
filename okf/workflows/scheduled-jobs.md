@@ -42,7 +42,6 @@ The prompts read at runtime, so editing a prompt changes the next run's behaviou
 | `com.chisurf.improve-prds` | every 30 min | pick ONE small roadmap item (`okf/prds/` + [assessment backlog](/specs/assessment.md)), implement it, run the **mandatory test + lint gate**, and commit **only if green** — else a knowledge-only update or a no-op. |
 | `com.chisurf.review-code` | every 30 min (:00/:30) | critically review a focused code slice and append verified findings to [`okf/reviews/findings.md`](/reviews/findings.md) (OPEN). **Reviews only — never edits source.** |
 | `com.chisurf.fix-issues` | every 30 min (:15/:45) | fix ONE OPEN finding from the queue behind the **test + lint gate**, flip it FIXED, and commit only if green. |
-
 | `com.chisurf.gui-tester` | hourly (:07) | *drive the real Qt GUI headlessly* (offscreen) through one typical user workflow, record the use case in [`okf/usecases/`](/usecases/index.md), file concrete defects into the [findings queue](/reviews/findings.md), and note UX/UI suggestions. **Tests only — never edits source.** |
 
 The middle pair forms a **review → fix pipeline**: `review-code` *produces*
@@ -57,7 +56,7 @@ growing set of use-case / manual-test docs under [`okf/usecases/`](/usecases/ind
 
 ## Rules the jobs inherit
 
-All three obey [change tracking](change-tracking.md) and the shared-working-tree
+All six obey [change tracking](change-tracking.md) and the shared-working-tree
 rules in `CLAUDE.md`: commit **locally only, never push**, only the files they own,
 **by explicit pathspec**; no `git add -A` / `reset` / `rebase` / `stash` /
 `--force`; no commit trailers. The self-improvement job additionally **never
@@ -66,8 +65,23 @@ edits and does a documentation-only update.
 
 ## Operating them
 
-Install, verify, run-now, reschedule, and uninstall are documented in
-`build_tools/jobs/README.md`. Logs live under `build_tools/jobs/logs/` (gitignored).
+`build_tools/jobs/jobs.sh` is the single control surface — `status`, `start`,
+`stop`, `install`, `uninstall`, `run` (fire now), `logs` (tail today's), each
+acting on all six jobs or on named ones. Full detail, including how to reschedule,
+is in `build_tools/jobs/README.md`. Logs live under `build_tools/jobs/logs/`
+(gitignored).
+
+**Stopping takes two launchd steps, and so does starting.** A plist in
+`~/Library/LaunchAgents` is re-loaded at every login, so `launchctl unload` alone
+is a stop that silently reverts after a reboot — a durable stop also needs
+`launchctl disable gui/$UID/<label>`. That override then persists, which makes a
+later plain `launchctl load` a **silent no-op** until `launchctl enable` runs
+first. `jobs.sh` does both halves in the right order; hand-rolled `unload`/`load`
+is where the surprise lives. Stopping never kills a run already in flight — the
+lock directory under `logs/` shows one in progress (`jobs.sh status` → `RUNNING`).
+
 The self-improvement job is the aggressive one — autonomous, test-gated code
 changes every 30 minutes; watch its log on first activation, and prefer running it
-when other agent instances are quiet to avoid shared-tree collisions.
+when other agent instances are quiet to avoid shared-tree collisions. **The jobs
+were stopped and disabled on 2026-07-29** and stay off until someone runs
+`jobs.sh start`.
