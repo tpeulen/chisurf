@@ -211,7 +211,12 @@ i18n-extract = { cmd = "python build_tools/i18n/extract_strings.py" }
 i18n-compile = { cmd = "lrelease chisurf/gui/i18n/chisurf_en.ts chisurf/gui/i18n/chisurf_de.ts chisurf/gui/i18n/chisurf_fr.ts", inputs = ["chisurf/gui/i18n/*.ts"], outputs = ["chisurf/gui/i18n/*.qm"] }
 
 test-app-linux = { cmd = "echo 'test-app-linux: requires native pixi environment on Linux'", depends-on = ["build-extensions"] }
-test = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window'", depends-on = ["build-extensions"] }
+# `-m "not slow"` makes the declared marker actually do something: it was
+# defined in pyproject and excluded from nothing, so a file marked slow still
+# ran in every default sweep. The slow ones build whole windows and grab them --
+# a minute against seconds for the rest -- and `test-slow` is how to ask for them.
+test = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'not gui and not widget and not window' -m 'not slow'", depends-on = ["build-extensions"] }
+test-slow = { cmd = "pytest test $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') -m slow", depends-on = ["build-extensions"] }
 test-gui = { cmd = "pytest $(find chisurf/plugins -type d -name test -not -path '*/__pycache__/*') chisurf/gui/widgets/node_editor/tests -k 'widget or gui'", depends-on = ["build-extensions"] }
 test-doctest = { cmd = "pytest test --doctest-modules", depends-on = ["build-extensions"] }
 lint = { cmd = "ruff check chisurf/ test/ && ruff format --check chisurf/ test/" }

@@ -499,6 +499,30 @@
 
 ## 2026-07-28
 
+* **The State dock is gone, Objects starts hidden, docks can be shown from a
+  right-click -- and a saved layout no longer resurrects what was removed.**
+  - The block in the viewport carries the state, stride, averaging window and
+    the timeline, so `StateControlDock` had nothing left of its own and is
+    deleted outright (three references, unlike the sequence dock's hundred).
+  - **The Objects dock starts hidden** rather than removed: the panel in the
+    viewport is the object list now, but someone who wants a resizable one
+    should still be able to open it. Hidden *after* `set_layout_state`, not
+    before -- the authored layout restores every tab and would undo it.
+  - **Right-clicking a tab shows or hides any dock.** The DockArea has had this
+    all along, with checkable entries per dock and a refusal to hide the last
+    visible one; it is simply off by default, so chimol never showed it.
+  - The reason a removed dock kept coming back: a **persisted layout is applied
+    verbatim**, and a saved one still names Sequence, State and Timeline.
+    Restoring now prunes retired names from the state first, walking the
+    structure rather than assuming its shape, since a layout saved by an older
+    version may be nested differently from what this one writes.
+
+* **`slow` was declared and excluded from nothing.** The marker existed in
+  `pyproject` while the `test` task selected on `-k` alone, so a file marked slow
+  still ran in every sweep. The task now passes `-m "not slow"` and `test-slow`
+  asks for them; `test_panel_layout.py` -- whole windows, built and grabbed, a
+  minute against seconds for the rest -- is marked accordingly.
+
 * **Selecting was rebuilding the entire scene, and that was the whole cost.**
   Measured on 148L: `set_selected_residues` took **88.01 ms** -- the same as
   `_update_view`, because it *was* `_update_view` -- while building the

@@ -63,7 +63,6 @@ from ..analysis import (
 )
 from .command_dock import CommandDock
 from .controls_panel import ControlsToolbar
-from .state_control_panel import StateControlDock
 from .objects_panel import ObjectsDock
 from .sequence_dock import SequenceDock
 from .hierarchy_panel import HierarchyDock
@@ -123,7 +122,6 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
                             {"widget_key": "Objects", "tab_name": "Objects", "tab_text": "Objects"},
                             {"widget_key": "Hierarchy", "tab_name": "Hierarchy", "tab_text": "Hierarchy"},
                             {"widget_key": "RMF", "tab_name": "RMF", "tab_text": "RMF"},
-                            {"widget_key": "State", "tab_name": "State", "tab_text": "State"},
                             {"widget_key": "Map", "tab_name": "Map", "tab_text": "Map"},
                             {"widget_key": "Command", "tab_name": "Command", "tab_text": "Command"},
                         ],
@@ -148,6 +146,37 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
     "active_tab_widget": [0],
     "current_index": 0,
 }
+
+
+#: Docks the viewport panel replaced. A saved layout still names them, and a
+#: layout is applied verbatim, so without this they come back the moment anyone
+#: reopens the window -- looking exactly like the removal never happened.
+_RETIRED_DOCKS = frozenset({"Sequence", "State", "Timeline"})
+
+
+def _without_retired_docks(state):
+    """Return *state* with every reference to a retired dock removed.
+
+    Walks the structure rather than assuming its shape: the layout is nested
+    areas and tab lists, and a saved one from an older version may be nested
+    differently from what this version writes.
+    """
+    if isinstance(state, dict):
+        name = state.get("tab_name") or state.get("widget_key") or state.get("tab_text")
+        if isinstance(name, str) and name in _RETIRED_DOCKS:
+            return None
+        cleaned = {}
+        for key, value in state.items():
+            pruned = _without_retired_docks(value)
+            if pruned is not None:
+                cleaned[key] = pruned
+        return cleaned
+    if isinstance(state, list):
+        return [
+            item for item in (_without_retired_docks(v) for v in state)
+            if item is not None
+        ]
+    return state
 
 
 @persist_plugin_state("chimol")
@@ -253,13 +282,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self, self.viewer, margins=dock_margins, spacing=spacing
         )
         self.rmf_panel = RmfPanel(self, self.viewer)
-        self.state_control = StateControlDock(
-            self,
-            self.viewer,
-            _cmd,
-            margins=dock_margins,
-            spacing=spacing,
-        )
         self.sequence = SequenceDock(
             self,
             margins=dock_margins,
@@ -292,17 +314,36 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         self.dock_area: Optional[DockArea] = None
         if DockArea is not None:
             self.dock_area = DockArea(self)
+            # Right-click a tab to show or hide any dock. The DockArea has had
+            # this all along -- checkable entries for every dock, and it refuses
+            # to hide the last visible one -- but it is off by default, so the
+            # menu never appeared and the docks could only be reached from the
+            # View menu.
+            self.dock_area.setContextMenuEnabled(True)
             self.dock_area.addTab(self.viewer, "3D View", close_mode="hide")
             self.dock_area.addTab(self.objects.widget, "Objects", close_mode="hide")
             self.dock_area.addTab(self.hierarchy, "Hierarchy", close_mode="hide")
             self.dock_area.addTab(self.rmf_panel.widget, "RMF", close_mode="hide")
-            self.dock_area.addTab(self.state_control.widget, "State", close_mode="hide")
             self.dock_area.addTab(self.volume_panel, "Map", close_mode="hide")
             self.dock_area.addTab(self.command_panel.widget, "Command", close_mode="hide")
             try:
                 self.dock_area.set_layout_state(
                     dict(_DEFAULT_DOCK_AREA_STATE), emit_change=False,
                 )
+            except Exception:
+                pass
+
+            # After the layout is applied, not before: `set_layout_state`
+            # restores the authored tabs and would undo it. The object list
+            # lives in the viewport now, so its dock starts hidden -- hidden,
+            # not removed, because right-clicking a tab brings it back and
+            # someone who wants a resizable list should still be able to have
+            # one.
+            try:
+                for index in range(self.dock_area.count()):
+                    if self.dock_area.tabText(index) == "Objects":
+                        self.dock_area.hideTab(index)
+                        break
             except Exception:
                 pass
             central_layout.addWidget(self.dock_area)
@@ -517,9 +558,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             sub.addAction("RMF").triggered.connect(
                 lambda: self._show_tab("RMF"),
             )
-            sub.addAction("State").triggered.connect(
-                lambda: self._show_tab("State"),
-            )
 
             view_menu.addSeparator()
             reset_action = view_menu.addAction("\U0001f504 Reset Layout")
@@ -579,7 +617,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             raw = settings.value("main_dock_area")
             if raw is None:
                 return
-            state = json.loads(str(raw))
+            state = _without_retired_docks(json.loads(str(raw)))
             self.dock_area.set_layout_state(state, emit_change=True)
         except Exception:
             pass

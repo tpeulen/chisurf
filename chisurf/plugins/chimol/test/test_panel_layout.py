@@ -26,6 +26,13 @@ _PDB = (
 )
 
 
+#: Slow: this file builds whole windows and grabs them, which costs about a
+#: minute against four seconds for the rest of the plugin's tests. Excluded
+#: from the default run so iterating stays fast; ask for it with `-m slow`
+#: before landing anything that touches the panels.
+pytestmark = pytest.mark.slow
+
+
 @pytest.fixture(scope="session")
 def qapp():
     from qtpy import QtWidgets
