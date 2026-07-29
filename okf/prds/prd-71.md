@@ -397,6 +397,21 @@ two numbers is *quantified* rather than assumed negligible.
 * **Transfer-matrix discretization** in `n`; convergence in `n` is a test, not an
   assumption.
 
+# Open before the next step
+
+Two things are needed that the tree cannot supply:
+
+* **A real static smFRET burst measurement for milestone 1a**, with its IRF,
+  background and correction factors. `test/data/` has CLSM `.ht3`/`.ptu` files, a
+  small `.ptu`, and the photon-by-photon reference `.npz` — no burst-mode dataset.
+  The gate cannot run without one.
+* **The earlier working implementation.** A comparable scheme has worked before;
+  reading it would settle the parts that are *convention* rather than physics —
+  pattern normalization, where `G` and `l₁/l₂` are applied, how the linker width
+  was handled alongside the static line, and whether the observation-span
+  shrinkage was modelled or corrected. Re-deriving those invites a mismatch that
+  the histogram would absorb into a rate rather than reveal.
+
 # Staging
 
 1. **Data side** — ✅ *landed*: the `.bur` writer emits
