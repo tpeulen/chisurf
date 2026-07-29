@@ -845,6 +845,12 @@ To reset all persisted setup defaults, use the **Clear local settings** option
 in the Settings menu. This deletes `setup_defaults.json` along with other local
 settings.
 
+Resetting affects settings only. The settings folder also holds user data —
+the metadata database (`~/.chisurf/flr/`), the object store
+(`~/.chisurf/objects/`), the installed user plugins (`~/.chisurf/plugins/`) and
+the fetched-structure cache (`~/.chisurf/structures/`) — and those are left
+untouched. Clear the plugins with the separate **Clear user plugins** action.
+
 ### 4.5 Implementation notes
 
 Each experiment controller must implement two methods for proper persistence:

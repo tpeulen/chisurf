@@ -3,9 +3,22 @@ import chisurf as cs
 
 import os
 import shutil
-import pathlib
 
 from .path_utils import get_path
+
+
+#: Direct children of the settings folder that hold *user data*, not settings.
+#: The settings folder is not settings-only: it is also where the per-user
+#: metadata database, the content-addressed object store, the installed user
+#: plugins and the fetched-structure cache live. Resetting the settings must
+#: never delete those - they are unrecoverable user data, and every one of them
+#: has its own dedicated clear action.
+USER_DATA_DIRS = frozenset({
+    'flr',         # per-user MMFDB database (sample_management.db)
+    'objects',     # content-addressed object store (embedded experimental data)
+    'plugins',     # installed user plugins (see clear_user_plugins_folder)
+    'structures',  # fetched-structure cache
+})
 
 
 def clear_settings_folder():
@@ -17,6 +30,11 @@ def clear_settings_folder():
       - Deletes each settings file at the top level (skipping log files),
       - Logs a concise warning via `cs.logging.warning()` (max 128 chars)
         for any file or directory that cannot be deleted.
+
+    The user-data directories listed in :data:`USER_DATA_DIRS` are **not**
+    touched: the settings folder also hosts the metadata database, the object
+    store, the user plugins and the structure cache, and "reset settings" is
+    not "delete my data".
 
     The root settings folder itself is left intact, even if not empty.
 
@@ -44,6 +62,9 @@ def clear_settings_folder():
         path = entry.path
         try:
             if entry.is_dir(follow_symlinks=False):
+                # Never sweep user data away with the settings
+                if entry.name in USER_DATA_DIRS:
+                    continue
                 # Recursively remove this subfolder entirely (with our onerror)
                 shutil.rmtree(path, onerror=_handle_remove_error)
             else:
@@ -60,15 +81,18 @@ def clear_settings_folder():
 
 def clear_user_plugins_folder():
     """
-    Remove all contents of the user plugins folder (~/.cs/plugins).
+    Remove all contents of the user plugins folder ({settings}/plugins).
 
     This function removes all files and directories inside the user plugins
-    directory but leaves the directory itself intact.
+    directory but leaves the directory itself intact. The directory is the
+    ``plugins`` folder of the settings directory, i.e. the ``~/.chisurf/plugins``
+    that `chisurf.plugins` appends to its ``__path__`` - the former
+    ``~/.cs/plugins`` never existed, so the menu action silently did nothing.
 
     Raises:
         None. All deletion errors are caught and logged.
     """
-    user_plugins_dir = pathlib.Path.home() / '.cs' / 'plugins'
+    user_plugins_dir = get_path('settings') / 'plugins'
 
     # If the user plugins directory doesn't exist, nothing to do
     if not user_plugins_dir.is_dir():

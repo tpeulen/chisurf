@@ -10529,11 +10529,27 @@ menu builders do filter on `menu_hidden` (`chisurf/gui/__init__.py:986`,
 plugins live in, and one menu item deletes all three. Findings RF-934..RF-939.
 
 ### RF-934
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 ("Reset local settings" — and the button the startup-crash dialog offers a user whose app will not start — deletes the MMFDB database, the whole content-addressed object store, every installed user plugin and the structure cache, then reports "Local settings have been reset successfully")
 - **Location:** `chisurf/core/settings/cleanup.py:11-58` (`clear_settings_folder`: `root = get_path()`, then `shutil.rmtree` on **every** direct child directory of the root, preserving only top-level `*.log` files), reached from `chisurf/gui/main.py:652-658` (`onClearLocalSettings`) and `chisurf/__main__.py:34-58` (`SimpleErrorDialog.clear_settings`, the "Clear settings" button on the startup-failure dialog)
 - **Finding:** `get_path('settings')` is `~/.chisurf` (`chisurf/core/settings/path_utils.py:57-77`) and that directory is not settings-only. The per-user MMFDB database is `{settings_dir}/flr/sample_management.db` (`modules/mmfdb/src/mmfdb/store/database_resolver.py:43-49`), the shared content-addressed object store — which holds embedded/registered experimental data — is `{settings_dir}/objects/` (`:51-67`), installed user plugins are `~/.chisurf/plugins` (`chisurf/plugins/__init__.py:30`) and the fetched-structure cache is `~/.chisurf/structures` (`chisurf/core/fio/structure/fetch.py:54`). Verified end to end against an isolated `CHISURF_SETTINGS_DIR`: seeded with `flr/sample_management.db`, `objects/ab/cd/blob.bin`, `plugins/my_plugin/__init__.py`, `structures/`, `logs/` and `settings_chisurf.yaml`, one `clear_settings_folder()` call leaves exactly `['chisurf.log']` — database, object store and user plugin all gone, with no confirmation prompt and no mention of them in either dialog's text. The function's own docstring claims it removes "settings files and subdirectories", which is what makes the blast radius invisible to the caller. Restrict the sweep to settings artefacts (an explicit keep-list for `flr/`, `objects/`, `plugins/`, `structures/`, or an explicit remove-list of settings files plus `logs/`), and if wiping user data is ever intended make the dialog say so and ask. Pin with a test that seeds those four subdirectories and asserts they survive.
-- **Fix note:**
+- **Fix note:** `clear_settings_folder` now skips an explicit keep-list,
+  `cleanup.USER_DATA_DIRS = {flr, objects, plugins, structures}` — the four
+  direct children of the settings folder that hold user data rather than
+  settings — and both docstrings say so. Everything else (settings files,
+  `cache/`, `logs/`, plugin state folders) is still swept, and top-level `*.log`
+  files still survive, so the reset itself is unchanged. Fixed in the same
+  change, because the keep-list makes it load-bearing:
+  `clear_user_plugins_folder` (the *dedicated* "Clear user plugins" action, now
+  the only way to clear them) pointed at `~/.cs/plugins`, a directory nothing
+  ever creates — it was a silent no-op and now resolves through
+  `get_path('settings') / 'plugins'`. Pinned by
+  `test/settings/test_settings_cleanup.py` (4 tests: user data survives, the
+  settings artefacts still go, the keep-list spelled out literally, and the
+  plugins action clearing the directory plugins are actually loaded from);
+  verified failing against the pre-fix behaviour (an emptied keep-list leaves
+  exactly `['chisurf.log']`, as the finding reports). `docs/reference/settings.md`
+  §4.4 now states what a reset does *not* touch.
 
 ### RF-935
 - **Status:** OPEN

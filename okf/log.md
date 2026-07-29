@@ -2,6 +2,22 @@
 
 ## 2026-07-29
 
+* **"Reset local settings" no longer deletes the user's data (RF-934).**
+  `~/.chisurf` is not settings-only — it also holds the per-user metadata
+  database (`flr/`), the content-addressed object store (`objects/`), the
+  installed user plugins (`plugins/`) and the fetched-structure cache
+  (`structures/`) — but `clear_settings_folder` `rmtree`'d *every* direct child
+  directory and then reported success, both from the Settings menu and from the
+  "Clear settings" button the startup-failure dialog offers a user whose app will
+  not start. The sweep now skips an explicit keep-list
+  (`chisurf.core.settings.cleanup.USER_DATA_DIRS`); settings files, `cache/` and
+  `logs/` still go. Found in the same file and fixed with it:
+  `clear_user_plugins_folder` — the dedicated action, and now the *only* way to
+  clear plugins — pointed at `~/.cs/plugins`, which nothing ever creates, so it
+  had always been a silent no-op. Pinned by
+  `test/settings/test_settings_cleanup.py`; `docs/reference/settings.md` §4.4
+  now says what a reset does not touch.
+
 * **QA GUI session — FRET-2CDE burst dynamics (`burst_2cde`).** Drove the
   standalone *Spectroscopy → Single-Molecule → 2CDE* window and step 4 of the
   Burst Analysis shell headlessly over the ten-measurement
