@@ -41,6 +41,44 @@ Two consumers use the prior:
 Reported $\chi^2$ and $\chi^2_r$ always exclude the prior, so they remain
 goodness-of-**fit** numbers rather than a mixture of fit and belief.
 
+## Finding the minimum before describing it
+
+Every interval on this page describes the minimum the optimiser stopped at. A
+least-squares run is *local*: it goes downhill from where it starts, so if the
+start was in the wrong basin, the covariance, the profile and the chain all
+describe the wrong basin — confidently. Two situations produce that routinely:
+
+- **Degenerate pairs.** Two parameters that scale the same thing (a
+  detection-correction factor scaling the data against a lifetime scaling the
+  model) trade off along a valley; the optimiser slides a little way down it and
+  stops.
+- **Rough objectives.** Anything reduced from counts is not smooth at the scale
+  of the finite-difference step, so the derivative it measures is noise — or
+  exactly zero, and the fit terminates having moved nothing.
+
+`Fit.grid_scan` is the blunt instrument for this: evaluate $\chi^2$ on a coarse
+grid over the free parameters and start the fit at the best point. It spends a
+fixed number of model evaluations however many parameters there are, takes each
+parameter's grid from its bounds (or a factor either side of where it sits, on
+a *geometric* axis — a lifetime or a correction factor is a scale), and always
+includes the current value, so it cannot return something worse than the start.
+
+```python
+result = fit.grid_scan()      # leaves the parameters at the best grid point
+fit.run()                     # ...and the local fit descends from there
+print(result.improved, result.evaluations)
+```
+
+A grid point is the deepest *point*, not the deepest *basin*: on a smooth
+objective the start you chose often descends further than any grid point does.
+Callers that cannot afford to be wrong about this run the local fit from both
+starts and keep the better result — which is what
+[nDXplorer's curve fit](../guides/46_ndxplorer.md) does behind its **Scan first**
+box. Different in kind from the profile scan below, which maps *one* parameter's
+$\chi^2$ to get an interval, not to find where the minimum is.
+
+Implementation: `chisurf.core.fitting.grid_scan`.
+
 ## Three uncertainty estimates, in increasing generality
 
 | Method | What it does | Assumes |

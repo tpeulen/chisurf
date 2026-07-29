@@ -1219,6 +1219,73 @@ class Fit(cs.core.base.Base):
         """Update the model and notify observers."""
         self.model.update()
 
+    def grid_scan(
+            self,
+            parameters: typing.Sequence = None,
+            budget: int = None,
+            points: int = None,
+            apply_best: bool = True,
+            progress_callback: typing.Callable = None,
+    ):
+        """Scan a coarse grid over free parameters and jump to the best point.
+
+        A least-squares run is local: it goes downhill from where it starts, so
+        a degenerate pair or a rough objective leaves it in the first dip it
+        finds. This evaluates chi2 on a coarse grid first — a fixed number of
+        model evaluations, whatever the number of parameters — and (by default)
+        leaves the parameters at the best point, from which :meth:`run` then
+        descends.
+
+        Different in kind from :meth:`chi2_scan`, which profiles *one*
+        parameter for its confidence interval.
+
+        Parameters
+        ----------
+        parameters : sequence of FittingParameter, optional
+            What to scan. Defaults to the model's free parameters.
+        budget : int, optional
+            Roughly how many grid points to evaluate.
+        points : int, optional
+            Fixed number of values per parameter, overriding ``budget``.
+        apply_best : bool, optional
+            Leave the parameters at the best point (default). ``False`` restores
+            them and only reports.
+        progress_callback : callable, optional
+            Called as ``progress_callback(evaluated, total)``.
+
+        Returns
+        -------
+        GridScanResult
+            Falsy when no grid was run (too many parameters).
+        """
+        from chisurf.core.fitting import grid_scan as _grid_scan
+
+        if parameters is None:
+            self.model.find_parameters(
+                parameter_type=cs.core.fitting.parameter.FittingParameter
+            )
+            parameters = list(self.model.parameters)
+        parameters = list(parameters)
+        state = {"n": 0}
+
+        def cost(values) -> float:
+            for parameter, value in zip(parameters, values):
+                parameter.value = float(value)
+            self.model.update_model()
+            state["n"] += 1
+            if progress_callback is not None:
+                progress_callback(state["n"], None)
+            return float(self.chi2r)
+
+        kwargs = {"apply_best": apply_best}
+        if budget is not None:
+            kwargs["budget"] = int(budget)
+        if points is not None:
+            kwargs["points"] = int(points)
+        result = _grid_scan.grid_scan(parameters, cost, **kwargs)
+        self.update()
+        return result
+
     def chi2_scan(
             self,
             parameter_name: str,

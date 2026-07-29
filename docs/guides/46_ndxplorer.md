@@ -59,11 +59,38 @@ your calibration; free one deliberately and it joins the fit as a
    (a FRET line's `tau_d0` to a measured donor lifetime) makes the drawn line
    follow that fit.
 4. Press **🎯 Fit** and choose what to fit against: the **displayed data**
-   (each populated x column of the 2-D histogram contributes its count-weighted
-   mean y, weighted by its standard error) or an axis **marginal** (bin counts
-   with Poisson weights). Free parameters are optimised, fixed ones held —
-   including constants and linked parameters, whose values belong elsewhere. The
-   fit reports a reduced $\chi^2_r$ and redraws the overlay.
+   (one point per populated x column of the 2-D distribution) or an axis
+   **marginal** (bin counts with Poisson weights). Free parameters are
+   optimised, fixed ones held — including constants and linked parameters, whose
+   values belong elsewhere. The fit reports a reduced $\chi^2_r$ and redraws the
+   overlay.
+
+### Fit through the population, not through the average
+
+**Fit through** decides what a column of the distribution is reduced to before
+the curve is compared with it, and it matters more than it sounds.
+
+A burst plot is a **mixture**: a FRET population, a donor-only cluster at
+$E \approx 0$, and a scatter of singles, all in the same $\tau$ columns. The
+*average* of a mixture lies where nothing is — on real data the column mean runs
+some $0.1$ in $E$ below the FRET population's ridge, and a static FRET line
+fitted through it misses the population it is supposed to describe.
+
+- **through the population** (default) follows the densest population of each
+  column: its local mode, found by mean-shifting from the column's smoothed
+  density peak. A second population in the same column is left where it is
+  instead of being averaged in.
+- **through the column mean** is the plain weighted average, for a distribution
+  you know to be single-peaked.
+
+**Scan first** (on by default) evaluates a coarse grid over the free parameters
+before fitting and starts the fit at the best point, then keeps whichever of
+that fit and the fit from your own start ends lower. A least-squares run only
+goes downhill from where it starts, and a constant that scales the data against
+a curve parameter that scales the model is exactly the degenerate pair that
+strands it. See
+[finding the minimum](../concepts/parameter_uncertainty.md#finding-the-minimum-before-describing-it).
+
 
 ### Fitting a constant: moving the data onto the curve
 
@@ -135,10 +162,18 @@ print(res.ok, res.chi2r, res.params["m2"])   # -> FRET peak position
 
 The predefined FRET lines are not `y = f(x)`: they sweep a mean distance and
 return the `(tau, E)` pair of arrays they trace out. Those have no `ParseModel`,
-so they are optimised through the function itself — for a trial set of
-parameters the line is traced, sorted by x and interpolated onto the data, giving
-one residual per point the line spans. Parameters named `num_points` (and the
-like) set the curve's *resolution*, not its shape, and start fixed.
+so they are optimised through the function itself: for a trial set of parameters
+the line is traced, and each data point's residual is its **distance to that
+line**, measured in units of the point's own uncertainties (the column width
+across, the population's standard error up). Parameters named `num_points` (and
+the like) set the curve's *resolution*, not its shape, and start fixed.
+
+A distance rather than a vertical offset, because a traced curve does not span
+the whole plot. Interpolating it onto the data's x gives a point the line does
+not reach *no* residual at all — so the optimiser is rewarded for making the
+line **shorter** until it covers only what it already fits, which is exactly
+what a static FRET line did: it collapsed to $\tau_{D0} \approx 1$ ns, covering
+a third of the columns, and reported a better $\chi^2$ for it.
 
 Two warnings that fall out of this, and are the reason the **fixed** box matters:
 
@@ -184,15 +219,19 @@ with `ridge_from_values(..., keep=...)`, which reports an emptied column as
 `NDXplorer.build_data_parameters(...)`, and `cf.set_progress(cb)` reports each
 step to `cb(step)` — return `False` there to stop the fit.
 
-Two numerical details are load-bearing, and both are easy to get wrong:
+Three numerical details are load-bearing, and all three are easy to get wrong:
 
 - Reduce the **unbinned** values (`ridge_from_values`), not the y bins. A binned
   column mean only moves when a burst crosses a bin edge, so the optimiser's
   finite difference measures a derivative of exactly zero and the fit returns
   instantly, unchanged.
-- Take that difference over a **per-mille step** (`DATA_PARAMETER_STEP`), not
-  the default ~1e-8: counting data is discrete, and a probe that small does not
-  move the population at all.
+- Take that difference over a **per-mille step** (`FINITE_DIFFERENCE_STEP`), not
+  the default ~1e-8: counting data is discrete, a traced curve is a set of
+  points, and a probe that small sees neither move.
+- **Freeze the weights.** The uncertainty of a reduced point is estimated from
+  the data, so letting it move with the fit hands the optimiser a way to lower
+  $\chi^2$ that has nothing to do with the curve — blur the population and every
+  residual shrinks. Taken once, at the start, and held (`freeze_weights`).
 
 ## Worked example: two smFRET populations and the static FRET line
 

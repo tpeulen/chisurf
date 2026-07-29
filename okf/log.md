@@ -83,6 +83,37 @@
   in ChiSurf's inline progress bar (`InlineProgressWidget` + `ChiSurfProgress` —
   no modal stacked on a modal, and a log line instead of silence headless);
   Cancel puts the parameters and the data back.
+  **What the objective has to be, learned by fitting the user's own
+  measurement** (`bh_spc132_sm_dna`): the first version put the line beside the
+  population rather than through it, and each of four defects had to go.
+  (1) A column was reduced to its **mean**, but a burst plot is a *mixture* — a
+  FRET population plus a donor-only cluster at E≈0 — and the mean of a mixture
+  sits where nothing is (~0.1 in E below the ridge). Columns are now reduced to
+  their **population**: the local mode, mean-shifted from the column's smoothed
+  density peak, with the plain mean still available ("Fit through" in the
+  dialog). (2) A *traced* curve's residual was the vertical offset where it
+  reached, so a point it did not span contributed **nothing** — the fit was
+  rewarded for shortening the line until it covered only what already fitted
+  (τ_D0 collapsing to 1 ns over a third of the columns, with a better χ²). It is
+  now the **distance** to the curve, in units of the point's own errors.
+  (3) The weights were re-estimated from the moving data, so the fit could lower
+  χ² by **blurring** the population instead of fitting it (γ walked to a quarter
+  of its value); they are taken once and frozen. (4) The per-mille
+  finite-difference step is needed for *every* fit here, not only the ones that
+  move data — a traced curve is a set of points, and at 1e-8 the optimiser
+  terminated on `xtol` having moved nothing.
+  **A coarse grid scan now runs before the local fit**, and it lives in ChiSurf
+  where it belongs: [`chisurf/core/fitting/grid_scan.py`](../chisurf/core/fitting/grid_scan.py)
+  (+ `Fit.grid_scan`, documented in
+  [parameter-uncertainty](/../docs/concepts/parameter_uncertainty.md)) — a fixed
+  evaluation budget however many parameters, axes from their bounds or a
+  geometric factor either side, the current value always in the grid. A grid
+  point is the deepest *point*, not the deepest *basin*, so when the scan moves
+  the start the local fit is run from **both** starts and the better kept — the
+  grid's best point once ran downhill into a corner and returned `mu = 0` for a
+  Gaussian that fits at 0.6. With all of it, the same answer comes out with and
+  without the scan (τ_D0 = 3.67-3.70 ns, γ-factor 0.60-0.62) and the line lands
+  on the population.
   Found and fixed on the way, each with a test: `plot_histogram` hands a
   **marginal back edges-first** while the 2-D case is data-first, so every
   marginal curve fit refused with "need at least 3 matching data points" and

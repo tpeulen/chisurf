@@ -303,6 +303,23 @@ back to the physically-motivated light-path prior.
   fit, reading two columns rather than rebuilding the whole value matrix
   (5.3× per step on 200k bursts); the rest of the derived columns and the
   histogram caches are brought up to date once, when the fit ends.
+  **What the objective has to be, learned on a real measurement**
+  (`bh_spc132_sm_dna`, 2.2k bursts, a FRET population at E≈0.55 with a
+  donor-only cluster at E≈0): (i) reduce each column to its **population** (the
+  local mode, mean-shifted from the smoothed density peak), not its mean — a
+  burst plot is a mixture, and the mean of a mixture sits ~0.1 in E below the
+  population the line is meant to describe; (ii) the residual of a *traced*
+  curve is the **distance to it**, not the vertical offset where it happens to
+  reach, or a point the curve does not span contributes nothing and the fit is
+  rewarded for shortening the line until it covers only what already fits (seen:
+  τ_D0 collapsing to 1 ns over a third of the columns, with a "better" χ²);
+  (iii) **freeze the weights** — they are estimated from the same data, so a
+  moving weight lets the fit lower χ² by blurring the population instead of by
+  fitting it (seen: γ walked to a quarter of its value); and (iv) probe the
+  Jacobian at a per-mille step, because both the reduction and the traced curve
+  are discrete at 1e-8. With those, the line lands on the population and the
+  same answer comes out with or without the pre-fit scan
+  (τ_D0 = 3.67-3.70 ns, γ-factor 0.60-0.62).
 - **Photon-level simulation with declared parameters** —
   `chisurf/core/fluorescence/burst/simulate.py` (`SmfretParameters`,
   `simulate_smfret`) builds an ALEX smFRET measurement with tttrlib's `SimEngine`:
