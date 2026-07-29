@@ -2,6 +2,58 @@
 
 ## 2026-07-29
 
+* **[PRD-51](/prds/prd-51.md) rewritten around the STICS port, and the "one method"
+  framing corrected (planning only, no code).**
+  The PRD was stale: it claimed temporal/spatiotemporal image correlation was
+  absent and pointed at `chisurf/core/models/rics/`, but the shared substrate has
+  since landed — `chisurf/core/experiments/ics/` computes `G(xi, psi, Delta)` and
+  `chisurf/core/models/ics/` fits it. Status `stub` → `in-progress`, `resource` and
+  every `rics/` path corrected to `ics/`, and the index glyph updated.
+  **Correction (user, and it propagates): RICS, STICS, TICS and iMSD are different
+  methods, not four readings of one.** They differ in what they require of the
+  acquisition (RICS needs a raster scan and its scan-convolution term `S(xi, psi)`;
+  a camera stack has no pixel/line clock and supports the other three only), where
+  the lag time comes from (scan clock vs frame clock), which estimator applies
+  (full-map model fit / peak **position** tracking / amplitude decay / peak
+  **width**), and what is measured (`D` / a velocity **field** / `tau_D` / an MSD
+  curve). Sharing a correlation routine is a computational convenience; the single
+  `IcsModel` turns it into a claimed identity. Concretely: releasing `v_x`/`v_y` is
+  a globally fitted uniform flow, **not** STICS (whose estimator is model-free and
+  per-sub-region, yielding a map); releasing `alpha` is an anomalous-diffusion fit,
+  **not** iMSD (whose result is the *shape* of `sigma^2(tau)` — a plateau means
+  confinement, which no `alpha` reproduces, and the power law is precisely what iMSD
+  exists to test). Splitting the one model into four selectable ones is now in scope.
+  [image-correlation theory](/references/image-correlation-theory.md) was corrected in
+  the same change — it was titled "…are one method" and asserted "they are not four
+  techniques"; it now leads with where the four genuinely differ, keeps the valid
+  engineering point (one correlator, computed once), and keeps the joint-fitting
+  argument but bounds it to the regions that actually share a transport model.
+  `test_model_slice_width_is_the_imsd` is flagged for rename: it pins a property of
+  the model, not the method — the conflation in test form.
+  **The real gap is the layer above the carpet**, specified against the reference
+  Matlab ICS package vendored at `junk/Image-Correlation-Spectroscopy/` (ICS
+  Analysis v1.0, 2006, open-sourced with the authors' permission): the
+  immobile-population Fourier filter (`immfilter.m` — a *pre-processing* step on
+  the stack, **not** the same thing as the `N_imm` fit term ChiSurf already has),
+  per-lag Gaussian peak tracking (`gaussfit.m` in `'time'` mode), linear-region
+  regression to `(v_x, v_y)` (`velocity.m` — model-free velocity, versus ChiSurf's
+  velocity-as-a-global-fit-parameter), the spatially resolved sub-region flow
+  **vector field** that is the headline STICS deliverable and is absent entirely,
+  the standalone TICS decay models (`difffit`/`diffusion3d`/`diffflowfit`/`flowfit`),
+  and ROI-picked white-noise correction (`wnCorr.m`). Its
+  `tutorial/ICSTutorial.html` is a usable regression fixture.
+  **The Matlab structure is explicitly not to be ported** — it is one script per
+  method with GUI handles (`gcbf`, `waitbar`, `ginput`) wired into the numerics;
+  `velocity.m` picks the linear region by *clicking*, so the port needs a headless
+  criterion with the interactive picker demoted to an override. Its vendor TIFF/RAW
+  readers are superseded by the [PRD-67](/prds/prd-67.md) image-source seam and its
+  `simul8tr/` by [PRD-53](/prds/prd-53.md).
+  **Kernel placement (ChiSurf NumPy vs. the companion photon library's C++) is left
+  open on purpose**, to be decided by a recorded [benchmark](/references/benchmarks.md)
+  of a realistic vector-map job rather than by preference — the prior is that this is
+  FFT-bound and therefore not a language problem, matching what the decay-fit FFT
+  work found. A 12-item Definition of Done was added.
+
 * **Scheduled maintenance jobs stopped, and given one control surface.** All six
   Claude-driven LaunchAgents (`translate-ui`, `build-docs`, `improve-prds`,
   `review-code`, `fix-issues`, `gui-tester`) were unloaded **and** persistently

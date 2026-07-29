@@ -1,18 +1,35 @@
 ---
 type: Reference
-title: "Image correlation: RICS, STICS, TICS and iMSD are one method"
-description: The single spatiotemporal correlation carpet G(xi, psi, Delta) behind the image-correlation family, the lag-time identity that unifies it, and how ChiSurf implements it as one correlator and one fit model.
+title: "Image correlation: four methods over one correlation carpet"
+description: The spatiotemporal correlation carpet G(xi, psi, Delta) shared by RICS, STICS, TICS and iMSD, the lag-time relation that links its axes, and where the four methods genuinely differ — inputs, estimators and observables.
 tags: [reference, imaging, ics, rics, stics, tics, imsd, diffusion]
 timestamp: '2026-07-25T00:00:00Z'
 ---
 
-# Image correlation: RICS, STICS, TICS and iMSD are one method
+# Image correlation: four methods over one correlation carpet
 
-The literature presents Raster Image Correlation Spectroscopy (RICS),
-Spatiotemporal Image Correlation Spectroscopy (STICS), Temporal Image
-Correlation Spectroscopy (TICS) and image Mean Square Displacement (iMSD) as
-four techniques, each with its own acronym, papers and software modules. They
-are not four techniques. They are four ways of reading one object.
+Raster Image Correlation Spectroscopy (RICS), Spatiotemporal Image Correlation
+Spectroscopy (STICS), Temporal Image Correlation Spectroscopy (TICS) and image
+Mean Square Displacement (iMSD) are **four distinct methods**. They differ in what
+they require of the acquisition, where their lag time comes from, which estimator
+they apply, and what they measure.
+
+What they *share* is a computational substrate: all four are read off one
+spatiotemporal correlation array. That is worth exploiting in code — one
+correlator serves all of them — but sharing a correlation routine is a
+computational convenience, **not** a methodological identity. Compute the carpet
+once; then apply four different estimators to it.
+
+| | RICS | STICS | TICS | iMSD |
+| --- | --- | --- | --- | --- |
+| Input | raster scan **only** | frame series (scan or camera) | frame series | frame series |
+| Estimator | fit the map with a scan-convolved model | track peak **position** vs `Delta` | fit the amplitude **decay** | track peak **width** vs `tau` |
+| Observable | `D`, `N`, brightness | **velocity vector field** | `tau_D`, flow, blinking | **MSD curve** (free/confined/anomalous) |
+| Assumes a transport model | yes | no | yes | **no** |
+| Needs the scan term `S(xi, psi)` | **yes** | no | no | no |
+
+A camera-acquired stack therefore supports STICS, TICS and iMSD but **not** RICS:
+RICS's time axis *is* the raster scan, and a camera frame has no such clock.
 
 ## The one object
 
@@ -57,38 +74,54 @@ one frame  ->  0.6 s      (200x more again)
 
 A single RICS map already spans four decades of lag time internally — that is
 precisely why one image, with no time series at all, is sensitive to diffusion.
-Adding frame lags does not change the physics; it extends the same carpet by
-two more decades.
+Adding frame lags extends the accessible range by two more decades.
 
-## Why the separate names are misleading
+**The relation is not a licence to mix the clocks.** `xi*t_pixel + psi*t_line`
+describes sequential visiting of pixels *within one frame*; it belongs to RICS.
+At `Delta > 0` the frame time dominates by orders of magnitude and the intra-frame
+terms are normally dropped, and on a camera stack they do not exist at all.
+
+## What the separate names do and do not mean
 
 * **RICS is not "the spatial one".** It is time-resolved; its time axis is the
   scan pattern rather than the frame counter.
 * **TICS is not "the temporal one".** It is the single point `xi = psi = 0` of
   every STICS slice — the least informative column of the carpet, discarding all
   spatial information.
-* **iMSD is not a different correlation.** It is a two-step reading of the same
-  slices: fit a Gaussian width to each `Delta` slice, then plot width against
-  `tau`. Since the model's Gaussian width is `w_r^2 + MSD(tau)` by construction,
-  fitting the whole carpet at once does the same job in one step, with the PSF
-  width as an explicit parameter instead of an extrapolated intercept.
-* **Fitting them separately throws away constraints.** The same `D` and the same
-  `N` appear in every region. Fitting RICS alone, then TICS alone, produces two
-  estimates of one quantity from disjoint subsets of one dataset.
+* **STICS is not RICS with a velocity parameter.** Its estimator is the
+  *displacement of the correlation peak* between frame lags — model-free, and
+  computed **per sub-region** to yield a velocity **field**. A single global
+  velocity fitted to a whole-field correlation presumes one uniform flow and a
+  transport model, and cannot produce a map.
+* **iMSD is not an anomalous-diffusion fit.** It fits a Gaussian *width* to each
+  `Delta` slice and plots that width against `tau`; the **shape** of the resulting
+  curve is the result — a plateau means confinement, curvature means anomalous
+  transport. Fitting the carpet with `MSD(tau) = 4*D*tau^alpha` instead *presumes*
+  the power law that iMSD exists to test, and a confined trajectory has no
+  `alpha` that reproduces its plateau.
+* **Joint fitting shares constraints — where the methods genuinely overlap.** The
+  same `D` and `N` enter the regions that assume the same transport model, so
+  fitting those together beats fitting them from disjoint subsets. This argument
+  does not extend to the model-free estimators (STICS peak tracking, iMSD width),
+  whose point is to *avoid* assuming that model.
 
 ## How ChiSurf implements it
 
-One correlator and one model, in `chisurf/core/experiments/ics/` and
-`chisurf/core/models/ics/`.
+One correlator and — **today** — one model, in `chisurf/core/experiments/ics/` and
+`chisurf/core/models/ics/`. The shared correlator is the right design. The single
+model is not: it conflates four methods into one parameterisation. Splitting them
+into distinct selectable models, and adding the model-free STICS and iMSD
+estimators the current code lacks, is [PRD-51](/prds/prd-51.md).
 
 **The correlator.** `compute_ics_carpet(images, settings)` returns an
 `IcsCarpet`: `correlation` of shape `(n_lags, ny, nx)`, the two spatial lag
 grids, the frame lags, and an `IcsTiming` carrying `t_pixel`/`t_line`/`t_frame`.
-The reader setting **`max_frame_lag`** is the only control that separates the
-methods: `0` correlates the zero-lag slice only (a classic RICS map), higher
-values extend the same carpet along time. The named readings are methods on the
-carpet — `rics_map()`, `stics_map(delta)`, `tics_curve()`, `lag_time_grid()` —
-not separate code paths.
+The reader setting **`max_frame_lag`** controls how much of the carpet is
+computed: `0` correlates the zero-lag slice only (all RICS needs), higher values
+extend it along time (what STICS, TICS and iMSD read). Accessors select the region
+each method uses — `rics_map()`, `stics_map(delta)`, `tics_curve()`,
+`lag_time_grid()`. Selecting a region is not the same as applying a method: the
+estimators that make a region *into* STICS or iMSD are what PRD-51 adds.
 
 **The model.** `image_correlation(xi, psi, Delta, ...)` is a single function over
 all three lag axes:
@@ -103,8 +136,14 @@ with `MSD(tau) = 4*D*tau^alpha` entering the spatial term as
 its **neutral value switches it off**: `alpha = 1` is normal diffusion,
 `a_T = 0` removes blinking, `N_imm = 0` removes the immobile component, zero
 velocities remove flow. The model therefore opens as plain one-component
-diffusion and becomes anomalous/iMSD, blinking, two-component or flow-resolved
-by releasing one parameter — not by picking a different model from a list.
+diffusion and becomes anomalous, blinking, two-component or flow-resolved by
+releasing one parameter.
+
+**Do not read those switches as method selection.** Releasing `alpha` gives an
+anomalous-diffusion fit, not iMSD; releasing `v_x`/`v_y` gives a globally fitted
+uniform flow, not STICS. Both are legitimate fits and both are *weaker* than the
+methods whose names they resemble, because they assume the transport model that
+the real estimators avoid. See [PRD-51](/prds/prd-51.md).
 
 **In the GUI**, the 2D plot carries a frame-lag slider (Δ) and a
 Residual/Data/Model source selector, so the carpet is browsable along time
