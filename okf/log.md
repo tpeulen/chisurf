@@ -2,6 +2,20 @@
 
 ## 2026-07-29
 
+* **Review fix — the LLTF settings editor could not be opened** (RF-877, S1).
+  The *Config File ▸ Edit…* button and *Settings ▸ Edit Configuration…* in the
+  [LLTF decay-analysis panel](/plugins/fluorescence-decay.md)
+  (`chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py`) called
+  `LTFSettingsEditor`; the class is `LLTFSettingsEditor`, so the Qt slot raised
+  `NameError` and took the process down with SIGABRT — and that button is the
+  only GUI route to the ~25 settings the fit obeys. The `__main__` block
+  carried the same typo (`LTFGUIWizard`). Both names corrected, and the editor
+  is now kept as `self.settings_editor` instead of a local, because a
+  parentless top-level widget is garbage collected on return and the window
+  would close again immediately. Pinned by
+  `test/test_widgets.py::test_edit_config_opens_settings_editor`, which drives
+  `on_edit_config()` on a real wizard.
+
 * **QA use case — the Lifetime-FCS (FLCS) simulator** (RF-940..RF-946). Drove
   *FCS ▸ Tools ▸ 🧬 Lifetime-FCS Sim*
   (`chisurf/plugins/fcs/fcs_lfcs_sim/`) offscreen through the real `FcsTool`

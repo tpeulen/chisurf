@@ -295,6 +295,7 @@ class LLTFGUIWizard(QtWidgets.QMainWindow):
         self.config_file = None
         self.output_dir = None
         self.last_fit_result = None
+        self.settings_editor = None
 
         # Set default config file
         self.set_default_config_file()
@@ -615,9 +616,11 @@ class LLTFGUIWizard(QtWidgets.QMainWindow):
         # Get the current config file
         config_file = self.config_file_edit.text()
 
-        # Create a settings editor
-        editor = LTFSettingsEditor(filename=config_file)
-        editor.show()
+        # Create a settings editor. The editor is a parentless top-level widget,
+        # so it is kept on the wizard - a local would be garbage collected on
+        # return and the window would close again immediately.
+        self.settings_editor = LLTFSettingsEditor(filename=config_file)
+        self.settings_editor.show()
 
     def on_select_output(self):
         """
@@ -886,6 +889,6 @@ class LLTFGUIWizard(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
-    w = LTFGUIWizard()
+    w = LLTFGUIWizard()
     w.show()
     sys.exit(app.exec_())

@@ -9968,11 +9968,11 @@ nothing. RF-868 is the worst of them and predates the strip: with the *default*
 - **Fix note:**
 
 ### RF-877
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the only route to the analysis settings raises `NameError` and takes the whole application down with SIGABRT)
 - **Location:** `chisurf/plugins/fluorescence_decay/lltf/lltf_gui.py:620` (`LLTFGUIWizard.on_edit_config`: `editor = LTFSettingsEditor(filename=config_file)`) against the class defined at `:85` (`class LLTFSettingsEditor`); same typo again at `:890` (`w = LTFGUIWizard()`)
 - **Finding:** the *Config File ▸ **Edit…*** button — and *Settings ▸ Edit Configuration…*, and step 3 of the panel's own welcome text — calls a name that does not exist: the class is `LLTFSettingsEditor`, the call site says `LTFSettingsEditor`. Verified by driving the Decay Analysis hub panel headlessly: clicking the button raises `NameError: name 'LTFSettingsEditor' is not defined. Did you mean: 'LLTFSettingsEditor'?` inside the Qt slot and the process dies with **exit 134 (SIGABRT)**; calling `on_edit_config()` directly raises the same. This is the only GUI route to the ~25 settings the fit actually obeys (analysis range, background estimation, IRF-shift scan, randomisation bounds, pile-up correction) — the panel itself exposes four spin boxes. The `__main__` block at `:890` carries the same typo, so `python lltf_gui.py` dies too. Fix the two names and pin with a test that constructs the editor through `on_edit_config`.
-- **Fix note:**
+- **Fix note:** both names corrected to `LLTFSettingsEditor` / `LLTFGUIWizard` in `lltf_gui.py`. The editor is a parentless top-level widget, so it is now kept as `self.settings_editor` (initialised to `None` in `__init__`) — a local would have been garbage collected on return and the window would have closed again immediately. Pinned by `chisurf/plugins/fluorescence_decay/lltf/test/test_widgets.py::test_edit_config_opens_settings_editor`, which drives `on_edit_config()` on a real `LLTFGUIWizard` and asserts the resulting editor is an `LLTFSettingsEditor` bound to the panel's config file.
 
 ### RF-878
 - **Status:** OPEN

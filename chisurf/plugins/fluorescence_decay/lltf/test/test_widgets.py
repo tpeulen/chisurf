@@ -19,3 +19,25 @@ def test_import_lltf_gui_wizard(qapp):
     pytest.importorskip("pyqtgraph")
     from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import LLTFGUIWizard
     assert LLTFGUIWizard is not None
+
+
+def test_edit_config_opens_settings_editor(qapp, qtbot):
+    """The *Edit…* button is the only GUI route to the analysis settings (RF-877).
+
+    It used to call ``LTFSettingsEditor`` - a name that does not exist - so the
+    Qt slot raised ``NameError`` and aborted the process.
+    """
+    pytest.importorskip("pyqtgraph")
+    from chisurf.plugins.fluorescence_decay.lltf.lltf_gui import (
+        LLTFGUIWizard,
+        LLTFSettingsEditor,
+    )
+    wizard = LLTFGUIWizard(verbose=False)
+    qtbot.addWidget(wizard)
+
+    wizard.on_edit_config()
+
+    editor = wizard.settings_editor
+    assert isinstance(editor, LLTFSettingsEditor)
+    qtbot.addWidget(editor)
+    assert editor.filename == wizard.config_file_edit.text()
