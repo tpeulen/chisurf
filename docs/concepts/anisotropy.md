@@ -207,14 +207,16 @@ spectrum:
 
 $$
 f_\parallel(t) = f_\mathrm{VM}(t)\,\big(1 + 2\,r(t)\big), \qquad
-f_\perp(t)     = G\,f_\mathrm{VM}(t)\,\big(1 - r(t)\big).
+f_\perp(t)     = \frac{f_\mathrm{VM}(t)\,\big(1 - r(t)\big)}{G}.
 $$
 
-$G$ is a *detection sensitivity*, so it multiplies the whole perpendicular
-channel rather than only its depolarization term. That placement is what makes
-the generated pair invert back to the anisotropy it was built from,
-$r = (f_\parallel - f_\perp/G)/(f_\parallel + 2 f_\perp/G)$; writing it as
-$f_\mathrm{VM}(1 - G r)$ instead is self-consistent only at $G = 1$.
+$G = S_\parallel/S_\perp$ is the ratio of the two channel sensitivities, so the
+perpendicular channel records $1/G$ of what an equally sensitive one would: $G$
+*divides* the whole perpendicular channel rather than scaling only its
+depolarization term. That placement is the one the estimator at the top of this
+page inverts — $r = (f_\parallel - G\,f_\perp)/(f_\parallel + 2\,G\,f_\perp)$
+returns exactly the $r(t)$ the pair was built from, for any $G$. The channel
+mixing $l_1, l_2$ is applied on top, as above.
 
 Both channels are then reconvolved with the IRF and compared to the measured
 VV and VH histograms in **one combined fit**, with the lifetimes shared (linked)
@@ -238,3 +240,6 @@ difference between the channels. ChiSurf supports both a single stacked
 - Reference: J. R. Lakowicz, *Principles of Fluorescence Spectroscopy*
   (3rd ed., 2006), anisotropy chapters (steady-state and time-resolved
   anisotropy, the Perrin equation, hindered rotors).
+- Reference: J. Schaffer, A. Volkmer, C. Eggeling, V. Subramaniam, G. Striker &
+  C. A. M. Seidel, *J. Phys. Chem. A* **103** (1999) 331 — the $G =
+  S_\parallel/S_\perp$ convention and the $l_1, l_2$ correction used throughout.

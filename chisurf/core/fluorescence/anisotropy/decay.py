@@ -146,13 +146,14 @@ def calculcate_spectrum(
     The unmixed decays for VV and VH are given by:
 
         f_VV(t) = f_VM(t) * (1 + 2 * r(t))
-        f_VH(t) = g * f_VM(t) * (1 - r(t))
+        f_VH(t) = f_VM(t) * (1 - r(t)) / G
 
-    ``g`` is a detection sensitivity, so it scales the *whole* perpendicular
-    channel rather than only its depolarization term. That placement is what
+    ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio, so
+    the perpendicular channel records ``1/G`` of what an equally sensitive one
+    would. That placement -- the same one :func:`vm_rt_to_vv_vh` uses -- is what
     makes the pair invert back to the anisotropy it was built from:
 
-        r(t) = (f_VV - f_VH / g) / (f_VV + 2 * f_VH / g)
+        r(t) = (f_VV - G * f_VH) / (f_VV + 2 * G * f_VH)
 
     The mixed decays are then computed as:
 
@@ -189,7 +190,11 @@ def calculcate_spectrum(
     >>> from chisurf.core.fluorescence.anisotropy.decay import calculcate_spectrum
     >>> lifetime_spectrum = np.array([1.0, 4.0])
     >>> anisotropy_spectrum = np.array([1.0, 1.0])
-    >>> g_factor = 1.5
+    >>> g_factor = 2.0
+
+    The VH channel is scaled by ``1 / G``, so at ``G = 2`` its amplitudes are
+    half of what an equally sensitive channel would record.
+
     >>> calculcate_spectrum(
     ...     lifetime_spectrum=lifetime_spectrum,
     ...     anisotropy_spectrum=anisotropy_spectrum,
@@ -207,7 +212,7 @@ def calculcate_spectrum(
     ...     l1=0.1,
     ...     l2=0.0
     ... )
-    array([ 0.9 ,  4.  ,  1.8 ,  0.8 ,  0.15,  4.  , -0.15,  0.8 ])
+    array([ 0.9 ,  4.  ,  1.8 ,  0.8 ,  0.05,  4.  , -0.05,  0.8 ])
     >>> calculcate_spectrum(
     ...     lifetime_spectrum=lifetime_spectrum,
     ...     anisotropy_spectrum=anisotropy_spectrum,
@@ -216,7 +221,7 @@ def calculcate_spectrum(
     ...     l1=0.0,
     ...     l2=0.0
     ... )
-    array([ 0. ,  4. ,  0. ,  0.8,  1.5,  4. , -1.5,  0.8])
+    array([ 0. ,  4. ,  0. ,  0.8,  0.5,  4. , -0.5,  0.8])
     >>> out = calculcate_spectrum(
     ...     lifetime_spectrum=lifetime_spectrum,
     ...     anisotropy_spectrum=anisotropy_spectrum,
@@ -226,7 +231,7 @@ def calculcate_spectrum(
     ...     l2=0.1
     ... )
     >>> out.tolist()
-    [0.1, 4.0, 0.2, 0.8, 1.35, 4.0, -1.35, 0.8]
+    [0.1, 4.0, 0.2, 0.8, 0.45, 4.0, -0.45, 0.8]
 
     Notes
     -----
@@ -252,9 +257,14 @@ def calculcate_spectrum(
         # near-zero (only the scatter peak remained).
         d = chisurf.core.math.datatools.elte2(a, f)
         vv = np.hstack([f, e1tn(d.copy(), 2.0)])          # f_VV = f * (1 + 2 r)
+        # G is the parallel/perpendicular sensitivity ratio, so the
+        # perpendicular channel records 1/G of what an equally sensitive one
+        # would -- the placement `vm_rt_to_vv_vh` and the Schaffer correction
+        # applied downstream both use. Multiplying here instead put the two
+        # forward models a factor g**2 apart in VH.
         vh = e1tn(
-            np.hstack([f, e1tn(d.copy(), -1.0)]),         # f_VH = g * f * (1 - r)
-            g_factor,
+            np.hstack([f, e1tn(d.copy(), -1.0)]),         # f_VH = f * (1 - r) / G
+            1.0 / g_factor,
         )
 
         # A mixed channel is the *union* of the scaled VV and VH components, so

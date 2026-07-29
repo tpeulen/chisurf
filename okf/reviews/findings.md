@@ -10709,11 +10709,25 @@ plus the test that pinned the old convention, which is red at `HEAD`. Every
 number below was executed in the project environment. Findings RF-953..RF-959.
 
 ### RF-953
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the anisotropy fitting model builds its perpendicular channel with the g-factor on the wrong side, so at g = 1.5 the model curves carry r = 0.08 for a rotation spectrum of r₀ = 0.38, and at g = 2.2 the anisotropy comes out negative)
 - **Location:** `chisurf/core/fluorescence/anisotropy/decay.py:255-258` (`calculcate_spectrum`: `vh = e1tn(np.hstack([f, e1tn(d.copy(), -1.0)]), g_factor)` — VH *multiplied* by g) against `:126` (`vm_rt_to_vv_vh`: `vh_j = vm * (1.0 - (1.0 - 3.0 * l2) * rt) / g_factor` — VH *divided* by G), with the consumer at `chisurf/core/models/tcspc/anisotropy.py:264` (`Anisotropy.get_decay`) and the correction the same application applies at `chisurf/core/models/tcspc/lifetime.py:681-687` and `chisurf/core/fluorescence/anisotropy/integrals.py:176-178`
 - **Finding:** `7ca949fe5` moved four sites to `G = S_par/S_perp`, so the perpendicular channel records `1/G` of what an equally sensitive one would; `calculcate_spectrum` — the spectrum-domain sibling that `Anisotropy.get_decay` calls to build every VV/VH model curve — was not among them and still multiplies. The two forward models therefore differ by exactly `g²` in VH. Verified with `τ = 4 ns`, `ρ = 1.5 ns`, `r₀ = 0.38`: at `g = 1.5` the spectrum path gives `VH(0) = 0.930000` against the generator's `0.413333` (ratio 2.250000 = g²), and feeding the spectrum path's own VV/VH into the correction `r = (Sp − g·Ss)/((1−3l2)·Sp + (2−3l1)·g·Ss)` — the expression `_tcspc_rt_curves` uses to draw the r(t) plot beside that very fit — returns **0.080220** instead of 0.380000, where the generator returns 0.380000 exactly. At `g = 2.2, l1 = 0.05, l2 = 0.03` the same path returns **−0.179126**, a negative anisotropy for a positive rotation spectrum. The two agree only at `g = 1`, the default, which is why nothing catches it. Move the `g_factor` onto the denominator (`e1tn(..., 1.0 / g_factor)`); the docstring formulas at `:146-155` and the recorded doctest outputs at `:193-229` encode the old placement and must move with it, as must `test/fluorescence/test_fluorescence.py::test_fluorescence_anisotropy_decay_calculcate_spectrum` and `::test_calculcate_spectrum_recovers_anisotropy`, which both derive their reference from `f_VH = G·f_VM·(1−r)`. See RF-954 for the l1/l2 half of the same function.
-- **Fix note:**
+- **Fix note:** `calculcate_spectrum` now scales the perpendicular channel by
+  `1 / g_factor`, so the spectrum-domain forward model the fitting model calls
+  and the time-domain `vm_rt_to_vv_vh` build the same VH: at `τ = 4 ns,
+  ρ = 1.5 ns, r₀ = 0.38, g = 1.5` both give `VH(0) = 0.413333` (was 0.930000)
+  and the Schaffer correction recovers `r = 0.380000` (was 0.080220); at
+  `g = 2.2` it recovers 0.380000 rather than a negative anisotropy. The
+  docstring's `f_VH` equation, its inversion and the four recorded doctest
+  outputs moved with it (the doctest now runs at `g = 2` so `1/G` prints
+  exactly). Pinned by `test_calculcate_spectrum_recovers_anisotropy`, which
+  inverts with `(vv − G·vh)/(vv + 2·G·vh)` over `g ∈ {0.8, 1.0, 1.5, 2.2}`, and
+  by the second half of `test_vm_rt_to_vv_vh_recovers_anisotropy`, which
+  compares the two forward models term for term at the same four `g` values;
+  `test_fluorescence_anisotropy_decay_calculcate_spectrum` derives its VH
+  reference from `f_VM·(1 − r)/G`. RF-954 (the l1/l2 half of the same function)
+  is untouched and still open.
 
 ### RF-954
 - **Status:** OPEN
@@ -10730,18 +10744,39 @@ number below was executed in the project environment. Findings RF-953..RF-959.
 - **Fix note:**
 
 ### RF-956
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (a test in the default non-GUI suite has been failing since 2026-07-27 — `pixi run test` is red, on the very convention the two commits were meant to pin)
 - **Location:** `test/fluorescence/test_fluorescence.py:195-250` (`Tests::test_vm_rt_to_vv_vh_recovers_anisotropy`), collected by the `test` task (`pixi.toml:214`, `pytest test …`)
 - **Finding:** the test asserts the *old* inversion, `(vv − vh/g)/(vv + 2·vh/g) == r(t)`, which held while `vm_rt_to_vv_vh` computed `vh = g·vm·(1−r)`; `1ca181c22` made it `vh = vm·(1 − (1−3l2)·r)/G`, so the correct inversion is now `(vv − g·vh)/(vv + 2·g·vh)`. Verified: `pytest test/fluorescence/test_fluorescence.py -k "anisotropy or vv_vh or vm_vv"` gives `1 failed, 3 passed`, with `AssertionError: False != True : anisotropy not recovered for g=0.8` at line 219. The second half of the same test (`:241-250`, "VH disagrees with `calculcate_spectrum`") is the assertion that would have caught RF-953, and it cannot pass until RF-953 lands — so this is a *follow-up* to RF-953 rather than a standalone test edit: fix the generator's sibling first, then rewrite both halves against `(vv − g·vh)/((1−3l2)·vv + (2−3l1)·g·vh)`. The docstring at `:196-203` ("g is a detection sensitivity, so it scales the whole perpendicular channel") states the retired convention and goes with it.
-- **Fix note:**
+- **Fix note:** landed with RF-953, whose generator sibling had to move first.
+  Both halves of `test_vm_rt_to_vv_vh_recovers_anisotropy` now use the Schaffer
+  inversion `(vv − G·vh)/((1 − 3 l2)·vv + (2 − 3 l1)·G·vh)`, and the round trip
+  is asserted over the cross product of `g ∈ {0.8, 1.0, 1.5, 2.2}` and
+  `(l1, l2) ∈ {(0, 0), (0.05, 0.03), (0.1, 0.05)}` instead of the default
+  `l1 = l2 = 0` only — the mixed cases are exactly the ones the old inversion
+  could not express. The comparison against `calculcate_spectrum` stays at
+  `l1 = l2 = 0`, with a comment naming RF-954 as the reason. The docstring
+  states the `G = S_par/S_perp` convention. `pytest test/fluorescence/
+  test_fluorescence.py` is green (7 passed).
 
 ### RF-957
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the user-facing anisotropy concept page contradicts itself — its G definition and its forward model cannot both be right, and substituting one into the other turns r₀ = 0.38 into 0.08)
 - **Location:** `docs/concepts/anisotropy.md:41` (`r = (I∥ − G·I⊥)/(I∥ + 2·G·I⊥)`) and `:51` (`G = S∥/S⊥`) against `:208-217` (`f⊥(t) = G·f_VM(t)·(1 − r(t))`, "G … multiplies the whole perpendicular channel", inverted as `r = (f∥ − f⊥/G)/(f∥ + 2·f⊥/G)`)
 - **Finding:** the page states the current convention in its definition section and the retired one in the section on how ChiSurf builds the two channels; the two are reciprocals of each other. Verified by substitution at `G = 1.5, r = 0.38`: the forward model of `:210` gives `I∥ = 1.76` and `I⊥ = 0.93`, and the page's own estimator at `:41` then returns **0.080220**, not 0.38. `:216-217` additionally argues *against* the form the code now uses (`f_VM(1 − G·r)` "is self-consistent only at G = 1"), so a reader who follows the page will conclude the shipped `vm_rt_to_vv_vh` is wrong. `7ca949fe5` changed user-visible behaviour without updating `docs/`, which the repo's "docs are part of the change" rule requires. Rewrite `:208-217` as `f∥ = f_VM(1 + (2 − 3 l1)·r)`, `f⊥ = f_VM(1 − (1 − 3 l2)·r)/G` with the inversion of `:41`, citing Schaffer *et al.*, J. Phys. Chem. A 103 (1999) 331 as `integrals.py:111-115` does. Best fixed together with RF-953, whose code the paragraph describes.
-- **Fix note:**
+- **Fix note:** fixed with RF-953, as the finding suggests — the code change
+  made the paragraph stale in the other direction, and the repo's "docs are part
+  of the change" rule required it in the same commit. `docs/concepts/
+  anisotropy.md:208-217` now reads `f⊥ = f_VM·(1 − r)/G`, states that
+  `G = S∥/S⊥` *divides* the whole perpendicular channel, and gives the inversion
+  of `:41` (`r = (f∥ − G·f⊥)/(f∥ + 2·G·f⊥)`) instead of arguing against the form
+  the code uses; the Schaffer *et al.*, J. Phys. Chem. A **103** (1999) 331
+  citation was added to the reference list. The `l1, l2` mixing is left pointing
+  at the cross-talk equations earlier on the page rather than restated in the
+  Schaffer form, because the fitting path still mixes with the 2×2 matrix
+  (RF-954). The OKF concept `/references/anisotropy-theory.md:126-135` carries
+  the same retired paragraph but had uncommitted edits from another instance in
+  that exact block, so it was left alone — still open.
 
 ### RF-958
 - **Status:** OPEN

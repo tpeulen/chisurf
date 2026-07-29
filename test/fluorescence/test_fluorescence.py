@@ -47,17 +47,19 @@ class Tests(unittest.TestCase):
         """The joint spectrum must reproduce the polarized decays it stands for.
 
         The reference is derived from the definitions rather than re-recorded
-        from the implementation: with ``r(t)`` the anisotropy and ``G`` the
-        detection-sensitivity ratio,
+        from the implementation: with ``r(t)`` the anisotropy and
+        ``G = S_par / S_perp`` the detection-sensitivity ratio,
 
             f_VV(t)   = f_VM(t) * (1 + 2 r(t))
-            f_VH(t)   = G * f_VM(t) * (1 - r(t))
+            f_VH(t)   = f_VM(t) * (1 - r(t)) / G
             f_VV,m(t) = (1 - l1) f_VV(t) + l1 f_VH(t)
             f_VH,m(t) = l2 f_VV(t) + (1 - l2) f_VH(t)
 
-        ``G`` scales the whole VH channel because it is a detection efficiency,
-        not a property of the depolarization. That placement is what makes the
-        pair invertible — see :meth:`test_calculcate_spectrum_recovers_anisotropy`.
+        ``G`` divides the whole VH channel because it is the parallel/
+        perpendicular sensitivity ratio, so the perpendicular channel records
+        ``1/G`` of what an equally sensitive one would. That placement is what
+        makes the pair invertible — see
+        :meth:`test_calculcate_spectrum_recovers_anisotropy`.
         """
         tau, rho, r0 = 4.0, 1.0, 1.0
         lifetime_spectrum = np.array([1.0, tau])
@@ -68,7 +70,7 @@ class Tests(unittest.TestCase):
         vm = np.exp(-times / tau)
         rt = r0 * np.exp(-times / rho)
         vv = vm * (1.0 + 2.0 * rt)
-        vh = g_factor * vm * (1.0 - rt)
+        vh = vm * (1.0 - rt) / g_factor
 
         for l1, l2 in [(0.0, 0.0), (0.1, 0.0), (0.0, 0.1), (0.1, 0.2)]:
             kwargs = dict(
@@ -127,7 +129,9 @@ class Tests(unittest.TestCase):
         ``r = (I_VV - G I_VH) / (I_VV + 2 G I_VH)`` is the definition of the
         anisotropy, so with no channel mixing the generated pair has to invert
         back to ``r(t)`` exactly. This is what pins the ``G`` placement: a VH
-        model of the form ``f_VM * (1 - G r)`` only satisfies it at ``G = 1``.
+        model that *multiplies* by ``G`` instead of dividing — as this function
+        did until RF-953 — inverts ``r0 = 0.38`` back to 0.08 at ``G = 1.5``,
+        and to a negative anisotropy above ``G = 2``.
         """
         tau, rho, r0 = 4.0, 1.5, 0.38
         lifetime_spectrum = np.array([1.0, tau])
@@ -135,7 +139,7 @@ class Tests(unittest.TestCase):
         times = np.linspace(0.0, 20.0, 64)
         rt = r0 * np.exp(-times / rho)
 
-        for g_factor in [0.8, 1.0, 1.5]:
+        for g_factor in [0.8, 1.0, 1.5, 2.2]:
             kwargs = dict(
                 lifetime_spectrum=lifetime_spectrum,
                 anisotropy_spectrum=anisotropy_spectrum,
@@ -148,9 +152,10 @@ class Tests(unittest.TestCase):
             )
             vh = self._decay_from_spectrum(
                 calculcate_spectrum(polarization_type='VH', **kwargs), times
-            ) / g_factor
+            )
+            gs = g_factor * vh
             self.assertEqual(
-                np.allclose((vv - vh) / (vv + 2.0 * vh), rt),
+                np.allclose((vv - gs) / (vv + 2.0 * gs), rt),
                 True,
                 msg=f"anisotropy not recovered for g={g_factor}"
             )
@@ -191,6 +196,82 @@ class Tests(unittest.TestCase):
             ),
             True
         )
+
+    def test_vm_rt_to_vv_vh_recovers_anisotropy(self):
+        """The time-domain helper must place G exactly where its sibling does.
+
+        ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio,
+        so the perpendicular channel records ``1/G`` of what an equally
+        sensitive one would: ``f_VH = f_VM * (1 - (1 - 3 l2) r) / G``. Undoing
+        it with the Schaffer correction the rest of the stack applies,
+
+            r = (f_VV - G f_VH) / ((1 - 3 l2) f_VV + (2 - 3 l1) G f_VH)
+
+        has to return the anisotropy that went in for any ``G, l1, l2``, and at
+        ``l1 = l2 = 0`` the decays have to agree term for term with the
+        spectrum-domain :func:`calculcate_spectrum` that the fitting models
+        call — the assertion RF-953 failed, where the two forward models sat a
+        factor ``g**2`` apart in VH.
+        """
+        tau, rho, r0 = 4.0, 1.5, 0.38
+        lifetime_spectrum = np.array([1.0, tau])
+        anisotropy_spectrum = np.array([r0, rho])
+        times = np.linspace(0.0, 20.0, 64)
+        rt = r0 * np.exp(-times / rho)
+        vm = np.exp(-times / tau)
+
+        for l1, l2 in [(0.0, 0.0), (0.05, 0.03), (0.1, 0.05)]:
+            for g_factor in [0.8, 1.0, 1.5, 2.2]:
+                vv, vh = chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh(
+                    times, vm, anisotropy_spectrum, g_factor, l1, l2
+                )
+                gs = g_factor * vh
+                self.assertEqual(
+                    np.allclose(
+                        (vv - gs) / ((1.0 - 3.0 * l2) * vv + (2.0 - 3.0 * l1) * gs),
+                        rt
+                    ),
+                    True,
+                    msg=f"anisotropy not recovered for g={g_factor}, l1={l1}, l2={l2}"
+                )
+
+        # The spectrum-domain sibling still mixes l1/l2 with the Koshioka 2x2
+        # matrix (RF-954), so the two forward models are only comparable where
+        # that parameterisation does not enter.
+        for g_factor in [0.8, 1.0, 1.5, 2.2]:
+            vv, vh = chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh(
+                times,
+                vm,
+                anisotropy_spectrum,
+                g_factor=g_factor
+            )
+            kwargs = dict(
+                lifetime_spectrum=lifetime_spectrum,
+                anisotropy_spectrum=anisotropy_spectrum,
+                g_factor=g_factor,
+                l1=0.0,
+                l2=0.0
+            )
+            self.assertEqual(
+                np.allclose(
+                    self._decay_from_spectrum(
+                        calculcate_spectrum(polarization_type='VV', **kwargs), times
+                    ),
+                    vv
+                ),
+                True,
+                msg=f"VV disagrees with calculcate_spectrum for g={g_factor}"
+            )
+            self.assertEqual(
+                np.allclose(
+                    self._decay_from_spectrum(
+                        calculcate_spectrum(polarization_type='VH', **kwargs), times
+                    ),
+                    vh
+                ),
+                True,
+                msg=f"VH disagrees with calculcate_spectrum for g={g_factor}"
+            )
 
     def test_fcs(self):
         directory = './test/data/tttr/BH/132/'

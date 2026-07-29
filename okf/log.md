@@ -2,6 +2,31 @@
 
 ## 2026-07-29
 
+* **The anisotropy G-factor, on the one forward model the fitting path actually
+  calls** (RF-953, RF-956, RF-957). `7ca949fe5` moved four sites to
+  `G = S_par/S_perp` — the perpendicular channel records `1/G` of what an
+  equally sensitive one would — and warned that moving fewer only relocates the
+  inconsistency. `calculcate_spectrum`, the spectrum-domain sibling
+  `Anisotropy.get_decay` calls to build every VV/VH model curve, was not among
+  them and still *multiplied* VH by `g`, so the two forward models sat a factor
+  `g²` apart and the r(t) plot drawn beside the fit read `r = 0.080` for a
+  rotation spectrum of `r₀ = 0.38` at `g = 1.5`, and a *negative* anisotropy at
+  `g = 2.2`. They agree only at `g = 1`, the default, which is why nothing
+  caught it. VH is now scaled by `1 / g_factor`; both forward models give
+  `VH(0) = 0.413333` and the Schaffer correction recovers 0.380000 exactly. The
+  docstring equations and the four recorded doctest outputs moved with the code
+  (the doctest runs at `g = 2` so `1/G` prints exactly), and
+  `test_vm_rt_to_vv_vh_recovers_anisotropy` — red in `pixi run test` since
+  2026-07-27, because it asserted the retired inversion — now uses
+  `(vv − G·vh)/((1 − 3 l2)·vv + (2 − 3 l1)·G·vh)` over the cross product of four
+  `g` values and three `(l1, l2)` pairs, and compares the two forward models
+  term for term at `l1 = l2 = 0`. `docs/concepts/anisotropy.md` stated the
+  current convention in its definition section and the retired one in the
+  section on how the two channels are built; the forward-model paragraph was
+  rewritten around `f⊥ = f_VM·(1 − r)/G` with the Schaffer 1999 citation. The
+  l1/l2 half of the same function still mixes with the Koshioka 2×2 matrix
+  (RF-954, open), so the model comparison stays at `l1 = l2 = 0`.
+
 * **GUI test — CLSM Generator, the ground truth behind every FLIM analysis.**
   Drove `Imaging → Simulate → CLSM Generator` headlessly on a two-population
   24 × 24 phantom (τ = 1.0 / 3.5 ns) and recorded
