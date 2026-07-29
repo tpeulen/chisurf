@@ -1,3 +1,26 @@
+"""Readers and writers for the ``.bur`` burst tables.
+
+One column name in this format does not mean what it says, and it means the
+same wrong thing in both writers here, so it is inherited rather than a slip:
+
+``Mean Macro Time (ms)`` and ``Mean Macrotime (<detector>) (ms)`` are the
+**midpoint of the burst's first and last photon**, ``(t_first + t_last) / 2`` —
+not the mean of its photon macro times. The two agree only when a burst's
+photons are symmetrically distributed in time, which is exactly what fails near
+the edges of a transit. Anything using the column as a burst centre of mass
+(drift correction, time-trace placement, macro-time gating) is using a midpoint.
+
+It is left as it is on purpose: the value is what the reference format and the
+tools reading these files expect, and silently changing a shipped column would
+move every downstream result that ever consumed it. Compute the true mean from
+the photons if that is what is wanted.
+
+By contrast ``Duration (<detector>) (ms)`` is exactly what it says —
+``t_last − t_first`` over that detector's photons in the burst — and detectors a
+burst has no photons in carry ``-1.0`` duration and ``0`` counts rather than
+being omitted.
+"""
+
 from collections import OrderedDict
 from typing import Dict, Tuple
 
