@@ -2,51 +2,13 @@ from __future__ import annotations
 import chisurf as cs
 
 import numpy as np
-import pyqtgraph as pg
 from qtpy import QtWidgets, QtCore
 
 import chisurf.core.fitting
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 from chisurf.core.actions import record_action
 from chisurf.core.roi import RectangleROI
-
-
-class _DraggableTextItem(pg.TextItem):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAcceptHoverEvents(True)
-        self.setCursor(QtCore.Qt.OpenHandCursor)
-        self._dragging = False
-        self._drag_offset = QtCore.QPointF(0, 0)
-
-    def hoverEnterEvent(self, event):
-        self.setCursor(QtCore.Qt.OpenHandCursor)
-
-    def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self._dragging = True
-            self.setCursor(QtCore.Qt.ClosedHandCursor)
-            self._drag_offset = event.pos()
-            event.accept()
-        else:
-            event.ignore()
-
-    def mouseMoveEvent(self, event):
-        if self._dragging and event.buttons() & QtCore.Qt.LeftButton:
-            new_pos = self.mapToParent(event.pos() - self._drag_offset)
-            self.setPos(new_pos)
-            event.accept()
-        else:
-            event.ignore()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self._dragging = False
-            self.setCursor(QtCore.Qt.OpenHandCursor)
-            event.accept()
-        else:
-            event.ignore()
 
 
 class Residual2DPlotControl(QtWidgets.QWidget):
@@ -368,24 +330,25 @@ class Residual2DPlot(plotbase.Plot):
         self._x: np.ndarray | None = None
         self._y: np.ndarray | None = None
 
-        self._plot_widget = pg.PlotWidget()
+        self._plot_widget = cp.Plot()
         self.layout.addWidget(self._plot_widget)
-        self._view_box = self._plot_widget.getPlotItem().getViewBox()
-        self._view_box.setAspectLocked(False)
+        self._plot_widget.set_aspect_locked(False)
 
-        self._image_item = pg.ImageItem()
-        self._view_box.addItem(self._image_item)
+        # The image handle is created on the first computed frame: chiplot's
+        # ``image`` verb draws data, it does not reserve an empty item.
+        self._image_item = None
 
         try:
-            self._quality_text = _DraggableTextItem(
-                text="",
+            self._quality_text = self._plot_widget.text(
+                "",
+                (0, 0),
+                color="#FF0",
                 border="w",
                 fill=(0, 0, 255, 100),
                 anchor=(0, 0),
+                draggable=True,
+                anchored=True,
             )
-            plot_item = self._plot_widget.getPlotItem()
-            self._quality_text.setParentItem(plot_item)
-            self._quality_text.setPos(0, 0)
         except Exception:
             self._quality_text = None
 
@@ -466,7 +429,14 @@ class Residual2DPlot(plotbase.Plot):
         self._x = np.asarray(x) if x is not None else np.arange(arr.shape[1], dtype=float)
         self._y = np.asarray(y) if y is not None else np.arange(arr.shape[0], dtype=float)
 
-        self._image_item.setImage(self._image, autoLevels=False)
+        if self._image_item is None:
+            # ``col-major`` keeps the pre-chiplot orientation: this plot drew on
+            # a bare pyqtgraph ImageItem, whose default axis order is col-major.
+            self._image_item = self._plot_widget.image(self._image, axis_order="col-major")
+        else:
+            self._image_item.set_image(self._image)
+        # The levels the image is drawn with are settled below, once the
+        # controller has been given this frame's data-driven defaults.
 
         # Initialize ROI once to cover the full image in axis coordinates.
         if not getattr(self, "_roi_initialized", False):
@@ -478,8 +448,8 @@ class Residual2DPlot(plotbase.Plot):
                     xmax = float(self._x.max()) if self._x is not None and self._x.size > 0 else float(self._image.shape[1] - 1)
                     ymin = float(self._y.min()) if self._y is not None and self._y.size > 0 else 0.0
                     ymax = float(self._y.max()) if self._y is not None and self._y.size > 0 else float(self._image.shape[0] - 1)
-                    roi.setPos((xmin, ymin))
-                    roi.setSize((xmax - xmin, ymax - ymin))
+                    roi.set_pos(xmin, ymin)
+                    roi.set_size(xmax - xmin, ymax - ymin)
                 finally:
                     self._roi_sync_in_progress = False
                 self._roi_initialized = True
@@ -526,18 +496,14 @@ class Residual2DPlot(plotbase.Plot):
                             ymax = float(self._image.shape[0] - 1)
                         x_pos = xmin + 0.7 * (xmax - xmin)
                         y_pos = ymin + 0.9 * (ymax - ymin)
-                        self._quality_text.setPos(x_pos, y_pos)
+                        self._quality_text.set_position(x_pos, y_pos)
                     except Exception:
                         pass
                     else:
                         self._quality_text_initialized = True
-                html = (
-                    "<div style=\"name-align: center\">"
-                    "<span style=\"color: #FF0; font-size: 10pt;\">"
-                    f"&Chi;<sup>2</sup>={chi2r:.4f}<br />DW={dw:.4f}"
-                    "</span></div>"
-                )
-                self._quality_text.setHtml(html)
+                # The label was created yellow; setting the text keeps that
+                # colour, so the metrics no longer carry their own markup.
+                self._quality_text.text = f"Χ²={chi2r:.4f}\nDW={dw:.4f}"
         except Exception:
             pass
 
@@ -626,7 +592,7 @@ class Residual2DPlot(plotbase.Plot):
         self.apply_levels_from_controller()
 
     def apply_levels_from_controller(self) -> None:
-        if self._image is None:
+        if self._image is None or self._image_item is None:
             return
         vmin, vmax = self.plot_controller.levels()
         if not np.isfinite(vmin) or not np.isfinite(vmax) or vmax <= vmin:
@@ -635,7 +601,7 @@ class Residual2DPlot(plotbase.Plot):
                 return
             vmin = float(self._image[finite].min())
             vmax = float(self._image[finite].max())
-        self._image_item.setLevels((vmin, vmax))
+        self._image_item.set_levels(vmin, vmax)
 
     def apply_ranges_from_controller(self) -> None:
         if self._x is None or self._y is None:
@@ -645,17 +611,15 @@ class Residual2DPlot(plotbase.Plot):
             xmin, xmax = float(self._x.min()), float(self._x.max())
         if ymax <= ymin:
             ymin, ymax = float(self._y.min()), float(self._y.max())
-        self._view_box.setXRange(xmin, xmax, padding=0.0)
-        self._view_box.setYRange(ymin, ymax, padding=0.0)
+        self._plot_widget.set_xlim(xmin, xmax, padding=0.0)
+        self._plot_widget.set_ylim(ymin, ymax, padding=0.0)
 
     def apply_cmap_from_controller(self) -> None:
-        name = self.plot_controller.cmap_name()
-        try:
-            cm = pg.colormap.get(name)  # type: ignore[attr-defined]
-            lut = cm.getLookupTable(alpha=False)
-            self._image_item.setLookupTable(lut)
-        except Exception:
-            self._image_item.setLookupTable(None)
+        if self._image_item is None:
+            return
+        # An unresolvable name yields no lookup table, which is the grayscale
+        # ramp the plot fell back to before.
+        self._image_item.set_colormap(self.plot_controller.cmap_name())
 
     # ------------------------------------------------------------------
     # ROI → 1D fit-range mapping
@@ -667,19 +631,19 @@ class Residual2DPlot(plotbase.Plot):
         if self._roi is not None:
             return self._roi
         try:
-            roi = pg.RectROI(
-                [0, 0],
-                [1, 1],
-                pen={"color": 'y', "width": 1},
+            roi = self._plot_widget.add_roi(
+                kind="rect",
+                pos=(0.0, 0.0),
+                size=(1.0, 1.0),
+                pen=cp.to_pen("y", width=1),
                 rotatable=False,
             )
         except Exception:
             return None
 
         try:
-            self._view_box.addItem(roi)
-            roi.setZValue(10)
-            roi.sigRegionChanged.connect(self._on_roi_changed)
+            roi.z = 10
+            roi.on_change(self._on_roi_changed, final=False)
         except Exception:
             pass
 
@@ -706,16 +670,8 @@ class Residual2DPlot(plotbase.Plot):
             return
 
         try:
-            pos = roi.pos()
-            size = roi.size()
-        except Exception:
-            return
-
-        try:
-            x0 = float(pos.x())
-            y0 = float(pos.y())
-            w = float(size.x())
-            h = float(size.y())
+            x0, y0 = roi.pos
+            w, h = roi.size
         except Exception:
             return
 
@@ -759,8 +715,8 @@ class Residual2DPlot(plotbase.Plot):
         # Snap ROI geometry back to the symmetric bounds.
         try:
             self._roi_sync_in_progress = True
-            roi.setPos((x0_sym, y0_sym))
-            roi.setSize((x1_sym - x0_sym, y1_sym - y0_sym))
+            roi.set_pos(x0_sym, y0_sym)
+            roi.set_size(x1_sym - x0_sym, y1_sym - y0_sym)
         finally:
             self._roi_sync_in_progress = False
 

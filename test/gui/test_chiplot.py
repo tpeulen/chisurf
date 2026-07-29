@@ -393,9 +393,12 @@ def test_migrated_modules_import(qapp):
         # Batch 27
         "chisurf.gui.plots._qwt_compat",
         "chisurf.gui.plots.global_tcspc.global_tcspc",
-        "chisurf.gui.plots.surfaceplot.surfaceplot",
+        # NB: surfaceplot was deleted with the orphan sweep (Batch 31) — the
+        # module is gone, so it cannot be checked for import cleanliness here.
         # Batch 28
         "chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window",
+        # Batch 32
+        "chisurf.gui.plots.residual_image",
     ):
         assert importlib.import_module(name) is not None
 
@@ -873,6 +876,34 @@ def test_image_view_clear_removes_overlays(qapp):
     iv.clear()
     assert overlay.native not in view.addedItems
     assert roi.native not in view.addedItems
+
+
+def test_image_restyles_without_reuploading_data(qapp):
+    """An image already on the canvas can be re-levelled and recoloured.
+
+    The 2-D residual view drives contrast and colormap from spin boxes and a
+    combo box while the data stands still, so both must be settable on the
+    handle rather than only through ``set_image``.
+
+    ``RdBu`` is the case that matters: ``pg.colormap.get("RdBu")`` with no
+    source raises ``FileNotFoundError`` (it is a matplotlib name, not a
+    pyqtgraph one), which is what left every residual image grayscale before
+    the port. chiplot resolves the matplotlib namespace first.
+    """
+    plot = cp.Plot()
+    data = np.linspace(-1.0, 1.0, 64).reshape(8, 8)
+    img = plot.image(data, axis_order="col-major")
+
+    img.set_levels(-0.5, 0.5)
+    assert tuple(img.native.getLevels()) == pytest.approx((-0.5, 0.5))
+
+    img.set_colormap("RdBu")
+    assert img.native.lut is not None
+    img.set_colormap(None)  # back to the grayscale ramp
+    assert img.native.lut is None
+
+    # the data itself is untouched by either restyle
+    assert np.array_equal(img.native.image, data)
 
 
 def test_a_renamed_pyqtgraph_name_says_what_chiplot_calls_it(qapp, recwarn):

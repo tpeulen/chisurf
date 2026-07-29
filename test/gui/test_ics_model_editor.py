@@ -257,3 +257,50 @@ def test_optional_terms_change_the_carpet(qapp):
 
     model.update()
     np.testing.assert_allclose(base, model.model_carpet)
+
+
+def test_residual_2d_plot_draws_and_maps_the_roi(qapp):
+    """The 2-D residual widget draws through chiplot and keeps its ROI wiring.
+
+    Covers what the port to the chiplot seam (PRD-64) had to preserve: an image
+    on the canvas, contrast from the spin boxes, a *resolved* colormap, and the
+    rectangular ROI that translates a 2-D selection into a 1-D fit range.
+    """
+    from chisurf.core.models.ics.ics import ImageCorrelationModel, get_ics_residual_image
+    from chisurf.gui.plots.residual_image import Residual2DPlot
+
+    fit = _make_ics_fit(ImageCorrelationModel, n_lags=3)
+    fit.model.update()
+
+    plot = Residual2DPlot(
+        fit=fit,
+        accessor=get_ics_residual_image,
+        accessor_kwargs={"weighted": True, "lag_index": 0},
+        frame_kw="lag_index",
+    )
+    plot.update()
+
+    image = plot._image_item
+    assert image is not None, "no image drawn"
+    assert np.array_equal(image.native.image, plot._image)
+
+    # The colormap combo must actually resolve: 'RdBu' is a matplotlib name and
+    # the plot used to fall back to grayscale for it (and for 'bwr').
+    for name in ("RdBu", "bwr", "viridis"):
+        plot.plot_controller.cb_cmap.setCurrentText(name)
+        assert image.native.lut is not None, f"{name} did not resolve to a lookup table"
+
+    # Contrast comes from the spin boxes, without re-uploading the data.
+    plot.plot_controller.sb_vmin.setValue(-2.0)
+    plot.plot_controller.sb_vmax.setValue(3.0)
+    plot.apply_levels_from_controller()
+    assert tuple(image.native.getLevels()) == pytest.approx((-2.0, 3.0))
+
+    # Dragging the ROI reports a 1-D index range on regionChanged.
+    seen = []
+    plot.regionChanged.connect(lambda lo, hi: seen.append((lo, hi)))
+    ny, nx = plot._image.shape
+    plot._roi.set_size(0.5 * (nx - 1), 0.5 * (ny - 1))
+    assert seen, "ROI drag did not emit regionChanged"
+    lo, hi = seen[-1]
+    assert 0 <= lo < hi < ny * nx

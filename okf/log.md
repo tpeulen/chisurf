@@ -147,6 +147,23 @@
   deliberately deferred: the CIF data block name `data_chisurf_flr_export`,
   which has consumers in both repositories.
 
+* **PRD-64 Batch 32 — the 2-D residual view had never shown its colormap.**
+  `gui/plots/residual_image.py` (the RICS/ICS and PDA-2c carpet plot) is off
+  pyqtgraph and on the chiplot seam: `cp.Plot` + `plot.image(...)`, the
+  fit-range `RectROI` as `plot.add_roi(...)`, and the third in-tree copy of
+  `_DraggableTextItem` replaced by `plot.text(..., draggable=True,
+  anchored=True)`. Two seam verbs were grown for real call sites —
+  `Image.set_levels` and `Image.set_colormap` — because the contrast spin boxes
+  and the colormap combo restyle an image whose data has not changed. The
+  before/after screenshot comparison surfaced a latent defect the port fixes:
+  the plot resolved its colormap with `pg.colormap.get(name)` and **no source**,
+  which raises `FileNotFoundError` for `RdBu` and `bwr` — both diverging maps
+  offered, one of them the default — so the `except` branch cleared the lookup
+  table and every residual image rendered grayscale. Fixed in passing:
+  `test_migrated_modules_import` had been red since Batch 31 deleted
+  `gui/plots/surfaceplot/` without removing it from the import sweep. Allow-list
+  18 → 17. See [/prds/prd-64.md](/prds/prd-64.md).
+
 ## 2026-07-28
 
 * **The mouse now reads the same table the block draws.** `action_of(mode,

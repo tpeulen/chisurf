@@ -303,7 +303,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 21):*
+*Landed so far (allow-list 76 → 17):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -677,6 +677,35 @@ screenshot/qtbot verification after each cluster.
   `fcs/fcs_filter_calculator/test/test_widgets.py` had been ported to chiplot
   handles (Batch 28) without its allow-list line being removed, so the guard
   meant to shrink the list was itself failing. Removed.
+- **Batch 32** — migrated `gui/plots/residual_image.py`, the generic 2-D
+  residual/carpet view (RICS/ICS and PDA-2c). `pg.PlotWidget` + a bare
+  `ImageItem` on the viewbox → `cp.Plot` + `plot.image(..., axis_order=
+  "col-major")` (the pyqtgraph default the plot had been relying on, now said
+  out loud); `setXRange`/`setYRange` → `set_xlim`/`set_ylim`; the `pg.RectROI`
+  that maps a 2-D selection onto a 1-D fit range → `plot.add_roi(kind="rect")`
+  with `on_change(final=False)` and `set_pos`/`set_size`; the module-level
+  `_DraggableTextItem` copy (the third in the tree) → `plot.text(...,
+  draggable=True, anchored=True)`, whose content drops its `<span>`/`<sup>`
+  markup for plain text on a label created yellow — the same move `lineplot`
+  made in Batch 29. Grew the seam with **`Image.set_levels`** and
+  **`Image.set_colormap`**, both real call sites (the vmin/vmax spin boxes and
+  the colormap combo restyle an image whose data has not changed, so
+  `set_image(data, levels=…)` would re-upload the array to move a contrast
+  window). **A latent defect fell out of the screenshot comparison:** the plot
+  resolved its colormap with `pg.colormap.get(name)` and no source, which raises
+  `FileNotFoundError` for `RdBu` and `bwr` — *both* of the diverging maps
+  offered, one of them the default — so the `except` branch cleared the lookup
+  table and every 2-D residual image ever shown was **grayscale**, with the
+  combo box doing nothing for those two entries. chiplot's `_colormap` tries the
+  matplotlib namespace first, so the port renders the intended red/blue map.
+  Tests: `test_image_restyles_without_reuploading_data` (chiplot) and
+  `test_residual_2d_plot_draws_and_maps_the_roi` (image drawn, all three
+  colormaps resolve, levels applied, ROI drag emits `regionChanged`);
+  import-clean extended. Before/after screenshot-verified on a synthetic ICS
+  carpet.
+  Fixed in passing: `test_migrated_modules_import` was **already red** — Batch
+  31 deleted `gui/plots/surfaceplot/` but left it in the import list, so the
+  sweep that proves the migrated modules load had been failing since.
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

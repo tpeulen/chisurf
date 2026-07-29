@@ -350,6 +350,14 @@ class _Image(_Item):
         if levels is not None:
             self._native.setLevels(levels)
 
+    def set_levels(self, low: float, high: float) -> None:
+        """Set the intensity range mapped to the colormap ends."""
+        self._native.setLevels((float(low), float(high)))
+
+    def set_colormap(self, colormap) -> None:
+        """Recolour the image; ``None`` restores the grayscale ramp."""
+        self._native.setLookupTable(_lut(S.to_colormap(colormap)))
+
     def set_rect(self, x: float, y: float, w: float, h: float) -> None:
         """Place the image in data coordinates."""
         self._native.setRect(QtCore.QRectF(x, y, w, h))

@@ -243,6 +243,30 @@ class Image(Handle, Protocol):
         """
         ...
 
+    def set_levels(self, low: float, high: float) -> None:
+        """Set the intensity range mapped to the colormap ends.
+
+        Distinct from ``set_image(..., levels=…)``: a contrast control restyles
+        the *same* data, so re-uploading the array only to change the window is
+        wasted work on a large image.
+
+        Parameters
+        ----------
+        low, high : float
+            Intensity values mapped to the first and last colormap entry.
+        """
+        ...
+
+    def set_colormap(self, colormap) -> None:
+        """Recolour an image already on the canvas.
+
+        Parameters
+        ----------
+        colormap : str, style.Colormap or None
+            Colormap name or reference; ``None`` restores the grayscale ramp.
+        """
+        ...
+
     def set_rect(self, x: float, y: float, w: float, h: float) -> None:
         """Place the image in data coordinates.
 
