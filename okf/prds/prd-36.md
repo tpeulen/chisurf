@@ -14,7 +14,7 @@ timestamp: '2026-07-05T00:00:00Z'
 Tracks the incremental rollout of the shared dockable-tool base (`ChisurfDockTool` + `PathDropListWidget`) across every remaining `QMainWindow` plugin tool, so the path drag-drop, docking, window-geometry persistence, and lazy MMFDB-connectivity boilerplate is implemented once rather than re-forked per tool. It documents the per-tool migration recipe (subclass the base, swap the drop widget, delete duplicated drop handlers, route MMFDB acquisition through the base, lazy-load the GUI tool, add an offscreen construction smoke test), lists tools already migrated, and enumerates the priority-A drag-drop and priority-B plain-window backlog. Non-`QMainWindow` wizard tools are out of scope for this base.
 
 # Status
-In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; eighteen tools are on the base and a backlog of ~14 tools remains.
+In progress. The base, smoke-test pattern, and the repo-wide read-only-construction guard exist; nineteen tools are on the base and a backlog of 15 tools remains.
 
 # Goal
 
@@ -161,6 +161,24 @@ read-only-construction guard already exist.
       init; a dropped folder is adopted and run; a dropped file leaves the box alone and
       says why).
 
+- [x] `core/f_test` — priority-B rollout of a second tool that was **on neither list**
+      (it postdates the 2026-06-24 enumeration), and the second calculator with no file
+      input at all. `FTestTool` forked a plain `QMainWindow` while the base existed, so
+      the window accepted no drops and had no status bar to say anything in.
+      `on_paths_dropped` now raises the declared `Information.no_file_input` message —
+      the same answer `calculator/fret_calculator` gives, because it is the same
+      question. Geometry stays owned by the manifest-declared window statefulness
+      (`apply_manifest_statefulness`, wired in `__init__` so it applies however the tool
+      is launched — through the plugin registry, through the `plugin` exec path, or
+      embedded in the calculator hub), so the base's `save/restore_window_geometry` are
+      deliberately left uncalled; `tool_settings_name` is set per the recipe. Recipe
+      step 5 (lazy GUI import) does not apply: the plugin is GUI-only — it has no
+      `api`/`core`/`backend` layer to keep Qt-free. Rendered offscreen standalone in
+      both states (plain, and with the rejected-drop message in the status bar) **and**
+      embedded in the calculator hub, and inspected. Tests:
+      `test/test_widgets.py` (+2: on the base with a settings key, drops accepted, and
+      no MMFDB connection on init; a dropped path is reported rather than swallowed).
+
 The canonical list of migrated tools is `grep -rn "class .*(ChisurfDockTool)"
 chisurf/plugins`; keep this section in sync with it.
 
@@ -197,7 +215,6 @@ them handles drops today, so all are priority B):
 
 - [ ] `burst/burst_fcs_correlator/gui/tool.py` (`BurstFcsTool`)
 - [ ] `calculator/phasor_calculator/gui/tool.py` (`PhasorCalculatorTool`)
-- [ ] `core/f_test/gui/tool.py` (`FTestTool`)
 - [ ] `fcs/flc_2d/gui/tool.py` (`FlcTwoDTool`)
 - [ ] `core/code_editor/window.py` (`CodeEditorWindow`)
 - [ ] `chimol/app/molview_main_window.py` (`MolViewPluginWindow`) — last, and only once

@@ -12,6 +12,11 @@ The hand-built ``FTestWidget`` (a QGridLayout with ~25 property accessors and
 three per-row "load from fit" menus) is replaced by an :class:`_FTestModel`
 whose fields AutoForm binds directly, plus a single compact *From fit ▾* toolbar
 button. ``FTestWidget`` is kept as a back-compat alias.
+
+The window is a :class:`~chisurf.gui.widgets.tools.ChisurfDockTool` (PRD-23 /
+PRD-36), so the window-level drag-drop dispatch, the lazy MMFDB accessors, and
+the declared-message status bar come from the shared base instead of being
+re-forked here.
 """
 
 from __future__ import annotations
@@ -24,6 +29,8 @@ from qtpy import QtWidgets
 from chisurf.core.dataspec import load_view_spec
 from chisurf.core.math.statistics import chi2_max, f_test_chi2r, f_test_confidence
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.widgets.messages import Msg
+from chisurf.gui.widgets.tools import ChisurfDockTool
 
 _GUI_DIR = pathlib.Path(__file__).parent
 
@@ -86,10 +93,22 @@ class _FTestModel:
         )
 
 
-class FTestTool(QtWidgets.QMainWindow):
-    """F-test / χ²-max calculator; constructs with no required arguments (hub-embeddable)."""
+class FTestTool(ChisurfDockTool):
+    """F-test / χ²-max calculator; constructs with no required arguments (hub-embeddable).
+
+    A calculator has no file inputs, so the base's window-level drop is answered
+    with a standing message instead of being silently swallowed.
+    """
 
     name = "F-Test"
+
+    #: QSettings key for the base's geometry helpers (PRD-36 recipe step 1).
+    tool_settings_name: str = "FTestTool"
+
+    class Information(ChisurfDockTool.Information):
+        """Conditions this tool can report."""
+
+        no_file_input = Msg("The F-test calculator takes no dropped files.")
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -103,6 +122,30 @@ class FTestTool(QtWidgets.QMainWindow):
         self._build_toolbar()
         self._wire_fields()
         self._form.sync_fields()
+
+        # Geometry is owned by the manifest-declared window statefulness; wire it
+        # here too so it applies however the plugin is launched (the helper is
+        # idempotent). The base's save/restore_window_geometry are deliberately
+        # left uncalled so the two mechanisms do not both write a geometry key.
+        try:
+            from chisurf.core.plugin import load_manifest
+            from chisurf.core.plugin.registry import apply_manifest_statefulness
+
+            manifest = load_manifest(pathlib.Path(__file__).parents[1] / "manifest.json")
+            if manifest is not None:
+                apply_manifest_statefulness(self, manifest)
+        except Exception:
+            pass
+
+    def on_paths_dropped(self, paths: list[pathlib.Path]) -> None:
+        """Report that the calculator has no file input.
+
+        The base enables window-level path drag-drop for every dock tool. This
+        tool computes from typed-in numbers, so a dropped path has nowhere to go;
+        say so in the status bar rather than accepting the drop and doing nothing.
+        """
+        if paths:
+            self.Information.no_file_input()
 
     # ── toolbar: load values from an open fit ─────────────────────────
     def _build_toolbar(self) -> None:

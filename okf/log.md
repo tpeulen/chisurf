@@ -2,6 +2,20 @@
 
 ## 2026-07-29
 
+* **The F-test calculator was a window that could not answer a drop
+  ([PRD-36](/prds/prd-36.md)).** `FTestTool` forked a plain `QMainWindow` — it
+  postdates the 2026-06-24 enumeration, so it was on neither migration list — and
+  therefore accepted no drops and had no status bar to say anything in: dragging a
+  file onto it did nothing, silently. It is now a `ChisurfDockTool` with
+  `tool_settings_name = "FTestTool"`, and `on_paths_dropped` raises the declared
+  `Information.no_file_input` message, the same answer `calculator/fret_calculator`
+  gives to the same question. Geometry stays owned by the manifest-declared window
+  statefulness, wired in `__init__` so it applies however the tool is launched
+  (plugin registry, `plugin` exec path, or embedded in the calculator hub); the
+  base's `save/restore_window_geometry` are left uncalled so the two mechanisms do
+  not both write a geometry key. Rendered offscreen standalone in both states and
+  embedded in the hub, and inspected. Pinned by
+  `chisurf/plugins/core/f_test/test/test_widgets.py` (+2).
 * **A conditional posterior query put the parameters back but left the fit
   holding the conditioned curve (RF-979,
   [PRD-70](/prds/prd-70.md)).** `PosteriorEngine._apply_evidence` pins the
