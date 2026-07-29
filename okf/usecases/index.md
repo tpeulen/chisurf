@@ -376,6 +376,21 @@ The workflows a first pass should cover — expand as the tester discovers more:
   **Generate** never raises the tab its result is on.
   *(last driven 2026-07-29; RF-960..RF-966)*
 
+- [FRET-2CDE — is that population dynamic?](/usecases/burst-2cde-dynamics.md)
+  — the question the FRET histogram cannot answer: score every burst of an
+  existing burst folder by the two-channel kernel-density estimator and read
+  the sub-population that inter-converted *inside* the burst. The estimator is
+  the good part (2980 bursts in 0.33 s, median 11.53 against the documented
+  static baseline of ~10, single-colour bursts correctly `NaN`); the panel
+  around it is not — a mistyped **File type** reports "0 / 2980 bursts valid"
+  and **overwrites the good `2c4/` companion with an all-`NaN` one**, the
+  `alex` variant has no acceptor-excitation control and so scores the FRET
+  channels (r = 0.81 with E) on data that has no acceptor excitation, step 4 of
+  the Burst Analysis shell inherits the folder but none of the detector setup,
+  a stray character in a channel list throws out of the Run click, and the CLI
+  reports its results in a directory it never wrote to.
+  *(last driven 2026-07-29; RF-985..RF-992)*
+
 ## Per-workflow file format
 
 `okf/usecases/<workflow-slug>.md`, one `##` step-list plus observations:

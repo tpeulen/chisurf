@@ -2,6 +2,25 @@
 
 ## 2026-07-29
 
+* **QA GUI session — FRET-2CDE burst dynamics (`burst_2cde`).** Drove the
+  standalone *Spectroscopy → Single-Molecule → 2CDE* window and step 4 of the
+  Burst Analysis shell headlessly over the ten-measurement
+  `burstwise_All 0.1000#15` burst folder (2980 bursts) of the
+  `bh_spc132_sm_dna` sample, plus the `2cde compute` CLI. The estimator is fast
+  and correct — 2980 bursts in 0.33 s, median FRET-2CDE 11.53 at the documented
+  static baseline, the 377 invalid bursts exactly the single-colour ones, and
+  `2c4/` companions matching their `.bur` files row for row. Recorded as
+  [usecases/burst-2cde-dynamics.md](/usecases/burst-2cde-dynamics.md) with
+  RF-985..RF-992 in the [findings queue](/reviews/findings.md): a mistyped
+  *File type* overwrites a good companion with an all-`NaN` one while reporting
+  "0 / 2980 bursts valid" (S1); the `alex` variant has no acceptor-excitation
+  control and scores the FRET channels instead (r = 0.81 with E); the Burst
+  Analysis shell hands 2CDE only the folder, never the detector setup; a stray
+  character in a channel list raises out of the Run click; **Stop** leaves the
+  status stuck on "Stopping …"; and the CLI/RPC report the output at `2cde/`
+  while the writer writes `2c4/`, whose hand-rolled layout the repo's own
+  `read_companion` cannot read.
+
 * **Docs reconciled with the tree: 22 OKF pointers into packages that moved, a
   plotting subsystem with no concept, and a chiplot status stuck at "Phase 1".**
   Scheduled truth pass over `docs/` and `okf/`.
