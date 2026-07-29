@@ -155,6 +155,15 @@ def filter_log_content(window):
     if not hasattr(widget, "rowCount"):
         return
 
+    # The pass below is O(rows) and runs whenever rows are appended. With no
+    # filter text and no hiding there is nothing to highlight, and a previous
+    # idle pass already cleared any leftover styling — so skip it. This is the
+    # common case: without it, a burst of log records is O(rows^2).
+    idle = not filter_text and not hide_non_matching
+    if idle and getattr(window, "_log_filter_idle", False):
+        return
+    window._log_filter_idle = idle
+
     for row in range(widget.rowCount()):
         message = widget.item(row, 3)
         row_text = widget.row_text(row) if hasattr(widget, "row_text") else message.text()
@@ -184,6 +193,39 @@ def update_log_filter(window):
     filter_log_content(window)
 
 
+def _macro_module_name(filename) -> str:
+    """The ``__name__`` a macro should see when it is exec'd.
+
+    Plain macro files get ``"__main__"``, because a macro is a script and users
+    write ``if __name__ == "__main__":`` around the part meant to run.
+
+    A **plugin entry point** gets ``"plugin"`` instead. Plugin ``__init__.py``
+    files carry both branches: ``"plugin"`` builds the widget and hands it to
+    ChiSurf, while ``"__main__"`` launches the plugin as a *standalone
+    application* — it creates its own ``QApplication`` and calls ``app.exec()``.
+    Running that branch from inside a running ChiSurf enters a second, nested
+    event loop that never returns: the application stops responding with no
+    error and no traceback. It is exactly how the test suite came to hang
+    forever during collection (``test/macros/test_macro_exec.py``), and it would
+    do the same to a user who ran a plugin from the macro menu — pong, tetris,
+    breakout, ``vv_vh_anisotropy`` and ``ndxplorer`` all carry such a block.
+
+    Parameters
+    ----------
+    filename : str or pathlib.Path
+        Path to the file about to be exec'd.
+
+    Returns
+    -------
+    str
+        ``"plugin"`` for a plugin entry point, otherwise ``"__main__"``.
+    """
+    path = pathlib.Path(filename)
+    if path.name == "__init__.py" and "plugins" in path.parts:
+        return "plugin"
+    return "__main__"
+
+
 def run_macro(
     filename=None, executor: str = "console", globals=None, locals=None, main_window=None
 ):
@@ -201,7 +243,7 @@ def run_macro(
     # executor == exec
     if globals is None:
         globals = {
-            "__name__": "__main__",
+            "__name__": _macro_module_name(filename),
             "cs": cs,
             "np": np,
             "os": os,

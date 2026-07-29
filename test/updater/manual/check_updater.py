@@ -6,7 +6,7 @@ import pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 import chisurf.core.settings
-from chisurf.plugins.updater.updater import ChiSurfUpdater
+from chisurf.plugins.core.updater.updater import ChiSurfUpdater
 
 # Debug: Print the contents of the cs_settings dictionary
 print("Contents of cs_settings:")

@@ -4,7 +4,7 @@ import pathlib
 # Add the parent directory to the Python path
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
-from chisurf.plugins.updater.updater import ChiSurfUpdater
+from chisurf.plugins.core.updater.updater import ChiSurfUpdater
 
 # Create an updater instance without specifying an update_url
 updater = ChiSurfUpdater()

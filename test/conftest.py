@@ -30,6 +30,16 @@ _HERMETIC_SETTINGS_DIR = pathlib.Path(tempfile.mkdtemp(prefix="chisurf-test-sett
 os.environ["CHISURF_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
 os.environ["MMFDB_SETTINGS_DIR"] = str(_HERMETIC_SETTINGS_DIR)
 
+# Matplotlib must not open windows during a test run. The default backend on
+# macOS is ``macosx``, a native GUI backend, so any test that draws a figure
+# pops a real window onto the user's screen — and a run that is meant to be
+# headless becomes interactive, can block on a window manager, and scatters
+# windows over whatever else is happening. Qt is already muzzled by
+# ``QT_QPA_PLATFORM=offscreen``; that setting does nothing for matplotlib, which
+# picks its own backend. Set before any import pulls matplotlib in, because the
+# backend is resolved at first import and cannot be changed afterwards.
+os.environ.setdefault("MPLBACKEND", "Agg")
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _hermetic_settings_dir():

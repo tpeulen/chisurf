@@ -22,7 +22,7 @@ def main():
     
     try:
         # Import the MicrotimeHistogram class
-        from chisurf.plugins.microtime_histogram.wizard import MicrotimeHistogram
+        from chisurf.plugins.tttr.microtime_histogram.wizard import MicrotimeHistogram
         
         # Create an instance of MicrotimeHistogram
         # Note: This will fail in a real test because it needs a Qt application

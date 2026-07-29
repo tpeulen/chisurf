@@ -6,8 +6,8 @@ sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
 
 # Try importing the updater module
 try:
-    from chisurf.plugins.updater import UpdaterWidget
-    print("Successfully imported UpdaterWidget from chisurf.plugins.updater")
+    from chisurf.plugins.core.updater import UpdaterWidget
+    print("Successfully imported UpdaterWidget from chisurf.plugins.core.updater")
 except ImportError as e:
     print(f"Import error: {e}")
 

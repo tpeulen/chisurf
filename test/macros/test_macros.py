@@ -1,7 +1,22 @@
-# Consolidated test file: test_macros.py
+"""Macro execution through the main window.
 
+This file began as a *consolidation* of ``test_macro_exec.py`` and
+``test_simple_macro.py`` — both were pasted in verbatim, at module scope, and
+neither original was removed. So the same code ran three times per session, and
+none of it was a test: no ``test_`` functions, no assertions, only prints.
 
-# --- FROM test_macro_exec.py ---
+Worse, the pasted body exec'd the **Pong game plugin** as a macro. ``run_macro``
+execs with ``__name__`` set to ``"__main__"``, which is exactly the branch a
+plugin uses to launch itself standalone, so pong called ``app.exec()`` and the
+pytest session stopped dead in Qt's event loop — during *collection*, with no
+output and no failing test to blame. See ``test_macro_exec.py`` for the full
+account.
+
+What remains here is the part the consolidation genuinely added: how one macro
+run relates to the next. Plain-``exec`` semantics live in
+``test_simple_macro.py``, and the main-window entry point in
+``test_macro_exec.py``.
+"""
 import pytest
 from qtpy import QtWidgets
 
@@ -14,88 +29,43 @@ if QtWidgets.QApplication.instance() is None:
     )
 
 
-import sys
-import pathlib
-import importlib
-import chisurf as cs
-from chisurf.gui.main import Main
+@pytest.fixture(scope="module")
+def main_window():
+    from chisurf.gui.main import Main
+    return Main()
 
-# Create a Main instance
-main = Main()
 
-# Path to the pong plugin's __init__.py file
-plugin_path = pathlib.Path(cs.plugins.__file__).parent / "misc" / "games" / "pong" / "__init__.py"
-print(f"Testing macro execution with file: {plugin_path}")
+def test_exec_executor_sees_the_macro_globals(main_window, tmp_path):
+    """``__file__`` reaches the macro, so it can find its own resources."""
+    marker = tmp_path / "seen.txt"
+    macro = tmp_path / "reports_its_file.py"
+    macro.write_text(
+        "import pathlib\n"
+        f"pathlib.Path(r'{marker}').write_text(__file__)\n"
+    )
 
-try:
-    # Run the macro using the 'exec' executor
-    main.onRunMacro(filename=plugin_path, executor='exec')
-    print("Macro executed successfully!")
-except Exception as e:
-    print(f"Error executing macro: {e}")
-    import traceback
-    traceback.print_exc()
-# --- FROM test_simple_macro.py ---
-import sys
-import os
+    main_window.onRunMacro(filename=macro, executor="exec")
 
-# Create a simple macro file
-simple_macro = os.path.join(os.path.dirname(os.path.abspath(__file__)), "simple_macro.py")
-with open(simple_macro, 'w') as f:
-    f.write("""
-# A simple macro that doesn't use relative imports
-print("Simple macro executed successfully!")
-x = 10
-y = 20
-result = x + y
-print(f"Result: {result}")
-""")
+    assert marker.read_text() == str(macro)
 
-print(f"Created simple macro: {simple_macro}")
 
-# Create a globals dictionary similar to what onRunMacro would create
-globals_dict = {
-    "__name__": "__main__",
-    "__file__": simple_macro
-}
+def test_two_macros_do_not_share_state(main_window, tmp_path):
+    """Each run gets its own globals.
 
-# Get the directory of the file
-macro_dir = os.path.dirname(simple_macro)
+    Leaking names between macros would make a macro's behaviour depend on
+    whatever the user happened to run before it.
+    """
+    first = tmp_path / "sets_a_name.py"
+    first.write_text("LEAKED = 'from the first macro'\n")
 
-# Temporarily add the macro directory to sys.path for relative imports
-original_sys_path = sys.path.copy()
-if macro_dir not in sys.path:
-    sys.path.insert(0, macro_dir)
+    marker = tmp_path / "leak.txt"
+    second = tmp_path / "looks_for_it.py"
+    second.write_text(
+        "import pathlib\n"
+        f"pathlib.Path(r'{marker}').write_text(str('LEAKED' in dir()))\n"
+    )
 
-try:
-    # Determine if this is part of a package (it's not, but we'll run the same code)
-    if '\\plugins\\' in simple_macro:
-        # Extract package name from path
-        parts = simple_macro.split('\\plugins\\')
-        if len(parts) > 1:
-            plugin_path = parts[1].split('\\')
-            if len(plugin_path) > 0:
-                package_name = plugin_path[0]
-                # Set __package__ for relative imports to work
-                globals_dict["__package__"] = f"cs.plugins.{package_name}"
-                print(f"Set __package__ to: {globals_dict['__package__']}")
+    main_window.onRunMacro(filename=first, executor="exec")
+    main_window.onRunMacro(filename=second, executor="exec")
 
-    # Execute the file
-    with open(simple_macro, 'rb') as file:
-        code = compile(file.read(), simple_macro, 'exec')
-        print("Compiled code successfully")
-        exec(code, globals_dict)
-            
-except Exception as e:
-    print(f"Error: {e}")
-    import traceback
-    traceback.print_exc()
-finally:
-    # Restore the original sys.path
-    sys.path = original_sys_path
-    print("Restored original sys.path")
-    
-    # Clean up the temporary file
-    if os.path.exists(simple_macro):
-        os.remove(simple_macro)
-        print(f"Removed temporary file: {simple_macro}")
+    assert marker.read_text() == "False"

@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     # Import the module to inspect the code
-    import chisurf.plugins.microtime_histogram.wizard as wizard_module
+    import chisurf.plugins.tttr.microtime_histogram.wizard as wizard_module
     
     print("\nTesting microtime histogram BID/BUR folder saving...")
     
