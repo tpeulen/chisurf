@@ -397,8 +397,8 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                     )
                     per_state[state] = entry
                     continue
-                entry["x"] = np.asarray(res['x'], dtype=np.float64)
-                entry["two_istar"] = float(res.get('twoIstar', float('nan')))
+                entry["x"] = np.asarray(res.x, dtype=np.float64)
+                entry["two_istar"] = float(res.twoIstar)
                 per_state[state] = entry
             out[det] = per_state
         return out
@@ -3381,22 +3381,23 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
         if bg_sum > 0.0:
             bg = bg / bg_sum
 
-        # Build the fit for the selected model. The estimator class is taken from
-        # the tttrlib registry entry's ``method`` field (no hardcoded mapping);
-        # all fit2x estimators share the Fit23 constructor + __call__ interface.
-        cls = self._fit_class()
-        fit = cls(
+        # Build the fit for the selected model, by registry name. Every model is
+        # reached the same way, so there is no per-estimator construction here.
+        from chisurf.core.fluorescence.mle.fit2x import (
+            Fit2x, Fit2xModel, Fit2xSettings,
+        )
+        settings = Fit2xSettings(
             dt=dt,
+            period=period,
             irf=irf,
             background=bg,
-            period=period,
             g_factor=gf,
             l1=l1,
             l2=l2,
-            p2s_twoIstar_flag=self.p2s_twoIstar,
-            soft_bifl_scatter_flag=self.BIFL_scatter
+            p2s_twoIstar=self.p2s_twoIstar,
+            soft_bifl_scatter=self.BIFL_scatter,
         )
-        return fit
+        return Fit2x(settings, model=Fit2xModel(self._fit_model_name()))
 
     def update_fit(self):
         """Re-optimise the current file's decay and redraw both plots.
@@ -3555,42 +3556,35 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
 
         The burst-MLE workflow constructs every fit from the acquisition inputs
         (``dt``, ``irf``, ``background``, …). Some registry models (e.g. fit26,
-        pattern fractioning) take reference decays instead, so their class does
-        not accept that construction; those are not offered here. Determined from
-        the class the registry names, not a hardcoded list.
+        pattern fractioning) are defined against fixed reference patterns
+        instead, and are not offered here.
+
+        The registry states this directly as ``n_patterns``. It used to be
+        inferred by introspecting the estimator class's ``__init__`` for
+        ``pattern_1``/``pattern_2`` arguments — a guess about a Python signature
+        that said nothing about the model, and that silently answered "yes" for
+        any class whose constructor was ``*args, **kwargs``.
         """
         try:
-            import inspect
             from chisurf.core import tttrlib_registry as _reg
-            method = _reg.describe(_reg.FIT_MODEL, model).get("method")
-            cls = getattr(tttrlib, method, None) if method else None
-            if cls is None:
-                return False
-            # The fit2x estimators delegate construction to their shared base
-            # (``*args, **kwargs``); a class that instead declares reference-decay
-            # inputs (``pattern_1``/``pattern_2``, e.g. fit26) is not built from
-            # an IRF here.
-            params = inspect.signature(cls.__init__).parameters
-            return "pattern_1" not in params and "pattern_2" not in params
+            entry = _reg.describe(_reg.FIT_MODEL, model) or {}
+            return int(entry.get("n_patterns", 0)) == 0
         except Exception:
             return False
 
-    def _fit_class(self):
-        """The tttrlib estimator class for the selected model, from the registry.
+    def _fit_model_name(self) -> str:
+        """Registry name of the selected fit, e.g. ``"fit23"``.
 
-        The class name comes from the registry entry's ``method`` field, so no
-        model→class table is hardcoded here; falls back to ``Fit23``.
+        A fit is built by name now, so there is no class to look up and no
+        model-to-class table to keep in step.
         """
+        name = self.fit_model
         try:
-            from chisurf.core import tttrlib_registry as _reg
-            method = _reg.describe(_reg.FIT_MODEL, self.fit_model).get("method")
-            if method:
-                cls = getattr(tttrlib, method, None)
-                if cls is not None:
-                    return cls
+            if name in tttrlib.fit_names():
+                return name
         except Exception:
             pass
-        return tttrlib.Fit23
+        return "fit23"
 
     @staticmethod
     def _tail_schema() -> dict:
@@ -4432,14 +4426,9 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
             )
             return
 
-        # Registry method + free-parameter names for the selected model. fit23
-        # uses its per-detector authored start vector; the other fit2x models
-        # share one start vector read from the registry-driven editor.
-        try:
-            from chisurf.core import tttrlib_registry as _reg
-            method = _reg.describe(_reg.FIT_MODEL, model).get("method") or "Fit23"
-        except Exception:
-            method = "Fit23"
+        # Free-parameter names for the selected model. fit23 uses its
+        # per-detector authored start vector; the other fit2x models share one
+        # start vector read from the registry-driven editor.
         param_names = self._fit_param_names(model)
         batch_x0, batch_fixed = self.fit_parameters  # model-aware (see property)
 
@@ -4628,7 +4617,6 @@ class MLELifetimeAnalysisWizard(QtWidgets.QMainWindow):
                         'bg': np.asarray(bg_cache[det], dtype=np.float64),
                         'class_lut': class_lut,
                         'model': model,
-                        'method': method,
                         'param_names': list(param_names),
                     }
 

@@ -68,32 +68,30 @@ def _burst_slice(first_ph, last_ph) -> slice:
 
 
 def _build_fitter(cfg):
-    """Build the raw tttrlib estimator for this detector's configuration.
+    """Build the estimator for this detector's configuration.
 
-    The batch worker uses the same estimator the interactive wizard builds
-    (``wizard.create_fit_instance``): the class named by the registry
-    (``cfg['method']``, e.g. ``Fit23``/``Fit24``/``Fit25``) rather than the
-    ``Fit2x`` facade, so batch results match the live preview exactly for every
-    model. The background is area-normalised here (gamma is then a true 0..1
-    fraction) — the same normalisation the facade does in
-    ``Fit2xSettings.__post_init__``; see okf/subsystems/mle-lifetime-fitting.md.
+    The batch worker and the interactive wizard now build through the same
+    ``Fit2x`` facade, so batch results match the live preview by construction
+    rather than by both of them independently reproducing the same setup. The
+    facade also area-normalises the background, so gamma is a true 0..1 fraction
+    (see okf/subsystems/mle-lifetime-fitting.md); it is no longer done here.
     """
-    import tttrlib
-    bg = np.asarray(cfg['bg'], dtype=np.float64)
-    bg_sum = float(bg.sum())
-    if bg_sum > 0.0:
-        bg = bg / bg_sum
-    cls = getattr(tttrlib, cfg.get('method', 'Fit23'))
-    return cls(
-        dt=float(cfg['dt']),
-        irf=np.asarray(cfg['irf'], dtype=np.float64),
-        background=bg,
-        period=float(cfg['period']),
-        g_factor=float(cfg['g_factor']),
-        l1=float(cfg['l1']),
-        l2=float(cfg['l2']),
-        p2s_twoIstar_flag=bool(cfg['p2s_twoIstar']),
-        soft_bifl_scatter_flag=bool(cfg['BIFL_scatter']),
+    from chisurf.core.fluorescence.mle.fit2x import (
+        Fit2x, Fit2xModel, Fit2xSettings,
+    )
+    return Fit2x(
+        Fit2xSettings(
+            dt=float(cfg['dt']),
+            irf=np.asarray(cfg['irf'], dtype=np.float64),
+            background=np.asarray(cfg['bg'], dtype=np.float64),
+            period=float(cfg['period']),
+            g_factor=float(cfg['g_factor']),
+            l1=float(cfg['l1']),
+            l2=float(cfg['l2']),
+            p2s_twoIstar=bool(cfg['p2s_twoIstar']),
+            soft_bifl_scatter=bool(cfg['BIFL_scatter']),
+        ),
+        model=Fit2xModel(cfg.get('model', 'fit23')),
     )
 
 
@@ -102,7 +100,8 @@ def _state_suffix(state):
     return "" if state is None else f" S{int(state)}"
 
 
-def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None):
+def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None,
+            extras=None):
     """One result row, laid out by the fitted model.
 
     ``fit23`` keeps its historical column set (tau/gamma/r0/rho + the two
@@ -110,6 +109,13 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None):
     other model writes ``Tau`` (= ``x[0]``, the best lifetime) plus one column per
     free parameter named by the registry schema (``cfg['param_names']``). Pass
     ``x=None`` for a skipped/failed burst to emit NaN in every numeric slot.
+
+    ``extras`` carries the fit's *derived* results by name (``r_scatter``,
+    ``r_experimental``). They used to be read out of ``x`` at indices 6 and 7,
+    because the estimator returned parameters and outputs in one array; the
+    fitted parameters now stand alone, so anything derived arrives here by name.
+    Reading them positionally would silently write NaN into two columns of the
+    ``.b?4`` export.
 
     With ``state`` set, every measured column is suffixed (``Tau S0 (green)``)
     and the identity columns are omitted: a sub-population of a burst is a
@@ -123,6 +129,8 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None):
             return float(x[i])
         except (TypeError, IndexError):
             return float('nan')
+
+    extras = extras or {}
 
     sfx = _state_suffix(state)
     rec = {}
@@ -148,8 +156,9 @@ def _record(fname, det, color, cfg, x, two_istar, cp_sum, cs_sum, state=None):
         rec[f'gamma{sfx} ({color})'] = g(1)
         rec[f'r0{sfx} ({color})'] = g(2)
         rec[f'rho{sfx} ({color})'] = g(3)
-        rec[f'r Scatter{sfx} ({color})'] = g(6)
-        rec[f'r Experimental{sfx} ({color})'] = g(7)
+        rec[f'r Scatter{sfx} ({color})'] = float(extras.get('r_scatter', float('nan')))
+        rec[f'r Experimental{sfx} ({color})'] = float(
+            extras.get('r_experimental', float('nan')))
     else:
         for i, nm in enumerate(cfg.get('param_names') or ()):
             rec[f'{nm}{sfx} ({color})'] = g(i)
@@ -350,10 +359,13 @@ def process_one_file_worker(args):
                     res = fitters[det](
                         data=d, initial_values=x0, fixed=cfg['fixed'],
                     )
-                    x = np.asarray(res['x'], dtype=np.float64)
-                    two_istar = float(res.get('twoIstar', float('nan')))
-                    rec.update(_record(fname, det, color, cfg, x, two_istar,
-                                       cp_sum, cs_sum, state=state))
+                    x = np.asarray(res.x, dtype=np.float64)
+                    two_istar = float(res.twoIstar)
+                    rec.update(_record(
+                        fname, det, color, cfg, x, two_istar, cp_sum, cs_sum,
+                        state=state,
+                        extras={'r_scatter': res.r_scatter,
+                                'r_experimental': res.r_experimental}))
                 out.append(rec)
         return out, len(bursts)
     finally:

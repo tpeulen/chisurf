@@ -69,23 +69,16 @@ PARAMETER_NAMES: dict[Fit2xModel, tuple[str, ...]] = {
     Fit2xModel.FIT25: ("tau1", "tau2", "tau3", "tau4", "gamma"),
 }
 
-_TTTRLIB_CLASS: dict[Fit2xModel, str] = {
-    Fit2xModel.FIT23: "Fit23",
-    Fit2xModel.FIT24: "Fit24",
-    Fit2xModel.FIT25: "Fit25",
-}
+#: Fundamental anisotropy used for ``fit25``, which takes ``r0`` as a fixed input
+#: rather than a fitted parameter.
+_FIT25_R0 = 0.38
 
-#: Full packed start-vector layout for the batch ``DecayFitNN.fit_matrix`` of the
-#: non-fit23 estimators. ``fit23`` keeps its own ``fit_matrix`` signature (the
-#: BIFL/P+2S flags are separate arguments there); the others take the flags
-#: inside the parameter vector, so ``fit_many`` packs them here.
-#: value = (x_width, n_free_params, bifl_flag_index, {extra_input_index: default})
-_BATCH_LAYOUT: dict[Fit2xModel, tuple[int, int, int, dict[int, float]]] = {
-    # x = [tau1, gamma, tau2, A2, offset, bifl, r_scat, r_exp]
-    Fit2xModel.FIT24: (8, 5, 5, {}),
-    # x = [tau1, tau2, tau3, tau4, gamma, r0, bifl, r_scat, r_exp]
-    Fit2xModel.FIT25: (9, 5, 6, {5: 0.38}),
-}
+# There is deliberately no model-to-class table and no packed-vector layout here
+# any more. Both used to be necessary because each estimator was its own class
+# with its own arrangement of parameters, setup flags and outputs inside one
+# array; tttrlib now describes all of that in its registry, so this module asks
+# for a fit by name and lets ``setup_vector``/``result_names`` say what the slots
+# mean. Re-introducing a table here would re-introduce the drift it caused.
 
 
 def assemble_vv_vh(parallel: np.ndarray, perpendicular: np.ndarray) -> np.ndarray:
@@ -204,10 +197,17 @@ class Fit2xResult:
     model_kind : Fit2xModel
         Which estimator produced this result.
     x : numpy.ndarray
-        Full optimised parameter vector as returned by tttrlib.  The leading
-        entries follow :data:`PARAMETER_NAMES`; trailing entries hold derived
-        quantities (for ``fit23``: ``x[6]`` = scatter anisotropy ``r_scatter``,
-        ``x[7]`` = experimental anisotropy ``r_experimental``).
+        The optimised parameters, and only those, ordered as
+        :data:`PARAMETER_NAMES`.  Derived quantities used to share this array —
+        ``x[6]`` and ``x[7]`` held anisotropies for ``fit23`` — which meant every
+        caller had to know a per-estimator layout.  They now live in
+        :attr:`results` under the names tttrlib publishes.
+    results : numpy.ndarray
+        The fit's result columns, named by :attr:`result_names`.  Every
+        estimator reports at least ``twoIstar``, ``converged`` and
+        ``iterations``.
+    result_names : tuple of str
+        Column names of :attr:`results`, taken from the tttrlib registry.
     twoIstar : float
         The ``2I*`` maximum-likelihood goodness-of-fit statistic (lower is
         better; ``~1`` per degree of freedom indicates a good fit).
@@ -221,7 +221,21 @@ class Fit2xResult:
     x: np.ndarray
     twoIstar: float
     fixed: np.ndarray
+    results: np.ndarray = dataclasses.field(default_factory=lambda: np.empty(0))
+    result_names: tuple[str, ...] = ()
     model_curve: np.ndarray | None = None
+
+    def result(self, name: str, default: float = float("nan")) -> float:
+        """Return a named result column, or ``default`` when absent.
+
+        Estimators publish different columns — only ``fit25`` reports
+        ``selected_index``, only the polarisation-resolved ones report
+        anisotropies — so asking by name keeps a caller working across models.
+        """
+        try:
+            return float(self.results[self.result_names.index(name)])
+        except (ValueError, IndexError):
+            return default
 
     def as_dict(self) -> dict[str, float]:
         """Return the named free parameters as a ``{name: value}`` mapping."""
@@ -246,17 +260,23 @@ class Fit2xResult:
 
     @property
     def r_scatter(self) -> float:
-        """Scatter anisotropy (``fit23`` only; NaN otherwise)."""
-        if self.model_kind is Fit2xModel.FIT23 and self.x.size > 6:
-            return float(self.x[6])
-        return float("nan")
+        """Scatter-corrected steady-state anisotropy (NaN when not reported)."""
+        return self.result("r_scatter")
 
     @property
     def r_experimental(self) -> float:
-        """Experimental (steady-state) anisotropy (``fit23`` only; NaN otherwise)."""
-        if self.model_kind is Fit2xModel.FIT23 and self.x.size > 7:
-            return float(self.x[7])
-        return float("nan")
+        """Experimental (steady-state) anisotropy (NaN when not reported)."""
+        return self.result("r_experimental")
+
+    @property
+    def converged(self) -> bool:
+        """Whether the optimiser met its tolerance rather than hitting a limit.
+
+        Note this does *not* mean the answer is meaningful: a lifetime pushed
+        against the excitation period converges onto that bound and still reports
+        ``True``, so compare :attr:`tau` against the period when it looks large.
+        """
+        return bool(self.result("converged", 0.0))
 
 
 class Fit2x:
@@ -291,21 +311,33 @@ class Fit2x:
             )
         self.settings = settings
         self.model = Fit2xModel(model)
-        cls = getattr(tttrlib, _TTTRLIB_CLASS[self.model])
-        kwargs = dict(
+
+        name = self.model.value
+        setup_kwargs = dict(
             dt=settings.dt,
-            irf=settings.irf,
-            background=settings.background,
             period=settings.period,
             g_factor=settings.g_factor,
             l1=settings.l1,
             l2=settings.l2,
-            p2s_twoIstar_flag=settings.p2s_twoIstar,
             soft_bifl_scatter_flag=settings.soft_bifl_scatter,
+            objective="p2s_mle" if settings.p2s_twoIstar else "poisson_mle",
         )
         if settings.convolution_stop is not None:
-            kwargs["convolution_stop"] = int(settings.convolution_stop)
-        self._fitter = cls(**kwargs)
+            setup_kwargs["convolution_stop"] = int(settings.convolution_stop)
+
+        irf = np.ascontiguousarray(settings.irf, dtype=np.float64)
+        background = np.ascontiguousarray(settings.background, dtype=np.float64)
+
+        # The model is immutable and caches what it derives from the IRF, so it
+        # is built once here and shared by every fit; only the problem carries
+        # per-fit state.
+        self._fit = tttrlib.DecayFit2(
+            name, tttrlib.setup_vector(name, **setup_kwargs), irf.tolist())
+        self._problem = tttrlib.DecayFitProblem(2, settings.n_channels, settings.dt)
+        self._problem.irf = tttrlib.VectorDouble(irf.tolist())
+        self._problem.background = tttrlib.VectorDouble(background.tolist())
+        self._n_parameters = self._fit.n_parameters(self._problem)
+        self._result_names = tuple(tttrlib.result_names(name))
 
     @property
     def n_channels(self) -> int:
@@ -347,28 +379,56 @@ class Fit2x:
             The optimised parameters and ``2I*`` goodness of fit.
         """
         x0 = np.ascontiguousarray(initial_values, dtype=np.float64)
-        if fixed is None:
-            fixed_arr = np.zeros(x0.size, dtype=np.int16)
-        else:
-            fixed_arr = np.ascontiguousarray(fixed, dtype=np.int16)
-        data_arr = np.ascontiguousarray(data, dtype=np.float64)
-        res = self._fitter(
-            data=data_arr,
-            initial_values=x0,
-            fixed=fixed_arr,
-            include_model=include_model,
+        fixed_arr = (
+            np.zeros(x0.size, dtype=np.int16)
+            if fixed is None
+            else np.ascontiguousarray(fixed, dtype=np.int16)
         )
+        data_arr = np.ascontiguousarray(data, dtype=np.float64)
+        self._problem.data = tttrlib.VectorDouble(data_arr.ravel().tolist())
+
+        out = self._fit.fit(
+            self._parameters(x0), self._constraints(fixed_arr), self._problem)
+
         return Fit2xResult(
             model_kind=self.model,
-            x=np.asarray(res["x"], dtype=np.float64),
-            twoIstar=float(res.get("twoIstar", float("nan"))),
-            fixed=np.asarray(res.get("fixed", fixed_arr), dtype=np.int16),
+            x=np.asarray(out.parameters, dtype=np.float64),
+            results=np.asarray(out.results, dtype=np.float64),
+            result_names=self._result_names,
+            twoIstar=float(out.objective),
+            fixed=fixed_arr,
             model_curve=(
-                np.asarray(res["model"], dtype=np.float64)
-                if include_model and "model" in res
+                np.asarray(self._problem.model, dtype=np.float64)
+                if include_model
                 else None
             ),
         )
+
+    def _parameters(self, x0: np.ndarray) -> list[float]:
+        """Pad the caller's free parameters out to the model's full vector.
+
+        ``fit25`` is the only asymmetry: it takes ``r0`` as a fixed instrument
+        constant rather than something a caller tunes, so it is supplied here
+        rather than being demanded of every caller.
+        """
+        values = [float(v) for v in x0[: self._n_parameters]]
+        while len(values) < self._n_parameters:
+            values.append(
+                _FIT25_R0 if self.model is Fit2xModel.FIT25 else 0.0)
+        return values
+
+    def _constraints(self, fixed_arr: np.ndarray):
+        """Translate the fix mask into tttrlib's link vector.
+
+        A parameter the caller did not mention is held: the vector may be longer
+        than the mask (see :meth:`_parameters`), and inventing freedom for a slot
+        nobody asked about is how ``r0`` would silently start being fitted.
+        """
+        codes = [
+            -1 if (i >= fixed_arr.size or int(fixed_arr[i])) else 0
+            for i in range(self._n_parameters)
+        ]
+        return tttrlib.DecayFitConstraints(tttrlib.VectorInt32(codes))
 
     __call__ = fit
 
@@ -385,8 +445,9 @@ class Fit2x:
         threads each calling ``fit_many`` on a chunk run in true parallel
         (unlike per-row :meth:`fit`, whose per-call GIL handoff does not scale).
 
-        Supported for ``fit23``, ``fit24`` and ``fit25`` (every estimator that
-        exposes a native ``fit_matrix`` batch kernel).
+        Every estimator supports this: the batch loop is part of the fit
+        interface rather than something each model had to provide, so there is no
+        longer a set of "estimators with a native batch kernel" and a set without.
 
         Parameters
         ----------
@@ -403,55 +464,34 @@ class Fit2x:
         Returns
         -------
         numpy.ndarray
-            ``(n_rows, n_free + 1)`` array of the fitted free parameters followed
-            by the ``2I*`` fit quality per row.
-
-        Raises
-        ------
-        NotImplementedError
-            If the estimator has no native batch kernel.
+            ``(n_rows, n_parameters + 1)`` array of the fitted parameters
+            followed by the ``2I*`` fit quality per row.
         """
         data_arr = np.ascontiguousarray(data, dtype=np.float64)
         if data_arr.ndim != 2:
             raise ValueError("data must be a 2-D (n_rows, 2*n_channels) matrix")
         x0_free = np.ascontiguousarray(initial_values, dtype=np.float64)
-
-        # fit23 keeps its dedicated fit_matrix (BIFL/P+2S flags are separate
-        # arguments, and it has the tau-only fast path).
-        if self.model is Fit2xModel.FIT23:
-            fixed_arr = (
-                np.zeros(x0_free.size, dtype=np.int16)
-                if fixed is None
-                else np.ascontiguousarray(fixed, dtype=np.int16)
-            )
-            out = np.empty((data_arr.shape[0], 5), dtype=np.float64)
-            tttrlib.DecayFit23.fit_matrix(
-                data_arr, x0_free, fixed_arr,
-                float(self._fitter._bifl_scatter),
-                float(self._fitter._p_2s_flag),
-                self._fitter._m_param, out,
-            )
-            return out
-
-        layout = _BATCH_LAYOUT.get(self.model)
-        if layout is None:
-            raise NotImplementedError(
-                f"batch fit_many has no native kernel for {self.model.value}"
-            )
-        x_width, n_free, bifl_index, extras = layout
-        # Pack the shared start vector: free params, estimator-specific input
-        # slots (e.g. fit25's r0), then the BIFL-scatter flag the fitter carries.
-        x0 = np.zeros(x_width, dtype=np.float64)
-        x0[:n_free] = x0_free[:n_free]
-        for index, value in extras.items():
-            x0[index] = value
-        x0[bifl_index] = float(self._fitter._bifl_scatter)
         fixed_arr = (
-            np.zeros(n_free, dtype=np.int16)
+            np.zeros(x0_free.size, dtype=np.int16)
             if fixed is None
             else np.ascontiguousarray(fixed, dtype=np.int16)
         )
-        out = np.empty((data_arr.shape[0], n_free + 1), dtype=np.float64)
-        decay_cls = getattr(tttrlib, "Decay" + _TTTRLIB_CLASS[self.model])
-        decay_cls.fit_matrix(data_arr, x0, fixed_arr, self._fitter._m_param, out)
+
+        batch = self._fit.fit_many(
+            self._problem, data_arr.ravel().tolist(),
+            int(data_arr.shape[0]), int(data_arr.shape[1]),
+            self._parameters(x0_free), self._constraints(fixed_arr))
+
+        n_rows = data_arr.shape[0]
+        parameters = np.asarray(batch.parameters, dtype=np.float64).reshape(
+            n_rows, self._n_parameters)
+        # Report the parameters this facade *names*, which is not always all of
+        # them: fit25's r0 is an instrument constant supplied by
+        # :meth:`_parameters`, not something a caller passed in or can read back
+        # by position. Returning it would shift every column a caller indexes by
+        # :data:`PARAMETER_NAMES`.
+        n_named = len(PARAMETER_NAMES[self.model])
+        out = np.empty((n_rows, n_named + 1), dtype=np.float64)
+        out[:, :n_named] = parameters[:, :n_named]
+        out[:, n_named] = np.asarray(batch.objective, dtype=np.float64)
         return out

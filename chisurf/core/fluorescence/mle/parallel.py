@@ -1,6 +1,6 @@
 """Threaded batch fitting for the ``fit2x`` estimators.
 
-tttrlib's batch entry point (``DecayFit23.fit_matrix``) fits a whole matrix of
+tttrlib's batch entry point (``DecayFit2.fit_many``) fits a whole matrix of
 decays in one call with the Python GIL released for the *entire* loop.  That
 makes in-process threading scale: several threads each fit a chunk of rows in
 true parallel.  (Per-row fitting does **not** scale — each fit releases the GIL
@@ -49,7 +49,9 @@ def fit_matrix_threaded(
         GIL-released batch call.
     model : Fit2xModel, optional
         Estimator to use (default ``FIT23``). ``FIT23``/``FIT24``/``FIT25`` each
-        expose a native ``fit_matrix`` batch kernel through :meth:`Fit2x.fit_many`.
+        are batched through :meth:`Fit2x.fit_many`; every model supports it,
+        because the batch loop belongs to the fit interface rather than to each
+        estimator.
 
     Returns
     -------

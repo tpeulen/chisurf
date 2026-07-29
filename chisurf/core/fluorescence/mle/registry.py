@@ -25,8 +25,10 @@ def fit_models() -> dict[str, dict[str, typing.Any]]:
     Returns
     -------
     dict
-        ``{name: {"name", "label", "summary", "description", "method",
-        "setup", "params_schema"}}``.
+        ``{name: {"name", "label", "summary", "description", "setup",
+        "params_schema", "results_schema", "n_patterns", ...}}``. There is no
+        ``"method"`` key: a fit is built by its registry name, not by looking up
+        a class.
     """
     return tttrlib_registry.entries(tttrlib_registry.FIT_MODEL)
 
