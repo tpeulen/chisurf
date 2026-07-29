@@ -2,6 +2,49 @@
 
 ## 2026-07-29
 
+* **[PRD-51](/prds/prd-51.md): surveyed the vendored ICS tools, and the port target
+  changed (planning only, no code).** The package I had cited,
+  `junk/Image-Correlation-Spectroscopy/`, is only the 2006 teaching branch.
+  **`junk/ICS-Tools/` is the canonical repository** and additionally carries
+  `2015-Elvis_Pandzic/STICCSpackage-JoVE/` — STICS as actually practiced. Porting
+  from the 2006 code would have reproduced a whole-field, single-vector toy and
+  missed the method.
+  What the 2015 package specifies, none of which we have: **ROI×TOI tiling** (16-px
+  ROIs shifted by 4 → ~16× overlap, crossed with 60-frame windows) producing a *time
+  series* of vector maps; **four** immobile filters (Fourier-DC, moving average,
+  zero-phase Butterworth IIR, none) that are **not** equivalent — the latter two
+  remove anything slower than their cutoff, which is what a slowly *drifting*
+  "immobile" fraction needs, and the 2006 one-liner is only the degenerate DC case;
+  a Gaussian fit weighted within `fitRadius` of the peak; **`omegaThreshold`**, which
+  truncates the lag series at the first lag whose fitted waist exceeds a threshold;
+  the Ji & Danuser (2005) **peak-significance gate**, carefully written so two maxima
+  belonging to one broad peak still pass; **three** rejection stages (neighbour-median
+  over 8 nn vs 24-nn std, NaN drop, then 3σ magnitude **iterated twice** because the
+  first pass's statistics are themselves contaminated); a physical velocity ceiling
+  `sqrt(ROIsize^2/2)*pixelSize/(t_frame*tauLimit)`; and polygon cell masking that is
+  both a correctness gate and the dominant speedup.
+  **`omegaThreshold` retires a task I had written into the DoD.** I had planned to
+  *invent* a headless replacement for the 2006 code's "click the end of the linear
+  region". It already exists, is published, and is validated — reproduce it rather
+  than substituting something simpler and calling it equivalent.
+  **STICCS is new scope**: the two-channel extension yields four vector maps per time
+  window (two auto, cross 12, cross 21). The two cross maps are not redundant — an
+  inter-channel acquisition delay makes them asymmetric, and that asymmetry *is* the
+  co-transport signature. Natural partner to [PRD-67](/prds/prd-67.md).
+  Also surveyed: `junk/pysimfcs/` (N&B in photon-counting **and analog** flavours with
+  the `S` factor, B-vs-N histogram gating with back-mapping to pixels, and per-pixel
+  linear **detrending** — mandatory before N&B, since N&B's entire signal is the
+  variance and bleaching inflates `B` directly; a *different* correction from the
+  immobile filter and not interchangeable with it); `junk/ipcf/` (chunked out-of-core
+  pCF, the reference if cost bites); `junk/Imaging_FCS/` (**FCS diffusion laws** — a
+  distinct readout, parked explicitly in Non-goals rather than dropped).
+  Benchmark target updated to the reference's own defaults (512×512×300,
+  ROI 16/shift 4, TOI 60/shift 1, tauLimit 21), and the DoD grew tests that pin the
+  parts most likely to be quietly simplified away: that one immobile filter is not
+  enough, that the 3σ rejection really iterates, that cross 12 ≠ cross 21, and that
+  `B` is right only after detrending. Not yet surveyed: Correlescence, FCSlib, PAM,
+  quickfit3.
+
 * **[PRD-51](/prds/prd-51.md) rewritten around the STICS port, and the "one method"
   framing corrected (planning only, no code).**
   The PRD was stale: it claimed temporal/spatiotemporal image correlation was

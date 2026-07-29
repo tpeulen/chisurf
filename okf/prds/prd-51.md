@@ -64,9 +64,13 @@ Consequences that the current code gets wrong, and that this PRD exists to fix:
 # Status
 
 In progress. Landed: the shared correlation array and one Gaussian transport model.
-Not started: STICS as a distinct method (velocity workflow + vector field), iMSD as
-a width readout, TICS decay models, N&B, spectral RICS, and the separation of the
-four into distinct selectable models.
+Not started: STICS as a distinct method (ROI×TOI velocity workflow + vector-map time
+series), STICCS, iMSD as a width readout, TICS decay models, N&B, spectral RICS, and
+the separation of the methods into distinct selectable models.
+
+The reference implementation to port has been surveyed in full (see below): the
+estimators, the quality gates and the rejection criteria are all already specified
+and published, so this is a port, not a design exercise.
 
 Parent: [PRD-49](prd-49.md) (Phase 2). Related: PRD-38, PRD-40, PRD-52, PRD-53.
 
@@ -78,16 +82,26 @@ image stacks — core quantitative-imaging measurements. ChiSurf can currently
 headline STICS deliverable: a spatially resolved flow **vector field** overlaid
 on the image, obtained without assuming a transport model.
 
-# Port target — the reference Matlab ICS package
+# Port target — the reference Matlab ICS packages
 
-A reference Matlab implementation of the whole ICS/STICS/TICS family is vendored
-in-tree at `junk/Image-Correlation-Spectroscopy/` (Wiseman group, ICS Analysis
-v1.0, 2006; released open source with the authors' permission — see its
-`README.txt`). It is the concrete specification for this port. Its
-`tutorial/ICSTutorial.html` is a worked end-to-end example usable as a
-regression fixture.
+Two vendored copies exist, and **the one to port from is not the obvious one**:
 
-## What the reference has vs. what ChiSurf has
+* `junk/Image-Correlation-Spectroscopy/` — the 2006 ICS Analysis v1.0 package.
+  Complete and pedagogical (its `tutorial/ICSTutorial.html` is a worked
+  end-to-end example, usable as a regression fixture), but it is the *teaching*
+  version: one script per method, whole-field, no vector maps.
+* **`junk/ICS-Tools/` — the canonical lab repository, and the real target.** It
+  contains the 2006 package as one branch **plus `2015-Elvis_Pandzic/STICCSpackage-JoVE/`**,
+  which is STICS as actually practiced: ROI×TOI vector mapping, four immobile-filter
+  choices, bounded peak fitting, an automated linear-region cutoff, three stages of
+  vector rejection, a peak-significance gate, polygon cell masking, batch processing
+  — and **STICCS**, the two-channel cross-correlation extension. References: Hebert,
+  Costantino & Wiseman, *Biophys. J.* **88**, 3601 (2005); Ashdown *et al.*,
+  *J. Vis. Exp.* (2015); Kolin, Costantino & Wiseman, *Biophys. J.* **90**, 628 (2006).
+
+Port from the 2015 package; keep the 2006 tutorial as the fixture.
+
+## What the 2006 reference has vs. what ChiSurf has
 
 | Reference file | Does | ChiSurf today |
 | --- | --- | --- |
@@ -104,19 +118,79 @@ regression fixture.
 | `simul8tr/` | synthetic stacks (diffusion, flow, blinking, PSF, counting/background noise) | → [PRD-53](prd-53.md) |
 | `imageManipulation/rd_img16.m`, `rd_imgser.m` | vendor-specific TIFF/RAW readers | ✅ superseded by the shared image-source seam ([PRD-67](prd-67.md)) |
 
-**Do not port the Matlab structure.** It is one script per method with GUI
-handles (`gcbf`, `waitbar`, `ginput`) wired into the numerics — the "select the
-end of the linear region by clicking" step in `velocity.m` is interactive by
-construction. The port keeps the *physics and the estimators*, and re-expresses
-them against the existing carpet: headless functions in
-`chisurf/core/experiments/ics/`, fit models in `chisurf/core/models/ics/`, and
-AutoForm `view.json` for every UI.
+## What the 2015 STICCS package adds — this is the actual algorithm
+
+`stics_vectormapping.m` is the specification. Its pipeline, none of which ChiSurf has:
+
+1. **ROI × TOI tiling.** A spatial window (`ROIsize`, default 16 px) slid by `ROIshift`
+   (4 px, i.e. overlapping) crossed with a temporal window (`TOIsize`, 60 frames)
+   slid by `TOIshift`. Output is a **time series of vector maps**, not one map.
+2. **Immobile filtering — four choices, not one.** `FourierWhole` (zero the temporal
+   DC, add the mean back), `MovingAverage` (subtract a running mean over `MoveAverage`
+   frames, default 21), `butterIIR` (zero-phase 6th-order Butterworth high-pass,
+   cutoff `2/(t_frame * n_frames)`), `none`. These are **not equivalent**: the
+   moving-average and Butterworth variants remove anything *slower* than their
+   cutoff, which is what you want when the "immobile" fraction is really a slow
+   drift. The 2006 one-liner is only the degenerate Fourier case.
+3. **Bounded Gaussian fit.** `gaussfit(..., fitRadius)` weights only pixels within
+   `fitRadius` (8 px) of the peak. Fitting the whole ROI map is both slower and
+   wrong — distant structure pulls the centroid.
+4. **Automated linear-region cutoff — `omegaThreshold`.** Truncate the lag series at
+   the first lag whose fitted beam waist exceeds a threshold (10 px). Once the peak
+   has spread that far its position is meaningless. **This is the headless criterion
+   the 2006 `velocity.m` asked the user to click for** — it already exists and does
+   not need inventing.
+5. **Peak-significance gate.** `correlationSignificance.m` implements the Ji &
+   Danuser (*J. Microsc.*, 2005) test: reject a correlation function whose global
+   maximum is not clearly dominant over the other regional maxima — with the
+   deliberate subtlety that two maxima belonging to *one* broad peak must still pass.
+6. **Three-stage vector rejection.** (a) `vectorOutlier` — compare each vector to the
+   median of its 8 nearest neighbours against a threshold scaled by the std of its 24
+   nearest; (b) drop NaNs; (c) reject magnitudes beyond 3σ, **iterated twice**,
+   because the first pass's mean and std are themselves contaminated by the outliers.
+7. **A physical velocity ceiling.** `thresholdV = sqrt(ROIsize^2/2) * pixelSize /
+   (t_frame * tauLimit)` — a peak cannot be tracked further than the ROI half-diagonal
+   within the lag window, so anything faster is an artefact, not a measurement.
+8. **Polygon cell mask** (`DetermineCellMaskFromAverageImage`, `roipoly`) selecting
+   which ROIs are computed at all — correctness *and* the dominant speedup.
+9. **STICCS — the two-channel extension.** `sticcs_vectormapping.m` produces **four**
+   vector maps per TOI: channel-1 auto, channel-2 auto, and both cross-correlations
+   12 and 21. The two cross maps are *not* redundant: an inter-channel `timeDelay`
+   (sequential-scan acquisition) makes them asymmetric, and that asymmetry is the
+   interaction/co-transport signature. This is a distinct method, previously not in
+   PRD-51's scope, and the natural partner to [PRD-67](prd-67.md) colocalization.
+
+## What the other vendored ICS tools add
+
+| Tool | Contributes |
+| --- | --- |
+| `junk/pysimfcs/` | **N&B done properly**: photon-counting *and* **analog** detector variants (the analog `S` factor is a separate calibration), plus N&B histogram **gating** — select a region of the B-vs-N histogram and back-map it onto pixels, which is the workflow N&B is actually used for. Also `stack_detrend_linear` — per-pixel linear detrending, **mandatory before N&B**: N&B's entire signal is the variance, so photobleaching inflates `B` directly. This is a *different* correction from the immobile filter and must not be conflated with it. Also fits RICS via simultaneous horizontal+vertical profiles rather than the full 2D map — cheaper, and a useful cross-check. |
+| `junk/ipcf/` | Pair-correlation (pCF) over multi-gigabyte series in overlapping chunks — the out-of-core/chunking reference if vector-map cost becomes the problem. pCF itself is [PRD-54](prd-54.md). |
+| `junk/Imaging_FCS/` | Arbitrary pixel binning + ROI for imaging FCS/ICCS, TIRF/SPIM fit models, and **FCS diffusion laws** (the `tau_D` vs area intercept that distinguishes free / meshwork / domain diffusion) — a distinct readout none of the above provides. |
+| `junk/Correlescence/`, `junk/FCSlib/`, `junk/PAM/`, `junk/quickfit3/` | Not yet surveyed for this PRD; check before implementing N&B or the diffusion laws. |
+
+**Do not port the Matlab structure.** Both packages wire GUI handles (`gcbf`,
+`waitbar`, `roipoly`, `inputdlg`) into the numerics, and the 2015 driver hard-codes
+Windows paths and writes `.mat`/PDF side effects from inside the analysis. The port
+keeps the *physics and the estimators* and re-expresses them headlessly:
+`chisurf/core/experiments/ics/` for the estimators, `chisurf/core/models/ics/` for
+the fit models, AutoForm `view.json` for every UI, and the cell polygon supplied as
+a `chisurf/core/roi` region rather than drawn mid-run.
+
+**But do port its judgement.** The 2006 package asks the user to *click* the end of
+the linear region; I had planned to invent a headless criterion for that. No need —
+`omegaThreshold`, the significance gate, the three rejection stages and the velocity
+ceiling are exactly that judgement, already worked out and validated in a published
+method. Reproduce them; do not substitute something simpler and call it equivalent.
 
 # Open question — does the kernel belong in tttrlib?
 
 The carpet is currently pure NumPy: `n_lags × (n_frames − Delta)` 2D FFTs.
-A spatially resolved STICS vector map multiplies that by the number of
-sub-regions × time windows, which is where it stops being free. Two candidates:
+STICS vector mapping multiplies that by ROIs × TOIs, and the reference defaults make
+the multiplier concrete: 16-px ROIs shifted by 4 px means **~16× overlap**, so a
+512×512 field is ~15 000 ROIs *per time window*, each with its own `tauLimit`-deep
+carpet and per-lag fit. The polygon mask is what makes this tractable at all. Two
+candidates:
 
 * **Keep it in ChiSurf (NumPy/FFT).** No new C++ surface; the sub-region loop
   parallelises trivially; FFT plans dominate and NumPy already delegates them.
@@ -125,18 +199,27 @@ sub-regions × time windows, which is where it stops being free. Two candidates:
   would correlate without ever materialising the stack in Python, and would be
   reusable outside ChiSurf.
 
-**Decide by measurement, not by preference** — benchmark a realistic vector-map
-job (e.g. 256×256 × 200 frames, 16×16 sub-regions, 20 lags) before writing any
-C++. Record the numbers in [benchmarks](/references/benchmarks.md). The prior is
-that this is FFT-bound and therefore *not* a language problem — the same
-conclusion the decay-fit FFT work reached.
+**Decide by measurement, not by preference** — benchmark the reference's own defaults
+(512×512 × 300 frames, `ROIsize` 16, `ROIshift` 4, `TOIsize` 60, `TOIshift` 1,
+`tauLimit` 21) before writing any C++. Record the numbers in
+[benchmarks](/references/benchmarks.md). The prior is that this is FFT-bound and
+therefore *not* a language problem — the same conclusion the decay-fit FFT work
+reached — and that the algorithmic wins (mask early, reuse FFT plans across ROIs of
+equal size, batch the per-lag fits) land before any language change would.
 
 # Scope
 
-- **STICS velocity workflow** (the port above) — immobile filter, per-lag peak
-  tracking, linear-region regression, spatially resolved flow vector maps.
+- **STICS velocity workflow** (the port above) — ROI×TOI tiling, the four immobile
+  filters, bounded per-lag peak tracking, `omegaThreshold` cutoff, regression,
+  significance gate, three-stage vector rejection, velocity ceiling, and a time
+  series of flow vector maps.
+- **STICCS** — the two-channel extension: four vector maps per time window (two auto,
+  two cross), with the inter-channel acquisition delay carried explicitly so the 12/21
+  asymmetry is interpretable.
 - **N&B** — apparent/true brightness & number from pixel intensity mean/variance;
-  aggregation-state maps.
+  aggregation-state maps; **photon-counting and analog** variants; B-vs-N histogram
+  gating with back-mapping to pixels; and per-pixel **detrending** as a required
+  pre-step (a bleaching correction, distinct from the immobile filter).
 - **TICS decay models** — diffusion, 3D diffusion, diffusion+flow, pure flow, as
   selectable fit models over `IcsCarpet.tics_curve`.
 - **iMSD** — peak **width** `sigma^2(tau)` vs lag as its own estimator, reported as
@@ -161,15 +244,34 @@ conclusion the decay-fit FFT work reached.
 
 # Definition of Done
 
-- [ ] Immobile Fourier filter as a headless function on the stack, with a test that
-      a synthetic static+mobile stack loses its static component.
-- [ ] Per-lag Gaussian peak tracking returning `(x0, y0, w, amplitude)` per frame lag.
-- [ ] Linear-region regression → `(v_x, v_y)`, with the region chosen by a headless
-      criterion (not by clicking), and the interactive picker only as an override.
-- [ ] Spatially resolved STICS: sub-region × time-window tiling → flow vector field,
-      rendered as a chiplot overlay on the image.
+- [ ] All four immobile filters headless (`FourierWhole` / `MovingAverage` /
+      `butterIIR` / `none`), with a test that distinguishes them: a stack whose
+      static component *drifts slowly* must be cleaned by the moving-average and
+      Butterworth filters and **not** by DC removal. One filter is not enough.
+- [ ] Per-lag Gaussian peak tracking returning `(x0, y0, w, amplitude)` per frame lag,
+      weighted within `fitRadius` of the peak, with a test that distant structure
+      outside the radius does not move the fitted centre.
+- [ ] `omegaThreshold` cutoff + linear regression → `(v_x, v_y)`, fully headless; the
+      interactive picker only as an override.
+- [ ] Peak-significance gate (Ji & Danuser 2005), including the case it is designed
+      for: two regional maxima belonging to one broad peak must still **pass**.
+- [ ] Three-stage vector rejection — neighbour-median (8 nn) vs 24-nn std, NaN drop,
+      and 3σ magnitude **iterated twice** — with a test that the second iteration
+      changes the result (otherwise the iteration has been silently dropped).
+- [ ] Velocity ceiling `sqrt(ROIsize^2/2)*pixelSize/(t_frame*tauLimit)` computed and
+      applied, not left to the user to remember.
+- [ ] Spatially resolved STICS: ROI×TOI tiling → a **time series** of vector maps,
+      rendered as a chiplot overlay on the image; ROI selection driven by a
+      `chisurf/core/roi` polygon, which must also skip the excluded ROIs (the speedup).
+- [ ] STICCS: four vector maps per time window (auto 1, auto 2, cross 12, cross 21)
+      with the inter-channel delay carried explicitly, and a test that 12 and 21 are
+      **not** forced equal.
 - [ ] N&B: apparent/true `N` and `epsilon` maps; recovers a known brightness on a
-      simulated stack.
+      simulated stack; analog variant with its `S` factor; B-vs-N histogram gating
+      that back-maps a selected region onto pixels.
+- [ ] Per-pixel detrending as a separate, required pre-step for N&B, with a test on a
+      bleaching stack that `B` is recovered correctly only after detrending — pinning
+      that it is not interchangeable with the immobile filter.
 - [ ] TICS decay models (diffusion / 3D diffusion / diffusion+flow / flow) selectable
       in add-fit and rendered from `view.json`.
 - [ ] iMSD implemented as a peak-**width** readout returning `sigma^2(tau)`, with a
@@ -198,7 +300,14 @@ conclusion the decay-fit FFT work reached.
 
 Phasor imaging ([PRD-52](prd-52.md)); spectral unmixing beyond RICS weighting
 ([PRD-54](prd-54.md)); particle tracking ([PRD-52](prd-52.md)); simulation itself
-([PRD-53](prd-53.md)).
+([PRD-53](prd-53.md)); pair-correlation analysis ([PRD-54](prd-54.md), with
+`junk/ipcf/` as its chunking reference).
+
+**Deliberately parked, not forgotten:** the **FCS diffusion laws** from
+`junk/Imaging_FCS/` (`tau_D` vs binned observation area; the intercept separates free
+diffusion from meshwork-hindered and domain-partitioned). It is a genuinely distinct
+readout from everything above and belongs to whichever PRD takes imaging-FCS/ICCS with
+arbitrary pixel binning — file it there rather than losing it here.
 
 # Relationships
 
