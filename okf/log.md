@@ -2,6 +2,27 @@
 
 ## 2026-07-29
 
+* **[PRD-71](/prds/prd-71.md) created — fast 2D MFD fitting (design note, no code).**
+  Fits kinetic models to the 2D MFD burst histograms directly from a processed
+  burst dataset. The nuisance measure is PDA-style and empirical — `P(S, t_G,
+  t_R)`, the joint of burst signal with the *green/red observation spans*, so no
+  diffusion is simulated and no brightness law is assumed; burst selection is
+  inherited by that measure rather than modelled, and background is Poisson with
+  mean `bg_rate · t_c` per channel. The lifetime axis is the mean micro time,
+  whose moments follow from the decay parameters plus IRF moments in closed form
+  (wrap-around trap: use the wrapped moments). States carry a non-central-chi
+  `p(R)` — static in ns, averaged in ms — so `σ` is imprinted on the decay shape
+  and is fitted with an AV prior. Everything is binned in **raw** observable
+  space with corrections in the forward model, so the data histogram never moves
+  and corrections may be freed. Occupation times come from a deterministic
+  transfer matrix (no Monte-Carlo noise in the objective). Three composable
+  scoring sources over one model core: individual bursts, marginalized 2D
+  histograms, pooled per-bin decays — with the summed deviance flagged as an
+  M-estimator, so uncertainties must come from the burst-wise source or a
+  bootstrap. Two-step milestone: static-on-real-data with zero free broadening,
+  then a known-rate system recovered; the photon simulator is a code test, never
+  a physics test. Added to the [PRD index](/prds/index.md).
+
 * **[PRD-51](/prds/prd-51.md): pysimfcs read in full, and `junk/clone.sh` made to
   match reality (planning only, no code).** pysimfcs was already cloned and current
   (`1bde3c2`, 2025-06-03) — but `clone.sh` listed only 12 of the **46** clones present,
