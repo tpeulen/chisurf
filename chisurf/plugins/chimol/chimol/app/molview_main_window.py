@@ -134,7 +134,6 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
             {
                 "type": "tab",
                 "tabs": [
-                    {"widget_key": "Sequence", "tab_name": "Sequence", "tab_text": "Sequence"},
                 ],
                 "current_index": 0,
             },
@@ -299,7 +298,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             self.dock_area.addTab(self.rmf_panel.widget, "RMF", close_mode="hide")
             self.dock_area.addTab(self.state_control.widget, "State", close_mode="hide")
             self.dock_area.addTab(self.volume_panel, "Map", close_mode="hide")
-            self.dock_area.addTab(self.sequence.widget, "Sequence", close_mode="hide")
             self.dock_area.addTab(self.command_panel.widget, "Command", close_mode="hide")
             try:
                 self.dock_area.set_layout_state(
@@ -2137,6 +2135,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             rows.append(
                 InternalSequenceRow(
                     name=str(entry.get("name", object_id)),
+                    object_id=str(object_id),
                     codes="".join(str(c) for c in codes),
                     numbers=[int(n) for n in (numbers if numbers is not None else [])],
                     colors=[

@@ -407,6 +407,20 @@
 
 ## 2026-07-28
 
+* **Recolouring the molecule now recolours the sequence, and the Qt sequence
+  tab is gone.** The strip was coloured once, when its rows were built, so a
+  molecule coloured by secondary structure sat above a strip still showing the
+  scheme from load -- two pictures of one thing, disagreeing. Colouring is a
+  *command* (`spectrum`, `color`, `ss`) and there is no signal for it, so the
+  renderer re-reads the residue colours each time it draws, the same way it
+  reads the frame. Reading them back is a cached array copy: nothing beside
+  drawing the molecule. Each row carries its object id so the colours can be
+  fetched without going back through the window that built it.
+  - The **Sequence tab is no longer added** to the dock area: the strip in the
+    viewport replaces it, and two views of one sequence drift. The widget itself
+    stays for now -- about a hundred call sites still feed it, and tearing those
+    out is a change of its own rather than something to bolt on here.
+
 * **The mouse now reads the same table the block draws.** `action_of(mode,
   button, modifiers)` looks the binding up in `MODE_BINDINGS` -- the
   transcription of `pymol.controlling.mode_dict` -- and the press handler asks

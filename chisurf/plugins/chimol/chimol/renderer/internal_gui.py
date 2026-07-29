@@ -101,6 +101,9 @@ class SequenceRow:
 
     name: str
     codes: str
+    #: The object this row belongs to, so its colours can be re-read without
+    #: going back through the window that built the row.
+    object_id: str = ""
     numbers: list[int] = field(default_factory=list)
     selected: set[int] = field(default_factory=set)
     #: Per-residue RGB, as the structure is coloured. A sequence in one colour

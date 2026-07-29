@@ -1632,6 +1632,23 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         controller = self._controller
         if controller is None or gui.is_dragging():
             return
+
+        # Re-read the sequence colours as well. Colouring is a *command* --
+        # `spectrum`, `color`, `ss` -- and there is no signal for it, so a strip
+        # coloured once at load keeps showing the old scheme while the molecule
+        # in front of it shows the new one. Reading them back is a cached array
+        # copy, which costs nothing beside drawing the molecule itself.
+        for row in gui.sequences:
+            if not row.object_id:
+                continue
+            try:
+                colours = controller.get_residue_colors(row.object_id)
+            except Exception:
+                continue
+            if colours is None:
+                continue
+            row.colors = [tuple(float(c) for c in rgba[:3]) for rgba in colours]
+
         try:
             current = int(controller.get_current_frame()) + 1
             total = max(int(controller.get_total_frames()), 1)
