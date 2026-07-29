@@ -691,6 +691,18 @@ the same 17 failures, the same crash at the same point. The TTTR
 channel-definition wizard and LUT tools had several files under concurrent edit
 at the time, which is the first place to look.
 
+**Update 2026-07-29 — there is also a hang, before the segfault.**
+`test/gui/test_gui_plots.py::test_plot_updates_when_parameter_changes` did not
+finish in **10 minutes** when run entirely on its own; it errors in the
+`chisurf_app` fixture (`chisurf.gui.get_app()`, which boots the whole main
+window) and then stalls. Seen while checking that a chiplot fix had not broken
+plot consumers. A second instance's `pytest test/gui -q` was 87 minutes in at
+the same moment, so a shared-resource conflict (server ports, the settings
+directory) cannot be excluded and *neither run is a clean measurement of the
+other* — but the solo run had the whole boot to itself and still did not
+progress, which the concurrency explanation does not cover. Whoever picks this
+up should time the fixture alone on an idle machine first.
+
 **Found 2026-07-26 while closing [RF-182](/reviews/findings.md#rf-182).**
 `test/core/test_curve.py::Tests::test_reading` passes when `test/core` runs on
 its own and fails when `test/fitting` has run first in the same process: the
