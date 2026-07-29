@@ -66,9 +66,8 @@ class _MaxentDataMixin:
             xmax = max(xmin, min(xmax, decay.size - 1))
             self._fit_range = (xmin, xmax)
             if getattr(self, "_fit_region", None) is not None:
-                self._fit_region.blockSignals(True)
-                self._fit_region.setRegion((float(t[xmin]), float(t[xmax])))
-                self._fit_region.blockSignals(False)
+                # ``set_bounds`` is signal-safe, so no blockSignals dance here.
+                self._fit_region.set_bounds(float(t[xmin]), float(t[xmax]))
 
         try:
             model = fit.model
@@ -177,7 +176,7 @@ class _MaxentDataMixin:
             pass
 
     def _ensure_irf_selector(self):
-        _, _, _, _, ExperimentalDataSelector = ensure_qt_stack()
+        _, _, _, ExperimentalDataSelector = ensure_qt_stack()
         if getattr(self, "_irf_selector", None) is not None:
             return
         self._irf_selector = ExperimentalDataSelector(
@@ -198,7 +197,7 @@ class _MaxentDataMixin:
         defaults.
         """
 
-        _, QtWidgets, _, _, _ = ensure_qt_stack()
+        QtWidgets, _, _, _ = ensure_qt_stack()
 
         # Load the raw file contents, creating the file from defaults if
         # needed.
@@ -307,15 +306,20 @@ class _MaxentDataMixin:
                 name = None
             self.label_irf_source.setText(f"IRF: {name or 'dataset'}")
 
-    def _on_fit_region_changed(self) -> None:
-        if getattr(self, "_fit_region", None) is None:
-            return
+    def _on_fit_region_changed(self, low: float, high: float) -> None:
+        """Map the dragged decay region onto the fit's channel range.
+
+        Parameters
+        ----------
+        low, high : float
+            The region's edges, in the time units of the decay axis.
+        """
         if self._t_axis is None:
             return
         t = self._t_axis
         if t.size == 0:
             return
-        lb, ub = self._fit_region.getRegion()
+        lb, ub = low, high
         start = int(np.searchsorted(t, lb, side="left"))
         stop = int(np.searchsorted(t, ub, side="right") - 1)
         n = t.size

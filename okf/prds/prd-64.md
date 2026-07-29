@@ -303,7 +303,7 @@ subclassed items → behaviour flags. Only files whose `pg` is actually pyqtgrap
 are touched (some modules use `pg` as a parameter-group variable). Remove each
 file from the allow-list as it lands. Run `pixi run test-gui` and the headless
 screenshot/qtbot verification after each cluster.
-*Landed so far (allow-list 76 → 17):*
+*Landed so far (allow-list 76 → 15):*
 - **Batch 1** — centralised the global pyqtgraph config (`gui/__init__.py`,
   `plots/__init__.py`) onto `cp.configure(...)`; migrated the single-plot preview
   widgets (PCH, TCSPC simulator, TCSPC TTTR-reader, FCS correlator wizard).
@@ -706,6 +706,35 @@ screenshot/qtbot verification after each cluster.
   Fixed in passing: `test_migrated_modules_import` was **already red** — Batch
   31 deleted `gui/plots/surfaceplot/` but left it in the import list, so the
   sweep that proves the migrated modules load had been failing since.
+- **Batch 33** (allow-list 17 → 15) — the `maxent_decay` cluster, deferred since
+  Batch 21 because its pyqtgraph reaches the mixins through a lazy import
+  helper (`qt_stack.ensure_qt_stack()`) rather than a module import. Four plot
+  widgets → `cp.Plot` (`setLabel(side, txt, units=…)` → `set_labels(bottom=
+  "time / ns")`, `setLogMode`/`showGrid` → `set_log`/`grid`); the fit-range
+  `LinearRegionItem` → `plot_decay.region(...).on_change(cb, final=False)`,
+  whose callback now *receives* `(low, high)` instead of calling `getRegion()`,
+  and whose programmatic move uses the signal-safe `set_bounds` — deleting the
+  `blockSignals` dance in `gui_data`. The marker-only L-curve series (`plot(...,
+  pen=None, symbol="o")`) became `scatter(...)`, which matters here because the
+  panel is log–log and only chiplot's log-aware scatter puts the points at the
+  right place. `mkPen`/`FillBetweenItem`/`BarGraphItem`/`addLine` → `line(pen=…,
+  style="dash")` / `fill_between` / `bars` / `hline`. `ensure_qt_stack()` lost
+  its `pg` slot and returns a 4-tuple, so the helper no longer imports a
+  rendering library at all. Screenshot-verified headlessly on a synthetic
+  bi-modal MEM result (decay + fit + region, weighted residuals, distribution
+  with prior/band/bars, log–log L-curve with the corner marker);
+  `passthrough_gaps()` came back **empty**.
+  Removed in passing: `gui/gui_ui.py`, a 792-line second copy of the MaxEnt UI
+  builder with **no importer anywhere in the tree** — it unpacked the old
+  5-tuple and drew through `pg`, so it was both dead and the thing that would
+  have broken silently.
+  **Tracker gap this exposed:** the allow-list only catches *direct*
+  `import pyqtgraph`. A module that receives `pg` from a helper is invisible to
+  it — `maxent_decay/gui/gui_plotting.py` (6 uses) and `gui_ui.py` (2) were
+  never listed. A scan for `pg.` in files with no pyqtgraph import finds the
+  rest; at the time of this batch the only remaining ones are `gui/plots/
+  lineplot/lineplot.py` (1), `core/models/model.py` (1, a parameter group named
+  `pg`) and the `breakout` demo (2).
 
 **Phase 3 — migrate plugins.**
 Same port across `chisurf/plugins/**`, cluster by plugin group (tttr, burst,

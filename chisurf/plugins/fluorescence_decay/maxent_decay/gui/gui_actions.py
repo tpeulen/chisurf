@@ -14,7 +14,7 @@ from .qt_stack import ensure_qt_stack
 
 class _MaxentActionsMixin:
     def _on_help_clicked(self) -> None:
-        _, QtWidgets, _, _, _ = ensure_qt_stack()
+        QtWidgets, _, _, _ = ensure_qt_stack()
 
         try:
             readme_path = Path(__file__).resolve().parents[2] / "README.md"
@@ -71,14 +71,14 @@ class _MaxentActionsMixin:
         try:
             self._run_mem()
         except Exception as exc:
-            _, QtWidgets, _, _, _ = ensure_qt_stack()
+            QtWidgets, _, _, _ = ensure_qt_stack()
 
             if str(exc) == "MEM computation cancelled":
                 return
             QtWidgets.QMessageBox.critical(self, "MEM error", str(exc))
 
     def _on_sample_clicked(self) -> None:
-        _, QtWidgets, QtCore, chisurf, _ = ensure_qt_stack()
+        QtWidgets, QtCore, chisurf, _ = ensure_qt_stack()
 
         if self._last_result is None:
             try:
@@ -302,7 +302,7 @@ class _MaxentActionsMixin:
         self._sampling_worker = worker
 
     def _on_save_clicked(self) -> None:
-        _, QtWidgets, _, chisurf, _ = ensure_qt_stack()
+        QtWidgets, _, chisurf, _ = ensure_qt_stack()
 
         if self._last_result is None or self._t_axis is None:
             QtWidgets.QMessageBox.warning(self, "Save MEM result", "No MEM result available to save.")

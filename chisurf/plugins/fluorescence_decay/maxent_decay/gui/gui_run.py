@@ -13,11 +13,11 @@ class _MaxentRunMixin:
         try:
             self._run_lcurve()
         except Exception as exc:
-            _, QtWidgets, _, _, _ = ensure_qt_stack()
+            QtWidgets, _, _, _ = ensure_qt_stack()
             QtWidgets.QMessageBox.critical(self, "L-curve error", str(exc))
 
     def _run_lcurve(self) -> None:
-        _, QtWidgets, QtCore, chisurf, _ = ensure_qt_stack()
+        QtWidgets, QtCore, chisurf, _ = ensure_qt_stack()
 
         decay, dt, t = self._get_decay_and_dt()
         lamp = self._build_irf_array(decay.size, t, dt)
@@ -201,7 +201,7 @@ class _MaxentRunMixin:
             chi2_arr = np.array([], dtype=float)
             sol_arr = np.array([], dtype=float)
         if chi2_arr.size == 0 or sol_arr.size == 0:
-            self._lcurve_curve.setData([], [])
+            self._lcurve_curve.set_data([], [])
             try:
                 self._lcurve_corner.hide()
             except Exception:
@@ -209,7 +209,7 @@ class _MaxentRunMixin:
             return
         mask = np.isfinite(chi2_arr) & np.isfinite(sol_arr) & (chi2_arr > 0.0) & (sol_arr > 0.0)
         if not np.any(mask):
-            self._lcurve_curve.setData([], [])
+            self._lcurve_curve.set_data([], [])
             try:
                 self._lcurve_corner.hide()
             except Exception:
@@ -221,7 +221,7 @@ class _MaxentRunMixin:
         eps = np.finfo(float).tiny
         chi2_plot = np.clip(chi2_plot, eps, np.inf)
         sol_plot = np.clip(sol_plot, eps, np.inf)
-        self._lcurve_curve.setData(chi2_plot, sol_plot)
+        self._lcurve_curve.set_data(chi2_plot, sol_plot)
 
         try:
             self._lcurve_corner.hide()
@@ -236,7 +236,7 @@ class _MaxentRunMixin:
                 return
             local_idx = int(matches[0])
             if 0 <= local_idx < chi2_plot.size:
-                self._lcurve_corner.setData(
+                self._lcurve_corner.set_data(
                     [float(chi2_plot[local_idx])],
                     [float(sol_plot[local_idx])],
                 )
@@ -248,7 +248,7 @@ class _MaxentRunMixin:
             return
 
     def _run_mem(self) -> None:
-        _, QtWidgets, QtCore, _, _ = ensure_qt_stack()
+        QtWidgets, QtCore, _, _ = ensure_qt_stack()
 
         decay, dt, t = self._get_decay_and_dt()
         lamp = self._build_irf_array(decay.size, t, dt)

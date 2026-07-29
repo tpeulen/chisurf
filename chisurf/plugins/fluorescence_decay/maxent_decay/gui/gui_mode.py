@@ -65,7 +65,7 @@ class _MaxentModeMixin:
     def _reset_mem_result_state(self) -> None:
         if getattr(self, "_lcurve_curve", None) is not None:
             try:
-                self._lcurve_curve.setData([], [])
+                self._lcurve_curve.set_data([], [])
             except Exception:
                 pass
         if getattr(self, "_lcurve_corner", None) is not None:

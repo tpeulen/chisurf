@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from .qt_stack import ensure_qt_stack
-
 
 class _MaxentPlottingMixin:
     def _update_plots_from_result(
@@ -12,16 +10,14 @@ class _MaxentPlottingMixin:
         t: np.ndarray,
         result: dict,
     ) -> None:
-        pg, _, QtCore, _, _ = ensure_qt_stack()
-
         if "R" in result:
             dist_axis = np.asarray(result["R"], dtype=float).ravel()
-            self.plot_dist.setLabel("bottom", "distance", units="\u00c5")
-            self.plot_dist.setTitle("Distance distribution")
+            self.plot_dist.set_labels(bottom="distance / \u00c5")
+            self.plot_dist.set_title("Distance distribution")
         else:
             dist_axis = np.asarray(result["tau"], dtype=float).ravel()
-            self.plot_dist.setLabel("bottom", "lifetime", units="ns")
-            self.plot_dist.setTitle("Lifetime distribution")
+            self.plot_dist.set_labels(bottom="lifetime / ns")
+            self.plot_dist.set_title("Lifetime distribution")
 
         p = np.asarray(result["p"], dtype=float).ravel()
         Fi = np.asarray(result["Fi"], dtype=float)
@@ -48,17 +44,17 @@ class _MaxentPlottingMixin:
 
         self.plot_decay.clear()
         if getattr(self, "_fit_region", None) is not None:
-            self.plot_decay.addItem(self._fit_region)
+            self.plot_decay.add(self._fit_region)
         decay_plot = np.maximum(decay, 1.0)
         fit_plot = np.zeros_like(decay_plot)
         fit_plot[fitstart : fitstop + 1] = np.maximum(fit_seg, 1.0)
 
-        self.plot_decay.plot(t, decay_plot, pen="w", name="data")
-        self.plot_decay.plot(t, fit_plot, pen="y", name="MEM fit")
+        self.plot_decay.line(t, decay_plot, pen="w", name="data")
+        self.plot_decay.line(t, fit_plot, pen="y", name="MEM fit")
 
         self.plot_wres.clear()
-        self.plot_wres.plot(t_seg, wres, pen="c")
-        self.plot_wres.addLine(y=0.0, pen=pg.mkPen("w", width=1))
+        self.plot_wres.line(t_seg, wres, pen="c")
+        self.plot_wres.hline(0.0, pen="w")
 
         self.plot_dist.clear()
         self._sample_band_lower = None
@@ -77,15 +73,16 @@ class _MaxentPlottingMixin:
             else:
                 prior_n = prior
             try:
-                self.plot_dist.plot(
+                self.plot_dist.line(
                     dist_axis,
                     prior_n,
-                    pen=pg.mkPen((180, 180, 180, 200), style=QtCore.Qt.DashLine),
+                    pen=(180, 180, 180, 200),
+                    style="dash",
                 )
             except Exception:
                 pass
 
-        self.plot_dist.plot(dist_axis, p_norm, pen="m", symbol="o", symbolSize=4)
+        self.plot_dist.line(dist_axis, p_norm, pen="m", symbol="o", symbol_size=4)
 
         stats = getattr(self, "_sample_stats", None)
         if stats is None:
@@ -133,21 +130,14 @@ class _MaxentPlottingMixin:
         else:
             p_med_n = p_lo_n * 0.0
 
-        lower_curve = self.plot_dist.plot(
-            dist_axis,
-            p_lo_n,
-            pen=pg.mkPen((80, 80, 200, 160)),
-        )
-        upper_curve = self.plot_dist.plot(
-            dist_axis,
-            p_hi_n,
-            pen=pg.mkPen((80, 80, 200, 160)),
-        )
+        lower_curve = self.plot_dist.line(dist_axis, p_lo_n, pen=(80, 80, 200, 160))
+        upper_curve = self.plot_dist.line(dist_axis, p_hi_n, pen=(80, 80, 200, 160))
 
         fill_item = None
         try:
-            fill_item = pg.FillBetweenItem(upper_curve, lower_curve, brush=(80, 80, 200, 80))
-            self.plot_dist.addItem(fill_item)
+            fill_item = self.plot_dist.fill_between(
+                lower_curve, upper_curve, brush=(80, 80, 200, 80)
+            )
         except Exception:
             fill_item = None
 
@@ -161,14 +151,13 @@ class _MaxentPlottingMixin:
             else:
                 dx = 1.0
             width = 0.9 * dx
-            hist_item = pg.BarGraphItem(
-                x=dist_axis,
-                height=p_med_n,
+            hist_item = self.plot_dist.bars(
+                dist_axis,
+                p_med_n,
                 width=width,
                 brush=(100, 150, 255, 80),
                 pen=None,
             )
-            self.plot_dist.addItem(hist_item)
             self._sample_hist_item = hist_item
         except Exception:
             self._sample_hist_item = None

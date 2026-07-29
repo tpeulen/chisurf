@@ -399,6 +399,8 @@ def test_migrated_modules_import(qapp):
         "chisurf.plugins.fcs.fcs_filter_calculator.gui_parts.main_window",
         # Batch 32
         "chisurf.gui.plots.residual_image",
+        # Batch 33
+        "chisurf.plugins.fluorescence_decay.maxent_decay.gui.gui",
     ):
         assert importlib.import_module(name) is not None
 

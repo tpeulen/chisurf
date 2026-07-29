@@ -20,7 +20,7 @@ class _MaxentPriorsMixin:
             self._on_load_prior_clicked()
 
     def _on_load_prior_clicked(self) -> None:
-        _, QtWidgets, _, chisurf, _ = ensure_qt_stack()
+        QtWidgets, _, chisurf, _ = ensure_qt_stack()
         start_dir = ""
         try:
             start_dir = str(getattr(chisurf, "working_path", "") or "")
@@ -51,7 +51,7 @@ class _MaxentPriorsMixin:
             )
 
     def _on_load_donor_clicked(self) -> None:
-        _, QtWidgets, _, chisurf, _ = ensure_qt_stack()
+        QtWidgets, _, chisurf, _ = ensure_qt_stack()
         start_dir = ""
         try:
             start_dir = str(getattr(chisurf, "working_path", "") or "")
@@ -88,7 +88,7 @@ class _MaxentPriorsMixin:
             )
 
     def _on_load_donor_from_fit_clicked(self) -> None:
-        _, QtWidgets, _, chisurf, _ = ensure_qt_stack()
+        QtWidgets, _, chisurf, _ = ensure_qt_stack()
 
         try:
             from chisurf.core.models.tcspc.lifetime import LifetimeModel  # type: ignore
@@ -181,7 +181,7 @@ class _MaxentPriorsMixin:
         self._update_donor_requirement_ui()
 
     def _on_load_dist_prior_clicked(self) -> None:
-        _, QtWidgets, _, chisurf, _ = ensure_qt_stack()
+        QtWidgets, _, chisurf, _ = ensure_qt_stack()
         start_dir = ""
         try:
             start_dir = str(getattr(chisurf, "working_path", "") or "")

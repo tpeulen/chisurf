@@ -2,6 +2,27 @@
 
 ## 2026-07-29
 
+* **chiplot Batch 33 — the MaxEnt MEM cluster, whose pyqtgraph the migration
+  tracker could not see** ([PRD-64](/prds/prd-64.md)). `maxent_decay` reached
+  pyqtgraph through a lazy helper (`qt_stack.ensure_qt_stack()` handed `pg`
+  back to the mixins), so only the two modules that *also* imported it directly
+  were ever on the allow-list, while `gui_plotting.py` — the file with the most
+  `pg.` calls in the plugin — was invisible to the guard. Migrated the whole
+  cluster: four `pg.PlotWidget`s → `cp.Plot`; the fit-range `LinearRegionItem`
+  → `plot.region(...).on_change(cb, final=False)`, whose callback now receives
+  `(low, high)` and whose programmatic move goes through the signal-safe
+  `set_bounds` (the `blockSignals` dance is gone); the marker-only L-curve
+  series → `scatter()`, which on this log–log panel is the difference between
+  points at the right place and points at linear positions;
+  `mkPen`/`FillBetweenItem`/`BarGraphItem`/`addLine` →
+  `line(style="dash")`/`fill_between`/`bars`/`hline`. `ensure_qt_stack()` lost
+  its `pg` slot and returns a 4-tuple, so it imports no rendering library at
+  all. Removed in passing: `gui/gui_ui.py`, a 792-line second copy of the UI
+  builder with **no importer anywhere in the tree** — dead, and the one place
+  the 4-tuple change would have broken silently. Verified headlessly on a
+  synthetic bi-modal MEM result, screenshots read for all four panels;
+  `chiplot.passthrough_gaps()` came back empty. Allow-list 17 → 15.
+
 * **Review fix — the l1/l2 half of the VV/VH G-factor panel raised on every
   use** (RF-918, S1). `VvVhGFactorClient.solve_linked_l`
   (`chisurf/plugins/vv_vh_g_factor/gui/client.py`) computed the RPC result into

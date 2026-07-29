@@ -196,7 +196,7 @@ class _MaxentHelpersMixin:
 
         self.plot_decay.clear()
         if getattr(self, "_fit_region", None) is not None:
-            self.plot_decay.addItem(self._fit_region)
+            self.plot_decay.add(self._fit_region)
 
         decay_plot = np.maximum(np.asarray(decay, dtype=float).ravel(), 1.0)
 
@@ -207,9 +207,9 @@ class _MaxentHelpersMixin:
                 scale = float(np.max(decay_plot)) / float(np.max(lamp_arr))
                 irf_plot = lamp_arr * scale
 
-        self.plot_decay.plot(t, decay_plot, pen="w", name="data")
+        self.plot_decay.line(t, decay_plot, pen="w", name="data")
         if irf_plot is not None:
-            self.plot_decay.plot(t, np.maximum(irf_plot, 1.0), pen="r", name="IRF")
+            self.plot_decay.line(t, np.maximum(irf_plot, 1.0), pen="r", name="IRF")
 
         self.plot_wres.clear()
         self.plot_dist.clear()

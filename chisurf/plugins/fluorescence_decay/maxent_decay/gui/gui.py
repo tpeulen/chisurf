@@ -1,4 +1,4 @@
-"""Qt/pyqtgraph GUI front-end for the MaxEnt TCSPC lifetime/FRET MEM plugin.
+"""Qt/chiplot GUI front-end for the MaxEnt TCSPC lifetime/FRET MEM plugin.
 
 New-style plugin with DockArea-based layout and menu bar,
 following the burst selection plugin pattern.
@@ -88,9 +88,9 @@ class HelpDialog(QtWidgets.QDialog):
         layout.addWidget(buttons)
 
 try:
-    import pyqtgraph as pg
+    from chisurf.gui import chiplot as cp
 except Exception:
-    pg = None
+    cp = None
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -159,56 +159,33 @@ class MaxentDecayWidget(
     # ------------------------------------------------------------------ #
 
     def _create_plot_widgets(self) -> None:
-        self.plot_decay = pg.PlotWidget(title="Decay / fit / IRF")
-        self.plot_decay.setLabel("bottom", "time", units="ns")
-        self.plot_decay.setLabel("left", "counts")
-        try:
-            self.plot_decay.setLogMode(x=False, y=True)
-        except Exception:
-            pass
+        self.plot_decay = cp.Plot(title="Decay / fit / IRF")
+        self.plot_decay.set_labels(bottom="time / ns", left="counts")
+        self.plot_decay.set_log(x=False, y=True)
 
-        self._fit_region = pg.LinearRegionItem()
-        self._fit_region.setZValue(10)
-        self._fit_region.sigRegionChanged.connect(self._on_fit_region_changed)
-        self.plot_decay.addItem(self._fit_region)
+        self._fit_region = self.plot_decay.region((0.0, 1.0), movable=True)
+        self._fit_region.z = 10
+        self._fit_region.on_change(self._on_fit_region_changed, final=False)
 
-        self.plot_wres = pg.PlotWidget(title="Weighted residuals")
-        self.plot_wres.setLabel("bottom", "time", units="ns")
-        self.plot_wres.setLabel("left", "wres")
+        self.plot_wres = cp.Plot(title="Weighted residuals")
+        self.plot_wres.set_labels(bottom="time / ns", left="wres")
 
-        self.plot_dist = pg.PlotWidget(title="Lifetime / Distance distribution")
-        self.plot_dist.setLabel("bottom", "lifetime", units="ns")
-        self.plot_dist.setLabel("left", "probability")
+        self.plot_dist = cp.Plot(title="Lifetime / Distance distribution")
+        self.plot_dist.set_labels(bottom="lifetime / ns", left="probability")
         self._sample_band_lower = None
         self._sample_band_upper = None
         self._sample_band_fill = None
         self._sample_hist_item = None
 
-        self.plot_lcurve = pg.PlotWidget(title="L-curve (chi\u00b2 vs |p|)")
-        self.plot_lcurve.setLabel("bottom", "chi\u00b2")
-        self.plot_lcurve.setLabel("left", "|p|")
-        try:
-            self.plot_lcurve.setLogMode(x=True, y=True)
-        except Exception:
-            pass
-        try:
-            self.plot_lcurve.showGrid(x=True, y=True, alpha=0.3)
-        except Exception:
-            pass
-        self._lcurve_curve = self.plot_lcurve.plot([], [], pen=None, symbol="o")
-        self._lcurve_corner = self.plot_lcurve.plot(
-            [],
-            [],
-            pen=None,
-            symbol="o",
-            symbolBrush="r",
-            symbolPen="r",
-            symbolSize=12,
+        self.plot_lcurve = cp.Plot(title="L-curve (chi\u00b2 vs |p|)")
+        self.plot_lcurve.set_labels(bottom="chi\u00b2", left="|p|")
+        self.plot_lcurve.set_log(x=True, y=True)
+        self.plot_lcurve.grid(x=True, y=True, alpha=0.3)
+        self._lcurve_curve = self.plot_lcurve.scatter([], [], symbol="o")
+        self._lcurve_corner = self.plot_lcurve.scatter(
+            [], [], symbol="o", brush="r", pen="r", size=12
         )
-        try:
-            self._lcurve_corner.hide()
-        except Exception:
-            pass
+        self._lcurve_corner.hide()
 
     # ------------------------------------------------------------------ #
     #  UI construction: DockArea + docks (burst selector pattern)         #
