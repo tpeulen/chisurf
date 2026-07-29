@@ -1,19 +1,25 @@
 from __future__ import annotations
 
 import pathlib
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 
-def safe_open_file(file_path: Union[str, pathlib.Path], 
-                  processor: Optional[Callable[[Any], Any]] = None,
-                  default_value: Any = None,
-                  mode: str = 'r',
-                  error_message: Optional[str] = None) -> Any:
+def safe_open_file(
+    file_path: str | pathlib.Path,
+    processor: Callable[[Any], Any] | None = None,
+    default_value: Any = None,
+    mode: str = "r",
+    error_message: str | None = None,
+) -> Any:
     """Safely open and process a file with error handling.
 
     This function opens a file and processes its content using the provided processor function.
-    If any file-related error occurs, it catches the exception, prints an error message,
-    and returns the default value.
+    Both halves are guarded: a file-related error *and* a failure of the processor
+    (a malformed YAML/JSON document, an undecodable byte) are caught, reported with the
+    offending path, and answered with the default value. The settings package is imported
+    by every entry point, so a corrupt user file must degrade to the packaged default
+    rather than take the application down at import time.
 
     Args:
         file_path: Path to the file to open
@@ -33,9 +39,17 @@ def safe_open_file(file_path: Union[str, pathlib.Path],
                 return processor(fp)
             else:
                 return fp.read()
-    except (FileNotFoundError, PermissionError, IOError) as e:
+    except OSError as e:
         if error_message:
             print(f"{error_message}: {e}")
         else:
             print(f"Error opening file {file_path}: {e}")
+        return default_value
+    except Exception as e:
+        # The processor rejected the content: yaml.YAMLError, json.JSONDecodeError
+        # and UnicodeDecodeError are none of them OSError.
+        if error_message:
+            print(f"{error_message}: {e}")
+        else:
+            print(f"Error reading file {file_path}: {e}")
         return default_value

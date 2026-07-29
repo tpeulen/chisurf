@@ -31,6 +31,20 @@
   with `self.fit.update()`, the same move `exact_conditional_scan` already makes
   in its `finally`. Pinned by
   `test/fitting/test_posterior_engine.py::test_conditioning_restores_the_model_curve_not_just_the_values`.
+* **A corrupt user settings file bricked every entry point (RF-1003).**
+  `settings.file_utils.safe_open_file` guarded the *open* and not the
+  *processor*, so `yaml.YAMLError`, `json.JSONDecodeError` and
+  `UnicodeDecodeError` escaped past the `default_value` the argument exists for —
+  a truncated quoted scalar in the user `settings_chisurf.yaml` took
+  `import chisurf.core.settings` down with a raw `ScannerError`, and with it the
+  GUI, `csc` and the server, with no in-app way back. A second `except` now
+  answers a processor failure the way the `OSError` clause answers a missing
+  file: name the path, return the default. A corrupt user YAML therefore degrades
+  to the packaged defaults through `get_chisurf_settings`'s `_deep_merge`, which
+  is what the whole merge-underneath design was for. Pinned by
+  `test/settings/test_safe_open_file_malformed.py` (malformed YAML, malformed
+  JSON, undecodable bytes, the unchanged missing-file behaviour, and the
+  end-to-end fall-back to the packaged sections).
 * **The flrCIF alignment tool could not run, and would have written the retired
   namespace if it had ([PRD-02c](/prds/prd-02c.md)).**
   `build_tools/dev_utils/align_flrcif_parameters.py` is the only thing that ever

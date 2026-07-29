@@ -11219,11 +11219,22 @@ lines after it is loaded. RF-1002..RF-1006 below.
 - **Fix note:**
 
 ### RF-1003
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a malformed user `settings_chisurf.yaml` makes `import chisurf.core.settings` raise — GUI, `csc` and the server all fail to start, with no in-app way back)
 - **Location:** `chisurf/core/settings/file_utils.py:36` (`except (FileNotFoundError, PermissionError, IOError) as e:`) reached from `chisurf/core/settings/settings_utils.py:43-49` (`_read`) and `chisurf/core/settings/__init__.py:51` (`cs_settings = get_chisurf_settings(chisurf_settings_file, …)`)
 - **Finding:** `safe_open_file` guards the *open*, not the *processor*. `yaml.safe_load` raises `yaml.YAMLError` and `json.load` raises `JSONDecodeError`; neither is an `OSError`, so neither is caught and the `default_value={}` the caller passes is unreachable — exactly the case the argument exists for. Verified: with a truncated quoted scalar appended to `<settings>/settings_chisurf.yaml`, `import chisurf.core.settings` dies with a raw `yaml.scanner.ScannerError` traceback. The same hole covers `parameter_registry.json`, `structure.json`, `settings_colors.yaml` and `anisotropy_corrections.json`, and `UnicodeDecodeError` (a `ValueError`) on any of them. The bootstrap path is inconsistent about it — `env_bootstrap._apply_thread_env_from_settings` wraps its own `get_chisurf_settings` call in a bare `except Exception` (`:315`) and so survives the same file, while the import at `__init__.py:51` does not. Catch `Exception` from the processor (keeping the `OSError` message shape), report the offending path, and return the default so a corrupt user file degrades to the packaged one instead of bricking the install.
-- **Fix note:**
+- **Fix note:** `safe_open_file` now guards both halves: the existing `OSError`
+  clause keeps its wording ("Error opening file …"), and a second clause catches
+  any processor failure, prints "Error reading file `<path>`: …" and returns
+  `default_value`. That covers `yaml.YAMLError`, `json.JSONDecodeError` and
+  `UnicodeDecodeError` for every file the settings package loads, so a corrupt
+  user YAML degrades to the packaged defaults through
+  `get_chisurf_settings`'s `_deep_merge` instead of killing the import. (The
+  clause also drops the redundant `IOError` alias, which is `OSError`.) Pinned by
+  `test/settings/test_safe_open_file_malformed.py` — five tests covering
+  malformed YAML, malformed JSON, undecodable bytes, the unchanged missing-file
+  behaviour, and `get_chisurf_settings` returning the packaged `gui`/`optimization`
+  sections for a broken user file.
 
 ### RF-1004
 - **Status:** OPEN
