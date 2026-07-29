@@ -54,7 +54,8 @@ from chisurf.gui.widgets.tool_buttons import flag_attention
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis, write_result_tables
-from ..core.engines import ENGINE_LABELS
+from ..core.engines import DECODER_LABELS, ENGINE_LABELS
+from ..core.engines import DECODERS as H2mmDecoders
 from ..core.engines import ENGINES as H2mmEngines
 from chisurf.gui import dialogs
 
@@ -436,6 +437,64 @@ class H2mmTool(MessagesMixin, QMainWindow):
         photon_h.addWidget(self.cb_photon_csv)
         photon_h.addStretch(1)
 
+        # How each photon gets its state. A separate choice from how the model
+        # is fitted, and one that changes what a per-state decay is made of.
+        self.cb_decoder = QComboBox()
+        for _d in H2mmDecoders:
+            self.cb_decoder.addItem(DECODER_LABELS.get(_d, _d), _d)
+        self.cb_decoder.setToolTip(
+            "How each photon is assigned a state. Viterbi takes the single most "
+            "likely path, which reports the photon distribution "
+            "winner-takes-all: well-separated states come out inflated and "
+            "ambiguous ones erased. Jitter and FFBS draw from the posterior "
+            "instead, so the distribution is faithful; FFBS also keeps the dwell "
+            "structure that jitter's independent draws destroy. The unbiased "
+            "occupancy is reported either way."
+        )
+        self.sb_decoder_seed = QSpinBox()
+        self.sb_decoder_seed.setRange(0, 2**31 - 2)
+        self.sb_decoder_seed.setValue(0)
+        self.sb_decoder_seed.setToolTip(
+            "Seed for the sampling decoders. Reproducible and independent of the "
+            "thread count; change it to draw an independent assignment."
+        )
+        decoder_row = QWidget()
+        decoder_h = QHBoxLayout(decoder_row)
+        decoder_h.setContentsMargins(0, 0, 0, 0)
+        decoder_h.addWidget(self.cb_decoder, 1)
+        self.lb_decoder_seed = QLabel("seed")
+        self.lb_decoder_seed.setToolTip(self.sb_decoder_seed.toolTip())
+        decoder_h.addWidget(self.lb_decoder_seed)
+        decoder_h.addWidget(self.sb_decoder_seed)
+        self.cb_decoder.currentIndexChanged.connect(self._update_decoder_enabled)
+
+        # Write the assignment back into the photons, so every other tool can
+        # select a state without knowing anything about H2MM.
+        self.cb_state_tttr = QCheckBox("PTU")
+        self.cb_state_tttr.setToolTip(
+            "Write <file>_h2mm_states.ptu beside each measurement, with the "
+            "routing channels encoding (stream, state). A per-state decay or FCS "
+            "is then an ordinary channel selection in any tool."
+        )
+        self.cb_state_sidecar = QCheckBox("sidecar")
+        self.cb_state_sidecar.setToolTip(
+            "Write <file>_h2mm_states.msgpack — the per-photon state array plus "
+            "the model, decoder, seed and channel map. Leaves the source file "
+            "untouched and has no channel-id budget."
+        )
+        self.cb_state_write = QCheckBox("write")
+        self.cb_state_write.setToolTip(
+            "Write the decoded state assignment back into the photon stream."
+        )
+        self.cb_state_write.toggled.connect(self._update_decoder_enabled)
+        state_row = QWidget()
+        state_h = QHBoxLayout(state_row)
+        state_h.setContentsMargins(0, 0, 0, 0)
+        state_h.addWidget(self.cb_state_write)
+        state_h.addWidget(self.cb_state_tttr)
+        state_h.addWidget(self.cb_state_sidecar)
+        state_h.addStretch(1)
+
         of.addRow("Restarts:", self.sb_restarts)
         of.addRow("Seed:", self.sb_seed)
         of.addRow("Photon table:", photon_row)
@@ -443,6 +502,11 @@ class H2mmTool(MessagesMixin, QMainWindow):
         of.addRow("Min photons/burst:", self.sb_min_photons)
         of.addRow("Macro-time scale:", self.sb_time_scale)
         of.addRow("Nanotime divisors:", self.sb_divisors)
+        of.addRow("Decoder:", decoder_row)
+        of.addRow("State photons:", state_row)
+        self.cb_state_tttr.setChecked(True)
+        self.cb_state_sidecar.setChecked(True)
+        self._update_decoder_enabled()
         layout.addWidget(opt)
         layout.addStretch()
         return w
@@ -787,6 +851,11 @@ class H2mmTool(MessagesMixin, QMainWindow):
             divisors=self.sb_divisors.value(),
             file_type=self.file_type,
             engine=self.cb_engine.currentData() or "em",
+            decoder=self.cb_decoder.currentData() or "viterbi",
+            decoder_seed=self.sb_decoder_seed.value(),
+            write_state_tttr=self.cb_state_write.isChecked(),
+            state_tttr_ptu=self.cb_state_tttr.isChecked(),
+            state_tttr_sidecar=self.cb_state_sidecar.isChecked(),
             patience=None if patience < 0 else patience,
         )
 
@@ -1014,12 +1083,23 @@ class H2mmTool(MessagesMixin, QMainWindow):
         # The seed is part of the answer: the same one refits identically, so a
         # reported state count is only reproducible if it travels with it.
         seed = (result.settings_applied or {}).get("seed")
-        self._status(
+        msg = (
             f"Selected {result.n_states} states "
             f"({result.criterion.upper()}) from {result.n_bursts} bursts / "
             f"{result.n_photons} photons"
             + (f" (seed {seed})" if seed is not None else "")
         )
+        # The occupancy is what most readers take away, and the counted one is
+        # biased under Viterbi — so report the posterior estimate here rather
+        # than leaving it in a JSON file nobody opens.
+        if result.posterior_populations:
+            pops = ", ".join(f"{x:.3f}" for x in result.posterior_populations)
+            msg += f" — occupancy {pops}"
+            if result.decoder != "viterbi":
+                msg += f" (decoder: {result.decoder})"
+        if result.n_underflow:
+            msg += f" — WARNING: {result.n_underflow} photons without posterior information"
+        self._status(msg)
 
     # ── uncertainty (bootstrap) ──────────────────────────────────────
 
@@ -1232,6 +1312,21 @@ class H2mmTool(MessagesMixin, QMainWindow):
 
     # Photon-stream marker: donor ●, acceptor (Dex) ▲, acceptor (Aex) ■.
     _STREAM_SYMBOL = ("o", "t", "s")
+
+    def _update_decoder_enabled(self, *_):
+        """Grey out what the current choices make meaningless.
+
+        The seed only matters for a decoder that draws, and the two output
+        formats only matter once writing is on — a live control that changes
+        nothing is a question the user has to answer for no reason.
+        """
+        decoder = self.cb_decoder.currentData() or "viterbi"
+        draws = decoder != "viterbi"
+        self.sb_decoder_seed.setEnabled(draws)
+        self.lb_decoder_seed.setEnabled(draws)
+        writing = self.cb_state_write.isChecked()
+        self.cb_state_tttr.setEnabled(writing)
+        self.cb_state_sidecar.setEnabled(writing)
 
     def _update_plots(self):
         if self._result is None or self._bundle is None:

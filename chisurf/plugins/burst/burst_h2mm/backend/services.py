@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import logging
 import pathlib
 from typing import Any
+
+import numpy as np
 
 from ..api.contract import (
     METHOD_COMPUTE,
@@ -15,6 +18,8 @@ from ..api.contract import (
 )
 from ..api.models import H2mmResult, H2mmSettings, StateFitSummary, StreamSettings
 from ..api.serialization import settings_from_dict, to_jsonable
+
+logger = logging.getLogger(__name__)
 
 
 def register_services(dispatcher: Any) -> None:
@@ -138,6 +143,8 @@ def run_analysis(
         refine_iters=int(settings.refine_iters),
         patience=settings.patience,
         divisors=int(getattr(settings, "divisors", 1)),
+        decoder=getattr(settings, "decoder", "viterbi"),
+        decoder_seed=int(getattr(settings, "decoder_seed", 0)),
         progress=progress,
     )
 
@@ -145,6 +152,7 @@ def run_analysis(
     bundle = H2mmAnalysisBundle(analysis=ana, data=data, settings=settings)
     bundle.meta = meta
     bundle.burst_df = df
+    bundle.tttrs = tttrs
     bundle.micro_time_ns = _micro_resolution(tttrs) * 1e9
     return result, bundle
 
@@ -189,6 +197,56 @@ def _burst_sources(burst_df, burst_rows):
     return names, out
 
 
+def _write_state_tttr(result, bundle, out_dir, burst_df, burst_rows) -> None:
+    """Write the decoded assignment back into the photon stream, if asked.
+
+    Optional because it rewrites (a copy of) the measurement: one PTU per source
+    file whose routing channels encode ``(stream, state)``, and/or a msgpack
+    sidecar that leaves the source alone. Either makes a per-state decay an
+    ordinary channel or mask selection in any tool.
+    """
+    settings = bundle.settings
+    if not bool(getattr(settings, "write_state_tttr", False)):
+        return
+    want_ptu = bool(getattr(settings, "state_tttr_ptu", True))
+    want_sidecar = bool(getattr(settings, "state_tttr_sidecar", True))
+    if not (want_ptu or want_sidecar):
+        return
+    tttrs = getattr(bundle, "tttrs", None)
+    meta = getattr(bundle, "meta", None)
+    if not tttrs or meta is None or burst_rows is None or burst_df is None:
+        logger.warning("state TTTR output requested but the source photons are "
+                       "not available - skipped")
+        return
+    if "First File" not in getattr(burst_df, "columns", []):
+        logger.warning("state TTTR output needs the burst table's 'First File' "
+                       "column to know which measurement each photon came from "
+                       "- skipped")
+        return
+
+    from ..core.state_tttr import write_state_tttr
+
+    ana = bundle.analysis
+    try:
+        written = write_state_tttr(
+            meta, ana.path, np.asarray(bundle.data.streams), tttrs,
+            burst_rows, list(burst_df["First File"].astype(str)),
+            out_dir,
+            model=ana.best.model,
+            decoder=str(getattr(ana, "decoder", "viterbi")),
+            seed=int(getattr(ana, "decoder_seed", 0)),
+            n_states=int(ana.best.n_states),
+            write_tttr=want_ptu,
+            write_sidecar=want_sidecar,
+        )
+    except Exception as exc:
+        # Loud: a missing state file is the whole point of having ticked the box.
+        logger.error("state TTTR output failed (%s: %s)", type(exc).__name__, exc)
+        result.output_paths["state_tttr_error"] = f"{type(exc).__name__}: {exc}"
+        return
+    result.output_paths.update(written.as_output_paths())
+
+
 def write_result_tables(
     result: H2mmResult,
     bundle: H2mmAnalysisBundle,
@@ -199,7 +257,10 @@ def write_result_tables(
     Records every written path in ``result.output_paths``.
     """
     from ..core.export import (
-        build_dwell_table, build_tables, write_burst_companions, write_csv,
+        build_dwell_table,
+        build_tables,
+        write_burst_companions,
+        write_csv,
         write_hdf5,
     )
 
@@ -212,6 +273,14 @@ def write_result_tables(
     result.output_paths["result_json"] = str(out_path)
 
     meta = getattr(bundle, "meta", None)
+    # Writing the state back into the photons is an independent choice from the
+    # ndX tables -- it answers a different need and must not be skipped just
+    # because the per-photon table was turned off.
+    _write_state_tttr(
+        result, bundle, out_dir,
+        getattr(bundle, "burst_df", None), getattr(meta, "burst_rows", None),
+    )
+
     if meta is None or not getattr(bundle.settings, "write_photons", True):
         return
     ana = bundle.analysis
@@ -325,6 +394,16 @@ def _result_from_analysis(ana, settings: H2mmSettings) -> H2mmResult:
         stoichiometry=[float(x) for x in ana.stoichiometry] if has_alex else [],
         has_alex=has_alex,
         populations=[float(x) for x in ana.populations],
+        posterior_populations=(
+            [float(x) for x in np.asarray(ana.posterior_populations)]
+            if ana.posterior_populations is not None
+            and np.isfinite(np.asarray(ana.posterior_populations)).any()
+            else []
+        ),
+        decoder=str(getattr(ana, "decoder", "viterbi")),
+        decoder_seed=int(getattr(ana, "decoder_seed", 0)),
+        n_underflow=int(getattr(ana, "n_underflow", 0)),
+        dwell_decoder=str(getattr(ana, "dwell_decoder", "viterbi")),
         dwell_mean_s=dwell_mean,
         n_transitions=len(ana.transitions),
         n_bursts=ana.n_bursts,

@@ -56,6 +56,91 @@ result is robust rather than lucky, change the seed and refit: an answer that
 survives several seeds is one you can report. Pressing **🔁 Restart** does *not*
 do this — it reproduces the same fit, by design.
 
+## Choosing a decoder
+
+Fitting decides *what the states are*; decoding decides *which state each photon
+belongs to*. They are separate options, and the second one changes what a
+per-state decay, a per-state FCS curve or a reported occupancy is made of.
+
+The default, **Viterbi**, returns the single most likely state sequence. That is
+not the same as the distribution of photons over states, and the difference is
+one-directional: photons whose posterior is (0.7, 0.3) all land in state 0, so
+well-separated states are inflated and ambiguous or short-lived ones are erased.
+On simulated two-state data with 75 / 25 occupancy and overlapping E, Viterbi
+counts 0.789 / 0.211 where the truth is 0.713 / 0.287.
+
+| *Decoder* | what it does | use it for |
+|---|---|---|
+| Viterbi (most likely path) | the maximum-likelihood sequence | one trajectory to look at; dwell and transition statistics |
+| Jitter (draw per photon) | draws each photon from its own posterior | occupancies, per-state decays and spectra, a state-labelled photon stream |
+| FFBS (draw whole paths) | draws a whole trajectory from the joint posterior | the same, **plus** dwell times and transition counts; error bars over several draws |
+
+Two things are handled for you:
+
+- **The unbiased occupancy is always reported**, whichever decoder ran, as
+  `posterior_populations` in the result and in the status line
+  (`… — occupancy 0.713, 0.287`). Compare it against the counted `populations`
+  to see how much the argmax is costing you.
+- **Jitter never drives dwell statistics.** Its draws are independent per
+  photon, so they shatter a solid dwell into single photons. Selecting it still
+  gives you dwells and transitions — derived from a Viterbi path, with
+  `dwell_decoder` recording that. If you want sampled *dwells*, use FFBS.
+
+*Seed* beside the decoder makes a draw reproducible; the same seed gives the
+same assignment, independent of how many threads ran it. Change it to draw an
+independent assignment and see how much of your result is decoding noise.
+
+```python
+result = analyze(data, state_counts=(1, 2, 3), decoder="jitter", decoder_seed=0)
+result.populations            # counted from the draw
+result.posterior_populations  # the unbiased occupancy
+result.dwell_decoder          # "viterbi" — see above
+```
+
+The sampling decoders need the `tttrlib` C++ backend; with
+`CHISURF_H2MM_BACKEND=numba` they raise rather than silently falling back to the
+biased answer they exist to avoid.
+
+## Writing the states back into the photons
+
+Tick **State photons → write** and the run writes its assignment beside each
+source measurement, so every other tool can select a state without knowing
+anything about H2MM:
+
+- `<file>_h2mm_states.ptu` — the complete measurement with each photon's routing
+  channel replaced by the id of its `(stream, state)` pair. A per-state decay or
+  per-state FCS is then an ordinary channel selection.
+- `<file>_h2mm_states.msgpack` — the per-photon state array plus the model, the
+  decoder, its seed and the channel map. The source file is untouched, and there
+  is no channel-id budget.
+
+Both come from the same assignment and select exactly the same photons.
+
+```bash
+csc h2mm compute ./analysis --decoder jitter --state-tttr
+```
+
+Three things worth knowing before you use the PTU:
+
+- **Channel ids are compacted, and none of the originals survive.** The source
+  channels are renumbered to `0…k-1` and the `(stream, state)` pairs allocated
+  densely after them, so the whole file fits the smallest possible id range —
+  detectors at 1, 12 and 30 with two states end up in `0…6` rather than needing
+  ids up to 30. Read the channel map (printed in the result, stored in the
+  sidecar) rather than assuming a number.
+- **Photons no decoder saw keep their own ids.** Anything outside a burst, or
+  matching no stream, lands on the compressed form of its original channel. So
+  after a split those ids hold *only* background — summing what used to be the
+  donor channel gives you background, not the donor total.
+- **PTU is the target.** Its records carry six channel bits (0–63); narrower
+  containers silently truncate an out-of-range id, which would merge two states
+  without a word of warning.
+
+This pairs naturally with the jitter decoder: a per-state decay built from a
+Viterbi split is made of the photons that state won outright, which is a biased
+sample of it. Drawing from the posterior gives each state a photon set whose
+size *and* composition match what the model actually says.
+
 ## Per-state decays
 
 Once every photon carries a state, each state has a fluorescence decay — but

@@ -8,15 +8,25 @@ Viterbi state paths, dwell times, and transition tables.
 
 from __future__ import annotations
 
+import logging
 import warnings
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 import numpy as np
 
-from .engines import fit_one, viterbi
+from .engines import (
+    DECODER_KEEPS_DWELLS,
+    decode,
+    fit_one,
+    normalize_decoder,
+    posterior,
+    viterbi,
+)
 from .h2mm import BurstPhotons, H2mmModel, prepare_bursts
 from .h2mm import optimize as _h2mm_optimize
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -103,7 +113,15 @@ class H2mmAnalysis:
     fret : numpy.ndarray
         Per-state apparent FRET efficiency, shape ``(n_states,)``.
     populations : numpy.ndarray
-        Viterbi state populations (photon fraction per state).
+        State populations counted from ``path`` (photon fraction per state), so
+        they always match the decoded assignment the rest of the result carries.
+        With ``decoder="viterbi"`` this is **biased**: the argmax resolves every
+        ambiguous photon the same way, inflating well-separated states and
+        erasing ambiguous ones. Prefer :attr:`posterior_populations`.
+    posterior_populations : numpy.ndarray
+        State populations from the per-photon posterior γ (its column means) —
+        the **unbiased** occupancy estimate, independent of which decoder ran.
+        All-``nan`` when γ was unavailable (numba backend).
     stoichiometry : numpy.ndarray
         Per-state apparent stoichiometry ``S``, shape ``(n_states,)``. All-``nan``
         when the data has no acceptor-excitation stream (< 3 streams).
@@ -113,16 +131,33 @@ class H2mmAnalysis:
         distribution of how long a state lasts, use
         :meth:`dwell_time_arrays`, which drops them.
     dwells : list of Dwell
-        Every Viterbi-decoded dwell with its measured E/S (for per-state dwell
-        histograms and E–S scatter plots).
+        Every decoded dwell with its measured E/S (for per-state dwell
+        histograms and E–S scatter plots). Derived from
+        :attr:`dwell_path`, not necessarily from :attr:`path`.
     transitions : list of Transition
         Within-burst transitions for the transition-density plot.
     trans_rates : numpy.ndarray
         Transition matrix converted to rates (1/s) using ``base_time_s``;
         diagonal is zero.
     path : numpy.ndarray
-        Per-photon Viterbi state, length ``n_photons`` (aligned with the engine
-        photon layout / :class:`~.photons.PhotonMeta`).
+        Per-photon state from the selected ``decoder``, length ``n_photons``
+        (aligned with the engine photon layout / :class:`~.photons.PhotonMeta`).
+    decoder : str
+        Which decoder produced :attr:`path` — ``"viterbi"``, ``"jitter"`` or
+        ``"ffbs"``.
+    decoder_seed : int
+        Seed of the draw (meaningless for ``"viterbi"``).
+    n_underflow : int
+        Photons whose posterior row carried no information and were drawn
+        uniformly. Non-zero means the model gives part of the data (near-)zero
+        probability — treat the decode with suspicion.
+    dwell_path : numpy.ndarray
+        The path :attr:`dwells` and :attr:`transitions` were derived from. Equal
+        to :attr:`path` except under ``decoder="jitter"``, whose independent
+        per-photon draws shatter a dwell into single photons — dwell statistics
+        then come from Viterbi instead, and :attr:`dwell_decoder` says so.
+    dwell_decoder : str
+        Decoder that produced :attr:`dwell_path`.
     n_streams : int
         Number of photon streams in the fitted data.
     base_time_s : float
@@ -151,6 +186,12 @@ class H2mmAnalysis:
     donor_streams: tuple[int, ...] = (0,)
     acceptor_streams: tuple[int, ...] = (1,)
     aex_streams: tuple[int, ...] | None = None
+    posterior_populations: np.ndarray | None = None
+    decoder: str = "viterbi"
+    decoder_seed: int = 0
+    n_underflow: int = 0
+    dwell_path: np.ndarray | None = None
+    dwell_decoder: str = "viterbi"
 
     def dwell_time_arrays(self, *, include_edges: bool = False) -> dict:
         """Per-state dwell durations (base time units), censored ones dropped.
@@ -759,6 +800,8 @@ def analyze(
     refine_iters: int = 20,
     patience: int | None = None,
     divisors: int = 1,
+    decoder: str = "viterbi",
+    decoder_seed: int = 0,
     progress=None,
 ) -> H2mmAnalysis:
     """Fit, select, and characterise an H2MM model over a range of states.
@@ -796,6 +839,17 @@ def analyze(
         (``data.n_streams == n_base * divisors``, contiguous per-base blocks). The
         FRET/stoichiometry roles sum the emission matrix over each block. ``1``
         (default) means no nanotime splitting.
+    decoder : str
+        How to assign one state per photon (see :mod:`.engines`):
+        ``"viterbi"`` (most likely path, the default), ``"jitter"`` (draw each
+        photon from its posterior — faithful photon distribution), or ``"ffbs"``
+        (draw whole paths — faithful *and* keeps dwell structure). The unbiased
+        occupancy is reported as ``posterior_populations`` whichever is chosen.
+        With ``"jitter"``, dwells and transitions are still derived from a
+        Viterbi path, because independent per-photon draws shatter them.
+    decoder_seed : int
+        Seed for the sampling decoders; results are reproducible and independent
+        of thread count.
     progress : callable, optional
         Called ``progress(done, total, fits)`` after each state-count fit (for
         progress bars / live plots).
@@ -827,11 +881,42 @@ def analyze(
     fret = state_fret(best.model, acceptor_streams, donor_streams)
     stoich = state_stoichiometry(best.model, donor_streams, acceptor_streams, aex_streams)
 
-    path, _ = viterbi(best.model, data)
+    decoder = normalize_decoder(decoder)
+    path, n_underflow = decode(best.model, data, decoder, decoder_seed)
+
+    # The unbiased occupancy, independent of which decoder ran. Counting a
+    # Viterbi path answers the "distribution over states" question with a
+    # one-directional bias; the posterior column means do not. Unavailable on the
+    # numba backend, where it stays nan rather than silently becoming the counts.
+    try:
+        gamma, gamma_underflow = posterior(best.model, data)
+        posterior_pops = np.asarray(gamma.mean(axis=0), dtype=np.float64)
+        if decoder == "viterbi":
+            n_underflow = gamma_underflow
+    except Exception as exc:  # pragma: no cover - numba-only backend
+        logger.info("H2MM posterior unavailable (%s: %s)", type(exc).__name__, exc)
+        posterior_pops = np.full(best.model.n_states, np.nan, dtype=np.float64)
+
+    # Dwells need a path with intact temporal structure. A marginal draw has
+    # none -- it flips roughly one photon in ten of a solidly occupied state,
+    # turning one dwell into dozens -- so dwell statistics come from Viterbi
+    # instead, and the result records that they did.
+    if DECODER_KEEPS_DWELLS.get(decoder, True):
+        dwell_path, dwell_decoder = path, decoder
+    else:
+        dwell_path, _icl = viterbi(best.model, data)
+        dwell_decoder = "viterbi"
+
     dwell_durs, dwells, transitions, populations = _dwells_and_transitions(
-        best.model, data, fret, path,
+        best.model, data, fret, dwell_path,
         donor_streams=donor_streams, acceptor_streams=acceptor_streams, aex_streams=aex_streams,
     )
+    # Populations must describe the assignment the rest of the result carries,
+    # which under "jitter" is `path`, not the Viterbi path the dwells came from.
+    if dwell_decoder != decoder:
+        counts = np.bincount(np.asarray(path, dtype=np.int64),
+                             minlength=best.model.n_states).astype(np.float64)
+        populations = counts / counts.sum() if counts.sum() > 0 else counts
     dwell_arrays = {s: np.asarray(v, dtype=np.float64) for s, v in dwell_durs.items()}
 
     # Transition probabilities → rates (1/s); diagonal set to zero.
@@ -858,4 +943,10 @@ def analyze(
         donor_streams=donor_streams,
         acceptor_streams=acceptor_streams,
         aex_streams=aex_streams,
+        posterior_populations=posterior_pops,
+        decoder=decoder,
+        decoder_seed=int(decoder_seed),
+        n_underflow=int(n_underflow),
+        dwell_path=np.asarray(dwell_path, dtype=np.int64),
+        dwell_decoder=dwell_decoder,
     )

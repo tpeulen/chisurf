@@ -140,6 +140,51 @@ dwell-E histogram (or dwell **E–S scatter** for ALEX/PIE), and plotting
 E-before against E-after at each transition gives the **transition-density
 plot**.
 
+### Decoding: "most likely path" is not "how the photons distribute"
+
+Viterbi maximises $P(\mathbf{s}\mid\mathbf{y},\lambda)$ over *whole sequences*.
+That is the right answer for a single trajectory, and the wrong one for the
+question most downstream products actually ask — an occupancy, a per-state
+decay, a per-state spectrum all want *how many photons belong to each state*,
+and the argmax answers that with a bias that does not average out. If every
+photon in a burst has $\gamma = (0.7, 0.3)$, Viterbi assigns all of them to
+state 0 and the 30 % is erased; well-separated states come out inflated, and
+ambiguous or short-lived ones can vanish entirely.
+
+The unbiased quantity is the **per-photon posterior**
+
+$$\gamma_t(i) = P(s_t = i \mid \mathbf{y}, \lambda)
+             = \frac{\alpha_t(i)\,\beta_t(i)}{\sum_j \alpha_t(j)\,\beta_t(j)},$$
+
+already formed inside the forward-backward E-step. Its column means are the
+state occupancy, and ChiSurf reports them as `posterior_populations` whatever
+decoder ran.
+
+When the output must be one integer state per photon — a channel id, an
+integer-count histogram — $\gamma$-weighting is not available and the choice is
+between the argmax and a **draw** from $\gamma$. Drawing wins, because it
+reproduces the marginal by construction:
+
+| decoder | draws from | photon distribution | dwell / transition structure |
+|---|---|---|---|
+| `viterbi` | — (argmax) | biased (winner-takes-all) | consistent (it *is* the ML path) |
+| `jitter` | marginal $\gamma$, per photon | **faithful** | fragmented — do not use |
+| `ffbs` | joint posterior, whole path | **faithful** | **valid** |
+
+`jitter` draws each photon independently, so the sampled path keeps none of
+$\gamma$'s temporal correlation: a solidly occupied state at
+$\gamma = (0.9, 0.1)$ still sees one photon in ten flipped at random, turning
+one dwell into dozens. It is therefore right for per-photon products and wrong
+for dwell times — ChiSurf enforces this by deriving dwells and transitions from
+a Viterbi path even when `jitter` is selected, and recording that it did.
+
+`ffbs` (forward filtering, backward sampling) draws a whole trajectory from
+$P(\mathbf{s}\mid\mathbf{y})$ via $s_N \sim \alpha_N$ and
+$s_t \sim \alpha_t(i)\,A^{\Delta t}[i, s_{t+1}]$, so it reproduces the marginal
+*and* keeps the dwell structure. Averaging over several draws is multiple
+imputation: the spread across draws is the decoding uncertainty a single Viterbi
+path reports as zero.
+
 ## In ChiSurf
 
 The **Burst H2MM** plugin (`chisurf/plugins/burst/burst_h2mm/`) runs H2MM on
@@ -158,6 +203,14 @@ per-state **fluorescence-decay** (nanotime) histograms, and an interactive
 per-burst **Viterbi state-path** viewer. Per-photon, per-burst, and per-dwell
 tables are exported for ndxplorer (the per-dwell table is the unit downstream
 dwell-filtering acts on).
+
+The **decoder** is a separate choice from the fitting engine, and the run can
+write its assignment **back into the photon stream** — a PTU whose routing
+channels encode `(stream, state)`, and a msgpack state sidecar carrying the
+per-photon states with the model, decoder, seed and channel map. That turns a
+per-state decay or per-state FCS into an ordinary channel or mask selection in
+any tool, with no H2MM-aware plumbing. See
+{doc}`/guides/19_h2mm_hidden_markov`.
 
 When your data are already binned (TIRF/camera trajectories with a constant
 frame rate), the appropriate tool is binned HMM instead — see

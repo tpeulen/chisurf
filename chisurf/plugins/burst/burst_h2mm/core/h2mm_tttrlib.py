@@ -110,6 +110,39 @@ def viterbi(model: H2mmModel, data: BurstPhotons) -> tuple[np.ndarray, float]:
     return np.asarray(path, dtype=np.int64), float(icl)
 
 
+def posterior(model: H2mmModel, data: BurstPhotons) -> tuple[np.ndarray, int]:
+    """Per-photon posterior state probabilities γ via tttrlib.
+
+    Returns ``(gamma, n_underflow)`` with ``gamma`` of shape
+    ``(n_photons, n_states)``, rows summing to 1. Unlike a Viterbi path this is a
+    *distribution*: its column means are the unbiased state occupancy, which
+    counting a decoded path is not.
+    """
+    eng = _to_engine(data)
+    g, n_underflow = eng.gamma(_to_engine_model(model))
+    return np.asarray(g, dtype=np.float32), int(n_underflow)
+
+
+def sample_states(
+    model: H2mmModel, data: BurstPhotons, seed: int = 0
+) -> tuple[np.ndarray, int]:
+    """Draw each photon's state independently from its γ row (marginal draw)."""
+    eng = _to_engine(data)
+    path, n_underflow = eng.jitter_path(_to_engine_model(model), int(seed))
+    return np.asarray(path, dtype=np.int64), int(n_underflow)
+
+
+def sample_paths(
+    model: H2mmModel, data: BurstPhotons, seed: int = 0, n_samples: int = 1
+) -> np.ndarray:
+    """Draw whole trajectories from ``P(path | data)`` (FFBS) via tttrlib."""
+    eng = _to_engine(data)
+    return np.asarray(
+        eng.ffbs_paths(_to_engine_model(model), int(seed), int(n_samples)),
+        dtype=np.int64,
+    )
+
+
 def fit_states(
     data: BurstPhotons,
     n_states: int,

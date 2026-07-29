@@ -194,6 +194,35 @@ each dwell carries:
 Dwell-level filtering (drop burst-edge dwells, require a minimum photon count,
 select by state or duration) then cleans the kinetic statistics downstream.
 
+**Decoding is a second choice, and Viterbi answers a different question.**
+Viterbi maximizes $P(\mathbf{s}\mid\mathbf{y},\lambda)$ over whole
+*sequences*. Most downstream products — an occupancy, a per-state decay, a
+per-state spectrum, a state-labelled photon stream — instead ask how the photons
+*distribute* over the states, and the argmax answers that with a bias that does
+not average out: every photon of an ambiguous burst is resolved the same way, so
+$\gamma = (0.7, 0.3)$ is reported as 100/0. Well-separated states are inflated;
+ambiguous and short-lived ones are erased.
+
+The unbiased quantity is the per-photon posterior
+$\gamma_t(i) = \alpha_t(i)\beta_t(i) / \sum_j \alpha_t(j)\beta_t(j)$, which
+the forward-backward E-step already forms. Its column means are the state
+occupancy. Where the output must be one integer per photon, $\gamma$-weighting
+is unavailable and the choice is argmax versus a **draw** from $\gamma$; the
+draw reproduces the marginal by construction.
+
+| decoder | draws from | photon distribution | dwell structure |
+|---|---|---|---|
+| `viterbi` | — (argmax) | biased | consistent (it *is* the ML path) |
+| `jitter` | marginal $\gamma$, per photon | faithful | fragmented — unusable |
+| `ffbs` | joint posterior, whole path | faithful | valid |
+
+`jitter`'s draws are independent, so the sampled path keeps none of $\gamma$'s
+temporal correlation and a solid dwell shatters into single photons — it is for
+photon-level products only. `ffbs` (forward filtering, backward sampling) draws
+a whole trajectory from $P(\mathbf{s}\mid\mathbf{y})$ and keeps both. Averaging
+over draws is multiple imputation: the spread is the decoding uncertainty a
+single Viterbi path reports as zero.
+
 ## Mapping to ChiSurf
 
 The `chisurf/plugins/burst/burst_h2mm/` plugin implements all of the above on
@@ -219,6 +248,15 @@ The `chisurf/plugins/burst/burst_h2mm/` plugin implements all of the above on
   model-selection** curve, per-state **dwell-time distributions**, per-state
   **fluorescence-decay** (nanotime) histograms, and an interactive per-burst
   **Viterbi state-path** viewer.
+- The **decoder** (`viterbi` / `jitter` / `ffbs`) is selectable beside the
+  fitting engine; `posterior_populations` reports the unbiased occupancy
+  whichever ran, and dwell statistics are taken from a Viterbi path even under
+  `jitter`. The decoders live in the `tttrlib.H2MM` C++ engine
+  (`posterior` / `sample_states` / `sample_paths`).
+- A run can write its assignment **back into the photon stream**: a PTU whose
+  routing channels encode `(stream, state)`, and a msgpack state sidecar
+  carrying the per-photon states with the model, decoder, seed and channel map.
+  Either makes a per-state decay or FCS an ordinary channel/mask selection.
 - **Exports.** Per-photon, per-burst, and per-dwell tables are written for
   ndxplorer; the per-burst table carries the state summary (dominant state,
   number of transitions, mean micro-time proxy) so it opens straight onto ndX's

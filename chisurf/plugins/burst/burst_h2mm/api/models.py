@@ -72,6 +72,28 @@ class H2mmSettings:
     surrogate_path : str
         Path to a trained surrogate (``.pkl``) for the surrogate engines; empty
         falls back to exact EM.
+    decoder : str
+        How to assign one state per photon: ``"viterbi"`` (most likely path, the
+        default), ``"jitter"`` (draw each photon from its posterior — faithful
+        photon distribution), or ``"ffbs"`` (draw whole paths — faithful and
+        keeps dwell structure). Viterbi answers "what is the single most likely
+        sequence"; a per-state decay or an occupancy asks "how do the photons
+        distribute over the states", which the argmax answers with a
+        one-directional bias. The unbiased occupancy is always reported
+        alongside as ``posterior_populations``.
+    decoder_seed : int
+        Seed for the sampling decoders. Results are reproducible and independent
+        of thread count.
+    write_state_tttr : bool
+        Also write the decoded assignment back into the photon stream, beside
+        each source measurement: a PTU whose routing channels encode
+        ``(stream, state)`` and/or a msgpack state sidecar. This is what makes a
+        per-state decay or per-state FCS an ordinary channel selection in any
+        tool, with no H2MM-aware plumbing.
+    state_tttr_ptu, state_tttr_sidecar : bool
+        Which of the two the previous flag produces. Independent choices: the
+        PTU is self-describing but rewrites channel ids, the sidecar leaves the
+        source untouched and has no id budget.
     write_photons : bool
         Also write the per-photon Viterbi-state table (ndX-openable) alongside
         the JSON summary. The master switch for the two format flags below.
@@ -105,6 +127,11 @@ class H2mmSettings:
     refine_iters: int = 20
     patience: int | None = None
     surrogate_path: str = ""
+    decoder: str = "viterbi"
+    decoder_seed: int = 0
+    write_state_tttr: bool = False
+    state_tttr_ptu: bool = True
+    state_tttr_sidecar: bool = True
     write_photons: bool = True
     photon_hdf5: bool = True
     photon_csv: bool = True
@@ -155,7 +182,22 @@ class H2mmResult:
     has_alex : bool
         Whether an acceptor-excitation stream was defined (stoichiometry valid).
     populations : list of float
-        Viterbi photon fraction per state.
+        Photon fraction per state, counted from the decoded path. With
+        ``decoder="viterbi"`` this is the **biased** winner-takes-all count;
+        ``posterior_populations`` is the unbiased estimate.
+    posterior_populations : list of float
+        Photon fraction per state from the per-photon posterior — the unbiased
+        occupancy, whichever decoder ran. Empty when unavailable.
+    decoder : str
+        Decoder that produced the per-photon assignment.
+    decoder_seed : int
+        Seed of the draw (meaningless for ``"viterbi"``).
+    n_underflow : int
+        Photons whose posterior carried no information; non-zero means the model
+        gives part of the data (near-)zero probability.
+    dwell_decoder : str
+        Decoder the dwell/transition statistics were derived from — Viterbi even
+        under ``"jitter"``, whose independent draws shatter dwells.
     dwell_mean_s : list of float
         Mean per-state dwell time in seconds.
     n_transitions : int
@@ -183,6 +225,11 @@ class H2mmResult:
     stoichiometry: list[float] = field(default_factory=list)
     has_alex: bool = False
     populations: list[float] = field(default_factory=list)
+    posterior_populations: list[float] = field(default_factory=list)
+    decoder: str = "viterbi"
+    decoder_seed: int = 0
+    n_underflow: int = 0
+    dwell_decoder: str = "viterbi"
     dwell_mean_s: list[float] = field(default_factory=list)
     n_transitions: int = 0
     n_bursts: int = 0

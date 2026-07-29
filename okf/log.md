@@ -2,6 +2,38 @@
 
 ## 2026-07-29
 
+* **H2MM can decode a distribution of photons over states, not just a winner —
+  and write it back into the photons.** Viterbi answers "what is the single most
+  likely state sequence"; an occupancy, a per-state decay or a per-state FCS
+  curve asks "how do the photons distribute over the states", and the argmax
+  answers that with a bias that does not average out (γ = (0.7, 0.3) is reported
+  as 100/0, so well-separated states inflate and ambiguous ones vanish). On
+  simulated 75/25 data with overlapping E, Viterbi counts 0.789/0.211 against a
+  truth of 0.713/0.287.
+  The engine work landed in tttrlib (`48ae707b`, `2a38e3a4`): the per-photon
+  posterior γ — which the E-step already formed and discarded — plus a marginal
+  γ draw and FFBS path sampling, with counter-based RNG so a draw is
+  reproducible at any thread count. The plugin
+  ([burst.md](/plugins/burst.md)) now exposes them as a **decoder** choice
+  beside the fitting engine, always reports the unbiased
+  `posterior_populations`, and refuses to take dwell statistics from a marginal
+  draw (whose independent per-photon draws shatter a dwell into single photons)
+  — dwells come from a Viterbi path and `dwell_decoder` says so.
+  A run can also write the assignment **back into the photon stream**: a PTU
+  whose routing channels encode `(stream, state)` and a msgpack state sidecar,
+  agreeing photon for photon, so a per-state decay becomes an ordinary channel
+  or mask selection in any tool. Channel ids are compacted (sources renumbered
+  to `0..k-1`, states densely after), which is what keeps a split inside a
+  narrow record field; no original id survives, so consumers must read the map.
+  Theory in [h2mm-theory](/references/h2mm-theory.md), the workflow in
+  [`docs/guides/19_h2mm_hidden_markov.md`](../docs/guides/19_h2mm_hidden_markov.md)
+  and [`docs/concepts/h2mm.md`](../docs/concepts/h2mm.md).
+  Three latent defects fixed on the way, all in tttrlib: a stale
+  `used_routing_channels` cache with no public refresh, `TTTRMask::to_json`'s
+  one-integer-per-photon payload (msgpack added), and missing SWIG `%exception`
+  handlers in `TTTR.i` / `H2MM.i` / `TTTRMask.i` that turned a C++ throw into an
+  interpreter abort.
+
 * **An nDXplorer constant can be fitted, by moving the data onto the curve.**
   The overlay fit dialog now shows a second table — ndX's own parameters, the
   ones an equation reads — beside the curve's. Freeing one puts it in the same
