@@ -1210,6 +1210,22 @@ be, because three of them were defects in the code rather than in the tests.
   `x_range=[0, 16]` on a 16-pixel-wide image — wraps to `0` and returns an ROI
   with **zero columns** instead of all of them. Only the `-1` spelling works.
 
+  **Padding is not the answer**, tested 2026-07-30. Enlarging the FFT scratch
+  buffers (`in`, `fft_roi1`, `fft_roi2`, `ics`) well past `nl*np` does not fix it,
+  and neither does over-allocating the ROI buffer itself by 4096 doubles. Both
+  change *which* shapes fail — with the ROI padded, `(12, 33, 17)` goes clean while
+  `(12, 32, 16)` and `(12, 64, 8)` still fail — which is the behaviour of something
+  reading memory it does not own, but it is not cured by giving it more. So the
+  defect is not a simple sizing or alignment mistake in either buffer, and the next
+  person should not spend the afternoon there as this one did. A sanitiser build
+  (`-fsanitize=address`) is the obvious next step and was not attempted.
+
+  `CLSMImage::get_roi` would settle whether the ROI already contains the NaN before
+  any transform runs, but it is not callable from Python as bound: its `images`
+  parameter is a bare `double *` with separate `n_frames`/`n_lines`/`n_pixels`, and
+  no typemap accepts a NumPy array for it (`TypeError: argument 13 of type
+  'double *'`). Exposing it, or adding a C++-side unit test, is the cheapest way in.
+
   One fix was attempted and **reverted**: `compute_ics` runs `r2c` (which fills a
   half spectrum, `np/2+1` columns) with strides describing a full `nl x np`
   complex array, then inverts it with a full `c2c`. Replacing both with `c2c` did
