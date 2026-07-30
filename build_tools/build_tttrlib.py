@@ -12,6 +12,13 @@ points at a sibling checkout (the same arrangement as ``modules/mmfdb``). When
 it does not resolve this script fails loudly: with no conda package behind it,
 silently continuing would leave the environment with no tttrlib at all.
 
+After a successful build the artifacts are **symlinked** into any extra developer
+environment (by default a conda env named ``arm64``), so that env imports this build
+directly and never needs its own ``pip install``. A rebuild is then visible everywhere
+at once. Set ``CHISURF_TTTRLIB_LINK_ENVS`` to override the targets, or to an empty
+string to switch it off. Linking is a convenience: a missing or ABI-incompatible env is
+reported and skipped, never a build failure.
+
 The build itself needs nothing beyond the environment prefix. It used to inject
 macOS-specific ``libomp`` linker flags, because tttrlib's Python extension
 compiled with OpenMP but never linked it and then failed at import with
@@ -36,6 +43,135 @@ _SRC = _REPO / "modules" / "tttrlib"
 # reusing tttrlib's in-source build dir across flag changes regenerates a stale
 # SWIG wrapper that fails to compile.
 _BUILD_DIR = _REPO / "build" / "tttrlib"
+
+# Extra environments that should see this build without a second install. The pixi
+# environment is where the wheel lands; a developer usually *also* has a conda env they
+# run scripts and editors from (here `arm64`), and re-installing tttrlib into it after
+# every C++ change is both slow and the source of the stale-copy litter this replaces.
+# Symlinking instead means one build serves both, and a rebuild is visible immediately.
+#
+# Override with CHISURF_TTTRLIB_LINK_ENVS (os.pathsep-separated env prefixes); set it to
+# an empty string to disable. Missing envs are skipped silently — this is a convenience,
+# never a build failure.
+_LINK_ENVS_VAR = "CHISURF_TTTRLIB_LINK_ENVS"
+_DEFAULT_LINK_ENV_NAMES = ("arm64",)
+
+#: The files a tttrlib install consists of. Only these names are ever replaced.
+_ARTIFACTS = ("tttrlib.py",)
+_ARTIFACT_GLOBS = ("_tttrlib*.so", "tttrlib-*.dist-info")
+
+
+def _conda_env_prefixes() -> list[Path]:
+    """Return candidate conda env prefixes for the default link targets."""
+    roots: list[Path] = []
+    for var in ("MAMBA_ROOT_PREFIX", "CONDA_ROOT"):
+        if os.environ.get(var):
+            roots.append(Path(os.environ[var]))
+    # CONDA_PREFIX points at the *active* env; its parent's parent is the root when the
+    # env is not the base one.
+    active = os.environ.get("CONDA_PREFIX")
+    if active:
+        p = Path(active)
+        roots += [p, p.parent.parent]
+    roots += [Path.home() / "mambaforge", Path.home() / "miniforge3",
+              Path.home() / "miniconda3", Path.home() / "anaconda3"]
+    out: list[Path] = []
+    for root in roots:
+        for name in _DEFAULT_LINK_ENV_NAMES:
+            cand = root / "envs" / name
+            if cand.is_dir() and cand not in out:
+                out.append(cand)
+    return out
+
+
+def _link_targets() -> list[Path]:
+    raw = os.environ.get(_LINK_ENVS_VAR)
+    if raw is not None:
+        return [Path(p) for p in raw.split(os.pathsep) if p.strip()]
+    return _conda_env_prefixes()
+
+
+def _site_packages(prefix: Path) -> Path | None:
+    """Return the site-packages directory of an environment prefix, if it has one."""
+    matches = sorted(prefix.glob("lib/python3.*/site-packages"))
+    return matches[-1] if matches else None
+
+
+def _link_into(prefix: Path, source_sp: Path) -> bool:
+    """Symlink the freshly built tttrlib from *source_sp* into the env at *prefix*.
+
+    Returns True when the environment ends up importing this build.
+    """
+    target_sp = _site_packages(prefix)
+    if target_sp is None:
+        print(f"build-tttrlib: {prefix} has no site-packages; skipped", flush=True)
+        return False
+
+    # A compiled extension is tied to an exact CPython ABI. Linking a cp312 module into a
+    # cp311 env produces an ImportError at first use, far from the cause, so refuse here.
+    src_ext = next(iter(sorted(source_sp.glob("_tttrlib*.so"))), None)
+    if src_ext is None:
+        print("build-tttrlib: no built extension to link from; skipped", flush=True)
+        return False
+    tag = src_ext.name.split(".")[1]                     # e.g. cpython-312-darwin
+    target_py = target_sp.parent.name                    # e.g. python3.12
+    want = "cpython-" + target_py.replace("python", "").replace(".", "")
+    if not tag.startswith(want):
+        print(f"build-tttrlib: {prefix.name} is {target_py} but the extension is '{tag}'; "
+              "skipped (a compiled extension cannot cross CPython versions)", flush=True)
+        return False
+
+    linked = []
+    for name in _ARTIFACTS:
+        src = source_sp / name
+        if src.is_file():
+            linked.append((src, target_sp / name))
+    for pattern in _ARTIFACT_GLOBS:
+        for src in sorted(source_sp.glob(pattern)):
+            linked.append((src, target_sp / src.name))
+
+    for src, dst in linked:
+        # Replace whatever is there — a previous real install, or an older symlink.
+        if dst.is_symlink() or dst.is_file():
+            dst.unlink()
+        elif dst.is_dir():
+            shutil.rmtree(dst)
+        dst.symlink_to(src)
+
+    # Prove it: a link that does not import is worse than no link, because the failure
+    # surfaces later in someone else's script.
+    python = prefix / "bin" / "python"
+    if not python.is_file():
+        print(f"build-tttrlib: linked into {prefix} (no interpreter found to verify)",
+              flush=True)
+        return True
+    check = subprocess.run(
+        [str(python), "-c",
+         "import tttrlib,sys;print(tttrlib.__version__, tttrlib.__file__)"],
+        capture_output=True, text=True,
+    )
+    if check.returncode != 0:
+        print(f"build-tttrlib: linked into {prefix} but it does not import:\n"
+              f"{check.stderr.strip()}", flush=True)
+        return False
+    print(f"build-tttrlib: linked into {prefix.name} -> {check.stdout.strip()}", flush=True)
+    return True
+
+
+def link_build() -> None:
+    """Symlink the just-installed tttrlib into the configured extra environments."""
+    source_sp = Path(
+        subprocess.run([sys.executable, "-c",
+                        "import site;print(site.getsitepackages()[0])"],
+                       capture_output=True, text=True).stdout.strip()
+    )
+    if not source_sp.is_dir():
+        return
+    for prefix in _link_targets():
+        try:
+            _link_into(prefix, source_sp)
+        except OSError as exc:
+            print(f"build-tttrlib: could not link into {prefix}: {exc}", flush=True)
 
 
 def main() -> int:
@@ -97,7 +233,10 @@ def main() -> int:
         f"--config-settings=build-dir={_BUILD_DIR}",
     ]
     print(f"build-tttrlib: {' '.join(cmd)}", flush=True)
-    return subprocess.call(cmd, env=env)
+    rc = subprocess.call(cmd, env=env)
+    if rc == 0:
+        link_build()
+    return rc
 
 
 if __name__ == "__main__":
