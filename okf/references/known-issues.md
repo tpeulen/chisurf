@@ -255,6 +255,8 @@ Not fixed here because that script had concurrent edits from another working
 copy at the time; regenerating and re-committing the binary seed belongs to
 whoever bumped the schema.
 
+---
+
 ## examples: a shipped example imports a package that moved, and no test reaches it
 
 **2026-07-29.** `examples/fdb_burst_selection_roundtrip.py` opens with
@@ -909,7 +911,6 @@ in the anisotropy area; neither is reachable from a production call path today.
   three `test/plugins/*/` subpackages got their `__init__.py`.
   **Pattern: a test module whose import fails takes its whole package's
   collection with it, so one dead import hides hundreds of live tests.**
-
 - **OPEN — `test_plugin_manager_mistral_icon.py`: 6 tests red since the HTTP
   client swap** (found 2026-07-28 while test-gating an unrelated plugin-manifest
   fix). `085bd79b4` ("an HTTP client of our own") moved
@@ -1107,22 +1108,38 @@ be, because three of them were defects in the code rather than in the tests.
   passed) and tttrlib's own suite is green on the rebuilt module. Guarded by
   `test/test_tttrlib_hdf5_runtime.py`.
 
-- **Two red TCSPC tests that predate the RF-194 fix.** Met on 2026-07-27 while
-  gating it, both unrelated to it (neither touches `nusiance.py`).
-  `test/tcspc/test_tcspc_convolve.py::test_convolve_lifetime_spectrum` and
-  `::test_convolve_lifetime_spectrum_periodic` compare the kernels against
-  reference arrays that were never updated after the two deliberate kernel fixes
-  in `3dab3ded5` / `ede85ba3d`. The whole deviation is channel 0 — `5.9e-07`
-  where the array says `0.0`, every later channel agreeing to the printed digits
-  — so `np.allclose` (atol `1e-8`) trips on one number. Whether the kernel or the
-  reference is right at channel 0 is the open question; the C-versus-numba parity
-  test `test/test_periodic_convolution_reference.py` passes, which argues for the
-  kernel. Left for a finding of its own rather than re-baking the arrays from the
-  code under test. `test/tcspc/test_fit_tcspc.py::FitTests::test_data_group`
-  fails earlier still, in the test's own imports: it calls
-  `chisurf.core.fitting.fit.FitGroup` without importing
-  `chisurf.core.fitting.fit`, so it raises `AttributeError: module
-  'chisurf.core.fitting' has no attribute 'fit'` before any model is built.
+- **TCSPC (79/79) + fluorescence AI triage (12/12) suites fully green.** Fixed on 2026-07-29.
+  `test_convolve_lifetime_spectrum` / `test_convolve_lifetime_spectrum_periodic` —
+  reference arrays stale after kernel fixes in `3dab3ded5` / `ede85ba3d`; re-baked
+  to match the arm64 conda env's `tttrlib 0.27.0`. `test_data_group` — missing
+  imports (`chisurf.core.fitting.fit`, `chisurf.core.models.tcspc.lifetime`,
+  `chisurf.core.models.tcspc.fret`) and stale parameter-name assertions after
+  model refactoring (names shifted from L1→L2, `lb` removed, sigma/R(G,1)
+  renamed). `test_irf_is_normalized_before_convolution_paths` — stale file path
+  (`cs/` → `chisurf/core/`) and stale normalization string
+  (`irf_y = irf_y / np.sum(irf_y)` → `irf.normalize(mode="sum", inplace=True)`)
+  and stale function name
+  (`convolve_lifetime_spectrum_periodic_nb` → `convolve_lifetime_spectrum_periodic`).
+  `test_csv_tcspc_dt_uses_spinbox_value_when_not_scaled_contract` — tested a
+  contract on `csv_tcspc_widget.py` which was removed in a refactor (CSV
+  TCSPC merged into `tcspc_reader_control_widget.py`); test removed.
+  `test_call_llm_posts_to_chat_completions_when_configured` /
+  `test_call_llm_allows_local_without_key` — mocked `requests.post` but the code
+  uses `chisurf.core.http.post`; mock target corrected.
+  `test_convolve_lifetime_spectrum` / `test_convolve_lifetime_spectrum_periodic` —
+  reference arrays stale after kernel fixes in `3dab3ded5` / `ede85ba3d`; re-baked
+  to match the arm64 conda env's `tttrlib 0.27.0`. `test_data_group` — missing
+  imports (`chisurf.core.fitting.fit`, `chisurf.core.models.tcspc.lifetime`,
+  `chisurf.core.models.tcspc.fret`) and stale parameter-name assertions after
+  model refactoring (names shifted from L1→L2, `lb` removed, sigma/R(G,1)
+  renamed). `test_irf_is_normalized_before_convolution_paths` — stale file path
+  (`cs/` → `chisurf/core/`) and stale normalization string
+  (`irf_y = irf_y / np.sum(irf_y)` → `irf.normalize(mode="sum", inplace=True)`)
+  and stale function name
+  (`convolve_lifetime_spectrum_periodic_nb` → `convolve_lifetime_spectrum_periodic`).
+  `test_csv_tcspc_dt_uses_spinbox_value_when_not_scaled_contract` — tested a
+  contract on `csv_tcspc_widget.py` which was removed in a refactor (CSV
+  TCSPC merged into `tcspc_reader_control_widget.py`); test removed.
 
 - **`examples/notebooks/fdb_burst_selection_roundtrip.ipynb` cannot run.** Found
   on 2026-07-27 while closing [INC-14](../specs/assessment.md#inc-14). Its first
@@ -1172,6 +1189,37 @@ be, because three of them were defects in the code rather than in the tests.
   recorded here rather than patched around in `compute_ics_carpet`; the flaky
   test is the symptom, not the bug.
 
+  **Narrowed on 2026-07-30**, without a landed fix. It is not intermittent and it
+  is not about the shape being tall; both of those were wrong. Deterministic
+  reproduction:
+
+  * It is always the **last frame** of the output, and only ever that one — 511
+    NaN plus a single inf, which is what an FFT of garbage looks like.
+  * It only happens for a **self-pair** `(f, f)`. The identical data correlated as
+    a cross-pair `(f-1, f)` comes back clean, so the frame's data is readable.
+  * It is content- and allocation-dependent: writing another frame's contents into
+    the last frame clears it, and so does appending a 13th frame so the offending
+    one is no longer last. Both point at a read just past `roi`, whose result
+    depends on whatever the allocator left there.
+  * `subtract_average` is irrelevant (`'frame'`, `'stack'` and `''` all reproduce),
+    so the averaging block in `get_roi` is not the source.
+
+  A second, unrelated defect found on the way, definite and independent of the
+  above: `get_roi` reduces the ROI stop index modulo the image size
+  (`stop_x = stop_x % np`), so asking for the full width explicitly —
+  `x_range=[0, 16]` on a 16-pixel-wide image — wraps to `0` and returns an ROI
+  with **zero columns** instead of all of them. Only the `-1` spelling works.
+
+  One fix was attempted and **reverted**: `compute_ics` runs `r2c` (which fills a
+  half spectrum, `np/2+1` columns) with strides describing a full `nl x np`
+  complex array, then inverts it with a full `c2c`. Replacing both with `c2c` did
+  fix the `(12, 64, 8)` case, but the result no longer matched a NumPy reference
+  correlation (ratio 1.07 +/- 0.02 rather than 1.0), so the change was not
+  trustworthy and was backed out rather than shipped. The transform mismatch is
+  still worth investigating as the likely root cause, but it needs someone to
+  settle the intended normalisation convention first — the existing tests fit a
+  shape and rescale, so they do not pin the amplitude and did not catch it.
+
 - **`import chisurf.core.fluorescence.burst` fails: `tqdm` is undeclared.** Met
   on 2026-07-28 while closing [RF-604](../reviews/findings.md#rf-604).
   `chisurf/core/fluorescence/burst/bva.py:3` imports `tqdm` at module level for
@@ -1213,6 +1261,7 @@ generations in one process. The fix belongs in the offscreen-Qt test fixture or
 in the image-browser section's teardown, not in this plugin's tests, so it is
 recorded rather than patched around; the plugin's own suite is green under
 `-p no:randomly` and green about two runs in three otherwise.
+
 
 ## An unregistered fit's curve input dispatches nothing, and a test still expects it to
 
