@@ -1226,6 +1226,27 @@ be, because three of them were defects in the code rather than in the tests.
   no typemap accepts a NumPy array for it (`TypeError: argument 13 of type
   'double *'`). Exposing it, or adding a C++-side unit test, is the cheapest way in.
 
+  **The NaN is the smaller problem.** `compute_ics` does not compute the correlation
+  it claims to, for any shape, and there is now a one-line acceptance test that says
+  so without needing to agree on a normalisation convention first:
+
+      a = np.zeros((16, 32)); a[4, 7] = 1.0          # a single delta
+      g = compute_ics(images=np.stack([a, a]), x_range=[0, -1], y_range=[0, -1],
+                      subtract_average='', frames_index_pairs=[(0, 0)])[0]
+      # the autocorrelation of a delta IS a delta:
+      #   g[0, 0] == 1   and every other lag == 0
+
+  Measured: peak **1.0625**, and **0.5312 smeared across every other lag**. The
+  off-peak value is the tell, because no scaling convention can move it off zero.
+  And 0.5312 = 17/32 = `(np/2 + 1)/np` exactly -- the fraction of columns `r2c`
+  fills. A flat field still comes back right (512 everywhere for all-ones), because
+  its spectrum is pure DC and the missing half holds nothing; that is why this
+  survived. A single row of ones gives 64 against a true 32.
+
+  The existing tests cannot catch this: they fit a shape and `normalise_ics`
+  rescales, so amplitude and fine shape are both free. The RICS closed-loop test
+  recovers D correctly *through* the defect.
+
   One fix was attempted and **reverted**: `compute_ics` runs `r2c` (which fills a
   half spectrum, `np/2+1` columns) with strides describing a full `nl x np`
   complex array, then inverts it with a full `c2c`. Replacing both with `c2c` did
