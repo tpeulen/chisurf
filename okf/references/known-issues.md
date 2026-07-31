@@ -1171,92 +1171,33 @@ be, because three of them were defects in the code rather than in the tests.
   mid-edit in the working tree by a concurrent `.ui`-to-AutoForm port, and the
   `.ui` never existed at `HEAD`.)
 
-- **A non-square image stack correlates to `NaN`/`inf`.** Met on 2026-07-28 while
-  closing [RF-583](../reviews/findings.md#rf-583). `test/experiments/
-  test_ics_unification.py::test_a_region_does_not_change_the_particle_number`
-  fails intermittently (4 of 10 runs) with *"left half region moved G(0) from
-  0.8494 to inf"* — the "left half" ROI crops the 32x32 fixture to `(12, 32, 16)`,
-  and the correlation backend returns 512 non-finite entries for that shape while
-  the same data cropped square (`(12, 16, 16)`) comes back clean. Reduced to the
-  backend call itself: `tttrlib.CLSMImage.compute_ics(images=stack[:, :, :16],
-  x_range=[0, -1], y_range=[0, -1], subtract_average='frame')` on the fixture
-  gives `nonfinite == 512` against `0` for the square crop, so the defect is
-  upstream of ChiSurf and not in `normalise_ics` or the region cropping. That it
-  is intermittent across processes but repeated 4 of 4 times inside one points at
-  uninitialised memory rather than at the arithmetic. Any ROI whose bounding box
-  is taller than it is wide is affected, which is most of them. The root
-  fix belongs in the companion correlator repository (a C++ change), so it is
-  recorded here rather than patched around in `compute_ics_carpet`; the flaky
-  test is the symptom, not the bug.
+- **`compute_ics` returned non-finite values and wrong correlations for non-square
+  ROIs.** **FIXED on 2026-07-31** in the companion repository (`67d9dda5`), guarded by
+  `test/python/clsm/test_clsm_ics.py` (`4b9ae857`). Two independent defects:
 
-  **Narrowed on 2026-07-30**, without a landed fix. It is not intermittent and it
-  is not about the shape being tall; both of those were wrong. Deterministic
-  reproduction:
+  * `get_roi` indexed the input image as `images[f*(nl*np) + l*nl + p]`, using the
+    number of *lines* as the row stride where it needed the number of *pixels per
+    line*. **On a square frame the two are the same number, so square ROIs were always
+    correct** — which is why this survived. A wide frame was read scrambled; a tall one
+    ran past the frame, and past the whole allocation on the last frame, which is where
+    the NaNs came from. It also explains the one detail that never fit: only a
+    self-pair `(f, f)` failed, because the overread of any earlier frame lands
+    harmlessly in the next one.
+  * `compute_ics` fed an `r2c` half spectrum (`np/2+1` compact columns) to a full `c2c`
+    inverse using full-width strides, so the spectrum was misread. The half spectrum
+    now has its own strides and the inverse is `c2r`.
 
-  * It is always the **last frame** of the output, and only ever that one — 511
-    NaN plus a single inf, which is what an FFT of garbage looks like.
-  * It only happens for a **self-pair** `(f, f)`. The identical data correlated as
-    a cross-pair `(f-1, f)` comes back clean, so the frame's data is readable.
-  * It is content- and allocation-dependent: writing another frame's contents into
-    the last frame clears it, and so does appending a 13th frame so the offending
-    one is no longer last. Both point at a read just past `roi`, whose result
-    depends on whatever the allocator left there.
-  * `subtract_average` is irrelevant (`'frame'`, `'stack'` and `''` all reproduce),
-    so the averaging block in `get_roi` is not the source.
+  Both were needed: the stride fix alone still left the autocorrelation of a delta at
+  0.53125 instead of 1. Now it agrees with a NumPy reference to 6.7e-16 across square,
+  tall, wide and odd shapes, for auto- and cross-correlation, and matches the
+  convention PAM (`Do_2D_XCor.m`) and the Kolin/Wiseman STICS reference use.
 
-  A second, unrelated defect found on the way, definite and independent of the
-  above: `get_roi` reduces the ROI stop index modulo the image size
-  (`stop_x = stop_x % np`), so asking for the full width explicitly —
-  `x_range=[0, 16]` on a 16-pixel-wide image — wraps to `0` and returns an ROI
-  with **zero columns** instead of all of them. Only the `-1` spelling works.
-
-  **Padding is not the answer**, tested 2026-07-30. Enlarging the FFT scratch
-  buffers (`in`, `fft_roi1`, `fft_roi2`, `ics`) well past `nl*np` does not fix it,
-  and neither does over-allocating the ROI buffer itself by 4096 doubles. Both
-  change *which* shapes fail — with the ROI padded, `(12, 33, 17)` goes clean while
-  `(12, 32, 16)` and `(12, 64, 8)` still fail — which is the behaviour of something
-  reading memory it does not own, but it is not cured by giving it more. So the
-  defect is not a simple sizing or alignment mistake in either buffer, and the next
-  person should not spend the afternoon there as this one did. A sanitiser build
-  (`-fsanitize=address`) is the obvious next step and was not attempted.
-
-  `CLSMImage::get_roi` would settle whether the ROI already contains the NaN before
-  any transform runs, but it is not callable from Python as bound: its `images`
-  parameter is a bare `double *` with separate `n_frames`/`n_lines`/`n_pixels`, and
-  no typemap accepts a NumPy array for it (`TypeError: argument 13 of type
-  'double *'`). Exposing it, or adding a C++-side unit test, is the cheapest way in.
-
-  **The NaN is the smaller problem.** `compute_ics` does not compute the correlation
-  it claims to, for any shape, and there is now a one-line acceptance test that says
-  so without needing to agree on a normalisation convention first:
-
-      a = np.zeros((16, 32)); a[4, 7] = 1.0          # a single delta
-      g = compute_ics(images=np.stack([a, a]), x_range=[0, -1], y_range=[0, -1],
-                      subtract_average='', frames_index_pairs=[(0, 0)])[0]
-      # the autocorrelation of a delta IS a delta:
-      #   g[0, 0] == 1   and every other lag == 0
-
-  Measured: peak **1.0625**, and **0.5312 smeared across every other lag**. The
-  off-peak value is the tell, because no scaling convention can move it off zero.
-  And 0.5312 = 17/32 = `(np/2 + 1)/np` exactly -- the fraction of columns `r2c`
-  fills. A flat field still comes back right (512 everywhere for all-ones), because
-  its spectrum is pure DC and the missing half holds nothing; that is why this
-  survived. A single row of ones gives 64 against a true 32.
-
-  The existing tests cannot catch this: they fit a shape and `normalise_ics`
-  rescales, so amplitude and fine shape are both free. The RICS closed-loop test
-  recovers D correctly *through* the defect.
-
-  One fix was attempted and **reverted**: `compute_ics` runs `r2c` (which fills a
-  half spectrum, `np/2+1` columns) with strides describing a full `nl x np`
-  complex array, then inverts it with a full `c2c`. Replacing both with `c2c` did
-  fix the `(12, 64, 8)` case, but the result no longer matched a NumPy reference
-  correlation (ratio 1.07 +/- 0.02 rather than 1.0), so the change was not
-  trustworthy and was backed out rather than shipped. The transform mismatch is
-  still worth investigating as the likely root cause, but it needs someone to
-  settle the intended normalisation convention first — the existing tests fit a
-  shape and rescale, so they do not pin the amplitude and did not catch it.
-
+  Nothing caught it because a flat field is correct either way (its spectrum is pure
+  DC) and the ICS fits have a free amplitude with `normalise_ics` rescaling — the RICS
+  closed-loop test recovered the simulated `D` straight through both bugs. The new
+  tests are therefore all non-square, and the acceptance test needs no normalisation
+  convention at all: the autocorrelation of a delta must be zero at every non-zero lag.
+  `test_a_region_does_not_change_the_particle_number` now passes 5 runs of 5.
 - **`import chisurf.core.fluorescence.burst` fails: `tqdm` is undeclared.** Met
   on 2026-07-28 while closing [RF-604](../reviews/findings.md#rf-604).
   `chisurf/core/fluorescence/burst/bva.py:3` imports `tqdm` at module level for
