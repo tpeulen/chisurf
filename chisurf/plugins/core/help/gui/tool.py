@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import getpass
+import logging
 import pathlib
 import re
 import webbrowser
@@ -16,7 +17,6 @@ from qtpy.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
-    QMessageBox,
     QPlainTextEdit,
     QSplitter,
     QTextBrowser,
@@ -33,6 +33,9 @@ from chisurf.core.info import help_url
 from chisurf.gui.glyphs import Glyphs
 from chisurf.plugins.core.help.api import review
 from chisurf.plugins.core.help.gui.client import HelpClient
+from chisurf.gui import dialogs
+
+logger = logging.getLogger(__name__)
 
 #: Badge shown next to a page for each review status.
 REVIEW_BADGES = {
@@ -274,6 +277,19 @@ class HelpWidget(QMainWindow):
             "QToolButton { font-size: 11pt; padding: 4px 8px; }"
         )
         self.addToolBar(toolbar)
+
+        # Back / Forward. Documentation is a web of cross-references, and a
+        # reader who follows one has no way back to where they were reading
+        # without them -- the tree selects a page, it does not remember a path.
+        self.back_btn = toolbar.addAction("◀")
+        self.back_btn.setToolTip("Back to the previous page")
+        self.back_btn.setEnabled(False)
+        self.back_btn.triggered.connect(self.go_back)
+        self.forward_btn = toolbar.addAction("▶")
+        self.forward_btn.setToolTip("Forward again")
+        self.forward_btn.setEnabled(False)
+        self.forward_btn.triggered.connect(self.go_forward)
+        toolbar.addSeparator()
 
         # Edit
         self.edit_btn = toolbar.addAction(f"{Glyphs.EDIT}  Edit")
@@ -640,7 +656,66 @@ class HelpWidget(QMainWindow):
             self._find_first_leaf(item)
             return
         file_path = pathlib.Path(path)
-        self._open_document_path(file_path)
+        # Through navigate(), so picking a page in the tree is part of the trail
+        # Back walks -- a reader who clicks a cross-reference and then Back
+        # expects to land where they were, whichever way they got there.
+        self.navigate(file_path)
+
+    def _reset_history(self):
+        """Give this window its own history (a class-level list would be shared)."""
+        self._history: list = []
+        self._history_index: int = -1
+
+    def navigate(self, file_path: pathlib.Path, anchor: Optional[str] = None):
+        """Open a page **and record it in the history**.
+
+        Every route into a document that a *reader* takes goes through here --
+        the tree, a cross-reference, another tool's help link. Only the Back and
+        Forward buttons call :meth:`_open_document_path` directly, so replaying
+        history cannot append to it and trap the reader in a loop.
+        """
+        if not hasattr(self, "_history"):
+            self._reset_history()
+        path = pathlib.Path(file_path)
+        if not path.exists():
+            return
+        entry = (path, anchor or "")
+        if not self._history or self._history[self._history_index] != entry:
+            # A new branch discards whatever was ahead, as a browser does.
+            del self._history[self._history_index + 1:]
+            self._history.append(entry)
+            self._history_index = len(self._history) - 1
+        self._open_document_path(path, anchor)
+        self._update_history_buttons()
+
+    def go_back(self):
+        """Show the previous page in the history."""
+        if not hasattr(self, "_history") or self._history_index <= 0:
+            return
+        self._history_index -= 1
+        path, anchor = self._history[self._history_index]
+        self._open_document_path(path, anchor or None)
+        self._update_history_buttons()
+
+    def go_forward(self):
+        """Show the next page in the history."""
+        if not hasattr(self, "_history") or self._history_index + 1 >= len(self._history):
+            return
+        self._history_index += 1
+        path, anchor = self._history[self._history_index]
+        self._open_document_path(path, anchor or None)
+        self._update_history_buttons()
+
+    def _update_history_buttons(self):
+        """Enable Back/Forward according to where we are in the history."""
+        if not hasattr(self, "_history"):
+            self._reset_history()
+        back = getattr(self, "back_btn", None)
+        forward = getattr(self, "forward_btn", None)
+        if back is not None:
+            back.setEnabled(self._history_index > 0)
+        if forward is not None:
+            forward.setEnabled(self._history_index + 1 < len(self._history))
 
     def _open_document_path(self, file_path: pathlib.Path, anchor: Optional[str] = None):
         if not file_path.exists():
@@ -663,12 +738,29 @@ class HelpWidget(QMainWindow):
             return
         text = result.get("content", "")
         if self.edit_btn.isChecked():
+            # The *editor* shows the source as it is on disk -- rewriting the
+            # roles there would save the rewrite back into the file.
             self.editor.setPlainText(text)
             self.editor.show()
             self.viewer.hide()
             self.save_btn.setEnabled(True)
         else:
-            self._set_viewer_html(result.get("html"), text, file_path)
+            # MyST cross-reference roles are rewritten to Markdown links for
+            # display only, so `{ref}`concept-x`` -- which a Markdown viewer
+            # otherwise renders as literal text -- becomes something to click.
+            from chisurf.gui.widgets.tools.doc_links import expand_roles
+
+            shown = expand_roles(text, file_path.parent)
+            html = result.get("html")
+            if shown != text:
+                try:
+                    from chisurf.plugins.core.help.api.markdown import render_markdown
+
+                    html = render_markdown(shown)
+                except Exception:
+                    logger.debug("could not re-render with expanded roles", exc_info=True)
+                    html = None
+            self._set_viewer_html(html, shown, file_path)
             self.viewer.show()
             self.editor.hide()
             self.save_btn.setEnabled(False)
@@ -679,22 +771,43 @@ class HelpWidget(QMainWindow):
                     pass
 
     def _on_anchor_clicked(self, url):
+        """Follow a link in the page being read.
+
+        The three cases, in order: an in-page anchor scrolls; a web address or a
+        DOI opens in the system browser; anything else is treated as a **cross
+        reference to another document** and resolved -- relative to the page
+        being read first, then against the docs tree -- so the ordinary
+        ``[text](other_page.md)`` that the sources are written with actually
+        goes somewhere. Previously only a ``file://`` URL was followed, which is
+        not what a Markdown link produces, so cross-references were dead.
+        """
+        from chisurf.gui.widgets.tools.doc_links import open_link, resolve_document
+
         try:
-            if url.scheme() in ("http", "https"):
-                webbrowser.open(url.toString())
+            fragment = url.fragment() or None
+            if not url.scheme() and not url.path() and fragment:
+                self.viewer.scrollToAnchor(fragment)
                 return
-            if not url.scheme() and not url.path() and url.fragment():
-                self.viewer.scrollToAnchor(url.fragment())
+            if url.scheme() in ("http", "https", "ftp", "mailto", "doi"):
+                open_link(url)
                 return
-            if url.isLocalFile() or url.scheme() == "file":
-                local_path = pathlib.Path(url.toLocalFile())
-                fragment = url.fragment() or None
-                if local_path.suffix.lower() in (".md", ".rst"):
-                    self._open_document_path(local_path, fragment)
+
+            target = pathlib.Path(url.toLocalFile()) if url.isLocalFile() else None
+            if target is None:
+                base = self.current_path.parent if self.current_path else None
+                target = resolve_document(url.path() or url.toString(), base)
+            if target is not None and target.exists():
+                if target.suffix.lower() in (".md", ".rst", ".txt"):
+                    self.navigate(target, fragment)
                     return
-            self.viewer.setSource(url)
+                open_link(QUrl.fromLocalFile(str(target)))
+                return
+            # Not a document and not a web address: hand it to the shared
+            # resolver, which knows about DOIs written bare.
+            if not open_link(url, self.current_path.parent if self.current_path else None):
+                logger.debug("help: nowhere to go for %s", url.toString())
         except Exception:
-            pass
+            logger.debug("help: could not follow %s", url.toString(), exc_info=True)
 
     # ── edit / save ──────────────────────────────────────────────────
 
@@ -709,7 +822,7 @@ class HelpWidget(QMainWindow):
         if checked:
             result = self.client.read_doc(str(self.current_path))
             if result is None:
-                QMessageBox.critical(
+                dialogs.error(
                     self, "Error", f"Could not read {self.current_path}"
                 )
                 self.edit_btn.setChecked(False)
@@ -739,7 +852,7 @@ class HelpWidget(QMainWindow):
         text = self.editor.toPlainText()
         ok = self.client.save_doc(str(self.current_path), text)
         if not ok:
-            QMessageBox.critical(
+            dialogs.error(
                 self, "Error", f"Could not save {self.current_path}"
             )
             return
@@ -831,7 +944,7 @@ class HelpWidget(QMainWindow):
             str(self.current_path), status, reviewer
         )
         if not result:
-            QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Review status",
                 f"Could not record review status for {self.current_path.name}.",

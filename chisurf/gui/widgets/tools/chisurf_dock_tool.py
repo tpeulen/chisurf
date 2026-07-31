@@ -205,7 +205,14 @@ class ChisurfDockTool(MessagesMixin, QtWidgets.QMainWindow):
         The house rule is that long help lives behind a small ``?`` button, not in
         an inline text block that eats panel space. This puts that button where it
         belongs — the far right of the tool's own toolbar — reusing the same modal
-        the AutoForm ``help`` section uses.
+        the AutoForm ``help`` section uses. Markdown links in that help are live:
+        a documentation page opens in the ChiSurf documentation browser, a URL or
+        a DOI in the system browser (:mod:`chisurf.gui.widgets.tools.doc_links`).
+
+        It also adds a **Guide** button to the left of the ``?`` whenever the tool
+        ships a ``guide.json`` beside its view spec, so a tool gets a guided tour
+        by writing one file and changing no code — see
+        :meth:`add_toolbar_guide`.
 
         Parameters
         ----------
@@ -230,9 +237,14 @@ class ChisurfDockTool(MessagesMixin, QtWidgets.QMainWindow):
         """
         from chisurf.gui.autoform.sections.help_section import HelpButton
 
-        spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
-        toolbar.addWidget(spacer)
+        # Every tool that has a help button gets a guide button too, provided it
+        # ships a tour — so adding one to a tool is a matter of writing
+        # ``guide.json`` beside its view spec, with no code change anywhere. That
+        # is what makes this a ChiSurf-wide facility rather than a feature of
+        # whichever plugin remembered to ask for it.
+        if getattr(self, "_guide_button", None) is None:
+            self.add_toolbar_guide(toolbar, model=model)
+        self._add_toolbar_right_spacer(toolbar)
         button = HelpButton(
             model if model is not None else getattr(self, "model", None),
             resource=resource,
@@ -242,6 +254,143 @@ class ChisurfDockTool(MessagesMixin, QtWidgets.QMainWindow):
         )
         toolbar.addWidget(button)
         return button
+
+    def add_toolbar_guide(
+        self,
+        toolbar: QtWidgets.QToolBar,
+        *,
+        resource: str = "guide.json",
+        steps: Any = None,
+        label: str = "Guide",
+        tooltip: str = "Walk me through this tool, one control at a time",
+        model: Any | None = None,
+    ) -> QtWidgets.QWidget | None:
+        """Add a guide button that walks the user through this tool.
+
+        The companion to :meth:`add_toolbar_help`, and the answer to a different
+        question. Help explains what a control *means*; a guide says which
+        control to touch **first**, points at it, and offers to do the step. A
+        dense panel of well-documented settings is still unusable if nothing
+        says where to start.
+
+        The button sits immediately left of the ``?``, so the two live together
+        at the top right of every tool. Call it before :meth:`add_toolbar_help`;
+        the right-aligning stretch is added once per toolbar by whichever runs
+        first, so the two buttons stay adjacent instead of being pushed to
+        opposite ends by two competing stretches.
+
+        Parameters
+        ----------
+        toolbar : QtWidgets.QToolBar
+            Toolbar to append the button to.
+        resource : str
+            Tour definition file. A *relative* path is resolved next to the
+            model's view spec, so a plugin ships ``guide.json`` beside its
+            ``view.json``. See
+            :mod:`chisurf.gui.widgets.tools.guided_tour` for the format.
+        steps : sequence, optional
+            Ready-made steps, used in preference to *resource*.
+        label : str
+            Button text. Plain text rather than a glyph on purpose: the compass
+            emoji is not in every fallback font and renders as a missing-glyph
+            box, which is worse than a word next to the ``?``.
+        tooltip : str
+            Button tooltip.
+        model : object, optional
+            Model used to resolve a relative *resource* and a step's ``action``
+            (defaults to ``self.model``).
+
+        Returns
+        -------
+        QtWidgets.QWidget or None
+            The button, or ``None`` when no tour could be found — a tool with no
+            tour gets no button rather than a button that does nothing.
+        """
+        from chisurf.gui.widgets.tools.guided_tour import GuidedTour, load_tour
+
+        owner = model if model is not None else getattr(self, "model", None)
+        tour_steps = list(steps) if steps else []
+        if not tour_steps and resource:
+            path = self._resolve_tool_resource(resource, owner)
+            if path is not None:
+                tour_steps = load_tour(path)
+        if not tour_steps:
+            return None
+
+        self._add_toolbar_right_spacer(toolbar)
+        button = QtWidgets.QToolButton()
+        button.setText(str(label))
+        button.setToolTip(str(tooltip))
+        button.setAutoRaise(True)
+        toolbar.addWidget(button)
+
+        def _start() -> None:
+            tour = getattr(self, "_guided_tour", None)
+            if tour is not None:
+                tour.stop()
+            tour = GuidedTour(self, tour_steps, model=owner)
+            self._guided_tour = tour
+            tour.start()
+
+        button.clicked.connect(_start)
+        self._guide_button = button
+        return button
+
+    @staticmethod
+    def _add_toolbar_right_spacer(toolbar: QtWidgets.QToolBar) -> None:
+        """Add the expanding spacer that right-aligns the trailing buttons, once.
+
+        Two stretches in one toolbar do not stack — they share the slack, which
+        would put the guide button in the middle of the bar instead of beside
+        the help button. The flag lives on the toolbar so the rule holds however
+        many trailing buttons a tool adds.
+        """
+        if toolbar.property("_chisurf_right_spacer"):
+            return
+        spacer = QtWidgets.QWidget()
+        spacer.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
+        )
+        toolbar.addWidget(spacer)
+        toolbar.setProperty("_chisurf_right_spacer", True)
+
+    def _resolve_tool_resource(self, resource: str, model: Any) -> Any | None:
+        """Resolve a tool resource path relative to the model's view spec.
+
+        Parameters
+        ----------
+        resource : str
+            Absolute, CWD-relative, or view-spec-relative path.
+        model : object
+            Model whose ``_view_json`` (else module directory) anchors a
+            relative path.
+
+        Returns
+        -------
+        pathlib.Path or None
+            The existing file, or ``None``.
+        """
+        import pathlib
+        import sys
+
+        path = pathlib.Path(resource)
+        if path.is_file():
+            return path
+        if path.is_absolute():
+            return None
+        bases: list[pathlib.Path] = []
+        view_json = getattr(model, "_view_json", None)
+        if view_json:
+            bases.append(pathlib.Path(view_json).parent)
+        module = getattr(type(model), "__module__", "") if model is not None else ""
+        module_file = getattr(sys.modules.get(module, None), "__file__", None)
+        if module_file:
+            bases.append(pathlib.Path(module_file).parent)
+        for base in bases:
+            candidate = base / path
+            if candidate.is_file():
+                return candidate
+        return None
 
     # -- MMFDB connectivity (lazy; never on construction) ----------------------
 

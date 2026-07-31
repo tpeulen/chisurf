@@ -19,6 +19,12 @@ Declare it in a view spec as a custom section::
 - ``title`` — modal window title (default ``"Help"``).
 - ``label`` — button glyph (default ``"?"``).
 - ``align`` — ``"right"`` (default) right-aligns the button; ``"left"`` / ``"full"``.
+
+Markdown links in the body are live. A link naming a documentation page — say
+``[the concept](docs/concepts/pair_correlation.md)`` — opens the ChiSurf
+documentation browser at that page; ``http``/``https``, a ``doi:`` and a bare
+``10.xxxx/…`` DOI open in the system browser. See
+:mod:`chisurf.gui.widgets.tools.doc_links`.
 """
 
 from __future__ import annotations
@@ -103,7 +109,13 @@ class HelpButton(QtWidgets.QWidget):
         dialog.resize(560, 480)
         layout = QtWidgets.QVBoxLayout(dialog)
         browser = QtWidgets.QTextBrowser()
-        browser.setOpenExternalLinks(True)
+        # Links in a help page are cross-references, not decoration: a document
+        # opens in the ChiSurf documentation browser at that page, a web address
+        # or a DOI opens in the system browser.
+        from chisurf.gui.widgets.tools.doc_links import wire_text_browser
+
+        resource = self._resource_path()
+        wire_text_browser(browser, resource.parent if resource is not None else None)
         content = self._content()
         is_html = self._resource.lower().endswith((".html", ".htm"))
         if is_html:

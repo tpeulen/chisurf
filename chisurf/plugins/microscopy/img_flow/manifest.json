@@ -1,0 +1,164 @@
+{
+  "id": "img_flow",
+  "version": "1.0.0",
+  "display_name": "Imaging:Flow Maps",
+  "description": "Map the velocity field of a sample from its own correlations — one arrow per tile, over the image. No model and no fit: the velocity is read off where a correlation peak is. Ships a simulated demo whose flow profile is known, so the arrows can be checked.",
+  "authors": [
+    "Thomas-Otavio Peulen"
+  ],
+  "categories": [
+    "Imaging"
+  ],
+  "icon": "🌊",
+  "state_namespace": "img_flow",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.microscopy.img_flow.gui.tool:ImgFlowTool",
+    "cli": "img-flow=chisurf.plugins.microscopy.img_flow.cli:cli",
+    "services": "chisurf.plugins.microscopy.img_flow.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "img_flow.map.compute",
+      "summary": "Map the velocity field of an image stack or photon stream.",
+      "params_schema": {
+        "type": "object",
+        "required": [
+          "filename"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "TIFF stack or photon stream to map. It needs at least three frames: a flow map measures what moved between them."
+          },
+          "method": {
+            "type": "string",
+            "description": "Estimator: 'stics' tracks where the correlation peak moves (2-D); 'pcf' tracks when molecules arrive a distance away (1-D, resolved per pixel, and able to report no transport)."
+          },
+          "channel": {
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Image channel to map, by index or name."
+          },
+          "tile": {
+            "type": "integer",
+            "description": "Tile size in pixels: the spatial resolution of the map, traded against how many molecules each tile holds."
+          },
+          "step": {
+            "type": "integer",
+            "description": "Distance between tile origins; 0 uses half a tile, so tiles overlap."
+          },
+          "n_lags": {
+            "type": "integer",
+            "description": "STICS: frame lags 0..N-1. The peak must stay inside the tile over the whole range, or it wraps and the fitted velocity points the wrong way."
+          },
+          "distance": {
+            "type": "integer",
+            "description": "Pair correlation: the pair distance in pixels."
+          },
+          "subtract_average": {
+            "type": "string",
+            "description": "'frame' removes each frame's own mean; 'stack' also removes the time-averaged image, i.e. the immobile fraction."
+          },
+          "pixel_duration_us": {
+            "type": "number",
+            "description": "Pixel dwell in microseconds; the line and frame times are derived from it when they are left at zero."
+          },
+          "line_duration_ms": {
+            "type": "number",
+            "description": "Line time in ms. 0 derives it from the dwell."
+          },
+          "frame_duration_ms": {
+            "type": "number",
+            "description": "Frame time in ms — the clock a STICS velocity is measured against. 0 derives it from the dwell."
+          },
+          "pixel_size_nm": {
+            "type": "number",
+            "description": "Pixel size in nm. Every velocity scales linearly with it."
+          },
+          "min_quality": {
+            "type": "number",
+            "description": "Drop tiles whose straight-line fit is worse than this. Peak jitter always yields some slope, so an unfiltered map can show a flow field on a static sample."
+          },
+          "output_path": {
+            "type": "string",
+            "description": "Optional CSV path for the per-tile vectors."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": true,
+      "cancelable": false
+    },
+    {
+      "name": "img_flow.methods.list",
+      "summary": "List the estimators and what each of them can and cannot see.",
+      "params_schema": {
+        "type": "object"
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    },
+    {
+      "name": "img_flow.demo.create",
+      "summary": "Simulate a photon stream with a known flow profile and write it as PTU.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Where to write it; defaults to the ChiSurf settings directory."
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Regenerate even when the file is already there."
+          },
+          "n_frames": {
+            "type": "integer",
+            "description": "Frames to scan; more frames means less scatter and a longer wait."
+          },
+          "v_max": {
+            "type": "number",
+            "description": "Peak flow speed in um/s at the channel centre."
+          },
+          "diffusion_coefficient": {
+            "type": "number",
+            "description": "Diffusion coefficient of the simulated molecules, in um^2/s."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": true,
+      "cancelable": false
+    },
+    {
+      "name": "img_flow.contract.describe",
+      "summary": "Return the RPC contract descriptor.",
+      "params_schema": {
+        "type": "object"
+      },
+      "result_schema": {
+        "type": "object"
+      },
+      "long_running": false,
+      "cancelable": false
+    }
+  ],
+  "events": [],
+  "dependencies": {}
+}

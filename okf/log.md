@@ -1,5 +1,47 @@
 # Update Log
 
+## 2026-07-31 (2)
+
+* **A flow-map tool, and two things every plugin now gets for free.** The
+  velocity field that [PRD-51](/prds/prd-51.md) exists to produce is now a
+  plugin -- `chisurf/plugins/microscopy/img_flow/`, the full stack (Qt-free
+  `core`, `api/` + `backend/` RPC, typed `client`, `img-flow` CLI, AutoForm GUI,
+  tests) and a step in the imaging toolbox beside Tracking. No model and no fit:
+  a velocity is read off *where a correlation peak is*.
+  **It ships its own data.** `demo.py` simulates laminar flow through a channel
+  -- a real photon stream, marker-annotated, written as an ordinary PTU -- so
+  every number the tool reports can be checked against one that is known. Two
+  details make it open with no special reader arguments, and both are silent
+  when wrong: the PTU **image-header tags** carry the scanner geometry (without
+  them the file loads as a few thousand frames of nothing), and PTU encodes
+  marker codes as **bit positions**. A cached demo is now fingerprinted with the
+  settings it was made with, because reusing one made with a different flow
+  produces an empty map that reads as "the tool is broken".
+  **Guided tours are ChiSurf-wide.** A `?` says what a control means and never
+  which one to touch first. `gui/guide.json` beside a `view.json` gives a tool a
+  **Guide** button with no code change -- any tool that already calls
+  `add_toolbar_help` picks it up. Steps point at the **real** controls and wait
+  for the user to press them; there is deliberately no "do it for me" button,
+  because someone who watched a button being pressed has not learned where it
+  is. Obligation recorded in
+  [change tracking](/workflows/change-tracking.md).
+  **Help links are live, everywhere.** The shared `?` modal routes a
+  documentation page to the ChiSurf documentation browser and a URL or DOI to
+  the system browser, and the documentation browser gained **Back/Forward** and
+  working cross-references -- including MyST `{doc}`/`{ref}` roles, which a
+  Markdown viewer had been rendering as literal text, so the pages that
+  cross-reference each other most were exactly the ones that could not be
+  navigated.
+  New reusable pieces: the AutoForm **`quiver`** section (a vector field over an
+  image, chiplot only -- `plot.arrow` + `plot.line`, zero passthrough gaps, with
+  a guardrail test), `gui/widgets/tools/guided_tour.py` and
+  `gui/widgets/tools/doc_links.py`.
+  Fixed in passing: `_stack_from_tttr` enumerated **marker** codes as detector
+  channels, so any scan with line/frame markers came back as five channels, four
+  of them empty; and the demo path used a settings attribute that does not exist
+  (`chisurf_settings_dir`), which silently resolved to a directory relative to
+  the working directory.
+
 ## 2026-07-31
 
 * **The correlation carpet learned to say which way, and where it cannot go.**

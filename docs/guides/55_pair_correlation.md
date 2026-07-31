@@ -8,13 +8,40 @@ to that one* — and the two analyses that do: the pair correlation function
 For the theory — what the peak time means, why a barrier deletes it, and what
 limits the arrows — see {ref}`concept-pair-correlation`.
 
-```{note}
-There is no dedicated GUI tool yet. Everything below is the Python API, which is
-what the ICS tool and any future plugin sit on. The region-averaged pair
-correlation is already reachable from any carpet the
+## The tool
+
+Velocity fields have their own tool: **Spectroscopy → Image Tools → Flow**, or
+standalone as **Imaging → Flow Maps**. It maps a TIFF stack or a photon stream
+into one arrow per tile, with no model and no fit — the velocity is read off
+where a correlation peak *is*.
+
+If you have never run one, press **Guide** in its toolbar. The tour simulates a
+scan whose flow profile is known — laminar flow through a channel, fastest in
+the middle and zero at the walls — and walks you through checking the answer
+against it. It points at the real buttons and waits for you to press them.
+
+```{figure} figures/flow_tool.png
+:name: fig-flow-tool
+:width: 100%
+
+The flow-map tool on its own demo. Left: the settings, in workflow order. Right:
+the headline numbers, the arrows over the time-averaged image, and the profile
+across the frame with the simulated truth drawn beside it — which is how the
+20 % shear bias becomes visible rather than theoretical.
+```
+
+Headless, the same thing:
+
+```bash
+img-flow demo                  # simulate a scan whose flow profile is known
+img-flow map scan.ptu --tile 24 --lags 5 --pixel-size 100 --json
+```
+
+The rest of this guide is the Python API the tool, the CLI and the RPC service
+all sit on. The region-averaged pair correlation needs none of it — it is
+already reachable from any carpet the
 {doc}`image-correlation reader </concepts/image_correlation>` produces, through
 `IcsCarpet.pcf_curve`.
-```
 
 ## Which route to use
 

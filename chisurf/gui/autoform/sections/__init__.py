@@ -20,6 +20,7 @@ from . import (
     path_list_section,  # noqa: F401  (registers the "path_list" section)
     phasor_section,  # noqa: F401  (registers the "phasor" section)
     progress_section,  # noqa: F401  (registers the "progress" section)
+    quiver_section,  # noqa: F401  (registers the "quiver" section)
     rate_matrix_section,  # noqa: F401  (registers the "rate_matrix" section)
     level_histogram_section,  # noqa: F401  (registers "level_histogram")
     region_list_section,  # noqa: F401  (registers the "region_list" section)

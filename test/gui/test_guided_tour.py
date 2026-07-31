@@ -1,0 +1,232 @@
+"""The guided tour: does it point at the right widget, and does it wait?
+
+The tour is shared infrastructure — the intent is that every ChiSurf tool gets
+one — so its two contracts are pinned here rather than in any one plugin:
+
+* a step **resolves its target** from the view spec (a bound attribute, a
+  section title, a toolbar action) rather than by widget class, which would pick
+  the first of its type and quietly point at the wrong panel;
+* a step that declares ``await`` **waits for the user to use the real control**.
+  Next stays disabled until the actual button is pressed. A tour that pressed
+  the button for the user would teach nothing, which is the whole reason the
+  bubble has no "do it for me" action.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+from qtpy import QtWidgets
+
+from chisurf.gui.widgets.tools.guided_tour import GuidedTour, TourStep, load_tour
+
+
+@pytest.fixture
+def host(qapp):
+    """A little window with a toolbar action and two 'view-spec' widgets."""
+
+    class Section:
+        def __init__(self, **kw):
+            for key, value in kw.items():
+                setattr(self, key, value)
+
+    window = QtWidgets.QMainWindow()
+    toolbar = QtWidgets.QToolBar()
+    window.addToolBar(toolbar)
+    window.run_action = toolbar.addAction("▶ Run it")
+
+    central = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(central)
+    window.field = QtWidgets.QSpinBox()
+    window.field._section = Section(attr="tile", title="")
+    layout.addWidget(window.field)
+    window.panel = QtWidgets.QLabel("panel")
+    window.panel._section = Section(attr=None, title="Scanner")
+    layout.addWidget(window.panel)
+    window.setCentralWidget(central)
+    window.resize(400, 300)
+    window.show()
+    qapp.processEvents()
+    yield window
+    window.close()
+
+
+def test_a_tour_file_is_read_leniently(tmp_path):
+    """A malformed tour must never stop a tool from opening."""
+    assert load_tour(tmp_path / "missing.json") == []
+    (tmp_path / "broken.json").write_text("{not json")
+    assert load_tour(tmp_path / "broken.json") == []
+
+    path = tmp_path / "tour.json"
+    path.write_text(json.dumps({"steps": [
+        {"title": "a", "text": "b", "target": {"attr": "tile"}},
+        {"title": "c", "text": "d", "target": {"action": "Run"},
+         "await": {"hint": "press it"}},
+        "not a step",
+    ]}))
+    steps = load_tour(path)
+    assert len(steps) == 2
+    assert steps[0].waits is False
+    assert steps[1].waits is True and steps[1].expect["hint"] == "press it"
+
+    # A bare list works too, and `"await": true` means "wait, with the default
+    # prompt" rather than "no wait".
+    path.write_text(json.dumps([{"title": "x", "text": "y", "await": True}]))
+    assert load_tour(path)[0].waits is True
+
+
+def test_a_step_finds_its_widget_from_the_view_spec(host):
+    """Targets resolve by binding, by section title and by toolbar action."""
+    tour = GuidedTour(host, [TourStep()])
+    assert tour.resolve_target({"attr": "tile"}) is host.field
+    assert tour.resolve_target({"title": "Scanner"}) is host.panel
+    assert tour.resolve_target({"action": "Run it"}) is not None
+    assert tour.resolve_target({"attr": "nothing_here"}) is None
+    # An unresolvable target is not an error: the step is shown centred rather
+    # than skipped, because a tour that silently drops steps teaches a workflow
+    # with holes in it.
+    assert tour.start() is True
+    tour.stop()
+
+
+def test_a_waiting_step_needs_the_real_button(host, qapp):
+    """Next is disabled until the user triggers the highlighted action."""
+    steps = [
+        TourStep(title="press", text="…", target={"action": "Run it"},
+                 expect={"hint": "Press ▶ Run it"}, waits=True),
+        TourStep(title="after", text="…", target={"attr": "tile"}),
+    ]
+    tour = GuidedTour(host, steps)
+    assert tour.start() is True
+    bubble = tour._bubble
+    assert bubble.next_button.isEnabled() is False
+    assert "Press" in bubble.prompt.text() and bubble.prompt.isVisible()
+
+    host.run_action.trigger()
+    qapp.processEvents()
+    assert bubble.next_button.isEnabled() is True
+    assert "done" in bubble.prompt.text()
+
+    # Going back and forward again must not ask for the same press twice.
+    tour.next()
+    tour.back()
+    qapp.processEvents()
+    assert tour._bubble.next_button.isEnabled() is True
+    tour.stop()
+
+
+def test_a_waiting_step_whose_control_is_missing_does_not_strand_the_user(host):
+    """No resolvable control means no wait, rather than a dead end."""
+    steps = [TourStep(title="press", text="…", target={"action": "Nope"},
+                      expect={}, waits=True)]
+    tour = GuidedTour(host, steps)
+    tour.start()
+    assert tour._bubble.next_button.isEnabled() is True
+    tour.stop()
+
+
+def test_the_tour_ends_and_cleans_up(host, qapp):
+    """Done on the last step tears the overlay down."""
+    finished = []
+    tour = GuidedTour(host, [TourStep(title="one", text="…")])
+    tour.finished.connect(lambda: finished.append(True))
+    tour.start()
+    assert tour._bubble is not None and tour._spotlight is not None
+    tour.next()  # last step -> stop
+    qapp.processEvents()
+    assert finished == [True]
+    assert tour._bubble is None and tour._spotlight is None
+    # An empty tour never starts, so a tool with no tour gets no overlay.
+    assert GuidedTour(host, []).start() is False
+
+
+def test_the_spotlight_does_not_swallow_clicks(host, qapp):
+    """The overlay must let the click it is asking for reach the widget."""
+    from qtpy import QtCore
+
+    tour = GuidedTour(host, [TourStep(title="x", text="y", target={"attr": "tile"})])
+    tour.start()
+    qapp.processEvents()
+    spotlight = tour._spotlight
+    assert spotlight.testAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+    tour.stop()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Help links: a "Further reading" list that can actually be followed
+# ──────────────────────────────────────────────────────────────────────────────
+def test_a_documentation_link_resolves_to_a_real_page():
+    """A help page's cross-references must name files that exist."""
+    from chisurf.gui.widgets.tools.doc_links import repository_root, resolve_document
+
+    root = repository_root()
+    assert (root / "docs").is_dir()
+    # Written with and without the ``docs/`` prefix, both work — the docs
+    # cross-reference each other the second way.
+    assert resolve_document("docs/concepts/image_correlation.md") is not None
+    assert resolve_document("concepts/image_correlation.md") is not None
+    assert resolve_document("does/not/exist.md") is None
+    assert resolve_document("") is None
+
+
+def test_web_links_go_to_the_browser_and_docs_do_not(monkeypatch):
+    """The dispatch, pinned: a DOI opens a browser, a page opens the docs."""
+    from chisurf.gui.widgets.tools import doc_links
+
+    opened: list[str] = []
+    shown: list = []
+    monkeypatch.setattr(doc_links, "_open_web", lambda url: opened.append(url) or True)
+    monkeypatch.setattr(
+        doc_links, "_open_document", lambda path, anchor="": shown.append(path) or True
+    )
+
+    assert doc_links.open_link("https://doi.org/10.1529/biophysj.104.054874")
+    assert doc_links.open_link("mailto:someone@example.org")
+    # A bare DOI is how a paper is usually cited; it must not be mistaken for a
+    # relative file path.
+    assert doc_links.open_link("10.1016/j.bpj.2009.04.048")
+    assert len(opened) == 3
+    assert opened[-1] == "https://doi.org/10.1016/j.bpj.2009.04.048"
+    assert not shown
+
+    assert doc_links.open_link("docs/concepts/image_correlation.md")
+    assert len(shown) == 1 and shown[0].name == "image_correlation.md"
+    # A link to nothing is reported, not silently swallowed.
+    assert doc_links.open_link("docs/concepts/nothing_here.md") is False
+
+
+def test_a_help_browser_stops_navigating_away(qapp):
+    """``setOpenLinks(False)`` is what keeps a dead link from blanking the page."""
+    from qtpy import QtWidgets
+
+    from chisurf.gui.widgets.tools.doc_links import wire_text_browser
+
+    browser = QtWidgets.QTextBrowser()
+    wire_text_browser(browser)
+    assert browser.openLinks() is False
+    assert browser.openExternalLinks() is False
+
+
+def test_every_plugin_help_page_links_somewhere_real():
+    """No help page may cross-reference a document that is not there.
+
+    A dead link in a *Further reading* list is worse than no link: it looks like
+    the tool has documentation until someone clicks it.
+    """
+    import pathlib
+    import re
+
+    from chisurf.gui.widgets.tools.doc_links import repository_root, resolve_document
+
+    root = repository_root()
+    pattern = re.compile(r"\[[^\]]+\]\((?!https?:|mailto:|#)([^)]+)\)")
+    broken: list[str] = []
+    for page in sorted((root / "chisurf" / "plugins").rglob("help.md")):
+        for target in pattern.findall(page.read_text(encoding="utf-8")):
+            target = target.split("#", 1)[0].strip()
+            if not target or target.startswith(("http", "mailto")):
+                continue
+            if resolve_document(target, page.parent) is None:
+                broken.append(f"{page.relative_to(root)} -> {target}")
+    assert not broken, "dead help links: " + "; ".join(broken)

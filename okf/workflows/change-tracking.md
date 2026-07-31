@@ -55,6 +55,30 @@ user-visible behaviour updates it in the **same** change:
 | A changed parameter / control | Its `description` in the `view.json` (that is the tooltip *and* the generated docs cell) |
 | A changed CLI / API surface | The guide's headless section and the API snippet |
 | Anything with a UI | A screenshot grabbed from the real widget in `docs/guides/make_screenshots.py`, never a mockup |
+| A new or changed plugin GUI | A **guided tour** — `gui/guide.json` beside the `view.json`. Any tool that calls `add_toolbar_help` grows a **Guide** button as soon as that file exists, so this is one file and no code |
+| A *Further reading* list in a `help.md` | Real Markdown links, not backticked paths: a documentation page opens in the ChiSurf documentation browser, a URL or DOI in the system browser. A guardrail test fails on a link to a file that is not there |
+
+### A plugin is not finished until someone can be walked through it
+
+Documentation says what a control *means*. It does not say which control to
+touch **first**, and that is the gap a scientific tool actually loses people in:
+the panel is full of correct, well-documented settings and nothing says where to
+start. So every plugin ships a **guided tour** in `gui/guide.json` — a list of
+steps, each pointing at one real widget, read by
+[`guided_tour.py`](/architecture/plugin-system.md).
+
+Two rules about what a tour may do, and both are the point rather than detail:
+
+* **It points; the user presses.** A step that needs a button pressed declares
+  `"await"` and waits — Next stays disabled until the user uses the *real*
+  control. A tour that pressed the button on the user's behalf would be a demo
+  reel, and someone who watched a button being pressed has not learned where it
+  is.
+* **It must be walkable with no data.** Where a tool needs something to
+  demonstrate on, the plugin generates a **demo** whose answer is known (the
+  flow-map tool simulates a photon stream with a known velocity profile, so the
+  tour ends by comparing the result against the truth). A tour that begins
+  "open one of your files" teaches nothing to the person who most needs it.
 
 ### Plugins are documented in theory and in application
 

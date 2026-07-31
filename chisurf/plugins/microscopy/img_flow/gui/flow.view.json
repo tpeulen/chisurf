@@ -1,0 +1,281 @@
+{
+  "_comment": "Flow maps. AutoForm over FlowViewModel. Left: a single-column Settings dock in workflow order — load an image (or the demo), say how the scanner ran, pick the estimator, set the tile and the lag range. Right: the headline numbers, the arrows over the image, the profile across the field, and the tile-by-tile table. Compute / export live in the host toolbar; the guided tour is behind 🧭 and long help behind ?.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Flow map",
+      "split": "horizontal",
+      "persist": "img_flow",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Settings",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "custom",
+              "key": "data_source",
+              "options": {
+                "attr": "filename",
+                "call": "set_filename",
+                "label": "Image",
+                "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
+                "mmfdb_kinds": [
+                  "raw_data",
+                  "raw_measurement"
+                ],
+                "description": "The acquisition to map: a TIFF stack, or a photon stream (PTU/HT3/…) reconstructed into a confocal scan. It needs at least three frames — a flow map measures what moved *between* frames, so a single image carries no velocity at all. If you have never run one, press ▶ Load demo in the toolbar: it simulates a scan whose flow profile is known, so the arrows can be checked against a number."
+              }
+            },
+            {
+              "type": "choice",
+              "attr": "channel",
+              "label": "Channel",
+              "options_source": "channel_names",
+              "description": "Image channel to map. Pick the one whose molecules are moving; a structural channel that never changes has no correlation peak to track."
+            },
+            {
+              "type": "choice",
+              "attr": "method",
+              "label": "Estimator",
+              "options": [
+                "stics",
+                "pcf"
+              ],
+              "labels": [
+                "STICS — where the peak moves",
+                "Pair correlation — when it arrives"
+              ],
+              "description": "How a velocity is read. STICS tracks how far the correlation peak travels between frame lags: two-dimensional and direct, but blind to a flow too slow to shift the peak at all. Pair correlation asks *when* molecules arrive a distance away: one-dimensional along the fast scan axis, resolved per pixel, and the only one that can report no transport rather than slow transport — which is what a barrier looks like. Neither fits a transport model, so there is nothing to initialise."
+            },
+            {
+              "type": "value",
+              "attr": "tile",
+              "label": "Tile [px]",
+              "kind": "int",
+              "minimum": 4,
+              "maximum": 512,
+              "description": "Side of the sub-region each arrow is computed from — the spatial resolution of the map, and the setting that decides the whole result. Smaller localizes the flow but holds fewer molecules and leaves the peak less room to travel; larger averages distinct flows into one arrow. Several focus waists across is the usual compromise."
+            },
+            {
+              "type": "value",
+              "attr": "n_lags",
+              "label": "Frame lags",
+              "kind": "int",
+              "minimum": 2,
+              "maximum": 64,
+              "description": "STICS only: correlate frame i against frames i+0 … i+N-1. The peak has to stay inside its tile over that whole range — its displacement is v × lag × frame time ÷ pixel size. Overshoot and the correlation map, being periodic, wraps the peak round to the other side, where a straight line fits a confident velocity pointing the wrong way; such tiles are refused and counted rather than reported."
+            },
+            {
+              "type": "value",
+              "attr": "distance",
+              "label": "Pair distance [px]",
+              "kind": "int",
+              "minimum": 1,
+              "maximum": 128,
+              "description": "Pair correlation only: how far apart the two correlated points are. Too small and the transit time falls below the line period; too large and molecules do not survive the trip, so the peak drowns. Run two distances and check the scaling: a flow peak moves as δ, a diffusive one as δ²."
+            },
+            {
+              "type": "value",
+              "attr": "min_quality",
+              "label": "Min. quality",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Arrows below this are not drawn. It is not cosmetic: peak jitter fitted to a straight line always yields a slope, and a slope is a speed, so an unfiltered map paints a convincing flow field onto a sample that has none. Raise it until a region you know is static goes blank."
+            },
+            {
+              "type": "panel",
+              "title": "Scanner",
+              "collapsed": false,
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "pixel_duration_us",
+                  "label": "Pixel dwell [µs]",
+                  "kind": "float",
+                  "decimals": 3,
+                  "minimum": 0.001,
+                  "maximum": 1000000.0,
+                  "description": "Time the beam spends on each pixel. With the line and frame times left at zero they are derived from it, which is exact for a scanner without dead time between lines or frames."
+                },
+                {
+                  "type": "value",
+                  "attr": "frame_duration_ms",
+                  "label": "Frame time [ms]",
+                  "kind": "float",
+                  "decimals": 4,
+                  "minimum": 0.0,
+                  "maximum": 1000000.0,
+                  "description": "Time between one frame and the next. This is the clock a STICS velocity is measured against, so an inter-frame dead time that is not accounted for scales every arrow. Zero derives it from the dwell."
+                },
+                {
+                  "type": "value",
+                  "attr": "line_duration_ms",
+                  "label": "Line time [ms]",
+                  "kind": "float",
+                  "decimals": 4,
+                  "minimum": 0.0,
+                  "maximum": 1000000.0,
+                  "description": "Time between one line and the next; the clock the pair-correlation lags are measured against. Zero derives it from the dwell."
+                },
+                {
+                  "type": "value",
+                  "attr": "pixel_size_nm",
+                  "label": "Pixel size [nm]",
+                  "kind": "float",
+                  "decimals": 2,
+                  "minimum": 0.01,
+                  "maximum": 100000.0,
+                  "description": "Physical pixel size. Every velocity scales linearly with it, so an uncertain pixel size is an equally uncertain µm/s."
+                }
+              ]
+            },
+            {
+              "type": "panel",
+              "title": "Display and estimator",
+              "collapsed": true,
+              "n_col": 1,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "arrow_scale",
+                  "label": "Arrow scale",
+                  "kind": "float",
+                  "decimals": 2,
+                  "minimum": 0.05,
+                  "maximum": 50.0,
+                  "description": "Multiplies the drawn arrow length. Display only — it never touches the numbers, and the caption under the field says what scale was used."
+                },
+                {
+                  "type": "value",
+                  "attr": "step",
+                  "label": "Tile step [px]",
+                  "kind": "int",
+                  "minimum": 0,
+                  "maximum": 512,
+                  "description": "Distance between neighbouring tile origins. Zero uses half a tile, so tiles overlap — which smooths the field without adding information. Set it equal to the tile size for independent tiles."
+                },
+                {
+                  "type": "choice",
+                  "attr": "subtract_average",
+                  "label": "Background",
+                  "options": [
+                    "frame",
+                    "stack"
+                  ],
+                  "labels": [
+                    "Each frame's own mean",
+                    "Also the time-average (immobile)"
+                  ],
+                  "description": "'Each frame's own mean' removes the offset. 'Also the time-average' additionally removes whatever never moves — the immobile fraction — which otherwise adds a correlation peak fixed at zero lag and drags every velocity towards zero. On a sample with genuinely stuck material the difference is large."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "dock_area",
+          "title": "Result",
+          "split": "vertical",
+          "sections": [
+            {
+              "type": "info",
+              "source": "summary_html",
+              "title": "Flow",
+              "height": 150,
+              "description": "The headline numbers: mean speed, mean direction, and how coherent the field is. A low coherence with a high mean speed is a structured flow, not a failed measurement."
+            },
+            {
+              "type": "dock_area",
+              "title": "Field and profile",
+              "split": "horizontal",
+              "sections": [
+                {
+                  "type": "custom",
+                  "key": "quiver",
+                  "title": "Flow field",
+                  "options": {
+                    "image_source": "flow_image",
+                    "vectors_source": "flow_vectors",
+                    "extent_source": "flow_extent",
+                    "scale_attr": "arrow_scale",
+                    "units": "µm/s"
+                  },
+                  "description": "One arrow per tile, over the time-averaged image. Arrow colour runs from cool for the slowest to warm for the fastest tile in this field. Check the direction first: it is the part a correlation measurement gets right even where the magnitude is conservative."
+                },
+                {
+                  "type": "dock_area",
+                  "title": "Profile and tiles",
+                  "sections": [
+                    {
+                      "type": "plot",
+                      "source": "profile_series",
+                      "title": "Profile",
+                      "x_label": "y (µm)",
+                      "y_label": "velocity (µm/s)",
+                      "description": "The field collapsed to one curve: mean speed and mean v_x against position down the frame. A channel flow is parabolic across it — fastest in the middle, zero at the walls — which is the shape to look for. With the demo loaded the simulated truth is drawn beside it."
+                    },
+                    {
+                      "type": "table",
+                      "source": "vector_rows",
+                      "title": "Tiles",
+                      "expand": true,
+                      "columns": [
+                        {
+                          "key": "x",
+                          "label": "x [µm]",
+                          "width": 80,
+                          "description": "Tile centre along the fast scan axis."
+                        },
+                        {
+                          "key": "y",
+                          "label": "y [µm]",
+                          "width": 80,
+                          "description": "Tile centre along the slow scan axis."
+                        },
+                        {
+                          "key": "vx",
+                          "label": "vx [µm/s]",
+                          "width": 90,
+                          "description": "Velocity along the fast scan axis."
+                        },
+                        {
+                          "key": "vy",
+                          "label": "vy [µm/s]",
+                          "width": 90,
+                          "description": "Velocity along the slow scan axis."
+                        },
+                        {
+                          "key": "speed",
+                          "label": "Speed",
+                          "width": 90,
+                          "description": "Magnitude of the velocity, in µm/s."
+                        },
+                        {
+                          "key": "angle",
+                          "label": "Angle [°]",
+                          "width": 80,
+                          "description": "Direction measured from the fast scan axis."
+                        },
+                        {
+                          "key": "quality",
+                          "label": "Quality",
+                          "width": 80,
+                          "description": "Goodness of the straight line fitted through the tracked peaks. A tile with no directed transport still produces a velocity; this is the number that says not to believe it."
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

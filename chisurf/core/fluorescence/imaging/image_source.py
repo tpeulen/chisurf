@@ -244,7 +244,16 @@ def _stack_from_tttr(path: str, channels, windows) -> tuple[np.ndarray, list[str
         ]
     else:
         if channels is None:
-            used = [int(c) for c in np.unique(np.asarray(tttr.get_routing_channel()))]
+            # Only *photon* events carry a detector channel. Scanner markers are
+            # events too, and they reuse the routing-channel field to carry their
+            # marker code — so enumerating every distinct routing channel invents
+            # an image channel per marker (a scan with line/frame markers 1/2/4
+            # came back as five channels, four of them empty).
+            routing = np.asarray(tttr.get_routing_channel())
+            event_type = np.asarray(tttr.get_event_type())
+            if event_type.shape == routing.shape:
+                routing = routing[event_type == 0]
+            used = [int(c) for c in np.unique(routing)]
         else:
             used = [int(c) for c in channels]
         specs = [(f"ch{c}", [c], []) for c in used]

@@ -1,0 +1,79 @@
+{
+  "_comment": "Guided tour for the flow-map tool. Steps point at real controls and wait for the user to press them -- there is deliberately no 'do it for me' button, because someone who watched a button being pressed has not learned where it is. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this tool measures",
+      "text": "A <b>flow map</b> is one velocity vector per place in the image — where the sample is moving, and how fast. Nothing here is fitted: the velocity is read off <i>where a correlation peak is</i>, not off a parameter released in a transport model.<br/><br/>Nine steps, about a minute. You press the buttons; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "Start with data you can check",
+      "text": "The hard part of a flow map is knowing whether to believe it: arrows appear over a picture and there is nothing to compare them with.<br/><br/>So start with a <b>simulated</b> scan whose flow is known — laminar flow through a channel, fastest in the middle and zero at the walls. It is a real photon stream, written as an ordinary PTU.",
+      "target": {
+        "action": "Load demo"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Load demo</b>. The first time it simulates the scan, which takes about half a minute; the status bar counts the frames."
+      }
+    },
+    {
+      "title": "The file is now selected",
+      "text": "The demo has been written and loaded, and its scanner settings came with it. Any TIFF stack or photon stream can go here instead — it just needs <b>at least three frames</b>, since a flow map measures what moved between them.",
+      "target": {
+        "attr": "filename"
+      }
+    },
+    {
+      "title": "The scanner clock is the measurement",
+      "text": "A velocity is a distance over a time, and both come from here — <b>not</b> from the image. The frame time is the clock a STICS velocity is measured against, and the pixel size converts pixels into µm. An error in either scales every arrow by the same factor with nothing looking wrong.<br/><br/>The demo filled these in. For a real file, take them from the acquisition software.",
+      "target": {
+        "title": "Scanner"
+      }
+    },
+    {
+      "title": "Tile size: the resolution of the map",
+      "text": "Each arrow is computed from one square sub-region. A <b>small</b> tile localizes the flow but holds few molecules and leaves the peak little room to travel; a <b>large</b> tile averages distinct flows into a single arrow.<br/><br/>Several focus waists across is the usual compromise — 24 pixels here, about 2.4 µm.",
+      "target": {
+        "attr": "tile"
+      }
+    },
+    {
+      "title": "Lags: the trap worth knowing",
+      "text": "The peak travels further the more frames you look ahead — and it must stay <b>inside its tile</b>. A correlation map is periodic, so a peak driven past the edge does not disappear: it <b>wraps round to the other side</b>, where a straight line fits a confident velocity pointing <i>the wrong way</i>.<br/><br/>Tiles where that happened are refused and counted rather than reported. If the summary says tiles were refused, use fewer lags or a bigger tile.",
+      "target": {
+        "attr": "n_lags"
+      }
+    },
+    {
+      "title": "Now measure",
+      "text": "Every tile gets its own correlation carpet, its peak is tracked across the lag range, and a straight line through those peaks is the velocity.",
+      "target": {
+        "action": "Map flow"
+      },
+      "await": {
+        "hint": "Press <b>▶ Map flow</b>."
+      }
+    },
+    {
+      "title": "Read the arrows",
+      "text": "Direction first — that is the part a correlation measurement gets right even where the magnitude is conservative. The demo flows along <b>+x</b>, fastest in the middle of the frame.<br/><br/>Colour runs from cool for the slowest tile to warm for the fastest, and the caption underneath says how many arrows survived the quality threshold.",
+      "target": {
+        "title": "Flow field"
+      }
+    },
+    {
+      "title": "Check it against the truth",
+      "text": "The profile collapses the field to one curve across the frame, with the <b>simulated truth drawn beside it</b> in green.<br/><br/>The shape should match — parabolic, peaking in the middle. The recovered magnitude reads <b>about 20 % low</b>, and that is a real property of the method, not a bug: where the flow shears inside a tile the correlation peak is smeared as well as displaced, and a smaller tile does not fix it. A flow map is a reliable picture of <i>where</i> and a conservative estimate of <i>how fast</i>.",
+      "target": {
+        "title": "Profile"
+      }
+    },
+    {
+      "title": "Before you believe a real map",
+      "text": "Four checks, in the order that catches most:<br/><br/>1. <b>Did any tile escape?</b> The summary says so. Shorten the lag range.<br/>2. <b>Does a static region go blank</b> as you raise this threshold? Peak jitter fitted to a line is always <i>some</i> velocity.<br/>3. <b>Does the other estimator agree?</b> Pair correlation shares no kernel with STICS.<br/>4. <b>Does reversing the flow reverse the arrows?</b> Nothing else catches a mirrored axis.<br/><br/>The <b>?</b> button beside the guide has the long version.",
+      "target": {
+        "attr": "min_quality"
+      }
+    }
+  ]
+}

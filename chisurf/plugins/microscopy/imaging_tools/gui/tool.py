@@ -113,6 +113,13 @@ def _frc(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     return widget
 
 
+def _flow(parent: ImagingToolsTool) -> QtWidgets.QWidget:
+    from chisurf.plugins.microscopy.img_flow.gui.tool import ImgFlowTool
+    widget = ImgFlowTool(parent=parent, embedded=True)
+    parent._register_panel("flow", widget)
+    return widget
+
+
 def _tracking(parent: ImagingToolsTool) -> QtWidgets.QWidget:
     from chisurf.plugins.microscopy.img_tracking.gui.tool import ImgTrackingTool
     widget = ImgTrackingTool(parent=parent, embedded=True)
@@ -233,6 +240,21 @@ IMAGING_PANELS: list[dict] = [
         ),
         "factory": _frc,
         "role": "frc",
+    },
+    {
+        "name": "Flow",
+        "icon": "\U0001F30A",
+        "description": (
+            "Map the velocity field: one arrow per tile, over the image. Sits "
+            "beside Tracking because both measure motion rather than building a "
+            "per-pixel map -- and after Drift for the same reason Tracking is, "
+            "since a drifting stage is indistinguishable from a sample flowing "
+            "the other way. Tracking follows individual particles; this reads a "
+            "velocity from the correlations of everything at once, so it works "
+            "where the labels are too dense to resolve as spots."
+        ),
+        "factory": _flow,
+        "role": "flow",
     },
     {
         "name": "Tracking",
