@@ -1294,6 +1294,213 @@ def fig_ndxplorer():
 # --------------------------------------------------------------------------
 # 48. Regions: analysis region, foreground molecules, background
 # --------------------------------------------------------------------------
+def _cellular_flow_stack(n=96, n_frames=400, amplitude=0.8, n_molecules=1600,
+                         width=1.6, brightness=120.0, diffusion=0.15,
+                         sub_steps=4, seed=4):
+    """Molecules advected by a cellular (Taylor-Green) flow, plus a little diffusion.
+
+    ``vx = A sin(kx) cos(ky)``, ``vy = -A cos(kx) sin(ky)`` with ``k = 2 pi / n``:
+    four counter-rotating cells that tile the field periodically. The field is
+    divergence-free, so a uniform concentration stays uniform and no injection
+    machinery is needed, and it is known analytically at every point -- which is
+    what a *map* has to be tested against, as opposed to a single velocity.
+
+    Frames are rendered by depositing molecules into a histogram and blurring it
+    with the focus, which costs the same whatever the concentration.
+    """
+    from scipy.ndimage import gaussian_filter
+
+    rng = np.random.default_rng(seed)
+    position = rng.uniform(0, n, size=(n_molecules, 2))
+    k = 2.0 * np.pi / n
+    frames = np.empty((n_frames, n, n))
+    for f in range(n_frames):
+        counts, _, _ = np.histogram2d(position[:, 1], position[:, 0],
+                                      bins=(n, n), range=((0, n), (0, n)))
+        frames[f] = gaussian_filter(counts, width, mode="wrap")
+        # Symplectic sub-steps, not a plain Euler step. This flow has a stream
+        # function, so advancing x with the old position and y with the *new*
+        # one preserves area exactly -- while an ordinary Euler step through a
+        # rotational field inflates it, draining molecules out of the cell
+        # centres and piling them on the separatrices, so that the "uniform"
+        # phantom grows visible structure in its own time average. Sub-stepping
+        # keeps the trajectory accurate as well as the density.
+        for _ in range(sub_steps):
+            step = amplitude / sub_steps
+            position[:, 0] += step * np.sin(k * position[:, 0]) * np.cos(k * position[:, 1])
+            position[:, 1] -= step * np.cos(k * position[:, 0]) * np.sin(k * position[:, 1])
+        position += rng.normal(0.0, diffusion, size=position.shape)
+        position %= n
+    return rng.poisson(frames * brightness).astype(float)
+
+
+def fig_pcf_flow_arrows():
+    from chisurf.core.experiments.ics import IcsTiming, stics_flow_map
+
+    n, amplitude, line_ms, pixel_nm, tile = 96, 0.8, 0.32, 100.0, 16
+    stack = _cellular_flow_stack(n=n, amplitude=amplitude)
+    timing = IcsTiming(pixel_duration_us=line_ms * 1e3 / n, line_duration_ms=line_ms,
+                       frame_duration_ms=n * line_ms, pixel_size_nm=pixel_nm)
+    field = stics_flow_map(stack, tile=tile, step=tile // 2, frame_lags=range(0, 5),
+                           timing=timing)
+
+    pixel_um, frame_s = pixel_nm * 1e-3, timing.frame_duration_ms * 1e-3
+    k = 2.0 * np.pi / n
+    scale = amplitude * pixel_um / frame_s
+    xp, yp = field.x / pixel_um, field.y / pixel_um
+    true_vx = +scale * np.sin(k * xp) * np.cos(k * yp)
+    true_vy = -scale * np.cos(k * xp) * np.sin(k * yp)
+
+    fig, axs = plt.subplots(1, 3, figsize=(14, 4.4))
+    extent = (0, n * pixel_um, n * pixel_um, 0)
+    for ax in axs[:2]:
+        ax.imshow(stack.mean(axis=0), cmap="gray", extent=extent, alpha=0.65)
+        ax.set_xlabel("x (µm)"); ax.set_ylabel("y (µm)"); ax.grid(False)
+
+    arrow = dict(scale=90, width=0.005)
+    axs[0].quiver(field.x, field.y, true_vx, true_vy, color="tab:blue", **arrow)
+    axs[0].set_title("Simulated: four counter-rotating cells\n(time-averaged image)")
+
+    x, y, vx, vy = field.quiver(min_quality=0.6)
+    axs[1].quiver(x, y, vx, vy, np.hypot(vx, vy), cmap="autumn", **arrow)
+    axs[1].set_title(f"Recovered: one carpet per {tile}-pixel tile\n"
+                     f"{x.size} of {field.vx.size} tiles pass quality > 0.6")
+
+    keep = field.quality >= 0.6
+    a = np.concatenate([true_vx[keep], true_vy[keep]])
+    b = np.concatenate([field.vx[keep], field.vy[keep]])
+    slope = float((a * b).sum() / (a * a).sum())
+    moving = np.hypot(true_vx, true_vy) > 0.2 * scale
+    error = np.degrees(np.arctan2(field.vy, field.vx) - np.arctan2(true_vy, true_vx))
+    error = (error[keep & moving] + 180.0) % 360.0 - 180.0
+
+    axs[2].plot(a, b, "o", ms=4, alpha=0.7, label="per tile, both components")
+    span = np.asarray([a.min(), a.max()])
+    axs[2].plot(span, span, "-", color="tab:green", label="1:1")
+    axs[2].plot(span, slope * span, "--", color="tab:red",
+                label=f"fit, slope {slope:.2f}")
+    axs[2].set_xlabel("true velocity component (µm/s)")
+    axs[2].set_ylabel("recovered (µm/s)")
+    axs[2].set_title(f"Direction is right to ±{np.abs(error).mean():.0f}°;\n"
+                     f"magnitude reads {100 * (1 - slope):.0f} % low inside a shear")
+    axs[2].legend(fontsize=8, loc="upper left")
+    save(fig, "pcf_flow_arrows.png")
+
+    print(f"  pcf_flow_arrows.png: {keep.sum()}/{field.vx.size} tiles kept, "
+          f"slope {slope:.2f}, r = {np.corrcoef(a, b)[0, 1]:.3f}, "
+          f"mean |angle error| {np.abs(error).mean():.1f}°")
+
+
+def _barrier_kymograph(n_time=8000, n_x=64, wall=32, velocity=(0.25, 0.125),
+                       n_molecules=20, width=1.0, brightness=60.0, seed=3):
+    """Blobs drifting along +x, unable to cross *wall*: a two-compartment line.
+
+    The two compartments drift at **different** speeds on purpose. Give them the
+    same speed and a molecule on one side stays a fixed distance from one on the
+    other for ever, so pairs across the wall are rigidly correlated at every
+    lag -- an artefact of the phantom that looks exactly like the leak the figure
+    is claiming is absent.
+    """
+    rng = np.random.default_rng(seed)
+    grid = np.arange(n_x, dtype=float)
+    # Split the population evenly between the compartments rather than letting
+    # chance do it: an uneven split puts a *step* in the mean intensity at the
+    # wall, and the whole point of the figure is that the intensity betrays
+    # nothing.
+    left = np.arange(n_molecules) < n_molecules // 2
+    span = np.where(left, float(wall), float(n_x - wall))
+    origin = np.where(left, 0.0, float(wall))
+    start = origin + rng.uniform(0.0, 1.0, n_molecules) * span
+    drift = np.where(left, float(velocity[0]), float(velocity[1]))
+    t = np.arange(n_time, dtype=float)[:, None]
+    centre = origin + (start - origin + drift * t) % span
+    dx = np.abs(grid[None, :, None] - centre[:, None, :])
+    dx = np.minimum(dx, n_x - dx)
+    rate = np.exp(-(dx ** 2) / (2.0 * width ** 2)).sum(axis=2)
+    return rng.poisson(rate * brightness).astype(float)
+
+
+def fig_pcf_barrier():
+    from chisurf.core.experiments.ics import IcsTiming, pcf_from_kymograph
+
+    wall, distance, velocity = 32, 6, (0.25, 0.125)
+    timing = IcsTiming(pixel_duration_us=10.0, line_duration_ms=1.0,
+                       pixel_size_nm=100.0)
+    intensity = _barrier_kymograph(wall=wall, velocity=velocity)
+    carpet = pcf_from_kymograph(intensity, deltas=(0, distance, -distance),
+                                timing=timing)
+    line_s = timing.line_duration_ms * 1e-3
+    expected = np.asarray([distance / v * line_s for v in velocity])
+
+    fig, axs = plt.subplots(1, 4, figsize=(17, 4.2))
+
+    axs[0].imshow(intensity[:400], aspect="auto", cmap="inferno",
+                  extent=(0, intensity.shape[1], 400 * 1e-3, 0))
+    axs[0].axvline(wall, color="w", ls="--", lw=1)
+    axs[0].set_xlabel("position (pixel)"); axs[0].set_ylabel("time (s)")
+    axs[0].set_title("The raw kymograph\n(streaks are single molecules drifting)")
+    axs[0].grid(False)
+
+    m = carpet.map(distance)
+    finite = m[np.isfinite(m)]
+    axs[1].pcolormesh(carpet.tau * 1e3, np.arange(m.shape[0]),
+                      np.where(np.isfinite(m), m, np.nan), cmap="viridis",
+                      shading="nearest", vmin=0.0,
+                      vmax=float(np.percentile(finite, 99.5)))
+    axs[1].set_xscale("log")
+    axs[1].axhline(wall, color="w", ls="--", lw=1)
+    axs[1].set_xlabel(r"$\tau$ (ms)"); axs[1].set_ylabel("position (pixel)")
+    axs[1].set_title(f"pCF carpet, $\\delta = +{distance}$ px\n"
+                     "the arrival ridge breaks at the wall")
+    axs[1].grid(False)
+
+    left_at, right_at, across_at = wall - 12, wall + 8, wall - 3
+    tau_ms = carpet.tau * 1e3
+    keep = tau_ms <= 150.0
+    for position, label in ((left_at, "left compartment"),
+                            (right_at, "right compartment"),
+                            (across_at, "across the wall")):
+        axs[2].semilogx(tau_ms[keep], carpet.map(distance)[position][keep], "-",
+                        lw=1.8, label=f"pCF at x = {position} ({label})")
+    axs[2].semilogx(tau_ms[keep], carpet.map(0)[across_at][keep], "--", lw=1.4,
+                    color="0.4", label=f"autocorrelation at x = {across_at}")
+    for e in expected:
+        axs[2].axvline(e * 1e3, color="tab:green", lw=1.0, ls=":")
+    axs[2].set_xlabel(r"$\tau$ (ms)"); axs[2].set_ylabel(r"$G$")
+    axs[2].set_title("The peak is deleted, not delayed —\n"
+                     "and the local decay is untouched")
+    axs[2].legend(fontsize=7.5)
+
+    transit = carpet.transit_time(distance) * 1e3
+    axs[3].plot(np.arange(transit.size), transit, "o-", ms=3)
+    for e, side in zip(expected, ("left", "right")):
+        axs[3].axhline(e * 1e3, color="tab:green", lw=1.2,
+                       label=f"$\\delta/v$ = {e * 1e3:.0f} ms ({side})")
+    axs[3].axvspan(wall - distance, wall, color="tab:red", alpha=0.2,
+                   label="pair straddles the wall")
+    axs[3].set_yscale("log")
+    axs[3].set_xlabel("position (pixel)"); axs[3].set_ylabel("transit time (ms)")
+    profile = axs[3].twinx()
+    profile.plot(np.arange(intensity.shape[1]), intensity.mean(axis=0), color="0.6",
+                 lw=1.0)
+    profile.set_ylabel("mean intensity (counts)", color="0.5")
+    profile.set_ylim(0, 1.6 * intensity.mean())
+    profile.grid(False)
+    axs[3].set_title("Flat inside each compartment,\n"
+                     "meaningless across the wall (intensity in grey)")
+    axs[3].legend(fontsize=8, loc="center left")
+    save(fig, "pcf_barrier.png")
+
+    straddling = transit[wall - distance:wall]
+    print(f"  pcf_barrier.png: transit {np.nanmedian(transit[:wall - 8]):.1f} ms left "
+          f"(expected {expected[0] * 1e3:.0f}) and "
+          f"{np.nanmedian(transit[wall + 4:-distance]):.1f} ms right "
+          f"(expected {expected[1] * 1e3:.0f}); straddling the wall it reads "
+          f"{np.nanmedian(straddling):.0f} ms, which matches neither; intensity "
+          f"{intensity.mean(axis=0)[:wall].mean():.1f} left vs "
+          f"{intensity.mean(axis=0)[wall:].mean():.1f} right")
+
+
 def fig_regions():
     """Regions in single-molecule imaging: analysis region, molecules, background.
 
@@ -1388,4 +1595,5 @@ if __name__ == "__main__":
     fig_rcm_alex(); fig_2d_peak_fit(); fig_timestamps()
     fig_ndxplorer()
     fig_regions()
+    fig_pcf_flow_arrows(); fig_pcf_barrier()
     print("all figures written to", FIG)

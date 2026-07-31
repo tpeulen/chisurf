@@ -149,7 +149,8 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 ### Pair-correlation analysis
 | Incumbent capability | Status | ChiSurf location / note |
 |---|---|---|
-| Pair-correlation function (pCF) analysis | ABSENT | → PRD-54 |
+| Pair-correlation function (pCF) analysis | PARTIAL | `chisurf/core/experiments/ics/pair_correlation.py` — position-resolved carpet, transit times, velocities; no GUI tool or fit wiring yet → PRD-54 |
+| Flow **vector maps** from image correlation | PARTIAL | `chisurf/core/experiments/ics/flow_map.py` — tiled STICS and pCF velocity fields; no TOI series, vector rejection or STICCS → PRD-51 |
 
 ### Monte-Carlo simulation
 | Incumbent capability | Status | ChiSurf location / note |

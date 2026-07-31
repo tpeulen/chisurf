@@ -59,6 +59,15 @@ is the answer to the question people usually ask first about RICS — *how can o
 image measure diffusion?* — the image is not one time point. It is a time series
 smeared across space by the scan pattern.
 
+```{note}
+There is a **fifth** reading of the same carpet, and it answers a different kind
+of question — not *how fast* but *where to*. Follow the carpet column a distance
+$\delta$ away from the origin instead of the one at zero and its peak is the time
+molecules take to travel that distance. That is the pair correlation, and it is
+what shows a barrier, a connection, or a direction: see
+{ref}`concept-pair-correlation`.
+```
+
 ### Which method is which
 
 | Method | Region read | Clock that dominates | Scale |

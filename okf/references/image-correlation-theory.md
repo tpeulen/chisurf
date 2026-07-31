@@ -120,8 +120,45 @@ The reader setting **`max_frame_lag`** controls how much of the carpet is
 computed: `0` correlates the zero-lag slice only (all RICS needs), higher values
 extend it along time (what STICS, TICS and iMSD read). Accessors select the region
 each method uses — `rics_map()`, `stics_map(delta)`, `tics_curve()`,
-`lag_time_grid()`. Selecting a region is not the same as applying a method: the
-estimators that make a region *into* STICS or iMSD are what PRD-51 adds.
+`pcf_curve(delta)`, `lag_time_grid()`. Selecting a region is not the same as
+applying a method: the estimators that make a region *into* STICS or iMSD are what
+PRD-51 adds.
+
+**The STICS estimator, model-free.** `IcsCarpet.peak_shift(delta)` locates the
+correlation peak of one lag to sub-pixel precision and `IcsCarpet.velocity()`
+regresses that track into a `FlowVector`; `flow_map.stics_flow_map` runs the pair
+on a grid of tiles and returns a `FlowMap` — the velocity **field**, which is the
+observable the single global-`v` fit cannot produce. Three things about it are
+measured rather than assumed, and each was a silent failure before it was:
+
+* **The peak moves against the flow.** The carpet conjugates frame `i` against
+  frame `i+Delta`, so a sample drifting towards `+x` puts the peak at *negative*
+  pixel lag. A sign error here inverts the physics while every other number stays
+  plausible.
+* **A centre of mass locks to whole pixels.** At 0.2 px/frame a centroid over a
+  window narrower than the peak overstated the velocity by 19 %; a closed-form
+  Gaussian fit (least squares on the log of the baseline-corrected window, exact
+  for a Gaussian sampled at integer lags) stayed within 5 %. At whole-pixel
+  displacements the two agree exactly, which is what makes the bias shippable.
+* **A peak that leaves its tile wraps, it does not vanish.** The tracker then
+  fits a clean line through a sign-flipped displacement: 2 px/frame in a 16 px
+  tile gave a backwards velocity with `R^2 = 0.7`. Such a tile is refused and
+  counted in `meta['n_escaped']`.
+
+**Pair correlation — the fifth reading, and the one that needs its own kernel.**
+`G(tau, x, delta)` correlates a position with the position `delta` away, so its
+peak is a **transit time** (`delta^2/4D` for diffusion, `delta/v` for flow) rather
+than a decay constant. Two properties are unique to it: direction is signed
+(`+delta` peaks under flow towards `+x` and `-delta` does not), and a **barrier
+deletes the peak** while leaving both local autocorrelations and the intensity
+untouched. The region-averaged reading is free — it is a carpet column, exposed as
+`IcsCarpet.pcf_curve` — but it is position-*less*, because the carpet is built by
+an FFT over space. Localizing a barrier therefore needs a different kernel: one
+real FFT along **time** per position, in
+`chisurf/core/experiments/ics/pair_correlation.py`, returning a `PcfCarpet` of
+`(delta, position, tau)`. Measured on a 4096x64 kymograph, extracting the same
+position resolution by sliding a region through the spatial correlator was ~700x
+slower.
 
 **The model.** `image_correlation(xi, psi, Delta, ...)` is a single function over
 all three lag axes:
@@ -167,10 +204,16 @@ rather than collapsed to a single map.
 
 ## Pointers
 
-* Correlator: `chisurf/core/experiments/ics/ics_core.py`, containers and the
-  lag-time identity in `.../ics/data.py`.
+* Correlator: `chisurf/core/experiments/ics/ics_core.py`, containers, the
+  lag-time identity and the peak/velocity estimators in `.../ics/data.py`.
+* Pair correlation: `.../ics/pair_correlation.py`; velocity fields:
+  `.../ics/flow_map.py`.
 * Model: `chisurf/core/models/ics/models.py`, fit classes in `.../ics/ics.py`.
 * Tests: `test/experiments/test_ics_unification.py` pins the identities above;
   `test/experiments/test_ics_vs_pam.py` cross-checks the zero-lag slice against
-  an established implementation's stored correlation on a real EGFP dataset.
-* User-facing guide: `docs/concepts/image_correlation.md`.
+  an established implementation's stored correlation on a real EGFP dataset;
+  `test/experiments/test_pair_correlation.py` pins both sign conventions, the
+  barrier, the tile-escape refusal, and an A/B of the FFT kernel against the
+  definition summed directly.
+* User-facing guides: `docs/concepts/image_correlation.md`,
+  `docs/concepts/pair_correlation.md`, `docs/guides/55_pair_correlation.md`.

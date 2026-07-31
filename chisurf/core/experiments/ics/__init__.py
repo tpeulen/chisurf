@@ -18,8 +18,16 @@ import chisurf.core.data
 from chisurf.core.experiments.core.reader import ExperimentReader
 from chisurf.core.fluorescence.imaging.drift import correct_drift
 from chisurf.core.roi import ROI, as_roi
-from .data import IcsCarpet, IcsSettings, IcsTiming, lag_time
+from .data import FlowVector, IcsCarpet, IcsSettings, IcsTiming, lag_time
+from .flow_map import FlowMap, pcf_flow_map, stics_flow_map, tile_slices
 from .ics_core import compute_ics_carpet, frame_pairs, normalise_ics
+from .pair_correlation import (
+    PcfCarpet,
+    correct_bleaching,
+    kymograph,
+    pcf_from_kymograph,
+    pcf_from_stack,
+)
 from .tttr_loader import load_clsm_from_tttr
 
 _VIEW_JSON = pathlib.Path(__file__).parent / "ics.view.json"

@@ -1,5 +1,52 @@
 # Update Log
 
+## 2026-07-31
+
+* **The correlation carpet learned to say which way, and where it cannot go.**
+  Image correlation answered *how fast* and nothing else; the two questions it
+  could not touch were direction and connectivity. Both are now implemented, in
+  `chisurf/core/experiments/ics/`, and both are validated against phantoms whose
+  velocity is known rather than against themselves.
+  **Pair correlation** (`pair_correlation.py`) correlates a position with the
+  position `delta` away, so its peak is a *transit time*: `delta/v` under flow,
+  `delta^2/4D` under diffusion. One real FFT along time gives every lag at every
+  position at once — the position axis being exactly what the existing spatial
+  FFT destroys, and exactly where a barrier lives. Conventions were chosen
+  deliberately and each is a place a factor hides: linear zero-padded correlation
+  (a circular one wraps the tail where a large-`delta` peak sits), normalisation
+  by the `N - tau` overlap rather than `N` (dividing by `N` tilts the curve down
+  and reports transport as *faster* than it is), per-segment error bars, and a
+  bleaching correction that rescales the fluctuations by
+  `sqrt(<F>/F_bar(t))` as well as removing the trend — without that rescale `G(0)`
+  drifts through the record and is read as molecules disappearing.
+  **Velocity fields** (`flow_map.py`) are the arrows: `stics_flow_map` tiles the
+  field of view and reads each tile's carpet, `pcf_flow_map` gets the same
+  quantity from transit times through a kernel it shares nothing with. The
+  region-averaged pCF was near-free — it is a carpet column
+  (`IcsCarpet.pcf_curve`/`pcf_map`) — while `peak_shift`/`velocity` add the
+  model-free STICS estimator [PRD-51](/prds/prd-51.md) was written to get.
+  Three findings are the reason this is not a thin wrapper, and all three are
+  measurements: a **centre of mass locks to whole pixels** (19 % velocity error at
+  0.2 px/frame, where a closed-form Gaussian fit on the log of the window stays
+  within 5 % — and the two agree exactly at whole-pixel drift, which is what makes
+  the bias shippable); a **peak driven past its tile edge wraps rather than
+  vanishing**, and the tracker then fits a clean line through a sign-flipped
+  displacement (2 px/frame in a 16 px tile: right magnitude, wrong direction,
+  `R^2 = 0.7`), so such a tile is now refused and counted; and **shear inside a
+  tile costs magnitude but not direction** (cellular flow: ±3° and `r = 0.996`,
+  yet 20 % low, and a smaller tile does not fix it — a uniform flow is accurate to
+  a few percent). Tests pin both sign conventions, the barrier, the escape
+  refusal, and an A/B of the FFT kernel against the definition summed directly.
+  Docs: [pair correlation and flow maps](/references/image-correlation-theory.md)
+  updated, plus `docs/concepts/pair_correlation.md` and
+  `docs/guides/55_pair_correlation.md` with two generated figures. Trackers:
+  [PRD-51](/prds/prd-51.md) status and parity table, [PRD-54](/prds/prd-54.md)
+  scope, [PRD-49](/prds/prd-49.md) parity matrix.
+  Also fixed while in the file: the `lag_time` doctest in `.../ics/data.py` had
+  been failing since it was written (`10.0 * 1e-6` reprs as `9.999999999999999e-06`),
+  which only `pixi run test-doctest` runs.
+
+
 ## 2026-07-29
 
 * **Unlinking an out-of-fit parameter could not work, and a table did not say

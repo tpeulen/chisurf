@@ -31,6 +31,15 @@ Individually small; grouped here as the "long tail" phase.
 - **Spectral unmixing** — linear unmixing / spectral-phasor decomposition of multi-channel
   spectral images into species maps (may share [PRD-52](prd-52.md) phasor code).
 - **pCF** — pair-correlation vs. distance from photon streams / coordinates; carpet plots.
+  🚧 **The analysis landed 2026-07-31** in `chisurf/core/experiments/ics/pair_correlation.py`:
+  a position-resolved `PcfCarpet` from one FFT along time (linear/zero-padded, overlap-
+  normalised, per-segment errors, amplitude-preserving bleaching correction), the
+  region-averaged reading as `IcsCarpet.pcf_curve`/`pcf_map`, and `transit_time` /
+  `velocity` readouts. A barrier is recovered as the position band where the peak is
+  absent while the local autocorrelation and the intensity are unchanged. **Remaining**:
+  a GUI tool (AutoForm), the photon-stream path that reaches lags below the line time,
+  and a dedicated pCF *fit* model — the shipped `PCF Log-Normal` family fits an
+  exported curve but is not wired to this carpet.
 - **nsFCS / antibunching** — ns-timescale correlation model (photon antibunching dip,
   fast conformational/photophysical dynamics).
 - **FCCS fit model** — dual-color cross-correlation fitting (binding/co-diffusion).

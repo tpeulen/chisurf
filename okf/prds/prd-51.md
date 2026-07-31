@@ -63,10 +63,31 @@ Consequences that the current code gets wrong, and that this PRD exists to fix:
 
 # Status
 
-In progress. Landed: the shared correlation array and one Gaussian transport model.
-Not started: STICS as a distinct method (ROI×TOI velocity workflow + vector-map time
-series), STICCS, iMSD as a width readout, TICS decay models, N&B, spectral RICS, and
-the separation of the methods into distinct selectable models.
+In progress. Landed: the shared correlation array, one Gaussian transport model, and
+— since 2026-07-31 — the **model-free STICS spine**: per-lag sub-pixel peak tracking
+(`IcsCarpet.peak_shift`), the regression that turns a peak track into a velocity
+(`IcsCarpet.velocity` → `FlowVector`), and spatial tiling into a vector field
+(`flow_map.stics_flow_map` → `FlowMap.quiver`), with a second, independent route to
+the same arrows from pair-correlation transit times (`flow_map.pcf_flow_map`).
+Two conventions are now pinned by test rather than by comment: the peak moves
+*against* the flow, and a peak driven past the tile edge **wraps** — which fits a
+clean straight line through a sign-flipped displacement, so such a tile is refused
+and counted rather than reported.
+
+Still open on the STICS side: the four immobile filters (only DC removal exists),
+the `omegaThreshold` linear-region cutoff, the Ji & Danuser peak-significance gate,
+three-stage vector rejection, TOI tiling into a *time series* of maps, the polygon
+mask, and STICCS. Not started at all: iMSD as a width readout, TICS decay models,
+N&B, spectral RICS, and the separation of the methods into distinct selectable
+models.
+
+A measured caveat worth carrying into the port: on a cellular flow that shears
+within a tile, the recovered direction is right to ±3° (r = 0.996) while the
+**magnitude reads ~20 % low**, and shrinking the tile does not fix it. The same
+estimator on a uniform flow is accurate to a few percent. A flow map is therefore a
+reliable picture of where the sample is going and a conservative estimate of how
+fast — which is exactly what the vector-rejection and significance machinery above
+is for.
 
 The reference implementation to port has been surveyed in full (see below): the
 estimators, the quality gates and the rejection criteria are all already specified
@@ -108,10 +129,10 @@ Port from the 2015 package; keep the 2006 tutorial as the fixture.
 | `STICS/stics.m` | the shared `G(xi, psi, Delta)` via per-frame-pair FFT | ✅ `ics_core.compute_ics_carpet` — the *substrate*, not the method |
 | `TICS/tics.m` | zero-spatial-lag decay `G(0,0,Delta)` | ✅ `IcsCarpet.tics_curve` |
 | `ICS/corrfunc.m`, `gauss2d.m` | 2D correlation + Gaussian form | ✅ `IcsModel` / `IcsGaussian2D` |
-| `STICS/immfilter.m` | **immobile-population Fourier filter** (zero the DC temporal frequency) | ❌ only an immobile *fit term* (`N_imm`), which is not the same operation |
-| `ICS/gaussfit.m` (`'time'` mode) | fit **each** lag's map, track peak `(x0(tau), y0(tau))` | ❌ no per-lag peak-tracking path |
-| `STICS/velocity.m` | regress the peak track over the linear region → `v_x`, `v_y` | ❌ velocity only as a global fit parameter |
-| *(spatially resolved STICS)* | sliding sub-region × time-window grid → **flow vector field** | ❌ absent — no sub-region tiling at all |
+| `STICS/immfilter.m` | **immobile-population Fourier filter** (zero the DC temporal frequency) | 🚧 `IcsSettings.subtract_average='stack'` removes the time-averaged image, which is the degenerate DC case; the moving-average and Butterworth variants, and the immobile *fit term* (`N_imm`), remain distinct operations |
+| `ICS/gaussfit.m` (`'time'` mode) | fit **each** lag's map, track peak `(x0(tau), y0(tau))` | 🚧 `IcsCarpet.peak_shift` fits the peak of each lag's map in closed form (least squares on the log of a windowed, baseline-corrected patch — `window` is `fitRadius`); it returns the position only, not the width or amplitude |
+| `STICS/velocity.m` | regress the peak track over the linear region → `v_x`, `v_y` | 🚧 `IcsCarpet.velocity` regresses the peak track and returns a `FlowVector` with a pooled goodness of fit; the `omegaThreshold` linear-region cutoff is not implemented, so the lag range is still the caller's choice |
+| *(spatially resolved STICS)* | sliding sub-region × time-window grid → **flow vector field** | 🚧 `flow_map.stics_flow_map` tiles the field (`tile`/`step`, overlapping allowed) into a `FlowMap` of `(vx, vy, quality, amplitude)` with a `quiver()` accessor; **one time window only** — no TOI series, no vector rejection, no polygon mask |
 | `TICS/difffit.m`, `diffusion3d.m`, `diffflowfit.m`, `flowfit.m` | standalone TICS decay models (diffusion, 3D diffusion, diffusion+flow, pure flow) | ❌ the carpet exposes the decay, but there are no selectable TICS decay models |
 | `imageManipulation/wnCorr.m` | white-noise/background correction from a user-picked background box | 🚧 background handling exists in `IcsSettings`; not the ROI-picked variant |
 | `ICS/autocrop.m`, `imageManipulation/serimcrop.m` | crop / ROI | ✅ `chisurf/core/roi` + `IcsSettings.roi` |
