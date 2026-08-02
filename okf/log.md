@@ -1,5 +1,15 @@
 # Update Log
 
+## 2026-08-02
+
+* **FRET wiring, fast mode, and brightness-to-amplitude for the FCS kinetics model specified as PRDs 73–75** (documentation only, nothing implemented). The three related asks from a design discussion are now registered so the next session starts from decisions, not a blank page:
+  - **[PRD-73](prds/prd-73.md)** — FRET wiring for `FCSKineticsModel`: a brightness source that computes per-state brightnesses from FRET efficiency + crosstalk (`L`) + excitation (`sigma`) matrices. The `fret_calculator` plugin currently has **no brightness concept** (grep confirms) — so the calculator's `core/algorithms.py` gains a pure brightness computation rather than a new parallel plugin. The FCS model gets an `"action"` button in `kinetics.view.json` (the `pda2c/dynamic.view.json` `run_consistency_check` pattern) that imports the calculator's brightness vector into `StateBrightness` (values fixed, so a fit cannot move imported physical brightnesses). Also pins down that the absolute molecular brightness Q is a function of `L`/`sigma`/`E`, not a free number, shared via one helper next to `compute_brightness` in `chisurf/core/models/fcs/mdf.py`.
+  - **[PRD-74](prds/prd-74.md)** — full vs fast mode for the kinetics model. Full (current) = spatial steady-state S1-population solve + 3D `fcs_numerical_g_diff` autocorrelation + bunching (~155 ms cold, the `V_0/V_eff` volume expansion). Fast = skip the spatial solve/3D autocorrelation, keep only the eigenvalue-based `compute_bunching_factor` at peak excitation rate — which already carries the brightness correctly in both `c_m` factors, so fast mode must keep passing `StateBrightness.array` (the historical brightness-invisible bug must not return). Contract: both modes converge to the analytical Gaussian shape at weak power; they are allowed to differ in the high-power volume expansion, and the view info text must say so.
+  - **[PRD-75](prds/prd-75.md)** — the **postponed** piece: brightness → amplitude for species mixtures. Current amplitude `G = b + g/N` (single species) must become the brightness-weighted sum `Σ B_i² N_i g_i / (Σ B_i N_i)²` for mixtures, with crosstalk coupling channels via `L`. Registered as a named limitation of the single-`1/N` assumption rather than a silent one; depends on PRD-73, interacts with PRD-74's `V_0/V_eff`.
+  - All three registered in `okf/prds/index.md` after PRD-72 (status ✏️ draft).
+
+# Update Log
+
 ## 2026-07-31 (2)
 
 * **A flow-map tool, and two things every plugin now gets for free.** The
