@@ -68,6 +68,14 @@ class _Demo:
     def label(self, sel: Selection, expr: str):
         return (sel, expr)
 
+    @command("tune")
+    def tune(self, preset: str = "", **overrides):
+        return (preset, overrides)
+
+    @command("scale")
+    def scale(self, **factors: float):
+        return factors
+
 
 def test_registry_resolves_name_alias_and_prefix():
     reg = collect_commands(_Demo())
@@ -94,6 +102,31 @@ def test_binder_missing_required_and_unknown_keyword():
         bind_and_call(c, tokenize(""))            # missing n
     with pytest.raises(CommandError):
         bind_and_call(c, tokenize("3, bogus=1"))  # unknown keyword
+
+
+def test_binder_routes_unmatched_keywords_into_var_keyword():
+    """A ``**kwargs`` command is reachable from the command line.
+
+    Without this the whole keyword half of such a command is dead: the binder
+    rejected every name it could not find among the declared parameters.
+    """
+    reg = collect_commands(_Demo())
+    t = reg.resolve("tune").func
+    assert bind_and_call(t, tokenize("soft, key_light_intensity=0.5")) == (
+        "soft",
+        {"key_light_intensity": "0.5"},
+    )
+    assert bind_and_call(t, tokenize("silhouette=off")) == (
+        "",
+        {"silhouette": "off"},
+    )
+    assert bind_and_call(t, tokenize("soft")) == ("soft", {})
+
+
+def test_binder_coerces_var_keyword_values_by_its_annotation():
+    reg = collect_commands(_Demo())
+    s = reg.resolve("scale").func
+    assert bind_and_call(s, tokenize("x=2, y=0.5")) == {"x": 2.0, "y": 0.5}
 
 
 def test_raw_mode_command_passes_expression_verbatim():

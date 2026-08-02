@@ -128,7 +128,7 @@ def _leading_keyword(part: str) -> tuple[str, str] | None:
 _ANN_BY_NAME = {"int": int, "float": float, "bool": bool, "str": str, "Selection": Selection}
 
 
-def _coerce(value, annotation):
+def coerce_value(value, annotation):
     """Coerce a string ``value`` to ``annotation`` (int/float/bool/str/Selection).
 
     ``annotation`` may be a real type or, under ``from __future__ import
@@ -163,8 +163,10 @@ def bind_and_call(
     """Bind ``(name|None, value)`` pairs to ``func``'s signature and call it.
 
     Positional pairs map to parameters by order; named pairs by name; strings are
-    coerced per each parameter's annotation. Missing required parameters raise
-    :class:`CommandError`.
+    coerced per each parameter's annotation. A named pair that matches no
+    parameter goes to ``**kwargs`` if the command declares one (coerced by that
+    parameter's annotation), and is an error otherwise. Missing required
+    parameters raise :class:`CommandError`.
     """
     sig = inspect.signature(func)
     params = [
@@ -180,6 +182,14 @@ def bind_and_call(
     has_var_positional = any(
         p.kind is inspect.Parameter.VAR_POSITIONAL for p in sig.parameters.values()
     )
+    var_keyword = next(
+        (
+            p
+            for p in sig.parameters.values()
+            if p.kind is inspect.Parameter.VAR_KEYWORD
+        ),
+        None,
+    )
     by_name = {p.name: p for p in params}
 
     bound: dict = {}
@@ -192,12 +202,14 @@ def bind_and_call(
         if name is not None:
             param = by_name.get(name)
             if param is None:
+                param = var_keyword
+            if param is None:
                 raise CommandError(f"unexpected keyword argument '{name}'")
-            bound[name] = _coerce(value, param.annotation)
+            bound[name] = coerce_value(value, param.annotation)
         else:
             if pos_index < len(positional_params):
                 param = positional_params[pos_index]
-                bound[param.name] = _coerce(value, param.annotation)
+                bound[param.name] = coerce_value(value, param.annotation)
                 pos_index += 1
             elif has_var_positional:
                 extra_positional.append(value)
@@ -212,4 +224,4 @@ def bind_and_call(
     return func(*[], **bound) if not call_args else func(*call_args, **bound)
 
 
-__all__ = ["CommandError", "tokenize", "bind_and_call"]
+__all__ = ["CommandError", "coerce_value", "tokenize", "bind_and_call"]

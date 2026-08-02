@@ -516,10 +516,16 @@ class Parser:
 # Evaluator
 
 class Evaluator:
-    def __init__(self, viewer, default_object_id=None):
+    def __init__(self, viewer, default_object_id=None, named_selections=None):
         self.viewer = viewer
         self.default_object_id = default_object_id
         self._class_cache: dict[str, object] = {}
+        #: Named selections, ``{name: {"object_id", "mask", ...}}``. A bare name
+        #: in an expression resolves to the atoms it captured, exactly as a PyMOL
+        #: selection object does -- ``show sticks, mysel and resi 10`` is
+        #: meaningful because ``mysel`` is a name with atoms behind it, not just
+        #: an expression that happened to be evaluated once.
+        self._named_selections = named_selections or {}
 
     def evaluate(self, expr: str, object_id=None) -> np.ndarray:
         tokens = tokenize(expr)
@@ -765,6 +771,21 @@ class Evaluator:
                 if oid == object_id
                 else self._get_none_mask(object_id)
             )
+
+        # A stored named selection resolves to the atoms it captured. PyMOL's
+        # `sele` works exactly like this: a bare name in an expression is a
+        # selection object. The mask belongs to one object, so evaluated against
+        # another it contributes nothing, the same rule as an object name.
+        sel = self._named_selections.get(target)
+        if isinstance(sel, dict):
+            sel_obj = str(sel.get("object_id", ""))
+            mask = sel.get("mask")
+            if mask is not None and sel_obj == str(object_id):
+                arr = np.asarray(mask, dtype=bool)
+                full = self._get_none_mask(object_id)
+                if arr.shape[0] == full.shape[0]:
+                    return arr
+            return self._get_none_mask(object_id)
         return self._get_none_mask(object_id)
 
     def _object_name(self, object_id: str) -> str | None:

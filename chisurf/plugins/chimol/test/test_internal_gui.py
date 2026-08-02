@@ -8,6 +8,7 @@ nothing can be done by clicking that could not be scripted.
 from __future__ import annotations
 
 import pytest
+from qtpy import QtCore
 
 from chisurf.plugins.chimol.chimol.object_menus import OBJECT_MENUS
 from chisurf.plugins.chimol.chimol.renderer.internal_gui import GuiRow, InternalGui
@@ -484,6 +485,136 @@ def test_clicking_past_the_end_of_a_sequence_selects_nothing(sequences):
     sequences.mouse_press(sequences._seq_origin + char_w * 40, row.y + 4)
 
     assert picked == []
+
+
+def test_clicking_a_selected_residue_toggles_it_off(sequences):
+    """PyMOL's Seeker flips a residue: the same click again deselects it."""
+    picked: list[list[int]] = []
+    sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
+    row = sequences._seq_rows[0]
+    char_w = sequences.FONT_PT * 0.62
+    x = sequences._seq_origin + char_w * 3.5
+
+    sequences.mouse_press(x, row.y + 4)
+    sequences.mouse_press(x, row.y + 4)
+
+    assert picked[-1] == []
+    assert sequences.sequences[0].selected == set()
+
+
+def test_shift_click_extends_the_previous_gesture(sequences):
+    """Shift continues the drag gesture from where it left off, additively."""
+    picked: list[list[int]] = []
+    sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
+    row = sequences._seq_rows[0]
+    char_w = sequences.FONT_PT * 0.62
+    origin = sequences._seq_origin
+
+    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)              # anchor at 2
+    sequences.mouse_press(origin + char_w * 7.5, row.y + 4,
+                          modifiers=QtCore.Qt.ShiftModifier)
+
+    assert sequences.sequences[0].selected == set(range(2, 8))
+    assert picked[-1] == [2, 3, 4, 5, 6, 7]
+
+
+def test_ctrl_click_toggles_and_keeps_the_rest(sequences):
+    """Ctrl is PyMOL's Seeker toggle; it merges, never replaces."""
+    picked: list[list[int]] = []
+    sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
+    row = sequences._seq_rows[0]
+    char_w = sequences.FONT_PT * 0.62
+    origin = sequences._seq_origin
+
+    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)                     # {2}
+    sequences.mouse_press(origin + char_w * 5.5, row.y + 4,
+                          modifiers=QtCore.Qt.ControlModifier)                  # +{5}
+
+    assert sequences.sequences[0].selected == {2, 5}
+    assert picked[-1] == [2, 5]
+
+
+def test_ctrl_drag_merges_into_the_selection(sequences):
+    """A range dragged with ctrl held adds to, rather than replaces, the set."""
+    picked: list[list[int]] = []
+    sequences.on_select = lambda name, indices, additive: picked.append(list(indices))
+    row = sequences._seq_rows[0]
+    char_w = sequences.FONT_PT * 0.62
+    origin = sequences._seq_origin
+
+    sequences.mouse_press(origin + char_w * 2.5, row.y + 4)                     # {2}
+    sequences.mouse_press(origin + char_w * 4.5, row.y + 4,
+                          modifiers=QtCore.Qt.ControlModifier)                  # {2,4}
+    sequences.drag(origin + char_w * 8.5, row.y + 4)
+
+    assert sequences.sequences[0].selected == {2, 4, 5, 6, 7, 8}
+    assert picked[-1] == [2, 4, 5, 6, 7, 8]
+
+
+def test_double_click_on_blank_sequence_area_clears(sequences):
+    """PyMOL's Seeker: a double-click on empty sequence space deselects all."""
+    sequences.sequences[0].selected = {1, 2, 3}
+    x = sequences._seq_strip.x + 4
+    y = sequences._seq_strip.y + 2        # the number line, not a residue
+
+    sequences.mouse_press(x, y, double=True)
+
+    assert all(not row.selected for row in sequences.sequences)
+
+
+# --------------------------------------------------------------------------- #
+# The `sele` pseudo-object
+# --------------------------------------------------------------------------- #
+def _panel_with_sele(commands):
+    from chisurf.plugins.chimol.chimol.renderer.internal_gui import InternalGui
+
+    panel = InternalGui(run_command=commands.append)
+    panel.commands = commands
+    panel.set_rows([
+        GuiRow(name="all", is_header=True),
+        GuiRow(name="148l", enabled=True),
+        GuiRow(name="sele", enabled=True, is_selection=True),
+    ])
+    panel.layout(WIDTH, HEIGHT)
+    return panel
+
+
+def test_the_sele_row_is_pinned_last():
+    """PyMOL pins its `sele` pseudo-object below every real object and header."""
+    panel = _panel_with_sele([])
+
+    assert panel.rows[-1].name == "sele"
+    assert panel.rows[-1].is_selection is True
+
+
+def test_the_sele_row_has_no_on_off_state():
+    """`sele` is a selection, not a molecule: its name click does nothing."""
+    commands: list[str] = []
+    panel = _panel_with_sele(commands)
+    sele_row = len(panel.rows) - 1
+
+    panel.mouse_press(panel._row_rects[sele_row].x + 4,
+                      panel._row_rects[sele_row].y + 4)
+
+    assert commands == []
+
+
+def test_the_sele_row_buttons_address_the_selection():
+    """The sele row's A/S/H/L/C menus run against ``sele``, like PyMOL's."""
+    commands: list[str] = []
+    panel = _panel_with_sele(commands)
+    sele_row = len(panel.rows) - 1
+
+    panel.mouse_press(*_centre(panel._button_rects[sele_row]["A"]))
+    entry_rect, entry = next(
+        (r, e) for r, e in panel._menus[-1].item_rects
+        if e.command and "{sele}" in e.command
+    )
+    panel.mouse_press(*_centre(entry_rect))
+
+    assert commands, "nothing ran"
+    assert "{sele}" not in commands[-1]
+    assert "sele" in commands[-1]
 
 
 # --------------------------------------------------------------------------- #

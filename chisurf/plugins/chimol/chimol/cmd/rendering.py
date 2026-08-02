@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..colors import _PYMOL_COLORS
+from .argparse2 import CommandError, coerce_value
 from .base import BaseCmd
 from .registry import command
 from .selection_types import Selection
@@ -126,6 +127,23 @@ class RenderingMixin(BaseCmd):
     #: Preset keys that need machinery ChiMOL has not built.
     _LIGHTING_UNSUPPORTED = ("shadows", "multishadow")
 
+    #: The parameters ``lighting key=value`` accepts, with the type each one is
+    #: parsed as. The command line hands over strings, so ``silhouette=off`` has
+    #: to be coerced here -- ``bool('off')`` is ``True`` -- and a name that is
+    #: not in this table is a typo the renderer would otherwise drop silently.
+    _LIGHTING_TYPES: dict[str, type] = {
+        "key_light_intensity": float,
+        "fill_light_intensity": float,
+        "ambient_light_intensity": float,
+        "specular_strength": float,
+        "shininess": float,
+        "rim_strength": float,
+        "rim_power": float,
+        "silhouette": bool,
+        "silhouette_thickness": float,
+        "depth_jump": float,
+    }
+
     @command("lighting")
     def lighting(self, preset: str = "", **overrides) -> None:
         """Set the lighting, by preset or by parameter (ChimeraX ``lighting``).
@@ -140,10 +158,14 @@ class RenderingMixin(BaseCmd):
             ``simple``, ``full``, ``soft``, ``gentle``, ``flat`` or ``default``.
             With no argument the current settings are reported.
         **overrides
-            Individual parameters, applied after the preset:
+            Individual parameters, applied after the preset, as
+            ``lighting soft, ambient_light_intensity=1.2``. The accepted names
+            and their types are :attr:`_LIGHTING_TYPES`:
             ``key_light_intensity``, ``fill_light_intensity``,
-            ``ambient_light_intensity``, ``silhouette``, ``silhouette_thickness``,
-            ``depth_jump``.
+            ``ambient_light_intensity``, ``specular_strength``, ``shininess``,
+            ``rim_strength``, ``rim_power``, ``silhouette``,
+            ``silhouette_thickness`` and ``depth_jump``. An unknown name is an
+            error rather than a silent no-op.
         """
         _, viewer = self._require_window_and_viewer()
         if viewer is None:
@@ -183,7 +205,18 @@ class RenderingMixin(BaseCmd):
             if key in self._LIGHTING_UNSUPPORTED:
                 missing.append(key)
                 continue
-            values[key] = value
+            kind = self._LIGHTING_TYPES.get(key)
+            if kind is None:
+                self._emit_error(
+                    f"lighting: unknown parameter '{key}'. Use one of: "
+                    + ", ".join(sorted(self._LIGHTING_TYPES))
+                )
+                return
+            try:
+                values[key] = coerce_value(value, kind)
+            except (CommandError, ValueError) as exc:
+                self._emit_error(f"lighting: {key}: {exc}")
+                return
 
         renderer.set_lighting(**values)
         self._emit_message(
@@ -221,42 +254,24 @@ class RenderingMixin(BaseCmd):
         if viewer is None:
             return
 
-        selection = str(sel).strip()
-        if selection:
-            # `as` is "show this, hide everything else", so with a selection it is
-            # the pair of commands that already know how to scope themselves.
-            self._toggle_representation("everything", selection, visible=False)
-            self._toggle_representation(str(rep).strip().lower(), selection,
-                                        visible=True)
-            return
-
         rep = str(rep).strip().lower()
-        if rep in ("cartoon", "ribbon"):
-            try:
-                viewer.set_representation("cartoon")
-            except Exception as exc:
-                self._emit_error(f"Failed to set representation: {exc}")
-            return
-        if rep in ("lines", "wire", "wireframe"):
-            try:
-                viewer.set_representation("lines")
-            except Exception as exc:
-                self._emit_error(f"Failed to set representation: {exc}")
-            return
-        if rep in ("trace", "ca_trace", "ribbon_trace"):
-            try:
-                viewer.set_representation("ca_trace")
-            except Exception as exc:
-                self._emit_error(f"Failed to set representation: {exc}")
-            return
-        if rep in ("spheres", "atoms", "balls", "ball"):
-            try:
-                viewer.set_representation("atoms")
-            except Exception as exc:
-                self._emit_error(f"Failed to set representation: {exc}")
+        if not rep:
+            self._emit_error(
+                "Usage: as <cartoon|trace|lines|atoms|sticks|dots|surface|"
+                "metaball|nonbonded|plane>[, selection]"
+            )
             return
 
-        self._emit_error(f"Unsupported representation for 'as': {rep}")
+        # `as` is "show this, hide everything else": hide every representation
+        # (scoped to the selection when one is given), then show the one
+        # requested. Routing through `_toggle_representation` gives `as` every
+        # alias and selection rule show/hide accept, so the menu and the command
+        # line cannot drift apart -- before this, `as` understood four
+        # representations while the menu it lived in grew to ten, and the ones
+        # the command rejected were the ones the object menu shipped.
+        selection = str(sel).strip()
+        self._toggle_representation("everything", selection, visible=False)
+        self._toggle_representation(rep, selection, visible=True)
 
     #: Every representation ``everything`` stands for, in the order applied.
     _ALL_REPRESENTATIONS = ("cartoon", "trace", "lines", "nonbonded", "labels",

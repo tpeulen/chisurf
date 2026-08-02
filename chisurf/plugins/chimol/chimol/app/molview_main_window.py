@@ -229,12 +229,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         self.button_color = self.controls.button_color
         self.button_color_ss = self.controls.button_color_ss
         self.button_color_sequence = self.controls.button_color_sequence
-        self.button_rep_cartoon = self.controls.button_rep_cartoon
-        self.button_rep_atoms = self.controls.button_rep_atoms
-        self.button_rep_sticks = self.controls.button_rep_sticks
-        self.button_rep_trace = self.controls.button_rep_trace
-        self.button_rep_dots = self.controls.button_rep_dots
-        self.button_rep_metaballs = self.controls.button_rep_metaballs
         self.button_surface = self.controls.button_surface
         self.button_info = self.controls.button_info
         self.button_display_cfg = self.controls.button_display_cfg
@@ -378,13 +372,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         self.button_color.toggled.connect(self.on_color_aa_toggled)
         self.button_color_ss.toggled.connect(self.on_color_ss_toggled)
         self.button_color_sequence.toggled.connect(self.on_color_sequence_toggled)
-        self.button_rep_cartoon.toggled.connect(self.on_rep_cartoon_toggled)
-        self.button_rep_atoms.toggled.connect(self.on_rep_atoms_toggled)
-        self.button_rep_sticks.toggled.connect(self.viewer.set_sticks_visible)
-        self.button_rep_trace.toggled.connect(self.viewer.set_trace_visible)
-        self.button_rep_dots.toggled.connect(self.viewer.set_dots_visible)
         self.button_surface.toggled.connect(self.viewer.set_surface_visible)
-        self.button_rep_metaballs.toggled.connect(self.viewer.set_metaballs_visible)
         self.button_info.toggled.connect(self.on_toggle_info_panel)
         self.button_display_cfg.clicked.connect(self.on_open_display_config)
         self.button_mouse_mode.toggled.connect(self.on_mouse_mode_toggled)
@@ -807,40 +795,6 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         try:
             text = "\U0001f5b1\ufe0f PyMOL" if checked else "\U0001f5b1\ufe0f Chimol"
             self.button_mouse_mode.setText(text)
-        except Exception:
-            pass
-
-    def on_rep_cartoon_toggled(self, checked: bool) -> None:
-        """Toggle cartoon representation for selected or all residues."""
-
-        if self.viewer is None:
-            return
-        idx = self._selected_residue_indices()
-        if not idx:
-            try:
-                self.viewer.set_cartoon_visible(bool(checked))
-            except Exception:
-                pass
-            return
-        try:
-            self.viewer.set_residue_representation(idx, cartoon=bool(checked))
-        except Exception:
-            pass
-
-    def on_rep_atoms_toggled(self, checked: bool) -> None:
-        """Toggle atoms/balls representation for selected or all residues."""
-
-        if self.viewer is None:
-            return
-        idx = self._selected_residue_indices()
-        if not idx:
-            try:
-                self.viewer.set_atoms_visible_all(bool(checked))
-            except Exception:
-                pass
-            return
-        try:
-            self.viewer.set_residue_representation(idx, ball=bool(checked))
         except Exception:
             pass
 
@@ -2097,6 +2051,11 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                     enabled=bool(entry.get("visible", True)),
                 )
             )
+        # PyMOL pins the `sele` selection object to the bottom of its object
+        # list, below every real object and the `all` header. It is not a
+        # molecule: its buttons address the current selection, and it has no
+        # on/off state of its own.
+        rows.append(InternalGuiRow(name="sele", enabled=True, is_selection=True))
         gui.set_rows(rows)
         gui.set_run_command(self._run_internal_gui_command)
         gui.on_playback_change = self._apply_playback_settings

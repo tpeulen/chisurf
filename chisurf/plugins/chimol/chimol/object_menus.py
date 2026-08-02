@@ -215,17 +215,47 @@ def _chimol_extra_reps(action: str) -> tuple[MenuEntry, ...]:
         MenuEntry("nonbonded", f"{action} nonbonded, {{sele}}",
                   "Crosses on atoms that draw no bond: waters and free ions."),
         MenuEntry("metaball", f"{action} metaball, {{sele}}",
-                  "A blended isosurface over the atoms. ChiMOL only; PyMOL has "
-                  "no equivalent."),
+                  "A blended isosurface over the atoms."),
+    )
+
+
+def _as_action() -> tuple[MenuEntry, ...]:
+    """The ``as`` submenu: every representation ChiMOL can show, PyMOL-named.
+
+    PyMOL's ``as rep`` switches the object to a single representation, and its
+    mouse-free equivalent is the toolbar buttons ChiMOL is removing. The submenu
+    that replaced them must therefore offer everything the buttons did -- which
+    is the whole point of the request "show as opengl menu misses
+    representations; include all". Each entry routes through the ``as`` command,
+    which now understands every representation ``show``/``hide`` do, so the
+    submenu and the command cannot drift apart.
+    """
+    return (
+        MenuEntry("cartoon", "as cartoon"),
+        MenuEntry("ribbon", "as cartoon",
+                  "Chimol draws one cartoon; set cartoon_tube_radius for a "
+                  "ribbon-like tube."),
+        MenuEntry("trace", "as trace",
+                  "The CA trace on its own -- PyMOL's ribbon_trace."),
+        MenuEntry("lines", "as lines", _LINES_NOTE),
+        MenuEntry("wire", "as lines", _LINES_NOTE),
+        MenuEntry("nonbonded", "as nonbonded", _NB_NOTE),
+        SEP,
+        MenuEntry("sticks", "as sticks"),
+        MenuEntry("licorice", "as sticks"),
+        MenuEntry("atoms", "as atoms"),
+        MenuEntry("spheres", "as atoms"),
+        SEP,
+        MenuEntry("dots", "as dots"),
+        MenuEntry("surface", "as surface"),
+        MenuEntry("metaball", "as metaball",
+                  "A blended isosurface over the atoms."),
+        MenuEntry("labels", "as labels"),
     )
 
 
 SHOW_MENU: tuple[MenuEntry, ...] = (
-    MenuEntry("as", None, "", children=(
-        MenuEntry("cartoon", "as cartoon"),
-        MenuEntry("lines", "as lines"),
-        MenuEntry("spheres", "as spheres"),
-    )),
+    MenuEntry("as", None, "Switch to a single representation.", children=_as_action()),
     SEP,
     *_rep_action("show"),
     SEP,

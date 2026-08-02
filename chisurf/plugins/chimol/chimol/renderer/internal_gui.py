@@ -22,6 +22,8 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
+from qtpy import QtCore
+
 from ..mouse_modes import BUTTON_COLUMNS, DEFAULT_RING, MODE_NAMES, next_mode, rows_for
 from ..object_menus import OBJECT_MENUS, MenuEntry
 
@@ -120,6 +122,9 @@ class GuiRow:
     enabled: bool = True
     is_header: bool = False
     is_group: bool = False
+    #: PyMOL's ``sele`` pseudo-object: always present, pinned to the bottom of
+    #: the list, and not backed by a real molecule.
+    is_selection: bool = False
     indent: int = 0
     detail: str = ""
 
@@ -253,6 +258,12 @@ class InternalGui:
         self._seq_origin = 0.0
         self._seq_scroll = 0
         self._seq_drag: tuple[int, int] | None = None
+        #: The residue a shift-click extends from -- PyMOL's ``Seeker`` keeps
+        #: the previous drag gesture alive for a shift continuation.
+        self._seq_anchor: int | None = None
+        #: Whether the press that started the drag carried a modifier, so the
+        #: drag merges instead of replacing.
+        self._seq_drag_additive = False
         self._seq_track = Rect(0, 0, 0, 0)
         self._seq_thumb = Rect(0, 0, 0, 0)
         self._dragging_thumb = False
@@ -464,6 +475,24 @@ class InternalGui:
             self._seq_scroll = target
             self.layout_sequence(self._width, self._height)
 
+    def _toggle_residue(self, row_index: int, column: int) -> None:
+        """Flip one residue in and out of the selection.
+
+        PyMOL's ``Seeker`` toggles on a click: a selected column is deselected,
+        an unselected one selected. The whole selected set is emitted, because
+        whoever mirrors the strip into the 3-D view replaces, not merges.
+        """
+        row = self.sequences[row_index]
+        if column in row.selected:
+            row.selected.discard(column)
+        else:
+            row.selected.add(column)
+        if self.on_select is not None:
+            try:
+                self.on_select(row.name, sorted(row.selected), False)
+            except Exception:
+                pass
+
     def _select_range(self, row_index: int, start: int, end: int, additive: bool) -> None:
         """Select the residues between *start* and *end* on one row."""
         row = self.sequences[row_index]
@@ -661,7 +690,7 @@ class InternalGui:
             found = self.sequence_index_at(x, y)
             if found is not None and found[0] == self._seq_drag[0]:
                 self._select_range(self._seq_drag[0], self._seq_drag[1], found[1],
-                                   additive=False)
+                                   additive=self._seq_drag_additive)
                 return True
             return False
 
@@ -679,6 +708,7 @@ class InternalGui:
         """End whichever drag the panel had started."""
         self._dragging_splitter = False
         self._seq_drag = None
+        self._seq_drag_additive = False
         self._dragging_thumb = False
         self._dragging_timeline = False
 
@@ -702,9 +732,27 @@ class InternalGui:
             changed = True
         return changed
 
-    def mouse_press(self, x: float, y: float, right: bool = False) -> bool:
+    def mouse_press(
+        self,
+        x: float,
+        y: float,
+        right: bool = False,
+        modifiers=None,
+        double: bool = False,
+    ) -> bool:
         """Handle a press. Returns whether the panel consumed it."""
         hit = self.hit_test(x, y)
+
+        try:
+            ctrl = bool(
+                modifiers is not None and (modifiers & QtCore.Qt.ControlModifier)
+            )
+            shift = bool(
+                modifiers is not None and (modifiers & QtCore.Qt.ShiftModifier)
+            )
+        except Exception:
+            ctrl = False
+            shift = False
 
         if hit.kind == "menu":
             if hit.entry is None or hit.entry.is_separator:
@@ -737,10 +785,24 @@ class InternalGui:
         if hit.kind == "residue":
             row_index, column = hit.row, int(hit.key)
             self._seq_drag = (row_index, column)
-            self._select_range(row_index, column, column, additive=right)
+            self._seq_drag_additive = bool(ctrl or shift)
+            prev_anchor = self._seq_anchor
+            self._seq_anchor = column
+            if shift and prev_anchor is not None:
+                # PyMOL's Seeker: shift continues the previous drag gesture,
+                # extending the range from where it left off -- additively.
+                self._select_range(row_index, prev_anchor, column, additive=True)
+            else:
+                # PyMOL's Seeker: a click toggles the residue (ctrl does the
+                # same and additionally centres the view).
+                self._toggle_residue(row_index, column)
             return True
 
         if hit.kind == "sequence":
+            # PyMOL's Seeker clears the selection on a double-click on blank
+            # sequence area.
+            if double:
+                self.clear_selection()
             return True
 
         if hit.kind == "splitter":
@@ -786,6 +848,11 @@ class InternalGui:
                 # PyMOL's right-click on a name is its action menu.
                 _key, title, entries = OBJECT_MENUS[0]
                 self._open_menu(f"{title}:", row.name, entries, x, y)
+            elif row.is_selection:
+                # PyMOL's `sele` row has no on/off: a selection is either there
+                # or not, and the name click just makes it current. There is no
+                # object to toggle.
+                pass
             else:
                 self._emit("disable {sele}" if row.enabled else "enable {sele}", row.name)
             return True

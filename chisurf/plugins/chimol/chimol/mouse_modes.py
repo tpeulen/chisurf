@@ -561,6 +561,29 @@ def action_of(mode: str, button, modifiers) -> str:
     return str(bindings.get((name, modifier_of(modifiers)), "none")).lower()
 
 
+def click_action_of(mode: str, button, modifiers) -> str:
+    """Return the action code a *click* carries, as opposed to a drag.
+
+    PyMOL binds the press to the drag action (left is ``rota``) and the click
+    -- a press released without a meaningful drag -- to a separate ``single_*``
+    cell (``single_left`` is ``+/-`` in the viewing modes). This resolves that
+    cell so the release handler can tell a click that selects from a drag that
+    rotates.
+    """
+    from qtpy import QtCore
+
+    if button == QtCore.Qt.LeftButton:
+        name = "left"
+    elif button == QtCore.Qt.MiddleButton:
+        name = "middle"
+    elif button == QtCore.Qt.RightButton:
+        name = "right"
+    else:
+        return "none"
+    bindings = MODE_BINDINGS.get(mode, {})
+    return str(bindings.get(("single_" + name, modifier_of(modifiers)), "none")).lower()
+
+
 def wheel_action_of(mode: str, modifiers) -> str:
     """Return the action code the wheel carries under *modifiers*."""
     bindings = MODE_BINDINGS.get(mode, {})

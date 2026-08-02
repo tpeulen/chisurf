@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover - handled at runtime
 from ..config import _DISPLAY_CONFIG
 from .internal_gui import InternalGui
 from ..mouse_modes import action_of as mouse_action_of
+from ..mouse_modes import click_action_of
 from .base import Renderer
 from .scene import Geometry, Material, Scene, SceneObject
 from .view_state import (
@@ -268,6 +269,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._drag_start: Optional[QtCore.QPoint] = None
         self._rubber_band = QtWidgets.QRubberBand(QtWidgets.QRubberBand.Rectangle, self)
         self._drag_modifiers = QtCore.Qt.NoModifier
+        self._drag_action: Optional[str] = None
+        self._press_pos: Optional[QtCore.QPoint] = None
+        self._press_mods = QtCore.Qt.NoModifier
+        self._press_button: Optional[QtCore.Qt.MouseButton] = None
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self._panning = False
         self._right_dragged = False
@@ -551,7 +556,13 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             "rim_strength": "_rim_strength",
             "rim_power": "_rim_power",
         }
+        known = set(mapping) | {"silhouette", "silhouette_thickness", "depth_jump"}
         for name, value in values.items():
+            if name not in known:
+                raise ValueError(
+                    f"set_lighting: unknown parameter '{name}'. "
+                    f"Use one of: {', '.join(sorted(known))}"
+                )
             attribute = mapping.get(name)
             if attribute is not None:
                 setattr(self, attribute, float(value))
@@ -1449,12 +1460,6 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             vec3 viewDir = normalize(-v_viewPos);
             float lambert = max(dot(n, l), 0.0);
             float fillLambert = max(dot(n, normalize(fillLightDir)), 0.0);
-            // Key + fill + ambient, each scaled. With keyIntensity 1, fill 0 and
-            // ambient equal to ambientStrength this is exactly the old formula,
-            // so the default look is unchanged.
-            float lighting = ambientStrength
-                           + (1.0 - ambientStrength)
-                             * (keyIntensity * lambert + fillIntensity * fillLambert);
 
             float spec = 0.0;
             if (lambert > 0.0) {
@@ -1491,9 +1496,24 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             float sheet = mix(0.3, 1.0, clamp(v_color.a, 0.0, 1.0));
 
             // 1. Shading (Diffuse + Ambient)
-            // Use a slightly lower ambient to make rim and reflections pop
-            float ambient = ambientStrength * 0.7 * exposure;
-            float diffuse = (1.0 - ambient) * lambert;
+            // The three lights in the mixing convention: the diffuse terms
+            // (key and fill) are blended toward the ambient colour by the
+            // ambient weight, so the total is a convex mix that stays in
+            // [0, 1] as long as every coefficient does. Both the ambient and
+            // the diffuse weight are clamped to that range: ChimeraX's presets
+            // carry ambient values above 1 that are calibrated for its
+            // *additive* model, and in a mixing formula an ambient above 1
+            // makes the diffuse weight negative -- a face facing the light
+            // renders *darker* than one turned away. The 0.7 is a stylistic
+            // darkener (it makes rim and reflections pop) and is not part of
+            // the reported `ambient_light_intensity`.
+            float ambientCoeff = clamp(ambientStrength, 0.0, 1.0);
+            float litWeight = clamp(
+                keyIntensity * lambert + fillIntensity * fillLambert,
+                0.0, 1.0
+            );
+            float ambient = ambientCoeff * 0.7 * exposure;
+            float diffuse = (1.0 - ambient) * litWeight;
             vec3 shaded = baseColor * (ambient + diffuse);
             
             // 2. Rim lighting (edge glow)
@@ -2133,7 +2153,11 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # and the model spins away under the menu that just opened.
         x, y = self._gui_pos(event)
         if self._internal_gui.mouse_press(
-            x, y, right=event.button() == QtCore.Qt.RightButton
+            x,
+            y,
+            right=event.button() == QtCore.Qt.RightButton,
+            modifiers=event.modifiers(),
+            double=event.type() == QtCore.QEvent.MouseButtonDblClick,
         ):
             self._gui_grab = True
             self._last_mouse_pos = event.pos()
@@ -2169,17 +2193,22 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 self._drag_selecting = True
                 self._drag_start = event.pos()
                 self._drag_modifiers = mods
+                self._drag_action = action
                 rect = QtCore.QRect(self._drag_start, QtCore.QSize(0, 0))
                 self._rubber_band.setGeometry(rect)
                 self._rubber_band.show()
                 event.accept()
                 return
+            # A non-box press is a candidate click (or the start of a drag --
+            # left drags rotate via the trackball in mouseMoveEvent). PyMOL
+            # decides on release: a press that never dragged fires the
+            # `single_*` cell, so the click action (e.g. `+/-`) and the drag
+            # action (e.g. `rota`) can differ. Record the press and let the
+            # release handler tell them apart.
+            self._press_pos = event.pos()
+            self._press_mods = mods
+            self._press_button = event.button()
             self._last_mouse_pos = event.pos()
-            if self._controller is not None:
-                try:
-                    self._controller.handle_mouse_click(event)
-                except Exception:
-                    pass
             event.accept()
             return
 
@@ -2368,11 +2397,47 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
             self._drag_start = None
             if rect.width() > 2 and rect.height() > 2:
                 try:
-                    self._controller.handle_rect_selection(rect, self._drag_modifiers)
+                    self._controller.handle_rect_selection(
+                        rect, self._drag_modifiers, self._drag_action
+                    )
                 except Exception:
                     pass
+            self._drag_action = None
             event.accept()
             return
+
+        # A left *click* (press and release without a meaningful drag) fires
+        # the `single_*` cell of the mode table, which may be a different
+        # action than the drag. In the viewing modes the click is `+/-` -- the
+        # clicked residue toggles in/out of the selection -- while a real drag
+        # is `rota` and must not touch the selection.
+        if (
+            event.button() == QtCore.Qt.LeftButton
+            and self._press_pos is not None
+            and self._controller is not None
+        ):
+            delta = event.pos() - self._press_pos
+            was_drag = abs(delta.x()) > 4 or abs(delta.y()) > 4
+            if not was_drag and not self._drag_selecting:
+                try:
+                    click = click_action_of(
+                        self._internal_gui.mouse_mode,
+                        self._press_button,
+                        self._press_mods,
+                    )
+                except Exception:
+                    click = "none"
+                if click in ("+/-", "sele", "pkat"):
+                    try:
+                        self._controller.handle_mouse_click(event, click)
+                    except Exception:
+                        pass
+            self._press_pos = None
+            self._press_mods = QtCore.Qt.NoModifier
+            self._press_button = None
+            event.accept()
+            return
+
         super().mouseReleaseEvent(event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:  # type: ignore[name-defined]

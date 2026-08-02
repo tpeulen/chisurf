@@ -4079,11 +4079,13 @@ class MolView(QtWidgets.QWidget):
     # Picking / mouse interaction
     # ------------------------------------------------------------------
 
-    def handle_mouse_click(self, ev: QtGui.QMouseEvent) -> None:  # type: ignore[name-defined]
+    def handle_mouse_click(self, ev: QtGui.QMouseEvent, action: str | None = None) -> None:  # type: ignore[name-defined]
         """Handle a mouse-click in the GL view for atom picking.
 
-        A left-click near an atom selects the nearest atom;
-        clicking in empty space clears the selection.
+        A left-click near an atom picks it and toggles its residue in and out
+        of the selection -- PyMOL's ``+/-``, the single-left action of both the
+        viewing and selecting modes. Clicking in empty space does nothing,
+        exactly as PyMOL leaves the selection alone when no atom is nearby.
         Updates both atom and residue selection states.
         """
         atom_indices = []
@@ -4132,26 +4134,32 @@ class MolView(QtWidgets.QWidget):
                             residue_indices = [int(matches[0])]
                     except Exception:
                         residue_indices = []
-            elif picking_mod is not None:
+            # No atom picked: PyMOL reports "no atom found nearby" and leaves
+            # the selection untouched, so an empty click does not wipe it here
+            # either.
+            if not residue_indices and not atom_indices:
                 try:
-                    picked_idx = picking_mod.pick_residue_from_click(
-                        self._coords,
-                        self.view,
-                        ev,
-                        radius_px,
-                    )
-                    if picked_idx is not None:
-                        residue_indices = [picked_idx]
+                    self.atomSelectionChanged.emit([])
                 except Exception:
-                    residue_indices = []
+                    pass
+                return
 
         try:
             self.atomSelectionChanged.emit(atom_indices)
         except Exception:
             pass
 
+        # The action, not the modifier, carries the meaning -- PyMOL's cells:
+        #   +/-   -- the clicked residue toggles in/out of the selection
+        #   Sele  -- the clicked residue becomes the selection
+        #   PkAt  -- editing pick: highlight only, the selection is untouched
+        mode = {
+            "sele": "set",
+            "+/-": "toggle",
+            "pkat": "pick",
+        }.get(action, "toggle")
         try:
-            self._apply_selection_indices(residue_indices, mods)
+            self._apply_selection_indices(residue_indices, mods, mode=mode)
         except Exception:
             pass
 
@@ -4161,7 +4169,22 @@ class MolView(QtWidgets.QWidget):
             except Exception:
                 pass
 
-    def _apply_selection_indices(self, indices, modifiers=None) -> None:
+    def _apply_selection_indices(self, indices, modifiers=None, mode=None) -> None:
+        """Merge ``indices`` into the selection the way PyMOL's mouse does.
+
+        PyMOL's selection mouse has four operations, named by the action codes
+        in its mode matrix, and the whole point of matching it is that the
+        modifier does not carry the meaning -- the *action* does:
+
+        * ``+/-``      -- ``toggle``: the clicked atoms switch state.
+        * ``+Box``     -- ``add``: the rectangle joins the selection.
+        * ``-Box``     -- ``subtract``: the rectangle leaves the selection.
+        * ``Sele``     -- ``set``: the rectangle becomes the selection.
+        * ``PkAt``     -- ``pick``: like ``set``; editing-mode pick highlights.
+
+        ``mode=None`` keeps the old single-click behaviour (a plain click
+        replaces, ctrl toggles) for callers that predate the action wiring.
+        """
         try:
             mods = modifiers
             ctrl = bool(mods & QtCore.Qt.ControlModifier) if mods is not None else False
@@ -4173,43 +4196,53 @@ class MolView(QtWidgets.QWidget):
         except Exception:
             idx_list = []
 
-        if idx_list:
+        current = set(
+            int(i) for i in getattr(self, "_selected_residues", []) if int(i) >= 0
+        )
+        region = set(i for i in idx_list if i >= 0)
+
+        if mode == "toggle":
+            new_sel = sorted(current.symmetric_difference(region))
+        elif mode == "add":
+            new_sel = sorted(current | region)
+        elif mode == "subtract":
+            new_sel = sorted(current - region)
+        elif idx_list:
+            # mode is None (legacy) or "set"
             if ctrl:
-                try:
-                    current = set(
-                        int(i)
-                        for i in getattr(self, "_selected_residues", [])
-                        if int(i) >= 0
-                    )
-                except Exception:
-                    current = set()
-                region = set(i for i in idx_list if i >= 0)
                 new_sel = sorted(current.symmetric_difference(region))
-                self._selected_residues = new_sel
             else:
-                self._selected_residues = idx_list
-            selection = list(self._selected_residues)
-            try:
-                self.residueSelectionChanged.emit(selection)
-            except Exception:
-                pass
-            try:
-                self.objectResidueSelectionChanged.emit(self.get_active_object_id(), selection)
-            except Exception:
-                pass
+                new_sel = sorted(region)
         else:
-            self._selected_residues = []
-            try:
-                self.residueSelectionChanged.emit([])
-            except Exception:
-                pass
-            try:
-                self.objectResidueSelectionChanged.emit(self.get_active_object_id(), [])
-            except Exception:
-                pass
+            # An explicit "set" with nothing to select clears; a legacy call
+            # with no indices clears too.
+            new_sel = []
+
+        self._selected_residues = new_sel
+        selection = list(self._selected_residues)
+        try:
+            self.residueSelectionChanged.emit(selection)
+        except Exception:
+            pass
+        try:
+            self.objectResidueSelectionChanged.emit(self.get_active_object_id(), selection)
+        except Exception:
+            pass
 
 
-    def handle_rect_selection(self, rect, modifiers=None) -> None:
+    def handle_rect_selection(self, rect, modifiers=None, action: str | None = None) -> None:
+        """Select residues inside a screen rectangle, PyMOL-box style.
+
+        The meaning is carried by the mouse *action*, not the modifier, exactly
+        as in PyMOL's mode matrix:
+
+        * ``Sele``/``set``  -- the rectangle becomes the selection.
+        * ``+Box``/``add``  -- the rectangle joins the selection.
+        * ``-Box``/``sub``  -- the rectangle leaves the selection.
+        * ``+/-``/``toggle`` -- residues in the rectangle switch state.
+
+        ``action=None`` keeps the legacy behaviour: the rectangle replaces.
+        """
         if self._coords is None or not getattr(self, "_gl_enabled", False) or self.view is None:
             return
 
@@ -4226,8 +4259,17 @@ class MolView(QtWidgets.QWidget):
             indices = [int(i) for i in np.asarray(idx_arr, dtype=int) if int(i) >= 0]
         except Exception:
             indices = []
+
+        mode = {
+            "add": "add",
+            "+box": "add",
+            "subtract": "subtract",
+            "-box": "subtract",
+            "toggle": "toggle",
+            "+/-": "toggle",
+        }.get(str(action).lower() if action else None, "set")
         try:
-            self._apply_selection_indices(indices, modifiers)
+            self._apply_selection_indices(indices, modifiers, mode=mode)
         except Exception:
             pass
 

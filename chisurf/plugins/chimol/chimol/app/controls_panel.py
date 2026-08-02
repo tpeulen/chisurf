@@ -48,37 +48,6 @@ _BUTTON_DEFAULTS: dict[str, dict[str, Any]] = {
         "tool_tip": "Color by sequence position (gradient)",
         "checkable": True,
     },
-    "rep_cartoon": {
-        "text": "\U0001f9ec Cartoon",
-        "tool_tip": "Toggle cartoon ribbon",
-        "checkable": True,
-        "checked": True,
-    },
-    "rep_atoms": {
-        "text": "\u269b\ufe0f Atoms",
-        "tool_tip": "Toggle atoms/balls representation",
-        "checkable": True,
-    },
-    "rep_sticks": {
-        "text": "\U0001f3d7\ufe0f Sticks",
-        "tool_tip": "Toggle sticks (bond) representation",
-        "checkable": True,
-    },
-    "rep_trace": {
-        "text": "\U0001f4cf Trace",
-        "tool_tip": "Toggle CA trace line",
-        "checkable": True,
-    },
-    "rep_dots": {
-        "text": "\u2726 Dots",
-        "tool_tip": "Toggle fast dot cloud",
-        "checkable": True,
-    },
-    "rep_metaballs": {
-        "text": "\U0001f52e Metaball",
-        "tool_tip": "Toggle metaballs representation",
-        "checkable": True,
-    },
     "info": {
         "text": "\u2139\ufe0f Info",
         "tool_tip": "Toggle system info panel",
@@ -130,19 +99,6 @@ class ControlsToolbar(QtCore.QObject):
         self.button_color = self._add_button("color", _cfg("color"))
         self.button_color_ss = self._add_button("color_ss", _cfg("color_ss"))
         self.button_color_sequence = self._add_button("color_seq", _cfg("color_seq"))
-        self._toolbar.addSeparator()
-
-        # ── Representation group ──────────────────────────────────────
-        self.button_rep_cartoon = self._add_button(
-            "rep_cartoon", _cfg("rep_cartoon"),
-        )
-        self.button_rep_atoms = self._add_button("rep_atoms", _cfg("rep_atoms"))
-        self.button_rep_sticks = self._add_button("rep_sticks", _cfg("rep_sticks"))
-        self.button_rep_trace = self._add_button("rep_trace", _cfg("rep_trace"))
-        self.button_rep_dots = self._add_button("rep_dots", _cfg("rep_dots"))
-        self.button_rep_metaballs = self._add_button(
-            "rep_metaballs", _cfg("rep_metaballs"),
-        )
         self._toolbar.addSeparator()
 
         # ── Info ──────────────────────────────────────────────────────

@@ -120,52 +120,56 @@ class SelectionMixin(BaseCmd):
             sel_name = a1
             expr_text = a2
         else:
-            # Single argument: recall a stored selection, else anonymous expression.
+            # Single argument: recall a stored selection, else anonymous
+            # expression.
             key = a1.lower()
             if key in self._named_selections:
                 self._apply_named_selection(key)
                 return
-            sel_name = None
+            # PyMOL's `ExecutiveSelectPrepareArgs` names an anonymous expression
+            # `sele` (unless auto-numbering is on), so clicks and anonymous
+            # selects accumulate in one named selection rather than evaporating.
+            sel_name = "sele"
             expr_text = a1
 
         try:
-            obj_id, obj_name, res_indices = self._resolve_selection_to_residue_indices(
+            obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
                 viewer, expr_text
             )
         except ValueError as exc:
             self._emit_error(str(exc))
             return
 
-        if res_indices:
-            try:
-                viewer.set_selected_residues(res_indices, object_id=obj_id)
-            except Exception as exc:
-                self._emit_error(
-                    f"Failed to select residues on {obj_name}: {exc}"
-                )
-                return
-            if sel_name:
-                key = sel_name.strip().lower()
-                self._named_selections[key] = {
-                    "object_id": obj_id,
-                    "indices": list(res_indices),
-                }
+        try:
+            _, _, res_indices = self._resolve_selection_to_residue_indices(
+                viewer, expr_text
+            )
+        except Exception:
+            res_indices = []
+
+        # The GUI highlight works on residues; the stored selection records both
+        # so a representation applied to the name reaches the same atoms.
+        if sel_name:
+            key = sel_name.strip().lower()
+            self._named_selections[key] = {
+                "object_id": obj_id,
+                "name": obj_name,
+                "mask": [bool(v) for v in np.asarray(atom_mask, dtype=bool)],
+                "indices": list(res_indices),
+            }
+
+        try:
+            viewer.set_selected_residues(res_indices, object_id=obj_id)
+        except Exception:
+            pass
+
+        n = int(np.count_nonzero(atom_mask))
+        if sel_name:
             self._emit_message(
-                f"Selected {obj_name} residues "
-                + ",".join(str(i + 1) for i in res_indices)
+                f"Selector: selection '{sel_name}' defined with {n} atoms."
             )
         else:
-            try:
-                viewer.set_selected_residues([], object_id=obj_id)
-            except Exception:
-                pass
-            if sel_name:
-                key = sel_name.strip().lower()
-                self._named_selections[key] = {
-                    "object_id": obj_id,
-                    "indices": [],
-                }
-            self._emit_message(f"Selected object {obj_name}")
+            self._emit_message(f"Selected {obj_name}: {n} atoms")
 
     @command("objects")
     def objects(self) -> None:
@@ -622,6 +626,46 @@ class SelectionMixin(BaseCmd):
             info = {"id": active_id, "name": str(active_id)}
         return info
 
+    def _selected_residues_atom_mask(self, viewer, obj_id: str) -> np.ndarray | None:
+        """Atom mask matching the viewer's live residue selection.
+
+        PyMOL's ``sele`` always exists and is what the mouse writes to, so when
+        no explicit ``sele`` entry is stored the name resolves to the current
+        viewport selection -- clicking or box-selecting residues then makes
+        ``show sticks, sele`` reach exactly those residues. Returns ``None``
+        when the object has no residue / atom tables to map through, letting
+        callers fall back to the parser.
+        """
+        try:
+            entry = viewer._objects.get(obj_id)
+            state = getattr(entry, "state", None)
+            residue_ids = getattr(state, "residue_ids", None)
+            all_atom_res_ids = getattr(state, "all_atom_res_ids", None)
+            if residue_ids is None or all_atom_res_ids is None:
+                return None
+            residue_ids = np.asarray(residue_ids)
+            all_atom_res_ids = np.asarray(all_atom_res_ids)
+        except Exception:
+            return None
+
+        try:
+            sel = getattr(viewer, "_selected_residues", None) or []
+            n_res = int(residue_ids.shape[0])
+            sel_ids = set(
+                int(residue_ids[int(i)])
+                for i in sel
+                if int(i) >= 0 and int(i) < n_res
+            )
+            if sel_ids:
+                mask = np.isin(all_atom_res_ids, list(sel_ids))
+            else:
+                mask = np.zeros(int(all_atom_res_ids.shape[0]), dtype=bool)
+        except Exception:
+            return None
+        if mask.size == 0:
+            return None
+        return mask
+
     def _resolve_selection_to_atom_mask(
         self,
         viewer,
@@ -630,6 +674,32 @@ class SelectionMixin(BaseCmd):
         text = (expr or "").strip()
         if not text:
             raise ValueError("Empty selection")
+
+        # A bare stored selection name resolves to its own object and captured
+        # atoms, the way a PyMOL selection object does. Without this the name
+        # would fall through to the evaluator, which only knows object names, and
+        # `show sticks, mysel` would silently match nothing while `show sticks,
+        # chain E` worked -- the subset-rep gap this exists to close.
+        entry = self._named_selections.get(text.lower())
+        if isinstance(entry, dict) and "mask" in entry:
+            mask = np.asarray(entry["mask"], dtype=bool)
+            if mask.ndim == 1 and mask.size:
+                obj_id = str(entry.get("object_id", ""))
+                obj_name = str(entry.get("name") or obj_id)
+                return obj_id, obj_name, mask
+
+        # PyMOL's `sele` is a selection that always exists and that the mouse
+        # writes into. When no explicit entry is stored (the block above would
+        # have returned), resolve it to the viewer's live viewport selection, so
+        # a mouse-clicked or box-selected set is usable as `sele` right away.
+        if text.lower() == "sele":
+            obj_info = self._active_object_info(viewer)
+            if obj_info is not None:
+                obj_id = str(obj_info.get("id"))
+                obj_name = str(obj_info.get("name") or obj_id)
+                mask = self._selected_residues_atom_mask(viewer, obj_id)
+                if mask is not None:
+                    return obj_id, obj_name, mask
 
         try:
             tokens = shlex_split(text)
@@ -652,7 +722,9 @@ class SelectionMixin(BaseCmd):
 
         from .sele_parser import Evaluator, ParserError
         try:
-            evaluator = Evaluator(viewer, obj_id)
+            evaluator = Evaluator(
+                viewer, obj_id, named_selections=self._named_selections
+            )
             atom_mask = evaluator.evaluate(text)
         except ParserError as exc:
             raise ValueError(f"Selection parse error: {exc}")
@@ -670,6 +742,31 @@ class SelectionMixin(BaseCmd):
         text = (expr or "").strip()
         if not text:
             raise ValueError("Empty selection")
+
+        # PyMOL's `sele` always exists and is what the mouse writes to; when no
+        # explicit entry is stored it is the live viewport selection. Delegating
+        # to the atom-mask resolver keeps both paths on the same fallback.
+        if text.lower() == "sele" and text.lower() not in self._named_selections:
+            obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
+                viewer, "sele"
+            )
+            if atom_mask is None or not np.any(atom_mask):
+                return obj_id, obj_name, []
+            try:
+                entry = viewer._objects.get(obj_id)
+                state = getattr(entry, "state", None)
+                all_atom_res_ids = np.asarray(getattr(state, "all_atom_res_ids", None))
+                residue_ids = np.asarray(getattr(state, "residue_ids", None))
+            except Exception:
+                all_atom_res_ids = None
+                residue_ids = None
+            if all_atom_res_ids is None or residue_ids is None or not residue_ids.size:
+                raise ValueError(
+                    f"Object {obj_name} missing data for residue conversion"
+                )
+            selected_res_ids = np.unique(all_atom_res_ids[atom_mask])
+            res_indices = np.where(np.isin(residue_ids, selected_res_ids))[0].tolist()
+            return obj_id, obj_name, res_indices
 
         # Basic object resolution (first token might be the object name if not a standard token)
         try:
@@ -693,7 +790,9 @@ class SelectionMixin(BaseCmd):
 
         from .sele_parser import Evaluator, ParserError
         try:
-            evaluator = Evaluator(viewer, obj_id)
+            evaluator = Evaluator(
+                viewer, obj_id, named_selections=self._named_selections
+            )
             atom_mask = evaluator.evaluate(text)
         except ParserError as exc:
             raise ValueError(f"Selection parse error: {exc}")
