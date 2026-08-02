@@ -45,6 +45,26 @@ is dominated by the brighter species:
 G(0) = Σ_i (B_i)² N_i / (Σ_i B_i N_i)²
 ```
 
+### Why the brightness is squared — derivation and numerical check
+
+`F(t) = Σ_i B_i n_i(t)`, so `G(0) = ⟨δF²⟩/⟨F⟩²`. For independent species with
+Poisson number fluctuations, `⟨δn_i²⟩ = N_i` and the cross-species terms
+vanish, giving `⟨δF²⟩ = Σ_i B_i² N_i` and `⟨F⟩ = Σ_i B_i N_i`:
+
+```
+G(0) = Σ_i B_i² N_i / (Σ_i B_i N_i)²
+```
+
+Each molecule contributes `B_i` to **both** ends of the intensity–intensity
+correlation, so the fluctuation term scales as `B_i² N_i` while the
+normalisation is the (linear) brightness-weighted mean — brighter species
+dominate the amplitude disproportionately. Monte-Carlo verification (Poisson
+number fluctuations over 2e6 time points) reproduces the closed form:
+`B=[1,2], N=[1,1]` → simulated 0.554 vs formula 0.556; `B=[1,3], N=[2,0.5]`
+→ 0.530 vs 0.531. Sanity limits: equal brightnesses reduce to
+`1/(N₁+N₂) = 1/N_total`, and a single species gives `1/N` — the current
+`G = b + g/N` form is the special case, recovered exactly.
+
 The amplitude is a **brightness-weighted** inverse concentration, not `1/N_total`.
 Fitting such data with a single `1/N` amplitude silently mis-reports the
 concentrations, and FRET cross-talk (donor signal bleeding into the acceptor
