@@ -101,7 +101,7 @@ def test_language_flag_switcher_uk_english_and_applies(qapp, monkeypatch):
     sw = LanguageFlagSwitcher()
     entries = {a.data(): a.text() for a in sw._menu.actions()}
     assert {"en", "de", "fr"} <= set(entries)
-    assert entries["en"].startswith("🇬🇧")  # flag + endonym
+    assert entries["en"] == "English"  # endonym label (flag shown as an icon)
 
     seen = {}
     sw.languageChanged.connect(lambda c: seen.setdefault("code", c))
@@ -109,6 +109,29 @@ def test_language_flag_switcher_uk_english_and_applies(qapp, monkeypatch):
     assert persisted.get("code") == "fr"
     assert applied.get("code") == "fr"
     assert seen.get("code") == "fr"
+
+
+def test_pickers_stay_in_sync_via_notifier(qapp, monkeypatch):
+    """A language change announced app-wide re-syncs every open picker."""
+    from chisurf.core import i18n as ci18n
+    from chisurf.gui import i18n as gi18n
+    from chisurf.gui.widgets.language_selector import LanguageFlagSwitcher, LanguageSelector
+
+    def flag_current(sw):
+        # The current language is the checked menu entry (the flag is a painted
+        # icon, so there is no text glyph to read).
+        return [a.data() for a in sw._menu.actions() if a.isChecked()]
+
+    combo_widget = LanguageSelector()
+    flag_widget = LanguageFlagSwitcher()
+
+    # Simulate "another picker switched to German": the locale now reads 'de' and
+    # the app-wide notifier fires. Both widgets must re-sync without user input.
+    monkeypatch.setattr(ci18n, "get_locale", lambda: "de")
+    gi18n.language_notifier.language_changed.emit("de")
+
+    assert combo_widget.current_code() == "de"  # combo re-selected German
+    assert flag_current(flag_widget) == ["de"]  # flag switcher marks German current
 
 
 def test_settings_editor_top_selector_syncs_tree_row(qapp, monkeypatch):

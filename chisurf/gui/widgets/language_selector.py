@@ -68,19 +68,38 @@ class LanguageSelector(QtWidgets.QWidget):
         self._populate()
         self.combo.activated.connect(self._on_activated)
 
+        # Re-sync when the language is changed anywhere else (e.g. the ribbon
+        # flag dropdown), so every open picker shows the same current language.
+        from chisurf.gui import i18n as gui_i18n
+
+        gui_i18n.language_notifier.language_changed.connect(self._on_external_change)
+
+    def _on_external_change(self, code: str) -> None:
+        """Re-select the applied language after an external switch."""
+        self._populate(code)
+
     # -- population -----------------------------------------------------------
 
-    def _populate(self) -> None:
-        """Fill the combo from the shipped catalogues and preselect the current."""
+    def _populate(self, current: str | None = None) -> None:
+        """Fill the combo from the shipped catalogues and preselect ``current``.
+
+        ``current`` defaults to the persisted locale; the app-wide notifier passes
+        the *applied* code instead, since a live switch need not be persisted yet.
+        """
         from chisurf.core import i18n as core_i18n
         from chisurf.gui import i18n as gui_i18n
+
+        if current is None:
+            current = core_i18n.get_locale() or core_i18n.DEFAULT_LOCALE
+        current = str(current).strip()
 
         self.combo.blockSignals(True)
         self.combo.clear()
         for code in gui_i18n.available_languages():
-            self.combo.addItem(gui_i18n.language_display_name(code), code)
+            self.combo.addItem(
+                gui_i18n.language_flag_icon(code), gui_i18n.language_display_name(code), code
+            )
 
-        current = (core_i18n.get_locale() or core_i18n.DEFAULT_LOCALE).strip()
         idx = self.combo.findData(current)
         self.combo.setCurrentIndex(idx if idx >= 0 else 0)
         self.combo.blockSignals(False)
@@ -140,29 +159,44 @@ class LanguageFlagSwitcher(QtWidgets.QToolButton):
     def __init__(self, parent: QtWidgets.QWidget | None = None):
         super().__init__(parent)
         self.setPopupMode(QtWidgets.QToolButton.InstantPopup)
-        self.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
         self.setAutoRaise(True)
         self._menu = QtWidgets.QMenu(self)
         self.setMenu(self._menu)
         self.rebuild()
 
-    def rebuild(self) -> None:
-        """(Re)build the flag menu from the shipped catalogues + current locale."""
+        # Re-sync the flag/menu when the language changes anywhere else.
+        from chisurf.gui import i18n as gui_i18n
+
+        gui_i18n.language_notifier.language_changed.connect(self.rebuild)
+
+    def rebuild(self, current: str | None = None) -> None:
+        """(Re)build the flag menu from the shipped catalogues + ``current`` locale.
+
+        ``current`` defaults to the persisted locale; the app-wide notifier passes
+        the *applied* code instead, since a live switch need not be persisted yet.
+        """
         from chisurf.core import i18n as core_i18n
         from chisurf.gui import i18n as gui_i18n
 
+        if current is None:
+            current = core_i18n.get_locale() or core_i18n.DEFAULT_LOCALE
+        current = str(current).strip()
+
         self._menu.clear()
-        current = (core_i18n.get_locale() or core_i18n.DEFAULT_LOCALE).strip()
         for code in gui_i18n.available_languages():
-            flag = gui_i18n.language_flag(code)
             name = gui_i18n.language_display_name(code)
-            action = self._menu.addAction(f"{flag}  {name}")
+            action = self._menu.addAction(gui_i18n.language_flag_icon(code, 16), name)
             action.setData(code)
             action.setCheckable(True)
             action.setChecked(code == current)
             action.triggered.connect(lambda _checked=False, c=code: self._select(c))
 
-        self.setText(gui_i18n.language_flag(current))
+        # Show the current flag as the button's icon (emoji flags render
+        # unreliably in Qt, so a painted icon is used instead of button text).
+        self.setToolButtonStyle(QtCore.Qt.ToolButtonIconOnly)
+        self.setIcon(gui_i18n.language_flag_icon(current, 18))
+        self.setIconSize(QtCore.QSize(24, 18))
         self.setToolTip(
             i18n.tr("Language") + f": {gui_i18n.language_display_name(current)}"
         )
