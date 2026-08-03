@@ -15,8 +15,16 @@ logger = logging.getLogger(__name__)
 
 @register_section("psf_volume_view")
 def _psf_volume_view(model=None, target=None, **options):
-    """The 3-D view, as a dock of its own beside the parameter docks."""
-    return cp.VolumeView()
+    """The 3-D view, as a dock of its own beside the parameters.
+
+    ``_autoform_expanding`` is AutoForm's hook for a widget that should take
+    the space in its dock rather than sit at its size hint with a stretch
+    pushed underneath it -- which for a viewport means a strip at the top of an
+    otherwise empty panel.
+    """
+    view = cp.VolumeView()
+    view._autoform_expanding = True
+    return view
 
 
 class _Worker(QtCore.QRunnable):
