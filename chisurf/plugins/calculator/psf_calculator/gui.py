@@ -7,10 +7,17 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf.gui.chiplot as cp
 from chisurf.gui.autoform.auto_form import AutoForm
+from chisurf.gui.autoform.sections import register_section
 
 from .core import PSFModel
 
 logger = logging.getLogger(__name__)
+
+@register_section("psf_volume_view")
+def _psf_volume_view(model=None, target=None, **options):
+    """The 3-D view, as a dock of its own beside the parameter docks."""
+    return cp.VolumeView()
+
 
 class _Worker(QtCore.QRunnable):
     """Compute a volume off the GUI thread.
@@ -55,26 +62,18 @@ class PSFCalculator(QtWidgets.QWidget):
         self.model = PSFModel()
         self.auto_form = AutoForm(self.model)
 
-        layout = QtWidgets.QHBoxLayout(self)
+        # The spec is a dock_area, so the parameter panels and the 3-D view are
+        # docks the user can re-arrange, float or tab -- the inputs and the plot
+        # are separable rather than welded into one layout.
+        layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
-        layout.setSpacing(4)
+        layout.setSpacing(2)
+        layout.addWidget(self.auto_form)
 
-        controls = QtWidgets.QScrollArea()
-        controls.setWidgetResizable(True)
-        controls.setWidget(self.auto_form)
-        # AutoForm lays value fields two to a row, so a narrow pane clips the
-        # right-hand column entirely -- the immersion index and the polarization
-        # simply vanish.
-        controls.setMinimumWidth(560)
-        controls.setMaximumWidth(680)
-        layout.addWidget(controls, 0)
-
-        # The viewer is a sibling of the form, not a section inside it: put it
-        # in the spec and AutoForm renders it at the bottom of the scrolling
-        # column, which is not what "beside the controls" means.
-        self.view = cp.VolumeView()
-        self.view.setMinimumWidth(380)
-        layout.addWidget(self.view, 1)
+        self.view = self.auto_form.section_widget(key="psf_volume_view")
+        if self.view is None:                      # spec not applied
+            self.view = cp.VolumeView()
+            layout.addWidget(self.view)
 
         self._pool = QtCore.QThreadPool.globalInstance()
         self._timer = QtCore.QTimer(self)
@@ -82,24 +81,45 @@ class PSFCalculator(QtWidgets.QWidget):
         self._timer.setInterval(self.DEBOUNCE_MS)
         self._timer.timeout.connect(self.recompute)
 
-        try:
-            self.model.add_observer(self._on_model_event)
-        except AttributeError:
-            pass                                        # plain model: no signals
+        self._wire_controls()
+        self.auto_form.rebuilt.connect(self._wire_controls)
 
         self.recompute()
 
     # -- recomputation -------------------------------------------------------
-    def schedule(self) -> None:
+    def schedule(self, *_args) -> None:
         """Ask for a recomputation once the user stops editing."""
         self._timer.start()
 
-    def _on_model_event(self, event: str) -> None:
-        try:
-            self.auto_form.sync_fields()
-        except Exception:
-            logger.warning("PSF calculator: field sync failed", exc_info=True)
-        self.schedule()
+    def _wire_controls(self) -> None:
+        """Recompute whenever a control commits a value.
+
+        AutoForm writes straight through to the model and has no per-field
+        signal, so the tool listens to the built widgets. This has to be redone
+        after ``rebuilt``, which replaces them.
+        """
+        from chisurf.gui.autoform.sections.builtin import (
+            ChoiceWidget, ToggleWidget, ValueWidget)
+
+        for vw in self.auto_form.findChildren(ValueWidget):
+            editor = getattr(vw, "editor", None)
+            if editor is None:
+                continue
+            signal = (getattr(editor, "editingFinished", None)
+                      or getattr(editor, "valueChanged", None))
+            if signal is not None:
+                signal.connect(self.schedule)
+
+        for cw in self.auto_form.findChildren(ChoiceWidget):
+            if cw.combo is not None:
+                cw.combo.currentIndexChanged.connect(self.schedule)
+            for rb in getattr(cw, "_radios", []):
+                rb.toggled.connect(self.schedule)
+
+        for tw in self.auto_form.findChildren(ToggleWidget):
+            checkbox = getattr(tw, "checkbox", None)
+            if checkbox is not None:
+                checkbox.toggled.connect(self.schedule)
 
     def recompute(self) -> None:
         """Recompute in the background, unless the parameters are unchanged."""
@@ -114,10 +134,7 @@ class PSFCalculator(QtWidgets.QWidget):
         self.view.set_scale(1.0, 1.0, self.model.z_step_nm / self.model.pixel_size_nm)
         self.view.set_volume(volume, colormap=self.model.colormap,
                              threshold=self.model.threshold, gamma=self.model.gamma)
-        try:
-            self.auto_form.sync_fields()
-        except Exception:
-            pass
+        self.auto_form.sync_fields()
 
     def _report(self, message: str) -> None:
         logger.warning("PSF calculator: %s", message)

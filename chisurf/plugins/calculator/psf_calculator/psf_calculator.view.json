@@ -1,223 +1,258 @@
 {
   "sections": [
     {
-      "type": "panel",
-      "title": "Objective",
-      "collapsible": false,
+      "type": "dock_area",
+      "title": "PSF Calculator",
+      "persist": "psf_calculator",
       "sections": [
         {
-          "type": "value",
-          "attr": "na",
-          "label": "NA",
-          "kind": "float",
-          "decimals": 2,
-          "minimum": 0.05,
-          "maximum": 1.7,
-          "step": 0.05,
-          "description": "Numerical aperture. Above about 1.0 the scalar models stop being trustworthy and the vectorial one should be used."
+          "type": "panel",
+          "title": "Objective",
+          "collapsible": false,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "na",
+              "label": "NA",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.05,
+              "maximum": 1.7,
+              "step": 0.05,
+              "description": "Numerical aperture. Above about 1.0 the scalar models stop being trustworthy and the vectorial one should be used."
+            },
+            {
+              "type": "value",
+              "attr": "n_immersion",
+              "label": "n (immersion)",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 1.0,
+              "maximum": 2.0,
+              "step": 0.01,
+              "description": "Refractive index of the immersion medium: 1.518 oil, 1.33 water, 1.0 air. The NA cannot exceed it."
+            },
+            {
+              "type": "value",
+              "attr": "wavelength_nm",
+              "label": "\u03bb (nm)",
+              "kind": "float",
+              "decimals": 0,
+              "minimum": 300.0,
+              "maximum": 1200.0,
+              "step": 10.0,
+              "description": "Emission or excitation wavelength in nanometres."
+            }
+          ],
+          "dock_group": "params",
+          "n_col": 1
         },
         {
-          "type": "value",
-          "attr": "n_immersion",
-          "label": "n (immersion)",
-          "kind": "float",
-          "decimals": 3,
-          "minimum": 1.0,
-          "maximum": 2.0,
-          "step": 0.01,
-          "description": "Refractive index of the immersion medium: 1.518 oil, 1.33 water, 1.0 air. The NA cannot exceed it."
+          "type": "panel",
+          "title": "Model",
+          "collapsible": false,
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "model",
+              "label": "Optical model",
+              "options": [
+                "vectorial",
+                "airy",
+                "gaussian"
+              ],
+              "labels": [
+                "Vectorial (Richards-Wolf)",
+                "Airy (scalar)",
+                "Gaussian"
+              ],
+              "style": "radio",
+              "description": "Vectorial accounts for the longitudinal field and the input polarization; Airy is the exact scalar result; Gaussian is the usual approximation, which has no wings."
+            }
+          ],
+          "dock_group": "params",
+          "n_col": 1
         },
         {
-          "type": "value",
-          "attr": "wavelength_nm",
-          "label": "\u03bb (nm)",
-          "kind": "float",
-          "decimals": 0,
-          "minimum": 300.0,
-          "maximum": 1200.0,
-          "step": 10.0,
-          "description": "Emission or excitation wavelength in nanometres."
+          "type": "panel",
+          "title": "Polarization",
+          "collapsible": false,
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "polarization",
+              "label": "Polarization",
+              "options": [
+                "circular",
+                "x",
+                "y",
+                "linear",
+                "left",
+                "unpolarized",
+                "radial",
+                "azimuthal"
+              ],
+              "labels": [
+                "Circular",
+                "Linear x",
+                "Linear y",
+                "Linear at angle",
+                "Left circular",
+                "Unpolarized",
+                "Radial",
+                "Azimuthal"
+              ],
+              "description": "State of the light entering the pupil. Linear elongates the focus along its own axis; radial focuses tighter; azimuthal is a doughnut with a zero on axis."
+            },
+            {
+              "type": "value",
+              "attr": "angle_deg",
+              "label": "Angle (\u00b0)",
+              "kind": "float",
+              "decimals": 0,
+              "minimum": 0.0,
+              "maximum": 180.0,
+              "step": 5.0,
+              "description": "Orientation of the linear state, measured from the x axis. Used only when Polarization is 'Linear at angle'."
+            }
+          ],
+          "dock_group": "params",
+          "n_col": 1
+        },
+        {
+          "type": "panel",
+          "title": "Sampling",
+          "collapsible": false,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "nxy",
+              "label": "Lateral size (px)",
+              "kind": "int",
+              "minimum": 16,
+              "maximum": 192,
+              "step": 8,
+              "description": "Pixels per lateral side of the volume."
+            },
+            {
+              "type": "value",
+              "attr": "nz",
+              "label": "Planes",
+              "kind": "int",
+              "minimum": 3,
+              "maximum": 81,
+              "step": 2,
+              "description": "Number of axial planes, centred on focus."
+            },
+            {
+              "type": "value",
+              "attr": "pixel_size_nm",
+              "label": "Pixel (nm)",
+              "kind": "float",
+              "decimals": 1,
+              "minimum": 1.0,
+              "maximum": 200.0,
+              "step": 5.0,
+              "description": "Lateral sampling in nanometres."
+            },
+            {
+              "type": "value",
+              "attr": "z_step_nm",
+              "label": "z step (nm)",
+              "kind": "float",
+              "decimals": 1,
+              "minimum": 5.0,
+              "maximum": 1000.0,
+              "step": 25.0,
+              "description": "Axial spacing between planes."
+            },
+            {
+              "type": "choice",
+              "attr": "quality",
+              "label": "Quality",
+              "options": [
+                "preview",
+                "full"
+              ],
+              "labels": [
+                "Preview (fast)",
+                "Full"
+              ],
+              "style": "radio",
+              "description": "Preview uses a coarser aperture quadrature. The vectorial model is expensive, so live editing stays on preview and the full calculation is worth waiting for only once the parameters are settled."
+            }
+          ],
+          "dock_group": "params",
+          "n_col": 1
+        },
+        {
+          "type": "panel",
+          "title": "Display",
+          "collapsible": false,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "threshold",
+              "label": "Threshold",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 0.9,
+              "step": 0.01,
+              "description": "Hide voxels below this fraction of the peak. A diffraction-limited focus is mostly empty space and renders as fog without it."
+            },
+            {
+              "type": "value",
+              "attr": "gamma",
+              "label": "Gamma",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.1,
+              "maximum": 3.0,
+              "step": 0.1,
+              "description": "Shapes the opacity ramp. Below 1 lifts the faint wings into view."
+            },
+            {
+              "type": "choice",
+              "attr": "colormap",
+              "label": "Colormap",
+              "options": [
+                "magma",
+                "inferno",
+                "viridis",
+                "gray"
+              ],
+              "description": "Colormap of the rendered volume."
+            }
+          ],
+          "dock_group": "params",
+          "n_col": 1
+        },
+        {
+          "type": "info",
+          "source": "summary_text",
+          "title": "Result",
+          "description": "Peak position, axial and lateral extent of the computed PSF.",
+          "dock_group": "params",
+          "n_col": 1
+        },
+        {
+          "type": "panel",
+          "title": "3-D view",
+          "sections": [
+            {
+              "type": "custom",
+              "key": "psf_volume_view"
+            }
+          ],
+          "dock_group": "view"
         }
+      ],
+      "split": "horizontal",
+      "sizes": [
+        1,
+        4
       ]
-    },
-    {
-      "type": "panel",
-      "title": "Model",
-      "collapsible": false,
-      "sections": [
-        {
-          "type": "choice",
-          "attr": "model",
-          "label": "Optical model",
-          "options": [
-            "vectorial",
-            "airy",
-            "gaussian"
-          ],
-          "labels": [
-            "Vectorial (Richards-Wolf)",
-            "Airy (scalar)",
-            "Gaussian"
-          ],
-          "style": "radio",
-          "description": "Vectorial accounts for the longitudinal field and the input polarization; Airy is the exact scalar result; Gaussian is the usual approximation, which has no wings."
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Polarization",
-      "collapsible": false,
-      "sections": [
-        {
-          "type": "choice",
-          "attr": "polarization",
-          "label": "Polarization",
-          "options": [
-            "circular",
-            "x",
-            "y",
-            "linear",
-            "left",
-            "unpolarized",
-            "radial",
-            "azimuthal"
-          ],
-          "labels": [
-            "Circular",
-            "Linear x",
-            "Linear y",
-            "Linear at angle",
-            "Left circular",
-            "Unpolarized",
-            "Radial",
-            "Azimuthal"
-          ],
-          "description": "State of the light entering the pupil. Linear elongates the focus along its own axis; radial focuses tighter; azimuthal is a doughnut with a zero on axis."
-        },
-        {
-          "type": "value",
-          "attr": "angle_deg",
-          "label": "Angle (\u00b0)",
-          "kind": "float",
-          "decimals": 0,
-          "minimum": 0.0,
-          "maximum": 180.0,
-          "step": 5.0,
-          "description": "Orientation of the linear state, measured from the x axis. Used only when Polarization is 'Linear at angle'."
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Sampling",
-      "collapsible": false,
-      "sections": [
-        {
-          "type": "value",
-          "attr": "nxy",
-          "label": "Lateral size (px)",
-          "kind": "int",
-          "minimum": 16,
-          "maximum": 192,
-          "step": 8,
-          "description": "Pixels per lateral side of the volume."
-        },
-        {
-          "type": "value",
-          "attr": "nz",
-          "label": "Planes",
-          "kind": "int",
-          "minimum": 3,
-          "maximum": 81,
-          "step": 2,
-          "description": "Number of axial planes, centred on focus."
-        },
-        {
-          "type": "value",
-          "attr": "pixel_size_nm",
-          "label": "Pixel (nm)",
-          "kind": "float",
-          "decimals": 1,
-          "minimum": 1.0,
-          "maximum": 200.0,
-          "step": 5.0,
-          "description": "Lateral sampling in nanometres."
-        },
-        {
-          "type": "value",
-          "attr": "z_step_nm",
-          "label": "z step (nm)",
-          "kind": "float",
-          "decimals": 1,
-          "minimum": 5.0,
-          "maximum": 1000.0,
-          "step": 25.0,
-          "description": "Axial spacing between planes."
-        },
-        {
-          "type": "choice",
-          "attr": "quality",
-          "label": "Quality",
-          "options": [
-            "preview",
-            "full"
-          ],
-          "labels": [
-            "Preview (fast)",
-            "Full"
-          ],
-          "style": "radio",
-          "description": "Preview uses a coarser aperture quadrature. The vectorial model is expensive, so live editing stays on preview and the full calculation is worth waiting for only once the parameters are settled."
-        }
-      ]
-    },
-    {
-      "type": "panel",
-      "title": "Display",
-      "collapsible": false,
-      "sections": [
-        {
-          "type": "value",
-          "attr": "threshold",
-          "label": "Threshold",
-          "kind": "float",
-          "decimals": 3,
-          "minimum": 0.0,
-          "maximum": 0.9,
-          "step": 0.01,
-          "description": "Hide voxels below this fraction of the peak. A diffraction-limited focus is mostly empty space and renders as fog without it."
-        },
-        {
-          "type": "value",
-          "attr": "gamma",
-          "label": "Gamma",
-          "kind": "float",
-          "decimals": 2,
-          "minimum": 0.1,
-          "maximum": 3.0,
-          "step": 0.1,
-          "description": "Shapes the opacity ramp. Below 1 lifts the faint wings into view."
-        },
-        {
-          "type": "choice",
-          "attr": "colormap",
-          "label": "Colormap",
-          "options": [
-            "magma",
-            "inferno",
-            "viridis",
-            "gray"
-          ],
-          "description": "Colormap of the rendered volume."
-        }
-      ]
-    },
-    {
-      "type": "info",
-      "source": "summary_text",
-      "title": "Result",
-      "description": "Peak position, axial and lateral extent of the computed PSF."
     }
   ]
 }
