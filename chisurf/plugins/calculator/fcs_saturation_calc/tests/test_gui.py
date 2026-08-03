@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pytest
 from qtpy import QtWidgets
 
@@ -275,3 +276,62 @@ def test_zero_power_leaves_the_two_curves_identical(qapp):
     tool.power_mW = 0.0
     series = tool.fcs_curves_series
     np.testing.assert_allclose(series[0]["y"], series[1]["y"], rtol=1e-12)
+
+
+def test_power_is_a_logarithmic_slider(qapp):
+    """The power spans decades, so the slider must map logarithmically."""
+    tool = SaturationCalculatorTool()
+    sliders = tool.form.findChildren(QtWidgets.QSlider)
+    assert len(sliders) == 1, "the power control should carry exactly one slider"
+    slider = sliders[0]
+    seen = []
+    for pos in (0, 250, 500, 750, 1000):
+        slider.setValue(pos)
+        seen.append(tool.power_mW)
+    assert seen[0] == pytest.approx(0.001, rel=1e-6)
+    assert seen[-1] == pytest.approx(100.0, rel=1e-6)
+    # Equal travel must give equal *ratios*, which is what "logarithmic" means.
+    ratios = [b / a for a, b in zip(seen, seen[1:])]
+    assert max(ratios) / min(ratios) < 1.01
+
+
+def test_dragging_the_power_reuses_cached_results(qapp):
+    """Revisiting a power must hit the cache rather than integrate again."""
+    tool = SaturationCalculatorTool()
+    powers = [0.05, 0.2, 1.0, 5.0]
+    for p in powers:
+        tool.power_mW = p
+    first = list(tool.fcs_curves_series[1]["y"])
+    entries = len(tool._curve_cache)
+    sweeps = tool._sweep_cache
+
+    for p in reversed(powers):
+        tool.power_mW = p
+    tool.power_mW = powers[-1]
+    assert len(tool._curve_cache) == entries, "a revisited power must not add an entry"
+    assert tool._sweep_cache is sweeps, "the power sweep does not depend on the power"
+    np.testing.assert_allclose(tool.fcs_curves_series[1]["y"], first, rtol=1e-12)
+
+
+def test_the_cache_is_dropped_when_the_scheme_changes(qapp):
+    """A cached curve must never survive a change it does not account for."""
+    tool = SaturationCalculatorTool()
+    tool.power_mW = 2.0
+    before = list(tool.fcs_curves_series[1]["y"])
+    tool.saturation.dark.rates_by_name()["k2_3"].value = 40.0  # far more ISC
+    tool._invalidate()
+    after = list(tool.fcs_curves_series[1]["y"])
+    assert not np.allclose(before, after)
+
+
+def test_info_is_its_own_dock_and_starts_hidden(qapp):
+    """The summary lives in a dock of its own, out of the way until asked for."""
+    tool = SaturationCalculatorTool()
+    area = tool.form._dock_areas[0]
+    names = [area._tab_names.get(w, "") for w in area._all_widgets]
+    assert "Info" in names, "the info dock must be registered"
+    info = area._all_widgets[names.index("Info")]
+    assert not info.isVisible(), "the info dock starts hidden"
+    # ... and the three profile plots are separate docks, not one merged panel.
+    for expected in ("Volume profile", "Volume(P)", "Diffusion time"):
+        assert expected in names, f"{expected} should be its own dock"

@@ -7,6 +7,8 @@ layer references these by string only; the concrete classes live here.
 
 from __future__ import annotations
 
+import math
+
 from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
@@ -1066,16 +1068,33 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
             slider.setMinimum(0)
             slider.setMaximum(1000)
 
-            def spin_to_slider(v: float):
+            # A range spanning decades needs a logarithmic mapping: linear travel
+            # over 0.01…100 spends 99 % of the slider above 1, where nothing
+            # interesting happens. Falls back to linear when the low end is not
+            # strictly positive, since log(0) has no place to sit.
+            log_scale = str(getattr(section, "scale", "")).lower() == "log" and min_val > 0.0
+            if log_scale:
+                log_lo, log_hi = math.log10(min_val), math.log10(max_val)
+
+            def _to_ratio(v: float) -> float:
                 clamped = max(min_val, min(max_val, v))
-                ratio = (clamped - min_val) / (max_val - min_val) if max_val > min_val else 0.0
+                if log_scale:
+                    return ((math.log10(clamped) - log_lo) / (log_hi - log_lo)
+                            if log_hi > log_lo else 0.0)
+                return (clamped - min_val) / (max_val - min_val) if max_val > min_val else 0.0
+
+            def _from_ratio(ratio: float) -> float:
+                if log_scale:
+                    return 10.0 ** (log_lo + ratio * (log_hi - log_lo))
+                return min_val + ratio * (max_val - min_val)
+
+            def spin_to_slider(v: float):
                 slider.blockSignals(True)
-                slider.setValue(int(round(ratio * 1000)))
+                slider.setValue(int(round(_to_ratio(v) * 1000)))
                 slider.blockSignals(False)
 
             def slider_to_spin(pos: int):
-                ratio = pos / 1000.0
-                val = min_val + ratio * (max_val - min_val)
+                val = _from_ratio(pos / 1000.0)
                 self.editor.blockSignals(True)
                 self.editor.setValue(val if is_float else int(val))
                 self.editor.blockSignals(False)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import collections
+import math
 import os
 
 import numpy as np
@@ -60,6 +62,14 @@ class SaturationCalculatorTool(ChisurfDockTool):
         self._show_fluorescence_profile = True
         self._hidden_states: set[int] = set()
         self._normalize_fcs = False
+        self._sweep_cache = None
+        self._curve_cache: collections.OrderedDict = collections.OrderedDict()
+        self._curves_key = None
+        self._sweep_series_key = None
+        self._profile_key = None
+        self._repaint_timer = QtCore.QTimer(self)
+        self._repaint_timer.setSingleShot(True)
+        self._repaint_timer.timeout.connect(self._repaint_plots)
 
         # Setup toolbar
         toolbar = QtWidgets.QToolBar()
@@ -82,11 +92,15 @@ class SaturationCalculatorTool(ChisurfDockTool):
         # Restore saved user session settings if present in ~/.chisurf
         self.load_user_settings()
 
+        # Loading the scheme above already ran a compute, and these assignments
+        # throw its results away -- so the staleness guards have to be cleared
+        # with them, or the recompute below returns early into empty series.
         self._fcs_curves_series = []
         self._volume_power_series = []
         self._tau_d_power_series = []
         self._volume_profile_series = []
         self._info_summary = ""
+        self._invalidate()
         self._update_curves()
 
         self.form = AutoForm(self)
@@ -496,13 +510,49 @@ class SaturationCalculatorTool(ChisurfDockTool):
         return self._info_summary
 
     def _on_compute(self):
-        """Run the FCS saturation calculation and refresh the plots."""
+        """Run the FCS saturation calculation and refresh the plots at once.
+
+        An explicit action repaints immediately rather than on the coalescing
+        timer, so pressing Compute is never a no-op that lands a frame later.
+        """
+        timer = getattr(self, "_repaint_timer", None)
+        if timer is not None:
+            timer.stop()
         self._update_curves()
-        if hasattr(self, "form"):
-            try:
-                self.form.refresh_plots()
-            except Exception:
-                pass
+        self._repaint_plots()
+
+    #: Cached curves, keyed by every input that changes them. The power slider
+    #: is meant to be dragged, so an update has to stay well inside a frame.
+    _CURVE_CACHE_SIZE = 512
+
+    #: Repaint coalescing window (ms) -- about 40 frames per second.
+    _REPAINT_INTERVAL_MS = 25
+
+    @staticmethod
+    def _scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val):
+        """Hashable identity of everything a curve depends on except the power."""
+        return (
+            round(float(ext), 6),
+            round(float(wavelength), 6),
+            tuple(np.asarray(dark_m, dtype=float).ravel().tolist()),
+            tuple(np.asarray(exc_m, dtype=float).ravel().tolist()),
+            tuple(np.asarray(bright_arr, dtype=float).ravel().tolist()),
+            round(float(w_r), 6),
+            round(float(w_z), 6),
+            round(float(D_val), 9),
+        )
+
+    @staticmethod
+    def _sweep_ceiling(power_mW: float) -> float:
+        """Upper power of the sweep, rounded up to a decade.
+
+        The sweep's own default upper bound is ``max(50, 2*power)``, which moves
+        with the power and would both invalidate the cache on every step and make
+        the x-axis crawl while the slider is dragged. Snapping to a decade keeps
+        the axis still and the cache warm for a whole decade of travel.
+        """
+        target = max(50.0, float(power_mW) * 2.0)
+        return float(10.0 ** math.ceil(math.log10(target)))
 
     def _update_power_sweep(self):
         """Recompute power sweep dependence curves (Volume and tau_D vs Power)."""
@@ -519,17 +569,38 @@ class SaturationCalculatorTool(ChisurfDockTool):
         except Exception:
             return
 
-        powers_mW, v_rel, tau_d = compute_power_sweep_curves(
-            power_mW=power_mW,
-            extinction=ext,
-            dark_matrix=dark_m,
-            exc_matrix=exc_m,
-            brightness=bright_arr,
-            w_r_nm=w_r,
-            w_z_nm=w_z,
-            D_um2s=D_val,
-            wavelength_nm=wavelength,
+        # The sweep costs ~30 ms -- four times everything else in an update --
+        # and the only thing the current power changes about it is where the red
+        # marker sits. Keying the cache on everything *but* the power is what
+        # makes dragging the power slider feel live.
+        if (power_mW, self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr,
+                                       w_r, w_z, D_val)) == getattr(self, "_sweep_series_key", None):
+            return
+        self._sweep_series_key = (
+            power_mW,
+            self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val),
         )
+        ceiling = self._sweep_ceiling(power_mW)
+        key = (
+            self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val),
+            ceiling,
+        )
+        cached = self._sweep_cache
+        if cached is not None and cached[0] == key:
+            powers_mW, v_rel, tau_d = cached[1]
+        else:
+            powers_mW, v_rel, tau_d = compute_power_sweep_curves(
+                power_mW=ceiling,
+                extinction=ext,
+                dark_matrix=dark_m,
+                exc_matrix=exc_m,
+                brightness=bright_arr,
+                w_r_nm=w_r,
+                w_z_nm=w_z,
+                D_um2s=D_val,
+                wavelength_nm=wavelength,
+            )
+            self._sweep_cache = (key, (powers_mW, v_rel, tau_d))
 
         curr_v = float(np.interp(power_mW, powers_mW, v_rel))
         curr_tau = float(np.interp(power_mW, powers_mW, tau_d))
@@ -561,7 +632,12 @@ class SaturationCalculatorTool(ChisurfDockTool):
         ]
 
     def _update_volume_profile(self):
-        """Recompute 1D radial profiles of laser intensity and state populations."""
+        """Recompute 1D radial profiles of laser intensity and state populations.
+
+        A no-op when nothing it depends on has changed: the plot series are
+        properties that recompute on read and ``refresh_plots`` reads every one
+        of them, so without this a slider step runs the pipeline several times.
+        """
         from chisurf.plugins.calculator.fcs_saturation_calc.core import compute_volume_profile
 
         try:
@@ -576,6 +652,13 @@ class SaturationCalculatorTool(ChisurfDockTool):
             wavelength = float(self.wavelength_nm)
         except Exception:
             return
+
+        key = (self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, 0.0),
+               round(power_mW, 9), tuple(labels), tuple(sorted(self._hidden_states)),
+               self._show_power_profile, self._show_fluorescence_profile)
+        if key == getattr(self, "_profile_key", None):
+            return
+        self._profile_key = key
 
         prof = compute_volume_profile(
             power_mW=power_mW,
@@ -655,19 +738,47 @@ class SaturationCalculatorTool(ChisurfDockTool):
             self._info_summary = f"<p style='color:red;'><b>Error:</b> {exc}</p>"
             return
 
-        tau_ms, g_unpert, g_sat = calculate_fcs_curves(
-            power_mW=power_mW,
-            extinction=ext,
-            dark_matrix=dark_m,
-            exc_matrix=exc_m,
-            brightness=bright_arr,
-            w_r_nm=w_r,
-            w_z_nm=w_z,
-            D_um2s=D_val,
-            N=N_val,
-            include_bunching=self._include_bunching,
-            wavelength_nm=wavelength,
+        state_key = (
+            self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val),
+            round(power_mW, 9), round(N_val, 9), bool(self._include_bunching),
+            bool(self._normalize_fcs),
         )
+        if state_key == getattr(self, "_curves_key", None):
+            return
+        self._curves_key = state_key
+
+        # N and the baseline only scale the finished curve, so they stay out of
+        # the key: changing them must not throw away a numerical integration.
+        curve_key = (
+            self._scheme_key(ext, wavelength, dark_m, exc_m, bright_arr, w_r, w_z, D_val),
+            round(power_mW, 9),
+            bool(self._include_bunching),
+        )
+        cached = self._curve_cache.get(curve_key)
+        if cached is None:
+            cached = calculate_fcs_curves(
+                power_mW=power_mW,
+                extinction=ext,
+                dark_matrix=dark_m,
+                exc_matrix=exc_m,
+                brightness=bright_arr,
+                w_r_nm=w_r,
+                w_z_nm=w_z,
+                D_um2s=D_val,
+                N=1.0,
+                include_bunching=self._include_bunching,
+                wavelength_nm=wavelength,
+            )
+            self._curve_cache[curve_key] = cached
+            while len(self._curve_cache) > self._CURVE_CACHE_SIZE:
+                self._curve_cache.pop(next(iter(self._curve_cache)))
+        else:
+            # Refresh its recency so a slider dragged back and forth over the
+            # same span keeps hitting instead of evicting itself.
+            self._curve_cache.move_to_end(curve_key)
+        tau_ms, g_unpert_1, g_sat_1 = cached
+        g_unpert = g_unpert_1 / N_val
+        g_sat = g_sat_1 / N_val
         if self._normalize_fcs:
             g0_u = g_unpert[0] if len(g_unpert) > 0 and g_unpert[0] != 0 else 1.0
             g0_s = g_sat[0] if len(g_sat) > 0 and g_sat[0] != 0 else 1.0
@@ -725,8 +836,31 @@ class SaturationCalculatorTool(ChisurfDockTool):
         )
 
     def _on_changed(self):
-        """Update plots when parameters change."""
+        """Recompute and schedule a repaint.
+
+        The model update is ~1 ms thanks to the caches, but repainting the four
+        plots costs ~20 ms, so a dragged slider would queue repaints faster than
+        Qt can serve them. Coalescing them onto one timer keeps the curve
+        responsive: every drag step recomputes, and the paint happens at most
+        once per interval with the newest data.
+        """
         self._update_curves()
+        if not hasattr(self, "form"):
+            return
+        timer = getattr(self, "_repaint_timer", None)
+        if timer is None:
+            self._repaint_plots()
+            return
+        timer.start(self._REPAINT_INTERVAL_MS)
+
+    def _invalidate(self) -> None:
+        """Forget the staleness guards so the next update really recomputes."""
+        self._curves_key = None
+        self._sweep_series_key = None
+        self._profile_key = None
+
+    def _repaint_plots(self) -> None:
+        """Redraw every plot from the current series."""
         if hasattr(self, "form"):
             try:
                 self.form.refresh_plots()

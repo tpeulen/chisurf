@@ -783,36 +783,58 @@ class AutoForm(QtWidgets.QWidget):
             if widget is None:
                 continue
             widget.setObjectName(str(key_name))
-            built.append((widget, str(display_title)))
+            built.append(
+                (
+                    widget,
+                    str(display_title),
+                    # Panels sharing a dock_group open as tabs in one split; a
+                    # panel without one gets a split of its own, which is the
+                    # behaviour every existing view already relies on.
+                    str(getattr(child, "dock_group", "") or f"\0{i}"),
+                    bool(getattr(child, "start_hidden", False)),
+                )
+            )
+
+        groups: dict[str, list] = {}
+        for widget, name, group_key, hidden in built:
+            groups.setdefault(group_key, []).append((widget, name, hidden))
 
         split = (getattr(section, "split", "") or "").lower()
-        if split in ("horizontal", "vertical") and len(built) > 1:
-            # Author-requested initial split: place the panels side-by-side (or
-            # stacked) instead of tabbing them. The user can still rearrange.
+        if split in ("horizontal", "vertical") and len(groups) > 1:
+            # Author-requested initial split: place the groups side-by-side (or
+            # stacked) instead of tabbing them all. The user can still rearrange.
             zone = "right" if split == "horizontal" else "bottom"
-            first_widget, first_name = built[0]
+            members = list(groups.values())
+
+            def _attach(tab_widget, entries) -> None:
+                """Add every panel of one group to the tab widget holding it."""
+                for widget, name, _ in entries:
+                    tab_widget.addTab(widget, name)
+                    area._all_widgets.append(widget)
+                    area._tab_names[widget] = name
+                    try:
+                        area.setTabCloseMode(widget, "hide")
+                    except Exception:
+                        pass
+
+            first_widget, first_name, _ = members[0][0]
             area.addTab(first_widget, first_name)
             target_tw = area.find_main_tab_widget()
-            for widget, name in built[1:]:
+            _attach(target_tw, members[0][1:])
+            for entries in members[1:]:
                 new_tw = area._create_tab_widget()
-                new_tw.addTab(widget, name)
-                area._all_widgets.append(widget)
-                area._tab_names[widget] = name
-                try:
-                    area.setTabCloseMode(widget, "hide")
-                except Exception:
-                    pass
+                _attach(new_tw, entries)
                 area.split_tab_widget(target_tw, new_tw, zone)
                 target_tw = new_tw
-            # Each split nests inside the previous one's second half, so panel i
+            # Each split nests inside the previous one's second half, so group i
             # takes weights[i] against the sum of everything after it. Without
-            # authored sizes an N-panel split divides evenly, which for more than
-            # three panels leaves every one of them too narrow to read.
+            # authored sizes an N-way split divides evenly, which beyond three
+            # groups leaves every one of them too narrow to read.
             weights = [max(1, int(w)) for w in (getattr(section, "sizes", ()) or ())]
-            if len(weights) != len(built):
-                weights = [1] * len(built)
+            if len(weights) != len(members):
+                weights = [1] * len(members)
             splitter = getattr(area, "_root_widget", None)
-            for i in range(len(built) - 1):
+            for i in range(len(members) - 1):
                 if not isinstance(splitter, QtWidgets.QSplitter):
                     break
                 rest = sum(weights[i + 1 :])
@@ -824,11 +846,24 @@ class AutoForm(QtWidgets.QWidget):
                     break
                 splitter = splitter.widget(1) if splitter.count() > 1 else None
         else:
-            for widget, name in built:
+            for widget, name, _, _ in built:
                 try:
                     area.add_panel(widget, str(name))
                 except Exception:
                     pass
+
+        # Registered but out of the way: a panel that is reference material
+        # rather than a working surface starts hidden and is one click away in
+        # the dock's restore menu.
+        for widget, _, _, hidden in built:
+            if not hidden:
+                continue
+            try:
+                index = area.indexOf(widget)
+                if index >= 0:
+                    area.hideTab(index)
+            except Exception:
+                pass
         # Remember the user's dock arrangement across sessions when the view asks
         # for it (all panels are added by now, so restore-on-show can find them).
         if getattr(section, "persist", ""):

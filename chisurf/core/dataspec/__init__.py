@@ -55,6 +55,15 @@ class Section:
     #: this to the widget's tooltip, so every section type can carry inline help
     #: straight from the ``.view.json``.
     description: str = ""
+    #: Only meaningful for a direct child of a :class:`DockAreaSection`: panels
+    #: sharing a ``dock_group`` open as tabs in one split instead of each taking
+    #: a column of its own. They stay separate docks -- draggable, closable and
+    #: individually restorable -- this only decides the initial arrangement.
+    dock_group: str = ""
+    #: Only meaningful for a direct child of a :class:`DockAreaSection`: the
+    #: panel is built and registered but starts hidden, so it is one click away
+    #: in the dock's restore menu without taking room by default.
+    start_hidden: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -380,6 +389,16 @@ class ValueSection(Section):
     #: Let the field grow to fill spare vertical space (``text`` kind only, e.g.
     #: a JSON/log preview that should fill its panel instead of staying compact).
     expand: bool = False
+    #: Presentation of the numeric editor: ``""`` a plain spin box,
+    #: ``"scientific"`` a spin box in exponent notation, ``"slider"`` a spin box
+    #: paired with a slider. Without this field the renderer's ``getattr`` fell
+    #: back to ``""`` for every value section, so neither style was reachable.
+    style: str = ""
+    #: ``"slider"`` pairs the spin box with a slider. ``scale = "log"`` then maps
+    #: the slider travel logarithmically, which is the only usable mapping when
+    #: the range spans decades -- a linear slider over 0.01…100 spends 99 % of
+    #: its travel above 1, where nothing interesting happens.
+    scale: str = ""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -512,9 +531,10 @@ class DockAreaSection(Section):
     #: ``"horizontal"`` places them left-to-right, ``"vertical"`` top-to-bottom.
     #: The user can still drag panels into any tab/split afterwards.
     split: str = ""
-    #: Relative initial size of each split panel, one entry per child section.
-    #: Without it every panel gets an equal share, which turns a six-panel split
-    #: into six unreadable slivers; the numbers are weights, not pixels.
+    #: Relative initial size of each split *group*, one entry per group (or per
+    #: child when no child declares a ``dock_group``). Without it every group
+    #: gets an equal share, which turns six panels into six unreadable slivers;
+    #: the numbers are weights, not pixels.
     sizes: typing.Tuple[int, ...] = ()
     #: When set, the dock arrangement (splits/tabs/sizes) is remembered across
     #: sessions under this plugin-unique settings key (typically the plugin's

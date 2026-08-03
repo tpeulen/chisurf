@@ -25,12 +25,13 @@
               "attr": "power_mW",
               "label": "Laser Power",
               "kind": "float",
-              "style": "scientific",
-              "minimum": 0.0,
-              "maximum": 100000.0,
+              "style": "slider",
+              "minimum": 0.001,
+              "maximum": 100.0,
               "decimals": 4,
               "suffix": " mW",
-              "description": "<html><b>Total measured laser power P<sub>total</sub> (mW)</b><br/>Average excitation power measured at the objective back aperture.<br/>• <b>Photon flux:</b> Φ<sub>total</sub> = P<sub>total</sub> / hν<br/>• <b>Peak focal rate:</b> k<sub>exc</sub>(0,0) = 2 σ<sub>abs</sub> Φ<sub>total</sub> / (π w<sub>r</sub>²)<br/>At P = 0 the saturated curve is exactly the unsaturated Gaussian.</html>"
+              "description": "<html><b>Total measured laser power P<sub>total</sub> (mW)</b><br/>Average excitation power measured at the objective back aperture.<br/>• <b>Photon flux:</b> Φ<sub>total</sub> = P<sub>total</sub> / hν<br/>• <b>Peak focal rate:</b> k<sub>exc</sub>(0,0) = 2 σ<sub>abs</sub> Φ<sub>total</sub> / (π w<sub>r</sub>²)<br/>At P = 0 the saturated curve is exactly the unsaturated Gaussian.<br/>The slider is logarithmic, because the interesting range spans decades and a linear one would spend all its travel where nothing changes. Drag it to watch the curve respond — results are cached, so revisiting a power is instant.</html>",
+              "scale": "log"
             },
             {
               "type": "value",
@@ -116,7 +117,8 @@
               "title": "State Relative Brightness (Q)",
               "collapsible": false
             }
-          ]
+          ],
+          "dock_group": "controls"
         },
         {
           "type": "panel",
@@ -138,7 +140,8 @@
               "collapsible": false,
               "title": "Optics & measurement"
             }
-          ]
+          ],
+          "dock_group": "scheme"
         },
         {
           "type": "panel",
@@ -161,16 +164,27 @@
               "log_x": true,
               "log_y": false,
               "legend": true
-            },
+            }
+          ],
+          "dock_group": "curve"
+        },
+        {
+          "type": "panel",
+          "title": "Info",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
             {
               "type": "info",
               "source": "info_text"
             }
-          ]
+          ],
+          "dock_group": "curve",
+          "start_hidden": true
         },
         {
           "type": "panel",
-          "title": "Profiles",
+          "title": "Volume profile",
           "collapsed": false,
           "n_col": 2,
           "sections": [
@@ -201,7 +215,16 @@
               "log_x": false,
               "log_y": false,
               "legend": true
-            },
+            }
+          ],
+          "dock_group": "profiles"
+        },
+        {
+          "type": "panel",
+          "title": "Volume(P)",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
             {
               "type": "plot",
               "source": "volume_power_series",
@@ -211,7 +234,16 @@
               "log_x": true,
               "log_y": false,
               "legend": true
-            },
+            }
+          ],
+          "dock_group": "profiles"
+        },
+        {
+          "type": "panel",
+          "title": "Diffusion time",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
             {
               "type": "plot",
               "source": "tau_d_power_series",
@@ -222,14 +254,15 @@
               "log_y": false,
               "legend": true
             }
-          ]
+          ],
+          "dock_group": "profiles"
         }
       ],
       "sizes": [
         30,
         16,
-        30,
-        24
+        32,
+        22
       ]
     }
   ]

@@ -40,6 +40,9 @@ Three fields, in this order:
    the catalogued ε is the *peak* value, and exciting off the maximum can mean a
    factor of hundreds. Leave the box empty to type ε in yourself.
 3. **Laser Power** — total average power at the objective back aperture, in mW.
+   The slider is logarithmic, so the whole 0.001–100 mW range is reachable with
+   even resolution. Drag it and the FCS curve follows: computed results are
+   cached, so sweeping back over a power you already visited is instant.
 
 Then set `w_r`, `w_z` and `D` in the **Optics & measurement** table (next to the
 state diagram). At **P = 0** the saturated curve is identical to the unsaturated
@@ -77,9 +80,14 @@ good FCS curve at every one of those powers, and still fits.
 * **Profiles** — the excitation rate, one population curve per state, and the
   emission profile `F(r) = Σ Q_i P_i(r)`. Watch the emission flatten, then
   hollow out, as you raise the power. That flattening *is* the saturation.
-* **Volume(P)** and **τ_D(P)** — the same two quantities swept over power, with
-  your current power marked. This is the plot to look at before choosing an
-  operating point: pick a power where the curve is still flat.
+* **Volume(P)** and **Diffusion time** — the same two quantities swept over
+  power, with your current power marked. This is the plot to look at before
+  choosing an operating point: pick a power where the curve is still flat.
+* **Info** — the summary, in a dock of its own that starts hidden; restore it
+  from the dock's right-click menu.
+
+Each of these is a separate dock: drag it out, tab it with another, or close and
+restore it. The profile plots start tabbed together so each gets full width.
 
 ## 5. Build your own scheme
 
