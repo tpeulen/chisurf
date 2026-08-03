@@ -1,11 +1,11 @@
 {
   "id": "img_tracking",
   "version": "1.0.0",
-  "display_name": "Microscopy:Imaging:Particle Tracking",
+  "display_name": "Imaging:Particle Tracking",
   "description": "Single-particle tracking: detect diffraction-limited particles in every frame, link them into trajectories by exact assignment with gap closing, and fit the diffusion coefficient and anomalous exponent from the mean squared displacement.",
   "icon": "🐜",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Microscopy", "Imaging"],
+  "categories": ["Imaging", "Tracking"],
   "state_namespace": "img_tracking",
   "statefulness": {
     "enabled": true,

@@ -250,6 +250,9 @@ def simulate_clsm_diffusion(
     box_z: float = 4.0,
     windows_per_pixel: int = 1,
     seed: int = 1,
+    flow: Any = None,
+    barrier: Any = None,
+    n_lines: int | None = None,
 ) -> DiffusionScan:
     """Raster-scan a freely **diffusing** population, for RICS and friends.
 
@@ -330,6 +333,21 @@ def simulate_clsm_diffusion(
         answer does not depend on it.
     seed : int
         Random seed.
+    flow : tttrlib.SimVectorGrid or dict or None, optional
+        A flow field for advective transport. ``None`` (default) disables flow.
+        Pass a :class:`tttrlib.SimVectorGrid` directly, or a dict with keys
+        ``type`` (``"uniform"``, ``"poiseuille"``, ``"rotation"``) and
+        velocity parameters in **µm/s** (internal conversion to the simulator's
+        macro-time unit is automatic).
+    barrier : tttrlib.SimGrid or numpy.ndarray or None, optional
+        An occlusion mask (0 = unobstructed, 1 = fully blocked). ``None``
+        disables barriers. Pass a :class:`tttrlib.SimGrid` directly, or a 2-D
+        ``(nz, ny)`` or 3-D ``(nz, ny, nx)`` numpy array. A 2-D mask is
+        extruded along x. The barrier is sampled at the simulation box
+        resolution.
+    n_lines : int or None, optional
+        Number of scan lines per frame. ``None`` (default) matches *n_pixel*.
+        Pass ``1`` for a single-line kymograph.
 
     Returns
     -------
@@ -386,6 +404,25 @@ def simulate_clsm_diffusion(
     # a grid ~9x wider than any molecule can be seen from, at no benefit.
     grid_extent_xy = 4.0 * w_r
     grid_extent_z = min(4.0 * w_z, box_z)
+    # --- flow field ----------------------------------------------------------------
+    # Both of these must be set BEFORE the engine is built. SimEngine takes the
+    # SimSystem by value and moves it into itself, so anything set on `sample`
+    # afterwards lands on a copy the engine never sees -- the simulation then runs with
+    # no flow and no barrier while every call still succeeds and every number still
+    # looks plausible. It only shows up as an ICS/STICS correlation peak that stubbornly
+    # refuses to move off zero lag.
+    if flow is not None:
+        if isinstance(flow, dict):
+            _dt = window_dt
+            flow = _build_flow_grid(tttrlib, flow, box_xy, box_z, _dt)
+        sample.set_flow_field(flow)
+
+    # --- occlusion barrier ---------------------------------------------------------
+    if barrier is not None:
+        if not isinstance(barrier, tttrlib.SimGrid):
+            barrier = _build_occlusion_grid(tttrlib, barrier, box_xy, box_z, window_dt)
+        sample.set_occlusion(barrier)
+
     engine = tttrlib.SimEngine(
         sample,
         tttrlib.SimGrid.gaussian3d(w_r, w_z, grid_extent_xy, grid_extent_z, 0.05, 1.0),
@@ -393,8 +430,9 @@ def simulate_clsm_diffusion(
         settings,
     )
 
+    _n_lines = n_pixel if n_lines is None else int(n_lines)
     scanner = tttrlib.SimScanner.uniform(
-        n_pixel, n_pixel, float(pixel_time), pixel_size, pixel_size,
+        n_pixel, _n_lines, float(pixel_time), pixel_size, pixel_size,
         -0.5 * scanned, -0.5 * scanned, tttrlib.SimMarkerConfig(), False,
     )
     for _ in range(int(n_frames)):
@@ -406,12 +444,12 @@ def simulate_clsm_diffusion(
     event_type = np.asarray(engine.event_type())
     windows = np.asarray(engine.macro_window(), dtype=np.int64)[event_type == 0]
 
-    per_frame = n_pixel * n_pixel * windows_per_pixel
+    per_frame = n_pixel * _n_lines * windows_per_pixel
     total = per_frame * int(n_frames)
     windows = windows[(windows >= 0) & (windows < total)]
     counts = np.bincount(windows // windows_per_pixel,
-                         minlength=n_pixel * n_pixel * int(n_frames))
-    images = counts.astype(float).reshape(int(n_frames), n_pixel, n_pixel)
+                         minlength=n_pixel * _n_lines * int(n_frames))
+    images = counts.astype(float).reshape(int(n_frames), _n_lines, n_pixel)
 
     line_time = n_pixel * float(pixel_time)
     return DiffusionScan(
@@ -419,7 +457,7 @@ def simulate_clsm_diffusion(
         diffusion_coefficient=float(diffusion_coefficient),
         pixel_time=float(pixel_time),
         line_time=line_time,
-        frame_time=n_pixel * line_time,
+        frame_time=_n_lines * line_time,
         pixel_size=float(pixel_size),
         w_r=float(w_r),
         w_z=float(w_z),
@@ -681,3 +719,84 @@ def simulate_clsm_from_maps(
         n_pixel=n_pixel, pixel_size=pixel_size, n_micro=n_micro, dt=dt,
         laser_period=n_micro * dt,
     )
+
+
+def _build_flow_grid(
+    tttrlib, config: dict, box_xy: float, box_z: float, window_dt: float,
+) -> Any:
+    """Build a :class:`tttrlib.SimVectorGrid` from a user-facing config dict.
+
+    Velocities in *config* are in **µm/s** and are used as-is. This scan sets
+    ``SimIntegrator.dt`` to the pixel dwell *in seconds* and the diffusion coefficient in
+    µm²/s, so the simulator's macro-time unit **is** the second and a velocity in µm/s is
+    already in the units the engine wants. The engine multiplies by ``dt`` itself when it
+    advances a molecule.
+
+    Converting here as well (multiplying by ``window_dt``) scales the field down by ~1e-5
+    and the flow silently vanishes: every call still succeeds, the images still look
+    right, and the only symptom is a STICS correlation peak that never leaves zero lag.
+
+    The dict must have a ``type`` key (``"uniform"``, ``"poiseuille"``, ``"rotation"``).
+    """
+    ftype = config["type"]
+    scale = 1.0  # µm/s is already the engine's unit here; see above
+    if ftype == "uniform":
+        return tttrlib.SimVectorGrid.uniform(
+            float(config.get("vx", 0.0)) * scale,
+            float(config.get("vy", 0.0)) * scale,
+            float(config.get("vz", 0.0)) * scale,
+        )
+    elif ftype == "poiseuille":
+        vmax = float(config.get("vmax", 1.0)) * scale
+        radius = float(config.get("radius", box_xy))
+        axis = config.get("axis", "x")
+        ax_map = {"x": 0, "y": 1, "z": 2}
+        ax = ax_map.get(axis, 0)
+        extent_xy = float(config.get("extent_xy", box_xy))
+        extent_z = float(config.get("extent_z", box_z))
+        spacing = float(config.get("spacing", 0.2))
+        return tttrlib.SimVectorGrid.poiseuille(
+            vmax, radius, ax, extent_xy, extent_z, spacing,
+        )
+    elif ftype == "rotation":
+        omega = float(config.get("omega", 1.0)) * scale
+        axis = config.get("axis", "x")
+        ax_map = {"x": 0, "y": 1, "z": 2}
+        ax = ax_map.get(axis, 0)
+        extent_xy = float(config.get("extent_xy", box_xy))
+        extent_z = float(config.get("extent_z", box_z))
+        spacing = float(config.get("spacing", 0.2))
+        return tttrlib.SimVectorGrid.rotation(
+            omega, ax, extent_xy, extent_z, spacing,
+        )
+    raise ValueError(f"unknown flow type: {ftype!r} (expected uniform/poiseuille/rotation)")
+
+
+def _build_occlusion_grid(
+    tttrlib, mask: np.ndarray,
+    box_xy: float, box_z: float, window_dt: float,
+) -> Any:
+    """Build a :class:`tttrlib.SimGrid` occlusion mask from a numpy array.
+
+    A 2-D mask ``(nz, ny)`` is extruded along x.  A 3-D mask ``(nz, ny, nx)``
+    is used directly.  Values should be ``≥ 0`` (0 = fully open, 1 = fully
+    blocking).  The grid is centred on the simulation box.
+    """
+    mask = np.asarray(mask, dtype=float)
+    if mask.ndim == 2:
+        nz, ny = mask.shape
+        nx = ny
+        arr = np.broadcast_to(mask[:, :, None], (nz, ny, nx))
+    elif mask.ndim == 3:
+        nz, ny, nx = mask.shape
+        arr = mask
+    else:
+        raise ValueError(
+            f"occlusion mask must be 2D or 3D, got shape {mask.shape}")
+
+    dx = 2.0 * box_xy / nx
+    dy = 2.0 * box_xy / ny
+    dz = 2.0 * box_z / nz
+    grid = tttrlib.SimGrid(nx, ny, nz, dx, dy, dz, -box_xy, -box_xy, -box_z)
+    grid.data = tttrlib.VectorDouble(arr.ravel(order="C").tolist())
+    return grid

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from chisurf.plugins.microscopy.psf_determination.gui.view_model import PsfViewModel
 
@@ -83,3 +84,38 @@ def test_fit_all_and_export(tmp_path):
     model.export_csv(str(out))
     assert out.exists()
     assert out.read_text().splitlines()[0].startswith("index,")
+
+
+def test_the_fitted_psf_width_is_available_as_a_region():
+    """The measured lateral FWHM, as a region like every other in ChiSurf.
+
+    The circle drawn on screen is a *descriptor* — it carries the z slice so the
+    overlay sits beside the picked bead, and a region carries no third axis. The
+    region is the same circle in the frame's coordinates, so a fitted PSF can be
+    measured against an image, combined with another region, or stored.
+    """
+    from chisurf.core.roi import EllipseROI
+
+    model = PsfViewModel()
+    assert model.fit_region() is None, "nothing fitted yet"
+
+    model.set_stack(_synthetic_stack())
+    model.detect_beads()
+    fit = model.fit_selected()
+    assert fit is not None and fit["success"]
+
+    region = model.fit_region()
+    circle = model.fit_circle()
+    assert isinstance(region, EllipseROI)
+    assert (region.cx, region.cy) == (circle["x"], circle["y"])
+    assert region.rx == region.ry == circle["r"]
+    assert f"z={int(circle['z'])}" in region.name
+
+    # The radius is the lateral FWHM/2 of the fitted Gaussian.
+    _, _, _, _, sigma_y, sigma_x, _, _ = fit["params"]
+    assert region.rx == pytest.approx(2.355 * (sigma_x + sigma_y) / 2.0 / 2.0)
+
+    # And it behaves as a region: it covers the bead centre and can be measured.
+    assert region.contains(np.array([[region.cx, region.cy]])).tolist() == [True]
+    props = region.properties(model.stack.shape[1:])
+    assert props.area > 0
