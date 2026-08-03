@@ -113,10 +113,13 @@ class PSFCalculator(QtWidgets.QWidget):
             editor = getattr(vw, "editor", None)
             if editor is None:
                 continue
-            signal = (getattr(editor, "editingFinished", None)
-                      or getattr(editor, "valueChanged", None))
-            if signal is not None:
-                signal.connect(self.schedule)
+            # Both, not whichever exists first: editingFinished fires only on
+            # focus-out or Enter, so a spin-box arrow click would otherwise do
+            # nothing until the user clicked somewhere else.
+            for name in ("valueChanged", "editingFinished", "textChanged"):
+                signal = getattr(editor, name, None)
+                if signal is not None:
+                    signal.connect(self.schedule)
 
         for cw in self.auto_form.findChildren(ChoiceWidget):
             if cw.combo is not None:
@@ -148,7 +151,10 @@ class PSFCalculator(QtWidgets.QWidget):
         self.view.set_scale(1.0, 1.0, self.model.z_step_nm / self.model.pixel_size_nm)
         self.view.set_volume(volume, colormap=self.model.colormap,
                              threshold=self.model.threshold, gamma=self.model.gamma)
-        self.auto_form.sync_fields()
+        # No sync_fields() here. Computing does not change the model, so there
+        # is nothing to write back -- and now that valueChanged is connected,
+        # writing model values into the widgets would re-fire it and schedule
+        # another redraw, feeding itself every debounce period.
 
     def _report(self, message: str) -> None:
         logger.warning("PSF calculator: %s", message)
