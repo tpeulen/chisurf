@@ -287,6 +287,65 @@ def test_seeding_only_touches_free_parameters(dataset):
     assert model.state_group._distances[0].value != pytest.approx(11.0)
 
 
+def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
+    """The same diagram the FCS kinetics model gets, on the MFD rate matrix.
+
+    The canvas was written against the FCS saturation model, which nests its
+    generator under ``.dark``; a bare ``RateMatrixParameters`` -- the shared,
+    fittable kind -- is adapted onto that shape rather than the drawing code
+    learning two.
+    """
+    from chisurf.gui.autoform.sections.registry import get_plot_class
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+
+    spec = fit.model.view_spec()
+    keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]
+    assert "state_scheme" in keys
+    assert get_plot_class("state_scheme") is StateSchemePlot
+
+    model = fit.model
+    n = model.n_states
+    rates = list(model.rate_values)
+    rates[0 * n + 1] = 1500.0   # R1 -> R2
+    rates[1 * n + 0] = 900.0    # R2 -> R1
+    model.rate_values = rates
+
+    plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
+    scheme = plot.scheme_widget._get_saturation()
+    assert scheme.n_states == n
+    assert list(scheme.state_labels) == list(model.state_names)
+    drawn = np.asarray(scheme.dark.rate_matrix())
+    # The editor is row -> column ("from i to j" at ``rate_values[i * n + j]``);
+    # the generator is K[target, source]. Those are transposes of each other, and
+    # a diagram that drew one while the model integrated the other would put
+    # every arrow the wrong way round without changing a single number.
+    assert drawn[1, 0] == pytest.approx(1500.0), "R1 -> R2 lost its direction"
+    assert drawn[0, 1] == pytest.approx(900.0)
+    plot.update()
+
+
+def test_the_scheme_adapter_leaves_the_fcs_shape_alone(qapp):
+    """A model that already nests its generator must not be wrapped twice."""
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemeWidget
+
+    class _Dark:
+        n_states = 3
+
+        def rate_matrix(self):
+            return np.zeros((3, 3))
+
+    class _Saturation:
+        dark = _Dark()
+        n_states = 3
+        state_labels = ["S0", "S1", "T1"]
+
+    class _Model:
+        saturation = _Saturation()
+
+    widget = StateSchemeWidget(_Model(), target="saturation")
+    assert widget._get_saturation() is _Model.saturation
+
+
 def test_view_specs_load(fit, dataset):
     """Both view specs parse, and name plot keys that are actually registered."""
     from chisurf.gui.autoform.sections.registry import get_plot_class

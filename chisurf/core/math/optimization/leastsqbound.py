@@ -1,6 +1,8 @@
 """Constrained multivariate least-squares optimization"""
 
+import math
 import warnings
+
 import numpy as np
 
 from scipy.optimize import _minpack, leastsq
@@ -145,12 +147,24 @@ parameter to a internal (unconstrained) parameter.
 #: one for the trial step -- so the expected budget is ``_EXPECTED_ITERATIONS *
 #: (n + 1)``.
 #:
-#: Deliberately on the *low* side of the four-to-ten iterations real fits take,
-#: because the correction is one-directional: :func:`_grow_budget` raises the
-#: estimate when a fit outruns it, but nothing lowers it when a fit beats it. An
-#: underestimate therefore ends near 100% either way; an overestimate leaves the
-#: bar stranded at a third.
+#: An estimate only -- fits routinely run four to ten times longer, and
+#: :func:`_reported_total` is built so that overrunning it degrades smoothly
+#: instead of pinning the bar.
 _EXPECTED_ITERATIONS = 6
+
+#: How many multiples of the estimate the bar takes to cover its first half.
+#:
+#: This is the whole pacing decision. A bar that reads ``done = nfev / estimate``
+#: saturates the instant the estimate is passed: on a real MFD fit -- 450
+#: evaluations against an estimate of 42 -- it reached 98% after ten seconds and
+#: then sat at 98-99% for **91% of the fit**. Reporting 450 times is no use when
+#: 410 of those reports are the same number.
+#:
+#: So the fraction is asymptotic rather than linear (see :func:`_reported_total`):
+#: it always moves, always increases, and never arrives. Two means the estimate
+#: buys the first ~29% of the bar, which keeps that same fit visibly moving to
+#: the end instead of dying at ten seconds.
+_BAR_HALF_LIFE = 2.0
 
 #: The most a *running* fit may report. A full bar is reserved for the
 #: completion report, so "converged" stays distinguishable from "outran the
@@ -170,7 +184,7 @@ def _expected_evaluations(n: int, maxfev: int) -> int:
     The estimate here is what the algorithm actually costs: one Jacobian
     (``n`` evaluations) plus one trial step per iteration, over the number of
     iterations a well-posed problem needs. It is deliberately an *estimate*, and
-    :func:`_grow_budget` handles the fits that outrun it.
+    :func:`_reported_total` is what makes overrunning it harmless.
 
     Parameters
     ----------
@@ -187,51 +201,52 @@ def _expected_evaluations(n: int, maxfev: int) -> int:
     return int(max(1, min(limit, _EXPECTED_ITERATIONS * (int(n) + 1))))
 
 
-def _grow_budget(nfev: int, eff_total: int, maxfev: int, last_ratio: float = 0.0) -> int:
-    """Extend the estimated budget when a fit outruns it, without going backwards.
+def _reported_total(nfev: int, expected: int) -> int:
+    """Return the total to report ``nfev`` against, so the bar always moves.
 
-    A progress bar that sits pinned at 100% while the fit runs on is bad; one that
-    *retreats* is worse, and simply enlarging the denominator does exactly that --
-    the numerator grows by one while the denominator jumps by half, so the
-    reported fraction drops.
+    Nobody can know how many evaluations a fit needs -- that is the thing being
+    discovered. A bar that divides by a *guess* is therefore wrong twice over: it
+    finishes early when the guess is high, and it saturates when the guess is
+    low. Saturating is much the worse of the two, because it happens on exactly
+    the fits long enough for anyone to be watching. A real MFD fit takes 450
+    evaluations against an estimate of 42, and a linear bar sat at 98-99% for
+    **91% of its runtime** -- reporting 450 times, 410 of them the same number.
 
-    So the new budget is chosen to keep the fraction **non-decreasing**: it is
-    never more than ``nfev / last_ratio``, which reproduces the previous fraction
-    exactly, and the bar therefore stalls rather than reversing.
+    So the reported fraction is asymptotic instead::
 
-    The budget is also always large enough to keep the reported fraction under
-    :data:`_MAX_RUNNING_RATIO`. Without that floor the two rules collide: once a
-    fit reaches 100% the retreat guard pins it there for every remaining
-    evaluation, and a real four-parameter lifetime fit spent its last 110
-    evaluations that way.
+        done / total = 1 - 2 ** (-nfev / (_BAR_HALF_LIFE * expected))
+
+    which is strictly increasing in ``nfev``, never reaches one, and degrades
+    gracefully in both directions: a fit that beats the estimate ends low and
+    snaps to full on completion (over in a blink, so nobody sees it), and a fit
+    that takes ten times the estimate is still visibly moving at the end.
+
+    The returned number is a genuine current estimate of the total -- ``nfev``
+    divided by the fraction -- so ``(done, total)`` keeps meaning what it says
+    and every consumer of the callback keeps working unchanged.
 
     Parameters
     ----------
     nfev : int
         Evaluations so far.
-    eff_total : int
-        The current estimate.
-    maxfev : int
-        Hard evaluation limit.
-    last_ratio : float
-        The fraction reported on the previous call, in ``[0, 1]``.
+    expected : int
+        The a-priori estimate, from :func:`_expected_evaluations`.
 
     Returns
     -------
     int
+        Total to report against; always greater than ``nfev``.
     """
-    # ceil(nfev / _MAX_RUNNING_RATIO), in integer arithmetic.
-    needed = -(-int(nfev) * 100 // int(_MAX_RUNNING_RATIO * 100))
-    if eff_total >= needed:
-        return eff_total
-    grown = max(eff_total + 1, needed, int(nfev * 1.5))
-    if last_ratio > 0.0:
-        grown = min(grown, max(needed, int(nfev / last_ratio)))
-    # The hard limit wins over the ratio floor: an estimate past what the
-    # optimiser will ever do could never be reached. The two only conflict when
-    # ``nfev`` has already passed ``maxfev``, which MINPACK does not allow.
-    limit = int(maxfev) if maxfev and maxfev > 0 else 200 * max(1, nfev)
-    return int(min(limit, grown))
+    scale = max(1.0, _BAR_HALF_LIFE * float(max(1, expected)))
+    # The ceiling is folded into the curve rather than clamped on afterwards. A
+    # clamp creates a *constant* region, and a constant fraction over integer
+    # totals oscillates: ``ceil(594/0.99)`` is exactly 600 while ``ceil(595/0.99)``
+    # is 602, so the reported fraction stepped backwards once every hundred
+    # evaluations. Multiplying instead keeps the curve strictly increasing.
+    fraction = _MAX_RUNNING_RATIO * (1.0 - 2.0 ** (-float(nfev) / scale))
+    fraction = max(fraction, 1e-6)
+    total = math.ceil(float(nfev) / fraction)
+    return int(max(int(nfev) + 1, total))
 
 
 def _report_progress(callback, nfev: int, total: int, chi2, chi2r) -> None:
@@ -437,8 +452,9 @@ References
     # is provided, these variables remain unused and the behavior matches
     # the original implementation.
     nfev = 0
-    last_ratio = 0.0
-    eff_total = progress_total if progress_total is not None else None
+    # The a-priori estimate; ``_reported_total`` turns it into a fraction that
+    # keeps moving whether the fit beats it or runs many times past it.
+    expected = progress_total if progress_total is not None else None
 
     def _compute_objective(residuals, f_args):
         """Return (chi2, chi2r) for the current residual vector.
@@ -483,8 +499,8 @@ References
             # so that the callback can report a normalized progress fraction.
             x0_arr = np.array(x0, ndmin=1)
             n = len(x0_arr)
-            if eff_total is None:
-                eff_total = _expected_evaluations(n, maxfev)
+            if expected is None:
+                expected = _expected_evaluations(n, maxfev)
 
             def _wrapped_func(x, *f_args):
                 """Wrapper around the objective function with progress reporting.
@@ -505,16 +521,14 @@ References
                 np.ndarray
                     Residual vector from ``func``.
                 """
-                nonlocal nfev, eff_total, last_ratio
+                nonlocal nfev
                 res = func(x, *f_args)
                 nfev += 1
-                eff_total = _grow_budget(nfev, eff_total, maxfev, last_ratio)
-                if eff_total and eff_total > 0:
-                    last_ratio = max(last_ratio, min(_MAX_RUNNING_RATIO, nfev / eff_total))
-                    chi2_val, chi2r_val = _compute_objective(res, f_args)
-                    _report_progress(
-                        progress_callback, nfev, eff_total, chi2_val, chi2r_val
-                    )
+                total = _reported_total(nfev, expected)
+                chi2_val, chi2r_val = _compute_objective(res, f_args)
+                _report_progress(
+                    progress_callback, nfev, total, chi2_val, chi2r_val
+                )
                 return res
 
             result = leastsq(
@@ -591,8 +605,8 @@ References
     if Dfun is None:
         if (maxfev == 0):
             maxfev = 200 * (n + 1)
-        if progress_callback is not None and eff_total is None:
-            eff_total = _expected_evaluations(n, maxfev)
+        if progress_callback is not None and expected is None:
+            expected = _expected_evaluations(n, maxfev)
 
         if progress_callback is not None:
             def wfunc(x, *f_args):
@@ -613,16 +627,14 @@ References
                 np.ndarray
                     Residual vector from ``func``.
                 """
-                nonlocal nfev, eff_total, last_ratio
+                nonlocal nfev
                 res = _base_wfunc(x, *f_args)
                 nfev += 1
-                eff_total = _grow_budget(nfev, eff_total, maxfev, last_ratio)
-                if eff_total and eff_total > 0:
-                    last_ratio = max(last_ratio, min(_MAX_RUNNING_RATIO, nfev / eff_total))
-                    chi2_val, chi2r_val = _compute_objective(res, f_args)
-                    _report_progress(
-                        progress_callback, nfev, eff_total, chi2_val, chi2r_val
-                    )
+                total = _reported_total(nfev, expected)
+                chi2_val, chi2r_val = _compute_objective(res, f_args)
+                _report_progress(
+                    progress_callback, nfev, total, chi2_val, chi2r_val
+                )
                 return res
         else:
             wfunc = _base_wfunc

@@ -35,6 +35,40 @@ class SchemeCanvasWidget(QtWidgets.QWidget):
         self.scheme._on_canvas_paint(self, event)
 
 
+class _RateMatrixScheme:
+    """Adapt a plain rate-matrix group to the shape this canvas draws.
+
+    The canvas was written against the FCS saturation model, which nests its
+    generator under ``.dark`` and names its own states. Every *other* scheme in
+    the tree is a bare
+    :class:`~chisurf.core.fitting.kinetics.RateMatrixParameters` -- the shared,
+    fittable kind -- so those are adapted here rather than teaching the drawing
+    code two shapes. That is what lets the same diagram serve an MFD exchange
+    scheme, an HMM, or anything else that grows a rate matrix.
+
+    Parameters
+    ----------
+    group : RateMatrixParameters
+        The scheme, exposing ``n_states`` and ``rate_matrix()``.
+    labels : sequence of str, optional
+        State names, in order.
+    """
+
+    def __init__(self, group, labels=None):
+        self.dark = group
+        self._labels = list(labels) if labels else None
+
+    @property
+    def n_states(self) -> int:
+        """Return the number of states in the scheme."""
+        return int(getattr(self.dark, "n_states", 0) or 0)
+
+    @property
+    def state_labels(self):
+        """Return the state names, or ``None`` to let the canvas number them."""
+        return self._labels
+
+
 @register_section("state_scheme")
 class StateSchemeWidget(QtWidgets.QWidget):
     """Interactive HMM-style state diagram widget with photophysical node layout and curved edge routing."""
@@ -46,6 +80,9 @@ class StateSchemeWidget(QtWidgets.QWidget):
         opts.update(kwargs)
         self._attr = target or opts.get("target", "saturation")
         self._unit_attr = opts.get("unit_attr", "rate_unit")
+        #: Where the state names come from when the scheme is a bare rate
+        #: matrix, which carries rates but not names.
+        self._labels_attr = opts.get("labels_attr", "state_names")
 
         self.setMinimumSize(360, 280)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
@@ -174,9 +211,18 @@ class StateSchemeWidget(QtWidgets.QWidget):
             self.refresh()
 
     def _get_saturation(self):
+        """Return the scheme to draw, whatever shape the model keeps it in."""
         obj = getattr(self._model, "saturation", None)
         if obj is None:
             obj = getattr(self._model, self._attr, None)
+        if obj is not None and not hasattr(obj, "dark") and hasattr(obj, "rate_matrix"):
+            labels = getattr(self._model, self._labels_attr, None)
+            if callable(labels):
+                try:
+                    labels = labels()
+                except Exception:
+                    labels = None
+            obj = _RateMatrixScheme(obj, labels)
         return obj
 
     def refresh(self):
@@ -539,14 +585,18 @@ class StateSchemePlot(QtWidgets.QWidget):
 
     name = "State Scheme"
 
-    def __init__(self, fit=None, target: str = "saturation", unit_attr: str = "dark_unit", **options):
+    def __init__(self, fit=None, target: str = "saturation", unit_attr: str = "dark_unit",
+                 labels_attr: str = "state_names", **options):
         super().__init__()
         self.fit = fit
         self.plot_controller = QtWidgets.QWidget()
         model = getattr(fit, "model", None) if fit is not None else None
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        self.scheme_widget = StateSchemeWidget(model, target=target, unit_attr=unit_attr, options=options)
+        self.scheme_widget = StateSchemeWidget(
+            model, target=target, unit_attr=unit_attr,
+            labels_attr=labels_attr, options=options,
+        )
         layout.addWidget(self.scheme_widget)
 
     def update_plot(self, *args, **kwargs):

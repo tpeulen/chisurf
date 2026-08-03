@@ -74,6 +74,13 @@
       "options": {}
     },
     {
+      "key": "state_scheme",
+      "options": {
+        "target": "kinetics",
+        "labels_attr": "state_names"
+      }
+    },
+    {
       "key": "fit_info",
       "options": {}
     },

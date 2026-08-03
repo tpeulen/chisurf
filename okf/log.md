@@ -2,6 +2,48 @@
 
 ## 2026-08-03
 
+* **The progress bar reported 450 times and said the same thing 410 of them.**
+  Scaling by an estimate only moved the earlier failure: nobody can know how many
+  evaluations a fit needs, and dividing by a guess **saturates** the moment the
+  guess is passed. Measured on the real MFD fit — 450 evaluations against an
+  estimate of 42 — the bar reached 98% after ten seconds of a hundred-second fit
+  and then sat at 98–99% for **91% of its runtime**. Reporting often is no use
+  when the reported number stops changing.
+  - The fraction is now **asymptotic** rather than linear:
+    `done / total = C · (1 − 2^(−nfev / (2 · expected)))`. It always moves, always
+    increases, and never arrives. The estimate now buys the first ~29% of the bar
+    instead of all of it; the same fit reaches 29% at evaluation 42, 83% at 225,
+    96.6% at 450, and spends **zero** evaluations pinned above 97% (was 410).
+  - `_grow_budget` and its `last_ratio` retreat-guard are **gone** — the curve is
+    monotone by construction, so none of that state is needed. The returned
+    number is still a genuine estimate of the total (`nfev / fraction`), so
+    `(done, total)` keeps meaning what it says and every consumer is unchanged.
+  - The ceiling is folded into the curve rather than clamped on afterwards. A
+    clamp creates a *constant* region, and a constant fraction over integer
+    totals oscillates: `ceil(594/0.99)` is 600 but `ceil(595/0.99)` is 602, so the
+    bar stepped backwards once every hundred evaluations. Multiplying keeps it
+    strictly increasing. What residual rounding remains (~1e-3, past evaluation
+    950) is invisible at the 1% resolution a bar has, and the test asserts the
+    *displayed* percentage never decreases rather than an abstract float claim.
+  - The trade is deliberate and one-directional: a fit that beats the estimate now
+    ends low and snaps to 100% on completion — over in a blink, so nobody sees it
+    — while a fit worth watching stays informative to the end.
+
+* **A state-scheme diagram for MFD, the same one FCS kinetics has.** The canvas
+  was written against the FCS saturation model, which nests its generator under
+  `.dark` and names its own states; every *other* scheme in the tree is a bare
+  `RateMatrixParameters` (the shared, fittable kind from
+  `core/fitting/kinetics.py`). Rather than teach the drawing code two shapes, a
+  small `_RateMatrixScheme` adapter presents any rate-matrix group in the shape
+  the canvas already draws, with state names taken from a `labels_attr`. So the
+  diagram now serves the MFD exchange scheme, and will serve an HMM or anything
+  else that grows a rate matrix, with a two-line view-spec entry.
+  - A test pins the **direction**, which is the thing that can silently invert:
+    the editor is row → column (`rate_values[i * n + j]` is *from i to j*) while
+    the generator is `K[target, source]`. Those are transposes, and a diagram
+    drawing one while the model integrates the other would point every arrow the
+    wrong way without changing a single number.
+
 * **A fit was being sent over a socket to the process it was already in — and the
   transport gave up on it after five seconds.** This is what "no progress bar, UI
   stalls" actually was. The user's log names it exactly:

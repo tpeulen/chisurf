@@ -1,25 +1,38 @@
 """The evaluation budget a fitting progress bar reports against.
 
-The bar used to be scaled by MINPACK's ``200 * (n + 1)`` — its *give-up limit*,
+Two failures, in order of discovery.
+
+The bar was first scaled by MINPACK's ``200 * (n + 1)`` — its *give-up limit*,
 not an expectation. A four-parameter fit converges in tens of evaluations, so the
-bar crept to five percent and then jumped to done, which reads as broken rather
-than fast.
+bar crept to five percent and then jumped to done.
+
+Scaling it by an *estimate* instead moved the failure rather than removing it:
+nobody can know how many evaluations a fit needs, and dividing by a guess
+saturates the moment the guess is passed. A real MFD fit takes 450 evaluations
+against an estimate of 42, and the bar sat at 98–99% for **91% of its runtime** —
+reporting 450 times, 410 of them the same number. The fraction is therefore
+asymptotic: always moving, always increasing, never arriving.
 """
 
 from __future__ import annotations
 
+import pytest
+
 from chisurf.core.math.optimization.leastsqbound import (
     _MAX_RUNNING_RATIO,
     _expected_evaluations,
-    _grow_budget,
+    _reported_total,
 )
+
+
+def _fraction(nfev: int, expected: int) -> float:
+    return nfev / _reported_total(nfev, expected)
 
 
 def test_the_budget_scales_with_the_number_of_free_parameters():
     """One Jacobian plus one trial step per iteration, so it grows with ``n``."""
-    for n in (1, 2, 4, 10):
-        assert _expected_evaluations(n, 0) > _expected_evaluations(n - 1, 0) if n > 1 \
-            else _expected_evaluations(n, 0) > 0
+    for n in (2, 4, 10):
+        assert _expected_evaluations(n, 0) > _expected_evaluations(n - 1, 0)
     # And far below MINPACK's give-up limit, which is what made the bar useless.
     for n in (1, 4, 10):
         assert _expected_evaluations(n, 0) < 200 * (n + 1) / 4
@@ -31,48 +44,65 @@ def test_the_budget_never_exceeds_the_hard_limit():
     assert _expected_evaluations(100, 5) == 5
 
 
-def test_the_budget_grows_when_a_fit_outruns_it():
-    """A bar pinned at 100% while the fit runs on is wrong."""
-    assert _grow_budget(10, 30, 0) == 30, "no growth while inside the estimate"
-    grown = _grow_budget(31, 30, 0)
-    assert grown > 30
-
-
-def test_growth_never_makes_the_reported_fraction_go_backwards():
-    """The failure mode of simply enlarging the denominator.
-
-    The numerator rises by one while the denominator jumps by half, so the fraction
-    *drops* and the bar retreats. Bounding the new budget by ``nfev / last_ratio``
-    makes it stall at the previous fraction instead.
-    """
-    eff_total, last_ratio = 30, 0.0
-    fractions = []
-    for nfev in range(1, 120):
-        eff_total = _grow_budget(nfev, eff_total, 0, last_ratio)
-        fraction = min(1.0, nfev / eff_total)
-        last_ratio = max(last_ratio, fraction)
-        fractions.append(last_ratio)
-    assert all(b >= a for a, b in zip(fractions, fractions[1:]))
-    assert max(fractions) <= 1.0
-    assert fractions[-1] > 0.9
+def test_the_reported_fraction_only_ever_increases():
+    """A bar that retreats reads as a bug; the mapping makes it impossible."""
+    expected = _expected_evaluations(6, 0)
+    # The guarantee is about what is *displayed*. The reported total is a whole
+    # number of evaluations, so deep in the tail -- past evaluation 950, where
+    # the curve is flattening against its ceiling -- rounding can move the raw
+    # fraction by about 0.001. At the one-percent resolution a bar actually has,
+    # none of that is visible, and the displayed value never goes backwards.
+    shown = [round(100 * _fraction(nfev, expected)) for nfev in range(1, 100000)]
+    assert all(b >= a for a, b in zip(shown, shown[1:]))
+    # Over any stretch worth watching it genuinely climbs.
+    fractions = [_fraction(nfev, expected) for nfev in range(1, 500)]
+    assert all(fractions[k + 20] > fractions[k] for k in range(0, 400, 20))
 
 
 def test_a_running_fit_never_reports_a_full_bar():
     """100% is reserved for the completion report.
 
-    Without this floor the two rules collide: once a fit reaches 100% the
-    retreat guard pins it there for every remaining evaluation, and a real
-    four-parameter lifetime fit spent its last 110 evaluations that way. A bar
-    that says "done" while the fit runs on is one the user learns to ignore.
+    A bar that says "done" while the fit runs on is one the user learns to
+    ignore, so "converged" stays distinguishable from "still going".
     """
-    eff_total, last_ratio = 30, 0.0
-    for nfev in range(1, 400):
-        eff_total = _grow_budget(nfev, eff_total, 0, last_ratio)
-        fraction = nfev / eff_total
-        assert fraction <= _MAX_RUNNING_RATIO + 1e-9, f"full bar at nfev={nfev}"
-        last_ratio = max(last_ratio, fraction)
+    expected = _expected_evaluations(6, 0)
+    for nfev in (1, 42, 450, 5000, 100000):
+        assert _fraction(nfev, expected) <= _MAX_RUNNING_RATIO + 1e-9
+        assert _reported_total(nfev, expected) > nfev
 
 
-def test_growth_still_respects_the_hard_limit():
-    """Growth may not carry the estimate past what the optimiser will ever do."""
-    assert _grow_budget(999, 60, 100) == 100
+def test_a_fit_that_runs_ten_times_the_estimate_still_moves():
+    """The regression this mapping exists for.
+
+    The MFD fit: 450 evaluations against an estimate of 42. Under a linear bar it
+    reached 98% by evaluation 42 — ten seconds into a hundred-second fit — and
+    then never moved again.
+    """
+    expected = _expected_evaluations(6, 0)
+    assert expected == 42
+
+    stuck_near_the_top = sum(
+        1 for nfev in range(1, 451) if _fraction(nfev, expected) >= 0.97
+    )
+    assert stuck_near_the_top < 45, (
+        f"{stuck_near_the_top} of 450 evaluations spent above 97%; "
+        "the linear bar spent 410"
+    )
+    # And it is still visibly climbing over the second half of the fit.
+    assert _fraction(450, expected) - _fraction(225, expected) > 0.05
+
+
+def test_the_estimate_is_worth_a_meaningful_part_of_the_bar():
+    """It must still *mean* something, or it is not an estimate at all."""
+    expected = _expected_evaluations(6, 0)
+    assert 0.2 < _fraction(expected, expected) < 0.45
+
+
+def test_a_fit_that_beats_the_estimate_ends_low_and_that_is_fine():
+    """The deliberate trade.
+
+    Ending low costs a jump to 100% on a fit too fast to watch; saturating costs
+    a dead bar on exactly the fits worth watching. Only one of those is visible.
+    """
+    expected = _expected_evaluations(2, 0)
+    assert _fraction(8, expected) < 0.5
