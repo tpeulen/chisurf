@@ -1328,6 +1328,9 @@ class _PgVolumeView(base.VolumeViewCanvas):
         self._item.scale(sx, sy, sz)
         self._item.translate(-nx * sx / 2, -ny * sy / 2, -nz * sz / 2)
         self._view.addItem(self._item)
+        # swapping the item does not by itself schedule a repaint, so a second
+        # and later volume would never reach the screen
+        self._view.update()
 
     def set_scale(self, sx=1.0, sy=1.0, sz=1.0):
         self._scale = (float(sx), float(sy), float(sz))
