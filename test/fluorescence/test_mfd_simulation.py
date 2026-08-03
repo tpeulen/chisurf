@@ -493,3 +493,154 @@ def test_pooled_decays_need_photons(tmp_path):
     data.preparation.summary.pop("_tttrs")
     with pytest.raises(ValueError, match="with_photons=True"):
         observed_pooled_decays(data.preparation, AXES)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# The anisotropy axis, end to end against polarization-resolved bursts
+# ──────────────────────────────────────────────────────────────────────────────
+def test_the_anisotropy_axis_recovers_the_simulated_rotational_time(tmp_path):
+    """The second MFD plot, from a simulator that split every photon by polarization.
+
+    The simulator draws each photon's polarization from *its own* micro time, so the
+    anisotropy correlates with the lifetime axis the way a real measurement's does —
+    a single steady-state draw per burst would give the right marginal and no
+    correlation at all. The model then has to recover the parallel fraction from
+    ``r(t)``, integrated, without ever being told it.
+    """
+    from chisurf.core.fluorescence.mfd.patterns import FretState
+    from chisurf.core.fluorescence.mfd.simulate import (
+        GREEN_CHANNEL,
+        GREEN_PERP_CHANNEL,
+    )
+
+    rho = 1.0
+    parameters = SimulationParameters(
+        n_bursts=1200,
+        polarized=True,
+        states=[FretState(distance=70.0, rho=rho)],
+        populations=[1.0],
+        rate_matrix=None,
+        donor_only=0.0,
+        background_rates=(0.0, 0.0),
+        seed=3,
+    )
+    simulated = simulate_mfd(parameters)
+
+    # The simulated split, over burst photons only.
+    in_burst = np.zeros(simulated.channels.size, dtype=bool)
+    for first, last in simulated.start_stop:
+        in_burst[first : last + 1] = True
+    parallel = int((simulated.channels[in_burst] == GREEN_CHANNEL).sum())
+    perpendicular = int((simulated.channels[in_burst] == GREEN_PERP_CHANNEL).sum())
+    observed = parallel / (parallel + perpendicular)
+
+    # What the model predicts for the same state, from r(t) alone.
+    from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
+
+    response = simulated.true_responses()["green"]
+    optics = parameters.optics
+    amplitudes = np.array([1.0])
+    efficiency = 1.0 / (1.0 + (70.0 / optics.r0) ** 6)
+    lifetimes = np.array([optics.tau_d0 * (1.0 - efficiency)])
+    _, _, predicted = polarized_patterns(
+        response, amplitudes, lifetimes, rho, optics
+    )
+
+    assert observed == pytest.approx(predicted, abs=0.02)
+
+
+def test_a_slower_rotor_gives_a_more_polarized_simulated_stream(tmp_path):
+    """Direction, so a sign slip in the simulator cannot hide behind a round trip."""
+    from chisurf.core.fluorescence.mfd.patterns import FretState
+    from chisurf.core.fluorescence.mfd.simulate import (
+        GREEN_CHANNEL,
+        GREEN_PERP_CHANNEL,
+    )
+
+    splits = []
+    for rho in (0.1, 5.0):
+        parameters = SimulationParameters(
+            n_bursts=500,
+            polarized=True,
+            states=[FretState(distance=70.0, rho=rho)],
+            populations=[1.0],
+            rate_matrix=None,
+            donor_only=0.0,
+            background_rates=(0.0, 0.0),
+            seed=4,
+        )
+        simulated = simulate_mfd(parameters)
+        parallel = int((simulated.channels == GREEN_CHANNEL).sum())
+        perpendicular = int((simulated.channels == GREEN_PERP_CHANNEL).sum())
+        splits.append(parallel / (parallel + perpendicular))
+
+    assert splits[0] < splits[1]
+    # A dye rotating far faster than it emits is unpolarized.
+    assert splits[0] == pytest.approx(0.5, abs=0.02)
+
+
+def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
+    """Both MFD plots out of one measurement, which is the point of the format.
+
+    The two polarizations of a colour are still that colour, so the FRET axis must
+    be unchanged by turning polarization on — otherwise enabling the anisotropy
+    axis would silently halve every burst. And the anisotropy axis must come out of
+    the same folder, with the model predicting the perpendicular fraction from r(t)
+    alone rather than being told it.
+    """
+    from chisurf.core.fluorescence.mfd.patterns import FretState
+
+    parameters = SimulationParameters(
+        n_bursts=1200,
+        polarized=True,
+        states=[FretState(distance=70.0, rho=1.0)],
+        populations=[1.0],
+        rate_matrix=None,
+        donor_only=0.0,
+        seed=6,
+    )
+    simulated = simulate_mfd(parameters)
+    folder = simulated.write_folder(tmp_path / "polarized")
+
+    assert set(np.unique(simulated.channels)) == {0, 1, 8, 9}
+
+    # The FRET axis: the colour detectors must cover *both* polarizations, or half
+    # the photons vanish without anything complaining — the columns would simply be
+    # half as large and the proximity ratio would still look reasonable.
+    fret = load_mfd_data(folder, axes=AXES, min_green_photons=20)
+    assert set(fret.preparation.verified_channels) >= {"green", "red"}
+    assert fret.observed.n_used > 0
+    green = fret.preparation.channel_index("green")
+    red = fret.preparation.channel_index("red")
+    counted = int(fret.preparation.counts[:, [green, red]].sum())
+    in_burst = np.zeros(simulated.channels.size, dtype=bool)
+    for first, last in simulated.start_stop:
+        in_burst[first : last + 1] = True
+    assert counted == int(in_burst.sum())
+
+    # The anisotropy axis: the same folder, with the polarizations as the two
+    # channels. The model predicts the perpendicular fraction from r(t) alone.
+    responses = simulated.true_responses()
+    data = load_mfd_data(
+        folder,
+        axes=AXES,
+        green="green_par",
+        red="green_perp",
+        min_green_photons=20,
+        responses={
+            "green_par": responses["green"], "green_perp": responses["green"]
+        },
+    )
+    model = MfdModel(
+        optics=parameters.optics, states=parameters.states,
+        populations=[1.0], donor_only=0.0,
+    )
+    predicted = model.anisotropy_histogram(
+        data, parallel="green_par", perpendicular="green_perp", axes=AXES
+    )
+    centres = 0.5 * (AXES.ratio_edges[:-1] + AXES.ratio_edges[1:])
+    observed_marginal = data.observed.counts.sum(axis=1)
+    model_marginal = predicted.sum(axis=1)
+    observed_mean = float((centres * observed_marginal).sum() / observed_marginal.sum())
+    model_mean = float((centres * model_marginal).sum() / model_marginal.sum())
+    assert model_mean == pytest.approx(observed_mean, abs=0.02)

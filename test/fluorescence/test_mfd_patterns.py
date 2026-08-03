@@ -271,3 +271,116 @@ def test_empty_or_impossible_inputs_are_refused():
     response = _response()
     with pytest.raises(ValueError):
         response.decay([1.0, 2.0], [1.0])
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# The anisotropy axis
+# ──────────────────────────────────────────────────────────────────────────────
+def _sharp_response(**kwargs):
+    """Return a near-delta response, so a steady-state anisotropy is not smeared."""
+    channels = np.arange(N_CHANNELS)
+    return ChannelResponse(
+        irf=np.exp(-0.5 * ((channels - 20) / 1.0) ** 2), dt=DT, **kwargs
+    )
+
+
+def _anisotropy_from_split(p_parallel, g_factor=1.0, l1=0.0, l2=0.0):
+    """Invert a parallel/perpendicular split back to the anisotropy that made it."""
+    numerator = p_parallel - g_factor * (1.0 - p_parallel)
+    denominator = p_parallel + 2.0 * g_factor * (1.0 - p_parallel)
+    value = numerator / denominator
+    return value / (1.0 - l1 - l2) if (l1 or l2) else value
+
+
+@pytest.mark.parametrize("tau", [1.0, 2.0, 4.0])
+@pytest.mark.parametrize("rho", [0.2, 1.0, 5.0])
+def test_the_polarized_split_predicts_the_perrin_relation(tau, rho):
+    """Perrin comes *out* of the model rather than being put into it.
+
+    The forward model builds the parallel and perpendicular patterns from ``r(t)``
+    and integrates them; that the result satisfies ``r_ss = r₀/(1 + τ/ρ)`` is then a
+    check on the machinery. A model that took the steady-state anisotropy as a
+    parameter would satisfy Perrin by construction and could never be wrong.
+    """
+    from chisurf.core.fluorescence.mfd.patterns import (
+        perrin_anisotropy,
+        polarized_patterns,
+    )
+
+    optics = Optics(r0_anisotropy=0.38)
+    _, _, p_parallel = polarized_patterns(
+        _sharp_response(), [1.0], [tau], rho, optics
+    )
+    recovered = _anisotropy_from_split(p_parallel)
+    assert recovered == pytest.approx(
+        float(perrin_anisotropy(tau, rho, 0.38)), abs=0.01
+    )
+
+
+def test_the_g_factor_divides_the_perpendicular_channel():
+    """G is a detection sensitivity, and the round trip is what pins its placement.
+
+    ``tttrlib``'s ``DecayFit23`` fits ``x_vh[0] = 1/g``, so the perpendicular
+    channel records ``1/G`` of what an equally sensitive one would. Multiplying
+    instead — which this module's own docstring described for a while — leaves the
+    recovered anisotropy varying with an instrument constant it must not depend on.
+    """
+    from chisurf.core.fluorescence.mfd.patterns import (
+        perrin_anisotropy,
+        polarized_patterns,
+    )
+
+    truth = float(perrin_anisotropy(2.0, 1.0, 0.38))
+    recovered = []
+    for g_factor in (0.7, 1.0, 1.4):
+        _, _, p_parallel = polarized_patterns(
+            _sharp_response(), [1.0], [2.0], 1.0,
+            Optics(r0_anisotropy=0.38, g_factor=g_factor),
+        )
+        recovered.append(_anisotropy_from_split(p_parallel, g_factor))
+    assert all(r == pytest.approx(truth, abs=0.01) for r in recovered)
+    # And the split really did move — otherwise the test would pass on a no-op.
+    assert max(recovered) - min(recovered) < 0.005
+
+
+def test_polarization_mixing_inverts_exactly():
+    """l1 and l2 enter the amplitudes, not as a 2x2 mixing of an ideal pair."""
+    from chisurf.core.fluorescence.mfd.patterns import (
+        perrin_anisotropy,
+        polarized_patterns,
+    )
+
+    truth = float(perrin_anisotropy(2.0, 1.0, 0.38))
+    for l1, l2 in ((0.0, 0.0), (0.05, 0.03), (0.08, 0.0)):
+        _, _, p_parallel = polarized_patterns(
+            _sharp_response(), [1.0], [2.0], 1.0,
+            Optics(r0_anisotropy=0.38, g_factor=1.2, l1=l1, l2=l2),
+        )
+        assert _anisotropy_from_split(
+            p_parallel, 1.2, l1, l2
+        ) == pytest.approx(truth, abs=0.01)
+
+
+def test_a_faster_rotor_depolarises_more():
+    """The direction of the effect, so a sign slip cannot hide behind a round trip."""
+    from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
+
+    optics = Optics(r0_anisotropy=0.38)
+    splits = [
+        polarized_patterns(_sharp_response(), [1.0], [2.0], rho, optics)[2]
+        for rho in (0.1, 1.0, 10.0)
+    ]
+    assert splits[0] < splits[1] < splits[2]
+    # A freely rotating dye is unpolarized; a frozen one keeps r0.
+    assert splits[0] == pytest.approx(0.5, abs=0.02)
+
+
+def test_the_parallel_pattern_decays_faster_than_the_perpendicular():
+    """VV carries ``1 + 2r`` and VH ``1 − r``, so the anisotropy makes VV arrive early."""
+    from chisurf.core.fluorescence.mfd.moments import pattern_moments
+    from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
+
+    parallel, perpendicular, _ = polarized_patterns(
+        _sharp_response(), [1.0], [3.0], 1.0, Optics(r0_anisotropy=0.38)
+    )
+    assert pattern_moments(parallel, DT)[0] < pattern_moments(perpendicular, DT)[0]

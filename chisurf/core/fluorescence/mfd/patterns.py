@@ -62,6 +62,8 @@ __all__ = [
     "acceptor_lifetime_spectrum",
     "donor_lifetime_spectrum_of_state",
     "noncentral_chi_distance_distribution",
+    "perrin_anisotropy",
+    "polarized_patterns",
     "red_probability",
     "state_efficiency",
 ]
@@ -167,6 +169,14 @@ class Optics:
     sigma : float
         Combined linker width ``√(σ_D² + σ_A²)``, Å. Shared across states and given
         an informative prior; it is *not* a free broadening parameter.
+    g_factor : float
+        Ratio of the perpendicular to the parallel detection sensitivity. A
+        *detection* property, so it scales the whole perpendicular channel rather
+        than only its depolarization term — see :func:`polarized_patterns`.
+    l1, l2 : float
+        Polarization mixing of the two detection channels.
+    r0_anisotropy : float
+        Fundamental anisotropy at time zero, ``r(0)``.
     """
 
     r0: float = 52.0
@@ -176,6 +186,10 @@ class Optics:
     delta: float = 0.0
     gamma: float = 1.0
     sigma: float = 6.0
+    g_factor: float = 1.0
+    l1: float = 0.0
+    l2: float = 0.0
+    r0_anisotropy: float = 0.38
 
 
 @dataclass
@@ -504,3 +518,112 @@ class ChannelResponse:
         mean, variance : float
         """
         return background_moments(self.n_channels, self.dt)
+
+
+def perrin_anisotropy(lifetime, rho: float, r0_anisotropy: float):
+    """Return the steady-state anisotropy the Perrin relation predicts.
+
+    ``r_ss = r₀ / (1 + τ/ρ)`` — the time-integrated anisotropy of a decay of
+    lifetime ``τ`` depolarizing with rotational correlation time ``ρ``.
+
+    This is here as a **prediction, not an input.** The forward model builds the
+    parallel and perpendicular patterns from ``r(t)`` and integrates them; that the
+    result satisfies Perrin is then a check on the machinery rather than something
+    imposed on it. A model that took ``r_ss`` as a parameter would agree with Perrin
+    by construction and could not be wrong.
+
+    Parameters
+    ----------
+    lifetime : array_like or float
+        Fluorescence lifetime, ns.
+    rho : float
+        Rotational correlation time, ns.
+    r0_anisotropy : float
+        Fundamental anisotropy.
+
+    Returns
+    -------
+    numpy.ndarray or float
+    """
+    tau = np.asarray(lifetime, dtype=float)
+    if rho <= 0.0:
+        return np.zeros_like(tau)
+    return r0_anisotropy / (1.0 + tau / float(rho))
+
+
+def polarized_patterns(
+    response: ChannelResponse,
+    amplitudes,
+    lifetimes,
+    rho: float,
+    optics: Optics,
+):
+    """Split a decay into the parallel and perpendicular patterns actually recorded.
+
+    Follows the convention of ``tttrlib`` (``corrections = [period, g, l1, l2]``)
+    and of :func:`chisurf.core.fluorescence.anisotropy.decay.vm_rt_to_vv_vh`, which
+    is reused rather than reimplemented::
+
+        f_VV(t) = f_VM(t) · (1 + 2 r(t))
+        f_VH(t) = g · f_VM(t) · (1 − r(t))
+        f_VV,measured = (1 − l₁) f_VV + l₁ f_VH
+        f_VH,measured = l₂ f_VV + (1 − l₂) f_VH
+
+    ``g`` is a *detection sensitivity*, so it multiplies the whole perpendicular
+    channel and not just its depolarization term. That placement is what makes the
+    pair invert back to the anisotropy it was built from; putting it on the
+    depolarization term alone is a common and silent error, and the round-trip test
+    is what catches it.
+
+    The split is applied to the **decay**, before the instrument response is
+    convolved in: the anisotropy modulates emission, and the detector then responds
+    to what was emitted. Doing it the other way round mixes the response into the
+    depolarization.
+
+    Parameters
+    ----------
+    response : ChannelResponse
+        Supplies the instrument response, the channel width and the period.
+    amplitudes, lifetimes : array_like
+        The emitting species' lifetime spectrum.
+    rho : float
+        Rotational correlation time, ns.
+    optics : Optics
+        Supplies ``g_factor``, ``l1``, ``l2`` and ``r0_anisotropy``.
+
+    Returns
+    -------
+    parallel, perpendicular : numpy.ndarray
+        Recorded patterns, each normalised to unit sum.
+    p_parallel : float
+        Fraction of this species' photons recorded in the parallel channel — the
+        branching the anisotropy axis needs, exactly as the acceptor probability is
+        the branching the FRET axis needs.
+    """
+    from chisurf.core.fluorescence.anisotropy.decay import vm_rt_to_vv_vh
+
+    decay = response.decay(amplitudes, lifetimes)
+    time = np.arange(decay.size, dtype=float) * response.dt
+    vv, vh = vm_rt_to_vv_vh(
+        time,
+        decay,
+        np.array([float(optics.r0_anisotropy), float(max(rho, 1e-9))]),
+        g_factor=float(optics.g_factor),
+        l1=float(optics.l1),
+        l2=float(optics.l2),
+    )
+    vv = np.clip(np.asarray(vv, dtype=float), 0.0, None)
+    vh = np.clip(np.asarray(vh, dtype=float), 0.0, None)
+    total = vv.sum() + vh.sum()
+    p_parallel = float(vv.sum() / total) if total > 0 else 0.5
+
+    spectrum = response._spectrum
+    recorded = []
+    for channel in (vv, vh):
+        pattern = np.real(
+            np.fft.irfft(spectrum * np.fft.rfft(channel), n=response.n_channels)
+        )
+        pattern = np.clip(pattern, 0.0, None)
+        weight = pattern.sum()
+        recorded.append(pattern / weight if weight > 0 else pattern)
+    return recorded[0], recorded[1], p_parallel

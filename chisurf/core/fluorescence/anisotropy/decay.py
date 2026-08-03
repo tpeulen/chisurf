@@ -19,28 +19,36 @@ def vm_rt_to_vv_vh(
     """
     Compute the VV and VH decays from a VM decay given an anisotropy spectrum.
 
-    The parallel (VV) and perpendicular (VH) decays are computed as
+    The parallel (VV) and perpendicular (VH) decays are computed in the
+    Schaffer/Eggeling parameterisation — the same forward model ``tttrlib`` fits
+    (``DecayFit23``: ``x_vv[2] = r0 (2 - 3 l1)``, ``x_vh[0] = 1/g``,
+    ``x_vh[2] = r0 (-1 + 3 l2)/g``):
 
-        f_VV(t) = f_VM(t) * (1 + 2 * r(t))
-        f_VH(t) = g * f_VM(t) * (1 - r(t))
+        f_VV(t) = f_VM(t) * (1 + (2 - 3 * l1) * r(t))
+        f_VH(t) = f_VM(t) * (1 - (1 - 3 * l2) * r(t)) / g
 
-    where g is the g-factor and r(t) is calculated from the anisotropy spectrum:
+    where r(t) is calculated from the anisotropy spectrum:
 
         r(t) = sum_i (b_i * exp(-t / rho_i))
 
-    ``g`` is a detection sensitivity, so it scales the *whole* perpendicular
-    channel rather than only its depolarization term. That placement is what
-    makes the pair invert back to the anisotropy it was built from, and it is
-    what :func:`calculcate_spectrum` — the spectrum-domain sibling wired into
-    the fitting models — uses:
+    ``G = S_par / S_perp`` is the parallel/perpendicular sensitivity ratio, so the
+    perpendicular channel records ``1/G`` of what an equally sensitive one would —
+    it **divides** rather than multiplies. That placement, and this meaning of
+    l1/l2, are what make the pair invert back to the anisotropy it was built from:
 
-        r(t) = (f_VV - f_VH / g) / (f_VV + 2 * f_VH / g)
+        r(t) = (f_VV - G * f_VH) / (f_VV + 2 * G * f_VH)
 
-    The mixing parameters l1 and l2 account for cross-talk between the
-    polarization channels according to:
+    with numerator and denominator of the correction both collapsing to
+    ``3 vm (1 - l1 - l2)`` for any ``l1``, ``l2`` and ``G``.
 
-        f_VV,m(t) = (1 - l1) * f_VV(t) + l1 * f_VH(t)
-        f_VH,m(t) = l2 * f_VV(t) + (1 - l2) * f_VH(t)
+    .. note::
+
+       l1 and l2 are **not** a 2x2 mixing of an ideal pair
+       (``vv(1-l1) + vh l1``, Koshioka 1995). That is a different meaning for the
+       same symbols, it does not invert with the correction the rest of the stack
+       applies, and this docstring described it for a while after the code had
+       moved on — a round trip with both a non-unit G and non-zero l1/l2 came back
+       at 0.274 and 0.318 against a truth of 0.300.
 
     Parameters
     ----------
@@ -155,10 +163,11 @@ def calculcate_spectrum(
 
         r(t) = (f_VV - G * f_VH) / (f_VV + 2 * G * f_VH)
 
-    The mixed decays are then computed as:
+    The polarization mixing enters the amplitudes themselves, as it does in
+    :func:`vm_rt_to_vv_vh`, rather than as a 2x2 mixing of an ideal pair:
 
-        f_VV,m(t) = (1 - l1) * f_VV(t) + l1 * f_VH(t)
-        f_VH,m(t) = l2 * f_VV(t) + (1 - l2) * f_VH(t)
+        f_VV(t) = f_VM(t) * (1 + (2 - 3 * l1) * r(t))
+        f_VH(t) = f_VM(t) * (1 - (1 - 3 * l2) * r(t)) / G
 
     Parameters
     ----------

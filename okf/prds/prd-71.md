@@ -603,8 +603,34 @@ Two questions the static gate raised, both worth answering before rates are:
    36-fold change in exchange rate for a two-state system, so its minimum in the
    rate is not reliable. It discriminates *shape*, and the rate should come from the
    histogram or burst-wise sources.
-5. **Anisotropy axis** in full — `G`, `l₁/l₂`, per-state `ρ`, with the Perrin
-   relation as a *prediction*.
+5. **Anisotropy axis** — ✅ *landed*. `patterns.polarized_patterns` splits a decay
+   into the parallel and perpendicular patterns actually recorded, reusing
+   `anisotropy/decay.vm_rt_to_vv_vh` rather than reimplementing it, and
+   `MfdModel.anisotropy_histogram` produces `H[r, ⟨t⟩]`.
+
+   **The axis needed no new histogram machinery.** The FRET axis asks "given a
+   signal photon, how likely is the acceptor channel, and what does the donor
+   channel's pattern look like"; the anisotropy axis asks the same two questions of
+   the perpendicular and parallel channels. Same nested background/partition sum,
+   same `⟨t⟩` kernel, different branching.
+
+   **Perrin is a prediction, not an input**: the model builds the two patterns from
+   `r(t)` and integrates them, and `r_ss = r₀/(1 + τ/ρ)` falls out to ~0.01 across
+   lifetimes 1–4 ns and correlation times 0.2–5 ns. A model given `r_ss` as a
+   parameter would satisfy Perrin by construction and could never be wrong.
+
+   The simulator gained a `polarized` mode that draws each photon's polarization
+   from *its own* micro time — a single steady-state draw per burst would give the
+   right marginal and no correlation with the lifetime axis at all. One polarized
+   folder then serves both axes, and the model recovers the perpendicular fraction
+   to within 0.003 from `r(t)` alone.
+
+   *Fixed on the way*: `vm_rt_to_vv_vh`'s **docstring** still described the old
+   Koshioka convention — `f_VH = g · f_VM (1 − r)` and a 2×2 mixing of an ideal
+   pair — while the code had already moved to the Schaffer/Eggeling form tttrlib
+   fits, where `G` **divides** and l₁/l₂ enter the amplitudes. Nearly cost a wrong
+   implementation here; the round-trip tests (`G ∈ {0.7, 1, 1.4}` and non-zero
+   l₁/l₂ all recovering the same anisotropy) are what caught it.
 6. **Surfacing** — fitting model plus view spec (PRD-38/40), 2D plots through
    chiplot with the analytic overlay lines, CLI, a theory page under
    `docs/concepts/` and a numbered guide under `docs/guides/` covering burst

@@ -69,6 +69,14 @@ REGIMES: dict[str, float] = {
 GREEN_CHANNEL = 0
 RED_CHANNEL = 1
 
+#: Perpendicular counterparts, used when ``polarized`` is on. The pairs (0, 8) and
+#: (1, 9) are the conventional two-colour two-polarization layout that
+#: :func:`~chisurf.core.fluorescence.burst.photons.default_streams` already assumes,
+#: so a polarization-resolved simulated folder still reads as green/red for the FRET
+#: axis while additionally supporting the anisotropy one.
+GREEN_PERP_CHANNEL = 8
+RED_PERP_CHANNEL = 9
+
 
 @dataclass
 class SimulationParameters:
@@ -116,6 +124,11 @@ class SimulationParameters:
     inter_burst : float
         Mean dark time between bursts, seconds. Real acquisitions are mostly empty,
         and those photons are where the response and the background rate come from.
+    polarized : bool
+        Split every detector into a parallel and a perpendicular channel, with the
+        split drawn from each photon's own emission anisotropy. Needed for the
+        ``H[r, ⟨t⟩]`` axis; the FRET axis is unaffected, because the two
+        polarizations of a colour still read as that colour.
     seed : int
         Random seed.
     """
@@ -146,6 +159,7 @@ class SimulationParameters:
     n_micro_time_channels: int = 4096
     macro_time_resolution: float = 1.35e-8
     inter_burst: float = 6.0e-3
+    polarized: bool = False
     seed: int = 20260803
 
     @property
@@ -347,10 +361,29 @@ class SimulatedMfd:
         bur_dir = analysis / "bi4_bur"
         bur_dir.mkdir(parents=True, exist_ok=True)
 
-        detectors = {
-            "green": {"chs": [GREEN_CHANNEL], "micro_time_ranges": []},
-            "red": {"chs": [RED_CHANNEL], "micro_time_ranges": []},
-        }
+        # In polarized mode the colour detectors must cover *both* polarizations,
+        # or half the photons vanish from the FRET axis without anything
+        # complaining — the per-detector columns would simply be half as large and
+        # the proximity ratio would still look reasonable. The polarization
+        # detectors are written alongside them, so one folder serves both axes.
+        if self.parameters.polarized:
+            detectors = {
+                "green": {
+                    "chs": [GREEN_CHANNEL, GREEN_PERP_CHANNEL],
+                    "micro_time_ranges": [],
+                },
+                "red": {
+                    "chs": [RED_CHANNEL, RED_PERP_CHANNEL],
+                    "micro_time_ranges": [],
+                },
+                "green_par": {"chs": [GREEN_CHANNEL], "micro_time_ranges": []},
+                "green_perp": {"chs": [GREEN_PERP_CHANNEL], "micro_time_ranges": []},
+            }
+        else:
+            detectors = {
+                "green": {"chs": [GREEN_CHANNEL], "micro_time_ranges": []},
+                "red": {"chs": [RED_CHANNEL], "micro_time_ranges": []},
+            }
         windows = {"prompt": (0, self.parameters.n_micro_time_channels)}
         write_bur_file(
             bur_dir / f"{stem}.bur",
@@ -457,7 +490,13 @@ def simulate_mfd(parameters: SimulationParameters | None = None) -> SimulatedMfd
         one that was simulated.
         """
         pieces = []
-        for rate, channel in ((bg_green, GREEN_CHANNEL), (bg_red, RED_CHANNEL)):
+        emitters = (
+            ((bg_green / 2.0, GREEN_CHANNEL), (bg_green / 2.0, GREEN_PERP_CHANNEL),
+             (bg_red / 2.0, RED_CHANNEL), (bg_red / 2.0, RED_PERP_CHANNEL))
+            if parameters.polarized
+            else ((bg_green, GREEN_CHANNEL), (bg_red, RED_CHANNEL))
+        )
+        for rate, channel in emitters:
             n = int(rng.poisson(rate * span_seconds))
             if n == 0:
                 continue
@@ -542,6 +581,18 @@ def simulate_mfd(parameters: SimulationParameters | None = None) -> SimulatedMfd
         to_red |= direct
 
         micro = np.empty(n_signal, dtype=np.uint16)
+        # The rotational correlation time each photon's emitter had, for the
+        # polarization split below.
+        if is_donor_only[burst] or rate_matrix is None and len(parameters.states) == 1:
+            rho_photon = np.full(n_signal, float(parameters.states[0].rho))
+        elif is_donor_only[burst]:
+            rho_photon = np.full(n_signal, float(parameters.states[0].rho))
+        else:
+            rho_photon = np.empty(n_signal)
+            for index, state in enumerate(parameters.states):
+                mask = per_photon_state == index
+                if mask.any():
+                    rho_photon[mask] = float(state.rho)
         donor_like = ~transferred
         micro[donor_like] = _sample_micro_times(
             rng, int(donor_like.sum()), lifetime[donor_like], parameters
@@ -557,6 +608,24 @@ def simulate_mfd(parameters: SimulationParameters | None = None) -> SimulatedMfd
                 parameters,
             )
         channel = np.where(to_red, RED_CHANNEL, GREEN_CHANNEL).astype(np.int8)
+        if parameters.polarized:
+            # Each photon's emission anisotropy at *its own* micro time, which is
+            # what makes the anisotropy axis correlate with the lifetime axis —
+            # drawing a single steady-state value per burst would produce the right
+            # marginal and no correlation at all.
+            emitted = micro.astype(float) * parameters.dt - parameters.irf_centre
+            r_t = optics.r0_anisotropy * np.exp(
+                -np.clip(emitted, 0.0, None) / np.maximum(rho_photon, 1e-9)
+            )
+            # P(parallel) from the Schaffer/Eggeling amplitudes the analysis inverts.
+            vv = 1.0 + (2.0 - 3.0 * optics.l1) * r_t
+            vh = (1.0 - (1.0 - 3.0 * optics.l2) * r_t) / max(optics.g_factor, 1e-9)
+            parallel = rng.random(n_signal) < vv / (vv + vh)
+            channel = np.where(
+                to_red,
+                np.where(parallel, RED_CHANNEL, RED_PERP_CHANNEL),
+                np.where(parallel, GREEN_CHANNEL, GREEN_PERP_CHANNEL),
+            ).astype(np.int8)
 
         in_burst = _background(duration, clock)
         times = [clock + arrival, in_burst[0]]

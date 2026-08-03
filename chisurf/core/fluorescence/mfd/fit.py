@@ -405,6 +405,105 @@ class MfdModel:
 
         return tile(weights), tile(p_red), tile(mean), tile(variance)
 
+    def polarization_properties(self, data: MfdData, parallel: str = "green_par"):
+        """Return the per-species branching and moments of the *anisotropy* axis.
+
+        The anisotropy axis needs no new histogram machinery at all. The FRET axis
+        asks "given a signal photon, how likely is the acceptor channel, and what
+        does the donor channel's micro-time pattern look like"; the anisotropy axis
+        asks exactly the same two questions of the perpendicular and parallel
+        channels. So the same nested background/partition sum and the same ``⟨t⟩``
+        kernel apply, with the branching coming from ``r(t)`` instead of from FRET.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+        parallel : str
+            Detector name of the parallel channel, whose response and micro times
+            the lifetime axis uses.
+
+        Returns
+        -------
+        weights, p_perpendicular, parallel_mean, parallel_variance : numpy.ndarray
+            ``(n_species,)`` each.
+        """
+        from chisurf.core.fluorescence.mfd.moments import pattern_moments
+        from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
+
+        response = data.responses[parallel]
+        weights, species = self._species()
+
+        p_perpendicular = np.zeros(len(species))
+        mean = np.zeros(len(species))
+        variance = np.zeros(len(species))
+        for i, (has_acceptor, state) in enumerate(species):
+            if has_acceptor:
+                amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
+                    state, self.optics, n_points=self.n_distance_samples
+                )
+            else:
+                amplitudes = np.array([1.0])
+                lifetimes = np.array([self.optics.tau_d0])
+            par, _, p_parallel = polarized_patterns(
+                response, amplitudes, lifetimes, state.rho, self.optics
+            )
+            p_perpendicular[i] = 1.0 - p_parallel
+            mean[i], variance[i] = pattern_moments(par, response.dt)
+        return weights, p_perpendicular, mean, variance
+
+    def anisotropy_histogram(
+        self,
+        data: MfdData,
+        *,
+        parallel: str = "green_par",
+        perpendicular: str = "green_perp",
+        axes: HistogramAxes | None = None,
+    ) -> np.ndarray:
+        """Predict the ``H[r, ⟨t⟩]`` histogram — the second MFD plot.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement. Its nuisance measure must be built over the
+            *polarization* channels, not the colour channels.
+        parallel, perpendicular : str
+            Detector names.
+        axes : HistogramAxes, optional
+            Bin edges; the data's own are used when omitted.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_ratio, n_micro_time)``, the ratio axis being the raw
+            perpendicular fraction.
+        """
+        axes = axes or data.axes
+        response = data.responses[parallel]
+        weights, p_perp, mean, variance = self.polarization_properties(
+            data, parallel=parallel
+        )
+        n_cells = data.binned[0].size
+
+        def tile(values):
+            return np.broadcast_to(values, (n_cells, values.size))
+
+        return model_histogram(
+            data.nuisance,
+            axes,
+            component_weights=tile(weights),
+            p_red=tile(p_perp),
+            green_mean=tile(mean),
+            green_variance=tile(variance),
+            background_rates=(
+                response.background_rate,
+                data.responses[perpendicular].background_rate,
+            ),
+            background_micro_time=response.background_moments(),
+            min_green_photons=data.min_green_photons,
+            binned=data.binned,
+        )
+
     def histogram(self, data: MfdData) -> np.ndarray:
         """Predict the 2D histogram for a measurement.
 
