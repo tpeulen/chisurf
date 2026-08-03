@@ -337,3 +337,48 @@ def test_no_absorption_at_the_excitation_wavelength_is_the_unsaturated_limit():
         tau, 5e-3, 0.0, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G, include_bunching=True
     )
     np.testing.assert_allclose(g, gaussian_g_diff(tau, W0, Z0, D_R6G), rtol=1e-12)
+
+
+def test_the_axial_half_spectrum_is_the_whole_one():
+    """rfft + mirror weights must equal the full complex transform, exactly.
+
+    The speed of this module rests on two identities -- a real profile needs
+    only half its axial spectrum, and exp(-D(kr^2+kz^2)tau) factorises -- so
+    they are checked against a direct evaluation rather than trusted.
+    """
+    r, z, (R, Z) = _grid(60, 32)
+    profile = np.exp(-2.0 * R**2 / W0**2) * np.exp(-2.0 * Z**2 / Z0**2)
+    tau = np.logspace(-7, -3, 25)
+    fast = fcs_numerical_g_diff(tau, r, z, profile, D_R6G, v_ref=V_0)
+
+    # Direct: full complex FFT, full (kr, kz) grid, no factorisation.
+    from scipy.special import j0
+
+    dr, dz = float(r[1] - r[0]), float(z[1] - z[0])
+    kr = np.linspace(0.0, 30.0 / float(r[-1]), min(len(r), 64))
+    kz = np.fft.fftfreq(len(z), d=dz) * 2.0 * np.pi
+    weights = np.full(len(r), dr)
+    weights[0] *= 0.5
+    weights[-1] *= 0.5
+    matrix = 2.0 * np.pi * (r * weights)[None, :] * j0(kr[:, None] * r[None, :])
+    f_k = matrix @ (np.fft.fft(profile, axis=1) * dz)
+    psd = (np.abs(f_k) ** 2) * kr[:, None]
+    k2 = kr[:, None] ** 2 + kz[None, :] ** 2
+    direct = np.array([np.sum(psd * np.exp(-D_R6G * k2 * t)) for t in tau])
+    direct *= (V_0 * float(np.trapezoid(np.trapezoid(profile**2 * 2 * np.pi * r[:, None],
+                                                     r, axis=0), z))
+               / float(np.trapezoid(np.trapezoid(profile * 2 * np.pi * r[:, None],
+                                                 r, axis=0), z)) ** 2) / psd.sum()
+    np.testing.assert_allclose(fast, direct, rtol=1e-10)
+
+
+def test_the_hankel_matrix_is_cached_and_never_handed_out_writable():
+    """It is shared between calls, so a caller must not be able to corrupt it."""
+    from chisurf.core.fluorescence.fcs.saturation import _hankel_matrix
+
+    first = _hankel_matrix(64, 1e-6, 3e7, 32)
+    again = _hankel_matrix(64, 1e-6, 3e7, 32)
+    assert first is again, "the same grid must reuse the same matrix"
+    assert not first.flags.writeable
+    with pytest.raises(ValueError):
+        first[0, 0] = 1.0

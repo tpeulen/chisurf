@@ -91,6 +91,14 @@ computed with a 0-th order Hankel transform along `r` and an FFT along `z`
 integrals, which satisfy Parseval's theorem exactly, so `G(0) = V₀/V_eff` is
 exact at any grid density and only the shape carries quadrature error.
 
+Two exact identities keep this cheap enough to drive from a slider. The
+propagator **factorises**, `exp(-D(k_r²+k_z²)τ) = exp(-D k_r² τ)·exp(-D k_z² τ)`,
+so the sum over the `(k_r, k_z)` grid needs `(n_r + n_z)·n_τ` exponentials rather
+than `n_r·n_z·n_τ` — the rest becomes two matrix products. And the profile is
+real, so only the non-negative axial frequencies are computed and the mirror
+half is restored by doubling the paired bins. Neither is an approximation; both
+are checked against a direct evaluation in the test suite.
+
 Photokinetic relaxation enters as a separate factor evaluated at the peak
 excitation rate:
 

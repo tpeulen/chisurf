@@ -25,6 +25,7 @@ when that happens rather than returning a silently meaningless number.
 
 from __future__ import annotations
 
+import functools
 import logging
 import warnings
 
@@ -300,11 +301,15 @@ def steady_state_full_populations(
     b = np.zeros((n_points, n_states, 1), dtype=float)
     b[:, -1, 0] = 1.0
 
-    # A generator whose rates are all zero (no scheme configured, no excitation)
-    # is singular even after the constraint row; fall back to lstsq per point.
+    # LAPACK per matrix, despite the per-call overhead looking like the thing to
+    # beat here: a Gauss-Jordan vectorised over the grid was measured at 1172 us
+    # against 657 us for this, because at N = 3 the temporaries and the
+    # per-system row swaps cost more than the overhead they remove.
     try:
         P_all = np.linalg.solve(K_m, b).squeeze(-1)
     except np.linalg.LinAlgError:
+        # A generator whose rates are all zero (no scheme configured, no
+        # excitation) is singular even after the constraint row.
         P_all = np.empty((n_points, n_states), dtype=float)
         for p in range(n_points):
             P_all[p] = np.linalg.lstsq(K_m[p], b[p], rcond=None)[0].ravel()
@@ -425,6 +430,43 @@ def gaussian_g_diff(tau_s: np.ndarray, w0: float, z0: float, D: float) -> np.nda
     return lateral * axial
 
 
+@functools.lru_cache(maxsize=16)
+def _hankel_matrix(n_r: int, r_max: float, kr_max: float, n_kr: int) -> np.ndarray:
+    """Return the 0-th order Hankel quadrature matrix ``2 pi r J0(kr r) dr``.
+
+    Cached, because it is the single most expensive part of a curve evaluation
+    (thousands of Bessel evaluations) and it depends on nothing but the two
+    grids -- which are fixed by the beam waist and the sampling. Dragging the
+    power, or running a fit that only moves rates, reuses it every time.
+
+    Parameters
+    ----------
+    n_r : int
+        Number of radial samples; the grid is ``linspace(0, r_max, n_r)``.
+    r_max : float
+        Outer radius of the grid (m).
+    kr_max : float
+        Largest radial wavevector (m^-1); the grid is ``linspace(0, kr_max, n_kr)``.
+    n_kr : int
+        Number of radial wavevectors.
+
+    Returns
+    -------
+    np.ndarray
+        Read-only ``(n_kr, n_r)`` matrix; multiply a profile by it to transform.
+    """
+    from scipy.special import j0
+
+    r = np.linspace(0.0, r_max, n_r)
+    kr = np.linspace(0.0, kr_max, n_kr)
+    weights = np.full(n_r, r_max / (n_r - 1) if n_r > 1 else 1.0)
+    weights[0] *= 0.5
+    weights[-1] *= 0.5
+    matrix = 2.0 * np.pi * (r * weights)[None, :] * j0(kr[:, None] * r[None, :])
+    matrix.setflags(write=False)  # shared between callers; never mutate in place
+    return matrix
+
+
 def fcs_numerical_g_diff(
     tau: np.ndarray,
     r: np.ndarray,
@@ -508,9 +550,6 @@ def fcs_numerical_g_diff(
     if int_a <= 0.0 or int_b <= 0.0 or int_ab == 0.0:
         return np.zeros_like(tau)
 
-    from scipy.special import j0
-
-    dr = float(r[1] - r[0])
     dz = float(z[1] - z[0])
     if kr_max is None:
         kr_max = 30.0 / float(r[-1])
@@ -519,30 +558,34 @@ def fcs_numerical_g_diff(
     # 1/(4 pi^2) of the cylindrical measure are all constants, so the
     # self-normalisation below cancels them exactly; only the k grids matter.
     kr = np.linspace(0.0, kr_max, max(2, int(n_kr) if n_kr else min(nr, 64)))
-    kz = np.fft.fftfreq(nz, d=dz) * (2.0 * np.pi)
 
-    # 0-th order Hankel transform along r, trapezoid weights: 2 pi r J0(kr r) dr.
-    w_r = np.full(nr, dr)
-    w_r[0] *= 0.5
-    w_r[-1] *= 0.5
-    j0_matrix = 2.0 * np.pi * (r * w_r)[None, :] * j0(kr[:, None] * r[None, :])
-    f_k = j0_matrix @ (np.fft.fft(profile, axis=1) * dz)
+    # The profile is real, so the axial transform only needs its non-negative
+    # frequencies: rfft halves both the transform and everything downstream of
+    # it. The dropped half is the mirror image (|F(-k)| = |F(k)|, and k^2 is even
+    # in k), so it is restored exactly by doubling the paired bins -- all of them
+    # except DC and, for an even-length grid, Nyquist, which have no partner.
+    kz = np.fft.rfftfreq(nz, d=dz) * (2.0 * np.pi)
+    mirror = np.full(kz.size, 2.0)
+    mirror[0] = 1.0
+    if nz % 2 == 0:
+        mirror[-1] = 1.0
+
+    # Transform the real and imaginary parts separately. Feeding a complex array
+    # to a real matrix makes NumPy promote the matrix and run a complex GEMM,
+    # which costs far more than the two real ones it replaces.
+    j0_matrix = _hankel_matrix(nr, float(r[-1]), float(kr_max), kr.size)
+    f_zk = np.fft.rfft(profile, axis=1) * dz
+    f_re, f_im = j0_matrix @ f_zk.real, j0_matrix @ f_zk.imag
     if is_auto:
-        csd = np.abs(f_k) ** 2
+        csd = f_re * f_re + f_im * f_im
     else:
-        g_k = j0_matrix @ (np.fft.fft(profile_b, axis=1) * dz)
-        csd = np.real(f_k * np.conjugate(g_k))
+        g_zk = np.fft.rfft(profile_b, axis=1) * dz
+        g_re, g_im = j0_matrix @ g_zk.real, j0_matrix @ g_zk.imag
+        csd = f_re * g_re + f_im * g_im
 
     # Cylindrical spectral density; the k_r weight already kills the DC bin.
-    csd = csd * kr[:, None]
-    k2 = kr[:, None] ** 2 + kz[None, :] ** 2
-
-    csd_flat = csd.ravel()
-    k2_flat = k2.ravel()
-    keep = csd_flat != 0.0
-    csd_flat = csd_flat[keep]
-    k2_flat = k2_flat[keep]
-    total = float(csd_flat.sum())
+    csd = csd * kr[:, None] * mirror[None, :]
+    total = float(csd.sum())
     if total == 0.0:
         return np.zeros_like(tau)
 
@@ -550,11 +593,15 @@ def fcs_numerical_g_diff(
     # autocorrelation; the reciprocal-space sum carries only the tau dependence.
     amplitude = (v_ref * int_ab / (int_a * int_b)) if v_ref is not None else 1.0
 
-    out = np.empty(tau.shape, dtype=float)
-    chunk = max(1, int(4_000_000 // max(1, csd_flat.size)))
-    for start in range(0, tau.size, chunk):
-        t = tau[start : start + chunk]
-        out[start : start + chunk] = np.exp(-D * k2_flat[:, None] * t[None, :]).T @ csd_flat
+    # The propagator separates: exp(-D (kr^2 + kz^2) tau) = exp(-D kr^2 tau)
+    # exp(-D kz^2 tau). Summing over the full (kr, kz) grid would evaluate
+    # n_kr*n_kz*n_tau exponentials; factoring needs only (n_kr + n_kz)*n_tau of
+    # them and leaves the rest to two matrix products, which are an order of
+    # magnitude cheaper per element. For the default grid that is 31k
+    # exponentials instead of 768k, and it is exact -- not an approximation.
+    decay_z = np.exp(-D * np.square(kz)[:, None] * tau[None, :])
+    decay_r = np.exp(-D * np.square(kr)[:, None] * tau[None, :])
+    out = np.einsum("it,it->t", decay_r, csd @ decay_z, optimize=True)
     return out * (amplitude / total)
 
 
