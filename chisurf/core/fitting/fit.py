@@ -1856,7 +1856,8 @@ class FitGroup(Fit):
             self,
             remove_protected: bool = False,
             copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+            convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False
     ) -> typing.Dict:
         """Serialize the FitGroup and its grouped fits to a dictionary.
 
@@ -1877,7 +1878,8 @@ class FitGroup(Fit):
         d = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets
         )
         d['grouped_fits'] = [
             f.to_dict(

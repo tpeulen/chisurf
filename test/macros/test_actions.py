@@ -32,11 +32,15 @@ class TestActions(unittest.TestCase):
         
         # Patch cs to use our test dispatcher
         self.old_dispatcher = getattr(cs, "action_dispatcher", None)
+        self.old_registry = getattr(cs, "action_registry", None)
         cs.action_dispatcher = self.dispatcher
         cs.action_registry = self.registry
 
     def tearDown(self):
+        # Both globals must be restored: leaving the scratch registry in place
+        # leaks the test.* actions into the process-wide action vocabulary.
         cs.action_dispatcher = self.old_dispatcher
+        cs.action_registry = self.old_registry
 
     def test_decorator_registers_action(self):
         from chisurf.core.actions._decorator import action

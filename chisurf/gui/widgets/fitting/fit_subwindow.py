@@ -23,6 +23,7 @@ from chisurf.gui.glyphs import Glyphs
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.gui.widgets.fitting.fitting_client import get_fitting_client
 from chisurf.gui.widgets.mdi_custom_titlebar import CustomMdiSubWindow
+from chisurf.gui import dialogs
 
 
 class FitSubWindow(CustomMdiSubWindow):
@@ -589,11 +590,12 @@ class FitSubWindow(CustomMdiSubWindow):
         # Honour a per-window opt-out flag (used by macros/app shutdown) as
         # well as the global confirm_close_fit setting.
         if getattr(self, 'close_confirm', True) and cs.core.settings.gui['confirm_close_fit']:
-            reply = cs.gui.widgets.MyMessageBox.question(
+            reply = dialogs.question(
                 self,
                 'Message',
                 "Are you sure to close this fit?:\n%s" % self.fit.name,
-                QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                default=QtWidgets.QMessageBox.No
             )
             if reply == QtWidgets.QMessageBox.Yes:
                 try:
@@ -683,8 +685,7 @@ class FitSubWindow(CustomMdiSubWindow):
             self.load_code_file(source_file)
             self.stack.setCurrentIndex(1)
         except Exception as e:
-            from qtpy import QtWidgets
-            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to load model source: {e}")
+            dialogs.warning(self, "Error", f"Failed to load model source: {e}")
 
     def _get_current_text_editor(self):
         """Return the currently active TextEditor inside the CodeEditor."""
@@ -821,5 +822,4 @@ class FitSubWindow(CustomMdiSubWindow):
                             fc.update_fit(fit_index=getattr(self.fit, "fit_idx", None))
                         self.updateStatusBar("Model code applied successfully.")
         except Exception as e:
-            from qtpy import QtWidgets
-            QtWidgets.QMessageBox.warning(self, "Error", f"Failed to save and apply code: {e}")
+            dialogs.warning(self, "Error", f"Failed to save and apply code: {e}")

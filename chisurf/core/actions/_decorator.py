@@ -13,6 +13,27 @@ def is_dispatching() -> bool:
     return getattr(_threading_local, "is_dispatching", False)
 
 
+def _executing_actions() -> typing.Set[str]:
+    """
+    Names of the actions whose wrapper is currently executing on this thread.
+
+    The re-entrancy guard has to be thread-local: a wrapper attribute would be
+    shared by every thread, so a concurrent call to the same action from another
+    thread would take the re-entrant shortcut and run the handler body without
+    validation, debouncing, or a history record.
+
+    Returns
+    -------
+    set of str
+        The live per-thread set of action names; mutate it in place.
+    """
+    executing = getattr(_threading_local, "executing_actions", None)
+    if executing is None:
+        executing = set()
+        _threading_local.executing_actions = executing
+    return executing
+
+
 def action(
     name: str,
     schema: typing.Optional[typing.Dict[str, typing.Any]] = None,
@@ -70,7 +91,8 @@ def action(
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            if getattr(wrapper, "_executing", False):
+            executing = _executing_actions()
+            if name in executing:
                 return func(*args, **kwargs)
 
             sig = inspect.signature(func)
@@ -78,14 +100,13 @@ def action(
             bound.apply_defaults()
             payload = dict(bound.arguments)
 
-            wrapper._executing = True
+            executing.add(name)
             try:
                 return dispatch(name, payload)
             finally:
-                wrapper._executing = False
+                executing.discard(name)
 
         wrapper._action_spec = spec
-        wrapper._executing = False
         return wrapper
 
     return decorator

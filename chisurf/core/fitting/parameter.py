@@ -388,13 +388,15 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
             self,
             remove_protected: bool = False,
             copy_values: bool = True,
-            convert_values_to_elementary: bool = False
+            convert_values_to_elementary: bool = False,
+        skip_qt_widgets: bool = False
     ) -> typing.Dict:
         """Serialize the group and its parameters to a plain dictionary."""
         s = super().to_dict(
             remove_protected=remove_protected,
             copy_values=copy_values,
-            convert_values_to_elementary=convert_values_to_elementary
+            convert_values_to_elementary=convert_values_to_elementary,
+            skip_qt_widgets=skip_qt_widgets
         )
         parameters = dict()
         s['parameter'] = parameters

@@ -1,4 +1,5 @@
 import pathlib
+import tempfile
 import unittest
 
 import utils
@@ -121,12 +122,16 @@ class TestActionDispatcher(unittest.TestCase):
 
     def test_chisurf_action_execute_accessor(self):
         executor = getattr(cs, "action_execute")
-        event = executor(
-            name="project.save",
-            payload={"target_path": "C:/tmp/demo", "project_name": "demo"},
-            summary="save project",
-        )
-        self.assertTrue(event is None or isinstance(event, dict))
+        with tempfile.TemporaryDirectory() as tmp:
+            event = executor(
+                name="project.save",
+                payload={"target_path": tmp, "project_name": "demo"},
+                summary="save project",
+            )
+            # A handler return value takes precedence over the history event;
+            # ``project.save`` returns the archive path it just wrote.
+            self.assertIsNotNone(event)
+            self.assertTrue(pathlib.Path(event).is_file())
 
     def test_record_action_falls_back_for_unregistered_type(self):
         from chisurf.core.actions._infra import record_action

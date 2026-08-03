@@ -109,10 +109,10 @@ def test_values_survive_a_resize_by_label():
 
 
 def test_a_mixin_group_reports_its_other_parameters_too():
-    """``PdaDynamicNStates`` carries a distance and a width per state."""
-    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStates
+    """``Pda2cDynamicNStates`` carries a distance and a width per state."""
+    from chisurf.core.models.pda2c.dynamic_mc import Pda2cDynamicNStates
 
-    group = PdaDynamicNStates(name="states", n_states=2)
+    group = Pda2cDynamicNStates(name="states", n_states=2)
     reported = names(group)
 
     assert {"k1_2", "k2_1"} <= set(reported)
@@ -120,9 +120,9 @@ def test_a_mixin_group_reports_its_other_parameters_too():
 
 
 def test_resizing_a_mixin_group_grows_both_kinds():
-    from chisurf.core.models.pda.dynamic_mc import PdaDynamicNStates
+    from chisurf.core.models.pda2c.dynamic_mc import Pda2cDynamicNStates
 
-    group = PdaDynamicNStates(name="states", n_states=2)
+    group = Pda2cDynamicNStates(name="states", n_states=2)
     group.n_states = 3
     reported = set(names(group))
 

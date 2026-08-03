@@ -247,7 +247,12 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
     }
     name_to_param: Dict[str, Any] = getattr(model, "parameters_all_dict", {}) or {}
 
-    # First pass: scalar attributes (value, fixed, bounds, bounds_on)
+    # First pass: scalar attributes, in the same order as
+    # :meth:`chisurf.core.parameter.Parameter.set_state` — bounds, bounds_on,
+    # fixed, then value. The order matters: ``Parameter.value`` clamps against
+    # the currently enforced bounds and writes the clamped number back, so a
+    # value assigned before its bounds are restored is truncated against the
+    # freshly constructed model's *defaults* and cannot be recovered.
     for uid, p_state in stored_params.items():
         p = uid_to_param.get(uid)
         if p is None:
@@ -255,6 +260,26 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
         if p is None:
             # Parameter not present in this model; skip gracefully
             continue
+
+        if "bounds" in p_state:
+            b = p_state["bounds"]
+            if isinstance(b, (list, tuple)) and len(b) == 2:
+                try:
+                    p.bounds = (float(b[0]), float(b[1]))
+                except Exception:
+                    pass
+
+        if "bounds_on" in p_state:
+            try:
+                p.bounds_on = bool(p_state["bounds_on"])
+            except Exception:
+                pass
+
+        if "fixed" in p_state:
+            try:
+                p.fixed = bool(p_state["fixed"])
+            except Exception:
+                pass
 
         if "value" in p_state:
             try:
@@ -268,26 +293,6 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
         if "error_estimate" in p_state:
             try:
                 p.error_estimate = float(p_state["error_estimate"])
-            except Exception:
-                pass
-
-        if "fixed" in p_state:
-            try:
-                p.fixed = bool(p_state["fixed"])
-            except Exception:
-                pass
-
-        if "bounds" in p_state:
-            b = p_state["bounds"]
-            if isinstance(b, (list, tuple)) and len(b) == 2:
-                try:
-                    p.bounds = (float(b[0]), float(b[1]))
-                except Exception:
-                    pass
-
-        if "bounds_on" in p_state:
-            try:
-                p.bounds_on = bool(p_state["bounds_on"])
             except Exception:
                 pass
 

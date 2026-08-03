@@ -155,13 +155,16 @@ class FittingClient:
         try:
             return self._client.call(method, params)
         except RemoteError as e:
-            if self._is_transport_failure(str(e)):
+            msg = str(e)
+            if self._is_transport_failure(msg):
                 self._drop_transport(method, e)
                 return None
+            if "fit not found" in msg or "parameter not found" in msg:
+                import chisurf.logging
+                chisurf.logging.debug("FittingClient: RPC call '%s' (%s)", method, msg)
+                return None
             import chisurf.logging
-            chisurf.logging.exception(
-                "FittingClient: RPC call '%s' failed", method
-            )
+            chisurf.logging.warning("FittingClient: RPC call '%s' failed: %s", method, e)
             return None
         except Exception:
             import chisurf.logging

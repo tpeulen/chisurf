@@ -195,6 +195,18 @@ class RateMatrixMixin:
         """Return the ``n x n`` rate matrix ``K[target, source]`` (Hz)."""
         return rate_matrix_from_rates(self.flat_rates, getattr(self, "_n_states", 0))
 
+    @property
+    def matrix(self) -> list[float]:
+        """Return the N*N flat row-major matrix entries for AutoForm grids."""
+        return self.rate_matrix().ravel().tolist()
+
+    @matrix.setter
+    def matrix(self, value: list[float]):
+        n = getattr(self, "_n_states", 0)
+        if n > 0 and len(value) == n * n:
+            arr = np.array(value, dtype=float).reshape((n, n))
+            self.set_rate_matrix(arr)
+
     def set_rate_matrix(self, matrix) -> None:
         """Write an ``n x n`` ``K[target, source]`` matrix onto the parameters.
 

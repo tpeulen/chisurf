@@ -1082,11 +1082,10 @@ class ParameterActionsMixin:
 
                 # Check for recursion using the Parameter class method
                 if param_self.check_recursive_link(param_other, param_self):
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,  # Parent widget
                         "Linking Error",
-                        "Recursion detected: Cannot link a parameter to itself or create a cyclic dependency.",
-                        QtWidgets.QMessageBox.Ok
+                        "Recursion detected: Cannot link a parameter to itself or create a cyclic dependency."
                     )
                 else:
                     tooltip = " linked to " + str(getattr(param_other, "name", "?"))
@@ -1421,6 +1420,7 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         self.widget_link.setToolTip("link — right-click to link, uncheck to unlink")
         self.widget_link.setSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
         self.widget_link.setStyleSheet(compact_cb_style)
+        self.widget_link.setVisible(False)
         main_row.addWidget(self.widget_link)
 
         self.widget_bounds_on = QtWidgets.QCheckBox()
@@ -1546,8 +1546,8 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
         self.widget_bounds_on.setDisabled(hide_bounds)
         self.widget_bounds_on.setVisible(not hide_bounds)
         self.widget_fix.setVisible(fixable)
-        self.widget_link.setDisabled(hide_link)
-        self.widget_link.setVisible(not hide_link)
+        self.widget_link.setDisabled(True)
+        self.widget_link.setVisible(False)
 
         if hide_error:
             try:
@@ -1785,11 +1785,10 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
                 )
             except Exception:
                 pass
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Support-plane analysis failed",
                 f"Could not run support-plane analysis for '{parameter_name}'.\n\n{exc}",
-                QtWidgets.QMessageBox.Ok,
             )
         finally:
             if not getattr(self, "_is_output_param", False):
@@ -1902,6 +1901,22 @@ class FittingParameterWidget(ParameterActionsMixin, Controller):
             else:
                 if bg_color:
                     value_parts.append(f"background-color: {bg_color};")
+
+            p = getattr(self, "fitting_parameter", None)
+            if p is not None and hasattr(self, "widget_fix"):
+                if getattr(p, "is_linked", False):
+                    accent_color = "#2a88ff"   # Blue
+                elif getattr(p, "fixed", True):
+                    accent_color = "#ff2a2a"   # Red
+                else:
+                    accent_color = "#2acc44"   # Green
+
+                self.widget_fix.setStyleSheet(
+                    f"QCheckBox {{ spacing: 0px; background: transparent; }} "
+                    f"QCheckBox::indicator {{ width: 11px; height: 11px; border: 1px solid #666666; border-radius: 2px; background-color: #2b2b2b; }} "
+                    f"QCheckBox::indicator:hover {{ border: 1px solid {accent_color}; }} "
+                    f"QCheckBox::indicator:checked {{ background-color: {accent_color}; border: 1px solid {accent_color}; }}"
+                )
 
             self.widget_value.setStyleSheet(" ".join(value_parts))
             try:
