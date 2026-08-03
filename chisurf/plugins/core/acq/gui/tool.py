@@ -7,6 +7,7 @@ from pathlib import Path
 import logging
 import time
 import numpy as np
+from chisurf.gui import dialogs
 from chisurf.gui.widgets.system_info_watermark import memory_usage_mb, total_memory_mb
 
 # Try to import numba for performance
@@ -1657,7 +1658,7 @@ class SMAcquisitionManager:
 
             self.device.message_logged.connect(self._device_log_handler)
             if not self.device.initialize(simulation=self.simulation_mode):
-                QMessageBox.critical(self.main_window, "Error", f"Failed to initialize {device_type} device.")
+                dialogs.error(self.main_window, "Error", f"Failed to initialize {device_type} device.")
                 return
 
             self._read_device_timing_parameters()
@@ -1665,7 +1666,7 @@ class SMAcquisitionManager:
 
         # Check if acquisition is already running
         if getattr(self, '_acquisition_in_progress', False):
-            QMessageBox.information(self.main_window, "Information", "Acquisition is already running")
+            dialogs.information(self.main_window, "Information", "Acquisition is already running")
             return
 
         # Read stop conditions
@@ -1674,7 +1675,7 @@ class SMAcquisitionManager:
 
         # Require at least one active stop condition
         if time_limit <= 0.0 and photon_limit <= 0.0:
-            QMessageBox.warning(self.main_window, "Warning", "Set a time and/or photon stop condition before starting acquisition")
+            dialogs.warning(self.main_window, "Warning", "Set a time and/or photon stop condition before starting acquisition")
             return
 
         # Persist limits for progress and photon-based stopping
@@ -2107,7 +2108,7 @@ class SMAcquisitionManager:
     def open_card_setup(self):
         """Open the card setup dialog."""
         if not self.device.initialized:
-            QMessageBox.warning(self.main_window, "Warning", "Device not initialized")
+            dialogs.warning(self.main_window, "Warning", "Device not initialized")
             return
 
         # Create the card setup dialog
@@ -2121,7 +2122,7 @@ class SMAcquisitionManager:
                 logger.info("Successfully created EnhancedSimulationSetupDialog instance")
             except Exception as e:
                 logger.error(f"Failed to create enhanced setup dialog: {e}")
-                QMessageBox.warning(self.main_window, "Setup Error", 
+                dialogs.warning(self.main_window, "Setup Error", 
                                   f"Could not create simulation setup dialog: {e}")
                 return
         elif device_type == "PicoQuant":
@@ -2214,13 +2215,13 @@ class SMAcquisitionManager:
             self.help_window.activateWindow()
         except Exception as e:
             logger.error(f"Error opening help window: {e}")
-            QMessageBox.warning(self.main_window, "Help Error", f"Could not open help documentation:\n{e}")
+            dialogs.warning(self.main_window, "Help Error", f"Could not open help documentation:\n{e}")
 
     def close_acquisition_mode(self):
         """Close the acquisition mode and clean up all components."""
 
         # Ask for confirmation
-        reply = QMessageBox.question(
+        reply = dialogs.question(
             self.main_window,
             "Close Acquisition Mode",
             "Are you sure you want to close the acquisition mode?\n\nThis will stop any ongoing acquisition and close all acquisition windows.",
@@ -2557,9 +2558,9 @@ class SMAcquisitionManager:
                 json_str = json.dumps(settings, indent=2)
                 with open(filename, 'w') as f:
                     f.write(json_str)
-                QMessageBox.information(self.main_window, "Save Successful", "Settings saved to JSON file.")
+                dialogs.information(self.main_window, "Save Successful", "Settings saved to JSON file.")
             except Exception as e:
-                QMessageBox.warning(self.main_window, "Save Error", f"Failed to save JSON file: {e}")
+                dialogs.warning(self.main_window, "Save Error", f"Failed to save JSON file: {e}")
 
     def load_settings_json(self):
         """Load acquisition settings from JSON file."""
@@ -2571,9 +2572,9 @@ class SMAcquisitionManager:
                 with open(filename, 'r') as f:
                     settings = json.load(f)
                 self._apply_settings(settings)
-                QMessageBox.information(self.main_window, "Load Successful", "Settings loaded from JSON file.")
+                dialogs.information(self.main_window, "Load Successful", "Settings loaded from JSON file.")
             except Exception as e:
-                QMessageBox.warning(self.main_window, "Load Error", f"Failed to load JSON file: {e}")
+                dialogs.warning(self.main_window, "Load Error", f"Failed to load JSON file: {e}")
 
     def _get_current_settings(self):
         """Get current acquisition settings as dictionary."""

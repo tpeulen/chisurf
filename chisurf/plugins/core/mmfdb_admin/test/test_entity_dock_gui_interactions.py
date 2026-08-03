@@ -14,6 +14,7 @@ pytest.importorskip("qtpy")
 from chisurf.plugins.core.mmfdb_admin.gui.client import MMFDBClient
 
 from .conftest import patch_db
+from chisurf.gui import dialogs
 
 
 _WIDGETS: list = []
@@ -408,7 +409,7 @@ def test_condition_and_device_docks_create_update_and_delete_records(
     seeded_admin_db,
     qapp,
 ):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         condition_dock = _entity_dock(widget, qapp, "condition")
@@ -429,9 +430,9 @@ def test_condition_and_device_docks_create_update_and_delete_records(
         checkbox = condition_dock.table.item(condition_dock.table.currentRow(), 0)
         checkbox.setCheckState(QtCore.Qt.Checked)
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             condition_dock._on_delete()
         qapp.processEvents()
@@ -458,9 +459,9 @@ def test_condition_and_device_docks_create_update_and_delete_records(
         checkbox = device_dock.table.item(device_dock.table.currentRow(), 0)
         checkbox.setCheckState(QtCore.Qt.Checked)
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             device_dock._on_delete()
         qapp.processEvents()
@@ -474,7 +475,7 @@ def test_experiment_type_dock_creates_updates_and_deletes_type(
     seeded_admin_db,
     qapp,
 ):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "experiment_type")
@@ -504,9 +505,9 @@ def test_experiment_type_dock_creates_updates_and_deletes_type(
         checkbox = dock.table.item(dock.table.currentRow(), 0)
         checkbox.setCheckState(QtCore.Qt.Checked)
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             dock._on_delete()
         qapp.processEvents()
@@ -561,7 +562,7 @@ def test_user_entity_dock_selects_and_auto_saves_display_name(seeded_admin_db, q
 
 
 def test_user_entity_dock_creates_renames_and_deletes_user(seeded_admin_db, qapp):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "user")
@@ -589,9 +590,9 @@ def test_user_entity_dock_creates_renames_and_deletes_user(seeded_admin_db, qapp
         checkbox = dock.table.item(dock.table.currentRow(), 0)
         checkbox.setCheckState(QtCore.Qt.Checked)
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             dock._on_delete()
         qapp.processEvents()
@@ -601,7 +602,7 @@ def test_user_entity_dock_creates_renames_and_deletes_user(seeded_admin_db, qapp
 
 
 def test_user_entity_dock_prevents_builtin_user_delete(seeded_admin_db, qapp):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "user")
@@ -610,10 +611,10 @@ def test_user_entity_dock_prevents_builtin_user_delete(seeded_admin_db, qapp):
         checkbox.setCheckState(QtCore.Qt.Checked)
 
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
-        ), mock.patch.object(QtWidgets.QMessageBox, "warning") as warning:
+            return_value=dialogs.ChiSurfMessageBox.Yes,
+        ), mock.patch.object(dialogs.ChiSurfMessageBox, "warning") as warning:
             dock._on_delete()
         qapp.processEvents()
 
@@ -671,9 +672,9 @@ def test_object_entity_dock_copies_reveals_and_deletes_seeded_object(
         assert revealed_path.read_bytes() == b"time,intensity\n0,10\n"
 
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             widget._delete_selected_object_entity()
         qapp.processEvents()
@@ -684,7 +685,7 @@ def test_object_entity_dock_copies_reveals_and_deletes_seeded_object(
 
 
 def test_branch_entity_dock_creates_updates_and_deletes_branch(seeded_admin_db, qapp):
-    from qtpy import QtCore, QtWidgets
+    from qtpy import QtCore
 
     with _widget_for_db(seeded_admin_db) as widget:
         dock = _entity_dock(widget, qapp, "branch")
@@ -710,9 +711,9 @@ def test_branch_entity_dock_creates_updates_and_deletes_branch(seeded_admin_db, 
         checkbox = dock.table.item(dock.table.currentRow(), 0)
         checkbox.setCheckState(QtCore.Qt.Checked)
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             dock._on_delete()
         qapp.processEvents()
@@ -852,9 +853,9 @@ def test_raw_and_processed_entity_dock_validate_and_delete_seeded_artifacts(
         assert "validation set to warning" in widget.status_label.text()
 
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             widget._delete_selected_raw_data()
         qapp.processEvents()
@@ -884,9 +885,9 @@ def test_raw_and_processed_entity_dock_validate_and_delete_seeded_artifacts(
         assert "validation set to invalid" in widget.status_label.text()
 
         with mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             widget._delete_selected_processed_product()
         qapp.processEvents()
@@ -1012,9 +1013,9 @@ def test_import_export_panel_validates_previews_and_exports_seeded_sample(
             "getSaveFileName",
             return_value=(str(sample_path), "CIF files (*.cif *.mmcif)"),
         ), mock.patch.object(
-            QtWidgets.QMessageBox,
+            dialogs.ChiSurfMessageBox,
             "question",
-            return_value=QtWidgets.QMessageBox.Yes,
+            return_value=dialogs.ChiSurfMessageBox.Yes,
         ):
             widget.export_selected_sample()
         qapp.processEvents()

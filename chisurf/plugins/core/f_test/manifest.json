@@ -4,7 +4,7 @@
   "display_name": "Main:Tools:F-Test",
   "description": "F-test calculator: compare two nested model fits (confidence <-> chi2 threshold) and compute the chi2-max upper limit of a single fit at a confidence level. Declarative AutoForm view; values load from open fits.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools", "Statistics"],
+  "categories": ["Main", "Tools", "Statistics"],
   "icon": "📉",
   "state_namespace": "f_test",
   "statefulness": {

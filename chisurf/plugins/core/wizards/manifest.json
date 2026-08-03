@@ -4,7 +4,7 @@
   "display_name": "Main:Tools:Wizards",
   "description": "Hub that lists ChiSurf's guided wizards and embeds the selected one in a two-panel view.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools"],
+  "categories": ["Main", "Tools"],
   "state_namespace": "wizards",
   "statefulness": {
     "enabled": true,

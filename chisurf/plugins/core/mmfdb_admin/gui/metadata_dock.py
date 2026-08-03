@@ -19,6 +19,7 @@ from chisurf.gui.widgets.metadata_editor import (
     MetadataEditor,
     key_description,
 )
+from chisurf.gui import dialogs
 
 
 class MetadataDock(QtWidgets.QWidget):
@@ -235,7 +236,7 @@ class MetadataDock(QtWidgets.QWidget):
             )
             self.dataChanged.emit(sample_id)
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Save failed", str(exc))
+            dialogs.error(self, "Save failed", str(exc))
 
     # ---- Internal: row selection -> detail form ----
 

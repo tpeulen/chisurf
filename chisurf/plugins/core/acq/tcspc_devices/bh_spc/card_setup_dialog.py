@@ -10,12 +10,12 @@ import json
 from qtpy.QtWidgets import (
     QDialog, QTabWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
     QPushButton, QLabel, QSpinBox, QDoubleSpinBox, QComboBox,
-    QCheckBox, QGroupBox, QDialogButtonBox, QFileDialog, QMessageBox,
-    QWidget,
+    QCheckBox, QGroupBox, QDialogButtonBox, QFileDialog, QWidget,
 )
 from qtpy.QtCore import Qt
 
 from .wrapper import BHSPC, ParID, SPCMError, InitStatus
+from chisurf.gui import dialogs
 
 class ParamWidget:
     """Base class for parameter widgets."""
@@ -446,13 +446,13 @@ class BHSPCCardSetupDialog(QDialog):
         try:
             self.device.set_active_cards(self.active_cards)
         except Exception as e:
-            QMessageBox.warning(self, "Warning", f"Error setting active cards: {e}")
+            dialogs.warning(self, "Warning", f"Error setting active cards: {e}")
 
         # Write all parameters to the device
         if self.write_all_params():
-            QMessageBox.information(self, "Success", "Settings applied successfully.")
+            dialogs.information(self, "Success", "Settings applied successfully.")
         else:
-            QMessageBox.warning(self, "Warning", "Some settings could not be applied.")
+            dialogs.warning(self, "Warning", "Some settings could not be applied.")
 
     def save_settings(self):
         """Save the settings to a file."""
@@ -476,9 +476,9 @@ class BHSPCCardSetupDialog(QDialog):
             with open(file_path, 'w') as f:
                 json.dump(settings, f, indent=4)
 
-            QMessageBox.information(self, "Success", f"Settings saved to {file_path}")
+            dialogs.information(self, "Success", f"Settings saved to {file_path}")
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error saving settings: {e}")
+            dialogs.error(self, "Error", f"Error saving settings: {e}")
 
     def load_settings(self):
         """Load settings from a file."""
@@ -504,19 +504,19 @@ class BHSPCCardSetupDialog(QDialog):
 
             # Apply the settings to the device
             if self.write_all_params():
-                QMessageBox.information(
+                dialogs.information(
                     self, 
                     "Success", 
                     f"Settings loaded from {file_path}\n{success_count} parameters updated"
                 )
             else:
-                QMessageBox.warning(
+                dialogs.warning(
                     self, 
                     "Warning", 
                     f"Settings loaded from {file_path}, but some could not be applied to the device"
                 )
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Error loading settings: {e}")
+            dialogs.error(self, "Error", f"Error loading settings: {e}")
 
     def showEvent(self, event):
         """Handle the show event to read parameters."""
@@ -545,10 +545,10 @@ class BHSPCCardSetupDialog(QDialog):
         try:
             self.device.set_active_cards(self.active_cards)
         except Exception as e:
-            QMessageBox.warning(self, "Warning", f"Error setting active cards: {e}")
+            dialogs.warning(self, "Warning", f"Error setting active cards: {e}")
 
         # Write all parameters to the device
         if self.write_all_params():
             super().accept()
         else:
-            QMessageBox.warning(self, "Warning", "Some settings could not be applied.")
+            dialogs.warning(self, "Warning", "Some settings could not be applied.")

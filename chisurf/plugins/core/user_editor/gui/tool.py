@@ -29,6 +29,7 @@ from qtpy.QtWidgets import (
 import chisurf.core.settings as cs_settings
 from chisurf import logging
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 
 class PasswordChangeDialog(QDialog):
@@ -152,11 +153,11 @@ class PasswordChangeDialog(QDialog):
         confirm = self.edit_confirm.text()
         
         if password != confirm:
-            QMessageBox.warning(self, "Validation Error", "Passwords do not match.")
+            dialogs.warning(self, "Validation Error", "Passwords do not match.")
             return
             
         if self.is_admin and self.score < 4:
-            QMessageBox.warning(self, "Validation Error", "Administrator password is too weak. It must be at least Medium strength (score >= 4).")
+            dialogs.warning(self, "Validation Error", "Administrator password is too weak. It must be at least Medium strength (score >= 4).")
             return
             
         self.password = password
@@ -344,7 +345,7 @@ class UserEditorWidget(QWidget):
             logging.info("User Editor: loaded %d users", len(self.users))
         except Exception as e:
             logging.exception("User Editor: failed to load users via MMFDB RPC")
-            QMessageBox.critical(self, "ZMQ RPC Error", f"Could not load users via JSON-RPC:\n{e}")
+            dialogs.error(self, "ZMQ RPC Error", f"Could not load users via JSON-RPC:\n{e}")
             self.users = []
 
         active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
@@ -521,7 +522,7 @@ class UserEditorWidget(QWidget):
 
     def on_change_password_clicked(self):
         if not self.selected_user_id and not self.is_creating_new:
-            QMessageBox.warning(self, "Selection Required", "Please select or create a user first.")
+            dialogs.warning(self, "Selection Required", "Please select or create a user first.")
             return
             
         user_id = self.selected_user_id or self.edit_user_id.text().strip()
@@ -551,14 +552,14 @@ class UserEditorWidget(QWidget):
         password = self.temp_password
 
         if not user_id:
-            QMessageBox.warning(self, "Validation Error", "User ID is required.")
+            dialogs.warning(self, "Validation Error", "User ID is required.")
             return
         if not display_name:
-            QMessageBox.warning(self, "Validation Error", "Display Name is required.")
+            dialogs.warning(self, "Validation Error", "Display Name is required.")
             return
         if email:
             if "@" not in email or "." not in email.split("@")[-1]:
-                QMessageBox.warning(self, "Validation Error", f"Invalid email format: '{email}'")
+                dialogs.warning(self, "Validation Error", f"Invalid email format: '{email}'")
                 return
 
         active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
@@ -606,7 +607,7 @@ class UserEditorWidget(QWidget):
             self.load_users(select_user_id=user_id)
         except Exception as e:
             logging.exception("User Editor: failed to save user '%s' via MMFDB RPC", user_id)
-            QMessageBox.critical(self, "ZMQ RPC Error", f"Could not save user:\n{e}")
+            dialogs.error(self, "ZMQ RPC Error", f"Could not save user:\n{e}")
 
     def rename_local_user_state(self, old_user_id: str, new_user_id: str) -> None:
         """Update local settings and stored tokens after a username rename.
@@ -719,13 +720,13 @@ class UserEditorWidget(QWidget):
         try:
             with open(cs_settings.chisurf_settings_file, "w", encoding="utf-8") as f:
                 yaml.dump(cs_settings.cs_settings, f, default_flow_style=False)
-            QMessageBox.information(
+            dialogs.information(
                 self, "Active User Changed",
                 f"Active user successfully changed to '{self.selected_user_id}'."
             )
             self.load_users()
         except Exception as e:
-            QMessageBox.critical(
+            dialogs.error(
                 self, "Settings Error",
                 f"Could not persist active user to configuration file:\n{e}"
             )
@@ -733,14 +734,14 @@ class UserEditorWidget(QWidget):
     def on_delete_user_clicked(self):
         """Safely delete a user if they have not committed any data."""
         if not self.selected_user_id:
-            QMessageBox.warning(self, "Selection Required", "Please select a user to delete.")
+            dialogs.warning(self, "Selection Required", "Please select a user to delete.")
             return
 
         user_id = self.selected_user_id
 
         # 1. user_default can never be deleted
         if user_id == "user_default":
-            QMessageBox.warning(
+            dialogs.warning(
                 self, "Action Prohibited",
                 "The default user ('user_default') is required by the system and cannot be deleted."
             )
@@ -749,7 +750,7 @@ class UserEditorWidget(QWidget):
         # 2. Currently active default user cannot be deleted
         active_id = cs_settings.cs_settings.get("mmfdb", {}).get("default_user_id", "user_default")
         if user_id == active_id:
-            QMessageBox.warning(
+            dialogs.warning(
                 self, "Action Prohibited",
                 "The selected user is currently configured as the active user.\n"
                 "Please select and switch to another active user before deleting this one."
@@ -757,7 +758,7 @@ class UserEditorWidget(QWidget):
             return
 
         # Confirm deletion
-        reply = QMessageBox.question(
+        reply = dialogs.question(
             self, "Confirm Deletion",
             f"Are you sure you want to delete user '{user_id}'?\nThis action cannot be undone.",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
@@ -778,7 +779,7 @@ class UserEditorWidget(QWidget):
                 is_current_admin = current_user_data.get("is_admin") == 1 if current_user_data else False
                 
                 if is_current_admin:
-                    override_reply = QMessageBox.question(
+                    override_reply = dialogs.question(
                         self, "Admin Override",
                         f"Could not delete user: {e}\n\nDo you want to FORCE delete this user? This will delete the user but leave their committed data intact in the database.",
                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No
@@ -792,6 +793,6 @@ class UserEditorWidget(QWidget):
                             self.load_users()
                         except Exception as force_e:
                             logging.exception("User Editor: force delete failed for user '%s'", user_id)
-                            QMessageBox.critical(self, "Action Prohibited", f"Force deletion failed:\n{force_e}")
+                            dialogs.error(self, "Action Prohibited", f"Force deletion failed:\n{force_e}")
                 else:
-                    QMessageBox.critical(self, "Action Prohibited", f"Could not delete user:\n{e}")
+                    dialogs.error(self, "Action Prohibited", f"Could not delete user:\n{e}")

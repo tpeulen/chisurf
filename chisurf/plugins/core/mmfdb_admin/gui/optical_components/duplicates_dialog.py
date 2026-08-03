@@ -8,6 +8,7 @@ import re
 import math
 from collections import defaultdict
 from difflib import SequenceMatcher
+from chisurf.gui import dialogs
 
 def _norm(name: str) -> str:
     n = (name or "").lower()
@@ -556,7 +557,7 @@ class DuplicatesDialog(QtWidgets.QDialog):
                         error_count += 1
                         
             if success_count > 0:
-                QtWidgets.QMessageBox.information(
+                dialogs.information(
                     self,
                     "Merge Complete",
                     f"Successfully merged {success_count} group(s)."
@@ -571,7 +572,7 @@ class DuplicatesDialog(QtWidgets.QDialog):
                             break
                             
             if error_count > 0:
-                QtWidgets.QMessageBox.warning(
+                dialogs.warning(
                     self,
                     "Merge Errors",
                     f"Failed to merge {error_count} group(s). Check logs for details."

@@ -18,6 +18,7 @@ from chisurf.plugins.core.lightpath_simulator.core.workflow import (
     _simulate_with_db,
     resolve_db_path,
 )
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -1667,7 +1668,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             self._rebuild_graph(cfg)
             loaded = True
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "Load Failed", str(exc))
+            dialogs.error(self, "Load Failed", str(exc))
         finally:
             self._suppress_recalc = False
             self._suppress_form_sync = False
@@ -1700,7 +1701,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             self._connect_controls()
             self._rebuild_graph(cfg)
         except Exception as exc:
-            QtWidgets.QMessageBox.warning(self, "Load Failed", str(exc))
+            dialogs.warning(self, "Load Failed", str(exc))
         finally:
             self._suppress_recalc = False
             self._suppress_form_sync = False
@@ -1782,7 +1783,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
     def recalculate(self):
         cfg = self._get_config()
         if not cfg.get("dyes"):
-            QtWidgets.QMessageBox.warning(self, "No Dyes", "Select at least one dye.")
+            dialogs.warning(self, "No Dyes", "Select at least one dye.")
             return
         try:
             graph = build_easy_graph(cfg)
@@ -1793,7 +1794,7 @@ class LightPathEasyWidget(QtWidgets.QWidget):
             self._save_last_config()
         except Exception as exc:
             logger.error("Easy mode simulation failed: %s", exc)
-            QtWidgets.QMessageBox.critical(self, "Simulation Failed", str(exc))
+            dialogs.error(self, "Simulation Failed", str(exc))
 
     def _save_last_config(self):
         try:

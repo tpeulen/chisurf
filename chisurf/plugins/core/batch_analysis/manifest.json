@@ -4,7 +4,7 @@
   "display_name": "Main:Tools:Batch-Analysis",
   "description": "Apply one pre-optimised template fit to many datasets or files in one pass and export the consolidated results (CSV, DOCX report, per-run ZIP).",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Analysis"],
+  "categories": ["Main", "Tools", "Analysis"],
   "icon": "📚",
   "state_namespace": "batch_analysis",
   "statefulness": {

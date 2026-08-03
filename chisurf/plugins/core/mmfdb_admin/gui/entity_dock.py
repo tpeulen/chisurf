@@ -28,6 +28,7 @@ from .mixins import (
     SchemaMixin,
     TableMixin,
 )
+from chisurf.gui import dialogs
 
 
 class EntityDock(
@@ -249,7 +250,7 @@ class EntityDock(
     def _on_delete(self) -> None:
         ids = self.checked_row_ids()
         if not ids:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Nothing checked",
                 f"Tick the checkbox in the first column to select "
@@ -257,7 +258,7 @@ class EntityDock(
             )
             return
 
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self,
             f"Delete {self._spec.title}",
             f"Delete {len(ids)} {self._spec.title.lower()}?",
@@ -275,7 +276,7 @@ class EntityDock(
                 failures.append(f"{item_id}: {exc}")
 
         if failures:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Some deletes failed",
                 "\n".join(failures[:10]),

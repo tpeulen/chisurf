@@ -31,6 +31,7 @@ from chisurf.plugins.core.lightpath_simulator.gui.node_types import (
     get_sample_node_factory,
     optical_registry,
 )
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -449,9 +450,9 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
                     with open(path, "w") as f:
                         json.dump(self._last_instrument_setting, f, indent=2)
                 except Exception as e:
-                    QtWidgets.QMessageBox.critical(self, "Export Failed", f"Could not save file:\n{e}")
+                    dialogs.error(self, "Export Failed", f"Could not save file:\n{e}")
             else:
-                QtWidgets.QMessageBox.warning(self, "Export Warning", "No instrument setting has been simulated yet.")
+                dialogs.warning(self, "Export Warning", "No instrument setting has been simulated yet.")
 
     def _on_save_optical_preset(self):
         """Save the current graph as a named preset for use in easy mode."""
@@ -484,7 +485,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
                 with open(path, "w") as f:
                     json.dump(state, f, indent=2)
             except Exception as e:
-                QtWidgets.QMessageBox.critical(self, "Save Failed", f"Could not save graph:\n{e}")
+                dialogs.error(self, "Save Failed", f"Could not save graph:\n{e}")
 
     def _on_load_graph(self):
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -497,7 +498,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
                 self.propagate_graph()
                 self._fit_view()
             except Exception as e:
-                QtWidgets.QMessageBox.critical(self, "Load Failed", f"Could not load graph:\n{e}")
+                dialogs.error(self, "Load Failed", f"Could not load graph:\n{e}")
 
     def _on_save_to_mmfdb(self):
         """Persist the current graph and simulation result as MMFDB artifacts."""
@@ -514,9 +515,9 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         try:
             res = self.client.save(graph, name=name or "Light path simulation")
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "MMFDB Save Failed", str(exc))
+            dialogs.error(self, "MMFDB Save Failed", str(exc))
             return
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             self,
             "Saved to MMFDB",
             f"Saved operation {res.get('operation_id')}",
@@ -527,10 +528,10 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         try:
             records = self.client.list_saved()
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "MMFDB Load Failed", str(exc))
+            dialogs.error(self, "MMFDB Load Failed", str(exc))
             return
         if not records:
-            QtWidgets.QMessageBox.information(self, "MMFDB", "No saved light path simulations found.")
+            dialogs.information(self, "MMFDB", "No saved light path simulations found.")
             return
         labels = [
             f"{item.get('name') or item.get('operation_id')} ({item.get('operation_id')})"
@@ -550,7 +551,7 @@ class LightPathSimulatorWidget(QtWidgets.QMainWindow):
         try:
             load_res = self.client.get(operation_id)
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "MMFDB Load Failed", str(exc))
+            dialogs.error(self, "MMFDB Load Failed", str(exc))
             return
         self.scene.clear()
         self.scene.from_dict(normalize_lightpath_graph(load_res["graph"]))

@@ -26,6 +26,48 @@
   },
   "rpc_methods": [
     {
+      "name": "fluorophores.diffusion_reference",
+      "summary": "List every probe carrying a diffusion coefficient D(25 °C, water).",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "seed_if_empty": {
+            "type": "boolean",
+            "description": "Seed the literature reference values when the table is empty."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "species": {
+            "type": "array"
+          }
+        }
+      }
+    },
+    {
+      "name": "fluorophores.import_diffusion_reference",
+      "summary": "Seed literature diffusion coefficients as probe properties.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "mark_verified": {
+            "type": "boolean",
+            "description": "Mark the imported values as verified."
+          }
+        }
+      },
+      "result_schema": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
       "name": "mmfdb.security.auth.change_password"
     },
     {

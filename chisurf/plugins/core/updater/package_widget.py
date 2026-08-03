@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Set
 import logging
+from chisurf.gui import dialogs
 
 # Logger for the package manager dialog
 logger = logging.getLogger("chisurf.packagemanager")
@@ -412,7 +413,7 @@ class PackageManagerWidget(QWidget):
         # Get names from column 0
         pkgs = list(set([self.search_results.item(item.row(), 0).text() for item in selected]))
         
-        confirm = QMessageBox.question(self, "Confirm Installation", 
+        confirm = dialogs.question(self, "Confirm Installation", 
                                      f"Are you sure you want to install:\n{', '.join(pkgs)}?",
                                      QMessageBox.Yes | QMessageBox.No)
         
@@ -438,7 +439,7 @@ class PackageManagerWidget(QWidget):
 
     def update_all(self):
         """Ask for confirmation, then update every package in the current environment."""
-        confirm = QMessageBox.question(self, "Update All", 
+        confirm = dialogs.question(self, "Update All", 
                                      "Update all packages in the current environment?",
                                      QMessageBox.Yes | QMessageBox.No)
         if confirm == QMessageBox.Yes:
@@ -455,7 +456,7 @@ class PackageManagerWidget(QWidget):
             return
         
         pkgs = list(set([self.installed_table.item(item.row(), 0).text() for item in selected]))
-        confirm = QMessageBox.question(self, "Confirm Removal", 
+        confirm = dialogs.question(self, "Confirm Removal", 
                                      f"Are you sure you want to remove:\n{', '.join(pkgs)}?",
                                      QMessageBox.Yes | QMessageBox.No)
         
@@ -483,13 +484,13 @@ class PackageManagerWidget(QWidget):
             self.refresh_all()
         else:
             self.log(f"Operation failed: {error}")
-            QMessageBox.critical(self, "Error", f"The operation failed:\n{error}")
+            dialogs.error(self, "Error", f"The operation failed:\n{error}")
         if success:
             self.log("Operation completed successfully.")
             self.refresh_all()
         else:
             self.log(f"Operation failed: {error}")
-            QMessageBox.critical(self, "Error", f"The operation failed:\n{error}")
+            dialogs.error(self, "Error", f"The operation failed:\n{error}")
 
     # --- Env Handlers ---
 
@@ -553,7 +554,7 @@ class PackageManagerWidget(QWidget):
         if not selected:
             return
         env = selected.text()
-        confirm = QMessageBox.question(self, "Confirm removal", f"Remove environment '{env}'?", 
+        confirm = dialogs.question(self, "Confirm removal", f"Remove environment '{env}'?", 
                                      QMessageBox.Yes | QMessageBox.No)
         if confirm == QMessageBox.Yes:
             self.log(f"Removing environment '{env}'...")

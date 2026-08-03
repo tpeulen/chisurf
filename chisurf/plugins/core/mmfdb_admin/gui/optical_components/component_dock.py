@@ -18,6 +18,8 @@ from chisurf.gui.widgets.spectrum_view import SpectrumView
 
 from .component_detail_form import ComponentDetailForm
 from .duplicates_dialog import DuplicatesDialog
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 _PROPERTY_MAP = {
     "Cut-On Wavelength (nm)": "cut_on",
@@ -426,7 +428,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     def _on_import(self) -> None:
-        answer = QtWidgets.QMessageBox.question(
+        answer = dialogs.question(
             self,
             "Import reference set",
             "Import reference set data from the bundled database?\n\n"
@@ -494,7 +496,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
                     f"No issues found — proposed quality: {quality}.\n\n"
                     "Queued for review; use Approve to confirm."
                 )
-            QtWidgets.QMessageBox.information(self, "AI Triage Result", msg)
+            dialogs.information(self, "AI Triage Result", msg)
             self.refresh()
         except Exception as exc:
             self._set_status(f"AI triage failed: {exc}")
@@ -512,10 +514,10 @@ class OpticalComponentDock(QtWidgets.QWidget):
                 probes = [p for p in probes if p.get("category", "other") in active_cats]
                 
             if not probes:
-                QtWidgets.QMessageBox.information(self, "Find Duplicates", "No probes found for the active category.")
+                dialogs.information(self, "Find Duplicates", "No probes found for the active category.")
                 self._set_status("No probes found")
                 return
-            self._progress = QtWidgets.QProgressDialog("Analyzing probes for duplicates...", "Cancel", 0, 100, self)
+            self._progress = ChiSurfProgress(self, "Analyzing probes for duplicates...", 100)
             self._progress.setWindowTitle("Finding Duplicates")
             self._progress.setWindowModality(QtCore.Qt.WindowModal)
             self._progress.setValue(0)
@@ -529,7 +531,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
                 if not self._progress.wasCanceled():
                     self._progress.close()
                     if not duplicate_groups:
-                        QtWidgets.QMessageBox.information(self, "Find Duplicates", "No potential duplicates found.")
+                        dialogs.information(self, "Find Duplicates", "No potential duplicates found.")
                         self._set_status("No duplicates found")
                         return
                     dialog = DuplicatesDialog(duplicate_groups, self._client, self)
@@ -708,7 +710,7 @@ class OpticalComponentDock(QtWidgets.QWidget):
     def _selected_probe_id(self) -> str | None:
         row = self._table.currentRow()
         if row < 0:
-            QtWidgets.QMessageBox.information(self, "No selection", "Select an item first.")
+            dialogs.information(self, "No selection", "Select an item first.")
             return None
         item = self._table.item(row, 1)
         return item.text().strip() if item else None
