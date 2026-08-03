@@ -158,20 +158,28 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
         # Hovering a row shows the full file name and a preview of the curve; the
         # preview is painted only when the tooltip is first requested (see
         # chisurf.gui.widgets.tooltip_plot).
+        def experiment_name(dataset) -> str:
+            # A curve produced by a tool rather than loaded through a reader --
+            # a correlation, a simulation -- has no experiment. That is legal;
+            # reading ``.name`` off it used to raise here and take the whole
+            # selector down with it.
+            experiment = getattr(dataset, "experiment", None)
+            return experiment.name if experiment is not None else ""
+
         for nbr, d in enumerate(self.datasets):
             # If group of curves
             if isinstance(d, chisurf.core.data.ExperimentDataGroup):
                 if len(d) == 1:
                     di = d[0]
                     widget_name = pathlib.Path(di.name).name
-                    experiment_type = di.experiment.name
+                    experiment_type = experiment_name(di)
                     item = TooltipTreeItem(
                         self, [str(nbr), widget_name, experiment_type],
                         key=di, render_fn=dataset_tooltip_html
                     )
                     item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
                 else:
-                    experiment_type = d[0].experiment.name
+                    experiment_type = experiment_name(d[0])
                     widget_name = pathlib.Path(d[0].name).name
                     item = TooltipTreeItem(
                         self, [str(nbr), widget_name, experiment_type],
@@ -179,7 +187,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
                     )
                     for di in d:
                         fn = di.name
-                        experiment_type = di.experiment.name
+                        experiment_type = experiment_name(di)
                         widget_name = pathlib.Path(fn).name
                         i2 = TooltipTreeItem(
                             item, [str(nbr), widget_name, experiment_type],
@@ -189,7 +197,7 @@ class ExperimentalDataSelector(QtWidgets.QTreeWidget):
             else:
                 fn = d.name
                 widget_name = pathlib.Path(fn).name
-                experiment_type = d.experiment.name
+                experiment_type = experiment_name(d)
                 item = TooltipTreeItem(
                     self, [str(nbr), widget_name, experiment_type],
                     key=d, render_fn=dataset_tooltip_html
