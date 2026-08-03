@@ -444,7 +444,22 @@ class SetupMixin:
             return
         widget = self.current_setup
         if not isinstance(widget, QtWidgets.QWidget):
-            widget = widget.controller
+            widget = getattr(widget, "controller", None)
+        if not isinstance(widget, QtWidgets.QWidget):
+            # A reader registered with no controller (``controller_class: null``)
+            # has nothing to show. That is a legitimate configuration — a couple of
+            # readers ship that way — but it used to reach ``None.show()`` and take
+            # the *whole* splash startup down with it, so the console and every
+            # later stage never ran and the failure looked nothing like its cause.
+            # Say which reader, and carry on.
+            cs.logging.warning(
+                "the reader %r has no controller widget; its settings cannot be "
+                "shown. Register a controller_class for it in "
+                "experiment_configs.yaml.",
+                getattr(self.current_setup, "name", self.current_setup),
+            )
+            self._current_setup_idx = self.comboBox_setupSelect.currentIndex()
+            return
         self.layout_experiment_reader.addWidget(widget)
         widget.show()
         if hasattr(widget, 'updateUI') and callable(widget.updateUI):

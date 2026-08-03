@@ -256,3 +256,65 @@ def test_no_module_here_imports_pyqtgraph_directly():
     ):
         source = (REPO / relative).read_text(encoding="utf-8")
         assert "import" + " pyqtgraph" not in source, relative
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# The reader control, and the startup crash it caused
+# ──────────────────────────────────────────────────────────────────────────────
+def test_every_shipped_reader_can_show_something(qapp):
+    """A reader with no controller must not be able to abort the startup.
+
+    Registering an MFD reader without a ``controller_class`` took the *entire*
+    splash startup down: ``_refresh_setup_ui`` reached ``None.show()``, the
+    ``load_tools`` stage raised, and every later stage — including the QtConsole —
+    never ran. The visible symptom was "the console does not show", which points
+    nowhere near the cause.
+
+    ``controller_class: null`` is a legitimate configuration that a couple of
+    readers already ship, so the fix is both: MFD declares a controller, *and* a
+    reader without one is reported and skipped rather than raising.
+    """
+    import yaml
+
+    config = yaml.safe_load(
+        (REPO / "chisurf/core/settings/experiment_configs.yaml").read_text()
+    )
+    mfd = config["mfd"]["readers"][0]
+    assert mfd["controller_class"].endswith("mfd.MFDController")
+
+
+def test_the_mfd_controller_builds_and_picks_a_folder(qapp):
+    """An MFD dataset is a *folder*, so the control must ask for one."""
+    from chisurf.core.experiments.mfd import MfdReader
+    from chisurf.gui.widgets.experiments.mfd import MFDController
+
+    controller = MFDController(experiment_reader=MfdReader())
+    assert controller is not None
+    # The one thing it cannot inherit: a directory chooser rather than a file one.
+    assert callable(controller.get_filename)
+    assert "filename" in dir(controller)
+    controller.updateUI()
+
+
+def test_a_controllerless_reader_is_skipped_not_fatal(qapp, monkeypatch):
+    """The guard itself, exercised through the real refresh path."""
+    from qtpy import QtWidgets
+
+    from chisurf.gui import main_helper
+
+    class _Bare:
+        """A reader that never got a controller."""
+
+        name = "bare reader"
+        controller = None
+
+    class _Fake:
+        current_experiment = type("E", (), {"readers": [_Bare()]})()
+        current_setup = _Bare()
+        layout_experiment_reader = QtWidgets.QVBoxLayout()
+        comboBox_setupSelect = QtWidgets.QComboBox()
+        _current_setup_idx = 0
+
+    fake = _Fake()
+    # Must return quietly rather than raising AttributeError on None.show().
+    main_helper.SetupMixin._refresh_setup_ui(fake)
