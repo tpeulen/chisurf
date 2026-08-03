@@ -40,7 +40,7 @@
                 {
                   "type": "value",
                   "attr": "wavelength_nm",
-                  "label": "\u03bb (nm)",
+                  "label": "λ (nm)",
                   "kind": "float",
                   "decimals": 0,
                   "minimum": 300.0,
@@ -109,7 +109,7 @@
                 {
                   "type": "value",
                   "attr": "angle_deg",
-                  "label": "Angle (\u00b0)",
+                  "label": "Angle (°)",
                   "kind": "float",
                   "decimals": 0,
                   "minimum": 0.0,
@@ -238,7 +238,8 @@
               "source": "summary_text",
               "title": "Result",
               "description": "Peak position, axial and lateral extent of the computed PSF.",
-              "n_col": 1
+              "n_col": 1,
+              "is_markdown": true
             }
           ]
         },

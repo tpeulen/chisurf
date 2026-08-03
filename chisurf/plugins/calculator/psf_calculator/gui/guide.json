@@ -1,0 +1,67 @@
+{
+  "steps": [
+    {
+      "title": "What this tool answers",
+      "text": "We will work one question through: <b>how wrong is the textbook resolution formula for my objective?</b><br/><br/>Everyone quotes 0.51 \u03bb/NA. At the high NA people actually use, it is optimistic \u2014 and by how much depends on the polarization, which the formula does not mention at all. Six steps and you will have the number for your own optics.",
+      "target": {
+        "attr": "na"
+      }
+    },
+    {
+      "title": "Step 1 \u2014 set your objective's NA",
+      "text": "Type the NA of the objective you actually use. <b>1.40</b> is a common oil immersion value and is what the rest of this tour assumes.<br/><br/>The NA is what decides whether any of this matters: below about 1.0 the scalar formula is fine, and above it the field starts tipping out of the transverse plane.",
+      "target": {
+        "attr": "na"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 2 \u2014 the immersion medium",
+      "text": "Set <b>n (immersion)</b> to match: <b>1.518</b> for oil, 1.33 for water, 1.0 for air.<br/><br/>This is not decoration. The aperture half-angle is arcsin(NA/n), so the immersion index sets how strongly the lens focuses \u2014 and the NA can never exceed it.",
+      "target": {
+        "attr": "n_immersion"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 3 \u2014 pick the scalar model first, deliberately",
+      "text": "Choose <b>Airy (scalar)</b> here.<br/><br/>We are going to get the textbook answer before the honest one, so the difference is yours rather than mine. Watch the summary line under the controls: it reports the measured lateral width beside the 0.51 \u03bb/NA prediction.",
+      "target": {
+        "attr": "model"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 4 \u2014 now switch to vectorial",
+      "text": "Change the optical model to <b>Vectorial (Richards\u2013Wolf)</b>.<br/><br/>The summary's lateral width grows. At NA 1.4 and 520 nm the true circular-polarization width is about <b>224 nm</b> where the scalar formula says 189 nm \u2014 the textbook number is optimistic by roughly 17%, before anything else goes wrong.",
+      "target": {
+        "attr": "model"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 5 \u2014 the part the formula cannot express",
+      "text": "Set <b>Polarization</b> to <b>Linear x</b>.<br/><br/>The focus is now longer in one direction than the other \u2014 about 256 nm across x against 192 nm across y. A resolution quoted as a single number is hiding a third of a difference between two axes. Try <b>Azimuthal</b> too: it is a doughnut with an exact zero on axis, which no scalar model can produce.",
+      "target": {
+        "attr": "polarization"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 6 \u2014 make the state visible",
+      "text": "Tick <b>Polarization vectors</b>.<br/><br/>Strokes appear on a ring above the focus, along the local field direction \u2014 parallel for linear, outward for radial, tangential for azimuthal. They are here because the effect on the focus is real but subtle to the eye, and you should be able to see <i>which</i> state produced a picture without reading the controls.",
+      "target": {
+        "attr": "show_polarization"
+      },
+      "await": true
+    },
+    {
+      "title": "Last \u2014 switch to Full before you quote a number",
+      "text": "Everything so far ran on <b>Preview</b>, which evaluates the aperture integral at 60 points so editing stays responsive. Set <b>Quality</b> to <b>Full</b> (300 points) before taking a width you intend to publish or feed to a deconvolution.<br/><br/>Increase <b>Planes</b> and lower <b>z step</b> if you care about the axial width: the default sampling is coarse enough to quantize it.",
+      "target": {
+        "attr": "quality"
+      },
+      "await": true
+    }
+  ]
+}

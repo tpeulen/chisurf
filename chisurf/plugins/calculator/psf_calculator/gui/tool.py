@@ -8,8 +8,9 @@ from qtpy import QtCore, QtWidgets
 import chisurf.gui.chiplot as cp
 from chisurf.gui.autoform.auto_form import AutoForm
 from chisurf.gui.autoform.sections import register_section
+from chisurf.gui.widgets.tools.chisurf_dock_tool import ChisurfDockTool
 
-from .core import PSFModel
+from ..core import PSFModel
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class _Worker(QtCore.QRunnable):
             self.signals.failed.emit(str(exc))
 
 
-class PSFCalculator(QtWidgets.QWidget):
+class PSFCalculator(ChisurfDockTool):
     """Compute a point-spread function and view it as a volume.
 
     Controls on the left, the 3-D view on the right. Editing a parameter
@@ -70,13 +71,25 @@ class PSFCalculator(QtWidgets.QWidget):
         self.model = PSFModel()
         self.auto_form = AutoForm(self.model)
 
+        # The house rule: long help behind a ? modal, and a guided tour beside
+        # it. add_toolbar_help picks the Guide button up on its own once
+        # gui/guide.json exists.
+        toolbar = QtWidgets.QToolBar()
+        toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self.add_toolbar_help(
+            toolbar, resource="help.md", title="PSF calculator — Help",
+            model=self)
+        self.addToolBar(toolbar)
+
         # The spec is a dock_area, so the parameter panels and the 3-D view are
         # docks the user can re-arrange, float or tab -- the inputs and the plot
         # are separable rather than welded into one layout.
-        layout = QtWidgets.QVBoxLayout(self)
+        central = QtWidgets.QWidget()
+        layout = QtWidgets.QVBoxLayout(central)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
         layout.addWidget(self.auto_form)
+        self.setCentralWidget(central)
 
         self.view = self.auto_form.section_widget(key="psf_volume_view")
         if self.view is None:                      # spec not applied

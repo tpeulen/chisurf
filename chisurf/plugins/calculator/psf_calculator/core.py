@@ -135,11 +135,15 @@ class PSFModel:
         lateral = self._fwhm(vol[nz // 2][ny // 2], self.pixel_size_nm)
         axial = self._fwhm(vol[:, ny // 2, nx // 2], self.z_step_nm)
         scalar = 0.51 * self.wavelength_nm / self.na
+        # The info section renders markdown, where a lone newline is a space --
+        # a list keeps the numbers on separate lines.
         return (
-            f"volume {nz} x {ny} x {nx}\n"
-            f"lateral FWHM  {lateral:.0f} nm\n"
-            f"axial FWHM    {axial:.0f} nm\n"
-            f"scalar 0.51 λ/NA = {scalar:.0f} nm"
+            f"- volume **{nz} x {ny} x {nx}** "
+            f"({self.pixel_size_nm:.0f} nm px, {self.z_step_nm:.0f} nm z)\n"
+            f"- lateral FWHM **{lateral:.0f} nm**\n"
+            f"- axial FWHM **{axial:.0f} nm**\n"
+            f"- scalar 0.51 λ/NA = {scalar:.0f} nm "
+            f"({lateral / scalar:.2f} x lateral)"
         )
 
     @staticmethod

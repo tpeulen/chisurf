@@ -2,6 +2,19 @@
 
 ## 2026-08-03
 
+* **The PSF calculator got its tour and its `?`.** First plugin to land under
+  the new default: `gui/guide.json` walks "how wrong is 0.51 λ/NA for my
+  objective?" through NA → immersion → Airy → vectorial → polarization in eight
+  steps that `await` the user's own clicks, and `gui/help.md` carries the theory
+  behind a `?`. Four format traps worth knowing: `"await": false` is **not**
+  valid — omit the key, because the loader only special-cases `true` and a dict;
+  a `gui/` package **shadows** a sibling `gui.py`, so a tool that grows
+  resources moves to `gui/tool.py` (the convention the other calculators
+  already use); an `info` section renders HTML unless `is_markdown` is set,
+  which silently collapsed a four-line summary into one run-on line; and a help
+  link must resolve inside *this* repo — the guardrail test rejects one that
+  points at a companion repo's docs.
+
 * **A guide and a `?` are the plugin default, not an extra.** Written into
   [the plugin documentation standard](plugins/documentation-standard.md): every
   plugin with a GUI ships `gui/guide.json` *and* a `help` section, and one

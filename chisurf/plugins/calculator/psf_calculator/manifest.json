@@ -19,7 +19,7 @@
     "window": {"enabled": true, "settings_key": null}
   },
   "entrypoints": {
-    "gui": "chisurf.plugins.calculator.psf_calculator.gui:PSFCalculator"
+    "gui": "chisurf.plugins.calculator.psf_calculator.gui.tool:PSFCalculator"
   },
   "rpc_methods": [],
   "events": [],

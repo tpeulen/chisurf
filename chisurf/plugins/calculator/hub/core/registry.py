@@ -131,7 +131,7 @@ def default_calculators() -> list[CalculatorEntry]:
                 "Richards-Wolf, scalar Airy or Gaussian, with the polarization entering "
                 "the objective pupil."
             ),
-            widget="chisurf.plugins.calculator.psf_calculator.gui:PSFCalculator",
+            widget="chisurf.plugins.calculator.psf_calculator.gui.tool:PSFCalculator",
             icon="🔬",
         ),
     ]
