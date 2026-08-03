@@ -123,6 +123,17 @@ def default_calculators() -> list[CalculatorEntry]:
             widget="chisurf.plugins.calculator.fcs_saturation_calc.gui.tool:SaturationCalculatorTool",
             icon="🔆",
         ),
+        CalculatorEntry(
+            id="psf_calculator",
+            label="PSF calculator",
+            description=(
+                "Compute a 3-D point-spread function and view it as a volume: vectorial "
+                "Richards-Wolf, scalar Airy or Gaussian, with the polarization entering "
+                "the objective pupil."
+            ),
+            widget="chisurf.plugins.calculator.psf_calculator.gui:PSFCalculator",
+            icon="🔬",
+        ),
     ]
 
 
