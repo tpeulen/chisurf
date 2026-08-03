@@ -158,6 +158,15 @@ class CalculatorHub(QtWidgets.QWidget):
         """Construct *entry*'s widget, add it to the stack and return its index."""
         try:
             widget = _resolve(entry.widget)()
+            tb = getattr(widget, "toolbar", None) or getattr(widget, "tool_bar", None)
+            if isinstance(widget, QtWidgets.QMainWindow) and tb is not None:
+                wrapper = QtWidgets.QWidget()
+                w_layout = QtWidgets.QVBoxLayout(wrapper)
+                w_layout.setContentsMargins(0, 0, 0, 0)
+                w_layout.setSpacing(0)
+                w_layout.addWidget(tb)
+                w_layout.addWidget(widget)
+                widget = wrapper
         except Exception as exc:
             logger.warning("calculators: could not build %r", entry.id, exc_info=True)
             widget = QtWidgets.QLabel(f"Could not load '{entry.label}':\n{exc}")

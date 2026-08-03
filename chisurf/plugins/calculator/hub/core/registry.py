@@ -113,6 +113,16 @@ def default_calculators() -> list[CalculatorEntry]:
             widget="chisurf.plugins.core.f_test.gui.tool:FTestTool",
             icon="📉",
         ),
+        CalculatorEntry(
+            id="fcs_saturation",
+            label="FCS Saturation",
+            description=(
+                "Numerical calculation of excitation saturation and effective volume expansion "
+                "in FCS across arbitrary multi-state kinetic schemes (e.g. Cy5)."
+            ),
+            widget="chisurf.plugins.calculator.fcs_saturation_calc.gui.tool:SaturationCalculatorTool",
+            icon="🔆",
+        ),
     ]
 
 
