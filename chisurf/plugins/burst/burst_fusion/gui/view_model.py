@@ -529,9 +529,12 @@ class FusionViewModel:
             return values[np.isfinite(values)]
 
         def _row(name, before_value, after_value):
-            """One table row. The unit belongs in the name, not in a column of
-            its own: only two of eleven rows have one, so the column was mostly
-            empty and cost the panel width it does not have to spare."""
+            """Return one table row.
+
+            The unit belongs in the name, not in a column of its own: only two of
+            eleven rows have one, so the column was mostly empty and cost the
+            panel width it does not have to spare.
+            """
 
             def _text(value):
                 if isinstance(value, float):
