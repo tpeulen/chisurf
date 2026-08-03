@@ -14,6 +14,7 @@ from chisurf.core.fluorescence.fcs.saturation import (
     compute_bunching_factor,
     excitation_rate_peak,
     fit_single_component,
+    fit_two_components,
     integrated_excitation_rate,
     photon_flux,
 )
@@ -820,6 +821,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
         # component saturation introduces becomes visible: the amplitude drop
         # otherwise dominates the plot and the shape change hides inside it.
         self._apparent = None
+        self._two_component = None
         self._fcs_residual_series = []
         if self._show_gaussian_fit and power_mW > 0.0:
             tau_s = tau_ms * 1e-3
@@ -835,7 +837,14 @@ class SaturationCalculatorTool(ChisurfDockTool):
             tau_d_s, structure, fitted, rms = fit_single_component(
                 tau_s, diffusion, w_r * 1e-9, w_z * 1e-9, D_val * 1e-12
             )
+            # The analysis actually used on saturated data is a global triplet
+            # times *two* diffusion times. The triplet is known here -- it is the
+            # scheme, divided out above -- so what is left to recover is the pair.
             self._apparent = (tau_d_s, structure, rms)
+            fraction, tau_fast, tau_slow, _, rms_two = fit_two_components(
+                tau_s, diffusion, w_r * 1e-9, w_z * 1e-9, D_val * 1e-12
+            )
+            self._two_component = (fraction, tau_fast, tau_slow, rms_two)
             shown = fitted * bunching * (diffusion[0] if diffusion.size else 1.0)
             if self._normalize_fcs and shown[0] != 0:
                 shown = shown / shown[0]
@@ -911,12 +920,30 @@ class SaturationCalculatorTool(ChisurfDockTool):
             if rms > 2.5e-3
             else "one component still describes it"
         )
-        return (
-            f"<tr><td><b>Apparent &tau;<sub>D</sub> (naive fit):</b></td>"
+        rows = (
+            f"<tr><td><b>Apparent &tau;<sub>D</sub> (one component):</b></td>"
             f"<td><b>{tau_d_s * 1e6:.1f} µs</b> against a true "
-            f"{true_tau_d * 1e6:.1f} µs — <b>{tau_d_s / true_tau_d:.2f}×</b> too slow</td></tr>"
-            f"<tr><td><b>Fit residual:</b></td><td>{rms:.1e} — {verdict}</td></tr>"
+            f"{true_tau_d * 1e6:.1f} µs — <b>{tau_d_s / true_tau_d:.2f}×</b> too slow"
+            f"  (residual {rms:.1e} — {verdict})</td></tr>"
         )
+        if self._two_component:
+            fraction, tau_fast, tau_slow, rms_two = self._two_component
+            if np.isfinite(tau_fast) and tau_slow > 1.05 * tau_fast:
+                rows += (
+                    f"<tr><td><b>Two diffusion times:</b></td><td>"
+                    f"<b>{fraction * 100:.0f}%</b> at <b>{tau_fast * 1e6:.1f} µs</b> + "
+                    f"<b>{(1 - fraction) * 100:.0f}%</b> at <b>{tau_slow * 1e6:.1f} µs</b>"
+                    f"  (residual {rms_two:.1e})</td></tr>"
+                    f"<tr><td colspan='2'><i>This is the analysis saturated data is "
+                    f"normally given: a global triplet term times two diffusion times. "
+                    f"The triplet is known here, so only the pair is fitted.</i></td></tr>"
+                )
+            else:
+                rows += (
+                    "<tr><td><b>Two diffusion times:</b></td>"
+                    "<td>not resolved — one component still suffices</td></tr>"
+                )
+        return rows
 
     def _on_changed(self):
         """Recompute and schedule a repaint.

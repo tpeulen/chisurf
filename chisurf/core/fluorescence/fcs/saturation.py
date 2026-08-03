@@ -932,3 +932,70 @@ def fit_single_component(
         return guess[0], guess[1], model(tau_s, *guess), float("inf")
     fitted = model(tau_s, *params)
     return float(params[0]), float(params[1]), fitted, float(np.sqrt(np.mean((fitted - y) ** 2)))
+
+
+def fit_two_components(
+    tau_s: np.ndarray, g_shape: np.ndarray, w0: float, z0: float, D: float
+) -> tuple[float, float, float, np.ndarray, float]:
+    """Fit two 3D-Gaussian diffusion components to a computed correlation shape.
+
+    This is how a saturated curve is analysed in practice (Widengren & Rigler,
+    Bioimaging 4 (1996) 149): a global triplet term times *two* diffusion times,
+    because the flattened emission profile autocorrelates as a broader mixture
+    of decay rates than one component can produce. Here the triplet is known --
+    it is the scheme -- so it is divided out before fitting and only the two
+    diffusion components are recovered.
+
+    The two components share a structure parameter: they are the same molecule
+    in one distorted volume, not two species, so what differs between them is
+    the transit time, not the shape of the focus.
+
+    Parameters
+    ----------
+    tau_s : np.ndarray
+        Lag times (s).
+    g_shape : np.ndarray
+        Diffusion shape to fit; only the shape matters, it is normalised here.
+    w0, z0 : float
+        Beam waists (m), for the starting guess.
+    D : float
+        Diffusion coefficient (m^2/s), for the starting guess.
+
+    Returns
+    -------
+    tuple
+        ``(fraction_fast, tau_d_fast_s, tau_d_slow_s, fitted_shape, rms)``.
+        ``fraction_fast`` is the amplitude of the shorter component. On failure
+        the residual is infinite and the times are NaN.
+    """
+    from scipy.optimize import curve_fit
+
+    tau_s = np.asarray(tau_s, dtype=float)
+    y = np.asarray(g_shape, dtype=float)
+    if y.size == 0 or not np.isfinite(y[0]) or y[0] == 0.0:
+        return (float("nan"),) * 3 + (np.zeros_like(tau_s), float("inf"))
+    y = y / y[0]
+
+    def one(t, tau_d, structure):
+        return 1.0 / (1.0 + t / tau_d) / np.sqrt(1.0 + t / (structure**2 * tau_d))
+
+    def model(t, fraction, tau_1, tau_2, structure):
+        return fraction * one(t, tau_1, structure) + (1.0 - fraction) * one(t, tau_2, structure)
+
+    tau_d = w0**2 / (4.0 * D)
+    guess = (0.2, 0.5 * tau_d, 3.0 * tau_d, max(1.0, z0 / w0))
+    try:
+        params, _ = curve_fit(
+            model, tau_s, y, p0=guess,
+            bounds=([0.0, 1e-12, 1e-12, 0.5], [1.0, 1.0, 1.0, 100.0]),
+            maxfev=200000,
+        )
+    except Exception:
+        return (float("nan"),) * 3 + (np.zeros_like(tau_s), float("inf"))
+
+    fraction, tau_1, tau_2, structure = params
+    fitted = model(tau_s, *params)
+    rms = float(np.sqrt(np.mean((fitted - y) ** 2)))
+    if tau_1 > tau_2:  # report the fast component first, whichever way it landed
+        fraction, tau_1, tau_2 = 1.0 - fraction, tau_2, tau_1
+    return float(fraction), float(tau_1), float(tau_2), fitted, rms

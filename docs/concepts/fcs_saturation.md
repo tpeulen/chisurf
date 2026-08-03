@@ -169,6 +169,32 @@ calculator it is the residual panel under the FCS curve, because at a few times
 The faster component is not an artefact: it is the contribution of the profile's
 sharper edge, which decorrelates over a shorter distance than the flat centre.
 
+### Fitting it: a global triplet times two diffusion times
+
+The established analysis is Widengren's: a **global triplet term** multiplying a
+**sum of two diffusion components**. Diffusion terms add and bunching terms
+multiply, so this needs a summed multi-component diffusion — the `species` mode
+of the `FCS (general)` model, with the triplet as one of its bunching terms.
+
+Fitting the simulated 30.8 mW curve (triplet included, as measured) that way
+recovers:
+
+| | amplitude | τ_D | |
+| --- | --- | --- | --- |
+| fast component | 4 % | 4.2 µs | |
+| slow component | 96 % | 89.7 µs | true τ_D is 25 µs |
+| triplet | T = 0.83 | τ_T = 0.34 µs | |
+
+with rms 2.3e-4 against 7.1e-4 for a single diffusion component.
+
+Two things worth noticing. The fitted triplet time is the **apparent** one,
+`1/(k_T + k_ISC·f_S1) = 0.33 µs`, not the scheme's `1/k_T = 2 µs` — excitation
+empties the triplet faster than it decays. And two components beat one by only
+about three times, not ten, because a *free* triplet partly absorbs the
+distortion: a shortened `τ_T` mimics a fast diffusion component over part of the
+range. The two are somewhat degenerate, which is exactly why the triplet is
+fitted **globally across a power series** rather than per curve.
+
 ## Reading the results
 
 `V_eff/V₀` is the number to take away. It is the factor by which an unsaturated

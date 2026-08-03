@@ -450,3 +450,70 @@ def test_a_second_component_actually_fits_what_one_cannot():
     assert rms_two < 0.5 * rms_one, "a second component must earn its place"
     fast, slow = sorted(params[1:3])
     assert slow > 2.0 * fast, "the two components must be genuinely distinct"
+
+
+def test_a_saturated_curve_is_fitted_by_a_triplet_times_two_diffusion_times():
+    """The established analysis of saturated FCS data must be expressible.
+
+    Widengren & Rigler fit optically saturated curves with a global triplet term
+    times *two* diffusion times. Diffusion terms add while bunching terms
+    multiply, so this needs a summed multi-component diffusion -- which is what
+    ``DiffusionSpecies`` provides. Here the whole chain is exercised: simulate a
+    saturated measurement including its triplet, then fit it the way the data
+    would be fitted, and require that it beats one component decisively.
+    """
+    from scipy.optimize import curve_fit
+
+    from chisurf.core.models.fcs.general import DiffusionSpecies
+
+    tau_s = np.logspace(-7, -1, 300)
+    tau_ms = tau_s * 1e3
+    g = saturated_curve_shape(
+        tau_s, 3.08e-2, 1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G, include_bunching=True
+    )
+    y = g / g[0]
+
+    species = DiffusionSpecies()
+    species._w_r.value = W0 * 1e9
+    species._w_z.value = Z0 * 1e9
+
+    def model(t_ms, x1, d1, d2, triplet, tau_t):
+        species._x_1.value, species._x_2.value = x1, 1.0 - x1
+        species._D_1.value, species._D_2.value = d1, d2
+        bunch = 1.0 + triplet / (1.0 - triplet) * np.exp(-t_ms * 1e-3 / tau_t)
+        out = species.g_diff(t_ms) * bunch
+        return out / out[0]
+
+    params, _ = curve_fit(
+        model, tau_ms, y, p0=[0.1, 900.0, 100.0, 0.5, 2e-6],
+        bounds=([0, 1, 1, 0.01, 1e-8], [1, 1e5, 1e5, 0.95, 1e-3]), maxfev=200000,
+    )
+    rms_two = float(np.sqrt(np.mean((model(tau_ms, *params) - y) ** 2)))
+
+    # Against one diffusion component with the same triplet freedom.
+    def model_one(t_ms, d, triplet, tau_t):
+        return model(t_ms, 1.0, d, d, triplet, tau_t)
+
+    params_one, _ = curve_fit(
+        model_one, tau_ms, y, p0=[300.0, 0.5, 2e-6],
+        bounds=([1, 0.01, 1e-8], [1e5, 0.95, 1e-3]), maxfev=200000,
+    )
+    rms_one = float(np.sqrt(np.mean((model_one(tau_ms, *params_one) - y) ** 2)))
+
+    # Three times better, not the ten one might expect -- and the shortfall is
+    # informative. Given a free triplet, one diffusion component partly hides the
+    # distortion in it: a shortened tau_T mimics a fast diffusion component over
+    # part of the range. The two are therefore somewhat degenerate, which is why
+    # Widengren's triplet is a *global* parameter across a power series rather
+    # than fitted per curve.
+    assert rms_two < 0.4 * rms_one, "two diffusion times must clearly beat one"
+    fast, slow = sorted(params[1:3], reverse=True)   # D, so fast D = short tau_D
+    assert fast > 3.0 * slow, "the two transit times must be genuinely distinct"
+
+    # The fitted triplet time is the *apparent* one, shortened by the excitation:
+    # 1/(k_T + k_ISC * f_S1), not the scheme's 1/k_T.
+    k_exc = excitation_rate_peak(3.08e-2, 1e5, W0)
+    populations = steady_state_full_populations(np.array([k_exc]), DARK_R6G, EXC_R6G)[:, 0]
+    f_s1 = populations[1] / (populations[0] + populations[1])
+    expected_tau_t = 1.0 / (DARK_R6G[0, 2] + DARK_R6G[2, 1] * f_s1)
+    assert params[4] == pytest.approx(expected_tau_t, rel=0.15)

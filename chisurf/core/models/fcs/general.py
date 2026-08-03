@@ -166,6 +166,117 @@ class GaussDiffusion(FittingParameterGroup):
         return g
 
 
+class DiffusionSpecies(GaussDiffusion):
+    """Several 3-D-Gaussian diffusion components sharing one focus.
+
+    ``G_diff(tau) = sum_i x_i * (1 + 4 D_i tau/w_r^2)^-1 (1 + 4 D_i tau/w_z^2)^-1/2``
+    with the amplitudes ``x_i`` normalised to one.
+
+    Diffusion terms *add*; bunching terms multiply. Everything else in this
+    module is the multiplying kind, so a curve needing two transit times could
+    not be expressed at all -- which is exactly what an optically saturated
+    measurement needs. Flattening the emission profile turns its autocorrelation
+    into a broader mixture of decay rates than one Gaussian component can
+    produce, and the established analysis is a global triplet term (a bunching
+    term here) times *two* diffusion times (Widengren & Rigler, Bioimaging 4
+    (1996) 149). Two components is therefore the default.
+
+    The components share ``w_r``/``w_z``: they are one molecule in one distorted
+    focus, so what differs between them is the transit time, not the optics. The
+    inherited single ``D`` is unused -- ``D_1`` replaces it.
+    """
+
+    def __init__(self, name: str = "species_diffusion", n_species: int = 2, **kwargs):
+        """Initialize with ``n_species`` diffusion components."""
+        super().__init__(name=name, **kwargs)
+        self._species: list = []
+        self._rebuild_species(max(1, int(n_species)))
+
+    def _rebuild_species(self, n_species: int) -> None:
+        """Resize the component list, keeping the values that survive."""
+        old = {p.name: (p.value, p.fixed) for p in self._species}
+        for key in [k for k in self.__dict__ if k.startswith(("_x_", "_D_"))]:
+            delattr(self, key)
+        self._species = []
+        for i in range(1, n_species + 1):
+            for prefix, default, label, bounds in (
+                ("x", 1.0 / n_species, f"x<sub>{i}</sub>", (0.0, 1.0)),
+                ("D", 300.0, f"D<sub>{i}</sub>[µm²/s]", (1e-3, 1e5)),
+            ):
+                pname = f"{prefix}_{i}"
+                value, fixed = old.get(pname, (default, False))
+                parameter = FittingParameter(
+                    value=float(value), name=pname, lb=bounds[0], ub=bounds[1],
+                    bounds_on=True, fixed=bool(fixed), label_text=label,
+                    registry_id=f"fcs_species.{pname}",
+                )
+                setattr(self, f"_{pname}", parameter)
+                self._species.append(parameter)
+        self._n_species = n_species
+        self._parameters = None
+        self.find_parameters()
+
+    @property
+    def n_species(self) -> int:
+        """Number of diffusion components."""
+        return getattr(self, "_n_species", 1)
+
+    def append(self) -> None:
+        """Add a diffusion component."""
+        self._rebuild_species(self.n_species + 1)
+
+    def pop(self) -> None:
+        """Remove the last diffusion component, never going below one."""
+        if self.n_species > 1:
+            self._rebuild_species(self.n_species - 1)
+
+    @property
+    def fractions(self) -> np.ndarray:
+        """Component amplitudes, normalised to sum to one."""
+        raw = np.array(
+            [max(0.0, float(getattr(self, f"_x_{i}").value)) for i in range(1, self.n_species + 1)]
+        )
+        total = raw.sum()
+        return raw / total if total > 0 else np.full(self.n_species, 1.0 / self.n_species)
+
+    @property
+    def diffusion_coefficients(self) -> np.ndarray:
+        """Component diffusion coefficients (um^2/s)."""
+        return np.array(
+            [float(getattr(self, f"_D_{i}").value) for i in range(1, self.n_species + 1)]
+        )
+
+    def find_parameters(self):
+        """Expose the optics and the per-component parameters, not the unused D."""
+        self._parameters = [
+            self._N, self._w_r, self._w_z, self._b, self._diam, self._bg, *self._species
+        ]
+        return self._parameters
+
+    @property
+    def parameters(self):
+        """Return the parameter list, discovering it on first access."""
+        if getattr(self, "_parameters", None) is None:
+            self.find_parameters()
+        return self._parameters
+
+    def g_diff(self, tau_ms: np.ndarray) -> np.ndarray:
+        """Amplitude-weighted sum of the components' diffusion shapes."""
+        tau_s = np.asarray(tau_ms, dtype=float) * 1e-3
+        w_r = self.w_r * 1e-3
+        w_z = self.w_z * 1e-3
+        diam = self.diam * 1e-3
+        out = np.zeros_like(tau_s, dtype=float)
+        for fraction, D in zip(self.fractions, self.diffusion_coefficients):
+            lateral = 1.0 / (1.0 + 4.0 * D * tau_s / w_r**2)
+            axial = 1.0 / np.sqrt(1.0 + 4.0 * D * tau_s / w_z**2)
+            component = lateral * axial
+            if diam > 0:
+                component = component * np.exp(-(diam**2) / (w_r**2 + 4.0 * D * tau_s))
+            out += fraction * component
+        return out
+
+
 class GeneralFCSModel(ModelCurve):
     """General composable FCS model: choose a diffusion type + relaxation terms.
 
@@ -191,7 +302,7 @@ class GeneralFCSModel(ModelCurve):
     name = "FCS (general: diffusion + bunching/anticorr)"
     view_spec_file = "general.view.json"
 
-    _DIFFUSION_MODES = ("mdf", "gauss", "two_focus")
+    _DIFFUSION_MODES = ("mdf", "gauss", "species", "two_focus")
 
     def __init__(self, fit: cs.core.fitting.fit.Fit, **kwargs):
         """Initialize every diffusion-mode parameter group plus relaxation terms."""
@@ -202,6 +313,7 @@ class GeneralFCSModel(ModelCurve):
         self.mdf_outputs = MdfOutputs(name="mdf_outputs", fit=fit)
         self.gauss = GaussDiffusion(name="gauss_diffusion", fit=fit)
         self.two_focus = GaussDiffusion(name="two_focus_diffusion", fit=fit)
+        self.species = DiffusionSpecies(name="species_diffusion", fit=fit)
         self.two_focus._diam.value = 400.0
         self.two_focus._diam.fixed = True  # a known, fixed geometric constant
         self.bunching = BunchingTerms(name="bunching", fit=fit)
@@ -215,7 +327,7 @@ class GeneralFCSModel(ModelCurve):
 
     @property
     def diffusion_mode(self) -> str:
-        """Active diffusion type: ``"mdf"``, ``"gauss"``, or ``"two_focus"``."""
+        """Active diffusion type: ``"mdf"``, ``"gauss"``, ``"species"`` or ``"two_focus"``."""
         return self._diffusion_mode
 
     @diffusion_mode.setter
@@ -229,11 +341,11 @@ class GeneralFCSModel(ModelCurve):
 
     def _inactive_diffusion_groups(self) -> list:
         """Return the diffusion parameter groups the active mode does not use."""
-        if self.diffusion_mode == "mdf":
-            return [self.gauss, self.two_focus]
-        if self.diffusion_mode == "two_focus":
-            return [self.mdf_physical, self.mdf_optics, self.mdf_outputs, self.gauss]
-        return [self.mdf_physical, self.mdf_optics, self.mdf_outputs, self.two_focus]
+        mdf = [self.mdf_physical, self.mdf_optics, self.mdf_outputs]
+        others = {"mdf": [self.gauss, self.two_focus, self.species],
+                  "two_focus": mdf + [self.gauss, self.species],
+                  "species": mdf + [self.gauss, self.two_focus]}
+        return others.get(self.diffusion_mode, mdf + [self.two_focus, self.species])
 
     @property
     def parameters_all(self):
@@ -340,6 +452,8 @@ class GeneralFCSModel(ModelCurve):
             shape = self._mdf_shape(tau_ms)
         elif self.diffusion_mode == "two_focus":
             shape = self._gauss_shape(self.two_focus, tau_ms)
+        elif self.diffusion_mode == "species":
+            shape = self._gauss_shape(self.species, tau_ms)
         else:
             shape = self._gauss_shape(self.gauss, tau_ms)
         if shape is None:
