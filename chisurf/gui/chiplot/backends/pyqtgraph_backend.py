@@ -988,6 +988,16 @@ class _PgCanvas(base.Canvas):
         """Invert the y-axis direction."""
         self._pi.getViewBox().invertY(invert)
 
+    def set_si_prefix(self, *, x=None, y=None) -> None:
+        """Enable or disable the automatic SI prefix on an axis."""
+        for side, enabled in (("bottom", x), ("left", y)):
+            if enabled is None:
+                continue
+            try:
+                self._pi.getAxis(side).enableAutoSIPrefix(bool(enabled))
+            except Exception:
+                pass
+
     def set_axis_visible(self, side, visible) -> None:
         """Show or hide one axis."""
         self._pi.showAxis(side, bool(visible))
@@ -1120,6 +1130,14 @@ class _PgGrid(base.GridCanvas):
     def next_row(self) -> None:
         """Advance the implicit insertion cursor to the next row."""
         self._w.nextRow()
+
+    def set_column_stretch(self, column: int, factor: float) -> None:
+        """Set the relative width of a grid column."""
+        self._w.ci.layout.setColumnStretchFactor(int(column), int(round(factor)))
+
+    def set_row_stretch(self, row: int, factor: float) -> None:
+        """Set the relative height of a grid row."""
+        self._w.ci.layout.setRowStretchFactor(int(row), int(round(factor)))
 
     @property
     def native(self):

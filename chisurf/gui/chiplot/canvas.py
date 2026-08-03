@@ -820,6 +820,27 @@ class Plot(QtWidgets.QWidget):
         self._canvas.invert_y(invert)
         return self
 
+    def set_si_prefix(self, *, x: bool | None = None, y: bool | None = None) -> Plot:
+        """Enable or disable an axis's automatic SI prefix.
+
+        A renderer will happily relabel a 0-to-1 axis as "(x0.001)" with ticks
+        running to 400. That is correct arithmetic and unreadable for a quantity —
+        a probability, an efficiency, a ratio — that has no unit to prefix.
+
+        Parameters
+        ----------
+        x, y : bool, optional
+            Whether the bottom / left axis may use an SI prefix. ``None`` leaves
+            that axis alone.
+
+        Returns
+        -------
+        Plot
+            Self, for chaining.
+        """
+        self._canvas.set_si_prefix(x=x, y=y)
+        return self
+
     def set_axis_visible(self, *, left=None, bottom=None, right=None, top=None) -> Plot:
         """Show/hide individual axes. Only the given sides change. Returns ``self``.
 
@@ -831,7 +852,7 @@ class Plot(QtWidgets.QWidget):
                 self._canvas.set_axis_visible(side, bool(vis))
         return self
 
-    def link_x(self, other: "Plot") -> Plot:
+    def link_x(self, other: Plot) -> Plot:
         """Link this panel's x-axis to ``other``'s so they pan/zoom together.
 
         Used for stacked diagnostic panels (e.g. residuals above the data) that
@@ -840,7 +861,7 @@ class Plot(QtWidgets.QWidget):
         self._canvas.link_x(other._canvas)
         return self
 
-    def link_y(self, other: "Plot") -> Plot:
+    def link_y(self, other: Plot) -> Plot:
         """Link this panel's y-axis to ``other``'s so they pan/zoom together. Returns ``self``."""
         self._canvas.link_y(other._canvas)
         return self
@@ -934,6 +955,35 @@ class Grid(QtWidgets.QWidget):
             row=row, col=col, rowspan=rowspan, colspan=colspan, title=title
         )
         return PanelPlot(canvas)
+
+    def set_column_stretch(self, column: int, factor: float) -> None:
+        """Set the relative width of a grid column.
+
+        Panels in a grid share the width equally by default, which is wrong the
+        moment one of them is a colour bar: it takes as much room as a plot and
+        renders as an unreadable sliver of gradient.
+
+        Parameters
+        ----------
+        column : int
+            Column index.
+        factor : float
+            Relative width. Larger is wider; the factors are compared with each
+            other, not with any absolute size.
+        """
+        self._grid.set_column_stretch(column, factor)
+
+    def set_row_stretch(self, row: int, factor: float) -> None:
+        """Set the relative height of a grid row.
+
+        Parameters
+        ----------
+        row : int
+            Row index.
+        factor : float
+            Relative height.
+        """
+        self._grid.set_row_stretch(row, factor)
 
     def add_colorbar(
         self, image: H.Image, *, colormap=None, row=None, col=None, rowspan=1, colspan=1

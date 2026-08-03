@@ -1,0 +1,104 @@
+{
+  "sections": [
+    {
+      "type": "panel",
+      "title": "Detectors",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "green",
+          "label": "Donor",
+          "kind": "str",
+          "description": "Name of the donor detector in the .bur tables. Its counts and observation span drive the proximity ratio, and its mean micro time is the lifetime axis."
+        },
+        {
+          "type": "value",
+          "attr": "red",
+          "label": "Acceptor",
+          "kind": "str",
+          "description": "Name of the acceptor detector in the .bur tables. Its channel definition is checked against the count columns before it is used."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Histogram",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "n_ratio_bins",
+          "label": "Ratio bins",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 200,
+          "description": "Bins on the proximity-ratio axis N_R/(N_G+N_R). The axis is raw: every correction lives in the forward model, so this histogram never moves when a correction factor is fitted."
+        },
+        {
+          "type": "value",
+          "attr": "n_micro_time_bins",
+          "label": "Lifetime bins",
+          "kind": "int",
+          "minimum": 5,
+          "maximum": 200,
+          "description": "Bins on the mean-micro-time axis."
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_min",
+          "label": "⟨t⟩ min [ns]",
+          "kind": "float",
+          "decimals": 2,
+          "minimum": 0.0,
+          "maximum": 200.0,
+          "description": "Lower edge of the mean-micro-time axis, in nanoseconds. Bursts outside the axis are excluded and counted."
+        },
+        {
+          "type": "value",
+          "attr": "micro_time_max",
+          "label": "⟨t⟩ max [ns]",
+          "kind": "float",
+          "decimals": 2,
+          "minimum": 0.1,
+          "maximum": 200.0,
+          "description": "Upper edge of the mean-micro-time axis, in nanoseconds."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Selection",
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "value",
+          "attr": "min_green_photons",
+          "label": "Min donor photons",
+          "kind": "int",
+          "minimum": 2,
+          "maximum": 1000,
+          "description": "Bursts with fewer donor photons are excluded: the Gaussian kernel the model uses for the mean micro time is not valid below about twenty. The model applies the identical cut, and the excluded fraction is reported on the dataset. Note the cut is not neutral between populations — a high-FRET burst has fewer donor photons and is removed preferentially."
+        },
+        {
+          "type": "value",
+          "attr": "n_signal_bins",
+          "label": "Signal bins",
+          "kind": "int",
+          "minimum": 4,
+          "maximum": 400,
+          "description": "Bins the measured burst-signal distribution is compressed onto. This compression is what makes a model evaluation independent of the number of bursts; it was checked to cost no width against the fully unbinned evaluation."
+        },
+        {
+          "type": "value",
+          "attr": "n_span_bins",
+          "label": "Span bins",
+          "kind": "int",
+          "minimum": 2,
+          "maximum": 100,
+          "description": "Bins per channel of the observation-span distribution. The spans set each burst's expected background, so they are resolved separately from the signal."
+        }
+      ]
+    }
+  ]
+}

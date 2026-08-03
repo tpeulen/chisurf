@@ -310,6 +310,10 @@ class Canvas(abc.ABC):
         """Lock the x/y pixel aspect ratio."""
 
     @abc.abstractmethod
+    def set_si_prefix(self, *, x: bool | None = None, y: bool | None = None) -> None:
+        """Enable or disable the automatic SI prefix on an axis."""
+
+    @abc.abstractmethod
     def invert_y(self, invert: bool = True) -> None:
         """Invert the y-axis direction."""
 
@@ -319,13 +323,13 @@ class Canvas(abc.ABC):
         Default no-op; backends with axis chrome override it.
         """
 
-    def link_x(self, other: "Canvas") -> None:
+    def link_x(self, other: Canvas) -> None:
         """Link this panel's x-axis to ``other`` so they pan/zoom together.
 
         Default no-op; backends with a shared view model override it.
         """
 
-    def link_y(self, other: "Canvas") -> None:
+    def link_y(self, other: Canvas) -> None:
         """Link this panel's y-axis to ``other`` so they pan/zoom together."""
 
     def set_menu_enabled(self, enabled: bool) -> None:
@@ -413,6 +417,14 @@ class GridCanvas(abc.ABC):
     @abc.abstractmethod
     def next_row(self) -> None:
         """Advance the implicit insertion cursor to the next row."""
+
+    @abc.abstractmethod
+    def set_column_stretch(self, column: int, factor: float) -> None:
+        """Set the relative width of a grid column."""
+
+    @abc.abstractmethod
+    def set_row_stretch(self, row: int, factor: float) -> None:
+        """Set the relative height of a grid row."""
 
     @property
     @abc.abstractmethod

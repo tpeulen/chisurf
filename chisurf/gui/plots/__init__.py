@@ -23,6 +23,7 @@ from chisurf.gui.plots.plotbase import *
 from chisurf.gui.plots.wr_plot import ResidualPlot
 from chisurf.gui.plots.table_plot import FitTablePlot
 from chisurf.gui.plots.residual_image import Residual2DPlot
+from chisurf.gui.plots.mfd_2d import Mfd2DPlot
 
 
 def __getattr__(name: str):

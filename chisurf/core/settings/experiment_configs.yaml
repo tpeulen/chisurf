@@ -21,6 +21,9 @@ experiment_types:
   pda:
     name: PDA
     hidden: false
+  mfd:
+    name: MFD
+    hidden: false
   deer:
     name: DEER
     hidden: false
@@ -217,6 +220,7 @@ fcs:
     - chisurf.gui.widgets.models.fcs.DyeShapeFCSWidget
     - chisurf.core.models.fcs.mdf.MdfFCSModel
     - chisurf.core.models.fcs.general.GeneralFCSModel
+    - chisurf.core.models.fcs.kinetics.FCSKineticsModel
     - chisurf.gui.widgets.models.fcs.MaxEntFCSWidget
     - chisurf.gui.widgets.models.fcs.MaxEntRHWidget
 
@@ -249,6 +253,25 @@ ics:
     # TICS and iMSD are readings of it rather than separate models.
     - chisurf.core.models.ics.ics.ImageCorrelationModel
     - chisurf.core.models.ics.ics.IcsGaussian2DModel
+
+mfd:
+  readers:
+    - reader_class: chisurf.core.experiments.mfd.MfdReader
+      reader_params:
+        name: MFD (burst folder)
+        green: green
+        red: red
+        n_ratio_bins: 41
+        n_micro_time_bins: 41
+        micro_time_min: 0.0
+        micro_time_max: 8.0
+        min_green_photons: 20
+        n_signal_bins: 24
+        n_span_bins: 6
+      controller_params: {}
+  models:
+    - chisurf.core.models.mfd.Mfd2DModel
+    - chisurf.core.models.mfd.Mfd2DKineticModel
 
 pch:
   readers:

@@ -27,10 +27,13 @@ a note in this document — nothing lands as a silent behaviour change.
 
 # Status
 
-In progress. Items 1–5 have landed — the burst-table column, the preparation core,
-loud source resolution, the `PhotonBursts` loader and the nuisance measure. Items
-6–9 (the experiment and its reader, the plugin's four surfaces, model registration,
-and whatever chiplot is missing) are specified and next.
+In progress. Items 1–6 and 8–10 have landed: the burst-table column, the preparation
+core, loud source resolution, the `PhotonBursts` loader, the nuisance measure, the
+`mfd` experiment and its reader, model registration through `supports_data`, and the
+chiplot gaps. **Item 7 — the standalone preparation plugin with its four surfaces —
+is the one outstanding piece**, and it is additive: the preparation core is already
+reachable from the reader, the models and the Python API, so the plugin adds a
+surface rather than a capability.
 
 Parent: [PRD-71](prd-71.md). Related: [PRD-09](prd-09.md) (the layered-plugin
 shape used for item 7), [PRD-38](prd-38.md)/[PRD-40](prd-40.md) (model and view
@@ -148,7 +151,7 @@ model has to be able to tell them apart.
 a folder where half the bursts have no red photons cannot look like a clean one;
 binning conserves the burst total exactly.
 
-## 6. An `mfd` experiment and its reader
+## 6. An `mfd` experiment and its reader — ✅ landed
 
 `chisurf/core/experiments/mfd/` with `reader.py`, following the per-experiment
 package shape already used by `fcs`, `tcspc`, `pda2c`, `deer`, `pch`. The reader
@@ -176,7 +179,7 @@ additive — a new plugin directory and manifest.
 *Acceptance*: headless CLI path first, per the project rule that every feature has
 one; the GUI rendered and inspected, not assumed.
 
-## 8. Model registration and data filtering
+## 8. Model registration and data filtering — ✅ landed
 
 The MFD models must appear only for MFD datasets, through the existing
 `Model.supports_data` mechanism rather than a parallel list. Additive, and it is
@@ -185,7 +188,20 @@ the mechanism a previous change already established for exactly this.
 *Acceptance*: the model list for a TCSPC or FCS dataset is unchanged; the MFD
 models appear only where they apply.
 
-## 9. Whatever chiplot is missing for a 2D histogram
+## 9. Whatever chiplot is missing for a 2D histogram — ✅ landed
+
+Three things were missing and were **added to chiplot** rather than reached around:
+`Grid.set_column_stretch` / `Grid.set_row_stretch` (panels share the width equally
+by default, which renders a colour bar as an unreadable sliver) and
+`Plot.set_si_prefix` (a renderer relabels a 0-to-1 axis as "(x0.001)" with ticks
+running to 400 — correct arithmetic, unreadable for a probability). The MFD plot
+draws with `chiplot.passthrough_gaps()` empty, and a test asserts it.
+
+Two layout traps found by rendering it and looking, neither of which any assertion
+would have caught: every `set_data` re-triggers the renderer's auto-range, so a
+range set before the curves are drawn is silently replaced by whichever curve is
+drawn last; and setting a *linked child's* range re-enables the parent's
+auto-range, so the link parent has to be ranged last.
 
 `Canvas.image` exists, so the 2D histogram itself is expressible. What still needs
 checking is colour mapping, axis scaling on a binned image, and drawing the

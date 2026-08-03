@@ -1,0 +1,48 @@
+{
+  "sections": [
+    {
+      "type": "info",
+      "source": "summary_html"
+    },
+    {
+      "type": "panel",
+      "title": "States",
+      "collapsed": false,
+      "sections": [
+        {
+          "type": "dynamic_group",
+          "target": "state_group",
+          "rows_source": "distance_rows",
+          "row_width": 2,
+          "append_method": "append",
+          "remove_method": "pop",
+          "min_rows": 1,
+          "description": "One row per conformational state: its mean donor-acceptor distance in Angstrom, and its population. The first population is fixed, since only the ratios are identifiable."
+        },
+        {
+          "type": "parameter_group_table",
+          "target": "state_group",
+          "description": "The donor-only fraction is fitted rather than cropped out of the data: leaving it out of the model does not remove those molecules from the histogram, it makes a FRET state move down to explain them."
+        }
+      ]
+    },
+    {
+      "type": "panel",
+      "title": "Calibration",
+      "collapsed": true,
+      "sections": [
+        {
+          "type": "parameter_group_table",
+          "target": "calibration",
+          "description": "Correction factors and dye constants. All of them act inside the forward model, never on the data histogram, which is what lets any of them be freed without the fit's target moving underneath it. sigma is the combined linker width and is fixed by default: it is not a free broadening parameter, and freeing it under the histogram source alone lets it absorb width that belongs to the kinetics."
+        }
+      ]
+    }
+  ],
+  "plots": [
+    {"key": "mfd_2d", "options": {"title": "MFD histogram"}},
+    {"key": "fit_info", "options": {}},
+    {"key": "residual2d", "options": {}},
+    {"key": "parameter_scan", "options": {}}
+  ]
+}

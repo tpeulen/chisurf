@@ -7,6 +7,7 @@ import yaml
 import chisurf.core.experiments.fcs
 import chisurf.core.experiments.tcspc
 import chisurf.core.experiments.pda2c
+import chisurf.core.experiments.mfd
 import chisurf.core.experiments.deer
 import chisurf.core.experiments.globalfit
 import chisurf.core.experiments.modelling

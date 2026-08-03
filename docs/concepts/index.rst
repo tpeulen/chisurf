@@ -51,6 +51,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    hidden_markov_models
    h2mm
    photon_by_photon_kinetics
+   mfd_fitting
    ebfret
 
 .. rubric:: Exploration & selection
