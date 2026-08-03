@@ -226,14 +226,31 @@ def test_parameter_group_sections_populate(qapp, lifetime_model):
     assert len(w.parameter_widgets) + table_rows > 12
 
 
-def test_curve_input_widget_renders_and_dispatches(qapp, lifetime_model, monkeypatch):
+@pytest.fixture
+def registered_lifetime_model(lifetime_model):
+    """A lifetime model whose fit is registered with the fit machinery.
+
+    Controls that edit a fit dispatch at a *fit index* and deliberately do
+    nothing when the model's fit is not registered -- dispatching at fit 0
+    instead would edit whichever fit happened to be first.
+    """
+    import chisurf as cs
+
+    cs.fits.append(lifetime_model.fit)
+    try:
+        yield lifetime_model
+    finally:
+        cs.fits.remove(lifetime_model.fit)
+
+
+def test_curve_input_widget_renders_and_dispatches(qapp, registered_lifetime_model, monkeypatch):
     """The IRF curve_input renders as a CurveInputWidget and its selection
     dispatches the configured action with the index/name payload keys."""
     import chisurf as cs
     from chisurf.gui.autoform.sections.builtin import CurveInputWidget
     from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
-    w = AutoModelWidget(lifetime_model)
+    w = AutoModelWidget(registered_lifetime_model)
     curve_widgets = w.findChildren(CurveInputWidget)
     assert curve_widgets, "expected at least one CurveInputWidget (IRF)"
     irf = next(c for c in curve_widgets if c._section.select_action == "model.change_irf")
