@@ -9,6 +9,19 @@ from .registry import register_section
 from .rate_matrix_section import _resolve
 
 
+#: Node fills, by state index. Cycled rather than exhausted: the palette used to
+#: run out after four states and every state past the third came out the same
+#: orange, which is a real limitation for a scheme with five.
+_NODE_COLOURS = (
+    ("#42a5f5", "#1565c0"),
+    ("#66bb6a", "#2e7d32"),
+    ("#ab47bc", "#6a1b9a"),
+    ("#ffa726", "#e65100"),
+    ("#26c6da", "#00838f"),
+    ("#ec407a", "#ad1457"),
+)
+
+
 class SchemeCanvasWidget(QtWidgets.QWidget):
     """Drawing canvas for photophysical HMM state scheme diagram."""
 
@@ -30,6 +43,9 @@ class SchemeCanvasWidget(QtWidgets.QWidget):
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
         self.scheme._on_canvas_mouse_double_click(event)
+
+    def wheelEvent(self, event: QtGui.QWheelEvent):
+        self.scheme._on_canvas_wheel(event)
 
     def paintEvent(self, event: QtGui.QPaintEvent):
         self.scheme._on_canvas_paint(self, event)
@@ -68,6 +84,16 @@ class _RateMatrixScheme:
         """Return the state names, or ``None`` to let the canvas number them."""
         return self._labels
 
+    @property
+    def excitation_edge(self):
+        """Return ``None``: a rate matrix has no externally pumped transition.
+
+        Every transition in a plain scheme *is* one of its rates. Saying so
+        explicitly is what stops a two-state FRET exchange being drawn with a
+        phantom ``k_exc`` arrow out of a state that is not a ground state.
+        """
+        return None
+
 
 @register_section("state_scheme")
 class StateSchemeWidget(QtWidgets.QWidget):
@@ -83,6 +109,17 @@ class StateSchemeWidget(QtWidgets.QWidget):
         #: Where the state names come from when the scheme is a bare rate
         #: matrix, which carries rates but not names.
         self._labels_attr = opts.get("labels_attr", "state_names")
+        #: The one transition driven by something other than a rate in the
+        #: matrix -- a laser, in the photophysics models this canvas was first
+        #: written for. It is drawn even at rate zero, because the excitation
+        #: rate is not a fitted rate and would otherwise vanish from the diagram.
+        #:
+        #: **Declared, never assumed.** It used to be hardcoded as ``0 -> 1``,
+        #: so every scheme was drawn as if state 0 were a ground state being
+        #: pumped: a two-state FRET exchange came out with a phantom ``k_exc``
+        #: arrow and its real backward rate missing.
+        edge = opts.get("excitation_edge", None)
+        self._excitation_edge = tuple(edge) if edge else None
 
         self.setMinimumSize(360, 280)
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
@@ -146,6 +183,15 @@ class StateSchemeWidget(QtWidgets.QWidget):
         toolbar.addWidget(btn_load)
         toolbar.addWidget(btn_save)
 
+        # The bar offers preset schemes and load/save. A model that has no
+        # presets has nothing to offer there: the combo reads "Custom" with
+        # nothing else in it and the two buttons call methods the model does not
+        # have. Shown anyway it is a strip of dead chrome above the diagram, so
+        # it appears only when it does something.
+        show = opts.get("show_toolbar", None)
+        if show is None:
+            show = len(names) > 1 or hasattr(self._model, "save_scheme_to_file")
+        top_bar.setVisible(bool(show))
         main_layout.addWidget(top_bar)
 
         # 2. Scheme Canvas area
@@ -171,6 +217,12 @@ class StateSchemeWidget(QtWidgets.QWidget):
         self._drag_start_pos = QtCore.QPoint(0, 0)
         self._drag_offset = QtCore.QPointF(0, 0)
         self._last_n_states = -1
+        #: View transform. Node coordinates are kept in an unscaled "scene"
+        #: space so a zoom never disturbs a layout the user arranged by hand;
+        #: the zoom lives here and is applied at paint time and inverted on the
+        #: way back in for hit-testing.
+        self._zoom = 1.0
+        self._zoom_origin = QtCore.QPointF(0.0, 0.0)
 
     AUTOFORM_REFRESH = True
     is_form_field = False
@@ -225,8 +277,75 @@ class StateSchemeWidget(QtWidgets.QWidget):
             obj = _RateMatrixScheme(obj, labels)
         return obj
 
-    def refresh(self):
+    #: Zoom limits. Below the first the labels are unreadable; above the second
+    #: a single node fills the canvas and there is nothing left to orient by.
+    ZOOM_RANGE = (0.25, 6.0)
+
+    def _transform(self) -> QtGui.QTransform:
+        """Return the scene -> canvas transform."""
+        t = QtGui.QTransform()
+        t.translate(self._zoom_origin.x(), self._zoom_origin.y())
+        t.scale(self._zoom, self._zoom)
+        return t
+
+    def _scene_pos(self, point) -> QtCore.QPointF:
+        """Map a canvas position back to scene coordinates.
+
+        Every hit test -- nodes, rate badges, the arc handles -- works in scene
+        coordinates, so the inverse has to be applied on the way in or clicking
+        a zoomed node would miss it by exactly the zoom factor.
+        """
+        inverse, ok = self._transform().inverted()
+        p = QtCore.QPointF(point)
+        return inverse.map(p) if ok else p
+
+    def _on_canvas_wheel(self, event: QtGui.QWheelEvent):
+        """Zoom about the pointer.
+
+        Anchoring on the pointer rather than the widget centre is what makes
+        zoom usable for inspecting one transition in a busy scheme: the thing
+        under the cursor stays under the cursor.
+        """
+        delta = event.angleDelta().y()
+        if not delta:
+            return
+        low, high = self.ZOOM_RANGE
+        factor = 1.0015 ** float(delta)
+        new_zoom = min(high, max(low, self._zoom * factor))
+        if abs(new_zoom - self._zoom) < 1e-9:
+            return
+        try:
+            anchor = QtCore.QPointF(event.position())
+        except AttributeError:      # Qt5 spelling
+            anchor = QtCore.QPointF(event.pos())
+        scene = self._scene_pos(anchor)
+        # Keep `scene` under `anchor`: origin' = anchor - scene * zoom'
+        self._zoom = new_zoom
+        self._zoom_origin = QtCore.QPointF(
+            anchor.x() - scene.x() * new_zoom,
+            anchor.y() - scene.y() * new_zoom,
+        )
+        self._spin.hide()
+        self._editing_pair = None
         self.canvas.update()
+        event.accept()
+
+    def reset_view(self):
+        """Return to 1:1, centred as laid out."""
+        self._zoom = 1.0
+        self._zoom_origin = QtCore.QPointF(0.0, 0.0)
+        self.canvas.update()
+
+    def _excitation(self):
+        """Return the pumped transition ``(i, j)``, or ``None`` if there is none.
+
+        The scheme itself wins over the view spec: a bare rate matrix knows it
+        has no laser in it, whatever a spec inherited from a photophysics model
+        might say.
+        """
+        scheme = self._get_saturation()
+        edge = getattr(scheme, "excitation_edge", self._excitation_edge)
+        return tuple(edge) if edge else None
 
     def _init_coords(self, n: int):
         w = max(360, self.canvas.width())
@@ -265,7 +384,7 @@ class StateSchemeWidget(QtWidgets.QWidget):
                 n = sat.n_states
                 self._init_coords(n)
                 r_node = 26.0
-                pos = event.pos()
+                pos = self._scene_pos(event.pos())
                 for i in range(n):
                     pt = self._node_coords.get(i, QtCore.QPointF(0, 0))
                     if math.hypot(pos.x() - pt.x(), pos.y() - pt.y()) <= r_node:
@@ -284,12 +403,12 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
                 # If canvas background clicked, start panning the ENTIRE scheme
                 self._dragging_scheme = True
-                self._drag_start_pos = event.pos()
+                self._drag_start_pos = pos
                 self.canvas.setCursor(QtCore.Qt.SizeAllCursor)
 
     def _on_canvas_mouse_move(self, event: QtGui.QMouseEvent):
         if self._dragged_node is not None:
-            pos = event.pos()
+            pos = self._scene_pos(event.pos())
             nx = pos.x() - self._drag_offset.x()
             ny = pos.y() - self._drag_offset.y()
             self._node_coords[self._dragged_node] = QtCore.QPointF(nx, ny)
@@ -304,14 +423,14 @@ class StateSchemeWidget(QtWidgets.QWidget):
             if dist > 1e-4:
                 ux, uy = dx / dist, dy / dist
                 px, py = -uy, ux
-                pos = event.pos()
+                pos = self._scene_pos(event.pos())
                 mid_base_x = (p_i.x() + p_j.x()) / 2.0
                 mid_base_y = (p_i.y() + p_j.y()) / 2.0
                 new_h = (pos.x() - mid_base_x) * px + (pos.y() - mid_base_y) * py
                 self._arrow_offsets[(i, j)] = float(new_h)
                 self.canvas.update()
         elif getattr(self, "_dragging_scheme", False):
-            pos = event.pos()
+            pos = self._scene_pos(event.pos())
             dx = float(pos.x() - self._drag_start_pos.x())
             dy = float(pos.y() - self._drag_start_pos.y())
             self._drag_start_pos = pos
@@ -334,13 +453,16 @@ class StateSchemeWidget(QtWidgets.QWidget):
         self._init_coords(n)
         dark_m = np.asarray(sat.dark.rate_matrix()).ravel()
 
-        pos = event.pos()
+        pos = self._scene_pos(event.pos())
         for (i, j), mid_pt in self._get_active_midpoints(n, dark_m).items():
             if abs(pos.x() - mid_pt.x()) <= 28 and abs(pos.y() - mid_pt.y()) <= 16:
                 idx = j * n + i
                 val = float(dark_m[idx]) if idx < len(dark_m) else 0.0
                 self._editing_pair = (i, j)
-                self._spin.setGeometry(int(mid_pt.x() - 32), int(mid_pt.y() - 12), 64, 24)
+                # A real child widget, so it is positioned in *canvas* pixels
+                # even though the badge it covers was located in scene space.
+                anchor = self._transform().map(mid_pt)
+                self._spin.setGeometry(int(anchor.x() - 32), int(anchor.y() - 12), 64, 24)
                 self._spin.blockSignals(True)
                 self._spin.setValue(val)
                 self._spin.blockSignals(False)
@@ -419,18 +541,21 @@ class StateSchemeWidget(QtWidgets.QWidget):
 
     def _get_active_midpoints(self, n: int, dark_m: np.ndarray) -> dict[tuple[int, int], QtCore.QPointF]:
         midpoints = {}
+        excitation = self._excitation()
         for i in range(n):
             for j in range(n):
                 if i == j:
                     continue
                 idx_ij = j * n + i
                 rate_ij = float(dark_m[idx_ij]) if idx_ij < len(dark_m) else 0.0
-                is_excitation = (i == 0 and j == 1)
+                is_excitation = excitation is not None and (i, j) == excitation
 
                 if rate_ij > 0.0 or is_excitation:
                     idx_ji = i * n + j
                     rate_ji = float(dark_m[idx_ji]) if idx_ji < len(dark_m) else 0.0
-                    is_two_way = (rate_ji > 0.0 or (j == 0 and i == 1))
+                    is_two_way = rate_ji > 0.0 or (
+                        excitation is not None and (j, i) == excitation
+                    )
 
                     p_i = self._node_coords[i]
                     p_j = self._node_coords[j]
@@ -458,6 +583,10 @@ class StateSchemeWidget(QtWidgets.QWidget):
         painter.setPen(QtGui.QPen(QtGui.QColor(50, 50, 50), 1))
         painter.drawRect(rect.adjusted(0, 0, -1, -1))
 
+        # The grid above is a fixed backdrop; everything below is the scheme
+        # itself and moves with the zoom.
+        painter.setTransform(self._transform(), True)
+
         sat = self._get_saturation()
         if sat is None or not hasattr(sat, "dark"):
             painter.end()
@@ -469,22 +598,27 @@ class StateSchemeWidget(QtWidgets.QWidget):
         raw_labels = getattr(sat, "state_labels", None) or [f"S{i}" for i in range(n)]
         short_labels = [l.split(" ")[0] for l in raw_labels]
         r_node = 26.0
+        excitation = self._excitation()
 
-        # Draw only active directed transition edges (k > 0 or S0 -> S1 excitation)
+        # Directed edges with a rate, plus the pumped one when the scheme
+        # declares it -- that transition carries no rate in the matrix, so it
+        # would otherwise be missing from the diagram entirely.
         for i in range(n):
             for j in range(n):
                 if i == j:
                     continue
                 idx_ij = j * n + i
                 rate = float(dark_m[idx_ij]) if idx_ij < len(dark_m) else 0.0
-                is_excitation = (i == 0 and j == 1)
+                is_excitation = excitation is not None and (i, j) == excitation
 
                 if rate <= 0.0 and not is_excitation:
                     continue
 
                 idx_ji = i * n + j
                 rate_ji = float(dark_m[idx_ji]) if idx_ji < len(dark_m) else 0.0
-                is_two_way = (rate_ji > 0.0 or (j == 0 and i == 1))
+                is_two_way = rate_ji > 0.0 or (
+                    excitation is not None and (j, i) == excitation
+                )
 
                 p_i = self._node_coords[i]
                 p_j = self._node_coords[j]
@@ -501,7 +635,16 @@ class StateSchemeWidget(QtWidgets.QWidget):
                     rate_str = "k_exc"
                 else:
                     pen_w = max(1.8, 1.8 + 2.2 * math.log10(rate + 1.0))
-                    arrow_color = QtGui.QColor("#00e5ff") if j == 0 or i == 0 else QtGui.QColor("#ff4081")
+                    # Cyan for transitions touching the pumped state, pink
+                    # otherwise -- meaningful only when there *is* one. Without
+                    # an excitation edge, singling out state 0 would claim a
+                    # ground state the scheme never declared.
+                    if excitation is None:
+                        arrow_color = QtGui.QColor("#00e5ff")
+                    elif j == excitation[0] or i == excitation[0]:
+                        arrow_color = QtGui.QColor("#00e5ff")
+                    else:
+                        arrow_color = QtGui.QColor("#ff4081")
                     pen = QtGui.QPen(arrow_color, pen_w, QtCore.Qt.SolidLine, QtCore.Qt.RoundCap, QtCore.Qt.RoundJoin)
                     badge_bg = QtGui.QColor(20, 20, 20, 225)
                     text_color = QtGui.QColor(255, 255, 255)
@@ -548,18 +691,9 @@ class StateSchemeWidget(QtWidgets.QWidget):
             node_rect = QtCore.QRectF(pt.x() - r_node, pt.y() - r_node, 2 * r_node, 2 * r_node)
 
             grad = QtGui.QRadialGradient(pt.x() - r_node * 0.3, pt.y() - r_node * 0.3, r_node * 1.5)
-            if i == 0:
-                grad.setColorAt(0, QtGui.QColor("#42a5f5"))
-                grad.setColorAt(1, QtGui.QColor("#1565c0"))
-            elif i == 1:
-                grad.setColorAt(0, QtGui.QColor("#66bb6a"))
-                grad.setColorAt(1, QtGui.QColor("#2e7d32"))
-            elif i == 2:
-                grad.setColorAt(0, QtGui.QColor("#ab47bc"))
-                grad.setColorAt(1, QtGui.QColor("#6a1b9a"))
-            else:
-                grad.setColorAt(0, QtGui.QColor("#ffa726"))
-                grad.setColorAt(1, QtGui.QColor("#e65100"))
+            light, dark = _NODE_COLOURS[i % len(_NODE_COLOURS)]
+            grad.setColorAt(0, QtGui.QColor(light))
+            grad.setColorAt(1, QtGui.QColor(dark))
 
             is_dragged = (self._dragged_node == i)
             border_color = QtGui.QColor("#ffeb3b") if is_dragged else QtGui.QColor(240, 240, 240)

@@ -480,16 +480,24 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
 
         This is primarily used by GUI code so that widgets controlling
         parameters can release resources when the fit is closed.
+
+        Having **no** controller is the ordinary case, not a fault: a headless
+        run has no widgets at all, and a parameter drawn by a table or a
+        rate-matrix section is edited through that section rather than through a
+        controller of its own. This used to log a warning for every such
+        parameter on every update -- six lines per model update for a two-state
+        exchange scheme -- which is how a log stops being read.
         """
         for name, param in self.parameters_all_dict.items():
             controller = getattr(param, "controller", None)
-            if controller is not None:
-                try:
-                    controller.finalize()
-                except Exception as e:
-                    chisurf.logging.warning(f"Failed to finalize controller of parameter '{name}': {e}")
-            else:
-                chisurf.logging.warning(f"Parameter '{name}' has no controller to finalize.")
+            if controller is None:
+                continue
+            try:
+                controller.finalize()
+            except Exception as e:
+                chisurf.logging.warning(
+                    f"Failed to finalize controller of parameter '{name}': {e}"
+                )
 
     # def __getattribute__(
     #         self,

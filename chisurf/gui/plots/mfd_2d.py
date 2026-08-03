@@ -9,6 +9,11 @@ A side-by-side pair of images is a poor comparison. Two curves on one axis is a 
 one: a systematic offset, a width mismatch or a missing population is obvious in a
 way that two heat maps at 40% width each never make it.
 
+How many bursts survived the cut, and why the fractions are not populations, is
+*not* here: it is fixed for the dataset, it does not change as the fit runs, and a
+three-line paragraph under the axes costs the curves the room they were given the
+tab for. It lives in the Info tab with the rest of the fit's provenance.
+
 Everything goes through :mod:`chisurf.gui.chiplot`. pyqtgraph is a backend behind
 that seam and anything reaching past it falls through with a warning rather than
 failing, so a passthrough is a silent parity bug — which is why the tests assert
@@ -19,7 +24,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from chisurf.gui import QtWidgets
 from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
 
@@ -97,15 +101,10 @@ class MfdMarginalPlot(plotbase.Plot):
         )
         self.ratio_plot.legend()
 
-        self.status = QtWidgets.QLabel("")
-        self.status.setWordWrap(True)
-        self.layout.addWidget(self.status)
-
     def update_all(self, *args, **kwargs) -> None:
         """Redraw both marginals from the fit's current data and model."""
         payload = _payload(self.fit)
         if payload is None:
-            self.status.setText("No MFD dataset.")
             return
 
         axes = payload.axes
@@ -135,14 +134,6 @@ class MfdMarginalPlot(plotbase.Plot):
         self.micro_plot.set_range(
             x=(float(axes.micro_time_edges[0]), float(axes.micro_time_edges[-1])),
             padding=0.0,
-        )
-
-        summary = payload.observed.summary
-        self.status.setText(
-            f"{summary['n_used']} / {summary['n_input']} bursts, "
-            f"{summary['excluded_fraction']:.1%} excluded at "
-            f"{summary['min_green_photons']} donor photons — a cut that removes "
-            "high-FRET bursts preferentially, so these are not population fractions."
         )
 
     def update(self, *args, **kwargs) -> None:

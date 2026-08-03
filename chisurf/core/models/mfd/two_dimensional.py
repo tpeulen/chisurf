@@ -627,17 +627,23 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         self.y = flat
         self.d = np.vstack((self.x, self.y))
 
-    def summary_html(self) -> str:
+    #: Why this fit's covariance must not be read as an uncertainty.
+    _COVARIANCE_CAVEAT = (
+        "Uncertainties from this fit's covariance are not valid: the histogram "
+        "source scores the same bursts through more than one marginal, so its "
+        "curvature is not a likelihood's. Use the burst-wise source or a "
+        "bootstrap over bursts."
+    )
+
+    def summary_rows(self) -> list[tuple[str, str]]:
         """Return what the fit is being asked to explain, and what it excluded.
 
-        A **method**, deliberately. An ``info`` section resolves its ``source`` by
-        calling it; a property is read at class level, returns a ``property``
-        object rather than a string, and the section renders as a large blank
-        block with no error anywhere — which is exactly what it did.
+        One source of truth for both renderings below, so the plain-text and the
+        HTML views cannot drift apart.
         """
         data = burst_payload(self.fit.data)
         if data is None:
-            return "<i>No MFD dataset.</i>"
+            return []
         summary = data.observed.summary
         rows = [
             ("Bursts in the folder", f"{summary['n_input']}"),
@@ -649,13 +655,38 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
             rows.append(
                 (f"{name} background", f"{response.background_rate * 1e-3:.3f} kHz")
             )
+        return rows
+
+    def summary_text(self) -> str:
+        """Return the summary as plain text, for the Info tab's report.
+
+        The Info tab is one continuous plain-text account of the fit, and a
+        second widget floating above it -- with its own scrollbar and its own
+        idea of how tall it should be -- reads as a thing bolted on rather than
+        part of the report. So the model offers text and the tab merges it.
+        """
+        rows = self.summary_rows()
+        if not rows:
+            return "No MFD dataset."
+        width = max(len(k) for k, _ in rows)
+        body = "\n".join(f"  {k:<{width}}  {v}" for k, v in rows)
+        return f"{body}\n\n{self._COVARIANCE_CAVEAT}"
+
+    def summary_html(self) -> str:
+        """Return the same summary as HTML, for an AutoForm ``info`` section.
+
+        A **method**, deliberately. An ``info`` section resolves its ``source`` by
+        calling it; a property is read at class level, returns a ``property``
+        object rather than a string, and the section renders as a large blank
+        block with no error anywhere — which is exactly what it did.
+        """
+        rows = self.summary_rows()
+        if not rows:
+            return "<i>No MFD dataset.</i>"
         body = "".join(f"<tr><td>{k}</td><td><b>{v}</b></td></tr>" for k, v in rows)
         return (
             "<table cellspacing='4'>" + body + "</table>"
-            "<p><i>Uncertainties from this fit's covariance are not valid: the "
-            "histogram source scores the same bursts through more than one "
-            "marginal, so its curvature is not a likelihood's. Use the burst-wise "
-            "source or a bootstrap over bursts.</i></p>"
+            f"<p><i>{self._COVARIANCE_CAVEAT}</i></p>"
         )
 
     def burstwise_score(self, max_bursts: int | None = 800, seed: int = 0):

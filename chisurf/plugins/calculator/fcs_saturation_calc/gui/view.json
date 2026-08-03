@@ -131,7 +131,11 @@
               "key": "state_scheme",
               "target": "saturation",
               "options": {
-                "unit_attr": "rate_unit"
+                "unit_attr": "rate_unit",
+                "excitation_edge": [
+                  0,
+                  1
+                ]
               }
             },
             {

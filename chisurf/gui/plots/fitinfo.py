@@ -18,11 +18,6 @@ from chisurf.gui.widgets.metadata_editor import MetadataEditor
 from chisurf.gui import dialogs
 
 
-#: Ceiling for the model-summary panel, px. Past this it scrolls rather than
-#: squeezing the fit's own information off the tab.
-_SUMMARY_MAX_HEIGHT = 260
-
-
 def _configure_fill_table(table: QtWidgets.QTableWidget) -> None:
     """Configure a table to fill the available tab space."""
     table.setSizePolicy(
@@ -104,20 +99,6 @@ class FitInfo(plotbase.Plot):
         self.db = self._find_flr_database()
         self._memory_metadata = getattr(fit, "flr_metadata", {})
         self._memory_streams = getattr(fit, "flr_photon_streams", [])
-
-        # A model may publish a rendered summary of what it is fitting -- how
-        # many bursts survived a cut, which estimator is in use, why an
-        # uncertainty is not to be trusted. That belongs *here*, next to the
-        # rest of the fit's provenance, and not in the analysis dock, where it
-        # competes for room with the parameters the user is actually editing.
-        self.model_summary = QtWidgets.QTextBrowser()
-        self.model_summary.setOpenExternalLinks(True)
-        self.model_summary.setVisible(False)
-        self.model_summary.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        # No stretch: it is sized to its own text below, so a two-line caveat
-        # does not get the same room as a twenty-row table -- and, more to the
-        # point, a twenty-row table is not cut off after six.
-        self.layout.addWidget(self.model_summary, stretch=0)
 
         self.textedit = QtWidgets.QPlainTextEdit()
         self.textedit.setReadOnly(True)
@@ -728,43 +709,47 @@ class FitInfo(plotbase.Plot):
             self.fit.flr_metadata = self._memory_metadata
         self.update()
 
-    def _refresh_model_summary(self) -> None:
-        """Show the model's own summary, when it publishes one.
+    def _model_summary(self) -> str:
+        """Return the model's own account of what it is fitting, as plain text.
 
-        The hook is ``model.summary_html()`` -- a *method*, matching the
-        AutoForm ``info`` section, so a model can offer the same summary to a
-        form and to this tab without writing it twice. Models that do not have
-        one simply leave the panel hidden.
+        A model may publish how many bursts survived a cut, which estimator is
+        in use, why an uncertainty is not to be trusted. That belongs *here*,
+        with the rest of the fit's provenance -- and **in** this report rather
+        than in a widget of its own above it, which arrives with its own
+        scrollbar and its own idea of how tall it should be and reads as
+        something bolted on.
+
+        ``summary_text()`` is the hook; ``summary_html()`` is accepted and
+        flattened so a model written for an AutoForm ``info`` section needs no
+        second implementation.
         """
         model = getattr(self.fit, "model", None)
-        source = getattr(model, "summary_html", None)
-        html = ""
+        source = getattr(model, "summary_text", None)
         if callable(source):
             try:
-                html = str(source() or "")
+                return str(source() or "")
             except Exception as exc:
-                # A summary is descriptive; failing to build one must not stop
-                # the rest of the fit's information from being shown.
-                html = f"<i>summary unavailable: {exc}</i>"
-        self.model_summary.setHtml(html)
-        self.model_summary.setVisible(bool(html))
-        if html:
-            # Fit the panel to its text. A fixed share of the tab either clips a
-            # sentence mid-word or leaves a band of empty box, and which one it
-            # does depends on the model.
-            document = self.model_summary.document()
-            document.setTextWidth(max(1.0, float(self.model_summary.viewport().width())))
-            needed = int(document.size().height()) + 12
-            self.model_summary.setMaximumHeight(min(max(needed, 40), _SUMMARY_MAX_HEIGHT))
-            self.model_summary.setMinimumHeight(min(needed, _SUMMARY_MAX_HEIGHT))
+                return f"(summary unavailable: {exc})"
+        source = getattr(model, "summary_html", None)
+        if callable(source):
+            try:
+                document = QtGui.QTextDocument()
+                document.setHtml(str(source() or ""))
+                return document.toPlainText().strip()
+            except Exception as exc:
+                return f"(summary unavailable: {exc})"
+        return ""
 
     def update(self, *args, **kwargs) -> None:
         """Rebuild every panel from the fit's current state."""
         super().update(*args, **kwargs)
-        self._refresh_model_summary()
         fit = self.fit
         meta = self._get_metadata()
-        lines = [str(fit), f"\n--- Analysis: {self.analysis_id} ---"]
+        lines = [str(fit)]
+        summary = self._model_summary()
+        if summary:
+            lines.append(f"\n--- Model ---\n{summary}")
+        lines.append(f"\n--- Analysis: {self.analysis_id} ---")
         if self.db is not None:
             lines.append("DB-backed metadata")
         else:

@@ -2,6 +2,48 @@
 
 ## 2026-08-03
 
+* **The state scheme was drawing photophysics, not the scheme it was given.** A
+  two-state FRET exchange came out with a phantom `k_exc` arrow out of R1 and its
+  real backward rate missing, because the pumped transition was **hardcoded** as
+  `0 -> 1` and drawn whether or not that rate existed. In the FCS saturation model
+  the laser is genuinely not one of the fitted rates, so it has to be drawn from
+  nothing — but that is a property of *that* model, not of a rate matrix.
+  - `excitation_edge` is now **declared, never assumed**: the FCS specs say
+    `[0, 1]`, the generic `_RateMatrixScheme` says `None`, and the scheme itself
+    wins over the view spec, so a bare rate matrix cannot inherit a laser from a
+    spec copied off a photophysics model. Arrow colouring keyed on "state 0"
+    likewise applies only when there *is* a pumped state — otherwise it claimed a
+    ground state the scheme never declared.
+  - The node palette **cycles** instead of running out after four, where every
+    state past the third came out the same orange.
+  - **Zoom on the mouse wheel**, anchored on the pointer so the thing under the
+    cursor stays under it. Node coordinates stay in an unscaled scene space, so a
+    zoom never disturbs a layout arranged by hand; the inverse transform is
+    applied on the way back in, or a zoomed node could not be clicked. Clamped to
+    0.25–6×.
+  - The **preset toolbar hides when it would do nothing** — a model with no
+    schemes got a combo reading "Custom" with nothing else in it, above two
+    buttons calling methods it does not have.
+  - **`refresh` was defined twice** (pre-existing): the bare one at the bottom
+    silently overrode the one that re-syncs the preset combobox, so a preset
+    changed on the model never reached the combo. The override is gone.
+
+* **"Parameter 'k1_2' has no controller to finalize" was noise, and is gone.**
+  Having no controller is the *ordinary* case: a headless run has no widgets at
+  all, and a parameter drawn by a table or a rate-matrix section is edited
+  through that section rather than a controller of its own. It logged a WARNING
+  for every such parameter on every model update — six lines per update for a
+  two-state scheme — which is how a log stops being read.
+
+* **The MFD burst summary is reported once, in the Info tab, merged into the
+  report.** It was under the marginals *and* in Info, and in Info it was a
+  separate `QTextBrowser` floating above the text with its own scrollbar. The
+  model now offers `summary_text()` (plain) beside `summary_html()`, both built
+  from one `summary_rows()`, and `FitInfo` merges it into its single account
+  under a `--- Model ---` heading. Under the marginals it is gone: it is fixed
+  for the dataset, does not change as the fit runs, and cost the curves the room
+  they were given the tab for.
+
 * **The progress bar reported 450 times and said the same thing 410 of them.**
   Scaling by an estimate only moved the earlier failure: nobody can know how many
   evaluations a fit needs, and dividing by a guess **saturates** the moment the

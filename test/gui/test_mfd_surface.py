@@ -233,11 +233,11 @@ def test_the_summary_lives_in_the_info_plot_not_the_analysis_dock(fit, qapp):
 
     info = FitInfo(fit)
     info.update()
-    text = info.model_summary.toPlainText()
-    # ``isVisible`` needs a shown parent; the explicit flag is what was set.
-    assert not info.model_summary.isHidden()
+    # Merged into the one report, not floated above it in a widget of its own.
+    text = info.textedit.toPlainText()
     assert "Bursts in the folder" in text
     assert "covariance are not valid" in text
+    assert not hasattr(info, "model_summary")
 
 
 def test_a_model_without_a_summary_leaves_the_panel_hidden(qapp):
@@ -254,7 +254,8 @@ def test_a_model_without_a_summary_leaves_the_panel_hidden(qapp):
     )
     info = FitInfo(plain)
     info.update()
-    assert info.model_summary.isHidden()
+    text = info.textedit.toPlainText()
+    assert "--- Model ---" not in text
 
 
 def test_the_panel_offers_a_way_back_out_of_a_bad_minimum(fit):
@@ -322,6 +323,83 @@ def test_the_exchange_scheme_is_drawn_like_any_other(fit, qapp):
     assert drawn[1, 0] == pytest.approx(1500.0), "R1 -> R2 lost its direction"
     assert drawn[0, 1] == pytest.approx(900.0)
     plot.update()
+
+
+def test_a_plain_rate_scheme_has_no_pumped_transition(fit, qapp):
+    """The hardcoded ``0 -> 1`` was the bug the user saw.
+
+    It drew every scheme as though state 0 were a ground state being pumped, so
+    a two-state FRET exchange came out with a phantom ``k_exc`` arrow out of R1
+    and its real backward rate missing. There is no laser in a rate matrix.
+    """
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+
+    plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
+    assert plot.scheme_widget._excitation() is None
+    assert plot.scheme_widget._get_saturation().excitation_edge is None
+
+
+def test_a_declared_pumped_transition_is_still_honoured(qapp):
+    """The photophysics models rely on it: their laser is not a fitted rate."""
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemeWidget
+
+    class _Model:
+        saturation = None
+
+    widget = StateSchemeWidget(_Model(), target="saturation", excitation_edge=[0, 1])
+    assert widget._excitation_edge == (0, 1)
+
+
+def test_the_preset_toolbar_is_hidden_when_it_would_do_nothing(fit, qapp):
+    """A model with no presets got a combo reading "Custom" and two dead buttons."""
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+
+    plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
+    combo = plot.scheme_widget.combo_preset
+    assert combo.count() == 1
+    assert combo.parent().isHidden()
+
+
+def test_the_scheme_zooms_about_the_pointer(fit, qapp):
+    """And hit-testing follows it, or a zoomed node cannot be clicked."""
+    from qtpy import QtCore, QtGui
+
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+
+    plot = StateSchemePlot(fit, target="kinetics", labels_attr="state_names")
+    widget = plot.scheme_widget
+    assert widget._zoom == pytest.approx(1.0)
+
+    anchor = QtCore.QPointF(260.0, 120.0)
+    before = widget._scene_pos(anchor)
+    event = QtGui.QWheelEvent(
+        anchor, anchor, QtCore.QPoint(0, 0), QtCore.QPoint(0, 480),
+        QtCore.Qt.NoButton, QtCore.Qt.NoModifier, QtCore.Qt.NoScrollPhase, False,
+    )
+    widget._on_canvas_wheel(event)
+    assert widget._zoom > 1.5
+    # What was under the pointer is still under the pointer.
+    after = widget._scene_pos(anchor)
+    assert after.x() == pytest.approx(before.x(), abs=1e-6)
+    assert after.y() == pytest.approx(before.y(), abs=1e-6)
+
+    # A scene point maps to canvas and back exactly, so clicks still land.
+    widget._init_coords(widget._get_saturation().n_states)
+    node = widget._node_coords[0]
+    assert widget._scene_pos(widget._transform().map(node)).x() == pytest.approx(node.x())
+
+    low, high = widget.ZOOM_RANGE
+    for _ in range(40):
+        widget._on_canvas_wheel(event)
+    assert widget._zoom <= high
+
+
+def test_the_node_palette_does_not_run_out(qapp):
+    """It stopped at four, so every state past the third came out the same orange."""
+    from chisurf.gui.autoform.sections.state_scheme_section import _NODE_COLOURS
+
+    assert len(_NODE_COLOURS) >= 6
+    assert len(set(_NODE_COLOURS)) == len(_NODE_COLOURS)
 
 
 def test_the_scheme_adapter_leaves_the_fcs_shape_alone(qapp):
@@ -434,15 +512,24 @@ def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
     raise AssertionError("no Residual2DPlot in the view spec")
 
 
-def test_the_plot_reports_what_the_histogram_excluded(fit, qapp):
-    """The status line must not let a 45%-excluded histogram look complete."""
+def test_what_the_histogram_excluded_is_reported_once(fit, qapp):
+    """A 45%-excluded histogram must not look complete -- but say so in one place.
+
+    It was under the marginals *and* in the Info tab. It is fixed for the
+    dataset and does not change as the fit runs, so a three-line paragraph under
+    the axes only costs the curves the room they were given the tab for.
+    """
+    from chisurf.gui.plots.fitinfo import FitInfo
     from chisurf.gui.plots.mfd_2d import Mfd2DPlot
 
     plot = Mfd2DPlot(fit)
     plot.update_all()
-    text = plot.status.text()
-    assert "2980" in text and "excluded" in text
-    assert "population fractions" in text
+    assert not hasattr(plot, "status"), "the summary is back under the curves"
+
+    info = FitInfo(fit)
+    info.update()
+    text = info.textedit.toPlainText()
+    assert "2980" in text and "Excluded" in text
 
 
 def test_no_module_here_imports_pyqtgraph_directly():

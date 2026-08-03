@@ -103,7 +103,11 @@
       "key": "state_scheme",
       "options": {
         "target": "saturation",
-        "unit_attr": "dark_unit"
+        "unit_attr": "dark_unit",
+        "excitation_edge": [
+          0,
+          1
+        ]
       }
     },
     {
