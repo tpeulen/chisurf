@@ -2,6 +2,26 @@
 
 ## 2026-08-03
 
+* **PRD-64 (chiplot): the rule for closing a gap is now written down.** When
+  chiplot lacks something a call site genuinely needs, add it **to chiplot**, as
+  a thin wrapper over the pyqtgraph backend — never `import pyqtgraph` at the
+  call site, never reach through `raw_module()`. A thin wrapper is cheap (the
+  backend already holds the widget: a `widget()`, a setter or two, a handle) and
+  it keeps the seam whole, leaving the eventual native renderer one place to
+  implement instead of a scatter of call sites to find.
+  - The rule holds even when the gap is a whole missing *class* rather than a
+    method. Worked case recorded in the PRD: the planned PSF calculator wants a
+    volumetric 3-D view; chiplot has `ImageView` — image, LUT histogram and a
+    frame slider over a `(t, y, x)` stack — but no volume renderer, and
+    pyqtgraph's `GLViewWidget` is right there. That is the "just this once" that
+    stops a migration ever finishing. The correct move is a `VolumeView` canvas
+    in `backends/base.py` beside `Canvas`, `GridCanvas` and `ImageViewCanvas`,
+    with a pyqtgraph-GL implementation behind it.
+  - The cost is not hypothetical: `test/pyqtgraph_import_allowlist.txt` is a
+    **shrinking** tracker and a new direct importer fails the guard. Closing a
+    gap by wrapping shrinks the list; closing it by reaching around grows the
+    list and quietly moves the finish line.
+
 * **The fitting progress bar was rendering, and still unreadable.** With the
   callback finally reaching its sink, a screenshot of a real MFD fit showed why it
   still read as broken: the label is written for a *dialog* — the fit name wrapped
@@ -27512,3 +27532,4 @@
 * **Integration**: Added the [prds](/prds/index.md) group — one OKF concept per PRD (persistent `PRD-NN` number as stable id, status + phase frontmatter) integrated from the `overhaul/` folder, which is kept intact as the authoritative full text (each concept's `resource` points back). References to external/third-party software are described by role, not named. Index grouped by implementation phase.
 * **Migration**: Moved the former top-level `SPECS/` target specs into the OKF bundle as the [specs](/specs/index.md) group — `overview`, `core`, `rpc`, `mmfdb`, `plugins`, the [assessment](/specs/assessment.md) backlog, and the [template](/specs/template.md). Converted each to an OKF concept (frontmatter + bundle-relative links) and cross-linked the target specs to their current-state concepts. Removed `SPECS/`.
 * **Initialization**: Created the ChiSurf OKF bundle — root [index](/index.md), [overview](/overview.md), and the `architecture/`, `subsystems/`, `workflows/`, and `references/` groups.
+

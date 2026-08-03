@@ -281,6 +281,31 @@ their chiplot spelling, so those fall-throughs warn with the replacement ("use
 "migration gap" text. A rename is not a gap, and saying so turns a confusing
 runtime failure into a one-line fix.
 
+### Closing a gap: add to chiplot, wrapping the backend
+
+When chiplot lacks something a call site genuinely needs, the answer is to
+**add it to chiplot** — as a thin wrapper over the pyqtgraph backend — never to
+import pyqtgraph at the call site and never to reach through
+`chiplot.raw_module()`. A thin wrapper is cheap: the backend already has the
+widget, so the new canvas or method is a `widget()`, a setter or two, and a
+handle. What it buys is that the seam stays whole, and that the eventual native
+renderer has one place to implement instead of a scatter of call sites to find.
+
+This is the rule even when the gap looks like a whole missing *class* rather
+than a missing method. A worked case: the PSF calculator (see below) wants a
+volumetric 3-D view. chiplot has `ImageView` — image plus LUT histogram plus a
+frame slider over a `(t, y, x)` stack — but no volume renderer, and pyqtgraph's
+`GLViewWidget` is right there. Importing it at the plugin would be the "just
+this once" that never finishes; the correct move is a `VolumeView` canvas in
+`backends/base.py` with a pyqtgraph-GL implementation behind it, joining
+`Canvas`, `GridCanvas` and `ImageViewCanvas`.
+
+The cost of getting this wrong is not hypothetical: the allow-list in
+`test/pyqtgraph_import_allowlist.txt` is a **shrinking** tracker, and a new
+direct importer fails the guard. A gap closed by wrapping shrinks the list; a
+gap closed by reaching around it grows the list and silently moves the finish
+line.
+
 ## CI guard
 
 `test/test_pyqtgraph_seam.py` scans `chisurf/` and asserts `import pyqtgraph` /
