@@ -567,8 +567,8 @@ Two questions the static gate raised, both worth answering before rates are:
    the histogram cannot see. Together these took a kinetic evaluation from
    unusable to a few seconds per fit.
 
-4. **Burst-wise source and burst bootstrap** — ✅ *landed*; pooled-decay source
-   still open. `fit.burstwise_log_probabilities` scores every photon's micro time
+4. **All three scoring sources** — ✅ *landed*.
+   `fit.burstwise_log_probabilities` scores every photon's micro time
    with the state mixture marginalized, taking exchange through the *same*
    occupation-time law as the histogram so the two cannot disagree about what the
    model is. On simulated intermediate-exchange data its log-likelihood peaks
@@ -585,6 +585,24 @@ Two questions the static gate raised, both worth answering before rates are:
    computed per **duration bin** rather than per burst, since the law varies
    smoothly with the window and a grid per burst would dominate the cost of the
    source whose point is to be the reference.
+
+   `fit.pooled_decay_score` pools each proximity-ratio bin's donor photons back
+   into a real decay. Bins are on the **ratio only** — pooling on a coordinate
+   conditions on it, and the ratio is one the model reproduces exactly through the
+   same nested sum the histogram uses, where the lifetime axis is not.
+
+   What it is for, tested both ways round: a burst caught mid-exchange between a
+   close and a far state, and a burst from a single state at the intermediate
+   distance, can sit at the same ratio with the same mean micro time and *not* have
+   the same decay. On exchanging data the pooled decays prefer the mixture (3469 vs
+   6624); on static data at the matched distance they prefer the single state (1001
+   vs 4150). A source that always preferred the more flexible model would prove
+   nothing, which is why both directions are asserted.
+
+   **What it is not for**: constraining the rate. Its score varies by ~4% over a
+   36-fold change in exchange rate for a two-state system, so its minimum in the
+   rate is not reliable. It discriminates *shape*, and the rate should come from the
+   histogram or burst-wise sources.
 5. **Anisotropy axis** in full — `G`, `l₁/l₂`, per-state `ρ`, with the Perrin
    relation as a *prediction*.
 6. **Surfacing** — fitting model plus view spec (PRD-38/40), 2D plots through

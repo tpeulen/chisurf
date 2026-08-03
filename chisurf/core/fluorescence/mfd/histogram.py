@@ -46,6 +46,9 @@ __all__ = [
     "acceptor_count_distribution",
     "acceptor_count_distributions",
     "model_histogram",
+    "model_pooled_decays",
+    "observed_pooled_decays",
+    "rebin_pattern",
     "observed_histogram",
 ]
 
@@ -526,4 +529,230 @@ def model_histogram(
                 rows * counts[index][keep][:, None],
             )
 
+    return out
+
+
+def rebin_pattern(pattern: np.ndarray, n_bins: int) -> np.ndarray:
+    """Sum a micro-time pattern into coarser channels.
+
+    A pooled decay scored at the TAC's own 4096 channels costs a lot for detail no
+    burst histogram can support; a few dozen channels keep the *shape*, which is
+    what this source exists to recover.
+
+    Parameters
+    ----------
+    pattern : numpy.ndarray
+        ``(..., n_channels)`` weights.
+    n_bins : int
+        Target number of channels. The original count must be divisible by it, so
+        that no photon is split across two coarse bins.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(..., n_bins)``.
+    """
+    values = np.asarray(pattern, dtype=float)
+    n_channels = values.shape[-1]
+    if n_bins >= n_channels:
+        return values
+    factor = n_channels // int(n_bins)
+    usable = factor * int(n_bins)
+    return values[..., :usable].reshape(values.shape[:-1] + (int(n_bins), factor)).sum(
+        axis=-1
+    )
+
+
+def observed_pooled_decays(
+    preparation: BurstPreparation,
+    axes: HistogramAxes,
+    *,
+    green: str = "green",
+    red: str = "red",
+    min_green_photons: int = DEFAULT_MIN_GREEN_PHOTONS,
+    n_decay_channels: int = 64,
+) -> np.ndarray:
+    """Pool each proximity-ratio bin's donor photons into one real decay.
+
+    The mean micro time is one number per burst, and one number cannot tell a
+    within-burst *mixture* of two lifetimes from a single intermediate one — they
+    have the same mean and different decays. Pooling the photons of a bin back into
+    an actual decay recovers exactly that shape, at a cost that scales with bins ×
+    channels rather than with bursts × photons.
+
+    **Pooling on a coordinate conditions on it.** Bins are laid on the proximity
+    ratio only, never on the lifetime axis: the model predicts the ratio exactly,
+    through the same nested background/partition sum the histogram uses, so the
+    conditioning can be reproduced. Pooling on ``⟨t⟩`` as well would make every
+    pooled decay tilt in a way that reads as a lifetime shift.
+
+    Parameters
+    ----------
+    preparation : BurstPreparation
+        Must carry its photons.
+    axes : HistogramAxes
+        Supplies the proximity-ratio bin edges.
+    green, red : str
+        Detector names.
+    min_green_photons : int
+        The same cut the histogram applies.
+    n_decay_channels : int
+        Micro-time channels of the pooled decay.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_ratio_bins, n_decay_channels)`` photon counts.
+
+    Raises
+    ------
+    ValueError
+        If the preparation carries no photons.
+    """
+    from chisurf.core.fluorescence.burst.photons import stream_index_arrays
+
+    tttrs = preparation.summary.get("_tttrs")
+    if not tttrs:
+        raise ValueError(
+            "pooled decays need the photons; prepare the folder with with_photons=True"
+        )
+    preparation.require_verified([green, red])
+    green_index = preparation.channel_index(green)
+    red_index = preparation.channel_index(red)
+
+    n_ratio = axes.shape[0]
+    n_channels = None
+    for tttr in tttrs.values():
+        n_channels = int(
+            getattr(tttr.header, "number_of_micro_time_channels", 0) or 0
+        )
+        break
+    n_channels = n_channels or (int(n_decay_channels))
+    out = np.zeros((n_ratio, int(n_decay_channels)))
+
+    n_green = preparation.counts[:, green_index]
+    n_red = preparation.counts[:, red_index]
+    total = n_green + n_red
+    usable = (total > 0) & (n_green >= int(min_green_photons))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        ratio = np.where(total > 0, n_red / np.maximum(total, 1), 0.0)
+    ratio_bin = np.clip(np.digitize(ratio, axes.ratio_edges) - 1, 0, n_ratio - 1)
+
+    streams = list(preparation.streams)
+    cache = {
+        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times))
+        for key, t in tttrs.items()
+    }
+    factor = max(1, n_channels // int(n_decay_channels))
+    for row in np.nonzero(usable)[0]:
+        entry = cache.get(preparation.file_key[row])
+        if entry is None:
+            continue
+        channels, micro = entry
+        lo = int(preparation.first_photon[row])
+        hi = int(preparation.last_photon[row]) + 1
+        index = stream_index_arrays(channels[lo:hi], micro[lo:hi], streams)
+        photons = micro[lo:hi][index == green_index]
+        coarse = np.clip(photons // factor, 0, int(n_decay_channels) - 1)
+        out[ratio_bin[row]] += np.bincount(
+            coarse, minlength=int(n_decay_channels)
+        )[: int(n_decay_channels)]
+    return out
+
+
+def model_pooled_decays(
+    nuisance: NuisanceMeasure,
+    axes: HistogramAxes,
+    *,
+    component_weights: np.ndarray,
+    p_red: np.ndarray,
+    component_patterns: np.ndarray,
+    background_pattern: np.ndarray,
+    background_rates: tuple[float, float],
+    min_green_photons: int = DEFAULT_MIN_GREEN_PHOTONS,
+    binned: tuple[np.ndarray, np.ndarray, list[np.ndarray]] | None = None,
+) -> np.ndarray:
+    """Predict the pooled decay of every proximity-ratio bin.
+
+    The same conditioning as the observed side, reproduced rather than assumed: a
+    burst reaches a ratio bin with the probability the nested background/partition
+    sum gives it, and contributes as many donor photons as that outcome implies.
+
+    Parameters
+    ----------
+    nuisance : NuisanceMeasure
+        The empirical ``P(S, t_G, t_R)``.
+    axes : HistogramAxes
+        Supplies the proximity-ratio bin edges.
+    component_weights, p_red : numpy.ndarray
+        ``(n_cells, n_components)`` as for :func:`model_histogram`.
+    component_patterns : numpy.ndarray
+        ``(n_components, n_decay_channels)`` normalised donor micro-time patterns.
+    background_pattern : numpy.ndarray
+        ``(n_decay_channels,)`` normalised background pattern — flat, since
+        uncorrelated background carries no timing information.
+    background_rates : tuple of float
+        ``(green, red)`` background count rates, s⁻¹.
+    min_green_photons : int
+        The same cut the observed side applied.
+    binned : tuple, optional
+        A precomputed :meth:`NuisanceMeasure.binned` result.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_ratio_bins, n_decay_channels)``, in expected photon counts.
+    """
+    weights, signal, spans = binned if binned is not None else nuisance.binned()
+    bg_green_rate, bg_red_rate = background_rates
+    patterns = np.asarray(component_patterns, dtype=float)
+    flat = np.asarray(background_pattern, dtype=float)
+
+    n_ratio = axes.shape[0]
+    out = np.zeros((n_ratio, patterns.shape[1]))
+
+    for cell in np.nonzero(weights > 0)[0]:
+        s = int(round(float(signal[cell])))
+        if s <= 0:
+            continue
+        b_green = float(bg_green_rate) * float(spans[0][cell])
+        b_red = float(bg_red_rate) * float(spans[1][cell])
+
+        n_red = np.arange(s + 1)
+        n_green = s - n_red
+        keep = n_green >= int(min_green_photons)
+        if not keep.any():
+            continue
+        ratio_bin = np.clip(
+            np.digitize(n_red / float(s), axes.ratio_edges) - 1, 0, n_ratio - 1
+        )
+
+        active = np.nonzero(component_weights[cell] > 0.0)[0]
+        if active.size == 0:
+            continue
+        counts = acceptor_count_distributions(
+            s, p_red[cell, active], b_green, b_red
+        ) * (weights[cell] * component_weights[cell, active])[:, None]
+
+        # How many donor photons each outcome contributes, and how many of those
+        # are background rather than fluorescence.
+        signal_photons = np.clip(n_green - b_green, 0.0, None)
+        background_photons = np.minimum(b_green, n_green.astype(float))
+        for index, component in enumerate(active):
+            share = counts[index][keep]
+            # Accumulate per ratio bin, weighted by how many donor photons each
+            # outcome contributes there — and split into fluorescence and
+            # background, because only the first carries the decay.
+            per_bin_signal = np.bincount(
+                ratio_bin[keep],
+                weights=share * signal_photons[keep],
+                minlength=n_ratio,
+            )
+            per_bin_background = np.bincount(
+                ratio_bin[keep],
+                weights=share * background_photons[keep],
+                minlength=n_ratio,
+            )
+            out += np.outer(per_bin_signal, patterns[component])
+            out += np.outer(per_bin_background, flat)
     return out

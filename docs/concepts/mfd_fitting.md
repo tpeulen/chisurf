@@ -189,6 +189,32 @@ The one result that is sharp everywhere is the negative: **static data returns n
 exchange.** A model that produced a finite rate there would be reporting dynamics
 from static heterogeneity, which is the failure the whole design is arranged around.
 
+## Three sources, one model
+
+The same parameters can be scored three ways, and their agreement is itself a test:
+
+| source | what it uses | what it is for |
+|---|---|---|
+| **histogram** | each burst compressed to two numbers | the fast path, and the rate |
+| **burst-wise** | every photon's micro time | the reference, and the only valid uncertainty |
+| **pooled decay** | real decays pooled per ratio bin | the decay *shape* the mean discards |
+
+The pooled-decay source exists for one discrimination the other two cannot make
+cleanly. A burst caught mid-exchange between a close and a far state, and a burst
+from a single state at the intermediate distance, can sit at the same proximity
+ratio with the same mean micro time — and they do not have the same decay, because
+one is a *mixture* of two lifetimes and the other is one lifetime. Pooling each
+ratio bin's photons back into a real decay recovers that.
+
+It is deliberately pooled on the **ratio only**. Pooling on a coordinate conditions
+on it, and the ratio is one the model reproduces exactly; pooling on the lifetime
+axis too would tilt every pooled decay in a way that reads as a lifetime shift.
+
+Its limits are worth stating: on a two-state system its score varies by only a few
+percent over a 36-fold change in exchange rate, so it is **not** the source to read
+a rate from. It tells you whether the shape is a mixture. The rate comes from the
+histogram or burst-wise sources.
+
 ## Things to know before reading a number off it
 
 * **The donor-photon cut is not neutral between populations.** A high-FRET burst

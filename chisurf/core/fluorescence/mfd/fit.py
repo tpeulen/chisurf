@@ -58,6 +58,7 @@ __all__ = [
     "burstwise_log_probabilities",
     "estimate_responses",
     "load_mfd_data",
+    "pooled_decay_score",
 ]
 
 
@@ -872,3 +873,112 @@ def bootstrap_uncertainties(
         }
         for key in keys
     }
+
+
+def pooled_decay_score(
+    model: MfdModel,
+    data: MfdData,
+    *,
+    n_decay_channels: int = 64,
+):
+    """Score the model against real decays pooled per proximity-ratio bin.
+
+    The third scoring source. A burst's mean micro time is one number, and one
+    number cannot separate a within-burst *mixture* of two lifetimes from a single
+    intermediate one — they have the same mean and different decays. Pooling the
+    photons of each ratio bin back into an actual decay recovers that shape, which
+    is precisely the discrimination the histogram source gives up in exchange for
+    its speed.
+
+    Bins are on the proximity ratio only. Pooling on a coordinate conditions on it,
+    and the ratio is one the model reproduces exactly through the same nested
+    background/partition sum the histogram uses; pooling on the lifetime axis too
+    would tilt every pooled decay in a way that reads as a lifetime shift.
+
+    Parameters
+    ----------
+    model : MfdModel
+        The model to score.
+    data : MfdData
+        The measurement. Must carry its photons.
+    n_decay_channels : int
+        Micro-time channels of the pooled decays.
+
+    Returns
+    -------
+    chisurf.core.fluorescence.mfd.sources.ScoreResult
+    """
+    from chisurf.core.fluorescence.mfd.histogram import (
+        model_pooled_decays,
+        observed_pooled_decays,
+        rebin_pattern,
+    )
+    from chisurf.core.fluorescence.mfd.sources import pooled_decay_residuals
+
+    green_name, red_name = data.channels
+    green_response = data.responses[green_name]
+
+    observed = observed_pooled_decays(
+        data.preparation,
+        data.axes,
+        green=green_name,
+        red=red_name,
+        min_green_photons=data.min_green_photons,
+        n_decay_channels=n_decay_channels,
+    )
+
+    weights, p_red, _, _ = model.components(data)
+    patterns = []
+    for has_acceptor, state in model._species()[1]:
+        if has_acceptor:
+            amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
+                state, model.optics, n_points=model.n_distance_samples
+            )
+        else:
+            amplitudes = np.array([1.0])
+            lifetimes = np.array([model.optics.tau_d0])
+        patterns.append(green_response.pattern(amplitudes, lifetimes))
+    patterns = rebin_pattern(np.asarray(patterns), n_decay_channels)
+
+    # A kinetic model's components are occupation nodes, not species, so its
+    # patterns are the f-weighted mixtures of the state patterns. Built here from
+    # the same grid the histogram used rather than recomputed, so the two sources
+    # cannot drift apart.
+    if weights.shape[1] != patterns.shape[0]:
+        donor_only_pattern = patterns[0]
+        state_patterns = patterns[1:]
+        from chisurf.core.fluorescence.mfd.occupation import (
+            occupation_time_distribution,
+        )
+
+        window = float(np.median(data.nuisance.duration))
+        grid = occupation_time_distribution(
+            np.asarray(model.rate_matrix, dtype=float),
+            window,
+            n_steps=model.n_steps,
+        ).coarsen(model.n_occupation_nodes)
+        patterns = np.vstack(
+            [donor_only_pattern[None, :], grid.fractions @ state_patterns]
+        )
+        if patterns.shape[0] != weights.shape[1]:
+            # The grid width varies with the burst duration; pad with the
+            # equilibrium pattern rather than silently truncating the components.
+            pad = weights.shape[1] - patterns.shape[0]
+            patterns = np.vstack([patterns, np.repeat(patterns[-1:], pad, axis=0)])
+
+    flat = np.full(patterns.shape[1], 1.0 / patterns.shape[1])
+    predicted = model_pooled_decays(
+        data.nuisance,
+        data.axes,
+        component_weights=weights,
+        p_red=p_red,
+        component_patterns=patterns,
+        background_pattern=flat,
+        background_rates=(
+            green_response.background_rate,
+            data.responses[red_name].background_rate,
+        ),
+        min_green_photons=data.min_green_photons,
+        binned=data.binned,
+    )
+    return pooled_decay_residuals(observed, predicted)

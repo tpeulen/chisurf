@@ -351,3 +351,145 @@ def test_a_burst_bootstrap_gives_a_finite_spread(tmp_path):
     # bootstrap that wide would mean the rate is not determined at all.
     assert result["rate"]["std"] < 0.5 * result["rate"]["mean"]
     assert len(result["rate"]["values"]) == 6
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# The pooled-decay source: the shape the mean micro time discards
+# ──────────────────────────────────────────────────────────────────────────────
+def _matched_static_distance(parameters):
+    """Return the single distance whose acceptor probability matches the mixture's."""
+    from chisurf.core.fluorescence.mfd.patterns import (
+        FretState,
+        red_probability,
+        state_efficiency,
+    )
+
+    target = 0.5 * sum(
+        float(red_probability(state_efficiency(s, parameters.optics), parameters.optics))
+        for s in parameters.states
+    )
+    grid = np.arange(30.0, 90.0, 0.25)
+    values = [
+        abs(
+            float(
+                red_probability(
+                    state_efficiency(FretState(distance=float(d)), parameters.optics),
+                    parameters.optics,
+                )
+            )
+            - target
+        )
+        for d in grid
+    ]
+    return float(grid[int(np.argmin(values))])
+
+
+@pytest.mark.slow
+def test_pooled_decays_tell_a_within_burst_mixture_from_a_static_state(tmp_path):
+    """The discrimination the mean micro time cannot make, and this source exists for.
+
+    A burst caught mid-exchange between a close and a far state, and a burst from a
+    single state at the intermediate distance, can sit at the *same* proximity ratio
+    with the *same* mean micro time. They do not have the same decay: one is a
+    mixture of two lifetimes, the other is one lifetime. Pooling each ratio bin's
+    photons back into a real decay is what recovers that, and the test is that the
+    right model wins on the right data — both ways round, because a source that
+    always preferred the more flexible model would prove nothing.
+    """
+    from chisurf.core.fluorescence.mfd.fit import pooled_decay_score
+    from chisurf.core.fluorescence.mfd.patterns import FretState
+
+    axes = HistogramAxes.default(
+        n_ratio=20, n_micro_time=40, micro_time_range=(0.5, 6.0)
+    )
+    exchanging = SimulationParameters(
+        n_bursts=2500,
+        rate_matrix=rate_matrix_for("intermediate", mean_duration=2.0e-3),
+        seed=21,
+    )
+    distance = _matched_static_distance(exchanging)
+    static = SimulationParameters(
+        n_bursts=2500,
+        states=[FretState(distance=distance)],
+        populations=[1.0],
+        rate_matrix=None,
+        donor_only=exchanging.donor_only,
+        seed=21,
+    )
+
+    mixture_model = MfdKineticModel(
+        optics=exchanging.optics,
+        states=exchanging.states,
+        populations=[0.5, 0.5],
+        donor_only=exchanging.donor_only,
+        rate_matrix=exchanging.rate_matrix,
+    )
+    single_model = MfdModel(
+        optics=exchanging.optics,
+        states=[FretState(distance=distance)],
+        populations=[1.0],
+        donor_only=exchanging.donor_only,
+    )
+
+    for name, parameters, expected in (
+        ("exchange", exchanging, "mixture"),
+        ("static", static, "single"),
+    ):
+        simulated = simulate_mfd(parameters)
+        folder = simulated.write_folder(tmp_path / name)
+        data = load_mfd_data(
+            folder,
+            axes=axes,
+            min_green_photons=20,
+            responses=simulated.true_responses(),
+            n_signal_bins=16,
+            n_span_bins=4,
+        )
+        mixture = pooled_decay_score(mixture_model, data, n_decay_channels=64).score
+        single = pooled_decay_score(single_model, data, n_decay_channels=64).score
+        winner = "mixture" if mixture < single else "single"
+        assert winner == expected, f"{name}: pooled decays preferred {winner}"
+        # And by a margin, not a coin flip.
+        assert max(mixture, single) > 1.3 * min(mixture, single)
+
+
+def test_pooled_decays_pool_on_the_ratio_only(tmp_path):
+    """Shape, and the coordinate it is *not* pooled on.
+
+    Pooling on a coordinate conditions on it. The proximity ratio is one the model
+    reproduces exactly, through the same nested sum the histogram uses; the lifetime
+    axis is not, and pooling on it would tilt every pooled decay in a way that reads
+    as a lifetime shift. So the returned array has one row per *ratio* bin and the
+    lifetime axis appears only as the decay's own channels.
+    """
+    from chisurf.core.fluorescence.mfd.histogram import observed_pooled_decays
+
+    axes = HistogramAxes.default(
+        n_ratio=12, n_micro_time=40, micro_time_range=(0.5, 6.0)
+    )
+    simulated, folder = _folder(tmp_path, "static", n_bursts=600)
+    data = load_mfd_data(
+        folder, axes=axes, min_green_photons=20, responses=simulated.true_responses()
+    )
+    decays = observed_pooled_decays(
+        data.preparation, axes, min_green_photons=20, n_decay_channels=32
+    )
+    assert decays.shape == (12, 32)
+    assert decays.sum() > 0
+    # Every photon in the pooled decays is a donor photon of a burst that survived
+    # the cut, so the total cannot exceed what those bursts hold.
+    green = data.preparation.channel_index("green")
+    assert decays.sum() <= data.preparation.counts[:, green].sum()
+
+
+def test_pooled_decays_need_photons(tmp_path):
+    """Another source that refuses rather than answering differently."""
+    from chisurf.core.fluorescence.mfd.histogram import observed_pooled_decays
+
+    simulated, folder = _folder(tmp_path, "static", n_bursts=200)
+    data = load_mfd_data(
+        folder, axes=AXES, responses=simulated.true_responses()
+    )
+    data.preparation.summary.pop("_tttrs")
+    with pytest.raises(ValueError, match="with_photons=True"):
+        observed_pooled_decays(data.preparation, AXES)
