@@ -537,6 +537,20 @@ class VolumeViewCanvas(abc.ABC):
     def clear(self) -> None:
         """Remove the volume."""
 
+    def set_vectors(
+        self,
+        segments: np.ndarray | None,
+        *,
+        color: tuple = (1.0, 1.0, 1.0, 0.8),
+        width: float = 2.0,
+    ) -> None:
+        """Draw an overlay of line segments, ``(n, 2, 3)`` in voxel coordinates.
+
+        For annotating a volume with directions -- a polarization state, a
+        field, an axis. ``None`` removes the overlay. Backends without line
+        support may ignore this.
+        """
+
     @abc.abstractmethod
     def set_camera(self, distance=None, elevation=None, azimuth=None) -> None:
         """Position the orbit camera."""

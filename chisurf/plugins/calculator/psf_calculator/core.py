@@ -40,6 +40,7 @@ class PSFModel:
         self.threshold = 0.02
         self.gamma = 0.6
         self.colormap = "magma"
+        self.show_polarization = True
 
         self._volume = None
         self._key = None
@@ -79,6 +80,50 @@ class PSFModel:
         )
         self._volume, self._key = volume, key
         return volume
+
+    def polarization_segments(self, n_ring: int = 12, radius_frac: float = 0.38):
+        """The pupil polarization state, as line segments for the 3-D overlay.
+
+        Drawn on a ring above the focus, one stroke per sampled pupil point,
+        each along the local electric-field direction. It answers the question
+        the volume alone cannot: *which* state produced this focus.
+
+        Returns ``(n, 2, 3)`` in voxel coordinates, or None when the model has
+        no polarization (the scalar and Gaussian models ignore it).
+        """
+        import numpy as np
+
+        if self._volume is None or self.model != "vectorial":
+            return None
+
+        nz, ny, nx = self._volume.shape
+        r = radius_frac * min(nx, ny)
+        cx, cy = nx / 2.0, ny / 2.0
+        z = nz * 0.92                      # a plane above the focus
+        half = 0.10 * min(nx, ny)
+
+        phi = np.linspace(0.0, 2.0 * np.pi, n_ring, endpoint=False)
+        px, py = cx + r * np.cos(phi), cy + r * np.sin(phi)
+
+        pol = self.polarization
+        if pol in ("x", "y", "linear"):
+            angle = {"x": 0.0, "y": np.pi / 2.0}.get(
+                pol, np.deg2rad(self.angle_deg))
+            ux, uy = np.full_like(phi, np.cos(angle)), np.full_like(phi, np.sin(angle))
+        elif pol == "radial":
+            ux, uy = np.cos(phi), np.sin(phi)
+        elif pol == "azimuthal":
+            ux, uy = -np.sin(phi), np.cos(phi)
+        else:
+            # circular and unpolarized have no fixed direction; show the ring
+            # itself, which is what "no preferred axis" looks like
+            ux, uy = -np.sin(phi), np.cos(phi)
+
+        seg = np.empty((len(phi), 2, 3))
+        seg[:, 0, 0], seg[:, 0, 1] = px - half * ux, py - half * uy
+        seg[:, 1, 0], seg[:, 1, 1] = px + half * ux, py + half * uy
+        seg[:, :, 2] = z
+        return seg
 
     # -- reporting -----------------------------------------------------------
     def summary_text(self) -> str:

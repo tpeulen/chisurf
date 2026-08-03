@@ -223,6 +223,12 @@
                     "gray"
                   ],
                   "description": "Colormap of the rendered volume."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "show_polarization",
+                  "label": "Polarization vectors",
+                  "description": "Draw the pupil polarization state as strokes on a ring above the focus. Vectorial model only, since the scalar models ignore polarization."
                 }
               ],
               "n_col": 1

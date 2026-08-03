@@ -1092,6 +1092,10 @@ class VolumeView(QtWidgets.QWidget):
         """Per-axis voxel scaling, for anisotropically sampled volumes."""
         self._vv.set_scale(sx, sy, sz)
 
+    def set_vectors(self, segments, *, color=(1.0, 1.0, 1.0, 0.8), width=2.0):
+        """Overlay line segments, ``(n, 2, 3)``; ``None`` clears them."""
+        self._vv.set_vectors(segments, color=color, width=width)
+
     def set_camera(self, distance=None, elevation=None, azimuth=None):
         """Position the orbit camera."""
         self._vv.set_camera(distance=distance, elevation=elevation,

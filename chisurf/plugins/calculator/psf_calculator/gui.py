@@ -151,6 +151,9 @@ class PSFCalculator(QtWidgets.QWidget):
         self.view.set_scale(1.0, 1.0, self.model.z_step_nm / self.model.pixel_size_nm)
         self.view.set_volume(volume, colormap=self.model.colormap,
                              threshold=self.model.threshold, gamma=self.model.gamma)
+        segments = (self.model.polarization_segments()
+                    if self.model.show_polarization else None)
+        self.view.set_vectors(segments, color=(0.4, 1.0, 0.9, 0.9), width=2.0)
         # No sync_fields() here. Computing does not change the model, so there
         # is nothing to write back -- and now that valueChanged is connected,
         # writing model values into the widgets would re-fire it and schedule

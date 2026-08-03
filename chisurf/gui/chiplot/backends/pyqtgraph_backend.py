@@ -1277,6 +1277,7 @@ class _PgVolumeView(base.VolumeViewCanvas):
         self._gl = gl
         self._view = gl.GLViewWidget(**opts)
         self._item = None
+        self._vectors = []
         self._scale = (1.0, 1.0, 1.0)
         self._view.setCameraPosition(distance=200)
 
@@ -1335,10 +1336,36 @@ class _PgVolumeView(base.VolumeViewCanvas):
     def set_scale(self, sx=1.0, sy=1.0, sz=1.0):
         self._scale = (float(sx), float(sy), float(sz))
 
+    def set_vectors(self, segments, *, color=(1.0, 1.0, 1.0, 0.8), width=2.0):
+        import numpy as np
+
+        for item in self._vectors:
+            self._view.removeItem(item)
+        self._vectors = []
+        if segments is None:
+            self._view.update()
+            return
+
+        seg = np.asarray(segments, dtype=float)
+        if seg.ndim != 3 or seg.shape[1:] != (2, 3):
+            raise ValueError(f"segments must be (n, 2, 3), got {seg.shape}")
+        sx, sy, sz = self._scale
+        scale = np.array([sx, sy, sz])
+        for a, b in seg:
+            item = self._gl.GLLinePlotItem(
+                pos=np.vstack([a, b]) * scale, color=color, width=width,
+                antialias=True)
+            self._view.addItem(item)
+            self._vectors.append(item)
+        self._view.update()
+
     def clear(self):
         if self._item is not None:
             self._view.removeItem(self._item)
             self._item = None
+        for item in self._vectors:
+            self._view.removeItem(item)
+        self._vectors = []
 
     def set_camera(self, distance=None, elevation=None, azimuth=None):
         self._view.setCameraPosition(
