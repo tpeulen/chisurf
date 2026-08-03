@@ -185,7 +185,6 @@ QComboBox QAbstractItemView {
     selection-background-color: #5680c2;
 }
 
-/* ===== Spin boxes – compact, neutral ===== */
 SpinBox,
 QSpinBox,
 QDoubleSpinBox {
@@ -195,6 +194,17 @@ QDoubleSpinBox {
     text-align: center;
     min-height: 13px;
     padding: 0 2px;
+    selection-background-color: #ff3333;
+    selection-color: #ffffff;
+}
+
+SpinBox:focus,
+QSpinBox:focus,
+QDoubleSpinBox:focus {
+    border: 2px solid #ff3333;
+    background: #181818;
+    selection-background-color: #ff3333;
+    selection-color: #ffffff;
 }
 
 SpinBox::up-button,

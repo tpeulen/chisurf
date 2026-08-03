@@ -1,60 +1,36 @@
 from __future__ import annotations
 
-import pyqtgraph as pg
 import copy
-import numpy as np
 
-from chisurf.gui import QtWidgets, QtCore
-from chisurf.gui.widgets.parameter_editor import ParameterEditor
+import numpy as np
 
 import chisurf.core.fitting
 import chisurf.core.fluorescence
 import chisurf.core.math.datatools
+from chisurf.gui import QtWidgets
+from chisurf.gui import chiplot as cp
 from chisurf.gui.plots import plotbase
+from chisurf.gui.widgets.parameter_editor import ParameterEditor
 
 
-class DraggableTextItem(pg.TextItem):
-    """A ``pg.TextItem`` the user can drag with the left mouse button.
+def _symbol(s):
+    """Normalise a curve-option symbol to a chiplot symbol or ``None``.
 
-    Local to this still-pyqtgraph plot (mirroring ``residual_image``'s own
-    copy); the TCSPC LinePlot's equivalent has migrated to chiplot's
-    ``Plot.text(..., draggable=True, anchored=True)``. This copy retires when
-    :mod:`distribution` itself migrates to chiplot.
+    The distribution option dicts spell "no marker" as the string ``"None"``
+    (a pyqtgraph idiom); chiplot expects an actual ``None``.
+
+    Parameters
+    ----------
+    s : str or None
+        Symbol name from a curve-options dict.
+
+    Returns
+    -------
+    str or None
+        The symbol name, or ``None`` when no marker should be drawn.
     """
+    return None if s is None or str(s) == "None" else s
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setAcceptHoverEvents(True)
-        self.setCursor(QtCore.Qt.OpenHandCursor)
-        self._dragging = False
-        self._drag_offset = QtCore.QPointF(0, 0)
-
-    def hoverEnterEvent(self, event):
-        self.setCursor(QtCore.Qt.OpenHandCursor)
-
-    def mousePressEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self._dragging = True
-            self.setCursor(QtCore.Qt.ClosedHandCursor)
-            self._drag_offset = event.pos()
-            event.accept()
-        else:
-            event.ignore()
-
-    def mouseMoveEvent(self, event):
-        if self._dragging and event.buttons() & QtCore.Qt.LeftButton:
-            self.setPos(self.mapToParent(event.pos() - self._drag_offset))
-            event.accept()
-        else:
-            event.ignore()
-
-    def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self._dragging = False
-            self.setCursor(QtCore.Qt.OpenHandCursor)
-            event.accept()
-        else:
-            event.ignore()
 
 plot_settings = chisurf.core.settings.gui['plot']
 colors = plot_settings['colors']
@@ -122,7 +98,7 @@ class DistributionPlotControl(QtWidgets.QWidget):
         """Return whether individual Gaussian component curves should be shown.
 
         For non-Gaussian PDA models this has no effect, but for
-        PdaGaussianDistanceModel the extra component curves are drawn only
+        Pda2cGaussianDistanceModel the extra component curves are drawn only
         when this checkbox is enabled.
         """
         try:
@@ -212,86 +188,59 @@ class DistributionPlot(plotbase.Plot):
         )
 
         if self._with_residual_panel:
-            pw_res = pg.PlotWidget()
-            pw_main = pg.PlotWidget()
-            try:
-                pw_res.setXLink(pw_main)
-            except Exception:
-                pass
+            p_res = cp.Plot()
+            p_main = cp.Plot()
+            p_res.link_x(p_main)
             # Give the residuals panel ~1/3 of the total height and the main
             # histogram ~2/3 using stretch factors 1 and 2.
-            self.layout.addWidget(pw_res, 1)
-            self.layout.addWidget(pw_main, 2)
-            self.residual_plot = pw_res.getPlotItem()
-            self.distribution_plot = pw_main.getPlotItem()
-            try:
-                self.residual_plot.hideAxis('bottom')
-                self.residual_plot.setLabel('left', "w.res.")
-            except Exception:
-                pass
+            self.layout.addWidget(p_res, 1)
+            self.layout.addWidget(p_main, 2)
+            self.residual_plot = p_res
+            self.distribution_plot = p_main
+            self.residual_plot.set_axis_visible(bottom=False)
+            self.residual_plot.set_labels(left="w.res.")
         else:
-            pw = pg.PlotWidget()
-            self.layout.addWidget(pw)
-            self.distribution_plot = pw.getPlotItem()
+            p = cp.Plot()
+            self.layout.addWidget(p)
+            self.distribution_plot = p
 
         # Match LinePlot's grid settings where applicable: show a grid on the
         # main distribution plot and, when present, on the residuals.
-        try:
-            if plot_settings.get('enable_grid', False):
-                if plot_settings.get('show_data_grid', False):
-                    self.distribution_plot.showGrid(True, True, 0.5)
-                if self.residual_plot is not None and plot_settings.get('show_residual_grid', False):
-                    self.residual_plot.showGrid(True, True, 1.0)
-        except Exception:
-            pass
+        if plot_settings.get('enable_grid', False):
+            if plot_settings.get('show_data_grid', False):
+                self.distribution_plot.grid(x=True, y=True, alpha=0.5)
+            if self.residual_plot is not None and plot_settings.get('show_residual_grid', False):
+                self.residual_plot.grid(x=True, y=True, alpha=1.0)
 
         # Apply requested axis scaling (x) to main plot and residuals.
-        try:
-            log_x = str(self._scale_x).lower() == 'log'
-            log_y = str(self._scale_y).lower() == 'log'
-            self.distribution_plot.setLogMode(x=log_x, y=log_y)
-            if self.residual_plot is not None:
-                self.residual_plot.setLogMode(x=log_x, y=False)
-        except Exception:
-            pass
-        pen = pg.mkPen(colors['data'], width=lw)
-        self.distribution_curve = self.distribution_plot.plot(
-            x=[0.0],
-            y=[0.0],
-            pen=pen,
-            fillLevel=0,
-            fillBrush=colors['data']
+        log_x = str(self._scale_x).lower() == 'log'
+        log_y = str(self._scale_y).lower() == 'log'
+        self.distribution_plot.set_log(x=log_x, y=log_y)
+        if self.residual_plot is not None:
+            self.residual_plot.set_log(x=log_x, y=False)
+
+        self.distribution_curve = self.distribution_plot.line(
+            [0.0], [0.0], pen=colors['data'], width=lw, fill=colors['data']
         )
 
-        # Draggable fit-quality box (χ²_red and DW), similar to LinePlot.
-        self._quality_text = None
+        # Draggable fit-quality box (χ²_red and DW), similar to LinePlot: a
+        # screen-pinned yellow overlay whose plain text is refreshed on update.
         try:
-            self._quality_text = DraggableTextItem(
-                text='',
-                border='w',
-                fill=(0, 0, 255, 100),
-                anchor=(0, 0)
+            self._quality_text = self.distribution_plot.text(
+                '', (0, 0), color='#FF0', border='w', fill=(0, 0, 255, 100),
+                anchor=(0, 0), draggable=True, anchored=True,
             )
-            self._quality_text.setParentItem(self.distribution_plot)
-            # Initial position; user can drag to taste.
-            self._quality_text.setPos(0, 0)
         except Exception:
             self._quality_text = None
 
     def update(self, *args, **kwargs) -> None:
         super().update(*args, **kwargs)
-        # Clear curve and recreate plots
+        # Clear curves and recreate plots. The screen-pinned statistics box is
+        # parented to the plot item (not an addItem'd handle), so it survives
+        # clear() and stays visible, mirroring the TCSPC LinePlot.
         self.distribution_plot.clear()
         if self.residual_plot is not None:
             self.residual_plot.clear()
-
-        # Re-attach the draggable statistics box after clear so it remains
-        # visible, mirroring the behavior of the TCSPC LinePlot.
-        try:
-            if self._quality_text is not None:
-                self._quality_text.setParentItem(self.distribution_plot)
-        except Exception:
-            pass
 
         # Get distribution
         ds = self.plot_controller.parameter_editor.dict
@@ -315,23 +264,17 @@ class DistributionPlot(plotbase.Plot):
                 axis_label = str(self.plot_controller.distribution_type)
             except Exception:
                 axis_label = ''
-        try:
-            if axis_label:
-                self.distribution_plot.setLabel('bottom', axis_label)
-        except Exception:
-            pass
+        if axis_label:
+            self.distribution_plot.set_labels(bottom=axis_label)
 
         # Update axis scaling based on the currently selected distribution
-        try:
-            scale_x = ds.get('scale_x', self._scale_x)
-            scale_y = ds.get('scale_y', self._scale_y)
-            log_x = str(scale_x).lower() == 'log'
-            log_y = str(scale_y).lower() == 'log'
-            self.distribution_plot.setLogMode(x=log_x, y=log_y)
-            if self.residual_plot is not None:
-                self.residual_plot.setLogMode(x=log_x, y=False)
-        except Exception:
-            pass
+        scale_x = ds.get('scale_x', self._scale_x)
+        scale_y = ds.get('scale_y', self._scale_y)
+        log_x = str(scale_x).lower() == 'log'
+        log_y = str(scale_y).lower() == 'log'
+        self.distribution_plot.set_log(x=log_x, y=log_y)
+        if self.residual_plot is not None:
+            self.residual_plot.set_log(x=log_x, y=False)
         r = ds['accessor'](
             self.fit.model.__getattribute__(ds['attribute']),
             **ds.get('accessor_kwargs', {})
@@ -355,7 +298,7 @@ class DistributionPlot(plotbase.Plot):
         # Optionally derive weighted residuals and basic fit statistics from the
         # first two curves (data, model) using counting shot noise
         # sigma = sqrt(max(data, 1)). For PDA 1D histograms this matches the
-        # definition used in chisurf.gui.widgets.models.pda.get_distribution and
+        # definition used in chisurf.gui.widgets.models.pda2c.get_distribution and
         # allows us to define DW directly from the currently shown histogram
         # rather than only from the global Fit object. Bins with zero
         # experimental counts do not contribute to DW or the effective
@@ -412,8 +355,8 @@ class DistributionPlot(plotbase.Plot):
         try:
             if not p.get('multi_curve', False) and 'fillBrush' in p:
                 base = p['fillBrush']
-                col = pg.mkColor(base)
-                r_c, g_c, b_c, _ = col.getRgb()
+                col = cp.to_color(base)
+                r_c, g_c, b_c, _ = col.as_tuple()
                 alpha_fill = int(0.5 * 255)
                 p['fillBrush'] = (r_c, g_c, b_c, alpha_fill)
                 if 'pen' not in p:
@@ -466,20 +409,18 @@ class DistributionPlot(plotbase.Plot):
             # The fill uses the same RGB values as the data line but with
             # ~50% transparency so that the line remains clearly visible.
             fill_brush = None
-            fill_level = None
             try:
                 if 'fillBrush' in p:
                     fill_brush = p.pop('fillBrush')
-                    fill_level = p.pop('fillLevel', 0.0)
+                    p.pop('fillLevel', None)
                     if pens:
-                        base_col = pg.mkColor(pens[0])
-                        r_c, g_c, b_c, _ = base_col.getRgb()
+                        base_col = cp.to_color(pens[0])
+                        r_c, g_c, b_c, _ = base_col.as_tuple()
                         alpha_fill = int(0.5 * 255)
                         fill_brush = (r_c, g_c, b_c, alpha_fill)
                         pens[0] = (r_c, g_c, b_c, 255)
             except Exception:
                 fill_brush = None
-                fill_level = None
 
             for i in range(n_curves):
                 y_raw, x_raw = r[i]
@@ -532,7 +473,6 @@ class DistributionPlot(plotbase.Plot):
                         # Weighted residuals: stepped style for visual
                         # consistency with data/model.
                         curve_step = 'right'
-                    curve_connect = 'all'
                     # Use the dedicated residuals color for the w.res. curve.
                     try:
                         c = colors.get('residuals', c)
@@ -548,29 +488,25 @@ class DistributionPlot(plotbase.Plot):
                         # Gaussian components and any other extra curves:
                         # smooth lines.
                         curve_step = False
-                    curve_connect = 'all'
 
                 if fill_brush is not None and i == 0:
-                    target_plot.plot(
+                    target_plot.line(
                         x_plot,
                         y_plot,
-                        stepMode=curve_step,
-                        connect=curve_connect,
-                        **p,
-                        pen=pg.mkPen(c, width=lw),
-                        symbol=s,
-                        fillLevel=fill_level,
-                        fillBrush=fill_brush,
+                        step=curve_step,
+                        pen=c,
+                        width=lw,
+                        symbol=_symbol(s),
+                        fill=fill_brush,
                     )
                 else:
-                    target_plot.plot(
+                    target_plot.line(
                         x_plot,
                         y_plot,
-                        stepMode=curve_step,
-                        connect=curve_connect,
-                        **p,
-                        pen=pg.mkPen(c, width=lw),
-                        symbol=s,
+                        step=curve_step,
+                        pen=c,
+                        width=lw,
+                        symbol=_symbol(s),
                     )
         else:
             y_raw, x_raw = r
@@ -580,6 +516,12 @@ class DistributionPlot(plotbase.Plot):
             y, x = cur
             c = p.pop('pen', 'b')
             s = p.pop('symbol', 'o')
+            # Translate the remaining pyqtgraph-style curve options to chiplot
+            # line kwargs. stepMode ('right'/'left'/'center'/True) passes through
+            # as the step mode; fillBrush/fillLevel becomes a fill to baseline.
+            step = p.pop('stepMode', False)
+            fill = p.pop('fillBrush', None)
+            p.pop('fillLevel', None)
             if bar_mode == 'sticks':
                 # Single-curve discrete distributions (e.g., lifetime
                 # distributions) are rendered as vertical lines from 0 to y at
@@ -595,19 +537,13 @@ class DistributionPlot(plotbase.Plot):
                     ys[0::3] = 0.0
                     ys[1::3] = y_arr
                     ys[2::3] = np.nan
-                    p.pop('stepMode', None)
-                    p.pop('connect', None)
-                    self.distribution_plot.plot(
-                        xs,
-                        ys,
-                        stepMode=False,
-                        connect='all',
-                        **p,
-                        pen=pg.mkPen(c, width=lw),
-                        symbol=s,
+                    self.distribution_plot.line(
+                        xs, ys, step=False, pen=c, width=lw, symbol=_symbol(s), fill=fill
                     )
             else:
-                self.distribution_plot.plot(x, y, **p, pen=pg.mkPen(c, width=lw), symbol=s)
+                self.distribution_plot.line(
+                    x, y, step=step, pen=c, width=lw, symbol=_symbol(s), fill=fill
+                )
 
         # Show basic fit quality metrics in a draggable box. Prefer the
         # histogram-based chi²/DW computed above and fall back to the Fit
@@ -616,10 +552,6 @@ class DistributionPlot(plotbase.Plot):
         try:
             if self._quality_text is not None:
                 fit = self.fit
-                try:
-                    self._quality_text.updateTextPos()
-                except Exception:
-                    pass
                 chi2_display = getattr(fit, 'chi2r', None)
                 dw_display = dw if dw is not None else getattr(fit, 'durbin_watson', None)
                 # Prefer the effective histogram fit-range (first/last non-empty
@@ -627,24 +559,14 @@ class DistributionPlot(plotbase.Plot):
                 xmin = hist_i_min if hist_i_min is not None else getattr(fit, 'xmin', None)
                 xmax = hist_i_max if hist_i_max is not None else getattr(fit, 'xmax', None)
                 if chi2_display is not None and dw_display is not None:
-                    if xmin is None or xmax is None:
-                        fit_range_line = ''
-                    else:
-                        fit_range_line = f'         Fit-range {xmin}, {xmax} <br />'
-                    self._quality_text.setHtml(
-                        f'<div style="name-align: center">'
-                        f'     <span style="color: #FF0; font-size: 10pt;">'
-                        f'{fit_range_line}'
-                        f'         &Chi;<sub>r</sub><sup>2</sup>={chi2_display:.4f} <br />'
-                        f'         DW={dw_display: .4f}'
-                        f'     </span>'
-                        f'</div>'
-                    )
+                    lines = []
+                    if xmin is not None and xmax is not None:
+                        lines.append(f"Fit-range {xmin}, {xmax}")
+                    lines.append(f"χ²r={chi2_display:.4f}")
+                    lines.append(f"DW={dw_display:.4f}")
+                    self._quality_text.text = "\n".join(lines)
         except Exception:
             pass
 
         # Keep the main plot title free of statistics, like the LinePlot.
-        try:
-            self.distribution_plot.setTitle("")
-        except Exception:
-            pass
+        self.distribution_plot.set_title("")

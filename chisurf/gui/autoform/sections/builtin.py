@@ -454,6 +454,8 @@ class _BoundControlMixin:
             # that was never registered -- neither must trigger a recompute.
             if getattr(self._model, "fit", None) is not None:
                 _dispatch_fit_update(fit_index)
+            else:
+                self._refresh_host_form()
             self._maybe_rebuild_host()
         except Exception as exc:
             logging.warning(f"bound control commit failed ({section.label}): {exc}")
@@ -1032,21 +1034,87 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 self.editor.setValue(int(current))
             if not read_only:
                 self.editor.valueChanged.connect(lambda v: self._commit(int(v)))
-        elif section.kind == "float":
-            self.editor = QtWidgets.QDoubleSpinBox()
-            self.editor.setDecimals(int(section.decimals))
-            self.editor.setMinimum(
-                float(section.minimum) if section.minimum is not None else -1e308
-            )
-            self.editor.setMaximum(float(section.maximum) if section.maximum is not None else 1e308)
-            if section.step:
-                self.editor.setSingleStep(float(section.step))
+        elif section.kind in ("float", "int") and (getattr(section, "style", "") == "slider" or getattr(section, "slider", False)):
+            min_val = float(section.minimum) if section.minimum is not None else 0.0
+            max_val = float(section.maximum) if section.maximum is not None else 100.0
+            is_float = (section.kind == "float")
+            self.editor = QtWidgets.QDoubleSpinBox() if is_float else QtWidgets.QSpinBox()
+            if is_float:
+                self.editor.setDecimals(int(section.decimals))
+                self.editor.setMinimum(min_val)
+                self.editor.setMaximum(max_val)
+                if section.step:
+                    self.editor.setSingleStep(float(section.step))
+            else:
+                self.editor.setMinimum(int(min_val))
+                self.editor.setMaximum(int(max_val))
+                if section.step:
+                    self.editor.setSingleStep(int(section.step))
             if section.suffix:
                 self.editor.setSuffix(section.suffix)
+
+            slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+            slider.setMinimum(0)
+            slider.setMaximum(1000)
+
+            def spin_to_slider(v: float):
+                clamped = max(min_val, min(max_val, v))
+                ratio = (clamped - min_val) / (max_val - min_val) if max_val > min_val else 0.0
+                slider.blockSignals(True)
+                slider.setValue(int(round(ratio * 1000)))
+                slider.blockSignals(False)
+
+            def slider_to_spin(pos: int):
+                ratio = pos / 1000.0
+                val = min_val + ratio * (max_val - min_val)
+                self.editor.blockSignals(True)
+                self.editor.setValue(val if is_float else int(val))
+                self.editor.blockSignals(False)
+                self._commit(val if is_float else int(val))
+
             if current is not None:
-                self.editor.setValue(float(current))
+                c_val = float(current)
+                self.editor.setValue(c_val if is_float else int(c_val))
+                spin_to_slider(c_val)
+
             if not read_only:
-                self.editor.valueChanged.connect(lambda v: self._commit(float(v)))
+                self.editor.valueChanged.connect(lambda v: (spin_to_slider(float(v)), self._commit(float(v) if is_float else int(v))))
+                slider.valueChanged.connect(slider_to_spin)
+
+            layout.addWidget(slider, 1)
+            layout.addWidget(self.editor)
+        elif section.kind == "float":
+            use_scientific = (getattr(section, "style", "") == "scientific" or getattr(section, "scientific", False))
+            if use_scientific:
+                from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
+                min_v = float(section.minimum) if section.minimum is not None else 0.0
+                max_v = float(section.maximum) if section.maximum is not None else 1e9
+                step_v = float(section.step) if section.step else None
+                dec_v = int(section.decimals) if section.decimals is not None else 4
+                self.editor = ScientificDoubleSpinBox(
+                    decimals=dec_v,
+                    suffix=section.suffix or "",
+                    value=float(current) if current is not None else 0.0,
+                    bounds=[min_v, max_v],
+                    step=step_v,
+                )
+                if not read_only:
+                    self.editor.sigValueChanged.connect(lambda obj: self._commit(float(obj.value())))
+            else:
+                self.editor = QtWidgets.QDoubleSpinBox()
+                self.editor.setDecimals(int(section.decimals))
+                self.editor.setMinimum(
+                    float(section.minimum) if section.minimum is not None else -1e308
+                )
+                self.editor.setMaximum(float(section.maximum) if section.maximum is not None else 1e308)
+                if section.step:
+                    self.editor.setSingleStep(float(section.step))
+                if section.suffix:
+                    self.editor.setSuffix(section.suffix)
+                if current is not None:
+                    self.editor.setValue(float(current))
+                if not read_only:
+                    self.editor.valueChanged.connect(lambda v: self._commit(float(v)))
         elif section.kind == "text":
             self.editor = _FocusOutPlainTextEdit()
             self.editor.setMinimumHeight(54)
@@ -1441,10 +1509,10 @@ class PlotWidget(QtWidgets.QWidget):
     def refresh(self) -> None:
         """Re-read the section's source method and redraw all series."""
         source = getattr(self._model, self._section.source, None)
-        if not callable(source):
+        if source is None:
             return
         try:
-            series = source() or []
+            series = (source() if callable(source) else source) or []
         except Exception as exc:  # pragma: no cover - source is model-defined
             logging.warning(f"PlotWidget: source {self._section.source!r} failed: {exc}")
             return
@@ -1466,7 +1534,6 @@ class PlotWidget(QtWidgets.QWidget):
                     kw["pen"] = (0, 0, 0, 0)
             self.plot.line(s.get("x", []), s.get("y", []), **kw)
         self._apply_ranges()
-
 
 class LCurveWidget(QtWidgets.QWidget):
     """Reusable L-curve view (residual vs solution norm, log-log, corner marked).

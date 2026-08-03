@@ -517,10 +517,14 @@ class AutoForm(QtWidgets.QWidget):
         return None
 
     def _resolve_group(self, target):
-        group = getattr(self.model, target, None)
-        if group is None:
+        obj = self.model
+        for part in str(target).split("."):
+            if obj is None:
+                break
+            obj = getattr(obj, part, None)
+        if obj is None:
             logging.warning(f"AutoModelWidget: target {target!r} did not resolve")
-        return group
+        return obj
 
     def _make_fold_box(self, section, fallback_title: str = ""):
         """Build a :class:`CollapsibleBox` from a section's fold attributes.
@@ -735,8 +739,14 @@ class AutoForm(QtWidgets.QWidget):
             area.setMinimumHeight(int(section.height))
         built: list[tuple[QtWidgets.QWidget, str]] = []
         for i, child in enumerate(section.sections):
-            name = (
-                getattr(child, "title", None) or getattr(child, "label", None) or f"Panel {i + 1}"
+            display_title = (
+                getattr(child, "label", None) or getattr(child, "title", None) or f"Panel {i + 1}"
+            )
+            # Remove any raw attribute/fallback underscores from user-facing dock tab label
+            display_title = str(display_title).replace("_", " ").strip()
+
+            key_name = (
+                getattr(child, "key", None) or getattr(child, "attr", None) or str(display_title).lower().replace(" ", "_")
             )
             try:
                 if isinstance(child, vs.PanelSection):
@@ -772,7 +782,8 @@ class AutoForm(QtWidgets.QWidget):
                 widget = None
             if widget is None:
                 continue
-            built.append((widget, str(name)))
+            widget.setObjectName(str(key_name))
+            built.append((widget, str(display_title)))
 
         split = (getattr(section, "split", "") or "").lower()
         if split in ("horizontal", "vertical") and len(built) > 1:
@@ -1098,6 +1109,13 @@ class AutoForm(QtWidgets.QWidget):
             cs.core.actions.dispatch(name="fit.update", payload={"fit_index": int(idx)})
         except Exception:  # pragma: no cover - dispatcher optional in tests
             pass
+        callback = getattr(self.model, "_on_changed", None) or getattr(self.model, "on_changed", None)
+        if callable(callback):
+            try:
+                callback()
+            except Exception:
+                pass
+        self.refresh_plots()
 
     @staticmethod
     def _collect_param_widgets(group_widget):

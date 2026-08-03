@@ -86,19 +86,38 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self._max = float(options.get("maximum", 1_000_000.0))
         self._decimals = int(options.get("decimals", 4))
         self._diagonal = bool(options.get("diagonal", False))
+        self._unit_attr = options.get("unit_attr", "")
         self._unit = str(options.get("unit", ""))
         self._title = str(options.get("title", ""))
         self._popup = bool(options.get("popup", False))
+        self._disable_row0 = bool(options.get("disable_row0", False))
+        self._header_label = None
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(1)
 
+        from chisurf.gui.widgets.general import table_font, table_row_height, table_header_height, apply_compact_table_style
+        from chisurf.gui import QtGui
+
         self.table = QtWidgets.QTableWidget(0, 0)
         self.table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
         self.table.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.table.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        apply_compact_table_style(self.table)
+        t_font = table_font()
+        t_font.setStyleStrategy(QtGui.QFont.PreferAntialias)
+        self.table.setFont(t_font)
+        self.table.horizontalHeader().setFont(t_font)
+        self.table.verticalHeader().setFont(t_font)
+        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.table.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        self.table.verticalHeader().setVisible(True)
+        self.table.setStyleSheet(
+            "QTableWidget { gridline-color: palette(midlight); border: 1px solid palette(mid); }"
+            "QHeaderView::section { font-weight: bold; padding: 1px; }"
+        )
 
         self.button = None
         self._dialog = None
@@ -113,7 +132,8 @@ class RateMatrixWidget(QtWidgets.QWidget):
             self.button.clicked.connect(self._open)
             layout.addWidget(self.button)
         else:
-            layout.addWidget(self._header())
+            self._header_label = self._header()
+            layout.addWidget(self._header_label)
             layout.addWidget(self.table)
         # Do not let the grid stretch to fill the panel — keep it tight.
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Maximum)
@@ -124,14 +144,18 @@ class RateMatrixWidget(QtWidgets.QWidget):
         self._loaded: dict[tuple[int, int], tuple[float, float]] = {}
         self._build()
 
-    def _header(self) -> QtWidgets.QLabel:
-        """Return the caption naming the matrix and its rate direction."""
+    def _header_text(self) -> str:
+        unit = _resolve(self._model, self._unit_attr, self._unit) or self._unit
         bits = []
         if self._title:
             bits.append(f"<b>{self._title}</b>")
-        bits.append(f"i → j rate ({self._unit})" if self._unit else "i → j rate")
-        label = QtWidgets.QLabel("  ·  ".join(bits))
-        label.setStyleSheet("color: palette(mid);")
+        bits.append(f"i → j rate ({unit})" if unit else "i → j rate")
+        return "  ·  ".join(bits)
+
+    def _header(self) -> QtWidgets.QLabel:
+        """Return the caption naming the matrix and its rate direction."""
+        label = QtWidgets.QLabel(self._header_text())
+        label.setStyleSheet("color: palette(mid); font-size: 11px;")
         return label
 
     # -- popup ---------------------------------------------------------
@@ -191,30 +215,29 @@ class RateMatrixWidget(QtWidgets.QWidget):
     def _labels(self, n: int) -> list[str]:
         labels = _resolve(self._model, self._labels_attr, None)
         if isinstance(labels, (list, tuple)) and len(labels) >= n:
-            return [str(labels[i]) for i in range(n)]
-        return [str(i + 1) for i in range(n)]
+            return [str(labels[i]).split(" ")[0].split("(")[0].strip() for i in range(n)]
+        return [f"S{i}" for i in range(n)]
+
+    def _descriptions(self, n: int) -> list[str]:
+        descriptions = _resolve(self._model, "saturation.state_descriptions", None) or _resolve(self._model, "state_descriptions", None)
+        if isinstance(descriptions, (list, tuple)) and len(descriptions) >= n:
+            return [str(descriptions[i]) for i in range(n)]
+        labels = self._labels(n)
+        return [f"State {i+1} ({labels[i]})" for i in range(n)]
 
     def _load(self, i: int, j: int, spin: QtWidgets.QDoubleSpinBox, raw: float) -> None:
-        """Show one model value in its cell and remember what was read.
-
-        A ``QDoubleSpinBox`` silently clamps to its range and rounds to its
-        ``decimals``, so a rate the grid cannot represent would come back
-        changed on the next write-back. Both numbers are kept: the value the
-        model holds and the value the box ends up showing. A cell that still
-        shows the latter has not been edited, so :meth:`_cell_value` writes the
-        former back untouched instead of the display.
-        """
+        """Show one model value in its cell and remember what was read."""
         spin.blockSignals(True)
         spin.setValue(raw)
         spin.blockSignals(False)
         shown = float(spin.value())
         self._loaded[(i, j)] = (float(raw), shown)
-        # Rounding to ``decimals`` is what a grid is for and is handled silently
-        # by keeping the value that was read. Clamping is not: the number on
-        # screen is then a different rate, so say so in the log, the tooltip and
-        # in colour.
         clamped = not self._min <= raw <= self._max
-        spin.setStyleSheet("color: #c62828;" if clamped else "")
+        spin.setStyleSheet(
+            "QDoubleSpinBox { color: #c62828; padding: 0px; margin: 0px; border: none; background: transparent; selection-background-color: #ff3333; selection-color: #ffffff; }"
+            if clamped else
+            "QDoubleSpinBox { padding: 0px; margin: 0px; border: none; background: transparent; selection-background-color: #ff3333; selection-color: #ffffff; }"
+        )
         if clamped:
             logger.warning(
                 "rate_matrix: %s[%d, %d] = %g is outside the range this grid "

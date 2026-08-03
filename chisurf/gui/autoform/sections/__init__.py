@@ -26,6 +26,7 @@ from . import (
     region_list_section,  # noqa: F401  (registers the "region_list" section)
     scalar_table_section,  # noqa: F401  (registers the "scalar_table" section)
     setup_selector_section,  # noqa: F401  (registers the "setup_selector" section)
+    state_scheme_section,  # noqa: F401  (registers the "state_scheme" section)
     state_table_section,  # noqa: F401  (registers the "state_table" section)
     waterfall_section,  # noqa: F401  (registers the "waterfall" section)
 )

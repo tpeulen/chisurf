@@ -85,18 +85,18 @@ QToolTip {
     padding: 2px 4px;
 }
 
-/* ===== Line edits ===== */
-
-QLineEdit {
+QLineEdit, QSpinBox, QDoubleSpinBox, QAbstractSpinBox, QTextEdit, QPlainTextEdit {
     background-color: #2c2c2c;
     border: 1px solid #555555;
     border-radius: 2px;
     color: #e0e0e0;
     padding: 1px 3px;
+    selection-background-color: #ff3333;
+    selection-color: #ffffff;
 }
 
-QLineEdit:focus {
-    border: 1px solid #5680c2;
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QAbstractSpinBox:focus, QTextEdit:focus, QPlainTextEdit:focus {
+    border: 1.5px solid #ff3333;
 }
 
 /* ===== Generic buttons (abstract) ===== */
@@ -193,22 +193,26 @@ QComboBox QAbstractItemView {
     selection-background-color: #5680c2;
 }
 
-/* ===== Spin boxes – compact, neutral ===== */
 SpinBox,
 QSpinBox,
 QDoubleSpinBox {
-    background: #2c2c2c;
+    background: #242424;
     border: 1px solid #555555;
     border-radius: 3px;
     text-align: center;
     min-height: 13px;
     padding: 0 2px;
+    selection-background-color: #ff3333;
+    selection-color: #ffffff;
 }
 
 SpinBox:focus,
 QSpinBox:focus,
 QDoubleSpinBox:focus {
-    border: 1px solid #5680c2;
+    border: 2px solid #ff3333;
+    background: #181818;
+    selection-background-color: #ff3333;
+    selection-color: #ffffff;
 }
 
 SpinBox::up-button,

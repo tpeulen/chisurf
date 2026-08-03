@@ -415,8 +415,7 @@ class GuidedTour(QtCore.QObject):
                 continue
             if title and str(getattr(section, "title", "") or "") != title:
                 continue
-            if widget.isVisible() or not widget.isHidden():
-                return widget
+            return widget
         return None
 
     def _show_step(self) -> None:
@@ -439,10 +438,10 @@ class GuidedTour(QtCore.QObject):
         self._wire_wait(step, widget, self._action)
         rect = QtCore.QRect()
         if widget is not None:
+            # Reveal and raise dock tab to foreground FIRST before computing coordinates
+            self._reveal(widget)
             top_left = widget.mapTo(self._host, QtCore.QPoint(0, 0))
             rect = QtCore.QRect(top_left, widget.size())
-            # A step is useless if its target is scrolled out of sight.
-            self._reveal(widget)
         spotlight.set_target_rect(rect)
         bubble.adjustSize()
         bubble.move(self._place(rect, bubble.size()))
@@ -526,58 +525,120 @@ class GuidedTour(QtCore.QObject):
         self._waiting = None
 
     def _reveal(self, widget: QtWidgets.QWidget) -> None:
-        """Scroll *widget* into view and raise the dock tab it lives on."""
+        """Scroll *widget* into view and raise the dock tab / stack page it lives on."""
+        child = widget
         parent = widget.parentWidget()
         while parent is not None and parent is not self._host:
+            # 1. Raise pyqtgraph Dock / ChiSurf Dock if present
+            if hasattr(parent, "raiseDock") and callable(parent.raiseDock):
+                try:
+                    parent.raiseDock()
+                except Exception:
+                    pass
+
+            # 2. QTabWidget or DockTabWidget / DockStackedTabWidget
+            if hasattr(parent, "setCurrentWidget") and callable(parent.setCurrentWidget):
+                try:
+                    parent.setCurrentWidget(child)
+                except Exception:
+                    pass
+            elif hasattr(parent, "indexOf") and hasattr(parent, "setCurrentIndex"):
+                try:
+                    idx = parent.indexOf(child)
+                    if idx >= 0:
+                        parent.setCurrentIndex(idx)
+                except Exception:
+                    pass
+
+            # 3. Check if child is inside a Dock container or Tab widget that has raise_
+            if hasattr(child, "raise_") and callable(child.raise_):
+                try:
+                    child.raise_()
+                except Exception:
+                    pass
+
+            # 4. QScrollArea ensureWidgetVisible
             area = getattr(parent, "ensureWidgetVisible", None)
             if callable(area):
                 try:
                     area(widget)
                 except Exception:
                     pass
+
+            child = parent
             parent = parent.parentWidget()
+
+        QtWidgets.QApplication.processEvents()
 
     def _place(self, rect: QtCore.QRect, size: QtCore.QSize) -> QtCore.QPoint:
         """Choose a bubble position that points at *rect* without covering it.
 
-        The order matters more than it looks. Preferring the side would put the
-        bubble across the whole toolbar whenever the target is a toolbar button,
-        which is most of the steps that ask the user to press something — so
-        *below* is tried first, then above, then the sides.
+        Evaluates candidate positions around *rect* and in the host window corners,
+        preferring positions that do not intersect *rect*.
         """
         host = self._host.rect()
         margin = 12
         width, height = size.width(), size.height()
         if not rect.isValid() or rect.isEmpty():
             return QtCore.QPoint(
-                max(0, (host.width() - width) // 2),
-                max(0, (host.height() - height) // 2),
-            )
-
-        def clamp(x, y):
-            return (
-                int(min(max(margin, x), max(margin, host.width() - width - margin))),
-                int(min(max(margin, y), max(margin, host.height() - height - margin))),
+                max(margin, (host.width() - width) // 2),
+                max(margin, (host.height() - height) // 2),
             )
 
         candidates = [
-            (rect.left(), rect.bottom() + margin),            # below
-            (rect.left(), rect.top() - margin - height),      # above
-            (rect.right() + margin, rect.top()),              # right
-            (rect.left() - margin - width, rect.top()),       # left
+            # 1. Below (aligned left, right, center)
+            (rect.left(), rect.bottom() + margin),
+            (rect.right() - width, rect.bottom() + margin),
+            (rect.center().x() - width // 2, rect.bottom() + margin),
+
+            # 2. Above (aligned left, right, center)
+            (rect.left(), rect.top() - margin - height),
+            (rect.right() - width, rect.top() - margin - height),
+            (rect.center().x() - width // 2, rect.top() - margin - height),
+
+            # 3. Right (aligned top, bottom, center)
+            (rect.right() + margin, rect.top()),
+            (rect.right() + margin, rect.bottom() - height),
+            (rect.right() + margin, rect.center().y() - height // 2),
+
+            # 4. Left (aligned top, bottom, center)
+            (rect.left() - margin - width, rect.top()),
+            (rect.left() - margin - width, rect.bottom() - height),
+            (rect.left() - margin - width, rect.center().y() - height // 2),
+
+            # 5. Host window corners as fallback
+            (host.right() - width - margin, host.top() + margin),
+            (host.left() + margin, host.top() + margin),
+            (host.right() - width - margin, host.bottom() - height - margin),
+            (host.left() + margin, host.bottom() - height - margin),
         ]
+
+        def clamp_to_host(x: int, y: int) -> QtCore.QPoint:
+            cx = max(margin, min(x, host.width() - width - margin))
+            cy = max(margin, min(y, host.height() - height - margin))
+            return QtCore.QPoint(int(cx), int(cy))
+
+        non_overlapping = []
         for x, y in candidates:
-            cx, cy = clamp(x, y)
-            placed = QtCore.QRect(cx, cy, width, height)
-            if host.contains(placed) and not placed.intersects(rect):
-                return QtCore.QPoint(cx, cy)
-        # Nothing fits cleanly (a target that fills the window): put it where it
-        # overlaps least rather than off-screen.
-        best, score = candidates[0], None
+            pt = clamp_to_host(x, y)
+            placed = QtCore.QRect(pt, size)
+            if not placed.intersects(rect):
+                dist = (placed.center() - rect.center()).manhattanLength()
+                non_overlapping.append((dist, pt))
+
+        if non_overlapping:
+            non_overlapping.sort(key=lambda item: item[0])
+            return non_overlapping[0][1]
+
+        best_pt = clamp_to_host(candidates[0][0], candidates[0][1])
+        min_overlap = float("inf")
         for x, y in candidates:
-            cx, cy = clamp(x, y)
-            overlap = QtCore.QRect(cx, cy, width, height).intersected(rect)
-            area = overlap.width() * overlap.height()
-            if score is None or area < score:
-                best, score = (cx, cy), area
-        return QtCore.QPoint(int(best[0]), int(best[1]))
+            pt = clamp_to_host(x, y)
+            placed = QtCore.QRect(pt, size)
+            overlap_rect = placed.intersected(rect)
+            overlap_area = overlap_rect.width() * overlap_rect.height()
+            if overlap_area < min_overlap:
+                min_overlap = overlap_area
+                best_pt = pt
+
+        return best_pt

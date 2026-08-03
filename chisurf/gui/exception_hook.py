@@ -1,7 +1,7 @@
 import sys
 import traceback
 import logging
-from chisurf.gui import QtCore, QtWidgets
+from chisurf.gui import QtCore
 
 # basic logger functionality
 log = logging.getLogger(__name__)
@@ -18,15 +18,21 @@ if _qt_version is not None and _qt_version >= 0x50501:
 
 
 def show_exception_box(log_msg):
-    """Checks if a QApplication instance is available and shows a messagebox with the exception message.
-    If unavailable (non-console application), log an additional notice.
+    """Report an uncaught exception to the user.
+
+    Routed through :mod:`chisurf.gui.dialogs`, which logs unconditionally and
+    raises the modal box only when someone can dismiss it — an un-dismissable
+    dialog on the crash path is how a headless run hangs instead of reporting.
+
+    Parameters
+    ----------
+    log_msg : str
+        Formatted traceback and exception message.
     """
-    if QtWidgets.QApplication.instance() is not None:
-        errorbox = QtWidgets.QMessageBox()
-        errorbox.setText("Oops. An unexpected error occured:\n{0}".format(log_msg))
-        errorbox.exec_()
-    else:
-        log.debug("No QApplication instance available.")
+    from chisurf.gui import dialogs
+
+    dialogs.error(None, "Unexpected error", "Oops. An unexpected error occured.",
+                  detail=str(log_msg))
 
 
 class UncaughtHook(QtCore.QObject):

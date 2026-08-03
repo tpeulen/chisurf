@@ -13,6 +13,7 @@ from typing import Callable, Optional, Tuple
 
 import chisurf.core.settings
 from chisurf.gui import QtCore, QtGui, QtWidgets
+from chisurf.gui import dialogs
 
 
 class CodeBadgeButton(QtWidgets.QToolButton):
@@ -143,14 +144,14 @@ class CodeBadgeButton(QtWidgets.QToolButton):
         return None
 
     def _show_no_target_message(self):
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             self,
             "No Source Target",
             "Could not resolve a source file for this widget.",
         )
 
     def _show_error_message(self, message: str):
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             self,
             "Code Badge Error",
             f"Could not open source: {message}",

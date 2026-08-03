@@ -1,6 +1,7 @@
 from __future__ import annotations
 import chisurf as cs
 
+import collections
 import sys
 import subprocess
 import pathlib
@@ -25,6 +26,7 @@ import chisurf  # Ensure chisurf is available module-wide
 import chisurf.core.settings
 from chisurf import logging
 import chisurf.gui.decorators
+from chisurf.gui import dialogs
 
 
 plugin_menu_action: QtWidgets.QAction | None = None
@@ -256,13 +258,29 @@ class _LogRelay(QtCore.QObject):
     data-load worker). Writing to a Qt widget or starting a QTimer off the GUI
     thread is undefined behaviour (``QBasicTimer`` warnings, crashes). This
     QObject lives on the GUI thread, so emitting its signal with a queued
-    connection marshals every record onto the GUI thread.
+    connection marshals the pending records onto the GUI thread. One wake-up is
+    emitted per batch, not per record.
     """
 
-    record = QtCore.Signal(str, object)
+    wake = QtCore.Signal()
 
 
 class QTextEditLogger(logging.Handler):
+    """Logging handler that mirrors records into a Qt widget.
+
+    Records are buffered and applied to the widget in batches on the GUI
+    thread. A burst of records (a burst-data load logs hundreds) therefore
+    costs a handful of widget updates instead of one per record.
+    """
+
+    #: Minimum spacing between two widget updates. The first record after an
+    #: idle period is applied immediately; anything logged within the window is
+    #: coalesced into the next flush.
+    _FLUSH_INTERVAL_MS = 50
+
+    #: Safety net: if the GUI thread stalls, drop the oldest pending records
+    #: instead of growing without bound.
+    _MAX_PENDING = 20000
 
     def __init__(
             self,
@@ -277,31 +295,75 @@ class QTextEditLogger(logging.Handler):
         self.setFormatter(logging.Formatter(log_string))
         self.setLevel(level=level)
 
+        # Records are queued here by whatever thread logs and drained on the GUI
+        # thread. deque.append/popleft are atomic, but the "do I need to wake the
+        # GUI thread?" decision needs the lock.
+        self._pending = collections.deque(maxlen=self._MAX_PENDING)
+        self._pending_lock = threading.Lock()
+        self._wake_pending = False
+
         # Marshal records onto the GUI thread. The relay is created here, during
         # GUI setup, so it has GUI-thread affinity; a queued connection then
-        # hands every record — including ones logged from worker threads — to the
+        # hands the batch — including records logged from worker threads — to the
         # GUI thread before it touches the widget.
         self._relay = _LogRelay()
-        self._relay.record.connect(self._handle_record, QtCore.Qt.QueuedConnection)
+        self._relay.wake.connect(self._on_wake, QtCore.Qt.QueuedConnection)
 
-        # The log-console filter is O(rows) per call; a burst of records (a data
-        # load logs hundreds) would make it O(rows^2). Coalesce into one filter
-        # pass after the burst settles. The timer is created lazily on the GUI
-        # thread inside _handle_record.
+        # Timers are created lazily on the GUI thread (starting a QTimer from a
+        # worker thread is what produced the QBasicTimer warnings).
+        self._flush_timer = None
+
+        # The log-console filter is O(rows) per call; a burst of records would
+        # make it O(rows^2). Coalesce into one filter pass after the burst
+        # settles.
         self._filter_timer = None
+        self._filter_owner = None
 
     def emit(self, record):
         try:
             msg = self.format(record)
         except Exception:  # pragma: no cover - formatting must never raise here
             return
-        # Thread-safe: hop to the GUI thread before any widget access.
-        self._relay.record.emit(msg, record)
+        # Thread-safe: queue and hop to the GUI thread before any widget access.
+        with self._pending_lock:
+            self._pending.append((msg, record))
+            wake = not self._wake_pending
+            self._wake_pending = True
+        if wake:
+            self._relay.wake.emit()
 
-    def _handle_record(self, msg, record):
+    def _on_wake(self):
         """Runs on the GUI thread (queued from :meth:`emit`)."""
+        if self._flush_timer is None:
+            self._flush_timer = QtCore.QTimer()
+            self._flush_timer.setSingleShot(True)
+            self._flush_timer.setInterval(self._FLUSH_INTERVAL_MS)
+            self._flush_timer.timeout.connect(self._flush)
+        if self._flush_timer.isActive():
+            # A flush is already scheduled; it will pick up this batch too.
+            return
+        # Isolated records stay latency-free; the timer rate-limits the rest.
+        self._flush()
+        self._flush_timer.start()
+
+    def _flush(self):
+        """Apply all pending records to the widget in one go (GUI thread)."""
+        with self._pending_lock:
+            if not self._pending:
+                self._wake_pending = False
+                return
+            batch = list(self._pending)
+            self._pending.clear()
+            self._wake_pending = False
+        try:
+            self._apply_batch(batch)
+        except RuntimeError:  # pragma: no cover - widget deleted during shutdown
+            return
+
+    def _apply_batch(self, batch):
         if self.mode == "set":
-            # Support label-like widgets and QStatusBar
+            # Only the newest message is visible in a status bar / label.
+            msg = batch[-1][0]
             if hasattr(self.widget, 'setText') and callable(getattr(self.widget, 'setText')):
                 self.widget.setText(msg)
             elif hasattr(self.widget, 'showMessage') and callable(getattr(self.widget, 'showMessage')):
@@ -311,36 +373,39 @@ class QTextEditLogger(logging.Handler):
                 except Exception:
                     pass
         elif self.mode == "append":
-            # Check if widget is QListWidget, QTableWidget, or QPlainTextEdit
-            if hasattr(self.widget, 'addItem'):
-                # QListWidget/QTableWidget
-                try:
-                    self.widget.addItem(msg, record)
-                except TypeError:
-                    self.widget.addItem(msg)
-                # Scroll to the bottom to show the latest entry
-                self.widget.scrollToBottom()
+            add_entries = getattr(self.widget, 'add_entries', None)
+            if callable(add_entries):
+                # Log table: one relayout/scroll for the whole batch.
+                add_entries(batch)
+            elif hasattr(self.widget, 'addItem'):
+                # QListWidget/QTableWidget without batch support
+                for msg, record in batch:
+                    try:
+                        self.widget.addItem(msg, record)
+                    except TypeError:
+                        self.widget.addItem(msg)
+                if hasattr(self.widget, 'scrollToBottom'):
+                    self.widget.scrollToBottom()
             else:
                 # QPlainTextEdit
-                self.widget.appendPlainText(msg)
+                self.widget.appendPlainText("\n".join(msg for msg, _ in batch))
 
             # Debounce the (O(rows)) filter refresh so a burst refilters once.
             self._schedule_filter_update()
 
     def _schedule_filter_update(self):
         owner = self._find_log_filter_owner()
-        if owner is None or not hasattr(owner, 'update_log_filter'):
+        if owner is None:
             return
         if self._filter_timer is None:
             self._filter_timer = QtCore.QTimer()
             self._filter_timer.setSingleShot(True)
             self._filter_timer.setInterval(150)
             self._filter_timer.timeout.connect(self._run_filter_update)
-        self._filter_owner = owner
         self._filter_timer.start()  # restart coalesces rapid bursts
 
     def _run_filter_update(self):
-        owner = getattr(self, "_filter_owner", None)
+        owner = self._filter_owner
         if owner is not None and hasattr(owner, 'update_log_filter'):
             try:
                 owner.update_log_filter()
@@ -348,9 +413,14 @@ class QTextEditLogger(logging.Handler):
                 pass
 
     def _find_log_filter_owner(self):
+        # Cache the owner: walking the parent chain per batch is pointless, and
+        # the log widget's ancestry does not change once the window is built.
+        if self._filter_owner is not None:
+            return self._filter_owner
         parent = self.widget.parent()
         while parent is not None:
             if hasattr(parent, 'update_log_filter'):
+                self._filter_owner = parent
                 return parent
             parent = parent.parent()
         return None
@@ -583,8 +653,8 @@ def setup_gui(
         cs.cs = window
         import chisurf.core.base
         cs.core.base.set_safe_import_notify(
-            lambda title, text: QtWidgets.QMessageBox.information(
-                window, title, text, QtWidgets.QMessageBox.Ok
+            lambda title, text: dialogs.information(
+                window, title, text
             )
         )
         return window
@@ -718,7 +788,7 @@ def setup_gui(
                     parent = app.activeWindow()
                 except Exception:
                     parent = None
-                QtWidgets.QMessageBox.warning(
+                dialogs.warning(
                     parent,
                     "Theme not found",
                     (
@@ -1240,7 +1310,7 @@ def setup_gui(
                             )
                             + "Do you want to open the Updater now?"
                         )
-                        reply = QtWidgets.QMessageBox.question(
+                        reply = dialogs.question(
                             None,
                             "Update Available",
                             _msg,
@@ -2018,7 +2088,7 @@ class LoginDialog(QtWidgets.QDialog):
                 # Check if this user had NO password
                 user_data = next((u for u in self.users if u["user_id"] == user_id), None)
                 if user_data and not user_data.get("has_password", False):
-                    reply = QtWidgets.QMessageBox.question(
+                    reply = dialogs.question(
                         self,
                         "Set Password",
                         "You do not have a password set for this account.\nWould you like to set a password now to secure your account?",
@@ -2034,9 +2104,9 @@ class LoginDialog(QtWidgets.QDialog):
                         if dlg.exec() == QtWidgets.QDialog.Accepted:
                             try:
                                 self.client.change_password(user_id=user_id, password=dlg.password, requester_id=user_id)
-                                QtWidgets.QMessageBox.information(self, "Success", "Password successfully updated.")
+                                dialogs.information(self, "Success", "Password successfully updated.")
                             except Exception as e:
-                                QtWidgets.QMessageBox.critical(self, "Error", f"Failed to save password:\n{e}")
+                                dialogs.error(self, "Error", f"Failed to save password:\n{e}")
                 
                 import chisurf.core.settings as cs_settings
                 from mmfdb.security.credentials import (
@@ -2092,7 +2162,7 @@ class LoginDialog(QtWidgets.QDialog):
 
                 saved = set_mmfdb_login_settings(mmfdb_settings)
                 if not saved:
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,
                         "Settings Not Saved",
                         "Login succeeded, but ChiSurf could not store the MMFDB login settings.",
@@ -2118,7 +2188,7 @@ class LoginDialog(QtWidgets.QDialog):
                     if hasattr(cs_settings, "mmfdb"):
                         cs_settings.mmfdb["autologin"] = False
                     set_mmfdb_login_settings(mmfdb_settings)
-                    QtWidgets.QMessageBox.warning(
+                    dialogs.warning(
                         self,
                         "Autologin Not Saved",
                         "Login succeeded, but ChiSurf could not store the session token in the OS credential store.",
@@ -2126,9 +2196,9 @@ class LoginDialog(QtWidgets.QDialog):
                     
                 self.accept()
             else:
-                QtWidgets.QMessageBox.warning(self, "Login Failed", _format_login_error(res.get("error")))
+                dialogs.warning(self, "Login Failed", _format_login_error(res.get("error")))
         except Exception as e:
-            QtWidgets.QMessageBox.critical(self, "Error", f"Login failed: {e}")
+            dialogs.error(self, "Error", f"Login failed: {e}")
 
 
 def _smoke_test_enabled() -> bool:
@@ -2332,7 +2402,7 @@ def get_app():
                     app.quit()
         except Exception as e:
             logging.warning(f"Could not perform startup authentication check: {e}")
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 None,
                 "MMFDB Login Unavailable",
                 f"Could not start or reach the MMFDB JSON-RPC service:\n{e}",

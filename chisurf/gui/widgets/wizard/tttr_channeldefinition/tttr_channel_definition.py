@@ -15,6 +15,7 @@ import sys
 import numpy as np
 
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 try:  # pyqtgraph is optional; the preview plot degrades gracefully without it
     import pyqtgraph as pg
@@ -758,14 +759,14 @@ class DetectorWizardPage(QWizardPage):
 
             self.setup_combo.blockSignals(False)
 
-            QMessageBox.information(
+            dialogs.information(
                 self, 
                 "Success", 
                 f"Loaded detector setups from {path}"
             )
 
         except Exception as e:
-            QMessageBox.critical(
+            dialogs.error(
                 self, 
                 "Error", 
                 f"Failed to load detector setups file: {e}"
@@ -1316,7 +1317,7 @@ class DetectorWizardPage(QWizardPage):
         have = getattr(self, "_channel_luts", {})
         missing = [c for c in self._used_routing_channels() if c not in have]
         if missing:
-            resp = QMessageBox.question(
+            resp = dialogs.question(
                 self,
                 "Missing LUTs",
                 "Channels without a LUT will be read raw: "
@@ -1334,7 +1335,7 @@ class DetectorWizardPage(QWizardPage):
             return
         row = table.currentRow()
         if row < 0:
-            QMessageBox.information(self, "Assign LUT", "Select a channel row first.")
+            dialogs.information(self, "Assign LUT", "Select a channel row first.")
             return
         ch = int(table.item(row, 0).data(Qt.UserRole))
         path, _ = QFileDialog.getOpenFileName(
@@ -1347,7 +1348,7 @@ class DetectorWizardPage(QWizardPage):
 
             arr = np.asarray(load_lut_file(path), dtype=float).ravel()
         except Exception as exc:  # pragma: no cover - IO/plugin errors
-            QMessageBox.warning(self, "Assign LUT", f"Could not load LUT:\n{exc}")
+            dialogs.warning(self, "Assign LUT", f"Could not load LUT:\n{exc}")
             return
         if arr.size:
             self._channel_luts[ch] = arr
@@ -1361,7 +1362,7 @@ class DetectorWizardPage(QWizardPage):
         try:
             from chisurf.plugins.tttr.tttr_lut_tools.gui.tool import TTRLutToolsWidget
         except Exception as exc:  # pragma: no cover - plugin missing
-            QMessageBox.information(
+            dialogs.information(
                 self,
                 "LUT Tools",
                 f"The TTTR LUT Tools plugin is not available:\n{exc}",
@@ -1375,7 +1376,7 @@ class DetectorWizardPage(QWizardPage):
         try:
             panel = TTRLutToolsWidget()
         except Exception as exc:  # pragma: no cover
-            QMessageBox.information(self, "LUT Tools", f"Could not open LUT Tools:\n{exc}")
+            dialogs.information(self, "LUT Tools", f"Could not open LUT Tools:\n{exc}")
             return
         v.addWidget(panel)
         dlg.exec_()
@@ -1388,7 +1389,7 @@ class DetectorWizardPage(QWizardPage):
         """Open the visual per-channel micro-time shift adjuster (LUT-aware)."""
         path = getattr(self, "_microtime_decay_file_path", None)
         if not path or not pathlib.Path(str(path)).is_file():
-            QMessageBox.information(
+            dialogs.information(
                 self, "Adjust shifts",
                 "Read a calibration TTTR file first ('Read from file…' in TTTR "
                 "Reading routine) so the per-channel decays can be shown.",
@@ -1397,7 +1398,7 @@ class DetectorWizardPage(QWizardPage):
         try:
             from .shift_dialog import MicrotimeShiftDialog
         except Exception as exc:  # pragma: no cover
-            QMessageBox.information(self, "Adjust shifts", f"Unavailable:\n{exc}")
+            dialogs.information(self, "Adjust shifts", f"Unavailable:\n{exc}")
             return
         routine = self.file_type_combo.currentText().strip()
         routine = None if routine in ("", "Auto") else routine
@@ -1663,7 +1664,7 @@ class DetectorWizardPage(QWizardPage):
                     
                 save_detector_setups(setups, self.current_setups_file)
 
-            QMessageBox.information(self, "Success", f"Settings saved to {path}")
+            dialogs.information(self, "Success", f"Settings saved to {path}")
 
             # Mark page as complete and notify wizard so Finish becomes enabled
             self._allow_finish = True
@@ -1672,7 +1673,7 @@ class DetectorWizardPage(QWizardPage):
             except Exception:
                 pass
         except Exception as e:
-            QMessageBox.critical(self, "Error", f"Save failed: {e}")
+            dialogs.error(self, "Error", f"Save failed: {e}")
 
 
     @property
@@ -2013,7 +2014,7 @@ class DetectorWizardPage(QWizardPage):
 
         if save_detector_setups(setups, self.current_setups_file):
             self.current_setup_name = setup_name
-            QMessageBox.information(self, "Success", f"Setup '{setup_name}' saved successfully.")
+            dialogs.information(self, "Success", f"Setup '{setup_name}' saved successfully.")
 
             # Refresh the combobox and select the new setup
             self._load_available_setups()
@@ -2021,7 +2022,7 @@ class DetectorWizardPage(QWizardPage):
             if index >= 0:
                 self.setup_combo.setCurrentIndex(index)
         else:
-            QMessageBox.critical(self, "Error", f"Failed to save setup '{setup_name}'.")
+            dialogs.error(self, "Error", f"Failed to save setup '{setup_name}'.")
 
     def _on_optical_setup(self):
         """Open the Light Path easy mode dialog for optical configuration."""
@@ -2030,7 +2031,7 @@ class DetectorWizardPage(QWizardPage):
             probes_result = get_probes_info(resolve_db_path())
             probes = probes_result.get("probes", [])
         except Exception as exc:
-            QMessageBox.critical(
+            dialogs.error(
                 self, "MMFDB Error",
                 f"Could not load probe catalogue:\n{exc}"
             )
@@ -2059,11 +2060,11 @@ class DetectorWizardPage(QWizardPage):
         """Delete the current setup."""
         setup_name = self.setup_combo.currentText()
         if not setup_name:
-            QMessageBox.warning(self, "Warning", "No setup selected.")
+            dialogs.warning(self, "Warning", "No setup selected.")
             return
 
         # Confirm deletion
-        reply = QMessageBox.question(
+        reply = dialogs.question(
             self, "Confirm Deletion", 
             f"Are you sure you want to delete the setup '{setup_name}'?",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
@@ -2080,19 +2081,19 @@ class DetectorWizardPage(QWizardPage):
                 setups["last_used"] = ""
 
             if save_detector_setups(setups, self.current_setups_file, replace=True):
-                QMessageBox.information(self, "Success", f"Setup '{setup_name}' deleted successfully.")
+                dialogs.information(self, "Success", f"Setup '{setup_name}' deleted successfully.")
 
                 # Refresh the combobox
                 self.current_setup_name = None
                 self._load_available_setups()
             else:
-                QMessageBox.critical(self, "Error", f"Failed to delete setup '{setup_name}'.")
+                dialogs.error(self, "Error", f"Failed to delete setup '{setup_name}'.")
 
     def _on_rename_setup(self):
         """Rename the current setup."""
         old_name = self.setup_combo.currentText()
         if not old_name:
-            QMessageBox.warning(self, "Warning", "No setup selected.")
+            dialogs.warning(self, "Warning", "No setup selected.")
             return
 
         # Ask for a new setup name
@@ -2107,7 +2108,7 @@ class DetectorWizardPage(QWizardPage):
         # Check if the new name already exists
         setups = load_detector_setups(self.current_setups_file)
         if new_name in setups.get("setups", {}):
-            reply = QMessageBox.question(
+            reply = dialogs.question(
                 self, "Setup Exists", 
                 f"A setup with the name '{new_name}' already exists. Do you want to overwrite it?",
                 QMessageBox.Yes | QMessageBox.No, QMessageBox.No
@@ -2131,7 +2132,7 @@ class DetectorWizardPage(QWizardPage):
 
             if save_detector_setups(setups, self.current_setups_file, replace=True):
                 self.current_setup_name = new_name
-                QMessageBox.information(self, "Success", f"Setup renamed from '{old_name}' to '{new_name}' successfully.")
+                dialogs.information(self, "Success", f"Setup renamed from '{old_name}' to '{new_name}' successfully.")
 
                 # Refresh the combobox and select the renamed setup
                 self._load_available_setups()
@@ -2139,7 +2140,7 @@ class DetectorWizardPage(QWizardPage):
                 if index >= 0:
                     self.setup_combo.setCurrentIndex(index)
             else:
-                QMessageBox.critical(self, "Error", f"Failed to rename setup from '{old_name}' to '{new_name}'.")
+                dialogs.error(self, "Error", f"Failed to rename setup from '{old_name}' to '{new_name}'.")
 
     def _read_from_tttr_file(self):
         _read_from_tttr_file(self)

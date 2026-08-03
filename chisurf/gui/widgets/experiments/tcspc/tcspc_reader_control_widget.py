@@ -9,6 +9,7 @@ import chisurf as cs
 import chisurf.gui.widgets
 import chisurf.gui.widgets.fio
 from chisurf.core.experiments.core import reader
+from chisurf.gui import dialogs
 
 
 def _load_vv_vh_gfactor_calculator_class():
@@ -205,7 +206,7 @@ class _TcspcL1L2Widget(QtWidgets.QWidget):
             dlg.finished.connect(apply_from_plugin)
             dlg.exec_()
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self, "G-Factor Plugin Error", f"Failed to open the g-factor plugin: {e}"
             )
 
