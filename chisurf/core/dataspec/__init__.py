@@ -363,7 +363,8 @@ class ValueSection(Section):
 
     label: str = "Value"
     #: One of ``"int"``, ``"float"``, ``"str"``, ``"text"`` (multi-line),
-    #: ``"date"`` (ISO ``yyyy-MM-dd``) or ``"file"`` (line edit + browse button).
+    #: ``"date"`` (ISO ``yyyy-MM-dd``), ``"file"`` (line edit + browse button) or
+    #: ``"directory"`` (the same, browsing for a folder).
     kind: str = "str"
     #: Attribute on the target group to get/set (direct-binding mode).
     attr: typing.Optional[str] = None
@@ -647,17 +648,29 @@ class ModelView:
     plots: typing.Tuple[PlotSpec, ...] = ()
 
     def flat_sections(self) -> typing.List[Section]:
-        """Return all sections in depth-first order, recursing into panels.
+        """Return all sections in depth-first order, recursing into containers.
 
         Allows callers to find any section type regardless of nesting depth.
+        Every container is walked — panels, dock areas and wizard steps alike —
+        because a caller asking "which sections does this view have?" is asking
+        about the view, not about how it happens to be arranged. Recursing into
+        panels only made a whole tool invisible to introspection the moment its
+        layout was wrapped in a ``dock_area``, which is how most tools are laid
+        out; the checks that walk a spec (bound targets, documented controls)
+        then passed by finding nothing at all.
         """
         result: typing.List[Section] = []
+        seen: typing.Set[int] = set()
 
         def _walk(secs):
             for s in secs:
+                if id(s) in seen:
+                    continue
+                seen.add(id(s))
                 result.append(s)
-                if isinstance(s, PanelSection):
-                    _walk(s.sections)
+                children = getattr(s, "sections", None)
+                if children:
+                    _walk(children)
 
         _walk(self.sections)
         return result

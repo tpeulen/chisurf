@@ -891,10 +891,27 @@ class TableWidget(QtWidgets.QTableWidget):
         An explicit ``height`` on the section is treated as a fixed/scroll height;
         otherwise the table hugs its content (header + rows) and does not expand
         vertically to fill the panel.
+
+        A section that declared ``expand`` is the exception, and it has to be
+        handled here rather than only in ``__init__``: this runs on every
+        refresh, so pinning the height would silently undo the expansion the
+        constructor asked for — and would pin it to the row count the table had
+        when it was *built*, which for a results table is zero. The panel then
+        handed the spare space to whatever else was in it (a row of spin boxes,
+        spread over the height of the dock) while the table stayed one header
+        tall no matter how many rows arrived.
         """
         row_h = self.verticalHeader().defaultSectionSize() or 20
         header_h = self.horizontalHeader().height() or 22
         explicit = int(getattr(self._section, "height", 0) or 0)
+        if getattr(self._section, "expand", False):
+            self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+            self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+            # Qt's "no maximum" sentinel; a previous non-expanding refresh may
+            # have pinned one.
+            self.setMaximumHeight(16777215)
+            self.setMinimumHeight(explicit or (header_h + row_h * 3 + 4))
+            return
         self.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Maximum)
         if explicit:
             self.setMinimumHeight(explicit)
@@ -1170,7 +1187,10 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 self.editor.setText(str(current))
             if not read_only:
                 self.editor.editingFinished.connect(lambda: self._commit(self.editor.text()))
-        elif section.kind == "file":
+        elif section.kind in ("file", "directory"):
+            # ``directory`` differs from ``file`` only in which dialog the browse
+            # button opens; both commit the typed path, so a folder can be pasted
+            # in as well as picked.
             self.editor = QtWidgets.QLineEdit()
             if section.placeholder:
                 self.editor.setPlaceholderText(section.placeholder)
@@ -1200,7 +1220,7 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
                 QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
             )
         layout.addWidget(self.editor, 1)
-        if section.kind == "file" and not read_only:
+        if section.kind in ("file", "directory") and not read_only:
             browse = QtWidgets.QToolButton()
             browse.setText("…")
             browse.setToolTip("Browse…")
@@ -1228,7 +1248,14 @@ class ValueWidget(_BoundControlMixin, QtWidgets.QWidget):
             self._commit(path)
 
     def _browse_file(self) -> None:
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self, self._section.label or "Open file")
+        if self._section.kind == "directory":
+            path = QtWidgets.QFileDialog.getExistingDirectory(
+                self, self._section.label or "Select folder"
+            )
+        else:
+            path, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self, self._section.label or "Open file"
+            )
         if path:
             self.editor.setText(path)
             self._commit_file(path)

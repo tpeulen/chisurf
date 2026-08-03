@@ -1,0 +1,204 @@
+{
+  "_comment": "Declarative AutoForm layout for the Burst Fusion step: the source folder and the same-molecule threshold on the left, the P_same curve that the threshold is read off, and the before/after comparison plots and summary table that show what fusing does to the bursts.",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "Burst Fusion",
+      "persist": "burst_fusion",
+      "split": "horizontal",
+      "sizes": [34, 66],
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Fusion",
+          "dock_group": "controls",
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "value",
+              "attr": "folder",
+              "call": "set_folder",
+              "kind": "directory",
+              "label": "Burst folder",
+              "placeholder": "burst-analysis folder holding bi4_bur",
+              "description": "The burst-analysis folder to fuse — the output of burst selection. Nothing in it is modified; the fused bursts go to a new folder beside it."
+            },
+            {
+              "type": "value",
+              "attr": "threshold",
+              "label": "Fuse if P(same) ≥",
+              "kind": "float",
+              "decimals": 2,
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "step": 0.05,
+              "description": "Two consecutive bursts are fused while the probability that they are the same molecule is at least this. 1 fuses nothing; low values eventually merge different molecules."
+            },
+            {
+              "type": "value",
+              "attr": "max_gap_ms",
+              "label": "Never bridge gaps >",
+              "kind": "float",
+              "decimals": 3,
+              "minimum": 0.0,
+              "maximum": 10000.0,
+              "step": 1.0,
+              "suffix": " ms",
+              "description": "Ceiling on the gap fusion may bridge, whatever the probability says (0 removes it). A fused burst is one interval on disk, so bridging a gap puts its background photons inside the burst."
+            },
+            {
+              "type": "value",
+              "attr": "max_group",
+              "label": "Max fragments per burst",
+              "kind": "int",
+              "minimum": 0,
+              "maximum": 1000,
+              "step": 1,
+              "description": "Largest number of original bursts one fused burst may contain (0 = no limit). Caps runaway chains in dense data."
+            },
+            {
+              "type": "custom",
+              "key": "fusion_actions"
+            },
+            {
+              "type": "info",
+              "source": "status_text",
+              "max_height": 140,
+              "description": "What the current threshold implies and what the last run produced."
+            },
+            {
+              "type": "table",
+              "title": "Summary",
+              "source": "summary_rows",
+              "expand": true,
+              "columns": [
+                {"key": "quantity", "label": "Quantity", "width": 190},
+                {"key": "before", "label": "As selected"},
+                {"key": "after", "label": "Fused"},
+                {"key": "unit", "label": "Unit"}
+              ],
+              "description": "Every burst identifier fusion changes, before and after. It sits beside the threshold on purpose — this is the answer the threshold is chosen against."
+            },
+            {
+              "type": "panel",
+              "title": "P(same molecule) estimate",
+              "collapsed": true,
+              "sections": [
+                {
+                  "type": "value",
+                  "attr": "tau_min_ms",
+                  "label": "Shortest lag",
+                  "kind": "float",
+                  "decimals": 3,
+                  "minimum": 0.001,
+                  "maximum": 1000.0,
+                  "step": 0.05,
+                  "suffix": " ms",
+                  "description": "Shortest inter-burst lag the correlation is evaluated at."
+                },
+                {
+                  "type": "value",
+                  "attr": "tau_max_ms",
+                  "label": "Longest lag",
+                  "kind": "float",
+                  "decimals": 1,
+                  "minimum": 1.0,
+                  "maximum": 100000.0,
+                  "step": 100.0,
+                  "suffix": " ms",
+                  "description": "Longest lag evaluated. A threshold the curve never falls below inside this range leaves the window unresolved."
+                },
+                {
+                  "type": "value",
+                  "attr": "n_bins",
+                  "label": "Lag bins",
+                  "kind": "int",
+                  "minimum": 5,
+                  "maximum": 500,
+                  "step": 5,
+                  "description": "Logarithmic lag bins between the shortest and longest lag."
+                },
+                {
+                  "type": "value",
+                  "attr": "min_pairs",
+                  "label": "Min pairs per bin",
+                  "kind": "int",
+                  "minimum": 0,
+                  "maximum": 1000,
+                  "step": 1,
+                  "description": "Burst pairs a lag bin needs before it may end the fusion window. Stops a hole in sparse statistics reading as a confident 'different molecule'."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "pool_measurements",
+                  "label": "Pool measurements",
+                  "description": "Estimate one curve from every measurement of the folder (lags always stay inside a measurement). A single short file rarely has enough burst pairs on its own."
+                },
+                {
+                  "type": "toggle",
+                  "attr": "write_source_companion",
+                  "label": "Record grouping in the source folder",
+                  "description": "Write an fg4 companion beside the original bursts giving each one its fused-burst number, so the grouping can be inspected or gated on there."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "plot",
+          "title": "Same-molecule probability",
+          "dock_group": "results",
+          "source": "p_same_series",
+          "x_label": "Lag between bursts (ms)",
+          "y_label": "P(same molecule)",
+          "log_x": true,
+          "legend": true,
+          "y_range": [0.0, 1.05],
+          "description": "P_same(tau) = 1 - 1/G(tau) from the burst arrival times. The dashed line is the threshold, the dotted line the gap actually fused up to."
+        },
+        {
+          "type": "plot",
+          "title": "Proximity ratio",
+          "dock_group": "results",
+          "source": "proximity_series",
+          "x_label": "Proximity ratio",
+          "y_label": "probability density",
+          "legend": true,
+          "x_range": [-0.1, 1.1],
+          "description": "Burst proximity ratio before and after fusion. Before the folder is written this is the fragments' own photons; afterwards it is the emitted bursts, which also contain the photons between fragments."
+        },
+        {
+          "type": "plot",
+          "title": "Photons per burst",
+          "dock_group": "results",
+          "source": "photon_series",
+          "x_label": "log10 photons per burst",
+          "y_label": "probability density",
+          "legend": true,
+          "description": "Fusion moves weight out of the short-burst tail: the fragments of one passage become one brighter burst."
+        },
+        {
+          "type": "plot",
+          "title": "Burst duration",
+          "dock_group": "results",
+          "source": "duration_series",
+          "x_label": "log10 duration (ms)",
+          "y_label": "probability density",
+          "legend": true,
+          "description": "Durations after fusion include the bridged gaps, so this is where an over-permissive threshold shows first."
+        },
+        {
+          "type": "plot",
+          "title": "Fragments per fused burst",
+          "dock_group": "results",
+          "source": "group_size_series",
+          "x_label": "original bursts in one fused burst",
+          "y_label": "fused bursts",
+          "log_y": true,
+          "legend": false,
+          "description": "How many bursts were merged into each fused burst. A long tail means chains are forming — cap them with the fragment limit."
+        }
+      ]
+    }
+  ]
+}

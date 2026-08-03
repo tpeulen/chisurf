@@ -173,18 +173,21 @@ def test_burst_workflow_panel_order() -> None:
     labels = [f"{panel.get('icon', '')} {panel['name']}".strip() for panel in BURST_PANELS]
     # No standalone Channels step (channels come from the Burst Selection setup);
     # the numbered pipeline is the main flow and names its two grains — the
-    # burst-level features (3-5), then the segmentation and the same MLE fit one
-    # level down (6-7). Below the separator: first what you do *with* the bursts
-    # (Browser, Accurate FRET, Burst FCS, Kinetics), then the two that feed the
-    # pipeline from the raw files (Background, IRF & Background).
+    # burst-level features (4-6), then the segmentation and the same MLE fit one
+    # level down (7-8). Step 3 is optional and comes before all of them because it
+    # changes *what a burst is* rather than measuring one. Below the separator:
+    # first what you do *with* the bursts (Browser, Accurate FRET, Burst FCS,
+    # Kinetics), then the two that feed the pipeline from the raw files
+    # (Background, IRF & Background).
     assert labels == [
         "📂 1. Data Selection",
         "🔍 2. Burst Selection",
-        "📊 3. Burst BVA",
-        "📊 4. Burst 2CDE",
-        "🎯 5. Burst MLE",
-        "🔀 6. Burst segmentation (H2MM)",
-        "🎯 7. Burst segment MLE",
+        "🔗 3. Burst Fusion (optional)",
+        "📊 4. Burst BVA",
+        "📊 5. Burst 2CDE",
+        "🎯 6. Burst MLE",
+        "🔀 7. Burst segmentation (H2MM)",
+        "🎯 8. Burst segment MLE",
         "────────",
         "📋 Browser",
         "🎯 Accurate FRET",
@@ -193,12 +196,16 @@ def test_burst_workflow_panel_order() -> None:
         "🌙 Background",
         "✨ IRF & Background",
     ]
-    # The separator sits after the seven numbered steps.
-    assert BURST_PANELS[7]["separator"] is True
+    # The separator sits after the eight numbered steps.
+    assert BURST_PANELS[8]["separator"] is True
     assert "channels" not in {p.get("role") for p in BURST_PANELS}
     # Segmentation must come before the fit that consumes it.
     roles = [p.get("role") for p in BURST_PANELS]
     assert roles.index("h2mm") < roles.index("segment_mle")
+    # Fusion changes the bursts every measuring step reads, so it must precede
+    # them: a companion computed on the un-fused bursts cannot be carried across.
+    for measured in ("bva", "two_cde", "mle", "h2mm", "segment_mle"):
+        assert roles.index("fusion") < roles.index(measured)
 
 
 def test_h2mm_panel_is_not_flagged_experimental() -> None:

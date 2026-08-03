@@ -410,7 +410,20 @@ class AutoForm(QtWidgets.QWidget):
                 pending.append(widget)
             else:
                 flush()
-                emit(widget)
+                # A section that asked for the spare vertical space
+                # (``_autoform_expanding``: an expanding table, a text preview, a
+                # plot) is emitted with a layout stretch, not only an expanding
+                # size policy. Without the stretch Qt still hands a share of the
+                # slack to every merely-``Preferred`` sibling, which spreads a
+                # panel's four spin boxes over the height of the dock while the
+                # table that wanted the room grows by a row.
+                if getattr(widget, "_autoform_expanding", False):
+                    try:
+                        emit(widget, 1)
+                    except TypeError:
+                        emit(widget)
+                else:
+                    emit(widget)
         flush()
 
     @property
@@ -947,6 +960,14 @@ class AutoForm(QtWidgets.QWidget):
             self._refresh_targets.append(widget)
         if widget is None:
             return None
+        # Record the spec on the widget, as every built-in section widget does.
+        # Anything that finds a control by what the view spec called it goes
+        # through ``_section`` — the guided tour resolves ``{"key": "…"}`` that
+        # way, and without this a tour step pointing at a custom section (a
+        # state scheme, a file list, an action bar) resolved to nothing and was
+        # silently shown centred instead of pointing at the widget it names.
+        if not hasattr(widget, "_section"):
+            widget._section = section
         # A custom section may carry a title like every other section; it used to
         # be silently dropped, so a panel with three `path_list`s showed three
         # unlabelled drop boxes and nothing said which took the IRF. The widget
@@ -976,6 +997,9 @@ class AutoForm(QtWidgets.QWidget):
         # caption wrapper: a caller asking for a section by name wants the thing
         # with the API on it.
         holder._autoform_inner = widget
+        # Carried out to the wrapper too, so a tour spotlighting this section
+        # highlights the caption along with the widget it names.
+        holder._section = section
         return holder
 
     def _build_dynamic_group(self, section: vs.DynamicGroupSection):

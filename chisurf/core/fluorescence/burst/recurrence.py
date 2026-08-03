@@ -29,6 +29,67 @@ from typing import Tuple
 import numpy as np
 
 
+def pair_statistics(
+    burst_times_s: np.ndarray,
+    edges: np.ndarray,
+    edge_correction: bool = True,
+) -> Tuple[np.ndarray, np.ndarray]:
+    r"""Counted and expected burst pairs per lag bin, for one measurement.
+
+    The estimator behind :func:`same_molecule_probability`, split out because a
+    single measurement rarely carries enough burst pairs to resolve
+    ``P_same(tau)``: counts and expectations are *additive*, so several
+    measurements are pooled by summing both and dividing once
+    (``G = sum(counts) / sum(expected)``) rather than averaging per-file ``G``
+    estimates, which double-weights a short file.
+
+    Parameters
+    ----------
+    burst_times_s : numpy.ndarray
+        Burst arrival times in seconds (any order; NaNs ignored).
+    edges : numpy.ndarray
+        Lag-bin edges in seconds, ascending, length ``n_bins + 1``.
+    edge_correction : bool
+        Correct the expected pair count for the finite acquisition time
+        (``T - tau``); negligible for ``tau << T`` but keeps large lags sane.
+
+    Returns
+    -------
+    counts : numpy.ndarray
+        Ordered pairs ``(i, j > i)`` whose separation falls in each bin.
+    expected : numpy.ndarray
+        Pairs a Poisson (uncorrelated) burst stream of the same rate and
+        duration would put in each bin. Zero where the measurement is too short
+        or too empty to expect any.
+    """
+    n_bins = len(edges) - 1
+    counts = np.zeros(n_bins)
+    expected = np.zeros(n_bins)
+
+    t = np.sort(np.asarray(burst_times_s, dtype=float))
+    t = t[np.isfinite(t)]
+    n = t.size
+    if n < 2:
+        return counts, expected
+
+    total_time = t[-1] - t[0]
+    if total_time <= 0:
+        return counts, expected
+    rate = n / total_time
+
+    for k in range(n_bins):
+        a, b = edges[k], edges[k + 1]
+        # Ordered pairs (i, j>i) with separation t_j - t_i in [a, b).
+        counts[k] = float(
+            (np.searchsorted(t, t + b, side="left")
+             - np.searchsorted(t, t + a, side="left")).sum()
+        )
+        d_tau = b - a
+        span = total_time - 0.5 * (a + b) if edge_correction else total_time
+        expected[k] = rate * rate * d_tau * max(span, 0.0)
+    return counts, expected
+
+
 def same_molecule_probability(
     burst_times_s: np.ndarray,
     tau_min_s: float = 1e-3,
@@ -63,33 +124,15 @@ def same_molecule_probability(
     g : numpy.ndarray
         The underlying autocorrelation ``G(tau)``.
     """
-    t = np.sort(np.asarray(burst_times_s, dtype=float))
-    t = t[np.isfinite(t)]
-    n = t.size
     edges = np.logspace(np.log10(tau_min_s), np.log10(tau_max_s), n_bins + 1)
     tau = np.sqrt(edges[:-1] * edges[1:])
+    counts, expected = pair_statistics(burst_times_s, edges, edge_correction)
     g = np.full(n_bins, np.nan)
-    if n < 2:
+    if not expected.any():
         return tau, np.zeros(n_bins), g
-
-    total_time = t[-1] - t[0]
-    if total_time <= 0:
-        return tau, np.zeros(n_bins), g
-    rate = n / total_time
-
-    for k in range(n_bins):
-        a, b = edges[k], edges[k + 1]
-        # Ordered pairs (i, j>i) with separation t_j - t_i in [a, b).
-        counts = int(
-            (np.searchsorted(t, t + b, side="left")
-             - np.searchsorted(t, t + a, side="left")).sum()
-        )
-        d_tau = b - a
-        span = total_time - 0.5 * (a + b) if edge_correction else total_time
-        expected = rate * rate * d_tau * max(span, 0.0)
-        g[k] = counts / expected if expected > 0 else np.nan
 
     with np.errstate(divide="ignore", invalid="ignore"):
+        g = np.where(expected > 0, counts / np.where(expected > 0, expected, 1.0), np.nan)
         p_same = 1.0 - 1.0 / g  # empty bins (g == 0) -> -inf -> clipped to 0
     p_same = np.clip(p_same, 0.0, 1.0)
     return tau, p_same, g

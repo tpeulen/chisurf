@@ -78,6 +78,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 55 | [Pair correlation and flow maps: where molecules go](55_pair_correlation.md) | `experiments.ics.pair_correlation`, `experiments.ics.flow_map` |
 | 56 | [FCS saturation and focal-volume expansion](56_fcs_saturation.md) | `fcs_saturation` calculator, `FCS (kinetics)` model, `chisurf.core.fluorescence.fcs.saturation` |
 | 57 | [Fitting an MFD burst histogram](57_mfd_fitting.md) | `MFD` experiment, `MFD 2D` model, `chisurf.core.fluorescence.mfd` |
+| 58 | [Fusing bursts the same molecule produced](58_burst_fusion.md) | `burst_fusion` plugin, `core.fluorescence.burst.fusion`, `csc fusion` |
 
 ## Running
 

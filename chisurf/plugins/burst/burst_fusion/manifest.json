@@ -1,0 +1,80 @@
+{
+  "id": "burst_fusion",
+  "version": "1.0.0",
+  "display_name": "Spectroscopy:Single-Molecule:Burst Fusion",
+  "description": "Fuse bursts the same molecule produced, using the recurrence same-molecule probability, into a new burst folder.",
+  "icon": "🔗",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Spectroscopy", "Single-Molecule"],
+  "state_namespace": "burst_fusion",
+  "statefulness": {
+    "enabled": true,
+    "window": {
+      "enabled": true,
+      "settings_key": null
+    }
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.burst.burst_fusion.gui.tool:BurstFusionTool",
+    "cli": "chisurf.plugins.burst.burst_fusion.cli.main:cli",
+    "services": "chisurf.plugins.burst.burst_fusion.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "burst_fusion.jobs.analyze",
+      "summary": "Estimate the same-molecule probability of a burst folder and report what a threshold would fuse.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "analysis_folder": {
+            "type": "string",
+            "description": "Burst-analysis folder to fuse (the one holding bi4_bur)."
+          },
+          "settings": {
+            "type": "object",
+            "description": "FusionSettings payload: threshold, lag range, bins, max group size."
+          }
+        },
+        "required": ["analysis_folder"]
+      },
+      "long_running": true
+    },
+    {
+      "name": "burst_fusion.jobs.fuse",
+      "summary": "Write the fused bursts as a new burst-analysis folder.",
+      "params_schema": {
+        "type": "object",
+        "properties": {
+          "analysis_folder": {
+            "type": "string",
+            "description": "Burst-analysis folder to fuse."
+          },
+          "settings": {
+            "type": "object",
+            "description": "FusionSettings payload."
+          },
+          "output_folder": {
+            "type": "string",
+            "description": "Target folder; a threshold-named sibling of the source by default."
+          },
+          "detectors": {
+            "type": "object",
+            "description": "Detector definition used to regenerate the burst columns (defaults to the source folder's reading manifest)."
+          },
+          "windows": {
+            "type": "object",
+            "description": "PIE/micro-time windows used to regenerate the burst columns."
+          }
+        },
+        "required": ["analysis_folder"]
+      },
+      "long_running": true
+    },
+    {
+      "name": "burst_fusion.workflow.prepare",
+      "summary": "Resolve the burst folder and detector definition from a burst workflow context.",
+      "long_running": false
+    }
+  ],
+  "menu_hidden": true
+}

@@ -115,16 +115,29 @@ def load_tour(path: str | pathlib.Path) -> list[TourStep]:
     for item in raw or []:
         if not isinstance(item, dict):
             continue
-        expect = item.get("await", item.get("expect"))
-        if expect is True:
-            expect = {}
+        # ``await`` may be omitted, ``true`` (wait, nothing to configure),
+        # ``false`` (explicitly do not wait — a step that only points at
+        # something to read) or a ``{"signal", "hint"}`` mapping. ``false`` used
+        # to reach ``dict(False)`` and raise, which took the whole tool down with
+        # it on construction, so an authored tour could not opt a step out.
+        requested = item.get("await", item.get("expect"))
+        if requested is True:
+            expect, waits = {}, True
+        elif requested is None or requested is False:
+            expect, waits = {}, False
+        else:
+            try:
+                expect, waits = dict(requested), True
+            except (TypeError, ValueError):
+                logger.debug("tour step %r has an unusable 'await'", item.get("title"))
+                expect, waits = {}, False
         steps.append(
             TourStep(
                 title=str(item.get("title", "")),
                 text=str(item.get("text", "")),
                 target=dict(item.get("target") or {}),
-                expect={} if expect is None else dict(expect),
-                waits=expect is not None,
+                expect=expect,
+                waits=waits,
             )
         )
     return steps

@@ -2,6 +2,45 @@
 
 ## 2026-08-03
 
+* **Burst fusion: the same-molecule probability, used to merge rather than to
+  correlate.** A new optional pipeline step ([burst plugins](plugins/burst.md))
+  between burst selection and everything that measures a burst: it reads a burst
+  folder, decides which consecutive bursts one molecule produced from
+  `P_same(τ) = 1 − 1/G(τ)`, and writes a **new** analysis folder in which each
+  such run is one burst. Core `chisurf/core/fluorescence/burst/fusion.py`, plugin
+  `chisurf/plugins/burst/burst_fusion/` (GUI + `csc fusion` + RPC), concept
+  [`docs/concepts/burst_fusion.md`](../docs/concepts/burst_fusion.md), guide
+  [`docs/guides/58_burst_fusion.md`](../docs/guides/58_burst_fusion.md).
+  - **The window has to be read from the long end of the curve.** `P_same` is
+    not monotonic: it dips at the shortest lags, because nothing recurs faster
+    than a burst is long, so those bins hold coincidences between *different*
+    molecules. The first implementation scanned outward from the shortest lag and
+    stopped at the first bin below the threshold — which fused **nothing** on
+    exactly the data fusion is for. Caught by a synthetic stream whose answer is
+    known (three bursts per molecule, 2 ms apart).
+  - **A gap ceiling is not a second opinion about the molecule, it is the
+    price.** A `.bur` row is one photon interval, so a fused burst is the span
+    and swallows the photons between its fragments. On the repo's own dilute
+    fixture `P_same ≥ 0.5` holds out to **68 ms** — correct about the molecule,
+    ruinous for the burst (hundreds of background photons into a burst with a few
+    hundred real ones). `max_gap_ms` (default 10 ms) caps the window, and the
+    emitted companion records the background gained per burst.
+  - `pair_statistics` was factored out of `recurrence.py` so one estimator serves
+    both readings of the curve, and because counts/expectations are additive:
+    ten short measurements pool into a curve none of them resolves alone, while a
+    lag is still never taken across a file boundary.
+  - Four shared-framework defects were found by building on them and fixed in
+    place: a `guide.json` step with `"await": false` raised `dict(False)` and
+    took the whole tool down at construction; `_build_custom` never recorded its
+    spec on the widget, so **every** `{"key": …}` tour target in the tree
+    resolved to nothing and was silently shown centred; `TableWidget._fit_height`
+    pinned an `expand: true` table to the row count it had when *built* (zero for
+    a results table), undoing the expansion its constructor asked for and handing
+    the panel's spare space to the spin boxes instead; and `flat_sections()`
+    recursed into panels only, so a spec wrapped in a `dock_area` — which is how
+    most tools are laid out — was invisible to every check and to the plugin
+    catalogue generator. AutoForm also gained a `directory` value kind, so a
+    folder picker no longer needs a bespoke widget.
 * **Five guards that were quietly not guarding.** Found while running the suites
   for the PSF calculator work, all committed breakage rather than anyone's work
   in flight: `ReentrancyGuard` stored its guard object in the same attribute it

@@ -372,6 +372,15 @@ def _burst_background(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     return widget
 
 
+def _burst_fusion(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
+    """Create the optional burst-fusion panel."""
+    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
+
+    widget = BurstFusionTool(parent=parent)
+    _bind(parent, "fusion", widget)
+    return widget
+
+
 def _burst_irf_bg(parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
     """Create the IRF & background (non-burst) panel."""
     from chisurf.plugins.burst.burst_irf_bg.gui.tool import BurstIrfBackgroundTool
@@ -426,33 +435,48 @@ BURST_PANELS = [
         "factory": _burst_selection,
         "role": "selection",
     },
-    # Steps 3-5 are burst-level features: one number per burst. Step 6 cuts each
-    # burst into segments, and step 7 is the same MLE fit one level down — one
+    # Step 3 is optional and changes *what a burst is* rather than measuring one,
+    # which is why it sits before every step that measures: a companion computed
+    # on the un-fused bursts has one row per un-fused burst and cannot be carried
+    # across. Walking the pipeline past it only previews; it redirects the later
+    # steps only when the user writes the fused folder.
+    {
+        "name": "3. Burst Fusion (optional)",
+        "icon": Glyphs.LINK,
+        "description": (
+            "Optional: merge bursts the same molecule produced (recurrence "
+            "P_same) into a new burst folder the later steps then use."
+        ),
+        "factory": _burst_fusion,
+        "role": "fusion",
+    },
+    # Steps 4-6 are burst-level features: one number per burst. Step 7 cuts each
+    # burst into segments, and step 8 is the same MLE fit one level down — one
     # number per burst *and* state. The names carry that split so the pipeline
     # reads as "first the burst, then inside it".
     {
-        "name": "3. Burst BVA",
+        "name": "4. Burst BVA",
         "icon": Glyphs.CHART,
         "description": "Burst-level feature: burst variance analysis of the selected bursts.",
         "factory": _burst_bva,
         "role": "bva",
     },
     {
-        "name": "4. Burst 2CDE",
+        "name": "5. Burst 2CDE",
         "icon": Glyphs.CHART,
         "description": "Burst-level feature: the FRET-2CDE / ALEX-2CDE burst-dynamics filter.",
         "factory": _burst_2cde,
         "role": "two_cde",
     },
     {
-        "name": "5. Burst MLE",
+        "name": "6. Burst MLE",
         "icon": Glyphs.TARGET,
         "description": "Burst-level feature: one maximum-likelihood lifetime per burst.",
         "factory": _burst_mle,
         "role": "mle",
     },
     {
-        "name": "6. Burst segmentation (H2MM)",
+        "name": "7. Burst segmentation (H2MM)",
         "icon": Glyphs.SHUFFLE,
         "description": (
             "Cut each burst into segments: photon-by-photon HMM (H2MM) assigns "
@@ -462,7 +486,7 @@ BURST_PANELS = [
         "role": "h2mm",
     },
     {
-        "name": "7. Burst segment MLE",
+        "name": "8. Burst segment MLE",
         "icon": Glyphs.TARGET,
         "description": (
             "Segment-level: the same MLE fit once per burst and H2MM state, "
@@ -541,6 +565,12 @@ class BurstAnalysisTool(NavigationPanelTool):
         """Create the integrated burst workflow tool."""
         self.workflow_context = BurstWorkflowContext()
         self._workflow_panels: dict[str, QtWidgets.QWidget] = {}
+        # Set once the optional fusion step has written a folder: the folder it
+        # fused, and the folder it produced. Burst selection re-publishes its own
+        # output folder on every context refresh, which would otherwise drop the
+        # workflow back onto the un-fused bursts the moment the user changed step.
+        self._fusion_source: Path | None = None
+        self._fused_folder: Path | None = None
         # Shared detector definition flows through the central
         # ``detector_setups.*`` RPC store (same as the Imaging Tools window).
         self._setup_client = DetectorSetupClient()
@@ -611,6 +641,9 @@ class BurstAnalysisTool(NavigationPanelTool):
 
         def wrapped_analyze_files(*args: Any, **kwargs: Any) -> Any:
             result = original(*args, **kwargs)
+            # A fresh burst search supersedes any fusion of the previous one.
+            self._fusion_source = None
+            self._fused_folder = None
             self._sync_selection_context(widget)
             self._apply_context_to_downstream()
             return result
@@ -703,6 +736,10 @@ class BurstAnalysisTool(NavigationPanelTool):
         if folder is None:
             folder = self._materialize_burst_handoff(widget)
         if folder is not None:
+            # Keep the fused bursts once the optional step has produced them from
+            # exactly this selection output — the later steps have adopted them.
+            if self._fused_folder is not None and folder == self._fusion_source:
+                folder = self._fused_folder
             self.workflow_context.burst_folder = folder
             self.workflow_context.bur_files = sorted(folder.glob("**/*.bur"))
 
@@ -759,7 +796,7 @@ class BurstAnalysisTool(NavigationPanelTool):
 
     def _apply_context_to_downstream(self) -> None:
         """Apply current workflow context to loaded downstream panels."""
-        for role in ("selection", "bva", "two_cde", "mle", "h2mm", "segment_mle",
+        for role in ("selection", "fusion", "bva", "two_cde", "mle", "h2mm", "segment_mle",
                      "browser", "burst_fcs", "burst_gs", "accurate_fret",
                      "background", "irf_bg"):
             widget = self._workflow_panels.get(role)
@@ -770,6 +807,8 @@ class BurstAnalysisTool(NavigationPanelTool):
         """Apply current workflow context to one panel."""
         if role == "selection":
             self._apply_channels_to_burst_selection(widget)
+        elif role == "fusion":
+            self._apply_context_to_fusion(widget)
         elif role == "bva":
             self._apply_context_to_bva(widget)
         elif role == "two_cde":
@@ -813,6 +852,47 @@ class BurstAnalysisTool(NavigationPanelTool):
             if wizard is not None:
                 wizard.windows = settings.get("windows", {})
                 wizard.detectors = settings.get("detectors", {})
+
+    def _apply_context_to_fusion(self, widget: QtWidgets.QWidget) -> None:
+        """Hand the optional fusion step the burst folder and the detectors.
+
+        The folder is *not* re-applied once the step has written its own output
+        and the workflow has adopted it: the context then holds the fused folder,
+        and pushing that back into the step would point it at its own result —
+        so returning to the step, or any later context refresh, would quietly
+        line up a fusion of an already-fused folder.
+        """
+        settings = self.workflow_context.channel_settings
+        if settings:
+            try:
+                widget.set_channel_settings(settings)
+            except Exception:
+                pass
+        # The step announces a written folder; the workflow adopts it so every
+        # later step reads the fused bursts instead of the original ones.
+        model = getattr(widget, "model", None)
+        if model is not None and getattr(model, "folder_written", None) is None:
+            model.folder_written = self._on_fused_folder
+        folder = self.workflow_context.burst_folder
+        if folder is None:
+            return
+        written = getattr(widget, "output_folder", lambda: "")()
+        if str(folder) != str(written):
+            try:
+                widget.set_folder(str(folder))
+            except Exception:
+                pass
+
+    def _on_fused_folder(self, folder: str) -> None:
+        """Adopt a fused burst folder as the folder the later steps analyse."""
+        path = Path(folder)
+        if not path.is_dir():
+            return
+        self._fusion_source = self.workflow_context.burst_folder
+        self._fused_folder = path
+        self.workflow_context.burst_folder = path
+        self.workflow_context.bur_files = sorted(path.glob("**/*.bur"))
+        self._apply_context_to_downstream()
 
     def _apply_context_to_bva(self, widget: QtWidgets.QWidget) -> None:
         """Use upstream burst folder and channels in BVA."""

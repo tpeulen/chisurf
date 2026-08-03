@@ -1,0 +1,60 @@
+{
+  "steps": [
+    {
+      "title": "What this step is for",
+      "text": "One molecule crossing the spot does not always leave one burst. It wanders out and back, and the burst search — which sees only a count rate — cuts the passage into two or three bursts.<br/><br/>This tool merges those fragments back into one burst and writes a <b>new</b> burst folder. Nothing in the folder you start from is changed, so you can try a threshold, look at it, and throw it away.<br/><br/>Start by choosing the burst folder burst selection produced — the one holding <code>bi4_bur</code>.",
+      "target": {
+        "attr": "folder"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 1 — see the evidence before choosing anything",
+      "text": "Press <b>Run</b> now, with the settings as they are.<br/><br/>Nothing is written. It reads the burst tables and estimates <b>P(same molecule)</b> against the lag between bursts: the probability that a burst arriving τ after another one is the <i>same</i> molecule recurring, rather than a different molecule arriving by chance.<br/><br/>Watch the first plot. It starts near 1 at short lags — a burst 100 µs after another one is almost certainly the same molecule — and falls as the lag grows.",
+      "target": {
+        "key": "fusion_actions"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 2 — read your threshold off that curve",
+      "text": "The dashed line is this number. The dotted line is the longest lag at which the curve still meets it — the gap that will actually be fused.<br/><br/>Try <b>0.9</b> and press Run again, then <b>0.3</b>. The dotted line moves, the burst count in the summary moves with it, and the histograms change shape.<br/><br/>There is no universally right value. High is conservative (only obvious splits are repaired); low eventually merges genuinely different molecules. The plot is there so the trade-off is yours to see.",
+      "target": {
+        "attr": "threshold"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 3 — the ceiling that is not about probability",
+      "text": "Now look at where the dotted line sits relative to the curve. On a dilute sample the curve stays above any sensible threshold out to <i>tens of milliseconds</i> — the molecule really is the same one, because there is hardly anyone else in the sample.<br/><br/>Fusing on that would be correct about the molecule and ruinous for the burst. A burst on disk is one interval, so bridging a 70 ms gap puts 70 ms of <b>background</b> inside the burst.<br/><br/>That is what this box stops. The probability answers <i>'same molecule?'</i>; this answers <i>'at what cost?'</i>. Leave it at 10 ms unless you know why not.",
+      "target": {
+        "attr": "max_gap_ms"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 4 — what fusing did to your bursts",
+      "text": "Read the summary table before writing anything. The rows that matter:<br/><br/>• <b>Bursts</b> — how many single-molecule events you now have.<br/>• <b>Proximity ratio (std)</b> — should <i>fall</i>. A fragment has fewer photons than the passage, so its ratio is shot-noise-broadened; repairing the split narrows the distribution.<br/>• <b>Photons per burst</b> — should rise, and the photon histogram should lose weight from its short tail.<br/>• <b>Duration (mean)</b> — rises too, because the bridged gaps are inside the burst now. If it jumps by orders of magnitude, your ceiling is too generous.",
+      "target": {
+        "title": "Summary"
+      },
+      "await": false
+    },
+    {
+      "title": "Step 5 — write the fused folder",
+      "text": "Press <b>Save</b>.<br/><br/>This is the slow half: the photon streams are reopened and every column of the new burst table is re-derived over the real span, so the fused folder is a burst folder in every respect — BVA, 2CDE, the MLE and H2MM read it with no idea that fusion happened.<br/><br/>The plots then switch from the preview to what was actually written (the legend says so). The two differ by the background the bridged gaps brought in; the <code>fu4</code> companion records that number per burst.",
+      "target": {
+        "key": "fusion_actions"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 6 — and then carry on down the pipeline",
+      "text": "The later steps now point at the fused folder.<br/><br/>One thing to know: companions already computed on the <i>original</i> folder — BVA, 2CDE, per-burst MLE lifetimes — are <b>not</b> carried over. They have one row per original burst and would misalign against the fused ones. Recompute them here, which is exactly why fusion sits before them.<br/><br/>If you decide against it, simply go back a step: the original folder was never touched.",
+      "target": {
+        "attr": "folder"
+      },
+      "await": false
+    }
+  ]
+}

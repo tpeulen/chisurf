@@ -38,6 +38,7 @@ ordering below runs from the physical fundamentals to the specific methods.
    smfret_bursts
    accurate_fret
    burst_2cde
+   burst_fusion
    bva
    recurrence
    pda2c

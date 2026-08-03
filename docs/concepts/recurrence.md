@@ -151,9 +151,17 @@ from the burst arrival times and the recurrence histogram for a chosen efficienc
 sub-population and recurrence window. See {doc}`/guides/02_recurrence_rasp` for the
 worked example.
 
+The same $P_\text{same}(\tau)$ answers a second, quite different question. Read
+as "how long is a recurring burst still the same molecule?", it sets the
+recurrence window of this analysis. Read as "did the burst search cut one
+passage into two?", it decides which bursts to **merge** — see
+{doc}`Burst fusion <burst_fusion>`, an optional pipeline step that writes a burst
+folder in which one molecule's fragments are one burst.
+
 ## See also
 
 - Guide: {doc}`/guides/02_recurrence_rasp`.
+- The same probability used to merge split bursts: {ref}`concept-burst-fusion`.
 - Related intra-burst dynamics probes: {ref}`concept-bva`, {ref}`concept-burst-2cde`.
 - ChiSurf source: `chisurf/core/fluorescence/burst/recurrence.py`.
 - Hoffmann, A., Nettels, D., Gopich, I. V., Schuler, B. (2011). Quantifying
