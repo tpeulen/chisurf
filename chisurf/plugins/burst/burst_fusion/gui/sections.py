@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class FusionActionBar(QtWidgets.QWidget):
-    """Analyze / write buttons bound to a :class:`~..gui.view_model.FusionViewModel`."""
+    """Preview / fuse buttons bound to a :class:`~..gui.view_model.FusionViewModel`."""
 
     is_form_field = False
 
@@ -41,20 +41,26 @@ class FusionActionBar(QtWidgets.QWidget):
         # hands it a share of the spare vertical space and the two buttons float
         # in the middle of a gap, far from the controls they act on.
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        self.analyze_button = action_button(
+        # Running this step means *fusing*: the canonical run button is the one
+        # that produces the step's output and hands it to the workflow, so a
+        # user who runs it and moves on is analysing the fused bursts. Estimating
+        # is the cheap, repeatable half and sits beside it as its own button.
+        self.fuse_button = action_button(
             "run",
+            on_click=self.fuse,
+            tooltip="Fuse the bursts and write them as a new burst-analysis "
+                    "folder — the folder the later steps then analyse. The "
+                    "source folder is not changed.",
+        )
+        self.analyze_button = action_button(
+            "refresh",
             on_click=self.analyze,
-            tooltip="Estimate the same-molecule probability and show what this "
-                    "threshold would fuse (reads the burst tables only).",
+            tooltip="Estimate the same-molecule probability and preview what "
+                    "this threshold would fuse. Writes nothing — press it as "
+                    "often as you like while choosing a threshold.",
         )
-        self.write_button = action_button(
-            "save",
-            on_click=self.write,
-            tooltip="Write the fused bursts as a new burst-analysis folder "
-                    "(reopens the photon streams; the source folder is not changed).",
-        )
+        layout.addWidget(self.fuse_button)
         layout.addWidget(self.analyze_button)
-        layout.addWidget(self.write_button)
         layout.addStretch(1)
 
     def _run(self, what: str, function) -> None:
@@ -84,8 +90,14 @@ class FusionActionBar(QtWidgets.QWidget):
             return
         self._run("Estimating the same-molecule probability…", self._model.analyze)
 
+    def fuse(self) -> None:
+        """Fuse the bursts and write the folder the later steps will read."""
+        if self._model is None:
+            return
+        self._run("Fusing bursts and writing the folder…", self._model.fuse)
+
     def write(self) -> None:
-        """Write the fused burst folder."""
+        """Write the fused burst folder from the current preview."""
         if self._model is None:
             return
         self._run("Writing the fused burst folder…", self._model.write)

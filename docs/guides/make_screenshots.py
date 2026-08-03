@@ -831,8 +831,7 @@ def _grab_burst_fusion_tool():
     QApplication.instance().processEvents()
     tool.load_demo()
     tool.model.threshold = 0.7
-    tool.model.analyze()
-    tool.model.write()
+    tool.model.fuse()
     QApplication.instance().processEvents()
     _grab(tool, "burst_fusion_curve.png")
 

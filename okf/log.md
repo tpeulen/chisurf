@@ -84,6 +84,30 @@
     asserts that the cartoon is traced. Suite: 1813 passed before the fixes, with
     the two pre-existing failure groups above.
 
+* **"Optional" is now a property of a pipeline step, not a description of one.**
+  Walking past the burst-fusion step used to click its canonical `toolAction_run`
+  — which meant the shell *did* act on a step the pipeline is supposed to work
+  without. A panel can now declare `"optional": True`, and
+  `NavigationPanelTool.process_current_step` never runs one: **Next** and the ⏩
+  fast-forward pass over it, so the later steps keep the burst folder they
+  already had.
+  - With the walk unable to trigger it, the step's Run button became the action
+    that *produces its output*: ▶ now estimates **and** writes the fused folder
+    and hands it downstream, with estimating (the cheap, repeatable half) on its
+    own 🔄 button. A Run that only previewed would have left anyone who pressed
+    it and moved on analysing un-fused bursts with nothing saying so.
+  - The two rules are pinned end-to-end through the real shell in
+    `test/plugins/burst/test_fusion_workflow.py`: Next without running leaves the
+    folder un-fused and writes nothing; running hands the fused folder to every
+    later step and it survives the context refresh a step change performs. The
+    guard was checked negatively — with the flag removed, merely pressing Next
+    fuses and redirects the pipeline.
+  - The `?` help gained the method's origin: the full RASP citation (Hoffmann et
+    al., *PCCP* 13, 1857, 2011, DOI-linked) and, more useful than the citation,
+    *when not to fuse* — that paper reads the same curve to **correlate**
+    recurring bursts and measure slow dynamics, and fusing those would destroy
+    what it measures. The guide and the workflow page say the same.
+
 * **A dock area's authored `sizes` never actually applied.** Reported as "the
   fusion controls eat half the window", and true of *every* view that asks for a
   split: `setSizes` ran while the splitter was still ~100 px wide, so each share

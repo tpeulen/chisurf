@@ -449,6 +449,13 @@ BURST_PANELS = [
         ),
         "factory": _burst_fusion,
         "role": "fusion",
+        # Walking the pipeline must not fuse. The later steps analyse whatever
+        # burst folder the workflow currently holds, so a step that *replaces*
+        # that folder cannot be allowed to act just because someone pressed
+        # Next — the bursts every downstream number is computed from would
+        # change without anyone asking for it. Pressing this step's own Fuse
+        # button is the only thing that hands the fused folder downstream.
+        "optional": True,
     },
     # Steps 4-6 are burst-level features: one number per burst. Step 7 cuts each
     # burst into segments, and step 8 is the same MLE fit one level down — one

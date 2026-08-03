@@ -87,12 +87,27 @@ def test_tool_constructs_with_help_and_guide(tool):
     assert any("?" in label for label in labels), labels
 
 
-def test_the_run_button_carries_the_canonical_object_name(tool):
-    """The workflow shell drives a step by clicking its ``toolAction_run``."""
+def test_the_run_button_is_the_one_that_fuses(tool, qapp):
+    """Running a step must produce its output, not a preview of it.
+
+    The shell drives a step through the canonical ``toolAction_run``; if that
+    only estimated, a user who ran the step and moved on would be analysing the
+    un-fused bursts with nothing saying so.
+    """
     from qtpy import QtWidgets
 
-    assert tool.findChild(QtWidgets.QToolButton, "toolAction_run") is not None
-    assert tool.findChild(QtWidgets.QToolButton, "toolAction_save") is not None
+    run = tool.findChild(QtWidgets.QToolButton, "toolAction_run")
+    estimate = tool.findChild(QtWidgets.QToolButton, "toolAction_refresh")
+    assert run is not None and estimate is not None
+
+    estimate.click()
+    qapp.processEvents()
+    assert tool.model.has_analysis()
+    assert tool.output_folder() == "", "estimating must write nothing"
+
+    run.click()
+    qapp.processEvents()
+    assert pathlib.Path(tool.output_folder()).is_dir(), "running must write the folder"
 
 
 def test_analyze_populates_every_plot_and_the_summary(tool):

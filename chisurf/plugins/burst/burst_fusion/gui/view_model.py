@@ -271,6 +271,18 @@ class FusionViewModel:
         logger.info("Burst fusion: %s", self._status)
         self.notify("analyzed")
 
+    def fuse(self) -> str:
+        """Fuse and write in one action — what *running* this step means.
+
+        The step's primary action has to be the one that produces its output.
+        Estimating the probability changes nothing on disk and hands nothing to
+        the later steps, so a workflow in which "run" only estimated would leave
+        a user who pressed Run and moved on analysing the *un-fused* bursts,
+        with no sign that the step had not taken effect.
+        """
+        self.analyze()
+        return self.write()
+
     def write(self) -> str:
         """Write the fused bursts as a new burst folder and return its path."""
         if self._analysis is None:

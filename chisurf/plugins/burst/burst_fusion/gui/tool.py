@@ -117,18 +117,19 @@ class BurstFusionTool(ChisurfDockTool):
         """Return the fused folder written by the last run (empty before that)."""
         return self.model.written_folder
 
-    def process_bursts(self) -> None:
-        """Analyse without writing — what walking *past* this step does.
+    def process_bursts(self) -> str:
+        """Fuse the bursts and write the folder — the headless *Run*.
 
-        Fusion is an **optional** step, so the shell's *Next ▶* / ⏩ walk must not
-        silently change the bursts every later step sees. The walk clicks the
-        canonical ``toolAction_run`` button, which is *Analyze*: it estimates the
-        probability and shows the preview. Writing the fused folder — the act
-        that redirects the pipeline — stays a deliberate press of the save
-        button. This method is the same thing for headless callers.
+        Running this step means producing its output: the fused folder, handed
+        to the workflow so every later step analyses it. The shell's *Next ▶* /
+        ⏩ walk never reaches this, because the step is declared ``optional`` and
+        the walk passes over optional steps without running them — pressing Next
+        on an un-run fusion step leaves the pipeline on the bursts it already
+        had, which is the whole meaning of "optional" here.
         """
-        if self.model.can_run() is None:
-            self.model.analyze()
+        if self.model.can_run() is not None:
+            return ""
+        return self.model.fuse()
 
     def _on_model_event(self, event: str) -> None:
         """Redraw whenever the model changed.

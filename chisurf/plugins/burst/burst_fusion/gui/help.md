@@ -98,10 +98,47 @@ Companions computed on the source folder (BVA, 2CDE, MLE, …) are **not** copie
 they have one row per *original* burst and would misalign. Recompute them on the
 fused folder — which is why fusion belongs before them.
 
+## The original method
+
+The same-molecule probability this step decides on is not ours. It comes from
+**recurrence analysis of single particles (RASP)**:
+
+> Hoffmann, A., Nettels, D., Clark, J., Borgia, A., Radford, S. E., Clarke, J.
+> & Schuler, B. (2011). *Quantifying heterogeneity and conformational dynamics
+> from single molecule FRET of diffusing molecules: recurrence analysis of
+> single particles (RASP).* **Physical Chemistry Chemical Physics** 13(5),
+> 1857–1871. [10.1039/c0cp01911a](https://doi.org/10.1039/c0cp01911a)
+
+That paper introduces `G(τ)` of the burst arrival times and
+`P_same(τ) = 1 − 1/G(τ)`, and uses them for what they were meant for: choosing a
+*recurrence window* in which a returning burst can be correlated with the one
+before it, to read out dynamics slower than a single transit. ChiSurf does that
+too — see [Recurrence analysis (RASP)](docs/concepts/recurrence.md) and its
+[guide](docs/guides/02_recurrence_rasp.md).
+
+**This step reads the same curve for a different purpose**, and the difference
+is worth stating plainly: RASP *correlates* a recurring burst with its
+predecessor and keeps them separate; fusion *merges* them into one burst. Where
+the recurrence is a genuine return of a molecule that left, RASP is the right
+reading and fusing would destroy the very dynamics it measures. Where the "two
+bursts" are one uninterrupted passage the count-rate search cut in half, fusion
+is the right reading. The gap ceiling is what keeps this step on the second
+case: at sub-millisecond gaps a molecule has not gone anywhere, while the
+tens-of-milliseconds recurrences RASP is built on are excluded by default. If
+your interest is the slow dynamics rather than the split bursts, use recurrence
+analysis and leave fusion alone.
+
+If you publish results from this step, cite the paper above for the method, and
+say which threshold and gap ceiling you used — both are recorded in the fused
+folder's `Info/fusion.json`.
+
 ## Further reading
 
 * [Burst fusion](docs/concepts/burst_fusion.md) — the theory and the assumptions.
 * [Recurrence analysis (RASP)](docs/concepts/recurrence.md) — where `P_same` comes from.
 * [Fusing recurring bursts](docs/guides/58_burst_fusion.md) — the worked workflow.
-* Hoffmann *et al.*, *Phys. Chem. Chem. Phys.* **13**, 1857 (2011),
-  [10.1039/c0cp01911a](https://doi.org/10.1039/c0cp01911a)
+* [Photon bursts in smFRET](docs/concepts/smfret_bursts.md) — the burst folder and
+  its companions.
+* Why a fragment's FRET histogram is broader than the passage's — shot noise in
+  burst-wise efficiencies: Nir, E. *et al.* (2006), *J. Phys. Chem. B* **110**,
+  22103. [10.1021/jp063483n](https://doi.org/10.1021/jp063483n)

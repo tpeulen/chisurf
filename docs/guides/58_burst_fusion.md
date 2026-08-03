@@ -56,7 +56,8 @@ folder written by the current burst selection records this in
 
 ## 2. Look at the curve before choosing a threshold
 
-Press **▶ Run**. Nothing is written; the burst tables are read and
+Press **🔄 Estimate** (beside the green Run). Nothing is written; the burst
+tables are read and
 
 $$
 P_\text{same}(\tau) = 1 - 1/G(\tau)
@@ -88,7 +89,7 @@ They answer different questions and both matter.
 
 | Control | Question | How to choose |
 |---|---|---|
-| **P(same) ≥** | Is this the same molecule? | Start at 0.7. Try 0.9 (conservative — only obvious splits repaired) and 0.5, and watch the summary table move. |
+| **P(same) ≥** | Is this the same molecule? | Start at 0.7. Try 0.9 (conservative — only obvious splits repaired) and 0.5, pressing 🔄 Estimate each time, and watch the summary table move. |
 | **Max gap** | What does this cost? | Leave it at 10 ms unless you know why not. |
 
 On the demo, whose truth is 300 molecules, the three thresholds tell the whole
@@ -148,7 +149,7 @@ signal to cap it with **Max fragments**.
 
 ## 5. Write the fused folder
 
-Press **💾 Save**. This is the slow half: the photon streams are reopened and
+Press **▶ Run** — on this step, running *is* fusing. This is the slow half: the photon streams are reopened and
 every column is re-derived over the real span, so the result is an ordinary
 burst folder — BVA, 2CDE, the MLE, H2MM and the browser read it with no idea
 that fusion happened.
@@ -171,9 +172,16 @@ Two things to know about the output:
   each original burst its fused-burst number — so you can colour the original
   bursts by their group in the browser or in ndX.
 
-In the workflow, writing is also what redirects the later steps: from that point
-the pipeline analyses the fused bursts. Re-running burst selection supersedes
-that and takes you back to un-fused bursts.
+In the workflow, running the step is also what redirects the later steps: from
+that point the pipeline analyses the fused bursts. Re-running burst selection
+supersedes that and takes you back to un-fused bursts.
+
+```{note}
+Because fusion is optional, **Next** and the ⏩ fast-forward pass over this step
+without running it. Walk past it and every later step keeps analysing the folder
+burst selection produced; run it and they analyse the fused folder. Nothing
+changes the bursts under your analysis unless you press the button.
+```
 
 ```{warning}
 Per-burst results already computed on the un-fused folder — BVA, 2CDE, MLE
@@ -221,6 +229,28 @@ demo = create_demo()          # cached after the first call
 print(demo["truth"]["n_molecules"], "molecules ->", demo["bursts"], "bursts")
 analyze(demo["folder"], FusionSettings(threshold=0.7))
 ```
+
+## The method, and when *not* to fuse
+
+The same-molecule probability is from **recurrence analysis of single particles**:
+
+> Hoffmann, A., Nettels, D., Clark, J., Borgia, A., Radford, S. E., Clarke, J. &
+> Schuler, B. (2011). *Quantifying heterogeneity and conformational dynamics from
+> single molecule FRET of diffusing molecules: recurrence analysis of single
+> particles (RASP).* **Phys. Chem. Chem. Phys.** 13(5), 1857–1871.
+> [10.1039/c0cp01911a](https://doi.org/10.1039/c0cp01911a)
+
+That paper reads the curve to *correlate* a recurring burst with the one before
+it — deliberately keeping them apart — and so measures dynamics slower than a
+transit. This step reads the same curve to *merge*. Both are right, for different
+cases: a molecule that genuinely left and came back is RASP's subject, and fusing
+it would destroy the very dynamics being measured; a passage the search cut in
+half is fusion's. The gap ceiling is what keeps this step on the second case.
+If slow dynamics are what you are after, use
+[recurrence analysis](02_recurrence_rasp.md) and leave fusion alone.
+
+Cite the paper for the method, and report the threshold and gap ceiling you used
+— both are in the fused folder's `Info/fusion.json`.
 
 ## Related
 

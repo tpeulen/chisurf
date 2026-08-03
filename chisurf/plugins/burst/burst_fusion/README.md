@@ -23,11 +23,13 @@ everything that measures a burst.
 ## User Workflows
 
 1. **Judge a threshold before applying it.** Point the tool at a burst folder,
-   press ▶ Run: the `P_same` curve, the window your threshold implies and the
-   before/after burst statistics appear. Nothing is written.
-2. **Write the fused folder.** Press 💾 Save. The photon streams are reopened and
-   every column re-derived over the fused span. In the Burst Analysis window this
-   also redirects the later steps to the new folder.
+   press 🔄 Estimate: the `P_same` curve, the window your threshold implies and
+   the before/after burst statistics appear. Nothing is written; press it as
+   often as you like while choosing a threshold.
+2. **Fuse.** Press ▶ Run — on this step, running *is* fusing. The photon streams
+   are reopened, every column is re-derived over the fused span, and the new
+   folder is written. In the Burst Analysis window this also redirects the later
+   steps to it.
 3. **Learn it without data.** 🧪 Load demo simulates a measurement in which 300
    molecules crossed the focus and ~60 % of the crossings were cut up, runs the
    real burst search over it, and loads the result — so the tour can be walked,
@@ -64,10 +66,12 @@ A `ChisurfDockTool` hosting one AutoForm (`gui/fusion.view.json`):
   fused burst. All before/after overlays; after writing they show the *emitted*
   bursts rather than the preview, and the legend says which.
 - **Toolbar** — 🧪 Load demo, Guide (`gui/guide.json`), ? (`gui/help.md`).
-- The dock arrangement persists under the `burst_fusion` state namespace.
-- The primary action carries the canonical `toolAction_run` object name, so the
-  workflow shell's *Next ▶* drives this step like any other — and deliberately
-  only *analyses*, because the step is optional.
+- The dock arrangement persists under the `burst_fusion_v2` state namespace.
+- The primary action carries the canonical `toolAction_run` object name and
+  *fuses*: running a step means producing its output. The step is declared
+  `optional` in the workflow shell, so **Next** and the ⏩ fast-forward pass over
+  it without running it — walk past and the later steps keep the folder they
+  had; run it and they get the fused one.
 
 ## API, CLI, And RPC
 
@@ -122,14 +126,25 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
 PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
   python -m pytest chisurf/plugins/burst/burst_fusion/tests/
 
-# the step's place in the pipeline
+# the step's place in the pipeline, and which folder the later steps get
 PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
-  python -m pytest chisurf/plugins/burst/burst_analysis/tests/test_workflow.py
+  python -m pytest chisurf/plugins/burst/burst_analysis/tests/test_workflow.py \
+                  test/plugins/burst/test_fusion_workflow.py
 ```
 
 Manual check: 🧪 Load demo, then thresholds 0.9 / 0.7 / 0.5 — the burst count
 should move from ~428 through ~300 (the declared truth) to ~283, and the
 proximity-ratio width should fall monotonically.
+
+## Method And Citation
+
+The same-molecule probability is from recurrence analysis of single particles:
+Hoffmann, A. *et al.* (2011), *Phys. Chem. Chem. Phys.* **13**, 1857–1871,
+[10.1039/c0cp01911a](https://doi.org/10.1039/c0cp01911a). That paper uses the
+curve to *correlate* recurring bursts (slow dynamics); this step uses it to
+*merge* split ones. The `?` help states the distinction and when not to fuse.
+Every run records its threshold, gap ceiling, window and curve in the fused
+folder's `Info/fusion.json`, so a published number can be reproduced.
 
 ## Limitations And Open Work
 

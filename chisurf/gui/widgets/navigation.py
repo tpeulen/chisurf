@@ -408,7 +408,9 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     a tool by its GUI entrypoint (``"module:Class"``) plus ``name`` / ``icon`` /
     ``description`` / ``role``. Set ``"embed": true`` for ``QMainWindow`` tools
     that must be flattened via :func:`embed_mainwindow`; ``{"separator": true}``
-    inserts a group separator. An entry may also name the tool's ``manifest`` so
+    inserts a group separator; ``"optional": true`` marks a step the pipeline
+    works without, which *Next* and the fast-forward therefore pass over without
+    running (see :meth:`NavigationPanelTool.process_current_step`). An entry may also name the tool's ``manifest`` so
     :func:`apply_manifest_flags` surfaces its maturity flags. Panels import
     lazily inside their factories.
 
@@ -856,7 +858,17 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         wired to a *process-all-loaded* handler — so the shell can trigger a step's
         batch processing generically, without knowing the tool. Returns ``True`` if
         a Run action was found and triggered.
+
+        A panel declared ``optional`` is **never** run this way. Walking past a
+        step must not silently change the analysis: an optional step is one the
+        pipeline works without, so *Next* and the fast-forward pass over it and
+        it acts only when the user presses its own button. Returns ``False``, so
+        the walk advances immediately rather than waiting for work that will
+        never start.
         """
+        idx = self.nav_list.currentRow()
+        if 0 <= idx < len(self.panels) and self.panels[idx].get("optional"):
+            return False
         inst = self._current_panel_instance()
         if inst is None:
             return False
