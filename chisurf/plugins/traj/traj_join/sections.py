@@ -18,6 +18,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +137,7 @@ class _IoSection(QtWidgets.QWidget):
 
     def _save_joined(self) -> None:
         if not self._model.trajectory_filename_1 or not self._model.trajectory_filename_2:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self, "Two trajectories", "Open two trajectories first."
             )
             return
@@ -150,7 +151,7 @@ class _IoSection(QtWidgets.QWidget):
         try:
             self._model.save_joined(target)
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Join failed", str(exc))
+            dialogs.error(self, "Join failed", str(exc))
         self._refresh_host_form()
 
     # ── drag-drop ───────────────────────────────────────────────────────

@@ -19,6 +19,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -176,7 +177,7 @@ class _IoSection(QtWidgets.QWidget):
 
     def _save(self) -> None:
         if not self._model.trajectory_filename:
-            QtWidgets.QMessageBox.information(self, "No trajectory", "Open a trajectory first.")
+            dialogs.information(self, "No trajectory", "Open a trajectory first.")
             return
         self._write_rotation_matrix()
         self._write_translation_vector()
@@ -190,7 +191,7 @@ class _IoSection(QtWidgets.QWidget):
         try:
             self._model.save_rotated_translated(target)
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Save failed", str(exc))
+            dialogs.error(self, "Save failed", str(exc))
         self._refresh_host_form()
 
     # ── drag-drop ───────────────────────────────────────────────────────

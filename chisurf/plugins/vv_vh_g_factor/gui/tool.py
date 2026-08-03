@@ -11,6 +11,7 @@ import sys
 import warnings
 from pathlib import Path
 import numpy as np
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ from qtpy import uic
 from qtpy.QtWidgets import (
     QApplication, QWidget, QFileDialog, QVBoxLayout, QHBoxLayout,
     QPushButton,
-    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QDialog
+    QTableWidget, QTableWidgetItem, QHeaderView, QDialog
 )
 from qtpy.QtCore import Qt, QTimer
 
@@ -198,16 +199,16 @@ class VvVhDecayBatchWindow(QDialog):
     def _on_run(self):
         paths = self.file_list.paths()
         if not paths:
-            QMessageBox.information(self, "Batch", "No files to process.")
+            dialogs.information(self, "Batch", "No files to process.")
             return
         self._clear_results()
         for p in paths:
             self._append_result_row(self._compute_file_result(p))
-        QMessageBox.information(self, "Batch", f"Processed {len(paths)} file(s).")
+        dialogs.information(self, "Batch", f"Processed {len(paths)} file(s).")
 
     def _on_save(self):
         if not self.results:
-            QMessageBox.information(self, "Save CSV", "No results to save.")
+            dialogs.information(self, "Save CSV", "No results to save.")
             return
         out_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
         if not out_path:
@@ -217,9 +218,9 @@ class VvVhDecayBatchWindow(QDialog):
                 writer = csv.writer(f)
                 writer.writerow(["filename", "r_inf", "region_min", "region_max", "bg_vv", "bg_vh", "g_factor"])
                 writer.writerows(self.results)
-            QMessageBox.information(self, "Save CSV", f"Saved: {out_path}")
+            dialogs.information(self, "Save CSV", f"Saved: {out_path}")
         except Exception as e:
-            QMessageBox.critical(self, "Save CSV", f"Failed to save CSV: {e}")
+            dialogs.error(self, "Save CSV", f"Failed to save CSV: {e}")
 
 
 @persist_plugin_state("vv_vh_g_factor")
@@ -550,7 +551,7 @@ class VvVhGFactorCalculator(QWidget):
             logger.info("VvVhGFactorCalculator: RPC client.calculate completed successfully. Result: %s", res)
         except Exception as e:
             logger.error("VvVhGFactorCalculator: RPC calculation failed: %s", e)
-            QMessageBox.critical(self, "Calculation Error", f"RPC calculation failed: {e}")
+            dialogs.error(self, "Calculation Error", f"RPC calculation failed: {e}")
             return
 
         g_factor_uncorrected = res.get("g_factor_uncorrected")

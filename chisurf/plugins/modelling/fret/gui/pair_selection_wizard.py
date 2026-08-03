@@ -11,6 +11,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 from chisurf.gui import chiplot as cp
 import chisurf.gui.widgets
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -229,7 +230,7 @@ class FRETPairSelectionWindow(QtWidgets.QMainWindow):
                             max_points_per_av=int(self.av_max_points_spin.value()),
                         )
                     except Exception as av_exc:
-                        QtWidgets.QMessageBox.warning(
+                        dialogs.warning(
                             self,
                             "AV backend unavailable",
                             f"Failed to compute AV-based efficiencies (falling back to attachment-atom distances).\n\n{av_exc}",
@@ -284,7 +285,7 @@ class FRETPairSelectionWindow(QtWidgets.QMainWindow):
             self.export_btn.setEnabled(True)
 
         except Exception as exc:
-            QtWidgets.QMessageBox.critical(self, "FRET pair selection failed", str(exc))
+            dialogs.error(self, "FRET pair selection failed", str(exc))
         finally:
             self.run_btn.setEnabled(True)
             QtWidgets.QApplication.restoreOverrideCursor()

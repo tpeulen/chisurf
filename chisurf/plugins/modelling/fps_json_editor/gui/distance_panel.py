@@ -11,6 +11,7 @@ from qtpy import QtCore, QtWidgets
 import chisurf.core.fio
 import chisurf.gui.widgets
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 logger = logging.getLogger("chisurf.plugins.modelling.fret")
 
@@ -108,7 +109,7 @@ class DistanceDetailSettingsDialog(QtWidgets.QDialog):
                 self.params['prda'] = list(csv.data[1])
                 self.status_label.setText(f"Loaded: {len(self.params['rda'])} points")
             except Exception as e:
-                QtWidgets.QMessageBox.critical(self, "Error", f"Failed to load distribution: {str(e)}")
+                dialogs.error(self, "Error", f"Failed to load distribution: {str(e)}")
 
     def get_settings(self) -> dict:
         res = {
@@ -376,10 +377,11 @@ class DistancePanel(QtWidgets.QWidget):
         name = self.score_set_combo.currentText()
         if not name or name == "All distances":
             return
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self, "Remove Scoring Group?",
             f"Are you sure you want to remove scoring group '{name}'?",
-            QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.score_set_removed.emit(name)
@@ -577,10 +579,11 @@ class DistancePanel(QtWidgets.QWidget):
             if not rows_to_delete:
                 return
 
-            reply = QtWidgets.QMessageBox.question(
+            reply = dialogs.question(
                 self, "Remove Restraints?",
                 f"Are you sure you want to remove the {len(rows_to_delete)} selected restraint(s)?",
-                QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+                buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+                default=QtWidgets.QMessageBox.No
             )
             if reply == QtWidgets.QMessageBox.Yes:
                 self.distances_table.blockSignals(True)
@@ -612,10 +615,11 @@ class DistancePanel(QtWidgets.QWidget):
         if row < 0 or row >= self.distances_table.rowCount() - 1:
             return
             
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self, "Remove Restraint?",
             "Are you sure you want to remove this restraint?",
-            QtWidgets.QMessageBox.Yes, QtWidgets.QMessageBox.No
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.distances_table.blockSignals(True)

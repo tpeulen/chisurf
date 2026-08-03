@@ -10,7 +10,6 @@ from qtpy import QtCore, QtWidgets
 
 import chisurf as cs
 import chisurf.gui.widgets as gui_widgets
-import chisurf.gui.widgets.general as gui_general
 from chisurf.gui.widgets.dock_area import DockArea
 from chisurf.plugins.core.code_editor import SimpleCodeEditor
 
@@ -19,6 +18,7 @@ from ..core.model import FpsJsonModel
 from .distance_panel import DistancePanel
 from .flexfit_panel import FlexFitPanel
 from .position_panel import PositionPanel
+from chisurf.gui import dialogs
 
 
 class FpsJsonEditor(QtWidgets.QWidget):
@@ -250,10 +250,8 @@ class FpsJsonEditor(QtWidgets.QWidget):
         try:
             self.fps_json_payload = json.loads(self.json_editor.text())
         except json.JSONDecodeError:
-            gui_general.MyMessageBox(
-                info="JSON Parse Error.\n",
-                details=traceback.format_exc(),
-            )
+            dialogs.error(self, "JSON Parse Error", "The editor content is not valid JSON.",
+                          detail=traceback.format_exc())
 
     def onLoadJSON(self, filename: str | bool | None = None) -> None:
         """Load a JSON configuration file."""
@@ -267,10 +265,8 @@ class FpsJsonEditor(QtWidgets.QWidget):
                 self._model.load_file(filename)
                 self._refresh_ui()
             except Exception:
-                gui_general.MyMessageBox(
-                    info="Failed to load JSON file.\n",
-                    details=traceback.format_exc(),
-                )
+                dialogs.error(self, "Load failed", "Failed to load the JSON file.",
+                              detail=traceback.format_exc())
 
     def onSaveJSON(self, filename: str | bool | None = None) -> None:
         """Save JSON configuration to a file."""
@@ -283,19 +279,17 @@ class FpsJsonEditor(QtWidgets.QWidget):
             try:
                 self._model.save_file(filename)
             except Exception:
-                gui_general.MyMessageBox(
-                    info="Failed to save JSON file.\n",
-                    details=traceback.format_exc(),
-                )
+                dialogs.error(self, "Save failed", "Failed to save the JSON file.",
+                              detail=traceback.format_exc())
 
     def onClearAll(self) -> None:
         """Prompt to clear the entire data model."""
-        reply = QtWidgets.QMessageBox.question(
+        reply = dialogs.question(
             self,
             "Clear Configuration",
             "Are you sure you want to clear all parameters?",
-            QtWidgets.QMessageBox.Yes,
-            QtWidgets.QMessageBox.No,
+            buttons=QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            default=QtWidgets.QMessageBox.No,
         )
         if reply == QtWidgets.QMessageBox.Yes:
             self.position_panel.clear_all()

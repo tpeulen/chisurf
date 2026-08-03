@@ -10,6 +10,9 @@ from typing import Any
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
+from chisurf.gui.autoform.sections.progress_section import InlineProgressWidget
+from chisurf.gui.progress import ChiSurfProgress
+
 import chisurf.core.structure
 import chisurf.gui.widgets
 from chisurf import logging
@@ -365,10 +368,12 @@ class PositionPanel(QtWidgets.QWidget):
         self.av_preview_label.setWordWrap(True)
         main_layout.addWidget(self.av_preview_label)
 
-        self.av_progress_bar = QtWidgets.QProgressBar()
-        self.av_progress_bar.setRange(0, 0)
-        self.av_progress_bar.setVisible(False)
+        # The shared inline bar; the AV worker has no incremental hook, so it
+        # runs as a busy indicator until the result comes back. The preview
+        # label above it carries the message, so the bar does not repeat it.
+        self.av_progress_bar = InlineProgressWidget(cancellable=False, show_text=False)
         main_layout.addWidget(self.av_progress_bar)
+        self._av_task = None
 
         self.mol_view_3d.atomSelectionChanged.connect(
             self.on_chimol_atom_selection_changed
@@ -1111,7 +1116,10 @@ class PositionPanel(QtWidgets.QWidget):
                     old_worker.wait()
 
             self.av_preview_label.setText(f"AV: Computing {name}...")
-            self.av_progress_bar.setVisible(True)
+            if self._av_task is None:
+                self._av_task = ChiSurfProgress(
+                    self.av_progress_bar, f"Computing {name}…", 0, cancellable=False
+                )
 
             worker = AVWorker(
                 chain=chain,
@@ -1152,7 +1160,7 @@ class PositionPanel(QtWidgets.QWidget):
         if name not in self._row_colors:
             return  # Row was deleted or renamed in the meantime
             
-        self.av_progress_bar.setVisible(False)
+        self._close_av_task()
         self.av_preview_label.setText(f"AV: Calculated {name} (Vol: {volume:.1f} Å³, Points: {n_points})")
 
         color = self._row_colors.get(name, DEFAULT_AV_COLOR)
@@ -1177,8 +1185,14 @@ class PositionPanel(QtWidgets.QWidget):
                 self._update_settings_tooltip(row, tooltip_params)
                 break
 
+    def _close_av_task(self) -> None:
+        """Take the busy indicator down once the AV worker has reported back."""
+        if self._av_task is not None:
+            self._av_task.close()
+            self._av_task = None
+
     def onAVComputationError(self, name: str, err_msg: str) -> None:
-        self.av_progress_bar.setVisible(False)
+        self._close_av_task()
         msg = f"AV calculation failed for {name}: {err_msg}"
         logger.error(msg)
         self.av_preview_label.setText(msg)
