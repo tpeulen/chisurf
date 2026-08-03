@@ -130,8 +130,14 @@ class PSFCalculator(QtWidgets.QWidget):
                 checkbox.toggled.connect(self.schedule)
 
     def recompute(self) -> None:
-        """Recompute in the background, unless the parameters are unchanged."""
+        """Recompute in the background, or just redraw if only the look changed.
+
+        The colormap, threshold and gamma do not enter the physics and so are
+        not part of the cache key -- but returning early on them meant editing
+        any of the three did nothing at all.
+        """
         if not self.model.is_stale and self.model.volume is not None:
+            self._show(self.model.volume)
             return
         worker = _Worker(self.model)
         worker.signals.done.connect(self._show)

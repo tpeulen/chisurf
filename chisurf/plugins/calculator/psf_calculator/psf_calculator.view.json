@@ -70,7 +70,6 @@
                     "Airy (scalar)",
                     "Gaussian"
                   ],
-                  "style": "radio",
                   "description": "Vectorial accounts for the longitudinal field and the input polarization; Airy is the exact scalar result; Gaussian is the usual approximation, which has no wings."
                 }
               ],
