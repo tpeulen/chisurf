@@ -5,38 +5,40 @@
       "source": "summary_html"
     },
     {
-      "type": "panel",
-      "title": "States",
-      "collapsed": false,
-      "sections": [
-        {
-          "type": "dynamic_group",
-          "target": "state_group",
-          "rows_source": "distance_rows",
-          "row_width": 2,
-          "append_method": "append",
-          "remove_method": "pop",
-          "min_rows": 1,
-          "description": "One row per conformational state: its mean donor-acceptor distance in Angstrom, and its population. The first population is fixed, since only the ratios are identifiable."
-        },
-        {
-          "type": "parameter_group_table",
-          "target": "state_group",
-          "description": "The donor-only fraction is fitted rather than cropped out of the data: leaving it out of the model does not remove those molecules from the histogram, it makes a FRET state move down to explain them."
-        }
-      ]
+      "type": "dynamic_group",
+      "target": "state_group",
+      "rows_source": "distance_rows",
+      "row_width": 2,
+      "append_method": "append",
+      "remove_method": "pop",
+      "min_rows": 2,
+      "description": "One row per exchanging state: its mean donor-acceptor distance in Angstrom, and its equilibrium population. Adding or removing a state resizes the rate matrix with it."
     },
     {
-      "type": "panel",
-      "title": "Calibration",
-      "collapsed": true,
-      "sections": [
-        {
-          "type": "parameter_group_table",
-          "target": "calibration",
-          "description": "Correction factors and dye constants. All of them act inside the forward model, never on the data histogram, which is what lets any of them be freed without the fit's target moving underneath it. sigma is the combined linker width and is fixed by default: it is not a free broadening parameter, and freeing it under the histogram source alone lets it absorb width that belongs to the kinetics."
-        }
-      ]
+      "type": "parameter_group_table",
+      "target": "state_group",
+      "description": "The donor-only fraction does not take part in the exchange: a molecule with no active acceptor has no FRET state to be in."
+    },
+    {
+      "type": "custom",
+      "key": "rate_matrix",
+      "target": "rate_values",
+      "title": "Rate matrix",
+      "options": {
+        "size_attr": "n_states",
+        "labels_attr": "state_names",
+        "minimum": 0.0,
+        "maximum": 1000000.0,
+        "decimals": 3,
+        "diagonal": false,
+        "unit": "1/s"
+      },
+      "description": "Exchange rates between states, in inverse seconds. **Leave every rate at zero for a static analysis** \u2014 an empty scheme is exactly the static mixture, so one model covers both and you do not have to choose before the data has told you which it is. A rate far below one transition per burst is indistinguishable from static; far above it, the states merge into one averaged population; between the two, bursts caught mid-exchange fill the space between the states and pull the cloud off the static line, which is the signal being fitted."
+    },
+    {
+      "type": "parameter_group_table",
+      "target": "calibration",
+      "description": "Correction factors and dye constants. All of them act inside the forward model, never on the data histogram, which is what lets any of them be freed without the fit's target moving underneath it."
     }
   ],
   "plots": [

@@ -1998,6 +1998,17 @@ class ImageMapWidget(QtWidgets.QWidget):
                     fn()
                 except Exception:  # pragma: no cover - model-defined
                     logging.warning(f"ImageMapWidget: channel_call {self._channel_call!r} failed")
+        # Redraw. The widget has just changed *what it should be showing*, so
+        # keeping the old picture on screen is its own bug — it does not depend on
+        # whether the model happens to have a hook that repaints. Tools whose
+        # ``channel_call`` already refreshes simply refresh twice, which is cheap
+        # and idempotent; without this, a model that only stores the choice (a
+        # fitting model, say, which cannot reach the widget at all) left the
+        # selector showing one channel and the image showing another.
+        try:
+            self.refresh()
+        except Exception:  # pragma: no cover - defensive
+            logging.warning("ImageMapWidget: refresh after a channel change failed")
 
     # ── movie / frame playback ─────────────────────────────────────────
     def _set_movie_enabled(self, on: bool) -> None:

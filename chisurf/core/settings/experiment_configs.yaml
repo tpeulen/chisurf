@@ -272,7 +272,6 @@ mfd:
       controller_params: {}
   models:
     - chisurf.core.models.mfd.Mfd2DModel
-    - chisurf.core.models.mfd.Mfd2DKineticModel
 
 pch:
   readers:

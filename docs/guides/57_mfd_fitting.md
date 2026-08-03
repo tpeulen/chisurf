@@ -38,9 +38,10 @@ detectors in the analysis manifest, or pass them explicitly through the API.
 
 ## 2. Fit the static model first
 
-Add a fit with **MFD 2D (static)**. The static answer is what a dynamic one has to
-beat, and starting kinetic makes it far too easy to explain static heterogeneity as
-exchange.
+Add a fit with **MFD 2D**. There is one model, not two: its rate matrix starts
+empty, which *is* the static analysis. Fit that first — the static answer is what a
+dynamic one has to beat, and starting with exchange makes it far too easy to
+explain static heterogeneity as dynamics.
 
 Free, in roughly this order:
 
@@ -76,8 +77,10 @@ exchange — and it is what the kinetic model exists to explain.
 
 ## 4. Add exchange
 
-Switch to **MFD 2D (kinetic)**, which adds a rate matrix over the same states.
-Adding or removing a state resizes the matrix with it.
+Type rates into the **Exchange** matrix of the same model. Leaving them at zero is
+the static analysis; any non-zero rate turns the occupation-time law on. Adding or
+removing a state resizes the matrix with it, and a new state never arrives already
+exchanging.
 
 The three regimes are worth recognising in the plot:
 

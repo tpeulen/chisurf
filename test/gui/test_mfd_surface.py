@@ -74,10 +74,10 @@ def test_the_mfd_experiment_appears_with_its_reader_and_models(experiments):
     assert "MFD" in experiments
     mfd = experiments["MFD"]
     assert [type(r).__name__ for r in mfd.readers] == ["MfdReader"]
-    assert [c.__name__ for c in mfd.get_model_classes()] == [
-        "Mfd2DModel",
-        "Mfd2DKineticModel",
-    ]
+    # One model, not two: a static analysis is the special case of a kinetic one
+    # with no exchange, so splitting them would make the user choose before the
+    # data has told them which it is.
+    assert [c.__name__ for c in mfd.get_model_classes()] == ["Mfd2DModel"]
 
 
 def test_every_other_experiment_still_lists_its_own(experiments):
@@ -97,10 +97,9 @@ def test_every_other_experiment_still_lists_its_own(experiments):
 
 def test_models_are_filtered_by_the_dataset_not_by_a_parallel_list(dataset, experiments):
     """``supports_data`` is the mechanism, so a non-MFD dataset gets nothing."""
-    from chisurf.core.models.mfd import Mfd2DKineticModel, Mfd2DModel
+    from chisurf.core.models.mfd import Mfd2DModel
 
     assert Mfd2DModel.supports_data(dataset)
-    assert Mfd2DKineticModel.supports_data(dataset)
     # No payload, no MFD model. A plain curve is exactly that case.
     import chisurf.core.data
 
@@ -155,13 +154,53 @@ def test_uncertainties_are_refused_rather_than_quietly_reported(fit):
         fit.model.parameter_uncertainties()
 
 
-def test_the_kinetic_model_resizes_its_states_and_rates_together(dataset):
-    """A rate matrix that disagrees with the state count is a latent broadcast bug."""
+def test_one_model_covers_static_and_kinetic(dataset):
+    """A fresh model is static, and the same model becomes kinetic when asked.
+
+    The shared rate-matrix group defaults its rates to 100 Hz, which would mean
+    every MFD fit began with exchange nobody asked for — at a rate that is neither
+    slow nor fast for a typical burst, so it would visibly move the answer. An
+    empty scheme means *no exchange*, and is mapped to ``None`` rather than handed
+    to the occupation-time law, whose all-zero generator has no well-defined
+    equilibrium and would return uniform populations over the fitted ones.
+    """
     from chisurf.core.fitting.fit import Fit
-    from chisurf.core.models.mfd import Mfd2DKineticModel
+    from chisurf.core.models.mfd import Mfd2DModel
 
     fit = Fit(
-        model_class=Mfd2DKineticModel,
+        model_class=Mfd2DModel,
+        data=dataset,
+        xmin=0,
+        xmax=int(dataset.y.size),
+        noise_model="poisson",
+    )
+    model = fit.model
+    assert model.exchange_rate_matrix() is None, "a fresh model must be static"
+
+    # Distinct states, or exchange between two identical ones would correctly
+    # change nothing and the test would pass for the wrong reason.
+    model.state_group._distances[0].value = 40.0
+    model.state_group._distances[1].value = 70.0
+    model.update_model()
+    static = np.array(model.y, copy=True)
+
+    rates = list(model.rate_values)
+    n = model.n_states
+    rates[0 * n + 1] = 800.0
+    rates[1 * n + 0] = 800.0
+    model.rate_values = rates
+    assert model.exchange_rate_matrix() is not None
+    model.update_model()
+    assert not np.allclose(static, model.y), "exchange did not change the model"
+
+
+def test_states_and_rates_resize_together(dataset):
+    """A rate matrix that disagrees with the state count is a latent broadcast bug."""
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.mfd import Mfd2DModel
+
+    fit = Fit(
+        model_class=Mfd2DModel,
         data=dataset,
         xmin=0,
         xmax=int(dataset.y.size),
@@ -174,20 +213,17 @@ def test_the_kinetic_model_resizes_its_states_and_rates_together(dataset):
     assert model.state_group.n_states == 3
     assert np.asarray(model.kinetics.rate_matrix()).shape == (3, 3)
     assert len(model.state_names) == 3
+    # A new state must not arrive already exchanging.
+    assert model.exchange_rate_matrix() is None
     model.update_model()
     assert np.all(np.isfinite(model.y))
 
 
 def test_view_specs_load(fit, dataset):
     """Both view specs parse, and name plot keys that are actually registered."""
-    from chisurf.core.fitting.fit import Fit
-    from chisurf.core.models.mfd import Mfd2DKineticModel
     from chisurf.gui.autoform.sections.registry import get_plot_class
 
-    kinetic = Fit(
-        model_class=Mfd2DKineticModel, data=dataset, xmin=0, xmax=int(dataset.y.size)
-    ).model
-    for model in (fit.model, kinetic):
+    for model in (fit.model,):
         spec = model.view_spec()
         assert spec is not None
         keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]

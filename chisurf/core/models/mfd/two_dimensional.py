@@ -28,13 +28,12 @@ import numpy as np
 import chisurf as cs
 from chisurf.core.fitting.kinetics import RateMatrixParameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.fluorescence.mfd.fit import MfdKineticModel, MfdModel
+from chisurf.core.fluorescence.mfd.fit import MfdKineticModel
 from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
 from chisurf.core.fluorescence.mfd.sources import uncertainty_is_valid
 from chisurf.core.models.model import ModelCurve
 
 __all__ = [
-    "Mfd2DKineticModel",
     "Mfd2DModel",
     "MfdCalibration",
     "MfdStates",
@@ -253,6 +252,62 @@ class MfdStates(FittingParameterGroup):
             self.n_states = self.n_states - 1
 
 
+def get_mfd_residual_image(fit_group, weighted: bool = True, **kwargs):
+    """Return the 2D residual image of an MFD fit, for the residual plot.
+
+    The generic ``residual2d`` plot is model-agnostic and asks the model for a
+    matrix and its two axes. Without this accessor the panel renders empty — which
+    is what it did, silently, because a missing accessor is not an error.
+
+    Parameters
+    ----------
+    fit_group : chisurf.core.fitting.fit.FitGroup or Fit
+        The fit whose residuals are wanted.
+    weighted : bool
+        Return Poisson deviance residuals rather than raw differences. Deviance is
+        the right choice on a burst histogram, where most bins hold single-digit
+        counts and a raw difference would make the few crowded bins the only ones
+        visible.
+    **kwargs
+        Ignored; present for the accessor signature.
+
+    Returns
+    -------
+    image, x_axis, y_axis : numpy.ndarray
+        ``Residual2DPlot`` draws with ``axis_order="col-major"``, so axis 0 of the
+        array is **x**. The histogram is already stored ``(ratio, micro)``, which is
+        exactly that — transposing here would swap the axes against the two axis
+        vectors returned alongside, and the picture would be a plausible-looking
+        transpose of the truth.
+    """
+    from chisurf.core.fitting import deviance_residuals
+
+    fit = getattr(fit_group, "fits", None)
+    fit = fit[0] if fit else fit_group
+    data = burst_payload(getattr(fit, "data", None))
+    model = getattr(fit, "model", None)
+    if data is None or model is None:
+        return np.zeros((1, 1)), np.zeros(1), np.zeros(1)
+
+    observed = np.asarray(data.observed.counts, dtype=float)
+    flat = np.asarray(getattr(model, "y", np.zeros(observed.size)), dtype=float)
+    if flat.size != observed.size:
+        return np.zeros((1, 1)), np.zeros(1), np.zeros(1)
+    predicted = flat.reshape(observed.shape, order="C")
+
+    if weighted:
+        residual = np.zeros_like(observed)
+        usable = predicted > 0
+        residual[usable] = deviance_residuals(observed[usable], predicted[usable])
+    else:
+        residual = observed - predicted
+
+    axes = data.axes
+    ratio = 0.5 * (axes.ratio_edges[:-1] + axes.ratio_edges[1:])
+    micro = 0.5 * (axes.micro_time_edges[:-1] + axes.micro_time_edges[1:])
+    return residual, ratio, micro
+
+
 #: The maps the image dock can show. Kept as one list so the selector, the
 #: accessor and the documentation cannot drift apart.
 IMAGE_CHANNELS = ("measured", "model", "residual", "difference")
@@ -354,12 +409,19 @@ class MfdImageMixin:
 
 
 class Mfd2DModel(MfdImageMixin, ModelCurve):
-    """Static states fitted to the 2D MFD histogram."""
+    """States fitted to the 2D MFD histogram, with or without exchange.
 
-    name = "MFD 2D (static)"
+    **One model, not two.** A static analysis is the special case of a kinetic one
+    with no exchange, and splitting them into separate models made the user choose
+    up front — before the data has told them which it is — and left two code paths
+    that could disagree. Here the rate matrix is simply all-zero until it is not:
+    the same states, the same corrections, the same statistic throughout.
+    """
+
+    name = "MFD 2D"
     view_spec_file = "two_dimensional.view.json"
 
-    def __init__(self, fit, n_states: int = 1, **kwargs):
+    def __init__(self, fit, n_states: int = 2, **kwargs):
         """Create the model.
 
         Parameters
@@ -367,15 +429,80 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         fit : chisurf.core.fitting.fit.Fit
             The fit this model belongs to.
         n_states : int
-            Number of FRET states.
+            Number of conformational states.
         **kwargs
             Forwarded to :class:`ModelCurve`.
         """
         super().__init__(fit, **kwargs)
         self.calibration = MfdCalibration()
         self.state_group = MfdStates(n_states=n_states)
+        self.kinetics = RateMatrixParameters(name="kinetics", n_states=n_states)
+        # Start with an *empty* scheme, so a fresh model is the static analysis.
+        # The shared group defaults its rates to 100 Hz, which would mean every MFD
+        # fit began with exchange nobody asked for — and at a rate that is neither
+        # slow nor fast for a typical burst, so it would visibly move the answer.
+        self.kinetics.default_rate = 0.0
+        self.kinetics.set_rate_matrix(np.zeros((n_states, n_states)))
         self._last_summary: dict = {}
         self.find_parameters()
+
+    @property
+    def n_states(self) -> int:
+        """Return the number of conformational states."""
+        return self.state_group.n_states
+
+    @n_states.setter
+    def n_states(self, value: int) -> None:
+        """Resize the states and the rate matrix together.
+
+        They must move as one: a rate matrix that disagrees with the state count is
+        the kind of mismatch that reads as a broadcasting error three layers down.
+        """
+        target = max(1, int(value))
+        self.state_group.n_states = target
+        # Keep the empty-scheme default across a resize too: a new state should not
+        # arrive already exchanging.
+        self.kinetics.default_rate = 0.0
+        self.kinetics.n_states = target
+        self.find_parameters()
+
+    @property
+    def state_names(self) -> list[str]:
+        """Return state labels for the rate-matrix editor."""
+        return [f"R{i + 1}" for i in range(self.n_states)]
+
+    @property
+    def rate_values(self):
+        """Return the flat rate matrix the AutoForm grid binds to."""
+        return self.kinetics.rate_values
+
+    @rate_values.setter
+    def rate_values(self, values) -> None:
+        """Set the flat rate matrix from the editor."""
+        self.kinetics.rate_values = values
+
+    def exchange_rate_matrix(self):
+        """Return the rate matrix, or ``None`` when the scheme is empty.
+
+        **An all-zero matrix means "no exchange", not "a scheme whose rates are
+        zero".** The distinction matters: fed to the occupation-time law, an
+        all-zero generator has no well-defined equilibrium, so the populations
+        would come back uniform and silently override the fitted ones. Mapping it
+        to ``None`` instead selects the static path, where the state populations
+        are the parameters they are meant to be.
+
+        This is the same convention the shared rate-matrix group already uses
+        elsewhere in the tree, so one model covers static and kinetic analysis and
+        the user never has to pick between two of them.
+
+        Returns
+        -------
+        numpy.ndarray or None
+        """
+        matrix = np.asarray(self.kinetics.rate_matrix(), dtype=float)
+        if matrix.size == 0 or not np.any(matrix > 0.0):
+            return None
+        return matrix
 
     @classmethod
     def supports_data(cls, data) -> bool:
@@ -395,12 +522,18 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         return burst_payload(data) is not None
 
     def _compute_model(self):
-        """Return the compute-layer model this fitting model describes."""
-        return MfdModel(
+        """Return the compute-layer model this fitting model describes.
+
+        Always the kinetic one: with no exchange it reduces exactly to the static
+        model, so there is no second class to choose between and no way to fit a
+        static answer with machinery that quietly differs from the dynamic one.
+        """
+        return MfdKineticModel(
             optics=self.calibration.optics,
             states=self.state_group.states,
             populations=self.state_group.populations,
             donor_only=self.state_group.donor_only,
+            rate_matrix=self.exchange_rate_matrix(),
         )
 
     def update_model(self, **kwargs):
@@ -427,9 +560,14 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         self.y = flat
         self.d = np.vstack((self.x, self.y))
 
-    @property
     def summary_html(self) -> str:
-        """Return what the fit is being asked to explain, and what it excluded."""
+        """Return what the fit is being asked to explain, and what it excluded.
+
+        A **method**, deliberately. An ``info`` section resolves its ``source`` by
+        calling it; a property is read at class level, returns a ``property``
+        object rather than a string, and the section renders as a large blank
+        block with no error anywhere — which is exactly what it did.
+        """
         data = burst_payload(self.fit.data)
         if data is None:
             return "<i>No MFD dataset.</i>"
@@ -534,131 +672,3 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
                 "or bootstrap() instead — both are valid, and both are here."
             )
         return None  # pragma: no cover - unreachable while only this source exists
-
-
-class Mfd2DKineticModel(Mfd2DModel):
-    """States that exchange during the burst, fitted to the 2D MFD histogram."""
-
-    name = "MFD 2D (kinetic)"
-    view_spec_file = "two_dimensional_kinetic.view.json"
-
-    def __init__(self, fit, n_states: int = 2, **kwargs):
-        """Create the model.
-
-        Parameters
-        ----------
-        fit : chisurf.core.fitting.fit.Fit
-            The fit this model belongs to.
-        n_states : int
-            Number of exchanging states.
-        **kwargs
-            Forwarded to :class:`Mfd2DModel`.
-        """
-        super().__init__(fit, n_states=max(2, int(n_states)), **kwargs)
-        self.kinetics = RateMatrixParameters(
-            name="kinetics", n_states=max(2, int(n_states))
-        )
-        self.find_parameters()
-
-    @property
-    def n_states(self) -> int:
-        """Return the number of exchanging states."""
-        return self.state_group.n_states
-
-    @n_states.setter
-    def n_states(self, value: int) -> None:
-        """Resize the states and the rate matrix together.
-
-        They must move as one: a rate matrix that disagrees with the state count is
-        the kind of mismatch that reads as a broadcasting error three layers down.
-        """
-        target = max(2, int(value))
-        self.state_group.n_states = target
-        self.kinetics.n_states = target
-        self.find_parameters()
-
-    @property
-    def state_names(self) -> list[str]:
-        """Return state labels for the rate-matrix editor."""
-        return [f"R{i + 1}" for i in range(self.n_states)]
-
-    @property
-    def rate_values(self):
-        """Return the flat rate matrix the AutoForm grid binds to."""
-        return self.kinetics.rate_values
-
-    @rate_values.setter
-    def rate_values(self, values) -> None:
-        """Set the flat rate matrix from the editor."""
-        self.kinetics.rate_values = values
-
-    def _compute_model(self):
-        """Return the compute-layer model, with the rate matrix attached."""
-        return MfdKineticModel(
-            optics=self.calibration.optics,
-            states=self.state_group.states,
-            populations=self.state_group.populations,
-            donor_only=self.state_group.donor_only,
-            # ``rate_matrix`` is a method on the shared mixin, not a property; passing
-            # the bound method here yields a zero-dimensional array and a broadcast
-            # error three layers down.
-            rate_matrix=np.asarray(self.kinetics.rate_matrix(), dtype=float),
-        )
-
-
-def get_mfd_residual_image(fit_group, weighted: bool = True, **kwargs):
-    """Return the 2D residual image of an MFD fit, for the residual plot.
-
-    The generic ``residual2d`` plot is model-agnostic and asks the model for a
-    matrix and its two axes. Without this accessor the panel renders empty — which
-    is what it did, silently, because a missing accessor is not an error.
-
-    Parameters
-    ----------
-    fit_group : chisurf.core.fitting.fit.FitGroup or Fit
-        The fit whose residuals are wanted.
-    weighted : bool
-        Return Poisson deviance residuals rather than raw differences. Deviance is
-        the right choice on a burst histogram, where most bins hold single-digit
-        counts and a raw difference would make the few crowded bins the only ones
-        visible.
-    **kwargs
-        Ignored; present for the accessor signature.
-
-    Returns
-    -------
-    image, x_axis, y_axis : numpy.ndarray
-        ``image`` is ``(n_micro_time, n_ratio)`` — row-major with the lifetime axis
-        vertical, matching how the histograms are drawn.
-    """
-    from chisurf.core.fitting import deviance_residuals
-
-    fit = getattr(fit_group, "fits", None)
-    fit = fit[0] if fit else fit_group
-    data = burst_payload(getattr(fit, "data", None))
-    model = getattr(fit, "model", None)
-    if data is None or model is None:
-        return np.zeros((1, 1)), np.zeros(1), np.zeros(1)
-
-    observed = np.asarray(data.observed.counts, dtype=float)
-    flat = np.asarray(getattr(model, "y", np.zeros(observed.size)), dtype=float)
-    if flat.size != observed.size:
-        return np.zeros((1, 1)), np.zeros(1), np.zeros(1)
-    predicted = flat.reshape(observed.shape, order="C")
-
-    if weighted:
-        residual = np.zeros_like(observed)
-        usable = predicted > 0
-        residual[usable] = deviance_residuals(observed[usable], predicted[usable])
-    else:
-        residual = observed - predicted
-
-    axes = data.axes
-    ratio = 0.5 * (axes.ratio_edges[:-1] + axes.ratio_edges[1:])
-    micro = 0.5 * (axes.micro_time_edges[:-1] + axes.micro_time_edges[1:])
-    # ``Residual2DPlot`` draws with ``axis_order="col-major"``, so axis 0 of the
-    # array is **x**. The histogram is already stored ``(ratio, micro)``, which is
-    # exactly that — transposing it here would swap the axes against the two axis
-    # vectors returned alongside, and the picture would be a plausible-looking
-    # transpose of the truth.
-    return residual, ratio, micro
