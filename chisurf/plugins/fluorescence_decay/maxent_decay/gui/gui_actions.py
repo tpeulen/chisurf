@@ -10,6 +10,8 @@ import numpy as np
 
 from chisurf.plugins.fluorescence_decay.maxent_decay.core.sampling import sample_mem_distribution_mcmc
 from .qt_stack import ensure_qt_stack
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 
 class _MaxentActionsMixin:
@@ -23,7 +25,7 @@ class _MaxentActionsMixin:
 
         if readme_path is None or not readme_path.is_file():
             try:
-                QtWidgets.QMessageBox.information(
+                dialogs.information(
                     self,
                     "MaxEnt help",
                     "README.md not found next to the plugin.",
@@ -36,7 +38,7 @@ class _MaxentActionsMixin:
             text = readme_path.read_text(encoding="utf-8", errors="ignore")
         except Exception as exc:
             try:
-                QtWidgets.QMessageBox.critical(
+                dialogs.error(
                     self,
                     "MaxEnt help",
                     f"Failed to read README.md:\n{exc}",
@@ -75,14 +77,14 @@ class _MaxentActionsMixin:
 
             if str(exc) == "MEM computation cancelled":
                 return
-            QtWidgets.QMessageBox.critical(self, "MEM error", str(exc))
+            dialogs.error(self, "MEM error", str(exc))
 
     def _on_sample_clicked(self) -> None:
         QtWidgets, QtCore, chisurf, _ = ensure_qt_stack()
 
         if self._last_result is None:
             try:
-                QtWidgets.QMessageBox.warning(
+                dialogs.warning(
                     self,
                     "MEM sampling",
                     "No MEM result available. Run MEM before sampling.",
@@ -194,13 +196,7 @@ class _MaxentActionsMixin:
                 except Exception as exc:  # pragma: no cover
                     self.finished.emit({}, str(exc))
 
-        progress = QtWidgets.QProgressDialog(
-            "Sampling MEM distribution...",
-            "Cancel",
-            0,
-            int(steps_total),
-            self,
-        )
+        progress = ChiSurfProgress(self, "Sampling MEM distribution...", int(steps_total))
         progress.setWindowModality(QtCore.Qt.NonModal)
         progress.setAutoClose(True)
         progress.setAutoReset(True)
@@ -242,7 +238,7 @@ class _MaxentActionsMixin:
 
             if error_message:
                 try:
-                    QtWidgets.QMessageBox.critical(self, "MEM sampling error", error_message)
+                    dialogs.error(self, "MEM sampling error", error_message)
                 except Exception:
                     pass
                 return
@@ -285,7 +281,7 @@ class _MaxentActionsMixin:
                 pass
 
             try:
-                QtWidgets.QMessageBox.information(
+                dialogs.information(
                     self,
                     "MEM sampling",
                     f"Sampling completed. Saved {stats.get('n_samples', 0)} samples to folder:\n{out_dir}",
@@ -305,7 +301,7 @@ class _MaxentActionsMixin:
         QtWidgets, _, chisurf, _ = ensure_qt_stack()
 
         if self._last_result is None or self._t_axis is None:
-            QtWidgets.QMessageBox.warning(self, "Save MEM result", "No MEM result available to save.")
+            dialogs.warning(self, "Save MEM result", "No MEM result available to save.")
             return
 
         result = self._last_result
@@ -424,7 +420,7 @@ class _MaxentActionsMixin:
         except Exception:
             pass
 
-        QtWidgets.QMessageBox.information(self, "Save MEM result", f"Saved MEM result to:\n{out_dir}")
+        dialogs.information(self, "Save MEM result", f"Saved MEM result to:\n{out_dir}")
 
     def _build_mem_meta(self, result, dt):
         try:

@@ -4,7 +4,7 @@
   "display_name": "Spectroscopy:Fluorescence decay:MaxEnt MEM",
   "description": "Maximum-entropy analysis of TCSPC decays (lifetime and FRET distance).",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Spectroscopy", "Fluorescence"],
+  "categories": ["Spectroscopy", "Fluorescence decay"],
   "state_namespace": "maxent_decay",
   "state_schema": {
     "type": "object",

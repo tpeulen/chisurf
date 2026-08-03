@@ -63,6 +63,63 @@ def _shift_irf_numba(original_irf: np.ndarray, shift_ch: float) -> np.ndarray:
     return shifted
 
 
+def select_number_of_lifetimes(
+        scores: typing.Sequence[float],
+        probabilities: typing.Sequence[float],
+        prob_threshold: float = 0.95,
+        selection_mode: str = 'lower'
+) -> int:
+    """
+    Select the model of a lifetime-count scan that the F-test supports.
+
+    The scan fits one model per number of lifetimes; ``scores[i]`` is the
+    reduced chi-square of the model with ``i + 1`` lifetimes and
+    ``probabilities[i]`` the F-test probability that the component added
+    between model ``i - 1`` and model ``i`` is a significant improvement
+    (``probabilities[0]`` is 1.0 by convention).
+
+    Parameters
+    ----------
+    scores : sequence of float
+        Reduced chi-square per fitted model, ordered by increasing number of
+        lifetimes.
+    probabilities : sequence of float
+        F-test probability per fitted model, same order and length as `scores`.
+    prob_threshold : float
+        Probability above which an added component counts as significant.
+    selection_mode : str
+        ``'lower'`` accepts components from the smallest model upwards and
+        stops at the first that is not a significant improvement — the most
+        parsimonious model still supported by the data. ``'upper'`` returns the
+        largest model whose last added component is significant.
+
+    Returns
+    -------
+    int
+        Index into `scores` of the selected model. Zero (a single lifetime)
+        when no added component is significant.
+    """
+    n_models = min(len(scores), len(probabilities))
+
+    if selection_mode == 'upper':
+        # Search from the highest number of lifetimes downwards
+        for i in reversed(range(1, n_models)):
+            if (probabilities[i] > prob_threshold) and (scores[i] < scores[i - 1]):
+                return i
+        return 0
+
+    # 'lower' mode: keep adding components while each one still helps, and stop
+    # at the first that does not. Walking off the end must return the last
+    # accepted model, not the first one tried.
+    best_idx = 0
+    for i in range(1, n_models):
+        if (probabilities[i] > prob_threshold) and (scores[i] < scores[i - 1]):
+            best_idx = i
+        else:
+            break
+    return best_idx
+
+
 class Decay:
     """
     Class representing a fluorescence decay.
@@ -513,7 +570,8 @@ class Decay:
         max_lifetime : float
             Maximum lifetime value in nanoseconds
         selection_mode : str
-            Mode for selecting the best number of lifetimes ('lower' or 'higher')
+            Mode for selecting the best number of lifetimes ('lower' or 'upper'),
+            see :func:`select_number_of_lifetimes`
         save_intermediate_results : bool
             Whether to save intermediate results to JSON files (default: True)
         intermediate_results_base_filename : str
@@ -621,22 +679,9 @@ class Decay:
             probs.append(p)
 
         # Find the best number of lifetimes using ucfret's approach
-        best_idx = 0
-        search_range = range(1, maximum_number_of_lifetimes)
-
-        if selection_mode == 'upper':  # Similar to ucfret's 'upper' mode
-            # Search from highest to lowest number of lifetimes
-            search_range = reversed(search_range)
-            for i in search_range:
-                if (probs[i] > prob_threshold) and (scores[i] < scores[i-1]):
-                    best_idx = i
-                    break
-        else:  # 'lower' mode
-            # Search from lowest to highest number of lifetimes
-            for i in search_range:
-                if (probs[i] < prob_threshold) and (scores[i] < scores[i-1]):
-                    best_idx = i - 1
-                    break
+        best_idx = select_number_of_lifetimes(
+            scores, probs, prob_threshold=prob_threshold, selection_mode=selection_mode
+        )
 
         # Set the best parameters
         best_n_lifetimes = n_lifetimes_tried[best_idx]
@@ -763,7 +808,8 @@ class Decay:
         plot_weighted_residuals : bool
             Whether to plot the weighted residuals when finding optimal
         selection_mode : str
-            Mode for selecting the best number of lifetimes ('lower' or 'higher')
+            Mode for selecting the best number of lifetimes ('lower' or 'upper'),
+            see :func:`select_number_of_lifetimes`
         save_intermediate_results : bool
             Whether to save intermediate results to JSON files when finding optimal (default: True)
         intermediate_results_base_filename : str

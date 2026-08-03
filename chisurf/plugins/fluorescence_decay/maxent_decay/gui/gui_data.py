@@ -10,6 +10,7 @@ from chisurf.plugins.fluorescence_decay.maxent_decay.core.settings import (
     save_maxent_settings,
 )
 from .qt_stack import ensure_qt_stack
+from chisurf.gui import dialogs
 
 
 class _MaxentDataMixin:
@@ -250,7 +251,7 @@ class _MaxentDataMixin:
                 if not isinstance(data, dict):
                     raise ValueError("Top-level JSON value must be an object")
             except Exception as exc:
-                QtWidgets.QMessageBox.critical(
+                dialogs.error(
                     dialog,
                     "Invalid JSON",
                     f"The settings file must contain valid JSON object data.\n\nError: {exc}",
@@ -260,7 +261,7 @@ class _MaxentDataMixin:
             # Persist via helper so we reuse the same logic everywhere.
             ok = save_maxent_settings(data)
             if not ok:
-                QtWidgets.QMessageBox.critical(
+                dialogs.error(
                     dialog,
                     "Save error",
                     "Failed to write MaxEnt settings.json.",

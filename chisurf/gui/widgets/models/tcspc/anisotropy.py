@@ -6,6 +6,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 import chisurf as cs
 import chisurf.gui.widgets.fitting
 from chisurf.core.fitting.parameter import FittingParameter
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui import chiplot as cp
@@ -94,7 +95,7 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
     def _show_anisotropy_decay_dialog(self) -> None:
         """Show a dialog with interactive anisotropy decay plots (data and model)."""
         if cp is None:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Anisotropy decays",
                 "The plotting backend is not available, cannot plot anisotropy decays.",
@@ -103,7 +104,7 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
 
         t_raw, vv_raw, vh_raw, defaults = self._extract_vv_vh_raw_for_diag()
         if t_raw is None or vv_raw is None or vh_raw is None or defaults is None:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Anisotropy decays",
                 "VV/VH channels are not available for anisotropy-decay diagnostics.",
@@ -332,7 +333,7 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
             r_du = state.get('r_data_unc')
             r_dc = state.get('r_data_cor')
             if tt is None or r_du is None or r_dc is None:
-                QtWidgets.QMessageBox.information(dialog, "Save anisotropy decay", "No anisotropy decay data to save.")
+                dialogs.information(dialog, "Save anisotropy decay", "No anisotropy decay data to save.")
                 return
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 dialog,
@@ -363,7 +364,7 @@ class AnisotropyWidget(Anisotropy, QtWidgets.QGroupBox):
                     header = "time_data,r_data_uncorrected,r_data_corrected,time_model,r_model_uncorrected,r_model_corrected"
                 np.savetxt(filename, arr, delimiter=",", header=header, comments="")
             except Exception as exc:
-                QtWidgets.QMessageBox.warning(dialog, "Save anisotropy decay", f"Failed to save file:\n{exc}")
+                dialogs.warning(dialog, "Save anisotropy decay", f"Failed to save file:\n{exc}")
 
         save_btn.clicked.connect(on_save_csv)
         box.accepted.connect(dialog.accept)

@@ -7,8 +7,9 @@ TOPDIR = pathlib.Path(__file__).parent.parent
 utils.set_search_paths(TOPDIR)
 
 import chisurf.core.experiments
-import chisurf.core.models
-import chisurf.core.fitting
+import chisurf.core.models.tcspc.lifetime
+import chisurf.core.models.tcspc.fret
+import chisurf.core.fitting.fit
 
 
 class FitTests(unittest.TestCase):
@@ -53,7 +54,7 @@ class FitTests(unittest.TestCase):
 
         self.assertSetEqual(
             set(fit_d0.model.parameter_names),
-            {'bg', 'sc', 'xL1', 'ts', 'lb', 'tL1'}
+            {'bg', 'sc', 'ts', 'tL1', 'tL2', 'xL2'}
         )
         self.assertTupleEqual(
             fit_d0.fit_range,
@@ -88,15 +89,12 @@ class FitTests(unittest.TestCase):
             set(model_da.parameter_names),
             {
                 'E_FRET',
-                's(G,1)',
+                'R(G,1)',
                 'bg',
                 'x(G,1)',
                 'xDOnly',
-                'R(G,1)',
-                'xL1',
                 'tL1',
                 'sc',
-                'lb',
                 'ts'
             }
         )

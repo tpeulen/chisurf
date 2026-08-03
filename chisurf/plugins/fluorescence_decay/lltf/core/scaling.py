@@ -30,7 +30,8 @@ def rescale_w_bg(
         is scaled by the returned floating number
     experimental_weights : numpy.array
         Weights of the experimental decay that are used scale the model to
-        the experiment.
+        the experiment. These are **inverse** errors (``w = 1 / sigma``), so
+        each channel enters the sums with ``w**2 = 1 / sigma**2``.
     experimental_background : float
         Constant offset in the experimental data that is subtracted from the
         experimental decay
@@ -54,11 +55,13 @@ def rescale_w_bg(
     b = experimental_background
     m = model_decay
     for i in range(start, stop):
-        if e[i] > 0.0:
-            iwsq = 1.0 / (w[i-start] * w[i-start] + 1e-12)
-            sum_nom += m[i] * (e[i] - b) * iwsq
-            sum_denom += m[i] * m[i] * iwsq
-    scale = sum_nom / max(1.0, sum_denom)
+        if e[i] > 0.0 and np.isfinite(w[i - start]):
+            wsq = w[i - start] * w[i - start]
+            sum_nom += m[i] * (e[i] - b) * wsq
+            sum_denom += m[i] * m[i] * wsq
+    scale = 0.0
+    if sum_denom != 0.0:
+        scale = sum_nom / sum_denom
     return scale
 
 

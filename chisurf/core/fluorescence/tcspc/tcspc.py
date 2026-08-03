@@ -30,11 +30,19 @@ def bin_lifetime_spectrum(
     )
     print(lifetimes)
     print(amplitudes)
-    lt, am = chisurf.core.math.datatools.histogram1D(
-        values=lifetimes,
-        weights=amplitudes,
-        n_bins=n_lifetimes
-    )
+    # histogram1D has *inverted* sentinel limits (tth_max < tth_min) that skip
+    # every value, so the range has to be passed explicitly. A spectrum with a
+    # single distinct lifetime has nothing to bin (and would divide by zero).
+    if lifetimes.size and lifetimes.min() < lifetimes.max():
+        lt, am = chisurf.core.math.datatools.histogram1D(
+            values=lifetimes,
+            weights=amplitudes,
+            n_bins=n_lifetimes,
+            tth_min=float(lifetimes.min()),
+            tth_max=float(lifetimes.max())
+        )
+    else:
+        lt, am = lifetimes, amplitudes
     if discriminate and discriminator is not None:
         lt, am = chisurf.core.math.datatools.discriminate(
             values=lt,
@@ -60,14 +68,28 @@ def rescale_w_bg(
     """Computes a scaling factor that scales a model decay to an
     experimental decay on a defined range.
 
+    The scale is the weighted least-squares solution of
+    ``e - b = scale * m``, i.e. the value that minimises
+    ``sum_i w_i**2 * (e_i - b - scale * m_i)**2``.
+
     Parameters
     ----------
-    model_decay
-    experimental_decay
-    experimental_weights
-    experimental_background
-    start
-    stop
+    model_decay : numpy.ndarray
+        Model decay for which a scaling factor is computed.
+    experimental_decay : numpy.ndarray
+        Experimental decay to which `model_decay` is scaled.
+    experimental_weights : numpy.ndarray
+        Weights of the experimental decay, i.e. **inverse** errors
+        (``w = 1 / ey``), following the convention of
+        :meth:`chisurf.core.data.DataCurve.set_weights`. Each channel
+        therefore enters the sums with ``w**2 = 1 / sigma**2``.
+    experimental_background : float
+        Constant offset in the experimental data that is subtracted from the
+        experimental decay.
+    start : int
+        Start index of the range in which the model decay is scaled.
+    stop : int
+        Stop index of the range in which the model decay is scaled.
 
     Returns
     -------
@@ -84,10 +106,10 @@ def rescale_w_bg(
     b = experimental_background
     m = model_decay
     for i in range(start, stop):
-        if e[i] > 0.0:
-            iwsq = 1.0 / (w[i] * w[i] + 1e-12)
-            sum_nom += m[i] * (e[i] - b) * iwsq
-            sum_denom += m[i] * m[i] * iwsq
+        if e[i] > 0.0 and np.isfinite(w[i]):
+            wsq = w[i] * w[i]
+            sum_nom += m[i] * (e[i] - b) * wsq
+            sum_denom += m[i] * m[i] * wsq
     if sum_denom != 0.0:
         scale = sum_nom / sum_denom
     return scale

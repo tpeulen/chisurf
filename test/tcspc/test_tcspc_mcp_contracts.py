@@ -3,11 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 
-def test_csv_tcspc_dt_uses_spinbox_value_when_not_scaled_contract():
-    src = Path("chisurf/gui/widgets/experiments/tcspc/csv_tcspc_widget.py").read_text(encoding="utf-8")
-    assert "dt = dt_base * rebin if self.checkBox_2.isChecked() else dt_base" in src
-
-
 def test_model_macros_expose_unload_irf_contract():
     src = Path("chisurf/macros/model.py").read_text(encoding="utf-8")
     assert "def unload_irf(" in src

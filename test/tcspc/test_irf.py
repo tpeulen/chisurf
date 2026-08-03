@@ -194,13 +194,13 @@ from pathlib import Path
 
 
 def test_irf_is_normalized_before_convolution_paths():
-    path = Path(__file__).resolve().parents[2] / "cs" / "models" / "tcspc" / "nusiance.py"
+    path = Path(__file__).resolve().parents[2] / "chisurf" / "core" / "models" / "tcspc" / "nusiance.py"
     src = path.read_text(encoding="utf-8")
 
-    norm_idx = src.find("irf_y = irf_y / np.sum(irf_y)")
+    norm_idx = src.find('irf.normalize(mode="sum", inplace=True)')
     assert norm_idx != -1
 
-    periodic_idx = src.find("convolve_lifetime_spectrum_periodic_nb", norm_idx)
+    periodic_idx = src.find("convolve_lifetime_spectrum_periodic(", norm_idx)
     exp_idx = src.find("convolve_lifetime_spectrum_nb", norm_idx)
     full_idx = src.find("np.convolve(data, irf_y", norm_idx)
 
