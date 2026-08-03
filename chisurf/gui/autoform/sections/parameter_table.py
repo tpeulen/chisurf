@@ -519,23 +519,30 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
     def _display_value(col_id: str, kind: str, param: FittingParameter) -> str:
         if col_id == "name":
             return str(param.__dict__.get("label_text", param.name))
+        # A derived output cannot be fixed, released or bounded, so showing those
+        # controls invites a click that does nothing. Four significant digits is
+        # also enough for a reported quantity -- six turns a relaxation time into
+        # "2.69646e-05" where "2.696e-05" says the same thing.
+        is_output = bool(getattr(param, "is_output", False))
         if col_id == "value":
             v = param.value
-            return f"{v:.6g}" if v is not None else ""
+            if v is None:
+                return ""
+            return f"{v:.4g}" if is_output else f"{v:.6g}"
         if col_id == "fixed":
-            return str(bool(param.fixed))
+            return "" if is_output else str(bool(param.fixed))
         if col_id == "bounds_lo":
             b = param.bounds
-            if b is not None and b[0] is not None and param.bounds_on:
+            if not is_output and b is not None and b[0] is not None and param.bounds_on:
                 return f"{b[0]:.6g}"
             return ""
         if col_id == "bounds_hi":
             b = param.bounds
-            if b is not None and len(b) > 1 and b[1] is not None and param.bounds_on:
+            if not is_output and b is not None and len(b) > 1 and b[1] is not None and param.bounds_on:
                 return f"{b[1]:.6g}"
             return ""
         if col_id == "bounds_on":
-            return str(bool(param.bounds_on))
+            return "" if is_output else str(bool(param.bounds_on))
         if col_id == "error":
             e = getattr(param, "error_estimate", None)
             if e is not None and _isfinite(e):
@@ -580,8 +587,12 @@ class ParameterGroupTableModel(QtCore.QAbstractTableModel):
         base = QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
         if not editable:
             return base
-        # Linked followers cannot edit value
         param = self._params[index.row()]
+        # A derived output is computed from the others; nothing about it is
+        # editable, including the fix flag and the bounds.
+        if getattr(param, "is_output", False):
+            return base
+        # Linked followers cannot edit value
         if col_id == "value":
             is_follower = getattr(param, "is_linked", False) and not getattr(
                 param, "is_link_master", False

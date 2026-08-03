@@ -885,6 +885,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
             w_z_nm=w_z,
             wavelength_nm=wavelength,
         )
+        modes = self.saturation.update_relaxation_outputs()
         dye_note = f" (ε from MMFDB: {self.dye})" if self.dye else ""
         self._info_summary = (
             f"<h4>FCS saturation summary</h4>"
@@ -902,10 +903,25 @@ class SaturationCalculatorTool(ChisurfDockTool):
             f"<tr><td><b>Saturated G(0):</b></td><td>{g_sat[0]:.4g}</td></tr>"
             f"<tr><td><b>Volume expansion V<sub>eff</sub>/V<sub>0</sub>:</b></td>"
             f"<td><b>{v_rel:.3f}×</b></td></tr>"
+            f"{self._relaxation_rows(modes)}"
             f"{self._apparent_rows(D_val, w_r)}"
             f"</table>"
             f"<p><i>N is overestimated by exactly this factor if the curve is fitted "
             f"with an unsaturated Gaussian model.</i></p>"
+        )
+
+    @staticmethod
+    def _relaxation_rows(modes) -> str:
+        """Summary row for the scheme's relaxation times (the eigenvalues)."""
+        if not modes:
+            return ""
+        shown = "&nbsp;·&nbsp;".join(
+            f"<b>{t * 1e6:.3g} µs</b> (amp {a:.2f})" for t, a in modes[:4]
+        )
+        return (
+            f"<tr><td><b>Relaxation times:</b></td><td>{shown}<br>"
+            f"<i>eigenvalues of K<sub>dark</sub> + k<sub>exc</sub>K<sub>exc</sub> — what a "
+            f"bunching term fitted to this curve would report</i></td></tr>"
         )
 
     def _apparent_rows(self, D_um2s: float, w_r_nm: float) -> str:

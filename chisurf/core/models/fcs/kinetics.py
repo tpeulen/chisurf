@@ -34,6 +34,7 @@ from chisurf.core.fluorescence.fcs.saturation import (
     compute_bunching_factor,
     excitation_rate_peak,
     gaussian_g_diff,
+    relaxation_spectrum,
     saturated_curve_shape,
 )
 from chisurf.core.models.fcs.mdf import compute_brightness, set_output_parameter
@@ -341,11 +342,13 @@ class KineticSaturationTerms(FittingParameterGroup):
             registry_id="fcs.saturation.brightness_out",
         )
 
+        self._relaxation_outputs: list[FittingParameter] = []
         self._n_states = self.DEFAULT_N_STATES
         self.dark_unit = "1/us"
         self.dark = DarkRates(n_states=self._n_states)
         self.exc = ExcRates(n_states=self._n_states)
         self.brightness = StateBrightness(n_states=self._n_states)
+        self._rebuild_relaxation_outputs(self._n_states)
         self._custom_state_labels: list[str] | None = None
         self._custom_state_names: list[str] | None = None
         self._dye_name: str = ""
@@ -371,6 +374,57 @@ class KineticSaturationTerms(FittingParameterGroup):
     b = property(lambda s: float(s._b.value))
     bg = property(lambda s: float(s._bg.value))
 
+    def _rebuild_relaxation_outputs(self, n_states: int) -> None:
+        """Resize the read-only relaxation-time outputs to the scheme.
+
+        An N-state scheme relaxes with N-1 modes, whose rates are the non-zero
+        eigenvalues of ``K_dark + k_exc K_exc``. Those eigenvalues are what a
+        bunching fit of the data actually returns, so they belong in the table
+        beside the rates the user types -- otherwise the connection between a
+        scheme and the timescales it predicts has to be worked out by hand.
+        """
+        for parameter in getattr(self, "_relaxation_outputs", []):
+            name = parameter.name
+            if hasattr(self, f"_{name}"):
+                delattr(self, f"_{name}")
+        outputs = []
+        for i in range(1, max(1, n_states)):
+            name = f"tau_R{i}"
+            parameter = FittingParameter(
+                value=float("nan"), name=name, fixed=True, is_output=True,
+                label_text=f"&tau;<sub>R{i}</sub>[µs]",
+                registry_id=f"fcs.saturation.{name}",
+            )
+            setattr(
+                parameter, "description",
+                f"Relaxation time {i} of the scheme (µs): an eigenvalue of "
+                f"K_dark + k_exc·K_exc at the peak excitation rate, slowest first. "
+                f"This is the timescale a bunching term fitted to the data reports, "
+                f"and it shortens as the power rises.",
+            )
+            setattr(self, f"_{name}", parameter)
+            outputs.append(parameter)
+        self._relaxation_outputs = outputs
+        self._parameters = None
+
+    def update_relaxation_outputs(self, fit=None) -> list[tuple[float, float]]:
+        """Recompute the relaxation spectrum and write it into the outputs.
+
+        Returns the ``(time_s, amplitude)`` modes so a caller can report them.
+        """
+        modes = relaxation_spectrum(
+            excitation_rate_peak(self.power, self.extinction, self.w_r_nm * 1e-9,
+                                 self.wavelength_m),
+            self.dark_matrix_hz, self.exc.rate_matrix(), self.brightness.array,
+        )
+        for i, parameter in enumerate(self._relaxation_outputs):
+            value = modes[i][0] * 1e6 if i < len(modes) else float("nan")
+            if fit is not None:
+                set_output_parameter(fit, parameter, value)
+            else:
+                parameter.value = value
+        return modes
+
     @property
     def dark_matrix_hz(self) -> np.ndarray:
         """Dark transition matrix in Hz (s^-1) for the photokinetic equation."""
@@ -391,6 +445,7 @@ class KineticSaturationTerms(FittingParameterGroup):
             self.dark.n_states = target
             self.exc.n_states = target
             self.brightness.n_states = target
+            self._rebuild_relaxation_outputs(target)
             if hasattr(self, "fit") and self.fit:
                 self.fit.update()
 
@@ -451,6 +506,7 @@ class KineticSaturationTerms(FittingParameterGroup):
             self._N,
             self._b,
             self._bg,
+            *getattr(self, "_relaxation_outputs", []),
         ]
         return self._parameters
 
@@ -635,6 +691,9 @@ class FCSKineticsModel(ModelCurve):
 
         s_val = sat.w_z_nm / sat.w_r_nm if sat.w_r_nm > 0 else float("nan")
         set_output_parameter(self.fit, sat._s, s_val)
+        # The scheme's relaxation times are eigenvalues of K_dark + k_exc K_exc,
+        # i.e. exactly what a bunching term fitted to this curve would report.
+        sat.update_relaxation_outputs(self.fit)
         brightness = compute_brightness(self.fit, sat.N, sat.bg)
         if brightness is not None:
             set_output_parameter(self.fit, sat._brightness_out, brightness)

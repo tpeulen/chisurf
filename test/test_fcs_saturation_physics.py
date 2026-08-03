@@ -26,6 +26,8 @@ from chisurf.core.fluorescence.fcs.saturation import (
     excitation_rate_peak,
     fcs_numerical_g_diff,
     fit_single_component,
+    fit_two_components,
+    relaxation_spectrum,
     gaussian_g_diff,
     photon_flux,
     saturated_curve_shape,
@@ -510,10 +512,93 @@ def test_a_saturated_curve_is_fitted_by_a_triplet_times_two_diffusion_times():
     fast, slow = sorted(params[1:3], reverse=True)   # D, so fast D = short tau_D
     assert fast > 3.0 * slow, "the two transit times must be genuinely distinct"
 
-    # The fitted triplet time is the *apparent* one, shortened by the excitation:
-    # 1/(k_T + k_ISC * f_S1), not the scheme's 1/k_T.
+    # What the bunching term measures is an *eigenvalue* of
+    # K = K_dark + k_exc K_exc, not the scheme's 1/k_T. For this three-state case
+    # the slow eigenvalue happens to sit within a digit of the familiar
+    # 1/(k_T + k_ISC f_S1), but that closed form is a limit of the eigenvalue,
+    # not a definition of it -- so the eigenvalue is what is asserted.
     k_exc = excitation_rate_peak(3.08e-2, 1e5, W0)
-    populations = steady_state_full_populations(np.array([k_exc]), DARK_R6G, EXC_R6G)[:, 0]
-    f_s1 = populations[1] / (populations[0] + populations[1])
-    expected_tau_t = 1.0 / (DARK_R6G[0, 2] + DARK_R6G[2, 1] * f_s1)
-    assert params[4] == pytest.approx(expected_tau_t, rel=0.15)
+    slowest_tau, _ = relaxation_spectrum(k_exc, DARK_R6G, EXC_R6G, Q_R6G)[0]
+    assert params[4] == pytest.approx(slowest_tau, rel=0.05)
+    assert slowest_tau < 0.25 / DARK_R6G[0, 2], "excitation must shorten it well below 1/k_T"
+
+
+def test_relaxation_times_are_the_eigenvalues_of_the_generator():
+    """X(tau) is a sum over the generator's modes, so its times are eigenvalues.
+
+    Checked two ways that share no code with the implementation: against the
+    eigenvalues of K computed directly, and against the bunching factor itself,
+    whose slow decay must follow the slowest mode.
+    """
+    k_exc = excitation_rate_peak(3.08e-2, 1e5, W0)
+    modes = relaxation_spectrum(k_exc, DARK_R6G, EXC_R6G, Q_R6G)
+    assert len(modes) == 2, "a three-state scheme has two non-stationary modes"
+
+    K_d = DARK_R6G.copy()
+    np.fill_diagonal(K_d, 0.0)
+    np.fill_diagonal(K_d, -K_d.sum(axis=0))
+    K_e = EXC_R6G.copy()
+    np.fill_diagonal(K_e, 0.0)
+    np.fill_diagonal(K_e, -K_e.sum(axis=0))
+    eigenvalues = np.sort(np.linalg.eigvals(K_d + k_exc * K_e).real)
+    expected = sorted([-1.0 / v for v in eigenvalues if v < -1e-6], reverse=True)
+    np.testing.assert_allclose([t for t, _ in modes], expected, rtol=1e-9)
+
+    # The bunching factor must decay with the slowest of them.
+    slow_tau = modes[0][0]
+    tau = np.array([slow_tau, 2.0 * slow_tau])
+    x = compute_bunching_factor(k_exc, DARK_R6G, EXC_R6G, Q_R6G, tau)
+    assert (x[0] - 1.0) / (x[1] - 1.0) == pytest.approx(np.e, rel=0.05)
+
+
+def test_the_relaxation_time_moves_with_the_excitation_rate():
+    """It is an eigenvalue of K_dark + k_exc K_exc, so it depends on the power."""
+    times = [
+        relaxation_spectrum(k, DARK_R6G, EXC_R6G, Q_R6G)[0][0]
+        for k in (1e5, 1e7, 1e9, 1e11)
+    ]
+    assert all(a > b for a, b in zip(times, times[1:])), "more light, faster relaxation"
+    # At vanishing excitation it must approach the dark-state lifetime 1/k_T.
+    assert times[0] == pytest.approx(1.0 / DARK_R6G[0, 2], rel=0.02)
+
+
+def test_the_scheme_reports_its_relaxation_times_as_outputs():
+    """The eigenvalues belong in the table beside the rates that produce them."""
+    from chisurf.core.models.fcs.kinetics import KineticSaturationTerms
+
+    terms = KineticSaturationTerms()
+    terms._power.value = 30.8
+    terms._w_r.value = 200.0
+    names = [p.name for p in terms._relaxation_outputs]
+    assert names == ["tau_R1", "tau_R2"], "an N-state scheme relaxes with N-1 modes"
+    assert all(p.is_output and p.fixed for p in terms._relaxation_outputs)
+
+    modes = terms.update_relaxation_outputs()
+    expected = relaxation_spectrum(
+        excitation_rate_peak(terms.power, terms.extinction, terms.w_r_nm * 1e-9,
+                             terms.wavelength_m),
+        terms.dark_matrix_hz, terms.exc.rate_matrix(), terms.brightness.array,
+    )
+    assert [t for t, _ in modes] == [t for t, _ in expected]
+    for parameter, (time_s, _) in zip(terms._relaxation_outputs, expected):
+        assert parameter.value == pytest.approx(time_s * 1e6)
+
+    # They must follow the scheme size, not stay at three states' worth.
+    terms.n_states = 5
+    assert [p.name for p in terms._relaxation_outputs] == [
+        "tau_R1", "tau_R2", "tau_R3", "tau_R4"
+    ]
+
+
+def test_the_reported_relaxation_time_falls_as_the_power_rises():
+    """It is an eigenvalue of a generator that contains k_exc, so it must."""
+    from chisurf.core.models.fcs.kinetics import KineticSaturationTerms
+
+    terms = KineticSaturationTerms()
+    terms._w_r.value = 200.0
+    times = []
+    for power_mW in (0.01, 1.0, 100.0):
+        terms._power.value = power_mW
+        terms.update_relaxation_outputs()
+        times.append(terms._relaxation_outputs[0].value)
+    assert all(a > b for a, b in zip(times, times[1:]))

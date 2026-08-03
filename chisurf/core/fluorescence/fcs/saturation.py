@@ -605,6 +605,108 @@ def fcs_numerical_g_diff(
     return out * (amplitude / total)
 
 
+def _relaxation_modes(K, p_eq, q_a, q_b):
+    """Eigen-decompose a generator into its relaxation modes.
+
+    ``X(tau) = sum_m c_m exp(lambda_m tau)``, so the eigenvalues of
+    ``K = K_dark + k_exc K_exc`` *are* the relaxation rates a bunching fit
+    reports -- not an approximation to them. One eigenvalue is always zero (the
+    stationary distribution); the rest are the scheme's relaxation modes.
+
+    Parameters
+    ----------
+    K : np.ndarray
+        Generator matrix at one excitation rate.
+    p_eq : np.ndarray
+        Its normalised stationary distribution.
+    q_a, q_b : np.ndarray
+        Per-state brightness of the two detection channels.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        ``(eigenvalues, amplitudes)``; the amplitudes are unnormalised.
+    """
+    evals, evecs = np.linalg.eig(K)
+    # A generator has no eigenvalue with a positive real part; clip the
+    # numerical noise on the stationary one so exp() cannot blow up.
+    evals = np.minimum(np.real(evals), 0.0) + 1j * np.imag(evals)
+    c_m = np.dot(q_a, evecs) * np.linalg.solve(evecs, q_b * p_eq)
+    return evals, c_m
+
+
+def relaxation_spectrum(
+    k_exc_0: float,
+    dark_matrix: np.ndarray,
+    exc_matrix: np.ndarray,
+    brightness: np.ndarray,
+) -> list[tuple[float, float]]:
+    """Relaxation times and amplitudes of a scheme at one excitation rate.
+
+    These are what a bunching fit measures. For the familiar three-state case
+    the slow mode is close to ``1/(k_T + k_ISC f_S1)``, but that is a limit of
+    this, not a definition: the eigenvalue is exact, stays exact when the
+    excitation rate approaches the dark-state rates, and generalises to any
+    number of states, where several modes mix and no closed form exists.
+
+    Parameters
+    ----------
+    k_exc_0 : float
+        Excitation rate to evaluate at (s^-1), usually the peak focal rate.
+    dark_matrix, exc_matrix : np.ndarray
+        The scheme's rate and cross-section matrices.
+    brightness : np.ndarray
+        Relative brightness of each state.
+
+    Returns
+    -------
+    list of tuple
+        ``(relaxation_time_s, amplitude)`` per non-stationary mode, slowest
+        first. The amplitude is the mode's weight in ``X(tau) - 1``.
+    """
+    K_d, K_e = _generator_matrices(dark_matrix, exc_matrix)
+    K = K_d + max(0.0, float(k_exc_0)) * K_e
+    n_states = K_d.shape[0]
+
+    K_eq = K.copy()
+    K_eq[-1, :] = 1.0
+    b = np.zeros(n_states)
+    b[-1] = 1.0
+    try:
+        p_eq = np.linalg.solve(K_eq, b)
+    except np.linalg.LinAlgError:
+        return []
+    p_eq = np.maximum(p_eq, 0.0)
+    total = float(p_eq.sum())
+    if total <= 0.0:
+        return []
+    p_eq /= total
+
+    q = np.asarray(brightness, dtype=float)
+    average = float(np.dot(q, p_eq))
+    if average <= 0.0:
+        return []
+
+    try:
+        evals, c_m = _relaxation_modes(K, p_eq, q, q)
+    except np.linalg.LinAlgError:
+        return []
+
+    # One eigenvalue is exactly zero in exact arithmetic -- the stationary
+    # distribution -- but comes back as a tiny value of either sign. Testing
+    # `rate > 0` therefore lets it through as a spurious mode of ~1e14 s, so the
+    # cut has to be relative to the fastest rate in the spectrum.
+    rates = -np.real(evals)
+    scale = float(rates.max()) if rates.size else 0.0
+    modes = []
+    for rate, weight in zip(rates, c_m):
+        if rate <= 1e-9 * scale:
+            continue
+        modes.append((1.0 / float(rate), float(np.real(weight)) / average**2))
+    modes.sort(key=lambda item: item[0], reverse=True)
+    return modes
+
+
 def compute_bunching_factor(
     k_exc_0: float,
     dark_matrix: np.ndarray,
@@ -684,11 +786,7 @@ def compute_bunching_factor(
     norm = avg_a * avg_b
 
     try:
-        evals, evecs = np.linalg.eig(K)
-        # A generator has no eigenvalue with a positive real part; clip the
-        # numerical noise on the stationary one so exp() cannot blow up.
-        evals = np.minimum(np.real(evals), 0.0) + 1j * np.imag(evals)
-        c_m = np.dot(q_a, evecs) * np.linalg.solve(evecs, q_b * p_eq)
+        evals, c_m = _relaxation_modes(K, p_eq, q_a, q_b)
         x_tau = np.real(c_m @ np.exp(evals[:, None] * tau_grid[None, :])) / norm
     except np.linalg.LinAlgError:
         from scipy.linalg import expm
