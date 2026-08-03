@@ -15,7 +15,7 @@ and the fitting models.
 
 | Module | Handles |
 | --- | --- |
-| `fluorescence/tttr.py`, `photons.py`, `burst.py` | single-photon (TTTR) streams |
+| `fluorescence/photons.py`, `burst.py` | single-photon (TTTR) streams |
 | `fluorescence/fcs/*` | correlation curves (Kristine, ALV, ConfoCor3, PyCorrFit, ISS, …) |
 | `fluorescence/tcspc.py`, `sdtfile.py`, `bhfiles.py`, `thdfile.py` | TCSPC decays / B&H |
 | `ascii.py`, `vv_vh.py`, `zipped.py` | generic text / stacked VV/VH decays (historically "jordi", see [reference](/references/vv-vh-decay-format.md)) / gz-bz2 wrappers |
@@ -73,6 +73,21 @@ container (see [compiled modules](/subsystems/compiled-modules.md)); ~30 modules
 across `core/fio`, `core/experiments`, and models depend on it. Per-domain
 readers wrap it: `experiments/tcspc/tttr_reader.py`, `experiments/rics/tttr_loader.py`,
 `experiments/{pch,pda,fcs}/reader.py`, `experiments/deer/reader.py`.
+
+`fluorescence/photons.py` holds `Photons`, a sliceable wrapper around one
+`tttrlib.TTTR`: the per-photon arrays (`macro_times`, `micro_times`,
+`routing_channels`, `event_types`), the calibration (`mt_clk` and `dt`, **both
+in seconds**), `by_channel(...)`, and `where("(ROUT == 0) & (TAC > 100)")` for
+expression selection. `photons.tttr` exposes the underlying object, so anything
+that wants `tttrlib` directly can have it.
+
+It used to convert every format into a **bespoke Photon-HDF5 file** — a
+PyTables table written to a scratch file per measurement, read back through
+per-format record parsers of its own (`fluorescence/tttr.py`). That whole layer
+is gone: it doubled every measurement on disk, kept an HDF5 file open for the
+life of the process, and duplicated format support `tttrlib` already has. The
+chisurf-side multi-tau correlator (`core/fluorescence/fcs/correlate.py`) went
+with it, for the same reason — `tttrlib.Correlator` is the one implementation.
 
 # Slow-storage staging (`chisurf/core/fio/staging.py`)
 

@@ -2,6 +2,33 @@
 
 ## 2026-08-03
 
+* **The bespoke photon format is gone; `tttrlib` reads the photons.**
+  `core/fio/fluorescence/photons.py` used to convert every supported TTTR
+  format into a private Photon-HDF5 file — a PyTables table written to a
+  scratch file per measurement, produced by ~1100 lines of per-format record
+  parsers in `fluorescence/tttr.py` — and read the photons back out of that.
+  `Photons` is now a sliceable wrapper around one `tttrlib.TTTR`
+  (`by_channel`, `where`, `.tttr`), `fluorescence/tttr.py` is deleted, and the
+  file widget opens any container `tttrlib` detects instead of asking for a
+  `.photon.h5`. See [data IO](/subsystems/data-io.md).
+  - The chisurf-side multi-tau correlator went with it: `fcs/correlate.py`
+    keeps only `second_order_correlation`. The **TTTR correlate** tool now
+    hands `tttrlib.Correlator` two channel selections rather than building
+    zero/one weight streams by hand, and splits the measurement by *time*
+    rather than by photon index — with different count rates per channel, an
+    index split put the two channels' groups over different stretches of the
+    measurement.
+  - Three defects surfaced while testing it: the tool called
+    `Correlator.set_n_bins`/`get_x_axis_normalized`, both long removed from
+    `tttrlib`, so every correlation raised; its `weight()` was decorated
+    `@property` and so could not be called; and its lag axis was labelled
+    milliseconds while carrying seconds. `test/gui/test_gui_correlator.py`
+    asserted against widgets of an unrelated dialog and had therefore never
+    reached any of this.
+  - The numba `get_weights` kernel it used **crashed the interpreter**
+    (SIGBUS/SIGSEGV during shutdown) whenever a Qt application was also alive.
+    It was a plain gather; NumPy does it in one indexing expression, and also
+    raises rather than reading out of bounds silently.
 * **PRD-64 (chiplot): the rule for closing a gap is now written down.** When
   chiplot lacks something a call site genuinely needs, add it **to chiplot**, as
   a thin wrapper over the pyqtgraph backend — never `import pyqtgraph` at the

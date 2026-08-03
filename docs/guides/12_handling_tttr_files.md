@@ -43,6 +43,22 @@ d.write("measurement.photon-hdf5")
 TTTR utility plugins (`chisurf/plugins/tttr/`) provide GUI tools for conversion,
 splitting, header editing, time-window gating and micro-time linearisation.
 
+For a stream you want to slice and select on, `Photons` wraps a `tttrlib.TTTR`
+with the conveniences the tools use:
+
+```python
+from chisurf.core.fio.fluorescence.photons import Photons
+
+p = Photons("measurement.ptu")        # or a list of files, read as one stream
+p.mt_clk, p.dt                        # macro-time clock and TAC width, both in seconds
+green = p.by_channel([0, 1])          # photons of those detectors
+late = p[p.where("(ROUT == 0) & (TAC > 100)")]
+green.tttr                            # the tttrlib object, for anything else
+```
+
+Correlation is `tttrlib.Correlator` — including in the **TTTR correlate** tool,
+whose lag axis is in **milliseconds**, the unit ChiSurf's FCS models expect.
+
 ## Result
 
 Micro-time (TCSPC) histograms of a green and a red detector read from a TTTR
