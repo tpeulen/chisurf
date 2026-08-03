@@ -239,14 +239,24 @@ class MfdStates(FittingParameterGroup):
         return float(np.clip(self._donor_only.value, 0.0, 1.0))
 
     def distance_rows(self):
-        """Return the per-state parameter rows an editor renders.
+        """Return the per-state parameters an editor renders, interleaved.
+
+        **Flat, not nested.** A ``dynamic_group``'s ``rows_source`` yields one
+        list of parameters which the section itself chunks ``row_width`` at a
+        time; returning a list of rows made it call ``__dict__`` on a ``list``,
+        the section failed to build, and the states got no per-state editor at
+        all -- reported once in the log and invisible in the panel.
 
         Returns
         -------
-        list of list
-            One row per state, ``[distance, fraction]``.
+        list
+            ``[distance_1, fraction_1, distance_2, fraction_2, ...]``.
         """
-        return [[d, x] for d, x in zip(self._distances, self._fractions)]
+        rows = []
+        for distance, fraction in zip(self._distances, self._fractions):
+            rows.append(distance)
+            rows.append(fraction)
+        return rows
 
     def append(self) -> None:
         """Add a state."""

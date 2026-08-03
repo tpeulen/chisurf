@@ -18,12 +18,14 @@
       "append_method": "append",
       "remove_method": "pop",
       "min_rows": 2,
-      "description": "One row per exchanging state: its mean donor-acceptor distance in Angstrom, and its equilibrium population. Adding or removing a state resizes the rate matrix with it."
+      "description": "One row per exchanging state: its mean donor-acceptor distance in Angstrom, and its equilibrium population. Adding or removing a state resizes the rate matrix with it.",
+      "title": "states"
     },
     {
       "type": "parameter_group_table",
       "target": "state_group",
-      "description": "The donor-only fraction does not take part in the exchange: a molecule with no active acceptor has no FRET state to be in."
+      "description": "The donor-only fraction does not take part in the exchange: a molecule with no active acceptor has no FRET state to be in.",
+      "title": "states — bounds and errors"
     },
     {
       "type": "custom",
@@ -39,12 +41,13 @@
         "diagonal": false,
         "unit": "1/s"
       },
-      "description": "Exchange rates between states, in inverse seconds. **Leave every rate at zero for a static analysis** \u2014 an empty scheme is exactly the static mixture, so one model covers both and you do not have to choose before the data has told you which it is. A rate far below one transition per burst is indistinguishable from static; far above it, the states merge into one averaged population; between the two, bursts caught mid-exchange fill the space between the states and pull the cloud off the static line, which is the signal being fitted."
+      "description": "Exchange rates between states, in inverse seconds. **Leave every rate at zero for a static analysis** — an empty scheme is exactly the static mixture, so one model covers both and you do not have to choose before the data has told you which it is. A rate far below one transition per burst is indistinguishable from static; far above it, the states merge into one averaged population; between the two, bursts caught mid-exchange fill the space between the states and pull the cloud off the static line, which is the signal being fitted."
     },
     {
       "type": "parameter_group_table",
       "target": "calibration",
-      "description": "Correction factors and dye constants. All of them act inside the forward model, never on the data histogram, which is what lets any of them be freed without the fit's target moving underneath it."
+      "description": "Correction factors and dye constants. All of them act inside the forward model, never on the data histogram, which is what lets any of them be freed without the fit's target moving underneath it.",
+      "title": "calibration"
     }
   ],
   "plots": [
@@ -63,7 +66,7 @@
         "aspect_locked": false,
         "axes_visible": true,
         "x_label": "proximity ratio",
-        "y_label": "\u27e8t\u27e9 / ns"
+        "y_label": "⟨t⟩ / ns"
       }
     },
     {

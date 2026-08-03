@@ -387,16 +387,62 @@ class FittingClient:
 
     # ── Fit actions ──────────────────────────────────────────────────
 
+    def _embedded_dispatcher(self):
+        """Return this process's own service dispatcher, if the server is in it.
+
+        The GUI normally runs the server *inside itself* -- ``ChiSurfServer`` is
+        started on a thread of this process and owns the very same fit objects
+        the GUI holds. A request to it is a round trip to ourselves.
+        """
+        if self._in_server_dispatch():
+            return None
+        try:
+            import chisurf
+
+            server = (
+                getattr(chisurf, "__chisurf_rpc_server__", None)
+                or getattr(chisurf, "__mmfdb_rpc_server__", None)
+            )
+            return getattr(server, "dispatcher", None)
+        except Exception:
+            return None
+
     def run_fit(
         self,
         fit_uid: Optional[str] = None,
         fit_index: Optional[int] = None,
     ) -> Dict[str, Any]:
+        """Run a fit, in this process when the server is in this process.
+
+        A fit is the one call with no bound on how long it takes, and sending it
+        over the socket did three bad things at once: the GUI thread blocked in
+        ``recv`` so nothing could repaint, the work happened on the *server*
+        thread so a progress callback could not touch a widget from there
+        anyway, and the 5-second transport deadline expired mid-fit and
+        **disabled RPC for the rest of the session** --
+
+            FittingClient: disabling RPC after transport failure in 'fit.run':
+            timeout: no response within 5000ms
+
+        -- which is why a fit looked like a frozen window with no progress bar.
+        None of it bought anything: the embedded server holds the same objects.
+
+        A genuinely remote server still goes over the wire, where a blocking
+        call is what the transport is for.
+        """
         params: Dict[str, Any] = {}
         if fit_uid is not None:
             params["fit_uid"] = fit_uid
         if fit_index is not None:
             params["fit_index"] = fit_index
+
+        dispatcher = self._embedded_dispatcher()
+        if dispatcher is not None:
+            result = dispatcher.dispatch("fit.run", params)
+            if isinstance(result, dict) and result.get("ok", False):
+                return result
+            return {"ok": False}
+
         result = self._try_rpc("fit.run", params)
         if result is not None and result.get("ok", False):
             return result

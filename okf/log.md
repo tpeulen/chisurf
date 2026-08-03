@@ -2,6 +2,43 @@
 
 ## 2026-08-03
 
+* **A fit was being sent over a socket to the process it was already in — and the
+  transport gave up on it after five seconds.** This is what "no progress bar, UI
+  stalls" actually was. The user's log names it exactly:
+
+      15:34:43  Please wait fitting: MFD 2D - sliding_window_All 0.1500#60_0
+      15:34:48  FittingClient: disabling RPC after transport failure in 'fit.run':
+                timeout: no response within 5000ms
+
+  The GUI runs `ChiSurfServer` on a **thread of itself**, holding the very same
+  fit objects, so `fc.run_fit(...)` was a ZMQ round trip to ourselves that did
+  three bad things at once: the GUI thread blocked in `recv` so nothing could
+  repaint; the work ran on the *server* thread, where a progress callback cannot
+  touch a widget anyway; and the 5 s `fitting_timeout_ms` deadline expired
+  mid-fit, **disabling RPC for the rest of the session**. A real two-state MFD fit
+  takes ~130 s, so it lost that race every time.
+  - `FittingClient.run_fit` now dispatches through the embedded server's own
+    `ServiceDispatcher` when the server is in this process, and still goes over
+    the wire when it genuinely is not. Measured on the same fit: **571 progress
+    reports reaching 100%**, against 148 and a dead transport before.
+  - The remote case keeps the deadline and the frozen window; recorded in
+    [known-issues](../references/known-issues.md) rather than guessed at, because
+    this tree has no remote server to test a fix against. The shape is almost
+    certainly a `JobManager` job with progress over the event bus, which sampling
+    already does.
+
+* **The MFD per-state editor never built.** One line in the user's log, and the
+  states row was simply absent from the panel:
+
+      AutoForm: failed to build section DynamicGroupSection(target='state_group',
+      rows_source='distance_rows', ...): 'list' object has no attribute '__dict__'
+
+  A `dynamic_group`'s `rows_source` returns **one flat list of parameters** which
+  the section chunks `row_width` at a time — every other model in the tree does
+  it that way. `distance_rows` returned a list of *rows*, so the section called
+  `__dict__` on a `list`. Now interleaved, and the two state sections carry
+  distinct titles so the editor and the bounds table are no longer both "states".
+
 * **The bespoke photon format is gone; `tttrlib` reads the photons.**
   `core/fio/fluorescence/photons.py` used to convert every supported TTTR
   format into a private Photon-HDF5 file — a PyTables table written to a

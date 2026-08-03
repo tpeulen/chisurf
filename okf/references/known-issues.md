@@ -66,6 +66,27 @@ happens to have been imported (an explicit registry, as the model/UI split
 already needs), fix the test's model name, then give the client a receive
 timeout so the remaining stall is a failure with a traceback instead of silence.
 
+## fitting over a genuinely remote server still has a 5-second deadline (2026-08-03)
+
+`FittingClient.run_fit` no longer crosses the socket when the server is embedded
+in this process -- which is the GUI's normal case, and where the bug actually
+bit: the fit ran on the server thread, the GUI thread blocked in `recv`, and the
+`fitting_timeout_ms` deadline (5000 ms, `settings.mmfdb`) expired mid-fit and
+disabled RPC for the rest of the session:
+
+    FittingClient: disabling RPC after transport failure in 'fit.run':
+    timeout: no response within 5000ms
+
+A real two-state MFD fit takes about 130 s, so it lost that race every time.
+
+**Still open for a genuinely remote server.** Any fit longer than the deadline
+will do the same thing over the wire, and the blocking call freezes the GUI for
+its duration regardless. The right shape is almost certainly a job submitted to
+the server's `JobManager` with progress arriving over the event bus -- the
+machinery already exists for sampling (`_watch_sampling_job` polls exactly that
+way). Not attempted here because this tree has no remote server to test against,
+and a fix that cannot be run is a guess.
+
 ## quest: the plugin's RPC layer targets a backend the package does not have
 
 **Found 2026-07-28.** Starting the GUI logs
