@@ -103,6 +103,17 @@ class _MolViewObjectState:
     cartoon_mask: Optional[np.ndarray] = None
     ball_mask: Optional[np.ndarray] = None
     sticks_mask: Optional[np.ndarray] = None
+    #: Per-atom/per-residue scoping masks for the remaining representations,
+    #: ``None`` meaning *all atoms/residues* (no scoping). Set only by a scoped
+    #: ``show``/``hide``/``as`` with a selection, so ``as X, sele`` changes
+    #: exactly the selection and nothing outside it.
+    trace_mask: Optional[np.ndarray] = None
+    lines_mask: Optional[np.ndarray] = None
+    nonbonded_mask: Optional[np.ndarray] = None
+    label_mask: Optional[np.ndarray] = None
+    dots_mask: Optional[np.ndarray] = None
+    surface_mask: Optional[np.ndarray] = None
+    metaball_mask: Optional[np.ndarray] = None
     bond_pairs: Optional[np.ndarray] = None
     bond_edits: dict = field(default_factory=lambda: {"added": {}, "removed": set()})
     """Manual ``bond``/``unbond`` edits, kept as *deltas* over the inferred list.

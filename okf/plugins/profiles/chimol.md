@@ -37,7 +37,12 @@ adapted to Python introspection:
   bracket/quote-aware, with `raw1`/`raw2` verbatim-tail modes for
   `alter`/`iterate`) and `bind_and_call(func, pairs)` which maps positionals/
   keywords to the method's `inspect.signature` and coerces each string per the
-  parameter annotation (`int`/`float`/`bool`/`str`/`Selection`, PEP-563 aware).
+  parameter annotation (`int`/`float`/`bool`/`str`/`Selection`, PEP-563 aware,
+  via the public `coerce_value`). A keyword that matches no declared parameter
+  goes to the signature's `**kwargs` when it has one — coerced by *that*
+  parameter's annotation — and is an error otherwise, so an open-ended command
+  such as `lighting soft, ambient_light_intensity=1.2` is reachable from the
+  command line rather than rejected before its handler runs.
 - **`base.py:do()`** — the single driver: `@script` execution, then the line is
   split into its `;`-separated statements and each is resolved in the registry
   and tokenized+bound+called. There is **one** dispatch path; the legacy

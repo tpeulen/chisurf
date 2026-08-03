@@ -182,6 +182,49 @@ def test_sele_drives_subset_reps_like_pymol(cmd):
     )
 
 
+def test_an_empty_space_click_deselects_like_pymol(window, monkeypatch):
+    """PyMOL: "left-clicking away from any atom should deactivate the
+    selection." With nothing picked, `+/-` (toggle) has nothing to toggle, so
+    it clears -- it must not leave a stale selection behind."""
+    from chisurf.plugins.chimol.chimol.renderer import view as view_mod
+    from qtpy import QtCore
+
+    stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
+    monkeypatch.setattr(view_mod, "_get_picking_module", lambda: stub)
+    viewer = window.viewer
+    viewer._gl_enabled = True  # type: ignore[attr-defined]
+    if viewer.view is None:
+        viewer.view = object()
+
+    viewer.set_selected_residues([0, 1, 2])
+    ev = types.SimpleNamespace(modifiers=lambda: QtCore.Qt.NoModifier)
+    viewer.handle_mouse_click(ev, "+/-")
+    assert list(viewer._selected_residues) == []
+
+    viewer.set_selected_residues([0, 1, 2])
+    viewer.handle_mouse_click(ev, "sele")
+    assert list(viewer._selected_residues) == []
+
+
+def test_an_empty_space_pick_leaves_the_selection_alone(window, monkeypatch):
+    """`pkat` is an editing pick: it highlights but never owns the selection,
+    so an empty pick must not wipe what is selected."""
+    from chisurf.plugins.chimol.chimol.renderer import view as view_mod
+    from qtpy import QtCore
+
+    stub = types.SimpleNamespace(pick_atom_from_click=lambda *a, **k: None)
+    monkeypatch.setattr(view_mod, "_get_picking_module", lambda: stub)
+    viewer = window.viewer
+    viewer._gl_enabled = True  # type: ignore[attr-defined]
+    if viewer.view is None:
+        viewer.view = object()
+
+    viewer.set_selected_residues([0, 1, 2])
+    ev = types.SimpleNamespace(modifiers=lambda: QtCore.Qt.NoModifier)
+    viewer.handle_mouse_click(ev, "pkat")
+    assert list(viewer._selected_residues) == [0, 1, 2]
+
+
 def test_an_empty_viewport_selection_matches_nothing(cmd):
     cmd._named_selections.pop("sele", None)
     viewer = cmd.window.viewer

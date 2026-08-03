@@ -13,6 +13,7 @@ from ..io.export import unscale_coordinates, write_structure
 from .base import BaseCmd
 from .registry import command
 from .selection_types import Selection
+from chisurf.gui.progress import ChiSurfProgress
 
 
 class RayRenderThread(QtCore.QThread):
@@ -496,9 +497,7 @@ class ExportMixin(BaseCmd):
             self._finish_ray(image, out_path, width, height, viewer, window)
             return
 
-        dialog = QtWidgets.QProgressDialog(
-            "Ray tracing...", "Cancel", 0, total_rows, parent,
-        )
+        dialog = ChiSurfProgress(parent, "Ray tracing...", total_rows)
         dialog.setWindowTitle("Rendering")
         dialog.setWindowModality(QtCore.Qt.WindowModal)
         dialog.setMinimumDuration(0)

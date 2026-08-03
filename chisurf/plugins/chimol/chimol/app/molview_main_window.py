@@ -281,6 +281,16 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             margins=dock_margins,
             spacing=spacing,
         )
+        # Built but not docked: the strip in the viewport replaced its tab, and
+        # a widget with no parent and no layout is a *top-level window* in Qt --
+        # so it floated over the app as a stray "Seq nbr" box. Parented and
+        # hidden until the ~100 call sites that still feed it are unwound.
+        try:
+            self.sequence.widget.setParent(self)
+            self.sequence.widget.hide()
+        except Exception:
+            pass
+
         self.seq_label = self.sequence.seq_label
         self.seq_numbers_label = self.sequence.seq_numbers_label
         self.seq_numbers_list = self.sequence.seq_numbers_list

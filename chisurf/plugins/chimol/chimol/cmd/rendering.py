@@ -336,69 +336,55 @@ class RenderingMixin(BaseCmd):
             return
 
         if selection:
-            # 1. Handle cartoon/ribbon (residue-level)
+            # Residue-level reps: cartoon and trace are drawn per residue, so a
+            # scoped show/hide flips the residues the selection names.
             if rep_target in ("cartoon", "ribbon"):
-                try:
-                    obj_id, obj_name, res_indices = self._resolve_selection_to_residue_indices(
-                        viewer, selection
-                    )
-                    entry = viewer._objects.get(obj_id)
-                    mask = np.asarray(getattr(entry.state, "cartoon_mask"), dtype=bool).copy()
-                    for ri in res_indices:
-                         if 0 <= ri < mask.shape[0]:
-                            mask[ri] = vis
-                    entry.state.cartoon_mask = mask
-                    # As for the atom-level reps: the mask picks the residues, the
-                    # flag decides whether the cartoon is drawn at all, and the
-                    # scene builder wants both. `hide everything; show cartoon,
-                    # polymer` set a correct mask over a cleared flag and drew
-                    # nothing -- which is what a real GL render finally showed.
-                    entry.state.show_cartoon = bool(mask.any())
-                    viewer._update_view()
-                    return
-                except Exception as exc:
-                    self._emit_error(str(exc))
-                    return
+                self._set_scoped_rep(
+                    viewer, selection, "cartoon_mask", "show_cartoon",
+                    visible=vis, residue_level=True,
+                )
+                return
+            if rep_target in ("trace", "ca_trace", "ribbon_trace"):
+                self._set_scoped_rep(
+                    viewer, selection, "trace_mask", "show_trace",
+                    visible=vis, residue_level=True,
+                )
+                return
 
-            # 2. Handle balls/sticks (atom-level)
-            if rep_target in ("atoms", "spheres", "balls", "ball", "sticks", "bonds"):
-                try:
-                    obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
-                        viewer, selection
-                    )
-                    entry = viewer._objects.get(obj_id)
-                    field = "ball_mask" if rep_target not in ("sticks", "bonds") else "sticks_mask"
-
-                    cur_mask = getattr(entry.state, field)
-                    if cur_mask is None or len(cur_mask) != len(atom_mask):
-                         cur_mask = np.zeros(len(atom_mask), dtype=bool)
-                    else:
-                         cur_mask = cur_mask.copy()
-
-                    if vis:
-                        cur_mask |= atom_mask
-                    else:
-                        cur_mask &= ~atom_mask
-
-                    setattr(entry.state, field, cur_mask)
-
-                    # The mask says *which* atoms; the flag says whether that
-                    # representation is drawn at all, and the scene builder needs
-                    # both. Setting only the mask is why `show spheres, all` --
-                    # and every S-menu entry that reaches this branch -- produced
-                    # no geometry whatever: the mask was right and nothing drew.
-                    flag = (
-                        "show_atoms"
-                        if rep_target not in ("sticks", "bonds")
-                        else "show_sticks"
-                    )
-                    setattr(entry.state, flag, bool(cur_mask.any()))
-
-                    viewer._update_view()
-                    return
-                except Exception as exc:
-                    self._emit_error(str(exc))
-                    return
+            # Atom-level reps: the mask names *which* atoms draw; the flag
+            # decides whether the representation draws at all, and the scene
+            # builder needs both -- setting only the mask is why `show spheres,
+            # all` produced no geometry whatever. Every representation gets its
+            # own mask field so one rep's scoping never bleeds into another's
+            # (using `sticks_mask` for `lines` made hiding lines also hide
+            # sticks in the same selection).
+            scoped_atom_fields = {
+                "atoms": ("ball_mask", "show_atoms"),
+                "spheres": ("ball_mask", "show_atoms"),
+                "balls": ("ball_mask", "show_atoms"),
+                "ball": ("ball_mask", "show_atoms"),
+                "sticks": ("sticks_mask", "show_sticks"),
+                "bonds": ("sticks_mask", "show_sticks"),
+                "lines": ("lines_mask", "show_lines"),
+                "wire": ("lines_mask", "show_lines"),
+                "wireframe": ("lines_mask", "show_lines"),
+                "nonbonded": ("nonbonded_mask", "show_nonbonded"),
+                "nb_spheres": ("nonbonded_mask", "show_nonbonded"),
+                "label": ("label_mask", "show_labels"),
+                "labels": ("label_mask", "show_labels"),
+                "dots": ("dots_mask", "show_dots"),
+                "points": ("dots_mask", "show_dots"),
+                "surface": ("surface_mask", "surface_visible"),
+                "surf": ("surface_mask", "surface_visible"),
+                "metaball": ("metaball_mask", "metaballs_visible"),
+                "metaballs": ("metaball_mask", "metaballs_visible"),
+            }
+            if rep_target in scoped_atom_fields:
+                field, flag = scoped_atom_fields[rep_target]
+                self._set_scoped_rep(
+                    viewer, selection, field, flag, visible=vis,
+                )
+                return
 
         # Fallback to global representation toggle
         try:
@@ -450,6 +436,131 @@ class RenderingMixin(BaseCmd):
             return bool(np.asarray(mask, dtype=bool).any())
         except Exception:
             return False
+
+    def _set_scoped_rep(
+        self,
+        viewer,
+        selection: str,
+        field: str,
+        flag: str,
+        *,
+        visible: bool,
+        residue_level: bool = False,
+    ) -> None:
+        """Apply one scoped show/hide to an object representation.
+
+        ``field`` is the per-atom or per-residue mask that picks which entities
+        draw, ``flag`` the boolean that decides whether the representation draws
+        at all -- the scene builder wants both. ``None`` means *everything
+        draws*; a mask that ends up covering no entity is dropped back to
+        ``None`` with the flag cleared.
+
+        The flag decides what ``None`` means on the way in, so the two senses
+        of "no mask" do not blur:
+
+        * ``flag`` set, ``None`` mask -- the representation is on everywhere,
+          so scoped show is a no-op and scoped hide materialises to "everything
+          minus the selection";
+        * ``flag`` clear, ``None`` mask -- the representation is off everywhere,
+          so scoped hide is a no-op and scoped show materialises to "just the
+          selection".
+
+        Scoping changes exactly the entities the selection names and leaves
+        everything outside it alone, which is the PyMOL contract ``show X, sele``
+        and ``as X, sele`` make. Errors are emitted through the command channel
+        rather than raised.
+        """
+        try:
+            if residue_level:
+                obj_id, _obj_name, res_indices = (
+                    self._resolve_selection_to_residue_indices(viewer, selection)
+                )
+                entry = viewer._objects.get(obj_id)
+                ids = getattr(entry.state, "residue_ids", None)
+                n_items = int(ids.shape[0]) if ids is not None else 0
+                atom_mask = None
+            else:
+                obj_id, _obj_name, atom_mask = self._resolve_selection_to_atom_mask(
+                    viewer, selection
+                )
+                entry = viewer._objects.get(obj_id)
+                n_items = int(len(atom_mask))
+
+            cur_mask = getattr(entry.state, field)
+            cur_flag = bool(getattr(entry.state, flag, False))
+
+            if not residue_level:
+                # Bring a stored mask into the atom domain this field lives in.
+                # The global toggles write residue-length masks (one row per CA)
+                # while a scoped atom representation is per-atom; combining the
+                # two lengths would broadcast and fail -- one rep, one domain.
+                cur_mask = self._expand_mask_to_atoms(entry.state, cur_mask, n_items)
+
+            if visible:
+                if cur_mask is None and cur_flag:
+                    viewer._update_view()
+                    return
+                if cur_mask is None:
+                    mask = np.zeros(n_items, dtype=bool)
+                else:
+                    mask = cur_mask.copy()
+                if residue_level:
+                    for ri in res_indices:
+                        if 0 <= ri < n_items:
+                            mask[ri] = True
+                else:
+                    mask |= atom_mask
+                setattr(entry.state, field, mask)
+                setattr(entry.state, flag, True)
+                viewer._update_view()
+                return
+
+            if cur_mask is None and not cur_flag:
+                viewer._update_view()
+                return
+            if cur_mask is None:
+                mask = np.ones(n_items, dtype=bool)
+            else:
+                mask = cur_mask.copy()
+            if residue_level:
+                for ri in res_indices:
+                    if 0 <= ri < n_items:
+                        mask[ri] = False
+            else:
+                mask &= ~atom_mask
+            setattr(entry.state, field, mask if mask.any() else None)
+            setattr(entry.state, flag, bool(mask.any()))
+            viewer._update_view()
+        except Exception as exc:
+            self._emit_error(str(exc))
+
+    def _expand_mask_to_atoms(self, state, cur_mask, n_atoms: int):
+        """Bring a stored representation mask into the atom domain.
+
+        Masks written by the global toggles are per-residue (one row per trace
+        point), while scoped atom representations are per-atom. ``None`` stays
+        ``None``, an atom-length mask passes through, a residue-length mask is
+        expanded to atoms through the object's residue ids, and anything else
+        degrades to *all atoms* when it names any entity -- a mismatched legacy
+        mask must not silently clear the representation.
+        """
+        if cur_mask is None:
+            return None
+        cur_mask = np.asarray(cur_mask, dtype=bool)
+        if cur_mask.size == n_atoms:
+            return cur_mask
+        res_ids = getattr(state, "residue_ids", None)
+        atom_res_ids = getattr(state, "all_atom_res_ids", None)
+        if (
+            res_ids is not None
+            and atom_res_ids is not None
+            and cur_mask.size == res_ids.shape[0]
+            and atom_res_ids.shape[0] == n_atoms
+        ):
+            return np.isin(atom_res_ids, res_ids[cur_mask])
+        if not cur_mask.any():
+            return np.zeros(n_atoms, dtype=bool)
+        return np.ones(n_atoms, dtype=bool)
 
     @command("center")
     def center(self, sel: Selection = "") -> None:

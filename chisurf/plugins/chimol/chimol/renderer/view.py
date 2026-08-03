@@ -339,6 +339,22 @@ def _is_bead_model(atoms) -> bool:
     return bool(mask is not None and mask.all())
 
 
+def _expand_occlusion(
+    values: np.ndarray, sample: np.ndarray, n: int
+) -> np.ndarray:
+    """Spread a per-sampled-vertex occlusion field back over every vertex.
+
+    ``values`` holds the occlusion of the ``sample`` vertices of a larger mesh.
+    Its index ``j`` corresponds to mesh vertex ``sample[j]``. The full ``n``-long
+    array is reconstructed by linear interpolation over the sampled indices: a
+    vertex between two samples gets the value on the straight line joining them.
+    The occlusion field is smooth over a surface and the sampling is regular, so
+    the interpolation error stays far below the occlusion contrast itself.
+    """
+    values = np.asarray(values, dtype=float)
+    return np.interp(np.arange(n), sample.astype(float), values)
+
+
 class MolView(QtWidgets.QWidget):
 
     # Emitted when residues are selected via picking in the 3D view. The
@@ -406,6 +422,13 @@ class MolView(QtWidgets.QWidget):
     _cartoon_mask = _StateField("cartoon_mask")
     _ball_mask = _StateField("ball_mask")
     _sticks_mask = _StateField("sticks_mask")
+    _trace_mask = _StateField("trace_mask")
+    _lines_mask = _StateField("lines_mask")
+    _nonbonded_mask = _StateField("nonbonded_mask")
+    _label_mask = _StateField("label_mask")
+    _dots_mask = _StateField("dots_mask")
+    _surface_mask = _StateField("surface_mask")
+    _metaball_mask = _StateField("metaball_mask")
     _bond_pairs = _StateField("bond_pairs")
     _bond_edits = _StateField("bond_edits")
     _protected_mask = _StateField("protected_mask")
@@ -4084,8 +4107,10 @@ class MolView(QtWidgets.QWidget):
 
         A left-click near an atom picks it and toggles its residue in and out
         of the selection -- PyMOL's ``+/-``, the single-left action of both the
-        viewing and selecting modes. Clicking in empty space does nothing,
-        exactly as PyMOL leaves the selection alone when no atom is nearby.
+        viewing and selecting modes. Clicking in empty space deactivates the
+        selection, as PyMOL does ("left-clicking away from any atom should
+        deactivate the selection" -- ``mouse:selecting``): with nothing picked
+        there is nothing to toggle, so ``+/-`` and ``sele`` clear instead.
         Updates both atom and residue selection states.
         """
         atom_indices = []
@@ -4134,14 +4159,29 @@ class MolView(QtWidgets.QWidget):
                             residue_indices = [int(matches[0])]
                     except Exception:
                         residue_indices = []
-            # No atom picked: PyMOL reports "no atom found nearby" and leaves
-            # the selection untouched, so an empty click does not wipe it here
-            # either.
+            # No atom picked. PyMOL's default left click is `+/-`, which toggles
+            # the *picked* residue -- with nothing picked there is nothing to
+            # toggle, and PyMOL deactivates the selection instead ("left-clicking
+            # away from any atom should deactivate the selection"). `sele` (set)
+            # on nothing is the same empty set. `pkat` is an editing pick that
+            # highlights but never owns the selection, so it leaves it alone.
             if not residue_indices and not atom_indices:
+                if action in ("+/-", "sele"):
+                    try:
+                        self._apply_selection_indices([], mods, mode="set")
+                    except Exception:
+                        pass
                 try:
                     self.atomSelectionChanged.emit([])
                 except Exception:
                     pass
+                if action in ("+/-", "sele") and self._coords is not None and getattr(
+                    self, "_gl_enabled", False
+                ):
+                    try:
+                        self._update_view()
+                    except Exception:
+                        pass
                 return
 
         try:
@@ -4637,6 +4677,14 @@ class MolView(QtWidgets.QWidget):
         costs nothing while the view moves and cannot shimmer the way a
         screen-space estimate does.
 
+        A mesh above :attr:`_OCCLUSION_SAMPLE_FLOOR` vertices is not baked in
+        full. Every *stride*-th vertex is shaded and the rest are filled by
+        nearest-sampled interpolation, because the occlusion field varies
+        smoothly over a surface and a sphere mesh has far more vertices than
+        smoothness demands. The bake's cost then follows the sampled count,
+        which is also what is charged against
+        :attr:`_OCCLUSION_VERTEX_BUDGET`.
+
         Parameters
         ----------
         verts, norms : numpy.ndarray
@@ -4660,8 +4708,6 @@ class MolView(QtWidgets.QWidget):
             # Mid-scrub: this frame is about to be replaced. `_note_frame_change`
             # schedules the full-quality redraw for when it stops.
             return cols, None
-        if not self._occlusion_within_budget(cols):
-            return cols, None
         cfg = _DISPLAY_CONFIG.get("occlusion") or {}
         if not bool(cfg.get("enabled", True)):
             return cols, None
@@ -4675,11 +4721,32 @@ class MolView(QtWidgets.QWidget):
             return cols, None
         centres, radii = casters
 
+        # The bake costs vertices times occluder neighbourhood, so a sphere mesh
+        # for a protein of a few thousand atoms is over a million vertices and
+        # tens of seconds of bake. The occlusion field varies smoothly along a
+        # surface, so sampling every *stride*-th vertex and interpolating the
+        # gaps loses almost nothing while cutting the cost by the stride.
+        # ``None`` means the mesh is small enough to shade in full.
+        n_verts = int(verts.shape[0])
+        sample = None
+        floor = int(self._OCCLUSION_SAMPLE_FLOOR)
+        if n_verts > floor:
+            stride = max(1, int(np.ceil(n_verts / float(floor))))
+            sample = np.arange(0, n_verts, stride, dtype=int)
+            verts_use = verts[sample]
+            norms_use = norms[sample]
+        else:
+            verts_use = verts
+            norms_use = norms
+
+        if not self._occlusion_within_budget(verts_use.shape[0]):
+            return cols, None
+
         scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
         try:
             occ = occlusion_from_spheres(
-                verts,
-                norms,
+                verts_use,
+                norms_use,
                 centres,
                 radii,
                 max_distance=float(cfg.get("max_distance", 10.0)) * scale,
@@ -4689,7 +4756,18 @@ class MolView(QtWidgets.QWidget):
             logger.warning("Ambient occlusion failed; drawing unshaded",
                            exc_info=True)
             return cols, None
-        if occ is None or occ.shape[0] != cols.shape[0]:
+        if occ is None:
+            return cols, None
+
+        shadow = self._directional_shadow(
+            verts_use, norms_use, centres, radii, cfg, scale
+        )
+        if sample is not None:
+            occ = _expand_occlusion(occ, sample, n_verts)
+            if shadow is not None:
+                shadow = _expand_occlusion(shadow, sample, n_verts)
+
+        if occ.shape[0] != cols.shape[0]:
             return cols, None
 
         shaded = np.array(cols, dtype=float, copy=True)
@@ -4699,7 +4777,6 @@ class MolView(QtWidgets.QWidget):
         # whether anything stands between it and the light. They are different
         # cues and the second is what PyMOL's interactive view has no equivalent
         # of at all -- it casts shadows only when raytracing.
-        shadow = self._directional_shadow(verts, norms, centres, radii, cfg, scale)
         if shadow is not None:
             shadow_darkness = float(cfg.get("shadow_darkness", 0.45))
             shaded[:, :3] *= (1.0 - shadow_darkness * shadow)[:, None]
@@ -4715,17 +4792,27 @@ class MolView(QtWidgets.QWidget):
     #: model built of thousands of short chains it stops being the finishing
     #: touch and becomes the load time. Measured on one NPC spoke: 1608 segments,
     #: 24 seconds of a 33-second load, for shading nobody can see at that scale.
+    #: Counts *sampled* vertices (see ``_shade_by_occlusion``), so a single large
+    #: sphere mesh stays eligible while thousands of short segments still trip it.
     _OCCLUSION_VERTEX_BUDGET = 400_000
 
-    def _occlusion_within_budget(self, cols) -> bool:
+    #: Vertices above which the bake is sampled -- every *stride*-th vertex is
+    #: shaded and the rest interpolated. A smooth occlusion field needs far fewer
+    #: samples than a sphere mesh has vertices; this keeps a large mesh both
+    #: within ``_OCCLUSION_VERTEX_BUDGET`` and quick to bake.
+    _OCCLUSION_SAMPLE_FLOOR = 120_000
+
+    def _occlusion_within_budget(self, vertex_count: int) -> bool:
         """Whether this object is small enough to be worth shading.
 
         Bounded by a setting rather than by the file, as the map voxel budget is.
         Reported once per object, because silently dropping a visual is how a
-        renderer ends up with a look nobody can account for.
+        renderer ends up with a look nobody can account for. ``vertex_count`` is
+        the number of vertices that would actually be baked -- already sampled,
+        for a mesh above ``_OCCLUSION_SAMPLE_FLOOR``.
         """
         try:
-            per_segment = int(np.asarray(cols).shape[0])
+            per_segment = int(vertex_count)
         except Exception:
             return True
         total = int(getattr(self, "_occlusion_vertices_this_build", 0)) + per_segment
@@ -5024,6 +5111,22 @@ class MolView(QtWidgets.QWidget):
 
         res_ids = getattr(self, "_residue_ids", None)
         chain_ids = getattr(self, "_residue_chain_ids", None)
+
+        # A scoped trace (``as trace, sele``) runs through only the selected
+        # residues. The mask is residue-length, the same alignment as `coords`,
+        # so the segment builder below sees a coherent subset.
+        trace_mask = self._trace_mask
+        if trace_mask is not None and len(trace_mask) == coords.shape[0]:
+            keep = np.asarray(trace_mask, dtype=bool)
+            if not keep.any():
+                return scene_objects
+            coords = coords[keep]
+            if colors is not None and len(colors) == keep.shape[0]:
+                colors = colors[keep]
+            if res_ids is not None and len(res_ids) == keep.shape[0]:
+                res_ids = res_ids[keep]
+            if chain_ids is not None and len(chain_ids) == keep.shape[0]:
+                chain_ids = chain_ids[keep]
 
         # Build segment boundaries at chain/residue-number breaks
         n = coords.shape[0]
@@ -6357,11 +6460,23 @@ class MolView(QtWidgets.QWidget):
         if self._all_atom_coords is None:
             return []
 
+        n_atoms = self._all_atom_coords.shape[0]
+        # A scoped ``labels`` (``show labels, sele``) draws only the labels of
+        # the masked atoms. ``None`` means no scoping -- every label.
+        label_mask = self._label_mask
+        if label_mask is not None:
+            lm = np.asarray(label_mask, dtype=bool)
+            if len(lm) == n_atoms:
+                labels = {
+                    idx: text for idx, text in labels.items() if lm[int(idx)]
+                }
+        if not labels:
+            return []
+
         cfg = _DISPLAY_CONFIG.get("label", {})
         colour = np.asarray(
             cfg.get("color", [1.0, 1.0, 1.0, 1.0]), dtype=float
         ).reshape(1, 4)
-        n_atoms = self._all_atom_coords.shape[0]
 
         out: list[SceneObject] = []
         for index, text in sorted(labels.items()):
@@ -6395,12 +6510,17 @@ class MolView(QtWidgets.QWidget):
 
         sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
         bonds = np.asarray(self._bond_pairs, dtype=int)
-        if self._sticks_mask is not None and bonds.size:
+        # A scoped ``lines`` (``show lines, sele``) draws only the bonds of the
+        # masked atoms. ``None`` means no scoping -- every bond. This used to
+        # read ``sticks_mask``, which coupled the two representations: hiding
+        # lines in a selection also hid sticks there, and ``hide everything,
+        # sele`` through the lines slot could light the sticks flag up.
+        lines_mask = self._lines_mask
+        if bonds.size and lines_mask is not None:
             n_atoms = self._all_atom_coords.shape[0]
-            if len(self._sticks_mask) == n_atoms and self._sticks_mask.any():
-                keep = (
-                    self._sticks_mask[bonds[:, 0]] & self._sticks_mask[bonds[:, 1]]
-                )
+            lm = np.asarray(lines_mask, dtype=bool)
+            if len(lm) == n_atoms and lm.any():
+                keep = lm[bonds[:, 0]] & lm[bonds[:, 1]]
                 bonds = bonds[keep]
 
         verts, cols = bond_line_segments(
@@ -6431,6 +6551,13 @@ class MolView(QtWidgets.QWidget):
             return []
 
         mask = unbonded_mask(self._all_atom_coords.shape[0], self._bond_pairs)
+        # A scoped ``nonbonded`` (``show nonbonded, sele``) draws crosses only
+        # on the masked atoms. ``None`` means no scoping -- every unbonded atom.
+        nonbonded_mask = self._nonbonded_mask
+        if nonbonded_mask is not None:
+            nm = np.asarray(nonbonded_mask, dtype=bool)
+            if len(nm) == mask.shape[0]:
+                mask = mask & nm
         if not mask.any():
             return []
 
@@ -6911,6 +7038,19 @@ class MolView(QtWidgets.QWidget):
             if not surf_mask.any():
                 surf_mask = None
 
+        # A scoped ``metaball`` (``show metaball, sele``) builds the blob from
+        # the masked atoms only, so the iso field is *driven by* the selection.
+        # ``None`` means no scoping -- every atom. Combined with the surface
+        # mask (when ``surface_only``) so the two keep the same indexing into
+        # the per-atom colours below.
+        metaball_mask = self._metaball_mask
+        if metaball_mask is not None:
+            mm = np.asarray(metaball_mask, dtype=bool)
+            if len(mm) == n_all:
+                surf_mask = mm if surf_mask is None else (surf_mask & mm)
+                if not surf_mask.any():
+                    return None
+
         if surf_mask is not None:
             pts_surface = pts_all[surf_mask]
             sigmas = sigmas_all[surf_mask]
@@ -7113,6 +7253,28 @@ class MolView(QtWidgets.QWidget):
 
         n_pts = pts_surface.shape[0]
 
+        # A scoped ``surface`` (``show surface, sele``) builds the surface from
+        # the masked atoms only. ``None`` means no scoping -- all atoms. The
+        # per-atom colour/radius inputs are filtered to match, so the positions
+        # stay aligned with their res ids and overrides downstream.
+        surface_mask = self._surface_mask
+        res_ids_surface = self._all_atom_res_ids
+        radii_surface = self._all_atom_radii
+        override_surface = getattr(self, "_colors_per_atom_override", None)
+        if surface_mask is not None:
+            sm = np.asarray(surface_mask, dtype=bool)
+            if len(sm) == n_pts:
+                pts_surface = pts_surface[sm]
+                if res_ids_surface is not None and len(res_ids_surface) == len(sm):
+                    res_ids_surface = res_ids_surface[sm]
+                if radii_surface is not None and len(radii_surface) == len(sm):
+                    radii_surface = radii_surface[sm]
+                if override_surface is not None and len(override_surface) == len(sm):
+                    override_surface = np.asarray(override_surface)[sm]
+                if pts_surface.size == 0:
+                    return None
+                n_pts = pts_surface.shape[0]
+
         # --- Try mesh surface via Gaussian density + marching cubes ---
         grid_spacing = float(surface_cfg.get("grid_spacing", 0.8))
         iso_value = float(surface_cfg.get("iso_value", 0.5))
@@ -7125,8 +7287,8 @@ class MolView(QtWidgets.QWidget):
         probe_radius = float(surface_cfg.get("probe_radius", 1.4))
 
         if method in ("sas", "ses"):
-            if self._all_atom_radii is not None and self._all_atom_radii.shape[0] == n_pts:
-                atom_radii = np.asarray(self._all_atom_radii, dtype=float)
+            if radii_surface is not None and radii_surface.shape[0] == n_pts:
+                atom_radii = np.asarray(radii_surface, dtype=float)
             else:
                 atom_radii = np.full(n_pts, mesh_sigma_default, dtype=float)
 
@@ -7141,8 +7303,8 @@ class MolView(QtWidgets.QWidget):
             )
             mesh_sigmas = atom_radii
         else:
-            if self._all_atom_radii is not None and self._all_atom_radii.shape[0] == n_pts:
-                sigmas = np.asarray(self._all_atom_radii, dtype=float) * mesh_sigma_factor
+            if radii_surface is not None and radii_surface.shape[0] == n_pts:
+                sigmas = np.asarray(radii_surface, dtype=float) * mesh_sigma_factor
             else:
                 sigmas = np.full(n_pts, mesh_sigma_default, dtype=float)
 
@@ -7161,6 +7323,7 @@ class MolView(QtWidgets.QWidget):
             return self._build_surface_mesh_scene(
                 verts, faces, norms, pts_surface, mesh_sigmas,
                 surface_cfg, colors_per_ca, surface_base_color, surface_alpha,
+                res_ids=res_ids_surface, override=override_surface,
             )
 
         # --- Fallback: point-cloud surface ---
@@ -7172,6 +7335,7 @@ class MolView(QtWidgets.QWidget):
 
         colors_surface = self._build_surface_atom_colors(
             pts_surface, surface_cfg, colors_per_ca, surface_base_color,
+            res_ids=res_ids_surface, override=override_surface,
         )
         if colors_surface is None:
             colors_surface = np.tile(surface_base_color, (pts_surface.shape[0], 1))
@@ -7222,31 +7386,41 @@ class MolView(QtWidgets.QWidget):
         surface_cfg: dict,
         colors_per_ca: np.ndarray | None,
         surface_base_color: np.ndarray,
+        res_ids: np.ndarray | None = None,
+        override: np.ndarray | None = None,
     ) -> np.ndarray | None:
-        """Build per-atom/point colors for the surface representation."""
+        """Build per-atom/point colors for the surface representation.
+
+        ``res_ids``/``override`` default to the object's own arrays and are
+        threaded in by ``_update_surface`` so a scoped surface (``show surface,
+        sele``) colours the filtered atom set correctly.
+        """
         surface_color_mode = str(surface_cfg.get("color_mode", "ao_gray")).lower()
         n_pts = pts_surface.shape[0]
+        res_ids = self._all_atom_res_ids if res_ids is None else res_ids
+        if override is None:
+            override = getattr(self, "_colors_per_atom_override", None)
 
         if (
             surface_color_mode == "by_residue"
-            and self._all_atom_res_ids is not None
+            and res_ids is not None
             and self._residue_ids is not None
             and colors_per_ca is not None
             and len(colors_per_ca) == len(self._residue_ids)
         ):
             color_map = {rid: colors_per_ca[i_res] for i_res, rid in enumerate(self._residue_ids)}
             colors = np.zeros((n_pts, 4), dtype=float)
-            for i_atom, rid in enumerate(self._all_atom_res_ids):
+            for i_atom, rid in enumerate(res_ids[:n_pts]):
                 colors[i_atom, :] = color_map.get(rid, self._base_color_single)
         else:
             colors = np.tile(surface_base_color, (n_pts, 1))
 
         if (
-            getattr(self, "_colors_per_atom_override", None) is not None
-            and self._all_atom_res_ids is not None
-            and len(self._colors_per_atom_override) == self._all_atom_res_ids.shape[0]
+            override is not None
+            and res_ids is not None
+            and len(override) == res_ids.shape[0]
         ):
-            ov = np.asarray(self._colors_per_atom_override, dtype=float)
+            ov = np.asarray(override, dtype=float)
             for i_atom in range(min(colors.shape[0], ov.shape[0])):
                 col_ov = ov[i_atom]
                 if np.isfinite(col_ov).all():
@@ -7265,6 +7439,8 @@ class MolView(QtWidgets.QWidget):
         colors_per_ca: np.ndarray | None,
         surface_base_color: np.ndarray,
         surface_alpha: float,
+        res_ids: np.ndarray | None = None,
+        override: np.ndarray | None = None,
     ) -> list[SceneObject] | None:
         """Build a colored mesh SceneObject for the Gaussian surface."""
         surface_ao_radius = float(surface_cfg.get("ao_radius", 4.5))
@@ -7279,6 +7455,7 @@ class MolView(QtWidgets.QWidget):
 
         atom_colors = self._build_surface_atom_colors(
             pts_surface, surface_cfg, colors_per_ca, surface_base_color,
+            res_ids=res_ids, override=override,
         )
         if atom_colors is None:
             atom_colors = np.tile(base_color, (n_pts, 1))
@@ -7412,6 +7589,18 @@ class MolView(QtWidgets.QWidget):
 
         if positions is None or positions.size == 0:
             return None
+
+        # A scoped ``dots`` (``show dots, sele``) draws dots on the masked
+        # atoms only. ``None`` means no scoping -- all atoms.
+        dots_mask = self._dots_mask
+        if dots_mask is not None:
+            dm = np.asarray(dots_mask, dtype=bool)
+            if len(dm) == positions.shape[0]:
+                positions = positions[dm]
+                if colors_local is not None and len(colors_local) == len(dm):
+                    colors_local = colors_local[dm]
+                if positions.size == 0:
+                    return None
 
         if max_points > 0 and positions.shape[0] > max_points:
             step = max(1, positions.shape[0] // max_points)

@@ -229,28 +229,34 @@ def _as_action() -> tuple[MenuEntry, ...]:
     representations; include all". Each entry routes through the ``as`` command,
     which now understands every representation ``show``/``hide`` do, so the
     submenu and the command cannot drift apart.
+
+    Every entry carries ``, {sele}`` like the Show/Hide entries do: ``as`` is
+    "show this, hide the rest", and the rest is *the selection*. Without a
+    target the entry ran ``as sticks`` with no selection at all, which switched
+    the whole molecule; from the ``sele`` row it must switch only the
+    selection.
     """
     return (
-        MenuEntry("cartoon", "as cartoon"),
-        MenuEntry("ribbon", "as cartoon",
+        MenuEntry("cartoon", "as cartoon, {sele}"),
+        MenuEntry("ribbon", "as cartoon, {sele}",
                   "Chimol draws one cartoon; set cartoon_tube_radius for a "
                   "ribbon-like tube."),
-        MenuEntry("trace", "as trace",
+        MenuEntry("trace", "as trace, {sele}",
                   "The CA trace on its own -- PyMOL's ribbon_trace."),
-        MenuEntry("lines", "as lines", _LINES_NOTE),
-        MenuEntry("wire", "as lines", _LINES_NOTE),
-        MenuEntry("nonbonded", "as nonbonded", _NB_NOTE),
+        MenuEntry("lines", "as lines, {sele}", _LINES_NOTE),
+        MenuEntry("wire", "as lines, {sele}", _LINES_NOTE),
+        MenuEntry("nonbonded", "as nonbonded, {sele}", _NB_NOTE),
         SEP,
-        MenuEntry("sticks", "as sticks"),
-        MenuEntry("licorice", "as sticks"),
-        MenuEntry("atoms", "as atoms"),
-        MenuEntry("spheres", "as atoms"),
+        MenuEntry("sticks", "as sticks, {sele}"),
+        MenuEntry("licorice", "as sticks, {sele}"),
+        MenuEntry("atoms", "as atoms, {sele}"),
+        MenuEntry("spheres", "as atoms, {sele}"),
         SEP,
-        MenuEntry("dots", "as dots"),
-        MenuEntry("surface", "as surface"),
-        MenuEntry("metaball", "as metaball",
+        MenuEntry("dots", "as dots, {sele}"),
+        MenuEntry("surface", "as surface, {sele}"),
+        MenuEntry("metaball", "as metaball, {sele}",
                   "A blended isosurface over the atoms."),
-        MenuEntry("labels", "as labels"),
+        MenuEntry("labels", "as labels, {sele}"),
     )
 
 

@@ -43,6 +43,13 @@ _REPRESENTATION_FIELDS: tuple[str, ...] = (
     "cartoon_mask",
     "ball_mask",
     "sticks_mask",
+    "trace_mask",
+    "lines_mask",
+    "nonbonded_mask",
+    "label_mask",
+    "dots_mask",
+    "surface_mask",
+    "metaball_mask",
     "sidechains_visible",
 )
 
