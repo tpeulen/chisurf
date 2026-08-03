@@ -723,7 +723,11 @@ def saturated_curve_shape(
         before the ``1/N`` normalisation and baseline the caller applies.
     """
     tau_s = np.atleast_1d(np.asarray(tau_s, dtype=float))
-    if power_W <= 0.0:
+    k_exc_0 = excitation_rate_peak(power_W, extinction, w0, wavelength_m) if power_W > 0 else 0.0
+    if k_exc_0 <= 0.0:
+        # No excitation anywhere -- zero power, or a wavelength where the dye
+        # does not absorb. The scheme cannot be populated, so there is nothing to
+        # integrate; the unsaturated Gaussian is the exact limit.
         g = gaussian_g_diff(tau_s, w0, z0, D)
     else:
         r = np.linspace(0.0, GRID_EXTENT_WAISTS * w0, n_r)
@@ -740,12 +744,7 @@ def saturated_curve_shape(
         g = fcs_numerical_g_diff(tau_s, r, z, profile, D, v_ref=v_0, profile_b=profile_b)
     if include_bunching:
         g = g * compute_bunching_factor(
-            excitation_rate_peak(power_W, extinction, w0, wavelength_m),
-            dark_matrix,
-            exc_matrix,
-            brightness,
-            tau_s,
-            brightness_b=brightness_b,
+            k_exc_0, dark_matrix, exc_matrix, brightness, tau_s, brightness_b=brightness_b
         )
     return g
 

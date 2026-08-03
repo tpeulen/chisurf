@@ -323,3 +323,17 @@ def test_mismatched_brightness_length_is_an_error():
     """A brightness vector that does not match the scheme must not be broadcast."""
     with pytest.raises(ValueError, match="brightness"):
         emission_profile(np.array([1e7]), DARK_R6G, EXC_R6G, np.array([0.0, 1.0]))
+
+
+def test_no_absorption_at_the_excitation_wavelength_is_the_unsaturated_limit():
+    """eps = 0 is 'the dye does not absorb here', not 'the curve is zero'.
+
+    Reading eps off a real spectrum makes this reachable: excite a dye far from
+    its maximum and eps goes to zero, at which point the scheme cannot be
+    populated and the analytical Gaussian is the exact limit.
+    """
+    tau = np.logspace(-7, -2, 30)
+    g = saturated_curve_shape(
+        tau, 5e-3, 0.0, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G, include_bunching=True
+    )
+    np.testing.assert_allclose(g, gaussian_g_diff(tau, W0, Z0, D_R6G), rtol=1e-12)

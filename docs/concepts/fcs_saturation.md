@@ -37,10 +37,14 @@ the diagonal set to minus the column sum, so `K(r) = K_dark + k_exc(r) K_exc` is
 a proper master-equation generator.
 
 **No state is special.** Two states — a ground state and one emitting excited
-state — is the minimum and the default. A triplet, a cis isomer, a photobleached
-state, a FRET partner: each is simply another state with its own rates and its
-own `Q`. The one physical constraint is that a state which cannot be reached by
-absorbing a photon must have `Q = 0`; a ground state that emits would glow
+state — is the minimum; a new scheme starts as the three-state singlet/triplet
+case because that is what most dyes do, but that is a *default*, not an
+assumption. A cis isomer, a photobleached state, a FRET partner: each is simply
+another state with its own rates and its own `Q`, and the solver treats state 3
+no differently from state 6.
+
+The one physical constraint is that a state which cannot be reached by absorbing
+a photon must have `Q = 0`; a ground state that emits would glow
 outside the focus, and every volume integral below would then be set by the size
 of the integration grid rather than by the photophysics. ChiSurf warns when a
 scheme does that.
@@ -64,7 +68,12 @@ Two details matter more than they look:
 * **`ε` must be the value at the excitation wavelength**, not the catalogued
   peak. Exciting a dye 70 nm off its maximum can mean a factor of hundreds.
   ChiSurf reads `ε(λ)` off the stored absorption spectrum when a dye is picked
-  from the [MMFDB](../../okf/architecture/mmfdb.md) repository.
+  from the [MMFDB](../../okf/architecture/mmfdb.md) repository (the chooser is
+  type-to-search over ~700 entries, matching any part of the name). Because that
+  value is read rather than typed, it is *not* floored at a "sensible" minimum:
+  off-maximum excitation legitimately gives a few hundred M⁻¹cm⁻¹ or less, and
+  `ε = 0` — a wavelength the dye does not absorb at — simply returns the
+  unsaturated Gaussian, since a scheme that cannot be populated cannot saturate.
 
 ### From the scheme to G(τ)
 

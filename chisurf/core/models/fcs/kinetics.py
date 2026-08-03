@@ -194,9 +194,17 @@ class KineticSaturationTerms(FittingParameterGroup):
     that is numerically integrated into the FCS autocorrelation.
     """
 
-    #: Number of states a freshly created scheme starts with: a ground state and
-    #: one excited state, which is the least a fluorophore can have.
-    DEFAULT_N_STATES = 2
+    #: A freshly created scheme starts as ground / excited / dark -- the triplet
+    #: case, because it is what most dyes actually do and starting there saves
+    #: the common setup. It is a *default*, not an assumption: nothing in this
+    #: class or in the saturation core treats state 3 as special, and the scheme
+    #: can be resized, relabelled or rewired into anything.
+    DEFAULT_N_STATES = 3
+
+    #: Labels a default-sized scheme starts with, index by index. A scheme that
+    #: means something else says so by setting ``_custom_state_labels``; states
+    #: beyond this list fall back to their number.
+    DEFAULT_STATE_LABELS = ("S0", "S1", "T1")
 
     def __init__(self, name: str = "kinetic_saturation", **kwargs):
         """Initialize the kinetic saturation parameter group."""
@@ -215,7 +223,11 @@ class KineticSaturationTerms(FittingParameterGroup):
         self._extinction = FittingParameter(
             value=80000.0,
             name="extinction",
-            lb=1e3,
+            # Not floored at a "sensible" 1e3: this is epsilon *at the excitation
+            # wavelength*, and exciting a dye well off its maximum legitimately
+            # gives a few hundred or less. A floor here would silently substitute
+            # 1000 for a value read off a real spectrum.
+            lb=0.0,
             ub=1e6,
             bounds_on=True,
             fixed=True,
@@ -338,11 +350,14 @@ class KineticSaturationTerms(FittingParameterGroup):
         self._custom_state_names: list[str] | None = None
         self._dye_name: str = ""
 
-        # The minimal scheme every fluorophore has: state 1 absorbs into state 2,
-        # which decays back radiatively. Rates are stored in `dark_unit` (1/us),
-        # so 250 /us is a 4 ns fluorescence lifetime.
+        # A rhodamine-like triplet scheme to start from: state 1 absorbs into
+        # state 2, which decays radiatively (4 ns) or crosses into the dark state
+        # 3 (~1 % yield) that empties on a microsecond timescale. Rates are stored
+        # in `dark_unit` (1/us), so 250 /us is a 4 ns lifetime.
         self.exc.rates_by_name()["sigma1_2"].value = 1.0
         self.dark.rates_by_name()["k2_1"].value = 250.0
+        self.dark.rates_by_name()["k2_3"].value = 2.5
+        self.dark.rates_by_name()["k3_1"].value = 0.5
 
     power = property(lambda s: float(s._power.value) * 1e-3)  # mW to W
     pwr = property(lambda s: float(s._power.value) * 1e-3)    # mW to W alias
@@ -388,11 +403,14 @@ class KineticSaturationTerms(FittingParameterGroup):
         (that is what a scheme JSON's ``state_labels`` does); the model itself
         never assumes a photophysical meaning for a state's position.
         """
-        labels = getattr(self, "_custom_state_labels", None)
-        n = self.n_states
-        if not labels or len(labels) < n:
-            labels = [str(i + 1) for i in range(n)]
-        return [str(lab).split(" ")[0].split("(")[0].strip() for lab in labels[:n]]
+        labels = getattr(self, "_custom_state_labels", None) or self.DEFAULT_STATE_LABELS
+        out = []
+        for i in range(self.n_states):
+            # Per index, not all-or-nothing: growing a triplet scheme to four
+            # states must keep S0/S1/T1 named and only number the new one.
+            raw = labels[i] if i < len(labels) else str(i + 1)
+            out.append(str(raw).split(" ")[0].split("(")[0].strip() or str(i + 1))
+        return out
 
     @property
     def parameters(self) -> list[FittingParameter]:
@@ -505,13 +523,21 @@ class KineticSaturationTerms(FittingParameterGroup):
         """
         from chisurf.core.fluorescence.fret.dyes import extinction_at
 
-        self._dye_name = str(name or "")
+        wanted = str(name or "").strip()
         applied: dict[str, str] = {}
-        if not self._dye_name:
+        if not wanted:
+            self._dye_name = ""
             return applied
 
-        epsilon = extinction_at(self._dye_name, self.wavelength_nm)
-        if epsilon is not None and epsilon > 0.0:
+        epsilon = extinction_at(wanted, self.wavelength_nm)
+        if epsilon is None:
+            # The chooser is type-to-search, so a half-typed or mistyped name
+            # arrives here routinely. Keep the dye that *is* applied rather than
+            # recording a name whose epsilon was never read.
+            return applied
+
+        self._dye_name = wanted
+        if epsilon > 0.0:
             self._extinction.value = float(epsilon)
             applied["extinction"] = "mmfdb:spectra"
 

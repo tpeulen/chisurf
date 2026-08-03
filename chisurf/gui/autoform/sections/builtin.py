@@ -503,6 +503,15 @@ class ChoiceWidget(_BoundControlMixin, QtWidgets.QWidget):
             if section.editable:
                 self.combo.setEditable(True)
                 self.combo.setInsertPolicy(QtWidgets.QComboBox.NoInsert)
+                # Qt's default completer matches on the *prefix*, which is no help
+                # in a list of several hundred entries where the distinguishing
+                # part is in the middle ("647" in "Alexa Fluor 647"). Match on any
+                # substring, case-insensitively, and pop the filtered list up.
+                completer = QtWidgets.QCompleter(self.combo.model(), self.combo)
+                completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+                completer.setFilterMode(QtCore.Qt.MatchContains)
+                completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
+                self.combo.setCompleter(completer)
             self._populate_combo(current)
             self.combo.currentIndexChanged.connect(self._on_index_changed)
             if section.editable:

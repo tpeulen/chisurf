@@ -48,7 +48,8 @@
               "attr": "dye",
               "label": "Dye (MMFDB)",
               "options_source": "dye_names",
-              "description": "<html><b>Read ε from the dye repository</b><br/>Takes the molar extinction coefficient <i>at the excitation wavelength</i> from the stored absorption spectrum. The catalogued ε is the peak value — exciting off the maximum can deliver a small fraction of it, so this matters. Leave empty to type ε in by hand.</html>"
+              "description": "<html><b>Read ε from the dye repository</b><br/>Takes the molar extinction coefficient <i>at the excitation wavelength</i> from the stored absorption spectrum. The catalogued ε is the peak value — exciting off the maximum can deliver a small fraction of it, so this matters. Leave empty to type ε in by hand.</html> Type to search — matching is on any part of the name, so \"647\" finds every 647 dye.",
+              "editable": true
             },
             {
               "type": "choice",

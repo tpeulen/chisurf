@@ -45,9 +45,10 @@ Nothing here is specific to triplets. A scheme is three arrays:
   local excitation rate.
 * **Q** — the relative brightness of each state.
 
-Two states (ground + excited) is the minimum; up to six are supported.
-Diagonals are derived from the column sums and stay read-only, so what you type
-is always a valid master-equation generator.
+Two states (ground + excited) is the minimum and six the maximum; a new scheme
+starts as the three-state singlet/triplet case because that is what most dyes
+do — a default, not an assumption. Diagonals are derived from the column sums and
+stay read-only, so what you type is always a valid master-equation generator.
 
 **A state that cannot absorb a photon must have Q = 0.** A ground state with
 `Q > 0` would emit outside the focus, and the effective volume would then be set
@@ -61,7 +62,7 @@ calculator warns when a scheme does this.
 | Field | Meaning |
 | --- | --- |
 | **Excitation λ** | Laser wavelength (nm). Sets the photon energy — the same power delivers 33 % more photons at 650 nm than at 488 nm. |
-| **Dye (MMFDB)** | Reads ε **at the excitation wavelength** off the stored absorption spectrum. |
+| **Dye (MMFDB)** | Type-to-search over ~700 entries, matching any part of the name. Reads ε **at the excitation wavelength** off the stored absorption spectrum. |
 | **Laser Power** | Total average power at the objective back aperture (mW). |
 | **w_r, w_z** | 1/e² beam waists (nm) — calibration, from a dye standard at low power. |
 | **D** | Diffusion coefficient (µm²/s). |

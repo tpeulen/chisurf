@@ -23,8 +23,9 @@ Start from a shipped scheme in the **Scheme** dropdown:
 | Oxazine 1 (3-state, triplet) | 3 | A red dye with a higher triplet yield |
 | Cyanine 5 (4-state, isomer + triplet) | 4 | A dye whose dark state relaxes on the *diffusion* timescale |
 
-A preset is a starting point, not a constraint: every rate, cross-section and
-brightness stays editable, and **States** goes up to six.
+A new scheme starts as the three-state singlet/triplet case, which is what most
+dyes do. A preset is a starting point, not a constraint: every rate,
+cross-section and brightness stays editable, and **States** goes up to six.
 
 ## 2. Set the optics — wavelength before ε
 
@@ -32,11 +33,12 @@ Three fields, in this order:
 
 1. **Excitation λ** — the laser line, in nm. It sets how many photons a given
    power delivers.
-2. **Dye (MMFDB)** — pick your dye and the molar extinction coefficient is read
-   **at that wavelength** off the stored absorption spectrum. This is the step
-   people skip: the catalogued ε is the *peak* value, and exciting off the
-   maximum can mean a factor of hundreds. Leave the box empty to type ε in
-   yourself.
+2. **Dye (MMFDB)** — the box is type-to-search over ~700 entries and matches any
+   part of the name, so `647` finds every 647 dye and `cherry` finds
+   `LSSmCherry1`. Pick one and the molar extinction coefficient is read **at that
+   wavelength** off the stored absorption spectrum. This is the step people skip:
+   the catalogued ε is the *peak* value, and exciting off the maximum can mean a
+   factor of hundreds. Leave the box empty to type ε in yourself.
 3. **Laser Power** — total average power at the objective back aperture, in mW.
 
 Then set `w_r`, `w_z` and `D` in the **Optics & measurement** table (next to the

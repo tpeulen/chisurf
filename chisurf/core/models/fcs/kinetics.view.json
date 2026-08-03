@@ -7,31 +7,120 @@
       "collapsible": true,
       "collapsed": false,
       "sections": [
-        {"type": "choice", "attr": "saturation_mode", "label": "Mode",
-         "options": ["full", "fast"], "labels": ["Full", "Fast"],
-         "description": "Full: numerical volume integration, the amplitude carries the saturation volume expansion V0/Veff. Fast: Gaussian volume with the photokinetic bunching factor only — no volume expansion, so do not read N from a high-power fit made in this mode."},
-        {"type": "choice", "attr": "saturation.dye", "label": "Dye", "options_source": "saturation.dye_names", "description": "Read the molar extinction coefficient at the excitation wavelength from the MMFDB dye repository. Leave empty to type epsilon in yourself."},
-        {"type": "value", "attr": "saturation.n_states", "label": "States", "kind": "int", "minimum": 2, "maximum": 6, "rebuild_on_change": true, "description": "Number of states in the photochemical scheme. Two is the minimum (ground + excited); add a state for every dark, isomeric or transferred state the dye has."},
         {
-          "type": "custom", "key": "rate_matrix", "target": "saturation.dark.matrix",
-          "options": {"size_attr": "saturation.n_states", "labels_attr": "saturation.state_labels", "minimum": 0.0, "decimals": 2, "unit": "1/µs", "popup": false, "title": "Dark State Rates (K_dark)"}
+          "type": "choice",
+          "attr": "saturation_mode",
+          "label": "Mode",
+          "options": [
+            "full",
+            "fast"
+          ],
+          "labels": [
+            "Full",
+            "Fast"
+          ],
+          "description": "Full: numerical volume integration, the amplitude carries the saturation volume expansion V0/Veff. Fast: Gaussian volume with the photokinetic bunching factor only — no volume expansion, so do not read N from a high-power fit made in this mode."
         },
         {
-          "type": "custom", "key": "rate_matrix", "target": "saturation.exc.matrix",
-          "options": {"size_attr": "saturation.n_states", "maximum": 1.0, "minimum": 0.0, "decimals": 2, "unit": "cross-section", "popup": false, "title": "Excitation Cross-sections (K_exc)"}
+          "type": "choice",
+          "attr": "saturation.dye",
+          "label": "Dye",
+          "options_source": "saturation.dye_names",
+          "description": "Read the molar extinction coefficient at the excitation wavelength from the MMFDB dye repository. Leave empty to type epsilon in yourself. Type to search — matching is on any part of the name, so \"647\" finds every 647 dye.",
+          "editable": true
         },
-        {"type": "parameter_group_table", "target": "saturation.brightness", "title": "State Brightness (Q)", "collapsible": true, "collapsed": false},
-        {"type": "parameter_group_table", "target": "saturation", "title": "Parameters", "collapsible": false},
-        {"type": "info", "source": "saturation.status_html", "description": "What the model is computing right now: the peak excitation rate the scheme is being driven at, or a note that P = 0 leaves you with the analytical Gaussian."}
+        {
+          "type": "value",
+          "attr": "saturation.n_states",
+          "label": "States",
+          "kind": "int",
+          "minimum": 2,
+          "maximum": 6,
+          "rebuild_on_change": true,
+          "description": "Number of states in the photochemical scheme. Two is the minimum (ground + excited); add a state for every dark, isomeric or transferred state the dye has."
+        },
+        {
+          "type": "custom",
+          "key": "rate_matrix",
+          "target": "saturation.dark.matrix",
+          "options": {
+            "size_attr": "saturation.n_states",
+            "labels_attr": "saturation.state_labels",
+            "minimum": 0.0,
+            "decimals": 2,
+            "unit": "1/µs",
+            "popup": false,
+            "title": "Dark State Rates (K_dark)"
+          }
+        },
+        {
+          "type": "custom",
+          "key": "rate_matrix",
+          "target": "saturation.exc.matrix",
+          "options": {
+            "size_attr": "saturation.n_states",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "decimals": 2,
+            "unit": "cross-section",
+            "popup": false,
+            "title": "Excitation Cross-sections (K_exc)"
+          }
+        },
+        {
+          "type": "parameter_group_table",
+          "target": "saturation.brightness",
+          "title": "State Brightness (Q)",
+          "collapsible": true,
+          "collapsed": false
+        },
+        {
+          "type": "parameter_group_table",
+          "target": "saturation",
+          "title": "Parameters",
+          "collapsible": false
+        },
+        {
+          "type": "info",
+          "source": "saturation.status_html",
+          "description": "What the model is computing right now: the peak excitation rate the scheme is being driven at, or a note that P = 0 leaves you with the analytical Gaussian."
+        }
       ]
     }
   ],
   "plots": [
-    {"key": "line", "options": {"scale_x": "log", "d_scaley": "lin", "r_scaley": "lin", "x_label": "t_c (ms)", "y_label": "G_c(t_c)"}},
-    {"key": "state_scheme", "options": {"target": "saturation", "unit_attr": "dark_unit"}},
-    {"key": "fit_table", "options": {}},
-    {"key": "fit_info", "options": {}},
-    {"key": "parameter_scan", "options": {}},
-    {"key": "residual", "options": {}}
+    {
+      "key": "line",
+      "options": {
+        "scale_x": "log",
+        "d_scaley": "lin",
+        "r_scaley": "lin",
+        "x_label": "t_c (ms)",
+        "y_label": "G_c(t_c)"
+      }
+    },
+    {
+      "key": "state_scheme",
+      "options": {
+        "target": "saturation",
+        "unit_attr": "dark_unit"
+      }
+    },
+    {
+      "key": "fit_table",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    },
+    {
+      "key": "residual",
+      "options": {}
+    }
   ]
 }
