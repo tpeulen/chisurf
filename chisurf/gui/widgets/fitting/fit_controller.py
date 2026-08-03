@@ -947,7 +947,10 @@ class FittingControllerWidget(Controller):
             except Exception:
                 dialog = None
 
-            def _on_progress(done: int, total: int, chi2=None, chi2r=None, **_kwargs) -> None:
+            def _on_progress(
+                done: int, total: int, chi2=None, chi2r=None,
+                stage=None, n_stages=None, **_kwargs
+            ) -> None:
                 """Update the progress dialog from least-squares callbacks.
 
                 The callback receives the number of completed residual
@@ -992,8 +995,16 @@ class FittingControllerWidget(Controller):
                         frac = 1.0
                     value = int(round(100.0 * frac))
                 # Build an informative status line including objective values
-                # when available.
-                parts = [f"eval {done}/{int(total) if total else '?'}"]
+                # when available. A group reports a *fraction* rather than an
+                # evaluation count -- its stages have no common unit -- so
+                # spelling it "eval 267/1000" would be a made-up number.
+                if n_stages:
+                    # A group reports a fraction, not evaluations.
+                    parts = [f"{value}%"]
+                    if int(n_stages) > 1:
+                        parts.insert(0, f"fit {int(stage)}/{int(n_stages)}")
+                else:
+                    parts = [f"eval {done}/{int(total) if total else '?'}"]
                 if done > 0 and total:
                     elapsed = time.perf_counter() - t0
                     remaining = (elapsed / float(done)) * (float(total) - done)
@@ -1025,12 +1036,24 @@ class FittingControllerWidget(Controller):
 
             # Run the fit synchronously, allowing the optimizer to invoke
             # the progress callback from within the residual evaluations.
+            #
+            # The callback is installed *on the fit* rather than passed to
+            # ``run_fit``: the call goes through the JSON-RPC facade, which
+            # carries JSON and cannot carry a Qt closure, so the service calls
+            # ``fit.run()`` with no arguments. Attaching it to the fit is what
+            # makes the bar move at all.
             try:
                 fc = get_fitting_client()
                 if fc is not None:
-                    fc.run_fit(
-                        fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
-                    )
+                    with self.fit.reporting_progress(_on_progress):
+                        fc.run_fit(
+                            fit_uid=str(getattr(self.fit, "unique_identifier", "") or ""),
+                        )
+                    if getattr(self.fit, "last_run_cancelled", False):
+                        # The optimiser raised, ``Fit.run`` re-raised, and the
+                        # service turned it into an error result -- so a
+                        # cancelled fit arrives here looking like a clean one.
+                        raise OptimizationCancelled()
             except OptimizationCancelled:
                 cs.logging.info("Fitting cancelled by user.")
                 success = False

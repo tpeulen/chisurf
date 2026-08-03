@@ -9,6 +9,7 @@ than fast.
 from __future__ import annotations
 
 from chisurf.core.math.optimization.leastsqbound import (
+    _MAX_RUNNING_RATIO,
     _expected_evaluations,
     _grow_budget,
 )
@@ -54,6 +55,22 @@ def test_growth_never_makes_the_reported_fraction_go_backwards():
     assert all(b >= a for a, b in zip(fractions, fractions[1:]))
     assert max(fractions) <= 1.0
     assert fractions[-1] > 0.9
+
+
+def test_a_running_fit_never_reports_a_full_bar():
+    """100% is reserved for the completion report.
+
+    Without this floor the two rules collide: once a fit reaches 100% the
+    retreat guard pins it there for every remaining evaluation, and a real
+    four-parameter lifetime fit spent its last 110 evaluations that way. A bar
+    that says "done" while the fit runs on is one the user learns to ignore.
+    """
+    eff_total, last_ratio = 30, 0.0
+    for nfev in range(1, 400):
+        eff_total = _grow_budget(nfev, eff_total, 0, last_ratio)
+        fraction = nfev / eff_total
+        assert fraction <= _MAX_RUNNING_RATIO + 1e-9, f"full bar at nfev={nfev}"
+        last_ratio = max(last_ratio, fraction)
 
 
 def test_growth_still_respects_the_hard_limit():

@@ -152,6 +152,12 @@ parameter to a internal (unconstrained) parameter.
 #: bar stranded at a third.
 _EXPECTED_ITERATIONS = 6
 
+#: The most a *running* fit may report. A full bar is reserved for the
+#: completion report, so "converged" stays distinguishable from "outran the
+#: estimate and is still going" -- which is the difference between a bar the
+#: user can trust and one they learn to ignore.
+_MAX_RUNNING_RATIO = 0.99
+
 
 def _expected_evaluations(n: int, maxfev: int) -> int:
     """Return an evaluation budget a progress bar can usefully report against.
@@ -191,8 +197,13 @@ def _grow_budget(nfev: int, eff_total: int, maxfev: int, last_ratio: float = 0.0
 
     So the new budget is chosen to keep the fraction **non-decreasing**: it is
     never more than ``nfev / last_ratio``, which reproduces the previous fraction
-    exactly, and the bar therefore stalls rather than reversing. It remains bounded
-    by the optimiser's own hard limit.
+    exactly, and the bar therefore stalls rather than reversing.
+
+    The budget is also always large enough to keep the reported fraction under
+    :data:`_MAX_RUNNING_RATIO`. Without that floor the two rules collide: once a
+    fit reaches 100% the retreat guard pins it there for every remaining
+    evaluation, and a real four-parameter lifetime fit spent its last 110
+    evaluations that way.
 
     Parameters
     ----------
@@ -209,13 +220,60 @@ def _grow_budget(nfev: int, eff_total: int, maxfev: int, last_ratio: float = 0.0
     -------
     int
     """
-    if nfev <= eff_total:
+    # ceil(nfev / _MAX_RUNNING_RATIO), in integer arithmetic.
+    needed = -(-int(nfev) * 100 // int(_MAX_RUNNING_RATIO * 100))
+    if eff_total >= needed:
         return eff_total
-    limit = int(maxfev) if maxfev and maxfev > 0 else 200 * nfev
-    grown = max(eff_total + 1, int(nfev * 1.5))
+    grown = max(eff_total + 1, needed, int(nfev * 1.5))
     if last_ratio > 0.0:
-        grown = min(grown, max(nfev, int(nfev / last_ratio)))
+        grown = min(grown, max(needed, int(nfev / last_ratio)))
+    # The hard limit wins over the ratio floor: an estimate past what the
+    # optimiser will ever do could never be reached. The two only conflict when
+    # ``nfev`` has already passed ``maxfev``, which MINPACK does not allow.
+    limit = int(maxfev) if maxfev and maxfev > 0 else 200 * max(1, nfev)
     return int(min(limit, grown))
+
+
+def _report_progress(callback, nfev: int, total: int, chi2, chi2r) -> None:
+    """Report one evaluation to *callback*, whatever signature it has.
+
+    The extra ``chi2`` / ``chi2r`` keywords are a convenience for callers that
+    want to show the objective in the label -- but the *documented* signature is
+    ``callback(evaluated, total)``, and a callback written to it raises
+    ``TypeError`` on the keywords. That landed in a blanket ``except Exception``
+    and was swallowed, so a correctly written callback silently never fired and
+    the progress bar sat at zero for the whole fit. Offer the extras, fall back
+    to the documented call.
+
+    Parameters
+    ----------
+    callback : callable
+        The progress sink.
+    nfev : int
+        Evaluations completed.
+    total : int
+        Estimated evaluation budget.
+    chi2, chi2r : float or None
+        Objective values, when they could be computed.
+
+    Raises
+    ------
+    OptimizationCancelled
+        If the callback raises it -- that is how a caller aborts a fit, so it
+        must not be treated as a callback failure.
+    """
+    try:
+        try:
+            callback(nfev, total, chi2=chi2, chi2r=chi2r)
+        except TypeError:
+            # Either the callback takes only (done, total), or it raised a
+            # TypeError of its own; the retry distinguishes them by outcome.
+            callback(nfev, total)
+    except OptimizationCancelled:
+        raise
+    except Exception:
+        # A broken progress bar must not take the optimisation down with it.
+        pass
 
 
 def leastsqbound(
@@ -452,21 +510,14 @@ References
                 nfev += 1
                 eff_total = _grow_budget(nfev, eff_total, maxfev, last_ratio)
                 if eff_total and eff_total > 0:
-                    last_ratio = max(last_ratio, min(1.0, nfev / eff_total))
+                    last_ratio = max(last_ratio, min(_MAX_RUNNING_RATIO, nfev / eff_total))
                     chi2_val, chi2r_val = _compute_objective(res, f_args)
-                    try:
-                        progress_callback(nfev, eff_total, chi2=chi2_val, chi2r=chi2r_val)
-                    except OptimizationCancelled:
-                        # Propagate explicit cancellation so callers can
-                        # distinguish it from benign callback failures.
-                        raise
-                    except Exception:
-                        # Ignore unexpected callback errors to preserve the
-                        # original robustness of the optimizer wrapper.
-                        pass
+                    _report_progress(
+                        progress_callback, nfev, eff_total, chi2_val, chi2r_val
+                    )
                 return res
 
-            return leastsq(
+            result = leastsq(
                 _wrapped_func,
                 x0,
                 args,
@@ -481,6 +532,11 @@ References
                 factor,
                 diag,
             )
+            # The estimate is deliberately generous, so a fit that converges
+            # early would otherwise leave the bar stranded partway. Reporting
+            # the budget as met at the end is not a fudge: the fit is finished.
+            _report_progress(progress_callback, nfev, nfev, None, None)
+            return result
         return leastsq(
             func,
             x0,
@@ -562,18 +618,11 @@ References
                 nfev += 1
                 eff_total = _grow_budget(nfev, eff_total, maxfev, last_ratio)
                 if eff_total and eff_total > 0:
-                    last_ratio = max(last_ratio, min(1.0, nfev / eff_total))
+                    last_ratio = max(last_ratio, min(_MAX_RUNNING_RATIO, nfev / eff_total))
                     chi2_val, chi2r_val = _compute_objective(res, f_args)
-                    try:
-                        progress_callback(nfev, eff_total, chi2=chi2_val, chi2r=chi2r_val)
-                    except OptimizationCancelled:
-                        # Allow callers to abort the optimization cleanly
-                        # from within a progress callback.
-                        raise
-                    except Exception:
-                        # Preserve historical behavior for other callback
-                        # exceptions by ignoring them.
-                        pass
+                    _report_progress(
+                        progress_callback, nfev, eff_total, chi2_val, chi2r_val
+                    )
                 return res
         else:
             wfunc = _base_wfunc
@@ -591,6 +640,9 @@ References
             factor,
             diag,
         )
+        if progress_callback is not None:
+            # See the unbounded branch: a converged fit fills its own bar.
+            _report_progress(progress_callback, nfev, nfev, None, None)
     else:
         if col_deriv:
             _check_func('leastsq', 'Dfun', Dfun, x0, args, n, (n, m))

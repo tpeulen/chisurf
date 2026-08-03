@@ -5,6 +5,7 @@ import chisurf.logging
 from chisurf import typing
 from collections import deque
 
+import contextlib
 import inspect
 import os
 import re
@@ -88,6 +89,63 @@ def _raw_fit_name(f) -> str:
     return f"{model_name} - {data_name}"
 
 
+class _StagedProgress:
+    """One progress bar shared by several optimisations run back to back.
+
+    A :class:`FitGroup` runs each member fit and then the global fit, and each
+    of those counts its own evaluations from zero. Passed straight through, the
+    bar would fill and reset once per member. This maps stage *k* of *n* onto
+    the sub-range ``[k/n, (k+1)/n)``, and never reports a fraction below one it
+    has already reported -- a bar going backwards reads as a bug, whereas one
+    that pauses only reads as slow.
+
+    Parameters
+    ----------
+    callback : callable or None
+        Sink called as ``callback(done, total)``. ``None`` makes every method a
+        no-op, so callers need not branch.
+    n_stages : int
+        How many optimisations share the bar.
+    """
+
+    def __init__(self, callback, n_stages: int):
+        self._callback = callback
+        self.n_stages = max(1, int(n_stages))
+        self._stage = 0
+        self._reported = 0.0
+
+    def stage(self, index: int):
+        """Return the callback to hand to the *index*-th optimisation."""
+        self._stage = max(0, min(self.n_stages - 1, int(index)))
+        return None if self._callback is None else self._report
+
+    def _report(self, done, total, **kwargs) -> None:
+        """Map one stage's ``(done, total)`` onto the shared bar.
+
+        ``chi2`` / ``chi2r`` are forwarded to the sink unchanged: they describe
+        the stage that is running, and a group has no single objective to
+        replace them with.
+        """
+        try:
+            within = float(done) / float(total) if total else 0.0
+        except (TypeError, ValueError, ZeroDivisionError):
+            within = 0.0
+        within = min(1.0, max(0.0, within))
+        self._reported = max(self._reported, (self._stage + within) / self.n_stages)
+        # The reported pair is a *fraction* in permille, not an evaluation
+        # count -- the stages have no common unit -- so the stage is passed
+        # alongside for a caller that labels its bar.
+        value = int(round(1000.0 * self._reported))
+        # Cancellation travels out through this call, so it is deliberately not
+        # wrapped: swallowing here would leave a pressed Cancel button inert.
+        try:
+            self._callback(
+                value, 1000, stage=self._stage + 1, n_stages=self.n_stages, **kwargs
+            )
+        except TypeError:
+            self._callback(value, 1000)
+
+
 class Fit(cs.core.base.Base):
     """Fit of a single data set with a single model.
 
@@ -97,6 +155,61 @@ class Fit(cs.core.base.Base):
     weighted residuals, chi² statistics, and running a local least-squares
     optimization.
     """
+
+    #: Process-local progress sink, installed by :meth:`reporting_progress`.
+    #:
+    #: A caller that wants progress cannot simply pass a callback to
+    #: :meth:`run`: the GUI reaches its fits through the JSON-RPC facade, and a
+    #: Python callable does not cross that boundary -- the service calls
+    #: ``fit.run()`` with no arguments. So the callback is attached to the *fit*
+    #: rather than threaded through the call, which works whenever the caller
+    #: and the fit are the same object (local and hybrid modes, i.e. the GUI)
+    #: and is simply absent when they are not (a genuinely remote fit reports no
+    #: progress rather than failing).
+    #:
+    #: It is a class attribute, so it never enters ``__dict__`` and never
+    #: reaches :meth:`__getstate__` -- a live Qt closure must not be pickled
+    #: into a saved fit.
+    _progress_callback = None
+
+    #: Whether the last :meth:`run` was stopped by the user. Cancellation
+    #: travels *out* the same way progress travels in: raising through the RPC
+    #: service turns it into a generic error result, indistinguishable from a
+    #: real failure, so the fit records it and the caller reads it back.
+    _last_run_cancelled = False
+
+    @contextlib.contextmanager
+    def reporting_progress(self, callback):
+        """Report optimiser progress to *callback* for the duration of the block.
+
+        Parameters
+        ----------
+        callback : callable or None
+            Called as ``callback(evaluated, total)`` from inside the residual
+            evaluations. ``None`` installs nothing, so a caller does not have to
+            branch on whether it has a sink.
+
+        Examples
+        --------
+        ::
+
+            with fit.reporting_progress(on_progress):
+                api.run_fit(fit_uid=fit.unique_identifier)
+        """
+        previous = self.__dict__.get("_progress_callback")
+        self._progress_callback = callback
+        try:
+            yield self
+        finally:
+            if previous is None:
+                self.__dict__.pop("_progress_callback", None)
+            else:
+                self._progress_callback = previous
+
+    @property
+    def last_run_cancelled(self) -> bool:
+        """Whether the most recent :meth:`run` was cancelled by the user."""
+        return bool(self._last_run_cancelled)
 
     @property
     def fit_idx(self) -> int | None:
@@ -1045,7 +1158,7 @@ class Fit(cs.core.base.Base):
         self.model.find_parameters(
             parameter_type=cs.core.fitting.parameter.FittingParameter
         )
-        progress_callback = kwargs.get("progress_callback")
+        progress_callback = kwargs.get("progress_callback") or self._progress_callback
         cancelled = False
         try:
             # The structure is fixed for the whole optimisation -- parameters
@@ -1788,16 +1901,22 @@ class FitGroup(Fit):
         if local_first is None:
             local_first = cs.core.settings.optimization['global_optimize_local_first']
         cancelled = False
+        sink = kwargs.pop("progress_callback", None) or self._progress_callback
+        # A group runs each member and then the global fit, and every one of
+        # those restarts its own evaluation count from zero. Reported raw, the
+        # bar would sweep to full and drop back once per member; staged, the
+        # members share the bar in order.
+        staged = _StagedProgress(sink, (len(fit) if local_first else 0) + 1)
         try:
             if local_first:
-                for f in fit:
-                    f.run(**kwargs)
+                for i, f in enumerate(fit):
+                    f.run(progress_callback=staged.stage(i), **kwargs)
             for f in fit:
                 f.model.find_parameters()
             fit._model.find_parameters()
             fitting_options = _leastsq_options(cs.core.settings.optimization['leastsq'])
             bounds = [pi.bounds for pi in fit._model.parameters]
-            progress_callback = kwargs.get("progress_callback")
+            progress_callback = staged.stage(staged.n_stages - 1)
             # Nothing about the structure changes while the optimiser runs, so
             # the free-parameter lists are resolved once instead of per call.
             with cs.core.fitting.factorgraph.frozen_structure(fit):
