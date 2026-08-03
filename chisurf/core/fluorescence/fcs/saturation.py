@@ -877,3 +877,58 @@ def compute_power_sweep(
         tau_d_arr[idx] = (w_eff**2 / (4.0 * D_m2s)) * 1e3
 
     return powers_mW, v_rel_arr, tau_d_arr
+
+
+def fit_single_component(
+    tau_s: np.ndarray, g_shape: np.ndarray, w0: float, z0: float, D: float
+) -> tuple[float, float, np.ndarray, float]:
+    """Fit one 3D-Gaussian diffusion component to a computed correlation shape.
+
+    This is what an experimenter fits when they do not know the volume has
+    stopped being Gaussian, so it answers the question the model cannot answer
+    by itself: *what would I have measured?* Saturation flattens the emission
+    profile, and a flat-topped profile's autocorrelation is a broader mixture of
+    decay rates than any single Gaussian component -- so the fit returns an
+    inflated apparent diffusion time and, once the distortion is strong, stops
+    describing the curve at all (see Widengren & Rigler, Bioimaging 4 (1996) 149).
+
+    Parameters
+    ----------
+    tau_s : np.ndarray
+        Lag times (s).
+    g_shape : np.ndarray
+        Diffusion shape to fit, normalised or not; it is fitted on its own
+        ``tau -> 0`` value so only the shape matters.
+    w0, z0 : float
+        Beam waists (m), used only for the starting guess.
+    D : float
+        Diffusion coefficient (m^2/s), used only for the starting guess.
+
+    Returns
+    -------
+    tuple
+        ``(tau_d_s, structure_parameter, fitted_shape, rms_residual)``. The
+        fitted shape is normalised to 1 at the first lag. On failure the
+        starting guess is returned with an infinite residual.
+    """
+    from scipy.optimize import curve_fit
+
+    tau_s = np.asarray(tau_s, dtype=float)
+    y = np.asarray(g_shape, dtype=float)
+    if y.size == 0 or not np.isfinite(y[0]) or y[0] == 0.0:
+        return float("nan"), float("nan"), np.zeros_like(tau_s), float("inf")
+    y = y / y[0]
+
+    def model(t, tau_d, structure):
+        return 1.0 / (1.0 + t / tau_d) / np.sqrt(1.0 + t / (structure**2 * tau_d))
+
+    guess = (w0**2 / (4.0 * D), max(1.0, z0 / w0))
+    try:
+        params, _ = curve_fit(
+            model, tau_s, y, p0=guess,
+            bounds=([1e-12, 0.5], [1.0, 100.0]), maxfev=20000,
+        )
+    except Exception:
+        return guess[0], guess[1], model(tau_s, *guess), float("inf")
+    fitted = model(tau_s, *params)
+    return float(params[0]), float(params[1]), fitted, float(np.sqrt(np.mean((fitted - y) ** 2)))

@@ -11,7 +11,9 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.core.fluorescence.fcs.saturation import (
     DARK_RATE_UNITS,
+    compute_bunching_factor,
     excitation_rate_peak,
+    fit_single_component,
     integrated_excitation_rate,
     photon_flux,
 )
@@ -62,6 +64,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
         self._show_fluorescence_profile = True
         self._hidden_states: set[int] = set()
         self._normalize_fcs = False
+        self._show_gaussian_fit = True
         self._sweep_cache = None
         self._curve_cache: collections.OrderedDict = collections.OrderedDict()
         self._curves_key = None
@@ -99,6 +102,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
         self._volume_power_series = []
         self._tau_d_power_series = []
         self._volume_profile_series = []
+        self._fcs_residual_series = []
         self._info_summary = ""
         self._invalidate()
         self._update_curves()
@@ -143,6 +147,18 @@ class SaturationCalculatorTool(ChisurfDockTool):
         self._on_changed()
 
     @property
+    def show_gaussian_fit(self) -> bool:
+        """Whether the naive single-component Gaussian fit is overlaid."""
+        return self._show_gaussian_fit
+
+    @show_gaussian_fit.setter
+    def show_gaussian_fit(self, val: bool) -> None:
+        """Toggle the single-component reference fit and refresh."""
+        self._show_gaussian_fit = bool(val)
+        self._invalidate()
+        self._on_changed()
+
+    @property
     def normalize_fcs(self) -> bool:
         """Whether the FCS curves are normalized to G(0) = 1."""
         return self._normalize_fcs
@@ -152,6 +168,12 @@ class SaturationCalculatorTool(ChisurfDockTool):
         """Toggle G(0) normalisation of the FCS curves."""
         self._normalize_fcs = bool(val)
         self._on_changed()
+
+    @property
+    def fcs_residual_series(self) -> list[dict]:
+        """Residual of the saturated curve against the naive single-component fit."""
+        self._update_curves()
+        return getattr(self, "_fcs_residual_series", [])
 
     @property
     def volume_profile_series(self) -> list[dict]:
@@ -793,6 +815,47 @@ class SaturationCalculatorTool(ChisurfDockTool):
             {"name": "Saturated", "x": tau_ms, "y": y_sat, "color": "red"},
         ]
 
+        # What an experimenter would fit, not knowing the volume has stopped
+        # being Gaussian. Overlaying it is the only way the second, faster
+        # component saturation introduces becomes visible: the amplitude drop
+        # otherwise dominates the plot and the shape change hides inside it.
+        self._apparent = None
+        self._fcs_residual_series = []
+        if self._show_gaussian_fit and power_mW > 0.0:
+            tau_s = tau_ms * 1e-3
+            bunching = (
+                compute_bunching_factor(
+                    excitation_rate_peak(power_mW * 1e-3, ext, w_r * 1e-9, wavelength * 1e-9),
+                    dark_m, exc_m, bright_arr, tau_s,
+                )
+                if self._include_bunching
+                else np.ones_like(tau_s)
+            )
+            diffusion = np.asarray(g_sat) / np.where(bunching > 0, bunching, 1.0)
+            tau_d_s, structure, fitted, rms = fit_single_component(
+                tau_s, diffusion, w_r * 1e-9, w_z * 1e-9, D_val * 1e-12
+            )
+            self._apparent = (tau_d_s, structure, rms)
+            shown = fitted * bunching * (diffusion[0] if diffusion.size else 1.0)
+            if self._normalize_fcs and shown[0] != 0:
+                shown = shown / shown[0]
+            self._fcs_curves_series.insert(
+                1,
+                {"name": "1-component Gaussian fit", "x": tau_ms, "y": shown,
+                 "color": "#9e9e9e", "width": 2, "dash": "dash"},
+            )
+            # The deviation is a few times 1e-3 of the amplitude -- invisible on
+            # a linear plot next to a curve of order 1, and obvious the moment it
+            # is plotted on its own. This is how the distortion is diagnosed on
+            # real data, so it is what the tool should show.
+            reference = y_sat if self._normalize_fcs else np.asarray(y_sat)
+            self._fcs_residual_series = [
+                {"name": "saturated − 1-component fit", "x": tau_ms,
+                 "y": np.asarray(reference) - shown, "color": "#ff7043", "width": 2},
+                {"name": "zero", "x": tau_ms, "y": np.zeros_like(tau_ms),
+                 "color": "#607d8b", "width": 1, "dash": "dash"},
+            ]
+
         self._update_power_sweep()
         self._update_volume_profile()
 
@@ -830,9 +893,29 @@ class SaturationCalculatorTool(ChisurfDockTool):
             f"<tr><td><b>Saturated G(0):</b></td><td>{g_sat[0]:.4g}</td></tr>"
             f"<tr><td><b>Volume expansion V<sub>eff</sub>/V<sub>0</sub>:</b></td>"
             f"<td><b>{v_rel:.3f}×</b></td></tr>"
+            f"{self._apparent_rows(D_val, w_r)}"
             f"</table>"
             f"<p><i>N is overestimated by exactly this factor if the curve is fitted "
             f"with an unsaturated Gaussian model.</i></p>"
+        )
+
+    def _apparent_rows(self, D_um2s: float, w_r_nm: float) -> str:
+        """Summary rows for the naive single-component fit, when one was made."""
+        if not self._apparent:
+            return ""
+        tau_d_s, structure, rms = self._apparent
+        true_tau_d = (w_r_nm * 1e-9) ** 2 / (4.0 * D_um2s * 1e-12)
+        verdict = (
+            "<span style='color:#c62828;'>a single component no longer describes "
+            "this curve — the volume is not Gaussian</span>"
+            if rms > 2.5e-3
+            else "one component still describes it"
+        )
+        return (
+            f"<tr><td><b>Apparent &tau;<sub>D</sub> (naive fit):</b></td>"
+            f"<td><b>{tau_d_s * 1e6:.1f} µs</b> against a true "
+            f"{true_tau_d * 1e6:.1f} µs — <b>{tau_d_s / true_tau_d:.2f}×</b> too slow</td></tr>"
+            f"<tr><td><b>Fit residual:</b></td><td>{rms:.1e} — {verdict}</td></tr>"
         )
 
     def _on_changed(self):

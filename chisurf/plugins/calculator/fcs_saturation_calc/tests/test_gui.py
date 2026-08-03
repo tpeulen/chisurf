@@ -24,15 +24,17 @@ def test_saturation_calculator_tool_instantiation(qapp):
     assert tool.form is not None, "AutoForm was not created."
     assert hasattr(tool, "fcs_curves_series"), "fcs_curves_series property is missing."
 
-    # Ensure plots are initialized with non-empty curves
+    # Ensure plots are initialized with non-empty curves: unperturbed, saturated
+    # and the single-component reference fit overlaid on it.
     series = tool.fcs_curves_series
-    assert len(series) == 2, "Expected 2 series (unperturbed & saturated)."
-    assert len(series[0]["x"]) == 300
-    assert len(series[1]["x"]) == 300
+    names = [s["name"] for s in series]
+    assert len(series) == 3, f"Expected 3 series, found {names}."
+    assert any("1-component" in n for n in names)
+    assert all(len(s["x"]) == 300 for s in series)
 
-    # FCS, Volume vs Power, Volume Profile, Diffusion Time vs Power
+    # FCS, residual, Volume vs Power, Volume Profile, Diffusion Time vs Power
     plot_widgets = tool.form.findChildren(PlotWidget)
-    assert len(plot_widgets) == 4, f"Expected 4 PlotWidgets in form, found {len(plot_widgets)}."
+    assert len(plot_widgets) == 5, f"Expected 5 PlotWidgets in form, found {len(plot_widgets)}."
     for pw in plot_widgets:
         assert len(pw.plot._canvas.native.items) >= 1, "Expected plot curves to be drawn."
 
@@ -335,3 +337,37 @@ def test_info_is_its_own_dock_and_starts_hidden(qapp):
     # ... and the three profile plots are separate docks, not one merged panel.
     for expected in ("Volume profile", "Volume(P)", "Diffusion time"):
         assert expected in names, f"{expected} should be its own dock"
+
+
+def test_the_residual_panel_shows_the_second_diffusion_time(qapp):
+    """Flat under no saturation, systematically structured under it.
+
+    The whole point of the residual panel: the deviation from a single
+    diffusion component is a few times 1e-3 of the amplitude, invisible beside
+    a curve of order 1 and unmistakable on its own axis.
+    """
+    tool = SaturationCalculatorTool()
+    tool.saturation._w_r.value = 200.0
+
+    tool.power_mW = 0.0
+    assert tool.fcs_residual_series == [], "no saturation, nothing to show"
+
+    tool.power_mW = 30.8
+    residual = np.asarray(tool.fcs_residual_series[0]["y"])
+    assert residual.min() < -1e-3 and residual.max() > 1e-3, (
+        "the residual must change sign — that is the missing faster component"
+    )
+    tau_d_s, _, rms = tool._apparent
+    true_tau_d = (200e-9) ** 2 / (4.0 * tool.D_um2s * 1e-12)
+    assert tau_d_s > 3.0 * true_tau_d, "the naive fit should be badly too slow"
+    assert "no longer describes" in tool.info_text()
+
+
+def test_the_fit_overlay_can_be_switched_off(qapp):
+    """It costs a fit per update, so it must be optional."""
+    tool = SaturationCalculatorTool()
+    tool.power_mW = 5.0
+    assert len(tool.fcs_curves_series) == 3
+    tool.show_gaussian_fit = False
+    assert len(tool.fcs_curves_series) == 2
+    assert tool.fcs_residual_series == []

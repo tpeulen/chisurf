@@ -156,6 +156,12 @@
               "description": "<html><b>Normalize Autocorrelation Curves</b><br/>Force G(0) = 1.0 to directly highlight and compare shape differences (flatter initial plateau, broader diffusion shift, bunching rise) between unperturbed and saturated curves.</html>"
             },
             {
+              "type": "toggle",
+              "attr": "show_gaussian_fit",
+              "label": "1-component fit",
+              "description": "<html><b>Overlay the fit an experimenter would make</b><br/>A single 3D-Gaussian diffusion component, fitted to the saturated curve. Saturation flattens the emission profile, and a flat top autocorrelates as a <i>broader mixture</i> of decay rates than any one Gaussian — so this fit comes out too slow and, once the distortion is strong, stops following the curve at all. That deviation is the second apparent diffusion time.</html>"
+            },
+            {
               "type": "plot",
               "source": "fcs_curves_series",
               "title": "FCS Saturation Effect",
@@ -164,6 +170,18 @@
               "log_x": true,
               "log_y": false,
               "legend": true
+            },
+            {
+              "type": "plot",
+              "source": "fcs_residual_series",
+              "title": "Residual against a single diffusion component",
+              "x_label": "τ (ms)",
+              "y_label": "Δ G(τ)",
+              "log_x": true,
+              "log_y": false,
+              "legend": false,
+              "height": 190,
+              "description": "The saturated curve minus the best single-component 3D-Gaussian fit. A flat line means one diffusion time describes the data; systematic structure is the second, faster component the flattened volume adds."
             }
           ],
           "dock_group": "curve"

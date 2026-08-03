@@ -25,6 +25,7 @@ from chisurf.core.fluorescence.fcs.saturation import (
     excitation_rate,
     excitation_rate_peak,
     fcs_numerical_g_diff,
+    fit_single_component,
     gaussian_g_diff,
     photon_flux,
     saturated_curve_shape,
@@ -382,3 +383,70 @@ def test_the_hankel_matrix_is_cached_and_never_handed_out_writable():
     assert not first.flags.writeable
     with pytest.raises(ValueError):
         first[0, 0] = 1.0
+
+
+def test_saturation_adds_a_second_apparent_diffusion_time():
+    """A saturated curve is not one Gaussian diffusion component any more.
+
+    Widengren & Rigler's point: flattening the emission profile turns its
+    autocorrelation into a *broader mixture* of decay rates than any single 3D
+    Gaussian can produce. Fitting one component therefore returns an inflated
+    apparent diffusion time and leaves a systematic residual -- which is how the
+    distortion is recognised on real data.
+    """
+    tau = np.logspace(-7, -1, 300)
+    true_tau_d = W0**2 / (4.0 * D_R6G)
+    args = (1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G)
+
+    unsaturated = saturated_curve_shape(tau, 0.0, *args, include_bunching=False)
+    tau_d0, _, _, rms0 = fit_single_component(tau, unsaturated, W0, Z0, D_R6G)
+    assert tau_d0 == pytest.approx(true_tau_d, rel=0.05)
+
+    apparent, residuals = [], []
+    for power_W in (2e-4, 2e-3, 3.08e-2):
+        g = saturated_curve_shape(tau, power_W, *args, include_bunching=False)
+        tau_d, _, fitted, rms = fit_single_component(tau, g, W0, Z0, D_R6G)
+        apparent.append(tau_d)
+        residuals.append(rms)
+
+    # The apparent diffusion time grows with power, well past the true one ...
+    assert all(a < b for a, b in zip(apparent, apparent[1:]))
+    assert apparent[0] > true_tau_d
+    assert apparent[-1] > 3.0 * true_tau_d
+    # ... and one component describes the curve ever less well.
+    assert residuals[-1] > 2.0 * rms0
+
+    # The residual is not noise: it changes sign, the signature of a missing
+    # faster component (fit too slow early, too fast late).
+    g = saturated_curve_shape(tau, 3.08e-2, *args, include_bunching=False)
+    _, _, fitted, _ = fit_single_component(tau, g, W0, Z0, D_R6G)
+    residual = g / g[0] - fitted
+    assert residual.min() < -1e-3 and residual.max() > 1e-3
+
+
+def test_a_second_component_actually_fits_what_one_cannot():
+    """Two components describe the saturated curve where one fails."""
+    from scipy.optimize import curve_fit
+
+    tau = np.logspace(-7, -1, 300)
+    g = saturated_curve_shape(
+        tau, 3.08e-2, 1e5, DARK_R6G, EXC_R6G, Q_R6G, W0, Z0, D_R6G,
+        include_bunching=False,
+    )
+    y = g / g[0]
+    _, _, _, rms_one = fit_single_component(tau, g, W0, Z0, D_R6G)
+
+    def one(t, tau_d, s):
+        return 1.0 / (1.0 + t / tau_d) / np.sqrt(1.0 + t / (s**2 * tau_d))
+
+    def two(t, frac, tau_1, tau_2, s):
+        return frac * one(t, tau_1, s) + (1.0 - frac) * one(t, tau_2, s)
+
+    guess = [0.2, W0**2 / (4.0 * D_R6G), 4.0 * W0**2 / (4.0 * D_R6G), 5.0]
+    params, _ = curve_fit(two, tau, y, p0=guess,
+                          bounds=([0, 1e-9, 1e-9, 0.5], [1, 1e-1, 1e-1, 50]),
+                          maxfev=200000)
+    rms_two = float(np.sqrt(np.mean((two(tau, *params) - y) ** 2)))
+    assert rms_two < 0.5 * rms_one, "a second component must earn its place"
+    fast, slow = sorted(params[1:3])
+    assert slow > 2.0 * fast, "the two components must be genuinely distinct"

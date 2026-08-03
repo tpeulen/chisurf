@@ -79,9 +79,15 @@ is not an approximation — with no excitation there is no populated scheme.
 
 ## Reading the panels
 
-* **FCS curve** — unperturbed Gaussian against the saturated curve, plus the
-  summary: peak focal excitation rate and `V_eff/V₀`. Tick *Normalize G(τ)* to
-  compare shapes rather than amplitudes.
+* **FCS curve** — unperturbed Gaussian against the saturated curve, with the
+  single 3D-Gaussian component an experimenter would fit overlaid on it. Tick
+  *Normalize G(τ)* to compare shapes rather than amplitudes.
+* **Residual** — the saturated curve minus that one-component fit. A flat line
+  means one diffusion time describes the data; systematic structure is the
+  **second, faster component** saturation introduces, and it is only visible
+  here because it is a few times 10⁻³ of an amplitude of order 1. The summary
+  reports the apparent τ_D that naive fit returns — at strong saturation it is
+  several times the true one.
 * **Profiles** — the excitation rate, one population curve per state, and the
   emission profile `F(r) = Σ Q_i P_i(r)`. The flattening of `F(r)` is the
   saturation.

@@ -134,6 +134,41 @@ Plot the emission on the same axis as the populations, not scaled to its own
 peak: with one bright state it *is* that state's curve, and rescaling it would
 show 1.0 in the centre where the bright-state population is 0.17.
 
+## The second apparent diffusion time
+
+The volume expansion is only half the story, and it is the half that shows up as
+an amplitude. The other half is a **shape** change, and it is what Widengren and
+Rigler pointed out: a saturated curve is no longer *one* diffusion component.
+
+The reason is in the transform. `G_diff(τ)` is a weighted sum of `exp(-D k² τ)`
+over the emission profile's power spectrum. For a Gaussian profile that sum
+collapses exactly to the familiar `(1+4Dτ/w²)⁻¹(1+4Dτ/z²)⁻¹ᐟ²`. Flatten the
+profile and its spectrum broadens — it acquires the higher-`k` content that a
+sharper edge implies — so the sum becomes a *wider mixture of decay rates* than
+any single Gaussian component can reproduce. Fitting one component to it returns
+an inflated apparent diffusion time and leaves a systematic residual.
+
+For the shipped Rhodamine 6G scheme at 200 nm waist, `D = 400 µm²/s`
+(`τ_D = 25 µs`), fitting the computed curve with one 3D-Gaussian component:
+
+| Power | V_eff/V₀ | apparent τ_D | one-component residual | two-component fit |
+| --- | --- | --- | --- | --- |
+| 0 | 1.00 | 25.5 µs | 1.8e-3 | collapses to one |
+| 0.2 mW | 1.94 | 42.3 µs | 1.3e-3 | still one |
+| 2 mW | 3.51 | 59.9 µs | 1.6e-3 | 3 % @ 12 µs + 97 % @ 64 µs |
+| 30.8 mW | 6.14 | 80.5 µs | 5.0e-3 | 8 % @ 14 µs + 92 % @ 99 µs |
+
+Two things to take from it. The apparent `τ_D` is **3.2× too slow** at the top
+of that range, so a naive fit reports a diffusion coefficient three times too
+small. And above ~1 mW a second, *faster* component appears — carrying a small
+amplitude, but enough that one component stops describing the curve. In a real
+fit that residual is what tells you the volume is no longer Gaussian; in the
+calculator it is the residual panel under the FCS curve, because at a few times
+`10⁻³` of the amplitude it is invisible plotted next to a curve of order 1.
+
+The faster component is not an artefact: it is the contribution of the profile's
+sharper edge, which decorrelates over a shorter distance than the flat centre.
+
 ## Reading the results
 
 `V_eff/V₀` is the number to take away. It is the factor by which an unsaturated
