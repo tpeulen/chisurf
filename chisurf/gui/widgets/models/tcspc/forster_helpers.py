@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional
 
 from qtpy import QtWidgets
+from chisurf.gui import dialogs
 
 def open_forster_calculator(owner: QtWidgets.QWidget) -> None:
     """Open the Förster radius calculator widget using MMFDB spectra."""
@@ -51,7 +52,7 @@ def open_forster_calculator(owner: QtWidgets.QWidget) -> None:
             )
 
         except Exception as e:
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 owner,
                 "Error",
                 f"Could not open Förster radius calculator:\n{e}"

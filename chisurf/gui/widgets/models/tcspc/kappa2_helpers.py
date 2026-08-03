@@ -7,6 +7,7 @@ import numpy as np
 from qtpy import QtWidgets
 
 from chisurf.gui import chiplot as cp
+from chisurf.gui import dialogs
 
 
 def _plotting_available() -> bool:
@@ -178,7 +179,7 @@ def show_kappa2_distribution_plot(
     dynamic scalar case (fast, shown as a single spike at k2).
     """
     if not _plotting_available():
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             parent,
             "Orientation factor distribution",
             "Plotting backend is not available, cannot plot k2 distribution.",
@@ -201,7 +202,7 @@ def show_kappa2_distribution_plot(
         static_pairs = list(pairs)
 
     if not static_pairs:
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             parent,
             "Orientation factor distribution",
             "No orientation factor distribution is available.",
@@ -219,7 +220,7 @@ def show_kappa2_distribution_plot(
     amps = amps[finite]
     k2_vals = k2_vals[finite]
     if amps.size == 0:
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             parent,
             "Orientation factor distribution",
             "No valid orientation factor distribution is available.",
@@ -309,7 +310,7 @@ def show_rapp_rda_distribution_plot(
     R_app/R_DA = (κ²/⟨κ²⟩)^(1/6)
     """
     if not _plotting_available():
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             parent,
             "R_app/R_DA distribution",
             "Plotting backend is not available, cannot plot distribution.",
@@ -334,7 +335,7 @@ def show_rapp_rda_distribution_plot(
         static_pairs = list(pairs)
 
     if not static_pairs:
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             parent,
             "R_app/R_DA distribution",
             "No orientation factor distribution is available.",
@@ -348,7 +349,7 @@ def show_rapp_rda_distribution_plot(
     k2_vals = k2_vals[finite]
     
     if amps.size == 0:
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             parent,
             "R_app/R_DA distribution",
             "No valid orientation factor distribution is available.",
@@ -529,7 +530,7 @@ def open_experimental_k2_dialog(
     try:
         from chisurf.plugins.calculator.kappa2_dist import Kappa2Dist
     except Exception:
-        QtWidgets.QMessageBox.critical(
+        dialogs.error(
             parent,
             "Experimental k2",
             "Kappa2 Distribution plugin is not available.",
@@ -537,7 +538,7 @@ def open_experimental_k2_dialog(
         return
 
     if fret_model is None:
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             parent,
             "Experimental k2",
             "No FRET model is available to apply the kappa2 distribution.",
@@ -599,7 +600,7 @@ def open_experimental_k2_dialog(
         k2_mean = np.nan
 
     if k2hist.size == 0:
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             parent,
             "Experimental k2",
             "No kappa2 distribution computed in plugin.",
@@ -611,7 +612,7 @@ def open_experimental_k2_dialog(
     elif k2scale_raw.size == k2hist.size + 1:
         k2scale = k2scale_raw[1:]
     else:
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             parent,
             "Experimental k2",
             "No valid kappa2 distribution computed in plugin.",
@@ -621,7 +622,7 @@ def open_experimental_k2_dialog(
     # Normalize amplitudes
     total = float(np.sum(k2hist))
     if total <= 0:
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             parent,
             "Experimental k2",
             "Computed kappa2 distribution has zero total weight.",
@@ -646,7 +647,7 @@ def open_experimental_k2_dialog(
             # mode the scalar kappa2 is sufficient and will still be updated.
             orientation_mode = getattr(orientation_param, "mode", "fast")
             if orientation_mode == "slow":
-                QtWidgets.QMessageBox.warning(
+                dialogs.warning(
                     parent,
                     "Experimental k2",
                     "Failed to apply kappa2 distribution to orientation parameter.",
@@ -674,7 +675,7 @@ def open_experimental_k2_dialog(
             # UI refresh is best-effort; model value is already updated
             pass
     except Exception:
-        QtWidgets.QMessageBox.warning(
+        dialogs.warning(
             parent,
             "Experimental k2",
             "Failed to apply mean kappa2 to FRET parameters.",

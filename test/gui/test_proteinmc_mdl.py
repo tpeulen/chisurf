@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 from qtpy import QtWidgets
@@ -227,9 +227,11 @@ def test_score_set_combobox_in_dialog(qapp, qtbot, monkeypatch, tmp_path):
     tmp_path : Path
         Temporary directory path.
     """
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
     from types import SimpleNamespace
+
     from qtpy import QtWidgets
+
+    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
 
     # 1. Create a dummy fps.json file
     labeling = tmp_path / "fps.json"
@@ -327,9 +329,11 @@ def test_update_distance_widgets_integration(qapp, qtbot, monkeypatch, tmp_path)
     tmp_path : Path
         Temporary directory path.
     """
-    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
     from types import SimpleNamespace
+
     from qtpy import QtWidgets
+
+    import chisurf.gui.widgets.models.proteinmc as proteinmc_widget
 
     labeling = tmp_path / "fps.json"
     labeling.write_text(
@@ -374,8 +378,9 @@ def test_update_distance_widgets_integration(qapp, qtbot, monkeypatch, tmp_path)
 
 def test_progress_dialog_minimize_and_restore(qapp, qtbot, monkeypatch):
     """Test progress dialog hide to status bar and double-click to restore."""
+    from qtpy import QtCore, QtGui, QtWidgets
+
     from chisurf.gui.widgets.progress import EnhancedProgressDialog, MinimisedProgressWidget
-    from qtpy import QtWidgets, QtCore, QtGui
 
     # Create dummy main window with a status bar
     main_win = QtWidgets.QMainWindow()
