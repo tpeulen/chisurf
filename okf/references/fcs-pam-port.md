@@ -146,6 +146,35 @@ it is the reason a naive diff against PAM shows a ~0.3 % covariance difference.
 Both the parity and the deviation are pinned by
 `test/experiments/test_ics_precision_vs_pam.py`.
 
+### GS_likelihood parity — exact on a real spectrum, and a second reference bug
+
+The Gopich-Szabo photon-by-photon likelihood
+(`chisurf/core/fluorescence/burst/gopich_szabo.py`, surfaced by the `burst_gs`
+plugin) was A/B'd the same way: the reference `GP_logL.m` run unmodified under
+Octave, with photons, generators and efficiencies frozen into
+`test/data/gopich_szabo/pam_gs_reference.npz`.
+
+Three of the four cases — two states, two states with fast exchange, and a
+reversible three-state chain — agree to ~1e-13 relative, i.e. the round trip
+through text.
+
+The fourth is a **non-reversible three-state cycle**, and there the two differ by
+**23.7 log units** — a factor of ~2e10 in likelihood. This is a genuine bug in
+the reference, not a convention difference: `GP_logL.m` takes `real()` of the
+transformed emission matrices (`Phi_g`, `Phi_r`) while keeping the eigenvalues
+complex, which is self-consistent only when the spectrum is real. A pure
+circulation has a complex conjugate pair, and an independent propagation with
+`scipy.linalg.expm` — sharing no code with either spectral implementation —
+lands exactly on ChiSurf's value, not on the reference's. ChiSurf therefore
+keeps the arithmetic complex throughout and takes the real part only of the
+final scalar.
+
+The affected schemes are precisely the interesting ones (a driven cycle: a
+motor, an ATP-consuming machine); every reversible scheme is unaffected. Both
+the parity and the disagreement are pinned by
+`test/fluorescence/test_gopich_szabo.py`, so a future change that "restores
+agreement with PAM" is caught as the regression it would be.
+
 ## What is missing (not implemented)
 
 - **Automatic scatter/IRF and donor-only pattern species.** PAM can auto-append a

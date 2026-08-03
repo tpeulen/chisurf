@@ -109,7 +109,7 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 | Dynamic PDA / 2-3-state kinetic networks | ABSENT | → PRD-50 |
 | Error surfaces (Support-Plane, MCMC, Hessian) | PARTIAL | generic `fitting/sample.py`; not wired to PDA → PRD-50 |
 
-### Three-color PDA (c3PDA)
+### Three-color PDA (PDA3c)
 | Incumbent capability | Status | ChiSurf location / note |
 |---|---|---|
 | 1D/2D/3D three-color distance-distribution PDA, time-binned, Bayesian | ABSENT | → PRD-65 |
@@ -191,7 +191,7 @@ implementer builds on.
 | Static distance-distribution PDA | E-histogram shot-noise model, Gaussian/Lorentzian | `tttrlib.Pda` engine, `models/fcs` template | M | PRD-50 |
 | Dynamic / N-state kinetic PDA | 2-3 state kinetic-network PDA | above + kinetic scheme spec | L | PRD-50 |
 | PDA error surfaces (SPA/MCMC) | support-plane, MCMC, Hessian | `fitting/sample.py` | M | PRD-50 |
-| Three-color c3PDA | 1/2/3D 3c distance distributions | burst tables, PRD-61 priors, sampler | L | PRD-65 |
+| Three-color PDA3c | 1/2/3D 3c distance distributions | burst tables, PRD-61 priors, sampler | L | PRD-65 |
 | Kinetic consistency check | dynamic-state burst resampling | burst tables + kinetic-PDA sim | M | PRD-50 |
 | N&B | brightness/aggregation from image fluctuations | `clsm`, RICS core | M | PRD-51 |
 | tICS / STICS | temporal / spatiotemporal ICS + velocity vector maps | ICS correlation array | **L** | PRD-51 |
@@ -214,7 +214,7 @@ implementer builds on.
 1. **Phase 1 — PDA family** (PRD-50) *(first target)*. Highest reuse: `tttrlib.Pda`
    already computes the histograms. Static PDA model → dynamic/N-state kinetic PDA →
    SPA/MCMC errors → kinetic-consistency-check. Core smFRET differentiator; unblocks
-   burst-dynamics analysis. Three-color c3PDA follows as PRD-65, on its own
+   burst-dynamics analysis. Three-color PDA3c follows as PRD-65, on its own
    burst-likelihood core rather than the two-channel histogram engine.
 2. **Phase 2 — Imaging correlation** (PRD-51). Biggest single ABSENT cluster; extends
    the existing RICS/clsm core: N&B, tICS/STICS, iMSD, spectral RICS.

@@ -22,6 +22,20 @@ decorators read `chisurf.action_registry` and so re-enter `chisurf.__getattr__`;
 the lazy branches therefore hand back the already-cached instance instead of
 building a second dispatcher whose registry would be empty.
 
+# Debounce identity
+
+An `ActionSpec` with `debounce_ms > 0` coalesces calls that share a
+*fingerprint*: the action name, the payload restricted to `debounce_keys` (the
+whole payload when none are given), and the source uid. `debounce_keys`
+therefore answers "which calls are repeats of each other", and the invariant is
+that it must name every payload key identifying the **target** of the handler,
+not only the subject it acts on. A per-fit parameter action keyed on
+`parameter_name` alone makes two different fits share one debounce slot, so a
+write to the second fit is discarded as a duplicate of the first; the key set is
+`("parameter_name", "fit_index")`. Defaults are filled in before dispatch
+(`bound.apply_defaults()`), so a target key with a default is always present in
+the payload and hence in the fingerprint.
+
 # Trailing edge
 
 A call swallowed by the debounce window is not discarded: `_schedule_trailing_edge`

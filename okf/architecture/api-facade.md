@@ -26,6 +26,16 @@ legacy [runtime globals](/architecture/runtime-globals.md).
 In `server` mode calls are routed to the Qt-free
 [server](/architecture/server.md) over a ZMQ/JSON-RPC transport.
 
+# Addressing a fit or dataset
+
+Every mode addresses an object by uid (identity) or index (position), and the
+local branch obeys the same rule as the server's `services._resolve_fit`
+(see [server](/architecture/server.md)): a **non-empty uid that matches nothing
+is an error**, never a fall back to the index — the caller named a specific fit
+or dataset, so retargeting the call at another one would mutate the wrong
+object. An empty or absent uid means "unspecified" and uses the index. The
+local helper is `chisurf.core.api._resolve_indexed`.
+
 # Key symbols
 
 | Symbol | Path | Role |

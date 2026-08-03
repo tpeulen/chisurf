@@ -40,7 +40,8 @@ back to the physically-motivated light-path prior.
   (≡ `I_11`/`I_12`/`I_22`) aliases in the user-facing API.
 - **Light-path → prior bridge** — `lightpath_correction_factors(...)` computes
   `gamma = (gR·cRA·QYA)/(gG·cGD·QYD)`, `alpha = (gR·cRD)/(gG·cGD)` (leakage) and
-  `delta` (direct excitation) from a light-path `get_crosstalk_matrices()` payload
+  `delta = ex[green, A]/ex[red, A]` (direct excitation) from a light-path
+  `get_crosstalk_matrices()` payload
   (reusing
   `crosstalk.matrix_from_payload` and the MFD algebra from `pda/nusiance.py`);
   `set_priors_from_lightpath(...)` attaches a `NormalPrior` on `gamma`/`R0` and a
@@ -454,7 +455,7 @@ back to the physically-motivated light-path prior.
   `chisurf/core/fluorescence/crosstalk.py`.
 - Priors: `chisurf/core/fitting/priors.py`, `chisurf/core/fitting/fit.py`
   (`set_parameter_prior`, `_prior_residuals`, `lnprob`).
-- Factor algebra reused from `chisurf/core/models/pda/nusiance.py::PdaFretNuisance`.
+- Factor algebra reused from `chisurf/core/models/pda2c/nusiance.py::Pda2cFretNuisance`.
 - Simulation: `chisurf/plugins/burst/burst_analysis/api/workflow.py`
   (`simulate`, `GroundTruth`, `select_bursts`).
 - Plugin: `chisurf/plugins/burst/accurate_fret/` (GUI + CLI + RPC).

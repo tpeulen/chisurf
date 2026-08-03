@@ -20,7 +20,7 @@ and [parameters](/subsystems/parameters.md).
 | `Fit` | Single dataset ↔ single model over a range |
 | `FitGroup(Fit)` | Many `Fit`s sharing a global model (`GlobalFitModel`) |
 | `FittingParameter` | Free/fixed/linked model parameter (`fitting/parameter.py`) |
-| `sample_fit` / `sample.py` | MCMC / emcee parameter sampling |
+| `sample_fit` / `sample.py` | MCMC / ensemble parameter sampling |
 | `support_plane.py` | chi² scans + F-test confidence intervals |
 | `factorgraph.py` | posterior factor structure: relevance, blocks, treewidth |
 
@@ -87,8 +87,8 @@ optimiser's hard bounds, so a hard bound and a soft prior are one concept
   bound?" test that lets both the MAP and MCMC hot paths skip parameters
   carrying only a box.
 - **Likelihood and prior stay separable.** `lnprob_parts` returns
-  `(lnlike, lnprior, chi2)`; `walk_mcmc` and `sample_emcee` (via emcee blobs)
-  record them apart, so a chain's `chi2r` is the data misfit alone and the
+  `(lnlike, lnprior, chi2)`; `walk_mcmc` and the ensemble samplers (via sampler
+  blobs) record them apart, so a chain's `chi2r` is the data misfit alone and the
   stored posterior can be reweighted under a different prior without
   resampling. Chain files carry `chi2r`, `lnprior`, then the parameters.
 - **Families.** `UniformPrior` (bounds), `NormalPrior`, `TruncatedNormalPrior`,
@@ -173,7 +173,7 @@ the acquisition simulator's `k_rad`/`k_nrad`, with the same reading (grid row
 invisible: a permuted scheme is still a valid scheme. See
 [gui-autoform.md](/subsystems/gui-autoform.md).
 
-Models do **not** subclass the group to configure it: `C3PdaKinetics` was a
+Models do **not** subclass the group to configure it: `Pda3cKinetics` was a
 subclass whose entire body was `default_rate = 0.0`, which is a constructor
 argument.
 
@@ -292,9 +292,28 @@ against AR(1), whose `τ = (1+φ)/(1−φ)` is closed-form. Thresholds:
 | `method` | Proposal | ESS / 1000 evaluations, collinear posterior |
 | --- | --- | --- |
 | `mcmc` (`walk_mcmc`) | diagonal | 0.4 |
-| `emcee` (`sample_emcee`) | affine-invariant ensemble | 26 |
+| `ensemble` (`sample_ensemble`) | affine-invariant ensemble, stretch move | 26 |
+| `slice` (`sample_ensemble_slice`) | ensemble slice sampling | ~1.5x `ensemble` |
 | `blocked` (`walk_mcmc_blocked`) | per-block covariance | **64** |
 | `de` (`sample_differential_evolution`) | chain-difference population | 60 |
+
+**The ensemble samplers are in-tree** (`chisurf/core/fitting/ensemble.py`); no
+external MCMC package is a dependency. `EnsembleSampler` is the Goodman & Weare
+affine-invariant stretch move with the parallel red-blue split;
+`EnsembleSliceSampler` keeps the ensemble-derived direction but moves along it by
+slice sampling, so there is no accept/reject and no step size — every walker
+moves at every step, at several model evaluations per step, and the length scale
+is learnt from the expansion/contraction balance. Both share one storage layer,
+so `ensemble_result` reads either. Directions for the slice sampler come from
+pluggable moves (`DifferentialMove`, `CovarianceMove`,
+`AdaptiveCovarianceMove`). `n_evaluations` is recorded because effective samples
+*per model evaluation* is the only currency in which the two compare.
+
+**Stepping out must overshoot the slice.** The interval is grown while the
+*current* endpoint is still inside the slice; probing the prospective endpoint
+instead leaves the interval one step short of covering the slice and reports a
+posterior ~30 % too narrow, with the mean still perfectly correct — a bias that
+no mean-based test catches.
 
 `walk_mcmc_blocked` seeds each block's proposal covariance from
 `Fit.covariance_matrix` (the curvature at the optimum — previously computed for

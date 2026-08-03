@@ -1712,12 +1712,17 @@ from `test/server/test_fit_jobs_use_job_manager.py`). RF-113..RF-119.
   completed jobs returned `cleanup() == 0` and still held 3, while
   `max_history=1` correctly removed 2. Pinned by three new tests in
   `test/server/test_jobs.py`: `test_cleanup_keeping_no_history_removes_every_terminal_job`
-  (also asserts a still-`RUNNING` job survives, since it is not terminal),
-  `test_cleanup_treats_a_negative_history_as_zero`, and
-  `test_cleanup_keeps_history_below_the_limit` (the below-limit branch the
-  dropped `if` used to serve). All three fail at `HEAD`. `test/server/` green;
-  `ruff check` on the two touched files reports findings identical to `HEAD`
-  (all pre-existing), and `ruff format --check` is clean.
+  (also asserts a still-`RUNNING` job survives, since it is not terminal) and
+  `test_cleanup_treats_a_negative_history_as_zero` both fail at `HEAD`;
+  `test_cleanup_keeps_history_below_the_limit` passes there and is a regression
+  guard for the branch the dropped `if` used to serve. The negative test
+  deliberately completes 8 jobs, not 2: at `HEAD` the slice reads `-(-5)` as
+  "keep the newest 5", so a sample smaller than `abs(max_history)` cannot tell
+  the two readings apart — the first draft of the test used two jobs and passed
+  at `HEAD`. `test/server/test_jobs.py`, `test_fit_jobs_use_job_manager.py` and
+  `test_app.py` green (32 passed); `ruff check` on the two touched files reports
+  findings identical to `HEAD` (all pre-existing), and `ruff format --check` is
+  clean.
 
 ### RF-119
 - **Status:** OPEN
@@ -4145,11 +4150,11 @@ exactly the trap the immediately preceding commit (`ef55910fc`, "the tests
 assert the PIXEL, not the stored value") was written about.
 
 ### RF-318
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the key and fill light intensities — the parameters that distinguish four of the six presets — are computed into a dead shader local and cannot affect the rendered image)
 - **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:1035-1041` (`float fillLambert = …; float lighting = ambientStrength + (1.0 - ambientStrength) * (keyIntensity * lambert + fillIntensity * fillLambert);`) against `:1072-1074` (`float ambient = ambientStrength * 0.7 * exposure; float diffuse = (1.0 - ambient) * lambert; vec3 shaded = baseColor * (ambient + diffuse);`); uniforms declared at `:1005-1007`, uploaded at `:783-791`, resolved at `:1127-1129`
 - **Finding:** `lighting` is assigned and **never read** — a grep of the whole file shows `keyIntensity`, `fillIntensity` and `fillLightDir` occur only inside that one expression (`:1005-1007`, `:1035`, `:1041`, and the three `uniformLocation` calls). The fragment's actual output path recomputes its own `ambient`/`diffuse` from `ambientStrength` and `lambert` alone, so nothing downstream of `vec3 shaded` can see the key or fill light, and `gl_FragColor` is independent of both. It went dead in `59948f7c5`, which replaced `vec3 shaded = baseColor * (lighting + rim);` with the ambient/diffuse block and left `float lighting = …` orphaned (`git log -L 1070,1076:…/qtgl.py` shows exactly that hunk); `bf2ae5664` then *extended the orphan* with the key/fill model and shipped six presets whose distinguishing parameters are `key_light_intensity` and `fill_light_intensity`. Consequences: `lighting simple` (key 1.0, fill 0.5) and `lighting default` (key 1.0, fill 0.0) render identically; `soft`/`gentle`/`flat` differ only through the side effects of their raised ambient and of `silhouette`; and the commit's claim that "with keyIntensity 1, fill 0 and ambient at the old value this is exactly the old formula" holds only vacuously. Nothing in `chimol/test/test_lighting.py` can catch it: all twelve tests read `renderer.lighting_state()`, i.e. the stored Python attributes, and the only "round trip" test (`test_the_state_round_trips_through_the_setter`) calls `set_lighting` and reads the same dict back. Feed `lighting` into `shaded` (or fold key/fill into the ambient/diffuse block), and pin it with a render test asserting the pixels move when `key_light_intensity` changes at fixed ambient.
-- **Fix note:**
+- **Fix note:** the orphaned `float lighting = …` local is gone. The fragment now computes `ambientCoeff = clamp(ambientStrength, 0.0, 1.0)`, `litWeight = clamp(keyIntensity * lambert + fillIntensity * fillLambert, 0.0, 1.0)`, and feeds both into the shading: `ambient = ambientCoeff * 0.7 * exposure`, `diffuse = (1.0 - ambient) * litWeight`, `shaded = baseColor * (ambient + diffuse)`. With the defaults (`key 1, fill 0, ambient 0.55`) `litWeight` is exactly the old `lambert`, so default rendering is bit-identical. The shader now also applies the two-sided emissive override only to `litWeight` rather than replacing the whole shaded colour. Pinned by a live render probe (key 1.0 → 0.0 at fixed ambient moved a camera-facing quad's mean brightness 144 → 53; before the fix the diff was **0.0** pixels) and by two new tests in `test_lighting.py` that grab the framebuffer and assert the pixels move (`test_the_key_light_moves_pixels`) and that ambient above 1 clamps (`test_an_ambient_above_one_clamps_instead_of_inverting`); both skip under the offscreen platform, where no GL context exists.
 
 ### RF-319
 - **Status:** FIXED
@@ -4159,11 +4164,11 @@ assert the PIXEL, not the stored value") was written about.
 - **Fix note:** `bind_and_call` now finds the signature's `VAR_KEYWORD` parameter and routes any named pair that matches no declared parameter into it, coerced by *its* annotation (so `def scale(self, **factors: float)` gets floats); an unmatched name with no `**kwargs` still raises as before. Coercion is now the public `argparse2.coerce_value` (renamed from `_coerce`) because the second half of the fix needs it: `lighting`'s overrides arrive as strings, and `set_lighting` does `bool(value)` — `bool('0')` is `True` — so `RenderingMixin._LIGHTING_TYPES` declares the ten accepted parameters with their types, coerces each override through `coerce_value`, and reports an unknown name or an unparsable value as an error instead of the renderer's silent drop. Guide 44 gains the override form and the parameter list. Pinned by `test_cmd_parser.py::test_binder_routes_unmatched_keywords_into_var_keyword` and `::test_binder_coerces_var_keyword_values_by_its_annotation` (new `tune`/`scale` demo commands), and by six end-to-end tests in `test_lighting.py` driving the real command stack — including `test_a_boolean_override_is_parsed_not_truth_tested` (`lighting flat, silhouette=0` → off; the guide's `lighting default, silhouette=1` → on) and `test_an_unknown_parameter_is_named_not_dropped`. Whole `chimol/test/` suite green.
 
 ### RF-320
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (three of the six presets drive the shader's ambient coefficient above 1, which makes the diffuse term negative — a surface facing the light renders *darker* than one facing away)
 - **Location:** `chisurf/plugins/chimol/chimol/renderer/qtgl.py:1072-1073` (`float ambient = ambientStrength * 0.7 * exposure; float diffuse = (1.0 - ambient) * lambert;`) fed by `chisurf/plugins/chimol/chimol/cmd/rendering.py:46-79` (`soft`/`gentle` `ambient_light_intensity = 1.5`, `flat` `= 1.45`) through `qtgl.py:424-450` (`set_lighting`, which does `float(value)` with no clamp)
 - **Finding:** the shader mixes rather than adds — `shaded = baseColor * (ambient + (1 - ambient) * lambert)` — which is only a convex blend while `ambient <= 1`. With the `0.7` factor that means `ambientStrength <= 1/0.7 = 1.4286`, and three shipped presets exceed it: for an unoccluded fragment (`exposure = 1`) `soft`/`gentle` give `ambient = 1.05` → `diffuse = -0.05 * lambert`, and `flat` gives `ambient = 1.015` → `diffuse = -0.015 * lambert`. A fully lit face therefore renders at `1.00 * baseColor` while a face turned away renders at `1.05 * baseColor`: the shading is inverted, and the whole model sits at or above its base colour, so any bright colour clips. ChimeraX's `1.5` is calibrated for its *additive* model with multishadow ambient occlusion — which `lighting` itself reports as not applied — so transcribing the number into a mixing formula is not a like-for-like port. Two smaller inconsistencies sit in the same seam: `lighting_state()` reports `ambient_light_intensity` as the stored value although the shader uses `0.7 ×` it (so the reported number is not the coefficient in use, and the `0.7` is unexplained beyond "make rim and reflections pop"), and `set_lighting` silently ignores any name not in its mapping (`qtgl.py:429-450`) while the command still reports `lighting: … applied` — the same silent-no-op shape as the `bg_color` defect fixed in `ef55910fc`. Clamp the shader's ambient to `[0, 1]` (or rescale the presets to the mixing convention), report the coefficient actually used, and make `set_lighting` reject unknown names.
-- **Fix note:**
+- **Fix note:** the shader clamps the ambient coefficient to `[0, 1]` before mixing (`ambientCoeff = clamp(ambientStrength, 0.0, 1.0)`), so `soft`/`gentle` (1.5) and `flat` (1.45) now land on `ambient = 1.0 * 0.7` and the diffuse weight `(1 - ambient)` can no longer go negative — a face turned from the light no longer renders brighter than one facing it. `set_lighting` now also rejects any name outside `_LIGHTING_TYPES` with a `ValueError` naming the parameter, closing the silent-no-op seam (the command layer's `_LIGHTING_TYPES` coercion already reports the same names as errors). Pinned by `test_lighting.py::test_an_ambient_above_one_clamps_instead_of_inverting` (ambient 1.0 vs 1.5 on a 45°-tilted quad render within 2 units; before the clamp the two differed by ~16) and `test_set_lighting_rejects_an_unknown_name`; the framebuffer assertions skip under offscreen. The remaining inconsistency is open: `lighting_state()` still reports the stored (unclamped) `ambient_light_intensity` even though the shader uses `0.7 × clamp(x)` of it — the reported number is the preset value, not the coefficient in use.
 
 ## GUI-tester run — H2MM sub-burst dynamics (2026-07-26)
 
@@ -5153,6 +5158,7 @@ stage is diagnosed as a *linking* problem (RF-420), and a fit resting on 5 % of
 - **Location:** `chisurf/core/fluorescence/imaging/tracking.py`, `MsdFit.warnings()` (checks `success`, `n_tracks < 20`, `relative_error > 0.25`, and an unresolved `alpha` — nothing else), surfaced by `TrackingResult.report()` at `chisurf/plugins/microscopy/img_tracking/core.py:159-163`
 - **Finding:** the warning set has no check for how *badly linked* the tracks were, so the two numbers that say "this fit is junk" — the fraction of tracks that survived `min_track_length`, and the median track length — never reach the user. Verified through the GUI on `test/data/rics/RICS_EGFPGFP.tif` (RICS data of freely diffusing EGFP: nothing in it is trackable) with the threshold pushed to 1 σ: the report reads `50 frames, 77,796 detections (1555.9 per frame) / 21954 tracks, median length 3, longest 40 / D = 1.407 ± 0.35 px²/frame / from 1215 tracks over 9 MSD points` and prints **no "Read with care" block at all** — 94.5 % of the tracks were discarded, the median track is 3 points long, the detections are noise, and the only numeric guard (relative error) lands at 0.249, just under its 0.25 gate. By contrast the clean 8-track simulation *is* warned about, so the tool is most reassuring exactly when it is most wrong. The same blind spot shows on a simulation with a known answer: 200 particles at true D = 5 px²/frame (≈4.5 px/frame against a 5 px linking distance) returns `D = 2.812 ± 0.98` — 44 % low — with median track length 2 and 138 of 3187 tracks used, and only the generic 35 %-error note. Add two checks — the surviving fraction `fit.n_tracks / len(result.track_lengths())` below ~0.2, and a median track length within a point or two of `min_track_length`. `MsdFit.warnings()` does not know the total track count, so either hand it in (it already receives `min_length`) or raise the pair in `TrackingResult.report()`, which has both; phrase them as the guide already does — "the linking is shattering trajectories, which biases D low".
 - **Fix note:**
+
 ## Review 2026-07-27 — AutoForm state: what a "restorable" form does not carry
 
 Slice: `17d24d05e` (*every form is restorable from JSON, and burst folders use
@@ -5309,54 +5315,6 @@ is five repetitions of ``QCoreApplication::notifyInternal2`` →
   measurement now reports 4172 highlight pixels and 1506 text pixels. Pinned by
   `test_selected_step_stays_readable` in `test/gui/test_navigation_search.py`,
   which grabs the list and asserts both colours are present in the selected row.
-
-## QA run 2026-07-27 (2) — DEER distance distribution, driven through the GUI
-
-Workflow: [DEER/PELDOR distance distribution](/usecases/deer-distance-distribution.md).
-Five headless passes over the real main window with the three `test/data/deer/`
-fixtures and all four DEER models. The science holds — a clean CSV trace fits to
-χ²ᵣ = 1.206 with random residuals, and Tikhonov resolves the second population of
-`deer_twostate` where a single Gaussian cannot. What surrounds it does not: two
-of the four models show their shape parameters as raw HTML entities, every
-parameter table slices its last row, the reader's three switches have no control
-at all, every new fit opens on an unevaluated model reporting χ²ᵣ = 30113, and
-the MaxEnt inversion under-fits the trace worse than a two-parameter Gaussian.
-Findings RF-432..RF-436.
-
-### RF-432
-- **Status:** OPEN
-- **Severity:** S2 (parameter labels that are pure HTML entities are printed as their source text, in every model editor in the app)
-- **Location:** `chisurf/gui/widgets/chitable/delegates.py:34-36` (`RichTextDelegate.paint`: `if not text or "<" not in str(text): return super().paint(...)`), reached from `chisurf/gui/autoform/sections/parameter_table.py:434-435` (the `COL_NAME` delegate) with the display text from `:199` (`_display_value` returns `label_text` verbatim)
-- **Finding:** the delegate decides whether a cell needs HTML by testing for `<`, so a label made only of character entities never reaches `QTextDocument.setHtml` and is drawn as plain text. Verified headlessly on a `DeerRiceModel` editor: the two shape parameters of the model render as **`&nu;[&#8491;]`** and **`&sigma;[&#8491;]`**, the modulation depth as `&lambda;` and the regularisation weight as `&alpha;`, while `t<sub>0</sub>[µs]` and `k[µs<sup>-1</sup>]` in the same tables render correctly (they contain `<`) — screenshot `4R_editor.png`, and `m.data(m.index(i,0))` returns exactly those strings. The Rice model has only two distance parameters and *both* are unreadable. Not DEER-specific: `grep -rn 'label_text="&' chisurf/core/models/` finds entity-only labels in `deer/deer.py` (`&lambda;`, `&alpha;`, `&nu;[&#8491;]`, `&sigma;[&#8491;]`), `fcs/general.py` and `fcs/mdf.py` (`&epsilon;[kHz]`) and `pda2c/saw_nu.py` (`&nu;`). Fix in the delegate, not the labels: test for `<` **or** `&`, or simply always route through the text document (the fast path exists for cost, and a cheap `("<" in t or "&" in t)` keeps it).
-- **Fix note:**
-
-### RF-433
-- **Status:** OPEN
-- **Severity:** S2 (every parameter-group table in every AutoForm model editor clips its last row; a two-row group shows the second parameter as a half-height smear)
-- **Location:** `chisurf/gui/autoform/sections/parameter_table.py:492-496` (`_size_to_content`: `setFixedHeight(header_h + self._row_h * max(1, n) + 2)`) and the identical copy at `:1109-1113` for the paired table; `self._row_h = table_row_height()` at `:385` / `:973`
-- **Finding:** the height is budgeted with the *nominal* row height while the rows are laid out at their real height, so the fixed height is short by `(actual - nominal) × n`. Measured headlessly on a `DeerRiceModel` editor (`build_model_editor`, 471 × 620): `_row_h = 18` and `_header_h = 18`, but `rowHeight(i) = 24` for every row and `horizontalHeader().height() = 21`. The 2-row *Distance (Rice)* table gets `setFixedHeight(21 + 36 + 2) = 59` where the content needs `21 + 48 + 2 = 71` — **12 px short**, and the 3-row *Modulation* and *Distance grid* tables get 77 against 95, **18 px short**. The clipping is plainly visible (`4R_editor.png`: `&sigma;` is cut at ~40 % height under `&nu;`) and there is no scrollbar and 275 px of unused dock underneath, so the space is available. Size from the view's own metrics — `horizontalHeader().height() + sum(rowHeight(i)) + 2 * frameWidth()` — or call `resizeRowsToContents()` first and read back.
-- **Fix note:**
-
-### RF-434
-- **Status:** OPEN
-- **Severity:** S2 (three reader settings that exist in the API have no control in the GUI; the controller silently swallows the failure)
-- **Location:** `chisurf/core/experiments/deer/reader.py:70-100` (`DeerReader.__init__` — `phase_correction`, `normalize`, `exp_type`) against `chisurf/gui/widgets/experiments/deer/__init__.py:36-42` (`if reader_obj is not None and hasattr(reader_obj, "view_spec"): … except Exception: pass`); no `chisurf/core/experiments/deer/*.view.json` exists
-- **Finding:** the controller's own docstring says it "renders the reader's AutoForm settings (phase correction, normalisation, experiment type) when available", but `chisurf/core/experiments/deer/` has no view spec — every other experiment reader ships one (`tcspc_csv.view.json`, `tcspc_tttr.view.json`, `fcs.view.json`, `pch.view.json`, `pda.view.json`, `ics.view.json`) — so `hasattr(reader_obj, "view_spec")` is False and the AutoForm is never built. Verified headlessly: with `Experiment = DEER` selected, `ctrl.findChildren(...)` for `QCheckBox | QComboBox | QLineEdit | QSpinBox | QDoubleSpinBox` returns **`[]`** and the controller's whole child list is `['QVBoxLayout', 'QLabel']`; the *File parameters* section shows one hint line above ~700 px of empty dock (`01_read_data_dock.png`). Consequence: a user cannot disable the automatic zero-order phasing on a trace it gets wrong, cannot keep an un-normalised trace un-normalised, and cannot record the experiment type — all three are constructor arguments that only a script can reach. Add `deer.view.json` with the three controls (each with a `description`) and let the existing branch render it; the bare `except: pass` should also log, since it is what hid this.
-- **Fix note:**
-
-### RF-435
-- **Status:** OPEN
-- **Severity:** S2 (every new DEER fit opens reporting χ²ᵣ = 30113.93 against a model curve of zeros, indistinguishable from a catastrophic mismatch)
-- **Location:** `chisurf/core/models/deer/deer.py:411-423` (`_DeerModelBase.update_model`, never called between fit creation and the first **Fit**) — the fit sub-window therefore renders `ModelCurve`'s zero-filled `y`
-- **Finding:** verified on the stock app (no RPC port override) for all four DEER models: immediately after **Add fit**, `np.asarray(fit.model.y)` is `min = max = 0` over all 588 points and the *Fit* tab annotation reads `chi2r=30113.9309, DW=0.0001` with the model drawn as a flat line at zero and weighted residuals of 150 … 340 (`30_new_fit_window.png`, `05_main_after_addfit.png`). The model is *not* mis-parameterised — `_DeerModelBase.__init__` seeds t₀ from the reader metadata and λ from the tail plateau, and a manual `model.update()` immediately gives `y ∈ [0.359, 1]` and χ²ᵣ = 560.9 — it has simply never been evaluated. The same window shows a fully computed **L-Curve** tab for the model-free models, so the α-scan runs at creation while the model curve does not, which makes the zero line read as a result rather than a placeholder. Evaluate the model once when the fit is created (or when its sub-window is first shown) so the opening χ²ᵣ is the start-value χ²ᵣ.
-- **Fix note:**
-
-### RF-436
-- **Status:** OPEN
-- **Severity:** S2 (the maximum-entropy inversion under-fits the data worse than a two-parameter model and returns an over-smoothed P(r))
-- **Location:** `chisurf/core/models/deer/maxent.py:143-175` (the α auto-selection: `alphas = np.logspace(-3, 1.3, n_alpha)` and the discrepancy rule "pick the LARGEST alpha whose misfit is acceptable") reached from `chisurf/core/models/deer/deer.py:612-621` (`DeerMaxEntModel._distribution`)
-- **Finding:** driven through the GUI on `test/data/deer/deer_twostate.DSC` (588 points, reader noise estimate σ = 3.00e-3, which `_noise_level()` does read — t₀ seeding from the same metadata works), with default settings and α = 0 (auto), the MaxEnt model stops at **χ²ᵣ = 20.5230** after 62 s, while the Tikhonov model on the identical trace reaches **6.8387** and a *single Gaussian* reaches **8.9672**. A model-free inversion being beaten by a two-parameter shape is the signature of too much smoothing, and the returned distribution confirms it: `P(r)` is one broad peak at ≈ 37.5 Å sitting on a **uniform 0.007 pedestal across the entire 15 … 65 Å grid** (`4M_distribution.png`) — the flat entropy prior, undamped — where Tikhonov resolves the peak at 36.5 Å plus a shoulder at ≈ 46 Å and a minor peak at ≈ 24 Å (`23_tab1_Distribution.png`). Either the discrepancy target is being computed against the wrong scale or the "largest acceptable α" rule needs the misfit criterion the Tikhonov side gets from GCV/L-curve; whichever it is, a user offered two model-free models has no way to tell that one of them is not converging.
-- **Fix note:**
 
 ## QA run 2026-07-27 (2) — DEER distance distribution, driven through the GUI
 
@@ -5741,69 +5699,6 @@ Findings RF-463..RF-467.
 - **Location:** `chisurf/core/cli.py:267` (`plugin_name = plugin_name or display_name`, the AST-scanned literal first) against `:257-266` (the entry point takes the manifest and *warns* when the module disagrees) and the contract stated at `:168-175` (*"``manifest.json`` is the plugin contract … the module-level … assignment is the older, AST-scanned convention kept as a fallback"*), and against the GUI reader `chisurf/plugins/__init__.py:186-195` (`"plugin_name": manifest.display_name or manifest.id` — manifest first)
 - **Finding:** most plugin `__init__.py` files set `name` in an `if _manifest is not None: … else: name = "<literal>"` pair, and the AST scan (`chisurf/core/cli.py:150-164`, `ast.walk`, last assignment wins) reads the `else` branch — the fallback, not the value the module actually has at runtime. Scanned over the whole tree, 11 plugins have a fallback literal that differs from their manifest `display_name`, e.g. `ndxplorer` (`Main:Tools:ndXplorer` vs `Main:Tools:ndX`), `core/mmfdb_admin` (`Tools:mmfdb-admin` vs `Tools:MMFDB Admin`), `tttr/tttr_lut_tools` (`TTTR:LUT Tools` vs `Tools:TTTR:LUT Tools`, a category that does not exist in the GUI menu), `burst/burst_analysis`, `burst/burst_selection`, `core/globalview`, `fluorescence_decay/irf_estimator`, `fret_line`, `microscopy/img_pixel_mle`, `spectra_downloader`, `traj/traj_tools`. All 11 have a module docstring, so `csc --help` text is unaffected today and the drift only surfaces in `_forward_plugin_cli`'s messages (`:93`, `:109`) — but it is one `or` in the wrong order in the function that documents the opposite rule, and the drift will surface the moment a plugin without a docstring hits it. Prefer `display_name`, and warn on disagreement the way the entry-point branch already does.
 - **Fix note:** ✅ **FIXED 2026-07-27.** The `or` is reversed — `plugin_name = display_name or plugin_name` — so `csc` and the menu resolve the same name, and the literal only fills in for a plugin that ships no manifest. `_read_manifest_cli`'s docstring now states the rule for `display_name` as it already did for `entrypoints.cli`. **No warning was added**, deliberately: two different entry points mean two different behaviours and are a misconfiguration worth interrupting for, whereas a renamed plugin is the manifest doing its job — a warning on each of the 11 would fire on every `csc` invocation, at a user, about a maintenance detail. The 11 stale literals are left in place; they are now unreachable for any plugin with a manifest, and cleaning them up is a separate sweep. Tests: `test/core/test_plugin_metadata_reader.py` (+3) — a synthetic user plugin (`Path.home()` pointed at `tmp_path`, which is the directory `_discover_plugin_metadata` scans as the user root) pins both directions of the precedence, and a real-tree cross-check asserts `csc` and `chisurf.plugins._read_manifest_metadata` agree on the display name of every built-in plugin. Both new real-tree/precedence tests fail against the previous order (the cross-check lists all 11).
-
-## GUI tester — ndXplorer, gating a multiparameter burst space (2026-07-27)
-
-Drove the real ndX window headlessly (offscreen Qt, arm64 env,
-`chisurf.plugins.ndxplorer.rpc_bridge:make_ndxplorer`) on the repo's real Paris
-burstwise MFD folder `modules/ndxplorer/test/mfd/burstwise_All 0.1500#30`
-(45 `.bur` + `bg4`/`br4` companions, 12 237 bursts): loaded it, plotted
-lifetime vs anisotropy, gated with a z-range and with a painted 2-D bitmap,
-exported Burst IDs and sent the gated population to the four advertised burst
-analyses. Use case: [ndx-mfd-burst-gating](/usecases/ndx-mfd-burst-gating.md).
-Findings RF-470..RF-475.
-
-### RF-470
-- **Status:** FIXED
-- **Severity:** S1 (the last real column of every `.bur` is discarded, so the whole red / FRET half of the MFD parameter set silently never computes)
-- **Location:** `modules/ndxplorer/ndxplorer/io/reader.py:541-542` (`_process_burst_analysis_dir`: `if drop_last_column and df_main.shape[1] > 1: df_main = df_main.iloc[:, :-1]`), against `:559-563`, where the *companion* branch already uses `_drop_trailing_empty_columns` with a comment stating exactly why a blanket drop-last is wrong
-- **Finding:** the `.bur` header line carries a trailing tab, but the parser already resolves that — measured, `_read_text_table_auto` returns **16 real columns** for `bi4_bur/m000_0.bur` (last = `Red Count Rate (KHz)`, not all-NaN) and **32** for chisurf's own PIE dataset `chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/…/m000.bur` (last = `S delayed yellow (kHz) | 2048-4095`). The unconditional `iloc[:, :-1]` therefore throws away a real measurement column in both. Consequence, measured on the shipped equation set (54 equations, 15 constants from `~/.ndxplorer`): with the drop, `compute_columns` derives **3** columns (`Sg`, `Fg`, `Tg-Tr(ms)`); without it, **15** — `Sr`, `Sg/Sr`, `Proximity ratio` (median 0.067), `Fr`, `Fg/Fr`, `Fd/Fa`, `FRET efficiency` (median 0.429), `R_FRET`, `<tauD(A)>x`, … . `Sr` = `'Red Count Rate (KHz)'` is the head of that chain. In the GUI this shows as an axis combo with 39 entries and **no proximity ratio and no FRET efficiency to plot**, with no warning anywhere. (Corroborating symptom from the same trailing tab: `[read] PyArrow failed for m000_0.br4 (Expected 10 columns, got 9)` → a pandas fallback for every companion file.) Use `_drop_trailing_empty_columns` for the main table too.
-- **Fix note:** ✅ **FIXED 2026-07-27** (ndxplorer `4913cd6`). The main table now
-  goes through `_drop_trailing_empty_columns` like the companions, so only
-  empty/`Unnamed` placeholders are stripped and the writer's trailing tab costs
-  nothing. Re-measured: the shipped MFD folder loads 37 columns instead of 36,
-  with `Red Count Rate (KHz)` present and non-zero (median 2.64 kHz over 12 237
-  bursts). Pinned by `modules/ndxplorer/test/test_bur_columns.py` — a synthetic
-  `.bur` whose header ends in a tab keeps its last column, and the shipped MFD
-  folder yields a non-zero `Red Count Rate (KHz)`; both fail on the old code.
-  *(Queue note: this id collides with an earlier, unrelated `RF-470` in the
-  burst-H2MM section — the next free id should be taken from the maximum, not
-  from the section.)*
-
-### RF-471
-- **Status:** OPEN
-- **Severity:** S2 (the ndX→ChiSurf burst handoff sends a bare file name, so it can only ever work when the process CWD happens to be the measurement folder)
-- **Location:** `modules/ndxplorer/ndxplorer/analysis/burst_bridge.py:196-201` (`selection_to_burst_slices` keys the slices by the raw `First File` cell) → `:453-475` (`send` passes that key straight through as `tttr_path` / `burst_slices`), with nothing joining it to `ndxplorer.working_path`
-- **Finding:** measured — after gating, `bridge.burst_slices(...)` returns `{'m000.spc': [(2755, 3006), …], …}` for 45 files, and `os.path.exists('m000.spc')` is False; every send then fails with `No such file or directory: 'm000.spc'` (visible in the log as 45 `could not open m000.spc` stack traces from `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:187`). The burst table knows where it came from (`working_path` is the `burstwise_All …` folder, and the original absolute paths are in `Info/Paris_x64 info.bin`), so the file name should be resolved — try `working_path`, its parent, and the recorded Paris path — before it is handed over, and report the ones that cannot be found rather than sending a name that will not resolve.
-- **Fix note:**
-
-### RF-472
-- **Status:** PARTIAL (FCS consumer fixed; PDA consumer open)
-- **Severity:** S2 (two of the four burst consumers report `ok` with an empty result when *no* file could be opened, so a totally failed analysis is announced to the user as a success)
-- **Location:** `chisurf/plugins/burst/burst_fcs_correlator/core/algorithms.py:507-509` (`correlate_burst_file`: `tttr = open_tttr(...)`; `if tttr is None: return []`) wrapped by `chisurf/plugins/burst/burst_fcs_correlator/backend/services.py:69-80` (`correlate_file_handler` → `_ok({"curves": curves})`), and `chisurf/server/services/pda.py:100-117` (an empty `group` still returns `{"ok": True, "result": {"curves": [], "n_files": …}}`), against `chisurf/server/services/bursts.py:278-281` / `:448-451`, where the decay and PCH paths correctly return `service_error`
-- **Finding:** measured through ndX's own **Send selection to** menu with a 7 312-burst gate over 45 files whose TTTR paths do not resolve (RF-471): `TCSPC decay` and `PCH` raise (*"decay read failed: … No such file or directory"*), while `FCS` returns `[{'file': 'm000.spc', 'result': {'curves': []}}, …]` and `PDA` returns `{'curves': [], 'n_files': 45}`. `send_menu.send_selection` only inspects `n_bursts`/`n_files`, so the status bar reads **"Sent 7312 bursts from 45 file(s) to fcs (not recorded: no database product attached)"** while zero photons were read (screenshot evidence in the use case). Either return `service_error` when no file could be opened, or return a per-file failure list the caller can count — a consumer that cannot open its input must not answer `ok`.
-- **Fix note:** ✅ **FCS half FIXED 2026-07-27; PDA half still OPEN.** `correlate_burst_file` now separates the two answers it used to conflate: an empty `curves` list means the file was read and produced no curve, while a file that cannot be opened raises — `FileNotFoundError` when the path does not exist, `OSError` when it exists but is not readable as TTTR data. `correlate_file_handler` turns those into `service_error(…, NOT_FOUND)` / `service_error(…, OPERATION_FAILED)`, the shape the decay and PCH paths already return. Because ndX's `BurstBridge._call` raises `BurstBridgeError` on `ok: False`, the send that announced *"Sent 7312 bursts from 45 file(s) to fcs"* over 45 unopenable files now fails out loud instead. Tests: `chisurf/plugins/burst/burst_fcs_correlator/test/test_read_errors.py` (5 tests — both raising branches, both error codes, and a real TTTR file with no bursts still answering `ok`); they fail at `HEAD`. The PDA consumer (`chisurf/server/services/pda.py:100-117`) still answers `ok` with `{"curves": [], "n_files": 45}` and is untouched here.
-
-### RF-473
-- **Status:** OPEN
-- **Severity:** S2 (the first gate a user creates excludes every burst, with an invisible handle and no message)
-- **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_control.py:1353-1358` (`onAddSelection` reads `self.parent.selection_z.get_range()`) with `on_axis_changed`/`update_axis_settings` (`:582-638`, `:790-796`), which re-range the z *axis* and the z *histogram* on a parameter change but never move the `PGRangeSelection` region (`modules/ndxplorer/ndxplorer/plotting/pg_image_widget.py:101-118`)
-- **Finding:** measured — after loading a burst table and enabling the z panel, the region sits at `(0.25, 0.5)` for **every** parameter chosen: `Number of Photons` (axis 31…3131), `Duration (ms)` (0.2…55.1), `Tau (green)` (0…6), `Count Rate (KHz)` (3.76…215). At 3131 photons full-scale the handle is 0.008 % of the plot wide, i.e. invisible, so the natural gesture — pick a parameter, press `+ select` — adds a `0.25…0.5` gate, the count goes `0 / 12237`, the 2-D plot and both marginals go blank, and the z histogram (now drawn from the gated data) is empty too, so there is nothing left to drag the handle back onto. The only ways out are editing the Min/Max cells or deleting the row, neither of which is suggested. Reset the region to the new parameter's range (or to a sensible inner quantile) whenever the z axis changes, in the same place the axis min/max is refreshed.
-- **Fix note:**
-
-### RF-474
-- **Status:** OPEN
-- **Severity:** S3 (the marginal-plot fast path aborts on its first attribute access and updates nothing; one `try` covers all three axes)
-- **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_update_helpers.py:311-316` (`x_bin_edges = x_hist.edges`) through `:409` (`except Exception as e: logging.warning("Error updating marginal plots from cache: %s")`), against `modules/ndxplorer/ndxplorer/core/plot_main.py:520-525`, where `self._histogram` is initialised as `{"x": (), "y": (), "z": (), "2d": ()}` — plain tuples with no `.edges`/`.counts`
-- **Finding:** reproduced by clearing a selection (🗑) after gating: `Error updating marginal plots from cache: 'tuple' object has no attribute 'edges'`, with `_histogram["x"]` confirmed to be a bare tuple at that moment. Because the X, Y and Z updates and the three `replot()` calls share one `try`, the failure on X silently skips Y and Z as well — the function is a no-op whenever the cache holds the tuple form. The visible plots survive only because another path redraws them, which is what makes this invisible outside the log. Either normalise `_histogram` entries to the histogram object everywhere (including the initialiser) or accept both shapes at the top of the function, and split the per-axis blocks so one bad axis cannot take the other two down.
-- **Fix note:**
-
-### RF-475
-- **Status:** OPEN
-- **Severity:** S3 (ERROR-level log noise on the entirely normal startup/load path trains the user to ignore real errors)
-- **Location:** `modules/ndxplorer/ndxplorer/plotting/plot_update_helpers.py:607-608` (`logging.error("X histogram computation failed or returned empty result")`) and `modules/ndxplorer/ndxplorer/core/plot_main.py:2445` (`logging.error("[DISPLAY] Invalid 2D histogram format")`)
-- **Finding:** every successful run of the workflow emits `[DISPLAY] Invalid 2D histogram format` once at startup (before any data exists) and `X histogram computation failed or returned empty result` **six times** while a burst folder loads correctly — reproduced identically on four separate runs, each ending with a correct 2-D histogram of 12 237 bursts. Nothing failed: these are the "no data yet" and "still loading" states of the update loop, logged as errors. Demote to `debug` (or guard on `_loading_data`, which the same load path already sets and clears), so an ERROR in this window means something.
-- **Fix note:**
 
 ### RF-468
 - **Status:** FIXED
@@ -6860,11 +6755,11 @@ Findings RF-563..RF-568.
 - **Fix note:**
 
 ### RF-568
-- **Status:** ✅ FIXED
+- **Status:** OPEN
 - **Severity:** S3 (the accurate-FRET panel is handed the burst table but not the detector setup the workflow already chose, so its column mapping runs blind and the user is asked for the setup twice)
 - **Location:** `chisurf/plugins/burst/burst_analysis/gui/tool.py:972-986` (`_apply_context_to_accurate_fret` calls only `model.set_filename`) against `chisurf/plugins/burst/accurate_fret/gui/view_model.py:179-198` (`apply_setup_settings`, "the shared setup hook") and `chisurf/plugins/burst/accurate_fret/gui/accurate_fret.view.json:16-19` (the `setup_selector` whose `call` is that method)
 - **Finding:** the model documents the setup as doing two things the calibration needs — its named windows help recognise burst-table columns "even when the table uses site-specific names", and they name the detectors when the optical model supplies the γ/α/δ prior — and the workflow holds exactly that payload in `workflow_context.channel_settings` (`{"windows", "detectors", …}`, read back from the canonical RPC store at `tool.py:580-595`). The hand-off ignores it, so the panel opens with `setup_name == ""` and `detectors == {}`, `_map_columns` runs without the window names, and the step asks the user to pick the setup that step 2 already selected. Call `apply_setup_settings({"name": …, "detectors": settings.get("detectors")})` before `set_filename` so the mapping and the prior see the setup.
-- **Fix note:** the workflow now hands the accurate-FRET panel the detector setup as well as the burst table, through the panel's own `apply_setup_settings` hook — the same payload its setup selector sends. `BurstWorkflowContext` gained `setup_name` (the name `channel_settings` was read from, which the RPC-held definition does not carry), filled in `_sync_channel_context` from the Burst Selection step; `_apply_context_to_accurate_fret` applies it *before* `set_filename`, so the window names are in place when the table's columns are mapped. The workflow's setup wins over the panel's own — as it does for BVA and H2MM — because the selector otherwise restores whatever setup was last used anywhere: rendered headlessly, the panel opened on `BS` (the machine's `last_used`) and only after the hand-off showed the workflow's `QA_LUT_TEST`, its windows, and the mapped columns. Applying is idempotent (payload compared against the model's current setup), so a downstream refresh does not re-map columns the user corrected. Pinned by `test_accurate_fret_receives_the_detector_setup` (real `AccurateFretViewModel`, a table whose `det0_green`/`det1_red` columns map *only* with the setup's window names — `guess_columns` returns `{}` without them) and `test_accurate_fret_setup_hand_off_is_idempotent` in `chisurf/plugins/burst/burst_analysis/tests/test_workflow.py`. `burst_analysis/tests` + `accurate_fret/test` green (37 passed); `ruff check` on the touched files reports findings identical to `HEAD` (all pre-existing) and `ruff format --diff` touches none of the new lines. Guide `docs/guides/41_accurate_fret.md` says what the workflow step arrives with.
+- **Fix note:**
 
 ## Review 2026-07-28 — the background-task seam and the pump it was supposed to replace
 
@@ -7318,7 +7213,7 @@ is scaled, what the pile-up correction does to an empty channel — and what
 "prompt" means. Findings RF-610..RF-615.
 
 ### RF-610
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (autoscale weights each channel by its variance instead of its inverse variance, so the χ² the fit reports is 38–78 % above the value the same model reaches at its own optimal scale)
 - **Location:** `chisurf/core/fluorescence/tcspc/tcspc.py:89` (`rescale_w_bg`: `iwsq = 1.0 / (w[i] * w[i] + 1e-12)`, used at `:90-91` as the weight of both sums) against its only caller `chisurf/core/models/tcspc/nusiance.py:772` (`weights = 1.0 / data.ey`), on the hot path at `chisurf/core/models/tcspc/lifetime.py:914` (`self.convolve.scale(decay, bg=self.generic.background)`, every model evaluation) and `chisurf/core/models/parse/tcspc/tcspc_parse.py:39`; the `ey` convention is fixed by `chisurf/core/data.py:527-535` (`set_weights`: "*Set y-weights (inverse of y-errors) … `ey` is set to `1 / w`*") and by the readers, which set `ey=counting_noise(y)` = √counts (`chisurf/core/experiments/tcspc/tttr_reader.py:287`, `simulator.py:114`)
 - **Finding:** the caller passes **w = 1/σ**, so `iwsq = 1/w² = σ²` — the kernel weights every channel by its *variance*, the exact inverse of the χ²-optimal 1/σ². The variable name (`iwsq`, "inverse w squared") only makes sense for w = σ, so kernel and caller disagree about what "weights" means, and the disagreement is silent. Measured on a 1024-channel Poisson decay (20 000 counts peak, τ = 3.5 ns, flat background): with the model *at* the optimum the two agree (scale 20 005.7 vs 20 000.5), but during a fit iteration they do not — a 9 %-wrong lifetime gives scale 20 582 against the χ²-optimal 21 613 (−4.8 %) and **χ²_r 39.23 against 28.42, +38 %**; 20 %-wrong gives 18 833 vs 16 545 (+13.8 %) and **χ²_r 203.9 against 114.6, +78 %**. Autoscale is on by default (`settings_chisurf.yaml:372`, `tcspc.autoscale: true` → `_n0.fixed`, read at `nusiance.py:767`), so this distorts the χ² surface the optimizer walks on every default TCSPC fit — the reported χ² is not the profile χ² over `n0`, and it is not stationary in `n0`. Even at the optimum the estimator is inefficient: over 200 Poisson realisations its sd is 11.9 against 9.0 for inverse-variance weighting. Fix by using `w[i] * w[i]` (or by having the callers pass σ) — and fix the two call sites together, since the sibling copy `chisurf/plugins/fluorescence_decay/lltf/core/scaling.py:58` has the same inversion and is fed `1.0 / np.sqrt(max(e, 1))` at `:98`. That sibling additionally divides by `max(1.0, sum_denom)` at `:61`, which silently returns a wrong scale whenever the denominator falls below one. No test pins the weighting.
@@ -8394,8 +8289,6 @@ back: in-memory `output_paths` holds
 - **Location:** `chisurf/plugins/traj/traj_align/view_model.py:126-129` (`table.root.time.append(np.arange(i * chunk_size, i * chunk_size + xyz.shape[0], dtype=np.float32))`) and `chisurf/plugins/traj/traj_rotate_translate/view_model.py:137-140` (identical); `traj_remove_clashes/view_model.py:201-206` does the same but is at least self-consistent (it counts written frames)
 - **Finding:** neither tool reads `chunk.time`; both synthesise `0, 1, 2, …` from the write index. The user-set **Stride** never enters the time axis, so a trajectory read every 32nd frame is written claiming consecutive frames. Verified in the GUI: `mdtraj.load(source)[::32].time` is `[0, 32, 64, 96, 128]`, the Align output's `time` is `[0, 1, 2, 3, 4]`; the Rot-Translate output at stride 64 is likewise `[0, 1, 2, 3, 4]`. This matters because the sibling FRET tab in the same window exports `RDA(t)` / `κ²(t)` **per frame against that axis** (`/usecases/md-trajectory-fret.md`), so any rate or correlation time fitted from a prepared trajectory is off by the stride factor with nothing on screen to say so. Carry `chunk.time` through unchanged (it is already in memory), or, if a synthetic axis is wanted for sources whose own `time` is unusable — `hgbp1_transition.h5`'s is non-monotonic, running 0…249 and restarting — at least scale it by the stride and say so in the log.
 - **Fix note:** FIXED (2026-07-28). All three streaming writers now append `chunk.time` instead of a write-index counter: Align and Rot-Translate carry the chunk's own times through unchanged (a transform changes coordinates, not time), and Remove Clashed — which drops frames — indexes the chunk's times by the kept-frame `selection`, so the gaps the removals leave stay visible on the axis rather than being renumbered `0, 1, …`. The non-monotonic-source case is deliberately *not* special-cased: the source's time axis is the truth, warts and all, and inventing a monotonic one is exactly the substitution this finding is about. Pinned by one test per tool, each writing an explicit source time axis (`0, 10, 20, …`) so a carried-through axis is distinguishable from a counter: `traj_align/test/test_view_model.py::test_save_aligned_keeps_the_source_time_axis` and `traj_rotate_translate/…::test_save_keeps_the_source_time_axis` read at `stride=2` and assert `[0, 20, 40]` (the old code wrote `[0, 1, 2]`), `traj_remove_clashes/…::test_kept_frames_keep_their_source_times` asserts the two survivors keep `t = 0` and `t = 10`. The three `_tiny_trajectory` / `_clash_trajectory` helpers gained an optional `times` argument for this. 41 tests green in the three suites.
-
-### RF-709
 - **Status:** OPEN
 - **Severity:** S3 (the one single-trajectory panel in Traj Tools that refuses a window-level file drop, because it names its property differently from its four siblings)
 - **Location:** `chisurf/plugins/traj/traj_tools/gui/tool.py:112-117` (`if not hasattr(type(widget), "trajectory_filename"): … "takes no dropped file — drop onto one of its fields"`) against `chisurf/plugins/traj/potential_energy/widget.py:84-92`, which exposes the property as **`trajectory_file`**
@@ -8524,11 +8417,23 @@ half about another. RF-718..RF-729.
   untouched by this change.
 
 ### RF-720
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a stale or unknown `fit_uid` silently falls back to fit index 0, so `set_parameter_value(..., fit_uid=<gone>)` writes the wrong fit's parameter and reports success)
 - **Location:** `chisurf/core/api/__init__.py:53-60` (`_resolve_indexed`: the uid loop, then `if index is not None and 0 <= index < len(items): return items[index], index`) reached through `_local_parameter` at `:71-77`, whose callers all default `fit_index: int = 0` — `get_parameter` `:676`, `set_parameter_value` `:695`, `set_parameter_fixed` `:711`, `set_parameter_bounds` `:725`, `set_parameter_bounds_on` `:773`, `model_finalize` `:741`, `model_set_parse_function` `:758`
 - **Finding:** verified against the real helper: `_resolve_indexed(['A','B','C'], 0, 'no-such-uid')` returns `('A', 0)`. A uid is the *identity* addressing mode — it exists precisely so a caller holding a fit across a list reordering or removal does not have to trust positions — and here a miss degrades to a position the caller never asked about, because the signature supplies `fit_index=0` for them. So a plugin that caches a `fit_uid`, and whose fit is then closed, does not get `{"ok": False, "error": "fit not found"}`; it mutates whatever fit now sits at index 0. Note `get_fit_info` / `run_fit` / `fit_update` escape this only by accident (their `fit_index` defaults to `None`). Fix: when `uid` is given and does not match, return `(None, -1)` — never fall through to the index.
-- **Fix note:**
+- **Fix note:** `_resolve_indexed` now mirrors the server's
+  `services._resolve_fit`: a **non-empty** uid that matches nothing returns
+  `(None, -1)` instead of falling through to the index, and an empty uid (`""`,
+  which the fitting client already treats as "unspecified" and does not send)
+  still uses the index. All `_local_fit` / `_local_dataset` call sites already
+  turn a `None` into `{"ok": False, "error": "fit not found"}` /
+  `"dataset not found"`, so a stale uid is now reported instead of silently
+  retargeting fit 0. The helper gained the NumPy-style docstring stating the
+  rule. Pinned by `test/server/test_api.py::TestChiSurfAPI::test_stale_fit_uid_does_not_fall_back_to_index`
+  (stale uid → error, fit 0 untouched, matching uid still wins over the
+  signature's `fit_index=0`, empty uid still index-addressed) and
+  `::test_stale_dataset_uid_does_not_fall_back_to_index`. The rule is now
+  written down for both halves in `/architecture/api-facade.md`.
 
 ### RF-721
 - **Status:** OPEN
@@ -8684,11 +8589,28 @@ around it.
 - **Fix note:**
 
 ### RF-736
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S2 (the calculator's three computed fields are visually identical to its inputs; the code that should distinguish them assigns a colour role to itself)
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:303-317` (`_update_field_enable`: `pal = sb.palette()` → `if sb.isReadOnly(): pal.setColor(sb.backgroundRole(), pal.base().color())` → `sb.setPalette(pal)`, under the comment *"Make read-only fields visually distinct"*)
 - **Finding:** a `QDoubleSpinBox`'s `backgroundRole()` **is** `QPalette::Base`, so the line sets Base to Base — a no-op — and the widget stays exactly as it was. Verified on the live widget under the default *Fix D*: `D` (an input) and `rh` / `Veff` (outputs) all report `palette().base() == #ffffff`, the same `buttonSymbols`, empty style sheets, and `isEnabled() == True`; the read-only ones correctly refuse `stepUp()` and typed keys (`rh` stayed 0.535862, `Veff` stayed 1.043571) but give no indication why, so the field reads as broken rather than computed. The widget already has the right vocabulary one row below: with *Use water η(T)* ticked, the η box is `setEnabled(False)` and renders properly greyed in the screenshot. Grey the read-only fields the same way (or hide their spin arrows with `setButtonSymbols(NoButtons)`), and re-apply on every constraint change — this is the central confusion of a panel with six identical spin boxes of which three are results.
-- **Fix note:**
+- **Fix note:** the marking is now a function of its own, `_mark_computed`, and
+  it says both halves out loud: a computed field gets the greyed `QPalette::Base`
+  Qt paints a *disabled* box with — the vocabulary the η box next to it already
+  uses — and loses its step arrows (`QAbstractSpinBox::NoButtons`), while an
+  input gets both back. Restoring the input look is what the old branch could
+  not do at all: it only ever painted, so nothing could have un-marked a field
+  when the constraint moved. (Measured, the old line was worse than a Base→Base
+  no-op: `backgroundRole()` reports `Window` for these boxes, so it painted the
+  *window* role white — invisible on a spin box, which draws its editor with
+  `Base`.) The two colours are read from `QApplication.palette(sb)`, not from the
+  box's own palette, which is the surface being overwritten — reading that back
+  would let the "editable" colour drift to whatever the previous call painted.
+  Screenshotted offscreen under *Fix D* and *Fix Veff*: `rₕ` and `Veff` are grey
+  and arrow-less against a white, arrowed `D`, and the marking follows the radio
+  button. Docs need no change — the generated field table already documents
+  these three as "read-only unless '<constraint>'"; the panel now shows it.
+  Tests: `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py::test_a_computed_field_does_not_look_like_an_input`
+  (pins both directions, including the switch back).
 
 ### RF-737
 - **Status:** OPEN
@@ -8698,11 +8620,19 @@ around it.
 - **Fix note:**
 
 ### RF-738
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S3 (the *Aspect* box is editable and ignored in the shape estimator's default state, because the handler that disables it never runs at construction)
 - **Location:** `chisurf/plugins/fcs/fcs_calculator/wizard.py:407-416` (`_on_shape_changed`: `self.shape_aspect.setEnabled(shape != "Sphere")`), wired at `:282` to `currentIndexChanged` only, against `_setup_ui`'s init block at `:242-244`, which calls `_update_field_enable()` and `_on_use_water_eta(...)` but not `_on_shape_changed(...)`
 - **Finding:** `_ShapeSection` builds the combo with *Sphere* at index 0 (`:108`), so the first `currentIndexChanged` cannot fire for the default selection and the handler never runs until the user picks something else. Verified on a freshly constructed widget: with *Sphere* selected, `shape_aspect.isEnabled()` is `True`, so the user can type an aspect ratio that `_apply_shape_to_D` (`:431-434`) never reads — a sphere's D depends only on the size. Selecting *Ellipsoid* and returning to *Sphere* fixes it for the rest of the session, which makes the inconsistency harder to notice, not easier. Call `_on_shape_changed(self.shape_combo.currentIndex())` once at the end of `_setup_ui`, beside the two initialisers that are already there.
-- **Fix note:**
+- **Fix note:** done as suggested — `_setup_ui` now runs the handler once for the
+  initial shape, beside `_update_field_enable()` and `_on_use_water_eta(...)`,
+  with a comment naming the reason (index 0 cannot emit `currentIndexChanged`).
+  *Aspect* is greyed for the default sphere, enables for *Ellipsoid* and greys
+  again on the way back — screenshotted offscreen with the *Molecular shape*
+  section expanded. Tests:
+  `chisurf/plugins/fcs/fcs_calculator/test/test_widgets.py::test_the_aspect_box_is_disabled_for_the_default_sphere`
+  (construction state plus both transitions, so the fix cannot be mistaken for
+  the signal that was already there).
 
 ## Review 2026-07-28 — chimol display defaults: a migration that stamps only when it moves something
 
@@ -9012,6 +8942,62 @@ Findings RF-765..RF-770.
 - **Finding:** `Dwell` is a dataclass with `is_edge` declared and defaulted, so every instance carries the attribute and `getattr(d, "is_edge", None)` can never return `None` — the recompute fallback is unreachable, and `burst_start` / `burst_end` are now computed once per dwell solely to feed it (nothing in the tree pickles `Dwell`; only `core/surrogate.py` pickles anything). The case the fallback was meant to cover — a `Dwell` built without the flag — instead lands on the field default `False`, i.e. the table reports a censored dwell as **not** censored, which is exactly the disagreement the comment above it says it is preventing. Drop the branch and the two locals and read `d.is_edge` directly; if an unflagged record must stay tolerable, make the default detectable (`is_edge: bool | None = None`) so the fallback can actually run.
 - **Fix note:**
 
+### RF-771
+- **Status:** OPEN
+- **Severity:** S1 (the entire FRET-docking plugin is dead: `dock`, `score`, `refine`, `screen` and the repeated-run error estimation every one raise the same `AttributeError` within ~2 s of pressing Run)
+- **Location:** `chisurf/plugins/modelling/fret/core/imp_engine.py:551` (`fret = IMP.bff.restraints.AVNetworkRestraintWrapper(...)` in `build_assembly`, reached by `dock_minimize:928`, `score:759`, `refine:1160` and `estimate_errors:1307`), with the import at `:56` (`import IMP.bff.restraints`) and the capability probe at `:63` (`_HAS_IMP = bool(hasattr(IMP.bff, "AV"))`)
+- **Finding:** driven through the real GUI (Structure Tools → *2. Docking & Screening* → **📂 Project** `examples/fps_hiv_rt/docking_project.json` → **▶️ Run**), every operation ends in `AttributeError: module 'IMP.bff.restraints' has no attribute 'AVNetworkRestraintWrapper'` — score, dock (1 run), dock (3 runs / error estimation) and refine, all four, on IMP **2.24.0**. The class is not missing from the installation: it lives in `<env>/lib/python3.12/site-packages/IMP/bff/restraints/AVNetworkRestraint.py:66` (`class AVNetworkRestraintWrapper(IMP.pmi.restraints.RestraintBase)`). Two things keep the plugin from reaching it, and both must be handled: **(a)** that `restraints/` directory ships **without an `__init__.py`**, so `IMP.bff.restraints` is an implicit namespace package that re-exports nothing — verified with a clean `PYTHONPATH` (no imp-tricks): `import IMP.bff.restraints` succeeds, `r.__file__ is None`, `dir(r)` is empty, and `ops.score(...)` on the shipped HIV-RT example still fails with the identical `AttributeError`; the name is only reachable as `IMP.bff.restraints.AVNetworkRestraint.AVNetworkRestraintWrapper`, i.e. the submodule has to be imported explicitly. **(b)** With `modules/imp-tricks/src` on `PYTHONPATH` — the run recipe `CLAUDE.md` prescribes — imp-tricks' own regular package `src/IMP/bff/restraints/__init__.py` **replaces** the namespace portion (`IMP.bff.restraints.__path__ == ['/…/imp-tricks/src/IMP/bff/restraints']`), so `import IMP.bff.restraints.AVNetworkRestraint` raises `ModuleNotFoundError` and the installed module is unreachable under any spelling. imp-tricks exports `SimpleAVNetworkRestraint` instead, which is **not** the same object — it is a pure-Python chi² helper with no hierarchy/fps.json ingestion, no `.rs` and no `add_to_model()`, so it is not a drop-in rename. The plugin's own guard does not catch any of this: `_HAS_IMP` only tests `hasattr(IMP.bff, "AV")`, so `fret.info_backends` cheerfully returns `{"has_imp_bff": true}` and `require_imp()` passes. Import the concrete submodule (`import IMP.bff.restraints.AVNetworkRestraint as _avnr`) and check for the wrapper class in `_HAS_IMP`, and decide what imp-tricks' `IMP/bff/restraints/__init__.py` should re-export so it stops shadowing the shipped module. The plugin's test suite already carries **16 failures** from this (noted in RF-477's fix note) — they are this bug, not environment noise.
+- **Fix note:**
+
+### RF-772
+- **Status:** OPEN
+- **Severity:** S2 (a total scoring failure is reported to the user as a successful ranking — `screen.csv` is written with `nan` in every row and the status bar says "ranked 2 structures")
+- **Location:** `chisurf/plugins/modelling/fret/core/imp_engine.py:1229-1231` (`except Exception as exc: results.append((pdb, float("nan")))` inside `screen`'s per-structure loop) → `api/operations.py:131-141` (`OperationResult(status="ok", operation="screen", …)`) → `gui/dock_tool.py:774-776` (`elif "ranked" in data: self._set_status(f"ranked {len(data['ranked'])} structures")`)
+- **Finding:** `screen` swallows every per-structure exception so one unreadable PDB cannot kill a library run — but it records the failure as the score `nan` and no one downstream distinguishes that from a real score. Observed with RF-771 active: screening the two shipped HIV-RT bodies took 1.4 s, the status bar read **"ranked 2 structures"**, and `screen.csv` contained `protein_1R0A.pdb,nan` and `dna.pdb,nan` — the same message and the same file shape a successful screen produces, with nothing anywhere indicating that scoring never ran once. A library of 500 structures would behave identically. Count the failures and surface them (`"ranked 498 structures, 2 failed"`), keep the exception text per structure, and treat an all-`nan` result as an error rather than an "ok" `OperationResult`.
+- **Fix note:**
+
+### RF-773
+- **Status:** OPEN
+- **Severity:** S3 (the `screen` operation produces no visible result in the window that ran it — the ranking exists only in a CSV the user must locate)
+- **Location:** `chisurf/plugins/modelling/fret/gui/dock_tool.py:774-776` (`elif "ranked" in data: self._model.n_distances = len(data["ranked"]); self._set_status(...)`) against the `dock`/`refine`/`score` branches at `:737-773` which call `_fill_table(...)`
+- **Finding:** the tool's dock area is *Results · Score · Structure*, and the Results table has exactly the columns a ranking needs, but the `ranked` branch never fills it — verified: after a `screen` run `self._table.rowCount() == 0` while `screen.csv` held both rows. The user is left with a one-line status count and has to open the output directory by hand to see which structure won; the *Score* tab stays empty too, although a ranked score distribution is the natural plot. Also note the branch stores the number of *structures* into `n_distances`, the field whose name (and the Results column) means the number of distance restraints. Fill the table with `(rank, "screen", score, n_distances, pdb)` rows so row selection shows the structure in the 3-D preview like the docking results do.
+- **Fix note:**
+
+### RF-774
+- **Status:** OPEN
+- **Severity:** S3 (pressing Run on an empty panel creates a directory in whatever folder ChiSurf was started from, then reports a Python traceback)
+- **Location:** `chisurf/plugins/modelling/fret/gui/dock_tool.py:674-681` (`_on_run` → `self._model.ensure_output_dir()` then straight into `_start_progress`/`_Worker`) with `_DockingModel.ensure_output_dir:124-134` (`base = pathlib.Path(anchor).parent if anchor else pathlib.Path.cwd()`) and `core/imp_engine.py:109` (`os.makedirs(output_dir, exist_ok=True)` in `_ensure_output_dir`, called *before* `build_assembly` validates the inputs)
+- **Finding:** with nothing loaded, **▶️ Run** does not validate: it defaults `output_dir` to `<cwd>/dock_out` (no anchor file exists, so the fallback is the process working directory), opens the modal progress dialog, spawns the worker, and only then does `build_assembly:513` raise `ValueError("At least one PDB file is required.")` into a raw-traceback error dialog. By that point `_ensure_output_dir` has already run — verified: a fresh `dock_out/` directory appeared in the repository root after one click on a freshly constructed tool, and the panel's Output field silently changed to `/Users/…/dev/chisurf/dock_out`. Check the PDB list, the fps.json path and the output directory at click time and say what is missing, before creating anything; and when defaulting the output directory with no anchor, ask rather than writing into the launch directory.
+- **Fix note:**
+
+### RF-775
+- **Status:** OPEN
+- **Severity:** S3 (a successful project load produces no visible feedback anywhere in the window)
+- **Location:** `chisurf/plugins/modelling/fret/gui/dock_tool.py:479-485` (`_load_project`: `m.status = f"loaded {pathlib.Path(f).name} …"` then `self._form.sync_fields()`, with no `_set_status`) against `_save_project:511` (`self._set_status(f"saved {pathlib.Path(f).name}")`) and `gui/fret_dock.view.json` (no section binds `status`)
+- **Finding:** `_load_project` reports its outcome by writing `model.status`, but `status` is not one of the fields in `fret_dock.view.json`, so `sync_fields()` renders it nowhere and the bottom status bar — the widget the tool uses for exactly this — is never touched. Verified: after a successful **📂 Project** load of `fps_hiv_rt/docking_project.json` the model carries `status='loaded docking_project.json'` while `self._statusbar.currentMessage()` is `''` and the screenshot shows an empty status strip; the sibling **💾 Save** action, one method below, does call `_set_status` and does show. The load *does* report the interesting part in that string (`"… (N docked bodies)"`, which is also the only signal that **Resume** has been armed) — route it through `_set_status` like Save, and drop the unrendered `status`/`score`/`n_distances` model fields or give them view sections.
+- **Fix note:**
+
+### RF-776
+- **Status:** OPEN
+- **Severity:** S3 (the pair-selection plot's y axis is labelled `∧ (Å)` — the quantity name is eaten as an HTML tag)
+- **Location:** `chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py:138` (`self.plot.set_labels(bottom="Pairs added", left="<<RMSD>> (Å)")`)
+- **Finding:** axis labels are rendered as rich text, so the ASCII stand-in `<<RMSD>>` is parsed as a stray `<` followed by an unknown `<RMSD>` element and its closing `>`; what survives on screen is `∧ (Å)` — verified in a rendered grab of the wizard after a real run on the shipped T4L trajectory. The table beside it, which is plain text, shows `<<RMSD>> (Å)` correctly, so the two halves of the same result disagree. Use the Unicode angle brackets (`⟨RMSD⟩ (Å)`) or escape the markup; the same ASCII spelling appears in the table header at `:131` and in the export at `:313`, and is worth unifying.
+- **Fix note:**
+
+### RF-777
+- **Status:** OPEN
+- **Severity:** S3 (the FRET pair-selection run blocks the GUI thread for ~1 min with no progress and no way to cancel)
+- **Location:** `chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py:190-291` (`_run`, connected at `:158` directly to `run_btn.clicked`, does trajectory loading, AV computation over every frame, the RMSD matrix and the greedy selection inline, guarded only by `setOverrideCursor(Qt.WaitCursor)`)
+- **Finding:** measured on the plugin's own tutorial data (`examples/olga_t4l`, 894-frame DCD at **stride 20**, 5 pairs, AV backend on): **52.8 s** during which the window cannot repaint and the only feedback is a wait cursor — at the default stride 1 that is twenty times longer. Everything in the method runs on the UI thread; there is no progress, no ETA, no partial result and no Cancel, and a user cannot tell a long computation from a hang. The sibling docking tool in the same plugin already does this correctly (`ChiSurfProgress` with ETA + Cancel driven by a `QThread` worker, `gui/dock_tool.py:594-696`) — move the selection onto the same handle.
+- **Fix note:**
+
+### RF-778
+- **Status:** OPEN
+- **Severity:** S3 (a complete, working GUI feature — OLGA-style optimal FRET pair selection — has no entry point in the application)
+- **Location:** `chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py:37` (`class FRETPairSelectionWindow`), not referenced by `chisurf/plugins/modelling/fret/manifest.json` (`entrypoints.gui` is `gui.dock_tool:FretDockingTool` only), not in `chisurf/plugins/modelling/structure_tools/gui/tool.py:STRUCTURE_PANELS`, and not offered by the docking tool's `Op` combo (`gui/fret_dock.view.json`: `dock / refine / screen / score`)
+- **Finding:** the only reference to the class in the tree is its construction test (`test/test_fret_pair_selection.py:8`) — verified by grepping every `.py`/`.json`/`.md` under `chisurf/` and `docs/`. It is not dead code: driven directly it runs the whole pipeline on the shipped `examples/olga_t4l` tutorial (which exists precisely for it, complete with `pair_selection_tutorial.fps.json` and a `pair_select` block in the example `project.json`) and returns a sensible greedy ⟨RMSD⟩ decay — `A48_A119 3.94 → A37_A86 3.24 → A48_A89 3.15 → A37_A116 2.98 → A37_A85 2.42 Å` — with a working Export. A user planning which residue pairs to label, the question the OLGA half of this plugin exists to answer, cannot reach any of it from the running application. Give it a panel in the Structure Tools navigation (next to the FPS JSON Editor whose output it consumes) or a fifth `Op` in the docking tool.
+- **Fix note:**
+
 ### RF-779
 - **Status:** FIXED
 - **Severity:** S1 (visiting two samplers in the settings dialog leaves a key behind that kills the next sampling run with a `TypeError`)
@@ -9053,65 +9039,6 @@ Findings RF-765..RF-770.
 - **Location:** `chisurf/gui/widgets/fitting/fitting_controls.py:344-345` (`model.apply()` / `return True`, ignoring the returned bool) with `apply` at `:294-303` (`except Exception: pass` around the session update) and `chisurf/core/settings/settings_utils.py:256-259` (`except Exception: return False`)
 - **Finding:** `set_optimization_settings` swallows every failure — an unwritable settings folder, a settings file that is not valid YAML — and returns `False`; `apply()` faithfully passes that on, and its own docstring promises the caller can tell ("Whether the settings file was written"). `show_optimization_settings` then discards it: it calls `model.apply()` for its side effect and unconditionally returns `True`, whose docstring claims it means "whether the settings were accepted **and applied**". The session update that would at least keep the values for this run is itself wrapped in a bare `except Exception: pass`, so on that path nothing is stored and nothing is said. Return `model.apply()` and have the caller report a failed write (the shared `ChiSurfMessageBox` warning), so the user learns the sampler they just chose will not survive the session.
 - **Fix note:** `show_optimization_settings` returns what `apply()` reports and warns when the write failed; the session update no longer swallows its own failure.
-
-### Review 2026-07-28 — PDA: three colours as a reader setting (`ad12a0913`)
-
-Slice: the newest substantial landing — the merge of the `pda3c` experiment into
-the one `pda` section. The migration of the stale user section, the merged
-registry and the `supports_data` filter itself all check out at the *curve*
-level. What does not is the object the filter is actually asked about in the
-running application (RF-786), and the move of `n_colors` behind a property
-(RF-787). Findings RF-786..RF-792 below; all verified by running the code in the
-`arm64` env.
-
-### RF-786
-- **Status:** OPEN
-- **Severity:** S1 (a three-colour PDA dataset offers exactly the six models that cannot fit it, and hides the one that can)
-- **Location:** `chisurf/core/experiments/core/experiment.py:167` (`Experiment.get_model_classes`) as called from `chisurf/gui/main.py:391` (`experiment.get_model_names(ds)`) and `chisurf/macros/core_fit.py:1058` (`exp.get_model_classes(data_sets[0])`), against `chisurf/core/models/pda3c/pda3c.py:137` (`burst_payload`) and `chisurf/core/models/pda2c/common.py:840` (`Pda2cModelMixin.supports_data`)
-- **Finding:** the filter is asked about the **group**, not the curve. `Pda2cReader.read` returns an `ExperimentDataGroup`, so `core_data.add_dataset:570,628` takes the `is_experiment_group` branch and appends *the group itself* to `cs.imported_datasets`; `ExperimentalDataSelector.selected_curve_index` (`chisurf/gui/widgets/experiments/widgets.py:50-62`) deliberately maps a selected child back to its parent row, so `current_dataset` is always that top-level group. A `DataGroup` is a `list` subclass with no attribute proxy and its own empty `meta_data`, so `burst_payload(group)` is `None`. Verified headlessly on a fabricated three-colour curve: for the *curve*, `Pda3cModel.supports_data` → `True` / `Pda2cSimpleModel.supports_data` → `False`; for the `ExperimentDataGroup` holding that same curve, `False` / `True` — exactly inverted. So the feature this refactor exists for is off by one container in the GUI combo *and* in the headless `add_fit` fallback, which now picks `Pda2cSimpleModel` for a burst table. Look through a group to its first element (in `get_model_classes`, so every model's `supports_data` gets the payload-carrying object), and pin it with a test that goes through `ExperimentDataGroup` rather than a bare `DataCurve` — `test/gui/test_pda_colour_setting.py` only tests the curve.
-- **Fix note:**
-
-### RF-787
-- **Status:** OPEN
-- **Severity:** S1 (a saved three-colour PDA project reloads as two-colour, and touching the reader's colour count raises `AttributeError`)
-- **Location:** `chisurf/core/experiments/pda2c/reader.py:150` (`self._n_colors = …`) and `:155-181` (the `n_colors` property) against `chisurf/macros/core_fit.py:642` (`if k in banned_keys or (k.startswith("_") and k not in {"_irf"}): continue`)
-- **Finding:** `n_colors` used to be a plain instance attribute (`ad12a0913^`: `self.n_colors = int(n_colors) if n_colors else len(channels)`) and was therefore serialised into a project by `_serialize_reader`, which walks `reader.__dict__`. Moving it behind `_n_colors` puts it under the underscore skip, so it is dropped. Verified end to end: `_serialize_reader(Pda2cReader(channels=[[0],[1],[2]], n_colors=3))['state']` contains no colour count at all, and since `_deserialize_reader` builds the object with `cls.__new__` and only `__dict__.update(state)`, the restored reader has no `_n_colors` — `reader.n_colors` raises `AttributeError: Pda2cReader object has no attribute '_n_colors'`. `detection_windows` masks it (`int(getattr(self, "n_colors", 2))` swallows the AttributeError and returns the default), so a restored three-colour reader silently reads two-colour. Either serialise the property (add `_n_colors` to the `_irf` exemption, or serialise `dir()`-declared properties) or keep a public `n_colors` in `__dict__`; and give `n_colors` a class-level default so the getter cannot raise on a `__new__`-built instance.
-- **Fix note:**
-
-### RF-788
-- **Status:** OPEN
-- **Severity:** S2 (every nested-list reader attribute is silently emptied when a project is saved — for PDA that is both the detection channels and the micro-time windows)
-- **Location:** `chisurf/macros/core_fit.py:628-637` (`_to_basic`: `if isinstance(v, (list, tuple)): … else: # skip non-basic entries in sequences / continue`)
-- **Finding:** `_to_basic` only keeps *scalar* items of a sequence, so a list of lists comes back as an empty list rather than being recursed into — and `[]` is not `None`, so it is stored as if it were the real value. Verified: a `Pda2cReader` with `channels=[[0],[1],[2]]` and `micro_time_ranges=[[0,8000],[8000,16000]]` serialises to `{'channels': [], 'micro_time_ranges': [], …}`, and the round-tripped reader reports `detection_windows() == []`. A subsequent `read()` then dies at `reader.py:686` (`channels_1 = self.channels[0]`, `IndexError`). Pre-existing rather than introduced by `ad12a0913`, but it is what makes RF-787 unrecoverable: the restored reader has neither its colour count nor its channels. Recurse in `_to_basic` for nested sequences (the function is already recursive for the scalar case) instead of dropping them.
-- **Fix note:**
-
-### RF-789
-- **Status:** OPEN
-- **Severity:** S2 (constructing the reader at three colours with two channel groups is accepted, then raises deep in the read)
-- **Location:** `chisurf/core/experiments/pda2c/reader.py:147-150` (the constructor's deliberate `self._n_colors = …` bypass of the setter) and `:282` (`blue, green, red = (list(c) for c in self.channels[:3])`), reachable from `chisurf/server/services/pda.py:97-99` (`settings["n_colors"] = int(n_colors)` forwarded verbatim to `Pda2cReader(**settings)`)
-- **Finding:** the `n_colors` setter normalises `channels` and `micro_time_ranges` for the new count (`default_channels` / `default_micro_time_ranges`), but the constructor writes `_n_colors` directly on the stated reasoning that "at construction the windows were given for this colour count" — which the constructor never checks. Verified: `Pda2cReader(channels=[[0],[1]], micro_time_ranges=[[0,4096]], n_colors=3).detection_windows()` raises `ValueError: not enough values to unpack (expected 3, got 2)`. The `pda.from_bursts` RPC hands `n_colors` straight through from a JSON client with an independently supplied `channels`, so the mismatch is client-reachable and surfaces only as `PDA read failed: not enough values to unpack`. Validate the pair in `__init__` (pad/roll through `default_channels`, or raise a message naming the two counts), and reject it at the service boundary where the caller can be told what it sent.
-- **Fix note:**
-
-### RF-790
-- **Status:** OPEN
-- **Severity:** S2 (the Segmentation control is offered at three colours and has no effect there)
-- **Location:** `chisurf/core/experiments/pda2c/reader.py:378-386` (`burst_count_table` → `tttr_data.get_ranges_by_time_window(...)`, unconditional) against `chisurf/core/experiments/pda2c/pda.view.json:38-56` (the `Segmentation` panel, with no visibility condition) and `reader.py:766` (`time_binned = str(getattr(self, "segmentation", "burst")) == "time-bins"`, in the two-colour branch only)
-- **Finding:** the three-colour branch (`reader.py:726-746`) returns before the segmentation switch is ever read — `burst_count_table` contains no reference to `self.segmentation` (verified by inspecting its source) and always runs the burst search. The panel nevertheless shows "Fixed time bins (constant duration)" at both colour counts, and its own description argues that fixed bins are what a *dynamic* model needs. A user reading a three-colour file with "Fixed time bins" selected gets burst-search windows with varying durations and nothing says so. Either honour the setting on the three-colour path (bin the stream the way `time_binned_histograms` does and count per bin), or hide/disable the control when `n_colors == 3` and say why.
-- **Fix note:**
-
-### RF-791
-- **Status:** OPEN
-- **Severity:** S2 (`pda.from_bursts(n_colors=3)` reports `ok: True` with every curve empty)
-- **Location:** `chisurf/server/services/pda.py:106-118` (`pda = getattr(curve, "pda", None) or {}` → `s1s2`, `n_photons`, `maximum_number_of_photons`) against `chisurf/core/experiments/pda2c/reader.py:295-339` (`_three_color_curve`, which attaches `pda3c` and never `pda`)
-- **Finding:** the service advertises `n_colors` as a parameter ("Optional colour count override (2 → S1/S2 histogram)") and forwards it to the reader, but its result assembly only knows the two-colour payload. A three-colour read produces curves carrying `meta_data['pda3c']` / `curve.pda3c`; `getattr(curve, "pda", None)` is genuinely missing on them (verified — `DataCurve` has no meta-data attribute fallback), so every curve comes back as `{"shape": [0], "s1s2": [], "n_photons": 0, "maximum_number_of_photons": None}` with `ok: True`. A client cannot distinguish that from a file with no bursts. Either serialise the burst table for three colours (`blue`/`green`/`columns`/`n_bursts`) or refuse `n_colors=3` in this service with an explicit error.
-- **Fix note:**
-
-### RF-792
-- **Status:** OPEN
-- **Severity:** S3 (clearing an excitation-period field in the three-colour panel makes the next read raise instead of reporting the empty field)
-- **Location:** `chisurf/gui/widgets/experiments/pda2c/controller.py:1429-1432` (`_parse_windows`: `return [window[0] if window else [] for window in windows]`) → `chisurf/core/experiments/pda2c/reader.py:254-258` (`_micro_time_range`) → `:398` (`for index, (channels, (low, high)) in enumerate(windows)`)
-- **Finding:** an empty excitation field parses to `[]`, which `_parse_windows` stores as a window rather than rejecting, `onParametersChanged` writes to `reader.micro_time_ranges`, and `_micro_time_range` hands back `tuple([]) == ()`. Verified: `Pda2cReader(channels=[[0],[1],[2]], micro_time_ranges=[[], [8000,16000]], n_colors=3).detection_windows()` returns `[([0], ()), ([1], ()), ([2], ()), …]`, and `burst_count_table` then unpacks `()` into `(low, high)` — `ValueError: not enough values to unpack (expected 2, got 0)`. The two-colour path degrades gracefully here (an empty list of ranges just means "no window"), so only three colours breaks. Keep the previously configured window (or fall back to the full micro-time span) when the field is blank, and mark the field rather than accepting it.
-- **Fix note:**
 
 ### RF-785
 - **Status:** OPEN
@@ -9298,11 +9225,11 @@ Everything below was verified by running the real code in the `arm64` env; no
 source was changed. Findings RF-804..RF-809.
 
 ### RF-804
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (the shared core seam every photon-by-photon analysis starts from drops the last photon of every burst, and discards single-photon bursts entirely)
 - **Location:** `chisurf/core/fluorescence/burst/photons.py:239-245` (`extract_burst_photons`: `if last <= first: continue` then `mt = macro[first:last]` / `ch = chan[first:last]` / `mi = micro[first:last]`)
 - **Finding:** `Last Photon` is the burst's last photon **inclusive** (see the review note above: 1299/1299 rows of the real PARIS fixture, the writer's own docstring, and tttrlib's `// inclusive`), so the slice must run to `last + 1`. Verified against the repo's own Becker&Hickl measurement: a burst declared `First Photon = 100`, `Last Photon = 109` — ten photons, all in channels `[0, 1, 8, 9]` — comes back with **9**, and a one-photon burst (`First = Last = 300`) is dropped by the `last <= first` guard before any stream filtering. This is the seam the module docstring calls "the first step of every photon-by-photon analysis": H2MM (`chisurf/plugins/burst/burst_h2mm/core/photons.py:134`), the Gopich-Szabo fit (`chisurf/plugins/burst/burst_gs/core.py:126`) and anything else built on it inherit a uniformly one-photon-short burst — the systematic `1/N` bias hits shortest and dimmest bursts hardest, exactly where the gap statistics that drive a kinetic fit live. Fix is `first:last + 1` in the three slices, `last < first` in the guard, and `first + np.nonzero(keep)[0][order]` at `:268` stays correct as written. Pin it with a burst whose declared count matches the table's `Number of Photons`.
-- **Fix note:**
+- **Fix note:** FIXED — `extract_burst_photons` now slices `first:last + 1` and guards with `last < first`, so a row's photon count is `Last − First + 1` and `First == Last` is a legal one-photon burst. Pinned by `test/fluorescence/test_burst_photons.py` (5 tests): the `100..109` burst returns ten photons with `photon_index == arange(100, 110)`, a `300..300` burst returns one, an inverted row is still dropped, the interleaved sentinel rows are still not bursts, and — the guard that cannot drift — a table written by the real `generate_burst_dataframe` round-trips so that each extracted burst's length equals that row's own `Number of Photons`. Confirmed the convention independently before changing anything: all **12237** non-sentinel rows of the PARIS folder in `modules/ndxplorer/test/mfd/` satisfy the inclusive relation and none the exclusive one. Two tests were frozen to the old behaviour and were corrected in the same change rather than left red: `burst_h2mm/tests/test_ab_vs_h2mm_c.py::_simulate_via_tttrlib` built its table with an exclusive stop *and* sliced its H2MM_C reference the same way, so side A and side B stopped agreeing (now `off + len(t) - 1` and `[fp:lp + 1]`); `burst_gs/test/test_burst_gs.py::test_a_real_bur_table_loads_despite_its_sentinel_rows` froze `n_bursts = 201` / `n_photons = 15291` read from the pre-RF-163 `bh_spc132_sm_dna` fixture, which stores exclusive stops — now 203 / 15512 with a comment saying the counts pin the reader, not the fixture. The same off-by-one in BVA (RF-806, RF-807) and in the burst-MLE workers (RF-808) is *not* covered here and stays open.
 
 ### RF-805
 - **Status:** FIXED
@@ -10129,6 +10056,7 @@ offscreen Qt. RF-889..RF-895.
 - **Location:** `chisurf/gui/chiplot/canvas.py:1101-1114` (`PanelPlot.__init__`, which calls `self._canvas.on_click(...)` and nothing else) against `Plot.__init__` at `:78-79` (which wires both `on_click` and `on_mouse_move`) and the signal documented for the whole class at `:54-59`
 - **Finding:** `PanelPlot` deliberately bypasses `Plot.__init__` and re-does its wiring by hand, but only re-does half of it: `on_mouse_move` is never registered, so `mouse_moved` is dead on every panel returned by `Grid.add_plot`. `grep -rn "on_mouse_move" chisurf/gui/chiplot` shows the single `Plot.__init__` call site. Nothing consumes `mouse_moved` today (the one crosshair implementation, `chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py:130`, reaches past the seam to `plot.native.scene().sigMouseMoved` instead — itself a chiplot gap worth closing), so this is latent: the first caller to connect a grid panel's `mouse_moved` gets silence with no error. Add the missing `on_mouse_move` wiring in `PanelPlot.__init__` and pin it the way RF-131's fix pinned `on_click` (emit a scene `sigMouseMoved` inside a panel's rect, assert only that panel reports).
 - **Fix note:**
+
 ### QA 2026-07-29 — the Converter hub (raw stream → time-window BIDs → analysis folder)
 
 Slice: driving *Tools → 🔁 Converter* headlessly end-to-end on
@@ -10461,11 +10389,18 @@ traversal (`../`, absolute) on both write and extract. Findings RF-926..RF-933
 are the parameter-state round-trip, the archive container and the UI-state half.
 
 ### RF-926
-- **Status:** OPEN
+- **Status:** FIXED
 - **Severity:** S1 (a saved fit reloads with a *different, silently clamped* parameter value — 50.0 comes back as 10.0 — with no warning and no trace in the project file, which still holds the correct number)
 - **Location:** `chisurf/core/project/fit_state.py:259-292` (`_apply_state_to_model`, first pass: `p.value = float(p_state["value"])` at `:259-264`, then `p.bounds = (float(b[0]), float(b[1]))` at `:280-286`, then `p.bounds_on` at `:288-292`), against `chisurf/core/parameter.py:729-739` (`Parameter.set_state`, which applies **bounds → bounds_on → fixed → value**) and `chisurf/core/fitting/parameter.py:565-574` (`FittingParameterGroup.set_state`'s fallback, same correct order)
 - **Finding:** the project-load path writes `value` **before** it restores `bounds`, so the stored value is clamped against the *freshly constructed* model's default bounds rather than the saved ones. `Parameter.value`'s setter and getter both clamp while `bounds_on` is true and write the clamped number back to the port (`chisurf/core/parameter.py:288-309`), so the loss is permanent — widening the bounds one statement later does not undo it. Verified through the real helper: a `FittingParameter(value=1.0, lb=0.0, ub=10.0, bounds_on=True)` fed a state of `value=50.0, bounds=[0.0, 100.0], bounds_on=True` through `_apply_state_to_model` comes back as **`value = 10.0`, `bounds = (0.0, 100.0)`** — the bounds restored, the value silently truncated to the old ceiling. Assigning in the other order (`bounds`, `bounds_on`, then `value`) on the same parameter gives `50.0`. This is the *only* one of the three restore implementations in the tree that uses the wrong order, and it is the one the project loader reaches. The existing round-trip tests miss it because they restore into the very object they saved (`test/project/test_project_roundtrip.py:70-80` sets `value = 2.0` inside its own `(0.0, 5.0)` bounds, so no clamp can occur). Fix: move the `bounds`/`bounds_on` assignment above the `value` assignment in the first pass, and pin it with a test whose saved value lies outside the target model's *default* bounds.
-- **Fix note:**
+- **Fix note:** `_apply_state_to_model`'s first pass now applies the scalars in
+  the same order as `Parameter.set_state` — `bounds`, `bounds_on`, `fixed`,
+  `value` (`error_estimate` last, it never clamps) — with the reason stated at
+  the loop so the order is not "tidied" back. Pinned by
+  `test/project/test_fit_state_restore_order.py` (4 tests): a saved value above
+  and one below the *default* bounds survive restore, the *restored* bounds still
+  clamp a value outside them, and a state with `bounds_on: false` restores the
+  raw value.
 
 ### RF-927
 - **Status:** OPEN

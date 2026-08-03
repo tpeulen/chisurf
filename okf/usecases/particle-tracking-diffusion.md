@@ -21,7 +21,7 @@ the number is what it is (confinement, directed motion, identity swaps). It
 belongs after *Drift* in the Image Tools order — a drifting sample looks exactly
 like directed motion, and no amount of tracking separates the two afterwards.
 
-**Tool:** *Microscopy → Imaging → Particle Tracking*
+**Tool:** *Imaging → Particle Tracking*
 (`chisurf.plugins.microscopy.img_tracking.gui.tool:ImgTrackingTool`, plugin id
 `img_tracking`); also the **Tracking** panel of Image Tools. CLI `img-tracking`;
 RPC `img_tracking.jobs.track` / `img_tracking.jobs.simulate`. Docs:

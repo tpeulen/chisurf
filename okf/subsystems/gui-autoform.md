@@ -124,47 +124,6 @@ controls with no extra vertical space), `help` (a `?` modal button),
 `progress` (the one inline progress bar — see below), and
 `wizard`/`info`/`embed`.
 
-# Every form is restorable from JSON
-
-A view spec names, per control, the model attribute it binds to. That is already
-a complete description of where a form's state lives, so reading it out and
-putting it back needs no per-plugin code —
-`chisurf/gui/autoform/state.py` does it once, and `AutoForm` exposes
-`state()`, `apply_state()`, `save_state(path)` and `load_state(path)`.
-
-This is not a convenience feature. **A tool whose settings cannot be written
-down is a tool whose results cannot be reproduced**: an analysis folder can hold
-the numbers that came out while holding no record of what was asked for.
-Restorability belongs to the form framework, not to whichever plugin author
-thought of it. It currently covers **83 of the 92 shipped view specs — 690
-controls** — with no work per plugin; the remainder are built from `custom`
-sections whose widgets own their own values.
-
-Three rules the implementation follows, each of which decides whether saved
-settings are worth keeping:
-
-* **Action-bound controls are not state.** A section with `set_action` is a
-  command; "restoring" one would re-run the analysis rather than restore a
-  setting.
-* **Applying is lenient.** Unknown keys and rejected values are collected into a
-  `StateResult` rather than raised, so a file written by an older version
-  restores the fields it still shares — and the caller can tell the user exactly
-  what did not survive. A restore that fails whole on one dropped field is a
-  restore nobody keeps files for.
-* **Values are coerced JSON-safe.** numpy scalars and arrays are everywhere in
-  these models, and a settings file that cannot be written because of one is
-  worse than one that stores it as a list.
-
-A guardrail asserts that no shipped spec binds the same attribute twice, which
-would make a restore ambiguous.
-
-The burst-analysis folder is the first consumer: `Info/analysis.json` carries
-the settings a run used and optionally a form state, and
-`burst_manifest.restore_form()` puts a tool back where it was. `view_state` and
-`settings` are stored separately on purpose — the first restores *the form* key
-for key, the second records what the analysis actually used, and conflating them
-when they disagree would be silently wrong.
-
 # Reporting to the user: one message box, one progress bar
 
 Two things every long-running or fallible tool must do — say that something went

@@ -86,6 +86,11 @@ The workflows a first pass should cover — expand as the tester discovers more:
   cannot answer: bin the photon stream into short counting intervals, build the
   photon counting histogram P(k), and fit it for molecular brightness ε and mean
   occupancy ⟨N⟩. *(last driven 2026-07-26; RF-208..RF-214)*
+- [Batch analysis — one template fit over many files](/usecases/batch-template-fit.md)
+  — what a fitted series actually needs: optimise one representative fit, then
+  apply it to a list of loaded datasets and dropped files in one pass and export
+  the consolidated CSV / DOCX / per-run ZIP.
+  *(last driven 2026-07-26; RF-249..RF-257)*
 - [PDA distance fit](/usecases/pda-distance-fit.md) — the step after burst
   selection: drop the `.bur` burst tables into the PDA experiment, let the reader
   rebuild the S1S2 photon-count histograms per time window, and fit a
@@ -101,13 +106,43 @@ The workflows a first pass should cover — expand as the tester discovers more:
   decay side by side, link the donor lifetime spectrum across the two fits in
   the Global View graph, and run one global fit over both datasets.
   *(last driven 2026-07-26; RF-278..RF-285)*
+- [Accurate FRET calibration](/usecases/accurate-fret-calibration.md) — the step
+  between a burst search and a quotable number: let the tool find the burst
+  populations itself, determine the four Hellenkamp correction factors
+  (α, β, γ, δ) from them, and read the corrected E–S, E–lifetime and distance
+  with error bars. *(last driven 2026-07-26; RF-305..RF-310)*
 - [Light Path Simulator](/usecases/lightpath-crosstalk-r0.md) — the step before
   the measurement: assemble a two-colour detection path from catalogue spectra
   (lasers, excitation dichroic, emission splitter, bandpasses, detector QE) and a
   dye pair, and read the Förster radii and the excitation / emission / detected
   crosstalk matrices that prime the accurate-FRET correction factors.
   *(last driven 2026-07-26; RF-269..RF-277)*
-
+- [TAC linearization — micro-time LUT calibration](/usecases/tttr-lut-calibration.md)
+  — the instrument calibration underneath every micro-time analysis: compute a
+  per-routing-channel TAC-linearization LUT from a flat-light measurement in the
+  Channel Definition editor's LUT Tools, add it to the detector setup, and have
+  every later TTTR read linearized at the `staging.open_tttr` seam.
+  *(last driven 2026-07-26; RF-291..RF-299)*
+- [H2MM — dynamics inside the burst](/usecases/h2mm-burst-dynamics.md) — what a
+  FRET histogram cannot answer: point the photon-by-photon HMM at an existing
+  `.bur` folder, assign donor/acceptor (and optionally Aex) streams, scan state
+  counts with BIC/ICL, and read the dwell FRET states, transition rates, dwell
+  times, per-state decays and the per-burst Viterbi state path — plus the
+  bootstrap and likelihood-profile confidence intervals.
+  *(last driven 2026-07-26; RF-321..RF-327)*
+- [Two-channel colocalization](/usecases/image-colocalization.md) — the other
+  half of imaging: load a two-channel image, subtract background, derive Costes
+  thresholds, read the Pearson / Manders / Li coefficient set, check registration
+  with van Steensel and significance with the Costes randomization test, gate a
+  population in the intensity scatter, paint a region of interest, and count
+  objects when the signal is punctate.
+  *(last driven 2026-07-26; RF-336..RF-343)*
+- [Trace Browser — triaging a folder of measurements](/usecases/trace-browser-folder-triage.md)
+  — what happens before every other workflow: walk a folder of raw TTTR files,
+  preview each intensity trace, star-rate and annotate the keepers into a
+  per-folder metadata file, filter and sort on that judgement, then export the
+  survivors (raw / CSV / DOCX) or hand one to the time-window, HMM or ndX
+  tools. *(last driven 2026-07-27; RF-349..RF-355)*
 - [FPS JSON Editor — labelling positions and distance restraints](/usecases/fps-labelling-positions.md)
   — the structure side of FRET: put dyes on a PDB structure (chain, residue,
   attachment atom, linker geometry), simulate each dye's accessible volume, pair
@@ -132,13 +167,12 @@ The workflows a first pass should cover — expand as the tester discovers more:
   MaxEnt model, fit the dipolar evolution and read `P(r)` with its bootstrap
   band and the L-curve behind the chosen regularisation.
   *(last driven 2026-07-27; RF-432..RF-436)*
-
 - [PSF determination from a bead scan](/usecases/psf-bead-scan.md) — the
   instrument calibration behind every image and every FCS volume: load a bead
   z-stack, set pixel size and z step, detect the beads, fit a 3-D Gaussian and
   read the lateral/axial FWHM and the axial ratio, then export the per-bead
   table. *(last driven 2026-07-27; RF-451..RF-456)*
-- [ndXplorer — gating a multiparameter burst space](/usecases/ndx-mfd-burst-gating.md)
+- [ndX — gating a multiparameter burst space](/usecases/ndx-mfd-burst-gating.md)
   — what a burst search is *for*: load a Paris burstwise MFD folder, plot any
   burst parameter against any other, cut out a sub-population with a 1-D range
   gate or a painted 2-D bitmap, and carry it out as Burst IDs or into an
@@ -201,7 +235,6 @@ The workflows a first pass should cover — expand as the tester discovers more:
   own **Add** and the header's **+ Data** generate different decays, and the
   **+ Data** one cannot be fitted at all. *(last driven 2026-07-28;
   RF-636..RF-639)*
-
 - [FRC resolution](/usecases/frc-resolution.md) — how fine a detail the
   acquisition actually resolved, measured from the image itself: split a TIFF
   stack or a confocal photon stream into two independent halves, correlate them
@@ -250,6 +283,29 @@ The workflows a first pass should cover — expand as the tester discovers more:
   values become **infinite fit weights** in the curve it hands to ChiSurf,
   unticking every row merges all of them anyway, and two of its three buttons do
   nothing. *(last driven 2026-07-28; RF-730..RF-738)*
+
+- [Background rate and scatter IRF from the non-burst photons](/usecases/burst-background-and-scatter-irf.md)
+  — the two instrument quantities every burst-level number needs, taken from the
+  measurement itself: the per-detector background rate from the
+  inter-photon-time tail, and a scatter IRF plus background pattern from the
+  photons the burst search rejected, handed to the burst-MLE lifetime fit. Both
+  estimators are fast and plausible (0.18–1.38 kHz per detector, a clean prompt
+  at 2.3–2.5 ns), but the Background panel's **results table and file list stay
+  empty** after a successful run, *Send to MLE* reports success while the default
+  binning makes the arrays unusable, and the two PIE detectors receive one and
+  the same answer. *(last driven 2026-07-28; RF-752..RF-759)*
+
+- [FRET-restrained rigid-body docking](/usecases/fret-docking-rigid-body.md) —
+  what the `fps.json` is *for*: load the two-body HIV-RT + DNA docking project,
+  score the reference arrangement, minimise the mobile body against the 20
+  measured distances, repeat the run for a score spread, and rank a structure
+  library. **Nothing runs** — all four operations die in the same line on an
+  `IMP.bff` restraint class the plugin cannot reach (the shipped one is not
+  re-exported, and imp-tricks shadows it), while `screen` turns that total
+  failure into a successful ranking of `nan`. The accessible-volume machinery
+  under it is healthy (8 AVs in 0.64 s, ⟨R_DA⟩ = 57.25 Å) and so is the
+  OLGA pair-selection wizard, which has no entry point in the application.
+  *(last driven 2026-07-28; RF-771..RF-778)*
 
 - [Planning a raster scan](/usecases/rics-scan-precision.md) — the workflow that
   happens *before* the microscope time is spent: from the intended scan settings

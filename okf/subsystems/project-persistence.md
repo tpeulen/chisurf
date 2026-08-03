@@ -30,6 +30,13 @@ pre-v4 projects at load time. Core sections are `datasets`, `experiments`,
 and fit lookups are by UID, matching the migration away from Python object
 identity in the [API facade](/architecture/api-facade.md) and [server DTOs](/architecture/server.md).
 
+Restoring a parameter is **order-dependent** and every implementation applies the
+same one: `bounds` → `bounds_on` → `fixed` → `value`. A parameter clamps its
+value against the currently enforced bounds and writes the clamped number back,
+so a value restored before its bounds is silently truncated against the freshly
+constructed model's *defaults* — and widening the bounds afterwards does not
+recover it.
+
 A parameter link is stored as the target parameter's UID plus the UID of the fit
 that owns it. A fit group is addressed through its **members**, never through the
 group itself: the group only exposes the currently selected member's model, so a

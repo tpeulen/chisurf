@@ -89,6 +89,13 @@ turn. Three shapes, all seen live, are handled before the loop sees them:
   what a truncated response looks like). It is scratch work, often longer than
   the answer, and it carries abandoned conclusions that read as findings.
 
+A rejected call is dropped from the **echoed message** as well as from the
+parsed calls. The provider's own assistant turn is what goes back on the next
+request, so a `tool_calls` entry the parser refused to dispatch would leave an
+id that no `tool` message answers — the same poisoned conversation the
+"answered whole" rule above exists to prevent, only arriving from the other
+side.
+
 The measure of it: the request that first exposed these took **eight** tool
 calls with an `unknown tool 'To compute a distance from a FRET efficiency, I
 will use…'` among them, and now takes **three** with none.

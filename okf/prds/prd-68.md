@@ -229,6 +229,14 @@ the toy model's evaluation is trivial and fixed per-call overhead dominates; for
 a real convolution model the wall-clock ratio approaches the evaluation-count
 ratio.
 
+**Least squares gets this for free too.** MINPACK builds its Jacobian by
+forward differences, perturbing one parameter per call to `func` — and each such
+call assigns the complete vector, so it lands on the selective path with a
+single changed entry. A 12-dataset star-linked `FitGroup.run()` needs
+**387 → 141 local-model evaluations** (2.74×) and reaches a bit-identical
+optimum (`Δa = 0`, `Δchi2r = 0`). No separate block-arrow Jacobian assembly is
+needed to get most of that benefit.
+
 # Non-goals (deferred)
 
 Blocked / Rao-Blackwellised samplers over the junction tree, expectation

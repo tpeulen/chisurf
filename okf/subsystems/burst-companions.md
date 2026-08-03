@@ -99,6 +99,29 @@ header of nothing. `is_sentinel_file_reference` in
 place that recognises those cells, and `load_tttrs_for_dataframe` skips them, so
 the mapping it returns holds real measurements only (RF-563).
 
+# `Last Photon` is inclusive
+
+The other convention a reader has to get right, and the one that fails most
+quietly: `First Photon` / `Last Photon` are photon indices into the measurement's
+raw TTTR arrays, and **`Last Photon` names the burst's last photon, not one past
+it** — `Number of Photons == Last Photon − First Photon + 1`. Every slice runs to
+`last + 1`, and a row with `First == Last` is a one-photon burst rather than an
+empty one. Three independent sources agree: the external PARIS format (all 12237
+non-sentinel rows of the folder in `modules/ndxplorer/test/mfd/`), the in-tree
+writer `generate_burst_dataframe`, and `tttrlib::BurstFeature::for_each_burst`,
+which the compiled BVA / 2CDE engines are built on.
+
+An exclusive `[first:last]` read does not fail — it returns a burst that is one
+photon short, uniformly, for every burst in the file. The `1/N` bias lands
+hardest on the shortest and dimmest bursts, which is where the gap statistics
+that drive a kinetic fit live, and a `min_photons` floor applied to the short
+count silently rejects bursts sitting on the threshold. `extract_burst_photons`
+is the shared seam and is inclusive (RF-804, pinned by
+`test/fluorescence/test_burst_photons.py`, which round-trips a table written by
+the real writer). Note the repo's own `bh_spc132_sm_dna` fixture predates the
+writer's fix and stores *exclusive* stops, so it agrees with a buggy reader —
+a guardrail needs the PARIS folder or a freshly written table.
+
 # Related
 
 * [/plugins/burst.md](../plugins/burst.md) — the burst workflow and its steps.

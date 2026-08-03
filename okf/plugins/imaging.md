@@ -41,11 +41,6 @@ The per-pixel CLSM pipeline runs compute in a non-blocking worker process. Corre
 imaging is a fitting experiment rather than a plugin: one spatiotemporal correlation
 carpet covers RICS, STICS, TICS and iMSD, described in
 [image-correlation theory](/references/image-correlation-theory.md).
-**Flow maps** are the exception that proves the split: `img_flow` reads a *velocity
-field* off that same carpet -- one arrow per tile -- and is a plugin because there is
-no model and nothing to fit, so it has no place in a fitting experiment. It generates
-its own demo (a simulated photon stream with a known flow profile), which is what lets
-its guided tour be walked with no data of the user's own.
 Design context: [PRD-51](/prds/prd-51.md), [PRD-52](/prds/prd-52.md) and
 [PRD-67](/prds/prd-67.md) (colocalization + the shared image-source seam that lets
 imaging tools read camera image stacks, not only photon streams).
