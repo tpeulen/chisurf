@@ -97,6 +97,40 @@ def _site_packages(prefix: Path) -> Path | None:
     return matches[-1] if matches else None
 
 
+def _verify(prefix: Path) -> bool:
+    """Check that the environment at *prefix* can actually import what was built.
+
+    The wrapper and the compiled extension are one unit: ``tttrlib.py`` reads
+    every attribute off ``_tttrlib`` at class-definition time, so a wrapper that
+    is newer than its extension raises ``AttributeError`` on a getter that does
+    not exist yet -- at ``import tttrlib``, i.e. at application start, far from
+    whatever produced the mismatch.
+
+    This is not hypothetical. ``tttrlib.py`` is shared with the linked
+    environments by symlink while each keeps its own ``_tttrlib*.so``, so any
+    build that copies a wrapper into a *linked* environment writes through the
+    symlink and replaces the shared one, leaving every other environment with an
+    older extension. Verifying the environment we installed into turns that into
+    a failed build task instead of a broken launch.
+    """
+    python = prefix / "bin" / "python"
+    if not python.is_file():
+        return True
+    check = subprocess.run(
+        [str(python), "-c",
+         "import tttrlib;print(tttrlib.__version__, tttrlib.__file__)"],
+        capture_output=True, text=True,
+    )
+    if check.returncode != 0:
+        print("build-tttrlib: the build installed but does not import:\n"
+              f"{check.stderr.strip()}\n"
+              "build-tttrlib: the wrapper and the compiled extension disagree; "
+              "rebuild rather than copying one of them into place.", flush=True)
+        return False
+    print(f"build-tttrlib: {prefix.name} -> {check.stdout.strip()}", flush=True)
+    return True
+
+
 def _link_into(prefix: Path, source_sp: Path) -> bool:
     """Symlink the freshly built tttrlib from *source_sp* into the env at *prefix*.
 
@@ -234,9 +268,12 @@ def main() -> int:
     ]
     print(f"build-tttrlib: {' '.join(cmd)}", flush=True)
     rc = subprocess.call(cmd, env=env)
-    if rc == 0:
-        link_build()
-    return rc
+    if rc != 0:
+        return rc
+    if not _verify(Path(sys.prefix)):
+        return 1
+    link_build()
+    return 0
 
 
 if __name__ == "__main__":
