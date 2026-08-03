@@ -87,6 +87,48 @@ class OccupationGrid:
         """Return the number of grid nodes."""
         return int(self.weights.size)
 
+    def coarsen(self, n_nodes: int = 16) -> OccupationGrid:
+        """Return the grid rebinned onto at most *n_nodes* occupation fractions.
+
+        The propagator's resolution is ``1/n_steps``, which for fast exchange runs
+        to several hundred nodes — and every node costs a pass through the nested
+        background sum. Rebinning trades a resolution the histogram cannot see
+        anyway for a cost it very much can: the fit is otherwise two orders of
+        magnitude slower for a kinetic model than a static one.
+
+        The rebinning preserves the total weight exactly and each occupied bin's
+        *weighted mean* fraction, so the first moment of the occupation law — which
+        is what sets the cloud's position — is unchanged. The second moment is
+        slightly narrowed, which is why the default is generous.
+
+        Parameters
+        ----------
+        n_nodes : int
+            Target number of nodes along each of the first ``n_states - 1`` axes.
+
+        Returns
+        -------
+        OccupationGrid
+        """
+        n_states = self.fractions.shape[1]
+        if len(self) <= n_nodes or n_states != 2:
+            return self
+        edges = np.linspace(0.0, 1.0, int(n_nodes) + 1)
+        index = np.clip(np.digitize(self.fractions[:, 0], edges[1:-1]), 0, n_nodes - 1)
+        weights = np.bincount(index, weights=self.weights, minlength=n_nodes)
+        centres = np.bincount(
+            index, weights=self.weights * self.fractions[:, 0], minlength=n_nodes
+        )
+        occupied = weights > 0
+        first = centres[occupied] / weights[occupied]
+        fractions = np.column_stack([first, 1.0 - first])
+        return OccupationGrid(
+            fractions=fractions,
+            weights=weights[occupied] / weights[occupied].sum(),
+            window=self.window,
+            n_steps=self.n_steps,
+        )
+
     def average(self, values) -> float:
         """Return the mean of a per-state observable, time-averaged then ensemble-averaged.
 

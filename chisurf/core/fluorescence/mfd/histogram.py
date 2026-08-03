@@ -44,6 +44,7 @@ __all__ = [
     "HistogramAxes",
     "MfdHistogram",
     "acceptor_count_distribution",
+    "acceptor_count_distributions",
     "model_histogram",
     "observed_histogram",
 ]
@@ -214,6 +215,39 @@ def _log_binomial_coefficients(n: int) -> np.ndarray:
     return table[n] - table[: n + 1] - table[n::-1]
 
 
+def _binomial_pmf_grid(n: int, p) -> np.ndarray:
+    """Return the binomial pmf over ``k = 0 … n`` for each probability in *p*.
+
+    Parameters
+    ----------
+    n : int
+        Number of trials.
+    p : array_like
+        ``(m,)`` success probabilities.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(m, n + 1)``.
+    """
+    probabilities = np.atleast_1d(np.asarray(p, dtype=float))
+    if n < 0:
+        return np.zeros((probabilities.size, 0))
+    out = np.zeros((probabilities.size, n + 1))
+    k = np.arange(n + 1, dtype=float)
+    coefficients = _log_binomial_coefficients(n)
+
+    interior = (probabilities > 0.0) & (probabilities < 1.0)
+    out[probabilities <= 0.0, 0] = 1.0
+    out[probabilities >= 1.0, -1] = 1.0
+    if interior.any():
+        q = probabilities[interior][:, None]
+        out[interior] = np.exp(
+            coefficients[None, :] + k[None, :] * np.log(q) + (n - k)[None, :] * np.log1p(-q)
+        )
+    return out
+
+
 def _binomial_pmf(n: int, p: float) -> np.ndarray:
     """Return the binomial pmf over ``k = 0 … n``, in a way that survives p = 0 or 1."""
     if n < 0:
@@ -240,6 +274,69 @@ def _poisson_pmf(mean: float, k_max: int) -> np.ndarray:
         return out
     k = np.arange(k_max + 1, dtype=float)
     return np.exp(k * np.log(mean) - mean - _log_factorial(k_max)[: k_max + 1])
+
+
+def acceptor_count_distributions(
+    signal: int,
+    p_red,
+    background_green: float,
+    background_red: float,
+) -> np.ndarray:
+    """Return ``P(N_R | S)`` for **several** acceptor probabilities at once.
+
+    The kinetic path asks for one of these per occupation-time node, and the nodes
+    of a burst differ *only* in ``p_red`` — the signal and both backgrounds are
+    properties of the burst. Evaluating them one at a time repeats the whole nested
+    background sum for each, which made a kinetic model evaluation two orders of
+    magnitude slower than a static one and a fit unusable.
+
+    Parameters
+    ----------
+    signal : int
+        Total photons in the two channels.
+    p_red : array_like
+        ``(n,)`` probabilities that a *signal* photon is detected in the acceptor
+        channel.
+    background_green, background_red : float
+        Expected background counts in each channel for this burst.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n, signal + 1)``, each row summing to one.
+    """
+    probabilities = np.atleast_1d(np.asarray(p_red, dtype=float))
+    s = int(signal)
+    if s < 0:
+        raise ValueError("the signal must not be negative")
+    out = np.zeros((probabilities.size, s + 1))
+    if s == 0:
+        out[:, 0] = 1.0
+        return out
+
+    def _cut(mean: float) -> int:
+        return int(min(s, np.ceil(mean + _BACKGROUND_SIGMA * np.sqrt(max(mean, 1.0)))))
+
+    green_pmf = _poisson_pmf(background_green, _cut(background_green))
+    red_pmf = _poisson_pmf(background_red, _cut(background_red))
+    n_max_background = min(s, green_pmf.size + red_pmf.size - 2)
+
+    # One binomial table per distinct background total, vectorised over p.
+    binomials = [
+        _binomial_pmf_grid(s - m, probabilities) for m in range(n_max_background + 1)
+    ]
+
+    for b_g, w_g in enumerate(green_pmf):
+        if w_g <= 0.0 or b_g > s:
+            continue
+        for b_r, w_r in enumerate(red_pmf):
+            if w_r <= 0.0 or b_g + b_r > s:
+                continue
+            n = s - b_g - b_r
+            out[:, b_r : b_r + n + 1] += (w_g * w_r) * binomials[b_g + b_r]
+
+    totals = out.sum(axis=1, keepdims=True)
+    return np.where(totals > 0, out / np.maximum(totals, 1e-300), out)
 
 
 def acceptor_count_distribution(
@@ -276,36 +373,9 @@ def acceptor_count_distribution(
     s = int(signal)
     if s < 0:
         raise ValueError("the signal must not be negative")
-    out = np.zeros(s + 1)
-    if s == 0:
-        out[0] = 1.0
-        return out
-
-    def _cut(mean: float) -> int:
-        return int(min(s, np.ceil(mean + _BACKGROUND_SIGMA * np.sqrt(max(mean, 1.0)))))
-
-    green_pmf = _poisson_pmf(background_green, _cut(background_green))
-    red_pmf = _poisson_pmf(background_red, _cut(background_red))
-
-    # The binomial depends on the background only through the *total* b_G + b_R, so
-    # it is computed once per distinct total rather than once per pair — an order of
-    # magnitude fewer exponentials, for identical arithmetic.
-    n_max_background = min(s, green_pmf.size + red_pmf.size - 2)
-    binomials = [
-        _binomial_pmf(s - m, p_red) for m in range(n_max_background + 1)
-    ]
-
-    for b_g, w_g in enumerate(green_pmf):
-        if w_g <= 0.0 or b_g > s:
-            continue
-        for b_r, w_r in enumerate(red_pmf):
-            if w_r <= 0.0 or b_g + b_r > s:
-                continue
-            n = s - b_g - b_r
-            out[b_r : b_r + n + 1] += (w_g * w_r) * binomials[b_g + b_r]
-
-    total = out.sum()
-    return out / total if total > 0 else out
+    return acceptor_count_distributions(
+        signal, [p_red], background_green, background_red
+    )[0]
 
 
 def _gaussian_bin_weights(
@@ -418,19 +488,25 @@ def model_histogram(
                 np.where(n_green > 0, b_green / np.maximum(n_green, 1), 0.0), 0.0, 1.0
             )
 
-        for component in range(component_weights.shape[1]):
-            share = float(component_weights[cell, component])
-            if share <= 0.0:
-                continue
-            counts = acceptor_count_distribution(
-                s, float(p_red[cell, component]), b_green, b_red
-            )
-            counts = counts * weights[cell] * share
+        # Every component of this cell shares its signal and both backgrounds and
+        # differs only in the acceptor probability, so the nested background sum is
+        # evaluated for all of them at once. Per component it was two orders of
+        # magnitude slower, which made a kinetic fit unusable rather than merely slow.
+        active = np.nonzero(component_weights[cell] > 0.0)[0]
+        if active.size == 0:
+            continue
+        shares = component_weights[cell, active]
+        counts = acceptor_count_distributions(
+            s, p_red[cell, active], b_green, b_red
+        )
+        counts = counts * (weights[cell] * shares)[:, None]
 
+        mixture_weights = np.stack(
+            [1.0 - background_fraction, background_fraction], axis=-1
+        )
+        for index, component in enumerate(active):
             mean, variance = mixture_moments(
-                np.stack(
-                    [1.0 - background_fraction, background_fraction], axis=-1
-                ),
+                mixture_weights,
                 np.broadcast_to(
                     [green_mean[cell, component], bg_mean],
                     background_fraction.shape + (2,),
@@ -441,14 +517,13 @@ def model_histogram(
                 ),
             )
             sigma = np.sqrt(variance / np.maximum(n_green, 1))
-
             rows = _gaussian_bin_weights(
                 mean[keep], sigma[keep], axes.micro_time_edges
             )
             np.add.at(
                 out,
                 ratio_bin[keep],
-                rows * counts[keep][:, None],
+                rows * counts[index][keep][:, None],
             )
 
     return out

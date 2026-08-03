@@ -124,6 +124,35 @@ kinetic = MfdKineticModel(
 )
 ```
 
+## 6. Try it on data whose answer you know
+
+You do not need a measurement to learn what the three regimes look like. The
+simulator writes a real burst folder, so it goes through everything above:
+
+```python
+from chisurf.core.fluorescence.mfd.simulate import (
+    SimulationParameters, rate_matrix_for, simulate_mfd)
+
+parameters = SimulationParameters(
+    n_bursts=3000,
+    rate_matrix=rate_matrix_for("intermediate", mean_duration=2e-3),
+)
+simulated = simulate_mfd(parameters)
+folder = simulated.write_folder("/tmp/mfd-demo")     # load this like any folder
+print(simulated.truth)                                # what generated it
+```
+
+Regimes are named in **transitions per burst** — `"static"`, `"slow"`,
+`"intermediate"`, `"fast"` — because a rate only means something next to a burst
+duration. `simulated.true_responses()` hands back the declared instrument response
+and background, which you can pass to `load_mfd_data(..., responses=...)` to separate
+whatever you are testing from the contamination of the estimated one.
+
+`examples/mfd_dynamics_timescales.py` runs all four regimes and fits each one back.
+Bear in mind what it proves: the simulator shares its physics with the model, so it
+is a **code** test. It shows the machinery is wired correctly, not that the physics
+is right.
+
 ## Two things not to misread
 
 **Amplitudes are not population fractions.** The donor-photon cut removes high-FRET

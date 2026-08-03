@@ -148,6 +148,47 @@ heterogeneity, and the model is asserted to stay *below* it. A forward model tha
 broadened itself to match would be fitting width with something that is not width,
 and every dynamics result built on it would inherit that.
 
+## Testing it against simulated dynamics
+
+Real measurements with an independently known exchange rate are rare, so ChiSurf
+ships a generator: `chisurf.core.fluorescence.mfd.simulate` produces smFRET bursts
+with exchange on a chosen timescale and writes them as a real burst-analysis folder,
+which then loads through the ordinary reader like any measurement.
+
+**It is a code test, never a physics test.** A simulator built from the same
+assumptions as the model will pass whatever error the two share. What it can show is
+that the implementation computes what it claims to — and it does that credibly,
+because the two reach the same numbers by different routes: the simulator samples an
+explicit Markov path per burst and draws each photon's micro time as an
+instrument-response sample plus an exponential delay, while the model evaluates the
+occupation-time law and the wrapped moments in closed form.
+
+Regimes are named in **transitions per burst**, because a rate only means something
+next to an observation window: 500 s⁻¹ is slow exchange for a 10 ms transit and fast
+exchange for a 0.1 ms one. Fitting the same molecule in each
+(`examples/mfd_dynamics_timescales.py`, 3000 bursts):
+
+| regime | true rate | fitted | bursts between the states |
+|---|---|---|---|
+| static | 0 s⁻¹ | 0 s⁻¹ | 0.3% |
+| slow | 50 s⁻¹ | 68 s⁻¹ | 3.6% |
+| intermediate | 1500 s⁻¹ | 1511 s⁻¹ | 36.4% |
+| fast | 60000 s⁻¹ | 43855 s⁻¹ | 79.7% |
+
+The last column is the signal. Slow exchange leaves the gap between the two states
+empty; fast exchange puts everything in it, because the states have merged into
+their average; only in between does its occupancy actually report a rate.
+
+So **the rate is accurate near one transition per burst and only an order of
+magnitude away from it** — far below, almost no burst ever switches, so the
+histogram barely constrains how rarely it happens; far above, every burst reports
+the same average, so it barely constrains how often. That is the physics, and it is
+worth knowing before quoting a rate from either extreme.
+
+The one result that is sharp everywhere is the negative: **static data returns no
+exchange.** A model that produced a finite rate there would be reporting dynamics
+from static heterogeneity, which is the failure the whole design is arranged around.
+
 ## Things to know before reading a number off it
 
 * **The donor-photon cut is not neutral between populations.** A high-FRET burst

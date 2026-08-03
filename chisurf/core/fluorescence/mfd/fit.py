@@ -233,6 +233,7 @@ def load_mfd_data(
     streams=None,
     n_signal_bins: int = 24,
     n_span_bins: int = 6,
+    responses: dict | None = None,
     **response_kwargs,
 ) -> MfdData:
     """Load a burst folder into everything a 2D MFD fit needs from the measurement.
@@ -251,6 +252,11 @@ def load_mfd_data(
         Explicit channel definitions, when the folder does not record them.
     n_signal_bins, n_span_bins : int
         Grid of the binned nuisance measure.
+    responses : dict, optional
+        Per-channel responses to use instead of estimating them from the non-burst
+        photons. The estimate is what a real folder has to rely on and it is
+        contaminated by bursts below the search threshold; supplying a known
+        response isolates whatever else is under test from that.
     **response_kwargs
         Forwarded to :func:`estimate_responses`.
 
@@ -268,9 +274,8 @@ def load_mfd_data(
             preparation, axes, green=green, red=red,
             min_green_photons=min_green_photons,
         ),
-        responses=estimate_responses(
-            preparation, channels=(green, red), **response_kwargs
-        ),
+        responses=responses
+        or estimate_responses(preparation, channels=(green, red), **response_kwargs),
         channels=(green, red),
     )
 
@@ -506,10 +511,16 @@ class MfdKineticModel(MfdModel):
     n_steps : int, optional
         Transfer-matrix discretization; chosen per burst duration from the rates
         when omitted, which is the right default because a fit loop moves them.
+    n_occupation_nodes : int
+        Occupation-time nodes kept per burst duration. The propagator's own
+        resolution runs to hundreds of nodes under fast exchange and each costs a
+        pass through the nested background sum, for a resolution the histogram
+        cannot see; see :meth:`OccupationGrid.coarsen`.
     """
 
     rate_matrix: np.ndarray | None = None
     n_steps: int | None = None
+    n_occupation_nodes: int = 16
 
     def components(
         self, data: MfdData
@@ -561,7 +572,7 @@ class MfdKineticModel(MfdModel):
             if key not in grids:
                 grids[key] = occupation_time_distribution(
                     matrix, window, n_steps=self.n_steps
-                )
+                ).coarsen(self.n_occupation_nodes)
             rows.append(grids[key])
 
         width = 1 + max(len(g) for g in rows)

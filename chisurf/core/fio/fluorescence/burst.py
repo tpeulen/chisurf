@@ -21,16 +21,14 @@ burst has no photons in carry ``-1.0`` duration and ``0`` counts rather than
 being omitted.
 """
 
-from collections import OrderedDict
-from typing import Dict, Tuple
-
-import chisurf as cs
-import numpy as np
 import pathlib
-import pandas as pd
+from collections import OrderedDict
 
+import numpy as np
+import pandas as pd
 import tttrlib
 
+import chisurf as cs
 
 #: Sentinel written for a per-detector column a burst has no photons in. Matches
 #: the ``-1.0`` the duration and rate columns already use, so a reader that
@@ -89,6 +87,38 @@ def mean_micro_time_ns(micro_times, indices, ns_per_channel: float) -> float:
     return float(np.mean(micro_times[indices])) * ns_per_channel
 
 
+
+def _micro_time_mask(micro_times, ranges) -> np.ndarray:
+    """Return the photons a detector's micro-time windows accept.
+
+    **No windows means every micro time**, which is the reading
+    :class:`~chisurf.core.fluorescence.burst.photons.StreamDef` documents and the
+    only one that makes sense: a detector defined by its routing channels alone is
+    ungated, not empty. Accumulating an empty list of windows into a zeroed mask —
+    which is what both writer paths used to do — silently produced an all-zero
+    column for *every* per-detector quantity, so a setup configured without a
+    micro-time gate wrote a burst table in which no detector had ever seen a photon.
+
+    Parameters
+    ----------
+    micro_times : numpy.ndarray
+        Micro times, in raw channels.
+    ranges : sequence of tuple
+        Half-open ``(start, stop)`` windows. Empty accepts everything.
+
+    Returns
+    -------
+    numpy.ndarray
+        Boolean mask over *micro_times*.
+    """
+    if not ranges:
+        return np.ones(len(micro_times), dtype=bool)
+    mask = np.zeros(len(micro_times), dtype=bool)
+    for start, stop in ranges:
+        mask |= (micro_times >= start) & (micro_times < stop)
+    return mask
+
+
 def write_mti_summary(
         filename: pathlib.Path,
         analysis_dir: pathlib.Path,
@@ -138,7 +168,7 @@ def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis"):
     specified analysis folder. Each TTTR file will have a corresponding .bv4 file containing
     the mean and standard deviation of the proximity ratio for each burst.
 
-    Parameters:
+    Parameters
     ----------
     df : pd.DataFrame
         The DataFrame containing burst data with columns 'First File', 'Proximity Ratio Mean',
@@ -146,7 +176,6 @@ def write_bv4_analysis(df: pd.DataFrame, analysis_folder: str = "analysis"):
     analysis_folder : str, optional
         The path to the folder where the 'bv4' subfolder will be created. Default is 'analysis'.
     """
-
     # Use pathlib to create the analysis/bv4 folder if it doesn't exist
     bv4_folder = pathlib.Path(analysis_folder) / "bv4"
     bv4_folder.mkdir(parents=True, exist_ok=True)
@@ -227,7 +256,6 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
     """
     import numpy as np
     import pandas as pd
-    from collections import OrderedDict
 
     # Unpack arrays and resolution
     n_ph = len(tttr)
@@ -321,10 +349,9 @@ def write_bur_file_old(bur_filename, start_stop, filename, tttr, windows, detect
         detector_masks = {}
         for det_name, det_info in detectors.items():
             ch_mask = np.isin(burst_rout, det_info["chs"])
-            mt_mask = np.zeros(len(burst_micro), bool)
-            for mt_start, mt_stop in det_info["micro_time_ranges"]:
-                mt_mask |= (burst_micro >= mt_start) & (burst_micro < mt_stop)
-            detector_masks[det_name] = ch_mask & mt_mask
+            detector_masks[det_name] = ch_mask & _micro_time_mask(
+                burst_micro, det_info["micro_time_ranges"]
+            )
 
         for det_name, mask in detector_masks.items():
             idxs = np.nonzero(mask)[0]
@@ -409,7 +436,7 @@ def generate_burst_dataframe(
     2) building fixed-length lists instead of OrderedDict,
     3) appending to a list of lists and dumping to pandas once.
     
-    Parameters:
+    Parameters
     -----------
     start_stop : list of tuples
         List of (start_index, stop_index) tuples defining bursts. ``stop_index``
@@ -432,7 +459,7 @@ def generate_burst_dataframe(
         Macro-time resolution override. If omitted, uses
         ``tttr.header.macro_time_resolution``.
         
-    Returns:
+    Returns
     --------
     pd.DataFrame
         DataFrame containing burst summary information.
@@ -499,10 +526,7 @@ def generate_burst_dataframe(
     det_global = {}
     for d,info in detectors.items():
         chm = np.isin(rout, info["chs"])
-        mtm = np.zeros(n_ph, bool)
-        for r0,r1 in info["micro_time_ranges"]:
-            mtm |= (micro >= r0) & (micro < r1)
-        det_global[d] = chm & mtm
+        det_global[d] = chm & _micro_time_mask(micro, info["micro_time_ranges"])
 
     win_global = {
         w: (micro >= r0) & (micro < r1)
@@ -613,7 +637,7 @@ def write_dataframe_to_bur(df, bur_filename):
     """
     Write a DataFrame to a .bur file (tab-separated values).
     
-    Parameters:
+    Parameters
     -----------
     df : pd.DataFrame
         DataFrame containing burst summary information.
@@ -629,7 +653,7 @@ def write_bur_file_fast(bur_filename, start_stop, filename, tttr, windows, detec
     
     This is a wrapper function that calls generate_burst_dataframe and write_dataframe_to_bur.
     
-    Parameters:
+    Parameters
     -----------
     bur_filename : str or pathlib.Path
         Path to the output .bur file.
@@ -658,7 +682,7 @@ def read_burst_analysis(
         tttr_file_type: str,
         pattern: str = 'b*4*',
         row_stride: int = 1
-) -> (pd.DataFrame, Dict[str, tttrlib.TTTR]):
+) -> (pd.DataFrame, dict[str, tttrlib.TTTR]):
     """
     Reads and processes burst analysis data files from a specified directory,
     constructs a pandas DataFrame with the concatenated data, and populates a
@@ -669,7 +693,7 @@ def read_burst_analysis(
     handles data from multiple files and can accommodate files generated by
     Seidel software, which may require skipping additional rows.
 
-    Parameters:
+    Parameters
     ----------
     paris_path : pathlib.Path
         The path to the directory containing the burst analysis data files.
@@ -683,7 +707,7 @@ def read_burst_analysis(
         If the data files are created by Seidel software (e.g., PARIS software),
         set `row_stride` to 2 to account for additional header rows that need to be skipped.
 
-    Returns:
+    Returns
     -------
     Tuple[pd.DataFrame, Dict[str, tttrlib.TTTR]]
         A tuple containing:
@@ -691,21 +715,21 @@ def read_burst_analysis(
         - A dictionary with keys as filenames (from the 'First File' column) and values
           as TTTR data objects corresponding to those files.
 
-    Raises:
+    Raises
     ------
     FileNotFoundError
         If the specified `paris_path` does not exist or is not a directory.
     ValueError
         If any conversion to numeric fails for columns after the first file is processed.
 
-    Examples:
+    Examples
     --------
     >>> df, tttrs = read_burst_analysis(pathlib.Path('/path/to/data'), 'PTU', pattern='data*')  # doctest: +SKIP
     >>> print(df.head())  # doctest: +SKIP
     >>> print(tttrs.keys())  # doctest: +SKIP
     """
 
-    def update_tttr_dict(data_path, tttrs: Dict[str, tttrlib.TTTR] = dict()):
+    def update_tttr_dict(data_path, tttrs: dict[str, tttrlib.TTTR] = dict()):
         """Load TTTR files not yet in the cache dictionary.
 
         Parameters
