@@ -333,6 +333,9 @@ class LLMClient:
         Malformed ``tool_calls`` arguments are reported through
         :class:`ToolCall.raw_arguments` with an empty ``arguments`` dict, so
         the runtime can hand the model a precise error instead of crashing.
+        An entry whose ``function.name`` is prose rather than a tool name is
+        dropped from the parsed calls **and** from ``raw_message``, which is
+        the message the runtime echoes back on the next request.
 
         Parameters
         ----------
@@ -352,9 +355,11 @@ class LLMClient:
             raise LLMError("provider returned no choices")
         choice = choices[0]
         message = choice.get("message") or {}
+        entries = list(message.get("tool_calls") or [])
         calls: list[ToolCall] = []
         stray: list[str] = []
-        for entry in message.get("tool_calls") or []:
+        kept: list[dict[str, Any]] = []
+        for entry in entries:
             function = entry.get("function") or {}
             raw_arguments = function.get("arguments") or "{}"
             try:
@@ -371,6 +376,7 @@ class LLMClient:
                 # talking, so treat it as such.
                 stray.append(name)
                 continue
+            kept.append(entry)
             calls.append(
                 ToolCall(
                     id=str(entry.get("id") or f"call_{len(calls)}"),
@@ -379,6 +385,17 @@ class LLMClient:
                     raw_arguments=str(raw_arguments),
                 )
             )
+        if len(kept) != len(entries):
+            # ``raw_message`` is echoed back into the next request, so it has to
+            # match the calls that were parsed: a ``tool_call`` id no ``tool``
+            # message answers is rejected by the provider, and the conversation
+            # survives across questions — one rejected entry would poison every
+            # later question in the session.
+            message = dict(message)
+            if kept:
+                message["tool_calls"] = kept
+            else:
+                message.pop("tool_calls", None)
         text = message_text(message.get("content"))
         if stray:
             text = "\n".join(part for part in [text, *stray] if part)

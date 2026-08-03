@@ -123,3 +123,85 @@ def test_the_whole_conversation_is_json_serialisable(context):
     )
     agent.ask("list the fits")
     json.dumps(agent.messages)
+
+
+# ── a rejected tool call must not survive in the echoed turn ──────────
+
+
+class BodyReplayLLM(LLMClient):
+    """Replays raw provider *response bodies* through the real parser."""
+
+    def __init__(self, bodies):
+        super().__init__(LLMSettings(base_url="http://test", model="m"))
+        self.bodies = list(bodies)
+
+    def complete(self, messages, tools=None):
+        """Parse the next canned response body exactly as the transport would."""
+        return self.parse_response(self.bodies.pop(0))
+
+
+def _body(message):
+    """Return a chat-completion body carrying *message*."""
+    return {"choices": [{"message": message, "finish_reason": "stop"}], "usage": {}}
+
+
+def _prose_name():
+    """Return a tool call whose ``function.name`` is a sentence, not a name."""
+    return _tool_call(call_id="call_abc", name="I will now list the plugins for you")
+
+
+def test_a_prose_tool_name_is_dropped_from_the_echoed_message():
+    """A call the parser rejects must not stay in the message sent back.
+
+    ``raw_message`` is echoed verbatim into the next request, so an entry the
+    parser refused to dispatch leaves a ``tool_call`` id that no ``tool``
+    message answers — which providers reject.
+    """
+    response = LLMClient.parse_response(
+        _body({"role": "assistant", "content": None, "tool_calls": [_prose_name()]})
+    )
+
+    assert response.tool_calls == []
+    assert response.text == "I will now list the plugins for you"
+    assert "tool_calls" not in response.raw_message
+
+
+def test_a_valid_call_beside_a_prose_one_keeps_only_the_valid_entry():
+    response = LLMClient.parse_response(
+        _body(
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [_prose_name(), _tool_call(call_id="call_ok")],
+            }
+        )
+    )
+
+    assert [call.id for call in response.tool_calls] == ["call_ok"]
+    assert [entry["id"] for entry in response.raw_message["tool_calls"]] == ["call_ok"]
+
+
+def test_well_formed_tool_calls_are_echoed_unchanged():
+    message = {"role": "assistant", "content": None, "tool_calls": [_tool_call()]}
+    response = LLMClient.parse_response(_body(message))
+
+    assert response.raw_message["tool_calls"] == message["tool_calls"]
+
+
+def test_every_tool_call_id_in_the_conversation_is_answered(context):
+    """The invariant `_answer_unrun_calls` exists to hold, end to end."""
+    agent = AgentSession(
+        BodyReplayLLM(
+            [_body({"role": "assistant", "content": None, "tool_calls": [_prose_name()]})]
+        ),
+        context=context,
+    )
+    agent.ask("list the plugins")
+
+    requested = {
+        entry["id"] for message in agent.messages for entry in message.get("tool_calls") or []
+    }
+    answered = {
+        message["tool_call_id"] for message in agent.messages if message.get("role") == "tool"
+    }
+    assert requested == answered, "an unanswered tool_call id poisons every later question"
