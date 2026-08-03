@@ -262,6 +262,42 @@ class TestChiSurfAPI:
         finally:
             cs.fits.clear()
 
+    def test_stale_fit_uid_does_not_fall_back_to_index(self):
+        """A uid that matches nothing must not retarget fit 0 (RF-720)."""
+        cs.fits.clear()
+        cs.fits.append(DummyFit(name="First", uid="uid-a"))
+        cs.fits.append(DummyFit(name="Second", uid="uid-b"))
+        try:
+            api = ChiSurfAPI(mode="local")
+            result = api.set_parameter_value("tau", 5.0, fit_uid="closed-uid")
+            assert result["ok"] is False
+            assert result["error"] == "fit not found"
+            assert cs.fits[0].model.parameters_all_dict["tau"].value == 3.8
+            assert api.get_parameter("tau", fit_uid="closed-uid")["ok"] is False
+            assert api.model_finalize(fit_uid="closed-uid")["ok"] is False
+            # A matching uid still wins over the index the signature supplies.
+            assert api.set_parameter_value("tau", 5.0, fit_uid="uid-b")["ok"] is True
+            assert cs.fits[1].model.parameters_all_dict["tau"].value == 5.0
+            assert cs.fits[0].model.parameters_all_dict["tau"].value == 3.8
+            # An empty uid means "unspecified" and keeps using the index.
+            assert api.set_parameter_value("tau", 2.0, fit_index=0, fit_uid="")["ok"] is True
+            assert cs.fits[0].model.parameters_all_dict["tau"].value == 2.0
+        finally:
+            cs.fits.clear()
+
+    def test_stale_dataset_uid_does_not_fall_back_to_index(self):
+        """The same identity rule holds for datasets (RF-720)."""
+        cs.imported_datasets.clear()
+        cs.imported_datasets.append(DummyDataset(name="First", uid="ds-a"))
+        try:
+            api = ChiSurfAPI(mode="local")
+            result = api.get_dataset_info(dataset_uid="gone")
+            assert result["ok"] is False
+            assert result["error"] == "dataset not found"
+            assert api.get_dataset_info(dataset_uid="ds-a")["dataset"]["name"] == "First"
+        finally:
+            cs.imported_datasets.clear()
+
     def test_get_project_info_local(self):
         api = ChiSurfAPI(mode="local")
         result = api.get_project_info()

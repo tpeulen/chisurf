@@ -1,14 +1,14 @@
 """Central RPC service for PDA from a burst selection.
 
 Photon Distribution Analysis needs the *photons* of a chosen set of bursts, not
-a histogram of a derived quantity. ndXplorer (and any other burst explorer) gates
+a histogram of a derived quantity. ndX (and any other burst explorer) gates
 a sub-population and resolves it to per-file ``(first_photon, last_photon)``
 intervals; this service turns those intervals into a PDA S1/S2 experimental
-histogram, ready to fit, by driving :class:`chisurf.core.experiments.pda.PdaReader`
+histogram, ready to fit, by driving :class:`chisurf.core.experiments.pda2c.Pda2cReader`
 with its ``burst_slices`` path.
 
 Transport-agnostic and Qt-free — the ``chisurf.gui`` module is never imported.
-It is the server endpoint the ndXplorer PDA bridge
+It is the server endpoint the ndX PDA bridge
 (:meth:`ndxplorer.analysis.burst_bridge.BurstAnalysisBridge.send_to_pda`) calls
 as ``pda.from_bursts``.
 """
@@ -84,7 +84,7 @@ def from_bursts(
         return service_error(f"malformed burst_slices/channels: {exc}", error_code=INVALID_INPUT)
 
     try:
-        from chisurf.core.experiments.pda import PdaReader
+        from chisurf.core.experiments.pda2c import Pda2cReader
 
         settings: Dict[str, Any] = dict(
             channels=ch,
@@ -96,7 +96,7 @@ def from_bursts(
         )
         if n_colors is not None:
             settings["n_colors"] = int(n_colors)
-        reader = PdaReader(**settings)
+        reader = Pda2cReader(**settings)
         group = reader.read(filename=list(slices), burst_slices=slices)
     except Exception as exc:  # pragma: no cover - depends on TTTR/tttrlib
         return service_error(f"PDA read failed: {exc}", error_code=OPERATION_FAILED, exception=exc)

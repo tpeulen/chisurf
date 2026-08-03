@@ -1522,20 +1522,20 @@ def save_fits(target_path: str, use_complex_name: bool = False):
             # Ensure per-fit directory handling with overwrite/skip/cancel dialog
             if os.path.exists(p2):
                 try:
-                    from qtpy import QtWidgets
+                    # Imported here, not at module scope: macros run headless
+                    # (server mode, CLI) and must not drag Qt in to be defined.
+                    from chisurf.gui import dialogs
 
-                    msg = QtWidgets.QMessageBox()
-                    msg.setIcon(QtWidgets.QMessageBox.Question)
-                    msg.setWindowTitle("Folder exists")
-                    msg.setText(f"The folder '{p2}' already exists.")
-                    msg.setInformativeText("Do you want to overwrite it?")
-                    overwrite_btn = msg.addButton("Overwrite", QtWidgets.QMessageBox.AcceptRole)
-                    skip_btn = msg.addButton("Skip", QtWidgets.QMessageBox.RejectRole)
-                    msg.addButton("Cancel", QtWidgets.QMessageBox.DestructiveRole)
-                    msg.setDefaultButton(skip_btn)
-                    msg.exec_()
-                    clicked = msg.clickedButton()
-                    if clicked is overwrite_btn:
+                    answer = dialogs.choice(
+                        None,
+                        "Folder exists",
+                        f"The folder '{p2}' already exists.",
+                        {"overwrite": "Overwrite", "skip": "Skip", "cancel": "Cancel"},
+                        # Unattended, keep what is on disk rather than delete it.
+                        default="skip",
+                        informative="Do you want to overwrite it?",
+                    )
+                    if answer.key == "overwrite":
                         cs.logging.info(f"Overwriting existing folder: {p2}")
                         try:
                             if os.path.isdir(p2):
@@ -1545,7 +1545,7 @@ def save_fits(target_path: str, use_complex_name: bool = False):
                         except Exception as e:
                             cs.logging.warning(f"Failed to remove existing path {p2}: {e}")
                         os.makedirs(p2, exist_ok=True)
-                    elif clicked is skip_btn:
+                    elif answer.key == "skip":
                         cs.logging.info(f"Skipping existing folder: {p2}")
                         continue
                     else:

@@ -5,7 +5,10 @@ import concurrent.futures
 from chisurf.server.protocol import (
     PROTOCOL_VERSION,
     METHOD_CATALOGUE,
+    METHOD_PARAM_SCHEMAS,
     METHOD_SCHEMAS,
+    NAMESPACE_DESCRIPTIONS,
+    load_method_specs,
     encode_request,
     decode_request,
     encode_response,
@@ -132,9 +135,26 @@ class TestProtocolConstants:
         assert isinstance(PROTOCOL_VERSION, str)
         assert len(PROTOCOL_VERSION) > 0
 
+    def test_method_catalogue_covers_exactly_the_registered_methods(self):
+        """The advertised catalogue is the registry — no missing, no phantom methods."""
+        registered = {spec["rpc"] for spec in load_method_specs()}
+        catalogued = {m for ns in METHOD_CATALOGUE.values() for m in ns["methods"]}
+        assert catalogued == registered
+
     def test_method_catalogue_has_all_namespaces(self):
-        expected = {"meta", "dataset", "fit", "parameter", "project", "session", "model", "graph", "log", "editor"}
+        expected = {
+            "meta", "dataset", "fit", "parameter", "project", "session", "model",
+            "graph", "log", "editor", "detector_setups", "flr", "plot", "pda",
+            # A gated burst population, handed to another analysis.
+            "tcspc", "pch", "bursts",
+        }
         assert set(METHOD_CATALOGUE.keys()) == expected
+
+    def test_every_namespace_carries_a_written_description(self):
+        """A new namespace must be given prose, not the generated placeholder."""
+        for namespace, info in METHOD_CATALOGUE.items():
+            assert namespace in NAMESPACE_DESCRIPTIONS
+            assert info["description"] == NAMESPACE_DESCRIPTIONS[namespace]
 
     def test_method_catalogue_methods_are_strings(self):
         for ns, info in METHOD_CATALOGUE.items():
@@ -142,13 +162,22 @@ class TestProtocolConstants:
             assert "methods" in info
             for m in info["methods"]:
                 assert isinstance(m, str)
-                assert m.startswith(ns + ".")
+                # ``list_methods`` is the one deliberately un-namespaced survivor.
+                assert m.startswith(ns + ".") or m == "list_methods"
 
-    def test_method_schemas_cover_all_catalogue_methods(self):
-        expected = set()
-        for namespace in METHOD_CATALOGUE.values():
-            expected.update(namespace["methods"])
-        assert expected <= set(METHOD_SCHEMAS.keys())
+    def test_method_schemas_only_describe_registered_methods(self):
+        registered = {spec["rpc"] for spec in load_method_specs()}
+        assert set(METHOD_SCHEMAS.keys()) <= registered
+
+    def test_method_schema_events_come_from_the_registry(self):
+        """Schema event topics are derived, so they cannot drift from the registry."""
+        declared = {spec["rpc"]: list(spec.get("events", [])) for spec in load_method_specs()}
+        for method, schema in METHOD_SCHEMAS.items():
+            assert schema["events"] == declared[method]
+
+    def test_param_schemas_do_not_hand_repeat_events(self):
+        for method, schema in METHOD_PARAM_SCHEMAS.items():
+            assert "events" not in schema, f"{method} re-declares events by hand"
 
     def test_method_schema_shape(self):
         for method, schema in METHOD_SCHEMAS.items():

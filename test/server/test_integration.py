@@ -4,8 +4,9 @@ import threading
 import time
 import pytest
 
-from chisurf.core.api._client import ChisurfClient
+from chisurf.core.api._client import ChisurfClient, RemoteError
 from chisurf.server.app import ChiSurfServer
+from chisurf.server.protocol import METHOD_NOT_FOUND
 
 
 from test.server.helpers import find_free_port
@@ -24,6 +25,36 @@ def server_client():
     yield client, server
     client.close()
     server.stop()
+
+
+def _create_tcspc_fit(client, dataset_index):
+    """Create a TCSPC fit on *dataset_index*, skipping when the model is absent.
+
+    ``fit.create`` resolves a model by walking the imported ``Model``
+    subclasses, so the TCSPC models are only reachable when their modules have
+    been imported in the server process.  Since SV-04 a service error arrives
+    as a raised :class:`RemoteError` rather than an ``ok=False`` result, so the
+    unavailable-model case has to be caught, not inspected.
+
+    Parameters
+    ----------
+    client : ChisurfClient
+        Connected client.
+    dataset_index : int
+        Index of the dataset to fit.
+
+    Returns
+    -------
+    dict
+        The ``fit.create`` result.
+    """
+    try:
+        ft = client.fit__create(dataset_index=dataset_index, model_name="TCSPC")
+    except RemoteError as e:
+        pytest.skip(f"TCSPC model not available in this environment: {e}")
+    if not ft.get("ok"):
+        pytest.skip("TCSPC model not available in this environment")
+    return ft
 
 
 # ── Round-trip tests ────────────────────────────────────────────
@@ -51,10 +82,13 @@ def test_full_round_trip_list_datasets(server_client):
 
 
 def test_full_round_trip_unknown_method(server_client):
+    """An unknown method comes back in the JSON-RPC ``error`` member (SV-04)."""
     client, server = server_client
-    result = client._call("does_not_exist")
-    assert not result.get("ok")
-    assert "not found" in result.get("error", "")
+    with pytest.raises(RemoteError) as excinfo:
+        client._call("does_not_exist")
+    assert "not found" in str(excinfo.value)
+    assert excinfo.value.error_code == "METHOD_NOT_FOUND"
+    assert excinfo.value.jsonrpc_code == METHOD_NOT_FOUND
 
 
 def test_full_round_trip_list_fits(server_client):
@@ -181,10 +215,10 @@ def test_session_restore(server_client):
 
 
 def test_session_restore_with_project_nonexistent(server_client):
-    """Verify session.restore returns error for non-existent project."""
+    """Verify session.restore reports an error for a non-existent project."""
     client, server = server_client
-    result = client.session__restore(project_path="/nonexistent/path")
-    assert not result.get("ok")
+    with pytest.raises(RemoteError):
+        client.session__restore(project_path="/nonexistent/path")
 
 
 def test_remote_dataset_add(server_client):
@@ -270,10 +304,10 @@ def test_dataset_curve_data_endpoint(server_client):
 
 
 def test_dataset_curve_data_invalid_index(server_client):
-    """dataset.curve_data returns error for out-of-range index."""
+    """dataset.curve_data reports an error for an out-of-range index."""
     client, server = server_client
-    curve = client.dataset__curve_data(dataset_index=999)
-    assert not curve.get("ok")
+    with pytest.raises(RemoteError):
+        client.dataset__curve_data(dataset_index=999)
 
 
 def test_fit_save_endpoint(server_client):
@@ -290,9 +324,7 @@ def test_fit_save_endpoint(server_client):
     assert ds.get("ok") is True
 
     # Create a fit (may fail if no suitable model class available)
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
         tmp = f.name
     try:
@@ -314,9 +346,7 @@ def test_fit_curve_data_endpoint(server_client):
     })
     assert ds.get("ok") is True
 
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     curve = client.fit__curve_data(fit_index=ft["fit_index"])
     assert curve.get("ok") is True
     # Should have at least x/y from the dataset
@@ -335,9 +365,7 @@ def test_fit_list_includes_chi2r(server_client):
     })
     assert ds.get("ok") is True
 
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     fits = client.fit__list()
     fit_dto = None
     for f in fits:
@@ -364,9 +392,7 @@ def test_fit_set_fit_range_endpoint(server_client):
     })
     assert ds.get("ok") is True
 
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     result = client.fit__set_fit_range(fit_index=ft["fit_index"], xmin=10, xmax=50)
     assert result.get("ok") is True
 
@@ -381,9 +407,7 @@ def test_model_finalize_endpoint(server_client):
         "curve_data": {"x": [0.0, 1.0, 2.0], "y": [0.0, 1.0, 4.0]},
     })
     assert ds.get("ok") is True
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     result = client.model__finalize(fit_index=ft["fit_index"])
     assert result.get("ok") is True
 
@@ -398,9 +422,7 @@ def test_model_set_parse_function_endpoint(server_client):
         "curve_data": {"x": [0.0, 1.0], "y": [2.0, 3.0]},
     })
     assert ds.get("ok") is True
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     result = client.model__set_parse_function(
         parse_function="y = a * exp(-x/tau)",
         fit_index=ft["fit_index"],
@@ -437,9 +459,7 @@ def test_fit_set_dataset_endpoint(server_client):
         "name": "Data2", "curve_data": {"x": [0.0], "y": [2.0]},
     })
     assert ds1.get("ok") and ds2.get("ok")
-    ft = client.fit__create(dataset_index=ds1["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds1["dataset_index"])
     result = client.fit__set_dataset(
         fit_index=ft["fit_index"],
         dataset_index=ds2["dataset_index"],
@@ -455,9 +475,7 @@ def test_fit_set_result_idx_endpoint(server_client):
         "name": "ResultIdxTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })
     assert ds.get("ok") is True
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     result = client.fit__set_result_idx(fit_index=ft["fit_index"], result_idx=1)
     assert result.get("ok") is True
 
@@ -530,9 +548,7 @@ def test_parameter_link_endpoint(server_client):
         "name": "LinkTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })
     assert ds.get("ok") is True
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     info = client.fit__get(fit_index=ft["fit_index"])
     params = info.get("model", {}).get("parameters_all", [])
     if len(params) >= 2:
@@ -553,9 +569,7 @@ def test_event_broadcast_on_fit_run(server_client):
         "name": "RunEventTest", "curve_data": {"x": [0.0], "y": [1.0]},
     })
     assert ds.get("ok") is True
-    ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
-    if not ft.get("ok"):
-        pytest.skip("TCSPC model not available in this environment")
+    ft = _create_tcspc_fit(client, ds["dataset_index"])
     received = []
 
     def _on_event(event):

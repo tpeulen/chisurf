@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 import logging
 import threading
 import time
-from importlib import import_module, resources
+from importlib import import_module
 from typing import Any, Callable, Dict, List, Optional
 
 import chisurf.server.protocol
@@ -184,9 +183,7 @@ class ServiceDispatcher:
 
     def _build_default_registry(self) -> None:
         """Register core service handlers from the declarative method table."""
-        with resources.files("chisurf.server").joinpath("server_methods.json").open() as fp:
-            methods = json.load(fp)["methods"]
-        for spec in methods:
+        for spec in chisurf.server.protocol.load_method_specs():
             self.register(spec["rpc"], self._handler_from_spec(spec))
 
     @classmethod
