@@ -274,65 +274,42 @@ class Tests(unittest.TestCase):
             )
 
     def test_fcs(self):
+        """Correlating a real photon stream gives a decaying, finite curve.
+
+        The multi-tau correlator this used to exercise lived in chisurf; it has
+        been removed in favour of ``tttrlib``'s, so the test now checks the
+        correlation the application actually computes.
+        """
+        import tttrlib
+
         directory = './test/data/tttr/BH/132/'
         spc_files = glob.glob(directory + '/BH_SPC132.spc')
-        photons = chisurf.core.fio.fluorescence.photons.Photons(spc_files, reading_routine="bh132")
-        cr_filter = np.ones_like(photons.macro_times, dtype=float)
-        w1 = np.ones_like(photons.macro_times, dtype=float)
-        w2 = np.ones_like(photons.macro_times, dtype=float)
+        photons = chisurf.core.fio.fluorescence.photons.Photons(spc_files)
+        macro_times = np.ascontiguousarray(photons.macro_times, dtype=np.uint64)
+        weights = np.ones(macro_times.size, dtype=np.float64)
+
         points_per_decade = 5
         number_of_decades = 10
-        results = chisurf.core.fluorescence.fcs.correlate.log_corr(
-            macro_times=photons.macro_times,
-            tac_channels=photons.micro_times,
-            rout=photons.routing_channels,
-            cr_filter=cr_filter,
-            weights_1=w1,
-            weights_2=w2,
-            B=points_per_decade,
-            nc=number_of_decades,
-            fine=False,
-            number_of_tac_channels=photons.n_tac
-        )
-        np_1 = results['number_of_photons_ch1']
-        np_2 = results['number_of_photons_ch2']
-        dt_1 = results['measurement_time_ch1']
-        dt_2 = results['measurement_time_ch2']
-        tau = results['correlation_time_axis']
-        corr = results['correlation_amplitude']
+        correlator = tttrlib.Correlator()
+        correlator.n_bins = points_per_decade
+        correlator.n_casc = number_of_decades
+        correlator.set_macrotimes(macro_times, macro_times)
+        correlator.set_weights(weights, weights)
+        correlator.run()
 
-        # Every photon enters both channels, so this is an autocorrelation.
-        self.assertEqual(np_1, photons.nPh)
-        self.assertEqual(np_2, photons.nPh)
-        self.assertEqual(dt_1, dt_2)
-        self.assertGreater(dt_1, 0)
+        tau = np.asarray(correlator.get_x_axis(), dtype=np.float64) * photons.mt_clk
+        corr = np.asarray(correlator.get_corr_normalized(), dtype=np.float64)
 
-        # Multi-tau: points_per_decade lags per coarsening step, nc steps.
-        self.assertEqual(len(tau), points_per_decade * number_of_decades)
         self.assertEqual(len(corr), len(tau))
         self.assertEqual(tau[0], 0)
-        self.assertEqual(np.all(np.diff(tau.astype(np.float64)) > 0), True)
-
-        raw = corr.copy()
-        cr = chisurf.core.fluorescence.fcs.correlate.normalize(
-            np_1, np_2, dt_1, dt_2, tau, corr, points_per_decade
-        )
-        # ``normalize`` rescales ``corr`` in place and returns the smaller of
-        # the two count rates.
-        self.assertEqual(np.array_equal(raw, corr), False)
+        self.assertEqual(np.all(np.diff(tau[1:]) > 0), True)
         self.assertEqual(np.all(np.isfinite(corr)), True)
-        self.assertEqual(np.all(corr > 0), True)
-        self.assertAlmostEqual(cr, min(np_1 / dt_1, np_2 / dt_2))
-        # The zero-lag channel carries the self-correlation and dominates.
-        self.assertEqual(corr[0], corr.max())
-
-        cr /= photons.dt
-        dur = float(min(dt_1, dt_2)) * photons.dt / 1000.  # seconds
-        tau = tau.astype(np.float64)
-        tau *= photons.dt
-        self.assertGreater(cr, 0.0)
-        self.assertGreater(dur, 0.0)
-        self.assertEqual(np.all(np.isfinite(tau)), True)
+        # An autocorrelation of a real measurement decays towards its baseline.
+        # Only above roughly a microsecond, though: the shortest lags are
+        # shaped by the detector's dead time and afterpulsing, which depress
+        # and then overshoot the correlation.
+        early = corr[(tau > 1e-6) & (tau < 5e-6)]
+        self.assertGreater(early.mean(), corr[-10:].mean())
 
     def test_acceptor(self):
         times = np.linspace(0, 50, 1024)

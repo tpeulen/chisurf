@@ -78,154 +78,91 @@ class Correlator(QtCore.QThread):
         self._dt1 = 0
         self._dt2 = 0
 
-    def getWeightStream(
-            self,
-            tacWeighting,
-            max_number_of_routing_channels: int = 256
-    ) -> np.ndarray:
+    def run(self):
+        """Correlate the two channel selections and emit progress/done signals.
+
+        The measurement is split into ``self.p.split`` equal *time* intervals,
+        each interval is correlated on its own, and the results are averaged --
+        splitting gives an estimate of the scatter between sub-measurements,
+        which the noise model turns into error bars.
+
+        Both channel selections are cut at the same interval boundaries. An
+        earlier version selected channels by giving every photon a weight of
+        one or zero and split by photon *index*, which put the two channels'
+        groups over different stretches of the measurement whenever their count
+        rates differed.
         """
-        :param tacWeighting: is either a list of integers or a numpy-array.
-        If it's a list of integers the integers correspond to channel-numbers.
-        In this case all photons have an equal weight of one. If tacWeighting
-        is a numpy-array it should be of shape [max-routing, number of TAC
-        channels]. The array contains np.floats with weights for photons
-        arriving at different TAC-times.
-        :return: numpy-array with same length as photon-stream, each photon
-        is associated to one weight.
-        """
-        cs.logging.info(f"Correlator::getWeightStream({tacWeighting}, {max_number_of_routing_channels})")
-        photons = self.p.photon_source.photons
-        if isinstance(tacWeighting, list):
-            cs.logging.info("channel-wise selection")
-            #print("Max-Rout: %s" % photons.n_rout)
-            wt = np.zeros(
-                [max_number_of_routing_channels, photons.n_tac],
-                dtype=np.float32
-            )
-            wt[tacWeighting] = 1.0
-        elif isinstance(tacWeighting, np.ndarray):
-            cs.logging.info("TAC-weighted")
-            wt = tacWeighting
-        w = cs.core.fluorescence.fcs.correlate.get_weights(
-            routing_channels=photons.routing_channels,
-            micro_times=photons.micro_times,
-            weights=wt,
-            number_of_photons=photons.nPh
-        )
-        return w
-
-    def run(
-            self,
-            use_tttrlib: bool = True
-    ):
-        """Compute the correlation and emit progress/done signals.
-
-        Iterates over ``self.p.split`` groups of photons, runs the chosen
-        correlator (tttrlib or the ``tp`` fallback), accumulates the
-        per-group correlations, averages them into a single
-        :class:`DataCurve` and stores the result in ``self._data_curve``.
-
-        Parameters
-        ----------
-        use_tttrlib : bool, optional
-            If ``True`` (default) use :class:`tttrlib.Correlator`,
-            otherwise use the legacy ``cs.core.fluorescence.fcs.correlate``
-            ``tp`` implementation.
-        """
-
-        w1 = self.getWeightStream(self.p.ch1)
-        w2 = self.getWeightStream(self.p.ch2)
         cs.logging.info("Correlation running...")
         cs.logging.info("Correlation method: %s" % self.p.method)
         cs.logging.info("Fine-correlation: %s" % self.p.fine)
         cs.logging.info("Data stream split into %s correlations." % self.p.split)
+
         photons = self.p.photon_source.photons
+        stream_1 = photons.by_channel(self.p.ch1)
+        stream_2 = photons.by_channel(self.p.ch2)
+        macro_1 = stream_1.macro_times
+        macro_2 = stream_2.macro_times
+        if macro_1.size == 0 or macro_2.size == 0:
+            cs.logging.warning(
+                "no photons in channels %s / %s" % (self.p.ch1, self.p.ch2)
+            )
+            self.procDone.emit(False)
+            return
 
-        if use_tttrlib:
-            self._results = list()
-            n_photons = len(photons)
-            n_groups = self.p.split
-            n_photons_per_groups = n_photons // n_groups
-            n_groups = self.p.split
-            for i_group in range(n_groups):
-                print("Correlation Nbr.: %s" % i_group)
-                index_start = i_group * n_photons_per_groups
-                index_stop = (i_group + 1) * (n_photons_per_groups - 1)
-                print("Photon start/stop: %s/%s" % (index_start, index_stop))
-                p = photons[index_start: index_stop]
-                wi1 = w1[index_start: index_stop]
-                wi2 = w2[index_start: index_stop]
+        mt_clk = photons.mt_clk
+        n_groups = max(1, int(self.p.split))
+        start = min(macro_1[0], macro_2[0])
+        stop = max(macro_1[-1], macro_2[-1])
+        edges = np.linspace(float(start), float(stop), n_groups + 1)
 
-                correlator = tttrlib.Correlator()
-                correlator.set_n_bins(self.p.B)
-                correlator.set_n_casc(self.p.number_of_cascades)
-                t1 = p.macro_times
-                t2 = p.macro_times
-                correlator.set_macrotimes(t1, t2)
-                correlator.set_weights(wi1, wi2)
-                if self.p.fine:
-                    mt1 = p.micro_times
-                    mt2 = p.micro_times
-                    b = self.p.microtime_binning
-                    if b > 1:
-                        mt1 = mt1 // b
-                        mt2 = mt2 // b
-                    correlator.set_microtimes(
-                        mt1, mt2,
-                        self.p.effective_n_tac
-                    )
-                correlator.run()
-                tau = correlator.get_x_axis_normalized()
-                tau = tau.astype(np.float64)
-                tau *= self.p.dt
-                corr = correlator.get_corr_normalized()
-                dur = t1[-1]
-                cr = float(np.mean(w1 + w2))
-                self._results.append([cr, dur, tau, corr])
-                self.partDone.emit(float(i_group + 1) / n_groups * 100)
-        else:
-            n_tac = photons.n_tac
-            self._results = list()
-            n_photons = len(photons)
-            n_groups = self.p.split
-            n_photons_per_groups = n_photons // n_groups
-            dt = self.p.dt
-            B = self.p.B
-            self.partDone.emit(0.0)
-            for i_group in range(n_groups):
-                print("Correlation Nbr.: %s" % i_group)
-                index_start = i_group * (n_photons_per_groups - 1)
-                index_stop = (i_group + 1) * (n_photons_per_groups - 1)
-                p = photons[index_start: index_stop]
-                wi1 = w1[index_start: index_stop]
-                wi2 = w2[index_start: index_stop]
-                cr_filter = np.ones_like(wi1)
-                if self.p.method == 'tp':
-                    results = cs.core.fluorescence.fcs.correlate.log_corr(
-                        p.macro_times, p.micro_times, p.routing_channels, cr_filter,
-                        wi1, wi2,
-                        self.p.B, self.p.number_of_cascades,
-                        self.p.fine,
-                        n_tac
-                    )
-                    np_1 = results['number_of_photons_ch1']
-                    np_2 = results['number_of_photons_ch2']
-                    dt_1 = results['measurement_time_ch1']
-                    dt_2 = results['measurement_time_ch2']
-                    tau = results['correlation_time_axis']
-                    corr = results['correlation_amplitude']
-                    cr = cs.core.fluorescence.fcs.correlate.normalize(
-                        np_1, np_2,
-                        dt_1, dt_2,
-                        tau, corr,
-                        B
-                    )
-                    cr /= dt
-                    dur = float(min(dt_1, dt_2)) * self.p.dt / 1000.0  # seconds
-                    tau = tau.astype(np.float64)
-                    tau *= self.p.dt
-                    self._results.append([cr, dur, tau, corr])
-                self.partDone.emit(float(i_group + 1) / n_groups * 100)
+        self._results = list()
+        for i_group in range(n_groups):
+            lo, hi = edges[i_group], edges[i_group + 1]
+            t1 = macro_1[(macro_1 >= lo) & (macro_1 < hi)]
+            t2 = macro_2[(macro_2 >= lo) & (macro_2 < hi)]
+            if t1.size < 2 or t2.size < 2:
+                continue
+
+            correlator = tttrlib.Correlator()
+            correlator.n_bins = int(self.p.B)
+            correlator.n_casc = int(self.p.number_of_cascades)
+            try:
+                correlator.method = str(self.p.method)
+            except Exception:
+                cs.logging.warning("unknown correlation method %s" % self.p.method)
+            correlator.set_macrotimes(
+                np.ascontiguousarray(t1, dtype=np.uint64),
+                np.ascontiguousarray(t2, dtype=np.uint64),
+            )
+            correlator.set_weights(
+                np.ones(t1.size, dtype=np.float64),
+                np.ones(t2.size, dtype=np.float64),
+            )
+            if self.p.fine:
+                b = self.p.microtime_binning
+                mt1 = stream_1.micro_times[(macro_1 >= lo) & (macro_1 < hi)]
+                mt2 = stream_2.micro_times[(macro_2 >= lo) & (macro_2 < hi)]
+                if b > 1:
+                    mt1 = mt1 // b
+                    mt2 = mt2 // b
+                correlator.set_microtimes(mt1, mt2, self.p.effective_n_tac)
+            correlator.run()
+
+            # ChiSurf's FCS models take the lag axis in milliseconds, and the
+            # macro-time resolution is in seconds. The old code multiplied by
+            # the resolution alone and called the result milliseconds, so every
+            # correlation this tool produced was a factor of 1000 off.
+            tau = np.asarray(correlator.get_x_axis(), dtype=np.float64) * mt_clk * 1e3
+            corr = np.asarray(correlator.get_corr_normalized(), dtype=np.float64)
+            duration = (hi - lo) * mt_clk
+            count_rate = (t1.size + t2.size) / duration / 1000.0  # kHz
+            self._results.append([count_rate, duration, tau, corr])
+            self.partDone.emit(float(i_group + 1) / n_groups * 100)
+
+        if not self._results:
+            cs.logging.warning("no interval contained enough photons to correlate")
+            self.procDone.emit(False)
+            return
 
         # Calculate average correlations
         cors = list()
@@ -234,6 +171,13 @@ class Correlator(QtCore.QThread):
 
         for c in self._results:
             cr, dur, tau, corr = c
+            # The correlator's first bin is lag zero. It carries no correlation
+            # information, and the noise model reads a diffusion time off the
+            # axis -- a zero lag makes that estimate zero and the weights
+            # divide by it. Drop it here, before weighting, so the weights and
+            # the curve are computed on the same axis.
+            if len(tau) and tau[0] <= 0.0:
+                tau, corr = tau[1:], corr[1:]
             weight = self.weight(tau, corr, dur, cr)
             weights.append(weight)
             cors.append(corr)
@@ -243,9 +187,9 @@ class Correlator(QtCore.QThread):
         w = np.array(weights)
 
         data_curve = cs.core.data.DataCurve(
-            x=np.array(taus).mean(axis=0)[1:],
-            y=cor.mean(axis=0)[1:],
-            ey=1. / w.mean(axis=0)[1:]
+            x=np.array(taus).mean(axis=0),
+            y=cor.mean(axis=0),
+            ey=1. / w.mean(axis=0)
         )
         cs.logging.info("Correlation finished!")
 
@@ -253,7 +197,6 @@ class Correlator(QtCore.QThread):
         self.procDone.emit(True)
         self.exiting = True
 
-    @property
     def weight(
             self,
             tau,
@@ -279,12 +222,6 @@ class Correlator(QtCore.QThread):
         np.ndarray
             Weight vector as returned by ``cs.core.fluorescence.fcs.noise``
             using the configured ``weighting`` (``uniform`` or ``suren``).
-        """
-        """
-        tau-axis in milliseconds
-        correlation amplitude
-        acquisition_time = duration in seconds
-        count_rate = count-rate in kHz
         """
         if self.p.weighting == 1:
             return cs.core.fluorescence.fcs.noise(
@@ -468,92 +405,6 @@ class CorrelatorWidget(QtWidgets.QWidget):
         self.spinBox.setValue(v)
 
 
-class CrFilterWidget(QtWidgets.QWidget):
-
-    @cs.gui.decorators.init_with_ui(
-        ui_filename='cr_filter.ui'
-    )
-    def __init__(
-            self,
-            photon_source,
-            verbose: bool = None,
-            time_window = None,
-            max_count_rate = None
-    ):
-        # Import settings here to make them dynamic
-        from chisurf.core.settings import cs_settings
-        correlator_settings = cs_settings['correlator']
-
-        # Use default settings if parameters are None
-        if verbose is None:
-            verbose = cs_settings['verbose']
-        if time_window is None:
-            time_window = correlator_settings['time_window']
-        if max_count_rate is None:
-            max_count_rate = correlator_settings['max_count_rate']
-        self.photon_source = photon_source
-        self.verbose = verbose
-        self.time_window = time_window
-        self.max_count_rate = max_count_rate
-        self.sample_name = self.photon_source.sample_name
-
-    @property
-    def max_count_rate(self) -> float:
-        return float(self.lineEdit_6.text())
-
-    @max_count_rate.setter
-    def max_count_rate(
-            self,
-            v: float
-    ):
-        self.lineEdit_6.setText(str(v))
-
-    @property
-    def time_window(self) -> float:
-        return float(self.lineEdit_8.text())
-
-    @time_window.setter
-    def time_window(
-            self,
-            v: float
-    ):
-        self.lineEdit_8.setText(str(v))
-
-    @property
-    def cr_filter_on(self) -> bool:
-        return bool(self.groupBox_2.isChecked())
-
-    @property
-    def photons(self) -> cs.core.fio.photons.Photons:
-        photons = self.photon_source.photons
-        if self.cr_filter_on:
-            dt = photons.mt_clk
-            tw = int(self.time_window / dt)
-            n_ph_max = int(self.max_count_rate * self.time_window)
-            if self.verbose:
-                cs.logging.info("Using count-rate filter:")
-                cs.logging.info("Window-size [ms]: %s" % self.time_window)
-                cs.logging.info("max_count_rate [kHz]: %s" % self.max_count_rate)
-                cs.logging.info("n_ph_max in window [#]: %s" % n_ph_max)
-                cs.logging.info("Window-size [n(MTCLK)]: %s" % tw)
-                cs.logging.info("---------------------------------")
-
-            mt = photons.macro_times
-            n_ph = mt.shape[0]
-            w = np.ones(n_ph, dtype=np.float32)
-            cs.core.fluorescence.fcs.correlate.count_rate_filter(
-                mt,
-                tw,
-                n_ph_max,
-                w,
-                n_ph
-            )
-            photons.cr_filter = w
-            return photons
-        else:
-            return photons
-
-
 @persist_plugin_state("tttr_correlate")
 class CorrelateTTTR(
     QtWidgets.QWidget
@@ -596,6 +447,7 @@ class CorrelateTTTR(
         self.plot.clear()
         self.plot.legend()
         self.plot.set_log(x=True, y=False)
+        self.plot.set_labels(bottom="lag time / ms", left="G(tau)")
         self.plot.grid(x=True, y=True, alpha=1.0)
 
         # Import settings here to make them dynamic
@@ -613,6 +465,15 @@ class CorrelateTTTR(
                 name=curve.name
             )
 
+    def closeEvent(self, event):
+        """Close the file widget too, so its photon file is released.
+
+        Qt delivers a close event only to the widget being closed, not to its
+        children, so the tool has to pass it on.
+        """
+        self.fileWidget.close()
+        super().closeEvent(event)
+
     def add_curve(self):
         self._curves = [self.correlator.data]
         self.cs.update()
@@ -624,14 +485,6 @@ class CorrelateTTTR(
 
         self.fileWidget = cs.gui.widgets.fio.SpcFileWidget()
         self.verticalLayout.addWidget(self.fileWidget)
-
-        #self.countrateFilterWidget = CrFilterWidget(
-        #    photon_source=self.fileWidget
-        #)
-        #self.verticalLayout_4.addWidget(self.countrateFilterWidget)
-        #self.correlator = CorrelatorWidget(
-        #    photon_source=self.countrateFilterWidget
-        #)
 
         # Import settings here to make them dynamic
         from chisurf.core.settings import cs_settings

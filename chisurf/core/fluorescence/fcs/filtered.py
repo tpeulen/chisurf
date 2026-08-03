@@ -88,15 +88,12 @@ def species_weight_streams(filters, micro_times, routing_channels=None):
 
     if routing_channels is None:
         raise ValueError("routing_channels is required for channel-aware filters")
-    from .correlate import get_weights
 
     ch = np.clip(np.asarray(routing_channels), 0, table.shape[0] - 1).astype(np.int64)
-    n_photons = int(micro_idx.size)
-    streams = []
-    for s in range(n_species):
-        w = get_weights(ch, micro_idx, np.ascontiguousarray(table[:, s, :], dtype=np.float64), n_photons)
-        streams.append(np.ascontiguousarray(w, dtype=np.float64))
-    return streams
+    return [
+        np.ascontiguousarray(table[ch, s, micro_idx], dtype=np.float64)
+        for s in range(n_species)
+    ]
 
 
 def species_filtered_correlation(

@@ -7,7 +7,11 @@ from chisurf.core.fluorescence.fcs import normalization
 from chisurf import typing
 
 weightCalculations = ['Koppel', 'none']
-correlationMethods = ['tp']
+
+#: Correlation normalizations ``tttrlib`` implements. ``wahl`` is its default;
+#: ``laurence`` normalizes each lag by the count rate in the overlapping
+#: sub-intervals, which removes the long-lag upturn near the chunk duration.
+correlationMethods = ['wahl', 'felekyan', 'laurence', 'default']
 
 # Re-export normalization functions for convenient access
 resolve_total_mean_count_rate = normalization.resolve_total_mean_count_rate
