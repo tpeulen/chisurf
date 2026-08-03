@@ -9,8 +9,9 @@ The main public entry point is :func:`estimate_background_from_bursts`,
 which is also re-exported via :mod:`chisurf.core.fluorescence.burst`.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Mapping
+from typing import Any
 
 import numpy as np
 import tttrlib
@@ -56,6 +57,12 @@ class BackgroundDiagnostics:
     amplitude: float = 0.0
 
 
+#: Lower bound used in place of zero for strictly positive fit parameters. Small
+#: enough to be no constraint on any physical amplitude or rate, large enough that
+#: the objective stays finite on the boundary the optimiser is allowed to visit.
+_POSITIVE = 1e-12
+
+
 def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts):
     """Poisson-MLE exponential fit of the inter-photon-time tail.
 
@@ -85,11 +92,17 @@ def _fit_exponential_tail(centers, counts, max_dt, tail_fraction, min_counts):
 
     A0 = float(counts[0]) if counts[0] > 0 else float(ydata.max())
     lam0 = 3.0 / max_dt
+    # The bounds must exclude zero. The objective is ``+inf`` at ``A == 0`` or
+    # ``lam == 0``, and L-BFGS-B evaluates *on* its bounds while building the
+    # finite-difference gradient — so a closed bound at zero yields ``inf - inf``,
+    # a NaN gradient, and an early stop reported as failure. The fallback then
+    # returns the inverse mean tail interval instead of the fitted rate, which is
+    # a different (and biased) estimator arriving with no error at all.
     result = minimize(
         neg_log_likelihood,
         np.array([A0, lam0], dtype=float),
         method="L-BFGS-B",
-        bounds=((0.0, None), (0.0, None)),
+        bounds=((_POSITIVE, None), (_POSITIVE, None)),
     )
     if not result.success:
         mean_dt = float(np.mean(xdata))
@@ -189,7 +202,7 @@ def estimate_background_from_bursts(
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.8,
     min_counts: int = 1,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Estimate background count rates (kHz) for multiple detector definitions.
 
     Parameters
@@ -233,7 +246,7 @@ def estimate_background_from_bursts(
     # macro_time_resolution is in seconds; convert dt to milliseconds
     dt_scale = float(getattr(header, "macro_time_resolution", 1.0)) * 1000.0
 
-    results: Dict[str, float] = {}
+    results: dict[str, float] = {}
 
     for det_name, det_info in detectors.items():
         chs = np.asarray(det_info.get("chs", []), dtype=int)
@@ -299,7 +312,7 @@ def background_diagnostics_from_bursts(
     binsize_ms: float = 0.1,
     tail_fraction: float = 0.8,
     min_counts: int = 1,
-) -> Dict[str, BackgroundDiagnostics]:
+) -> dict[str, BackgroundDiagnostics]:
     """Per-detector inter-photon-time histogram + tail fit for diagnostic plots.
 
     The plotting companion of :func:`estimate_background_from_bursts`: returns a
@@ -308,7 +321,7 @@ def background_diagnostics_from_bursts(
     """
     header = tttr.header
     dt_scale = float(getattr(header, "macro_time_resolution", 1.0)) * 1000.0
-    out: Dict[str, BackgroundDiagnostics] = {}
+    out: dict[str, BackgroundDiagnostics] = {}
     for det_name, det_info in detectors.items():
         dt_ms = _detector_interphoton_times(tttr, det_info, dt_scale)
         out[det_name] = interphoton_time_diagnostics(

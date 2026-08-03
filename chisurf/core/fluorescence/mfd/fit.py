@@ -1,0 +1,449 @@
+"""Tying it together: a burst folder, an instrument, a set of states, a score.
+
+This is the layer a fitting model, a CLI or a script talks to. It holds the two
+halves apart on purpose:
+
+* :class:`MfdData` is everything that comes from the measurement and never moves —
+  the prepared bursts, the nuisance measure, the observed histogram on raw axes, and
+  the per-channel instrument response with its background rate. Built once.
+* :class:`MfdModel` is everything that is fitted — the optics and the states — and
+  it produces a predicted histogram for that data.
+
+The instrument response and the background rate come from the measurement's own
+**non-burst photons** (:mod:`chisurf.core.fluorescence.burst.irf_bg`): in a confocal
+single-molecule experiment most of the acquisition has no molecule in the focus, and
+those photons are exactly the scattered excitation light and dark counts the model
+needs. So a burst folder is self-sufficient — no separate scatter measurement, and
+no IRF taken on a different day at a different alignment.
+"""
+
+from __future__ import annotations
+
+import pathlib
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
+
+from chisurf.core.fluorescence.mfd.histogram import (
+    DEFAULT_MIN_GREEN_PHOTONS,
+    HistogramAxes,
+    MfdHistogram,
+    model_histogram,
+    observed_histogram,
+)
+from chisurf.core.fluorescence.mfd.patterns import (
+    ChannelResponse,
+    FretState,
+    Optics,
+    donor_lifetime_spectrum_of_state,
+    red_probability,
+    state_efficiency,
+)
+from chisurf.core.fluorescence.mfd.prepare import (
+    BurstPreparation,
+    NuisanceMeasure,
+    nuisance_measure,
+    prepare_burst_folder,
+)
+from chisurf.core.fluorescence.mfd.sources import ScoreResult, histogram_residuals
+
+__all__ = ["MfdData", "MfdModel", "estimate_responses", "load_mfd_data"]
+
+
+def estimate_responses(
+    preparation: BurstPreparation,
+    *,
+    channels: Sequence[str] = ("green", "red"),
+    min_photons: int = 60,
+    photon_window: int = 10,
+    time_window: float = 1e-3,
+) -> dict[str, ChannelResponse]:
+    """Estimate each channel's response and background from the non-burst photons.
+
+    Most of a single-molecule acquisition has nothing in the focus. Those photons
+    are scattered excitation light — whose shape *is* the instrument response — and
+    uncorrelated dark counts, whose rate is the background the forward model needs.
+    Summed over every measurement in the folder, because one file rarely has enough
+    scatter to define a response and the alignment does not change between them.
+
+    Parameters
+    ----------
+    preparation : BurstPreparation
+        Must carry its photons (``with_photons=True``).
+    channels : sequence of str
+        Detector names to build responses for.
+    min_photons, photon_window, time_window
+        Burst-search parameters defining what counts as *not* a burst; see
+        :func:`chisurf.core.fluorescence.burst.irf_bg.non_burst_mask`.
+
+    Returns
+    -------
+    dict
+        Detector name to :class:`~chisurf.core.fluorescence.mfd.patterns.ChannelResponse`.
+
+    Raises
+    ------
+    ValueError
+        If the preparation carries no photons, or a channel yields no scatter at
+        all — an all-zero response would silently make every pattern the decay
+        itself, which is a real IRF-free fit masquerading as an IRF-corrected one.
+    """
+    from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
+
+    tttrs = preparation.summary.get("_tttrs")
+    if not tttrs:
+        raise ValueError(
+            "responses come from the photon streams; prepare the folder with "
+            "with_photons=True"
+        )
+    preparation.require_verified(channels)
+
+    by_name = {s.name: s for s in preparation.streams}
+    detectors = {
+        name: {
+            "chs": list(by_name[name].channels),
+            "micro_time_ranges": list(by_name[name].micro_time_ranges),
+        }
+        for name in channels
+    }
+
+    accumulated: dict[str, np.ndarray] = {}
+    background: dict[str, list[tuple[float, float]]] = {name: [] for name in channels}
+    dt_ns = 0.0
+    for tttr in tttrs.values():
+        estimates = extract_irf_background(
+            tttr,
+            detectors,
+            min_photons=min_photons,
+            photon_window=photon_window,
+            time_window=time_window,
+        )
+        for name, estimate in estimates.items():
+            if name not in accumulated:
+                accumulated[name] = np.zeros_like(estimate.irf_raw)
+            accumulated[name] += estimate.irf_raw
+            # Weight each file's background rate by the photons it contributed, so
+            # a short file cannot outvote a long one.
+            background[name].append(
+                (float(estimate.background_khz), float(estimate.n_background_photons))
+            )
+            if dt_ns <= 0.0 and estimate.time_ns.size > 1:
+                dt_ns = float(estimate.time_ns[1] - estimate.time_ns[0])
+
+    responses: dict[str, ChannelResponse] = {}
+    for name in channels:
+        raw = accumulated.get(name)
+        if raw is None or raw.sum() <= 0:
+            raise ValueError(
+                f"the {name} channel has no non-burst photons, so its instrument "
+                "response cannot be estimated from this measurement"
+            )
+        # Subtract the flat dark-count floor; what remains is scatter, i.e. the
+        # response. The quantile is the same robust choice irf_bg makes.
+        baseline = float(np.quantile(raw, 0.2))
+        irf = np.clip(raw - baseline, 0.0, None)
+        if irf.sum() <= 0:
+            raise ValueError(
+                f"the {name} channel's non-burst micro times are flat: there is no "
+                "scatter prompt to take an instrument response from"
+            )
+        rates, photons = zip(*background[name])
+        total = sum(photons) or 1.0
+        rate_khz = sum(r * n for r, n in zip(rates, photons)) / total
+        responses[name] = ChannelResponse(
+            irf=irf, dt=dt_ns, background_rate=rate_khz * 1e3
+        )
+    return responses
+
+
+@dataclass
+class MfdData:
+    """Everything about the measurement that a fit does not change.
+
+    Attributes
+    ----------
+    preparation : BurstPreparation
+        The bursts, as read.
+    nuisance : NuisanceMeasure
+        The empirical ``P(S, t_G, t_R)``.
+    binned : tuple
+        The nuisance measure on a grid, computed once so a fit loop never rebins.
+    observed : MfdHistogram
+        The data histogram, on raw axes, built once and never moved.
+    responses : dict
+        Per-channel instrument response and background rate.
+    channels : tuple of str
+        ``(green, red)`` detector names.
+    """
+
+    preparation: BurstPreparation
+    nuisance: NuisanceMeasure
+    binned: tuple
+    observed: MfdHistogram
+    responses: dict[str, ChannelResponse]
+    channels: tuple[str, str]
+
+    @property
+    def axes(self) -> HistogramAxes:
+        """Return the histogram's bin edges."""
+        return self.observed.axes
+
+    @property
+    def min_green_photons(self) -> int:
+        """Return the green-photon cut the observed histogram applied."""
+        return int(self.observed.summary["min_green_photons"])
+
+    def report(self) -> str:
+        """Return a human-readable account of what was loaded and excluded."""
+        green, red = self.channels
+        lines = [
+            self.preparation.report(),
+            f"nuisance: {len(self.nuisance)} bursts, "
+            f"{self.nuisance.summary['n_excluded_low_signal']} below the signal cut",
+            f"histogram: {self.observed.n_used} bursts "
+            f"({self.observed.summary['excluded_fraction']:.1%} excluded, cut at "
+            f"{self.min_green_photons} green photons)",
+        ]
+        for name in (green, red):
+            response = self.responses[name]
+            lines.append(
+                f"  {name}: background {response.background_rate * 1e-3:.3f} kHz, "
+                f"response over {response.n_channels} channels "
+                f"({response.period:.2f} ns period)"
+            )
+        return "\n".join(lines)
+
+
+def load_mfd_data(
+    folder: pathlib.Path | str,
+    *,
+    green: str = "green",
+    red: str = "red",
+    axes: HistogramAxes | None = None,
+    min_green_photons: int = DEFAULT_MIN_GREEN_PHOTONS,
+    streams=None,
+    n_signal_bins: int = 24,
+    n_span_bins: int = 6,
+    **response_kwargs,
+) -> MfdData:
+    """Load a burst folder into everything a 2D MFD fit needs from the measurement.
+
+    Parameters
+    ----------
+    folder : path-like
+        A burst-analysis folder.
+    green, red : str
+        Detector names.
+    axes : HistogramAxes, optional
+        Histogram bin edges.
+    min_green_photons : int
+        Green-photon cut, applied identically to the data and to the model.
+    streams : sequence, optional
+        Explicit channel definitions, when the folder does not record them.
+    n_signal_bins, n_span_bins : int
+        Grid of the binned nuisance measure.
+    **response_kwargs
+        Forwarded to :func:`estimate_responses`.
+
+    Returns
+    -------
+    MfdData
+    """
+    preparation = prepare_burst_folder(folder, streams=streams, with_photons=True)
+    measure = nuisance_measure(preparation, channels=(green, red))
+    return MfdData(
+        preparation=preparation,
+        nuisance=measure,
+        binned=measure.binned(n_signal_bins=n_signal_bins, n_span_bins=n_span_bins),
+        observed=observed_histogram(
+            preparation, axes, green=green, red=red,
+            min_green_photons=min_green_photons,
+        ),
+        responses=estimate_responses(
+            preparation, channels=(green, red), **response_kwargs
+        ),
+        channels=(green, red),
+    )
+
+
+@dataclass
+class MfdModel:
+    """A set of states with populations, and the optics they are seen through.
+
+    Attributes
+    ----------
+    optics : Optics
+        Correction factors and instrument constants.
+    states : list of FretState
+        The conformational states.
+    populations : numpy.ndarray
+        Fraction of molecules in each state, normalised internally.
+    donor_only : float
+        Fraction of molecules with no active acceptor. Real single-molecule data
+        always has some, and leaving it out of the model does not remove it from the
+        data — it makes the fit pull a FRET state down to explain it.
+    n_distance_samples : int
+        Samples of the linker distance distribution.
+    """
+
+    optics: Optics
+    states: list[FretState] = field(default_factory=list)
+    populations: np.ndarray | None = None
+    donor_only: float = 0.0
+    n_distance_samples: int = 81
+
+    def _species(self) -> tuple[np.ndarray, list[tuple[bool, FretState]]]:
+        """Return normalised species weights and their (has-acceptor, state) pairs."""
+        if not self.states:
+            raise ValueError("the model has no states")
+        populations = (
+            np.ones(len(self.states))
+            if self.populations is None
+            else np.asarray(self.populations, dtype=float)
+        )
+        if populations.size != len(self.states):
+            raise ValueError("populations and states disagree in length")
+        populations = np.clip(populations, 0.0, None)
+        total = populations.sum()
+        populations = (
+            populations / total if total > 0 else np.full(populations.size, 1.0 / populations.size)
+        )
+        fraction = float(np.clip(self.donor_only, 0.0, 1.0))
+        weights = np.concatenate([[fraction], (1.0 - fraction) * populations])
+        species = [(False, FretState(distance=np.inf, name="donor-only"))] + [
+            (True, s) for s in self.states
+        ]
+        return weights, species
+
+    def species_properties(
+        self, data: MfdData
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Return the per-species branching and green-channel moments.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+
+        Returns
+        -------
+        weights, p_red, green_mean, green_variance : numpy.ndarray
+            ``(n_species,)`` each. The histogram takes these per *cell*; a static
+            model is the case where they do not depend on the burst.
+        """
+        green_name, _ = data.channels
+        response = data.responses[green_name]
+        weights, species = self._species()
+
+        p_red = np.zeros(len(species))
+        mean = np.zeros(len(species))
+        variance = np.zeros(len(species))
+        for i, (has_acceptor, state) in enumerate(species):
+            if has_acceptor:
+                efficiency = state_efficiency(
+                    state, self.optics, n_points=self.n_distance_samples
+                )
+                amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
+                    state, self.optics, n_points=self.n_distance_samples
+                )
+                p_red[i] = float(red_probability(efficiency, self.optics))
+            else:
+                # No acceptor: no transfer and no direct excitation, so the only way
+                # into the acceptor channel is leakage. Applying δ here would make
+                # the donor-only population report an acceptor that is not there.
+                donor_only_optics = Optics(
+                    **{**self.optics.__dict__, "delta": 0.0}
+                )
+                p_red[i] = float(red_probability(0.0, donor_only_optics))
+                amplitudes = np.array([1.0])
+                lifetimes = np.array([self.optics.tau_d0])
+            mean[i], variance[i] = response.signal_moments(amplitudes, lifetimes)
+        return weights, p_red, mean, variance
+
+    def histogram(self, data: MfdData) -> np.ndarray:
+        """Predict the 2D histogram for a measurement.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+
+        Returns
+        -------
+        numpy.ndarray
+            ``(n_ratio, n_micro_time)``.
+        """
+        green_name, red_name = data.channels
+        weights, p_red, mean, variance = self.species_properties(data)
+        n_cells = data.binned[0].size
+        tile = lambda v: np.broadcast_to(v, (n_cells, v.size))  # noqa: E731
+
+        return model_histogram(
+            data.nuisance,
+            data.axes,
+            component_weights=tile(weights),
+            p_red=tile(p_red),
+            green_mean=tile(mean),
+            green_variance=tile(variance),
+            background_rates=(
+                data.responses[green_name].background_rate,
+                data.responses[red_name].background_rate,
+            ),
+            background_micro_time=data.responses[green_name].background_moments(),
+            min_green_photons=data.min_green_photons,
+            binned=data.binned,
+        )
+
+    def score(self, data: MfdData, **kwargs) -> ScoreResult:
+        """Score this model against the observed histogram.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+        **kwargs
+            Forwarded to
+            :func:`~chisurf.core.fluorescence.mfd.sources.histogram_residuals`.
+
+        Returns
+        -------
+        ScoreResult
+        """
+        return histogram_residuals(data.observed.counts, self.histogram(data), **kwargs)
+
+    def marginals(self, data: MfdData) -> dict[str, Any]:
+        """Return the 1D marginals of the model and the data, for comparison.
+
+        The milestone-1a gate is about *width*, and a width is easiest to read off a
+        marginal. Returned together so nothing can compare a model marginal computed
+        one way against a data marginal computed another.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+
+        Returns
+        -------
+        dict
+            ``ratio``/``micro_time`` each mapping to ``(centres, data, model)``.
+        """
+        model = self.histogram(data)
+        observed = data.observed.counts
+        scale = observed.sum() / model.sum() if model.sum() > 0 else 1.0
+        axes = data.axes
+        centres = lambda e: 0.5 * (e[:-1] + e[1:])  # noqa: E731
+        return {
+            "ratio": (
+                centres(axes.ratio_edges),
+                observed.sum(axis=1),
+                model.sum(axis=1) * scale,
+            ),
+            "micro_time": (
+                centres(axes.micro_time_edges),
+                observed.sum(axis=0),
+                model.sum(axis=0) * scale,
+            ),
+        }

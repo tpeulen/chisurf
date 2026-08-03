@@ -32,6 +32,36 @@ def test_recovers_known_background_rate():
     assert abs(diag.rate_khz - 3.0) / 3.0 < 0.25   # within 25% of the true rate
 
 
+def test_tail_fit_does_not_fail_on_its_own_bounds():
+    """The optimiser must never see ``inf - inf`` while probing its bounds.
+
+    ``L-BFGS-B`` evaluates the objective *on* its bounds when building the
+    finite-difference gradient, and the negative log-likelihood is ``+inf`` at zero
+    amplitude or zero rate. With the bounds closed at zero that produced a NaN
+    gradient, an early stop reported as failure, and a silent fall back to the
+    inverse mean tail interval — a different and biased estimator arriving with no
+    error at all. On a real single-molecule measurement it moved the background rate
+    by ~20%.
+    """
+    import warnings
+
+    rng = np.random.default_rng(7)
+    dt = _dt_ms(rng, bg_rate_khz=2.0)
+    hist = bg._histogram_interphoton(dt, 0.1)
+    assert hist is not None
+    centers, counts, max_dt = hist
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        amplitude, rate, _, success = bg._fit_exponential_tail(
+            centers, counts, max_dt, 0.2, 1
+        )
+    assert not [w for w in caught if "invalid value" in str(w.message)]
+    assert success, "the tail fit fell back to the biased estimator"
+    assert amplitude > 0.0 and rate > 0.0
+    assert abs(rate - 2.0) / 2.0 < 0.25
+
+
 def test_empty_input_is_graceful():
     diag = bg.interphoton_time_diagnostics(np.empty(0))
     assert diag.rate_khz == 0.0 and diag.centers.size == 0

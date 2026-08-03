@@ -52,10 +52,24 @@ through objects computed once.
 
 # Status
 
-Draft. Nothing implemented. The design below is settled; the staging is the
-proposed order of work. The approach has precedent — a comparable scheme has
-worked before — so the risk sits in *this* implementation, which is what the
-two-step milestone in the Validation section is built to catch.
+In progress. The static forward model is implemented and **milestone 1a has
+passed** on a real measurement; kinetics and the photon-bearing sources are next.
+The design below is settled; the staging is the order of work.
+
+Both things this PRD recorded itself as blocked on are resolved:
+
+* **The measurement.** `chisurf/plugins/burst/burst_selection/tests/data/bh_spc132_sm_dna/`
+  is a real BH SPC-132 single-molecule DNA measurement — ten `.spc` files, 2980
+  bursts, a clean donor-only population at `PR ≈ 0` and a FRET population at
+  `PR ≈ 0.42`, separated on the lifetime axis exactly as an MFD plot should be
+  (⟨t⟩ 5.04 ns against 4.20 ns). It carries no IRF file and no measured correction
+  factors and needs neither: `chisurf/core/fluorescence/burst/irf_bg.py` takes both
+  the per-detector instrument response *and* the background rate from the
+  measurement's own **non-burst** photons.
+* **The conventions.** The `G`/`l₁`/`l₂` authority is tttrlib
+  (`include/DecayFit.h`, `DecayFit23/24/25.h`'s `corrections = [period, g, l1, l2,
+  convolution_stop]`, and `SimEngine.h`'s Perrin depolarization), not a prior
+  implementation to be reconstructed.
 
 Parent: [PRD-49](prd-49.md). Related: [PRD-50](prd-50.md) (PDA — same nuisance
 trick, one dimension lower), [PRD-65](prd-65.md) (three-colour PDA, same nested
@@ -362,13 +376,42 @@ than documented in a footnote.
 Milestone 1 is **two steps, and both gate**. Passing 1a alone is compatible with a
 broken duration/span lookup that only surfaces once kinetics rides on it.
 
-* **1a — static, single state, real data.** Model core plus the histogram source,
-  one state, no kinetics: the cloud's position *and* its width must be reproduced
-  with **no free broadening parameter**. Any unexplained width will later be
-  absorbed as exchange, so everything downstream is meaningless until this passes.
-* **1b — known-rate kinetics recovered.** A system whose exchange rate is known
-  independently must come back correct, which is what exercises the occupation-time
-  propagator and the span/duration lookup together.
+* **1a — static, single state, real data — ✅ passed.** Model core plus the
+  histogram source, one state, no kinetics: the cloud's position *and* its width
+  reproduced with **no free broadening parameter**. Any unexplained width will
+  later be absorbed as exchange, so everything downstream is meaningless until this
+  passes.
+
+  What made it a real test rather than a self-consistency check is the **donor-only
+  population**: it has no distance, no efficiency, and nothing fitted to its
+  spread, so its width is shot noise and nothing else — and that width can be
+  computed *from the photons themselves*, with no model at all. Against that
+  model-free number, on `bh_spc132_sm_dna`:
+
+  | quantity | model-free / measured | forward model |
+  |---|---|---|
+  | donor-only proximity-ratio width | 0.0215 (binomial estimate 0.0221) | 0.0208 |
+  | donor-only ⟨t⟩ shot noise | 0.322 ns (from each burst's own photons) | 0.336 ns |
+  | donor-only ⟨t⟩ *observed* | 0.464 ns | — |
+
+  So the shot-noise contribution is reproduced to 3–4% on both axes with nothing
+  tuned to it. The residual — 0.33 ns of excess on the lifetime axis, and a FRET
+  population 1.3× broader in `PR` than shot noise — is **physical heterogeneity**,
+  which is precisely the quantity this PRD exists to fit and which no shot-noise
+  model should reproduce. The test therefore also asserts the model stays *below*
+  the observed FRET width: a model that broadened itself to fit would absorb the
+  structure everything downstream is meant to resolve.
+
+  Fitted by least squares (position only — none of these is a width parameter):
+  donor-only lifetime 1.57 ns, mean distance 54.4 Å at `R₀ = 52 Å`, donor-only
+  fraction 0.394, donor leakage 0.030. `test/fluorescence/test_mfd_milestone.py`.
+* **1b — known-rate kinetics recovered — ⏳ outstanding, no dataset.** A system
+  whose exchange rate is known independently must come back correct, which is what
+  exercises the occupation-time propagator and the span/duration lookup together.
+  The tree contains no such measurement, so this gate stays open rather than
+  quietly passing on simulated data. Until it can run, the propagator is held to
+  its closed-form two-state limit and to convergence in the discretization — which
+  tests the *implementation*, and explicitly not the physics.
 
 **The photon-level simulator is a code test, never a physics test.** It shares
 every physical assumption with the model, so a shared error passes silently; it
@@ -397,20 +440,28 @@ two numbers is *quantified* rather than assumed negligible.
 * **Transfer-matrix discretization** in `n`; convergence in `n` is a test, not an
   assumption.
 
-# Open before the next step
+# Open
 
-Two things are needed that the tree cannot supply:
+One thing is still needed that the tree cannot supply:
 
-* **A real static smFRET burst measurement for milestone 1a**, with its IRF,
-  background and correction factors. `test/data/` has CLSM `.ht3`/`.ptu` files, a
-  small `.ptu`, and the photon-by-photon reference `.npz` — no burst-mode dataset.
-  The gate cannot run without one.
-* **The earlier working implementation.** A comparable scheme has worked before;
-  reading it would settle the parts that are *convention* rather than physics —
-  pattern normalization, where `G` and `l₁/l₂` are applied, how the linker width
-  was handled alongside the static line, and whether the observation-span
-  shrinkage was modelled or corrected. Re-deriving those invites a mismatch that
-  the histogram would absorb into a rate rather than reveal.
+* **A burst measurement whose exchange rate is known independently**, for milestone
+  1b. Without it the occupation-time propagator is verified against its own
+  closed-form limit and nothing more, and no fitted rate from this machinery should
+  be reported as validated.
+
+Two questions the static gate raised, both worth answering before rates are:
+
+* **The instrument response taken from non-burst photons is contaminated.** Its
+  mean sits at 3.44 ns, far later than a scatter prompt, because the non-burst
+  stream also holds fluorescence from molecules below the burst threshold. The fit
+  compensates with a donor-only lifetime of 1.57 ns, which is therefore an
+  *effective* number and not the dye's. It does not affect milestone 1a, which is
+  about width, but it will bias any absolute lifetime. A tighter prompt window, or
+  a real scatter measurement, would settle it.
+* **The excess width is unattributed.** It is real, and it is either a distribution
+  of distances, acceptor photophysics, or exchange. Distinguishing them is what the
+  pooled-decay and burst-wise sources exist for; until they are wired in, the
+  static model should not be asked which it is.
 
 # Staging
 
@@ -425,11 +476,31 @@ Two things are needed that the tree cannot supply:
    fail-loudly-on-sniff behaviour; D12 straight from the `.bur` columns;
    `PhotonBursts` load path for the decay-bearing sources. Headless first, then
    the plugin's four surfaces.
-2. **Static forward model** — one state, no kinetics: non-central-chi `p(R)`,
-   pattern moments with wrap-around, raw-axis histograms, PDA-style background and
-   partition, Poisson deviance. **Gate: milestone 1a.**
+2. **Static forward model** — ✅ *landed*, **milestone 1a passed**. `moments.py`
+   (wrapped-exponential moments in closed form, plus the exact channel
+   discretization — a TAC records a channel's *left edge*, and because an
+   exponential is memoryless that offset subtracts exactly rather than as a
+   half-channel approximation), `patterns.py` (non-central-chi `p(R)`, verified
+   against a Monte-Carlo of two 3-D Gaussian clouds; per-state channel branching;
+   sensitized-acceptor spectra), `histogram.py` (raw axes, the
+   per-burst-conditioned nested background/partition sum), `sources.py`, `fit.py`.
+
+   Three things learned in the doing, each of which would have been silent:
+   - **The convolution is circular, not linear.** The TAC window *is* the period, so
+     a pattern shifted later moves its mean by *less* than the shift — exactly
+     `k·dt − T·(mass that wrapped)`. A linear convolution loses that mass outright.
+   - **Components are photon-weighted, not amplitude-weighted.** A component's share
+     of the photons is `aᵢτᵢ`; using `aᵢ` drags every distance distribution towards
+     its high-FRET tail.
+   - **Binning the nuisance measure costs no width.** Checked against the fully
+     unbinned per-burst evaluation: identical to 1%, for a ~30× saving. It matters
+     because that speed would otherwise have been bought with the very quantity
+     milestone 1a tests.
+
+   A model evaluation is 128 ms on this measurement (439 ms before caching the log
+   factorials the nested sum asks for tens of thousands of times per evaluation).
 3. **Kinetics** — transfer-matrix `P(f|T,K)` over the shared rate-matrix group,
-   two-state closed form as its test. **Gate: milestone 1b.**
+   two-state closed form as its test. **Gate: milestone 1b — no dataset yet.**
 4. **Pooled-decay and burst-wise sources**, composable with the histogram source;
    bootstrap/burst-wise uncertainties wired in and enforced.
 5. **Anisotropy axis** in full — `G`, `l₁/l₂`, per-state `ρ`, with the Perrin
