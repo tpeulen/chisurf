@@ -342,7 +342,12 @@ class MfdImageMixin:
         if channel == "model":
             return np.sqrt(np.clip(predicted, 0.0, None)).T
         if channel == "residual":
-            return get_mfd_residual_image(self.fit, weighted=True)[0]
+            # ``get_mfd_residual_image`` is written for ``Residual2DPlot``, which
+            # draws col-major (axis 0 is x). This dock is row-major, so the same
+            # array has to be transposed — the two consumers genuinely want
+            # opposite orientations, and an untransposed residual here renders as a
+            # thin strip that looks like a failed fit rather than a wrong axis.
+            return get_mfd_residual_image(self.fit, weighted=True)[0].T
         if channel == "difference":
             return (observed - predicted).T
         return np.sqrt(np.clip(observed, 0.0, None)).T

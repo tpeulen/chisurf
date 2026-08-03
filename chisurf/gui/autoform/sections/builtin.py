@@ -48,6 +48,7 @@ register_plot("distribution", lambda: _plots().DistributionPlot)
 register_plot("residual2d", lambda: _plots().Residual2DPlot)
 register_plot("mfd_2d", lambda: _plots().MfdMarginalPlot)
 register_plot("mfd_marginals", lambda: _plots().MfdMarginalPlot)
+register_plot("mfd_map", lambda: _plots().MfdMapPlot)
 register_plot("lcurve", lambda: _plots().LCurvePlot)
 register_plot("pr_ci", lambda: _plots().DeerPrCIPlot)
 
@@ -1752,6 +1753,15 @@ class ImageMapWidget(QtWidgets.QWidget):
     * ``invert_y`` (bool) — keep the image convention with the origin at the top
       left (default ``True``). Set ``False`` for images that are really plots
       (e.g. a 2-D intensity histogram), so the second axis grows upwards.
+    * ``aspect_locked`` (bool) — keep square pixels (default ``True``). Set
+      ``False`` for images that are really plots: a 2-D histogram whose axes are a
+      probability and a nanosecond has no reason to be square, and locking it
+      renders the map as a narrow strip in an otherwise empty panel.
+    * ``axes_visible`` (bool) — draw ticks and labels (default ``False``). The
+      renderer's image view has no axes at all by default, which is fine for a
+      picture of a detector and useless for a map whose axes carry the quantities
+      being fitted.
+    * ``x_label`` / ``y_label`` (str) — axis labels, used with ``axes_visible``.
     """
 
     #: marker so :meth:`AutoForm.refresh_plots` re-reads this widget.
@@ -1783,6 +1793,10 @@ class ImageMapWidget(QtWidgets.QWidget):
         region_call: str | None = None,
         region_source: str | None = None,
         invert_y: bool = True,
+        aspect_locked: bool = True,
+        axes_visible: bool = False,
+        x_label: str = "",
+        y_label: str = "",
         **options,
     ):
         super().__init__()
@@ -1841,7 +1855,12 @@ class ImageMapWidget(QtWidgets.QWidget):
         try:
             import pyqtgraph as pg
 
-            self._image = pg.ImageView()
+            # A plot needs readable axes. ``pg.ImageView`` defaults to a bare
+            # ViewBox, which has none — fine for a picture of a detector, useless
+            # for a 2-D histogram whose axes carry the quantities being fitted.
+            # Hosting a ``PlotItem`` gives it ticks and labels; the rest of this
+            # widget works against ``getView()`` either way.
+            self._image = pg.ImageView(view=pg.PlotItem()) if axes_visible else pg.ImageView()
             # pyqtgraph's default for a 2-D array maps axis 0 to *x*, i.e. it
             # draws the transpose of what numpy holds — while everything else in
             # this widget is written the other way round: markers are placed at
@@ -1858,6 +1877,24 @@ class ImageMapWidget(QtWidgets.QWidget):
             if not invert_y:
                 # Plot-like images (2-D histograms) read bottom-up, not top-down.
                 self._image.getView().invertY(False)
+            if axes_visible:
+                view = self._image.getView()
+                if x_label:
+                    view.setLabel("bottom", x_label)
+                if y_label:
+                    view.setLabel("left", y_label)
+                for side in ("bottom", "left"):
+                    axis = view.getAxis(side)
+                    if axis is not None:
+                        # A ratio and a nanosecond have no unit to prefix, so an
+                        # automatic SI prefix relabels a 0-to-1 axis "(x0.001)".
+                        axis.enableAutoSIPrefix(False)
+            if not aspect_locked:
+                # A picture of something has square pixels; a *plot* does not. A
+                # 2-D histogram whose axes are a probability (0 to 1) and a
+                # nanosecond (0 to 8) drawn with a locked aspect comes out as a
+                # narrow vertical strip in the middle of an empty panel.
+                self._image.getView().setAspectLocked(False)
             lay.addWidget(self._image, 1)
             if self._selection_attr:
                 self._setup_brush(pg)
@@ -2282,9 +2319,26 @@ class ImageMapWidget(QtWidgets.QWidget):
         # pixel coordinates until something tells it otherwise — the image lands
         # in a corner and everything drawn on it looks like a speck — but
         # re-ranging on every refresh would undo the user's zoom.
-        if extent != getattr(self, "_applied_extent", None):
+        # Re-range when the span changed, and also when the view is no longer on
+        # it at all. ``setImage`` resets the view to the image's *pixel* box, so
+        # swapping the displayed array — a channel selector switching between a
+        # measured map and a residual, say — left the axes reading 0 to 41 with the
+        # image a speck in the corner, even though its rect was correct.
+        view = self._image.getView()
+        changed = extent != getattr(self, "_applied_extent", None)
+        off_extent = False
+        if not changed:
+            try:
+                (vx0, vx1), (vy0, vy1) = view.viewRange()
+                span_x, span_y = x1 - x0, y1 - y0
+                off_extent = (
+                    vx1 - vx0 > 10.0 * span_x or vy1 - vy0 > 10.0 * span_y
+                )
+            except Exception:
+                off_extent = False
+        if changed or off_extent:
             self._applied_extent = tuple(extent)
-            self._image.getView().autoRange()
+            view.autoRange()
 
     # ── surface for the shared region overlay ──────────────────────────
     def add_roi(self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0),

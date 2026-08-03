@@ -353,3 +353,63 @@ def test_a_controllerless_reader_is_skipped_not_fatal(qapp, monkeypatch):
     fake = _Fake()
     # Must return quietly rather than raising AttributeError on None.show().
     main_helper.SetupMixin._refresh_setup_ui(fake)
+
+
+def test_the_map_is_a_plot_not_a_form_section(fit, qapp):
+    """The map belongs with the plots; the analysis dock is for controls.
+
+    It is still the shared AutoForm image widget — that is what brings the
+    colormap and channel selectors, the real-world axes and the rectangle gate —
+    just hosted in a plot tab rather than in the model editor.
+    """
+    from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+
+    spec = fit.model.view_spec()
+    keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]
+    assert "mfd_map" in keys
+    # And *not* among the form sections.
+    for section in spec.sections:
+        key = getattr(section, "key", None) or getattr(section, "kind", None)
+        assert key != "image", "the map should not be in the analysis dock"
+
+    for plot_class, options in resolve_plot_specs(spec):
+        if plot_class.__name__ != "MfdMapPlot":
+            continue
+        plot = plot_class(fit, **options)
+        plot.resize(760, 560)
+        plot.update()
+        qapp.processEvents()
+        assert plot.image_widget is not None
+        return
+    raise AssertionError("no MfdMapPlot in the view spec")
+
+
+def test_every_map_channel_stays_on_the_real_axes(fit, qapp):
+    """Switching channel must not drop the view back to pixel coordinates.
+
+    ``setImage`` resets the view to the image's pixel box, and the extent was
+    re-applied only when the *span* changed — so swapping a measured map for a
+    residual left the axes reading 0 to 41 with the image a speck in the corner.
+    """
+    from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+
+    for plot_class, options in resolve_plot_specs(fit.model.view_spec()):
+        if plot_class.__name__ != "MfdMapPlot":
+            continue
+        plot = plot_class(fit, **options)
+        plot.resize(760, 560)
+        plot.show()
+        plot.update()
+        qapp.processEvents()
+        for channel in fit.model.mfd_image_channels():
+            fit.model.set_mfd_image_channel(channel)
+            plot.update()
+            qapp.processEvents()
+            image = fit.model.mfd_image()
+            # Row-major for this dock: (⟨t⟩, proximity ratio).
+            assert image.shape == (41, 41)
+            (x0, x1), (y0, y1) = plot.image_widget._image.getView().viewRange()
+            assert x1 - x0 < 2.0, f"{channel}: view fell back to pixel coordinates"
+            assert y1 - y0 < 20.0, f"{channel}: view fell back to pixel coordinates"
+        return
+    raise AssertionError("no MfdMapPlot in the view spec")
