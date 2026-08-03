@@ -5,6 +5,23 @@
       "source": "summary_html"
     },
     {
+      "type": "custom",
+      "key": "image",
+      "target": "mfd_image",
+      "title": "MFD map",
+      "description": "The 2D histogram. Switch between the measured map, the model, the Poisson-deviance residual and their difference in place \u2014 same axes, same colour scale, which is a sharper comparison than two panels side by side. Counts are shown as their square root, because a burst histogram's donor-only spike would otherwise render everything else black.",
+      "options": {
+        "colormap": true,
+        "default_colormap": "inferno",
+        "colormap_attr": "image_colormap",
+        "extent_source": "mfd_image_extent",
+        "channel_source": "mfd_image_channels",
+        "channel_attr": "image_channel",
+        "channel_call": "set_mfd_image_channel",
+        "invert_y": false
+      }
+    },
+    {
       "type": "panel",
       "title": "States",
       "collapsed": false,
@@ -40,9 +57,26 @@
     }
   ],
   "plots": [
-    {"key": "mfd_2d", "options": {"title": "MFD histogram"}},
-    {"key": "fit_info", "options": {}},
-    {"key": "residual2d", "options": {}},
-    {"key": "parameter_scan", "options": {}}
+    {
+      "key": "mfd_marginals",
+      "options": {}
+    },
+    {
+      "key": "fit_info",
+      "options": {}
+    },
+    {
+      "key": "residual2d",
+      "options": {
+        "accessor": "chisurf.core.models.mfd.two_dimensional:get_mfd_residual_image",
+        "accessor_kwargs": {
+          "weighted": true
+        }
+      }
+    },
+    {
+      "key": "parameter_scan",
+      "options": {}
+    }
   ]
 }

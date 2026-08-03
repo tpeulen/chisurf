@@ -313,6 +313,21 @@ class ColorBar(Handle, Protocol):
         """Return the mapped ``(low, high)`` intensity range."""
         ...
 
+    def set_histogram_visible(self, visible: bool) -> None:
+        """Show or hide the intensity histogram beside the colour ramp.
+
+        A colour bar is often wanted only as a *legend*. The renderer draws an
+        interactive intensity histogram next to the ramp, which on data with one
+        dominant bin — a burst histogram's donor-only spike, say — is a large empty
+        block that communicates nothing and crowds out the panels.
+
+        Parameters
+        ----------
+        visible : bool
+            Whether to draw the histogram.
+        """
+        ...
+
     def on_levels_changed(self, callback) -> None:
         """Register ``callback(low, high)`` for user level changes.
 

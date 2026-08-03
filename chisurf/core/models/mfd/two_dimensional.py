@@ -38,16 +38,28 @@ __all__ = [
     "Mfd2DModel",
     "MfdCalibration",
     "MfdStates",
+    "MfdImageMixin",
+    "get_mfd_residual_image",
 ]
 
 
 def burst_payload(data):
     """Return the MFD objects a dataset carries, or ``None``.
 
+    **Descends into a data group.** A reader returns an
+    :class:`~chisurf.core.data.ExperimentDataCurveGroup`, and that is what the
+    model combobox and the add-fit path hand to ``supports_data`` — not the curve
+    inside it. A lookup that only inspected the object itself therefore found
+    nothing, and the symptom was an *empty model list* for a dataset that had
+    loaded perfectly well: no error, no warning, just no models to choose.
+
+    A group holding an MFD curve is MFD data, so the payload of the first member
+    that has one is the group's payload.
+
     Parameters
     ----------
     data : object
-        A dataset, or ``None``.
+        A dataset, a data group, or ``None``.
 
     Returns
     -------
@@ -59,7 +71,17 @@ def burst_payload(data):
     if payload is not None:
         return payload
     meta = getattr(data, "meta_data", None) or {}
-    return meta.get("mfd_data")
+    payload = meta.get("mfd_data")
+    if payload is not None:
+        return payload
+    # ``DataGroup`` subclasses ``list``, so this is the group case and only the
+    # group case — a bare curve is not iterable over datasets.
+    if isinstance(data, list):
+        for member in data:
+            payload = burst_payload(member)
+            if payload is not None:
+                return payload
+    return None
 
 
 class MfdCalibration(FittingParameterGroup):
@@ -231,7 +253,102 @@ class MfdStates(FittingParameterGroup):
             self.n_states = self.n_states - 1
 
 
-class Mfd2DModel(ModelCurve):
+#: The maps the image dock can show. Kept as one list so the selector, the
+#: accessor and the documentation cannot drift apart.
+IMAGE_CHANNELS = ("measured", "model", "residual", "difference")
+
+
+def _mfd_maps(model):
+    """Return ``(measured, predicted, axes)`` for a model, or ``None``."""
+    data = burst_payload(getattr(model.fit, "data", None))
+    if data is None:
+        return None
+    observed = np.asarray(data.observed.counts, dtype=float)
+    flat = np.asarray(getattr(model, "y", None), dtype=float)
+    if flat is None or flat.size != observed.size:
+        predicted = np.zeros_like(observed)
+    else:
+        predicted = flat.reshape(observed.shape, order="C")
+    return observed, predicted, data.axes
+
+
+class MfdImageMixin:
+    """The 2D maps, exposed for the shared AutoForm ``image`` section.
+
+    Reusing that section rather than writing another image widget is what gets the
+    colormap selector, the channel selector, real-world axes, click-picking and the
+    rectangle gate for free — and keeps one image dock behaving the same way
+    everywhere in the application.
+
+    The channel selector is what replaces a side-by-side pair: flipping *in place*
+    between the measured map, the model and the residual compares them on the same
+    axes and the same colour scale, which side-by-side panels at 40% width each
+    cannot do.
+    """
+
+    #: Which map the dock is showing.
+    image_channel: str = "measured"
+
+    #: Colormap of the image dock, so the choice persists across refreshes and is
+    #: shared if a tool ever shows two of these.
+    image_colormap: str = "inferno"
+
+    def mfd_image_channels(self) -> list[str]:
+        """Return the maps the dock can switch between."""
+        return list(IMAGE_CHANNELS)
+
+    def set_mfd_image_channel(self, name: str = "") -> None:
+        """Select the map to show.
+
+        Parameters
+        ----------
+        name : str
+            One of :data:`IMAGE_CHANNELS`.
+        """
+        if name in IMAGE_CHANNELS:
+            self.image_channel = name
+
+    def mfd_image_extent(self):
+        """Return ``(x0, x1, y0, y1)`` — the axes the map really spans.
+
+        Without it the dock would show pixel indices, and a rectangle drawn on the
+        plane would be in bins rather than in proximity ratio and nanoseconds.
+        """
+        maps = _mfd_maps(self)
+        if maps is None:
+            return (0.0, 1.0, 0.0, 1.0)
+        _, _, axes = maps
+        return (
+            float(axes.ratio_edges[0]),
+            float(axes.ratio_edges[-1]),
+            float(axes.micro_time_edges[0]),
+            float(axes.micro_time_edges[-1]),
+        )
+
+    def mfd_image(self):
+        """Return the selected map, oriented ``(⟨t⟩, proximity ratio)``.
+
+        Counts are shown as their **square root**. A burst histogram is dominated by
+        its donor-only spike — one bin can hold twenty times what the FRET
+        population's brightest bin does — so a linear scale renders everything that
+        matters as near-black. The residual and difference maps are signed and are
+        *not* transformed.
+        """
+        maps = _mfd_maps(self)
+        if maps is None:
+            return np.zeros((1, 1))
+        observed, predicted, _ = maps
+        channel = getattr(self, "image_channel", "measured")
+        if channel == "model":
+            return np.sqrt(np.clip(predicted, 0.0, None)).T
+        if channel == "residual":
+            return get_mfd_residual_image(self.fit, weighted=True)[0]
+        if channel == "difference":
+            return (observed - predicted).T
+        return np.sqrt(np.clip(observed, 0.0, None)).T
+
+
+class Mfd2DModel(MfdImageMixin, ModelCurve):
     """Static states fitted to the 2D MFD histogram."""
 
     name = "MFD 2D (static)"
@@ -482,3 +599,61 @@ class Mfd2DKineticModel(Mfd2DModel):
             # error three layers down.
             rate_matrix=np.asarray(self.kinetics.rate_matrix(), dtype=float),
         )
+
+
+def get_mfd_residual_image(fit_group, weighted: bool = True, **kwargs):
+    """Return the 2D residual image of an MFD fit, for the residual plot.
+
+    The generic ``residual2d`` plot is model-agnostic and asks the model for a
+    matrix and its two axes. Without this accessor the panel renders empty — which
+    is what it did, silently, because a missing accessor is not an error.
+
+    Parameters
+    ----------
+    fit_group : chisurf.core.fitting.fit.FitGroup or Fit
+        The fit whose residuals are wanted.
+    weighted : bool
+        Return Poisson deviance residuals rather than raw differences. Deviance is
+        the right choice on a burst histogram, where most bins hold single-digit
+        counts and a raw difference would make the few crowded bins the only ones
+        visible.
+    **kwargs
+        Ignored; present for the accessor signature.
+
+    Returns
+    -------
+    image, x_axis, y_axis : numpy.ndarray
+        ``image`` is ``(n_micro_time, n_ratio)`` — row-major with the lifetime axis
+        vertical, matching how the histograms are drawn.
+    """
+    from chisurf.core.fitting import deviance_residuals
+
+    fit = getattr(fit_group, "fits", None)
+    fit = fit[0] if fit else fit_group
+    data = burst_payload(getattr(fit, "data", None))
+    model = getattr(fit, "model", None)
+    if data is None or model is None:
+        return np.zeros((1, 1)), np.zeros(1), np.zeros(1)
+
+    observed = np.asarray(data.observed.counts, dtype=float)
+    flat = np.asarray(getattr(model, "y", np.zeros(observed.size)), dtype=float)
+    if flat.size != observed.size:
+        return np.zeros((1, 1)), np.zeros(1), np.zeros(1)
+    predicted = flat.reshape(observed.shape, order="C")
+
+    if weighted:
+        residual = np.zeros_like(observed)
+        usable = predicted > 0
+        residual[usable] = deviance_residuals(observed[usable], predicted[usable])
+    else:
+        residual = observed - predicted
+
+    axes = data.axes
+    ratio = 0.5 * (axes.ratio_edges[:-1] + axes.ratio_edges[1:])
+    micro = 0.5 * (axes.micro_time_edges[:-1] + axes.micro_time_edges[1:])
+    # ``Residual2DPlot`` draws with ``axis_order="col-major"``, so axis 0 of the
+    # array is **x**. The histogram is already stored ``(ratio, micro)``, which is
+    # exactly that — transposing it here would swap the axes against the two axis
+    # vectors returned alongside, and the picture would be a plausible-looking
+    # transpose of the truth.
+    return residual, ratio, micro

@@ -191,7 +191,7 @@ def test_view_specs_load(fit, dataset):
         spec = model.view_spec()
         assert spec is not None
         keys = [p.key if hasattr(p, "key") else p["key"] for p in spec.plots]
-        assert "mfd_2d" in keys
+        assert "mfd_marginals" in keys
         for key in keys:
             assert get_plot_class(key) is not None, key
 
@@ -216,24 +216,59 @@ def test_the_plot_draws_with_nothing_falling_through_the_chiplot_seam(fit, qapp)
     assert sorted(cp.passthrough_gaps()) == []
 
 
-def test_the_plot_shows_the_axes_the_histogram_was_binned_on(fit, qapp):
-    """The panels must span the whole proximity-ratio range, not the model's own.
+def test_the_marginal_plot_spans_the_axes_the_histogram_was_binned_on(fit, qapp):
+    """Each marginal must span its own whole axis, not the model's support.
 
     Every ``set_data`` re-triggers the renderer's auto-range, so a range set before
     the curves are drawn is silently replaced by whichever curve is drawn last —
     which once left the proximity axis stopping at 0.43.
     """
-    from chisurf.gui.plots.mfd_2d import Mfd2DPlot
+    from chisurf.gui.plots.mfd_2d import MfdMarginalPlot
 
-    plot = Mfd2DPlot(fit)
-    plot.resize(1100, 700)
+    plot = MfdMarginalPlot(fit)
+    plot.resize(900, 620)
     plot.update_all()
     qapp.processEvents()
 
-    for panel in (plot.data_plot, plot.model_plot, plot.marginal_plot):
-        x_range = panel.get_range()[0]
-        assert x_range[0] == pytest.approx(0.0, abs=1e-6)
-        assert x_range[1] == pytest.approx(1.0, abs=1e-6)
+    ratio_range = plot.ratio_plot.get_range()[0]
+    assert ratio_range[0] == pytest.approx(0.0, abs=1e-6)
+    assert ratio_range[1] == pytest.approx(1.0, abs=1e-6)
+    micro_range = plot.micro_plot.get_range()[0]
+    assert micro_range[1] > micro_range[0]
+
+
+def test_the_2d_residual_is_placed_in_axis_coordinates(fit, qapp):
+    """The panel used to be blank, and for two separate reasons.
+
+    A view spec names its accessor as a string, and nothing turned that into a
+    callable — so it was called, the ``TypeError`` was swallowed, and the panel
+    stayed empty. With that fixed the image was drawn at *pixel* indices while the
+    view was ranged to the real axes, so a 41x41 image landed entirely off the side
+    of a view showing 0 to 1. Both broke every model supplying axis vectors, not
+    just this one.
+    """
+    from chisurf.gui.autoform.sections.registry import resolve_plot_specs
+    from chisurf.gui.plots.residual_image import _resolve_accessor
+
+    assert callable(
+        _resolve_accessor(
+            "chisurf.core.models.mfd.two_dimensional:get_mfd_residual_image"
+        )
+    )
+    for plot_class, options in resolve_plot_specs(fit.model.view_spec()):
+        if plot_class.__name__ != "Residual2DPlot":
+            continue
+        plot = plot_class(fit, **options)
+        plot.resize(700, 500)
+        plot.update()
+        qapp.processEvents()
+        assert plot._image is not None, "the accessor produced no image"
+        assert plot._image.shape == (41, 41)
+        # Placed where the axes are, so it is actually inside the view.
+        view_x = plot._plot_widget.get_range()[0]
+        assert view_x[0] < 0.5 < view_x[1]
+        return
+    raise AssertionError("no Residual2DPlot in the view spec")
 
 
 def test_the_plot_reports_what_the_histogram_excluded(fit, qapp):

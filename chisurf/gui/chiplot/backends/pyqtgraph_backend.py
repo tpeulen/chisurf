@@ -384,6 +384,23 @@ class _ColorBar(_Item):
         """Return the mapped ``(low, high)`` intensity range."""
         return tuple(float(v) for v in self._native.getLevels())
 
+    def set_histogram_visible(self, visible: bool) -> None:
+        """Show or hide the intensity histogram beside the colour ramp."""
+        item = self._native
+        # Only the histogram *curve* is hidden. The viewbox behind it carries the
+        # level handles and the axis that reports them, so hiding that too leaves a
+        # ramp labelled 0-1 regardless of the levels actually set.
+        curve = getattr(item, "plot", None)
+        if curve is not None and hasattr(curve, "setVisible"):
+            curve.setVisible(bool(visible))
+        if not visible:
+            # The item still reserves the histogram's width; shrink it to the ramp
+            # and its axis so the panels get the room back.
+            try:
+                item.setMaximumWidth(70)
+            except Exception:
+                pass
+
     def on_levels_changed(self, callback) -> None:
         """Call ``callback(low, high)`` when the user drags the level handles."""
         self._native.sigLevelsChanged.connect(

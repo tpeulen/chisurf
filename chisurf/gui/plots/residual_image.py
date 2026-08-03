@@ -256,6 +256,42 @@ class Residual2DPlotControl(QtWidgets.QWidget):
             self._plot.on_frame_changed()
 
 
+def _resolve_accessor(accessor):
+    """Return a callable for an accessor that may be given as a string.
+
+    A view spec names its accessor as ``"module:function"`` — it is JSON, so it
+    cannot hold a callable. Nothing between the spec and this plot turned that
+    string into a function, so the string was called directly, the ``TypeError``
+    was swallowed, and every ``residual2d`` panel configured from a view spec
+    rendered blank. Resolving it here fixes them all at once.
+
+    Parameters
+    ----------
+    accessor : callable or str or None
+        A callable, ``"package.module:function"``, or ``"package.module.function"``.
+
+    Returns
+    -------
+    callable or None
+    """
+    if accessor is None or callable(accessor):
+        return accessor
+    text = str(accessor)
+    module_name, _, attribute = (
+        text.partition(":") if ":" in text else text.rpartition(".")[::2] + ("",)
+    )
+    if ":" not in text:
+        module_name, _, attribute = text.rpartition(".")
+    try:
+        import importlib
+
+        module = importlib.import_module(module_name)
+        return getattr(module, attribute)
+    except Exception as exc:  # pragma: no cover - reported, not hidden
+        cs.logging.warning("cannot resolve the 2D residual accessor %r: %s", text, exc)
+        return None
+
+
 class Residual2DPlot(plotbase.Plot):
     """Generic 2D residual image plot using a model-provided accessor.
 
@@ -414,10 +450,23 @@ class Residual2DPlot(plotbase.Plot):
             except Exception:
                 pass
 
-        try:
-            img, x, y = self._accessor(self.fit, **self._accessor_kwargs)
-        except Exception:
+        accessor = _resolve_accessor(self._accessor)
+        if accessor is None:
             return
+        try:
+            img, x, y = accessor(self.fit, **self._accessor_kwargs)
+        except Exception as exc:
+            # Reported once rather than swallowed. A failing accessor used to leave
+            # the panel simply *empty*, which reads as "this model has no 2D
+            # residual" rather than as an error — and a view spec naming an
+            # accessor that cannot be called is a mistake worth seeing.
+            if not getattr(self, "_accessor_failed", False):
+                self._accessor_failed = True
+                cs.logging.warning(
+                    "the 2D residual accessor %r failed: %s", self._accessor, exc
+                )
+            return
+
 
         if img is None:
             return
@@ -435,8 +484,31 @@ class Residual2DPlot(plotbase.Plot):
             self._image_item = self._plot_widget.image(self._image, axis_order="col-major")
         else:
             self._image_item.set_image(self._image)
+
+        # Place the image in *axis* coordinates. The accessor returns two axis
+        # vectors and the view is ranged to them, but the image itself stayed at
+        # pixel indices — so an accessor reporting real units (a proximity ratio
+        # from 0 to 1, nanoseconds from 0 to 7) drew its 41x41 pixels off the side
+        # of a view showing 0..1, and the panel came out blank. Every model that
+        # supplies axis vectors was affected, not just one.
+        try:
+            if self._x is not None and self._x.size > 1 and self._y is not None and self._y.size > 1:
+                x0, x1 = float(self._x.min()), float(self._x.max())
+                y0, y1 = float(self._y.min()), float(self._y.max())
+                # The vectors are bin *centres*, so the image spans half a bin more
+                # on each side; without that the outer bins are drawn half outside.
+                dx = (x1 - x0) / max(self._x.size - 1, 1)
+                dy = (y1 - y0) / max(self._y.size - 1, 1)
+                self._image_item.set_rect(
+                    x0 - 0.5 * dx, y0 - 0.5 * dy,
+                    (x1 - x0) + dx, (y1 - y0) + dy,
+                )
+        except Exception:
+            pass
+
         # The levels the image is drawn with are settled below, once the
         # controller has been given this frame's data-driven defaults.
+
 
         # Initialize ROI once to cover the full image in axis coordinates.
         if not getattr(self, "_roi_initialized", False):
