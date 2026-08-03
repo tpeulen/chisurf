@@ -567,8 +567,24 @@ Two questions the static gate raised, both worth answering before rates are:
    the histogram cannot see. Together these took a kinetic evaluation from
    unusable to a few seconds per fit.
 
-4. **Pooled-decay and burst-wise sources**, composable with the histogram source;
-   bootstrap/burst-wise uncertainties wired in and enforced.
+4. **Burst-wise source and burst bootstrap** — ✅ *landed*; pooled-decay source
+   still open. `fit.burstwise_log_probabilities` scores every photon's micro time
+   with the state mixture marginalized, taking exchange through the *same*
+   occupation-time law as the histogram so the two cannot disagree about what the
+   model is. On simulated intermediate-exchange data its log-likelihood peaks
+   exactly at the generating rate, from a statistic the histogram source does not
+   share — which is worth far more than either number alone.
+
+   `fit.bootstrap_uncertainties` resamples bursts, and `Mfd2DModel.bootstrap` /
+   `.burstwise_score` expose both from the model. `parameter_uncertainties()` still
+   *refuses*, and now names the two valid routes rather than only the rule.
+
+   Two implementation notes: a flat background floor under the pattern, so one
+   stray photon in a channel the fluorescence never reaches costs a finite amount
+   rather than annihilating a burst's whole likelihood; and occupation grids
+   computed per **duration bin** rather than per burst, since the law varies
+   smoothly with the window and a grid per burst would dominate the cost of the
+   source whose point is to be the reference.
 5. **Anisotropy axis** in full — `G`, `l₁/l₂`, per-state `ρ`, with the Perrin
    relation as a *prediction*.
 6. **Surfacing** — fitting model plus view spec (PRD-38/40), 2D plots through

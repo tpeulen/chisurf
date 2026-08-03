@@ -200,8 +200,15 @@ from static heterogeneity, which is the failure the whole design is arranged aro
 * **Uncertainties do not come from this fit's curvature.** The summed deviance over
   marginals is an M-estimator, not a likelihood: the same bursts appear in every
   marginal, so the score double-counts the data and its curvature reports errors
-  that are too small. ChiSurf refuses to report them, and points at the burst-wise
-  source or a bootstrap over bursts.
+  that are too small. ChiSurf refuses to report them, and both valid routes are
+  available: `Mfd2DModel.burstwise_score()`, which scores every photon's micro time
+  and touches each burst exactly once, and `Mfd2DModel.bootstrap()`, which resamples
+  bursts — the thing that actually varies between repeats of an experiment.
+
+  The burst-wise source is worth running even when you do not need an uncertainty.
+  It shares the model with the histogram source but not the statistic, so agreement
+  between them tests both; on simulated exchange its likelihood peaks exactly at the
+  generating rate. A rate the two disagree on is a rate nobody should report.
 * **The instrument response taken from non-burst photons is contaminated** by
   fluorescence from molecules below the burst threshold, so a donor lifetime fitted
   against it is an *effective* number. It does not affect a width gate; it will bias

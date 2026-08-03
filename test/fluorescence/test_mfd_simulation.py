@@ -248,3 +248,106 @@ def test_the_static_model_is_beaten_by_the_kinetic_one_on_exchanging_data(tmp_pa
         **common, rate_matrix=np.array([[0.0, truth / 2.0], [truth / 2.0, 0.0]])
     ).score(data, mask_empty_model=False)
     assert kinetic.score < static.score * 0.9
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# The burst-wise source, and the uncertainties only it can support
+# ──────────────────────────────────────────────────────────────────────────────
+def _burstwise_curve(data, parameters, rates, max_bursts=500):
+    """Return the burst-wise log-likelihood at each of several exchange rates."""
+    from chisurf.core.fluorescence.mfd.fit import burstwise_log_probabilities
+
+    out = []
+    for rate in rates:
+        model = MfdKineticModel(
+            optics=parameters.optics,
+            states=parameters.states,
+            populations=[0.5, 0.5],
+            donor_only=parameters.donor_only,
+            rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
+        )
+        values = burstwise_log_probabilities(
+            model, data, max_bursts=max_bursts, seed=1
+        )
+        out.append(float(np.sum(values[np.isfinite(values)])))
+    return np.asarray(out)
+
+
+@pytest.mark.slow
+def test_the_photon_by_photon_likelihood_peaks_at_the_true_rate(tmp_path):
+    """A second, independent scoring route agrees with the first.
+
+    The histogram source compresses each burst to two numbers; this one keeps every
+    photon's micro time. They share the model but not the statistic, so a rate they
+    agree on is worth far more than one either produces alone — and a rate they
+    disagreed on would be one nobody should report.
+    """
+    simulated, data = _prepared(tmp_path, "intermediate", n_bursts=1500)
+    truth = float(np.asarray(simulated.parameters.rate_matrix).sum())
+    rates = truth * np.array([1 / 6, 1 / 2, 1.0, 2.0, 6.0])
+    curve = _burstwise_curve(data, simulated.parameters, rates)
+
+    assert int(np.argmax(curve)) == 2, "the likelihood does not peak at the truth"
+    # And it is a peak, not a plateau: the neighbours are meaningfully worse.
+    assert curve[2] - curve[1] > 5.0
+    assert curve[2] - curve[3] > 5.0
+
+
+@pytest.mark.slow
+def test_static_data_gives_no_burstwise_preference_for_exchange(tmp_path):
+    """The negative again, through the reference source rather than the fast one."""
+    simulated, data = _prepared(tmp_path, "static", n_bursts=1500)
+    rates = np.array([1.0, 50.0, 1500.0, 20000.0])
+    curve = _burstwise_curve(data, simulated.parameters, rates)
+    # The slowest rate — i.e. effectively no exchange — is preferred.
+    assert int(np.argmax(curve)) == 0
+
+
+def test_the_burstwise_source_needs_photons(tmp_path):
+    """Asking for it without photons is an error, not a silently different answer."""
+    from chisurf.core.fluorescence.mfd.fit import burstwise_log_probabilities
+
+    simulated, folder = _folder(tmp_path, "static", n_bursts=200)
+    data = load_mfd_data(
+        folder, axes=AXES, responses=simulated.true_responses()
+    )
+    data.preparation.summary.pop("_tttrs")
+    model = MfdModel(
+        optics=simulated.parameters.optics,
+        states=simulated.parameters.states,
+        donor_only=simulated.parameters.donor_only,
+    )
+    with pytest.raises(ValueError, match="with_photons=True"):
+        burstwise_log_probabilities(model, data)
+
+
+def test_only_the_burstwise_source_may_supply_uncertainties():
+    """Enforced in code, because the footnote version of this rule goes unread."""
+    from chisurf.core.fluorescence.mfd.sources import uncertainty_is_valid
+
+    assert uncertainty_is_valid(["burstwise"])
+    assert not uncertainty_is_valid(["histogram"])
+    assert not uncertainty_is_valid(["pooled_decay"])
+    assert not uncertainty_is_valid(["burstwise", "histogram"])
+    with pytest.raises(ValueError):
+        uncertainty_is_valid(["nonsense"])
+
+
+@pytest.mark.slow
+def test_a_burst_bootstrap_gives_a_finite_spread(tmp_path):
+    """Resampling bursts perturbs what actually varies between repeats."""
+    from chisurf.core.fluorescence.mfd.fit import bootstrap_uncertainties
+
+    simulated, data = _prepared(tmp_path, "intermediate", n_bursts=1500)
+    truth = float(np.asarray(simulated.parameters.rate_matrix).sum())
+
+    def refit(replica):
+        return {"rate": _fit_rate(replica, simulated.parameters, start=truth)}
+
+    result = bootstrap_uncertainties(refit, data, n_resamples=6, seed=3)
+    assert set(result) == {"rate"}
+    assert result["rate"]["std"] > 0.0
+    # The spread must be a fraction of the value, not the same size as it — a
+    # bootstrap that wide would mean the rate is not determined at all.
+    assert result["rate"]["std"] < 0.5 * result["rate"]["mean"]
+    assert len(result["rate"]["values"]) == 6

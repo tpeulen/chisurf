@@ -331,6 +331,69 @@ class Mfd2DModel(ModelCurve):
             "source or a bootstrap over bursts.</i></p>"
         )
 
+    def burstwise_score(self, max_bursts: int | None = 800, seed: int = 0):
+        """Score this model photon by photon, as the maximum-likelihood reference.
+
+        The histogram source compresses each burst to two numbers; this one keeps
+        every photon's micro time. Agreement between the two is a test of both — a
+        rate they disagree on is a rate nobody should report — and unlike the
+        histogram this source touches each burst once, so its curvature *is* a
+        likelihood's.
+
+        Parameters
+        ----------
+        max_bursts : int, optional
+            Score a random subset of this many bursts; ``None`` scores all of them.
+        seed : int
+            Seed for that subsample, so the objective stays deterministic.
+
+        Returns
+        -------
+        chisurf.core.fluorescence.mfd.sources.ScoreResult
+        """
+        from chisurf.core.fluorescence.mfd.fit import burstwise_log_probabilities
+        from chisurf.core.fluorescence.mfd.sources import burstwise_log_likelihood
+
+        data = burst_payload(self.fit.data)
+        if data is None:
+            raise ValueError("this fit has no MFD dataset")
+        return burstwise_log_likelihood(
+            burstwise_log_probabilities(
+                self._compute_model(), data, max_bursts=max_bursts, seed=seed
+            )
+        )
+
+    def bootstrap(self, refit, n_resamples: int = 40, seed: int = 0) -> dict:
+        """Estimate parameter uncertainties by resampling bursts.
+
+        The sanctioned route, because the histogram source's own curvature is not
+        one: it scores the same bursts through more than one marginal. Resampling
+        bursts perturbs the thing that actually varies between repeats of an
+        experiment — which bursts you happened to catch.
+
+        Parameters
+        ----------
+        refit : callable
+            ``refit(MfdData) -> dict`` returning fitted parameters for one resample.
+        n_resamples : int
+            Bootstrap replicates.
+        seed : int
+            Random seed.
+
+        Returns
+        -------
+        dict
+            Per parameter, ``{"mean", "std", "values"}``.
+        """
+        from chisurf.core.fluorescence.mfd.fit import bootstrap_uncertainties
+
+        data = burst_payload(self.fit.data)
+        if data is None:
+            raise ValueError("this fit has no MFD dataset")
+        return bootstrap_uncertainties(
+            refit, data, n_resamples=n_resamples, seed=seed
+        )
+
     def parameter_uncertainties(self):
         """Refuse to report uncertainties the histogram source cannot support.
 
@@ -345,8 +408,8 @@ class Mfd2DModel(ModelCurve):
             raise RuntimeError(
                 "the marginal-histogram score is an M-estimator, not a likelihood: "
                 "the same bursts appear in every marginal, so its curvature reports "
-                "uncertainties that are too small. Take them from the burst-wise "
-                "source or from a bootstrap over bursts instead."
+                "uncertainties that are too small. Use this model's burstwise_score() "
+                "or bootstrap() instead — both are valid, and both are here."
             )
         return None  # pragma: no cover - unreachable while only this source exists
 

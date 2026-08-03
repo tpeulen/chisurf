@@ -54,6 +54,8 @@ __all__ = [
     "MfdData",
     "MfdKineticModel",
     "MfdModel",
+    "bootstrap_uncertainties",
+    "burstwise_log_probabilities",
     "estimate_responses",
     "load_mfd_data",
 ]
@@ -607,3 +609,266 @@ class MfdKineticModel(MfdModel):
             cell_variance[cell, 1 : n + 1] = node_variance
 
         return weights, cell_p_red, cell_mean, cell_variance
+
+
+def burstwise_log_probabilities(
+    model: MfdModel,
+    data: MfdData,
+    *,
+    max_bursts: int | None = None,
+    seed: int = 0,
+) -> np.ndarray:
+    """Return each burst's log-probability under a model, photon by photon.
+
+    The maximum-likelihood reference. No binning and no compression: a burst's
+    channel counts *and* the micro time of every one of its photons, with the state
+    mixture marginalized. This is the information bound the histogram source is
+    measured against — and, because it scores each burst exactly once, the only
+    source here whose curvature is a legitimate uncertainty.
+
+    Per burst, over the model's components ``c``::
+
+        P(burst) = Σ_c w_c · P(N_R | S, p_c) · Π_photons pattern_c(t_i)
+
+    with the channel counts carrying the same nested Poisson-background and binomial
+    partition the histogram uses, so the two sources cannot disagree about what the
+    model *is*.
+
+    Parameters
+    ----------
+    model : MfdModel
+        The model to evaluate.
+    data : MfdData
+        The measurement. Must carry its photons.
+    max_bursts : int, optional
+        Score a random subset of this many bursts. The cost is linear in photons, so
+        a subset is the honest way to trade precision for time — and it is drawn at
+        random rather than taken from the front, because burst tables are ordered by
+        acquisition and the front of one is not a sample of it.
+    seed : int
+        Seed for that subsample, so a fit objective stays deterministic.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_scored,)`` log-probabilities.
+
+    Raises
+    ------
+    ValueError
+        If the preparation carries no photons.
+    """
+    from chisurf.core.fluorescence.burst.photons import stream_index_arrays
+    from chisurf.core.fluorescence.mfd.histogram import acceptor_count_distributions
+
+    preparation = data.preparation
+    tttrs = preparation.summary.get("_tttrs")
+    if not tttrs:
+        raise ValueError(
+            "the burst-wise source needs the photons; prepare the folder with "
+            "with_photons=True"
+        )
+    green_name, red_name = data.channels
+    green_response = data.responses[green_name]
+    green_index = preparation.channel_index(green_name)
+    red_index = preparation.channel_index(red_name)
+
+    species_weights, species_p_red, _, _ = model.species_properties(data)
+    donor_only = float(species_weights[0])
+    state_p_red = species_p_red[1:]
+
+    # The per-state *pattern* over micro-time channels, which is what a photon is
+    # actually scored against — the moments are a summary of it and cannot score an
+    # individual arrival. Index 0 is the donor-only species.
+    patterns = []
+    for has_acceptor, state in model._species()[1]:
+        if has_acceptor:
+            amplitudes, lifetimes = donor_lifetime_spectrum_of_state(
+                state, model.optics, n_points=model.n_distance_samples
+            )
+        else:
+            amplitudes = np.array([1.0])
+            lifetimes = np.array([model.optics.tau_d0])
+        patterns.append(green_response.pattern(amplitudes, lifetimes))
+    donor_only_pattern = np.asarray(patterns[0])
+    state_patterns = np.asarray(patterns[1:])
+
+    # Exchange enters exactly as it does in the histogram — through the
+    # occupation-time law — so the two sources cannot disagree about what the model
+    # *is*. Grids are computed per duration bin rather than per burst: the law
+    # varies smoothly with the window, and one grid per burst would dominate the
+    # cost of a source whose point is to be the reference.
+    rate_matrix = getattr(model, "rate_matrix", None)
+    duration = preparation.duration
+    positive = duration[duration > 0]
+    if rate_matrix is not None and positive.size:
+        edges = np.quantile(positive, np.linspace(0.0, 1.0, 13))
+        edges = np.unique(edges)
+        duration_bin = np.clip(np.digitize(duration, edges[1:-1]), 0, edges.size - 2)
+        representative = [
+            float(np.median(duration[duration_bin == b])) if np.any(duration_bin == b)
+            else float(np.median(positive))
+            for b in range(max(duration_bin.max() + 1, 1))
+        ]
+        from chisurf.core.fluorescence.mfd.occupation import (
+            occupation_time_distribution,
+        )
+
+        grids = [
+            occupation_time_distribution(
+                np.asarray(rate_matrix, dtype=float), window,
+                n_steps=getattr(model, "n_steps", None),
+            ).coarsen(getattr(model, "n_occupation_nodes", 16))
+            for window in representative
+        ]
+    else:
+        duration_bin = np.zeros(len(preparation), dtype=int)
+        grids = [None]
+
+    # Per duration bin: the component weights, acceptor probabilities and patterns.
+    per_bin = []
+    for grid in grids:
+        if grid is None:
+            fractions = np.eye(len(model.states))
+            node_weights = np.asarray(model.species_properties(data)[0][1:])
+            total = node_weights.sum()
+            node_weights = (
+                node_weights / total if total > 0
+                else np.full(fractions.shape[0], 1.0 / fractions.shape[0])
+            )
+        else:
+            fractions, node_weights = grid.fractions, grid.weights
+        component_weights = np.concatenate(
+            [[donor_only], (1.0 - donor_only) * node_weights]
+        )
+        component_p_red = np.concatenate(
+            [[species_p_red[0]], fractions @ state_p_red]
+        )
+        component_patterns = np.vstack(
+            [donor_only_pattern[None, :], fractions @ state_patterns]
+        )
+        per_bin.append((component_weights, component_p_red, component_patterns))
+
+    # A flat background floor, so a photon in a channel the fluorescence never
+    # reaches costs a finite amount rather than -inf. Without it one stray photon
+    # annihilates a burst's entire likelihood.
+    floor = 1.0 / green_response.n_channels
+    background_weight = np.clip(
+        green_response.background_rate * preparation.spans[:, green_index]
+        / np.maximum(preparation.counts[:, green_index], 1),
+        0.0,
+        1.0,
+    )
+
+    rows = np.arange(len(preparation))
+    usable = (
+        (preparation.counts[:, green_index] + preparation.counts[:, red_index]) > 0
+    )
+    rows = rows[usable]
+    if max_bursts is not None and rows.size > max_bursts:
+        rows = np.sort(
+            np.random.default_rng(seed).choice(rows, size=int(max_bursts), replace=False)
+        )
+
+    streams = list(preparation.streams)
+    cache = {
+        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times))
+        for key, t in tttrs.items()
+    }
+
+    out = np.full(rows.size, -np.inf)
+    for position, row in enumerate(rows):
+        entry = cache.get(preparation.file_key[row])
+        if entry is None:
+            continue
+        channels, micro = entry
+        lo = int(preparation.first_photon[row])
+        hi = int(preparation.last_photon[row]) + 1
+        index = stream_index_arrays(channels[lo:hi], micro[lo:hi], streams)
+        green_photons = micro[lo:hi][index == green_index]
+
+        weights, component_p_red, component_patterns = per_bin[duration_bin[row]]
+        signal = int(
+            preparation.counts[row, green_index] + preparation.counts[row, red_index]
+        )
+        n_red = int(preparation.counts[row, red_index])
+        counts = acceptor_count_distributions(
+            signal,
+            component_p_red,
+            green_response.background_rate * preparation.spans[row, green_index],
+            data.responses[red_name].background_rate
+            * preparation.spans[row, red_index],
+        )[:, min(n_red, signal)]
+
+        share = float(background_weight[row])
+        mixed = (1.0 - share) * component_patterns[:, green_photons] + share * floor
+        with np.errstate(divide="ignore"):
+            log_photons = np.log(np.maximum(mixed, 1e-300)).sum(axis=1)
+            log_counts = np.log(np.maximum(counts, 1e-300))
+            terms = np.log(np.maximum(weights, 1e-300)) + log_counts + log_photons
+        top = terms.max()
+        out[position] = float(top + np.log(np.exp(terms - top).sum()))
+    return out
+
+
+def bootstrap_uncertainties(
+    refit,
+    data: MfdData,
+    *,
+    n_resamples: int = 40,
+    seed: int = 0,
+) -> dict:
+    """Estimate parameter uncertainties by resampling bursts.
+
+    The histogram source's own curvature cannot supply these: it scores the same
+    bursts through more than one marginal, so the summed deviance is an M-estimator
+    and its second derivative is not a likelihood's. Resampling bursts *is* valid,
+    because it perturbs the thing that actually varies between repeats of the
+    experiment — which bursts you happened to catch.
+
+    Parameters
+    ----------
+    refit : callable
+        ``refit(MfdData) -> dict`` returning the fitted parameters for one resample.
+    data : MfdData
+        The measurement.
+    n_resamples : int
+        Bootstrap replicates.
+    seed : int
+        Random seed.
+
+    Returns
+    -------
+    dict
+        Per parameter, ``{"mean", "std", "values"}``.
+    """
+    import dataclasses
+
+    rng = np.random.default_rng(seed)
+    measure = data.nuisance
+    n = len(measure)
+    replicates: list[dict] = []
+    for _ in range(int(n_resamples)):
+        draw = rng.integers(0, n, size=n)
+        resampled = dataclasses.replace(
+            measure,
+            signal=measure.signal[draw],
+            spans=measure.spans[draw],
+            counts=measure.counts[draw],
+            duration=measure.duration[draw],
+            rows=measure.rows[draw],
+        )
+        replica = dataclasses.replace(
+            data, nuisance=resampled, binned=resampled.binned()
+        )
+        replicates.append(refit(replica))
+
+    keys = replicates[0].keys() if replicates else []
+    return {
+        key: {
+            "mean": float(np.mean([r[key] for r in replicates])),
+            "std": float(np.std([r[key] for r in replicates], ddof=1)),
+            "values": [float(r[key]) for r in replicates],
+        }
+        for key in keys
+    }
