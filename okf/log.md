@@ -2,6 +2,38 @@
 
 ## 2026-08-03
 
+* **Burst fusion earns its `?`, its guide and its demo.** Brought the new step up
+  to the [plugin documentation standard](plugins/documentation-standard.md):
+  a `README.md` in the required section order, an `api/contract.py` (methods,
+  payload/result schemas, envelopes) reachable at run time as
+  `burst_fusion.contract.describe`, and — the part that mattered — a **demo the
+  plugin generates itself**, because the tour previously could not be walked
+  without the user's own burst folder, which the standard names explicitly.
+  - The demo simulates 300 molecules crossing the focus, dims ~60 % of the
+    crossings for a fraction of a millisecond, writes a real `.ht3` and runs the
+    **actual burst search** over it: 300 molecules become ~430 bursts, and the
+    declared 300 stays on screen beside every number the tool reports.
+  - Two design errors found by building it. A *dark* gap does not split anything:
+    the search joins runs of accepted photons within `max_gap` **photons**, and a
+    dark 0.8 ms gap at a few kHz holds two or three — so it bridges the gap itself
+    and the demo taught nothing. The molecule has to keep emitting weakly, which
+    is also what happens on real data. And with **two** FRET populations the
+    histogram width is their separation, so the shot-noise narrowing fusion
+    actually produces is invisible; one population makes the width *be* the thing
+    fusion removes.
+  - Tuned so the guide's three thresholds tell the whole story on one file: 0.9
+    under-fuses (341), 0.7 lands on the truth (303), 0.5 overshoots (283) by
+    merging molecules that only look like recurrences. Pinned by
+    `tests/test_demo.py` — including that the search really does split the
+    crossings, without which the demo would silently demonstrate nothing.
+  - Also fixed a defect the demo exposed: the folder setter compared against
+    `self.folder`, but AutoForm writes the bound attribute *before* calling the
+    `call` — so choosing a different folder in the form returned early and left
+    the previous folder's analysis on screen under the new folder's name.
+  - The companion column `Fused Background Photons` became `Fused Gap Photons`:
+    with a dimming molecule the photons a fused burst gains are not all
+    background, and the honest name is what they are.
+
 * **Burst fusion: the same-molecule probability, used to merge rather than to
   correlate.** A new optional pipeline step ([burst plugins](plugins/burst.md))
   between burst selection and everything that measures a burst: it reads a burst

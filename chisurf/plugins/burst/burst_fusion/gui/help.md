@@ -12,6 +12,21 @@ This step merges those fragments back together and writes the result as a **new
 burst folder**, which every later step (BVA, 2CDE, MLE, H2MM, the browser) reads
 exactly like the original one. The folder you started from is not modified.
 
+## If you have not brought data
+
+Press **🧪 Load demo**. It simulates a measurement in which a *declared* number
+of molecules (300) crossed the focus and about 60 % of those crossings were
+interrupted — the molecule dimming for a fraction of a millisecond and coming
+back — then runs the ordinary burst search over it and loads the result. The
+search turns those 300 molecules into roughly 430 bursts, and the status block
+keeps the 300 on screen so every number below can be checked against it.
+
+It is a real measurement: a photon file with macro times, micro times and
+channels, a real burst folder, a real reading manifest. The simulation is
+deliberately thin — one FRET population, no photophysics, no diffusion model —
+because it exists to demonstrate *the fusion decision*, and anything measured on
+it is a statement about the code rather than about a molecule.
+
 ## How it decides
 
 The question "did these two bursts come from the same molecule?" is answered by
@@ -51,7 +66,7 @@ So the probability answers *"same molecule?"* and the **gap ceiling** answers
 single passage the search cut in two, gaps of microseconds to a few
 milliseconds — and stops there. Set it to 0 only if you know why.
 
-The emitted folder records the price per burst: `Fused Background Photons` in
+The emitted folder records the price per burst: `Fused Gap Photons` in
 its `fu4` companion is the number of photons the bridged gaps brought in.
 
 ## Preview versus written

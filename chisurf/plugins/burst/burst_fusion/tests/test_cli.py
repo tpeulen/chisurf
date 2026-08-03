@@ -24,7 +24,7 @@ ANALYSIS = "burstwise_All 0.1000#15"
 
 @pytest.fixture
 def folder(tmp_path):
-    """A private copy of the burst analysis, beside its raw measurements."""
+    """Return a private copy of the burst analysis, beside its raw measurements."""
     if not DATA.is_dir():
         pytest.skip("burst-selection test data not available")
     target = tmp_path / "data"

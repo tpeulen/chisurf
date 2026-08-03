@@ -247,7 +247,7 @@ def analyze(analysis_folder, settings: FusionSettings | None = None) -> FusionAn
 
 
 def capped_window(tau_max_s: float, settings: FusionSettings) -> float:
-    """The window actually fused on: the curve's, capped by ``max_gap_ms``.
+    """Return the window actually fused on: the curve's, capped by ``max_gap_ms``.
 
     The probability answers "same molecule?"; the cap answers "at what cost?".
     At low concentration ``P_same`` stays above any reasonable threshold out to
@@ -297,7 +297,7 @@ def default_output_folder(analysis: FusionAnalysis) -> pathlib.Path:
 
 
 def reading_settings(analysis_folder, source_name: str) -> dict[str, Any]:
-    """The recorded reading settings of one measurement of a burst folder."""
+    """Return the recorded reading settings of one measurement of a burst folder."""
     manifest = read_analysis_manifest(analysis_root(analysis_folder))
     return reading_settings_for(source_name, manifest)
 
@@ -526,7 +526,7 @@ def _write_fused_companion(
 
     ``Fused Bursts`` is 1 for a burst fusion left alone, so the column is a
     filter downstream: keep only fused bursts, or only untouched ones, without
-    having to diff two folders. ``Fused Background Photons`` is the price of the
+    having to diff two folders. ``Fused Gap Photons`` is the price of the
     span — the photons that fall between the fragments and are now inside the
     burst — which is the number to look at when deciding whether a threshold
     went too far.
@@ -547,7 +547,7 @@ def _write_fused_companion(
         target,
         FUSED_COMPANION,
         measurement.stem,
-        ["Fused Bursts", "Fused Background Photons"],
+        ["Fused Bursts", "Fused Gap Photons"],
         rows,
     )
 

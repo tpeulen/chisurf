@@ -49,7 +49,11 @@ class FusionViewModel:
         from ..api.models import FusionSettings
 
         self.folder: str = ""
+        #: The folder the current state belongs to; see :meth:`set_folder`.
+        self._folder_applied: str = ""
         self.settings = FusionSettings()
+        #: The loaded demo's record (path + declared truth), or ``None``.
+        self._demo: dict | None = None
 
         #: Detector definition supplied by the embedding workflow (channel page).
         #: Without it the fused folder falls back to the source folder's manifest.
@@ -179,13 +183,58 @@ class FusionViewModel:
             self._status = "Settings changed — press Analyze."
             self.notify("invalidated")
 
+    # ── the demo ───────────────────────────────────────────────────────
+    def load_demo(self, progress: Callable[[float, str], None] | None = None) -> str:
+        """Generate (or reuse) the demo measurement and select its burst folder.
+
+        The tour has to be walkable by someone who has not brought data yet, and
+        fusion in particular cannot be judged without a number to check the
+        result against — so the demo is a simulated measurement whose molecule
+        count and split fraction are *declared*, put through the real burst
+        search.
+
+        Returns
+        -------
+        str
+            The demo's burst-analysis folder.
+        """
+        from ..demo import create_demo, demo_detectors
+
+        result = create_demo(progress=progress)
+        self._demo = result
+        # The demo folder carries its own reading manifest, so these are only a
+        # fallback — set anyway, so the step still works if a folder ever arrives
+        # without one.
+        self.detectors = dict(demo_detectors())
+        self.windows = {}
+        self.set_folder(str(result["folder"]))
+        self.notify("demo")
+        return str(result["folder"])
+
+    @property
+    def demo(self) -> dict | None:
+        """Ground truth of the loaded demo, or ``None`` for a real folder."""
+        if self._demo is None:
+            return None
+        if str(self._demo.get("folder", "")) != str(self.folder):
+            return None
+        return dict(self._demo)
+
     # ── folder ─────────────────────────────────────────────────────────
     def set_folder(self, folder: str) -> None:
-        """Point the tool at a burst-analysis folder."""
+        """Point the tool at a burst-analysis folder.
+
+        Compared against what was last *applied*, not against ``self.folder``:
+        AutoForm writes the bound attribute and only then calls this, so a guard
+        on ``self.folder`` sees the new value already in place, returns early,
+        and leaves the previous folder's analysis on screen under the new
+        folder's name.
+        """
         folder = str(folder or "")
-        if folder == self.folder:
-            return
         self.folder = folder
+        if folder == self._folder_applied:
+            return
+        self._folder_applied = folder
         self._analysis = None
         self._emitted = None
         self._written = ""
@@ -261,7 +310,7 @@ class FusionViewModel:
         return frames or None
 
     def _fused_frames(self) -> tuple[str, list]:
-        """The frames the "after" curves are drawn from, and what to call them.
+        """Return the frames the "after" curves are drawn from, and what to call them.
 
         Before writing, the fused side is the table-level preview: the fragments'
         own photons, summed. After writing it is the emitted table, which also
@@ -289,9 +338,10 @@ class FusionViewModel:
 
     # ── AutoForm accessors ─────────────────────────────────────────────
     def status_text(self) -> str:
-        """One-line status for the info block."""
+        """Status for the info block, with the demo's truth when one is loaded."""
+        demo = self._demo_line()
         if self._analysis is None:
-            return f"<i>{self._status}</i>"
+            return demo + f"<i>{self._status}</i>"
         window = self._analysis.window
         stats = self._analysis.statistics
         lines = [
@@ -311,7 +361,21 @@ class FusionViewModel:
         )
         if self._written:
             lines.append(f"Written to <code>{self._written}</code>")
-        return "<br/>".join(lines)
+        return demo + "<br/>".join(lines)
+
+    def _demo_line(self) -> str:
+        """Return the loaded demo's declared truth, or an empty string for real data.
+
+        Kept at the top of the status block on purpose: the whole value of the
+        demo is that the number the analysis should be approaching is on screen
+        beside the number it reports.
+        """
+        demo = self.demo
+        if demo is None:
+            return ""
+        from ..demo import describe
+
+        return f"{describe(demo)}<br/>"
 
     def p_same_series(self) -> list[dict]:
         """``P_same`` vs lag, with the threshold and the fused window marked."""
@@ -441,7 +505,7 @@ class FusionViewModel:
         ]
 
     def summary_rows(self) -> list[dict]:
-        """The before/after table: one row per observable the user judges by.
+        """Return the before/after table: one row per observable the user judges by.
 
         Read off the same frames the plots use, so the table and the histograms
         cannot disagree about whether the "after" side is the preview or what was

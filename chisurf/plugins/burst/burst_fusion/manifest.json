@@ -74,6 +74,11 @@
       "name": "burst_fusion.workflow.prepare",
       "summary": "Resolve the burst folder and detector definition from a burst workflow context.",
       "long_running": false
+    },
+    {
+      "name": "burst_fusion.contract.describe",
+      "summary": "Return the burst-fusion workflow contract (methods, payloads, side effects).",
+      "long_running": false
     }
   ],
   "menu_hidden": true

@@ -12,11 +12,16 @@ from typing import Any
 
 import numpy as np
 
-from ..api.models import FusionSettings
-
-METHOD_ANALYZE = "burst_fusion.jobs.analyze"
-METHOD_FUSE = "burst_fusion.jobs.fuse"
-METHOD_PREPARE = "burst_fusion.workflow.prepare"
+from ..api.contract import (
+    METHOD_ANALYZE,
+    METHOD_DESCRIBE_CONTRACT,
+    METHOD_FUSE,
+    METHOD_PREPARE,
+    contract_descriptor,
+    service_error,
+    service_success,
+    settings_from_payload,
+)
 
 
 def register_services(dispatcher: Any) -> None:
@@ -24,6 +29,7 @@ def register_services(dispatcher: Any) -> None:
     dispatcher.register(METHOD_ANALYZE, lambda params: analyze_handler(**(params or {})))
     dispatcher.register(METHOD_FUSE, lambda params: fuse_handler(**(params or {})))
     dispatcher.register(METHOD_PREPARE, lambda params: prepare_handler(**(params or {})))
+    dispatcher.register(METHOD_DESCRIBE_CONTRACT, lambda params: contract_handler(**(params or {})))
 
 
 def list_methods() -> dict[str, str]:
@@ -32,21 +38,17 @@ def list_methods() -> dict[str, str]:
         METHOD_ANALYZE: "Estimate P_same and report what a threshold would fuse.",
         METHOD_FUSE: "Write the fused bursts as a new burst-analysis folder.",
         METHOD_PREPARE: "Resolve folder and detectors from a burst workflow context.",
+        METHOD_DESCRIBE_CONTRACT: "Return the burst-fusion workflow contract.",
     }
 
 
-def _error(message: str) -> dict[str, Any]:
-    return {"status": "error", "error": message}
-
-
-def _ok(payload: dict[str, Any]) -> dict[str, Any]:
-    out = {"status": "ok"}
-    out.update(payload)
-    return out
+def contract_handler(**_ignored: Any) -> dict[str, Any]:
+    """Return the workflow contract, so a caller can discover it at run time."""
+    return service_success({"contract": contract_descriptor()})
 
 
 def _curve(window) -> dict[str, Any]:
-    """The P_same curve as JSON (undetermined bins as ``None``)."""
+    """Return the ``P_same`` curve as JSON (undetermined bins as ``None``)."""
     return {
         "tau_s": [float(v) for v in window.tau_s],
         "p_same": [None if not np.isfinite(v) else float(v) for v in window.p_same],
@@ -67,9 +69,9 @@ def analyze_handler(
         from ..core.fusion import analyze
 
         if not analysis_folder:
-            return _error("analysis_folder is required")
-        result = analyze(pathlib.Path(analysis_folder), FusionSettings.from_dict(settings))
-        return _ok(
+            return service_error("analysis_folder is required")
+        result = analyze(pathlib.Path(analysis_folder), settings_from_payload(settings))
+        return service_success(
             {
                 "analysis_folder": str(result.folder),
                 "curve": _curve(result.window),
@@ -78,7 +80,7 @@ def analyze_handler(
             }
         )
     except Exception as exc:  # pragma: no cover - transport-level guard
-        return _error(str(exc))
+        return service_error(str(exc))
 
 
 def fuse_handler(
@@ -94,18 +96,18 @@ def fuse_handler(
         from ..core.fusion import fuse_folder
 
         if not analysis_folder:
-            return _error("analysis_folder is required")
+            return service_error("analysis_folder is required")
         result = fuse_folder(
             pathlib.Path(analysis_folder),
-            FusionSettings.from_dict(settings),
+            settings_from_payload(settings),
             output_folder=output_folder,
             detectors=detectors,
             windows=windows,
             data_folder=data_folder,
         )
-        return _ok(result)
+        return service_success(result)
     except Exception as exc:  # pragma: no cover - transport-level guard
-        return _error(str(exc))
+        return service_error(str(exc))
 
 
 def prepare_handler(
@@ -117,11 +119,11 @@ def prepare_handler(
     context = workflow_context or {}
     folder = analysis_folder or context.get("burst_folder")
     channels = context.get("channel_settings") or {}
-    return _ok(
+    return service_success(
         {
             "analysis_folder": str(folder) if folder else None,
             "detectors": channels.get("detectors") or {},
             "windows": channels.get("windows") or {},
-            "settings": FusionSettings.from_dict(settings).to_dict(),
+            "settings": settings_from_payload(settings).to_dict(),
         }
     )

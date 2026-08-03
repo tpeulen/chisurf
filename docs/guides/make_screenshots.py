@@ -740,10 +740,11 @@ def _grab_region_editor():
     editor can hold — a painted mask, a drawn ellipse (inverted) and a
     rectangle switched off — so the guide shows what the columns mean.
     """
+    from qtpy import QtWidgets
+
     from chisurf.core.roi import EllipseROI, RectangleROI
     from chisurf.gui.widgets.roi import RegionEditor
     from chisurf.plugins.microscopy.clsm.gui.tool import CLSMPixelSelect
-    from qtpy import QtWidgets
 
     tool = CLSMPixelSelect()
     model = tool.model
@@ -816,6 +817,36 @@ def _grab_hmm_tool():
     _grab(tool, "hmm_workspace.png")
 
 
+def _grab_burst_fusion_tool():
+    """Burst-fusion tool on its own demo, whose molecule count is declared.
+
+    Uses the plugin's demo rather than a fixture, so the screenshot in the guide
+    shows the same numbers a reader gets by pressing the same button.
+    """
+    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
+
+    tool = BurstFusionTool()
+    tool.resize(1250, 800)
+    tool.show()
+    QApplication.instance().processEvents()
+    tool.load_demo()
+    tool.model.threshold = 0.7
+    tool.model.analyze()
+    tool.model.write()
+    QApplication.instance().processEvents()
+    _grab(tool, "burst_fusion_curve.png")
+
+    # The proximity-ratio comparison is the payoff, so it gets its own figure.
+    from qtpy.QtWidgets import QTabBar
+
+    for bar in tool.findChildren(QTabBar):
+        for index in range(bar.count()):
+            if bar.tabText(index) == "Proximity ratio":
+                bar.setCurrentIndex(index)
+                QApplication.instance().processEvents()
+                _grab(tool, "burst_fusion_proximity.png")
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -832,6 +863,7 @@ def main():
         _grab_drift_tool,
         _grab_precision_tool,
         _grab_burst_gs_tool,
+        _grab_burst_fusion_tool,
         _grab_frc_tool,
         _grab_tracking_tool,
         _grab_accurate_fret_tool,

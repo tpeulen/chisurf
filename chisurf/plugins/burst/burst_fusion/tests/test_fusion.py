@@ -45,7 +45,7 @@ WINDOWS = {"prompt": [0, 2048], "delayed": [2048, 4095]}
 
 @pytest.fixture
 def folder(tmp_path):
-    """A private copy of the burst analysis, beside its raw measurements."""
+    """Return a private copy of the burst analysis, beside its raw measurements."""
     if not DATA.is_dir():
         pytest.skip("burst-selection test data not available")
     target = tmp_path / "data"
@@ -148,7 +148,7 @@ def test_companions_follow_the_contract_and_merge(folder):
     # One row per burst, so the positional merge lines up.
     merged = read_bur_with_companions(target / "bi4_bur" / "m000.bur")
     assert "Fused Bursts" in merged.columns
-    assert "Fused Background Photons" in merged.columns
+    assert "Fused Gap Photons" in merged.columns
     rows = data_rows(merged)
     assert (rows["Fused Bursts"] >= 1).all()
     assert rows["Fused Bursts"].max() > 1

@@ -7,7 +7,8 @@ ratio, your photon counts and your burst durations.
 
 **What you need:** a burst-analysis folder (the one holding `bi4_bur`) and the
 TTTR measurements it points back into. Fusion re-derives the fused burst table
-from the photons, so the raw data must be readable.
+from the photons, so the raw data must be readable — or nothing at all, if you
+start with the built-in demo.
 
 The theory — where the same-molecule probability comes from and why bridging a
 gap costs something — is in [Burst fusion](../concepts/burst_fusion.md). This
@@ -24,6 +25,21 @@ Symptoms that a burst search has been splitting passages:
 
 Fusion is **optional** and it is not automatic: walking the burst pipeline past
 it changes nothing until you write the fused folder.
+
+## 0. Learn it on a measurement whose answer is known
+
+Press **🧪 Load demo** in the toolbar. It simulates a measurement in which
+**300 molecules** crossed the focus and about 60 % of those crossings were
+interrupted — the molecule dimming for a fraction of a millisecond and coming
+back — writes it as an ordinary photon file, and runs the *real* burst search
+over it. The search turns those 300 molecules into about **430 bursts**.
+
+That gap between 300 and 430 is the whole problem, stated as a number. The
+status block keeps the 300 on screen, so every step below can be checked against
+it rather than judged by eye. The demo is deliberately thin physics — one FRET
+population, no diffusion model, no photophysics — because it exists to
+demonstrate the fusion *decision*; anything measured on it is a statement about
+the code, not about a molecule.
 
 ## 1. Open the step
 
@@ -53,6 +69,12 @@ after another one is almost certainly the same molecule re-entering — and fall
 as the lag grows and the molecule is replaced by fresh ones from the bulk. The
 dashed line is your threshold; the dotted line is the lag actually fused up to.
 
+![The same-molecule probability, the chosen threshold and the resulting window, with the before/after summary beside it](figures/burst_fusion_curve.png)
+
+On the demo the curve rises to about 0.9 near 1 ms — that hump *is* the split
+crossings, pairs of bursts a millisecond apart far commoner than random arrivals
+would explain — and is gone by a few milliseconds.
+
 ```{note}
 The curve usually *dips* at the very shortest lags, and that is not a mistake:
 nothing recurs faster than a burst is long, so the shortest bins hold
@@ -66,8 +88,23 @@ They answer different questions and both matter.
 
 | Control | Question | How to choose |
 |---|---|---|
-| **Fuse if P(same) ≥** | Is this the same molecule? | Start at 0.5. Try 0.9 (conservative — only obvious splits repaired) and 0.3, and watch the summary table move. |
+| **Fuse if P(same) ≥** | Is this the same molecule? | Start at 0.7. Try 0.9 (conservative — only obvious splits repaired) and 0.5, and watch the summary table move. |
 | **Never bridge gaps >** | What does this cost? | Leave it at 10 ms unless you know why not. |
+
+On the demo, whose truth is 300 molecules, the three thresholds tell the whole
+story on one file:
+
+| Threshold | Window | Bursts | Proximity-ratio width |
+|---|---|---|---|
+| 0.9 | 1.7 ms | 341 | 0.041 → 0.036 |
+| **0.7** | **2.2 ms** | **303** | **0.041 → 0.033** |
+| 0.5 | 2.7 ms | 283 | 0.041 → 0.031 |
+
+0.9 leaves splits unrepaired; 0.7 lands on the truth; 0.5 goes *past* it, because
+at this burst rate some genuinely different molecules also fall inside the
+window. Note that the width keeps falling even where the burst count is already
+wrong — narrower is not the same as better, which is why the mean matters too
+(next section).
 
 The second one deserves a paragraph. A burst on disk is one
 `(first photon, last photon)` interval, so a fused burst is the span across its
@@ -95,6 +132,14 @@ looks like:
 | Proximity ratio (mean) | roughly unchanged | a moving mean means you are merging *populations*, not fragments — raise the threshold |
 | Duration (mean) | rises modestly | a rise of orders of magnitude means the gap ceiling is too generous |
 
+![Proximity ratio before and after fusion: the fused distribution is taller and narrower](figures/burst_fusion_proximity.png)
+
+The demo has **one** FRET population, so the width you see is entirely shot
+noise — and putting the fragments back together removes a measurable part of it,
+which is what the narrower blue curve is. On real data with several populations
+the same narrowing happens *within* each peak, where it is easier to miss and
+just as valuable.
+
 The **Photons per burst** plot shows the same thing as a distribution: fusion
 takes weight out of the short-burst tail, because the tail *was* the fragments.
 The **Fragments per fused burst** plot shows how far chains ran; fusion is
@@ -120,7 +165,7 @@ Two things to know about the output:
 
 * The plots switch from the preview to **what was actually written** (the legend
   says which). They differ by the background the bridged gaps brought in —
-  `Fused Background Photons` in the `fu4` companion is that number per burst,
+  `Fused Gap Photons` in the `fu4` companion is that number per burst,
   and it is worth a look before you build on the folder.
 * The source folder is untouched, except for an optional `fg4` companion giving
   each original burst its fused-burst number — so you can colour the original
@@ -164,6 +209,17 @@ print(result.statistics["n_bursts_before"], "->", result.statistics["n_bursts_af
 print("fused gaps up to", result.tau_used_s * 1e3, "ms")
 
 fuse_folder("burstwise_All 0.1000#15", FusionSettings(threshold=0.5))
+```
+
+The demo is available headlessly too, which makes it a convenient fixture for
+trying settings without any data:
+
+```python
+from chisurf.plugins.burst.burst_fusion.demo import create_demo
+
+demo = create_demo()          # cached after the first call
+print(demo["truth"]["n_molecules"], "molecules ->", demo["bursts"], "bursts")
+analyze(demo["folder"], FusionSettings(threshold=0.7))
 ```
 
 ## Related

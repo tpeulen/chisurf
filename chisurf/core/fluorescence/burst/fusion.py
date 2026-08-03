@@ -175,7 +175,7 @@ def same_molecule_curve(
 
 
 def _window_from_curve(tau: np.ndarray, p_same: np.ndarray, threshold: float):
-    """The **largest** lag at which ``p_same`` still meets *threshold*.
+    """Return the **largest** lag at which ``p_same`` still meets *threshold*.
 
     Deliberately read from the long end, not scanned outward from the short one.
     ``P_same`` is not monotonic: it *dips* at the shortest lags, because nothing

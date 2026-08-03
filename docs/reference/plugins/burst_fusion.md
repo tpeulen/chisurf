@@ -45,6 +45,7 @@ Editable parameters exposed by the plugin's declarative (AutoForm) interface, gr
 | `burst_fusion.jobs.analyze` | yes | Estimate the same-molecule probability of a burst folder and report what a threshold would fuse. |
 | `burst_fusion.jobs.fuse` | yes | Write the fused bursts as a new burst-analysis folder. |
 | `burst_fusion.workflow.prepare` | no | Resolve the burst folder and detector definition from a burst workflow context. |
+| `burst_fusion.contract.describe` | no | Return the burst-fusion workflow contract (methods, payloads, side effects). |
 
 ## Source
 

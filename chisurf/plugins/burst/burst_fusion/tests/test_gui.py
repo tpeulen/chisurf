@@ -147,6 +147,53 @@ def test_changing_a_setting_drops_a_stale_analysis(tool):
     assert tool.model.p_same_series() == []
 
 
+def test_setting_the_folder_through_the_form_drops_the_old_analysis(tool, tmp_path):
+    """AutoForm writes the attribute and *then* calls the setter.
+
+    A guard comparing against ``self.folder`` therefore sees the new value
+    already in place, returns early, and leaves the previous folder's analysis on
+    screen under the new folder's name.
+    """
+    tool.model.analyze()
+    assert tool.model.has_analysis()
+
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    tool.model.folder = str(other)      # what the bound field does
+    tool.model.set_folder(str(other))   # ...and then the ``call``
+    assert not tool.model.has_analysis()
+    assert tool.model.summary_rows() == []
+
+
+def test_reapplying_the_same_folder_keeps_the_analysis(tool):
+    """The workflow re-applies its context on every step change."""
+    tool.model.analyze()
+    tool.model.set_folder(tool.model.folder)
+    assert tool.model.has_analysis()
+
+
+def test_loading_the_demo_selects_a_folder_with_a_known_answer(qapp, monkeypatch, tmp_path):
+    from chisurf.plugins.burst.burst_fusion.gui.tool import BurstFusionTool
+
+    widget = BurstFusionTool()
+    monkeypatch.setattr(
+        "chisurf.plugins.burst.burst_fusion.demo.demo_directory",
+        lambda directory=None: tmp_path / "demo",
+    )
+    widget.load_demo()
+
+    assert pathlib.Path(widget.model.folder).is_dir()
+    assert widget.model.demo is not None
+    assert widget.model.demo["truth"]["n_molecules"] > 0
+    # The declared truth is on screen beside the result, which is the point.
+    assert "molecules crossed the focus" in widget.model.status_text()
+
+    widget.model.threshold = 0.7
+    widget.model.analyze()
+    statistics = widget.model.analysis.statistics
+    assert statistics["n_bursts_after"] < statistics["n_bursts_before"]
+
+
 def test_running_without_a_folder_reports_instead_of_raising(qapp):
     from chisurf.plugins.burst.burst_fusion.gui.view_model import FusionViewModel
 
