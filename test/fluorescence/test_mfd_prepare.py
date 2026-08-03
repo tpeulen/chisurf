@@ -237,13 +237,28 @@ def test_mean_micro_time_is_nanoseconds_and_within_the_tac_window(preparation):
 # ──────────────────────────────────────────────────────────────────────────────
 # Channel definitions are verified, not assumed
 # ──────────────────────────────────────────────────────────────────────────────
-def test_unverifiable_detector_is_unusable(preparation):
-    """The acceptor-excitation detector is a micro-time window no name conveys."""
-    assert set(preparation.verified_channels) == {"green", "red"}
-    assert preparation.summary["unverified_channels"] == ("yellow",)
-    preparation.require_verified(["green", "red"])
+def test_inference_recovers_the_delayed_window_and_proves_it(preparation):
+    """The acceptor-excitation detector is a micro-time window no *name* conveys.
+
+    It does not have to be named, though: the window is offered by the ``.bur``
+    header (``S delayed yellow | 2048-4095``) and accepted only when the counts
+    recomputed from the photons reproduce the detector's count column exactly. So
+    ``yellow`` verifies here without anyone declaring it -- and it verifies on the
+    evidence, not on its name, which is the property that matters.
+    """
+    assert set(preparation.verified_channels) == {"green", "red", "yellow"}
+    assert preparation.summary["unverified_channels"] == ()
+    assert preparation.summary["stream_origin"] == "inferred"
+    # Verified means reproduced, not merely plausible.
+    for name, agreement in preparation.summary["count_agreement"].items():
+        assert agreement == pytest.approx(1.0), name
+    preparation.require_verified(["green", "red", "yellow"])
+
+
+def test_a_detector_that_is_not_there_is_refused(preparation):
+    """``require_verified`` is the gate everything turning photons into physics uses."""
     with pytest.raises(ValueError, match="does not describe"):
-        preparation.require_verified(["yellow"])
+        preparation.require_verified(["infrared"])
 
 
 def test_explicit_streams_verify_the_delayed_window():

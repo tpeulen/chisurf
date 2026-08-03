@@ -1,8 +1,14 @@
 {
   "sections": [
     {
-      "type": "info",
-      "source": "summary_html"
+      "type": "button_row",
+      "buttons": [
+        {
+          "label": "↺ Estimate start",
+          "action": "seed_from_data",
+          "description": "Read starting values off this measurement: the crosstalk from where the donor-only population sits, the donor lifetime from its mean micro time, the donor-only fraction from its share of the bursts, and one distance per state spread over the FRET population. Use it when a fit has settled somewhere that plainly does not describe the data — six free parameters over a multi-modal objective end up where their start point's basin takes them. Parameters you have fixed are left alone."
+        }
+      ]
     },
     {
       "type": "dynamic_group",

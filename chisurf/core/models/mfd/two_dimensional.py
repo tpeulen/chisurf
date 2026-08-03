@@ -30,6 +30,7 @@ from chisurf.core.fitting.kinetics import RateMatrixParameters
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
 from chisurf.core.fluorescence.mfd.fit import MfdKineticModel
 from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
+from chisurf.core.fluorescence.mfd.seed import estimate_starting_values
 from chisurf.core.fluorescence.mfd.sources import uncertainty_is_valid
 from chisurf.core.models.model import ModelCurve
 
@@ -206,7 +207,12 @@ class MfdStates(FittingParameterGroup):
             )
             self._fractions.append(
                 FittingParameter(
-                    name=f"x{index}", value=1.0, lb=0.0, ub=1.0, bounds_on=True,
+                    # A *relative* weight against the first state, which is held
+                    # at 1 to fix the normalisation -- so the upper bound must
+                    # allow a state to be more populated than the reference. At
+                    # ub=1 no state could ever exceed half the population, and a
+                    # fit that wanted more simply sat on the bound.
+                    name=f"x{index}", value=1.0, lb=0.0, ub=100.0, bounds_on=True,
                     fixed=(index == 1),
                 )
             )
@@ -445,6 +451,57 @@ class Mfd2DModel(MfdImageMixin, ModelCurve):
         self.kinetics.set_rate_matrix(np.zeros((n_states, n_states)))
         self._last_summary: dict = {}
         self.find_parameters()
+        self.seed_from_data()
+
+    def seed_from_data(self) -> dict:
+        """Set the free parameters to values read off this fit's measurement.
+
+        A six-parameter fit of a strongly multi-modal objective ends where its
+        start point's basin takes it, and the generic defaults were a bad basin:
+        every state at the *same* distance (two states that are literally one
+        species, so the first step is rank-deficient), ``alpha`` sitting on its
+        lower bound, and a donor lifetime unrelated to the measured decay. On a
+        real measurement that converged to a crosstalk of 0.31, putting the
+        model's donor-only population at a proximity ratio of 0.24 while the
+        data's sat at 0.012.
+
+        Only *free* parameters are touched: a value the user has fixed is a
+        decision, not a starting point.
+
+        Returns
+        -------
+        dict
+            What the estimate was read off, or ``{}`` when there is no dataset to
+            read (a model built before its data, which is a legal state).
+        """
+        data = burst_payload(self.fit.data)
+        if data is None:
+            return {}
+        try:
+            start = estimate_starting_values(
+                data,
+                n_states=self.n_states,
+                r0=float(self.calibration._r0.value),
+                gamma=float(self.calibration._gamma.value),
+            )
+        except Exception as exc:
+            # Seeding is an optimisation of the *start*; failing to seed must
+            # leave a usable model rather than an unopenable dataset.
+            cs.logging.warning("MFD starting values could not be estimated: %s", exc)
+            return {}
+
+        def _set(parameter, value) -> None:
+            if not parameter.fixed:
+                parameter.value = float(value)
+
+        _set(self.calibration._alpha, start.alpha)
+        _set(self.calibration._tau_d0, start.tau_d0)
+        _set(self.state_group._donor_only, start.donor_only)
+        for parameter, value in zip(self.state_group._distances, start.distances):
+            _set(parameter, value)
+        for parameter, value in zip(self.state_group._fractions, start.populations):
+            _set(parameter, value)
+        return dict(start.diagnostics)
 
     @property
     def n_states(self) -> int:

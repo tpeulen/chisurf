@@ -219,6 +219,74 @@ def test_states_and_rates_resize_together(dataset):
     assert np.all(np.isfinite(model.y))
 
 
+def test_the_summary_lives_in_the_info_plot_not_the_analysis_dock(fit, qapp):
+    """It is reference text, and the dock is for the controls being edited.
+
+    Seven rows of burst bookkeeping and a three-line caveat took the top of a
+    panel whose actual job is the parameter tables underneath them.
+    """
+    from chisurf.gui.plots.fitinfo import FitInfo
+
+    spec = fit.model.view_spec()
+    kinds = [type(s).__name__ for s in spec.sections]
+    assert "InfoSection" not in kinds, "the summary is back in the analysis dock"
+
+    info = FitInfo(fit)
+    info.update()
+    text = info.model_summary.toPlainText()
+    # ``isVisible`` needs a shown parent; the explicit flag is what was set.
+    assert not info.model_summary.isHidden()
+    assert "Bursts in the folder" in text
+    assert "covariance are not valid" in text
+
+
+def test_a_model_without_a_summary_leaves_the_panel_hidden(qapp):
+    """The hook is optional: most models publish nothing and must show nothing."""
+    import chisurf.core.data
+    import chisurf.core.models.parse
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.gui.plots.fitinfo import FitInfo
+
+    x = np.linspace(0.0, 5.0, 32)
+    plain = Fit(
+        model_class=chisurf.core.models.parse.ParseModel,
+        data=chisurf.core.data.DataCurve(x=x, y=x ** 2, ey=np.ones_like(x)),
+    )
+    info = FitInfo(plain)
+    info.update()
+    assert info.model_summary.isHidden()
+
+
+def test_the_panel_offers_a_way_back_out_of_a_bad_minimum(fit):
+    """Six free parameters over a multi-modal objective can settle anywhere."""
+    spec = fit.model.view_spec()
+    actions = [
+        button.get("action")
+        for section in spec.sections
+        for button in (getattr(section, "buttons", None) or [])
+    ]
+    assert "seed_from_data" in actions
+    assert callable(getattr(fit.model, "seed_from_data"))
+
+
+def test_seeding_only_touches_free_parameters(dataset):
+    """A value the user fixed is a decision, not a starting point."""
+    from chisurf.core.fitting.fit import Fit
+    from chisurf.core.models.mfd import Mfd2DModel
+
+    fit = Fit(
+        model_class=Mfd2DModel, data=dataset, xmin=0, xmax=int(dataset.y.size),
+        noise_model="poisson",
+    )
+    model = fit.model
+    model.calibration._alpha.fixed = True
+    model.calibration._alpha.value = 0.42
+    model.state_group._distances[0].value = 11.0
+    model.seed_from_data()
+    assert model.calibration._alpha.value == pytest.approx(0.42)
+    assert model.state_group._distances[0].value != pytest.approx(11.0)
+
+
 def test_view_specs_load(fit, dataset):
     """Both view specs parse, and name plot keys that are actually registered."""
     from chisurf.gui.autoform.sections.registry import get_plot_class

@@ -2,6 +2,75 @@
 
 ## 2026-08-03
 
+* **The fitting progress bar now moves, because the callback is now reached.** The
+  fix that scaled the bar sensibly changed only the *number*; the bar itself had
+  never worked. Two independent breaks, each silent:
+  - **The callback never crossed the RPC boundary.** The fit controller builds a
+    progress closure and then calls `fc.run_fit(fit_uid=…)`, which goes through
+    the JSON-RPC facade; JSON cannot carry a Qt closure, so the service called
+    `fit.run()` with no arguments and the closure was dead code. The dialog was
+    created, sat at zero, and closed saying "Fitting finished!" — indistinguishable
+    from a missing bar. The sink is now installed *on the fit*
+    (`Fit.reporting_progress`, a context manager), which works whenever caller and
+    fit are the same object (local and hybrid, i.e. the GUI) and is simply absent
+    when they are not.
+  - **A correctly written callback was thrown away.** The optimiser offers
+    `chi2` / `chi2r` as extras, so a callback with the *documented*
+    `callback(evaluated, total)` signature raised `TypeError` straight into a
+    blanket `except Exception: pass`. `_report_progress` now offers the extras and
+    falls back to the documented call.
+  - **Cancellation came back the same way.** Raising through the service turns
+    into a generic error result, indistinguishable from a real failure, so the fit
+    records `last_run_cancelled` and the controller reads it back.
+  - A **group** shares one bar across its stages (`_StagedProgress`): each member
+    fit and the global fit count evaluations from zero, so passed through raw the
+    bar filled and reset once per member.
+  - **100% is now reserved for the completion report.** The retreat guard and the
+    growth rule collide at the top: once a fit reaches full, the guard pins it
+    there, and a real four-parameter lifetime fit spent its last 110 evaluations
+    at a false 100%. A running fit is capped at 99% and creeps; the fit's end
+    reports full. Measured on a real TCSPC fit: 3% → 97% smoothly, 97→98→99, then
+    100 on completion.
+
+* **MFD fits start from the measurement instead of from a guess**
+  (`core/fluorescence/mfd/seed.py`). Six free parameters over a multi-modal
+  objective end up wherever their start point's basin takes them, and the generic
+  defaults were about the worst available: every state at the **same** distance —
+  two states that are literally one species, so the optimiser's first step is
+  rank-deficient — `alpha` sitting *on* its lower bound where a forward difference
+  sees one side only, and a donor lifetime unrelated to the measured decay. On a
+  real folder that converged to a crosstalk of 0.31, putting the model's
+  donor-only population at a proximity ratio of 0.24 while the data's sat at
+  0.012, and stayed there.
+  - Crosstalk from where the donor-only population sits (`PR = α/(1+α)`); donor
+    lifetime from its mean micro time minus the response's mean (means add under
+    convolution — the identity the forward model already rests on); the donor-only
+    fraction from its share of the bursts, split at the *valley* between the two
+    populations rather than a fixed threshold; one distance per state from
+    quantiles of the FRET population, forced apart if the data did not separate
+    them. Fixed parameters are never touched — a fixed value is a decision.
+  - An **"↺ Estimate start"** button re-seeds, so a fit already stuck somewhere
+    implausible can be recovered without reloading the folder.
+  - **A state could never hold more than half the population.** The fractions are
+    *relative* weights against a first state pinned at 1, but were bounded at 1 —
+    so a fit that wanted more simply sat on the bound. Raised to 100.
+  - Measured on the user's folder: χ²ᵣ 10.14 → 2.39 at the start point, and the
+    fitted optimum 2.10 → **1.43**; the modelled donor-only population now lands
+    on the measured one instead of 20 bins away.
+
+* **The MFD model summary moved from the analysis dock to the Info plot.** Seven
+  rows of burst bookkeeping plus a three-line caveat about invalid covariances is
+  reference text; it was taking the top of a panel whose job is the parameter
+  tables underneath it. `FitInfo` now shows any model's `summary_html()`, sized to
+  its own text — so this is a hook every model can use, not an MFD special case.
+
+* **`test_unverifiable_detector_is_unusable` was red at HEAD** and is now
+  corrected rather than left. Stream inference recovers the delayed-window
+  detector from the `.bur` header and verifies it by exactly reproducing its count
+  column, so all three detectors verify — better than the behaviour the test
+  pinned. The guarantee it was really protecting (verification is by reproduction,
+  and an unknown detector is refused) is now asserted directly.
+
 * **The fitting progress bar now reports against what a fit actually costs.** It was scaled by MINPACK's `200 * (n + 1)` — the optimiser's **give-up limit**, not an expectation. A four-parameter fit converges in tens of evaluations, so the bar crept to five percent and jumped to done, which reads as a broken bar rather than a fast fit.
   - `_expected_evaluations(n, maxfev)` estimates what Levenberg–Marquardt genuinely costs: one forward-difference Jacobian (`n` evaluations) plus one trial step per iteration, over the handful of iterations a well-posed problem needs. Bounded by the optimiser's own hard limit, so the estimate can always be reached.
   - The iteration count is deliberately on the **low** side of the four-to-ten real fits take, because the correction is one-directional: `_grow_budget` raises the estimate when a fit outruns it, and nothing lowers it when a fit beats it. An underestimate ends near 100% either way; an overestimate leaves the bar stranded at a third.
