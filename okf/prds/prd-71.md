@@ -499,8 +499,32 @@ Two questions the static gate raised, both worth answering before rates are:
 
    A model evaluation is 128 ms on this measurement (439 ms before caching the log
    factorials the nested sum asks for tens of thousands of times per evaluation).
-3. **Kinetics** — transfer-matrix `P(f|T,K)` over the shared rate-matrix group,
-   two-state closed form as its test. **Gate: milestone 1b — no dataset yet.**
+3. **Kinetics** — ✅ *landed*. `occupation.py` propagates the joint distribution over
+   (state, occupation counts) with the exact one-slice transition matrix, so no
+   Monte-Carlo noise enters the objective. `MfdKineticModel` feeds the grid into the
+   histogram as *components*, which is the entire difference from the static model —
+   the nested background/partition sum, the `⟨t⟩` kernel and the deviance are
+   untouched. Verified against three independently derived references: the exact
+   time-averaged moments already in `chisurf/core/fluorescence/kinetics.py`, a
+   closed form for the two-state occupancy variance derived from the telegraph
+   autocovariance, and a Gillespie sampler.
+
+   **The discretization has to adapt to the rates, and a fixed `n` cannot.** What a
+   transfer matrix must resolve is the number of transitions *within* the burst, not
+   the burst: at 300 transitions per burst a 64-step grid reports a spread ~50% too
+   wide, and that excess would be read as static heterogeneity — precisely what the
+   kinetics is meant to be distinguished from. `recommended_steps` scales with the
+   fastest rate times the window, which matters because a fit loop moves the rates.
+
+   **Gate: milestone 1b — no dataset yet**, so no rate from this machinery should be
+   reported as validated.
+
+   *Also found*: the green-photon cut is **not neutral between populations**. A
+   high-FRET burst sends most of its photons to the acceptor and so is
+   preferentially removed by `min_green_photons`. The fit is unaffected — the model
+   histogram is cut identically to the data one — but a model histogram is
+   therefore *not* the population mixture, and amplitudes read off it directly
+   understate every high-FRET species.
 4. **Pooled-decay and burst-wise sources**, composable with the histogram source;
    bootstrap/burst-wise uncertainties wired in and enforced.
 5. **Anisotropy axis** in full — `G`, `l₁/l₂`, per-state `ρ`, with the Perrin

@@ -358,6 +358,10 @@ class NuisanceMeasure:
     counts : numpy.ndarray
         ``(n, n_channels)`` int64 per-channel counts. Carried for the partition
         *target*, never as the weight of the measure itself.
+    duration : numpy.ndarray
+        ``(n,)`` whole-burst span in seconds — first to last photon over *all*
+        detectors. This, not a channel's own span, is the window a molecule spent
+        in the focus, so it is the window the occupation-time law is computed over.
     channels : tuple of str
         Detector names of the span/count columns.
     rows : numpy.ndarray
@@ -369,6 +373,7 @@ class NuisanceMeasure:
     signal: np.ndarray
     spans: np.ndarray
     counts: np.ndarray
+    duration: np.ndarray
     channels: tuple[str, ...]
     rows: np.ndarray
     summary: dict[str, Any] = field(default_factory=dict)
@@ -404,7 +409,8 @@ class NuisanceMeasure:
             Representative signal per bin (the weighted mean, not the bin centre —
             the signal distribution is steep and a geometric centre biases it).
         span_centres : list of numpy.ndarray
-            Representative span per bin, one array per channel.
+            Representative span per bin, one array per channel. The last entry is
+            the whole-burst duration, which the occupation-time law needs.
         """
         signal = self.signal.astype(float)
         edges = np.geomspace(
@@ -440,6 +446,8 @@ class NuisanceMeasure:
             for c in range(self.spans.shape[1]):
                 total = np.bincount(flat, weights=self.spans[:, c], minlength=size)
                 span_centres.append(np.where(weights > 0, total / weights, 0.0))
+            total = np.bincount(flat, weights=self.duration, minlength=size)
+            span_centres.append(np.where(weights > 0, total / weights, 0.0))
         return weights, signal_centres, span_centres
 
 
@@ -1083,6 +1091,7 @@ def nuisance_measure(
         signal=signal[keep].astype(np.int64),
         spans=spans[keep],
         counts=counts[keep],
+        duration=preparation.duration[keep],
         channels=tuple(channels),
         rows=preparation.rows[keep],
         summary=summary,

@@ -33,6 +33,7 @@ from chisurf.core.fluorescence.mfd.histogram import (
     model_histogram,
     observed_histogram,
 )
+from chisurf.core.fluorescence.mfd.moments import mixture_moments
 from chisurf.core.fluorescence.mfd.patterns import (
     ChannelResponse,
     FretState,
@@ -49,7 +50,13 @@ from chisurf.core.fluorescence.mfd.prepare import (
 )
 from chisurf.core.fluorescence.mfd.sources import ScoreResult, histogram_residuals
 
-__all__ = ["MfdData", "MfdModel", "estimate_responses", "load_mfd_data"]
+__all__ = [
+    "MfdData",
+    "MfdKineticModel",
+    "MfdModel",
+    "estimate_responses",
+    "load_mfd_data",
+]
 
 
 def estimate_responses(
@@ -362,6 +369,34 @@ class MfdModel:
             mean[i], variance[i] = response.signal_moments(amplitudes, lifetimes)
         return weights, p_red, mean, variance
 
+    def components(
+        self, data: MfdData
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Return the per-cell components the histogram model consumes.
+
+        A static model has one component per species, the same in every nuisance
+        cell. The kinetic subclass overrides this to return the occupation-time grid
+        instead, which is the entire difference between the two — the histogram code
+        below is unchanged.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+
+        Returns
+        -------
+        weights, p_red, green_mean, green_variance : numpy.ndarray
+            ``(n_cells, n_components)`` each.
+        """
+        weights, p_red, mean, variance = self.species_properties(data)
+        n_cells = data.binned[0].size
+
+        def tile(values):
+            return np.broadcast_to(values, (n_cells, values.size))
+
+        return tile(weights), tile(p_red), tile(mean), tile(variance)
+
     def histogram(self, data: MfdData) -> np.ndarray:
         """Predict the 2D histogram for a measurement.
 
@@ -376,17 +411,15 @@ class MfdModel:
             ``(n_ratio, n_micro_time)``.
         """
         green_name, red_name = data.channels
-        weights, p_red, mean, variance = self.species_properties(data)
-        n_cells = data.binned[0].size
-        tile = lambda v: np.broadcast_to(v, (n_cells, v.size))  # noqa: E731
+        weights, p_red, mean, variance = self.components(data)
 
         return model_histogram(
             data.nuisance,
             data.axes,
-            component_weights=tile(weights),
-            p_red=tile(p_red),
-            green_mean=tile(mean),
-            green_variance=tile(variance),
+            component_weights=weights,
+            p_red=p_red,
+            green_mean=mean,
+            green_variance=variance,
             background_rates=(
                 data.responses[green_name].background_rate,
                 data.responses[red_name].background_rate,
@@ -447,3 +480,119 @@ class MfdModel:
                 model.sum(axis=0) * scale,
             ),
         }
+
+
+@dataclass
+class MfdKineticModel(MfdModel):
+    """States that exchange during the burst, through the occupation-time law.
+
+    The only thing that changes from the static model is what a *component* is.
+    Statically, one component per species. Kinetically, one component per node of
+    ``P(f | T, K)`` — a burst that spent a fraction ``f_s`` of its transit in each
+    state — with the occupation-time law supplying the weights. Everything
+    downstream (the nested background/partition sum, the ``⟨t⟩`` kernel, the
+    deviance) is untouched, which is the point of expressing the histogram in terms
+    of components in the first place.
+
+    That works because the channel counts and the micro times of a burst depend on
+    its state path **only** through ``f``. It is exact, not an approximation.
+
+    Attributes
+    ----------
+    rate_matrix : numpy.ndarray
+        ``(n_states, n_states)`` rates in Hz, ``K[target, source]`` — the shared
+        convention of :mod:`chisurf.core.fluorescence.kinetics`, not a private one.
+        Must match the number of ``states``.
+    n_steps : int, optional
+        Transfer-matrix discretization; chosen per burst duration from the rates
+        when omitted, which is the right default because a fit loop moves them.
+    """
+
+    rate_matrix: np.ndarray | None = None
+    n_steps: int | None = None
+
+    def components(
+        self, data: MfdData
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Return the occupation-time grid as histogram components, per nuisance cell.
+
+        Parameters
+        ----------
+        data : MfdData
+            The measurement, from :func:`load_mfd_data`.
+
+        Returns
+        -------
+        weights, p_red, green_mean, green_variance : numpy.ndarray
+            ``(n_cells, n_nodes)`` each, padded to the widest grid with zero weight.
+        """
+        from chisurf.core.fluorescence.mfd.occupation import (
+            occupation_time_distribution,
+        )
+
+        if self.rate_matrix is None:
+            return super().components(data)
+        matrix = np.asarray(self.rate_matrix, dtype=float)
+        if matrix.shape[0] != len(self.states):
+            raise ValueError(
+                f"the rate matrix is {matrix.shape[0]}x{matrix.shape[0]} but the "
+                f"model has {len(self.states)} states"
+            )
+
+        species_weights, p_red, mean, variance = self.species_properties(data)
+        # Species 0 is the donor-only population, which does not take part in the
+        # exchange: a molecule with no active acceptor has no FRET state to be in.
+        donor_only = float(species_weights[0])
+        state_p_red = p_red[1:]
+        state_mean = mean[1:]
+        state_variance = variance[1:]
+
+        durations = data.binned[2][-1]
+        n_cells = durations.size
+
+        # One grid per distinct duration. The nuisance measure is binned, so there
+        # are a few dozen of them rather than one per burst — which is what keeps
+        # the kinetic path the same order of cost as the static one.
+        grids = {}
+        rows = []
+        for cell in range(n_cells):
+            window = float(durations[cell])
+            key = round(window, 12)
+            if key not in grids:
+                grids[key] = occupation_time_distribution(
+                    matrix, window, n_steps=self.n_steps
+                )
+            rows.append(grids[key])
+
+        width = 1 + max(len(g) for g in rows)
+        weights = np.zeros((n_cells, width))
+        cell_p_red = np.zeros((n_cells, width))
+        cell_mean = np.zeros((n_cells, width))
+        cell_variance = np.zeros((n_cells, width))
+
+        for cell, grid in enumerate(rows):
+            n = len(grid)
+            # Component 0 is always the donor-only population, unexchanging.
+            weights[cell, 0] = donor_only
+            cell_p_red[cell, 0] = p_red[0]
+            cell_mean[cell, 0] = mean[0]
+            cell_variance[cell, 0] = variance[0]
+
+            f = grid.fractions
+            weights[cell, 1 : n + 1] = (1.0 - donor_only) * grid.weights
+            # A burst that spent fraction f_s in state s emits that fraction of its
+            # photons there (equal green-equivalent brightness across states), so
+            # the acceptor probability and the micro-time pattern are the f-weighted
+            # mixtures. The mixture's variance carries the spread of the states'
+            # own means, which is what makes a burst caught mid-exchange sit off
+            # the static line rather than on it.
+            cell_p_red[cell, 1 : n + 1] = f @ state_p_red
+            node_mean, node_variance = mixture_moments(
+                f,
+                np.broadcast_to(state_mean, f.shape),
+                np.broadcast_to(state_variance, f.shape),
+            )
+            cell_mean[cell, 1 : n + 1] = node_mean
+            cell_variance[cell, 1 : n + 1] = node_variance
+
+        return weights, cell_p_red, cell_mean, cell_variance

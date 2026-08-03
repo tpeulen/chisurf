@@ -19,6 +19,14 @@ and variance ``v``, the recorded ``⟨t⟩`` has mean ``μ`` and variance ``v / 
 
 The cost is independent of how many bursts are under the histogram, because the
 bursts enter only through the binned nuisance measure.
+
+**The green-photon cut is not neutral between populations.** A high-FRET burst
+sends most of its photons to the acceptor, so it has fewer green photons and is
+preferentially removed by ``min_green_photons``. The *fit* is unaffected — the model
+histogram is cut identically to the data one, which is exactly why the cut is stored
+on the observed histogram and read back rather than passed twice — but it does mean
+a model histogram is **not** the population mixture. Amplitudes read off it directly
+will understate every high-FRET species.
 """
 
 from __future__ import annotations

@@ -309,7 +309,9 @@ def test_nuisance_binning_conserves_the_bursts(preparation):
     measure = nuisance_measure(preparation)
     weights, signal, spans = measure.binned(n_signal_bins=16, n_span_bins=6)
     assert weights.sum() == pytest.approx(len(measure))
-    assert len(spans) == 2
+    # One entry per channel, plus the whole-burst duration the kinetics needs.
+    assert len(spans) == 3
+    assert np.all(spans[-1][weights > 0] > 0)
     occupied = weights > 0
     assert signal[occupied].min() >= measure.signal.min()
     assert signal[occupied].max() <= measure.signal.max()
