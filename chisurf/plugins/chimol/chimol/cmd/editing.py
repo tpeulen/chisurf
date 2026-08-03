@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -16,6 +17,8 @@ from .registry import command
 
 if TYPE_CHECKING:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 #: A pseudoatom is an atom row like any other. This used to be a *transcription*
@@ -247,6 +250,15 @@ class EditingMixin(BaseCmd):
             return
 
         total = viewer.set_labels(indices, texts, object_id=obj_id)
+        # PyMOL's `label` turns the label representation on as part of labelling:
+        # `ExecutiveLabel` follows the text with `OMOP_VISI(cRepLabelBit,
+        # cVis_SHOW)` (layer3/Executive.cpp). Without that step the text was
+        # stored and nothing appeared, and the fix was a `show labels` the user
+        # had to know to type -- so `label` reported success over a blank view.
+        try:
+            viewer.set_labels_visible(True)
+        except Exception as exc:  # a viewer without the representation
+            logger.debug("label: could not show the labels: %s", exc)
         self._emit_message(f"Labelled {len(indices)} atoms ({total} in total)")
 
     @command("iterate", mode="raw1")

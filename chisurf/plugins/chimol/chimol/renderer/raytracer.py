@@ -149,7 +149,8 @@ if _HAVE_NUMBA:
         depth_cue_enabled: int,
         fog_start: float,
         fog_intensity: float,
-        far_clip: float,
+        fog_front: float,
+        fog_inv_range: float,
         progress: np.ndarray,
         cancel: np.ndarray,
     ) -> np.ndarray:
@@ -455,8 +456,8 @@ if _HAVE_NUMBA:
                 cg_out = cg * bright + excess
                 cb_out = cb * bright + excess
 
-                if depth_cue_enabled and far_clip > 0.0:
-                    nd = best_t / far_clip
+                if depth_cue_enabled and fog_inv_range > 0.0:
+                    nd = (best_t - fog_front) * fog_inv_range
                     if nd > fog_start:
                         ffact = (nd - fog_start) / (1.0 - fog_start) * fog_intensity
                         if ffact > 1.0:
@@ -575,6 +576,8 @@ def trace(
     depth_cue: bool = True,
     fog_start: float = 0.45,
     fog_intensity: float = 1.0,
+    fog_front: float | None = None,
+    fog_back: float | None = None,
     color_blend: bool = True,
     color_blend_red: float = 0.17,
     color_blend_green: float = 0.25,
@@ -605,6 +608,20 @@ def trace(
         Per-vertex normals, shape (T, 3, 3).
     tri_colors : np.ndarray or None
         Per-triangle RGB colors, shape (T, 3).
+    fog_front, fog_back : float or None
+        Distances from the camera the depth cue runs between: no fog at
+        ``fog_front``, full fog at ``fog_back``. PyMOL normalises over its
+        front-to-back *clipping* range -- ``ffact = (front - dist) /
+        (front - back)`` in ``layer1/Ray.cpp`` -- and those planes are fitted
+        around the object, so its fog spans the molecule and nothing else.
+
+        This used to be ``best_t / camera.far_clip``, measured from the *camera*
+        to a far plane that is not fitted to anything. A molecule 1730 units away
+        inside a 2442-unit far plane then sat at 0.58-0.83 of the range and was
+        fogged 24-69 % *everywhere*, with no unfogged pixel anywhere in the
+        image: a depth cue that reads as a dimmer. Callers that know where the
+        scene is should say so; ``None`` keeps the old range (``0`` to
+        ``camera.far_clip``).
 
     All other parameters are as in :func:`render_scene`.
     """
@@ -662,6 +679,10 @@ def trace(
 
     fov_rad = math.radians(camera.fov_degrees)
 
+    front = 0.0 if fog_front is None else float(fog_front)
+    back = float(camera.far_clip) if fog_back is None else float(fog_back)
+    fog_inv_range = 1.0 / (back - front) if back > front else 0.0
+
     if progress is None:
         progress = np.zeros(1, dtype=np.int64)
     else:
@@ -689,7 +710,7 @@ def trace(
                 int(shadow), float(shadow_fudge),
                 float(shadow_decay_factor), float(shadow_decay_range),
                 int(depth_cue), float(fog_start), float(fog_intensity),
-                float(camera.far_clip),
+                float(front), float(fog_inv_range),
                 progress,
                 cancel,
             )
@@ -702,7 +723,7 @@ def trace(
                 background, ambient, diffuse, specular, shininess,
                 direct_specular, direct_specular_power, reflect_power, legacy_lighting,
                 shadow, shadow_fudge, shadow_decay_factor, shadow_decay_range,
-                depth_cue, fog_start, fog_intensity,
+                depth_cue, fog_start, fog_intensity, front, fog_inv_range,
                 bg_r, bg_g, bg_b,
                 progress,
                 cancel,
@@ -716,7 +737,7 @@ def trace(
             background, ambient, diffuse, specular, shininess,
             direct_specular, direct_specular_power, reflect_power, legacy_lighting,
             shadow, shadow_fudge, shadow_decay_factor, shadow_decay_range,
-            depth_cue, fog_start, fog_intensity,
+            depth_cue, fog_start, fog_intensity, front, fog_inv_range,
             bg_r, bg_g, bg_b,
             progress,
             cancel,
@@ -779,6 +800,8 @@ def _trace_numpy(
     depth_cue: bool,
     fog_start: float,
     fog_intensity: float,
+    fog_front: float,
+    fog_inv_range: float,
     bg_r: int, bg_g: int, bg_b: int,
     progress: Optional[np.ndarray] = None,
     cancel: Optional[np.ndarray] = None,
@@ -992,8 +1015,8 @@ def _trace_numpy(
 
     img[hit_mask] = (hit_colors * bright_arr[hit_mask, np.newaxis] + excess_arr[hit_mask, np.newaxis]) * 255.0
 
-    if depth_cue and camera.far_clip > 0.0:
-        nd = best_t / camera.far_clip
+    if depth_cue and fog_inv_range > 0.0:
+        nd = (best_t - fog_front) * fog_inv_range
         fog = np.zeros_like(nd)
         mask_fog = (nd > fog_start) & hit_mask
         if mask_fog.any():
@@ -1076,6 +1099,229 @@ def _downsample_numpy(img_float, height, width, ssaa):
     return np.clip(pooled, 0, 255).astype(np.uint8)
 
 
+#: Sides in the prism a line segment becomes. The tracer has a sphere and a
+#: triangle primitive and no cylinder, so a line's shaft is tessellated while its
+#: round caps stay spheres -- which the tracer intersects exactly, so only the
+#: shaft is faceted. Eight sides stops reading as a polygon at the widths a line
+#: is actually drawn at (one to three pixels).
+_LINE_SIDES = 8
+
+#: Geometry kinds :func:`render_scene` turns into traced primitives. ``text`` is
+#: the one it cannot: a label is rasterised glyphs, and the tracer has no glyph.
+TRACEABLE_KINDS = ("points", "mesh", "line")
+
+
+def traceable_geometry_counts(scene) -> dict[str, int]:
+    """Count a scene's geometry by kind, so a caller can say what it dropped.
+
+    Parameters
+    ----------
+    scene : Scene or None
+        Scene to inspect.
+
+    Returns
+    -------
+    dict
+        Vertex count per geometry kind, kinds with nothing omitted. Keys outside
+        :data:`TRACEABLE_KINDS` are what a render will leave out.
+    """
+    counts: dict[str, int] = {}
+    for obj in getattr(scene, "objects", None) or ():
+        geom = getattr(obj, "geometry", None)
+        if geom is None or geom.positions is None:
+            continue
+        n = int(np.asarray(geom.positions).reshape(-1, 3).shape[0])
+        if n:
+            counts[geom.kind] = counts.get(geom.kind, 0) + n
+    return counts
+
+
+def _line_segments(geom) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Split a ``kind="line"`` geometry into segments and endpoint colours.
+
+    Parameters
+    ----------
+    geom : Geometry
+        Geometry whose ``kind`` is ``"line"``. ``meta["mode"]`` selects between
+        consecutive pairs (the ``GL_LINES`` default) and a connected
+        ``"line_strip"``, matching what the GL backend draws -- reading the same
+        key, so the traced picture cannot disagree with the drawn one.
+
+    Returns
+    -------
+    tuple of ndarray
+        ``(p0, p1, c0, c1)`` -- segment endpoints, shape ``(S, 3)``, and the
+        colour at each end, shape ``(S, 3)``.
+    """
+    pos = np.asarray(geom.positions, dtype=float).reshape(-1, 3)
+    n = pos.shape[0]
+    if n < 2:
+        empty = np.zeros((0, 3), dtype=float)
+        return empty, empty, empty, empty
+
+    mode = (geom.meta or {}).get("mode", "lines")
+    if mode == "line_strip":
+        i0 = np.arange(n - 1)
+    else:
+        i0 = np.arange(0, n - 1, 2)
+    i1 = i0 + 1
+
+    cols = geom.colors
+    if cols is None:
+        rgb = np.full((n, 3), 0.8, dtype=float)
+    else:
+        rgb = np.asarray(cols, dtype=float).reshape(-1, np.asarray(cols).shape[-1])[:, :3]
+        if rgb.shape[0] != n:  # one colour for the whole geometry
+            rgb = np.repeat(rgb[:1], n, axis=0)
+    return pos[i0], pos[i1], np.clip(rgb[i0], 0.0, 1.0), np.clip(rgb[i1], 0.0, 1.0)
+
+
+def _sausages(
+    p0: np.ndarray,
+    p1: np.ndarray,
+    c0: np.ndarray,
+    c1: np.ndarray,
+    radius: float,
+    sides: int = _LINE_SIDES,
+) -> tuple[list[Sphere], np.ndarray, np.ndarray, np.ndarray]:
+    """Turn line segments into round-capped cylinders the tracer can hit.
+
+    PyMOL ray-traces a line as ``ray->sausage3fv(v0, v1, lineradius, c0, c2)``
+    (``layer1/CGO.cpp``, ``CGO_LINE``) and splits a two-coloured one at its
+    midpoint into two capped cylinders rather than blending across it
+    (``CGO_SPLITLINE``). Both halves are emitted here unconditionally: where the
+    endpoint colours agree the two halves *are* one cylinder, so there is no
+    branch that can pick wrong.
+
+    Parameters
+    ----------
+    p0, p1 : ndarray
+        Segment endpoints, shape ``(S, 3)``.
+    c0, c1 : ndarray
+        RGB at each endpoint, shape ``(S, 3)``.
+    radius : float
+        Shaft radius in world units.
+    sides : int
+        Faces around the shaft.
+
+    Returns
+    -------
+    tuple
+        ``(cap_spheres, tri_vertices, tri_vnormals, tri_colors)``, in the layout
+        :func:`trace` expects.
+    """
+    empty = (np.zeros((0, 3, 3)), np.zeros((0, 3, 3)), np.zeros((0, 3)))
+    if p0.shape[0] == 0 or radius <= 0.0:
+        return ([], *empty)
+
+    axis = p1 - p0
+    length = np.linalg.norm(axis, axis=1)
+    keep = length > 1e-9
+    p0, p1, c0, c1, axis = p0[keep], p1[keep], c0[keep], c1[keep], axis[keep]
+    length = length[keep]
+    s = p0.shape[0]
+    if s == 0:
+        return ([], *empty)
+
+    unit = axis / length[:, None]
+    # A frame around the axis: cross it with whichever world axis it leans on
+    # least, so the cross product never collapses on an axis-aligned segment --
+    # and axis-aligned is the common case in a wireframe, not the rare one.
+    helper = np.zeros_like(unit)
+    helper[np.arange(s), np.argmin(np.abs(unit), axis=1)] = 1.0
+    u = np.cross(unit, helper)
+    u /= np.linalg.norm(u, axis=1)[:, None]
+    v = np.cross(unit, u)
+
+    theta = np.linspace(0.0, 2.0 * math.pi, sides, endpoint=False)
+    # (S, sides, 3): each ring vertex's radial direction, which is also its
+    # normal -- shading from radial normals is what makes an eight-sided shaft
+    # read as round instead of as a prism.
+    radial = (
+        np.cos(theta)[None, :, None] * u[:, None, :]
+        + np.sin(theta)[None, :, None] * v[:, None, :]
+    )
+    mid = 0.5 * (p0 + p1)
+    nxt = (np.arange(sides) + 1) % sides
+
+    verts, norms, cols = [], [], []
+    for a, b, colour in ((p0, mid, c0), (mid, p1, c1)):
+        ring_a = a[:, None, :] + radius * radial
+        ring_b = b[:, None, :] + radius * radial
+        tri = np.concatenate(
+            [
+                np.stack([ring_a, ring_b, ring_a[:, nxt]], axis=2),
+                np.stack([ring_a[:, nxt], ring_b, ring_b[:, nxt]], axis=2),
+            ],
+            axis=1,
+        ).reshape(-1, 3, 3)
+        nrm = np.concatenate(
+            [
+                np.stack([radial, radial, radial[:, nxt]], axis=2),
+                np.stack([radial[:, nxt], radial, radial[:, nxt]], axis=2),
+            ],
+            axis=1,
+        ).reshape(-1, 3, 3)
+        verts.append(tri)
+        norms.append(nrm)
+        cols.append(np.repeat(colour, 2 * sides, axis=0))
+
+    caps = [Sphere(center=p0[i], radius=radius, color=c0[i]) for i in range(s)]
+    caps += [Sphere(center=p1[i], radius=radius, color=c1[i]) for i in range(s)]
+    return (
+        caps,
+        np.concatenate(verts, axis=0),
+        np.concatenate(norms, axis=0),
+        np.concatenate(cols, axis=0),
+    )
+
+
+def line_radius_for_camera(
+    camera: RayCamera,
+    height: int,
+    depth: float,
+    line_width: float = 1.0,
+    line_radius: float = 0.0,
+) -> float:
+    """Return the world radius a line of ``line_width`` pixels should be drawn at.
+
+    PyMOL's rule is ``radius = line_radius`` when that setting is positive and
+    ``PixelRadius * line_width / 2`` otherwise (``layer1/CGO.cpp``,
+    ``LINEWIDTH_FOR_LINES``), where ``PixelRadius`` is the world size of one
+    output pixel. A line therefore comes out ``line_width`` *pixels* wide at any
+    image resolution, which is the property worth carrying over: a wireframe
+    rendered at 2000 px would otherwise be hairline.
+
+    PyMOL measures that pixel at the front clipping plane, because its ray volume
+    is fitted to the object. ChiMOL's near plane is a camera setting and can sit
+    well in front of the molecule, so the pixel is measured at ``depth`` -- the
+    plane the scene occupies -- and the width is right where it is looked at.
+
+    Parameters
+    ----------
+    camera : RayCamera
+        Camera being rendered from; supplies the field of view.
+    height : int
+        Output image height in pixels.
+    depth : float
+        Distance from the camera to the plane the lines sit on.
+    line_width : float
+        Width in pixels, PyMOL's ``line_width`` setting.
+    line_radius : float
+        World radius, PyMOL's ``line_radius``. A positive value wins outright.
+
+    Returns
+    -------
+    float
+        Shaft radius in world units.
+    """
+    if line_radius > 0.0:
+        return float(line_radius)
+    half_h = math.tan(math.radians(camera.fov_degrees) * 0.5)
+    pixel = 2.0 * max(float(depth), 1e-6) * half_h / max(int(height), 1)
+    return pixel * max(float(line_width), 0.0) / 2.0
+
+
 def render_scene(
     scene,
     camera: RayCamera,
@@ -1090,17 +1336,40 @@ def render_scene(
     depth_cue: bool = True,
     fog_start: float = 0.45,
     fog_intensity: float = 1.0,
+    line_width: float = 1.0,
+    line_radius: float = 0.0,
     **kwargs
 ) -> np.ndarray:
     """Render a Scene object by extracting all renderable geometry.
 
-    Handles ``points`` geometry (spheres) and ``mesh`` geometry (triangles).
+    Handles ``points`` geometry (spheres), ``mesh`` geometry (triangles) and
+    ``line`` geometry (round-capped cylinders, as PyMOL's ray does). ``text`` is
+    the one kind it cannot trace; :func:`traceable_geometry_counts` is how a
+    caller finds that out and says so, rather than dropping labels in silence.
     The result is passed to :func:`trace` with both sphere and triangle data.
     """
     spheres: list[Sphere] = []
     tri_vertices_list: list[np.ndarray] = []
     tri_vnormals_list: list[np.ndarray] = []
     tri_colors_list: list[np.ndarray] = []
+
+    # One radius for every line in the picture, as PyMOL uses one `lineradius`
+    # per CGO: measured where the scene is, not per segment, so a wireframe does
+    # not taper across the molecule.
+    scene_depth = float(
+        np.dot(np.asarray(getattr(scene, "center", np.zeros(3)), dtype=float) - camera.origin, camera.forward)
+    )
+    shaft_radius = line_radius_for_camera(
+        camera, height, scene_depth, line_width=line_width, line_radius=line_radius
+    )
+
+    # The depth cue runs across the *scene*, front to back of its bounding
+    # sphere, the way PyMOL's runs across its object-fitted clipping planes. Left
+    # to the camera's far plane it grades over a range the molecule occupies a
+    # slice of, and comes out as a flat dimming (see `trace`).
+    scene_radius = float(getattr(scene, "radius", 0.0) or 0.0)
+    kwargs.setdefault("fog_front", max(0.0, scene_depth - scene_radius))
+    kwargs.setdefault("fog_back", scene_depth + scene_radius)
 
     for obj in scene.objects:
         geom = obj.geometry
@@ -1113,6 +1382,21 @@ def render_scene(
                 r = float(radii_arr[i]) if radii_arr is not None else float(meta_radius)
                 c = np.clip(colors[i, :3], 0.0, 1.0) if colors is not None else np.array([0.8, 0.8, 0.8])
                 spheres.append(Sphere(center=positions[i], radius=r, color=c))
+
+        elif geom.kind == "mesh" and (geom.meta or {}).get("spheres") is not None:
+            # A mesh that is really a pile of spheres says so, and the tracer
+            # intersects those exactly -- faster than its own triangles by more
+            # than two orders of magnitude, and without their facets.
+            balls = geom.meta["spheres"]
+            centres = np.asarray(balls["centers"], dtype=float)
+            ball_radii = np.asarray(balls["radii"], dtype=float)
+            ball_cols = np.asarray(balls["colors"], dtype=float)
+            for i in range(centres.shape[0]):
+                spheres.append(Sphere(
+                    center=centres[i],
+                    radius=float(ball_radii[i]),
+                    color=np.clip(ball_cols[i, :3], 0.0, 1.0),
+                ))
 
         elif geom.kind == "mesh":
             verts = np.asarray(geom.positions, dtype=float)
@@ -1154,6 +1438,14 @@ def render_scene(
                 tri_vertices_list.append(t)
                 tri_vnormals_list.append(tn)
                 tri_colors_list.append(tc)
+
+        elif geom.kind == "line":
+            caps, lv, ln, lc = _sausages(*_line_segments(geom), shaft_radius)
+            if lv.shape[0]:
+                spheres.extend(caps)
+                tri_vertices_list.append(lv)
+                tri_vnormals_list.append(ln)
+                tri_colors_list.append(lc)
 
     # Concatenate all triangle data
     if tri_vertices_list:

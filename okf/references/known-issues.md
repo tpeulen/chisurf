@@ -264,6 +264,47 @@ with the rest of the duplication — it should not be ported forward as it is.
 
 ---
 
+## chimol: a ray-traced mesh is shaded twice, and comes out muddy
+
+**2026-08-03.** Mesh vertex colours arrive at the tracer with ambient occlusion
+*and* a cast shadow already multiplied in — `Geometry.occlusion` says so in its
+own docstring ("Already multiplied into `colors`") — and the tracer then applies
+its own lighting and its own shadows on top. Measured on the 148L cartoon: the
+bake costs 44 % of the vertex colour (mean 0.567 → 0.318), and the traced image
+is mean 33.3 against 54.5 for the same scene built with baking off. The picture
+reads as muddy rather than as shaded, and the baked shadow comes from a *fixed*
+light direction that need not be one of the ray lights.
+
+**Not fixed here, and why the obvious fix is wrong.** Dividing the bake back out
+of the colours is inexact: the shadow is folded into the `occlusion` channel with
+a different constant from the AO (`shadow_darkness` 0.45 vs `darkness` 0.7), so
+recovery is off by a mean 0.03–0.05 and up to 0.44 on individual vertices — a
+colour error that looks like a colour, not like a bug. The right fix is to carry
+the **base** colour plus the occlusion channel and let each backend apply it,
+which changes the `Geometry` contract and therefore the GL backend too, and needs
+verifying in a real window (offscreen creates no GL context). Worth doing; it is
+its own change.
+
+The depth-cue half of the same darkness *was* fixed — see
+[the parity tracker](/plugins/pymol-parity.md).
+
+---
+
+## chimol: five camera-framing tests are red
+
+**2026-08-03.** `test_camera_framing.py` fails five ways, in isolation and in the
+full run, and identically at `HEAD` with no working-tree changes:
+`test_distance_follows_the_field_of_view[True/False]`,
+`test_zoom_fits_every_atom_not_just_the_trace`, and
+`test_camera_distance_matches_pymol[True/False]`. The measured distance is ~30×
+the expected one (41429 against 1381), which points at a scale factor — chimol
+scales coordinates by `_scale_factor` (default 10) — rather than at the framing
+rule. Recorded here because it was found while working on something else and is
+not that change's to fix; the assertions encode PyMOL's
+`d = R / tan(fov/2)` and are worth keeping.
+
+---
+
 ## chimol: a sphere impostor occludes as a flat disc (RF-522)
 
 **2026-07-27.** The impostor is exact in silhouette and in shading, but every

@@ -697,9 +697,110 @@ the authority where one exists and the boolean flag is only the whole-object
 fallback — `show spheres, resn NAG` sets `_ball_mask` and leaves `_show_atoms`
 alone, so reading the flag alone sees nothing.
 
-The tracer still draws **spheres only** and cannot render a cartoon. Rather than
-silently omitting the molecule it now says so and points at `show spheres`.
-Cartoon ray-tracing needs ribbon primitives in the tracer and is not started.
+## The refusal outlived the limitation
+
+"The tracer draws spheres only and cannot render a cartoon" was true when it was
+written and stopped being true when `render_scene` learned triangle meshes — the
+cartoon *is* a triangle mesh, and so are sticks, surface and metaballs. What kept
+it true in practice was the **guard**: `ray` decided what to do from the count of
+visible *spheres*, which a cartoon-only display (PyMOL's default, and chimol's)
+leaves at zero, so it returned early with the message and never reached the scene
+path sitting fifty lines below that could have drawn it. A capability nobody
+could invoke, behind an error message asserting it did not exist.
+
+The lesson generalises: **a stated limitation is a claim with a shelf life.** It
+was re-read as documentation by everyone who came after, including the guide and
+this tracker, and the one test covering it asserted the *refusal* — so the suite
+defended the bug. When a limitation is lifted somewhere else in the tree, the
+sentence stating it is a call site that needs updating.
+
+`ray` now asks the scene what it holds. Also from that work:
+
+* **`line` geometry is traced**, as PyMOL does it: a segment becomes a *sausage*
+  (`ray->sausage3fv`, `layer1/CGO.cpp` `CGO_LINE`), split at the midpoint into
+  two capped cylinders so each half keeps its own atom's colour
+  (`CGO_SPLITLINE`). The tracer has no cylinder primitive, so the shaft is
+  tessellated and the caps stay spheres — which it intersects exactly. Width
+  follows PyMOL's `line_radius`-else-`PixelRadius * line_width / 2`, so a line is
+  *n pixels* wide at any output resolution.
+* **`text` is the one kind that cannot be traced**, and is named in a message
+  rather than dropped.
+* **The fallback could contradict the viewport.** With the scene empty after
+  `hide everything`, `ray` fell through to `get_atom_sphere_data`, which still
+  offered 32 ligand atoms — and drew a molecule that was not on screen. A viewer
+  that produced a scene has already said everything it draws; the atom path is
+  now only for a viewer that has no scene at all.
+
+Still open: transparency (a `render_mode="transparent"` surface traces opaque),
+and the baked-occlusion interaction below.
+
+## A mesh that is really spheres should say so
+
+Routing `ray` through the scene made `as spheres` **380× slower** before anyone
+noticed the picture was the same: the viewport draws space-filling spheres as one
+merged mesh, so 1363 atoms of 148L arrived as 210 240 triangles — **113.9 s**,
+against **0.3 s** for the 1363 spheres the tracer intersects exactly and without
+facets. The ball mesh now carries the centres and radii it was built from in
+`Geometry.meta["spheres"]` and `render_scene` prefers them: 113.9 s → 0.3 s.
+
+The record is kept **at the builder**, not rebuilt in the tracer from
+`get_atom_sphere_data`, for the same reason the sphere fallback had to go: a
+second source for "which atoms are drawn" is a second answer.
+
+And the builder existed **twice** — the shared `_build_balls_mesh` and an inline
+copy of it in the scene builder, sixty lines of the same tessellation plus a
+duplicated nested guard with identical conditions. They had already diverged
+(only the inline one baked occlusion), and the `meta["spheres"]` record landed in
+the copy nobody was calling, which is how the duplication surfaced. **A duplicated
+builder does not merely drift: it cannot *receive* what the other learns** — the
+same shape as the RMF reader's private route into the viewer. 83 lines deleted;
+`_build_balls_mesh` takes the bake as an argument and is the one builder.
+
+## The depth cue was normalised against the wrong range
+
+Measured while checking that the traced cartoon looked right — it came out dark,
+and the cause was not the cartoon. The fog fraction was `best_t / far_clip`:
+distance from the **camera**, over a far plane fitted to nothing. On 148L the
+camera sits 1730 units out with a far plane at 2442, so the whole molecule
+occupied 0.58–0.83 of the range and every pixel of it was fogged 24–69 %. No
+pixel anywhere in the image was unfogged, which is a dimmer, not a depth cue.
+
+PyMOL normalises over its front-to-back **clipping** range —
+`ffact = (front - dist) * invFrontMinusBack` (`layer1/Ray.cpp`) — and those planes
+are fitted around the object, so its fog spans the molecule exactly. `trace` now
+takes `fog_front`/`fog_back`, and `render_scene` derives them from the scene's own
+bounding sphere. Measured on the 148L cartoon: mean lit pixel 21.9 → 33.3,
+p95 60 → 96, brightest 173 → 255.
+
+`camera.far_clip` had **no other consumer** — it was named as a clipping distance
+and only ever used as the fog denominator, which is how it survived: a wrong
+value for the fog looked like a right value for something else. Two call sites
+had grown a `× 1.2` widening of it, compensating for a fog they had not
+diagnosed; both are gone.
+
+## Three defects found by *using* the feature, not by testing it
+
+Each was invisible to the suite and obvious the moment a real command ran:
+
+* **`label` stored the text and showed nothing.** PyMOL's `ExecutiveLabel`
+  follows the text with `OMOP_VISI(cRepLabelBit, cVis_SHOW)`
+  (`layer3/Executive.cpp`) — labelling *turns the representation on*. ChiMOL's
+  did not, so `label name CA, resi` reported "Labelled 11 atoms" over an
+  unchanged view and the fix was a `show labels` the user had to guess. A
+  success message over a blank view is the worst shape a defect can take.
+* **`ray` raised before casting a ray, whenever there was a window.** It set its
+  progress display up with six `QProgressDialog` calls; `ChiSurfProgress` is a
+  facade that carries most of that surface deliberately, so five worked and
+  `setMinimumSize` raised. The headless path skips the display entirely — so the
+  tests, which are headless, exercised the one path that worked. The caller now
+  uses the facade's own spelling, and the facade grew the two members it was
+  missing (`setMinimumSize`, `deleteLater`), because an incomplete compatibility
+  shim is worse than none: it invites exactly this call site.
+* **Seven scoped-representation masks were unclassified for `sort`.**
+  `test_sort_mask::test_every_array_field_is_classified` — the guardrail written
+  for precisely this — had been red since the masks landed. Six are atom-indexed;
+  `trace_mask` is per *residue*, like `cartoon_mask`, because the trace is one
+  point per CA.
 
 # Capturing the GUI headlessly
 

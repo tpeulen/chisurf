@@ -21,10 +21,12 @@ separate program.
 
 :::{admonition} Not a PyMOL replacement yet
 :class: warning
-The command surface is a substantial subset, not the whole of PyMOL. Notably the
-ray tracer draws **spheres only**: it cannot yet trace a cartoon, and says so
-rather than producing a misleading picture. The current coverage and the known
-gaps are tracked in the OKF bundle under `okf/plugins/pymol-parity.md`.
+The command surface is a substantial subset, not the whole of PyMOL. The ray
+tracer draws every representation the viewport does — cartoon, sticks, spheres,
+surface, wireframe — but not **labels**, which are rasterised glyphs; it names
+what it left out rather than letting you hunt for it in the picture. The current
+coverage and the known gaps are tracked in the OKF bundle under
+`okf/plugins/pymol-parity.md`.
 :::
 
 ## Loading and looking
@@ -1014,11 +1016,18 @@ deletion.
 
 ```text
 png figure.png, 1200, 900    # the viewport as displayed
-ray render.png, 1200, 900    # ray-traced: spheres only, for now
+ray render.png, 1200, 900    # ray-traced, with real shadows
 ```
 
-If the ray tracer is asked to render a cartoon it says so and suggests
-`show spheres`, rather than emitting a picture that quietly omits the molecule.
+`ray` traces **the scene you are looking at**: cartoon, sticks, spheres, surface
+and wireframe all reach the image, and a wireframe becomes round-capped
+cylinders one `line_width` of pixels thick, as it does in PyMOL. Two things it
+does not draw, and reports rather than dropping in silence:
+
+* **labels** — a label is rasterised glyphs and the tracer has no glyph. Use
+  `png` when the labels are the point of the figure;
+* nothing at all, when nothing is shown — `ray` says so instead of falling back
+  to the atoms and drawing a molecule the viewport was not showing.
 
 ## Headless and scripted use
 
@@ -1088,7 +1097,7 @@ OpenGL viewport does need a display, so `png` will not work headlessly while
 | Camera, `get_view`/`set_view` | Matches PyMOL's 18-float tuple exactly |
 | Object menus (A/S/H/L/C) | 1:1 with PyMOL's |
 | `get_area` | Follows `dot_solvent` / `dot_density` / `solvent_radius` |
-| Ray tracing | Spheres only; no cartoon |
+| Ray tracing | Every representation the viewport draws, except labels |
 | Undo | Coordinates only, per object, 16 deep (PyMOL's scope) |
 | Settings | 47 registered of PyMOL's 769 |
 

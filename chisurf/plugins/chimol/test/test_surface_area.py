@@ -440,14 +440,25 @@ def test_the_default_view_traces_its_hetero_balls(session):
     assert 0 < shown < len(view._atoms)
 
 
-def test_ray_says_it_cannot_trace_a_cartoon(session, tmp_path):
-    """Better than emitting a picture that quietly omits the molecule."""
-    cmd, _, _, errors = session
+def test_ray_traces_a_cartoon_rather_than_refusing(session, tmp_path):
+    """This used to assert the refusal, and the refusal was the bug.
+
+    Saying "cannot yet trace the cartoon" was better than emitting a picture that
+    quietly omitted the molecule -- but the tracer had had triangle meshes for a
+    while by then, and the cartoon *is* a triangle mesh. The message survived
+    because `ray` decided from the sphere count, which a cartoon leaves at zero.
+    Ported rather than deleted, so the case stays covered.
+    """
+    cmd, _, messages, errors = session
     cmd.do("hide everything")
     cmd.do("show cartoon")
     errors.clear()
-    cmd.do(f"ray {tmp_path / 'x.png'}, 80, 60")
-    assert errors and "cannot yet trace the cartoon" in errors[-1]
+    messages.clear()
+    out = tmp_path / "x.png"
+    cmd.do(f"ray {out}, 80, 60")
+    assert errors == [], errors
+    assert out.exists(), "the cartoon was not traced"
+    assert "mesh" in " ".join(messages)
 
 
 def test_ray_with_nothing_shown_says_that_instead(session, tmp_path):

@@ -168,6 +168,16 @@ ATOM_INDEXED_FIELDS = (
     "colors_per_atom_override",
     "ball_mask",
     "sticks_mask",
+    # The rest of the scoped representations: `show <rep>, sele` stores which
+    # *atoms* the representation is drawn for, so a reorder permutes them like
+    # any other atom-indexed mask. They arrived with scoped representations and
+    # were not classified, which is what the guardrail below is for.
+    "lines_mask",
+    "nonbonded_mask",
+    "label_mask",
+    "dots_mask",
+    "surface_mask",
+    "metaball_mask",
     "protected_mask",
     "masked_mask",
     "hidden_mask",
@@ -182,6 +192,7 @@ NON_ATOM_INDEXED_FIELDS = (
     "colors_per_residue_override",
     "colors_per_ca",
     "cartoon_mask",               # per residue
+    "trace_mask",                 # per residue: the trace is one point per CA
     "residue_ids",
     "residue_names",
     "residue_chain_ids",

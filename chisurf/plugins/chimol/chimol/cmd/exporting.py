@@ -261,69 +261,118 @@ class ExportMixin(BaseCmd):
                     self._emit_error(f"ray: failed to save image: {exc}")
                     return
 
-        try:
-            sphere_data = getattr(viewer, "get_atom_sphere_data", None)
-            view_state_func = getattr(viewer, "get_ray_view_state", None)
-        except Exception:
-            sphere_data = None
-            view_state_func = None
-
-        if sphere_data is None or view_state_func is None:
+        view_state_func = getattr(viewer, "get_ray_view_state", None)
+        if not callable(view_state_func):
             self._emit_message("ray: viewer does not support ray tracing")
-            return
-
-        try:
-            # What is *drawn*, not every atom: `ray` used to trace the whole
-            # molecule in every state, so `hide everything` and
-            # `show spheres, resn NAG` gave the identical picture.
-            positions, colors_rgb, radii = sphere_data(visible_only=True)
-            view = view_state_func()
-        except TypeError:
-            positions, colors_rgb, radii = sphere_data()
-            view = view_state_func()
-        except Exception as exc:
-            self._emit_error(f"ray: failed to extract scene data: {exc}")
-            return
-
-        if positions.shape[0] == 0:
-            # Distinguish "nothing is shown" from "what is shown cannot be
-            # traced", because only the second is a limitation of the tracer and
-            # the user can act on either.
-            if bool(getattr(viewer, "_show_cartoon", False)):
-                self._emit_error(
-                    "ray: the ray tracer draws spheres, and cannot yet trace the "
-                    "cartoon. Use 'show spheres' (or 'show sticks') for a "
-                    "ray-traced image, or 'png' for the cartoon as displayed."
-                )
-            else:
-                self._emit_message("ray: nothing is shown; nothing to trace")
             return
 
         from ..config import _DISPLAY_CONFIG
         from ..renderer.raytracer import (
+            TRACEABLE_KINDS,
             Sphere,
             _camera_from_view_state,
             render_scene,
             trace,
+            traceable_geometry_counts,
         )
 
+        try:
+            view = view_state_func()
+        except Exception as exc:
+            self._emit_error(f"ray: failed to read the camera: {exc}")
+            return
         camera = _camera_from_view_state(view)
 
-        spheres = []
-        for i in range(positions.shape[0]):
-            spheres.append(Sphere(
-                center=positions[i],
-                radius=float(radii[i]) if i < len(radii) else 1.0,
-                color=np.clip(colors_rgb[i], 0.0, 1.0),
-            ))
+        # The scene is what the viewport draws -- cartoon, sticks, surface,
+        # spheres, wireframe -- and the tracer takes all of it. This decision
+        # used to be made from the *sphere* count instead, so a cartoon-only
+        # display (the default) counted zero and `ray` refused with a message
+        # about a limitation the tracer no longer had. Ask the scene.
+        scene = None
+        scene_func = getattr(viewer, "get_current_scene", None)
+        if callable(scene_func):
+            try:
+                scene = scene_func()
+            except Exception:
+                scene = None
+        counts = traceable_geometry_counts(scene)
+        dropped = {k: v for k, v in counts.items() if k not in TRACEABLE_KINDS}
+        use_scene_path = any(k in TRACEABLE_KINDS for k in counts)
 
-        try:
-            dist = np.linalg.norm(positions - camera.origin, axis=1)
-            safe_far = float(np.nanmax(dist + radii)) * 1.2
-            if np.isfinite(safe_far) and safe_far > camera.far_clip:
-                camera.far_clip = safe_far
-        except Exception:
-            pass
+        # Where the depth cue starts and ends. `render_scene` derives these from
+        # the scene's own bounds; the sphere fallback below has to say it here.
+        fog_front: float | None = None
+        fog_back: float | None = None
+
+        spheres: list = []
+        if not use_scene_path:
+            if scene is not None:
+                # A viewer that produced a scene has told us everything it draws.
+                # Falling through to the atoms here gave a second opinion that
+                # disagreed: after `hide everything` the scene was empty and the
+                # viewport blank, while `get_atom_sphere_data(visible_only=True)`
+                # still offered the 32 ligand atoms -- and `ray` drew them.
+                if dropped:
+                    kinds = ", ".join(sorted(dropped))
+                    self._emit_error(
+                        f"ray: the only thing shown is {kinds} geometry, which the "
+                        "ray tracer does not draw. Use 'png' to capture it as "
+                        "displayed."
+                    )
+                else:
+                    self._emit_message("ray: nothing is shown; nothing to trace")
+                return
+
+            sphere_data = getattr(viewer, "get_atom_sphere_data", None)
+            if not callable(sphere_data):
+                self._emit_message("ray: viewer does not support ray tracing")
+                return
+            try:
+                # What is *drawn*, not every atom: `ray` used to trace the whole
+                # molecule in every state, so `hide everything` and
+                # `show spheres, resn NAG` gave the identical picture.
+                positions, colors_rgb, radii = sphere_data(visible_only=True)
+            except TypeError:
+                positions, colors_rgb, radii = sphere_data()
+            except Exception as exc:
+                self._emit_error(f"ray: failed to extract scene data: {exc}")
+                return
+
+            if positions.shape[0] == 0:
+                # Distinguish "nothing is shown" from "what is shown cannot be
+                # traced": only the second is a limitation of the tracer, and the
+                # user can act on either.
+                if dropped:
+                    kinds = ", ".join(sorted(dropped))
+                    self._emit_error(
+                        f"ray: the only thing shown is {kinds} geometry, which the "
+                        "ray tracer does not draw. Use 'png' to capture it as "
+                        "displayed."
+                    )
+                else:
+                    self._emit_message("ray: nothing is shown; nothing to trace")
+                return
+
+            for i in range(positions.shape[0]):
+                spheres.append(Sphere(
+                    center=positions[i],
+                    radius=float(radii[i]) if i < len(radii) else 1.0,
+                    color=np.clip(colors_rgb[i], 0.0, 1.0),
+                ))
+
+            try:
+                along = (positions - camera.origin) @ camera.forward
+                fog_front = float(np.nanmin(along - radii))
+                fog_back = float(np.nanmax(along + radii))
+            except Exception:
+                fog_front = fog_back = None
+
+        # A gap that is shown beats a gap that is hidden: labels are rasterised
+        # glyphs and the tracer has no glyph, so say they are missing from the
+        # image rather than let the user hunt for them in it.
+        if dropped:
+            kinds = ", ".join(f"{n} {k}" for k, n in sorted(dropped.items()))
+            self._emit_message(f"ray: not traced and absent from the image: {kinds}")
 
         ray_cfg = _DISPLAY_CONFIG.get("ray", {})
         light_cfg = _DISPLAY_CONFIG.get("lighting", {})
@@ -364,23 +413,20 @@ class ExportMixin(BaseCmd):
         bg_color = _DISPLAY_CONFIG.get("background", "k")
         bg_rgb = self._parse_background(bg_color)
 
-        scene_func = getattr(viewer, "get_current_scene", None)
-        use_scene_path = False
-        scene = None
-        if callable(scene_func):
-            try:
-                scene = scene_func()
-            except Exception:
-                scene = None
-            if scene is not None and getattr(scene, "objects", None):
-                use_scene_path = True
+        # PyMOL's own two settings for how thick a traced line comes out; see
+        # `line_radius_for_camera`.
+        line_width = float(_DISPLAY_CONFIG.get("line_width", 1.0))
+        line_radius = float(ray_cfg.get("line_radius", 0.0))
 
         progress = np.zeros(1, dtype=np.int64)
         cancel = np.zeros(1, dtype=np.int64)
         total_rows = height * max(1, ssaa_val)
 
         if use_scene_path:
-            self._emit_message(f"ray: rendering current scene at {width}x{height} ...")
+            shown = ", ".join(f"{n} {k}" for k, n in sorted(counts.items()) if k in TRACEABLE_KINDS)
+            self._emit_message(
+                f"ray: rendering the current scene ({shown}) at {width}x{height} ..."
+            )
 
             def _render_scene() -> np.ndarray:
                 return render_scene(
@@ -411,6 +457,8 @@ class ExportMixin(BaseCmd):
                     color_blend_red=color_blend_red,
                     color_blend_green=color_blend_green,
                     color_blend_blue=color_blend_blue,
+                    line_width=line_width,
+                    line_radius=line_radius,
                     progress=progress,
                     cancel=cancel,
                 )
@@ -444,6 +492,8 @@ class ExportMixin(BaseCmd):
                     depth_cue=depth_cue,
                     fog_start=fog_start,
                     fog_intensity=fog_intensity,
+                    fog_front=fog_front,
+                    fog_back=fog_back,
                     color_blend=color_blend,
                     color_blend_red=color_blend_red,
                     color_blend_green=color_blend_green,
@@ -478,13 +528,20 @@ class ExportMixin(BaseCmd):
         viewer: object,
         window: object | None,
     ) -> None:
-        """Run *render_func* in a background thread and show a progress dialog.
+        """Run *render_func* in a background thread and report progress.
 
-        The dialog is modal to the Chimol window so the scene cannot be
-        modified while rendering, but the application event loop stays alive.
-        It displays a progress bar, an ETA, and a Cancel button.  When no real
-        GUI window is available (e.g. tests), rendering falls back to the
+        The progress display goes wherever :class:`ChiSurfProgress` puts it (a
+        host panel's bar, or a standalone dialog) while the application event
+        loop stays alive. It shows a bar, an ETA and a Cancel button. When no
+        real GUI window is available (e.g. tests), rendering falls back to the
         synchronous path.
+
+        ``ChiSurfProgress`` is a *facade*, not a ``QProgressDialog``: it speaks
+        ``set_value``/``set_text``/``was_canceled`` and takes its title and its
+        cancel callback in the constructor. This code called the Qt spelling of
+        all of that, so `ray` raised ``'ChiSurfProgress' object has no attribute
+        'setMinimumSize'`` before a single ray was cast -- every time it ran with
+        a window, which is every time a user runs it.
         """
         parent = window if isinstance(window, QtWidgets.QWidget) else None
         if parent is None:
@@ -497,14 +554,16 @@ class ExportMixin(BaseCmd):
             self._finish_ray(image, out_path, width, height, viewer, window)
             return
 
-        dialog = ChiSurfProgress(parent, "Ray tracing...", total_rows)
-        dialog.setWindowTitle("Rendering")
-        dialog.setWindowModality(QtCore.Qt.WindowModal)
-        dialog.setMinimumDuration(0)
-        dialog.setValue(0)
-        dialog.setAutoClose(False)
-        dialog.setAutoReset(False)
-        dialog.setMinimumSize(360, 100)
+        def _cancel_render() -> None:
+            self._on_ray_cancel(cancel, dialog)
+
+        dialog = ChiSurfProgress(
+            parent,
+            "Ray tracing...",
+            total_rows,
+            title="Rendering",
+            cancel=_cancel_render,
+        )
 
         start_time = time.time()
         timer = QtCore.QTimer(parent)
@@ -524,12 +583,11 @@ class ExportMixin(BaseCmd):
         thread.error.connect(
             lambda msg: self._on_ray_error(msg, dialog, timer, thread)
         )
-        dialog.canceled.connect(lambda: self._on_ray_cancel(cancel, dialog))
         thread.start()
 
     def _update_ray_progress(
         self,
-        dialog: QtWidgets.QProgressDialog,
+        dialog: ChiSurfProgress,
         progress: np.ndarray,
         cancel: np.ndarray,
         total_rows: int,
@@ -550,10 +608,9 @@ class ExportMixin(BaseCmd):
         elapsed = time.time() - start_time
         if cancel[0] != 0:
             text = "Cancelling..."
-            fraction = min(0.99, dialog.value() / total_rows) if total_rows else 0
         elif current > 0:
             current = min(current, total_rows)
-            dialog.setValue(current)
+            dialog.set_value(current)
             fraction = current / total_rows if total_rows > 0 else 0.0
             if fraction > 0.02:
                 eta = elapsed / fraction - elapsed
@@ -568,18 +625,18 @@ class ExportMixin(BaseCmd):
             # modest machine; clamp to 99% so we never claim completion.
             est_total = max(1, total_rows) / 150_000.0
             fraction = min(0.99, elapsed / est_total) if est_total > 0 else 0
-            dialog.setValue(int(fraction * total_rows))
+            dialog.set_value(int(fraction * total_rows))
             text = f"Ray tracing...  (elapsed: {int(elapsed)}s)"
-        dialog.setLabelText(text)
+        dialog.set_text(text)
 
     def _on_ray_cancel(
         self,
         cancel: np.ndarray,
-        dialog: QtWidgets.QProgressDialog,
+        dialog: ChiSurfProgress,
     ) -> None:
         """Signal the background thread to stop rendering."""
         cancel[0] = 1
-        dialog.setLabelText("Cancelling...")
+        dialog.set_text("Cancelling...")
 
     def _finish_ray(
         self,
@@ -632,10 +689,16 @@ class ExportMixin(BaseCmd):
         height: int,
         viewer: object,
         window: object | None,
-        dialog: QtWidgets.QProgressDialog,
+        dialog: ChiSurfProgress,
         timer: QtCore.QTimer,
         thread: RayRenderThread,
     ) -> None:
+        """Take the progress display down and save what the thread rendered.
+
+        ``dialog`` is a :class:`ChiSurfProgress`, which owns and releases its own
+        backend in ``close()`` -- it is not a ``QObject``, so it has no
+        ``deleteLater`` to call here.
+        """
         timer.stop()
         dialog.close()
         if cancel[0] != 0:
@@ -643,21 +706,20 @@ class ExportMixin(BaseCmd):
         else:
             self._finish_ray(image, out_path, width, height, viewer, window)
         thread.deleteLater()
-        dialog.deleteLater()
         timer.deleteLater()
 
     def _on_ray_error(
         self,
         msg: str,
-        dialog: QtWidgets.QProgressDialog,
+        dialog: ChiSurfProgress,
         timer: QtCore.QTimer,
         thread: RayRenderThread,
     ) -> None:
+        """Report a render that raised, and take the progress display down."""
         timer.stop()
         dialog.close()
         self._emit_error(f"ray: {msg}")
         thread.deleteLater()
-        dialog.deleteLater()
         timer.deleteLater()
 
     def _parse_background(self, spec) -> tuple:

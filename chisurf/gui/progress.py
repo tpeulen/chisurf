@@ -468,6 +468,26 @@ class ChiSurfProgress:
     def setMinimumDuration(self, *args) -> None:  # noqa: N802, D102
         """Accept (and ignore) the ``QProgressDialog`` call; shown immediately."""
 
+    def setMinimumSize(self, *args) -> None:  # noqa: N802
+        """Accept (and ignore) the ``QProgressDialog`` call.
+
+        A size is meaningless for the inline and status-bar displays, and the
+        standalone dialog sizes itself. Present because the point of these
+        spellings is that a migrated call site needs no edits, and a *gap* in
+        that promise is worse than no promise: chimol's `ray` set up its dialog
+        with six Qt calls, five of which were carried here, and died on this one
+        before casting a single ray.
+        """
+
+    def deleteLater(self) -> None:  # noqa: N802
+        """Release the display, the ``QObject`` spelling.
+
+        This is not a ``QObject``; it owns a backend that :meth:`close` releases,
+        and closing twice is a no-op, so a Qt call site that closes and then
+        deletes behaves as it expects.
+        """
+        self.close()
+
     def setWindowTitle(self, title: str) -> None:  # noqa: N802
         """Retitle the standalone dialog; ignored by inline/status displays."""
         self._call("setWindowTitle", str(title))

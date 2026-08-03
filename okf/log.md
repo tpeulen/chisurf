@@ -2,6 +2,88 @@
 
 ## 2026-08-03
 
+* **ChiMOL `ray` traces the scene, and the refusal it used to give was the bug.**
+  ([parity tracker](plugins/pymol-parity.md), [viewer guide](../docs/guides/44_molecular_viewer.md))
+  `render_scene` has handled triangle meshes for a while, and a cartoon *is* a
+  triangle mesh — but `ray` decided what to do from the count of visible
+  **spheres**, which a cartoon-only display (PyMOL's default and chimol's) leaves
+  at zero. So it returned early with "the ray tracer draws spheres, and cannot
+  yet trace the cartoon", fifty lines above the scene path that could have drawn
+  it. The capability existed and nobody could reach it; the one test covering the
+  case asserted the *refusal*, so the suite defended it, and the guide and this
+  bundle repeated the sentence as documentation. **A stated limitation is a claim
+  with a shelf life** — when one is lifted elsewhere in the tree, every sentence
+  asserting it is a call site.
+  - **Lines are traced the way PyMOL traces them.** A segment becomes a *sausage*
+    (`ray->sausage3fv`, `layer1/CGO.cpp` `CGO_LINE`), split at its midpoint into
+    two capped cylinders so each half keeps its own atom's colour
+    (`CGO_SPLITLINE`). No cylinder primitive exists, so the shaft is tessellated
+    (eight sides) and the caps stay spheres, which the tracer intersects exactly.
+    Width follows `line_radius`-else-`PixelRadius * line_width / 2`, so a line is
+    *n pixels* wide at any resolution rather than hairline at 2000 px.
+  - **The depth cue was normalised against the wrong range, and that is why every
+    ray image was dark.** The fog fraction was `best_t / far_clip` — distance from
+    the *camera*, over a far plane fitted to nothing. On 148L the camera sits 1730
+    units out with a far plane at 2442, so the molecule occupied 0.58–0.83 of the
+    range and every pixel was fogged 24–69 %: a dimmer, not a depth cue. PyMOL
+    normalises over its object-fitted front-to-back clipping range
+    (`(front - dist) * invFrontMinusBack`, `layer1/Ray.cpp`); `trace` now takes
+    `fog_front`/`fog_back` and `render_scene` derives them from the scene's
+    bounding sphere. Cartoon, mean lit pixel **21.9 → 33.3**, p95 60 → 96,
+    brightest **173 → 255**. `camera.far_clip` turned out to have *no other
+    consumer* — named as a clipping distance, used only as the fog denominator,
+    which is how a wrong value survived by looking right for something else.
+  - **The sphere fallback could contradict the viewport.** After `hide
+    everything` the scene was empty and the viewport blank, while
+    `get_atom_sphere_data(visible_only=True)` still offered the 32 ligand atoms —
+    and `ray` drew them. A viewer that produced a scene has already said
+    everything it draws; the atom path is now only for a viewer with no scene.
+  - **`text` is the one kind that cannot be traced**, and is named in a message
+    rather than dropped: "not traced and absent from the image: 11 text".
+  - **Routing through the scene made `as spheres` 380× slower, until the mesh
+    said what it was.** The viewport draws space-filling spheres as one merged
+    mesh — 1363 atoms of 148L become 210 240 triangles — and tracing those took
+    **113.9 s** against **0.3 s** for the same 1363 analytic spheres, which the
+    tracer intersects exactly and without facets. The ball mesh now carries the
+    centres and radii it was built from in `Geometry.meta["spheres"]`, and
+    `render_scene` draws those instead: **113.9 s → 0.3 s**, identical picture.
+    Recorded at the builder rather than rebuilt in the tracer from
+    `get_atom_sphere_data`, because a second source for "which atoms are drawn"
+    is a second answer — the same mistake as the fallback above.
+  - **That builder existed twice**, and the copies had already diverged (only the
+    inline one baked occlusion; it also carried a duplicated nested guard with
+    identical conditions). The record above went into the copy nobody called,
+    which is how it was found: **a duplicated builder does not merely drift, it
+    cannot receive what the other learns** — the same shape as the RMF reader's
+    private route. 83 inline lines deleted; `_build_balls_mesh` takes the bake as
+    an argument and is now the one builder.
+  - Three defects found by *using* the feature rather than testing it, all fixed
+    here: **`label` stored the text and showed nothing** (PyMOL's
+    `ExecutiveLabel` follows the text with `OMOP_VISI(cRepLabelBit, cVis_SHOW)`,
+    so labelling turns the representation on — chimol's reported "Labelled 11
+    atoms" over an unchanged view); **`ray` raised before casting a ray whenever
+    there was a window**, because it drove `ChiSurfProgress` with six
+    `QProgressDialog` calls and the facade was missing `setMinimumSize` — the
+    headless path skips the display entirely, so the tests exercised the one path
+    that worked, and the facade has grown the two members it lacked; and **seven
+    scoped-representation masks were unclassified for `sort`**, leaving
+    `test_sort_mask::test_every_array_field_is_classified` — the guardrail written
+    for exactly this — red since they landed (six atom-indexed, `trace_mask` per
+    *residue*, because the trace is one point per CA).
+  - Measured and deliberately **not** changed, in
+    [known issues](references/known-issues.md): a mesh reaches the tracer with AO
+    and a cast shadow already multiplied into its vertex colours and is then
+    shaded again (the bake costs 44 % of the colour; traced mean 33.3 against
+    54.5 unbaked). Dividing it back out is inexact because the shadow folds into
+    the occlusion channel with a different constant; the real fix changes the
+    `Geometry` colour contract and the GL backend with it. Also recorded: five
+    camera-framing tests that are red at `HEAD`, unrelated to this change.
+  - Tests: `test_ray_scene.py` (16, the tracer) and `test_ray_command.py` (9, the
+    command path, rendering at 120×100). `test_surface_area.py`'s
+    `test_ray_says_it_cannot_trace_a_cartoon` was **ported, not deleted**, and now
+    asserts that the cartoon is traced. Suite: 1813 passed before the fixes, with
+    the two pre-existing failure groups above.
+
 * **A dock area's authored `sizes` never actually applied.** Reported as "the
   fusion controls eat half the window", and true of *every* view that asks for a
   split: `setSizes` ran while the splitter was still ~100 px wide, so each share

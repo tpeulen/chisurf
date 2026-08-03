@@ -5298,13 +5298,22 @@ class MolView(QtWidgets.QWidget):
         lon = int(balls_cfg.get("sphere_lon", 16))
         return max(3, lat), max(3, lon)
 
-    @staticmethod
     def _build_balls_mesh(
+        self,
         pts: np.ndarray,
         colors_rgb: np.ndarray,
         radii: np.ndarray,
+        *,
+        occluders: str | None = None,
     ) -> SceneObject | None:
         """Merge per-atom spheres into a single ``atoms_mesh`` scene object.
+
+        This was written twice -- once here and once inline in the scene builder,
+        sixty lines of the same tessellation with its own duplicated guard. The
+        copies had already diverged (only one baked occlusion), and a duplicated
+        builder does not merely drift: it cannot *receive* what the other learns,
+        so the sphere-centre record added for the ray tracer reached the copy
+        nobody was calling. One builder now, with the bake as an argument.
 
         Parameters
         ----------
@@ -5314,6 +5323,11 @@ class MolView(QtWidgets.QWidget):
             Per-atom RGB colours of shape ``(N, 3)``.
         radii : numpy.ndarray
             Per-atom sphere radii of shape ``(N,)``.
+        occluders : str, optional
+            Bake ambient occlusion into the vertex colours against this occluder
+            set (:meth:`_shade_by_occlusion`); ``None`` leaves them unshaded.
+            Space-filling spheres shade against ``"atoms"``, because there the
+            atoms *are* the picture rather than hidden bulk.
 
         Returns
         -------
@@ -5358,8 +5372,32 @@ class MolView(QtWidgets.QWidget):
         vcols = np.broadcast_to(
             rgba[:, np.newaxis, :], (n_atoms, n_verts, 4)
         ).reshape(-1, 4)
+        occlusion = None
+        if occluders is not None:
+            vcols, occlusion = self._shade_by_occlusion(
+                verts, norms, vcols, occluders=occluders
+            )
         geom = Geometry(
-            kind="mesh", positions=verts, indices=faces, normals=norms, colors=vcols
+            kind="mesh",
+            positions=verts,
+            indices=faces,
+            normals=norms,
+            colors=vcols,
+            occlusion=occlusion,
+            # The spheres this mesh *is*, carried alongside it. A rasteriser needs
+            # the triangles; a ray tracer has an exact sphere primitive and is
+            # far better off with the centres -- 1363 atoms of 148L take 0.3 s as
+            # spheres against 114 s as their 210 240 triangles, for the same
+            # picture, and the tessellation's facets besides. Recorded here rather
+            # than rebuilt by the tracer from `get_atom_sphere_data`, because a
+            # second source for "which atoms are drawn" is a second answer.
+            meta={
+                "spheres": {
+                    "centers": np.asarray(pts, dtype=float),
+                    "radii": np.asarray(radii, dtype=float),
+                    "colors": rgba[:, :3],
+                }
+            },
         )
         return SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")
 
@@ -5772,89 +5810,20 @@ class MolView(QtWidgets.QWidget):
                             ):
                                 radii_for_mesh[sel_unbonded] *= nonbonded_scale
 
-                    # Render all balls for the current selection as a
-                    # single merged mesh. This is much faster than
-                    # creating one GLMeshItem per atom while still
-                    # providing proper shaded spheres, similar to pyball.
-                    _lat, _lon = self._balls_sphere_segments()
-                    sphere_mesh = _build_sphere_mesh(1.0, _lat, _lon)
-                    if sphere_mesh is not None and pts.shape[0] > 0:
-                        base_verts = sphere_mesh.get("vertices")
-                        base_norms = sphere_mesh.get("normals")
-                        base_faces = sphere_mesh.get("faces")
-                        if (
-                            base_verts is not None
-                            and base_faces is not None
-                            and base_norms is not None
-                            and base_verts.size
-                            and base_faces.size
-                            and base_norms.size
-                        ):
-                            if (
-                                base_verts is not None
-                                and base_faces is not None
-                                and base_norms is not None
-                                and base_verts.size
-                                and base_faces.size
-                                and base_norms.size
-                            ):
-                                n_atoms = pts.shape[0]
-                                n_verts = base_verts.shape[0]
-
-                                # Duplicate and translate sphere vertices for
-                                # each atom center: (N_atoms, N_verts, 3)
-                                verts = base_verts[np.newaxis, :, :] * (
-                                    radii_for_mesh[:, np.newaxis, np.newaxis]
-                                )
-                                verts += pts[:, np.newaxis, :]
-                                verts = verts.reshape(-1, 3)
-
-                                # Duplicate faces with index offsets
-                                faces = np.repeat(
-                                    base_faces[np.newaxis, :, :], n_atoms, axis=0
-                                )
-                                offsets = (
-                                    np.arange(n_atoms, dtype=base_faces.dtype)
-                                    * n_verts
-                                )
-                                faces += offsets[:, np.newaxis, np.newaxis]
-                                faces = faces.reshape(-1, 3)
-
-                                norms = np.repeat(
-                                    base_norms[np.newaxis, :, :], n_atoms, axis=0
-                                ).reshape(-1, 3)
-
-                                vcols = None
-                                try:
-                                    col_arr = np.asarray(colors, dtype=float)
-                                    if col_arr.shape[0] == n_atoms:
-                                        vcols = np.repeat(
-                                            col_arr[:, np.newaxis, :],
-                                            n_verts,
-                                            axis=1,
-                                        ).reshape(-1, 4)
-                                except Exception:
-                                    vcols = None
-
-                                # Space-filling spheres are shaded against the
-                                # atoms themselves: here the atoms are the
-                                # picture, not hidden bulk.
-                                ball_cols, ball_occ = self._shade_by_occlusion(
-                                    verts, norms, vcols, occluders="atoms"
-                                )
-                                geom = Geometry(
-                                    kind="mesh",
-                                    positions=verts,
-                                    indices=faces,
-                                    normals=norms,
-                                    colors=ball_cols,
-                                    occlusion=ball_occ,
-                                )
-                                scene_objects.append(
-                                    SceneObject(id="atoms_mesh", geometry=geom, render_mode="opaque")
-                                )
-
-                                used_all_atoms_for_balls = True
+                    # One merged mesh for every ball in the selection: far
+                    # cheaper than a mesh item per atom, and shaded like a real
+                    # sphere. Built by the shared helper -- this was a second,
+                    # inline copy of it.
+                    colors_rgb_balls = np.asarray(colors, dtype=float)[:, :3] \
+                        if colors is not None else None
+                    if colors_rgb_balls is None or colors_rgb_balls.shape[0] != pts.shape[0]:
+                        colors_rgb_balls = np.tile(self._base_color_single, (pts.shape[0], 1))
+                    ball_obj = self._build_balls_mesh(
+                        pts, colors_rgb_balls, radii_for_mesh, occluders="atoms",
+                    )
+                    if ball_obj is not None:
+                        scene_objects.append(ball_obj)
+                        used_all_atoms_for_balls = True
 
         if self._show_atoms and not used_all_atoms_for_balls:
             sphere_radius = max(self._radius * balls_size_scale * 0.5, balls_min_size * 0.1)
