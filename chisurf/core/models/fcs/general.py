@@ -221,6 +221,17 @@ class DiffusionSpecies(GaussDiffusion):
         """Number of diffusion components."""
         return getattr(self, "_n_species", 1)
 
+    def __len__(self) -> int:
+        """Number of diffusion components.
+
+        A parameter group counts its *parameters*, but ``append`` and ``pop``
+        here add and remove a component, and anything that treats this as a
+        list of components -- the agent's ``set_components``, for one -- reads
+        the length to decide how many to add. Counting parameters would make it
+        ask for two components and be told there are already ten.
+        """
+        return self.n_species
+
     def append(self) -> None:
         """Add a diffusion component."""
         self._rebuild_species(self.n_species + 1)

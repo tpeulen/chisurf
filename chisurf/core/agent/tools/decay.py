@@ -61,6 +61,7 @@ def component_groups(model: Any) -> dict[str, int]:
         ``{attribute name: number of components}``.
     """
     groups: dict[str, int] = {}
+    seen: dict[int, str] = {}
     for name in dir(model):
         if name.startswith("_"):
             continue
@@ -75,9 +76,21 @@ def component_groups(model: Any) -> dict[str, int]:
             and not isinstance(candidate, (str, bytes, list, tuple, dict))
         ):
             try:
-                groups[name] = int(len(candidate))
+                size = int(len(candidate))
             except Exception:
                 continue
+            # A parameter group is reachable both as its attribute and under
+            # its own ``name``, so one group would otherwise be reported twice
+            # and look like an ambiguous choice to :func:`_default_group`.
+            previous = seen.get(id(candidate))
+            if previous is not None:
+                if len(name) < len(previous):
+                    del groups[previous]
+                    seen[id(candidate)] = name
+                    groups[name] = size
+                continue
+            seen[id(candidate)] = name
+            groups[name] = size
     return groups
 
 
@@ -247,10 +260,12 @@ def _assess_one(fit: Any) -> dict[str, Any]:
                 "then run_fit again."
             )
         elif n_components and n_components < 4:
+            # Not "a single exponential": this advice now also reaches models
+            # whose components are diffusing species rather than decay terms.
             verdict["next_step"] = (
                 f"The model has {n_components} component(s). Call "
                 f"set_components with n={n_components + 1} and run_fit again — "
-                f"a single exponential rarely describes a real sample."
+                f"one component rarely describes a real sample."
             )
         else:
             verdict["next_step"] = (

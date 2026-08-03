@@ -51,12 +51,23 @@ def test_the_correlation_fit_runs_and_improves(correlation_fit):
     assert result["chi2r"] < result["chi2r_before"]
 
 
-def test_the_model_has_no_components_to_add(correlation_fit):
-    """set_components is decay machinery; it must fail clearly here."""
-    groups = decay_tools.component_groups(correlation_fit.fits[0].model)
-    assert groups == {}
-    with pytest.raises(ToolError, match="no components"):
-        decay_tools.set_components(correlation_fit, n=2, fit=0)
+def test_the_diffusion_species_are_the_model_s_components(correlation_fit):
+    """``set_components`` is not decay-only: it resizes the species mixture.
+
+    The general FCS model gained a multi-component diffusion mode (a saturated
+    focus needs two transit times), and that group appends and pops like any
+    other component list, so the tool works on it. It is reported once, under
+    its attribute name: a parameter group is reachable both as ``species`` and
+    under its own name ``species_diffusion``, and counting the same object
+    twice would read as an ambiguous choice.
+    """
+    model = correlation_fit.fits[0].model
+    assert decay_tools.component_groups(model) == {"species": 2}
+
+    decay_tools.set_components(correlation_fit, n=3, fit=0)
+
+    assert model.species.n_species == 3
+    assert decay_tools.component_groups(model) == {"species": 3}
 
 
 def test_set_irf_refuses_a_model_that_does_not_convolve(correlation_fit):
@@ -107,13 +118,18 @@ def test_the_report_does_not_claim_an_irf(correlation_fit):
     assert {"N", "D"} <= {p["name"] for p in report["parameters"]}
 
 
-def test_a_poor_correlation_fit_gets_generic_advice(correlation_fit):
-    """With no IRF and no components, the advice must not suggest either."""
+def test_a_poor_correlation_fit_is_never_told_to_attach_an_irf(correlation_fit):
+    """A correlation curve has no instrument response to attach.
+
+    Adding a component is fair advice here -- the species mixture takes one --
+    so only the IRF suggestion has to stay away, and the wording must not call
+    the components exponentials.
+    """
     fitting_tools.run_fit(correlation_fit, fit=0)
     verdict = decay_tools.assess_fit(correlation_fit.fits[0])
     if verdict["quality"] == "poor":
         assert "set_irf" not in verdict["next_step"]
-        assert "set_components" not in verdict["next_step"]
+        assert "exponential" not in verdict["next_step"]
 
 
 def test_a_correlation_fit_can_be_plotted(correlation_fit, tmp_path):
