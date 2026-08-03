@@ -304,6 +304,34 @@ class TestStatusBarDisplay:
         blocker.set()
         task.wait(timeout=5.0)
 
+    def test_a_multi_line_message_does_not_grow_the_status_bar(self, qtbot):
+        """A status bar is one line high, whatever the caller writes into it.
+
+        Callers write messages for a *dialog*. The fit controller wrapped the fit
+        name to three lines and appended an objective read-out, and a QLabel given
+        that verbatim grew the bar past the bottom of the window, clipping the
+        whole read-out -- which reads as a broken progress bar rather than a long
+        message. The host owns its own height.
+        """
+        from chisurf.gui.widgets.progress import StatusBarProgressHost
+
+        window = QtWidgets.QMainWindow()
+        qtbot.addWidget(window)
+        window.show()
+        host = StatusBarProgressHost(window)
+        task = host.begin_task("Fitting", 100)
+        one_line = host.sizeHint().height()
+
+        task.setLabelText(
+            "Fitting:\nsome extremely long fit name that was wrapped\n"
+            "over three separate lines\n42% | ETA: 8s | chi2r=1.66"
+        )
+        assert host.sizeHint().height() == one_line, "the message grew the bar"
+        assert "\n" not in host._label.text()
+        # Nothing is lost -- what does not fit is on the tooltip.
+        assert "chi2r=1.66" in host._label.toolTip()
+        task.finish()
+
     def test_the_bar_appears_while_running_and_goes_away_after(self, qtbot):
         window = QtWidgets.QMainWindow()
         qtbot.addWidget(window)

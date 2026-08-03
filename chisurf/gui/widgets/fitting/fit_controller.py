@@ -910,14 +910,13 @@ class FittingControllerWidget(Controller):
             fit_name = ""
         cs.logging.info(f"Please wait fitting: {fit_name}")
 
-        try:
-            wrapped_name = cs.gui.widgets.progress.wrap_text(fit_name, width=48, max_lines=3)
-        except Exception:
-            wrapped_name = fit_name
-        if "\n" in wrapped_name:
-            base_label = f"Fitting:\n{wrapped_name}"
-        else:
-            base_label = f"Fitting {wrapped_name}..." if wrapped_name else "Fitting..."
+        # One line. This label goes to whichever host is rendering progress, and
+        # for a fit started from the main window that is the status bar -- one
+        # line high. A name wrapped to three lines grew it past the bottom of the
+        # window and the whole read-out was clipped, which is indistinguishable
+        # from having no progress bar. The full name is on the handle's tooltip.
+        short_name = fit_name if len(fit_name) <= 44 else fit_name[:41] + "…"
+        base_label = "Fitting"
         t0 = time.perf_counter()
         before_snapshot = self._collect_parameter_snapshot()
         before_fit_range = self._collect_fit_range_snapshot()
@@ -1026,7 +1025,13 @@ class FittingControllerWidget(Controller):
                     except Exception:
                         pass
 
-                label_text = base_label + "\n" + "  |  ".join(parts)
+                # One line, with the *name* last. Elision eats the tail, and what
+                # is worth reading while a fit runs is how far along it is and
+                # what chi2 is doing -- not which fit, which the user just
+                # started. The full name stays on the tooltip.
+                if short_name:
+                    parts.append(short_name)
+                label_text = base_label + " — " + " · ".join(parts)
 
                 try:
                     dialog.update_progress(value, text=label_text)

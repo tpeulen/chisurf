@@ -2,6 +2,28 @@
 
 ## 2026-08-03
 
+* **The fitting progress bar was rendering, and still unreadable.** With the
+  callback finally reaching its sink, a screenshot of a real MFD fit showed why it
+  still read as broken: the label is written for a *dialog* — the fit name wrapped
+  to three lines by `wrap_text(width=48, max_lines=3)`, then a newline, then the
+  objective read-out — and for a fit started from the main window the host is the
+  **status bar**, one line high. A `QLabel` given that verbatim grew the bar past
+  the bottom of the window, so the whole read-out was clipped in half. A bar you
+  cannot read is a bar that does not work.
+  - `StatusBarProgressHost` now owns its own height: newlines become ` · `
+    separators, the text is elided to the width available, and the full message
+    goes on the tooltip. That protects **every** caller, not just fitting — the
+    host should not have to trust callers to know how tall it is.
+  - The fit's line is now one line, ordered so elision eats the *name* rather than
+    the numbers: `Fitting — 26% · ETA: 8s · chi2r=1.66 · <name>`. While a fit runs,
+    how far along it is and what chi² is doing are what is worth reading; which
+    fit it is, the user just chose.
+  - Guardrail: `test_a_multi_line_message_does_not_grow_the_status_bar`.
+  - Verified by driving the real main window through an MFD fit headlessly and
+    reading the screenshot: one line, bar and cancel button visible, 148 updates
+    from 0% upward. It closes at 99% rather than 100% on this path; the core
+    reaches 1.0 (pinned by tests), so that last percent is cosmetic.
+
 * **The fitting progress bar now moves, because the callback is now reached.** The
   fix that scaled the bar sensibly changed only the *number*; the bar itself had
   never worked. Two independent breaks, each silent:

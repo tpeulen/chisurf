@@ -556,7 +556,21 @@ class StatusBarProgressHost(QtWidgets.QWidget):
         layout.setSpacing(6)
 
         self._label = QtWidgets.QLabel(self)
-        layout.addWidget(self._label)
+        # A status bar is one line high. Callers write messages for a *dialog* --
+        # a wrapped three-line fit name plus an objective read-out -- and given
+        # verbatim to a QLabel that grows the bar past the bottom of the window,
+        # where it reads as a broken bar rather than a long message. Flatten and
+        # elide here: the host owns its own height, not its callers.
+        self._label.setTextFormat(QtCore.Qt.PlainText)
+        self._label.setWordWrap(False)
+        # Wide enough for the part that is worth reading -- a percentage, an ETA
+        # and an objective -- before anything is elided.
+        self._label.setMinimumWidth(240)
+        self._label.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Preferred
+        )
+        self._full_text = ""
+        layout.addWidget(self._label, 1)
 
         self._bar = QtWidgets.QProgressBar(self)
         self._bar.setMaximumWidth(140)
@@ -582,9 +596,32 @@ class StatusBarProgressHost(QtWidgets.QWidget):
 
     # -- driven by the task ---------------------------------------------------
 
+    def _show_text(self, text: str) -> None:
+        """Put *text* on the one line there is, keeping the whole of it reachable.
+
+        Newlines become separators rather than rows, and what does not fit is
+        elided with the full message on the tooltip -- so a long fit name costs
+        a hover, not a clipped status bar.
+        """
+        self._full_text = " · ".join(
+            part.strip() for part in str(text).splitlines() if part.strip()
+        )
+        self._label.setToolTip(self._full_text)
+        metrics = self._label.fontMetrics()
+        available = max(self._label.minimumWidth(), self._label.width())
+        self._label.setText(
+            metrics.elidedText(self._full_text, QtCore.Qt.ElideRight, available)
+        )
+
+    def resizeEvent(self, event):  # noqa: N802 (Qt-style)
+        """Re-elide when the window changes width."""
+        super().resizeEvent(event)
+        if self._full_text:
+            self._show_text(self._full_text)
+
     def _begin(self, task, message: str, maximum: int, cancellable: bool) -> None:
         self._task = task
-        self._label.setText(message)
+        self._show_text(message)
         self._bar.setRange(0, int(maximum))
         self._bar.setValue(0)
         self._cancel_button.setVisible(bool(cancellable))
@@ -592,7 +629,7 @@ class StatusBarProgressHost(QtWidgets.QWidget):
 
     def _set_text(self, task, text: str) -> None:
         if task is self._task:
-            self._label.setText(text)
+            self._show_text(text)
 
     def _set_range(self, task, minimum: int, maximum: int) -> None:
         if task is self._task:
