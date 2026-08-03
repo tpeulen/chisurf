@@ -74,7 +74,11 @@ def test_manifest_cli_is_registered(plugin_dir, entry, registered_commands):
     """Each manifest-declared CLI is reachable as a ``csc`` subcommand."""
     from chisurf.core.cli import _parse_cli_entrypoint
 
-    default_alias = pathlib.Path(plugin_dir).name.replace("_", "-")
+    # Mirror chisurf.core.cli._register_plugin_clis, which prefers the manifest
+    # ``id`` and falls back to the directory name. Deriving from the directory
+    # alone flagged the four plugins whose id differs from their folder.
+    manifest = json.loads((PLUGIN_ROOT / plugin_dir / "manifest.json").read_text(encoding="utf-8"))
+    default_alias = str(manifest.get("id") or pathlib.Path(plugin_dir).name).replace("_", "-")
     command_name, module_path, _ = _parse_cli_entrypoint(entry, default_alias)
     assert command_name in registered_commands, (
         f"{plugin_dir} declares CLI {entry!r} but 'csc {command_name}' does not exist"
