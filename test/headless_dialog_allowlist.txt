@@ -1,88 +1,14 @@
-# Files raising a blocking QMessageBox from inside an `except` handler.
+# Files allowed to raise a raw QMessageBox instead of going through
+# chisurf.gui.dialogs.ChiSurfMessageBox.
 #
-# Each one is a headless hang waiting to happen: the dialog spins an event loop
-# nobody can dismiss under QT_QPA_PLATFORM=offscreen, so the error never gets
-# reported and the run never ends. Convert to chisurf.gui.dialogs.report_error /
-# report_warning / report_information (log always, show only to a real user) and
-# strike the path from this list. Adding a NEW path is a test failure.
-# Goal: empty.
-chisurf/gui/plots/fitinfo.py
-chisurf/gui/widgets/equation_editor.py
-chisurf/gui/widgets/experiments/pda/controller.py
-chisurf/gui/widgets/experiments/tcspc/tcspc_reader_control_widget.py
-chisurf/gui/widgets/fitting/fit_subwindow.py
-chisurf/gui/widgets/fitting/parameter_widgets.py
-chisurf/gui/widgets/models/parameter_transform/widget.py
-chisurf/gui/widgets/models/tcspc/anisotropy.py
-chisurf/gui/widgets/models/tcspc/forster_helpers.py
-chisurf/gui/widgets/models/tcspc/kappa2_helpers.py
-chisurf/gui/widgets/ribbon/ribbon_utils.py
-chisurf/gui/widgets/sample_picker.py
-chisurf/gui/widgets/settings_editor.py
-chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition.py
-chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_json_dialog.py
-chisurf/gui/widgets/wizard/tttr_channeldefinition/tttr_channel_definition_tttr_io.py
-chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter.py
-chisurf/gui/widgets/wizard/tttr_photonfilter/tttr_photon_filter_file_drop.py
-chisurf/plugins/burst/burst_background/gui/sections.py
-chisurf/plugins/burst/burst_fcs_correlator/gui/tool.py
-chisurf/plugins/burst/burst_fcs_correlator/wizard.py
-chisurf/plugins/burst/burst_irf_bg/gui/sections.py
-chisurf/plugins/burst/burst_mle_analysis/wizard.py
-chisurf/plugins/burst/burst_selection/gui/legacy/burst_selector.py
-chisurf/plugins/calculator/kappa2_dist/gui/tool.py
-chisurf/plugins/chimol/chimol/app/config_editor.py
-chisurf/plugins/chimol/chimol/app/molview_main_window.py
-chisurf/plugins/chimol/chimol/app/rmf_panel.py
-chisurf/plugins/core/acq/gui/tool.py
-chisurf/plugins/core/acq/tcspc_devices/bh_spc/card_setup_dialog.py
-chisurf/plugins/core/batch_analysis/gui/view_model.py
-chisurf/plugins/core/code_editor/editor.py
-chisurf/plugins/core/lightpath_simulator/gui/easy_mode.py
-chisurf/plugins/core/lightpath_simulator/gui/tool.py
-chisurf/plugins/core/mmfdb_admin/__init__.py
-chisurf/plugins/core/mmfdb_admin/gui/metadata_dock.py
-chisurf/plugins/core/mmfdb_admin/gui/tool.py
-chisurf/plugins/core/model_manager/gui/tool.py
-chisurf/plugins/core/plugin_manager/gui/tool.py
-chisurf/plugins/core/project_browser/gui/tool.py
-chisurf/plugins/core/updater/__init__.py
-chisurf/plugins/core/user_editor/gui/tool.py
-chisurf/plugins/fcs/fcs_correlator/correlator_panel.py
-chisurf/plugins/fcs/fcs_filter_calculator/gui_parts/computation.py
-chisurf/plugins/fcs/fcs_lfcs_sim/gui/tool.py
-chisurf/plugins/fcs/flc_2d/gui/tool.py
-chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
-chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui_actions.py
-chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui_data.py
-chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui_priors.py
-chisurf/plugins/fluorescence_decay/maxent_decay/gui/gui_run.py
-chisurf/plugins/fluorescence_decay/tr_anisotropy/gui/irf_widget.py
-chisurf/plugins/fret_line/gui/tool.py
-chisurf/plugins/microscopy/psf_determination/gui/sections.py
-chisurf/plugins/modelling/fps_json_editor/gui/distance_panel.py
-chisurf/plugins/modelling/fret/gui/dock_tool.py
-chisurf/plugins/modelling/fret/gui/pair_selection_wizard.py
-chisurf/plugins/modelling/hydropro/gui/tool.py
-chisurf/plugins/pch/gui/tool.py
-chisurf/plugins/spectra_downloader/browser.py
-chisurf/plugins/traj/fret_trajectory/sections.py
-chisurf/plugins/traj/potential_energy/sections.py
-chisurf/plugins/traj/traj_align/sections.py
-chisurf/plugins/traj/traj_convert/sections.py
-chisurf/plugins/traj/traj_join/sections.py
-chisurf/plugins/traj/traj_remove_clashes/sections.py
-chisurf/plugins/traj/traj_rotate_translate/sections.py
-chisurf/plugins/traj/traj_save_topology/sections.py
-chisurf/plugins/tttr/audifier/gui/sections.py
-chisurf/plugins/tttr/microtime_histogram/wizard.py
-chisurf/plugins/tttr/ptu_alex_creator/gui/sections.py
-chisurf/plugins/tttr/trace_browser/__init__.py
-chisurf/plugins/tttr/tttr_count_rate_analysis/gui/sections.py
-chisurf/plugins/tttr/tttr_header_edit/gui/sections.py
-chisurf/plugins/tttr/tttr_lut_tools/gui/sections.py
-chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py
-chisurf/plugins/tttr/tttr_microtime_shifter/gui/tool.py
-chisurf/plugins/tttr/tttr_splitter/gui/sections.py
-chisurf/plugins/vv_vh_anisotropy/__init__.py
-chisurf/plugins/vv_vh_g_factor/gui/tool.py
+# It is empty, and meant to stay that way. A raw box spins its own event loop
+# until a button is pressed: under QT_QPA_PLATFORM=offscreen nobody can press
+# one, so the error is never reported and the run never ends — and the answer a
+# question box never gets is the one deciding whether a file is overwritten.
+#
+# chisurf.gui.dialogs logs unconditionally, shows the box only when a person is
+# there to close it, and otherwise returns the caller-declared safe default.
+# Use dialogs.error / warning / information / question / confirm / choice.
+#
+# Add a path here only for a deliberate, reviewed exception — never to silence
+# test/test_headless_dialog_seam.py.
