@@ -345,13 +345,27 @@ def load_tttrs_for_dataframe(
     data_dir : path-like
         Directory the relative ``First File`` names resolve against.
     file_type : str
-        TTTR container type, or ``"auto"`` to infer it per file.
+        TTTR container type, or ``"auto"`` (the default in spirit) to let the
+        library identify it from the file. Names ``tttrlib`` does not accept are
+        resolved rather than passed through — see
+        :func:`chisurf.core.fio.staging.resolve_container_type`.
 
     Returns
     -------
     dict
         Maps each ``First File`` value to its loaded ``tttrlib.TTTR``.
+
+    Notes
+    -----
+    Opens through :func:`chisurf.core.fio.staging.open_tttr`, the single seam that
+    stages slow storage and applies the active setup's per-channel TAC-linearization
+    LUTs and micro-time shifts. Reading these files with a bare ``tttrlib.TTTR``
+    would silently produce *un-linearized* micro times here while every other reader
+    in the tree produced linearized ones — a discrepancy that shows up as a lifetime
+    shift, not as an error.
     """
+    from chisurf.core.fio.staging import open_tttr
+
     data_dir = pathlib.Path(data_dir)
     tttrs: dict[str, tttrlib.TTTR] = {}
     for ff in df["First File"].unique():
@@ -359,8 +373,6 @@ def load_tttrs_for_dataframe(
             continue
         candidate = pathlib.Path(ff)
         path = candidate if candidate.is_absolute() and candidate.exists() else data_dir / ff
-        ftype = file_type
-        if not ftype or ftype.lower() == "auto":
-            ftype = tttrlib.inferTTTRFileType(str(path))
-        tttrs[ff] = tttrlib.TTTR(str(path), ftype)
+        routine = None if (not file_type or str(file_type).lower() == "auto") else file_type
+        tttrs[ff] = open_tttr(path, routine)
     return tttrs

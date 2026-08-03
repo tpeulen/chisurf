@@ -27,7 +27,10 @@ a note in this document — nothing lands as a silent behaviour change.
 
 # Status
 
-In progress. Item 1 has landed; the rest are specified and unstarted.
+In progress. Items 1–5 have landed — the burst-table column, the preparation core,
+loud source resolution, the `PhotonBursts` loader and the nuisance measure. Items
+6–9 (the experiment and its reader, the plugin's four surfaces, model registration,
+and whatever chiplot is missing) are specified and next.
 
 Parent: [PRD-71](prd-71.md). Related: [PRD-09](prd-09.md) (the layered-plugin
 shape used for item 7), [PRD-38](prd-38.md)/[PRD-40](prd-40.md) (model and view
@@ -61,59 +64,89 @@ green.
 mean, in both writers. Inherited from the reference format, so the module
 docstring says so rather than the value moving under everything that consumed it.
 
-## 2. A preparation core
+## 2. A preparation core — ✅ landed
 
 New package `chisurf/core/fluorescence/mfd/` with `prepare.py`: burst folder →
-fit-ready arrays. Resolve the photon sources, read the `.bur` columns, load the
-photons, compute `⟨t⟩` per channel group where the column is absent. Qt-free, no
-plugin imports, headless-testable.
+fit-ready arrays (`BurstPreparation` — per-detector counts, observation spans in
+seconds, mean micro time in nanoseconds, whole-burst duration, photon indices, the
+row positions in the burst table). Resolve the photon sources, read the `.bur`
+columns, load the photons, compute `⟨t⟩` per channel group where the column is
+absent. Qt-free, no plugin imports, headless-testable.
 
-*Acceptance*: a folder in, typed arrays out, with a test that a folder written
-before item 1 (no mean-micro-time column) produces the same `⟨t⟩` as one written
-after — the compatibility path, exercised rather than assumed.
+Two things the design did not anticipate, both found by running it against a real
+folder and both now enforced rather than assumed:
 
-## 3. Photon-source resolution that fails loudly
+* **The photon-index convention differs between folder vintages.** `Number of
+  Photons` is `Last − First + 1` in folders written by the current writer and
+  `Last − First` in older ones. Reading one with the other's convention adds a
+  stray photon to every burst — too small to fail an assertion, large enough to
+  move a mean micro time and, through it, a fitted lifetime. It is now *detected*
+  per folder (`PhotonIndexConvention`, with the agreement reported) and honoured.
+* **Detectors are not a partition.** An acceptor-excitation detector is a
+  micro-time window *inside* the acceptor detector, so the same photon belongs to
+  both, and reproducing the writer's columns needs independent per-detector masks
+  rather than the winner-takes-all photon assignment of `stream_index_arrays`
+  (which stays correct for the photon-by-photon layout, where a photon counted
+  twice would be a duplicated observation).
 
-`chisurf/core/fio/fluorescence/burst_manifest.py` already resolves the TTTR
-sources: `Info/analysis.json` (container type, routing channels, macro/micro
-resolutions, recorded while the file was open) → the legacy `Info/*.mti` sidecar →
-extension sniffing. Item 2 uses that chain rather than inventing one.
+Because a channel definition that is merely *plausible* would attribute photons to
+the wrong colour and make every downstream number wrong-but-believable, the
+definition is **verified against the count columns** whenever the photons are open,
+and a detector that fails is marked unverified and refused at use
+(`BurstPreparation.require_verified`) instead of silently participating.
 
-**The one deliberate behaviour change in this PRD**: the sniffing fallback must
-fail loudly. That module was written against a failure in which an unaccepted
-container type is not an error — the reader prints to stderr and returns an object
-with *zero photons*, so an analysis runs on nothing and reads as a measurement
-with no signal. Turning a silent wrong answer into an exception can surface in
-code that currently "works"; that is the point, and it needs its own test and a
-note in the release notes rather than being folded in quietly.
+*Acceptance*: `test/fluorescence/test_mfd_prepare.py` — the shipped
+`bh_spc132_sm_dna` folder (a legacy folder with no mean-micro-time column) in,
+typed arrays out; the `⟨t⟩` computed from the photons reproduces what the writer's
+own helper would have written for the same photon selection, which is the
+compatibility path exercised rather than assumed; counts and spans agree with the
+table; the conventional two-colour definition verifies at 1.000 and the
+acceptor-excitation detector does not, until its window is given.
 
-*Acceptance*: a folder whose sources cannot be resolved raises with the path and
-the reason; a folder with a manifest never reaches the sniffing branch; a
-zero-photon read is an error, not a result.
+## 3. Photon-source resolution that fails loudly — ✅ landed
 
-## 4. Burst folder → `PhotonBursts`
+The chain is manifest → legacy `.mti` sidecar → a file of that name beside the
+analysis folder, with every open going through `chisurf.core.fio.staging.open_tttr`
+(the one seam that resolves container types and applies per-channel corrections),
+and **a zero-photon read raising** `UnresolvedPhotonSource`.
 
-The packed layout already exists in
-`chisurf/core/fluorescence/burst/gopich_szabo.py` (concatenated channel and micro
-time with per-burst offsets) but is built via `from_lists`. Add the path that
-builds it from a burst folder plus its resolved sources, so the photon-bearing
-scoring sources have one loader instead of each writing their own.
+*Also fixed in the same change*: `chisurf/core/fluorescence/burst/photons.py`'s
+`load_tttrs_for_dataframe` opened `tttrlib.TTTR(path, "SPC-130")` directly —
+bypassing the staging/LUT seam and hardcoding a container type, so these files were
+read with *un-linearized* micro times while every other reader produced linearized
+ones. A lifetime shift, not an error. Routed through `open_tttr`.
 
-*Acceptance*: photon counts and per-burst offsets agree with the `.bur`
-`Number of Photons (d)` and `First/Last Photon` columns for a real folder — the
-two descriptions of the same bursts must not disagree.
+*Acceptance*: an unresolvable source raises naming the key and every place that was
+searched; a zero-photon read raises rather than returning an empty stream.
 
-## 5. D12 straight from the `.bur` columns
+## 4. Burst folder → `PhotonBursts` — ✅ landed
+
+`prepare.photon_bursts` builds the packed layout of
+`chisurf/core/fluorescence/burst/gopich_szabo.py` from a prepared folder, returning
+the per-burst micro times and the surviving row positions alongside it, so the
+photon-bearing scoring sources have one loader instead of each writing their own.
+
+*Acceptance*: per-burst offsets reproduce the `.bur` per-detector counts exactly for
+the shipped folder (2980 bursts, 225 358 photons), and asking a preparation built
+without photons for them raises rather than returning nothing.
+
+## 5. D12 straight from the `.bur` columns — ✅ landed
 
 `P(S, t_G, t_R)` needs no new format: `Duration (d) (ms)` *is*
 `macro[last] − macro[first]` for that detector's photons, and
 `Number of Photons (d)` gives `S`, both with `-1.0`/`0` sentinels already written
-for a detector a burst has nothing in. A pure function from burst-table columns to
-the nuisance measure, with the sentinel rows excluded explicitly rather than by
-arithmetic accident.
+for a detector a burst has nothing in. `prepare.nuisance_measure` is that pure
+function; `NuisanceMeasure.binned` compresses it onto a grid so the histogram
+source's cost stays independent of the number of bursts.
+
+The `-1.0` span is kept as a **mask** (`span_is_sentinel`) rather than folded into
+the value: a burst with fewer than two photons in a channel has no *measurable*
+span, which is not the same statement as a zero-length observation, and the forward
+model has to be able to tell them apart.
 
 *Acceptance*: sentinel rows are excluded and *counted* in the returned summary, so
-a folder where half the bursts have no red photons cannot look like a clean one.
+a folder where half the bursts have no red photons cannot look like a clean one;
+binning conserves the burst total exactly.
 
 ## 6. An `mfd` experiment and its reader
 
