@@ -65,11 +65,13 @@ __all__ = [
     "UnresolvedPhotonSource",
     "burst_directory",
     "detector_names",
+    "infer_streams",
     "nuisance_measure",
     "photon_bursts",
     "photon_index_convention",
     "prepare_burst_folder",
     "resolve_sources",
+    "window_columns",
 ]
 
 #: Detector names understood without a recorded channel definition, mapped onto the
@@ -720,6 +722,155 @@ def _streams_from_manifest(
     return out
 
 
+def window_columns(frame: pd.DataFrame) -> list[tuple[int, int]]:
+    """Return the micro-time windows a burst table names in its own headers.
+
+    The ``.bur`` writer emits one column per (window, detector) pair, headed
+    ``S <window> <detector> (kHz) | <lo>-<hi>``. Those bounds are the windows the
+    analysis actually used, so they are the right candidates to try when the
+    detector definitions themselves were not recorded — read off the file rather
+    than assumed.
+
+    Parameters
+    ----------
+    frame : pandas.DataFrame
+        A burst table.
+
+    Returns
+    -------
+    list of tuple
+        Half-open ``(start, stop)`` windows, de-duplicated.
+    """
+    pattern = re.compile(r"\|\s*(\d+)\s*-\s*(\d+)\s*$")
+    out: list[tuple[int, int]] = []
+    for column in frame.columns:
+        match = pattern.search(str(column))
+        if match:
+            window = (int(match.group(1)), int(match.group(2)))
+            if window not in out:
+                out.append(window)
+    return out
+
+
+def infer_streams(
+    frame: pd.DataFrame,
+    names: Sequence[str],
+    tttrs: Mapping[str, Any],
+    convention: PhotonIndexConvention,
+    *,
+    n_probe: int = 250,
+    seed: int = 0,
+) -> list[StreamDef] | None:
+    """Work out each detector's channel definition from the burst table itself.
+
+    A detector *name* does not determine its definition, and the same name means
+    different things in different folders: ``red`` is the acceptor channels ungated
+    in one analysis and gated to the prompt window in another. Guessing from the
+    name is therefore wrong roughly as often as it is right — which is why the
+    guess was verified, and why failing verification used to leave a folder
+    unreadable with no way forward.
+
+    So infer instead. The candidate space is small and comes from the file: the
+    routing channels the measurement actually contains, and the micro-time windows
+    the burst table names in its own column headers. A candidate is accepted only
+    if it reproduces the detector's count column **exactly** over a probe sample —
+    which makes the result a measurement rather than a guess, and is the same
+    acceptance the full verification applies afterwards.
+
+    Parameters
+    ----------
+    frame : pandas.DataFrame
+        The burst table, sentinel rows removed.
+    names : sequence of str
+        Detector names to infer.
+    tttrs : Mapping
+        Open photon streams, keyed by ``First File``.
+    convention : PhotonIndexConvention
+        How to slice a burst out of the stream.
+    n_probe : int
+        Bursts to test each candidate on. Exactness over a couple of hundred bursts
+        is not something a wrong definition achieves by luck.
+    seed : int
+        Seed for the probe sample, so inference is deterministic.
+
+    Returns
+    -------
+    list of StreamDef or None
+        ``None`` when any detector could not be reproduced, so the caller can fall
+        back and report rather than proceed on a partial answer.
+    """
+    files = frame["First File"].to_numpy(dtype=object)
+    first = frame["First Photon"].to_numpy(dtype=np.int64)
+    last = frame["Last Photon"].to_numpy(dtype=np.int64)
+    stop_offset = convention.stop_offset
+
+    rows = np.nonzero(np.array([f in tttrs for f in files]))[0]
+    if rows.size == 0:
+        return None
+    if rows.size > n_probe:
+        rows = np.sort(
+            np.random.default_rng(seed).choice(rows, size=n_probe, replace=False)
+        )
+
+    cache = {
+        key: (np.asarray(t.routing_channels), np.asarray(t.micro_times))
+        for key, t in tttrs.items()
+    }
+    present = sorted({int(c) for channels, _ in cache.values() for c in np.unique(channels)})
+    if not present or len(present) > 8:
+        return None
+
+    # Channel subsets worth trying: singletons and pairs cover the conventional
+    # colour and polarization layouts, and the full set covers an ungated detector.
+    candidates_channels: list[list[int]] = [[c] for c in present]
+    for a in range(len(present)):
+        for b in range(a + 1, len(present)):
+            candidates_channels.append([present[a], present[b]])
+    candidates_channels.append(list(present))
+
+    windows: list[tuple[int, int] | None] = [None]
+    for window in window_columns(frame):
+        windows.append(window)
+
+    def counts_for(channels, window):
+        """Return the per-burst count a candidate definition would produce."""
+        out = np.empty(rows.size, dtype=np.int64)
+        for i, row in enumerate(rows):
+            routing, micro = cache[files[row]]
+            lo = int(first[row])
+            hi = int(last[row]) + stop_offset
+            mask = np.isin(routing[lo:hi], channels)
+            if window is not None:
+                slice_micro = micro[lo:hi]
+                mask &= (slice_micro >= window[0]) & (slice_micro < window[1])
+            out[i] = int(mask.sum())
+        return out
+
+    resolved: list[StreamDef] = []
+    for name in names:
+        truth = frame[f"Number of Photons ({name})"].to_numpy(dtype=np.int64)[rows]
+        found = None
+        for channels in candidates_channels:
+            for window in windows:
+                if np.array_equal(counts_for(channels, window), truth):
+                    found = StreamDef(
+                        name=name,
+                        channels=list(channels),
+                        # StreamDef windows are inclusive; the writer's are
+                        # half-open, so the upper bound moves by one.
+                        micro_time_ranges=(
+                            [] if window is None else [(window[0], window[1] - 1)]
+                        ),
+                    )
+                    break
+            if found is not None:
+                break
+        if found is None:
+            return None
+        resolved.append(found)
+    return resolved
+
+
 def _fallback_streams(names: Sequence[str]) -> list[StreamDef]:
     """Return channel definitions guessed from conventional detector names."""
     known = {s.name: s for s in default_streams()}
@@ -909,8 +1060,12 @@ def prepare_burst_folder(
         resolved_streams = _streams_from_manifest(analysis_dir, names)
         stream_origin = "manifest"
         if resolved_streams is None:
-            resolved_streams = _fallback_streams(names)
-            stream_origin = "detector names"
+            # Deferred until the photons are open — inference needs them. The
+            # name-based guess is only the last resort, because a detector name
+            # does not determine its definition: ``red`` is ungated in one
+            # analysis and gated to the prompt window in another.
+            resolved_streams = None
+            stream_origin = "inferred"
     else:
         first_item = next(iter(streams), None)
         resolved_streams = (
@@ -919,7 +1074,6 @@ def prepare_burst_folder(
             else streams_from_dicts(list(streams))
         )
         stream_origin = "caller"
-    resolved_streams = list(resolved_streams)
 
     counts = np.column_stack(
         [frame[f"Number of Photons ({n})"].to_numpy(dtype=np.int64) for n in names]
@@ -951,12 +1105,29 @@ def prepare_burst_folder(
         },
     }
 
-    need_photons = with_photons or not has_micro_columns
+    # Inference needs the photons, so a folder that records no detectors has to
+    # read them even when its mean-micro-time column would otherwise suffice.
+    need_photons = with_photons or not has_micro_columns or resolved_streams is None
     sources = SourceResolution()
     tttrs: dict[str, Any] = {}
     if need_photons:
         sources = resolve_sources(analysis_dir, list(dict.fromkeys(file_key.tolist())))
         tttrs = open_sources(sources)
+
+    if resolved_streams is None:
+        resolved_streams = infer_streams(frame, names, tttrs, convention)
+        if resolved_streams is None:
+            resolved_streams = _fallback_streams(names)
+            stream_origin = "detector names (inference failed)"
+        else:
+            summary["inferred_streams"] = {
+                s.name: {
+                    "channels": list(s.channels),
+                    "micro_time_ranges": [list(r) for r in s.micro_time_ranges],
+                }
+                for s in resolved_streams
+            }
+    resolved_streams = list(resolved_streams)
 
     # Whenever the photons are open, the channel definition is checked against the
     # count columns — including when the mean micro time comes from the file, where
