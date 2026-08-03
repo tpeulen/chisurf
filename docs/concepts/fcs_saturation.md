@@ -195,6 +195,55 @@ distortion: a shortened `τ_T` mimics a fast diffusion component over part of th
 range. The two are somewhat degenerate, which is exactly why the triplet is
 fitted **globally across a power series** rather than per curve.
 
+### Determining a scheme: fit the power series, not one curve
+
+One saturated curve does not determine a photochemical scheme. Its distortion is
+a *product* of the rates, the excitation rate and the optics, and several
+combinations reproduce a single curve about equally well — the dark-state
+relaxation time trades against a fast diffusion component, and `ε` trades
+against the beam waist.
+
+A power series breaks that. The scheme, the optics and `D` belong to the sample
+and the instrument, so they are the *same* for every curve; only the power
+differs, and it is **measured, not fitted**. Fitting the series at once with
+those parameters linked is the measurement that determines a scheme.
+
+```python
+from chisurf.core.fluorescence.fcs.power_series import (
+    build_power_series_fit, simulate_power_series, series_relaxation_times,
+)
+
+group = build_power_series_fit(
+    curves, powers_mW=[0.05, 0.5, 5.0, 20.0],
+    initial={"extinction": 1e5, "w_r": 200.0, "w_z": 1000.0},
+    free=("k2_3", "k3_1", "D"),
+)
+group.run()
+```
+
+Linked across the series: the rate matrices, the cross sections, the
+brightnesses, `w_r`, `w_z`, `ε`, `λ` and `D`. Per curve: `power` (fixed to its
+measured value), `N`, `b`, `bg`.
+
+Two choices worth knowing about. **The power is fixed** — fitting it would hand
+the optimiser a second route to the same distortion and undo the point of the
+series. And **the brightness scale is fixed**, because a factor multiplying every
+state cancels out of a normalised correlation curve; brightness *ratios* between
+states are identifiable, the overall scale is not.
+
+Give it the instrument's real `ε` and waists via `initial`. The model's defaults
+are not your microscope, and a fixed parameter that is wrong is a systematic
+error the optimiser can only absorb by distorting the scheme — a silent wrong
+answer rather than a bad fit.
+
+On a simulated four-power series with 0.2 % noise, starting from
+`k2_3 = 6.0, k3_1 = 1.5, D = 250` (truth `2.5, 0.5, 400`), the global fit returns
+`2.501, 0.504, 404.0` and χ²ᵣ falls from 254 to 0.84.
+
+`series_relaxation_times(group)` then reports what the fitted scheme *predicts*
+for each power — an eigenvalue, not a fitted parameter. Comparing it against the
+bunching time measured on each curve is the sharpest check that the fit is real.
+
 ## Reading the results
 
 `V_eff/V₀` is the number to take away. It is the factor by which an unsaturated

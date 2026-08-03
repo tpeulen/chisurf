@@ -642,11 +642,19 @@ class FCSKineticsModel(ModelCurve):
 
     @property
     def parameters_all(self):
-        """Return all active model parameters including volume, dark rates, exc rates, and brightness."""
+        """Every parameter of the model: optics, dark rates, cross sections, brightness.
+
+        The sub-groups are asked for ``parameters_all``, not ``parameters``. The
+        latter returns only the *free* ones, and a scheme's rates are fixed by
+        default -- so collecting those left every rate out of
+        ``parameters_all_dict``, and anything that looks a parameter up by name
+        (linking it across a global fit, restoring it from a saved state) could
+        not see it.
+        """
         params = list(super().parameters_all)
         seen = {id(p) for p in params}
         for grp in (self.saturation.dark, self.saturation.exc, self.saturation.brightness):
-            for p in getattr(grp, "parameters", []) or []:
+            for p in getattr(grp, "parameters_all", []) or []:
                 if id(p) not in seen:
                     params.append(p)
                     seen.add(id(p))
