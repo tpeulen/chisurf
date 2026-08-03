@@ -139,6 +139,85 @@ parameter to a internal (unconstrained) parameter.
     else:
         return lambda x: np.arcsin((2. * (x - lower) / (upper - lower)) - 1.)
 
+
+#: Levenberg-Marquardt iterations a well-posed fit typically needs. Each costs
+#: ``n + 1`` residual evaluations -- ``n`` for the forward-difference Jacobian and
+#: one for the trial step -- so the expected budget is ``_EXPECTED_ITERATIONS *
+#: (n + 1)``.
+#:
+#: Deliberately on the *low* side of the four-to-ten iterations real fits take,
+#: because the correction is one-directional: :func:`_grow_budget` raises the
+#: estimate when a fit outruns it, but nothing lowers it when a fit beats it. An
+#: underestimate therefore ends near 100% either way; an overestimate leaves the
+#: bar stranded at a third.
+_EXPECTED_ITERATIONS = 6
+
+
+def _expected_evaluations(n: int, maxfev: int) -> int:
+    """Return an evaluation budget a progress bar can usefully report against.
+
+    **MINPACK's ``200 * (n + 1)`` is a give-up limit, not an expectation.** Using
+    it as the denominator made a four-parameter fit -- which converges in about
+    fifty evaluations -- creep to five percent and then jump straight to done,
+    which reads as a broken progress bar rather than a fast fit.
+
+    The estimate here is what the algorithm actually costs: one Jacobian
+    (``n`` evaluations) plus one trial step per iteration, over the number of
+    iterations a well-posed problem needs. It is deliberately an *estimate*, and
+    :func:`_grow_budget` handles the fits that outrun it.
+
+    Parameters
+    ----------
+    n : int
+        Number of free parameters.
+    maxfev : int
+        Hard evaluation limit; the estimate is never larger than this.
+
+    Returns
+    -------
+    int
+    """
+    limit = int(maxfev) if maxfev and maxfev > 0 else 200 * (int(n) + 1)
+    return int(max(1, min(limit, _EXPECTED_ITERATIONS * (int(n) + 1))))
+
+
+def _grow_budget(nfev: int, eff_total: int, maxfev: int, last_ratio: float = 0.0) -> int:
+    """Extend the estimated budget when a fit outruns it, without going backwards.
+
+    A progress bar that sits pinned at 100% while the fit runs on is bad; one that
+    *retreats* is worse, and simply enlarging the denominator does exactly that --
+    the numerator grows by one while the denominator jumps by half, so the
+    reported fraction drops.
+
+    So the new budget is chosen to keep the fraction **non-decreasing**: it is
+    never more than ``nfev / last_ratio``, which reproduces the previous fraction
+    exactly, and the bar therefore stalls rather than reversing. It remains bounded
+    by the optimiser's own hard limit.
+
+    Parameters
+    ----------
+    nfev : int
+        Evaluations so far.
+    eff_total : int
+        The current estimate.
+    maxfev : int
+        Hard evaluation limit.
+    last_ratio : float
+        The fraction reported on the previous call, in ``[0, 1]``.
+
+    Returns
+    -------
+    int
+    """
+    if nfev <= eff_total:
+        return eff_total
+    limit = int(maxfev) if maxfev and maxfev > 0 else 200 * nfev
+    grown = max(eff_total + 1, int(nfev * 1.5))
+    if last_ratio > 0.0:
+        grown = min(grown, max(nfev, int(nfev / last_ratio)))
+    return int(min(limit, grown))
+
+
 def leastsqbound(
         func, x0,
         args=(),
@@ -300,6 +379,7 @@ References
     # is provided, these variables remain unused and the behavior matches
     # the original implementation.
     nfev = 0
+    last_ratio = 0.0
     eff_total = progress_total if progress_total is not None else None
 
     def _compute_objective(residuals, f_args):
@@ -346,12 +426,7 @@ References
             x0_arr = np.array(x0, ndmin=1)
             n = len(x0_arr)
             if eff_total is None:
-                if maxfev and maxfev > 0:
-                    eff_total = int(maxfev)
-                else:
-                    # Mirror the default used by MINPACK's lmdif for Dfun=None
-                    # as exposed via scipy.optimize.leastsq.
-                    eff_total = int(200 * (n + 1))
+                eff_total = _expected_evaluations(n, maxfev)
 
             def _wrapped_func(x, *f_args):
                 """Wrapper around the objective function with progress reporting.
@@ -372,10 +447,12 @@ References
                 np.ndarray
                     Residual vector from ``func``.
                 """
-                nonlocal nfev, eff_total
+                nonlocal nfev, eff_total, last_ratio
                 res = func(x, *f_args)
                 nfev += 1
+                eff_total = _grow_budget(nfev, eff_total, maxfev, last_ratio)
                 if eff_total and eff_total > 0:
+                    last_ratio = max(last_ratio, min(1.0, nfev / eff_total))
                     chi2_val, chi2r_val = _compute_objective(res, f_args)
                     try:
                         progress_callback(nfev, eff_total, chi2=chi2_val, chi2r=chi2r_val)
@@ -459,7 +536,7 @@ References
         if (maxfev == 0):
             maxfev = 200 * (n + 1)
         if progress_callback is not None and eff_total is None:
-            eff_total = int(maxfev)
+            eff_total = _expected_evaluations(n, maxfev)
 
         if progress_callback is not None:
             def wfunc(x, *f_args):
@@ -480,10 +557,12 @@ References
                 np.ndarray
                     Residual vector from ``func``.
                 """
-                nonlocal nfev, eff_total
+                nonlocal nfev, eff_total, last_ratio
                 res = _base_wfunc(x, *f_args)
                 nfev += 1
+                eff_total = _grow_budget(nfev, eff_total, maxfev, last_ratio)
                 if eff_total and eff_total > 0:
+                    last_ratio = max(last_ratio, min(1.0, nfev / eff_total))
                     chi2_val, chi2r_val = _compute_objective(res, f_args)
                     try:
                         progress_callback(nfev, eff_total, chi2=chi2_val, chi2r=chi2r_val)
