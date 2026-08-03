@@ -1076,6 +1076,12 @@ class VolumeView(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self._vv.widget())
+        # A GL viewport has no content to derive a size hint from, so a
+        # scroll area or a dock collapses it to zero height and renders
+        # nothing at all -- with no error, and the data still arriving.
+        self.setMinimumSize(240, 240)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                           QtWidgets.QSizePolicy.Expanding)
 
     def set_volume(self, data, *, colormap="magma", threshold=0.0, gamma=1.0):
         """Show a ``(nz, ny, nx)`` scalar volume."""
