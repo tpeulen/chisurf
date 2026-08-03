@@ -39,6 +39,13 @@ from .io import (
     save_label_image,
     save_rois,
 )
+from .selections import (
+    collection_from_selections,
+    ellipse_from_covariance,
+    excluded_mask,
+    interval_roi,
+    roi_from_selection,
+)
 from .props import (
     INTENSITY_PROPERTIES,
     PROPERTIES,
@@ -83,6 +90,12 @@ __all__ = [
     "regionprops_table",
     "PROPERTIES",
     "INTENSITY_PROPERTIES",
+    # ndX selection bridge
+    "roi_from_selection",
+    "collection_from_selections",
+    "excluded_mask",
+    "ellipse_from_covariance",
+    "interval_roi",
     # a named, ordered list of regions — what a GUI edits
     "RegionCollection",
     "RegionEntry",

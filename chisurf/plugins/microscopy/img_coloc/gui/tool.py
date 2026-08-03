@@ -83,7 +83,38 @@ class ImgColocTool(ChisurfDockTool):
         # guarantees the handler (which touches widgets) runs on the GUI thread.
         self.modelEvent.connect(self._handle_model_event)
         self.model.add_observer(self.modelEvent.emit)
+        self.gate_overlay = self._connect_gates()
         self.restore_window_geometry()
+
+    # ── gate regions on the intensity scatter ──
+    def _connect_gates(self):
+        """Draw the gate list on the joint histogram and recompute on an edit.
+
+        The scatter plane is a pair of intensity axes, so a gate is a region
+        like any other — and because the histogram is drawn on those axes now,
+        the shape the user draws is already in the units the analysis gates
+        with.
+        """
+        from chisurf.gui.widgets.roi import RegionEditor, RegionOverlay
+
+        editor = self.auto_form.findChild(RegionEditor)
+        plane = self.auto_form.section_widget(title="Intensity scatter")
+        if editor is None or plane is None:
+            return None
+
+        overlay = RegionOverlay(plane, lambda: self.model.gates,
+                                on_change=self._on_gates_changed)
+        editor.changed.connect(self._on_gates_changed)
+        editor.changed.connect(overlay.refresh)
+        editor.selectionChanged.connect(overlay.select)
+        overlay.refresh()
+        return overlay
+
+    def _on_gates_changed(self) -> None:
+        """A gate region moved: switch gating on and recompute the coefficients."""
+        if len(self.model.gates):
+            self.model.gate_enabled = True
+        self.model.compute()
 
     # ── actions ──
     def run_with_progress(self) -> None:

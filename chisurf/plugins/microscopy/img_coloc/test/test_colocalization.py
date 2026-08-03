@@ -735,3 +735,89 @@ def test_cli_warns_when_no_pixel_passes(cli_runner, two_channel_tiff):
     )
     assert result.exit_code == 0, result.output
     assert "warning:" in result.output
+
+
+# --- gate regions on the intensity scatter ----------------------------------
+def _gated_model():
+    """A view model with a computed result, so the histogram edges exist."""
+    import numpy as np
+
+    from chisurf.plugins.microscopy.img_coloc.gui.view_model import ColocViewModel
+
+    rng = np.random.default_rng(3)
+    a = rng.uniform(0.0, 1.0, (32, 32))
+    b = a * 0.8 + rng.normal(0, 0.02, (32, 32))
+
+    vm = ColocViewModel()
+    vm._result = type("R", (), {"histogram": {
+        "edges_a": np.linspace(0.0, 1.0, 65),
+        "edges_b": np.linspace(0.0, 1.0, 65),
+        "histogram": np.zeros((64, 64)),
+    }})()
+    return vm
+
+
+def test_the_typed_box_and_a_painted_population_combine_rather_than_override():
+    """The old rule was "painting wins", so a box plus a cloud was impossible."""
+    import numpy as np
+
+    from chisurf.core.roi import EllipseROI
+
+    vm = _gated_model()
+    vm.gate_enabled = True
+    vm.gate_a_min, vm.gate_a_max = 0.0, 0.5
+    vm.gate_b_min, vm.gate_b_max = 0.0, 0.5
+    vm.gates.add(EllipseROI(0.8, 0.8, 0.1, 0.1, name="painted"))
+
+    gate = vm._gate()
+    assert gate is not None
+    inside = gate.contains(np.array([[0.25, 0.25], [0.80, 0.80], [0.25, 0.90]]))
+    assert inside.tolist() == [True, True, False]     # union of the two
+
+    # Intersecting them is now expressible at all.
+    vm.gates.combine = "and"
+    assert vm._gate().contains(np.array([[0.25, 0.25]])).tolist() == [False]
+
+
+def test_the_typed_box_includes_its_upper_bound():
+    """A RectangleROI is half-open; a typed range is not, and the difference is
+    exactly the brightest pixel."""
+    import numpy as np
+
+    vm = _gated_model()
+    vm.gate_enabled = True
+    vm.gate_a_min, vm.gate_a_max = 0.2, 0.7
+    vm.gate_b_min, vm.gate_b_max = 0.1, 0.6
+
+    gate = vm._gate()
+    assert gate.contains(np.array([[0.7, 0.6]])).tolist() == [True]
+    assert gate.contains(np.array([[0.2, 0.1]])).tolist() == [True]
+    assert gate.contains(np.array([[0.71, 0.6]])).tolist() == [False]
+
+
+def test_a_dragged_rectangle_is_read_in_intensities_not_bins():
+    """The histogram carries intensity axes, so nothing has to be converted."""
+    from chisurf.core.roi import RectangleROI
+
+    vm = _gated_model()
+    vm.set_gate_region(RectangleROI(0.25, 0.4, 0.75, 0.9, name="dragged"))
+
+    assert (vm.gate_a_min, vm.gate_a_max) == (0.25, 0.75)
+    assert (vm.gate_b_min, vm.gate_b_max) == (0.4, 0.9)
+    assert vm.gate_enabled is True
+
+
+def test_switching_the_gate_off_disables_every_region():
+    vm = _gated_model()
+    vm.gate_enabled = True
+    vm.gate_a_min, vm.gate_a_max = 0.0, 1.0
+    vm.gate_b_min, vm.gate_b_max = 0.0, 1.0
+    assert vm._gate() is not None
+
+    vm.gate_enabled = False
+    assert vm._gate() is None
+
+
+def test_the_extent_is_the_span_the_histogram_covers():
+    vm = _gated_model()
+    assert vm.gate_extent() == (0.0, 1.0, 0.0, 1.0)
