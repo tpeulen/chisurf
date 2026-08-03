@@ -93,7 +93,7 @@
                 "maximum": 1000000000.0,
                 "decimals": 4,
                 "popup": false,
-                "title": "Power-independent rates K_dark[to, from]"
+                "title": "Power-independent rates K_dark"
               }
             },
             {
@@ -107,7 +107,7 @@
                 "minimum": 0.0,
                 "decimals": 3,
                 "popup": false,
-                "title": "Excitation cross-sections K_exc[to, from]"
+                "title": "Excitation cross-sections K_exc"
               }
             },
             {
@@ -178,7 +178,7 @@
               "type": "toggle",
               "attr": "show_power_profile",
               "label": "Excitation k(r)",
-              "description": "<html><b>Excitation rate k<sub>exc</sub>(r)</b><br/>Normalized Gaussian excitation profile: <i>exp(-2r²/w<sub>r</sub>²)</i>. Compare it against the emission profile to see the flat top saturation creates.</html>"
+              "description": "<html><b>Excitation rate k<sub>exc</sub>(r), scaled to its peak</b><br/>The only normalised curve here: a Gaussian <i>exp(-2r²/w<sub>r</sub>²)</i> shown at 0…1 so its shape can be compared against the populations.</html>"
             },
             {
               "type": "toggle",
@@ -189,15 +189,15 @@
             {
               "type": "toggle",
               "attr": "show_fluorescence_profile",
-              "label": "Emission F(r)",
-              "description": "<html><b>Emission profile F(r) = ∑ Q<sub>i</sub> P<sub>i</sub>(r)</b><br/>The brightness-weighted population, i.e. the profile whose spatial autocorrelation <i>is</i> the FCS curve. Its flattening is the saturation.</html>"
+              "label": "Emission Σ Q·P",
+              "description": "<html><b>Emission Σ Q<sub>i</sub> P<sub>i</sub>(r)</b><br/>The brightness-weighted population — the profile whose spatial autocorrelation <i>is</i> the FCS curve. Plotted on the <b>same absolute scale</b> as the state populations, so with one bright state it lies exactly on that state's curve. Its flattening is the saturation.</html>"
             },
             {
               "type": "plot",
               "source": "volume_profile_series",
               "title": "Radial Spatial Volume Profiles",
               "x_label": "Radial Position r (nm)",
-              "y_label": "Population / normalized rate",
+              "y_label": "Fraction of molecules  ·  k_exc/peak",
               "log_x": false,
               "log_y": false,
               "legend": true

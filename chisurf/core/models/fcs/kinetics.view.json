@@ -50,7 +50,7 @@
             "decimals": 2,
             "unit": "1/µs",
             "popup": false,
-            "title": "Dark State Rates (K_dark)"
+            "title": "Power-independent rates K_dark"
           }
         },
         {
@@ -64,7 +64,7 @@
             "decimals": 2,
             "unit": "cross-section",
             "popup": false,
-            "title": "Excitation Cross-sections (K_exc)"
+            "title": "Excitation cross-sections K_exc"
           }
         },
         {

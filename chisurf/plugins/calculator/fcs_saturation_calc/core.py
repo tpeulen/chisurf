@@ -185,7 +185,8 @@ def compute_volume_profile(
     Returns
     -------
     dict
-        ``r_nm``, ``k_exc_norm``, ``P_states`` (N x M), ``F_norm`` and ``labels``.
+        ``r_nm``, ``k_exc_norm`` (scaled to its peak), ``P_states`` (N x M),
+        ``emission`` (absolute, same scale as the populations) and ``labels``.
     """
     w0_m = w_r_nm * 1e-9
     z0_m = w_z_nm * 1e-9
@@ -200,9 +201,11 @@ def compute_volume_profile(
 
     P_states = steady_state_full_populations(k_exc, dark_matrix, exc_matrix)
     q = np.asarray(brightness, dtype=float)
-    F = np.tensordot(q, P_states, axes=(0, 0))
-    F_peak = float(np.max(F)) if F.size else 0.0
-    F_norm = (F / F_peak) if F_peak > 0 else np.zeros_like(r)
+    # Absolute, on the same scale as the populations it is built from. Scaling it
+    # to its own peak instead put the emission at 1.0 in the focal centre while
+    # the only bright state sat at 0.17 there -- two curves on one axis that
+    # cannot both be read, and it looks like the state labels are swapped.
+    emission = np.tensordot(q, P_states, axes=(0, 0))
 
     n_states = P_states.shape[0]
     if not state_labels or len(state_labels) < n_states:
@@ -214,7 +217,7 @@ def compute_volume_profile(
         "r_nm": r * 1e9,
         "k_exc_norm": k_exc_norm,
         "P_states": P_states,
-        "F_norm": F_norm,
+        "emission": emission,
         "labels": labels,
     }
 

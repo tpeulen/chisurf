@@ -149,7 +149,11 @@ class RateMatrixWidget(QtWidgets.QWidget):
         bits = []
         if self._title:
             bits.append(f"<b>{self._title}</b>")
-        bits.append(f"i → j rate ({unit})" if unit else "i → j rate")
+        # Spell the direction out. The table is laid out row = source, column =
+        # target (see _write_back), while the model holds K[target, source] --
+        # "i → j" left it to the reader to guess which index was which, and a
+        # caption that disagrees with the layout reads as a swapped matrix.
+        bits.append(f"row → column rate ({unit})" if unit else "row → column rate")
         return "  ·  ".join(bits)
 
     def _header(self) -> QtWidgets.QLabel:

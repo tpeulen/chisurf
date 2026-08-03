@@ -592,7 +592,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
         r_nm = prof["r_nm"]
         k_exc_norm = prof["k_exc_norm"]
         P_states = prof["P_states"]
-        F_norm = prof["F_norm"]
+        emission = prof["emission"]
         lbls = prof["labels"]
 
         palette = ["#42a5f5", "#66bb6a", "#ab47bc", "#ffa726", "#26a69a", "#ec407a"]
@@ -601,7 +601,7 @@ class SaturationCalculatorTool(ChisurfDockTool):
         if self._show_power_profile:
             series.append(
                 {
-                    "name": "Excitation rate k_exc(r)",
+                    "name": "Excitation k_exc(r) / peak",
                     "x": r_nm,
                     "y": k_exc_norm,
                     "color": "cyan",
@@ -627,9 +627,9 @@ class SaturationCalculatorTool(ChisurfDockTool):
         if self._show_fluorescence_profile:
             series.append(
                 {
-                    "name": "Emission F(r) = Σ Q_i P_i(r)",
+                    "name": "Emission Σ Q_i P_i(r)",
                     "x": r_nm,
-                    "y": F_norm,
+                    "y": emission,
                     "color": "yellow",
                     "width": 2.5,
                     "dash": "dash",

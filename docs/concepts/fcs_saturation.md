@@ -105,6 +105,27 @@ At zero power there is no excitation, no populated scheme and nothing to
 integrate: the model returns the analytical Gaussian
 `(1+4Dτ/w_r²)⁻¹ (1+4Dτ/w_z²)⁻¹ᐟ²` with amplitude 1, exactly.
 
+### Reading the radial profile
+
+The most counter-intuitive thing this model predicts is that **the ground state
+empties in the focal centre**. At 30 mW into a 200 nm waist the peak excitation
+rate is ~3.7×10⁴ µs⁻¹ against a 250 µs⁻¹ decay rate, and the steady state at
+`r = 0` is
+
+```
+S0 = 0.001    S1 = 0.167    T1 = 0.832
+```
+
+— the molecule is almost never in the ground state because it is re-excited the
+moment it returns, and most of the population has piled into the dark state,
+which empties 500× more slowly than it fills. `S0` climbs back to 1 outside the
+beam, where there is no light. `S1` is clamped near `1/(1 + k_ISC/k_T)`, which is
+what makes the emission profile flat-topped, which is the saturation.
+
+Plot the emission on the same axis as the populations, not scaled to its own
+peak: with one bright state it *is* that state's curve, and rescaling it would
+show 1.0 in the centre where the bright-state population is 0.17.
+
 ## Reading the results
 
 `V_eff/V₀` is the number to take away. It is the factor by which an unsaturated
