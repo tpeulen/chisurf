@@ -528,7 +528,11 @@ class FusionViewModel:
             values = pd.to_numeric(frame[column], errors="coerce").to_numpy(dtype=float)
             return values[np.isfinite(values)]
 
-        def _row(name, before_value, after_value, unit=""):
+        def _row(name, before_value, after_value):
+            """One table row. The unit belongs in the name, not in a column of
+            its own: only two of eleven rows have one, so the column was mostly
+            empty and cost the panel width it does not have to spare."""
+
             def _text(value):
                 if isinstance(value, float):
                     return "—" if not np.isfinite(value) else f"{value:.4g}"
@@ -538,14 +542,13 @@ class FusionViewModel:
                 "quantity": name,
                 "before": _text(before_value),
                 "after": _text(after_value),
-                "unit": unit,
             }
 
-        def _pair(name, column, unit="", statistic="mean"):
+        def _pair(name, column, statistic="mean"):
             values = [_finite(before, column), _finite(after, column)]
             function = np.median if statistic == "median" else np.mean
             numbers = [float(function(v)) if v.size else float("nan") for v in values]
-            return _row(name, numbers[0], numbers[1], unit)
+            return _row(name, numbers[0], numbers[1])
 
         ratios = []
         for frame in (before, after):
@@ -556,26 +559,26 @@ class FusionViewModel:
         return [
             _row("Bursts", len(before), len(after)),
             _row(
-                "Proximity ratio (mean)",
+                "PR mean",
                 float(ratios[0].mean()) if ratios[0].size else float("nan"),
                 float(ratios[1].mean()) if ratios[1].size else float("nan"),
             ),
             _row(
-                "Proximity ratio (std)",
+                "PR width (std)",
                 float(ratios[0].std()) if ratios[0].size else float("nan"),
                 float(ratios[1].std()) if ratios[1].size else float("nan"),
             ),
-            _pair("Photons per burst (mean)", "Number of Photons"),
-            _pair("Photons per burst (median)", "Number of Photons", statistic="median"),
-            _pair("Duration (mean)", "Duration (ms)", "ms"),
-            _pair("Count rate (mean)", "Count Rate (KHz)", "kHz"),
+            _pair("Photons (mean)", "Number of Photons"),
+            _pair("Photons (med)", "Number of Photons", statistic="median"),
+            _pair("Duration (ms)", "Duration (ms)"),
+            _pair("Rate (kHz)", "Count Rate (KHz)"),
             _row("Fused groups", "—", stats["n_fused_groups"]),
-            _row("Largest fused burst", "—", f"{stats['largest_group']} fragments"),
+            _row("Largest fused", "—", f"{stats['largest_group']} frag."),
             _row("Bursts fused", "—", f"{stats['fused_fraction'] * 100:.1f} %"),
             _row(
-                "Fused window",
-                f"{self._analysis.window.tau_max_s * 1e3:.4g} ms",
-                f"{self._analysis.tau_used_s * 1e3:.4g} ms",
+                "Window, ms",
+                f"{self._analysis.window.tau_max_s * 1e3:.4g}",
+                f"{self._analysis.tau_used_s * 1e3:.4g}",
             ),
         ]
 

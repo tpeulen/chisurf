@@ -111,7 +111,7 @@ def test_analyze_populates_every_plot_and_the_summary(tool):
 
     rows = {row["quantity"]: row for row in model.summary_rows()}
     assert int(rows["Bursts"]["after"]) < int(rows["Bursts"]["before"])
-    assert rows["Proximity ratio (mean)"]["after"] != "—"
+    assert rows["PR mean"]["after"] != "—"
     assert "P(same molecule)" in model.status_text()
 
 
@@ -126,8 +126,8 @@ def test_writing_switches_the_plots_to_what_was_written(tool):
     # The emitted bursts also contain the photons between the fragments, so they
     # are brighter than the preview's fragment sums.
     rows = {row["quantity"]: row for row in tool.model.summary_rows()}
-    assert float(rows["Photons per burst (mean)"]["after"]) > float(
-        rows["Photons per burst (mean)"]["before"]
+    assert float(rows["Photons (mean)"]["after"]) > float(
+        rows["Photons (mean)"]["before"]
     )
 
 
@@ -186,7 +186,8 @@ def test_loading_the_demo_selects_a_folder_with_a_known_answer(qapp, monkeypatch
     assert widget.model.demo is not None
     assert widget.model.demo["truth"]["n_molecules"] > 0
     # The declared truth is on screen beside the result, which is the point.
-    assert "molecules crossed the focus" in widget.model.status_text()
+    status = widget.model.status_text()
+    assert "molecules" in status and str(widget.model.demo["bursts"]) in status
 
     widget.model.threshold = 0.7
     widget.model.analyze()

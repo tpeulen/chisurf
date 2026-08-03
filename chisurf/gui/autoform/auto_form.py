@@ -846,18 +846,18 @@ class AutoForm(QtWidgets.QWidget):
             weights = [max(1, int(w)) for w in (getattr(section, "sizes", ()) or ())]
             if len(weights) != len(members):
                 weights = [1] * len(members)
-            splitter = getattr(area, "_root_widget", None)
-            for i in range(len(members) - 1):
-                if not isinstance(splitter, QtWidgets.QSplitter):
-                    break
-                rest = sum(weights[i + 1 :])
-                try:
-                    splitter.setSizes([weights[i], rest])
-                    splitter.setStretchFactor(0, weights[i])
-                    splitter.setStretchFactor(1, rest)
-                except Exception:
-                    break
-                splitter = splitter.widget(1) if splitter.count() > 1 else None
+            self._apply_split_weights(area, weights)
+            # …and again once the dock area has a real width. Applied here the
+            # splitter is still ~100 px wide, so ``setSizes`` clamps every share
+            # to the children's minimum widths and the authored ratio is lost —
+            # an authored 26/74 came out as a 50/50 split, silently, in every
+            # view that asked for one. Deferred to the event loop, the same call
+            # lands on the real geometry. A persisted arrangement is restored on
+            # first show and must win, so the deferred pass stands down when the
+            # dock area has one stored.
+            QtCore.QTimer.singleShot(
+                0, lambda: self._apply_split_weights(area, weights, respect_persisted=True)
+            )
         else:
             for widget, name, _, _ in built:
                 try:
@@ -885,6 +885,51 @@ class AutoForm(QtWidgets.QWidget):
             except Exception:
                 pass
         return area
+
+    @staticmethod
+    def _apply_split_weights(area, weights, respect_persisted: bool = False) -> None:
+        """Give each dock split the share the view spec asked for.
+
+        The splits nest, so group *i* takes ``weights[i]`` against the sum of
+        everything after it. Sizes are handed to ``setSizes`` in the splitter's
+        *current* pixels rather than as raw weights: ``setSizes`` clamps each
+        share to the child's minimum width, so a small number (a weight of 26)
+        against a 127-px minimum is silently rounded up to an equal split.
+
+        Parameters
+        ----------
+        area : DockArea
+            The dock area whose splitter chain to size.
+        weights : sequence of int
+            One weight per group, in group order.
+        respect_persisted : bool
+            Skip when the dock area has a stored arrangement — the user's own
+            layout is restored on first show and must not be overwritten.
+        """
+        if respect_persisted:
+            try:
+                key = getattr(area, "_persist_key", "")
+                if key and area._persist_settings().value("dock_layout"):
+                    return
+            except Exception:
+                pass
+        splitter = getattr(area, "_root_widget", None)
+        for i in range(len(weights) - 1):
+            if not isinstance(splitter, QtWidgets.QSplitter):
+                break
+            rest = sum(weights[i + 1:])
+            total = weights[i] + rest
+            try:
+                span = splitter.width() if splitter.orientation() == QtCore.Qt.Horizontal \
+                    else splitter.height()
+                span = max(int(span), total)
+                first = max(1, round(span * weights[i] / total))
+                splitter.setSizes([first, max(1, span - first)])
+                splitter.setStretchFactor(0, weights[i])
+                splitter.setStretchFactor(1, rest)
+            except Exception:
+                break
+            splitter = splitter.widget(1) if splitter.count() > 1 else None
 
     def _build_wizard(self, section: vs.WizardSection):
         """Render a directed two-column wizard from a :class:`WizardSection`.

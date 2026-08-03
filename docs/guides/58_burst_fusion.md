@@ -88,8 +88,8 @@ They answer different questions and both matter.
 
 | Control | Question | How to choose |
 |---|---|---|
-| **Fuse if P(same) ≥** | Is this the same molecule? | Start at 0.7. Try 0.9 (conservative — only obvious splits repaired) and 0.5, and watch the summary table move. |
-| **Never bridge gaps >** | What does this cost? | Leave it at 10 ms unless you know why not. |
+| **P(same) ≥** | Is this the same molecule? | Start at 0.7. Try 0.9 (conservative — only obvious splits repaired) and 0.5, and watch the summary table move. |
+| **Max gap** | What does this cost? | Leave it at 10 ms unless you know why not. |
 
 On the demo, whose truth is 300 molecules, the three thresholds tell the whole
 story on one file:
@@ -116,7 +116,7 @@ background inside a burst. The ceiling is what keeps the step to the case it
 exists for: a single passage the search cut in two.
 
 When the ceiling is what bound the window, the status block says so, and the
-summary's **Fused window** row shows both numbers (what the probability allowed,
+summary's **Window, ms** row shows both numbers (what the probability allowed,
 what was used).
 
 ## 4. Judge it from the summary, not from the burst count
@@ -127,10 +127,10 @@ looks like:
 | Row | Expected | What it means if not |
 |---|---|---|
 | Bursts | falls | — |
-| Photons per burst | rises | — |
-| Proximity ratio (std) | **falls** | the width was shot noise from fragments |
-| Proximity ratio (mean) | roughly unchanged | a moving mean means you are merging *populations*, not fragments — raise the threshold |
-| Duration (mean) | rises modestly | a rise of orders of magnitude means the gap ceiling is too generous |
+| Photons (mean) | rises | — |
+| PR width (std) | **falls** | the width was shot noise from fragments |
+| PR mean | roughly unchanged | a moving mean means you are merging *populations*, not fragments — raise the threshold |
+| Duration, ms (mean) | rises modestly | a rise of orders of magnitude means the gap ceiling is too generous |
 
 ![Proximity ratio before and after fusion: the fused distribution is taller and narrower](figures/burst_fusion_proximity.png)
 
@@ -144,7 +144,7 @@ The **Photons per burst** plot shows the same thing as a distribution: fusion
 takes weight out of the short-burst tail, because the tail *was* the fragments.
 The **Fragments per fused burst** plot shows how far chains ran; fusion is
 transitive (A–B and B–C makes one burst of three), and a long tail there is the
-signal to cap it with **Max fragments per burst**.
+signal to cap it with **Max fragments**.
 
 ## 5. Write the fused folder
 

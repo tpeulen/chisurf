@@ -2,6 +2,27 @@
 
 ## 2026-08-03
 
+* **A dock area's authored `sizes` never actually applied.** Reported as "the
+  fusion controls eat half the window", and true of *every* view that asks for a
+  split: `setSizes` ran while the splitter was still ~100 px wide, so each share
+  clamped to the children's minimum widths and an authored 26/74 came out 50/50,
+  silently. It is now re-applied once on the event loop, against the real
+  geometry and in pixels rather than raw weights — and stands down when the dock
+  area has a *persisted* arrangement, because the user's own layout must win.
+  Pinned by `test/gui/test_autoform_dock_sizes.py` (ratio honoured, no-sizes
+  still even, saved layout not overwritten).
+  - Second half of the same report: an AutoForm table column with no declared
+    `width` kept Qt's default 100 px, and `stretchLastSection` only ever *grows*
+    a column — so in a narrow panel the declared widths summed past the viewport
+    and a table that fits perfectly well grew a horizontal scroll bar with its
+    last column behind it. Unsized columns are now Stretch-mode (which shrinks
+    as well), with the last-section stretch switched off so the two do not fight.
+  - The burst-fusion panel was then re-authored for the narrow column it now
+    gets: short labels, one control per row, a single-column advanced panel,
+    the units folded into the summary's row names instead of a column of their
+    own, and a fresh `persist` key so a stale saved arrangement does not restore
+    the old half-and-half layout over it.
+
 * **Burst fusion earns its `?`, its guide and its demo.** Brought the new step up
   to the [plugin documentation standard](plugins/documentation-standard.md):
   a `README.md` in the required section order, an `api/contract.py` (methods,

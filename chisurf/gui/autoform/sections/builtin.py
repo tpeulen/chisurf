@@ -819,7 +819,13 @@ class TableWidget(QtWidgets.QTableWidget):
         self.setHorizontalHeaderLabels(
             [str(c.get("label") or c.get("key") or "") for c in self._columns]
         )
-        self.horizontalHeader().setStretchLastSection(True)
+        # ``stretchLastSection`` only ever *grows* the last column, so with a
+        # column left unsized it cannot pull the total back inside a narrow
+        # viewport. Where the spec leaves any column unsized, those columns are
+        # put in Stretch mode instead — which both grows and shrinks — and the
+        # last-section stretch is switched off so the two do not fight over it.
+        unsized = [i for i, column in enumerate(self._columns) if not column.get("width")]
+        self.horizontalHeader().setStretchLastSection(not unsized)
         for i, column in enumerate(self._columns):
             if column.get("description"):
                 item = self.horizontalHeaderItem(i)
@@ -827,6 +833,18 @@ class TableWidget(QtWidgets.QTableWidget):
                     item.setToolTip(_wrap_tooltip(str(column.get("description"))))
             if column.get("width"):
                 self.setColumnWidth(i, int(column["width"]))
+            else:
+                # A column the spec did not size shares whatever the sized ones
+                # leave. Keeping Qt's default 100 px instead made the declared
+                # widths add up past the viewport in a narrow panel, so a table
+                # that fits perfectly well grew a horizontal scroll bar and hid
+                # its last column behind it.
+                try:
+                    self.horizontalHeader().setSectionResizeMode(
+                        i, QtWidgets.QHeaderView.Stretch
+                    )
+                except Exception:
+                    pass
         if getattr(section, "height", 0):
             self.setMinimumHeight(int(section.height))
         if getattr(section, "expand", False):

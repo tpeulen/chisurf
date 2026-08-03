@@ -420,11 +420,11 @@ def describe(result: dict[str, Any]) -> str:
     gaps = np.asarray(truth.get("gap_ms", []), dtype=float)
     median_gap = float(np.median(gaps)) if gaps.size else float("nan")
     return (
-        f"<b>Demo loaded.</b> {truth.get('n_molecules', 0)} molecules crossed the "
-        f"focus; the search cut {truth.get('n_crossings_split', 0)} of those "
-        f"crossings up and found <b>{result.get('bursts', 0)} bursts</b>. The gaps "
-        f"it cut at have a median of {median_gap:.2f} ms, so fusing should bring "
-        f"the burst count back towards {truth.get('n_molecules', 0)}."
+        f"<b>Demo:</b> {truth.get('n_molecules', 0)} molecules &rarr; "
+        f"<b>{result.get('bursts', 0)} bursts</b> "
+        f"({truth.get('n_crossings_split', 0)} crossings cut up, median gap "
+        f"{median_gap:.2f} ms). Fusing should return the count towards "
+        f"{truth.get('n_molecules', 0)}."
     )
 
 

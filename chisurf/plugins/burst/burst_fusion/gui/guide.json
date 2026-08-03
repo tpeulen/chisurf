@@ -44,7 +44,7 @@
     },
     {
       "title": "Step 5 — judge it from the table, not the burst count",
-      "text": "Set the threshold back to <b>0.7</b>, Run, and read the summary. These are the rows that decide it:<br/><br/>• <b>Proximity ratio (std)</b> — should <i>fall</i> (on the demo: 0.041 → 0.033). The demo has <b>one</b> FRET population, so its whole width is shot noise; putting the fragments back together removes some of it. This is the row that says fusion helped.<br/>• <b>Proximity ratio (mean)</b> — should barely move. If it walks, you are merging <i>populations</i>, not fragments.<br/>• <b>Photons per burst</b> — rises, and the photon histogram loses weight from its short tail. The tail was the fragments.<br/>• <b>Duration (mean)</b> — rises modestly. Orders of magnitude means the ceiling is too generous.",
+      "text": "Set the threshold back to <b>0.7</b>, Run, and read the summary. These are the rows that decide it:<br/><br/>• <b>PR width (std)</b> — should <i>fall</i> (on the demo: 0.041 → 0.033). The demo has <b>one</b> FRET population, so its whole width is shot noise; putting the fragments back together removes some of it. This is the row that says fusion helped.<br/>• <b>PR mean</b> — should barely move. If it walks, you are merging <i>populations</i>, not fragments.<br/>• <b>Photons</b> — rises, and the photon histogram loses weight from its short tail. The tail was the fragments.<br/>• <b>Duration</b> — rises modestly. Orders of magnitude means the ceiling is too generous.",
       "target": {
         "title": "Summary"
       },
