@@ -1,0 +1,235 @@
+{
+  "_comment": "AutoForm UI for FCS Saturation Calculator using ChiSurf dock areas",
+  "sections": [
+    {
+      "type": "dock_area",
+      "title": "FCS Saturation",
+      "split": "horizontal",
+      "persist": "fcs_saturation_docks",
+      "sections": [
+        {
+          "type": "panel",
+          "title": "Photophysics",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "choice",
+              "attr": "scheme_preset",
+              "label": "Scheme",
+              "options_source": "scheme_names",
+              "description": "Load a photophysical scheme. Presets are starting points, not constraints — every rate, cross-section and brightness stays editable."
+            },
+            {
+              "type": "value",
+              "attr": "power_mW",
+              "label": "Laser Power",
+              "kind": "float",
+              "style": "scientific",
+              "minimum": 0.0,
+              "maximum": 100000.0,
+              "decimals": 4,
+              "suffix": " mW",
+              "description": "<html><b>Total measured laser power P<sub>total</sub> (mW)</b><br/>Average excitation power measured at the objective back aperture.<br/>• <b>Photon flux:</b> Φ<sub>total</sub> = P<sub>total</sub> / hν<br/>• <b>Peak focal rate:</b> k<sub>exc</sub>(0,0) = 2 σ<sub>abs</sub> Φ<sub>total</sub> / (π w<sub>r</sub>²)<br/>At P = 0 the saturated curve is exactly the unsaturated Gaussian.</html>"
+            },
+            {
+              "type": "value",
+              "attr": "wavelength_nm",
+              "label": "Excitation λ",
+              "kind": "float",
+              "minimum": 200.0,
+              "maximum": 1200.0,
+              "decimals": 1,
+              "suffix": " nm",
+              "description": "<html><b>Excitation wavelength (nm)</b><br/>Sets the photon energy, so a given power delivers <i>fewer</i> photons at shorter wavelengths, and selects which ε applies. Changing it re-reads ε(λ) when a dye is chosen.</html>"
+            },
+            {
+              "type": "choice",
+              "attr": "dye",
+              "label": "Dye (MMFDB)",
+              "options_source": "dye_names",
+              "description": "<html><b>Read ε from the dye repository</b><br/>Takes the molar extinction coefficient <i>at the excitation wavelength</i> from the stored absorption spectrum. The catalogued ε is the peak value — exciting off the maximum can deliver a small fraction of it, so this matters. Leave empty to type ε in by hand.</html>"
+            },
+            {
+              "type": "choice",
+              "attr": "rate_unit",
+              "label": "Rate Matrix Units",
+              "options": [
+                "1/s",
+                "1/ms",
+                "1/us",
+                "1/ns"
+              ],
+              "description": "Time base of the transition rates. Changing it rescales the entered values, it does not reinterpret them."
+            },
+            {
+              "type": "toggle",
+              "attr": "include_bunching",
+              "label": "Include Bunching Dynamics",
+              "description": "Include the photokinetic state-relaxation term X(τ), which raises G at lags shorter than the scheme's relaxation times. Switch it off to see the diffusion and volume-expansion effects alone."
+            },
+            {
+              "type": "value",
+              "attr": "n_states",
+              "label": "Number of States",
+              "kind": "int",
+              "minimum": 2,
+              "maximum": 6,
+              "rebuild_on_change": true,
+              "description": "Number of states in the photochemical scheme. Two is the minimum (ground + excited); add one state per dark, isomeric or transferred state.",
+              "target": "saturation"
+            },
+            {
+              "type": "custom",
+              "key": "rate_matrix",
+              "target": "saturation.dark.matrix",
+              "options": {
+                "size_attr": "saturation.n_states",
+                "labels_attr": "saturation.state_labels",
+                "unit_attr": "rate_unit",
+                "disable_row0": true,
+                "minimum": 0.0,
+                "maximum": 1000000000.0,
+                "decimals": 4,
+                "popup": false,
+                "title": "Power-independent rates K_dark[to, from]"
+              }
+            },
+            {
+              "type": "custom",
+              "key": "rate_matrix",
+              "target": "saturation.exc.matrix",
+              "options": {
+                "size_attr": "saturation.n_states",
+                "labels_attr": "saturation.state_labels",
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "decimals": 3,
+                "popup": false,
+                "title": "Excitation cross-sections K_exc[to, from]"
+              }
+            },
+            {
+              "type": "parameter_group_table",
+              "target": "saturation.brightness",
+              "title": "State Relative Brightness (Q)",
+              "collapsible": false
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "State diagram",
+          "collapsed": false,
+          "n_col": 1,
+          "sections": [
+            {
+              "type": "custom",
+              "key": "state_scheme",
+              "target": "saturation",
+              "options": {
+                "unit_attr": "rate_unit"
+              }
+            },
+            {
+              "type": "parameter_group_table",
+              "target": "saturation",
+              "collapsible": false,
+              "title": "Optics & measurement"
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "FCS curve",
+          "collapsed": false,
+          "n_col": 2,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "normalize_fcs",
+              "label": "Normalize G(τ) to 1.0",
+              "description": "<html><b>Normalize Autocorrelation Curves</b><br/>Force G(0) = 1.0 to directly highlight and compare shape differences (flatter initial plateau, broader diffusion shift, bunching rise) between unperturbed and saturated curves.</html>"
+            },
+            {
+              "type": "plot",
+              "source": "fcs_curves_series",
+              "title": "FCS Saturation Effect",
+              "x_label": "τ (ms)",
+              "y_label": "G(τ)",
+              "log_x": true,
+              "log_y": false,
+              "legend": true
+            },
+            {
+              "type": "info",
+              "source": "info_text"
+            }
+          ]
+        },
+        {
+          "type": "panel",
+          "title": "Profiles",
+          "collapsed": false,
+          "n_col": 2,
+          "sections": [
+            {
+              "type": "toggle",
+              "attr": "show_power_profile",
+              "label": "Excitation k(r)",
+              "description": "<html><b>Excitation rate k<sub>exc</sub>(r)</b><br/>Normalized Gaussian excitation profile: <i>exp(-2r²/w<sub>r</sub>²)</i>. Compare it against the emission profile to see the flat top saturation creates.</html>"
+            },
+            {
+              "type": "toggle",
+              "attr": "show_state_profiles",
+              "label": "State populations",
+              "description": "<html><b>Steady-state populations P<sub>i</sub>(r)</b><br/>One curve per state of the scheme, solved from K(r) P(r) = 0 at every radius. Which state is which is whatever the scheme's labels say — no state is treated specially.</html>"
+            },
+            {
+              "type": "toggle",
+              "attr": "show_fluorescence_profile",
+              "label": "Emission F(r)",
+              "description": "<html><b>Emission profile F(r) = ∑ Q<sub>i</sub> P<sub>i</sub>(r)</b><br/>The brightness-weighted population, i.e. the profile whose spatial autocorrelation <i>is</i> the FCS curve. Its flattening is the saturation.</html>"
+            },
+            {
+              "type": "plot",
+              "source": "volume_profile_series",
+              "title": "Radial Spatial Volume Profiles",
+              "x_label": "Radial Position r (nm)",
+              "y_label": "Population / normalized rate",
+              "log_x": false,
+              "log_y": false,
+              "legend": true
+            },
+            {
+              "type": "plot",
+              "source": "volume_power_series",
+              "title": "Volume Expansion vs Laser Power",
+              "x_label": "Power (mW)",
+              "y_label": "V_eff / V_0",
+              "log_x": true,
+              "log_y": false,
+              "legend": true
+            },
+            {
+              "type": "plot",
+              "source": "tau_d_power_series",
+              "title": "Diffusion Time vs Laser Power",
+              "x_label": "Power (mW)",
+              "y_label": "τ_D (ms)",
+              "log_x": true,
+              "log_y": false,
+              "legend": true
+            }
+          ]
+        }
+      ],
+      "sizes": [
+        30,
+        16,
+        30,
+        24
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Two-state (ground + excited)",
+  "description": "The minimal photochemical scheme: state 1 absorbs into state 2, which decays radiatively. Saturation here is pure excited-state saturation, with no dark state involved.",
+  "n_states": 2,
+  "state_labels": ["S0", "S1"],
+  "state_names": ["Ground state", "Excited state"],
+  "rate_unit": "1/us",
+  "brightness": [0.0, 1.0],
+  "lifetime_rate": "k2_1",
+  "dark_rates": {
+    "k2_1": 250.0
+  },
+  "exc_rates": {
+    "sigma1_2": 1.0
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "steps": [
+    {
+      "title": "A worked example: Rhodamine 6G in water",
+      "text": "We will work one concrete case all the way through, and you will end up with a number you can use.<br/><br/><b>The sample:</b> Rhodamine 6G in water at 25 °C, on a confocal microscope with a 488 nm laser.<br/><b>The question:</b> at the power I normally use, how badly does my FCS fit overestimate the concentration?<br/><br/>Start by selecting <b>Rhodamine 6G (3-state, triplet)</b> in this box.",
+      "target": {
+        "attr": "scheme_preset"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 1 — the laser line: type 488",
+      "text": "Set the excitation wavelength to <b>488</b> nm.<br/><br/>This is not cosmetic. The wavelength fixes the photon energy, so it decides how many photons per second a given power actually delivers — the same 1 mW is 33 % more photons at 650 nm than at 488 nm. Set it <i>before</i> the extinction coefficient, because ε is read at whatever wavelength is showing here.",
+      "target": {
+        "attr": "wavelength_nm"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 2 — ε at 488 nm, not ε at the peak",
+      "text": "Rhodamine 6G absorbs maximally near 530 nm with ε ≈ 116 000 M⁻¹cm⁻¹, but we are exciting at 488 nm, where it is roughly <b>100 000 M⁻¹cm⁻¹</b>.<br/><br/>If your dye is in the repository, pick it here and ε(488 nm) is read straight off its stored absorption spectrum. If it is not listed, leave this empty and type <b>100000</b> into the ε row of the <i>Optics &amp; measurement</i> table next to the state diagram.<br/><br/>Using the catalogued <i>peak</i> ε instead is the most common way to get an excitation rate badly wrong — for a dye excited well off its maximum it can be a factor of hundreds.",
+      "target": {
+        "attr": "dye"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 3 — the optics: w_r = 250, w_z = 1000, D = 400",
+      "text": "In the <b>Optics &amp; measurement</b> table beside the state diagram, set:<br/>• <b>w<sub>r</sub> = 250</b> nm and <b>w<sub>z</sub> = 1000</b> nm — your beam waists, calibrated from a dye standard at low power.<br/>• <b>D = 400</b> µm²/s — Rhodamine 6G in water at 25 °C.<br/><br/>With these, the unsaturated diffusion time is w<sub>r</sub>²/4D ≈ <b>39 µs</b>. Keep that number: everything below is measured against it.",
+      "target": {
+        "key": "state_scheme"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 4 — set the power to 0 and see the baseline",
+      "text": "Type <b>0</b> here.<br/><br/>The red saturated curve lands exactly on the blue unsaturated one, and the summary reports <b>V<sub>eff</sub>/V₀ = 1.000</b>. That is not an approximation or a limit: with no excitation there is no populated scheme, so the model returns the analytical Gaussian.<br/><br/>This is your reference. Now we break it.",
+      "target": {
+        "attr": "power_mW"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 5 — 50 µW is already not a low power",
+      "text": "Now type <b>0.05</b> mW — 50 microwatts, a power most people would call gentle.<br/><br/>Read the summary: the peak focal rate is <b>k<sub>exc</sub>(0,0) ≈ 48 µs⁻¹</b> against a fluorescence decay rate of 250 µs⁻¹, so the molecule is already spending a fifth of its time unable to absorb. The result:<br/>• <b>V<sub>eff</sub>/V₀ ≈ 1.33</b> — a fit would report <b>33 % too many molecules</b><br/>• τ<sub>D</sub> ≈ 47 µs instead of 39 µs<br/><br/>Nothing about the sample changed. Only the lamp.",
+      "target": {
+        "attr": "power_mW"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 6 — 2 mW, and the damage is threefold",
+      "text": "Type <b>2</b> mW.<br/><br/>• <b>V<sub>eff</sub>/V₀ ≈ 3.3</b> — the concentration is now overestimated <b>more than threefold</b><br/>• τ<sub>D</sub> ≈ 87 µs, over twice the true 39 µs, so an apparent D less than half the real one<br/>• the amplitude G(0) has fallen to ~30 % of the unsaturated value<br/><br/>Every one of those biases points the same way, and none of them announces itself: the curve still looks like a perfectly good FCS curve and still fits beautifully.",
+      "target": {
+        "attr": "power_mW"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 7 — watch where it goes wrong, in space",
+      "text": "Toggle the state populations on and look at the <b>Profiles</b> panel.<br/><br/>The cyan curve is the excitation rate — still a clean Gaussian. The yellow curve is the emission F(r) = Σ Q<sub>i</sub> P<sub>i</sub>(r), and it is <i>not</i>: it has a flat top, because at r = 0 the molecule is either already excited (green, S1) or parked in the triplet (purple, T1).<br/><br/>That flat top is the whole story. A wider emission profile is a bigger V<sub>eff</sub>, and V<sub>eff</sub> is what sets G(0).",
+      "target": {
+        "attr": "show_state_profiles"
+      },
+      "await": true
+    },
+    {
+      "title": "Step 8 — pick your operating power",
+      "text": "Look at <b>Volume(P)</b>: V<sub>eff</sub>/V₀ against power, with your current power marked in red. For this dye and this waist there is no flat region above ~10 µW — which is the honest answer to \"what power is safe?\".<br/><br/>So the defensible protocol is a <b>power series extrapolated to zero</b>, not a correction factor. Use this plot to choose the powers to measure at, and use V<sub>eff</sub>/V₀ to know how much you are correcting.<br/><br/>Finally, tick this box to normalise G(0) = 1 and compare the shapes: the saturated curve is not just smaller, it is <i>broader</i>.",
+      "target": {
+        "attr": "normalize_fcs"
+      },
+      "await": true
+    },
+    {
+      "title": "Now make it your dye",
+      "text": "Everything above was three arrays, and none of them assumes a triplet:<br/>• <b>K<sub>dark</sub>[to, from]</b> — here k<sub>21</sub> = 250 /µs (a 4 ns lifetime), k<sub>23</sub> = 2.5 /µs (1 % ISC yield), k<sub>31</sub> = 0.5 /µs (a 2 µs triplet).<br/>• <b>K<sub>exc</sub>[to, from]</b> — σ<sub>12</sub> = 1.<br/>• <b>Q</b> — only S1 emits.<br/><br/>Raise <b>Number of States</b> to add a photo-isomer or a bleached state; double-click a rate badge on the diagram to edit it; 💾 saves the scheme as JSON so your dye's photophysics is reusable. Try the <b>Cyanine 5</b> preset to see what happens when the dark state relaxes on the <i>diffusion</i> timescale rather than well below it.",
+      "target": {
+        "key": "rate_matrix"
+      }
+    }
+  ]
+}

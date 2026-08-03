@@ -512,6 +512,10 @@ class DockAreaSection(Section):
     #: ``"horizontal"`` places them left-to-right, ``"vertical"`` top-to-bottom.
     #: The user can still drag panels into any tab/split afterwards.
     split: str = ""
+    #: Relative initial size of each split panel, one entry per child section.
+    #: Without it every panel gets an equal share, which turns a six-panel split
+    #: into six unreadable slivers; the numbers are weights, not pixels.
+    sizes: typing.Tuple[int, ...] = ()
     #: When set, the dock arrangement (splits/tabs/sizes) is remembered across
     #: sessions under this plugin-unique settings key (typically the plugin's
     #: ``state_namespace``).

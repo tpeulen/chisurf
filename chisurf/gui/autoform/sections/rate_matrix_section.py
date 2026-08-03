@@ -43,10 +43,30 @@ logger = logging.getLogger(__name__)
 
 
 def _resolve(model: Any, name: str, default=None):
-    if not name or not hasattr(model, name):
+    if not name or model is None:
         return default
-    value = getattr(model, name)
-    return value() if callable(value) else value
+    obj = model
+    for part in name.split("."):
+        if not hasattr(obj, part):
+            return default
+        obj = getattr(obj, part)
+        if callable(obj):
+            obj = obj()
+    return obj
+
+
+def _set_resolved(model: Any, name: str, value: Any) -> None:
+    if not name or model is None:
+        return
+    parts = name.split(".")
+    obj = model
+    for part in parts[:-1]:
+        if not hasattr(obj, part):
+            return
+        obj = getattr(obj, part)
+        if callable(obj):
+            obj = obj()
+    setattr(obj, parts[-1], value)
 
 
 @register_section("rate_matrix")
@@ -160,7 +180,7 @@ class RateMatrixWidget(QtWidgets.QWidget):
             return max(1, int(round(len(flat) ** 0.5)) if flat else 1)
 
     def _flat(self) -> list[float]:
-        value = getattr(self._model, self._attr, None) if self._attr else None
+        value = _resolve(self._model, self._attr, None) if self._attr else None
         if value is None:
             return []
         try:
@@ -219,67 +239,269 @@ class RateMatrixWidget(QtWidgets.QWidget):
         flat = [0.0] * (n * n)
         for (i, j), spin in self._spins.items():
             if i < n and j < n:
-                flat[i * n + j] = self._cell_value(i, j, spin)
+                # Table cell (i, j) has row i = source, col j = target.
+                # Model matrix holds K[target, source], so index in flat array is j * n + i.
+                flat[j * n + i] = self._cell_value(i, j, spin)
         if self._attr:
-            setattr(self._model, self._attr, flat)
+            _set_resolved(self._model, self._attr, flat)
         self._update_button()
+        callback = getattr(self._model, "_on_changed", None) or getattr(self._model, "on_changed", None)
+        if callable(callback):
+            try:
+                callback()
+            except Exception:
+                pass
+
+    def _get_cell_parameter(self, i: int, j: int):
+        """Look up the FittingParameter corresponding to cell (i, j)."""
+        target_obj = _resolve(self._model, self._attr, None)
+        if target_obj is None and "." in self._attr:
+            parent_path = self._attr.rsplit(".", 1)[0]
+            target_obj = _resolve(self._model, parent_path, None)
+        if target_obj is not None:
+            if hasattr(target_obj, "rate_items"):
+                rate_map = dict(target_obj.rate_items())
+                return rate_map.get((i + 1, j + 1))
+            elif hasattr(target_obj, "rates_by_name"):
+                prefix = getattr(target_obj, "rate_prefix", "k")
+                name = f"{prefix}{i + 1}_{j + 1}"
+                return target_obj.rates_by_name().get(name)
+        return None
 
     # -- build / refresh ----------------------------------------------
     def _build(self) -> None:
+        from chisurf.gui.widgets.general import table_font, table_row_height, table_header_height
+        t_font = table_font()
         n = self._size()
         flat = self._flat()
         labels = self._labels(n)
+        descriptions = self._descriptions(n)
         self.table.blockSignals(True)
         self.table.clear()
         self._spins.clear()
+        self._checkboxes: dict[tuple[int, int], QtWidgets.QCheckBox] = {}
         self._loaded.clear()
         self.table.setRowCount(n)
         self.table.setColumnCount(n)
         self.table.setHorizontalHeaderLabels(labels)
         self.table.setVerticalHeaderLabels(labels)
-        # Size a cell to the widest value it can hold rather than to a fixed
-        # number of pixels: a rate of 1e5 with three decimals does not fit in the
-        # same box as 0.5, and a silently clipped number in an editable grid is
-        # worse than a wide column.
-        widest = f"{max(abs(self._min), abs(self._max)):.{self._decimals}f}"
-        cell_width = QtWidgets.QApplication.fontMetrics().horizontalAdvance(
-            widest + "0"
-        ) + 34          # spin buttons + frame
+        for k in range(n):
+            desc = descriptions[k] if k < len(descriptions) else labels[k]
+            h_item = self.table.horizontalHeaderItem(k)
+            if h_item is not None:
+                h_item.setToolTip(f"State {k+1}: {desc}")
+            v_item = self.table.verticalHeaderItem(k)
+            if v_item is not None:
+                v_item.setToolTip(f"State {k+1}: {desc}")
+
         for i in range(n):
             for j in range(n):
-                spin = QtWidgets.QDoubleSpinBox()
+                param = self._get_cell_parameter(i, j)
+
+                cell_w = QtWidgets.QWidget()
+                c_layout = QtWidgets.QHBoxLayout(cell_w)
+                c_layout.setContentsMargins(1, 0, 1, 0)
+                c_layout.setSpacing(1)
+
+                chk_fix = QtWidgets.QCheckBox(cell_w)
+                chk_fix.setToolTip("Fix parameter (checked = fixed, unchecked = free for fitting)")
+                chk_fix.setStyleSheet(
+                    "QCheckBox { spacing: 0px; background: transparent; } "
+                    "QCheckBox::indicator { width: 11px; height: 11px; border: 1px solid #777777; border-radius: 2px; background-color: #2b2b2b; } "
+                    "QCheckBox::indicator:disabled { border: 1px solid #444444; background-color: #1a1a1a; } "
+                    "QCheckBox::indicator:hover { border: 1px solid #ff3333; } "
+                    "QCheckBox::indicator:checked { background-color: #ff3333; border: 1px solid #ff3333; } "
+                    "QCheckBox::indicator:checked:disabled { background-color: #552222; border: 1px solid #444444; }"
+                )
+
+                spin = QtWidgets.QDoubleSpinBox(cell_w)
+                spin.setFont(t_font)
                 spin.setRange(self._min, self._max)
                 spin.setDecimals(self._decimals)
                 spin.setKeyboardTracking(False)
-                spin.setMinimumWidth(min(cell_width, 160))
-                idx = i * n + j
+                spin.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+                spin.setAlignment(QtCore.Qt.AlignCenter)
+                idx = j * n + i
                 raw = flat[idx] if idx < len(flat) else 0.0
-                if i == j and not self._diagonal:
+
+                is_disabled_cell = (i == 0 and self._disable_row0) or (i == j and not self._diagonal)
+
+                def _update_cell_style(p=param, chk=chk_fix, sp=spin, is_dis=is_disabled_cell):
+                    if is_dis:
+                        chk.setCheckState(QtCore.Qt.Checked)
+                        chk.setStyleSheet(
+                            "QCheckBox { spacing: 0px; background: transparent; } "
+                            "QCheckBox::indicator { width: 11px; height: 11px; border: 1px solid #444444; border-radius: 2px; background-color: #552222; }"
+                        )
+                        sp.setStyleSheet("QDoubleSpinBox { border: 1px solid #333333; border-radius: 3px; color: #777777; background-color: #1a1a1a; }")
+                        return
+
+                    is_linked = getattr(p, "is_linked", False) if p is not None else False
+                    is_fixed = bool(p.fixed) if p is not None else True
+
+                    chk.setTristate(True)
+                    if is_linked:
+                        chk.setCheckState(QtCore.Qt.PartiallyChecked)
+                        color = "#2a88ff"   # Blue
+                    elif is_fixed:
+                        chk.setCheckState(QtCore.Qt.Checked)
+                        color = "#ff2a2a"   # Red
+                    else:
+                        chk.setCheckState(QtCore.Qt.Unchecked)
+                        color = "#2acc44"   # Green
+
+                    chk.setStyleSheet(
+                        "QCheckBox { spacing: 0px; background: transparent; } "
+                        "QCheckBox::indicator { width: 11px; height: 11px; border: 1px solid #666666; border-radius: 2px; } "
+                        "QCheckBox::indicator:unchecked { background-color: #2acc44; border: 1px solid #2acc44; } "
+                        "QCheckBox::indicator:indeterminate { background-color: #2a88ff; border: 1px solid #2a88ff; } "
+                        "QCheckBox::indicator:checked { background-color: #ff2a2a; border: 1px solid #ff2a2a; }"
+                    )
+                    sp.setStyleSheet(
+                        f"QDoubleSpinBox {{ border: 1px solid #3d3d3d; border-radius: 3px; font-weight: bold; selection-background-color: {color}; }} "
+                        f"QDoubleSpinBox:focus {{ border: 1px solid {color}; }}"
+                    )
+
+                if is_disabled_cell:
                     self._load(i, j, spin, 0.0)
                     spin.setEnabled(False)
-                    spin.setToolTip("Self-transition (i→i) is fixed at 0.")
+                    chk_fix.setChecked(True)
+                    chk_fix.setEnabled(False)
+                    if i == 0 and self._disable_row0:
+                        tt = f"Ground state {descriptions[0]} dark transition is 0 (excitation is optical)."
+                    else:
+                        tt = f"Self-transition for state {descriptions[i]} is fixed at 0."
+                    spin.setToolTip(tt)
+                    chk_fix.setToolTip(tt)
+                    _update_cell_style()
                 else:
-                    spin.setToolTip(f"Rate from state {labels[i]} to state {labels[j]}"
-                                    + (f" ({self._unit})" if self._unit else ""))
+                    tt_desc = f"Transition rate from {descriptions[i]} to {descriptions[j]}" + (f" ({self._unit})" if self._unit else "")
                     self._load(i, j, spin, raw)
                     spin.valueChanged.connect(lambda _v, ni=n: self._write_back(ni))
+
+                    if param is not None:
+                        from chisurf.gui.widgets.fitting.parameter_widgets import (
+                            FittingParameterProxyController,
+                            FittingParameterDetailPopup,
+                        )
+
+                        def _on_proxy_change():
+                            self._load_all()
+                            _update_cell_style()
+                            if hasattr(self._model, "update"):
+                                self._model.update()
+
+                        ctrl = FittingParameterProxyController(
+                            fitting_parameter=param,
+                            parent=cell_w,
+                            on_change=_on_proxy_change
+                        )
+
+                        st_str = "Fixed" if param.fixed else f"Free [{param.lb:.4g}, {param.ub:.4g}]"
+                        lnk_str = " (Linked)" if getattr(param, "is_linked", False) else ""
+                        rich_tt = (
+                            f"<b>{param.name}</b> = {param.value:.4g} ({st_str}{lnk_str})<br>"
+                            f"{tt_desc}"
+                        )
+                        spin.setToolTip(rich_tt)
+                        chk_fix.setToolTip(rich_tt)
+                        cell_w.setToolTip(rich_tt)
+
+                        _update_cell_style()
+
+                        def _on_fix_state_changed(state, p=param):
+                            if state == QtCore.Qt.Checked:
+                                p.fixed = True
+                            elif state == QtCore.Qt.Unchecked:
+                                p.fixed = False
+                            _update_cell_style()
+                            if hasattr(self._model, "update"):
+                                self._model.update()
+
+                        chk_fix.stateChanged.connect(_on_fix_state_changed)
+
+                        cell_w.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+                        spin.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+
+                        def _on_context_menu(pos: QtCore.QPoint, p=param, c=ctrl, cb=chk_fix, w=cell_w):
+                            menu = c.build_link_menu()
+                            menu.setTitle(f"🔗 {p.name}")
+                            menu.addSeparator()
+                            act_popup = menu.addAction("🛠 Parameter Detail Popup...")
+                            def _show_popup():
+                                pop = FittingParameterDetailPopup(c)
+                                pop.move(QtGui.QCursor.pos())
+                                pop.refresh_from_model()
+                                pop.exec_()
+                            act_popup.triggered.connect(_show_popup)
+                            menu.exec_(w.mapToGlobal(pos))
+
+                        cell_w.customContextMenuRequested.connect(_on_context_menu)
+                        spin.customContextMenuRequested.connect(lambda pos, w=cell_w, c_fn=_on_context_menu: c_fn(pos, w=w))
+
+                        class DblClickFilter(QtCore.QObject):
+                            def __init__(self, c=ctrl, parent=None):
+                                super().__init__(parent)
+                                self._c = c
+
+                            def eventFilter(self, obj, event):
+                                if event.type() == QtCore.QEvent.MouseButtonDblClick and event.button() == QtCore.Qt.LeftButton:
+                                    pop = FittingParameterDetailPopup(self._c)
+                                    pop.move(QtGui.QCursor.pos())
+                                    pop.refresh_from_model()
+                                    pop.exec_()
+                                    return True
+                                return super().eventFilter(obj, event)
+
+                        flt = DblClickFilter(ctrl, cell_w)
+                        spin.installEventFilter(flt)
+                        cell_w.installEventFilter(flt)
+                    else:
+                        chk_fix.setChecked(True)
+                        spin.setToolTip(tt_desc)
+                        chk_fix.setToolTip(tt_desc)
+
+                c_layout.addWidget(chk_fix)
+                c_layout.addWidget(spin, 1)
+
                 self._spins[(i, j)] = spin
-                self.table.setCellWidget(i, j, spin)
-        self.table.resizeColumnsToContents()
-        row_h = 32
-        header_h = 26
-        self.table.setFixedHeight(header_h + row_h * n + 4)
+                self._checkboxes[(i, j)] = chk_fix
+                self.table.setCellWidget(i, j, cell_w)
+
+        for col in range(n):
+            self.table.horizontalHeader().setSectionResizeMode(col, QtWidgets.QHeaderView.Stretch)
+        for row in range(n):
+            self.table.verticalHeader().setSectionResizeMode(row, QtWidgets.QHeaderView.Stretch)
+        # A cell holds a fix checkbox next to a spin box; if that widget wants
+        # more than the nominal row height, every row grows and a height computed
+        # from the nominal value clips the last state off the bottom.
+        row_h = table_row_height()
+        for i in range(n):
+            for j in range(n):
+                cell = self.table.cellWidget(i, j)
+                if cell is not None:
+                    row_h = max(row_h, cell.sizeHint().height())
+        header_h = table_header_height()
+        self.table.verticalHeader().setDefaultSectionSize(row_h)
+        self.table.horizontalHeader().setDefaultSectionSize(header_h)
+        # The frame and, on a narrow panel, the horizontal scroll bar both eat
+        # into a fixed height: without counting them the last row of the scheme
+        # is clipped, which for a 3-state scheme silently hides a whole state.
+        chrome = 2 * self.table.frameWidth() + 4
+        if self.table.horizontalScrollBarPolicy() != QtCore.Qt.ScrollBarAlwaysOff:
+            chrome += self.table.horizontalScrollBar().sizeHint().height()
+        self.table.setFixedHeight(header_h + row_h * n + chrome)
+        self.table.updateGeometry()
+        self.updateGeometry()
         self.table.blockSignals(False)
-        # Building the grid is not an edit: opening a panel must leave the model
-        # exactly as it was found. The one case that does need a write is a
-        # genuine resize, where the stored matrix no longer holds N*N entries
-        # and nothing else reshapes it.
         if len(flat) != n * n:
             self._write_back(n)
         self._update_button()
 
     def refresh(self) -> None:
         """Re-read the model, rebuilding only if the state count changed."""
+        if self._header_label is not None:
+            self._header_label.setText(self._header_text())
         # Rebuild when the state count changed (tracks size_attr, e.g. n_species).
         if self.table.rowCount() != self._size():
             self._build()
@@ -287,9 +509,17 @@ class RateMatrixWidget(QtWidgets.QWidget):
             flat = self._flat()
             n = self.table.rowCount()
             for (i, j), spin in self._spins.items():
-                idx = i * n + j
+                idx = j * n + i
                 raw = flat[idx] if idx < len(flat) else 0.0
-                if i == j and not self._diagonal:
+                if i == 0 and self._disable_row0:
+                    raw = 0.0
+                elif i == j and not self._diagonal:
                     raw = 0.0
                 self._load(i, j, spin, raw)
+                param = self._get_cell_parameter(i, j)
+                if param is not None and (i, j) in self._checkboxes:
+                    cb = self._checkboxes[(i, j)]
+                    cb.blockSignals(True)
+                    cb.setChecked(bool(param.fixed))
+                    cb.blockSignals(False)
             self._update_button()

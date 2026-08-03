@@ -793,12 +793,25 @@ class AutoForm(QtWidgets.QWidget):
                     pass
                 area.split_tab_widget(target_tw, new_tw, zone)
                 target_tw = new_tw
-            root = getattr(area, "_root_widget", None)
-            if isinstance(root, QtWidgets.QSplitter):
+            # Each split nests inside the previous one's second half, so panel i
+            # takes weights[i] against the sum of everything after it. Without
+            # authored sizes an N-panel split divides evenly, which for more than
+            # three panels leaves every one of them too narrow to read.
+            weights = [max(1, int(w)) for w in (getattr(section, "sizes", ()) or ())]
+            if len(weights) != len(built):
+                weights = [1] * len(built)
+            splitter = getattr(area, "_root_widget", None)
+            for i in range(len(built) - 1):
+                if not isinstance(splitter, QtWidgets.QSplitter):
+                    break
+                rest = sum(weights[i + 1 :])
                 try:
-                    root.setSizes([400, 640])
+                    splitter.setSizes([weights[i], rest])
+                    splitter.setStretchFactor(0, weights[i])
+                    splitter.setStretchFactor(1, rest)
                 except Exception:
-                    pass
+                    break
+                splitter = splitter.widget(1) if splitter.count() > 1 else None
         else:
             for widget, name in built:
                 try:

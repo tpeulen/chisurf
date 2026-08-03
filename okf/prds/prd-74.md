@@ -3,8 +3,8 @@ type: PRD
 prd: "74"
 title: "PRD-74: FCS kinetics model — full mode vs fast (eigenvalue-only bunching) mode"
 description: Give the FCS kinetics model a fast path that skips the expensive spatial S1-population solve and 3D autocorrelation and computes only the eigenvalue-based photokinetic bunching factor — with the correct brightness included — trading the saturation volume expansion for near-instant evaluation.
-status: draft
-phase: "unassigned"
+status: done
+phase: "complete"
 resource: chisurf/core/models/fcs/
 tags: [prd, fcs, kinetics, saturation, bunching, performance, eigenvalues]
 timestamp: '2026-08-02T00:00:00Z'
@@ -110,7 +110,26 @@ mode, as it already does for diffusion/saturation.
 
 # Status
 
-Draft. Nothing implemented.
+**Done** (2026-08-03). Both modes implemented in `FCSKineticsModel`, and the
+numerical path they share was rewritten in the same change — it had never
+executed:
+`chisurf/core/fluorescence/fcs/saturation.py`'s numba kernel unpacked a 2-D
+array into three names, so every call to `fcs_numerical_g_diff` raised
+`TypingError` and the calculator, its CLI, its RPC service and full mode all
+crashed. The reciprocal-space quadrature was also wrong (an axial *real*-space
+step used where the k-space step belongs), so the amplitude — i.e. the fitted
+`N` — was off by orders of magnitude. Both fixed and pinned by
+`test/test_fcs_saturation_physics.py`, which compares against the analytical
+Gaussian curve, Parseval's theorem, the closed-form triplet-bunching expression
+and the curve's own half-decay time.
+
+The mode contract holds as specified: at `P = 0` **both** modes return the
+analytical Gaussian exactly, because the fabricated fallbacks that made that
+impossible (a 1 mW substitute power in the profile solve, a 1e5 Hz substitute
+excitation rate in the bunching factor) are gone. `saturation.active` now means
+"the excitation power is non-zero" rather than "a scheme exists" — the latter
+was always true, so the analytical branch was dead code and the view text
+promising it was false.
 
 Related: [PRD-62](prd-62.md) (FCS model consolidation — `FCSKineticsModel`,
 the cache, the re-entrancy guard this mode builds on),

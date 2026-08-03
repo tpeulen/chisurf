@@ -40,7 +40,10 @@ __all__ = [
     "FretPair",
     "open_database",
     "list_dyes",
+    "list_absorbing_dyes",
     "dye_properties",
+    "absorption_spectrum",
+    "extinction_at",
     "fret_pair",
     "apply_to_calibration",
 ]
@@ -334,6 +337,101 @@ def dye_properties(dye, *, db=None, db_path: str | None = None) -> DyeProperties
         except Exception:
             return None
     return None
+
+
+def list_absorbing_dyes(*, db=None, db_path: str | None = None) -> list[str]:
+    """Names of the dyes that carry both an absorption spectrum and an epsilon.
+
+    That is the pair :func:`extinction_at` needs, so this is the list worth
+    offering in a chooser.
+
+    Parameters
+    ----------
+    db : object, optional
+        Open MMFDB handle.
+    db_path : str, optional
+        Database path.
+
+    Returns
+    -------
+    list of str
+        Dye names, sorted case-insensitively.
+    """
+    return [
+        dye.name
+        for dye in list_dyes(db=db, db_path=db_path, usable_only=False)
+        if dye.has_absorption and dye.extinction_coefficient
+    ]
+
+
+def absorption_spectrum(dye, *, db=None, db_path: str | None = None):
+    """Return a dye's absorption spectrum scaled to epsilon(lambda).
+
+    The stored curve is a peak-normalized shape; it is multiplied by the
+    catalogued molar extinction coefficient so the result is in M⁻¹cm⁻¹.
+
+    Parameters
+    ----------
+    dye : str, int or DyeProperties
+        Chromophore name, probe id, or already-resolved properties.
+    db : object, optional
+        Open MMFDB handle.
+    db_path : str, optional
+        Database path.
+
+    Returns
+    -------
+    tuple of np.ndarray or None
+        ``(wavelength_nm, epsilon)``, or ``None`` when the database has no
+        usable spectrum or no extinction coefficient for the dye.
+    """
+    with open_database(db_path, db) as handle:
+        if handle is None:
+            return None
+        resolved = dye if isinstance(dye, DyeProperties) else dye_properties(dye, db=handle)
+        if resolved is None or not resolved.extinction_coefficient:
+            return None
+        spectrum = _spectrum(handle, resolved.probe_id, "absorption")
+        if spectrum is None:
+            return None
+        wavelength, shape = spectrum
+        peak = float(np.max(shape))
+        if not np.isfinite(peak) or peak <= 0.0:
+            return None
+        return wavelength, shape / peak * float(resolved.extinction_coefficient)
+
+
+def extinction_at(dye, wavelength_nm: float, *, db=None,
+                  db_path: str | None = None) -> float | None:
+    """Molar extinction coefficient of a dye *at a given wavelength*.
+
+    Excitation rarely happens at the absorption maximum, and the catalogued
+    epsilon is the peak value: exciting a 650 nm dye at 488 nm delivers a small
+    fraction of it. Reading epsilon off the spectrum is the difference between a
+    correct excitation rate and one that is wrong by a large factor.
+
+    Parameters
+    ----------
+    dye : str, int or DyeProperties
+        Chromophore name, probe id, or already-resolved properties.
+    wavelength_nm : float
+        Excitation wavelength (nm).
+    db : object, optional
+        Open MMFDB handle.
+    db_path : str, optional
+        Database path.
+
+    Returns
+    -------
+    float or None
+        ``epsilon(lambda)`` in M⁻¹cm⁻¹, ``0.0`` outside the stored range, or
+        ``None`` when the dye or its spectrum is unavailable.
+    """
+    spectrum = absorption_spectrum(dye, db=db, db_path=db_path)
+    if spectrum is None:
+        return None
+    grid, epsilon = spectrum
+    return float(np.interp(float(wavelength_nm), grid, epsilon, left=0.0, right=0.0))
 
 
 def fret_pair(donor, acceptor, *, kappa2: float = 2.0 / 3.0,

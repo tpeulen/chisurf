@@ -144,6 +144,88 @@ def test_general_model_gauss_two_focus_suppresses_g0():
     assert g0_two_focus < g0_single
 
 
+def test_fcs_kinetics_model_editor_renders_and_computes(qapp):
+    from qtpy import QtWidgets
+
+    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
+    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    fit = _make_fcs_fit(FCSKineticsModel)
+    model = fit.model
+
+    editor = build_model_editor(model)
+    assert isinstance(editor, AutoModelWidget)
+    QtWidgets.QVBoxLayout().addWidget(editor)
+    assert _table_rows(editor) > 3, "kinetics FCS model parameter tables rendered empty"
+
+    # Both diffusion presets plus the saturation group are present.
+    assert hasattr(model, "saturation")
+    # "Active" means the saturation physics is engaged, i.e. there is excitation.
+    # A scheme always exists (two states minimum), so a scheme is not the test.
+    assert model.saturation.active is False
+    model.saturation._power.value = 1.0
+    assert model.saturation.active is True
+    model.saturation._power.value = 0.0
+
+    model.update()
+    y = np.asarray(model.y)
+    assert y.size > 0 and np.all(np.isfinite(y))
+
+    # Equation reflects the analytical gauss default
+    assert "w<sub>r</sub>" in model.equation_html()
+
+    from chisurf.gui.autoform.sections.state_scheme_section import StateSchemePlot
+    from chisurf.gui.widgets.models.model_editor import model_plot_specs
+    specs = model_plot_specs(model)
+    plot_classes = [s[0] for s in specs]
+    assert StateSchemePlot in plot_classes, "StateSchemePlot missing from Fit Window plot specs."
+
+
+def test_general_model_saturation_panel_powers_the_numerical_path(qapp):
+    """The Saturation (Kinetic) scheme lives on the *kinetics* model.
+
+    Power > 0 switches to the numerical saturation path (equation shows
+    SatNumInt, the saturated amplitude drops below the analytical one as the
+    volume expands), Power = 0 restores the analytical shape exactly. The
+    general model no longer carries the saturation group.
+    """
+    from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
+    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+    from chisurf.gui.widgets.models.model_editor import build_model_editor
+
+    fit = _make_fcs_fit(FCSKineticsModel)
+    model = fit.model
+    editor = build_model_editor(model)
+
+    # The Kinetic saturation scheme panel exists but starts collapsed (power = 0).
+    boxes = [
+        b for b in editor.findChildren(CollapsibleBox) if "state scheme" in b.title().lower()
+    ]
+    assert len(boxes) == 1
+
+    model.update()
+    baseline = np.asarray(model.y).copy()
+
+    model.saturation_mode = "full"
+    model.saturation._power.value = 2.0   # 2 mW enables the numerical path
+    model.update()
+    saturated = np.asarray(model.y)
+    assert np.all(np.isfinite(saturated))
+    assert saturated[0] != baseline[0]
+    assert "G<sub>num</sub>" in model.equation_html()
+
+    model.saturation._power.value = 0.0
+    model.update()
+    np.testing.assert_allclose(model.y, baseline)
+
+    # The general model stays purely analytical — no saturation group at all.
+    general = _make_fcs_fit(GeneralFCSModel).model
+    assert not hasattr(general, "saturation")
+    assert "SatNumInt" not in general.equation_html()
+
+
 def test_general_model_two_focus_preset_is_suppressed_by_default():
     """The 'two_focus' diffusion-mode preset starts with a non-zero diam."""
     from chisurf.core.models.fcs.general import GeneralFCSModel
@@ -320,13 +402,16 @@ def test_general_model_editor_renders_a_live_equation_info_widget(qapp):
     model = fit.model
     editor = build_model_editor(model)
 
-    infos = editor.findChildren(InfoWidget)
+    def _equation_infos():
+        return [i for i in editor.findChildren(InfoWidget) if i.toPlainText().startswith("G(τ)")]
+
+    infos = _equation_infos()
     assert len(infos) == 1
     assert "MDF" not in infos[0].toPlainText()   # default mode is gauss
 
     model.diffusion_mode = "mdf"
     editor.rebuild()
-    infos = editor.findChildren(InfoWidget)
+    infos = _equation_infos()
     assert len(infos) == 1
     assert "MDF" in infos[0].toPlainText()
 
@@ -342,11 +427,12 @@ def test_clicking_add_bunching_button_refreshes_the_equation_panel(qapp):
     of mutating the model directly, so it only passes if the button's own
     click handler does the refresh.
     """
+    from qtpy import QtWidgets
+
     from chisurf.core.models.fcs.general import GeneralFCSModel
     from chisurf.gui.autoform.sections.builtin import InfoWidget
     from chisurf.gui.widgets.collapsible_box import CollapsibleBox
     from chisurf.gui.widgets.models.model_editor import build_model_editor
-    from qtpy import QtWidgets
 
     fit = _make_fcs_fit(GeneralFCSModel)
     model = fit.model

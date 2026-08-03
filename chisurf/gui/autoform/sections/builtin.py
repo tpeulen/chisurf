@@ -74,7 +74,7 @@ def _resolve_accessor(accessor: str):
 
     Bare names (e.g. ``"interleaved_to_two_columns"``) resolve against
     :mod:`chisurf.core.math.datatools`. A dotted or ``module:function`` path
-    (e.g. ``"chisurf.core.models.pda.common:get_pda_distribution"``) is imported
+    (e.g. ``"chisurf.core.models.pda2c.common:get_pda_distribution"``) is imported
     directly, so model-specific Qt-free accessors stay authorable in JSON.
     """
     if ":" in accessor or "." in accessor:
@@ -245,15 +245,22 @@ def _resolve_options_source(name: str, model=None):
 
     Prefers a model-backed source — an attribute or zero-arg method named *name*
     on *model* returning a list (so tool view-models can drive dynamic combos);
-    otherwise falls back to the built-in named sources.
+    otherwise falls back to the built-in named sources. A dotted *name* is
+    followed through sub-groups, matching how ``attr`` and ``target`` resolve.
     """
-    if model is not None and hasattr(model, name):
+    if model is not None:
+        src = model
         try:
-            src = getattr(model, name)
-            return list(src() if callable(src) else src)
-        except Exception as exc:  # pragma: no cover - defensive
-            logging.warning(f"ChoiceWidget: model options_source {name!r} failed: {exc}")
-            return []
+            for part in str(name).split("."):
+                src = getattr(src, part)
+        except AttributeError:
+            src = None
+        if src is not None:
+            try:
+                return list(src() if callable(src) else src)
+            except Exception as exc:  # pragma: no cover - defensive
+                logging.warning(f"ChoiceWidget: model options_source {name!r} failed: {exc}")
+                return []
     sources = {
         "window_function_types": lambda: list(chisurf.core.math.signal.window_function_types),
     }
@@ -386,13 +393,21 @@ class _BoundControlMixin:
         return -1
 
     def _current_value(self):
+        """Read the bound attribute, following a dotted path if the spec uses one.
+
+        ``_commit`` walks ``a.b.c``, so reading must too: a widget that writes
+        through a dotted path but reads back ``None`` silently displays its
+        minimum instead of the model's value.
+        """
         section = self._section
         if section.attr:
             group = self._group()
             obj = group if group is not None else self._model
             if obj is not None:
                 try:
-                    return getattr(obj, section.attr)
+                    for part in str(section.attr).split("."):
+                        obj = getattr(obj, part)
+                    return obj
                 except Exception:
                     return None
         return None
@@ -411,7 +426,14 @@ class _BoundControlMixin:
                 group = self._group()
                 obj = group if group is not None else self._model
                 if obj is not None:
-                    setattr(obj, section.attr, value)
+                    if "." in section.attr:
+                        parts = section.attr.split(".")
+                        curr = obj
+                        for p in parts[:-1]:
+                            curr = getattr(curr, p)
+                        setattr(curr, parts[-1], value)
+                    else:
+                        setattr(obj, section.attr, value)
             # Tool view-models (not in the action registry) can request a direct
             # model-method call with the new value.
             call = getattr(section, "call", "")
@@ -699,6 +721,12 @@ class ButtonRowWidget(QtWidgets.QWidget):
                 if desc:
                     btn.setToolTip(desc)
                 action = item.get("action", "")
+                # Name the button after what it does, so a host that has to
+                # reach one (to emphasise it, hide it, drive it from a test)
+                # can ask for it by action instead of by its label -- a label
+                # is a translation and a decoration away from changing.
+                btn._autoform_action = action
+                btn.setObjectName(f"button_{action}" if action else "")
                 btn.clicked.connect(lambda checked=False, a=action: self._call(a))
                 layout.addWidget(btn)
         layout.addStretch(1)
@@ -1599,6 +1627,10 @@ class ImageMapWidget(QtWidgets.QWidget):
     * ``on_pick`` (str) — model method called after a pick (e.g. to fit the bead).
     * ``markers_source`` (str) — model method returning a list of ``(z, y, x)``
       points; those on the current slice are drawn as green square markers.
+    * ``extent_source`` (str) — model method returning ``(x0, x1, y0, y1)``, the
+      real-world span the image covers. Without it the axes are pixel indices;
+      with it they carry the quantity, so a region drawn on the plane is already
+      in the units the analysis gates with.
     * ``roi_source`` (str) — model method returning ``{"x", "y", "r", "z"}`` (or
       ``None``); draws a non-interactive yellow circle of radius ``r`` at ``(x, y)``
       when the current slice matches ``z``.
@@ -1648,6 +1680,7 @@ class ImageMapWidget(QtWidgets.QWidget):
         select_attr: str | None = None,
         on_pick: str | None = None,
         markers_source: str | None = None,
+        extent_source: str | None = None,
         labels_source: str | None = None,
         roi_source: str | None = None,
         region_call: str | None = None,
@@ -1695,6 +1728,8 @@ class ImageMapWidget(QtWidgets.QWidget):
         self._marker_items = []
         self._label_items = []
         self._roi_item = None
+        self._extent_source = extent_source
+        self._applied_extent = None
         # interactive rectangle gate
         self._region_call = region_call
         self._region_source = region_source
@@ -2126,6 +2161,34 @@ class ImageMapWidget(QtWidgets.QWidget):
                 except Exception:  # pragma: no cover - CircleROI optional
                     self._roi_item = None
 
+
+    def _apply_extent(self) -> None:
+        """Place the image on real axes when the model supplies an extent.
+
+        Without this an image is drawn in *pixel* coordinates, so a histogram
+        reads in bin indices and anything overlaid on it — a gate, a cursor —
+        has to be converted bin-by-bin at every call site. Given
+        ``extent_source`` the axes carry the quantity itself, and a region drawn
+        on the plane is in the same units the analysis gates with.
+        """
+        if self._image is None or not self._extent_source:
+            return
+        fn = getattr(self._model, self._extent_source, None)
+        extent = fn() if callable(fn) else fn
+        if extent is None or len(extent) != 4:
+            return
+        x0, x1, y0, y1 = (float(v) for v in extent)
+        if x1 <= x0 or y1 <= y0:
+            return
+        self._image.getImageItem().setRect(QtCore.QRectF(x0, y0, x1 - x0, y1 - y0))
+        # Range to it only when the span itself changed. The view is still in
+        # pixel coordinates until something tells it otherwise — the image lands
+        # in a corner and everything drawn on it looks like a speck — but
+        # re-ranging on every refresh would undo the user's zoom.
+        if extent != getattr(self, "_applied_extent", None):
+            self._applied_extent = tuple(extent)
+            self._image.getView().autoRange()
+
     # ── surface for the shared region overlay ──────────────────────────
     def add_roi(self, *, kind="rect", pos=(0.0, 0.0), size=(10.0, 10.0),
                 pen="y", movable=True, rotatable=False, points=None):
@@ -2279,6 +2342,7 @@ class ImageMapWidget(QtWidgets.QWidget):
                 self._image.setCurrentIndex(prev)
         else:
             self._image.setImage(data, autoLevels=True)
+        self._apply_extent()
         apply_colormap(self._image, self._current_cmap())
         if self._overlay is not None and self._selection_attr:
             sel = getattr(self._model, self._selection_attr, None)

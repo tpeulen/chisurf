@@ -1,0 +1,18 @@
+{
+  "name": "Rhodamine 6G (3-state, triplet)",
+  "description": "Singlet-triplet scheme for a rhodamine: 4 ns fluorescence lifetime, ~1 % intersystem-crossing yield and a ~2 us triplet lifetime in air-saturated water (Widengren, Mets & Rigler, J. Phys. Chem. 99 (1995) 13368).",
+  "n_states": 3,
+  "state_labels": ["S0", "S1", "T1"],
+  "state_names": ["Ground state", "Excited singlet", "Triplet state"],
+  "rate_unit": "1/us",
+  "brightness": [0.0, 1.0, 0.0],
+  "lifetime_rate": "k2_1",
+  "dark_rates": {
+    "k2_1": 250.0,
+    "k2_3": 2.5,
+    "k3_1": 0.5
+  },
+  "exc_rates": {
+    "sigma1_2": 1.0
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "Cyanine 5 (4-state, isomer + triplet)",
+  "description": "Cy5 with both dark channels: trans-cis photo-isomerisation from the excited state (~3 % yield) recovering thermally on a ~1 ms timescale, and a weaker intersystem crossing to a ~5 us triplet. The millisecond isomer relaxation is what makes Cy5's FCS curve power-dependent in the same lag range as diffusion (Widengren & Schwille, J. Phys. Chem. A 104 (2000) 6416). Absorbs around 650 nm - set the excitation wavelength before reading epsilon.",
+  "n_states": 4,
+  "state_labels": ["S0", "S1", "P", "T1"],
+  "state_names": ["Trans ground state", "Trans excited state", "Cis isomer (dark)", "Triplet state"],
+  "rate_unit": "1/us",
+  "brightness": [0.0, 1.0, 0.0, 0.0],
+  "lifetime_rate": "k2_1",
+  "dark_rates": {
+    "k2_1": 963.0,
+    "k2_3": 30.0,
+    "k3_1": 0.001,
+    "k2_4": 7.0,
+    "k4_1": 0.2
+  },
+  "exc_rates": {
+    "sigma1_2": 1.0
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "fcs_saturation",
+  "version": "1.0.0",
+  "display_name": "Calculators:FCS Saturation",
+  "description": "FCS Saturation Calculator for arbitrary multi-state kinetic schemes (including Cy5).",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Calculators", "FCS"],
+  "icon": "⚡",
+  "entrypoints": {
+    "gui": "chisurf.plugins.calculator.fcs_saturation_calc.gui.tool:SaturationCalculatorTool",
+    "cli": "chisurf.plugins.calculator.fcs_saturation_calc.cli.main:cli",
+    "services": "chisurf.plugins.calculator.fcs_saturation_calc.backend.services:register_services"
+  },
+  "rpc_methods": [
+    {
+      "name": "fcs_saturation.compute",
+      "summary": "Compute unperturbed and saturated FCS curves for arbitrary kinetic scheme.",
+      "params_schema": {},
+      "result_schema": {},
+      "long_running": false,
+      "cancelable": false
+    }
+  ],
+  "dependencies": {},
+  "deprecated": false
+}

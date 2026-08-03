@@ -76,6 +76,7 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 53 | [Reusing results: when a step recomputes](53_reusing_results.md) | `chisurf.core.analysis_cache`, burst workflow steps |
 | 54 | [Hidden Markov models of binned traces](54_hidden_markov_models.md) | `hmm` plugin, `chisurf.core.math.hmm`, `csc hmm` |
 | 55 | [Pair correlation and flow maps: where molecules go](55_pair_correlation.md) | `experiments.ics.pair_correlation`, `experiments.ics.flow_map` |
+| 56 | [FCS saturation and focal-volume expansion](56_fcs_saturation.md) | `fcs_saturation` calculator, `FCS (kinetics)` model, `chisurf.core.fluorescence.fcs.saturation` |
 
 ## Running
 
