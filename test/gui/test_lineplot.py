@@ -11,6 +11,7 @@ from chisurf.gui.plots.lineplot.lineplot import (
     _load_reference_presets,
 )
 
+
 def _lineplot_source() -> str:
     path = Path(__file__).resolve().parents[2] / "chisurf" / "gui" / "plots" / "lineplot" / "lineplot.py"
     return path.read_text(encoding="utf-8")

@@ -164,6 +164,7 @@ def test_list_value_renders_combobox_and_moves_choice_to_front(qapp):
 
 def test_choice_section_renders_combobox_and_updates(qapp):
     from qtpy import QtWidgets
+
     from chisurf.core.dataspec import ChoiceSection, ModelView
 
     data = {"covariance_type": "full"}

@@ -256,6 +256,57 @@ class InlineProgressWidget(QtWidgets.QWidget):
         if app is not None:
             app.processEvents()
 
+    # ── QProgressBar-compatible surface ─────────────────────────────────────
+    #
+    # A widget declared in a ``.ui`` file is driven with plain ``QProgressBar``
+    # calls from code that has no idea a task abstraction exists. Answering
+    # those directly is what lets :func:`adopt_progress_bar` swap this widget in
+    # underneath such a tool without touching a single call site.
+
+    def setValue(self, value: int) -> None:  # noqa: N802
+        """Set the bar's value, revealing it if it was idle-hidden."""
+        self.bar.setValue(int(value))
+        self.bar.setVisible(True)
+        self._repaint()
+
+    def value(self) -> int:
+        """Return the bar's current value."""
+        return int(self.bar.value())
+
+    def setMinimum(self, minimum: int) -> None:  # noqa: N802
+        """Set the low end of the range."""
+        self.bar.setMinimum(int(minimum))
+
+    def setMaximum(self, maximum: int) -> None:  # noqa: N802
+        """Set the high end of the range (``0`` with minimum ``0`` = busy)."""
+        self.bar.setMaximum(int(maximum))
+
+    def minimum(self) -> int:
+        """Return the low end of the range."""
+        return int(self.bar.minimum())
+
+    def maximum(self) -> int:
+        """Return the high end of the range."""
+        return int(self.bar.maximum())
+
+    def setRange(self, minimum: int, maximum: int) -> None:  # noqa: N802
+        """Set both ends of the range."""
+        self.bar.setRange(int(minimum), int(maximum))
+
+    def reset(self) -> None:
+        """Return the bar to its idle state."""
+        self.bar.reset()
+        if self._hide_when_idle and self._task is None:
+            self.bar.setVisible(False)
+
+    def setTextVisible(self, visible: bool) -> None:  # noqa: N802
+        """Show or hide the percentage text inside the bar."""
+        self.bar.setTextVisible(bool(visible))
+
+    def setFormat(self, text: str) -> None:  # noqa: N802
+        """Set the bar's own text format (``%p%`` and friends)."""
+        self.bar.setFormat(str(text))
+
     # ── model-driven mode ───────────────────────────────────────────────────
     def refresh(self) -> None:
         """Re-read the ``target`` attribute and show it (AutoForm refresh hook).
@@ -280,10 +331,97 @@ class InlineProgressWidget(QtWidgets.QWidget):
         self.bar.setVisible(True)
 
 
+def adopt_progress_bar(owner, name: str = "progressBar", **options) -> InlineProgressWidget | None:
+    """Replace a ``.ui``-declared ``QProgressBar`` with the shared inline bar.
+
+    Tools whose layout comes from Qt Designer cannot declare a
+    :class:`InlineProgressWidget` in their ``.ui`` file without a promotion, so
+    they get the shared bar here instead: the named child is swapped in place,
+    keeping its position in the layout and its attribute name. Because the
+    replacement answers the ``QProgressBar`` calls (``setValue``, ``setRange``,
+    …), the tool's existing code keeps working untouched — and it also becomes a
+    *progress host*, so :class:`~chisurf.gui.progress.ChiSurfProgress` started
+    from anywhere in that window renders here.
+
+    Parameters
+    ----------
+    owner : QWidget
+        The widget that loaded the ``.ui`` file.
+    name : str
+        Object name of the ``QProgressBar`` to replace.
+    **options
+        Forwarded to :class:`InlineProgressWidget` (e.g. ``cancellable``).
+
+    Returns
+    -------
+    InlineProgressWidget or None
+        The replacement, or ``None`` when no such bar was found (a ``.ui`` file
+        may legitimately have none).
+
+    Examples
+    --------
+    >>> uic.loadUi(ui_file, self)                      # doctest: +SKIP
+    >>> adopt_progress_bar(self)                       # doctest: +SKIP
+    >>> self.progressBar.setValue(40)   # unchanged    # doctest: +SKIP
+    """
+    old = owner.findChild(QtWidgets.QProgressBar, name)
+    if old is None:
+        return None
+    options.setdefault("hide_when_idle", False)
+    options.setdefault("show_text", False)
+    replacement = InlineProgressWidget(**options)
+    replacement.setObjectName(name)
+    replacement.bar.setRange(old.minimum(), old.maximum())
+    replacement.bar.setValue(old.value())
+
+    _put_where(old, replacement)
+    old.setParent(None)
+    old.deleteLater()
+    setattr(owner, name, replacement)
+    return replacement
+
+
+def _put_where(old: QtWidgets.QWidget, new: QtWidgets.QWidget) -> None:
+    """Place *new* exactly where *old* sits in its parent's layout.
+
+    Designer files use box, grid and form layouts interchangeably, and only the
+    box layouts have ``insertWidget`` — a grid needs the cell it occupied and a
+    form needs its row and role, or the replacement lands in the wrong place (or
+    silently at the end).
+
+    Parameters
+    ----------
+    old : QWidget
+        The widget being replaced; still in its layout when called.
+    new : QWidget
+        The replacement.
+    """
+    parent = old.parentWidget()
+    layout = parent.layout() if parent is not None else None
+    if layout is None:  # no layout: keep the geometry the designer gave it
+        new.setParent(parent)
+        new.setGeometry(old.geometry())
+        new.show()
+        return
+    index = layout.indexOf(old)
+    if isinstance(layout, QtWidgets.QGridLayout) and index >= 0:
+        row, column, row_span, column_span = layout.getItemPosition(index)
+        layout.removeWidget(old)
+        layout.addWidget(new, row, column, row_span, column_span)
+    elif isinstance(layout, QtWidgets.QFormLayout) and index >= 0:
+        row, role = layout.getWidgetPosition(old)
+        layout.removeWidget(old)
+        layout.setWidget(row, role, new)
+    elif isinstance(layout, QtWidgets.QBoxLayout) and index >= 0:
+        layout.insertWidget(index, new)
+    else:
+        layout.addWidget(new)
+
+
 @register_section("progress")
 def _progress_section_factory(model=None, target: str | None = None, **options):
     """Custom-section factory for the general inline progress bar."""
     return InlineProgressWidget(model, target, **options)
 
 
-__all__ = ["InlineProgressWidget"]
+__all__ = ["InlineProgressWidget", "adopt_progress_bar"]

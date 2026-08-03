@@ -1,5 +1,7 @@
 import pytest
+
 import chisurf.core.models.tcspc.lifetime
+
 
 def test_lifetime_append_pop_sync():
     """

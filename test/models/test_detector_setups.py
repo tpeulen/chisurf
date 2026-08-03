@@ -7,6 +7,7 @@ import tempfile
 sys.path.insert(0, os.path.abspath('..'))
 
 from mmfdb.repository import MFDatabase
+
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
     load_detector_setups,
     save_detector_setups,

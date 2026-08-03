@@ -1,6 +1,8 @@
 import unittest
+
 import chisurf.core.models.tcspc.lifetime
 from chisurf.core.fitting.parameter import FittingParameter
+
 
 class TestLifetimePopAppendBug(unittest.TestCase):
     def test_lifetime_append_pop_sync(self):

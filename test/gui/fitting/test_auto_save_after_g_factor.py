@@ -7,7 +7,6 @@ from qtpy.QtCore import Qt
 from qtpy.QtWidgets import QMessageBox
 
 from chisurf.gui import dialogs
-
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import (
     DetectorWizard,
     load_detector_setups,

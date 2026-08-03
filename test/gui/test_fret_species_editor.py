@@ -114,6 +114,7 @@ def test_distance_distribution_edit():
 
 def test_period_and_shift_flow_to_detector_patterns():
     import numpy as np
+
     from chisurf.core.fluorescence.fret.species_decay import fret_species_detector_patterns
     from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
