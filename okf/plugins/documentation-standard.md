@@ -13,12 +13,53 @@ Each first-class plugin should have a local `README.md` that explains what the p
 does, how users run it, and how maintainers verify or extend it. Group-level OKF pages
 summarize domains; the plugin README is the source closest to the code.
 
+# A guide and a `?` are the default, not an extra
+
+Every plugin with a GUI ships **both**, and a plugin without them is unfinished
+in the same way one without a `manifest.json` is.
+
+They answer different questions and neither substitutes for the other. The `?`
+modal says what a control *means*; the guide says which control to touch
+**first**. A dense panel of well-documented settings is still unusable without
+that second answer, which is why "the tooltips explain everything" is not a
+reason to skip the tour.
+
+The tour must **point at the real widgets and wait** (`"await"`), never press
+them on the user's behalf: someone who watched a button being pressed has not
+learned where it is. Where a tool needs data to demonstrate on, ship a demo the
+plugin can generate itself rather than a tour that cannot be walked without the
+user's own files. Any tool already calling `add_toolbar_help` picks the
+**Guide** button up the moment `gui/guide.json` exists — there is no code to
+write. Format and behaviour:
+`chisurf/gui/widgets/tools/guided_tour.py`; worked example:
+`chisurf/plugins/microscopy/img_flow/gui/guide.json`.
+
+Help links are live. The modal routes a documentation page to the ChiSurf
+documentation browser and a URL or DOI to the system browser, so a *Further
+reading* list of bare backticked paths is a wasted cross-reference — write
+`[title](docs/concepts/x.md)` and `[10.xxxx/yyy](https://doi.org/10.xxxx/yyy)`.
+
+## Why this is written down
+
+An audit of `chisurf/plugins/calculator/` on 2026-08-03 found **one plugin of
+seven** with a guide and **two of seven** with a `?`. The rule existed and was
+being missed silently, because nothing failed when a plugin shipped without
+them. A gap that is already systemic is not fixed by adding the missing files to
+the next plugin: it needs a guard that fails when a manifest declares a GUI
+entrypoint and no `gui/guide.json` sits beside its `view.json`, seeded with the
+current offenders as a **shrinking** allow-list. That is the shape that has
+actually been driving the chiplot migration to completion
+(`test/pyqtgraph_import_allowlist.txt`), rather than letting it stall.
+
+
 # Required files
 
 | File | Required when | Purpose |
 | --- | --- | --- |
 | `manifest.json` | Every discoverable plugin | Machine-readable identity, menu placement, entrypoints, RPC methods, state namespace, dependencies. |
 | `README.md` | Every discoverable plugin | Human-readable plugin contract and workflow. |
+| `gui/guide.json` | Every plugin with a GUI | A guided tour: ordered steps, each pointing at one real widget. |
+| `help` section | Every plugin with a GUI | Long-form help behind the `?` modal, with live links to concepts and DOIs. |
 | `docs/` | Complex plugins only | Detailed guides, contracts, screenshots, API/CLI references, migration notes. |
 | `docs/STATUS.md` | Long-lived migrations/workflows | Current state, known gaps, verification evidence. |
 | `docs/CONTRACT.md` | Plugins with API/RPC/CLI surfaces | Stable request/result/event contract. |

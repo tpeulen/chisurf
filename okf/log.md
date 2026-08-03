@@ -2,6 +2,23 @@
 
 ## 2026-08-03
 
+* **A guide and a `?` are the plugin default, not an extra.** Written into
+  [the plugin documentation standard](plugins/documentation-standard.md): every
+  plugin with a GUI ships `gui/guide.json` *and* a `help` section, and one
+  without them is unfinished in the way one without a `manifest.json` is. They
+  answer different questions — the `?` says what a control *means*, the guide
+  says which control to touch **first** — so good tooltips are not a reason to
+  skip the tour, and the tour must point at real widgets and `"await"` the user
+  rather than pressing them for them.
+  - Written down because it was being missed silently: an audit of
+    `chisurf/plugins/calculator/` found **1 of 7** plugins with a guide and
+    **2 of 7** with a `?`. Nothing fails when a plugin ships without them.
+  - The fix for a gap that is already systemic is a guard, not a sixth manual
+    addition: a test that fails when a manifest declares a GUI entrypoint with
+    no `gui/guide.json` beside its `view.json`, seeded with the current
+    offenders as a shrinking allow-list — the shape that is actually driving
+    PRD-64 to completion. Not yet written.
+
 * **The state scheme was drawing photophysics, not the scheme it was given.** A
   two-state FRET exchange came out with a phantom `k_exc` arrow out of R1 and its
   real backward rate missing, because the pumped transition was **hardcoded** as
