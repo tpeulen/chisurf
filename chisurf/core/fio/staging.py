@@ -402,6 +402,8 @@ _CONTAINER_ALIASES = {
     "BH": None,
     "SPC130": "SPC-130",
     "SPC-132": "SPC-130",
+    "BH132": "SPC-130",       # the name chisurf's own photon reader used
+    "BH630_X48": "SPC-600_4096",
     "HDF5": "PHOTON-HDF5",
     "PHOTONHDF5": "PHOTON-HDF5",
 }

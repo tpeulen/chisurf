@@ -10,7 +10,6 @@ import chisurf.core.fio.ascii
 import chisurf.core.fio.structure.coordinates
 import chisurf.core.fio.fluorescence.fcs
 import chisurf.core.fio.fluorescence.tcspc
-import chisurf.core.fio.fluorescence.tttr
 import chisurf.core.fio.fluorescence.photons
 
 # Ensure search paths are set up if utils is available
@@ -108,20 +107,6 @@ def test_read_pdb(tmp_path):
 
 # --- TTTR / Photon Tests ---
 
-def test_spc2hdf(tmp_path):
-    filetype = "bh132"
-    output = str(tmp_path / "test.photon.h5")
-    spc_files = glob.glob("./test/data/tttr/BH/132/BH_SPC132.spc")
-    if not spc_files:
-        pytest.skip("Test data not found")
-        
-    h5 = chisurf.core.fio.fluorescence.tttr.spc2hdf(
-        spc_files,
-        routine_name=filetype,
-        filename=output
-    )
-    h5.close()
-
 @pytest.mark.parametrize("d", [
     {
         "routine": "bh132",
@@ -130,7 +115,7 @@ def test_spc2hdf(tmp_path):
         "measurement_time": 62.3288052934344,
         "n_photons": 183657,
         "mt_clk": 13.5e-09,
-        "dt": 3.2967032967032967e-09
+        "dt": 13.5e-09 / 4096
     },
 ])
 def test_photons(d):
@@ -146,6 +131,9 @@ def test_photons(d):
     assert np.isclose(photons.measurement_time, d["measurement_time"])
     assert photons.n_tac == d["n_tac"]
     assert photons.shape[0] == d["n_photons"]
+    # Both in seconds: the macro-time clock, and the width of one TAC channel.
+    assert np.isclose(photons.mt_clk, d["mt_clk"])
+    assert np.isclose(photons.dt, d["dt"])
 
 # --- TCSPC / VV/VH Tests ---
 

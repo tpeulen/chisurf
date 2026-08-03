@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os
+import numpy as np
 from qtpy import QtWidgets
 
 import chisurf.core.decorators
@@ -9,8 +9,12 @@ import chisurf.gui.decorators
 import chisurf.core.structure
 import chisurf.gui.widgets
 
-from chisurf.core.fio.fluorescence import photons
-from chisurf.core.fio.fluorescence import tttr
+#: File dialog filter covering the TTTR containers the reader supports. The
+#: reader detects the container from the file, so the filter is a convenience
+#: rather than a choice of format.
+TTTR_FILE_FILTER = (
+    "TTTR files (*.ptu *.ht3 *.spc *.h5 *.hdf5 *.set);;All files (*.*)"
+)
 
 
 class SpcFileWidget(
@@ -23,7 +27,6 @@ class SpcFileWidget(
     def __init__(self, *args, **kwargs):
         self._photons = None
         self.filenames = list()
-        self.filetypes = tttr.filetypes
         # Actions
         self.actionSample_changed.triggered.connect(self.onSampleChanged)
         self.actionLoad_sample.triggered.connect(self.onLoadSample)
@@ -44,8 +47,17 @@ class SpcFileWidget(
         self.doubleSpinBox.setValue(v)
 
     def onSampleChanged(self):
-        self.dt = float(self._photons.mt_clk / self._photons.n_tac) * 1e6
+        """Show the loaded measurement's calibration and count rate."""
+        # The box is labelled in nanoseconds and the calibration is in seconds.
+        # It used to be scaled by 1e6, which showed a picosecond TAC width as
+        # a rounded-to-zero "0.0001".
+        self.dt = float(self._photons.dt) * 1e9
         self.nTAC = self._photons.n_tac
+        # The routing-channel box had never been filled. Show the channels the
+        # measurement actually used -- that is what a user needs in order to
+        # type a channel number into the tool below it.
+        channels = np.unique(self._photons.routing_channels)
+        self.lineEdit_3.setText(", ".join(str(int(c)) for c in channels))
         self.number_of_photons = self._photons.nPh
         self.measurement_time = self._photons.measurement_time
         self.lineEdit_7.setText("%.2f" % self.count_rate)
@@ -100,7 +112,13 @@ class SpcFileWidget(
 
     @property
     def file_type(self) -> str:
-        return "hdf"
+        """Container type to read with, or ``None`` to detect it from the file.
+
+        Detection is the right default: the reader identifies the container
+        from the file itself, and a type guessed from an extension gets it
+        wrong for the formats that share one.
+        """
+        return None
 
     @property
     def filename(self) -> str:
@@ -115,29 +133,34 @@ class SpcFileWidget(
             filenames: str = None,
             file_type: str = None
     ) -> None:
+        """Load a TTTR measurement, asking for the file if none is given.
+
+        Parameters
+        ----------
+        event
+            Unused; the action's signal argument.
+        filenames : list of str, optional
+            Files to read. A measurement split over several files is read as
+            one continuous stream.
+        file_type : str, optional
+            Container type; detected from the file when omitted.
+        """
         if file_type is None:
             file_type = self.file_type
         if filenames is None:
-            if file_type in ("hdf"):
-                filename = chisurf.gui.widgets.get_filename(
-                    'Open Photon-HDF',
-                    'Photon-HDF (*.photon.h5)'
-                )
-                filenames = [filename]
-            elif file_type in ("ht3"):
-                filename = chisurf.gui.widgets.get_filename(
-                    'Open Photon-HDF',
-                    'Photon-HDF (*.ht3)'
-                )
-                filenames = [filename]
-            else:
-                directory = chisurf.gui.widgets.get_directory()
-                filenames = [
-                    directory + '/' + s for s in os.listdir(directory)
-                ]
+            filename = chisurf.gui.widgets.get_filename(
+                'Open TTTR file',
+                TTTR_FILE_FILTER
+            )
+            filenames = [str(filename)]
 
-        self.lineEdit_2.setText(filenames[0])
+        self.lineEdit_2.setText(str(filenames[0]))
         self.filenames = filenames
+        # Drop the previous measurement before reading the next one: a TTTR
+        # file is held in memory, so keeping both would double the footprint
+        # for as long as the widget lives.
+        if self._photons is not None:
+            self._photons.close()
         self._photons = chisurf.core.fio.fluorescence.photons.Photons(filenames, file_type)
         #self.samples = self._photons.samples
         #self.comboBox.addItems(self._photons.sample_names)
@@ -146,6 +169,13 @@ class SpcFileWidget(
     @property
     def photons(self) -> chisurf.core.fio.fluorescence.photons.Photons:
         return self._photons
+
+    def closeEvent(self, event):
+        """Release the loaded measurement when the widget is closed."""
+        if self._photons is not None:
+            self._photons.close()
+            self._photons = None
+        super().closeEvent(event)
 
 
 class CsvWidget(

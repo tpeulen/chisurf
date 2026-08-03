@@ -1,40 +1,32 @@
-"""Read TTTR files.
+"""Read TTTR files into a photon stream.
 
-TTTR files contain time-tagged-time-resolved records typically recorded
-in single-molecule experiments and on confocal laser scanning setups.
+TTTR files contain time-tagged-time-resolved records typically recorded in
+single-molecule experiments and on confocal laser scanning setups.
 
-:Author:
-  `Thomas-Otavio Peulen <http://tpeulen.github.io>`_
+:class:`Photons` is a thin, sliceable wrapper around a ``tttrlib.TTTR``
+object. Reading goes through :func:`chisurf.core.fio.staging.open_tttr`, the
+single seam that also stages slow files locally and applies per-channel TAC
+linearization; :attr:`Photons.tttr` hands the underlying object to anything
+that wants to use ``tttrlib`` directly (the correlator does).
 
-Requirements
-------------
-
-Revisions
----------
-
-Notes
------
-The API is not stable yet and might change between revisions.
-
-References
-----------
-
-Examples
---------
-
+Historically this module converted every supported format into a bespoke
+Photon-HDF5 file -- one PyTables table per measurement, written to a scratch
+file -- and read the photons back out of it, with per-format record parsers of
+its own. That is gone: it cost a temporary copy of every measurement on disk,
+kept an HDF5 file open for the life of the process, and duplicated format
+support ``tttrlib`` already has.
 """
-
 
 from __future__ import annotations
 from chisurf import typing
 
-import tempfile
 import numpy as np
-import tables
-import tttrlib
 
-import chisurf as cs
-from . import tttr
+
+#: Names the per-photon arrays are known by inside a selection expression.
+#: Kept from the Photon-HDF5 column names, so an expression written against the
+#: old table still evaluates.
+COLUMN_NAMES = ("MT", "TAC", "ROUT", "EVENT")
 
 
 def read_burst_ids(
@@ -64,44 +56,8 @@ def read_burst_ids(
 
     Examples
     --------
-
-    >>> import cs.core.fio, glob  # doctest: +SKIP
-    >>> directory = "./test/data/tttr/spc132/hGBP1_18D/burstwise_All 0.1200#30\\BID"  # doctest: +SKIP
-    >>> files = glob.glob(directory+'/*.bst')  # doctest: +SKIP
-    >>> bids = cs.core.fio.photons.read_burst_ids(files)  # doctest: +SKIP
-    >>> bids[1]  # doctest: +SKIP
-    array([20384, 20385, 20386, 20387, 20388, 20389, 20390, 20391, 20392,
-       20393, 20394, 20395, 20396, 20397, 20398, 20399, 20400, 20401,
-       20402, 20403, 20404, 20405, 20406, 20407, 20408, 20409, 20410,
-       20411, 20412, 20413, 20414, 20415, 20416, 20417, 20418, 20419,
-       20420, 20421, 20422, 20423, 20424, 20425, 20426, 20427, 20428,
-       20429, 20430, 20431, 20432, 20433, 20434, 20435, 20436, 20437,
-       20438, 20439, 20440, 20441, 20442, 20443, 20444, 20445, 20446,
-       20447, 20448, 20449, 20450, 20451, 20452, 20453, 20454, 20455,
-       20456, 20457, 20458, 20459, 20460, 20461, 20462, 20463, 20464,
-       20465, 20466, 20467, 20468, 20469, 20470, 20471, 20472, 20473,
-       20474, 20475, 20476, 20477, 20478, 20479, 20480, 20481, 20482,
-       20483, 20484, 20485, 20486, 20487, 20488, 20489, 20490, 20491,
-       20492, 20493, 20494, 20495, 20496, 20497, 20498, 20499, 20500,
-       20501, 20502, 20503, 20504, 20505, 20506, 20507, 20508, 20509,
-       20510, 20511, 20512, 20513, 20514, 20515, 20516, 20517, 20518,
-       20519, 20520, 20521, 20522, 20523, 20524, 20525, 20526, 20527,
-       20528, 20529, 20530, 20531, 20532, 20533, 20534, 20535, 20536,
-       20537, 20538, 20539, 20540, 20541, 20542, 20543, 20544, 20545,
-       20546, 20547, 20548, 20549, 20550, 20551, 20552, 20553, 20554,
-       20555, 20556, 20557, 20558, 20559, 20560, 20561, 20562, 20563,
-       20564, 20565, 20566, 20567, 20568, 20569, 20570, 20571, 20572,
-       20573, 20574, 20575, 20576, 20577, 20578, 20579, 20580, 20581,
-       20582, 20583, 20584, 20585, 20586, 20587, 20588, 20589, 20590,
-       20591, 20592, 20593, 20594, 20595, 20596, 20597, 20598, 20599,
-       20600, 20601, 20602, 20603, 20604, 20605, 20606, 20607, 20608,
-       20609, 20610, 20611, 20612, 20613, 20614, 20615, 20616, 20617,
-       20618, 20619, 20620, 20621, 20622, 20623, 20624, 20625, 20626,
-       20627, 20628, 20629, 20630, 20631, 20632, 20633, 20634, 20635,
-       20636, 20637, 20638, 20639, 20640, 20641, 20642, 20643, 20644,
-       20645, 20646, 20647, 20648, 20649, 20650, 20651, 20652, 20653,
-       20654, 20655], dtype=uint64)
-
+    >>> import glob  # doctest: +SKIP
+    >>> bids = read_burst_ids(glob.glob("./BID/*.bst"))  # doctest: +SKIP
     """
     if isinstance(filenames, str):
         filenames = [filenames]
@@ -122,185 +78,147 @@ def read_burst_ids(
 
 
 class Photons(object):
+    """A photon stream read from one or more TTTR files.
 
-    """
-
-    :param p_object:
-        Is either a list of filenames or a single string containing the path to
-        one file. If the first argument is n
-    :param reading_routine:
-        The file type of the files passed using the first argument (p_object)
-        is specified using the 'file_type' parameter. This string is either
-        'hdf' or 'bh132', 'bh630_x48', 'ht3', 'iss'. If the file type is not
-        an hdf file the files are temporarily converted to hdf-files to
-        guarantee a consistent interface.
-    :param kwargs:
-    :return:
+    Parameters
+    ----------
+    p_object : str, list of str, tttrlib.TTTR, or None
+        Files to read, an already-read ``tttrlib.TTTR`` to wrap, or ``None``
+        for an empty stream. Several files are read in sorted order with their
+        macro times made continuous, so a measurement split over several files
+        behaves as one acquisition.
+    reading_routine : str, optional
+        Container type. Leave it unset unless the format is genuinely
+        ambiguous (SPC-130 against SPC-600): ``tttrlib`` identifies the
+        container from the file, and a type guessed from a file extension gets
+        it wrong.
+    verbose : bool, optional
+        Accepted and ignored; kept so existing call sites keep working.
 
     Examples
     --------
-    >>> import cs.core.fio, glob  # doctest: +SKIP
-    >>> directory = './test/data/tttr/BH/'  # doctest: +SKIP
-    >>> spc_files = glob.glob(directory+'/BH_SPC132.spc')  # doctest: +SKIP
-    >>> photons = cs.core.fio.photons.Photons(spc_files, file_type="bh132")  # doctest: +SKIP
-    >>> print(photons)  # doctest: +SKIP
-    File-type: bh132
-    Filename(s):
-            ./test/data/tttr/spc132/hGBP1_18D\m000.spc
-            ./test/data/tttr/spc132/hGBP1_18D\m001.spc
-            ./test/data/tttr/spc132/hGBP1_18D\m002.spc
-            ./test/data/tttr/spc132/hGBP1_18D\m003.spc
-    nTAC:   4095
-    nROUT:  255
-    MTCLK [ms]:     1.36000003815e-05
-
-    >>> print(photons[:10])  # doctest: +SKIP
-    File-type: None
-    Filename(s):    None
-    nTAC:   4095
-    nROUT:  255
-    MTCLK [ms]:     1.36000003815e-05
+    >>> from chisurf.core.fio.fluorescence.photons import Photons  # doctest: +SKIP
+    >>> p = Photons('BH_SPC132.spc')  # doctest: +SKIP
+    >>> p.nPh  # doctest: +SKIP
+    183657
+    >>> len(p[:10])  # doctest: +SKIP
+    10
     """
 
     def __init__(
             self,
-            p_object,
+            p_object=None,
             reading_routine: str = None,
             verbose: bool = None
     ):
-        """Initialize Photons object from TTTR data.
+        """Read the given files, wrap a TTTR object, or build an empty stream."""
+        import tttrlib
 
-        Parameters
-        ----------
-        p_object : str, list of str, or tables.File
-            Filename, list of filenames, or open HDF5 file.
-        reading_routine : str, optional
-            File type ('hdf', 'iss', 'bh132', etc.).
-        verbose : bool, optional
-            If True, print progress.
-        """
-        if verbose is None:
-            verbose = cs.core.settings.cs_settings['verbose']
-        self._tttrs = None
-        self._h5 = None
-        self._sample_name_hdf_tp = 'spc'
-        _, self._h5_tempfile = tempfile.mkstemp('.h5')
-        if isinstance(p_object, tables.file.File):
-            self._h5 = p_object
-            self._filenames = []
-        else:
-            if isinstance(p_object, str):
-                self._filenames = [p_object]
-            elif isinstance(p_object, list):
-                p_object.sort()
-                self._filenames = p_object
-
-            # determine reading routine
-            if reading_routine == 'hdf':
-                self._h5 = tables.open_file(
-                    p_object[0], mode='r'
-                )
-            elif reading_routine == 'iss':
-                self._h5 = tttr.spc2hdf(
-                    self._filenames,
-                    routine_name=reading_routine,
-                    filename=self._h5_tempfile
-                )
-            else:
-                # tttrlib
-                if reading_routine == 'bh132':
-                    spcs = []
-                    for i, filename in enumerate(self._filenames):
-                        t = tttrlib.TTTR(filename, 'SPC-130')
-                        header = t.get_header()
-                        number_of_tac_channels = header.number_of_micro_time_channels
-                        if i > 0:
-                            t.shift_macro_time(spcs[i-1]['photon']['MT'][-1])
-                        spcs.append(
-                            tttr.make_spc_dict(
-                                macro_times=t.get_macro_times(),
-                                micro_times=t.get_micro_times(),
-                                routing_channels=t.get_routing_channel(),
-                                macro_time_resolution=header.macro_time_resolution,
-                                number_of_events=t.get_n_valid_events(),
-                                event_types=t.get_event_type(),
-                                filename=filename
-                            )
-                        )
-                    if len(self._filenames) > 0:
-                        self._tttrs = spcs
-                        self._h5 = cs.core.fio.fluorescence.tttr.make_tp_photon_hdf(
-                            title=self._sample_name_hdf_tp,
-                            filename=self._h5_tempfile,
-                            verbose=verbose,
-                            routine_name=reading_routine,
-                            number_of_tac_channels=number_of_tac_channels,
-                            number_of_routing_channels=255,
-                            spcs=spcs
-                        )
-        self.verbose = verbose
-        self._photon_array = None
         self.filetype = reading_routine
-        self._selection = None
-        self._number_of_tac_channels = None
-        self._number_of_routing_channels = None
-        self._MTCLK = None
+        self.verbose = verbose
+        self._filenames: typing.List[str] = []
+        self._tttr = None
 
-    @property
-    def selection(self):
-        """The current photon selection mask."""
-        return self._selection
+        if p_object is None:
+            return
+        if isinstance(p_object, tttrlib.TTTR):
+            self._tttr = p_object
+            return
+        if isinstance(p_object, str):
+            self._filenames = [p_object]
+        else:
+            self._filenames = sorted(p_object)
+        if self._filenames:
+            self._tttr = self._read(self._filenames, reading_routine)
 
-    @selection.setter
-    def selection(
-            self,
-            v
-    ):
-        """Set selection mask and update photon array.
+    @staticmethod
+    def _read(filenames, reading_routine):
+        """Read every file into one continuous stream.
+
+        The macro times of the second and later files are shifted past the end
+        of the previous one, so a measurement recorded in several files
+        correlates as a single acquisition rather than as one that keeps
+        jumping back in time.
 
         Parameters
         ----------
-        v : ndarray
-            Boolean or index selection array.
+        filenames : list of str
+            Files to read, already sorted.
+        reading_routine : str or None
+            Container type to hand to ``tttrlib``.
+
+        Returns
+        -------
+        tttrlib.TTTR
+            The combined stream.
         """
-        self._selection = v
-        self._photon_array = self.photon_table.read_coordinates(
-            self._selection
-        )
+        from chisurf.core.fio.staging import open_tttr
+
+        stream = None
+        for filename in filenames:
+            part = open_tttr(filename, reading_routine)
+            if stream is None:
+                stream = part
+            else:
+                stream.append(part, shift_macro_time=True)
+        return stream
 
     @property
-    def photon_table(self) -> tables.Table:
-        """The PyTables photon table from the HDF file."""
-        sample = self._h5.get_node('/' + self._sample_name_hdf_tp)
-        return sample.photons
+    def tttr(self):
+        """The underlying ``tttrlib.TTTR`` object, or ``None`` when empty."""
+        return self._tttr
 
-    @property
-    def photon_array(self):
-        """The full photon record array, cached after first read."""
-        if self._photon_array is None:
-            self._photon_array = self.photon_table.read()
-        return self._photon_array
+    def close(self) -> None:
+        """Drop the photon data.
+
+        A read leaves no file open -- ``tttrlib`` hands the events over in
+        memory -- so this only releases the reference. It exists so that a
+        caller owning a reader can say when it is done with it.
+        """
+        self._tttr = None
+
+    def __enter__(self) -> Photons:
+        """Return self, so a reader can be used as a context manager."""
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        """Drop the photon data on leaving the ``with`` block."""
+        self.close()
+
+    def _array(self, name: str, dtype) -> np.ndarray:
+        """Return one of the per-photon arrays, empty when nothing is loaded.
+
+        Parameters
+        ----------
+        name : str
+            Attribute of the ``tttrlib.TTTR`` object to read.
+        dtype : np.dtype
+            Type of the empty array returned for an empty stream.
+
+        Returns
+        -------
+        np.ndarray
+            The requested per-photon array.
+        """
+        if self._tttr is None:
+            return np.zeros(0, dtype=dtype)
+        return np.asarray(getattr(self._tttr, name))
 
     @property
     def filenames(self) -> typing.List[str]:
-        """
-        Original filename of the data
-        """
+        """Files this stream was read from."""
         return self._filenames
 
     @property
     def measurement_time(self) -> float:
-        """
-        Total measurement time in seconds?
-        """
-        return self.macro_times[-1] * self.mt_clk
+        """Duration of the measurement, in seconds."""
+        times = self.macro_times
+        return float(times[-1]) * self.mt_clk if times.size else 0.0
 
     @property
     def dt(self) -> float:
-        """
-        The micro-time calibration
-        """
-        return self.mt_clk / self.n_tac
+        """Micro-time calibration: the width of one TAC channel, in seconds."""
+        return self.mt_clk / self.n_tac if self.n_tac else 0.0
 
     @property
     def shape(self) -> typing.Tuple[int]:
@@ -309,86 +227,100 @@ class Photons(object):
 
     @property
     def nPh(self) -> int:
-        """
-        Total number of photons
-        """
-        return self.routing_channels.shape[0]
+        """Number of photons in the stream."""
+        return 0 if self._tttr is None else int(len(self._tttr))
 
     @property
-    def routing_channels(self) -> np.array:
-        """
-        Array containing the routing channel of the photons
-        """
-        return self.photon_array['ROUT']
+    def routing_channels(self) -> np.ndarray:
+        """Routing (detection) channel of every photon."""
+        return self._array("routing_channels", np.int8)
 
     @property
-    def micro_times(self) -> np.array:
-        """
-        Array containing the micro-time clock counts (TAC) of the photons
-        """
-        return self.photon_array['TAC']
+    def micro_times(self) -> np.ndarray:
+        """Micro time (TAC channel) of every photon."""
+        return self._array("micro_times", np.uint32)
 
     @property
-    def event_types(self) -> np.array:
-        """
-        Array containing the event types
-        """
-        return self.photon_array['EVENT']
+    def event_types(self) -> np.ndarray:
+        """Event type of every photon."""
+        return self._array("event_types", np.int8)
 
     @property
-    def macro_times(self) -> np.array:
-        """
-        Array containing the macros-time clock counts of the photons
-        """
-        return self.photon_array['MT']
+    def macro_times(self) -> np.ndarray:
+        """Macro time of every photon, in macro-time clock counts."""
+        return self._array("macro_times", np.uint64)
 
     @property
     def n_tac(self) -> int:
-        """
-        Number of TAC channels
-        """
-        sample = self._h5.get_node('/' + self._sample_name_hdf_tp)
-        return sample.header[0]['nTAC']
+        """Number of TAC (micro time) channels of the measurement."""
+        if self._tttr is None:
+            return 0
+        return int(self._tttr.header.number_of_micro_time_channels)
 
     @property
     def mt_clk(self) -> float:
+        """Macro-time clock: the time between macro-time counts, in seconds."""
+        if self._tttr is None:
+            return 0.0
+        return float(self._tttr.header.macro_time_resolution)
+
+    def by_channel(self, channels) -> Photons:
+        """Return the photons detected in the given routing channels.
+
+        Parameters
+        ----------
+        channels : sequence of int
+            Routing channels to keep.
+
+        Returns
+        -------
+        Photons
+            A stream over those photons.
         """
-        Macro-time clock of the data (time between the macrotime events
-        in milli-seconds)
+        if self._tttr is None:
+            return Photons(None)
+        selection = self._tttr.get_selection_by_channel(list(channels))
+        return self.take(selection)
+
+    def where(self, expression: str) -> np.ndarray:
+        """Return the indices of the photons a selection expression matches.
+
+        The expression is written in terms of :data:`COLUMN_NAMES` -- for
+        instance ``"(ROUT == 0) & (TAC > 100)"`` -- which are the names the
+        Photon-HDF5 table used, so an expression a user saved against it still
+        works.
+
+        Parameters
+        ----------
+        expression : str
+            Boolean expression over ``MT``, ``TAC``, ``ROUT`` and ``EVENT``.
+
+        Returns
+        -------
+        np.ndarray
+            Indices of the matching photons.
+
+        Raises
+        ------
+        ValueError
+            If the expression cannot be evaluated over the photon arrays.
         """
-        sample = self._h5.get_node('/' + self._sample_name_hdf_tp)
-        return sample.header[0]['MTCLK'] if self._MTCLK is None else self._MTCLK
+        columns = {
+            "MT": self.macro_times,
+            "TAC": self.micro_times,
+            "ROUT": self.routing_channels,
+            "EVENT": self.event_types,
+        }
+        try:
+            mask = eval(expression, {"__builtins__": {}}, columns)  # noqa: S307
+        except Exception as exception:
+            raise ValueError(
+                f"cannot evaluate the photon selection {expression!r}: {exception}"
+            ) from exception
+        return np.flatnonzero(np.asarray(mask))
 
-    def read_where(
-            self,
-            selection: np.ndarray
-    ) -> Photons:
-        """This function uses the pytables selection syntax
-
-        :param selection:
-        :return:
-        """
-        selection = np.intersect1d(
-            self._selection,
-            selection,
-            assume_unique=True
-        )
-
-        re = Photons(None)
-        re._h5 = self._h5
-        re.selection = selection
-        self._selection = self._selection
-        self._number_of_tac_channels = self._number_of_tac_channels
-        self._number_of_routing_channels = self._number_of_routing_channels
-        self._MTCLK = self._MTCLK
-
-        return re
-
-    def take(
-            self,
-            keys
-    ) -> Photons:
-        """Return a new Photons object with the given indices selected.
+    def take(self, keys) -> Photons:
+        """Return a stream over the given photon indices.
 
         Parameters
         ----------
@@ -398,29 +330,17 @@ class Photons(object):
         Returns
         -------
         Photons
-            New Photons object with the selection applied.
+            New stream over the selected photons.
         """
-        re = Photons(None)
-        if isinstance(self.selection, np.ndarray):
-            selection = np.intersect1d(
-                self._selection,
-                keys,
-                assume_unique=True
-            )
-        else:
-            selection = keys
-        re._h5 = self._h5
-        re.selection = selection
-        self.filetype = self.filetype
-        self._sample_name_hdf_tp = self._sample_name_hdf_tp
-        self._selection = self._selection
-        self._number_of_tac_channels = self._number_of_tac_channels
-        self._number_of_routing_channels = self._number_of_routing_channels
-        self._MTCLK = self._MTCLK
-        return re
+        if self._tttr is None:
+            return Photons(None)
+        keys = np.asarray(keys, dtype=np.int64)
+        selected = Photons(self._tttr[keys], reading_routine=self.filetype)
+        selected._filenames = self._filenames
+        return selected
 
     def __str__(self):
-        """Return a string summary of the Photons object."""
+        """Return a string summary of the photon stream."""
         s = ""
         s += "File-type: %s\n" % self.filetype
         s += "Filename(s):\t"
@@ -431,37 +351,30 @@ class Photons(object):
         else:
             s += "None\n"
         s += "nTAC:\t%d\n" % self.n_tac
-        s += "MTCLK [ms]:\t%s\n" % self.mt_clk
+        s += "MTCLK [s]:\t%s\n" % self.mt_clk
         return s
-
-    # def __del__(self):
-    #     if self.h5 is not None:
-    #         self.h5.close()
-    #         #if self.filetype in ['bh132', 'bh630_x48']:
-    #         #    os.unlink(self._tempfile)
 
     def __len__(self):
         """Number of photons."""
         return self.nPh
 
     def __getitem__(self, key):
-        """Return a Photons object with the selected indices.
+        """Return a stream over the selected photons.
 
         Parameters
         ----------
-        key : int or slice
-            Index or slice of photons to select.
+        key : int, slice or ndarray
+            Photons to select.
 
         Returns
         -------
         Photons
-            New Photons object with the selection.
+            New stream with the selection.
         """
-        if isinstance(key, int):
-            key = np.array(key)
+        if isinstance(key, (int, np.integer)):
+            keys = np.array([key])
+        elif isinstance(key, slice):
+            keys = np.arange(*key.indices(len(self)))
         else:
-            start = 0 if key.start is None else key.start
-            stop = len(self) if key.stop is None else key.stop
-            step = 1 if key.step is None else key.step
-            key = np.arange(start, stop, step)
-        return self.take(keys=key)
+            keys = np.asarray(key)
+        return self.take(keys=keys)

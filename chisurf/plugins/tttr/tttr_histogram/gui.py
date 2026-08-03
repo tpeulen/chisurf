@@ -178,29 +178,23 @@ class TcspcTTTRWidget(
         self.lineEdit_4.setText("%d" % v)
 
     def make_histogram(self):
-        # get right data
-        table = self.spcFileWidget.photons.photon_table
-        selection_tac = np.ma.array(
-            [
-                row['TAC'] for row in table.where(self.histSelection)
-            ]
-        )[:-1]
+        """Histogram the micro times of the photons the selection expression keeps.
+
+        The last photon is dropped, so that every remaining photon has an
+        inter-photon time -- that is what the minimum-gap filter is applied to.
+        """
+        photons = self.spcFileWidget.photons
+        selected = photons.where(self.histSelection)
+        selection_tac = np.ma.array(photons.micro_times[selected][:-1])
 
         if self.use_dtmin:
+            gaps = np.diff(photons.macro_times[selected])
             if self.inverted_selection:
-                selection_mask = np.diff(
-                    np.array(
-                        [row['MT'] for row in table.where(self.histSelection)]
-                    )
-                ) < self.dt_min
+                selection_mask = gaps < self.dt_min
             else:
-                selection_mask = np.diff(
-                    np.array(
-                        [row['MT'] for row in table.where(self.histSelection)]
-                    )
-                ) > self.dt_min
+                selection_mask = gaps > self.dt_min
             selection_tac.mask = selection_mask
-            self.nPh = selection_mask.sum()
+            self.nPh = int(selection_tac.count())
         else:
             self.nPh = selection_tac.shape[0]
 
