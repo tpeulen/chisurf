@@ -102,6 +102,14 @@ def to_elementary(
             if (k[0] == "_") and remove_protected:
                 logging.debug(f"to_elementary: Skipping protected key: {k}")
                 continue
+            if skip_qt_widgets and _is_qt_object(obj[k]):
+                # Drop the key, do not merely map it to None: the value branch
+                # below returns None for a widget, which would serialize as a
+                # real ``widget: null`` entry and read back as a missing
+                # attribute rather than an absent one. ``to_dict`` already
+                # drops these, so an already-built dict must too.
+                logging.debug(f"to_elementary: Skipping Qt widget key: {k}")
+                continue
             logging.debug(f"to_elementary: Converting key: {k}")
             if verbose:
                 print("Converting key:", k)

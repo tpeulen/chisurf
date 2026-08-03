@@ -30,7 +30,9 @@ class TestReaderSerialization:
         assert _to_basic(None) is None
         assert _to_basic(np.int64(42)) == 42
         assert _to_basic(np.float64(3.14)) == pytest.approx(3.14)
-        assert _to_basic(np.array([1, 2, 3])).tolist() == [1, 2, 3]
+        # _to_basic exists to produce JSON-serializable values, so an array
+        # comes back as a list -- there is no .tolist() left to call.
+        assert _to_basic(np.array([1, 2, 3])) == [1, 2, 3]
         assert _to_basic([1, 2, 3]) == [1, 2, 3]
         assert _to_basic((1, 2, 3)) == [1, 2, 3]
 
@@ -40,16 +42,23 @@ class TestReaderSerialization:
             serialize_reader_state,
         )
 
-        class MockReader:
-            def __init__(self):
-                self.name = "test_reader"
-                self.reading_routine = "PTU"
-                self.channel_numbers = np.array([0, 1], dtype=np.int8)
-                self.g_factor = 1.5
-                self.experiment = None  # Should be skipped
-                self._cache = {}  # Should be skipped
+        from chisurf.core.experiments.core.reader import ExperimentReader
 
-        reader = MockReader()
+        # serialize_reader_state gates on isinstance(reader, ExperimentReader)
+        # and returns None otherwise, so a duck-typed stand-in is silently
+        # skipped rather than serialized. __new__ bypasses the base __init__,
+        # which wants a real experiment.
+        class MockReader(ExperimentReader):
+            pass
+
+        reader = MockReader.__new__(MockReader)
+        reader.name = "test_reader"
+        reader.reading_routine = "PTU"
+        reader.channel_numbers = np.array([0, 1], dtype=np.int8)
+        reader.g_factor = 1.5
+        reader.experiment = None  # Should be skipped
+        reader._cache = {}  # Should be skipped
+
         result = serialize_reader_state(reader)
 
         assert result is not None
@@ -89,10 +98,14 @@ class TestReaderSerialization:
             apply_reader_state,
         )
 
-        class MockReader:
+        from chisurf.core.experiments.core.reader import ExperimentReader
+
+        # apply_reader_state is likewise a no-op for anything that is not an
+        # ExperimentReader, so the mock has to really be one.
+        class MockReader(ExperimentReader):
             pass
 
-        reader = MockReader()
+        reader = MockReader.__new__(MockReader)
         state = {
             "name": "test_name",
             "reading_routine": "SPC",
@@ -208,7 +221,7 @@ class TestUiSyncHelper:
         assert widget.signalsBlocked() is False
 
     def test_reentrancy_guard(self):
-        """Test ReentrancyGuard."""
+        """Sequential calls all run; a reentrant one does not."""
         from chisurf.gui.widgets.experiments.ui_sync import ReentrancyGuard
 
         call_count = 0
@@ -228,6 +241,83 @@ class TestUiSyncHelper:
         # Second call should work (not reentrant from same object)
         obj.guarded_method()
         assert call_count == 2
+
+    def test_reentrancy_guard_blocks_the_loop_it_exists_for(self):
+        """A method that re-enters itself runs its body exactly once.
+
+        The guard is for two-way UI sync, where writing a widget emits the
+        signal that writes it back. Without this assertion the decorator can
+        do nothing at all and still pass -- which is how it shipped.
+        """
+        from chisurf.gui.widgets.experiments.ui_sync import ReentrancyGuard
+
+        depth = 0
+
+        class Syncing:
+            @ReentrancyGuard()
+            def update(self):
+                nonlocal depth
+                depth += 1
+                self.update()          # the feedback loop, in one line
+
+        Syncing().update()
+        assert depth == 1
+
+    def test_reentrancy_guard_releases_after_an_exception(self):
+        """A raising call must not wedge the method shut forever."""
+        from chisurf.gui.widgets.experiments.ui_sync import ReentrancyGuard
+
+        class Fragile:
+            calls = 0
+
+            @ReentrancyGuard()
+            def go(self, boom=False):
+                Fragile.calls += 1
+                if boom:
+                    raise ValueError("boom")
+
+        obj = Fragile()
+        with pytest.raises(ValueError):
+            obj.go(boom=True)
+        obj.go()
+        assert Fragile.calls == 2
+
+    def test_reentrancy_guard_is_per_object(self):
+        """One object holding the guard must not block a different one."""
+        from chisurf.gui.widgets.experiments.ui_sync import ReentrancyGuard
+
+        seen = []
+
+        class Node:
+            def __init__(self, name):
+                self.name = name
+                self.other = None
+
+            @ReentrancyGuard()
+            def touch(self):
+                seen.append(self.name)
+                if self.other is not None:
+                    self.other.touch()
+
+        a, b = Node("a"), Node("b")
+        a.other = b
+        a.touch()
+        assert seen == ["a", "b"]
+
+    def test_reentrancy_guard_as_context_manager(self):
+        """``__enter__`` reports whether it acquired, and nests correctly."""
+        from chisurf.gui.widgets.experiments.ui_sync import ReentrancyGuard
+
+        guard = ReentrancyGuard()
+        with guard as outer:
+            assert outer is True
+            with guard as inner:
+                assert inner is False
+                with guard as innermost:
+                    assert innermost is False
+        # released again once the outermost block is left
+        with guard as again:
+            assert again is True
 
 
 class TestControllerSyncInvariants:

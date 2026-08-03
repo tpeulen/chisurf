@@ -1,5 +1,7 @@
 import sys
 import os
+from pathlib import Path
+
 import pytest
 from qtpy import QtWidgets
 import chisurf.core.base

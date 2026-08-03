@@ -2,6 +2,23 @@
 
 ## 2026-08-03
 
+* **Five guards that were quietly not guarding.** Found while running the suites
+  for the PSF calculator work, all committed breakage rather than anyone's work
+  in flight: `ReentrancyGuard` stored its guard object in the same attribute it
+  used as the boolean lock and read an `_obj` the decorator never set, so the
+  decorator **never prevented reentrancy** — and the test only ever called the
+  method twice in sequence, which any no-op passes. `to_elementary` mapped a
+  skipped Qt widget to `None` but kept the key, so `skip_qt_widgets` produced
+  `widget: null` instead of an absent attribute. The `node_editor` package
+  listed six names in `__all__` that it deliberately never imported (for
+  headless use), so every one raised `AttributeError`; they resolve lazily now
+  via PEP 562, and the package no longer calls `logging.basicConfig` at import,
+  which was reconfiguring root logging for the whole application. Plus a missing
+  `Path` import and three `serialize_reader_state` mocks that were not
+  `ExperimentReader`s, so the function under test returned `None` by contract.
+  Remaining stale-after-refactor failures are in
+  [known issues](references/known-issues.md).
+
 * **The PSF calculator exports, and its headline number got honest.** 💾 Export
   writes the volume as `.npy` (raw float array) or an ImageJ `.tif` carrying the
   voxel size in the resolution tags and `spacing`, so a stack opens in Fiji

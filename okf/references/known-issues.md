@@ -1,3 +1,35 @@
+## Stale tests left behind by finished refactors
+
+**Found 2026-08-03**, while running the guard suites for the PSF calculator's
+guide/help and export work. Six failures in `test/gui` and `test/server` that
+have nothing to do with that change, and are not flaky — they fail on an idle
+machine, on paths with no uncommitted edits, so they are committed breakage
+rather than another instance's work in flight.
+
+* `test/gui/project/test_info_json.py::test_info_json_uppercase` and its
+  duplicate `test_info_json_uppercase.py` monkeypatch
+  `filter_widget.load_detector_setups`. That method moved off the widget and
+  became the module-level `chisurf.core.data_io.detector_setups.load_detector_setups`
+  in the SV-01 Qt-free split; the tests still patch the bound method, so they
+  raise `AttributeError` before asserting anything.
+* `test/gui/settings/test_acquisition_simulation_autoform.py` references an
+  undefined `TestWidget` (`NameError`) in three tests.
+* `test/gui/test_mmfdb_picker.py::test_shared_client_adopts_chisurf_login_session`
+  expects the shared client's token to be `None` and finds one.
+
+Not fixed in the change that found them: each is a test that a *completed*
+refactor left pointing at the old shape, and repairing one means deciding what
+the refactor intended it to assert — which belongs with whoever owns that
+refactor, not with a change to a calculator plugin. Recorded rather than
+silently skipped, because a red suite that everyone steps over is how the next
+real regression gets missed.
+
+Fixed in passing, since they were unambiguous and one line each: the
+`node_editor` package promising names in `__all__` it never bound, the
+`ReentrancyGuard` that never guarded, `to_elementary` keeping the keys it was
+asked to skip, a missing `Path` import, and three stale
+`serialize_reader_state` mocks.
+
 ## test/server: the shared-server integration file errors and then hangs
 
 **Found 2026-07-28**, while test-gating an unrelated proxy fix (RF-722).

@@ -55,52 +55,66 @@ class _MultiSignalBlocker:
 
 
 class ReentrancyGuard:
-    """Decorator/context manager to prevent reentrant execution.
-    
-    Usage as decorator:
+    """Decorator/context manager that suppresses reentrant execution.
+
+    The use it exists for is a two-way UI sync: writing a value into a widget
+    emits the signal that writes it back into the model, which updates the
+    widget again. The guard breaks that loop by skipping the inner call.
+
+    Usage as decorator -- a reentrant call returns ``None`` without running the
+    body. The flag lives on the instance, so two objects never block each
+    other::
+
         @ReentrancyGuard()
-        def my_method(self):
+        def update_ui(self):
             ...
-    
-    Usage as context manager:
+
+    Usage as context manager -- ``__enter__`` reports whether it acquired, so
+    the caller decides what to skip::
+
         guard = ReentrancyGuard()
-        with guard:
-            ...
+        with guard as acquired:
+            if acquired:
+                ...
+
+    Skipping, not raising, is deliberate: these run inside Qt slots, where an
+    exception escapes into the event loop rather than to a caller who could
+    handle it.
     """
 
     def __init__(self, key: Optional[str] = None):
         self.key = key or "default"
         self._lock_attr = f"_reentrancy_guard_{self.key}"
+        #: acquisitions of *this* guard object, for context-manager use. A list
+        #: rather than a flag so a nested ``with`` releases at the right depth.
+        self._acquired: list[bool] = []
 
     def __call__(self, func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            guard = getattr(args[0], self._lock_attr, None)
-            if guard is None:
-                guard = ReentrancyGuard(self.key)
-                setattr(args[0], self._lock_attr, guard)
-            with guard:
+            obj = args[0] if args else None
+            if obj is None:
                 return func(*args, **kwargs)
+            if getattr(obj, self._lock_attr, False):
+                return None                      # already running: this is the loop
+            setattr(obj, self._lock_attr, True)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                # Always release, or one raised exception wedges the method
+                # shut for the rest of the object's life.
+                setattr(obj, self._lock_attr, False)
         return wrapper
 
-    def __enter__(self):
-        obj = getattr(self, "_obj", None)
-        if obj is None:
-            return self
-        lock = getattr(obj, self._lock_attr, False)
-        if lock:
-            raise RuntimeError(f"Reentrancy detected for {self.key}")
-        setattr(obj, self._lock_attr, True)
-        return self
+    def __enter__(self) -> bool:
+        acquired = not any(self._acquired)
+        self._acquired.append(acquired)
+        return acquired
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        obj = getattr(self, "_obj", None)
-        if obj is not None:
-            setattr(obj, self._lock_attr, False)
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if self._acquired:
+            self._acquired.pop()
         return False
-
-    def _set_obj(self, obj: Any):
-        self._obj = obj
 
 
 def connected_signals_blocked(widget: Any, signal_name: str) -> bool:
