@@ -83,6 +83,9 @@ class PSFCalculator(QtWidgets.QWidget):
             self.view = cp.VolumeView()
             layout.addWidget(self.view)
 
+        #: set while writing model values back into the widgets, so the
+        #: valueChanged that provokes does not schedule another recompute
+        self._syncing = False
         self._pool = QtCore.QThreadPool.globalInstance()
         self._timer = QtCore.QTimer(self)
         self._timer.setSingleShot(True)
@@ -97,6 +100,8 @@ class PSFCalculator(QtWidgets.QWidget):
     # -- recomputation -------------------------------------------------------
     def schedule(self, *_args) -> None:
         """Ask for a recomputation once the user stops editing."""
+        if self._syncing:
+            return
         self._timer.start()
 
     def _wire_controls(self) -> None:
@@ -154,10 +159,16 @@ class PSFCalculator(QtWidgets.QWidget):
         segments = (self.model.polarization_segments()
                     if self.model.show_polarization else None)
         self.view.set_vectors(segments, color=(0.4, 1.0, 0.9, 0.9), width=2.0)
-        # No sync_fields() here. Computing does not change the model, so there
-        # is nothing to write back -- and now that valueChanged is connected,
-        # writing model values into the widgets would re-fire it and schedule
-        # another redraw, feeding itself every debounce period.
+
+        # The summary is an info section, and only a field sync repaints it.
+        # Guarding the sync is the fix; dropping it -- which is what stopped the
+        # redraw feeding itself -- left the panel reading "Not computed yet."
+        # under a fully rendered volume.
+        self._syncing = True
+        try:
+            self.auto_form.sync_fields()
+        finally:
+            self._syncing = False
 
     def _report(self, message: str) -> None:
         logger.warning("PSF calculator: %s", message)
