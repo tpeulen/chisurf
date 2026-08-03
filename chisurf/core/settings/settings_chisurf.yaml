@@ -329,6 +329,10 @@ optimization:
     # slice sampling instead of accept/reject) need no covariance at all and are
     # the fallback when nothing is known about the posterior.
     method: blocked
+    # Chain file format: 'er4' (tab-separated text, readable by anything) or
+    # 'hdf5' (compressed table, ~4x smaller -- what a long run needs). Both
+    # open in nDXplorer.
+    chain_format: er4
     n_runs: 10
     steps: 1000
     substeps: 100

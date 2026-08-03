@@ -207,6 +207,58 @@ def set_fret_rda_axis(
         return False
 
 
+def set_optimization_settings(
+        sampling: dict = None,
+        leastsq: dict = None,
+) -> bool:
+    """Persist optimisation settings in the user's settings YAML.
+
+    The sampling settings are what a run is actually configured by -- which
+    sampler, how long, how the chains are stored -- so a dialog that changed
+    them only for the session would be a dialog that lies about what the next
+    run does.
+
+    Parameters
+    ----------
+    sampling : dict, optional
+        Keys to merge into ``optimization.sampling``.
+    leastsq : dict, optional
+        Keys to merge into ``optimization.leastsq``.
+
+    Returns
+    -------
+    bool
+        Whether the file was written.
+    """
+    try:
+        settings_file = get_path('settings') / 'settings_chisurf.yaml'
+        data = safe_open_file(
+            file_path=settings_file,
+            processor=yaml.safe_load,
+            default_value={},
+            error_message=f"Error opening settings file {settings_file}"
+        )
+        if not isinstance(data, dict):
+            data = {}
+        optimization = data.get('optimization')
+        if not isinstance(optimization, dict):
+            optimization = {}
+            data['optimization'] = optimization
+        for key, values in (('sampling', sampling), ('leastsq', leastsq)):
+            if not values:
+                continue
+            section = optimization.get(key)
+            if not isinstance(section, dict):
+                section = {}
+                optimization[key] = section
+            section.update(values)
+        with open(settings_file, 'w', encoding='utf-8') as fh:
+            yaml.safe_dump(data, fh, default_flow_style=False)
+        return True
+    except Exception:
+        return False
+
+
 def set_check_experiment_config_updates_on_startup(check_updates: bool) -> bool:
     try:
         settings_file = get_path('settings') / 'settings_chisurf.yaml'

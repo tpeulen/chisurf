@@ -225,6 +225,7 @@ class DataCurve(chisurf.core.curve.Curve, ExperimentalData):
             x=x,
             y=y,
             copy_array=copy_array,
+            filename=filename,
             data_reader=data_reader,
             experiment=experiment,
             *args,

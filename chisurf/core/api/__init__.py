@@ -81,10 +81,35 @@ def _local_fits() -> list[Any]:
 
 
 def _resolve_indexed(items: list[Any], index: Optional[int] = None, uid: Optional[str] = None) -> tuple[Any, int]:
-    if uid is not None:
+    """Look up an item by uid or position. Returns ``(item, index)`` or ``(None, -1)``.
+
+    A **non-empty** ``uid`` that matches nothing resolves to ``(None, -1)``
+    rather than falling back to ``index``: the caller named a specific item, so
+    silently retargeting the operation at another one would apply it to the
+    wrong fit or dataset.  An empty or absent uid means "unspecified" and uses
+    the index.  This mirrors the server-side
+    :func:`~chisurf.server.services._resolve_fit`, so local, hybrid, and server
+    modes address the same object.
+
+    Parameters
+    ----------
+    items : list
+        The fits or datasets to search.
+    index : int, optional
+        Positional index, used only when no uid is given.
+    uid : str, optional
+        Unique identifier of the wanted item.
+
+    Returns
+    -------
+    tuple
+        ``(item, index)``, or ``(None, -1)`` if nothing matches.
+    """
+    if uid:
         for i, item in enumerate(items):
             if str(getattr(item, "unique_identifier", "")) == uid:
                 return item, i
+        return None, -1
     if index is not None and 0 <= index < len(items):
         return items[index], index
     return None, -1

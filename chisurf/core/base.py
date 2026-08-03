@@ -905,7 +905,14 @@ class Data(Base):
         The file content is read and optionally compressed/embedded
         according to the instance's ``embed_data`` and ``_max_file_size``
         settings.
+
+        An empty path means "not backed by a file" and is stored as such:
+        ``os.path.normpath('')`` is ``'.'``, which would make an in-memory
+        object claim the working directory as its source file.
         """
+        if not v:
+            self._filename = ""
+            return
         try:
             self._filename = os.path.normpath(v)
             file_size = os.path.getsize(self._filename)
