@@ -34,9 +34,12 @@ This is the short handoff for future work. For architecture details, read:
 
 ### 1. Continue `meta.protocol` Schemas
 
-`METHOD_CATALOGUE` lists all namespaces. `METHOD_SCHEMAS` should continue to
-grow until each public namespaced method has parameter, result, and event
-metadata.
+`METHOD_CATALOGUE` is generated from `server_methods.json`, so every registered
+method is already discoverable and its event topics are taken from the registry.
+What still has to be written by hand is the parameter/result half:
+`METHOD_PARAM_SCHEMAS` should continue to grow until each public namespaced
+method declares its required and optional parameters and its result type
+(50 of 93 methods so far).
 
 Priority namespaces:
 

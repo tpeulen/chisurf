@@ -477,7 +477,12 @@ lighting depth_jump=0.05     # no preset: just this one parameter
 The names are ChimeraX's — `key_light_intensity`, `fill_light_intensity`,
 `ambient_light_intensity`, `specular_strength`, `shininess`, `rim_strength`,
 `rim_power`, `silhouette`, `silhouette_thickness` and `depth_jump`. A name that
-is not one of these is reported as an error rather than silently ignored.
+is not one of these is reported as an error rather than silently ignored. The
+ambient term is capped at its full strength — the mixing formula makes the
+diffuse light turn negative beyond it, shading a face turned from the light
+*brighter* than one facing it — so `ambient_light_intensity` above 1 renders
+the same as 1 (the `soft`/`gentle`/`flat` presets all sit above this and land
+on the cap).
 
 Silhouettes are the other half, and PyMOL has no equivalent outside its ray
 tracer:

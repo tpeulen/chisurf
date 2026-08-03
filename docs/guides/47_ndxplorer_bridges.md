@@ -81,7 +81,7 @@ question:
 1. Gate the FRET cluster (rectangle on E, or a 2-D gate on E–S).
 2. `bridge.send_to_pda(sel, channels=[[0], [1]], ...)` builds the S1/S2 histogram
    from exactly those bursts.
-3. Fit it with a {doc}`PDA model <11_pda>` — a single static distance
+3. Fit it with a {doc}`PDA model <11_pda2c>` — a single static distance
    distribution should now describe the peak the Gaussian could not, and its
    residual reveals any hidden dynamics.
 

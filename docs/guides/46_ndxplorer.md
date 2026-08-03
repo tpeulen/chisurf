@@ -9,7 +9,8 @@ is, why constants are fitting parameters, and how a marginal fit works;
 
 ## What it does
 
-ndXplorer is ChiSurf's interactive explorer for tables with many columns — burst
+ndX (the `ndxplorer` package, formerly written out as *ndXplorer*) is ChiSurf's
+interactive explorer for tables with many columns — burst
 data (E, S, lifetime, brightness, …), imaging-derived parameters, or posterior
 draws. You **project** the cloud onto one or two axes, **gate** a sub-population,
 **overlay** a parameterised curve, and **fit** that curve to the data on screen
@@ -290,10 +291,10 @@ Gaussian, so its $\chi^2_r$ is elevated — the cue to hand that population to a
 ## From marginal to full model: bridges
 
 A marginal fit gives peak positions and widths. To resolve the shot-noise
-distance distribution ({doc}`PDA <11_pda>`), the multi-exponential donor decay
+distance distribution ({doc}`PDA <11_pda2c>`), the multi-exponential donor decay
 ({doc}`lifetime <10_lifetime_anisotropy_fitting>`) or the diffusion/dynamics
 ({doc}`FRET-FCS <16_fret_fcs>`) of a gated population, use a **bridge**: gate the
-sub-cloud, and ndXplorer resolves the selection to its bursts' photons and starts
+sub-cloud, and ndX resolves the selection to its bursts' photons and starts
 the matching ChiSurf fit over the RPC link, overlaying the result back in the
 parameter space. See {ref}`concept-md-bridges`.
 

@@ -177,6 +177,25 @@ against scikit-image property by property, so a number reported here is directly
 comparable to one computed in any other image-analysis pipeline, and code
 written for one transfers to the other.
 
+The compatible surface is the whole of it: every property scikit-image defines,
+`regionprops_table` with the same `centroid-0`/`centroid-1` splitting,
+`extra_properties`, item access, `spacing=`, `offset=`, and the 61 historical
+property names (`Area`, `max_intensity`, `major_axis_length`, …) that older code
+still asks for. One behaviour differs on purpose: a **negative label** is
+refused here, where scikit-image accepts it and then silently drops that region
+from the results — losing an object without a word is worse than refusing the
+input.
+
+**Anisotropic pixels.** A confocal voxel is rarely square, and a scan is often
+sampled differently along the two axes. Pass `spacing=` — a scalar, or one value
+per axis — and every length, area, centroid and moment is reported in those
+units rather than in pixels; `num_pixels` stays a count. Two corners, both shared
+with scikit-image: the perimeter estimators weight pixel-border configurations
+under an assumption of square pixels, so an *anisotropic* spacing is refused
+rather than approximated; and the orientation of a rotationally symmetric region
+is undefined, so it is a convention there and the two libraries may differ by
+$\pi/4$ (the axis lengths, which such a region does determine, agree).
+
 Two things go beyond it. A drawn region or a bare mask is measured exactly like
 a segmentation label, so a hand-drawn selection and a watershed output are
 comparable; and a measured region converts back into a region of interest, which

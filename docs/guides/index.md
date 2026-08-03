@@ -62,12 +62,12 @@ Related how-to pages: [FRET calibration](fret_calibration.md),
 | 39 | [Parameter uncertainty: priors, sampling, convergence](39_parameter_uncertainty.md) | `fitting.priors`, `fitting.sample`, `fitting.diagnostics`, `fitting.reweight`, `fitting.graphview` |
 | 40 | [The AI assistant: operating ChiSurf in plain language](40_ai_assistant.md) | `chisurf.core.agent`, agent skills |
 | 41 | [Accurate FRET: automatic correction factors](41_accurate_fret.md) | `accurate_fret` plugin, `fret.accurate`, `fret.lines` |
-| 42 | [Three-colour PDA (PDA3c)](42_c3pda.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
+| 42 | [Three-colour PDA (PDA3c)](42_pda3c.md) | `core.models.pda3c`, `core.fluorescence.pda3c`, `core.fluorescence.kinetics` |
 | 43 | [Drift correction](43_drift_correction.md) | `img_drift` plugin, `imaging.drift` |
 | 44 | [The molecular viewer (ChiMOL)](44_molecular_viewer.md) | `chimol` plugin, PyMOL-compatible commands, `get_area` |
 | 45 | [Planning a scan: which dwell time measures D best?](45_scan_precision.md) | `rics_precision` calculator, `experiments.ics.precision` |
-| 46 | [Exploring & fitting multidimensional data (ndXplorer)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.curve_fit`, `chisurf.core.expressions` |
-| 47 | [From a selection to a fit: the ndXplorer bridges](47_ndxplorer_bridges.md) | `ndxplorer.analysis.burst_bridge`, `pda.from_bursts`, `burst_fcs.*`, `burst_mle.*` |
+| 46 | [Exploring & fitting multidimensional data (ndX)](46_ndxplorer.md) | `ndxplorer`, `ndxplorer.analysis.curve_fit`, `chisurf.core.expressions` |
+| 47 | [From a selection to a fit: the ndX bridges](47_ndxplorer_bridges.md) | `ndxplorer.analysis.burst_bridge`, `pda.from_bursts`, `burst_fcs.*`, `burst_mle.*` |
 | 48 | [Regions: selecting pixels, measuring what you selected](48_regions.md) | `chisurf.core.roi`, `regionprops`, `sm_image_mle --roi` |
 | 49 | [Photon-by-photon kinetics: rates without binning](49_photon_by_photon_kinetics.md) | `burst_gs` plugin, `core.fluorescence.burst.gopich_szabo` |
 | 50 | [Particle tracking: from spots to a diffusion coefficient](50_particle_tracking.md) | `img_tracking` plugin, `imaging.tracking` |

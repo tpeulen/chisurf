@@ -10,7 +10,7 @@ For the theory, and for what tracking genuinely cannot tell you, see
 
 ## Open the tool
 
-**Microscopy → Imaging → Particle Tracking**, or as the **Tracking** panel of
+**Imaging → Particle Tracking**, or as the **Tracking** panel of
 {doc}`Image Tools <24_scan_images>`, where it sits after *Drift* — a drifting
 sample looks exactly like directed motion, and no amount of tracking separates
 the two afterwards.

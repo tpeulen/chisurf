@@ -36,7 +36,7 @@ The following should be treated as existing infrastructure, not future work:
 - `chisurf/server/dto.py` contains `DatasetSummary`, `DatasetDetail`, `FitSummary`, `FitDetail`, `ParameterDTO`, `SetupDTO`, `ProjectInfoDTO`, and `ActionResultDTO`.
 - `chisurf/server/server_methods.json` registers the namespaced RPC methods; the flat snake_case aliases were removed (INC-03). `list_methods` is the one exception, kept as a version-independent health probe.
 - `chisurf/server/client_methods.json` defines generated `ChisurfClient` convenience methods.
-- `chisurf/server/protocol.py` exposes `PROTOCOL_VERSION`, `METHOD_CATALOGUE`, and initial `METHOD_SCHEMAS`.
+- `chisurf/server/protocol.py` exposes `PROTOCOL_VERSION`, `METHOD_CATALOGUE`, and `METHOD_SCHEMAS`. Both are **derived from `server_methods.json`** at import time (`build_method_catalogue` / `build_method_schemas`), so `meta.protocol` advertises exactly the registered methods and exactly the declared event topics. Only the namespace prose (`NAMESPACE_DESCRIPTIONS`) and the parameter/result contract (`METHOD_PARAM_SCHEMAS`) are hand-written.
 - `meta.ping`, `meta.methods`, and `meta.protocol` are available.
 - `chisurf.core.api.ChiSurfAPI` supports local, hybrid, and server modes.
 - `chisurf.core.api.context.PluginContext` exists for migrated plugins.
