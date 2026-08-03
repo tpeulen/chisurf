@@ -1,0 +1,29 @@
+{
+  "id": "psf_calculator",
+  "version": "1.0.0",
+  "display_name": "Microscopy:PSF Calculator",
+  "description": "Compute and view a 3-D point-spread function: scalar, Airy or vectorial Richards-Wolf, with the input polarization at the objective pupil.",
+  "authors": ["Thomas-Otavio Peulen"],
+  "categories": ["Microscopy", "Optics"],
+  "icon": "🔬",
+  "state_namespace": "psf_calculator",
+  "state_schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+      "last_settings": {"type": "object"}
+    }
+  },
+  "statefulness": {
+    "enabled": true,
+    "window": {"enabled": true, "settings_key": null}
+  },
+  "entrypoints": {
+    "gui": "chisurf.plugins.calculator.psf_calculator.gui:PSFCalculator"
+  },
+  "rpc_methods": [],
+  "events": [],
+  "dependencies": {},
+  "menu_hidden": true,
+  "deprecated": false
+}

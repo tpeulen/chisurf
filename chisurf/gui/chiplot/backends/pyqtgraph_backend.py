@@ -1263,6 +1263,89 @@ class _PgImageView(base.ImageViewCanvas):
         return self._iv
 
 
+class _PgVolumeView(base.VolumeViewCanvas):
+    """Volume renderer backed by pyqtgraph's OpenGL ``GLViewWidget``.
+
+    A thin wrapper: the widget, a volume item and a camera. Chiplot owns the
+    mapping from a scalar volume to RGBA, because that is the part a native
+    renderer would have to reproduce.
+    """
+
+    def __init__(self, **opts):
+        import pyqtgraph.opengl as gl
+
+        self._gl = gl
+        self._view = gl.GLViewWidget(**opts)
+        self._item = None
+        self._scale = (1.0, 1.0, 1.0)
+        self._view.setCameraPosition(distance=200)
+
+    def widget(self):
+        return self._view
+
+    def set_volume(self, data, *, colormap="magma", threshold=0.0, gamma=1.0):
+        import numpy as np
+
+        vol = np.asarray(data, dtype=float)
+        if vol.ndim != 3:
+            raise ValueError(f"a volume must be 3-D (nz, ny, nx), got {vol.shape}")
+
+        peak = vol.max()
+        norm = vol / peak if peak > 0 else vol
+        if threshold > 0.0:
+            norm = np.where(norm < threshold, 0.0, norm)
+        if gamma != 1.0:
+            norm = norm ** gamma
+
+        lut = None
+        try:
+            name = colormap.name if isinstance(colormap, S.Colormap) else colormap
+            lut = pg.colormap.get(name, source="matplotlib").getLookupTable(
+                0.0, 1.0, 256)
+        except Exception:
+            # an unknown name is not worth failing a render over; grey is a
+            # legible fallback and the caller still sees its data
+            lut = None
+
+        rgba = np.zeros(norm.shape + (4,), dtype=np.ubyte)
+        idx = np.clip((norm * 255).astype(int), 0, 255)
+        if lut is not None:
+            rgba[..., :3] = np.asarray(lut, dtype=np.ubyte)[idx][..., :3]
+        else:
+            rgba[..., 0] = idx
+            rgba[..., 1] = idx
+            rgba[..., 2] = idx
+        # opacity follows intensity, so empty space stays empty
+        rgba[..., 3] = idx
+
+        # GLVolumeItem indexes (x, y, z); the array arrives as (z, y, x)
+        rgba = np.ascontiguousarray(rgba.transpose(2, 1, 0, 3))
+
+        self.clear()
+        self._item = self._gl.GLVolumeItem(rgba, smooth=True)
+        nz, ny, nx = vol.shape
+        sx, sy, sz = self._scale
+        self._item.scale(sx, sy, sz)
+        self._item.translate(-nx * sx / 2, -ny * sy / 2, -nz * sz / 2)
+        self._view.addItem(self._item)
+
+    def set_scale(self, sx=1.0, sy=1.0, sz=1.0):
+        self._scale = (float(sx), float(sy), float(sz))
+
+    def clear(self):
+        if self._item is not None:
+            self._view.removeItem(self._item)
+            self._item = None
+
+    def set_camera(self, distance=None, elevation=None, azimuth=None):
+        self._view.setCameraPosition(
+            distance=distance, elevation=elevation, azimuth=azimuth)
+
+    @property
+    def native(self):
+        return self._view
+
+
 class PyQtGraphBackend(base.Backend):
     """chiplot backend rendering through pyqtgraph."""
 
@@ -1285,6 +1368,10 @@ class PyQtGraphBackend(base.Backend):
     def create_image_view(self, **opts) -> base.ImageViewCanvas:
         """Create an image view backed by a ``pg.ImageView``."""
         return _PgImageView(**opts)
+
+    def create_volume_view(self, **opts) -> base.VolumeViewCanvas:
+        """Create a 3-D volume view backed by ``pyqtgraph.opengl``."""
+        return _PgVolumeView(**opts)
 
     def configure(self, **global_opts) -> None:
         """Apply process-wide pyqtgraph options."""

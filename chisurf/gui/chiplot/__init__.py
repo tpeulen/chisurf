@@ -34,7 +34,8 @@ from chisurf.gui.chiplot._passthrough import (
     reset_gaps,
 )
 from chisurf.gui.chiplot.backends import get_backend, set_backend
-from chisurf.gui.chiplot.canvas import Grid, ImageView, PanelPlot, Plot
+from chisurf.gui.chiplot.canvas import (
+    Grid, ImageView, PanelPlot, Plot, VolumeView)
 from chisurf.gui.chiplot.handles import Orientation, Symbol
 from chisurf.gui.chiplot.style import (
     Brush,
@@ -97,6 +98,7 @@ __all__ = [
     "Plot",
     "Grid",
     "ImageView",
+    "VolumeView",
     "PanelPlot",
     "Color",
     "Pen",

@@ -501,6 +501,52 @@ class ImageViewCanvas(abc.ABC):
         """The backend-specific image-view object (escape hatch)."""
 
 
+class VolumeViewCanvas(abc.ABC):
+    """A 3-D volume renderer.
+
+    Displays a ``(nz, ny, nx)`` scalar volume as a translucent stack the user
+    can orbit. Distinct from :class:`ImageViewCanvas`, which shows one plane of
+    a stack at a time behind a frame slider.
+    """
+
+    @abc.abstractmethod
+    def widget(self) -> QtWidgets.QWidget:
+        """Return the embeddable Qt widget."""
+
+    @abc.abstractmethod
+    def set_volume(
+        self,
+        data: np.ndarray,
+        *,
+        colormap: str = "magma",
+        threshold: float = 0.0,
+        gamma: float = 1.0,
+    ) -> None:
+        """Show a ``(nz, ny, nx)`` scalar volume.
+
+        ``threshold`` drops voxels below a fraction of the peak, and ``gamma``
+        shapes the opacity ramp; both exist because a diffraction-limited focus
+        is mostly empty space and renders as fog without them.
+        """
+
+    @abc.abstractmethod
+    def set_scale(self, sx: float = 1.0, sy: float = 1.0, sz: float = 1.0) -> None:
+        """Set per-axis voxel scaling, so anisotropic sampling looks right."""
+
+    @abc.abstractmethod
+    def clear(self) -> None:
+        """Remove the volume."""
+
+    @abc.abstractmethod
+    def set_camera(self, distance=None, elevation=None, azimuth=None) -> None:
+        """Position the orbit camera."""
+
+    @property
+    @abc.abstractmethod
+    def native(self):
+        """The backend-specific view object (escape hatch)."""
+
+
 class Backend(abc.ABC):
     """Factory that produces canvases and applies global configuration."""
 
@@ -517,6 +563,15 @@ class Backend(abc.ABC):
     @abc.abstractmethod
     def create_image_view(self, **opts) -> ImageViewCanvas:
         """Create an :class:`ImageViewCanvas`."""
+
+    def create_volume_view(self, **opts) -> "VolumeViewCanvas":
+        """Create a :class:`VolumeViewCanvas`.
+
+        Not abstract: a backend without a 3-D renderer should say so plainly
+        rather than fail to instantiate.
+        """
+        raise NotImplementedError(
+            f"the {self.name!r} backend has no 3-D volume renderer")
 
     @abc.abstractmethod
     def configure(self, **global_opts) -> None:

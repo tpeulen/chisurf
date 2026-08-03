@@ -1054,6 +1054,53 @@ class Grid(QtWidgets.QWidget):
         raise AttributeError(name)
 
 
+class VolumeView(QtWidgets.QWidget):
+    """3-D volume viewer: orbit a translucent ``(nz, ny, nx)`` scalar volume.
+
+    Where :class:`ImageView` shows one plane of a stack behind a frame slider,
+    this renders the whole volume at once. Drops into a Qt layout like any
+    widget.
+
+    Parameters
+    ----------
+    parent : QWidget, optional
+        Qt parent.
+    **backend_opts
+        Passed to the backend volume-view factory.
+    """
+
+    def __init__(self, parent=None, **backend_opts):
+        super().__init__(parent)
+        self._vv = get_backend().create_volume_view(**backend_opts)
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self._vv.widget())
+
+    def set_volume(self, data, *, colormap="magma", threshold=0.0, gamma=1.0):
+        """Show a ``(nz, ny, nx)`` scalar volume."""
+        self._vv.set_volume(data, colormap=colormap, threshold=threshold,
+                            gamma=gamma)
+
+    def set_scale(self, sx=1.0, sy=1.0, sz=1.0):
+        """Per-axis voxel scaling, for anisotropically sampled volumes."""
+        self._vv.set_scale(sx, sy, sz)
+
+    def set_camera(self, distance=None, elevation=None, azimuth=None):
+        """Position the orbit camera."""
+        self._vv.set_camera(distance=distance, elevation=elevation,
+                            azimuth=azimuth)
+
+    def clear(self):
+        """Remove the volume."""
+        self._vv.clear()
+
+    @property
+    def native(self):
+        """The backend-specific view object (escape hatch)."""
+        return self._vv.native
+
+
 class ImageView(QtWidgets.QWidget):
     """Image viewer: image + intensity/LUT histogram + (3-D) frame slider.
 
