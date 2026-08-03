@@ -1,7 +1,8 @@
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
-from qtpy.QtWidgets import QWizard, QLabel, QVBoxLayout, QWidget
+from qtpy.QtWidgets import QLabel, QVBoxLayout, QWidget, QWizard
+
 from chisurf.gui.widgets.wizard.tttr_channeldefinition import DetectorWizardPage
 
 

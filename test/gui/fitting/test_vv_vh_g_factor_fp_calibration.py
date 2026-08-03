@@ -1,9 +1,9 @@
 import importlib.util
-from pathlib import Path
 import sys
+from pathlib import Path
 
-import pytest
 import numpy as np
+import pytest
 
 pytest.importorskip("qtpy")
 pytest.importorskip("pyqtgraph")
@@ -24,8 +24,8 @@ sys.modules[_SPEC.name] = _MOD
 _SPEC.loader.exec_module(_MOD)
 
 from chisurf.plugins.vv_vh_g_factor.core.calculations import (
-    solve_linked_l_from_steady_state,
     estimate_lifetime_first_moment,
+    solve_linked_l_from_steady_state,
 )
 
 

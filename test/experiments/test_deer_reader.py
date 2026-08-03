@@ -41,6 +41,10 @@ def test_reader_loads_csv(tmp_path):
     # Normalised to V(t0) = 1.
     assert abs(float(np.max(data.y)) - 1.0) < 1e-6
     assert np.all(np.isfinite(data.y))
+    # The curve must remember the file it came from — it used to report 'None',
+    # because DataCurve consumed `filename` without forwarding it to Data.
+    assert data.filename == str(path)
+    assert group.filename == str(path)
 
 
 def test_reader_autofitrange(tmp_path):

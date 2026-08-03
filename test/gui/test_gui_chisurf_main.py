@@ -12,15 +12,15 @@ TOPDIR = os.path.abspath(
 )
 utils.set_search_paths(TOPDIR)
 
-from qtpy.QtTest import QTest
-from qtpy.QtCore import Qt
 from qtpy import QtWidgets
+from qtpy.QtCore import Qt
+from qtpy.QtTest import QTest
 
 import chisurf as cs
 import chisurf.gui
 import chisurf.gui.widgets
-import chisurf.macros
 import chisurf.gui.widgets.experiments
+import chisurf.macros
 
 cs_app = cs.gui.get_app()
 

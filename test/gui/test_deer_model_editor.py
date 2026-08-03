@@ -1,6 +1,6 @@
 """Headless model-editor tests for the AutoForm DEER models (PRD-38).
 
-Mirror ``test_pda_model_editor.py`` for the native DEER family:
+Mirror ``test_pda2c_model_editor.py`` for the native DEER family:
 
 * ``build_model_editor(model)`` returns an :class:`AutoModelWidget`;
 * every ``ParameterGroupSection`` resolves to a group that has parameters;

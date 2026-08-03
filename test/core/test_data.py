@@ -222,6 +222,34 @@ class TestDataCurve:
         finally:
             pathlib.Path(tmpname).unlink(missing_ok=True)
 
+    def test_filename_is_forwarded_to_base(self):
+        """The ``filename`` constructor argument must reach ``Data.filename``.
+
+        It used to be consumed by ``DataCurve.__init__`` and never handed to
+        ``super().__init__``, so every curve built by a reader reported the
+        literal string ``'None'`` as its file.
+        """
+        with tempfile.NamedTemporaryFile(suffix=".csv", mode="w", delete=False) as f:
+            f.write("1.0,10.0\n2.0,20.0\n")
+            tmpname = f.name
+        try:
+            c = chisurf.core.data.DataCurve(
+                x=np.array([1.0, 2.0]),
+                y=np.array([10.0, 20.0]),
+                filename=tmpname,
+                load_filename_on_init=False
+            )
+            assert c.filename == tmpname
+            g = chisurf.core.data.DataCurveGroup([c])
+            assert g.filename == tmpname
+        finally:
+            pathlib.Path(tmpname).unlink(missing_ok=True)
+
+    def test_filename_empty_for_in_memory_curve(self):
+        """A curve built in memory has no file, not the working directory."""
+        c = chisurf.core.data.DataCurve(x=np.array([1.0]), y=np.array([2.0]))
+        assert c.filename == ""
+
 
 class TestDataGroup:
 

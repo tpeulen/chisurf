@@ -96,7 +96,7 @@ def test_call_llm_posts_to_chat_completions_when_configured():
     resp.raise_for_status = mock.Mock()
     resp.json.return_value = {"choices": [{"message": {"content": "hello"}}]}
     with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("requests.post", return_value=resp) as post:
+         mock.patch("chisurf.core.http.post", return_value=resp) as post:
         out = _call_llm("prompt", provider="mistral")
     assert out == "hello"
     assert post.call_count == 1
@@ -109,7 +109,7 @@ def test_call_llm_skips_when_no_key_and_remote():
     """Unconfigured default (cloud URL, no key) must NOT hit the network."""
     settings = _fake_settings(api_key="")  # openai cloud, no key
     with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("requests.post", side_effect=AssertionError("network hit")) as post:
+         mock.patch("chisurf.core.http.post", side_effect=AssertionError("network hit")) as post:
         out = _call_llm("prompt")
     assert out is None
     assert post.call_count == 0
@@ -123,7 +123,7 @@ def test_call_llm_allows_local_without_key():
     resp.raise_for_status = mock.Mock()
     resp.json.return_value = {"choices": [{"message": {"content": "{}"}}]}
     with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("requests.post", return_value=resp) as post:
+         mock.patch("chisurf.core.http.post", return_value=resp) as post:
         out = _call_llm("prompt", provider="local")
     assert out == "{}"
     assert post.call_count == 1
@@ -133,5 +133,5 @@ def test_call_llm_allows_local_without_key():
 def test_call_llm_no_model_skips():
     settings = _fake_settings(text_model="", model="")
     with mock.patch("chisurf.core.settings.ai_settings.get_api_settings", return_value=settings), \
-         mock.patch("requests.post", side_effect=AssertionError("network hit")):
+         mock.patch("chisurf.core.http.post", side_effect=AssertionError("network hit")):
         assert _call_llm("prompt") is None

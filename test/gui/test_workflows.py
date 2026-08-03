@@ -10,13 +10,13 @@ import utils
 TOPDIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 utils.set_search_paths(TOPDIR)
 
-import pytest
 from unittest.mock import patch
 
-from chisurf.gui import dialogs
+import pytest
 
 import chisurf as cs
 import chisurf.gui
+from chisurf.gui import dialogs
 
 cs_app = cs.gui.get_app()
 

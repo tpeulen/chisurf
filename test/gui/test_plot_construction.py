@@ -22,8 +22,8 @@ pytest.importorskip("pyqtgraph")
 from qtpy import QtWidgets  # noqa: E402
 
 import chisurf.core.data  # noqa: E402
-from chisurf.core.fitting.fit import Fit  # noqa: E402
 import chisurf.core.models.tcspc.lifetime as lifetime_model  # noqa: E402
+from chisurf.core.fitting.fit import Fit  # noqa: E402
 
 
 @pytest.fixture(scope="module")

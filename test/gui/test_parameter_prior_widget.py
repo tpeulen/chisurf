@@ -17,12 +17,12 @@ from qtpy import QtCore, QtWidgets
 import chisurf as cs
 import chisurf.core.data
 import chisurf.core.fitting.fit
-from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.fitting import priors as _priors
+from chisurf.core.fitting.parameter import FittingParameter
 from chisurf.core.models.model import ModelCurve
 from chisurf.gui.widgets.fitting.parameter_widgets import (
-    FittingParameterWidget,
     FittingParameterDetailPopup,
+    FittingParameterWidget,
 )
 
 

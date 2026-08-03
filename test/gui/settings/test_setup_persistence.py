@@ -6,14 +6,14 @@ These tests verify that:
 3. Reader can be synced from UI (onParametersChanged)
 4. The persistence layer works correctly
 """
-import pytest
 import json
-import pathlib
-import tempfile
 import os
+import pathlib
 import sys
+import tempfile
 
 import numpy as np
+import pytest
 
 
 class TestReaderSerialization:
@@ -182,8 +182,9 @@ class TestUiSyncHelper:
 
     def test_signal_blocker(self):
         """Test SignalBlocker context manager."""
-        from chisurf.gui.widgets.experiments.ui_sync import SignalBlocker
         from qtpy import QtCore
+
+        from chisurf.gui.widgets.experiments.ui_sync import SignalBlocker
 
         class MockWidget(QtCore.QObject):
             signal = QtCore.Signal()

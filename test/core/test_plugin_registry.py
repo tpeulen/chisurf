@@ -410,6 +410,52 @@ class TestPluginRegistryState:
         split = {k: sorted(v) for k, v in spellings.items() if len(v) > 1}
         assert not split, f"menu-path segments spelled inconsistently: {split}"
 
+    def test_builtin_categories_agree_with_menu_path(self):
+        """INC-07 guard: ``categories`` must not contradict the menu path.
+
+        The generated catalogue prints ``Menu path`` and ``Categories`` in the
+        same identity table, so a plugin reached via ``Tools → TTTR`` while
+        tagged ``TTTR, Analysis`` advertises a top-level category the
+        application does not have. Two rules, both case-insensitive:
+
+        * the **first** category is the top-level menu segment (the ribbon tab);
+        * **every** parent segment of the menu path also appears somewhere in
+          ``categories``.
+
+        Extra categories beyond the menu path are allowed — they are free
+        taxonomy tags (e.g. ``Burst Analysis`` sits in ``Spectroscopy`` but is
+        also tagged ``Single-Molecule``).
+        """
+        import json
+        import pathlib
+
+        import chisurf.plugins
+
+        plugins_root = pathlib.Path(chisurf.plugins.__file__).parent
+        bad: list[str] = []
+        for mf in sorted(plugins_root.rglob("manifest.json")):
+            if "cookiecutter" in str(mf):  # template placeholders, not real labels
+                continue
+            data = json.loads(mf.read_text())
+            categories = data.get("categories") or []
+            display_name = data.get("display_name") or ""
+            parents = [p.strip() for p in display_name.split(":")[:-1] if p.strip()]
+            if not parents or not categories:
+                continue
+            folded = {c.casefold() for c in categories}
+            if categories[0].casefold() != parents[0].casefold():
+                bad.append(
+                    f"{mf.relative_to(plugins_root)}: first category "
+                    f"{categories[0]!r} != top-level menu segment {parents[0]!r}"
+                )
+            missing = [p for p in dict.fromkeys(parents) if p.casefold() not in folded]
+            if missing:
+                bad.append(
+                    f"{mf.relative_to(plugins_root)}: menu segments {missing} "
+                    f"absent from categories {categories}"
+                )
+        assert not bad, "\n".join(bad)
+
 
 class TestLegacyMetadata:
     """_read_legacy_metadata() fallback."""

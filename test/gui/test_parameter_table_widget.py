@@ -39,8 +39,8 @@ def _make_params():
 
 def test_model_counts():
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
         COLUMN_META,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -51,12 +51,12 @@ def test_model_counts():
 
 def test_model_display_values():
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
-        COL_NAME,
-        COL_VALUE,
-        COL_FIXED,
         COL_BOUNDS_LO,
         COL_ERROR,
+        COL_FIXED,
+        COL_NAME,
+        COL_VALUE,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -78,8 +78,8 @@ def test_model_display_values():
 
 def test_model_edit_value():
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
         COL_VALUE,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -92,8 +92,8 @@ def test_model_edit_value():
 
 def test_model_edit_fixed():
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
         COL_FIXED,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -111,9 +111,9 @@ def test_model_edit_fixed():
 
 def test_model_edit_bounds():
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
-        COL_BOUNDS_LO,
         COL_BOUNDS_HI,
+        COL_BOUNDS_LO,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -130,8 +130,8 @@ def test_model_edit_bounds():
 
 def test_model_edit_bounds_on():
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
         COL_BOUNDS_ON,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -143,9 +143,10 @@ def test_model_edit_bounds_on():
 
 def test_linked_follower_value_not_editable():
     from qtpy import QtCore
+
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
         COL_VALUE,
+        ParameterGroupTableModel,
     )
 
     master = _make_params()[0]
@@ -163,10 +164,11 @@ def test_linked_follower_value_not_editable():
 
 def test_bounds_columns_editable_only_when_bounds_on():
     from qtpy import QtCore
+
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel,
-        COL_BOUNDS_LO,
         COL_BOUNDS_HI,
+        COL_BOUNDS_LO,
+        ParameterGroupTableModel,
     )
 
     params = _make_params()
@@ -190,8 +192,8 @@ def test_bounds_columns_editable_only_when_bounds_on():
 def test_widget_column_visibility(qapp):
     from chisurf.core.dataspec import ParameterGroupTableSection
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget,
         COLUMN_META,
+        ParameterGroupTableWidget,
     )
 
     params = _make_params()
@@ -211,8 +213,8 @@ def test_widget_column_visibility(qapp):
 def test_widget_all_columns_when_empty(qapp):
     from chisurf.core.dataspec import ParameterGroupTableSection
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget,
         COLUMN_META,
+        ParameterGroupTableWidget,
     )
 
     params = _make_params()
@@ -372,6 +374,7 @@ def test_autoform_table_non_collapsible_no_box(qapp):
 
 def test_widget_sizes_to_content_no_scroll(qapp):
     from qtpy import QtCore
+
     from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
 
     params = _make_params()
@@ -393,8 +396,11 @@ def test_widget_sizes_to_content_no_scroll(qapp):
 
 def test_name_column_renders_html_labels(qapp):
     from qtpy import QtCore
+
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget, _RichTextDelegate, COL_NAME,
+        COL_NAME,
+        ParameterGroupTableWidget,
+        _RichTextDelegate,
     )
 
     params = _make_params()
@@ -416,8 +422,12 @@ def test_value_column_uses_scientific_spinbox_not_qt_default(qapp):
     """
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget, PairedParameterTableWidget,
-        _FloatEditDelegate, COL_VALUE, COL_BOUNDS_LO, COL_BOUNDS_HI,
+        COL_BOUNDS_HI,
+        COL_BOUNDS_LO,
+        COL_VALUE,
+        PairedParameterTableWidget,
+        ParameterGroupTableWidget,
+        _FloatEditDelegate,
     )
     from chisurf.gui.widgets.fitting.scientific_spinbox import ScientificDoubleSpinBox
 
@@ -478,9 +488,11 @@ def test_typed_value_is_committed(qapp, commit):
     the cell snapped straight back to its old value.
     """
     from qtpy import QtCore
+
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget, COL_VALUE,
+        COL_VALUE,
+        ParameterGroupTableWidget,
     )
 
     params = [
@@ -505,6 +517,7 @@ def test_typed_value_is_committed(qapp, commit):
 def test_typed_value_is_committed_paired_table(qapp):
     """The paired (dynamic-group) table shares the delegate — same guarantee."""
     from qtpy import QtCore
+
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
         PairedParameterTableWidget,
@@ -560,9 +573,11 @@ def test_only_the_left_button_toggles_a_checkbox_cell(qapp, button):
     parameter on the way.
     """
     from qtpy import QtCore
+
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget, COL_FIXED,
+        COL_FIXED,
+        ParameterGroupTableWidget,
     )
 
     params = [FittingParameter(name="N", value=1.0)]
@@ -581,9 +596,11 @@ def test_only_the_left_button_toggles_a_checkbox_cell(qapp, button):
 def test_right_click_does_not_toggle_in_the_paired_table(qapp):
     """The paired table shares the toggle delegate — same guarantee."""
     from qtpy import QtCore
+
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
-        PairedParameterTableWidget, SLOT_COLUMN_IDS,
+        SLOT_COLUMN_IDS,
+        PairedParameterTableWidget,
     )
 
     params = [
@@ -607,9 +624,12 @@ def test_enabling_bounds_repaints_the_whole_row(qapp):
     editable numbers.
     """
     from qtpy import QtCore
+
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget, COL_BOUNDS_LO, COL_BOUNDS_ON,
+        COL_BOUNDS_LO,
+        COL_BOUNDS_ON,
+        ParameterGroupTableWidget,
     )
 
     params = [FittingParameter(name="N", value=1.0)]
@@ -628,9 +648,12 @@ def test_enabling_bounds_repaints_the_whole_row(qapp):
 def test_a_bound_that_clamps_the_value_repaints_the_value_cell(qapp):
     """A lower bound above the value moves the value — the cell has to follow."""
     from qtpy import QtCore
+
     from chisurf.core.fitting.parameter import FittingParameter
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableModel, COL_BOUNDS_LO, COL_VALUE,
+        COL_BOUNDS_LO,
+        COL_VALUE,
+        ParameterGroupTableModel,
     )
 
     params = [FittingParameter(name="N", value=2.0, bounds_on=True)]
@@ -647,8 +670,10 @@ def test_a_bound_that_clamps_the_value_repaints_the_value_cell(qapp):
 
 def test_copy_paste_values(qapp):
     from qtpy import QtCore, QtWidgets
+
     from chisurf.gui.autoform.sections.parameter_table import (
-        ParameterGroupTableWidget, COL_VALUE,
+        COL_VALUE,
+        ParameterGroupTableWidget,
     )
 
     params = _make_params()
@@ -668,6 +693,7 @@ def test_copy_paste_values(qapp):
 
 def test_table_font_is_monospace(qapp):
     from qtpy import QtGui
+
     from chisurf.gui.autoform.sections.parameter_table import ParameterGroupTableWidget
 
     widget = ParameterGroupTableWidget(params=_make_params())

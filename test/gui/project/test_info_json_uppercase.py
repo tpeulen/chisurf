@@ -1,10 +1,13 @@
-import pathlib
-import tempfile
-import shutil
 import json
+import pathlib
+import shutil
+import tempfile
 from datetime import datetime
 
-from chisurf.gui.widgets.wizard.tttr_photonfilter import WizardTTTRPhotonFilter, load_detector_setups
+from chisurf.gui.widgets.wizard.tttr_photonfilter import (
+    WizardTTTRPhotonFilter,
+    load_detector_setups,
+)
 
 
 def test_info_json_uppercase(qapp, qtbot):

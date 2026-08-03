@@ -79,6 +79,34 @@ def test_all_plugin_init_with_ui_paths_exist():
     assert not missing, f"Missing plugin .ui files: {missing}"
 
 
+def _resolve_loadui_base(py_file: pathlib.Path, arg_source: str) -> pathlib.Path:
+    """Return the directory a direct ``loadUi`` argument resolves its name against.
+
+    ``Path(__file__).parents[n]`` indexes exactly like ``py_file.parents[n]``
+    (``parents[0]`` is the module's own directory), so a call spelled
+    ``loadUi(Path(__file__).parents[1] / "wizard.ui")`` looks one level above the
+    module. Without such an expression the name is taken next to the module.
+
+    Parameters
+    ----------
+    py_file : pathlib.Path
+        The module containing the ``loadUi`` call.
+    arg_source : str
+        Source text of the call's first argument.
+
+    Returns
+    -------
+    pathlib.Path
+        Directory the ``.ui`` file name is joined onto.
+    """
+    match = re.search(r"parents\[(\d+)\]", arg_source)
+    if match:
+        index = int(match.group(1))
+        if index < len(py_file.parents):
+            return py_file.parents[index]
+    return py_file.parent
+
+
 def test_plugin_direct_loadui_string_targets_exist():
     repo_root = pathlib.Path(__file__).resolve().parents[2]
     plugins_root = repo_root / "chisurf" / "plugins"
@@ -101,12 +129,26 @@ def test_plugin_direct_loadui_string_targets_exist():
 
             arg_source = ast.get_source_segment(source, node.args[0]) or ""
             candidates = [a or b for a, b in re.findall(r'"([^"]+\.ui)"|\'([^\']+\.ui)\'', arg_source)]
+            base = _resolve_loadui_base(py_file, arg_source)
             for ui_name in candidates:
-                ui_path = py_file.parent / ui_name
+                ui_path = base / ui_name
                 if not ui_path.exists():
                     missing.append((str(py_file), ui_name, str(ui_path)))
 
     assert not missing, f"Missing plugin .ui files in direct loadUi calls: {missing}"
+
+
+def test_loadui_base_follows_the_parents_index():
+    """``parents[n]`` in the call expression moves the search directory up n levels."""
+    py_file = pathlib.Path("/repo/chisurf/plugins/demo/gui/tool.py")
+
+    assert _resolve_loadui_base(py_file, '"tool.ui"') == py_file.parent
+    assert _resolve_loadui_base(py_file, 'Path(__file__).parent / "tool.ui"') == py_file.parent
+    assert _resolve_loadui_base(py_file, 'Path(__file__).parents[0] / "tool.ui"') == py_file.parent
+    assert (
+        _resolve_loadui_base(py_file, 'Path(__file__).parents[1] / "wizard.ui"')
+        == py_file.parent.parent
+    )
 
 
 def test_trajectory_manifests_drive_plugin_discovery():

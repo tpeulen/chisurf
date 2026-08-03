@@ -97,7 +97,8 @@ def test_spectra_tool_navigation_panels_build(qapp):
 
 
 def test_add_to_mmfdb_panel_local(qapp):
-    import tempfile, sqlite3
+    import sqlite3
+    import tempfile
 
     from chisurf.plugins.spectra_downloader.gui.add_to_mmfdb_panel import AddToMmfdbPanel
 
@@ -123,9 +124,11 @@ def test_add_to_mmfdb_panel_local(qapp):
 
 def test_add_to_mmfdb_session_admin_gate(qapp):
     """Admins add without a login; non-admins are refused (session-first)."""
-    import tempfile, sqlite3
+    import sqlite3
+    import tempfile
 
     from mmfdb.repository import MFDatabase
+
     from chisurf.plugins.spectra_downloader.gui.add_to_mmfdb_panel import AddToMmfdbPanel
 
     db = _staging_db()
@@ -159,7 +162,7 @@ def test_autoform_password_kind_is_masked(qapp):
     """The password ValueSection renders a masked QLineEdit."""
     from qtpy import QtWidgets
 
-    from chisurf.core.dataspec import ValueSection, ModelView
+    from chisurf.core.dataspec import ModelView, ValueSection
     from chisurf.gui.autoform import AutoForm
 
     class _M:

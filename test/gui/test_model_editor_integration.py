@@ -50,6 +50,7 @@ def _default_tcspc_model_paths():
     Mirrors how ``main_helper.init_setups`` reads the bundled YAML (the user copy
     is intentionally ignored here so the test reflects the repo, not a machine)."""
     import yaml
+
     import chisurf.core.settings as settings
 
     cfg = pathlib.Path(settings.__file__).parent / "experiment_configs.yaml"
@@ -109,12 +110,13 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     renders its parameters, the IRF curve input is present, and the model
     produces a finite decay."""
     from qtpy import QtWidgets
+
     from chisurf.core.models import view_spec as vs
+    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
     from chisurf.gui.widgets.models.model_editor import (
         build_model_editor,
         model_plot_specs,
     )
-    from chisurf.gui.widgets.models.auto_model_widget import AutoModelWidget
 
     model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeModel")
     fit = _make_fit(model_class)
@@ -148,6 +150,7 @@ def test_lifetime_pure_model_editor_is_populated_and_computes(qapp):
     # (b3) each bounds_toggle panel puts a "bounds" toggle in its header; the
     # Lo/Hi/Bounds columns start hidden (to save width) and the toggle reveals them.
     from qtpy import QtWidgets
+
     from chisurf.gui.autoform.sections.parameter_table import COL_BOUNDS_ON
 
     toggles = [b for b in editor.findChildren(QtWidgets.QToolButton) if b.text() == "bounds"]
@@ -208,10 +211,11 @@ def test_lifetime_mixture_new_model_editor_renders_and_fit_mixer_section_exists(
     assert: the editor builds, the fit_mixer custom section is present and
     rendered, and the model computes a finite fallback decay (no components)."""
     from qtpy import QtWidgets
+
     from chisurf.core.models import view_spec as vs
-    from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
     from chisurf.gui.autoform import AutoForm
     from chisurf.gui.autoform.sections.builtin import FitMixerWidget
+    from chisurf.gui.widgets.models.model_editor import build_model_editor, model_plot_specs
 
     model_class = _resolve("chisurf.core.models.tcspc.lifetime.LifetimeMixtureNewModel")
     assert model_class.name == "Lifetime mixer (new)"
