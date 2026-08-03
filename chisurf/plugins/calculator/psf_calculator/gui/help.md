@@ -57,6 +57,31 @@ computation.
 The summary reports the lateral and axial widths measured from the computed
 volume, next to the scalar prediction 0.51 λ/NA for comparison.
 
+## Exporting
+
+**Export** on the toolbar writes the computed volume in either of two formats:
+
+| Format | What it carries | Use it for |
+| --- | --- | --- |
+| `.npy` | the raw `(nz, ny, nx)` float array | deconvolution, simulation, any further NumPy work |
+| `.tif` | a 32-bit ImageJ stack plus the voxel size | opening in ImageJ or Fiji already scaled in micrometres |
+
+The TIFF records the lateral pixel size in the resolution tags and the z step as
+the ImageJ `spacing`, so a line profile reads out in nanometres rather than
+pixels. Both write whatever is currently computed — set **Quality** to **Full**
+first if the file is going anywhere but the bin.
+
+Headless, the same two formats come from the model directly:
+
+```python
+from chisurf.plugins.calculator.psf_calculator.core import PSFModel
+
+model = PSFModel()
+model.na, model.quality = 1.45, "full"
+model.compute()
+model.save(f"{model.export_basename()}.tif")
+```
+
 ## Further reading
 
 * [10.1098/rspa.1959.0200](https://doi.org/10.1098/rspa.1959.0200) — Richards &

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import pathlib
 
 from qtpy import QtCore, QtWidgets
 
@@ -76,6 +77,7 @@ class PSFCalculator(ChisurfDockTool):
         # gui/guide.json exists.
         toolbar = QtWidgets.QToolBar()
         toolbar.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        self._add_export_button(toolbar)
         self.add_toolbar_help(
             toolbar, resource="help.md", title="PSF calculator — Help",
             model=self)
@@ -182,6 +184,65 @@ class PSFCalculator(ChisurfDockTool):
             self.auto_form.sync_fields()
         finally:
             self._syncing = False
+
+    # -- export ---------------------------------------------------------------
+    def _add_export_button(self, toolbar) -> None:
+        """A one-button menu offering the two formats the volume is useful in."""
+        button = QtWidgets.QToolButton()
+        button.setText("💾 Export")
+        button.setObjectName("psf_export_button")
+        button.setToolTip(
+            "Save the computed volume as a NumPy array or an ImageJ TIFF stack.")
+        button.setPopupMode(QtWidgets.QToolButton.InstantPopup)
+        button.setToolButtonStyle(QtCore.Qt.ToolButtonTextOnly)
+        menu = QtWidgets.QMenu(button)
+        menu.setToolTipsVisible(True)
+        for label, suffix, filt, tip in (
+            ("NumPy array (.npy)", ".npy", "NumPy array (*.npy)",
+             "Full float precision, no metadata."),
+            ("ImageJ TIFF stack (.tif)", ".tif", "TIFF stack (*.tif *.tiff)",
+             "32-bit stack carrying the voxel size, so ImageJ scales it correctly."),
+        ):
+            act = menu.addAction(label)
+            act.setToolTip(tip)
+            act.triggered.connect(
+                lambda checked=False, s=suffix, f=filt: self.export_volume(s, f))
+        button.setMenu(menu)
+        # Name the action a widget-action would otherwise leave blank: the
+        # guided tour finds a toolbar button by its action's text, so a step
+        # pointing at "Export" resolves to nothing without this.
+        toolbar.addWidget(button).setText("Export")
+        self._export_button = button
+
+    def export_volume(self, suffix: str = ".npy", file_filter: str = "") -> None:
+        """Ask for a destination and write the current volume to it."""
+        from chisurf.gui import dialogs
+        from chisurf.gui.widgets.general import save_file
+
+        if self.model.volume is None:
+            dialogs.warning(
+                "Nothing to export",
+                "The PSF has not been computed yet -- wait for the view to fill in.")
+            return
+        filename = save_file(
+            description=f"Export PSF as {suffix}",
+            file_type=file_filter or f"(*{suffix})",
+        )
+        if not filename:
+            return
+        path = pathlib.Path(filename)
+        if not path.suffix:
+            # A dialog filter is a hint, not a guarantee: a user who types a bare
+            # name would otherwise get an extension-less file that neither
+            # NumPy nor ImageJ opens by double-click.
+            path = path.with_suffix(suffix)
+        try:
+            written = self.model.save(path)
+        except Exception as exc:
+            logger.warning("PSF export failed", exc_info=True)
+            dialogs.error("Export failed", str(exc))
+            return
+        logger.info("PSF exported to %s", written)
 
     def _report(self, message: str) -> None:
         logger.warning("PSF calculator: %s", message)

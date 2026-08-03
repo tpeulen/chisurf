@@ -2,6 +2,19 @@
 
 ## 2026-08-03
 
+* **The PSF calculator exports, and its headline number got honest.** 💾 Export
+  writes the volume as `.npy` (raw float array) or an ImageJ `.tif` carrying the
+  voxel size in the resolution tags and `spacing`, so a stack opens in Fiji
+  already scaled; `PSFModel.save()` is the Qt-free path for headless use.
+  Measuring the widths exposed a real defect: the FWHM was the distance between
+  the outermost samples at or above half-max, which quantizes to the sampling
+  step and always understates — an Airy PSF read 150 nm at every grid size, a
+  fixed 21 % below 0.51 λ/NA. Interpolating the two half-max crossings recovers
+  a known Gaussian to 0.5 % at 30 nm sampling, and Airy now lands at 1.02 × the
+  scalar limit as it should. Also labelled the Airy model **2-D**: the optical
+  model repeats the focal plane along z, so it renders as a cylinder, and a
+  choice that silently ignores an axis has to say so.
+
 * **The PSF calculator got its tour and its `?`.** First plugin to land under
   the new default: `gui/guide.json` walks "how wrong is 0.51 λ/NA for my
   objective?" through NA → immersion → Airy → vectorial → polarization in eight

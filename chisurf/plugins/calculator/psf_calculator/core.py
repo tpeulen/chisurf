@@ -125,6 +125,65 @@ class PSFModel:
         seg[:, :, 2] = z
         return seg
 
+    # -- export --------------------------------------------------------------
+    def save(self, path) -> pathlib.Path:
+        """Write the computed volume to ``path``; the suffix picks the format.
+
+        ``.npy`` keeps full float precision and nothing else; ``.tif``/``.tiff``
+        writes an ImageJ-readable stack carrying the voxel size, so the file
+        opens with a correct scale bar instead of counting pixels.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Destination. A missing or unknown suffix is treated as ``.npy``.
+
+        Returns
+        -------
+        pathlib.Path
+            The path actually written.
+
+        Raises
+        ------
+        RuntimeError
+            If no volume has been computed yet.
+        """
+        if self._volume is None:
+            raise RuntimeError("No PSF has been computed yet.")
+        path = pathlib.Path(path)
+        if path.suffix.lower() in (".tif", ".tiff"):
+            return self._save_tiff(path)
+        if path.suffix.lower() != ".npy":
+            path = path.with_suffix(".npy")
+        np.save(path, self._volume)
+        return path
+
+    def _save_tiff(self, path: pathlib.Path) -> pathlib.Path:
+        """Write an ImageJ hyperstack with the voxel size in its metadata."""
+        import tifffile
+
+        # ImageJ reads x/y spacing from the TIFF resolution tags (in
+        # ``unit`` per pixel, hence the reciprocal) and z from the
+        # description. Micrometres, because that is what ImageJ calls "micron".
+        px_um = float(self.pixel_size_nm) / 1000.0
+        z_um = float(self.z_step_nm) / 1000.0
+        tifffile.imwrite(
+            path,
+            np.asarray(self._volume, dtype=np.float32),
+            imagej=True,
+            resolution=(1.0 / px_um, 1.0 / px_um),
+            metadata={"spacing": z_um, "unit": "um", "axes": "ZYX"},
+        )
+        return path
+
+    def export_basename(self) -> str:
+        """A filename that records the optics, so exports do not collide."""
+        pol = str(self.polarization).lower().replace(" ", "-")
+        return (
+            f"psf_{self.model}_NA{self.na:g}_n{self.n_immersion:g}"
+            f"_{self.wavelength_nm:g}nm_{pol}"
+        )
+
     # -- reporting -----------------------------------------------------------
     def summary_text(self) -> str:
         """Peak position and the measured widths, for the info panel."""
@@ -156,4 +215,21 @@ class PSFModel:
         above = np.nonzero(profile >= half)[0]
         if above.size < 2:
             return float("nan")
-        return float((above[-1] - above[0]) * step_nm)
+        first, last = int(above[0]), int(above[-1])
+
+        # Counting samples above half-max quantizes the width to the sampling
+        # step and always understates it -- at 30 nm pixels an Airy PSF came out
+        # 150 nm wide whatever the grid size, a fixed 21 % below 0.51 lambda/NA.
+        # Interpolate each crossing to where the profile actually passes half.
+        def _crossing(inside: int, outside: int) -> float:
+            """Fractional index where the segment inside->outside crosses half."""
+            if outside < 0 or outside >= profile.size:
+                return float(inside)           # profile leaves the frame
+            span = profile[inside] - profile[outside]
+            if span <= 0:
+                return float(inside)
+            return inside + (profile[inside] - half) / span * (outside - inside)
+
+        left = _crossing(first, first - 1)
+        right = _crossing(last, last + 1)
+        return float((right - left) * step_nm)

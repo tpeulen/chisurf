@@ -67,10 +67,10 @@
                   ],
                   "labels": [
                     "Vectorial (Richards-Wolf)",
-                    "Airy (scalar)",
+                    "Airy (scalar, 2-D)",
                     "Gaussian"
                   ],
-                  "description": "Vectorial accounts for the longitudinal field and the input polarization; Airy is the exact scalar result; Gaussian is the usual approximation, which has no wings."
+                  "description": "Vectorial accounts for the longitudinal field and the input polarization; Airy is the exact scalar focal-plane result and is repeated unchanged along z, so it shows no defocus; Gaussian adds a paraxial axial envelope but has no wings."
                 }
               ],
               "n_col": 1
@@ -239,7 +239,9 @@
               "title": "Result",
               "description": "Peak position, axial and lateral extent of the computed PSF.",
               "n_col": 1,
-              "is_markdown": true
+              "is_markdown": true,
+              "height": 120,
+              "max_height": 140
             }
           ]
         },
