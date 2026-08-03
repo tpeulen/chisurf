@@ -5,6 +5,7 @@ import numpy as np
 from typing import List, Dict
 import chisurf as cs
 from ..api import compute_filters, compute_filters_mfd, FilterResult
+from chisurf.gui import dialogs
 
 class FilterComputationMixin:
     """Mixin class containing all filter computation methods."""
@@ -254,7 +255,7 @@ class FilterComputationMixin:
         except Exception as e:
             import traceback
             cs.logging.error(f"Computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Computation Error", str(e))
+            dialogs.error(self, "Computation Error", str(e))
             self._update_status(f"Error: {e}")
 
     def _compute_filters_anisotropy(self, chs: List[str]) -> None:
@@ -362,7 +363,7 @@ class FilterComputationMixin:
         except Exception as e:
             import traceback
             cs.logging.error(f"Anisotropy computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Anisotropy Computation Error", str(e))
+            dialogs.error(self, "Anisotropy Computation Error", str(e))
             self._update_status(f"Anisotropy Error: {e}")
 
     def _compute_filters_multi_anisotropy(self, chs: List[str]) -> None:
@@ -474,7 +475,7 @@ class FilterComputationMixin:
         except Exception as e:
             import traceback
             cs.logging.error(f"Multi-Anisotropy computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Multi-Anisotropy Computation Error", str(e))
+            dialogs.error(self, "Multi-Anisotropy Computation Error", str(e))
             self._update_status(f"Multi-Anisotropy Error: {e}")
 
     def _compute_filters_multi_detector(self, chs: List[str]) -> None:
@@ -544,5 +545,5 @@ class FilterComputationMixin:
         except Exception as e:
             import traceback
             cs.logging.error(f"Multi-detector computation error: {e}\n{traceback.format_exc()}")
-            QtWidgets.QMessageBox.critical(self, "Multi-Detector Computation Error", str(e))
+            dialogs.error(self, "Multi-Detector Computation Error", str(e))
             self._update_status(f"Multi-Detector Error: {e}")

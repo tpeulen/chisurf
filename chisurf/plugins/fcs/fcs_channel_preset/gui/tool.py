@@ -50,6 +50,7 @@ from chisurf.gui.glyphs import Glyphs
 # Registering the custom pairs section must happen before AutoForm builds.
 from . import sections  # noqa: F401
 from .view_model import FCSChannelViewModel
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
@@ -93,19 +94,19 @@ class FCSChannelWidget(QtWidgets.QWidget):
             # model after a programmatic selection change.
             self.auto_form.sync_fields()
         elif event == "saved":
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 i18n.tr("Saved"),
                 i18n.tr("Saved the FCS channel pairs for the selected detector setup."),
             )
         elif event == "save_failed":
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 i18n.tr("Save failed"),
                 i18n.tr("Could not save the FCS channel pairs."),
             )
         elif event == "no_setup":
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 i18n.tr("No setup selected"),
                 i18n.tr("Select a detector setup first."),

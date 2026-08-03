@@ -26,6 +26,12 @@ normalized-ACF baseline), not 0. This differs from the legacy parse
 catalogue's ``1/(N*sqrt(8))`` convention (a PAM-specific artifact of how those
 older models define ``N``); porting a catalogue ``N`` here requires dividing
 it by ``sqrt(8)``.
+
+This model is purely operational (analytical diffusion + relaxation terms).
+The photokinetic *saturation* path — arbitrary N-state rate schemes and the
+numerical, power-dependent autocorrelation — lives in :mod:`.kinetics`
+(:class:`FCSKineticsModel`), together with the rate-matrix parameter groups
+it needs.
 """
 
 from __future__ import annotations
@@ -36,12 +42,17 @@ import numpy as np
 
 import chisurf as cs
 from chisurf.core.fitting.parameter import FittingParameter, FittingParameterGroup
-from chisurf.core.models.model import ModelCurve
 from chisurf.core.fluorescence.fcs import enderlein
 from chisurf.core.models.fcs.mdf import (
-    MdfPhysical, MdfOptics, MdfOutputs, NA, compute_brightness, set_output_parameter,
+    NA,
+    MdfOptics,
+    MdfOutputs,
+    MdfPhysical,
+    compute_brightness,
+    set_output_parameter,
 )
 from chisurf.core.models.fcs.relaxation import AnticorrTerms, BunchingTerms
+from chisurf.core.models.model import ModelCurve
 
 
 class GaussDiffusion(FittingParameterGroup):
@@ -65,30 +76,72 @@ class GaussDiffusion(FittingParameterGroup):
         """Initialize the classic 3-D-Gaussian diffusion parameter group."""
         super().__init__(name=name, **kwargs)
         self._N = FittingParameter(
-            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_gauss.N")
+            value=1.0, name="N", lb=1e-6, ub=1e9, fixed=False, registry_id="fcs_gauss.N"
+        )
         self._D = FittingParameter(
-            value=300.0, name="D", lb=1e-3, ub=1e5, fixed=False,
-            label_text="D[µm²/s]", registry_id="fcs_gauss.D")
+            value=300.0,
+            name="D",
+            lb=1e-3,
+            ub=1e5,
+            fixed=False,
+            label_text="D[µm²/s]",
+            registry_id="fcs_gauss.D",
+        )
         self._w_r = FittingParameter(
-            value=250.0, name="w_r", lb=10.0, ub=5000.0, fixed=False,
-            label_text="w<sub>r</sub>[nm]", registry_id="fcs_gauss.w_r")
+            value=250.0,
+            name="w_r",
+            lb=10.0,
+            ub=5000.0,
+            fixed=False,
+            label_text="w<sub>r</sub>[nm]",
+            registry_id="fcs_gauss.w_r",
+        )
         self._w_z = FittingParameter(
-            value=1000.0, name="w_z", lb=10.0, ub=20000.0, fixed=False,
-            label_text="w<sub>z</sub>[nm]", registry_id="fcs_gauss.w_z")
+            value=1000.0,
+            name="w_z",
+            lb=10.0,
+            ub=20000.0,
+            fixed=False,
+            label_text="w<sub>z</sub>[nm]",
+            registry_id="fcs_gauss.w_z",
+        )
         self._b = FittingParameter(
-            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b")
+            value=1.0, name="b", lb=-10.0, ub=10.0, fixed=False, registry_id="fcs_gauss.b"
+        )
         self._diam = FittingParameter(
-            value=0.0, name="diam", lb=0.0, ub=5000.0, fixed=True,
-            label_text="d<sub>foci</sub>[nm]", registry_id="fcs_gauss.diam")
+            value=0.0,
+            name="diam",
+            lb=0.0,
+            ub=5000.0,
+            fixed=True,
+            label_text="d<sub>foci</sub>[nm]",
+            registry_id="fcs_gauss.diam",
+        )
         self._bg = FittingParameter(
-            value=0.0, name="bg", lb=0.0, ub=1e6, fixed=True,
-            label_text="BG[kHz]", registry_id="fcs_gauss.bg")
+            value=0.0,
+            name="bg",
+            lb=0.0,
+            ub=1e6,
+            fixed=True,
+            label_text="BG[kHz]",
+            registry_id="fcs_gauss.bg",
+        )
         self._s = FittingParameter(
-            value=float("nan"), name="s", fixed=True, is_output=True,
-            label_text="s", registry_id="fcs_gauss.s")
+            value=float("nan"),
+            name="s",
+            fixed=True,
+            is_output=True,
+            label_text="s",
+            registry_id="fcs_gauss.s",
+        )
         self._brightness = FittingParameter(
-            value=float("nan"), name="brightness", fixed=True, is_output=True,
-            label_text="&epsilon;[kHz]", registry_id="fcs_gauss.brightness")
+            value=float("nan"),
+            name="brightness",
+            fixed=True,
+            is_output=True,
+            label_text="&epsilon;[kHz]",
+            registry_id="fcs_gauss.brightness",
+        )
 
     N = property(lambda s: float(s._N.value))
     D = property(lambda s: float(s._D.value))
@@ -101,15 +154,15 @@ class GaussDiffusion(FittingParameterGroup):
     def g_diff(self, tau_ms: np.ndarray) -> np.ndarray:
         """3-D-Gaussian diffusion shape (``g(0) = 1`` at ``diam = 0``)."""
         D = self.D
-        w_r = self.w_r * 1e-3   # nm -> µm
+        w_r = self.w_r * 1e-3  # nm -> µm
         w_z = self.w_z * 1e-3
         diam = self.diam * 1e-3
         tau_s = np.asarray(tau_ms, dtype=float) * 1e-3
-        lateral = 1.0 / (1.0 + 4.0 * D * tau_s / w_r ** 2)
-        axial = 1.0 / np.sqrt(1.0 + 4.0 * D * tau_s / w_z ** 2)
+        lateral = 1.0 / (1.0 + 4.0 * D * tau_s / w_r**2)
+        axial = 1.0 / np.sqrt(1.0 + 4.0 * D * tau_s / w_z**2)
         g = lateral * axial
         if diam > 0:
-            g = g * np.exp(-diam ** 2 / (w_r ** 2 + 4.0 * D * tau_s))
+            g = g * np.exp(-(diam**2) / (w_r**2 + 4.0 * D * tau_s))
         return g
 
 
@@ -140,7 +193,7 @@ class GeneralFCSModel(ModelCurve):
 
     _DIFFUSION_MODES = ("mdf", "gauss", "two_focus")
 
-    def __init__(self, fit: "cs.core.fitting.fit.Fit", **kwargs):
+    def __init__(self, fit: cs.core.fitting.fit.Fit, **kwargs):
         """Initialize every diffusion-mode parameter group plus relaxation terms."""
         super().__init__(fit, **kwargs)
         self._diffusion_mode = "gauss"
@@ -150,9 +203,14 @@ class GeneralFCSModel(ModelCurve):
         self.gauss = GaussDiffusion(name="gauss_diffusion", fit=fit)
         self.two_focus = GaussDiffusion(name="two_focus_diffusion", fit=fit)
         self.two_focus._diam.value = 400.0
-        self.two_focus._diam.fixed = True   # a known, fixed geometric constant
+        self.two_focus._diam.fixed = True  # a known, fixed geometric constant
         self.bunching = BunchingTerms(name="bunching", fit=fit)
         self.anticorr = AnticorrTerms(name="anticorr", fit=fit)
+        #: Re-entrancy guard: writing a derived output parameter
+        #: (:func:`set_output_parameter`) round-trips through the API, which
+        #: calls ``update_model`` again; without this guard that cycle recursed
+        #: ~200 deep on every update.
+        self._updating_model = False
         self.find_parameters()
 
     @property
@@ -204,18 +262,35 @@ class GeneralFCSModel(ModelCurve):
     def _mdf_shape(self, tau_ms: np.ndarray):
         """Return ``(g, N, b)`` for the MDF diffusion mode, or ``None`` if invalid."""
         p = self.mdf_physical
-        w0 = p.w0 * 1e-3   # nm -> µm
+        w0 = p.w0 * 1e-3  # nm -> µm
         wem = p.wem * 1e-3
         D = p.D
         N = p.N
-        if not (math.isfinite(w0) and w0 > 0 and math.isfinite(wem) and wem > 0
-                and math.isfinite(D) and D > 0 and math.isfinite(N) and N != 0):
+        if not (
+            math.isfinite(w0)
+            and w0 > 0
+            and math.isfinite(wem)
+            and wem > 0
+            and math.isfinite(D)
+            and D > 0
+            and math.isfinite(N)
+            and N != 0
+        ):
             return None
         tau_s = np.asarray(tau_ms, dtype=float) * 1e-3
         separation = p.diam * 1e-3
         optics = self.mdf_optics.as_optics()
-        g = enderlein.g_diff(tau_s, w0, wem, D, optics=optics, normalize=True,
-                              n_grid=121, span=30.0, separation=separation)
+        g = enderlein.g_diff(
+            tau_s,
+            w0,
+            wem,
+            D,
+            optics=optics,
+            normalize=True,
+            n_grid=121,
+            span=30.0,
+            separation=separation,
+        )
 
         veff_um3 = enderlein.effective_volume(w0, wem, optics)
         conc_nM = (N / (veff_um3 * 1e-15 * NA)) * 1e9 if veff_um3 > 0 else float("nan")
@@ -241,6 +316,19 @@ class GeneralFCSModel(ModelCurve):
 
     def update_model(self, **kwargs) -> None:
         """Evaluate the selected diffusion term, apply relaxation terms, into ``self.y``."""
+        # Writing a derived output parameter (s, brightness) round-trips through
+        # the API, which calls update_model again. Skip that nested recompute —
+        # the enclosing call is computing with the same parameters and has
+        # already written the output value (set_output_parameter sets it first).
+        if self._updating_model:
+            return
+        self._updating_model = True
+        try:
+            self._update_model_inner(**kwargs)
+        finally:
+            self._updating_model = False
+
+    def _update_model_inner(self, **kwargs) -> None:
         data = self.fit.data
         tau_ms = np.asarray(data.x, dtype=float).ravel()
         if tau_ms.size == 0:
@@ -263,8 +351,18 @@ class GeneralFCSModel(ModelCurve):
         g = self.bunching.apply(g, tau_ms)
         g = self.anticorr.apply(g, tau_ms)
 
+        meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
+        from chisurf.core.fluorescence.fcs.normalization import resolve_total_mean_count_rate
+        mean_cr_total = resolve_total_mean_count_rate(meta)
+        diff_obj = getattr(self, self.diffusion_mode, None)
+        bg_val = float(getattr(diff_obj, "bg", 0.0)) if diff_obj is not None else 0.0
+        if mean_cr_total is not None and mean_cr_total > 0 and bg_val > 0:
+            bg_factor = max(0.0, (mean_cr_total - bg_val) / mean_cr_total) ** 2
+        else:
+            bg_factor = 1.0
+
         self.x = tau_ms
-        self.y = b + g / N
+        self.y = b + (bg_factor / N) * g
 
     def equation_html(self) -> str:
         """Render the currently active compound fitting equation as HTML.
@@ -288,6 +386,7 @@ class GeneralFCSModel(ModelCurve):
             w_label = "w<sub>r</sub>"
         if diam > 0:
             g += f" &middot; exp(&minus;d<sub>foci</sub>&sup2;/({w_label}&sup2;+4D&tau;))"
+
         for term_html in (self.bunching.equation_html(), self.anticorr.equation_html()):
             if term_html:
                 g += " &middot; " + term_html

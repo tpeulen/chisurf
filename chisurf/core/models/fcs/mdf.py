@@ -256,8 +256,15 @@ class MdfFCSModel(ModelCurve):
         if brightness is not None:
             set_output_parameter(self.fit, self.outputs._brightness, brightness)
 
+        meta = getattr(getattr(self.fit, "data", None), "meta_data", {}) or {}
+        mean_cr_total = resolve_total_mean_count_rate(meta)
+        if mean_cr_total is not None and mean_cr_total > 0 and p.bg > 0:
+            bg_factor = max(0.0, (mean_cr_total - p.bg) / mean_cr_total) ** 2
+        else:
+            bg_factor = 1.0
+
         self.x = tau_ms
-        self.y = b + g / N
+        self.y = b + (bg_factor / N) * g
 
     def equation_html(self) -> str:
         """Render the currently active compound fitting equation as HTML.

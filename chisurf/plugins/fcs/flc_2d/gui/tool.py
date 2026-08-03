@@ -14,6 +14,7 @@ from qtpy import QtCore, QtWidgets
 from chisurf.core.math.regularization import LCurveData
 
 from .client import FlcClient
+from chisurf.gui import dialogs
 
 _GUI_DIR = pathlib.Path(__file__).parent
 logger = logging.getLogger(__name__)
@@ -375,7 +376,7 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
         try:
             self._tttr = self._tttr_from_payload(self._client.load_tttr(path, include_arrays=True))
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Load failed", str(exc))
+            dialogs.error(self, "Load failed", str(exc))
             return
         self._tttr_path = path
         data = self._tttr
@@ -401,7 +402,7 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
         try:
             irf_data = self._tttr_from_payload(self._client.load_tttr(path, include_arrays=True))
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Load failed", str(exc))
+            dialogs.error(self, "Load failed", str(exc))
             return
         n_channels = irf_data.n_microtime_channels
         hist = np.bincount(
@@ -467,7 +468,7 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
                 seed=1,
             )
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Simulation failed", str(exc))
+            dialogs.error(self, "Simulation failed", str(exc))
             return
         self._tttr = api.TttrData(
             macro_times=stream.macro_times,

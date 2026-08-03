@@ -14,6 +14,8 @@ from chisurf.core.dataspec import load_view_spec
 from chisurf.core.fluorescence.fcs.channel_setups import load_fcs_channel_setups
 from chisurf.gui.autoform import register_section
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -224,7 +226,7 @@ class CorrelatorSettingsModel:
 
     def correlate_data(self, parent_widget: QtWidgets.QWidget | None = None) -> None:
         if self._tttr is None or len(self._tttr) == 0:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 parent_widget,
                 "No Photons Selected",
                 "No photons selected for correlation. Please load data.",
@@ -250,13 +252,7 @@ class CorrelatorSettingsModel:
         settings = self.get_correlation_settings()
         self._correlations.clear()
 
-        progress = QtWidgets.QProgressDialog(
-            "Computing correlations...",
-            "Cancel",
-            0,
-            n_chunks,
-            parent_widget,
-        )
+        progress = ChiSurfProgress(parent_widget, "Computing correlations...", n_chunks)
         progress.setWindowTitle("Correlation Progress")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.show()
@@ -697,7 +693,7 @@ class _LifetimeFilterControls(QtWidgets.QWidget):
         try:
             n = self._model.load_lifetime_filter_file(path)
         except Exception as exc:  # pragma: no cover - GUI error path
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self.window() or self, "Filter load failed", str(exc)
             )
             return

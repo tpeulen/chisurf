@@ -4,11 +4,11 @@ Mirrors the TCSPC resolution check in ``test_model_editor_integration.py`` for
 the FCS experiment: every FCS model configured in the bundled experiment config
 must resolve to a class exposing a non-empty ``name`` (the string the model
 combobox shows and ``add_fit`` matches on), so a renamed/deleted model fails
-here instead of silently vanishing from the menu. Covers ``MdfFCSModel``
-(Enderlein Gauss--Lorentz MDF) and ``GeneralFCSModel`` (PRD-62 composable
-diffusion + bunching/anticorrelation model), both Qt-free pure models rendered by
-the generic ``AutoForm``/``AutoModelWidget`` (see
-``chisurf.gui.widgets.models.model_editor.build_model_editor``).
+here instead of silently vanishing from the menu. Covers ``MdfFCSModel`` (Enderlein Gauss--Lorentz MDF), ``GeneralFCSModel``
+(PRD-62 composable diffusion + bunching/anticorrelation model) and
+``FCSKineticsModel`` (photokinetic saturation + diffusion + relaxation), all
+Qt-free pure models rendered by the generic ``AutoForm``/``AutoModelWidget``
+(see ``chisurf.gui.widgets.models.model_editor.build_model_editor``).
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ def qapp():
 
 def _fcs_model_paths():
     import yaml
+
     import chisurf.core.settings as settings
 
     cfg = pathlib.Path(settings.__file__).parent / "experiment_configs.yaml"
@@ -60,12 +61,13 @@ def test_every_configured_fcs_model_resolves_with_a_name(qapp):
     assert not problems, "configured FCS models that won't appear in the menu:\n" + "\n".join(problems)
     assert any("MDF" in n for n in names), f"MDF FCS model missing from {names}"
     assert any("general" in n.lower() for n in names), f"General FCS model missing from {names}"
+    assert any("kinetic" in n.lower() for n in names), f"Kinetics FCS model missing from {names}"
 
 
 def test_mdf_model_class_is_a_model_curve(qapp):
     """The MDF model must inherit ModelCurve so it plugs into the fit machinery."""
-    from chisurf.core.models.model import ModelCurve
     from chisurf.core.models.fcs.mdf import MdfFCSModel
+    from chisurf.core.models.model import ModelCurve
 
     assert issubclass(MdfFCSModel, ModelCurve)
     assert str(getattr(MdfFCSModel, "name", "")).strip()
@@ -73,8 +75,17 @@ def test_mdf_model_class_is_a_model_curve(qapp):
 
 def test_general_model_class_is_a_model_curve(qapp):
     """The general composable FCS model must inherit ModelCurve."""
-    from chisurf.core.models.model import ModelCurve
     from chisurf.core.models.fcs.general import GeneralFCSModel
+    from chisurf.core.models.model import ModelCurve
 
     assert issubclass(GeneralFCSModel, ModelCurve)
     assert str(getattr(GeneralFCSModel, "name", "")).strip()
+
+
+def test_kinetics_model_class_is_a_model_curve(qapp):
+    """The photokinetic FCS model must inherit ModelCurve."""
+    from chisurf.core.models.fcs.kinetics import FCSKineticsModel
+    from chisurf.core.models.model import ModelCurve
+
+    assert issubclass(FCSKineticsModel, ModelCurve)
+    assert str(getattr(FCSKineticsModel, "name", "")).strip()
