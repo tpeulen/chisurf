@@ -23,6 +23,7 @@ from chisurf.gui.widgets.spectrum_view import SpectrumView
 from chisurf.plugins.core.mmfdb_admin.gui.optical_components.component_detail_form import (
     ComponentDetailForm,
 )
+from chisurf.gui import dialogs
 
 _VIEW_DIR = Path(_optical_components.__file__).parent
 _DEFAULT_VIEW = _VIEW_DIR / "fluorophore.view.json"
@@ -242,7 +243,7 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
     def _push_selected(self) -> None:
         ids = self._selected_probe_ids()
         if not ids:
-            QtWidgets.QMessageBox.information(self, "Push selected", "No components selected.")
+            dialogs.information(self, "Push selected", "No components selected.")
             return
         self._push(ids, f"{len(ids)} selected component(s)")
 
@@ -252,7 +253,7 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
     def _push(self, probe_ids, label: str) -> None:
         from chisurf.plugins.spectra_downloader.download.merge import push_staging_to_mmfdb
 
-        if QtWidgets.QMessageBox.question(
+        if dialogs.question(
             self, "Push to MMFDB",
             f"Push {label} from this staging database into the connected MMFDB?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No,
@@ -263,10 +264,10 @@ class SpectraBrowserWidget(QtWidgets.QWidget):
             summary = push_staging_to_mmfdb(str(self._db.db_path), probe_ids=probe_ids)
         except Exception as e:  # pragma: no cover - surfaced to the user
             QtWidgets.QApplication.restoreOverrideCursor()
-            QtWidgets.QMessageBox.critical(self, "Push failed", str(e))
+            dialogs.error(self, "Push failed", str(e))
             return
         QtWidgets.QApplication.restoreOverrideCursor()
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             self, "Push complete",
             f"Pushed {summary.get('merged', 0)} component(s) into the MMFDB.\n"
             f"Consolidated: {summary.get('consolidated')}",

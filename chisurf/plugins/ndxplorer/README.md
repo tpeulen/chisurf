@@ -1,6 +1,7 @@
-# ndXplorer Plugin
+# ndX Plugin
 
-This plugin provides a powerful interface for analyzing and visualizing multidimensional fluorescence data within 
+The tool is called **ndX** (package `ndxplorer`; it was formerly written out as
+*ndXplorer*). This plugin provides a powerful interface for analyzing and visualizing multidimensional fluorescence data within 
 ChiSurf.
 
 ## Features

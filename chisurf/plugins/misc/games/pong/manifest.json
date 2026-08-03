@@ -4,7 +4,7 @@
   "display_name": "Tools:Miscellaneous:Games:Pong",
   "description": "Classic Pong game with CPU opponent, score tracking, and particle effects; contained in the Games hub.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["Tools", "Miscellaneous"],
+  "categories": ["Tools", "Miscellaneous", "Games"],
   "icon": "🏓",
   "state_namespace": "pong_game",
   "statefulness": {

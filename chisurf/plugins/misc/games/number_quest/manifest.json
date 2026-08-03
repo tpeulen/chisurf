@@ -4,7 +4,7 @@
   "display_name": "Tools:Miscellaneous:Games:Number Quest",
   "description": "A small number-guessing game contained in the Games hub.",
   "authors": ["ChiSurf contributors"],
-  "categories": ["Tools", "Miscellaneous"],
+  "categories": ["Tools", "Miscellaneous", "Games"],
   "entrypoints": {
     "gui": "chisurf.plugins.misc.games.number_quest.gui.tool:NumberQuestWidget"
   },
