@@ -505,6 +505,21 @@ class InternalGui:
             except Exception:
                 pass
 
+    @property
+    def movie_panel_visible(self) -> bool:
+        """Whether there is a movie to scrub, and therefore a panel for it.
+
+        PyMOL's own rule, from ``MovieGetPanelHeight`` (``layer1/Movie.cpp``):
+        the panel has zero height unless a movie is defined or the scene has
+        more than one frame. In chimol ``mset`` sets the frame count, so the two
+        conditions collapse into one.
+
+        Without it a single-state PDB -- the ordinary case -- got a full-width
+        scrubber and a nine-button transport for a timeline of one, which is the
+        loudest thing in the panel and controls nothing.
+        """
+        return int(self.state[1]) > 1
+
     def layout_block(self, width: int, height: int) -> None:
         """Place the mouse-mode block and the movie transport, bottom-right.
 
@@ -518,10 +533,10 @@ class InternalGui:
         block_w = self.PAD + label_w + 4 * cell_w + self.PAD
         # title, the L/M/R/Wheel heading, six binding rows, selecting, state
         rows = len(rows_for(self.mouse_mode))
-        block_h = (
-            self.PAD + line_h * (rows + 5) + self.PAD
-            + self.SEQ_BAR_H + 4 + self.ROW_H + self.PAD
-        )
+        movie = self.movie_panel_visible
+        block_h = self.PAD + line_h * (rows + 5) + self.PAD
+        if movie:
+            block_h += self.SEQ_BAR_H + 4 + self.ROW_H + self.PAD
 
         if self.docked:
             block_w = max(block_w, self.column_width)
@@ -547,6 +562,14 @@ class InternalGui:
         self._average_rect = Rect(
             self._block.x + split, stride_y, block_w - split, line_h
         )
+
+        self._movie_rects = []
+        if not movie:
+            # Nothing to play: no track, no thumb, no buttons -- and an empty
+            # rect fails `contains`, so the hit tests fall through by themselves.
+            self._timeline_track = Rect(0, 0, 0, 0)
+            self._timeline_thumb = Rect(0, 0, 0, 0)
+            return
 
         # The timeline runs the width of the block, above the transport: the
         # state counter says *where* you are, and this is how you get somewhere
@@ -1154,6 +1177,9 @@ class InternalGui:
         draw(left + label_w + cell_w * 2, line,
              "off" if self.average <= 1 else str(self.average),
              MODE_ACTION_FG, cell_w * 2)
+
+        if not self.movie_panel_visible:
+            return
 
         track, thumb = self._timeline_track, self._timeline_thumb
         painter.setPen(QtCore.Qt.NoPen)

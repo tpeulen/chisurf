@@ -29,6 +29,24 @@ coverage and the known gaps are tracked in the OKF bundle under
 `okf/plugins/pymol-parity.md`.
 :::
 
+## The window
+
+The molecule owns the window, the way it does in PyMOL. Three things sit on top
+of the 3-D view rather than beside it — the **sequence strip** across the top,
+the **object list** at the top right, and the **mouse-mode block** at the bottom
+right — because they are reference material you glance at without looking away
+from what you are doing.
+
+Under the view is the **command console**: an always-visible prompt with the
+output of everything you have run above it. It is the fastest way to drive the
+viewer, and nothing has to be opened first.
+
+The movie transport and its scrubber appear only when there is something to
+play — a trajectory, or a timeline you set with `mset`. The **Hierarchy**,
+**RMF** and **Map** panels start closed and open themselves when a file gives
+them something to show; **View ▸ Panel Tabs** opens any of them by hand, and
+right-clicking a tab bar brings back one you have closed.
+
 ## Loading and looking
 
 Open a structure with **File ▸ Open**, or from the command line inside the

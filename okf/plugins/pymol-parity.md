@@ -550,7 +550,9 @@ Two smaller ones, both found by a test rather than by reading:
 **Not yet:** a group name inside an *atom selection* — `show cartoon, ligands` —
 because `_resolve_selection_to_atom_mask` returns a single `(object_id, mask)`
 pair. Supporting it means a multi-object resolver; the group's row menus and any
-command taking object names work today.
+command taking object names work today. **Measured 2026-08-03: it is not
+rejected, it answers emptily** — `count_atoms <group>` says `0` and
+`show cartoon, <group>` does nothing, in silence. See the window section below.
 
 ## Two coordinate arrays, and they had drifted apart
 
@@ -957,6 +959,75 @@ expensive.
 
 **This must be verified in a real window.** Offscreen Qt creates no GL context, so
 none of it is exercised by the offscreen suite; see the capture notes above.
+
+# The window, not the commands
+
+Measured 2026-08-03 by photographing the window in a realistic state and reading
+PyMOL's layout rules from its source rather than from memory. The *panel* was a
+faithful PyMOL clone — object list with A/S/H/L/C, mouse-mode block, sequence
+strip. The window around it was not, in three ways that a construction test
+cannot see and a screenshot shows immediately.
+
+| | PyMOL | ChiMOL, before |
+| --- | --- | --- |
+| Movie panel | zero height until a movie exists | full-width scrubber + nine buttons for `State 1/1` |
+| Command prompt | always on screen (`internal_prompt`, default 1) | a background tab in a side stack |
+| Side panels | none — the object list is *in* the viewport | a third of the window, holding a filter box and white space |
+
+**The movie rule is exact and worth quoting**: `MovieGetPanelHeight`
+(`layer1/Movie.cpp`) returns zero unless `MovieGetLength()` or
+`SceneGetNFrame(G) > 1`. In chimol `mset` sets the frame count, so the two
+conditions collapse to one. It was the loudest thing in the panel — a salmon bar
+across the whole block — and it controlled a timeline of one.
+
+**The prompt is not a nicety.** `internal_prompt` and `internal_feedback` are
+both on by default and PyMOL draws them at the bottom of the viewport, because
+typing commands *is* how the program is driven. Ours had a console with output,
+history and completion, docked as the fifth tab of a stack whose first tab was
+showing — so the first thing a PyMOL user reaches for was invisible until found.
+It is now the row under the view, full width.
+
+**An empty panel is worse than no panel**: it reads as a broken layout. The three
+side panels have nothing until a file brings it — a hierarchy, an RMF, a map — so
+they start hidden and *reveal themselves* when they have content
+(`_reveal_panel_with_content`). Hidden, not removed: the View menu and a
+right-click on a tab bring them back, and nothing else tells someone their
+integrative model has a hierarchy to browse.
+
+## The layout was authored and never applied
+
+Chasing the above found a defect in the **shared** dock area, so every view in
+ChiSurf is affected. `set_layout_state` applied the authored `sizes` at build
+time, when the splitter is about 100×30 — `setSizes` clamps each share to the
+children's minimums, and the resize that follows redistributes by rules of Qt's
+own. Measured on the chimol default: an authored **700/170 came out 230/614**,
+inverted, giving most of the window to the console it meant to give a strip to.
+
+Two attempts failed before the third worked, and both failures are worth
+recording. Re-applying once on the event loop lands *before* the window is
+resized. Stretch factors do not survive either — `QSizePolicy`'s stretch is a
+`uchar`, so an authored `700` silently becomes `255`, and even at the right
+ratio the split still came out inverted. What works is to treat the numbers as
+**proportions and re-apply them on every resize**, until the user drags that
+divider — at which point their choice replaces the author's for good. That is
+also the behaviour anyone expects from a divider they just moved.
+
+## Two menu entries that did nothing
+
+Both found by using the window rather than testing it, and both silent:
+
+* **View ▸ Toggle Sequence** toggled a dock retired when the strip moved into
+  the viewport. `_set_tab_visible` looped over every tab, matched the name
+  against none, and returned; the entry ticked and unticked and the strip never
+  moved. It writes the `seq_view` setting now — the same place `set` writes, so
+  the menu and the command line cannot disagree.
+* A **group name inside an atom selection** answers *emptily*: `group stuff,
+  ligs 148l` then `show cartoon, stuff` does nothing and reports nothing, and
+  `count_atoms stuff` says `0` rather than "unknown selection". Recorded rather
+  than fixed here: it needs a multi-object resolver, since
+  `_resolve_selection_to_atom_mask` returns a single `(object_id, mask)` pair.
+  Note this is *worse* than the "not accepted in a selection" this file used to
+  record — it is accepted, and lies.
 
 # Tier 3 — specialised or superseded here
 

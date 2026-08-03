@@ -91,10 +91,14 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
     "root": {
         "type": "splitter",
         "orientation": "vertical",
-        # The sequence strip needs its scrollbar, number row and one residue row
-        # -- about 90px. Giving it 150 left a band of dead grey under the
-        # letters, since the rows are top-aligned and do not stretch.
-        "sizes": [600, 95, 40],
+        # The 3-D view, then the command console under it across the full
+        # width. PyMOL keeps a prompt and a line of feedback on screen at all
+        # times (`internal_prompt` and `internal_feedback`, both default on,
+        # drawn at the bottom of the viewport) because typing commands *is* the
+        # interface. Ours was a background tab in a side stack, so the first
+        # thing a PyMOL user reaches for was two clicks away and invisible until
+        # found.
+        "sizes": [700, 170],
         "children": [
             {
                 "type": "splitter",
@@ -123,7 +127,6 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
                             {"widget_key": "Hierarchy", "tab_name": "Hierarchy", "tab_text": "Hierarchy"},
                             {"widget_key": "RMF", "tab_name": "RMF", "tab_text": "RMF"},
                             {"widget_key": "Map", "tab_name": "Map", "tab_text": "Map"},
-                            {"widget_key": "Command", "tab_name": "Command", "tab_text": "Command"},
                         ],
                         "current_index": 0,
                     },
@@ -132,12 +135,7 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
             {
                 "type": "tab",
                 "tabs": [
-                ],
-                "current_index": 0,
-            },
-            {
-                "type": "tab",
-                "tabs": [
+                    {"widget_key": "Command", "tab_name": "Command", "tab_text": "Command"},
                 ],
                 "current_index": 0,
             },
@@ -152,6 +150,14 @@ _DEFAULT_DOCK_AREA_STATE: dict = {
 #: layout is applied verbatim, so without this they come back the moment anyone
 #: reopens the window -- looking exactly like the removal never happened.
 _RETIRED_DOCKS = frozenset({"Sequence", "State", "Timeline"})
+
+#: Side panels that start hidden because they have nothing to show yet. Each is
+#: empty until a file supplies its content, and an empty panel that takes a
+#: third of the window is worse than no panel: it reads as a broken layout.
+#: ``Objects`` is permanently hidden (the list is in the viewport); the other
+#: three appear by themselves once they have something -- see
+#: :meth:`MolViewPluginWindow._reveal_panel_with_content`.
+_INITIALLY_HIDDEN_DOCKS = frozenset({"Objects", "Hierarchy", "RMF", "Map"})
 
 
 def _without_retired_docks(state):
@@ -338,16 +344,21 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 pass
 
             # After the layout is applied, not before: `set_layout_state`
-            # restores the authored tabs and would undo it. The object list
-            # lives in the viewport now, so its dock starts hidden -- hidden,
-            # not removed, because right-clicking a tab brings it back and
-            # someone who wants a resizable list should still be able to have
-            # one.
+            # restores the authored tabs and would undo it.
+            #
+            # The object list lives in the viewport now, and the other three
+            # side panels have nothing to show until a file brings it -- a
+            # hierarchy, an RMF, a map. On an ordinary PDB the side column was a
+            # third of the window holding a filter box and white space, while
+            # the molecule got the rest. They start hidden, so the viewport owns
+            # the window the way PyMOL's does; hidden, not removed, because the
+            # View menu and a right-click on a tab bring them back, and the ones
+            # that *can* fill are shown the moment they have content (see
+            # `_reveal_panel_with_content`).
             try:
                 for index in range(self.dock_area.count()):
-                    if self.dock_area.tabText(index) == "Objects":
+                    if self.dock_area.tabText(index) in _INITIALLY_HIDDEN_DOCKS:
                         self.dock_area.hideTab(index)
-                        break
             except Exception:
                 pass
             central_layout.addWidget(self.dock_area)
@@ -530,9 +541,12 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             )
             self._act_toggle_sequence.setCheckable(True)
             self._act_toggle_sequence.setChecked(True)
-            self._act_toggle_sequence.triggered.connect(
-                lambda c: self._set_tab_visible("Sequence", c),
-            )
+            # `seq_view`, not a dock. The sequence moved into the viewport, and
+            # this action kept toggling the tab it used to live in -- a name no
+            # tab has answered to since, so `_set_tab_visible` looped over every
+            # tab, matched none, and returned. The menu entry ticked and
+            # unticked and the strip never moved.
+            self._act_toggle_sequence.triggered.connect(self._set_sequence_visible)
             self._view_menu_actions.append(self._act_toggle_sequence)
 
             self._act_toggle_command = view_menu.addAction(
@@ -580,6 +594,58 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
                 self.dock_area.showTab(idx)
                 self.dock_area.setCurrentIndex(idx)
                 return
+
+    def _set_sequence_visible(self, visible: bool) -> None:
+        """Show or hide the sequence strip in the viewport.
+
+        The strip reads the ``seq_view`` setting when the panel is rebuilt (see
+        ``_refresh_sequence_rows``), so setting it is what moves the strip, and
+        `set` from the command line and this menu entry stay in agreement
+        because they write the same place.
+
+        Parameters
+        ----------
+        visible : bool
+            Whether the strip should be drawn.
+        """
+        try:
+            from ..settings import set_setting
+
+            set_setting("seq_view", bool(visible))
+        except Exception:
+            logger.debug("could not set seq_view", exc_info=True)
+            return
+        try:
+            self.viewer.update()
+        except Exception:
+            logger.debug("could not repaint after toggling the sequence", exc_info=True)
+
+    def _reveal_panel_with_content(self, name: str, has_content: bool) -> None:
+        """Show a side panel once it has something to show, and only then.
+
+        The panel starts hidden (:data:`_INITIALLY_HIDDEN_DOCKS`) so an ordinary
+        PDB gets the whole window for the molecule. It appears by itself when a
+        file finally gives it content, because a panel nobody can see is as
+        useless as an empty one that takes a third of the window -- and nothing
+        else tells the user their integrative model *has* a hierarchy to browse.
+
+        It is not hidden again when the content goes away: closing a panel is
+        the user's decision, and a panel that vanished on its own while they
+        were using it would be the more surprising behaviour.
+
+        Parameters
+        ----------
+        name : str
+            Tab text of the panel.
+        has_content : bool
+            Whether the panel now has something in it.
+        """
+        if not has_content or self.dock_area is None:
+            return
+        try:
+            self._show_tab(name)
+        except Exception:
+            logger.debug("could not reveal the %s panel", name, exc_info=True)
 
     def _reset_panel_layout(self) -> None:
         if self.dock_area is not None:
@@ -2279,12 +2345,15 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         self._update_sequence_view(object_id)
         self._update_system_info(object_id)
 
+        hierarchy = None
         if hasattr(self, "hierarchy"):
             try:
                 state = self.viewer._get_active_state()
-                self.hierarchy.set_hierarchy(state.rmf_hierarchy)
+                hierarchy = state.rmf_hierarchy
             except Exception:
-                self.hierarchy.set_hierarchy(None)
+                hierarchy = None
+            self.hierarchy.set_hierarchy(hierarchy)
+            self._reveal_panel_with_content("Hierarchy", hierarchy is not None)
         if hasattr(self, "rmf_panel"):
             try:
                 state = self.viewer._get_active_state()

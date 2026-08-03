@@ -320,3 +320,89 @@ def test_dock_area_is_inside_client_content(qtbot):
     outside_pos = QtCore.QPoint(-1000, -1000)
     assert dock_area.is_inside_client_content(outside_pos) is False
 
+
+
+def _split_state(sizes):
+    """Return a two-pane vertical layout asking for *sizes*."""
+    return {
+        "version": 1,
+        "root": {
+            "type": "splitter",
+            "orientation": "vertical",
+            "sizes": list(sizes),
+            "children": [
+                {"type": "tab", "tabs": [{"widget_key": "Top", "tab_name": "Top"}],
+                 "current_index": 0},
+                {"type": "tab", "tabs": [{"widget_key": "Bottom", "tab_name": "Bottom"}],
+                 "current_index": 0},
+            ],
+        },
+        "active_tab_widget": [0],
+        "current_index": 0,
+    }
+
+
+def _restore(dock_area, sizes):
+    top, bottom = QtWidgets.QTextEdit(), QtWidgets.QTextEdit()
+    dock_area.addTab(top, "Top")
+    dock_area.addTab(bottom, "Bottom")
+    dock_area.set_layout_state(
+        _split_state(sizes), key_func=lambda w: dock_area.tabText(dock_area.indexOf(w)),
+    )
+    # Shown, or the splitter never lays out and every share stays at its minimum
+    # -- which is also the state the authored sizes are first applied in.
+    dock_area.setAttribute(QtCore.Qt.WA_DontShowOnScreen, True)
+    dock_area.show()
+    return dock_area._root_widget
+
+
+def test_authored_sizes_survive_the_resize_that_follows(qtbot):
+    """An authored split has to hold once the window has a real size.
+
+    A dock area is built before it is shown -- the splitter is about 100x30 --
+    so ``setSizes`` clamps every share to the children's minimums, and the
+    resize that follows redistributes by rules of Qt's own. An authored 80/20
+    came out inverted, silently, in every layout that asked for a split.
+    """
+    dock_area = DockArea()
+    qtbot.addWidget(dock_area)
+    splitter = _restore(dock_area, [800, 200])
+    assert isinstance(splitter, DockSplitter)
+
+    dock_area.resize(600, 1000)
+    qtbot.wait(50)
+    top, bottom = splitter.sizes()
+    assert top > bottom * 3, f"authored 80/20 came out {top}/{bottom}"
+
+
+def test_the_proportions_hold_at_any_window_size(qtbot):
+    """They are proportions, not pixels: a small window splits the same way."""
+    dock_area = DockArea()
+    qtbot.addWidget(dock_area)
+    splitter = _restore(dock_area, [800, 200])
+
+    ratios = []
+    for height in (400, 900, 1400):
+        dock_area.resize(600, height)
+        qtbot.wait(30)
+        top, bottom = splitter.sizes()
+        ratios.append(top / max(top + bottom, 1))
+    assert all(abs(r - 0.8) < 0.12 for r in ratios), ratios
+
+
+def test_dragging_a_divider_wins_over_the_author(qtbot):
+    """Once the user moves it, it is theirs -- the layout stops re-applying."""
+    dock_area = DockArea()
+    qtbot.addWidget(dock_area)
+    splitter = _restore(dock_area, [800, 200])
+    dock_area.resize(600, 1000)
+    qtbot.wait(50)
+
+    # What a drag does: move the handle, which emits splitterMoved.
+    splitter.setSizes([300, 700])
+    splitter.splitterMoved.emit(300, 1)
+    dock_area.resize(600, 1200)
+    qtbot.wait(50)
+
+    top, bottom = splitter.sizes()
+    assert bottom > top, f"the authored split came back as {top}/{bottom}"

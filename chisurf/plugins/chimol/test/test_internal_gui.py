@@ -817,9 +817,17 @@ def test_dragging_the_timeline_seeks(gui):
 
 
 def test_a_single_frame_movie_does_not_divide_by_zero(gui):
+    """One frame is not a movie, so there is no timeline to place.
+
+    This used to assert the thumb had a width -- the span-1 case the division
+    guard exists for. PyMOL gives the movie panel zero height until a movie
+    exists (``MovieGetPanelHeight``), so the guard is now unreachable from here
+    and the assertion is that nothing is laid out rather than that something is.
+    """
     gui.state = (1, 1)
     gui.layout(WIDTH, HEIGHT)          # must not raise
-    assert gui._timeline_thumb.w > 0
+    assert gui._timeline_thumb.w == 0
+    assert gui._movie_rects == []
 
 
 def test_the_timeline_tracks_a_frame_change_it_did_not_make(gui):

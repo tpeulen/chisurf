@@ -2,6 +2,104 @@
 
 ## 2026-08-03
 
+* **ChiMOL's window, measured against PyMOL's layout rules rather than against
+  memory.** ([parity tracker](plugins/pymol-parity.md),
+  [viewer guide](../docs/guides/44_molecular_viewer.md)) Photographed the window
+  in a realistic state and read the rules from PyMOL's source. The *panel* was a
+  faithful clone — object list with A/S/H/L/C, mouse-mode block, sequence strip.
+  The window around it was not, in three ways no construction test can see:
+  - **The movie transport showed for a molecule with one state.** PyMOL's
+    `MovieGetPanelHeight` (`layer1/Movie.cpp`) returns zero unless a movie exists
+    or `SceneGetNFrame(G) > 1`; in chimol `mset` sets the frame count, so the two
+    collapse into one condition. Ours drew a full-width salmon scrubber and a
+    nine-button transport over a timeline of one — the loudest thing in the
+    panel, controlling nothing. Layout, paint and hit-testing now read one
+    property, so a click where the transport used to be falls through instead of
+    running a movie command.
+  - **The command prompt was a background tab.** `internal_prompt` and
+    `internal_feedback` are both on by default and PyMOL draws them at the bottom
+    of the viewport, because typing commands *is* how it is driven. Ours had a
+    console with output, history and completion, docked fifth in a side stack
+    whose first tab was showing — so the first thing a PyMOL user reaches for was
+    invisible until found. It is the row under the view now, full width.
+  - **An empty panel is worse than no panel:** it reads as a broken layout. The
+    Hierarchy, RMF and Map panels held a third of the window showing a filter box
+    and white space on an ordinary PDB. They start hidden and *reveal themselves*
+    when a file gives them content; hidden rather than removed, because the View
+    menu and a right-click bring them back, and nothing else tells someone their
+    integrative model has a hierarchy to browse.
+  - **The authored layout was never applied, in the shared dock area** — so every
+    view in ChiSurf was affected, not only this one. `set_layout_state` applied
+    `sizes` at build time, when the splitter is about 100×30: `setSizes` clamps
+    each share to the children's minimums and the resize that follows
+    redistributes on its own terms. Measured: an authored **700/170 came out
+    230/614**, inverted. Two fixes failed first and both are recorded — deferring
+    to the event loop lands *before* the window is resized, and stretch factors
+    do not survive because `QSizePolicy`'s stretch is a `uchar`, so an authored
+    700 silently becomes 255. What works is to treat the numbers as
+    **proportions and re-apply them on every resize**, until the user drags that
+    divider, at which point their choice replaces the author's permanently.
+  - **Two menu entries did nothing, silently.** *View ▸ Toggle Sequence* toggled
+    a dock retired when the strip moved into the viewport — `_set_tab_visible`
+    matched no tab and returned, so the entry ticked and unticked while the strip
+    never moved; it writes the `seq_view` setting now, the same place `set`
+    writes. And a **group name inside an atom selection answers emptily**:
+    `count_atoms <group>` says `0` and `show cartoon, <group>` does nothing, in
+    silence — *worse* than the "not accepted" the tracker recorded. Left open
+    (it needs a multi-object resolver) but no longer mis-described.
+  - Tests: `test_viewport_chrome.py` (8) and three in `test_dock_area.py` for the
+    shared fix. `test_internal_gui.py`'s single-frame case was **ported, not
+    deleted** — it asserted the thumb had a width, which is exactly the
+    behaviour that was wrong. chimol suite 1839 passed with the five
+    camera-framing failures that are red at `HEAD`.
+
+* **Why the old 2D-MFD program worked better: the instrument response, not the
+  model.** Built the missing arbiter — a full smFRET measurement simulated with
+  the confocal photon engine, pushed through the *real* burst pipeline, and fitted
+  against known truth — and used it to answer a question that code-vs-code
+  comparison cannot settle.
+  - **Root cause.** `estimate_responses` takes the non-burst photons to be
+    "scattered excitation light and uncorrelated dark counts". They are
+    overwhelmingly fluorescence from molecules too dim to cross the burst
+    threshold. Subtracting a flat floor removes dark counts and leaves their decay
+    in place, so the estimated response is **4.50 ns against a true 1.00 ns**, and
+    a fabricated **~1000 counts/s** background appears even when the true
+    background is exactly zero. Both are then pushed into the *lifetime* axis:
+    modelled ⟨t⟩ 6.88 ns against an observed 3.79, deviance 18 592. Supplying the
+    true response gives 3.89 vs 3.79 and deviance **667**. The machinery is sound;
+    its self-estimated inputs are not. The legacy program modelled neither an IRF
+    nor a background on that axis and was structurally immune — that, and not a
+    better model, is why it worked.
+  - **A second, independent defect, fixed.** The micro-time mixture of an
+    exchanging burst was weighted by occupation fraction `f`, but donor photons
+    arrive in proportion to `f·(1−E)`. Measured photon by photon: a burst split
+    evenly between E=0.2 and E=0.8 states draws **80%** of its donor photons from
+    the low-FRET state, shifting the predicted mean delay 2.00 → 2.72 ns, three to
+    four micro-time bins. It lived in *both* scoring sources, so their agreement —
+    cited in the docs as evidence — never tested it. Now one shared
+    `donor_weights()`; the channel-count half (`f·p`) is provably exact and
+    unchanged.
+  - **Background shape.** `ChannelResponse.background_pattern` — the rate was
+    measured while the shape was assumed flat, though both describe the same
+    photons (mean 16.4 → 5.52 ns).
+  - **Direction of travel** (`prd-71`): correct the *data* with the moment
+    correction the photon library already provides, so the response becomes a
+    nuisance rather than a shape the forward model is pushed through.
+    `corrected_lifetimes()` is the reference implementation. A prompt-fitting
+    estimator was tried and **deleted**: it recovered 1.12 ns on simulated data
+    only because that simulator's prompt *is* Gaussian, and on measured data it
+    came out early and narrow — the real-data milestone gates caught it. Fitting a
+    better shape is the wrong layer; the point is to stop needing the shape.
+  - **New capability**: kinetics, IRF, background and polarization in the smFRET
+    simulator, polarization encoded as *states* rather than a post-hoc split (see
+    [driving the photon simulator](references/simengine-species-encoding.md), which
+    records the general states/channels/patterns encoding and its unit and
+    transpose traps); truth-defined bursts from the emitting-molecule log, so a fit
+    on true transits can be compared against one on searched bursts; a
+    Monte-Carlo forward model transcribed from the legacy program; and a
+    ground-truth benchmark under `test/benchmarks/`.
+  - Suites: 152 MFD + 10 simulated-experiment green.
+
 * **ChiMOL `ray` traces the scene, and the refusal it used to give was the bug.**
   ([parity tracker](plugins/pymol-parity.md), [viewer guide](../docs/guides/44_molecular_viewer.md))
   `render_scene` has handled triangle meshes for a while, and a cartoon *is* a

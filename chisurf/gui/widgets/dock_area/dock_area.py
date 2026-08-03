@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -5,6 +6,8 @@ from qtpy import QtCore, QtGui, QtWidgets
 from chisurf.gui.widgets.dock_area.dock_overlay import DockDropOverlay
 from chisurf.gui.widgets.dock_area.dock_stacked_tab_widget import DockStackedTabWidget
 from chisurf.gui.widgets.dock_area.dock_tab_bar import DockTabBar
+
+logger = logging.getLogger(__name__)
 
 _MAX_TAB_TEXT_LEN = 30
 
@@ -272,6 +275,13 @@ class DockArea(QtWidgets.QWidget):
         self._all_widgets = []
         self._tab_names: dict[QtWidgets.QWidget, str] = {}
         self._hidden_widgets: list[QtWidgets.QWidget] = []
+        #: Splitters whose authored sizes still have to be applied against real
+        #: geometry; see :meth:`_apply_pending_splitter_sizes`.
+        self._pending_splitter_sizes: list[tuple[QtWidgets.QSplitter, list[int]]] = []
+        #: Splitter -> authored shares, held so a resize cannot undo the layout.
+        #: A splitter the user drags is dropped from here; see
+        #: :meth:`_apply_splitter_sizes`.
+        self._authored_proportions: dict[QtWidgets.QSplitter, list[int]] = {}
         self._tab_close_modes: dict[QtWidgets.QWidget, str] = {}
         self._root_widget = None
         self._active_tab_widget = None
@@ -836,9 +846,105 @@ class DockArea(QtWidgets.QWidget):
                 splitter.addWidget(child)
             sizes = state.get("sizes")
             if isinstance(sizes, list) and sizes:
-                splitter.setSizes([int(size) for size in sizes])
+                self._apply_splitter_sizes(splitter, [int(size) for size in sizes])
+                # …and again once the splitter has a real size. Here it is a few
+                # hundred pixels at most, and `setSizes` clamps every share to
+                # the child's minimum, so an authored 700/170 came back as
+                # roughly a quarter to the view and the rest to the console --
+                # silently, in every layout that asks for a split.
+                self._pending_splitter_sizes.append(
+                    (splitter, [int(size) for size in sizes])
+                )
             return splitter
         return None
+
+    def _apply_splitter_sizes(self, splitter, sizes: list[int]) -> None:
+        """Divide *splitter* in the authored proportions, and keep them there.
+
+        The numbers are read as **proportions**, not pixels: a layout written
+        for a 1400-px window has to divide a 900-px one the same way.
+
+        Applying them once does not hold. A dock area is built before it has a
+        size -- the splitter here is about 100x30 -- so ``setSizes`` clamps every
+        share to the children's minimums, and the resize that follows
+        redistributes by rules of Qt's own (stretch factors are a ``uchar``,
+        so an authored 700 silently becomes 255, and even then the split came
+        out inverted). Rather than divine that, the proportions are **remembered
+        and re-applied on every resize**, until the user drags that divider --
+        at which point their choice replaces the author's, permanently, which is
+        the behaviour anyone expects from a divider they just moved.
+
+        Parameters
+        ----------
+        splitter : QSplitter
+            Splitter to divide.
+        sizes : list of int
+            Authored shares, in the splitter's child order.
+        """
+        total = sum(sizes)
+        if total <= 0:
+            return
+        if splitter not in self._authored_proportions:
+            try:
+                splitter.splitterMoved.connect(
+                    lambda *_args, s=splitter: self._authored_proportions.pop(s, None)
+                )
+            except Exception:
+                logger.debug("splitter has no splitterMoved signal", exc_info=True)
+        self._authored_proportions[splitter] = list(sizes)
+        span = (
+            splitter.width()
+            if splitter.orientation() == QtCore.Qt.Horizontal
+            else splitter.height()
+        )
+        if span > 0:
+            splitter.setSizes(
+                [max(1, int(round(size * span / total))) for size in sizes]
+            )
+
+    def resizeEvent(self, event) -> None:
+        """Keep every authored split at its proportions as the area resizes."""
+        super().resizeEvent(event)
+        if self._authored_proportions:
+            self._reapply_authored_proportions()
+
+    def _reapply_authored_proportions(self) -> None:
+        """Re-divide each remembered splitter, dropping any that have gone."""
+        for splitter, sizes in list(self._authored_proportions.items()):
+            if _is_deleted(splitter):
+                self._authored_proportions.pop(splitter, None)
+                continue
+            try:
+                span = (
+                    splitter.width()
+                    if splitter.orientation() == QtCore.Qt.Horizontal
+                    else splitter.height()
+                )
+                total = sum(sizes)
+                if span <= 0 or total <= 0:
+                    continue
+                splitter.setSizes(
+                    [max(1, int(round(size * span / total))) for size in sizes]
+                )
+            except RuntimeError:
+                self._authored_proportions.pop(splitter, None)
+
+    def _apply_pending_splitter_sizes(self) -> None:
+        """Re-apply authored splitter sizes now that the widgets have a size.
+
+        The authored numbers are treated as *proportions*, not pixels: a layout
+        written for a 1400-px window must still divide a 900-px one the same
+        way, and `setSizes` on a splitter that is wider than the numbers add up
+        to hands the remainder to the last child.
+        """
+        pending, self._pending_splitter_sizes = self._pending_splitter_sizes, []
+        for splitter, sizes in pending:
+            try:
+                if _is_deleted(splitter):
+                    continue
+                self._apply_splitter_sizes(splitter, sizes)
+            except RuntimeError:
+                continue
 
     @staticmethod
     def _has_parent_in(widget: QtWidgets.QWidget | None, parents: set[QtWidgets.QWidget]) -> bool:
@@ -918,6 +1024,8 @@ class DockArea(QtWidgets.QWidget):
         root_state = state.get("root")
         if not isinstance(root_state, dict) or not self._layout_state_has_tabs(root_state):
             return False
+        self._pending_splitter_sizes = []
+        self._authored_proportions.clear()
         restored_root = self._build_widget_from_state(root_state, key_func)
         if restored_root is None:
             return False
@@ -934,6 +1042,8 @@ class DockArea(QtWidgets.QWidget):
         current_index = state.get("current_index")
         if isinstance(current_index, int):
             self.setCurrentIndex(current_index)
+        if self._pending_splitter_sizes:
+            QtCore.QTimer.singleShot(0, self._apply_pending_splitter_sizes)
         if emit_change:
             self.layoutChanged.emit()
         return True
