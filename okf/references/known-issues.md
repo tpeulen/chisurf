@@ -66,6 +66,26 @@ happens to have been imported (an explicit registry, as the model/UI split
 already needs), fix the test's model name, then give the client a receive
 timeout so the remaining stall is a failure with a traceback instead of silence.
 
+**Update 2026-08-03 — the model name is not the only blocker.** Driving the
+server directly, with `chisurf.core.models.tcspc.lifetime` imported first so
+the subclass walk can see it, both real names (`"Lifetime "` — note the
+trailing space — and `"Lifetime (new)"`) get past the lookup and then fail in
+`fit.create` itself with
+
+```
+'tuple' object has no attribute 'x'
+```
+
+so a dataset loaded over `dataset.load` with a `curve_data` payload does not
+arrive as something `FitGroup` can build a fit on. Fixing the test's model name
+alone would therefore turn a wrong error into a different wrong error. The
+whole-suite symptom is unchanged: `pytest test/ --ignore=test/gui` still stalls
+at `TestParameterLifecycle::test_set_bounds` (main thread blocked in
+`zmq_ctx_destroy` → `ctx_t::terminate` → `mailbox_t::recv`, i.e. a context
+being torn down while a socket still holds queued data), and run on its own the
+class fails fast instead. So the hang needs state from the tests that precede
+it.
+
 ## fitting over a genuinely remote server still has a 5-second deadline (2026-08-03)
 
 `FittingClient.run_fit` no longer crosses the socket when the server is embedded
