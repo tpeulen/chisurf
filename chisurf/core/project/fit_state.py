@@ -113,7 +113,13 @@ def _model_to_state(model: Any) -> Dict[str, Any]:
             continue
         
         target_uid = str(getattr(link, "unique_identifier", ""))
-        
+        # The name is recorded beside the uid because a uid identifies *this*
+        # object, not the parameter's role. Restoring into freshly constructed
+        # models -- which is what loading a project does -- gives every
+        # parameter a new uid, so a link stored by uid alone can never be
+        # resolved and every link is silently dropped on reload.
+        p_state["link_target_name"] = str(getattr(link, "name", "") or "")
+
         # Intra-fit link discovery
         if target_uid in uid_to_obj:
             p_state["link_target"] = target_uid
@@ -303,6 +309,7 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
             continue
         target_uid = p_state.get("link_target")
         target_fit_uid = p_state.get("link_target_fit_uid")
+        target_name = p_state.get("link_target_name") or ""
         
         if not target_uid:
             # Explicitly clear existing links if any
@@ -313,8 +320,9 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
             continue
             
         if not target_fit_uid:
-            # Intra-fit link restoration by UID
-            target = uid_to_param.get(target_uid)
+            # Intra-fit link restoration: by uid when the same objects are still
+            # around, by name when they are not (a reloaded project).
+            target = uid_to_param.get(target_uid) or name_to_param.get(target_name)
             if target is not None:
                 try:
                     p.link = target
@@ -337,6 +345,12 @@ def _apply_state_to_model(model: Any, state: Dict[str, Any]) -> None:
                      if str(getattr(op, "unique_identifier", "")) == target_uid),
                     None
                 )
+                if target is None and target_name:
+                    target = next(
+                        (op for op in target_params
+                         if str(getattr(op, "name", "")) == target_name),
+                        None
+                    )
                 if target is not None:
                     break
             if target is not None:

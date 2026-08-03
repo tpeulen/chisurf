@@ -34,10 +34,22 @@ class Tests(unittest.TestCase):
         self.assertEqual(p2.value, 2.0)
 
     def test_equality(self):
+        """A Parameter is a node with an identity, not a boxed number.
+
+        It derives from ``Base``, which compares by ``unique_identifier``,
+        because two parameters holding 2.0 are still two different parameters:
+        they are separate chinet ports and may be linked to different things.
+        Compare the numbers through ``.value``. This test used to assert value
+        equality, which no version of the class has ever provided.
+        """
         p1 = chisurf.core.parameter.Parameter(value=2.0)
         p2 = chisurf.core.parameter.Parameter(value=2.0)
-        self.assertEqual(p1, p2)
+        self.assertEqual(p1.value, p2.value)
+        self.assertNotEqual(p1, p2)
+        self.assertEqual(p1, p1)
         self.assertIsNot(p1, p2)
+        # Equality and hash agree, so parameters work in sets and dicts.
+        self.assertEqual(len({p1, p2, p1}), 2)
 
     def test_arithmetics(self):
         p1 = chisurf.core.parameter.Parameter(value=2.0)

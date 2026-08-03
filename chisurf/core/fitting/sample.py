@@ -18,6 +18,32 @@ FINITE_DIFF = float(np.sqrt(np.finfo(float).eps))
 
 
 @cs.core.fitting.factorgraph.frozen('fit', 'model')
+
+def _rng(seed):
+    """Return the random source a sampler should draw from.
+
+    ``None`` yields NumPy's global stream rather than a fresh generator, so a
+    caller that set ``np.random.seed`` still controls the chain -- switching to
+    ``default_rng(None)`` would silently ignore that and reintroduce the very
+    irreproducibility the seed argument exists to remove.
+
+    Parameters
+    ----------
+    seed : int, numpy.random.Generator or None
+        Explicit seed, an existing generator, or ``None`` for the global stream.
+
+    Returns
+    -------
+    object
+        Something exposing ``normal`` and ``random``.
+    """
+    if seed is None:
+        return np.random
+    if isinstance(seed, np.random.Generator):
+        return seed
+    return np.random.default_rng(seed)
+
+
 def walk_mcmc(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -29,7 +55,8 @@ def walk_mcmc(
         check_cancel: typing.Callable = None,
         n_adapt: int = None,
         target_acceptance: float = 0.3,
-        model: cs.core.models.Model = None
+        model: cs.core.models.Model = None,
+        seed: int | np.random.Generator = None
 ) -> dict:
     """Sample the free parameters of a fit with a Metropolis random walk.
 
@@ -126,6 +153,13 @@ def walk_mcmc(
         )
         return lnlike + lnpr, lnpr, c2
 
+    # Without a seed the chain is irreproducible: the same fit sampled twice
+    # gives different credible intervals, and nothing can be pinned down for a
+    # paper or a regression test. Passing one fixes that. Passing nothing keeps
+    # drawing from NumPy's global stream, so ``np.random.seed`` still governs
+    # the chain the way every existing caller expects.
+    random = _rng(seed)
+
     def _metropolis_step(state, parts, width):
         """Take one Metropolis step.
 
@@ -133,7 +167,7 @@ def walk_mcmc(
         parts, whether the proposal was accepted, and the acceptance probability
         of the proposal.
         """
-        proposal = state + np.random.normal(0.0, 1.0, dim) * width
+        proposal = state + random.normal(0.0, 1.0, dim) * width
         parts_proposal = _lnprob(proposal)
         if not np.isfinite(parts_proposal[0]):
             return state, parts, False, 0.0
@@ -141,7 +175,7 @@ def walk_mcmc(
         alpha = 1.0 if delta >= 0.0 else float(np.exp(delta))
         # Moves towards a higher posterior (a lower chi2) are always taken,
         # downhill moves only with probability exp(delta).
-        if delta > np.log(np.random.rand()):
+        if delta > np.log(random.random()):
             return proposal, parts_proposal, True, alpha
         return state, parts, False, alpha
 
@@ -742,7 +776,8 @@ def walk_mcmc_blocked(
         check_cancel: typing.Callable = None,
         n_adapt: int = None,
         blocks: typing.Sequence[typing.Sequence[int]] = None,
-        model: cs.core.models.Model = None
+        model: cs.core.models.Model = None,
+        seed: int | np.random.Generator = None
 ) -> dict:
     """Sample a fit block by block, with a per-block correlated proposal.
 
@@ -856,18 +891,20 @@ def walk_mcmc_blocked(
     accepted = np.zeros(len(block_idx), dtype=np.int64)
     proposed = np.zeros(len(block_idx), dtype=np.int64)
 
+    random = _rng(seed)
+
     def _sweep(current, current_parts, adapt=False):
         """Propose every block once; return the new state and its parts."""
         for b, idx in enumerate(block_idx):
             trial = current.copy()
-            draw = factor[b] @ np.random.normal(0.0, 1.0, idx.size)
+            draw = factor[b] @ random.normal(0.0, 1.0, idx.size)
             trial[idx] = current[idx] + np.exp(log_scale[b]) * draw
             trial_parts = _lnprob(trial)
             proposed[b] += 1
             if np.isfinite(trial_parts[0]):
                 delta = (trial_parts[0] - current_parts[0]) / temp
                 alpha = 1.0 if delta >= 0.0 else float(np.exp(delta))
-                if delta > np.log(np.random.rand()):
+                if delta > np.log(random.random()):
                     current, current_parts = trial, trial_parts
                     accepted[b] += 1
             else:

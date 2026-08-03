@@ -1293,29 +1293,44 @@ the real application, where `chisurf.cs` exists and a login dialog is answered �
 the sweep only proves the bare-construction path is broken, which is the path a
 headless test or a standalone launcher would take.
 
-## `test/fitting` — ten failures carried in with the consolidation commits (2026-08-03)
+## `test/fitting` — the ten inherited failures, resolved (2026-08-03)
 
-Committing the working tree in subsystem-sized pieces (commits `0db5180e5` …
-`8dee38e8e`) turned a large body of in-progress work into history. It did not
-change a single byte of file content, so these ten failures were already there
-in the tree; they are recorded here rather than being silently inherited.
+Recorded here when the consolidation commits turned a body of in-progress work
+into history; all ten now pass, and the entry is kept because *why* they failed
+is more useful than that they did. Six were tests written against APIs that
+never existed; two were real bugs; two were about reproducibility.
 
-* `test_fit_state.py` — five failures, all around model state round-tripping:
-  parameter identity comes back as UUIDs instead of names
-  (`{'17da26da-…'} != {'p0','p1'}`), a restored value is `None` instead of 4.2,
-  `Gaussians.append()` no longer takes `amplitude`, and
-  `chisurf.core.models.pda2c.simple` no longer exposes
-  `Pda2cGaussianDistanceModel`. The serializer and the models it serializes have
-  moved apart.
-* `test_parameter.py::test_equality` — `chisurf/core/parameter.py:876`
-  `AttributeError: can't set attribute`; a property lost its setter.
-* `test_models_regression.py::test_parse_model_evaluation` and
-  `test_reference_models.py::test_lifetime_model_convergence` — both die on a
-  model with no `data` attached (`model.py:487`, `base.py:683`).
-* `test_derived_quantities.py` and `test_sampling_diagnostics_report.py` — one
-  each, on posterior-summary wording and on chain selection.
+**Real bugs, fixed in the code.**
 
-Not fixed in the consolidation because that change was explicitly a
-history-shaping one: fixing them means changing behaviour, which belongs in the
-commit that owns the fit-state and parameter work, not in a commit whose whole
-contract is "the tree exactly as it stands".
+* **Parameter links were lost on every project reload.** `fit_state` stored a
+  link target by uid, and loading a project constructs fresh models with fresh
+  uids, so no link could ever resolve. The parameter *lookup* already fell back
+  to the name; the link target did not. It now records `link_target_name` and
+  falls back the same way. This silently un-linked every global fit that was
+  saved and reopened.
+* **MCMC chains were irreproducible.** `walk_mcmc` and `walk_mcmc_blocked` drew
+  from NumPy's global stream with no way to pin them, so the same fit sampled
+  twice gave different credible intervals. Both now take `seed=`, which
+  `sample_fit` forwards. The default still draws from the global stream, so
+  `np.random.seed` keeps working for existing callers.
+
+**Tests asserting an API that was never implemented.** `Pda2cGaussianDistanceModel`
+has never existed in this tree; `Gaussians.append` takes `x`, not `amplitude`;
+`ParseModel` and `LifetimeModel` are constructed *by* a `Fit` and read data
+through `fit.data`, so neither can be built bare with a mock hung off it
+afterwards; and two tests stubbed a model through `__new__` and then assigned to
+`parameters_all_dict`, which is a read-only property. Each was rewritten against
+the real API, keeping the behaviour it meant to cover.
+
+**Assertions about the wrong quantity.** A lifetime spectrum's amplitudes are
+normalised fractions -- one component is 1.0 by construction, and the absolute
+scale lives in the scaling parameter -- so comparing an amplitude against the
+generating count rate tests a number the model does not claim. `Parameter`
+derives from `Base` and compares by identity, because two parameters holding 2.0
+are still two different parameters; comparing values is what `.value` is for.
+And `FitGroup.save` derives one filename per member, so the base picks up a
+member suffix.
+
+*Lesson worth keeping:* a test that has never passed is not evidence of a
+regression, and reading it as one sends you looking for a bug that is not there.
+Six of these ten described a system nobody had built.
