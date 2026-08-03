@@ -1292,3 +1292,30 @@ teardown crash). What is *not* established is whether the first two also bite in
 the real application, where `chisurf.cs` exists and a login dialog is answered —
 the sweep only proves the bare-construction path is broken, which is the path a
 headless test or a standalone launcher would take.
+
+## `test/fitting` — ten failures carried in with the consolidation commits (2026-08-03)
+
+Committing the working tree in subsystem-sized pieces (commits `0db5180e5` …
+`8dee38e8e`) turned a large body of in-progress work into history. It did not
+change a single byte of file content, so these ten failures were already there
+in the tree; they are recorded here rather than being silently inherited.
+
+* `test_fit_state.py` — five failures, all around model state round-tripping:
+  parameter identity comes back as UUIDs instead of names
+  (`{'17da26da-…'} != {'p0','p1'}`), a restored value is `None` instead of 4.2,
+  `Gaussians.append()` no longer takes `amplitude`, and
+  `chisurf.core.models.pda2c.simple` no longer exposes
+  `Pda2cGaussianDistanceModel`. The serializer and the models it serializes have
+  moved apart.
+* `test_parameter.py::test_equality` — `chisurf/core/parameter.py:876`
+  `AttributeError: can't set attribute`; a property lost its setter.
+* `test_models_regression.py::test_parse_model_evaluation` and
+  `test_reference_models.py::test_lifetime_model_convergence` — both die on a
+  model with no `data` attached (`model.py:487`, `base.py:683`).
+* `test_derived_quantities.py` and `test_sampling_diagnostics_report.py` — one
+  each, on posterior-summary wording and on chain selection.
+
+Not fixed in the consolidation because that change was explicitly a
+history-shaping one: fixing them means changing behaviour, which belongs in the
+commit that owns the fit-state and parameter work, not in a commit whose whole
+contract is "the tree exactly as it stands".
