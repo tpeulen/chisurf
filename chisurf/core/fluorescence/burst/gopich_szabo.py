@@ -84,8 +84,6 @@ import numpy as np
 from chisurf.core.fluorescence.kinetics import (
     equilibrium_populations,
     generator_from_rate_matrix,
-    rate_matrix_from_rates,
-    rates_from_rate_matrix,
 )
 
 try:  # numba is a first-class dependency; degrade gracefully if unavailable
@@ -232,6 +230,78 @@ class PhotonBursts:
 # ──────────────────────────────────────────────────────────────────────────────
 # Rate-matrix helpers
 # ──────────────────────────────────────────────────────────────────────────────
+def rate_matrix_from_rates(rates, n_states: int) -> np.ndarray:
+    """Build a rate matrix from the flat list of its off-diagonal rates.
+
+    The flat order enumerates ``source -> target`` pairs in row-major order of
+    ``(source, target)``, skipping the diagonal. For two states that is
+    ``[k12, k21]``; for three, ``[k12, k13, k21, k23, k31, k32]``.
+
+    .. note::
+
+       The reference MATLAB implementation orders its three-state parameters as
+       the *transpose* of this (``[k21, k31, k12, k32, k13, k23]``) while using
+       the reading order above for two states. Rates carried over from it by
+       hand must be reordered; passing a full matrix to
+       :func:`log_likelihood` avoids the question entirely.
+
+    Parameters
+    ----------
+    rates : array_like
+        ``n_states * (n_states - 1)`` non-negative rates in s\\ :sup:`-1`.
+    n_states : int
+        Number of states.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_states, n_states)`` with ``matrix[target, source]`` the
+        ``source -> target`` rate and a zero diagonal.
+
+    Raises
+    ------
+    ValueError
+        If the number of rates does not match *n_states*.
+    """
+    rates = np.asarray(rates, dtype=float).ravel()
+    n = int(n_states)
+    expected = n * (n - 1)
+    if rates.size != expected:
+        raise ValueError(f"{n} states need {expected} rates, got {rates.size}")
+    matrix = np.zeros((n, n), dtype=float)
+    k = 0
+    for source in range(n):
+        for target in range(n):
+            if source == target:
+                continue
+            matrix[target, source] = rates[k]
+            k += 1
+    return matrix
+
+
+def rates_from_rate_matrix(matrix) -> np.ndarray:
+    """Return the flat off-diagonal rates of a matrix.
+
+    Inverse of :func:`rate_matrix_from_rates`.
+
+    Parameters
+    ----------
+    matrix : array_like
+        ``(n, n)`` rate matrix, ``matrix[target, source]``.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``n * (n - 1)`` rates in the flat order documented on
+        :func:`rate_matrix_from_rates`.
+    """
+    matrix = np.asarray(matrix, dtype=float)
+    n = matrix.shape[0]
+    return np.array(
+        [matrix[t, s] for s in range(n) for t in range(n) if s != t], dtype=float
+    )
+
+
 def emission_from_efficiencies(efficiencies) -> np.ndarray:
     """Return the two-colour emission matrix for per-state FRET efficiencies.
 

@@ -21,27 +21,11 @@ import tttrlib
 from chisurf.core.fluorescence.burst.bva import compute_static_bva_line
 
 __all__ = [
-    "ProgressWindow",
     "read_burst_analysis",
     "compute_static_bva_line",
     "compute_bva",
     "write_bv4_analysis",
 ]
-
-
-class ProgressWindow:
-    """Minimal progress reporter (can be a QDialog or a callable wrapper)."""
-
-    def __init__(self, title="Progress", message="Processing...", max_value=100, parent=None):
-        self._max = max_value
-        self._value = 0
-        self._message = message
-
-    def set_value(self, value: int):
-        self._value = value
-
-    def set_maximum(self, value: int):
-        self._max = value
 
 
 def read_burst_analysis(

@@ -19,6 +19,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.autoform.sections.registry import register_section
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui import dialogs
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ class _RunSection(QtWidgets.QWidget):
         try:
             self._model.compute()
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Error", str(exc))
+            dialogs.error(self, "Error", str(exc))
             return
         finally:
             QtWidgets.QApplication.restoreOverrideCursor()
@@ -134,7 +135,7 @@ class _RunSection(QtWidgets.QWidget):
         while host is not None and not hasattr(host, "apply_irf_background_to_mle"):
             host = host.parent()
         if host is None:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Send to MLE",
                 "Open this tool inside the Burst Analysis workflow to feed the "
@@ -145,7 +146,7 @@ class _RunSection(QtWidgets.QWidget):
         try:
             count = host.apply_irf_background_to_mle(self._model.mle_patterns())
         except Exception as exc:  # noqa: BLE001
-            QtWidgets.QMessageBox.critical(self, "Error", str(exc))
+            dialogs.error(self, "Error", str(exc))
             return
         self._status.setText(f"Sent IRF + background to MLE for {count} detector(s).")
 

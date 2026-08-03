@@ -220,8 +220,12 @@ def test_a_real_bur_table_loads_despite_its_sentinel_rows():
 
     bursts, info = core.load_photons([bur], data_dir, file_type="auto")
     assert info["macro_time_resolution"] == pytest.approx(1.35e-08)
-    assert info["n_bursts"] == 201
-    assert info["n_photons"] == 15291
+    # ``Last Photon`` is inclusive (RF-804), so every one of the table's 203
+    # non-sentinel rows yields a burst. This fixture predates the writer's
+    # convention fix and stores exclusive stops, hence one extra photon per
+    # burst here — the counts pin the reader, not the fixture.
+    assert info["n_bursts"] == 203
+    assert info["n_photons"] == 15512
     assert bursts.times[-1] > 0.0
 
 

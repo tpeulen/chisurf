@@ -43,6 +43,8 @@ from .helpers import (
     correlate_single_burst,
     fit_simple_diffusion,
 )
+from chisurf.gui import dialogs
+from chisurf.gui.progress import ChiSurfProgress
 
 
 class BurstWiseFCSWizard(QtWidgets.QDialog):
@@ -554,14 +556,14 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             with user_json.open("w", encoding="utf-8") as fh:
                 json.dump(data, fh, indent=4, sort_keys=True)
         except Exception as e:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Burst-wise FCS settings",
                 f"Could not save settings to '{user_json}':\n{e}",
             )
             return
 
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             self,
             "Burst-wise FCS settings",
             f"Settings saved to:\n{user_json}",
@@ -585,7 +587,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 pass
 
         if not user_json.is_file():
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Burst-wise FCS settings",
                 "No burst-wise FCS settings JSON found.\n"
@@ -597,7 +599,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             with user_json.open("r", encoding="utf-8") as fh:
                 cfg = json.load(fh) or {}
         except Exception as e:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Burst-wise FCS settings",
                 f"Could not read settings file '{user_json}':\n{e}",
@@ -767,7 +769,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                 presets = []
 
         if not presets:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "FCS channel presets",
                 "No FCS channel presets are available for the current detector setup.",
@@ -1049,7 +1051,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
                     bst_sources.append((p, p.parent))
 
         if not bur_sources and not bst_sources:
-            QtWidgets.QMessageBox.information(
+            dialogs.information(
                 self,
                 "Burst-wise FCS",
                 "No burst analysis folders or BUR/BID files selected.",
@@ -1061,7 +1063,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
 
         presets = getattr(corr, "_fcs_presets", []) or []
         if not presets:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Burst-wise FCS",
                 "No FCS channel pairs are defined for the selected detector setup.\n"
@@ -1168,7 +1170,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             })
 
         if not selected_cfgs:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self,
                 "Burst-wise FCS",
                 "No FCS channel pairs are selected. Enable at least one pair in the list.",
@@ -1202,10 +1204,10 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             total_bursts += len(ranges)
 
         if total_bursts == 0:
-            QtWidgets.QMessageBox.information(self, "Burst-wise FCS", "No bursts found in the selected burst files.")
+            dialogs.information(self, "Burst-wise FCS", "No bursts found in the selected burst files.")
             return None
 
-        progress = QtWidgets.QProgressDialog("Computing burst-wise FCS...", "Cancel", 0, total_bursts, self)
+        progress = ChiSurfProgress(self, "Computing burst-wise FCS...", total_bursts)
         progress.setWindowTitle("Burst-wise FCS")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(True)
@@ -1440,7 +1442,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         progress.close()
 
         if not rows:
-            QtWidgets.QMessageBox.information(self, "Burst-wise FCS", "No valid burst correlations could be computed.")
+            dialogs.information(self, "Burst-wise FCS", "No valid burst correlations could be computed.")
             return None
 
         return pd.DataFrame(rows)
@@ -1463,7 +1465,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         """
 
         if result_df is None or result_df.empty:
-            QtWidgets.QMessageBox.information(self, "Burst-wise FCS", "No results to save.")
+            dialogs.information(self, "Burst-wise FCS", "No results to save.")
             return
 
         df = result_df.copy()
@@ -1476,7 +1478,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         groups = df.groupby(['Burst Folder', 'First Stem'], sort=False)
         total_groups = len(groups)
 
-        progress = QtWidgets.QProgressDialog("Saving td4 results...", "Cancel", 0, total_groups, self)
+        progress = ChiSurfProgress(self, "Saving td4 results...", total_groups)
         progress.setWindowTitle("Burst-wise FCS")
         progress.setWindowModality(QtCore.Qt.WindowModal)
         progress.setAutoClose(True)
@@ -1490,7 +1492,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             progress.setValue(current)
             if progress.wasCanceled():
                 progress.close()
-                QtWidgets.QMessageBox.information(self, "Burst-wise FCS", "Save operation was canceled.")
+                dialogs.information(self, "Burst-wise FCS", "Save operation was canceled.")
                 return
 
             # Determine output directory inside the burst analysis folder
@@ -1611,7 +1613,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
         try:
             result_df = self._run_burstwise_fcs()
         except Exception as e:  # pragma: no cover - defensive UI layer
-            QtWidgets.QMessageBox.critical(
+            dialogs.error(
                 self,
                 "Burst-wise FCS Error",
                 f"An unexpected error occurred during burst-wise correlation:\n{e}",
@@ -1628,7 +1630,7 @@ class BurstWiseFCSWizard(QtWidgets.QDialog):
             self._update_browser_view()
         except Exception:
             pass
-        QtWidgets.QMessageBox.information(
+        dialogs.information(
             self,
             "Burst-wise FCS",
             "Finished burst-wise FCS analysis and saved td4 files.",

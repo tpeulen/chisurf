@@ -180,6 +180,8 @@ def extract_burst_photons(
     ----------
     df : pandas.DataFrame
         Burst table with ``First File`` / ``First Photon`` / ``Last Photon``.
+        ``Last Photon`` is **inclusive**, as written by
+        :mod:`chisurf.core.fio.fluorescence.burst`.
     tttrs : dict
         Maps the ``First File`` value to a ``tttrlib.TTTR`` object.
     streams : sequence of StreamDef
@@ -236,13 +238,17 @@ def extract_burst_photons(
             continue
         first = int(row[col_fp])
         last = int(row[col_lp])
-        if last <= first:
+        # ``Last Photon`` is the burst's last photon *inclusive* (that is what
+        # the ``.bur`` writer stores: ``Number of Photons == last - first + 1``),
+        # so every slice runs to ``last + 1`` and ``last == first`` is a legal
+        # one-photon burst rather than an empty one.
+        if last < first:
             continue
         macro, chan, micro = cache[ff]
 
-        mt = macro[first:last]
-        ch = chan[first:last]
-        mi = micro[first:last]
+        mt = macro[first : last + 1]
+        ch = chan[first : last + 1]
+        mi = micro[first : last + 1]
 
         s_idx = stream_index_arrays(ch, mi, streams)
         keep = s_idx >= 0

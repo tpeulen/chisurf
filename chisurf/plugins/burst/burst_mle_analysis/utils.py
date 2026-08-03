@@ -44,7 +44,7 @@ class LazyTTTRDict(collections.abc.MutableMapping):
                 if not self._warning_shown:
                     # Show a warning if a QApplication exists; otherwise, print to console.
                     if QtWidgets.QApplication.instance() is not None:
-                        QtWidgets.QMessageBox.warning(
+                        dialogs.warning(
                             None,
                             "Warning",
                             "The file type getter is None. This may cause issues with TTTR file loading."
@@ -432,7 +432,7 @@ def optimize_hyperparameters(
     # Ensure we have data to fit
     wizard.update_decay_of_detector()
     if getattr(wizard, 'decay_of_current_file', None) is None:
-        QtWidgets.QMessageBox.warning(wizard, "HPO", "No data/decay available. Load bursts and try again.")
+        dialogs.warning(wizard, "HPO", "No data/decay available. Load bursts and try again.")
         return
 
     # ---- Prepare sane defaults & merge user bounds ----
@@ -742,4 +742,4 @@ def optimize_hyperparameters(
         f"Applied hyperparameters: {best_cfg}\n"
         f"Evaluations: {len(eval_cache)} / budget: {total_budget}"
     )
-    QtWidgets.QMessageBox.information(wizard, "HPO complete", summary)
+    dialogs.information(wizard, "HPO complete", summary)

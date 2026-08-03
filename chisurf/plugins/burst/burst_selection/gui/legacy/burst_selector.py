@@ -21,13 +21,15 @@ import chisurf.gui.decorators
 import chisurf.gui.widgets
 import chisurf.gui.widgets.wizard
 from chisurf import logging
+from chisurf.gui import dialogs
 
 try:
     from chisurf.gui.misc_helpers import persist_plugin_state
 except ImportError:
     persist_plugin_state = lambda n: lambda c: c
 
-from chisurf.gui.widgets.progress import EnhancedProgressDialog
+from chisurf.gui.autoform.sections.progress_section import adopt_progress_bar
+from chisurf.gui.progress import ChiSurfProgress
 
 from .. import adapter as burst_gui
 from ..gmm_settings_dialog import GMMSettingsDialog
@@ -196,17 +198,10 @@ class BatchProcessingDialog(QtWidgets.QDialog):
         n = self.list_widget.count()
         logger.info("BatchProcessingDialog: starting process for %d folder(s)", n)
         if n == 0:
-            QtWidgets.QMessageBox.information(self, "No items", "No folders to process.")
+            dialogs.information(self, "No items", "No folders to process.")
             return
 
-        progress = EnhancedProgressDialog(
-            title="Batch Processing",
-            label_text="Starting batch...",
-            min_value=0,
-            max_value=n,
-            parent=self
-        )
-        progress.show()
+        progress = ChiSurfProgress(self, "Starting batch...", n, title="Batch Processing")
 
         # Ensure wizard UI is enabled during processing; wizard.process_all_files manages its own state
         for i in range(n):
@@ -285,7 +280,7 @@ class BatchProcessingDialog(QtWidgets.QDialog):
                 except Exception:
                     pass
                 logger.exception("Error processing folder '%s' with files=%s: %s", folder_str, files, e)
-                QtWidgets.QMessageBox.warning(self, "Error", f"Error processing folder:\n{folder_str}\n\n{e}")
+                dialogs.warning(self, "Error", f"Error processing folder:\n{folder_str}\n\n{e}")
 
             progress.update_progress(i + 1)
 
@@ -348,7 +343,7 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         If the user accepts, replace current_df and refresh the UI.
         """
         if self.current_df is None:
-            QtWidgets.QMessageBox.warning(
+            dialogs.warning(
                 self, "No Data", "No burst data loaded—nothing to show."
             )
             return
@@ -374,6 +369,9 @@ class BurstSelectionTool(QtWidgets.QMainWindow):
         # ---------------------------------------------------------
         # base class init is called by decorator
         # super().__init__(*args, **kwargs)
+
+        # The bar comes from the .ui file; swap in the shared one.
+        adopt_progress_bar(self)
 
         # Store the initial visibility settings
         self.show_channel_selection = show_channel_selection

@@ -4,7 +4,7 @@
   "display_name": "Spectroscopy:FRET:Accurate FRET",
   "description": "Accurate FRET (Hellenkamp): automatic alpha/beta/gamma/delta from the burst populations, the optics prior of a saved light path and the static FRET line, with E-S and E-lifetime views.",
   "authors": ["Thomas-Otavio Peulen"],
-  "categories": ["FRET", "Single-Molecule", "Spectroscopy"],
+  "categories": ["Spectroscopy", "FRET", "Single-Molecule"],
   "icon": "🎯",
   "state_namespace": "accurate_fret",
   "statefulness": {"enabled": true, "window": {"enabled": true, "settings_key": null}},

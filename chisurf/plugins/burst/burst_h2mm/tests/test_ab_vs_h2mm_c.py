@@ -21,8 +21,8 @@ import pandas as pd
 import pytest
 
 from chisurf.plugins.burst.burst_h2mm.core import h2mm as H
+from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
-    StreamDef,
     bursts_from_dataframe,
 )
 
@@ -52,7 +52,9 @@ def _simulate_via_tttrlib(gt, n_bursts, burst_len, rate=0.25, seed=42):
     for t, s in zip(times_local, streams_local):
         macro.append((t + base).astype(np.uint64))
         chan.append(s.astype(np.int8))
-        rows.append(("sim.spc", off, off + len(t)))
+        # ``Last Photon`` is inclusive, the ``.bur`` convention the extraction
+        # seam reads — both sides below must slice to ``lp + 1``.
+        rows.append(("sim.spc", off, off + len(t) - 1))
         off += len(t)
         base += int(t[-1]) + 100000  # large inter-burst gap keeps bursts distinct
 
@@ -74,8 +76,8 @@ def _simulate_via_tttrlib(gt, n_bursts, burst_len, rate=0.25, seed=42):
     ch_all = np.asarray(tttr.routing_channels)
     ref_idx, ref_times = [], []
     for _, fp, lp in rows:
-        ref_idx.append(ch_all[fp:lp].astype(np.uint32))
-        ref_times.append((mt_all[fp:lp] - mt_all[fp]).astype(np.uint64))
+        ref_idx.append(ch_all[fp:lp + 1].astype(np.uint32))
+        ref_times.append((mt_all[fp:lp + 1] - mt_all[fp]).astype(np.uint64))
     return data, ref_idx, ref_times
 
 

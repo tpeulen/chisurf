@@ -9,8 +9,8 @@ import numpy as np
 import pandas as pd
 
 from chisurf.plugins.burst.burst_h2mm.core import analysis, h2mm
+from chisurf.core.fluorescence.burst.photons import StreamDef
 from chisurf.plugins.burst.burst_h2mm.core.photons import (
-    StreamDef,
     bursts_from_dataframe,
 )
 
@@ -226,7 +226,7 @@ def test_stream_microtime_gating():
     df = pd.DataFrame([("f", 0, 4)], columns=["First File", "First Photon", "Last Photon"])
     # Green accepts ch0 with micro<=1000; red accepts ch1 any micro.
     streams = [StreamDef("green", [0], [(0, 1000)]), StreamDef("red", [1], [])]
-    from chisurf.plugins.burst.burst_h2mm.core.photons import extract_burst_photons
+    from chisurf.core.fluorescence.burst.photons import extract_burst_photons
 
     times, sidx = extract_burst_photons(df, {"f": tttr}, streams, min_photons=1)
     # Photon 1 (ch0, micro 5000) is dropped by the micro-time gate.
