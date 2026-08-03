@@ -1,9 +1,5 @@
-# Protein unfolding FRET line
-# Gaussian (folded):  R_mean=35.0 Å, sigma=4.0 Å
-# WLC (unfolded):     Lc=80.0 Å, Lp=60.0 Å
-# tau_D0=4.00 ns, R0=52.0 Å, kappa2=0.66667
-# 
-# fraction_unfolded	E_FRET	tau_species_avg_ns
+# tau_D0=4.0 ns  R0=52.0 A  Gaussian R_mean=35.0 A sigma=4.0 A  WLC Lc=80.0 A Lp=60.0 A
+# fraction_unfolded	E_FRET	tau_avg_ns
 0.000000	0.909497	0.362013
 0.050000	0.893207	0.427172
 0.100000	0.876917	0.492330
