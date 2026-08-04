@@ -2,6 +2,33 @@
 
 ## 2026-08-04
 
+* **The response is estimated from the reverse of the burst cut, not from a
+  second burst search.** ([MFD fitting](../docs/concepts/mfd_fitting.md))
+  `estimate_responses` re-ran a burst search at its own defaults — 60 photons,
+  10 in a 1 ms window — regardless of what the analysis folder had actually been
+  cut at. Separating molecules from the empty acquisition is what the cut was
+  *for*, so a second one answers a different question: at other thresholds,
+  bursts the analysis kept land back on the instrument's side of the line and
+  their fluorescence is read as response. Now `non_burst_masks` inverts the burst
+  table's own `First Photon`/`Last Photon`, and the three threshold parameters
+  are gone — there is nothing to configure, which is the point.
+
+  Neutral to better where it can be measured (real data: deviance 1910 → 1886,
+  response first moment unchanged at 2.60 ns; simulated with a real burst search:
+  1.21 ns, unchanged). It reads *worse* against a truth-burst list built at ≥20
+  photons — 1.28 ns — and that is honest rather than a defect: transits too dim
+  for the list are in its complement by construction.
+
+  It also exposed a real fragility. The complement of a genuine cut can be sparse
+  (6 997 photons over 2 761 bins in one simulator), and there the half-max walk
+  that sets the fit window stopped at the first Poisson dip, collapsing the
+  window to its floor and letting the fit lock onto one noisy bin — 0.31 ns
+  against a declared 1.20. Smoothing fixes that and was **rejected**: the prompt
+  is the sharpest feature in the histogram, so a kernel wide enough to bridge a
+  dip flattens the peak being measured, and it cost 1.21 → 1.30 ns where the
+  statistics were good. Tolerating a two-bin dip instead costs nothing and fixes
+  both.
+
 * **The 2D-MFD lifetime axis was carrying the instrument response's error, and a
   real donor lifetime was paying for it.**
   ([MFD fitting](../docs/concepts/mfd_fitting.md), [PRD-71](prds/prd-71.md))

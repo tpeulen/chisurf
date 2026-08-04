@@ -299,8 +299,14 @@ against known ground truth rather than against each other — see
   forward model* — see below — or known ground truth.
 ## The instrument response, and why a Gaussian is the right shape
 
-The response comes from the measurement's own **non-burst** photons — everything
-the burst search did not select — so no separate scatter acquisition is needed.
+The response comes from the measurement's own **non-burst** photons — so no
+separate scatter acquisition is needed. "Non-burst" means the exact complement of
+*this folder's* burst table, taken from its `First Photon`/`Last Photon` columns.
+Separating molecules from the empty acquisition is what the burst cut was for, so
+running a second search at its own thresholds answers a different question: at
+other thresholds, bursts the analysis kept land back on the instrument's side of
+the line and their fluorescence is read as response. There is nothing to
+configure here, and that is the point.
 Those photons are not, however, only scatter and dark counts: most of a confocal
 acquisition holds molecules too dim to cross the burst threshold, and their
 fluorescence is in that stream too. Subtracting a flat baseline removes the dark
@@ -320,7 +326,12 @@ position and width. Two details matter:
   non-burst histogram is the decay, not the instrument, so a two-sided half-max
   reads the decay's width;
 * the fit window is the leading edge, not a symmetric interval — anything right of
-  the peak is prompt *plus* decay.
+  the peak is prompt *plus* decay;
+* the half-max walk tolerates a short dip rather than stopping at the first one,
+  because a sparse non-burst stream has Poisson dips inside the rise. Smoothing
+  would also fix that and must not be used: the prompt is the sharpest feature in
+  the histogram, so any kernel wide enough to bridge a dip flattens the very peak
+  being measured.
 
 Re-deriving that real measurement's optimum under the corrected response moves
 `tau_d0` to **2.72 ns** and leaves the distance, donor-only fraction and leakage

@@ -162,3 +162,33 @@ def test_the_exchange_matrix_is_transposed_and_rescaled():
     # source 0 -> target 1 is K[1, 0] = 700 Hz = 0.7 / ms, and it lands in row 0.
     assert flat[0, 1] == pytest.approx(0.7)
     assert flat[1, 0] == pytest.approx(0.3)
+
+
+def test_the_non_burst_photons_are_the_complement_of_the_analysis(tmp_path):
+    """The response is estimated from the reverse of *this folder's* burst cut.
+
+    Not from a fresh burst search at its own thresholds. Separating molecules from
+    the empty acquisition is what the cut was for, so running a second one answers
+    a different question: at other thresholds, bursts the analysis kept land back
+    on the instrument's side of the line and their fluorescence is read as
+    response. Every photon in a burst table row must be excluded, and every photon
+    outside one kept.
+    """
+    from chisurf.core.fluorescence.mfd.fit import load_mfd_data, non_burst_masks
+
+    sim = simulate_smfret(**MFD)
+    spans = sim.searched_bursts(min_photons=20)
+    folder = sim.write_folder(tmp_path / "complement", bursts=spans)
+    preparation = load_mfd_data(folder, min_green_photons=20).preparation
+
+    masks = non_burst_masks(preparation)
+    assert len(masks) == 1
+    mask = next(iter(masks.values()))
+    assert mask.size == np.asarray(sim.stream).size
+
+    inside = np.zeros(mask.size, dtype=bool)
+    for a, b in spans:
+        inside[a:b + 1] = True
+    assert np.array_equal(mask, ~inside)
+    # And it is a real split, not everything on one side.
+    assert 0 < int(mask.sum()) < mask.size

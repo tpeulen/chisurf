@@ -57,18 +57,51 @@ __all__ = [
     "bootstrap_uncertainties",
     "burstwise_log_probabilities",
     "estimate_responses",
+    "non_burst_masks",
     "load_mfd_data",
     "pooled_decay_score",
 ]
+
+
+def non_burst_masks(preparation: BurstPreparation) -> dict[str, np.ndarray]:
+    """Return, per measurement, the photons the burst search did **not** select.
+
+    The exact complement of the analysis, taken from the burst table's own
+    ``First Photon``/``Last Photon`` columns rather than by running a burst search
+    again. Re-searching would answer a different question: a search at other
+    thresholds puts bursts the analysis *kept* back into the "non-burst" stream,
+    and their fluorescence is then read as instrument response.
+
+    Parameters
+    ----------
+    preparation : BurstPreparation
+        Must carry its photons (``with_photons=True``).
+
+    Returns
+    -------
+    dict
+        Measurement key to a boolean mask, ``True`` where the photon is outside
+        every burst.
+    """
+    tttrs = preparation.summary.get("_tttrs") or {}
+    masks = {
+        key: np.ones(np.asarray(tttr.macro_times).size, dtype=bool)
+        for key, tttr in tttrs.items()
+    }
+    first = np.asarray(preparation.first_photon, dtype=np.int64)
+    last = np.asarray(preparation.last_photon, dtype=np.int64)
+    for row, key in enumerate(preparation.file_key):
+        mask = masks.get(key)
+        if mask is None:
+            continue
+        mask[first[row]:last[row] + 1] = False
+    return masks
 
 
 def estimate_responses(
     preparation: BurstPreparation,
     *,
     channels: Sequence[str] = ("green", "red"),
-    min_photons: int = 60,
-    photon_window: int = 10,
-    time_window: float = 1e-3,
 ) -> dict[str, ChannelResponse]:
     """Estimate each channel's response and background from the non-burst photons.
 
@@ -78,15 +111,18 @@ def estimate_responses(
     Summed over every measurement in the folder, because one file rarely has enough
     scatter to define a response and the alignment does not change between them.
 
+    Separating the two is what the burst search is *for*, so the split is the
+    search's own: :func:`non_burst_masks` inverts the burst table this folder was
+    written from. There are no thresholds to pass here, and that is the point — a
+    second search at its own defaults would leave analysed bursts on the
+    instrument's side of the line.
+
     Parameters
     ----------
     preparation : BurstPreparation
         Must carry its photons (``with_photons=True``).
     channels : sequence of str
         Detector names to build responses for.
-    min_photons, photon_window, time_window
-        Burst-search parameters defining what counts as *not* a burst; see
-        :func:`chisurf.core.fluorescence.burst.irf_bg.non_burst_mask`.
 
     Returns
     -------
@@ -125,14 +161,9 @@ def estimate_responses(
     accumulated: dict[str, np.ndarray] = {}
     background: dict[str, list[tuple[float, float]]] = {name: [] for name in channels}
     dt_ns = 0.0
-    for tttr in tttrs.values():
-        estimates = extract_irf_background(
-            tttr,
-            detectors,
-            min_photons=min_photons,
-            photon_window=photon_window,
-            time_window=time_window,
-        )
+    masks = non_burst_masks(preparation)
+    for key, tttr in tttrs.items():
+        estimates = extract_irf_background(tttr, detectors, mask=masks[key])
         for name, estimate in estimates.items():
             if name not in accumulated:
                 accumulated[name] = np.zeros_like(estimate.irf_raw)
@@ -277,9 +308,10 @@ def load_mfd_data(
         Grid of the binned nuisance measure.
     responses : dict, optional
         Per-channel responses to use instead of estimating them from the non-burst
-        photons. The estimate is what a real folder has to rely on and it is
-        contaminated by bursts below the search threshold; supplying a known
-        response isolates whatever else is under test from that.
+        photons. The estimate is what a real folder has to rely on, and it is
+        contaminated by molecules too dim to have crossed the burst threshold —
+        which are in the complement of the cut by construction, whatever the cut
+        was; supplying a known response isolates whatever else is under test.
     **response_kwargs
         Forwarded to :func:`estimate_responses`.
 

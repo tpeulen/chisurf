@@ -54,13 +54,13 @@ ANALYSIS = (
 #: absorbed the difference and came out about half of anything a dye on DNA has.
 #: Fitting a Gaussian to the prompt instead (:func:`~chisurf.core.fluorescence.
 #: burst.irf_bg.gaussian_prompt`) sheds that tail, and re-deriving the optimum
-#: moves ``tau_d0`` to 2.724 ns while leaving the other three within a percent —
+#: moves ``tau_d0`` to 2.757 ns while leaving the other three within a percent —
 #: which is what a genuine degeneracy looks like when it is broken.
 FITTED = {
-    "tau_d0": 2.724,
-    "distance": 54.69,
-    "donor_only": 0.3953,
-    "alpha": 0.02997,
+    "tau_d0": 2.757,
+    "distance": 54.55,
+    "donor_only": 0.3956,
+    "alpha": 0.02793,
 }
 
 pytestmark = pytest.mark.skipif(

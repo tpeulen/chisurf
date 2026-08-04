@@ -84,21 +84,34 @@ def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
     from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
 
     prompt = np.asarray(prompt, dtype=np.float64)
+    if float(prompt.max()) <= 0.0:
+        return prompt
+
     pk = int(prompt.argmax())
     peak_val = float(prompt[pk])
     if peak_val <= 0.0:
         return prompt
+
     # Width from the *rising* edge only, mirrored. The falling side of a non-burst
     # histogram is the fluorescence decay, not the instrument, so a two-sided
     # half-max reads the decay's width and opens a fit window wide enough for the
     # tail to drag the Gaussian late again (2.5 ns against a true 1.0). The rise is
     # instrument-limited either way, and for a clean scatter prompt the two sides
     # agree, so this changes nothing where the old estimate was already right.
+    #
+    # The walk tolerates a short dip below half rather than stopping at the first
+    # one. On a sparse non-burst stream — a few counts per bin — a single Poisson
+    # dip inside the rise otherwise ends the walk immediately, the window collapses
+    # to its floor, and the fit locks onto one noisy bin. Smoothing would fix that
+    # too, and must not be used: the prompt is the sharpest feature in the
+    # histogram, so any kernel wide enough to bridge the dip also broadens the
+    # width being measured and pulls the window back into the decay.
     half = 0.5 * peak_val
-    lo = pk
-    while lo > 0 and prompt[lo] >= half:
+    lo, run = pk, 0
+    while lo > 0 and run < 2:
         lo -= 1
-    fwhm = max(1.0, 2.0 * float(pk - lo))
+        run = 0 if prompt[lo] >= half else run + 1
+    fwhm = max(1.0, 2.0 * float(pk - lo - run))
     sigma0 = fwhm / 2.3548
     x = np.arange(prompt.size, dtype=np.float64)
 
