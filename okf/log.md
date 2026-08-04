@@ -193,6 +193,25 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **A guardrail for the failure mode that hid the H2MM breakage.** An optional
+  fast backend is *meant* to degrade when its dependency is missing — that is the
+  right design, and it has one failure mode: the gate is
+  `hasattr(tttrlib, "H2MM")`, a **string**, so renaming the symbol leaves it
+  behind, the flag turns False, every caller takes the documented fallback, and
+  the tests that exercise the fast path skip themselves. Green suite, disabled
+  engine, nothing said.
+
+  `test/architecture/test_optional_backends.py` asserts the other direction:
+  where the dependency imports, the backend that depends on it must report
+  itself **available**. It covers the two H2MM gates, the MLE one, the engine
+  selector (which re-exports the flag under its own name and can therefore
+  disagree with the module it imported from), and the simulation shim's
+  `have_simulator`.
+
+  Checked by reintroducing the exact regression — putting `"H2MM"` back in the
+  gate — and confirming it fails with a message that names the cause rather than
+  `assert False`.
+
 * **The H2MM plugin's C++ backend had been silently off.**
   ([burst_h2mm](../chisurf/plugins/burst/burst_h2mm/)) tttrlib renamed its H2MM
   surface to HMM — `H2MM`→`HMM`, `H2mmModel`→`HmmModel`, `H2mmSurrogate`,
