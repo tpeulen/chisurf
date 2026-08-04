@@ -1,3 +1,56 @@
+## `test/server` — three real defects fixed, 43 tests still red
+
+**The RPC server could not build a fit at all.** ``fit_create`` resolves a model
+by walking ``Model.__subclasses__()``, which only sees *imported* classes, and
+the server imports none of them: measured in a fresh server process, exactly
+**one** model class was reachable ("Global fit", pulled in by the fitting
+machinery). Every ``fit.create`` naming a real model answered ``model 'X' not
+found``. It now runs the same headless bootstrap the agent layer uses
+(``ensure_experiments_registered``), which brings the count to 43, and the error
+lists what *is* available.
+
+Two more, each hidden behind the first:
+
+* ``FitGroup`` **iterates** its data to build one member fit per dataset, and a
+  bare ``DataCurve`` iterates into ``(x, y)`` tuples — so the single-dataset
+  path built member fits whose ``data`` was a tuple and the first read of
+  ``data.x`` failed. It takes a ``DataGroup``, one dataset or several.
+* A server-created fit had the range ``(0, 0)`` and could be created but never
+  run (``Improper input: N=4 must not exceed M=(0,)``). ``fit_create`` now
+  initialises it from the reader's ``autofitrange``, falling back to the whole
+  curve for a dataset that arrived as raw ``curve_data`` and has no reader.
+
+Also fixed: ``fit_set_dataset`` did not accept ``fit_uid`` while the dispatcher
+passes it, and ``fit_set_result_idx`` made ``fit_index`` a required positional —
+so addressing either by uid, the documented way, raised ``TypeError`` inside the
+dispatcher. And ``Fit.set_result_idx`` documented "clipped to the valid range"
+while ``np.clip(idx, 0, len(results) - 1)`` returns **-1** for an empty deque and
+then indexes it: "this fit has not been run yet" reached the caller as
+``IndexError: deque index out of range``.
+
+### What is left, and the trap in measuring it
+
+43 failures across 12 classes in ``test_integration_lifecycle.py``. **They do not
+reproduce class by class**: ``TestErrorBoundary`` passes **12/12 alone** and
+fails 3 in the full file, and ``TestProxyRpcErrorHandling`` passes 6/6 alone and
+fails 6 in it. The file shares one module-scoped server and client
+(``_client()``) and resets only datasets and fits between tests
+(``reset_state`` → ``fit__clear`` / ``dataset__clear``), so anything else a test
+leaves behind is inherited by the next one. **Fix the isolation before chasing
+any individual assertion** — a per-test failure here may be a previous test's
+residue, and a fix verified on one class is not verified.
+
+Three classes have been ported and pass in isolation (``TestErrorBoundary``,
+``TestProxyRpcErrorHandling``, ``TestChisurfRunPattern``); the pattern for the
+rest is the same. A failing call **raises** ``RemoteError`` — service errors are
+carried in the JSON-RPC ``error`` member (SV-04) — and these tests still assert
+``not result.get("ok")``, which never described the contract: it also passes on
+success, because a result payload has no ``"ok"`` key either. Port to
+``pytest.raises(RemoteError)``, and where the test only means "the server must
+survive this", assert that with a following ``meta__ping``.
+
+The whole file takes **13.5 minutes**; run one class at a time while working.
+
 ## The arm64 env's tttrlib symlinks can dangle into a deleted pixi cache
 
 **Found 2026-08-04**, mid-session: every GUI tool stopped constructing with

@@ -23,6 +23,11 @@ from chisurf.gui.widgets.fitting.fitting_client import (
 )
 from chisurf.core.api._client import ChisurfClient, RemoteError
 
+#: A model the server can actually build. "TCSPC" is the name of the
+#: *experiment*, never of a model, so every fit created with it failed with
+#: "model 'TCSPC' not found" and the tests that depend on one skipped or failed.
+TCSPC_MODEL = "Lifetime (new)"
+
 
 class MockZmqClient:
     """A mock ZmqClient that simulates server responses."""
@@ -155,7 +160,7 @@ class TestCreateFit:
             "fit_index": 0,
             "name": "new_fit",
         })
-        result = fc.create_fit(dataset_indices=[0], model_name="TCSPC")
+        result = fc.create_fit(dataset_indices=[0], model_name=TCSPC_MODEL)
         assert result["uid"] == "new_uid"
         assert result["fit_index"] == 0
 

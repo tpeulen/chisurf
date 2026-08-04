@@ -15,6 +15,11 @@ from chisurf.core.api._client import ChisurfClient, RemoteError
 from chisurf.server.app import ChiSurfServer
 from test.server.helpers import find_free_port
 
+#: A model the server can actually build. "TCSPC" is the name of the
+#: *experiment*, never of a model, so every fit created with it failed with
+#: "model 'TCSPC' not found" and the tests that depend on one skipped or failed.
+TCSPC_MODEL = "Lifetime (new)"
+
 
 @pytest.fixture
 def server_client():
@@ -85,7 +90,7 @@ class TestInfNanEdgeCases:
             "curve_data": {"x": [0.0], "y": [1.0]},
         })
         assert ds.get("ok") is True
-        ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
+        ft = client.fit__create(dataset_index=ds["dataset_index"], model_name=TCSPC_MODEL)
         if not ft.get("ok"):
             pytest.skip("fit creation not supported in this env")
         info = client.fit__get(fit_index=ft["fit_index"])
@@ -106,7 +111,7 @@ class TestInfNanEdgeCases:
             "curve_data": {"x": [0.0], "y": [1.0]},
         })
         assert ds.get("ok") is True
-        ft = client.fit__create(dataset_index=ds["dataset_index"], model_name="TCSPC")
+        ft = client.fit__create(dataset_index=ds["dataset_index"], model_name=TCSPC_MODEL)
         if not ft.get("ok"):
             pytest.skip("fit creation not supported")
         info = client.fit__get(fit_index=ft["fit_index"])
@@ -214,7 +219,7 @@ class TestConcurrencyEdgeCases:
         })
         fits = []
         for i in range(5):
-            ft = client.fit__create(dataset_index=0, model_name="TCSPC")
+            ft = client.fit__create(dataset_index=0, model_name=TCSPC_MODEL)
             if not ft.get("ok"):
                 pytest.skip("TCSPC model not available")
             fits.append(ft["fit_index"])

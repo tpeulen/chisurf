@@ -1311,7 +1311,20 @@ class Fit(cs.core.base.Base):
         ----------
         idx : int
             Index in the results deque. Clipped to the valid range.
+
+        Raises
+        ------
+        ValueError
+            When the fit has no stored results. There is no valid range to
+            clip to in that case: ``np.clip(idx, 0, -1)`` returns ``-1`` and
+            indexing an empty deque with it raised ``IndexError: deque index
+            out of range`` — an internal leak where "this fit has not been run
+            yet" is the thing the caller needs to hear.
         """
+        if not self.results:
+            raise ValueError(
+                f"fit {getattr(self, 'name', '')!r} has no results to restore; run it first"
+            )
         idx = np.clip(idx, 0, len(self.results) - 1)
         self._result_current = idx
         self.model.__setstate__(self.results[idx])

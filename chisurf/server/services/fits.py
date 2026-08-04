@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 
 from typing import Any, Dict, List, Optional
@@ -25,6 +27,8 @@ from chisurf.server.services._stats import (
 )
 from chisurf.server.services.datasets import _resolve_dataset
 from chisurf.server.session import SessionState
+
+logger = logging.getLogger(__name__)
 
 
 def _fit_data_payload(fit: Any) -> Dict[str, Any]:
@@ -209,28 +213,37 @@ def run_fit(
 
 def fit_set_dataset(
     state: SessionState,
-    fit_index: int,
+    fit_index: Optional[int] = None,
     dataset_index: Optional[int] = None,
     dataset_uid: Optional[str] = None,
+    fit_uid: Optional[str] = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Associate a dataset with a fit.
+
+    A fit is addressed by index *or* uid, as everywhere else in this module.
+    ``fit_uid`` was missing from the signature while the RPC layer passes it,
+    so every uid-addressed call died in the dispatcher with ``fit_set_dataset()
+    got an unexpected keyword argument 'fit_uid'`` -- the method was reachable
+    by index only, and no caller could tell why.
 
     Parameters
     ----------
     state : SessionState
         Server-side session state.
-    fit_index : int
+    fit_index : int, optional
         Fit index.
     dataset_index : int, optional
         Dataset index.
     dataset_uid : str, optional
         Dataset UID.
+    fit_uid : str, optional
+        Fit UID, used when ``fit_index`` is not given.
     event_bus : object, optional
         Event bus for broadcasting.
 
     """
-    fit, _ = _resolve_fit(state, fit_index)
+    fit, fit_index = _resolve_fit(state, fit_index, fit_uid)
     if fit is None:
         return service_error("fit not found", error_code=NOT_FOUND)
     d, _ = _resolve_dataset(state, dataset_index, dataset_uid)
@@ -247,18 +260,23 @@ def fit_set_dataset(
 
 def fit_set_result_idx(
     state: SessionState,
-    fit_index: int,
-    result_idx: int,
+    result_idx: int = 0,
+    fit_index: Optional[int] = None,
     fit_uid: Optional[str] = None,
     event_bus: Any = None,
 ) -> ServiceResult:
     """Set the active result index on a fit.
 
+    ``fit_index`` was a required positional while ``fit_uid`` was optional, so
+    addressing the fit the documented way -- by uid -- raised
+    ``fit_set_result_idx() missing 1 required positional argument:
+    'fit_index'`` in the dispatcher.
+
     Parameters
     ----------
     state : SessionState
         Server-side session state.
-    fit_index : int
+    fit_index : int, optional
         Fit index.
     result_idx : int
         Result index to set.
@@ -380,6 +398,61 @@ def clear_fits(state: SessionState, event_bus: Any = None) -> ServiceResult:
     return {"ok": True, "cleared_count": count}
 
 
+def _initialise_fit_range(fit: Any) -> None:
+    """Give a newly created fit a range it can actually be run over.
+
+    A fresh fit's range is ``(0, 0)``, and the optimiser rejects that with
+    ``Improper input: N=4 must not exceed M=(0,)`` — so a fit created over RPC
+    could be created but never run. The reader's ``autofitrange`` is preferred,
+    because that is what the GUI and the agent layer both use; a dataset built
+    from raw ``curve_data`` over the wire has no reader, so the whole curve is
+    the fallback rather than nothing.
+
+    Parameters
+    ----------
+    fit : object
+        The newly created fit.
+    """
+    data = getattr(fit, "data", None)
+    if data is None:
+        return
+    reader = getattr(data, "data_reader", None)
+    if reader is not None and hasattr(reader, "autofitrange"):
+        try:
+            start, stop = reader.autofitrange(data)
+            fit.fit_range = (int(start), int(stop))
+            return
+        except Exception:
+            logger.debug("autofitrange failed; falling back to the whole curve", exc_info=True)
+    try:
+        n = len(data)
+        if n > 1:
+            fit.fit_range = (0, int(n) - 1)
+    except Exception:
+        logger.debug("could not derive a fit range from the data", exc_info=True)
+
+
+def _model_names() -> list:
+    """Return the names of every model class currently reachable.
+
+    Used only to make "model not found" actionable: a name that cannot be
+    resolved is far easier to correct next to the list of ones that can.
+    """
+    from chisurf.core.models.model import Model
+
+    found = []
+
+    def walk(cls):
+        for sc in cls.__subclasses__():
+            name = getattr(sc, "name", None)
+            if isinstance(name, str) and "not available" not in name:
+                found.append(name)
+            walk(sc)
+
+    walk(Model)
+    return sorted(set(found))
+
+
 def fit_create(
     state: SessionState,
     dataset_index: int = 0,
@@ -409,6 +482,21 @@ def fit_create(
     except ImportError as e:
         return service_error(f"fit model/fit classes not importable: {e}", error_code=OPERATION_FAILED, exception=e)
     try:
+        # A model is found by walking ``Model.__subclasses__()``, which only
+        # sees classes that have been *imported*. The server imports none of
+        # them: measured in a fresh server process, exactly one model class was
+        # reachable ("Global fit", pulled in by the fitting machinery), so every
+        # ``fit.create`` naming a real model answered "model 'X' not found" and
+        # the RPC server could not build a fit at all. Registering the
+        # experiments imports them -- the same headless bootstrap the agent
+        # layer runs, and a no-op once something else has already done it.
+        try:
+            from chisurf.core.experiments.bootstrap import ensure_experiments_registered
+
+            ensure_experiments_registered()
+        except Exception:
+            logger.debug("experiment registration failed", exc_info=True)
+
         model_class = None
         if model_name:
             def _find_model(cls):
@@ -422,15 +510,28 @@ def fit_create(
                 return None
             model_class = _find_model(Model)
         if model_class is None:
-            return service_error(f"model '{model_name}' not found", error_code=NOT_FOUND)
+            return service_error(
+                f"model '{model_name}' not found. Available: {sorted(_model_names())}",
+                error_code=NOT_FOUND,
+            )
         kw = dict(model_kw) if model_kw else {}
+        # ``FitGroup`` *iterates* its data to build one member fit per dataset.
+        # A bare ``DataCurve`` iterates into ``(x, y)`` tuples, so passing one
+        # for the single-dataset case built member fits whose ``data`` was a
+        # tuple, and the first thing to read ``data.x`` failed with
+        # ``'tuple' object has no attribute 'x'``. A group is the type this
+        # takes, one dataset or several.
+        from chisurf.core.data import DataGroup
+
+        data = data_groups[0] if isinstance(data_groups[0], DataGroup) else DataGroup(data_groups)
         fit = FitGroup(
-            data=data_groups[0] if len(data_groups) == 1 else data_groups,
+            data=data,
             model_class=model_class,
             **kw,
         )
         if fit_name:
             fit.name = fit_name
+        _initialise_fit_range(fit)
         state.add_fit(fit)
         if event_bus is not None:
             event_bus.publish("fit.created", {"fit_index": len(state.fits) - 1, "fit_uid": str(getattr(fit, "unique_identifier", "") or "")})
