@@ -273,6 +273,20 @@ class ConfocalCalcWidget(QWidget):
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
+        # A hairline strip for the ``?`` and **Guide** pair: this is a plain
+        # QWidget with no toolbar, and the buttons must not land inside the form.
+        from qtpy.QtWidgets import QToolBar
+
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        toolbar = QToolBar(self)
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
+        attach_help_and_guide(
+            self, toolbar, title="FCS confocal calculator — help", model=self._model
+        )
+        root.addWidget(toolbar)
         root.addWidget(form)
         self.setLayout(root)
 

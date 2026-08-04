@@ -1,0 +1,44 @@
+{
+  "_comment": "Guided tour for the FCS curve merger. The page is a .ui-loaded QWizardPage, so steps target widgets by objectName -- lineEdit (the folder), tableWidget (the per-curve Use column), toolButton_3 (save the merged curve). There is no view spec. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "The averaging is arithmetic — the choosing is the work",
+      "text": "A single short FCS acquisition is noisy exactly where the information is: at short lag, where few photon pairs contribute. Many short runs plus a merge gets the statistics without the photobleaching and drift of one long run.<br/><br/>And it gives you something a long run cannot — the chance to <b>look at the repeats and throw away the ones that went wrong</b>. That is what this window is for; the averaging itself is a mean.<br/><br/>Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Point it at the correlation folder",
+      "text": "Drop a folder of correlation files here, or browse to one. Every curve it finds is loaded, plotted and listed.",
+      "target": {
+        "name": "lineEdit"
+      },
+      "await": {
+        "hint": "Choose or drop the folder holding your correlation curves."
+      }
+    },
+    {
+      "title": "The table is the screening tool, not a file list",
+      "text": "Each row carries the two <b>count rates</b> and the <b>duration</b> alongside the file, because those are what tell you whether two curves are measurements of the same thing.<br/><br/>They matter because averaging assumes exactly that. <b>G(0) = 1/N</b>, so averaging curves taken at different concentrations gives a mean amplitude that is the mean of the reciprocals — not a concentration you can quote. A focus that drifted between runs changes <i>τ_D</i> too, so the merged decay is broader than anything in the sample.<br/><br/>Untick a row to leave it out; double-click toggles it.",
+      "target": {
+        "name": "tableWidget"
+      }
+    },
+    {
+      "title": "One aggregate can move the whole mean",
+      "text": "This is why the checkboxes exist. A single bright particle crossing the focus adds a large, slow contribution — and because G is normalised by the <b>square</b> of the mean intensity, one such event can dominate an entire curve.<br/><br/>On the left plot it is unmistakable once you know it: an amplitude sitting above the family, and a shoulder at long lag the others do not have. Unticked curves are drawn dashed and grey, so you can compare before and after without losing them.<br/><br/>Averaging that curve in does not dilute it. It moves the mean.<br/><br/>Also leave out the first curve of a session (often taken before the temperature settled) and anything whose shape is <i>qualitatively</i> different rather than merely noisier — noise averages down, a different shape does not.",
+      "target": {
+        "name": "tableWidget"
+      }
+    },
+    {
+      "title": "Save it, then ask four questions",
+      "text": "The right plot is the merge of the ticked curves; saving writes it out, and it can be added to ChiSurf as an FCS dataset ready to fit.<br/><br/>Before it becomes a number in a figure:<br/><b>1. Do the ticked curves agree in amplitude?</b> If not they are not the same concentration, and the merged G(0) means nothing.<br/><b>2. Do they agree in shape?</b> Overlap is what merging assumes; scatter is what it fixes.<br/><b>3. How many survived?</b> A mean of three is a mean of three however smooth it looks — the noise improves as √n and no faster.<br/><b>4. Would the conclusion change if you unticked the most extreme curve?</b> If so, it rests on that curve rather than on the merge.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "name": "toolButton_3"
+      },
+      "await": {
+        "hint": "Press the <b>save</b> button to write the merged curve."
+      }
+    }
+  ]
+}

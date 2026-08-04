@@ -1,0 +1,55 @@
+{
+  "_comment": "Guided tour for the FCS confocal calculator. The UI is a declarative AutoForm view (fcs_calculator.view.json), so steps target bound attributes and the custom sections' keys. The tool takes no data and recomputes live, so the awaited step is an edit (a spin box's valueChanged) rather than a Run button. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Seven numbers that are not independent",
+      "text": "τ, D, rₕ, S, V_eff, N and c are tied together by four relations. Fix what you know and the rest follows:<br/><br/><b>τ_D = w_xy²/(4·D)</b> · <b>V_eff = π^{3/2}·w_xy³·S</b> · <b>D = k_BT/(6πη·rₕ)</b> · <b>c = N/(V_eff·N_A)</b><br/><br/>This tool takes no data. It is the arithmetic an FCS fit leaves you holding — and that arithmetic is where FCS numbers usually go wrong.<br/><br/>Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "One degree of freedom, and you choose it",
+      "text": "Pin <b>D</b>, <b>rₕ</b> or <b>V_eff</b>; the other two become outputs. Everything else on the page reads differently depending on which is lit.<br/><br/>This is worth checking before quoting anything: the value you think you are reading may be one the calculator just computed from the other two.",
+      "target": {
+        "title": "Constraint (choose one)"
+      }
+    },
+    {
+      "title": "Type the τ your fit gave you",
+      "text": "This is the number FCS actually measures — the correlation time.<br/><br/>Everything else on the page is a conversion away from it, which is precisely the point of the next step.",
+      "target": {
+        "attr": "tau_us"
+      },
+      "await": {
+        "hint": "Type a correlation time in <b>τ (µs)</b> — anything will do."
+      }
+    },
+    {
+      "title": "The calibration is the measurement",
+      "text": "<b>FCS measures τ. It does not measure D.</b> Converting one to the other needs the beam waist w_xy, and w_xy comes from a calibration on a dye of <i>known</i> D — this panel.<br/><br/>Every quantity downstream inherits that calibration's error, and not equally:<br/>• <b>rₕ</b> goes as 1/D — a 10 % calibration error is 10 %;<br/>• <b>V_eff</b> goes as <b>w_xy³</b> — the same 10 % is <b>33 %</b>;<br/>• <b>c</b> is proportional to 1/V_eff, so it carries that 33 % too.<br/><br/>That cube is why FCS concentrations are routinely quoted with more confidence than they have earned. Scale the reference to your temperature and viscosity <i>before</i> it is used — the panel does this — because comparing an uncorrected reference against a corrected measurement is a silent systematic.",
+      "target": {
+        "key": "confocal_dye"
+      }
+    },
+    {
+      "title": "S is the other half of the volume, and usually a guess",
+      "text": "<b>S = w_z/w_xy</b> is the focus's axial-to-lateral aspect ratio, typically 3–6 — and it is <i>poorly determined by a fit</i>, because the axial dimension barely shows in the correlation curve.<br/><br/>V_eff is <b>linear</b> in S. Choosing 5 when the truth is 3 is a 67 % error in every volume and every concentration that follows from it.<br/><br/>Fit it when the data support it, use a calibrated value when they do not, and quote whichever you did.",
+      "target": {
+        "attr": "S"
+      }
+    },
+    {
+      "title": "D scales as T/η, and η moves fast",
+      "text": "Water roughly <b>halves</b> in viscosity between 10 °C and 40 °C, so a D measured at room temperature and a literature D at 20 °C are not comparable numbers.<br/><br/><i>Use water η(T)</i> takes the viscosity from an empirical relation. Override it whenever the sample is not water — glycerol, a crowded lysate, a membrane — because no temperature correction will discover an effective viscosity for you.",
+      "target": {
+        "attr": "temp_C"
+      }
+    },
+    {
+      "title": "rₕ is not a radius, and c is only as good as V_eff",
+      "text": "Stokes–Einstein returns the radius of the <b>sphere that would diffuse the way your molecule does</b>. For anything elongated that number is larger than the molecule's own dimensions, and reading it as \"size\" overstates it.<br/><br/>The shape panel inverts the relation for the case you name — <i>ellipsoid</i> applies the Perrin friction factor, <i>cylinder</i> the Hansen approximation. None of them measures shape: they convert a measured D into a size <b>given</b> an assumption that stays yours.<br/><br/>And the concentration: it is N divided by V_eff, so it inherits the whole calibration chain above. If the number that matters is a concentration, the calibration is not a preliminary — it <i>is</i> the measurement.<br/><br/>Export the state to JSON when a number goes into a figure. The relations are cheap to recompute; the assumptions behind them are what you will want back in six months. The <b>?</b> button has the rest.",
+      "target": {
+        "key": "confocal_shape"
+      }
+    }
+  ]
+}

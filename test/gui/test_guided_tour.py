@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 
 import pytest
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from chisurf.gui.widgets.tools.guided_tour import GuidedTour, TourStep, load_tour
 
@@ -311,3 +311,33 @@ def test_a_step_opens_the_collapsed_panel_its_target_sits_in(qapp):
     tour.stop()
     assert box.auto_fold is True, "auto-fold was not given back"
     window.close()
+
+
+def test_an_unavoidable_overlap_spares_the_target_top_left(qapp):
+    """When the bubble cannot fit beside the target, it covers the *right*.
+
+    A tall bubble, a short window and a full-width target row leave no candidate
+    position clear of the target, so some overlap is unavoidable. Minimum
+    overlap alone does not settle it — several placements cover about the same
+    area — and the arbitrary winner covered the FCS calculator's dye combo, i.e.
+    exactly the control the step was explaining.
+
+    A form fills left to right and top to bottom, so a widget's label, its
+    editor and its first control live at the target's top left. That corner is
+    what must survive.
+    """
+    host = QtWidgets.QWidget()
+    host.resize(1200, 800)
+    tour = GuidedTour(host, [TourStep(title="t", text="x", target={})])
+
+    target = QtCore.QRect(0, 385, 1200, 105)  # a full-width settings row
+    size = QtCore.QSize(420, 550)  # taller than fits above or below it
+
+    point = tour._place(target, size)
+    placed = QtCore.QRect(point, size)
+
+    assert placed.intersects(target), "the fixture no longer forces an overlap"
+    assert not placed.contains(target.topLeft()), (
+        "the bubble covers the target's top-left corner — the controls"
+    )
+    host.close()

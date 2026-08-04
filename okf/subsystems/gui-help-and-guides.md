@@ -12,7 +12,7 @@ timestamp: '2026-08-04T00:00:00Z'
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number
 that matters is the line count of `test/plugin_help_guide_allowlist.txt`
 (`grep -c '^chisurf' test/plugin_help_guide_allowlist.txt`). It went **105 → 96
-→ 93 → 92 → 91**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
+→ 93 → 92 → 91 → 89**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
 with the `gui_plugins()` helper in that test file rather than by hand — a plugin
 whose `entrypoints.gui` names a *package* rather than a module resolves to that
 package's `gui/` subdirectory, not to the folder you would guess, and
@@ -20,7 +20,8 @@ hand-editing puts the entry where no lookup will find it.
 
 **Done, with real content:** burst analysis, accurate FRET, burst GS, burst
 selection, decay analysis, TTTR Tools, FCS filter calculator, burst background,
-burst IRF & background, **2CDE, BVA, H2MM, 2D-FLCS, lifetime-FCS simulator**.
+burst IRF & background, **2CDE, BVA, H2MM, and the whole FCS group — 2D-FLCS, the lifetime-FCS
+simulator, the confocal calculator and the curve merger**.
 
 **Prefer a tour that walks on a demo the plugin generates itself.** 2D-FLCS is
 the model: its *Simulator* panel makes a two-state exchanging stream whose answer
@@ -37,6 +38,15 @@ most of the burst tools are hand-built Qt. Give the two or three controls the
 tour actually names an `objectName` — prefixed, because `{"name": …}` matches by
 **suffix**, so a bare `"seed"` also finds the decoder's own seed box. `2cde`
 (`twocde_*`) and `h2mm` (`h2mm_*`) are the worked examples.
+
+**A tool with no toolbar gets a hairline one.** The FCS group is three of these:
+`fcs_lfcs_sim` and `fcs_calculator` are plain `QWidget`s, and `fcs_merger` is a
+`QWizard` whose button box is reserved for navigation. Each grows a borderless
+`QToolBar` for the pair rather than letting the buttons land inside the form or
+beside a plot. For the wizard the strip is inserted at index 0 of the *page's*
+layout while the tour host stays the *wizard*, so the spotlight still covers the
+whole window; pass `owner=type(self)` so the resource lookup finds the plugin's
+`help.md` rather than looking beside the shared wizard-page class.
 
 **A tool with its own `HelpDialog` loses it.** BVA and H2MM each carried their
 help as an HTML literal plus the CLI `--help` output inside a `QDialog`. Both are
@@ -70,15 +80,9 @@ thing and that the prose belongs where it sits.
 
 **Next, in priority order** (the user's order: most-used analysis tools first):
 
-1. **`fcs_calculator`, `fcs_merger`** — the rest of the FCS group (`flc_2d` and
-   `fcs_lfcs_sim` are done). Both are **wizards**: their `entrypoints.gui` names
-   `wizard.py` at the *package root*, so their help files go beside that module —
-   `chisurf/plugins/fcs/fcs_calculator/`, not `…/gui/` — which is what the
-   allow-list entries already say. Neither has a toolbar; give them a hairline
-   `QToolBar` and `attach_help_and_guide`, as `fcs_lfcs_sim` now does.
-2. **`irf_estimator`, `maxent_decay`, `tr_anisotropy`, `synthetic_decay`** — the
+1. **`irf_estimator`, `maxent_decay`, `tr_anisotropy`, `synthetic_decay`** — the
    decay group. `synthetic_decay` simulates, so again a known-answer tour.
-3. **`microscopy/img_*`** — six of them already have `help.md` and need only a
+2. **`microscopy/img_*`** — six of them already have `help.md` and need only a
    `guide.json`, which is the cheapest remaining work in the list:
    `img_coloc`, `img_drift`, `img_frc`, `img_tracking`, plus `rics_precision`
    and `core/hmm`.
@@ -125,6 +129,14 @@ See [change tracking](/workflows/change-tracking.md).
   it had when it was closed. `unresolved=[]` and the spotlight lands on a
   rectangle of unrelated panel. Only the PNG showed it. `_resolve_tab` now calls
   `DockArea.showTab` before returning such a page.
+* **And the bubble itself can cover what the step points at.** When a tall
+  bubble, a short window and a full-width target row leave no candidate position
+  clear of the target, some overlap is unavoidable — minimum overlap alone then
+  picks arbitrarily among near-equal choices, and on the FCS calculator it chose
+  the half holding the dye combo the step was explaining. `_place` now buckets
+  the overlap and breaks the tie toward the **bottom right**, because a form
+  fills left to right and top to bottom, so the label, the editor and the first
+  control all live at the target's top left.
 * **A folded panel hides the control just as effectively.** An AutoForm `panel`
   is a `CollapsibleBox`, and a form of any size folds most of them; the target
   still resolves, to a widget with a real geometry that is not drawn, so the

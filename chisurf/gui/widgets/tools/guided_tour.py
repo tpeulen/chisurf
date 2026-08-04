@@ -981,15 +981,24 @@ class GuidedTour(QtCore.QObject):
             non_overlapping.sort(key=lambda item: item[0])
             return non_overlapping[0][1]
 
-        best_pt = clamp_to_host(candidates[0][0], candidates[0][1])
-        min_overlap = float("inf")
+        # Nothing fits beside the target — a tall bubble, a short window and a
+        # full-width row leave no candidate clear of it. Cover as little as
+        # possible, and among near-equal choices cover the **bottom right**:
+        # a form fills left to right and top to bottom, so a widget's label,
+        # its editor and its first control are anchored at the target's top
+        # left. Losing that corner is losing the thing the step points at,
+        # which is how a step ends up explaining a control the reader cannot
+        # see. Found on the FCS calculator, whose dye panel is one full-width
+        # row: minimum overlap alone put the bubble over the combo box.
+        scored = []
         for x, y in candidates:
             pt = clamp_to_host(x, y)
             placed = QtCore.QRect(pt, size)
             overlap_rect = placed.intersected(rect)
             overlap_area = overlap_rect.width() * overlap_rect.height()
-            if overlap_area < min_overlap:
-                min_overlap = overlap_area
-                best_pt = pt
-
-        return best_pt
+            # Bucket the area so "about as bad" placements are tied and the
+            # corner preference decides between them, rather than a few stray
+            # pixels of difference doing so.
+            scored.append(((overlap_area + 999) // 1000, -pt.y(), -pt.x(), pt))
+        scored.sort(key=lambda item: item[:3])
+        return scored[0][3]
