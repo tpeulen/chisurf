@@ -1,3 +1,35 @@
+## The arm64 env's tttrlib symlinks can dangle into a deleted pixi cache
+
+**Found 2026-08-04**, mid-session: every GUI tool stopped constructing with
+`ModuleNotFoundError: No module named 'tttrlib'`, having worked minutes earlier.
+
+The cause is not a missing install. In the `arm64` conda env,
+
+```
+site-packages/tttrlib.py          -> ~/Library/Caches/rattler/cache/envs/chisurf-<hash>/…/tttrlib.py
+site-packages/_tttrlib.cpython-312-darwin.so -> …/_tttrlib.cpython-312-darwin.so
+```
+
+are **symlinks into a pixi/rattler cache environment**, and that cache directory
+had been emptied — `ls <target dir> | grep -c tttr` returns 0 — while the links
+remain. A dangling symlink imports as "no module", so nothing in the error says
+the file is there-but-pointing-nowhere.
+
+Diagnose with `ls -la $CONDA_PREFIX/lib/python3.12/site-packages/tttrlib.py` and
+then look at the target. Stale `.bak_*` and randomly-suffixed copies
+(`_tttrlib.cpython-312-darwin.so6uhgcN`) beside them are the fingerprint of an
+install that was interrupted or replaced.
+
+**Not repaired here**: another agent instance was running pixi at the time, and
+re-linking or reinstalling underneath an in-flight environment solve is how one
+instance breaks another's. The repair is to re-run the tttrlib editable install
+for this env once nothing else is building.
+
+**What it blocked**: the `irf_estimator` guided tour could not be walked with
+`build_tools/dev_utils/check_plugin_guide.py`, so its `help.md` / `guide.json`
+are written and **deliberately left uncommitted** — a GUI change is unfinished
+until its render has been looked at, and this one has not been.
+
 ## Test suite: what is still red after the 2026-08-04 sweep
 
 **Where to pick this up.** The suite was run **one directory (and, for
