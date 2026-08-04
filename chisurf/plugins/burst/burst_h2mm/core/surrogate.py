@@ -239,7 +239,7 @@ class SurrogateModel:
         """Return this surrogate in the language-neutral ``tttrlib`` JSON schema.
 
         The pickle written by :meth:`save` is Python-only and unsafe to share;
-        this schema is readable by :class:`tttrlib.H2mmSurrogate`, so a surrogate
+        this schema is readable by :class:`tttrlib.HmmSurrogate`, so a surrogate
         trained here runs in the C++ engine (and in any other tttrlib binding)
         with identical numbers.
 
@@ -258,7 +258,7 @@ class SurrogateModel:
                 "bias": np.asarray(b, dtype=float).tolist(),
             })
         return {
-            "format": "tttrlib.h2mm_surrogate",
+            "format": "tttrlib.hmm_surrogate",
             "version": 1,
             "features_version": int(self.features_version),
             "n_states": int(self.n_states),

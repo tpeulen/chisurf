@@ -193,6 +193,25 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The H2MM plugin's C++ backend had been silently off.**
+  ([burst_h2mm](../chisurf/plugins/burst/burst_h2mm/)) tttrlib renamed its H2MM
+  surface to HMM — `H2MM`→`HMM`, `H2mmModel`→`HmmModel`, `H2mmSurrogate`,
+  `H2mmChannelMap`, `H2mmStateSidecar`, and the surrogate's JSON format tag
+  `tttrlib.h2mm_surrogate`→`tttrlib.hmm_surrogate`. The plugin still used the old
+  names.
+
+  It did not fail, and that is the point. The availability gate is
+  `hasattr(tttrlib, "H2MM")`, so a rename turns it **False** and every caller
+  quietly takes the numba fallback: the fast path was disabled, its ~27 tests
+  skipped, and the suite stayed green. The plugin was slower than it claimed and
+  nothing said so.
+
+  Fixed throughout, including the `hasattr` **strings** — which a symbol rename
+  does not touch, and which is exactly how the gate got out of step with the code
+  it guards. Both backends now report active, the C++ EM engine reproduces the
+  pure-Python one's log-likelihood to the decimal (−5094.3), and the suite goes
+  from 79 passed / 20 skipped to **106 passed**.
+
 * **The Gillespie moved to where the state jumps already happen.**
   ([tttrlib `ec9354d7`](references/simengine-species-encoding.md))
   `occupation_time_fractions` reached the continuous-time Markov chain by building

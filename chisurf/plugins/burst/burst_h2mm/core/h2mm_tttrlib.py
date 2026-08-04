@@ -1,7 +1,7 @@
 """tttrlib-backed H2MM engine.
 
 This adapter runs the Baum-Welch EM optimisation and Viterbi decoding through
-the fast C++ :class:`tttrlib.H2MM` engine while keeping the plugin's own
+the fast C++ :class:`tttrlib.HMM` engine while keeping the plugin's own
 :class:`~.h2mm.BurstPhotons` / :class:`~.h2mm.H2mmModel` data types, so it is a
 drop-in replacement for the numba :func:`~.h2mm.optimize` /
 :func:`~.h2mm.viterbi` / :func:`~.h2mm.fit_states` on the EM engines.
@@ -23,15 +23,15 @@ from .h2mm import BurstPhotons, H2mmModel, factory_model
 try:
     import tttrlib
 
-    HAVE_TTTRLIB = hasattr(tttrlib, "H2MM")
+    HAVE_TTTRLIB = hasattr(tttrlib, "HMM")
 except Exception:  # pragma: no cover - tttrlib is optional
     tttrlib = None
     HAVE_TTTRLIB = False
 
 
-def _to_engine(data: BurstPhotons) -> "tttrlib.H2MM":
+def _to_engine(data: BurstPhotons) -> "tttrlib.HMM":
     """Rebuild per-burst (times, streams) from CSR ``BurstPhotons`` and load them
-    into a :class:`tttrlib.H2MM` engine.
+    into a :class:`tttrlib.HMM` engine.
 
     ``BurstPhotons`` stores, per photon, the slot of the inter-photon Δt to the
     next photon (``gap_slot``, ``-1`` at a burst's last photon); the absolute
@@ -58,20 +58,20 @@ def _to_engine(data: BurstPhotons) -> "tttrlib.H2MM":
         times.append([int(x) for x in t])
         strms.append([int(x) for x in streams_all[s:e]])
 
-    eng = tttrlib.H2MM()
+    eng = tttrlib.HMM()
     eng.set_bursts(times, strms, int(data.n_streams))
     return eng
 
 
-def _to_engine_model(model: H2mmModel) -> "tttrlib.H2mmModel":
-    return tttrlib.H2mmModel(
+def _to_engine_model(model: H2mmModel) -> "tttrlib.HmmModel":
+    return tttrlib.HmmModel(
         [float(x) for x in np.asarray(model.prior).ravel()],
         [float(x) for x in np.asarray(model.trans).ravel()],
         [float(x) for x in np.asarray(model.obs).ravel()],
     )
 
 
-def _from_engine_model(fit: "tttrlib.H2mmModel", n_phot: int) -> H2mmModel:
+def _from_engine_model(fit: "tttrlib.HmmModel", n_phot: int) -> H2mmModel:
     return H2mmModel(
         prior=np.asarray(fit.prior_np, dtype=np.float64),
         trans=np.asarray(fit.trans_np, dtype=np.float64),

@@ -1,7 +1,7 @@
 """tttrlib-backed surrogate estimator.
 
 Runs the amortised (surrogate) neural estimator through the C++
-:class:`tttrlib.H2mmSurrogate` while keeping the plugin's own
+:class:`tttrlib.HmmSurrogate` while keeping the plugin's own
 :class:`~.h2mm.BurstPhotons` / :class:`~.h2mm.H2mmModel` data types, so it is a
 drop-in replacement for :func:`~.surrogate.estimate_model` on the surrogate
 engines — the same relationship :mod:`.h2mm_tttrlib` has to the EM engines.
@@ -26,14 +26,14 @@ from .h2mm_tttrlib import _to_engine
 try:
     import tttrlib
 
-    HAVE_TTTRLIB = hasattr(tttrlib, "H2mmSurrogate")
+    HAVE_TTTRLIB = hasattr(tttrlib, "HmmSurrogate")
 except Exception:  # pragma: no cover - tttrlib is optional
     tttrlib = None
     HAVE_TTTRLIB = False
 
 
-def load(path: str | Path) -> "tttrlib.H2mmSurrogate":
-    """Load a surrogate from a ``tttrlib.h2mm_surrogate`` JSON file.
+def load(path: str | Path) -> "tttrlib.HmmSurrogate":
+    """Load a surrogate from a ``tttrlib.hmm_surrogate`` JSON file.
 
     Raises
     ------
@@ -41,22 +41,22 @@ def load(path: str | Path) -> "tttrlib.H2mmSurrogate":
         If tttrlib is unavailable.
     """
     if not HAVE_TTTRLIB:
-        raise RuntimeError("tttrlib with H2mmSurrogate support is required")
-    return tttrlib.H2mmSurrogate.from_json_file(str(path))
+        raise RuntimeError("tttrlib with HmmSurrogate support is required")
+    return tttrlib.HmmSurrogate.from_json_file(str(path))
 
 
 def is_json_surrogate(obj) -> bool:
     """Whether ``obj`` names a JSON surrogate this backend can load."""
     if isinstance(obj, (str, Path)):
         return str(obj).endswith(".json")
-    return tttrlib is not None and isinstance(obj, tttrlib.H2mmSurrogate)
+    return tttrlib is not None and isinstance(obj, tttrlib.HmmSurrogate)
 
 
 def extract_features(data: BurstPhotons) -> np.ndarray:
     """Feature vector via the C++ extractor (matches the numba one to 1e-12)."""
     if not HAVE_TTTRLIB:
-        raise RuntimeError("tttrlib with H2mmSurrogate support is required")
-    return np.asarray(tttrlib.H2mmSurrogate.features(_to_engine(data)), dtype=np.float64)
+        raise RuntimeError("tttrlib with HmmSurrogate support is required")
+    return np.asarray(tttrlib.HmmSurrogate.features(_to_engine(data)), dtype=np.float64)
 
 
 def estimate_model(
@@ -74,8 +74,8 @@ def estimate_model(
         Photon data in engine layout.
     n_states : int
         Number of hidden states; must match the surrogate.
-    surrogate : tttrlib.H2mmSurrogate or path
-        A loaded surrogate, or a path to a ``tttrlib.h2mm_surrogate`` JSON file.
+    surrogate : tttrlib.HmmSurrogate or path
+        A loaded surrogate, or a path to a ``tttrlib.hmm_surrogate`` JSON file.
     refine_iters : int
         If > 0, run this many Baum-Welch maps from the surrogate estimate.
     tol : float
@@ -87,7 +87,7 @@ def estimate_model(
         The estimated model.
     """
     if not HAVE_TTTRLIB:
-        raise RuntimeError("tttrlib with H2mmSurrogate support is required")
+        raise RuntimeError("tttrlib with HmmSurrogate support is required")
     if isinstance(surrogate, (str, Path)):
         surrogate = load(surrogate)
     if surrogate.get_n_states() != int(n_states):

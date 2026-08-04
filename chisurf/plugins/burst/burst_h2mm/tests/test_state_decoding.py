@@ -257,7 +257,7 @@ class TestStateTttr:
     def test_the_two_outputs_agree_photon_for_photon(self, tmp_path):
         out = self._write(tmp_path)
         back = tttrlib.TTTR(out.tttr_paths["sim"], "PTU")
-        sc = tttrlib.H2mmStateSidecar.read(out.sidecar_paths["sim"])
+        sc = tttrlib.HmmStateSidecar.read(out.sidecar_paths["sim"])
         och = np.asarray(back.routing_channels)
         states = np.asarray(cmap_states := out.channel_maps["sim"]["states"])
         for st in range(2):
@@ -269,7 +269,7 @@ class TestStateTttr:
 
     def test_states_land_on_the_photons_the_path_names(self, tmp_path):
         out = self._write(tmp_path, write_tttr=False)
-        sc = tttrlib.H2mmStateSidecar.read(out.sidecar_paths["sim"])
+        sc = tttrlib.HmmStateSidecar.read(out.sidecar_paths["sim"])
         states = sc.states_np
         idx = np.asarray(self.meta.photon_index, dtype=np.int64)
         np.testing.assert_array_equal(
@@ -281,7 +281,7 @@ class TestStateTttr:
 
     def test_sidecar_records_how_the_decode_was_made(self, tmp_path):
         out = self._write(tmp_path, write_tttr=False)
-        sc = tttrlib.H2mmStateSidecar.read(out.sidecar_paths["sim"])
+        sc = tttrlib.HmmStateSidecar.read(out.sidecar_paths["sim"])
         assert sc.decoder == "jitter"
         assert sc.seed == 2
         assert sc.n_states == 2

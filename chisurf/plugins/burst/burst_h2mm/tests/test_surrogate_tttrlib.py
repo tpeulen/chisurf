@@ -18,8 +18,8 @@ import pytest
 from chisurf.plugins.burst.burst_h2mm.core import engines, h2mm, surrogate
 
 tttrlib = pytest.importorskip("tttrlib")
-if not hasattr(tttrlib, "H2mmSurrogate"):
-    pytest.skip("tttrlib without H2mmSurrogate support", allow_module_level=True)
+if not hasattr(tttrlib, "HmmSurrogate"):
+    pytest.skip("tttrlib without HmmSurrogate support", allow_module_level=True)
 
 from chisurf.plugins.burst.burst_h2mm.core import surrogate_tttrlib  # noqa: E402
 
@@ -60,7 +60,7 @@ def test_feature_extractors_agree(trained):
 
 def test_export_json_schema(trained):
     doc = trained.to_json()
-    assert doc["format"] == "tttrlib.h2mm_surrogate"
+    assert doc["format"] == "tttrlib.hmm_surrogate"
     assert doc["n_states"] == 2 and doc["n_streams"] == 2
     assert doc["features_version"] == surrogate.FEATURES_VERSION
     assert doc["net"]["format"] == "tttrlib.neural_net"

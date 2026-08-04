@@ -16,7 +16,7 @@ channel map. Nothing is altered and there is no channel-id budget.
 
 Both come from the same per-photon array and agree photon for photon; the
 allocation and the sidecar format are tttrlib's
-(:class:`tttrlib.H2mmChannelMap`, :class:`tttrlib.H2mmStateSidecar`) rather than
+(:class:`tttrlib.HmmChannelMap`, :class:`tttrlib.HmmStateSidecar`) rather than
 re-implemented here, so a file this writes is the same file tttrlib writes.
 
 Why this matters more with a sampling decoder
@@ -44,7 +44,7 @@ from chisurf.core.fluorescence.burst.photons import PhotonMeta
 logger = logging.getLogger(__name__)
 
 #: Value marking a photon no decoder assigned (outside every burst, or matching
-#: no stream). Mirrors ``tttrlib.H2MM_UNASSIGNED``.
+#: no stream). Mirrors ``tttrlib.HMM_UNASSIGNED``.
 UNASSIGNED = 255
 
 #: Container written for the split photon stream. PTU's HydraHarp records carry
@@ -200,7 +200,7 @@ def write_state_tttr(
         # tttrlib owns the id layout -- source channels compressed to 0..k-1,
         # (stream, state) pairs densely after -- so a file written here is the
         # same file tttrlib's own split writes.
-        cmap = tttrlib.H2mmChannelMap.allocate(
+        cmap = tttrlib.HmmChannelMap.allocate(
             sorted({int(c) for c in np.unique(src_channels)}),
             n_streams, n_states, int(max_channel),
         )
@@ -235,7 +235,7 @@ def write_state_tttr(
             result.tttr_paths[stem] = str(ptu)
 
         if write_sidecar:
-            sc = tttrlib.H2mmStateSidecar()
+            sc = tttrlib.HmmStateSidecar()
             sc.set_arrays(states, streams)
             sc.n_states = n_states
             sc.n_streams = n_streams
@@ -254,7 +254,7 @@ def write_state_tttr(
 
 def _to_engine_model(model):
     """Convert the plugin's ``H2mmModel`` to tttrlib's, for the sidecar."""
-    return tttrlib.H2mmModel(
+    return tttrlib.HmmModel(
         [float(x) for x in np.asarray(model.prior).ravel()],
         [float(x) for x in np.asarray(model.trans).ravel()],
         [float(x) for x in np.asarray(model.obs).ravel()],
