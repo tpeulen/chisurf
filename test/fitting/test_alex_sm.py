@@ -27,6 +27,15 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+
+from chisurf.core.fluorescence.simulation.alex_sm import (
+    ALEX_PERIOD,
+    CH_ACCEPTOR,
+    CH_DONOR,
+    GREEN_WINDOW,
+    RED_WINDOW,
+    simulate_alex_sm as _simulate_alex_sm,
+)
 import pytest
 
 tttrlib = pytest.importorskip("tttrlib")
@@ -47,75 +56,6 @@ from chisurf.plugins.tttr.ptu_alex_creator.core import (  # noqa: E402
 SM_CONTAINER, SM_RECORD_TYPE = 7, 11
 MACRO_RESOLUTION = 1.25e-8
 TY_FLOAT8 = 536870920  # tttrlib tag type for an 8-byte float
-
-# ALEX alternation (macro units). The two lasers are on for interior windows,
-# leaving rise/fall gaps between them: green [300, 3700), red [4300, 7700).
-ALEX_PERIOD = 8000
-GREEN_WINDOW = (300, 3700)
-RED_WINDOW = (4300, 7700)
-CH_DONOR, CH_ACCEPTOR = 0, 1
-
-
-def _place(rng, cnt, det, window, t, span, smear):
-    """Photons for one detector inside one laser window, smeared at the edges."""
-    lo, hi = window
-    width = hi - lo
-    base = t + rng.randint(0, span, cnt).astype(np.uint64)
-    ph = lo + rng.randint(0, width, cnt)
-    # Smear a fraction across the window edges to mimic laser rise/fall.
-    n_smear = int(smear * cnt)
-    if n_smear:
-        idx = rng.choice(cnt, n_smear, replace=False)
-        edge = rng.choice([lo, hi], n_smear)
-        ph[idx] = (edge + rng.randint(-150, 150, n_smear)) % ALEX_PERIOD
-    ph = ph.astype(np.uint64)
-    cycle = (base // np.uint64(ALEX_PERIOD)) * np.uint64(ALEX_PERIOD)
-    return cycle + ph, np.full(cnt, det, np.int8)
-
-
-def _simulate_alex_sm(path, populations, *, seed=1, smear=0.08):
-    """Write a synthetic micro-second ALEX stream to an ``.sm`` file."""
-    rng = np.random.RandomState(seed)
-    macro, chan = [], []
-    t = np.uint64(0)
-    n_bursts = 0
-    for pop in populations:
-        E, S = pop["E"], pop["S"]
-        for _ in range(pop["n"]):
-            n_bursts += 1
-            t = t + np.uint64(rng.randint(120_000, 260_000))
-            size = 40 + rng.poisson(120)
-            n_green = rng.binomial(size, S)
-            n_red = size - n_green
-            n_da = rng.binomial(n_green, E)
-            n_dd = n_green - n_da
-            span = 12000
-            for cnt, det, window in [
-                (n_dd, CH_DONOR, GREEN_WINDOW),
-                (n_da, CH_ACCEPTOR, GREEN_WINDOW),
-                (n_red, CH_ACCEPTOR, RED_WINDOW),
-            ]:
-                if cnt == 0:
-                    continue
-                m, c = _place(rng, cnt, det, window, t, span, smear)
-                macro.append(m)
-                chan.append(c)
-            t = t + np.uint64(span)
-    macro = np.concatenate(macro)
-    chan = np.concatenate(chan)
-    order = np.argsort(macro, kind="stable")
-    macro = macro[order].astype(np.uint64)
-    chan = chan[order].astype(np.int8)
-
-    d = tttrlib.TTTR()
-    d.append_events(macro, np.zeros(len(macro), np.uint16), chan,
-                    np.zeros(len(macro), np.int8))
-    d.header.tttr_container_type = SM_CONTAINER
-    d.header.tttr_record_type = SM_RECORD_TYPE
-    d.header.set_tag("MeasDesc_GlobalResolution", MACRO_RESOLUTION, TY_FLOAT8)
-    assert d.write(path)
-    return n_bursts
-
 
 def _es_per_burst(tttr, bursts, windows):
     """Count DD/DA/AA per burst using the detected ALEX windows."""

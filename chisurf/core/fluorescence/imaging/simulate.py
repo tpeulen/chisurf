@@ -22,13 +22,10 @@ from typing import Any
 import numpy as np
 
 
-def have_simulator() -> bool:
-    """Return True when tttrlib and its photon simulator are importable."""
-    try:
-        import tttrlib
-    except Exception:
-        return False
-    return hasattr(tttrlib, "SimEngine")
+# Re-exported so importers of this module keep their name; the check itself is
+# shared, because four copies of "is the simulator there?" is four places for the
+# answer to differ.
+from chisurf.core.fluorescence.simulation import have_simulator  # noqa: F401
 
 
 @dataclasses.dataclass

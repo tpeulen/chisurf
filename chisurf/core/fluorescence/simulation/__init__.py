@@ -24,6 +24,7 @@ for how to express a measurement in the engine's terms — the recurring mistake
 to look for a parameter named after the phenomenon rather than to encode it.
 """
 
+from chisurf.core.fluorescence.simulation.alex_sm import simulate_alex_sm
 from chisurf.core.fluorescence.simulation.engine import (
     build_engine,
     decay_spec,
@@ -41,6 +42,7 @@ __all__ = [
     "default_config",
     "gaussian_focus",
     "have_simulator",
+    "simulate_alex_sm",
     "seeds",
     "settings",
     "write_burst_folder",

@@ -35,6 +35,14 @@ import numpy as np
 import tttrlib
 
 from chisurf.core.fluorescence.burst.es import apparent_es, corrected_es
+from chisurf.core.fluorescence.simulation.alex_sm import (
+    ALEX_PERIOD,
+    CH_ACCEPTOR,
+    CH_DONOR,
+    GREEN_WINDOW,
+    RED_WINDOW,
+    simulate_alex_sm,
+)
 from chisurf.core.fluorescence.fret.calibration import CalibrationParameters
 from chisurf.plugins.tttr.ptu_alex_creator.core import (
     alex_stream_masks,
@@ -43,69 +51,6 @@ from chisurf.plugins.tttr.ptu_alex_creator.core import (
     load,
 )
 
-# .sm container ids, macro-time clock and ALEX alternation (macro units).
-SM_CONTAINER, SM_RECORD_TYPE = 7, 11
-MACRO_RESOLUTION = 1.25e-8
-TY_FLOAT8 = 536870920
-ALEX_PERIOD = 8000
-# Realistic laser windows: interior plateaus with rise/fall gaps between them.
-GREEN_WINDOW = (300, 3700)
-RED_WINDOW = (4300, 7700)
-CH_DONOR, CH_ACCEPTOR = 0, 1
-
-
-def simulate_alex_sm(path, populations, seed=1, smear=0.08):
-    """Write a synthetic micro-second ALEX stream to an ``.sm`` file."""
-    rng = np.random.RandomState(seed)
-    macro, chan = [], []
-    t = np.uint64(0)
-
-    def place(cnt, det, window):
-        lo, hi = window
-        base = t + rng.randint(0, 12000, cnt).astype(np.uint64)
-        ph = lo + rng.randint(0, hi - lo, cnt)
-        n_smear = int(smear * cnt)  # photons bleeding into the rise/fall edges
-        if n_smear:
-            idx = rng.choice(cnt, n_smear, replace=False)
-            edge = rng.choice([lo, hi], n_smear)
-            ph[idx] = (edge + rng.randint(-150, 150, n_smear)) % ALEX_PERIOD
-        ph = ph.astype(np.uint64)
-        cycle = (base // np.uint64(ALEX_PERIOD)) * np.uint64(ALEX_PERIOD)
-        return cycle + ph, np.full(cnt, det, np.int8)
-
-    for pop in populations:
-        E, S = pop["E"], pop["S"]
-        for _ in range(pop["n"]):
-            t = t + np.uint64(rng.randint(120_000, 260_000))
-            size = 40 + rng.poisson(120)
-            n_green = rng.binomial(size, S)
-            n_red = size - n_green
-            n_da = rng.binomial(n_green, E)
-            n_dd = n_green - n_da
-            for cnt, det, window in [
-                (n_dd, CH_DONOR, GREEN_WINDOW),
-                (n_da, CH_ACCEPTOR, GREEN_WINDOW),
-                (n_red, CH_ACCEPTOR, RED_WINDOW),
-            ]:
-                if cnt == 0:
-                    continue
-                m, c = place(cnt, det, window)
-                macro.append(m)
-                chan.append(c)
-            t = t + np.uint64(12000)
-    macro = np.concatenate(macro)
-    chan = np.concatenate(chan)
-    order = np.argsort(macro, kind="stable")
-    macro = macro[order].astype(np.uint64)
-    chan = chan[order].astype(np.int8)
-
-    d = tttrlib.TTTR()
-    d.append_events(macro, np.zeros(len(macro), np.uint16), chan,
-                    np.zeros(len(macro), np.int8))
-    d.header.tttr_container_type = SM_CONTAINER
-    d.header.tttr_record_type = SM_RECORD_TYPE
-    d.header.set_tag("MeasDesc_GlobalResolution", MACRO_RESOLUTION, TY_FLOAT8)
-    d.write(path)
 
 
 def alex_counts_per_burst(tttr, bursts, windows):

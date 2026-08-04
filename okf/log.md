@@ -193,6 +193,24 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The engine is reached through one door, and the ALEX writer through one file.**
+  Remaining inline `SimEngine` constructions now go through
+  `simulation.build_engine` (lifetime-FCS, the burst workflow), and the
+  "is the simulator available?" question through `simulation.have_simulator` —
+  the imaging module and the acquisition plugin delegate to it rather than
+  answering it themselves, so the four copies cannot start disagreeing about what
+  *available* means.
+
+  The microsecond-ALEX `.sm` writer moved into the shim as
+  `simulation/alex_sm.py`. It existed twice, verbatim, in an example and a test,
+  down to the `ALEX_PERIOD = 8000` and the `smear = 0.08` that puts photons on
+  the **edges** of the laser windows — which is the part that matters, because a
+  window detector meeting only clean plateaus has not been tested on the case it
+  exists for. It is not the confocal simulator and does not pretend to be: there
+  are no molecules, bursts are placed with a chosen size, E and S. What makes it
+  belong here is the other half, the `.sm` container layout, which is a ChiSurf
+  format concern.
+
 * **2D-FLC no longer walks its own Markov chain.**
   ([flc_2d](../chisurf/plugins/fcs/flc_2d/simulate.py)) The plugin's photon-stream
   simulator had its own Gillespie loop, its own Poisson emission and its own

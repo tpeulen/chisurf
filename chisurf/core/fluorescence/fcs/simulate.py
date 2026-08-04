@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from chisurf.core.fluorescence.simulation import seeds
+from chisurf.core.fluorescence.simulation import build_engine, seeds
 
 __all__ = ["SimulatedLifetimeFCS", "simulate_lifetime_fcs"]
 
@@ -124,8 +124,6 @@ def simulate_lifetime_fcs(
     -------
     SimulatedLifetimeFCS
     """
-    import tttrlib
-
     tau = [float(t) for t in lifetimes_ns]
     diff = [float(d) for d in diffusion_um2_ms]
     n_species = len(tau)
@@ -166,7 +164,7 @@ def simulate_lifetime_fcs(
         },
     }
 
-    engine = tttrlib.SimEngine.from_dict(cfg)
+    engine = build_engine(cfg)
     engine.run()
 
     species = np.asarray(engine.emitting_species()).astype(np.int64)

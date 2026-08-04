@@ -14,27 +14,15 @@ import numpy as np
 
 
 def tttrlib_available() -> bool:
-    """Return whether the installed ``tttrlib`` exposes photon simulation.
+    """Return whether the photon simulator is importable.
 
-    Returns
-    -------
-    bool
-        ``True`` when the runtime has the simulator classes required by this
-        acquisition backend.
+    Delegates: the check lives with the simulation shim so that every consumer
+    agrees about what "available" means.
     """
-    try:
-        import tttrlib  # noqa: F401
-        required = (
-            "SimEngine",
-            "SimSystem",
-            "SimSpecies",
-            "SimGrid",
-            "SimIntegrator",
-            "SimMicrotimeEncoder",
-        )
-        return all(hasattr(tttrlib, name) for name in required)
-    except Exception:
-        return False
+    from chisurf.core.fluorescence.simulation import have_simulator
+
+    return have_simulator()
+
 
 
 def _vd(values):

@@ -1164,7 +1164,9 @@ class BurstWorkflow:
                 "extent_xy": 2.0, "extent_z": 4.0, "spacing": 0.1,
             },
         }
-        engine = tttrlib.SimEngine.from_dict(config)
+        from chisurf.core.fluorescence.simulation import build_engine
+
+        engine = build_engine(config)
         engine.run()
         tttr = engine.to_tttr(dt=dt, n_channels=2, laser_period=laser_period)
         sim_path = self._workdir / f"{name}.spc"
