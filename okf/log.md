@@ -193,6 +193,31 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **2D-FLC no longer walks its own Markov chain.**
+  ([flc_2d](../chisurf/plugins/fcs/flc_2d/simulate.py)) The plugin's photon-stream
+  simulator had its own Gillespie loop, its own Poisson emission and its own
+  inverse-CDF IRF sampling — and its own **row-convention** rate matrix, where the
+  rest of ChiSurf is `K[target, source]`, compensated by a transpose adapter
+  elsewhere. It now expresses the measurement for the shared engine instead: one
+  **immobile** molecule (a 2D-FLC measurement has no focus to cross), each
+  conformational state a species with its own brightness and IRF-convolved decay,
+  the states connected by `k_nrad`, and the molecule placed as a discrete emitter
+  rather than drawn from a population.
+
+  Two traps, both of which move a recovered lifetime rather than raise anything:
+
+  - the engine draws a micro time from a pattern of **finite length**, so a
+    pattern as long as the output window truncates the decay — a declared 3.00 ns
+    came back as 2.80, which is the truncation and not the dye. This simulator has
+    always drawn an unbounded exponential and *clipped* it into the last channel,
+    a different estimator, so the pattern is built 64× longer than the window;
+  - the engine wraps a delay modulo the laser period, right for a pulsed
+    measurement and wrong for an axis this plugin's analysis never unwraps.
+
+  Suite goes from 8 failed / 16 passed at the pre-session commit to 3 failed /
+  21 passed; the three left are the pre-existing numba-threading failures in
+  `test_widgets`.
+
 * **Three test fixtures that were a copy or a coin flip.**
   `test_gopich_szabo` carried its own `simulate_two_state` — the same Gillespie
   loop, the same variable names and the same return type as the one in the

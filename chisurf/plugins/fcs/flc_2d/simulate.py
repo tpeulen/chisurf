@@ -7,11 +7,22 @@ macro-time ticks, micro-time (TCSPC) ticks and the (ground-truth) state per phot
 closes the loop for validation: simulate, then recover the lifetimes and rate matrix.
 
 The MATLAB reference advances a fixed ``Tstep`` and tests for a transition/emission every
-step. This implementation is the statistically-equivalent **event-driven** form: state
-sojourns are drawn from the continuous-time Markov chain (Gillespie) and photons within a
-sojourn are a Poisson process, which is exact and far faster (``O(n_photons)`` rather than
-``O(total_time / Tstep)``). Micro-times are sampled from the state lifetime plus an IRF
-offset drawn from the (area-normalized) instrument response.
+step. The physics is not implemented here: it is expressed for the photon simulator in the
+TTTR library, which walks the continuous-time Markov chain itself and draws each photon's
+micro time from that state's decay.
+
+The expression is the whole content of this module. A 2D-FLC measurement is one
+**immobile** molecule — no diffusion, no focus to cross — so each conformational state
+becomes a species with its own brightness and its own IRF-convolved decay, the states are
+connected by ``k_nrad`` (spontaneous, not excitation-scaled), and the molecule is placed as
+a discrete emitter rather than drawn from a population. See
+``okf/references/simengine-species-encoding.md``: the recurring mistake is to look for a
+parameter named after the phenomenon rather than to encode it.
+
+One conversion is load-bearing. This module's rate matrix is ``K[from, to]`` — the
+row convention the MATLAB reference used and the transpose of the one the rest of ChiSurf
+uses — and the engine wants row-major source-to-target per macro-time unit, so the values
+pass through unchanged in *orientation* while being rescaled from 1/s.
 """
 
 from __future__ import annotations
@@ -73,73 +84,90 @@ def simulate_photon_stream(
     max_photons
         Safety cap on the number of photons generated (stops early if exceeded).
     """
-    rng = np.random.default_rng(seed)
+    from chisurf.core.fluorescence.simulation import build_engine, seeds
+
     K = np.asarray(rate_matrix, dtype=float)
     n_states = K.shape[0]
     tau = np.asarray(lifetimes_ns, dtype=float)
     inten = np.asarray(intensities_cps, dtype=float)
-
-    exit_rates = np.array([K[i].sum() - K[i, i] for i in range(n_states)])
     p_eq = equilibrium_populations(K)
 
-    # IRF inverse-CDF sampling table (offset in ns).
+    # The engine's clock. One macro-time unit is the output tick, so a rate in
+    # 1/s becomes a rate per tick, and a brightness in counts/s likewise.
+    dt_s = float(macro_time_resolution_s)
+
+    # k_nrad is row-major source -> target, which is this module's own
+    # orientation; only the diagonal is dropped and the scale converted.
+    exchange = K.copy()
+    np.fill_diagonal(exchange, 0.0)
+    exchange = exchange * dt_s
+
+    # The engine draws a micro time from a pattern of finite length, so a pattern
+    # exactly as long as the output window *truncates* the decay and its mean
+    # comes out short (3.00 ns reads as 2.80). This simulator has always drawn an
+    # unbounded exponential and clipped it into the last channel, which is a
+    # different estimator, so the pattern is built far longer than the window and
+    # the clip below does the rest.
+    n_pattern = int(n_microtime_channels) * 64
+    decay = {"dt": float(tstep_ns), "n_bins": n_pattern}
     if irf is not None and irf_time_ns is not None:
-        w = np.clip(np.asarray(irf, dtype=float), 0.0, None)
-        w = w / w.sum() if w.sum() > 0 else np.ones_like(w) / w.size
-        irf_cdf = np.cumsum(w)
-        irf_t = np.asarray(irf_time_ns, dtype=float)
-    else:
-        irf_cdf = None
-        irf_t = None
+        # The engine convolves with a pattern on its own micro-time grid, so the
+        # response is resampled onto that grid rather than being sampled from.
+        weights = np.clip(np.asarray(irf, dtype=float), 0.0, None)
+        axis = np.asarray(irf_time_ns, dtype=float)
+        grid = np.arange(int(n_microtime_channels)) * float(tstep_ns)
+        resampled = np.interp(grid, axis, weights, left=0.0, right=0.0)
+        total = float(resampled.sum())
+        if total > 0:
+            decay["irf"] = [float(v) for v in resampled / total]
 
-    macro_chunks: list[np.ndarray] = []
-    micro_chunks: list[np.ndarray] = []
-    state_chunks: list[np.ndarray] = []
+    config = {
+        "settings": {
+            "dt": 1.0,                       # one macro-time unit per output tick
+            "n_ph_max": int(max_photons),
+            "max_windows": max(1, int(round(float(total_time_s) / dt_s))),
+            "n_channels": 1,
+            "n_microtime_channels": n_pattern,
+            "microtime_resolution": float(tstep_ns),
+            # Matches the pattern, so nothing wraps either; the window is the
+            # clip below, as it always was here.
+            "laser_period": float(n_pattern) * float(tstep_ns),
+            **seeds(int(seed)),
+        },
+        "box": {"xy": 1.0, "z": 1.0},
+        "species": [
+            {"D": 0.0, "q": [float(inten[i]) * dt_s],
+             "decay": {**decay, "lifetimes": [float(tau[i])]}}
+            for i in range(n_states)
+        ],
+        "k_rad": [0.0] * (n_states * n_states),
+        "k_nrad": [float(v) for v in exchange.reshape(-1)],
+        "background": [0.0],
+        # One immobile molecule, started in a state drawn from equilibrium. A
+        # population would let molecules enter and leave, which is diffusion.
+        "emitters": [{"x": 0.0, "y": 0.0, "z": 0.0,
+                      "species": int(np.random.default_rng(seed).choice(n_states, p=p_eq)),
+                      "mobile": False}],
+        "excitation": {"type": "uniform", "value": 1.0},
+    }
 
-    # initial state from equilibrium
-    state = int(rng.choice(n_states, p=p_eq))
-    t = 0.0
-    n_total = 0
-    while t < total_time_s and n_total < max_photons:
-        rate = exit_rates[state]
-        dwell = rng.exponential(1.0 / rate) if rate > 0 else (total_time_s - t)
-        dwell = min(dwell, total_time_s - t)
+    engine = build_engine(config)
+    engine.run()
 
-        # photons in this sojourn: Poisson process at the state brightness
-        n_ph = rng.poisson(inten[state] * dwell)
-        if n_ph:
-            arrivals = t + np.sort(rng.uniform(0.0, dwell, n_ph))
-            macro = np.rint(arrivals / macro_time_resolution_s).astype(np.int64)
-            # lifetime sample + IRF offset -> micro tick
-            life_ns = rng.exponential(tau[state], n_ph)
-            if irf_cdf is not None:
-                u = rng.uniform(0.0, 1.0, n_ph)
-                offset = irf_t[np.searchsorted(irf_cdf, u, side="left").clip(0, irf_t.size - 1)]
-            else:
-                offset = 0.0
-            micro = np.rint((life_ns + offset) / tstep_ns).astype(np.int64)
-            np.clip(micro, 0, n_microtime_channels - 1, out=micro)
-            macro_chunks.append(macro)
-            micro_chunks.append(micro)
-            state_chunks.append(np.full(n_ph, state, dtype=np.int16))
-            n_total += n_ph
+    window = np.asarray(engine.macro_window(), dtype=np.float64)
+    arrival = np.asarray(engine.arrival_time(), dtype=np.float64)
+    macro = np.rint(window + arrival).astype(np.int64)
+    micro = np.asarray(engine.micro_time(), dtype=np.int64)
+    states = np.asarray(engine.emitting_species(), dtype=np.int16)
 
-        t += dwell
-        if rate > 0:
-            probs = np.array([K[state, m] if m != state else 0.0 for m in range(n_states)])
-            probs = probs / probs.sum()
-            state = int(rng.choice(n_states, p=probs))
+    # Background photons carry a species index past the real ones; there is no
+    # background here, but the guard keeps a stray one out of the ground truth.
+    real = states < n_states
+    macro, micro, states = macro[real], micro[real], states[real]
 
-    if not macro_chunks:
-        macro = np.zeros(0, dtype=np.int64)
-        micro = np.zeros(0, dtype=np.int64)
-        states = np.zeros(0, dtype=np.int16)
-    else:
-        macro = np.concatenate(macro_chunks)
-        micro = np.concatenate(micro_chunks)
-        states = np.concatenate(state_chunks)
-        order = np.argsort(macro, kind="stable")  # macro times must be ascending
-        macro, micro, states = macro[order], micro[order], states[order]
+    order = np.argsort(macro, kind="stable")  # macro times must be ascending
+    macro, micro, states = macro[order], micro[order], states[order]
+    np.clip(micro, 0, int(n_microtime_channels) - 1, out=micro)
 
     return SimulatedStream(
         macro_times=macro,
