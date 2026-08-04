@@ -30,8 +30,8 @@ different algorithm, and for one where the data was blamed before the rule was.
 | | PyMOL | ChiMOL |
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
-| Commands | 303 | 81 |
-| Settings | 769 | 53 registered |
+| Commands | 303 | 119 |
+| Settings | 790 | 53 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -627,6 +627,39 @@ command reached a second object:
 * `hide everything` with no selection only reached the *active* object, because
   nine of the ten representation setters write the active object's state and
   only `spheres` had a spanning `_all` variant.
+
+## The presets wore PyMOL's labels and made a different picture
+
+A preset is the one-click path from "loaded" to "looks like a figure", and the
+busiest entry in PyMOL's object menu. Ours were **four hand-rolled lines** —
+`hide everything, {sele}; show cartoon, {sele}` — under the labels *simple*,
+*ball and stick*, *ligand sites* and *technical*. Same words, different picture,
+which is worse than not having them: the label is a promise about what you will
+get.
+
+All fifteen are transcribed from `modules/pymol/preset.py` now
+(`cmd/presets.py`), with PyMOL's names, reachable as a `preset` command and from
+the menu — whose shape follows `menu.presets`, including the *ligand sites*
+submenu of surface variants. What chimol cannot do, it **names**: `technical`
+and `ligands` report that they drew no polar contacts (that needs a
+hydrogen-bond finder, not `distance`, which measures between two picked atoms);
+`pretty` reports the three cartoon settings chimol's cartoon does not implement;
+the surface variants that differ only by `surface_type`/transparency are shown
+disabled with the reason. A preset that quietly does less than PyMOL's is the
+failure the module exists to avoid.
+
+Two divergences apply throughout and are stated once rather than left to be
+discovered: PyMOL scopes a setting to a selection and chimol's settings are one
+global config, and PyMOL's `ribbon` is thinner than its cartoon while chimol
+draws one cartoon for both.
+
+**The chain colour cycle had to come first.** `util.cbc` is what `simple`,
+`technical`, `ligands` and `interface` colour with, and it walks PyMOL's
+40-entry `_color_cycle` in `get_chains` order. chimol had **eight invented
+colours assigned in first-seen order** — so every multi-chain figure came out
+differently from PyMOL, and differently again depending on how the file was
+written. Transcribed as `colors.CHAIN_COLOR_CYCLE`; chain A is the carbon green,
+B cyan, C light magenta.
 
 ## Two coordinate arrays, and they had drifted apart
 

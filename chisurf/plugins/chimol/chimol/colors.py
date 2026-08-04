@@ -297,6 +297,30 @@ def get_pymol_color(name: str) -> tuple[float, float, float, float]:
     return (rgb[0], rgb[1], rgb[2], 1.0)
 
 
+#: PyMOL's chain colour cycle, transcribed from ``util._color_cycle``
+#: (``modules/pymol/util.py``) in its order. This is what ``util.cbc`` and every
+#: "color by chain" path in PyMOL walks, so an eight-colour palette of our own
+#: -- which is what stood here -- gave a *different picture* for the commonest
+#: colouring in structural biology. The order is the point: chain A is the
+#: carbon green, B cyan, C light magenta, and a reader who knows PyMOL reads
+#: the colours as chain identities.
+CHAIN_COLOR_CYCLE: tuple[str, ...] = (
+    "carbon", "cyan", "lightmagenta", "yellow", "salmon", "hydrogen",
+    "slate", "orange", "lime", "deepteal", "hotpink", "yelloworange",
+    "violetpurple", "grey70", "marine", "olive", "smudge", "teal",
+    "dirtyviolet", "wheat", "deepsalmon", "lightpink", "aquamarine",
+    "paleyellow", "limegreen", "skyblue", "warmpink", "limon", "violet",
+    "bluewhite", "greencyan", "sand", "forest", "lightteal", "darksalmon",
+    "splitpea", "raspberry", "grey50", "deepblue", "brown",
+)
+
+
+def chain_cycle_color(index: int) -> tuple[float, float, float, float]:
+    """RGBA of the ``index``-th chain in PyMOL's cycle, wrapping as PyMOL does."""
+    name = CHAIN_COLOR_CYCLE[int(index) % len(CHAIN_COLOR_CYCLE)]
+    return get_pymol_color(name)
+
+
 def _color_for_resname(res_name: str) -> tuple[float, float, float, float]:
     """Return an RGBA color for a residue name.
 
@@ -474,37 +498,30 @@ def _build_element_color_array(
 def _build_chain_color_array(
     chains: Optional[np.ndarray], n_points: int
 ) -> np.ndarray:
-    """Color atoms by chain ID."""
+    """Color atoms by chain ID, in PyMOL's cycle and PyMOL's order.
+
+    Two things have to match or the picture differs from the one a reader
+    expects: the **palette** (:data:`CHAIN_COLOR_CYCLE`, transcribed from
+    ``util._color_cycle``) and the **assignment order**. PyMOL's ``util.cbc``
+    walks ``get_chains``, which is *sorted*, so chain A is always the first
+    colour whatever order the atoms happen to be in. Assigning in first-seen
+    order instead -- which is what stood here, along with an invented
+    eight-colour palette -- made the same structure come out differently
+    depending on how the file was written.
+    """
     if chains is None or n_points <= 0:
         base = np.array([0.8, 0.8, 1.0, 1.0], dtype=float)
         return np.tile(base, (max(n_points, 1), 1))
 
-    # A pleasant multi-color palette
-    palette = [
-        [0.3, 0.3, 0.9, 1.0], # Blue
-        [0.9, 0.3, 0.3, 1.0], # Red
-        [0.3, 0.8, 0.3, 1.0], # Green
-        [0.9, 0.9, 0.3, 1.0], # Yellow
-        [0.9, 0.3, 0.9, 1.0], # Magenta
-        [0.3, 0.9, 0.9, 1.0], # Cyan
-        [0.9, 0.6, 0.3, 1.0], # Orange
-        [0.6, 0.3, 0.9, 1.0], # Purple
-    ]
-
-    chain_map = {}
-    next_col = 0
-    
-    colors = np.zeros((n_points, 4), dtype=float)
     m = min(len(chains), n_points)
-    
-    for i in range(m):
-        chid = str(chains[i]).strip()
-        if chid not in chain_map:
-            chain_map[chid] = palette[next_col % len(palette)]
-            next_col += 1
-        colors[i, :] = chain_map[chid]
+    ids = [str(chains[i]).strip() for i in range(m)]
+    order = {chid: i for i, chid in enumerate(sorted(set(ids)))}
 
-    if m < n_points:
+    colors = np.zeros((n_points, 4), dtype=float)
+    for i, chid in enumerate(ids):
+        colors[i, :] = chain_cycle_color(order[chid])
+
+    if m < n_points and m > 0:
         colors[m:, :] = colors[m - 1, :]
     return colors
 

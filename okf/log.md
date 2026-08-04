@@ -2,6 +2,39 @@
 
 ## 2026-08-04
 
+* **The presets wore PyMOL's labels and made a different picture.**
+  ([chimol parity](plugins/pymol-parity.md),
+  [molecular viewer guide](../docs/guides/44_molecular_viewer.md))
+  A preset is the one-click path from "loaded" to "looks like a figure" and the
+  busiest entry in PyMOL's object menu. chimol's were **four hand-rolled lines**
+  — `hide everything, {sele}; show cartoon, {sele}` — under the labels *simple*,
+  *ball and stick*, *ligand sites* and *technical*. Same words, different
+  picture, which is worse than not having them, because the label is a promise.
+  All fifteen are transcribed from `modules/pymol/preset.py` now
+  (`cmd/presets.py`), reachable as a `preset` command and from a menu whose
+  shape follows `menu.presets`, including the *ligand sites* submenu. What
+  chimol cannot do it **names**: `technical` and `ligands` report drawing no
+  polar contacts (that needs a hydrogen-bond finder, not `distance`, which
+  measures between two picked atoms), `pretty` reports the three cartoon
+  settings chimol's cartoon does not implement, and the surface variants that
+  differ only by `surface_type`/transparency are shown disabled with the reason.
+  Two divergences are stated once rather than left to be discovered: PyMOL
+  scopes a setting to a selection while chimol's are one global config, and
+  PyMOL's `ribbon` is thinner than its cartoon while chimol draws one for both.
+  **The chain colour cycle had to come first**, since `util.cbc` is what four of
+  the presets colour with: chimol had **eight invented colours assigned in
+  first-seen order** against PyMOL's 40-entry `_color_cycle` walked in
+  `get_chains` (sorted) order, so every multi-chain figure differed from PyMOL —
+  and differed again depending on how the file was written. Transcribed as
+  `colors.CHAIN_COLOR_CYCLE`; chain A is the carbon green. Each preset was run
+  and **photographed** on 148L, which is the only thing that judges a preset:
+  `simple` green cartoon with a cyan ligand, `pretty` a sequence rainbow,
+  `technical` a chain rainbow under element-coloured lines, `classified` cartoon
+  + sticks + a zinc sphere. `test_presets.py` (26). Also re-measured against
+  `SettingInfo.h`: **790** settings, not the 769 recorded, of which chimol
+  registers 53 — and of the 737 missing, **228** are referenced by PyMOL's own
+  Python layer, which is the worklist that number should have been all along.
+
 * **A selection was one object's, and PyMOL's is every object's.**
   ([chimol parity](plugins/pymol-parity.md),
   [molecular viewer guide](../docs/guides/44_molecular_viewer.md))

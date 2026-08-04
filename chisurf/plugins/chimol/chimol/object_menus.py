@@ -86,6 +86,10 @@ def _pymol_color(escape: str) -> str:
 DESTRUCTIVE = _pymol_color("933")
 
 _NO_LABELS = "Chimol has no label representation yet."
+_NO_SURFACE_TYPE = (
+    "Chimol draws one solid surface: it has no surface_type (dot/mesh) and no "
+    "per-object transparency, so these variants would all look the same."
+)
 _NO_EDIT = "Chimol has no structure editing yet."
 _NO_MATRIX = "Chimol has no per-object matrix dragging yet."
 
@@ -106,14 +110,44 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
     MenuEntry("drag coordinates", None, _NO_MATRIX),
     MenuEntry("clean", None, _NO_EDIT),
     SEP,
+    # PyMOL's own preset menu (`menu.presets`), entry for entry. These used to
+    # be four hand-rolled `hide everything; show cartoon` lines wearing PyMOL's
+    # labels: same words, different picture. Each now runs the transcribed
+    # recipe in `cmd/presets.py`, which reports whatever step chimol cannot do.
     MenuEntry("preset", None, "", children=(
-        MenuEntry("simple", "hide everything, {sele}; show cartoon, {sele}"),
-        MenuEntry("ball and stick", "hide everything, {sele}; "
-                                    "show sticks, {sele}; show spheres, {sele}"),
-        MenuEntry("ligand sites", "hide everything, {sele}; "
-                                  "show cartoon, {sele}; show spheres, hetatm"),
-        MenuEntry("technical", "hide everything, {sele}; show cartoon, {sele}; "
-                               "show sticks, {sele}; show spheres, hetatm"),
+        MenuEntry("classified", "preset classified, {sele}"),
+        SEP,
+        MenuEntry("simple", "preset simple, {sele}"),
+        MenuEntry("simple (no solvent)", "preset simple_no_solv, {sele}"),
+        MenuEntry("ball and stick", "preset ball_and_stick, {sele}"),
+        MenuEntry("b factor putty", "preset b_factor_putty, {sele}"),
+        MenuEntry("technical", "preset technical, {sele}"),
+        MenuEntry("ligands", "preset ligands, {sele}"),
+        # PyMOL's "ligand sites" is itself a submenu (`menu.preset_ligand_sites`)
+        # of six surface variants. The three that differ only by `surface_type`
+        # / `surface_quality` / transparency are the ones chimol cannot tell
+        # apart yet, so they are shown disabled with the reason rather than
+        # dropped -- the menu keeps PyMOL's shape and the gap stays visible.
+        MenuEntry("ligand sites", None, "", children=(
+            MenuEntry("cartoon", "preset ligand_cartoon, {sele}"),
+            SEP,
+            MenuEntry("solid surface", "preset ligand_sites, {sele}"),
+            MenuEntry("solid (better)", None, _NO_SURFACE_TYPE),
+            SEP,
+            MenuEntry("transparent surface", None, _NO_SURFACE_TYPE),
+            MenuEntry("transparent (better)", None, _NO_SURFACE_TYPE),
+            SEP,
+            MenuEntry("dot surface", None, _NO_SURFACE_TYPE),
+            MenuEntry("mesh surface", None, _NO_SURFACE_TYPE),
+        )),
+        MenuEntry("pretty", "preset pretty, {sele}"),
+        MenuEntry("pretty (with solvent)", "preset pretty_solv, {sele}"),
+        MenuEntry("publication", "preset publication, {sele}"),
+        MenuEntry("publication (with solvent)", "preset pub_solv, {sele}"),
+        SEP,
+        MenuEntry("protein interface", "preset interface, {sele}"),
+        SEP,
+        MenuEntry("default", "preset default, {sele}"),
     )),
     MenuEntry("find", None, "Chimol has no polar-contact/clash finder yet."),
     MenuEntry("align", None, "", children=(

@@ -950,6 +950,45 @@ holds a single coordinate set per object, so they have nothing to work on and ar
 not implemented.
 :::
 
+## Presets — one command to a figure
+
+A preset is a short recipe of ordinary commands that takes a freshly loaded
+structure to something worth looking at. They are PyMOL's, transcribed from
+`preset.py` with PyMOL's names, and they are in the object panel's **A** menu
+under *preset* as well as on the command line:
+
+```text
+preset                       # list them
+preset pretty                # cartoon ramped along the sequence, ligands as sticks
+preset publication           # pretty, with the loops smoothed
+preset technical, 148l       # chain rainbow, lines everywhere, ligands as sticks
+preset ball_and_stick
+preset b_factor_putty        # tube thickness and colour from the b-factor
+preset classified            # cartoon / sticks / spheres by atom class
+preset interface             # chains coloured, interface residues as sticks
+preset default               # back to lines and nonbonded, coloured by element
+```
+
+`simple`, `simple_no_solv`, `ligands`, `ligand_sites`, `ligand_cartoon`,
+`pretty_solv` and `pub_solv` complete PyMOL's set.
+
+:::{note}
+Where chimol cannot do one step of a recipe it does the rest and **says which
+step it skipped** — `preset technical` reports that it drew no polar contacts,
+because that needs a hydrogen-bond finder chimol has not got. A preset never
+quietly produces less than it claims.
+
+Two differences apply throughout: PyMOL scopes a setting to a selection
+(`set stick_radius, 0.14, sele`) while chimol's settings are one global display
+config, so a preset that changes a setting changes it everywhere and says so;
+and PyMOL's `ribbon` is a thinner representation than its cartoon, while chimol
+draws one cartoon for both.
+:::
+
+Chains are coloured from PyMOL's own 40-colour cycle, in PyMOL's order — chain A
+is the carbon green, B cyan, C light magenta — so a figure reads the same way in
+both programs.
+
 ## Colouring by a computed quantity
 
 `spectrum` ramps any per-atom property across a palette. Combined with `get_area`
@@ -1133,6 +1172,7 @@ OpenGL viewport does need a display, so `png` will not work headlessly while
 | --- | --- |
 | Selection grammar | PyMOL's keyword table, 85 keywords with abbreviations |
 | Selection scope | Every loaded object, as PyMOL's; groups are ordinary names |
+| Presets | All 15 of PyMOL's, transcribed; skipped steps are reported |
 | Camera, `get_view`/`set_view` | Matches PyMOL's 18-float tuple exactly |
 | Object menus (A/S/H/L/C) | 1:1 with PyMOL's |
 | `get_area` | Follows `dot_solvent` / `dot_density` / `solvent_radius` |
