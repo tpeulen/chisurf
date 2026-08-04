@@ -15,6 +15,7 @@
 * [Plotting (chiplot)](chiplot.md) - The single renderer-neutral 2-D plotting API every call site draws through, its backend contract, and the guard that keeps the rendering library behind it.
 * [Tables (chitable)](gui-tables.md) - The shared model/view table family: sources, vectorised filtering, value colouring, column hiding and export.
 * [Toolbar action vocabulary](gui-action-vocabulary.md) - One icon, colour, tooltip and position per semantic action, including the run/restart/pause/stop transport controls.
+* [Help buttons and guided tours](gui-help-and-guides.md) - The `?` and **Guide** pair every modern plugin carries, the one mixin that attaches them to any tool, and the shrinking allow-list that enforces it.
 * [Internationalisation](i18n.md) - The Qt-free translation seam, QTranslator bootstrap, string-extraction kit, and view.json/manifest/.ui localization.
 * [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.
 * [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the recording QtConsole.

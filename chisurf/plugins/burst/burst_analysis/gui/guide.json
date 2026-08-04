@@ -1,0 +1,83 @@
+{
+  "_comment": "Guided tour for the integrated burst workflow. The steps are the numbered panels in the left navigation list, so they target 'panel' -- and they WAIT for the user to select the row rather than selecting it for them. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this window is",
+      "text": "A confocal measurement is a long timestamp stream that is mostly background, with occasional bright <b>bursts</b> — one molecule crossing the focus. Everything you want from it is a number computed <i>per burst</i>.<br/><br/>The left list is that pipeline, in the order it has to happen. Eight steps, about two minutes. You press the rows; the tour only points at them.",
+      "target": {}
+    },
+    {
+      "title": "1 — the raw files, once",
+      "text": "Every later step reads what you select here and <b>nothing re-opens anything else</b>. That is the point of putting it first: the pipeline has one source of data, so a result can always be traced back to the file it came from.",
+      "target": {
+        "panel": "Data Selection"
+      },
+      "await": {
+        "hint": "Select <b>1. Data Selection</b> in the list on the left."
+      }
+    },
+    {
+      "title": "2 — the step that decides what a burst is",
+      "text": "The search slides a window of <i>m</i> photons along the stream and opens a burst where the count rate rises a factor above the <b>local</b> background. Local is what matters: tied to the background estimated nearby, the threshold survives laser power drifting over a long acquisition.<br/><br/>Search <b>permissively</b> and cut on size afterwards. A size cut applied inside the search biases which molecules you ever see.",
+      "target": {
+        "panel": "Burst Selection"
+      },
+      "await": {
+        "hint": "Select <b>2. Burst Selection</b>."
+      }
+    },
+    {
+      "title": "3 — optional, and it must come before the measurements",
+      "text": "A molecule that leaves the focus and comes straight back was one molecule, but the search saw two bursts. Fusion merges them.<br/><br/>It is the only later step that changes <b>what a burst is</b>, which is why it sits ahead of everything that measures one: a feature computed on the un-fused bursts has one row per un-fused burst and cannot be carried across. Walking past this step only previews it — nothing is fused until you press its own Fuse button.",
+      "target": {
+        "panel": "Burst Fusion"
+      }
+    },
+    {
+      "title": "4–6 — one number per burst",
+      "text": "BVA asks whether a burst's FRET efficiency was <i>steady</i> while it crossed; 2CDE asks the same question from the photon arrival times; MLE fits one fluorescence lifetime per burst.<br/><br/>All three answer <b>on average, over the whole crossing</b>. Hold that thought for two steps.",
+      "target": {
+        "panel": "Burst BVA"
+      },
+      "await": {
+        "hint": "Select <b>4. Burst BVA</b>."
+      }
+    },
+    {
+      "title": "7 — cutting the burst open",
+      "text": "H2MM assigns <b>every photon</b> a state, so a burst is no longer one measurement but a sequence of them. This is where a molecule that switched conformation mid-crossing stops being an averaged blur.",
+      "target": {
+        "panel": "Burst segmentation"
+      }
+    },
+    {
+      "title": "8 — and the same fit, one level down",
+      "text": "The MLE from step 6, run once per burst <i>and state</i>, written as <code>Tau S0</code>, <code>Tau S1</code> … beside the burst-level lifetime.<br/><br/>The comparison is the payoff: a burst that visited two states has <b>one blurred lifetime at step 6 and two sharp ones here</b>. If they agree, the burst was in one state throughout.",
+      "target": {
+        "panel": "Burst segment MLE"
+      }
+    },
+    {
+      "title": "The background is not a detail",
+      "text": "Every corrected quantity is a count <i>minus a background</i>. Get it wrong and <i>E</i> moves for the dim bursts while the bright ones stay put — which looks exactly like a real sub-population, and is the most common way a burst histogram lies.<br/><br/>Estimate it from the measurement itself, not from a blank.",
+      "target": {
+        "panel": "Background"
+      },
+      "await": {
+        "hint": "Select <b>Background</b>, below the separator."
+      }
+    },
+    {
+      "title": "Until this is done, E is an instrument reading",
+      "text": "α, β, γ and δ remove the biases the optics and the dyes put into the raw counts. Before they are set, an efficiency is a number about your microscope; after, it is a number about your molecule and comparable with anyone else's.<br/><br/>The check that catches most errors: the <b>donor-only population must land at E ≈ 0</b>. It is the one answer you know in advance.",
+      "target": {
+        "panel": "Accurate FRET"
+      }
+    },
+    {
+      "title": "Four checks before you believe a histogram",
+      "text": "1. <b>Does the burst count survive a factor of two</b> on the threshold? A real population does; an artefact does not.<br/>2. <b>Is donor-only at E ≈ 0</b> after correction?<br/>3. <b>Does S separate the species?</b> Singly-labelled molecules must leave before anything is read as a distance.<br/>4. <b>Do dim and bright bursts agree?</b> If E drifts with burst size, suspect the background before the biophysics.<br/><br/>The <b>?</b> button beside Guide has the long version and the reading list.",
+      "target": {}
+    }
+  ]
+}

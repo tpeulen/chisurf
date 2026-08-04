@@ -34,7 +34,6 @@ from qtpy.QtWidgets import (
     QMainWindow,
     QSizePolicy,
     QSpinBox,
-    QTextEdit,
     QToolBar,
     QToolButton,
     QVBoxLayout,
@@ -51,6 +50,7 @@ from chisurf.gui.widgets.wizard import DetectorWizardPage
 from chisurf.core import analysis_cache
 from chisurf.core.fio.fluorescence.burst_manifest import source_inputs
 from chisurf.gui.widgets.tool_buttons import flag_attention
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 from ..api.models import H2mmSettings, StreamSettings
 from ..backend.services import run_analysis, write_result_tables
@@ -95,50 +95,12 @@ class _FolderLineEdit(QLineEdit):
             self.folderDropped.emit(urls[0].toLocalFile())
 
 
-class HelpDialog(QDialog):
-    """About/help dialog with a CLI reference."""
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("About H2MM")
-        self.resize(620, 520)
-        layout = QVBoxLayout(self)
-        text = QTextEdit(self)
-        text.setReadOnly(True)
-        cli_text = ""
-        try:
-            from click.testing import CliRunner
-
-            from ..cli.main import cli
-
-            cli_text = "<pre>\n" + CliRunner().invoke(cli, ["compute", "--help"]).output + "</pre>"
-        except Exception as exc:  # pragma: no cover
-            cli_text = f"<p>CLI help unavailable: {exc}</p>"
-        text.setHtml(
-            """
-            <h2>Photon-by-photon HMM (H2MM)</h2>
-            <p>H2MM fits a Hidden Markov Model directly to photon arrival times and
-            colours within bursts, resolving sub-burst FRET-state dynamics on the
-            microsecond scale (Pirchi <i>et al.</i>, J. Phys. Chem. B 2016).</p>
-            <h3>Workflow</h3>
-            <ol>
-              <li>Select a folder of <code>.bur</code> burst files.</li>
-              <li>Define donor/acceptor detector channels (and, for µsALEX/PIE
-                  data, an optional acceptor-excitation stream for stoichiometry).</li>
-              <li>Choose the state range and BIC/ICL selection.</li>
-              <li><b>Run</b> to fit models and view the dwell FRET (E histogram or
-                  E–S scatter), transition-density plot, model selection,
-                  dwell-time distributions, per-state fluorescence decays, and an
-                  interactive per-burst Viterbi state-path viewer.</li>
-            </ol>
-            <hr><h3>CLI reference</h3>
-            """
-            + cli_text
-        )
-        layout.addWidget(text, 1)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
+# The tool used to carry its own ``HelpDialog`` — a hard-coded HTML summary plus
+# the CLI ``--help`` output. It is gone: the shared ``?`` modal renders
+# ``gui/help.md`` instead, so the help is prose in a file rather than a string
+# literal in a widget, its links are live, and it sits beside the ``guide.json``
+# that answers the other question. See
+# :mod:`chisurf.gui.widgets.tools.help_guide`.
 
 
 class LikelihoodScanDialog(QDialog):
@@ -328,7 +290,6 @@ class H2mmTool(MessagesMixin, QMainWindow):
             "first."
         ))
         self.btn_dwells_ndx.clicked.connect(self.open_dwells_in_ndx)
-        self.btn_help = action_button("help", tooltip="Show help")
 
         self.toolbar.addWidget(self.btn_folder)
         self.toolbar.addWidget(self.btn_run)
@@ -342,8 +303,16 @@ class H2mmTool(MessagesMixin, QMainWindow):
         _spacer = QWidget()
         _spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.toolbar.addWidget(_spacer)
+        # Adjacent stretches share the slack rather than adding to it, so the
+        # helper must not add a second one and strand the pair mid-bar.
+        self.toolbar.setProperty("_chisurf_right_spacer", True)
         self.toolbar.addSeparator()
-        self.toolbar.addWidget(self.btn_help)
+        # The shared **Guide** / ``?`` pair, replacing a hand-rolled dialog that
+        # carried this tool's help as an HTML literal. This window is a plain
+        # ``QMainWindow``, so the free function attaches them rather than a mixin.
+        attach_help_and_guide(
+            self, self.toolbar, title="Photon-by-photon HMM — help"
+        )
 
     def _build_settings_tab(self) -> QWidget:
         w = QWidget()
@@ -504,6 +473,17 @@ class H2mmTool(MessagesMixin, QMainWindow):
         of.addRow("Nanotime divisors:", self.sb_divisors)
         of.addRow("Decoder:", decoder_row)
         of.addRow("State photons:", state_row)
+        # Object names so the guided tour can point at individual controls: this
+        # panel is hand-built rather than an AutoForm view, so there is no view
+        # spec for a step to name. Prefixed because ``{"name": …}`` matches by
+        # *suffix* — a bare "seed" would also find the decoder's own seed box.
+        for widget, object_name in (
+            (self.sb_restarts, "h2mm_restarts"),
+            (self.sb_seed, "h2mm_seed"),
+            (self.cb_decoder, "h2mm_decoder"),
+            (self.cb_engine, "h2mm_engine"),
+        ):
+            widget.setObjectName(object_name)
         self.cb_state_tttr.setChecked(True)
         self.cb_state_sidecar.setChecked(True)
         self._update_decoder_enabled()
@@ -813,7 +793,6 @@ class H2mmTool(MessagesMixin, QMainWindow):
         self.btn_uncert.clicked.connect(self._run_uncertainty)
         self.btn_llscan.clicked.connect(self._run_llscan)
         self.btn_save.clicked.connect(self._save_plot)
-        self.btn_help.clicked.connect(lambda: HelpDialog(self).exec_())
 
     # ── settings ─────────────────────────────────────────────────────
 

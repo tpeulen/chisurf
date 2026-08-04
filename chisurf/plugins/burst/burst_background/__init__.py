@@ -50,6 +50,27 @@ class BurstBackgroundEstimator(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
+
+        # The shared ``?`` + **Guide** pair, in a hairline strip above the form.
+        # This tool is a plain ``QWidget`` with no toolbar of its own, so the
+        # buttons go through the free-function form of the seam and onto a
+        # ``QToolBar`` added to the layout like any other widget.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        self.help_toolbar = QtWidgets.QToolBar("Help", self)
+        self.help_toolbar.setMovable(False)
+        self.help_toolbar.setFloatable(False)
+        self.help_toolbar.setStyleSheet(
+            "QToolBar { border: none; padding: 0px; spacing: 2px; }"
+        )
+        attach_help_and_guide(
+            self,
+            self.help_toolbar,
+            title="Burst background — help",
+            model=self.model,
+        )
+        layout.addWidget(self.help_toolbar)
+
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
 

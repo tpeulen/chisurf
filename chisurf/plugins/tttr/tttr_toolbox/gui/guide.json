@@ -1,0 +1,58 @@
+{
+  "_comment": "Guided tour for the TTTR toolbox. Panel targets against the left navigation list; steps wait for the user to select the row. The organising idea is the two clocks (macro vs micro time), because nearly every mistake in this window is confusing one for the other. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Two clocks, and nearly every mistake here confuses them",
+      "text": "A TTTR file is one record per photon: which detector, <b>when it arrived</b> on the free-running experiment clock (the <i>macro</i> time, ns to hours), and <b>how long after the laser pulse</b> (the <i>micro</i> time, ps, wrapping every pulse period).<br/><br/>Bursts and correlation curves are built from the first. Lifetimes and decays from the second. Hold that apart and this window is straightforward. Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "Start by looking, not by editing",
+      "text": "Per-detector count rates across many files at once. This is the cheapest check that exists on a dataset, and it catches the things that later masquerade as analysis problems: a detector that died mid-session, a sample that bleached, a file recorded with the shutter shut.<br/><br/>Run it before you touch anything else.",
+      "target": {
+        "panel": "Count Rate"
+      },
+      "await": {
+        "hint": "Select <b>Count Rate Analysis</b> on the left."
+      }
+    },
+    {
+      "title": "Moving alternation from one clock to the other",
+      "text": "ALEX encodes which laser was on in the <b>macro</b> time. PIE pipelines identify the excitation source from the <b>micro</b> time. So ALEX data cannot run through a PIE analysis at all until this conversion is done — and once it is, the same file works with every PIE-based tool in ChiSurf.<br/><br/>It is not a formality; it is a change of which clock carries the information.",
+      "target": {
+        "panel": "ALEX Creator"
+      },
+      "await": {
+        "hint": "Select <b>ALEX Creator</b>."
+      }
+    },
+    {
+      "title": "Detectors do not agree on when zero is",
+      "text": "Detectors and their cables have different delays, so two channels of one measurement can have IRFs offset by hundreds of picoseconds. Nothing warns you: the decay looks fine, and the offset lands <b>directly</b> in any lifetime fitted across channels.<br/><br/>Shift here, then go back and look at the IRF. That is the only thing that confirms the shift went the way you intended.",
+      "target": {
+        "panel": "Micro-time Shifter"
+      }
+    },
+    {
+      "title": "The header is trusted without being checked",
+      "text": "Repetition rate, dead time, resolution — every later conversion reads these and believes them. An acquisition that recorded a wrong repetition rate produces micro times that are wrong by a constant factor, and no analysis downstream will notice.",
+      "target": {
+        "panel": "Header Editor"
+      }
+    },
+    {
+      "title": "Splitting is how you handle a drift",
+      "text": "A long measurement that changed partway is not one measurement. Cutting it into segments and comparing them is honest; averaging across the change is not — and an average hides exactly the thing you would want to see.<br/><br/>The same tool moves between container formats.",
+      "target": {
+        "panel": "Split"
+      }
+    },
+    {
+      "title": "One rule, and one oddity",
+      "text": "<b>The rule:</b> everything here writes new files — keep the originals. A micro-time shift is not invertible once you have forgotten what it was.<br/><br/><b>The oddity:</b> the Audifier plays the photon stream as sound. It is not a joke. Bursts, blinking and afterpulsing have distinct signatures by ear, and some artefacts are genuinely easier to notice that way than in a plot.<br/><br/>The <b>?</b> button has the long version.",
+      "target": {
+        "panel": "Audifier"
+      }
+    }
+  ]
+}

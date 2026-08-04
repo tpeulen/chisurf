@@ -1,0 +1,59 @@
+{
+  "_comment": "Guided tour for the decay-analysis shell. Steps are the numbered panels in the left navigation list ('panel' targets) and wait for the user to select the row. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What a decay is, and what it costs to get wrong",
+      "text": "A TCSPC decay is a histogram of <b>how long each photon waited</b> after its excitation pulse. Fitting it gives fluorescence lifetimes — and lifetimes are what turn FRET into a distance rather than a ratio of intensities.<br/><br/>The left list is the five tools that produce and calibrate them, in the order they depend on each other. Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "The instrument response comes first",
+      "text": "What you measured is <b>not</b> your molecule's decay. It is your molecule's decay convolved with the response of the detector and electronics to an infinitely short flash.<br/><br/>Below about a nanosecond, most of what you are fitting <i>is</i> the IRF. That is why a wrong one is so dangerous: it does not give you a bad fit, it gives you a good fit to the wrong lifetime.",
+      "target": {
+        "panel": "IRF Estimation"
+      },
+      "await": {
+        "hint": "Select <b>1. IRF Estimation</b> on the left."
+      }
+    },
+    {
+      "title": "Let the data say how many lifetimes there are",
+      "text": "A multi-exponential fit needs the number of components declared <i>before</i> you fit, and that choice usually decides the answer. Two exponentials will describe a broad distribution; three will describe it slightly better.<br/><br/>Maximum entropy returns a <b>distribution</b> instead, so the data can say whether it has one peak or three. Use it to decide the model, then fit.",
+      "target": {
+        "panel": "MaxEnt"
+      },
+      "await": {
+        "hint": "Select <b>2. MaxEnt MEM</b>."
+      }
+    },
+    {
+      "title": "The same fit, over many files",
+      "text": "Once the settings are right for one file, this runs them across the rest without re-deciding anything. The value is not only the time saved — it is that every file in a series gets <b>identically</b> treated, which is what makes the differences between them interpretable.",
+      "target": {
+        "panel": "Lazy Lifetime"
+      }
+    },
+    {
+      "title": "Starting from raw photons instead",
+      "text": "If you have a TTTR stream rather than a binned decay, this is the step <i>before</i> everything above: it builds the micro-time histogram the fits consume.<br/><br/>The choice that matters here is the binning. Too coarse and you smooth away the rise the IRF defines; too fine and every channel is noise.",
+      "target": {
+        "panel": "Histogram-Microtime"
+      }
+    },
+    {
+      "title": "Anisotropy needs its detectors calibrated",
+      "text": "An anisotropy is a <b>ratio of two polarization channels</b>, so any difference in their detection efficiency goes straight into it. <i>G</i> is that ratio, measured.<br/><br/>Without it an anisotropy is an instrument reading — and unlike a lifetime, there is nothing in the fit that looks wrong when <i>G</i> is missing.",
+      "target": {
+        "panel": "G-Factor"
+      },
+      "await": {
+        "hint": "Select <b>5. VV/VH G-Factor</b>."
+      }
+    },
+    {
+      "title": "Four checks before you believe a lifetime",
+      "text": "1. <b>Look at the weighted residuals, not χ².</b> A χ² near 1 with structure in the residuals means the model is wrong in a way the single number hid.<br/>2. <b>Refit from different starting values.</b> Multi-exponential minima are shallow and correlated; a component that wanders is not determined.<br/>3. <b>Does MEM agree?</b> It got there without being told how many components to expect.<br/>4. <b>Watch the scatter.</b> Excitation light arrives with the IRF and is indistinguishable from a very short lifetime.<br/><br/>The <b>?</b> button has the long version.",
+      "target": {}
+    }
+  ]
+}

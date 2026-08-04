@@ -1,0 +1,65 @@
+{
+  "_comment": "Guided tour for the H2MM tool. Hand-built Qt around a DockArea, so steps target the shared action buttons by objectName suffix ({'name': 'run'} finds toolAction_run), the tool-specific buttons by their tooltip text ({'action': 'LL scan'}), and the result plots by dock tab title. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "From \"it moved\" to how fast, and into what",
+      "text": "BVA and 2CDE say a burst changed. H2MM says into <b>how many states</b>, at <b>what efficiencies</b>, and with <b>what rate constants</b> — fitted to the raw photon record.<br/><br/>There is no bin anywhere. The <i>inter-photon time</i> is the timing observable: across a gap of Δt ticks the hidden chain takes Δt unobserved steps, so the propagator is the matrix power <b>A<sup>Δt</sup></b>. Every photon contributes its colour and its gap; nothing is discarded and no arbitrary timescale is imposed.<br/><br/>Eight steps.",
+      "target": {}
+    },
+    {
+      "title": "The burst folder",
+      "text": "H2MM fits the photons <i>inside</i> already-defined bursts, so it reads a finished burst-analysis folder rather than raw files. Dropping the folder on this window does the same thing.",
+      "target": {
+        "name": "folder"
+      },
+      "await": {
+        "hint": "Press the <b>folder</b> button and choose the burst-analysis folder."
+      }
+    },
+    {
+      "title": "Which detector is which — and the third stream",
+      "text": "Donor and acceptor come from the detector setup here. With µsALEX or PIE data, define the <b>acceptor-excitation</b> stream as well: it gives every state a stoichiometry, which is what separates a real conformational state from acceptor photophysics on the E–S map.<br/><br/>Get the assignment backwards and the fit still converges, still reports states, and still looks plausible.",
+      "target": {
+        "tab": "Channel Definitions"
+      }
+    },
+    {
+      "title": "How many states — and why the answer gets conservative fast",
+      "text": "Raw likelihood always rises with K, so the state count is decided by a <b>penalised</b> criterion. BIC penalises parameters; <b>ICL</b> also penalises states that overlap, so it rewards models whose states are cleanly <i>separable</i>. Where the two disagree, ICL is the safer default.<br/><br/>The parameter count is quadratic in K. At 10⁵ photons, going from 3 to 4 states adds ≈ 92 to the BIC penalty — the 4-state model must improve lnL by more than ~46 just to break even.<br/><br/>So: <b>a BIC curve that keeps falling is more often unmodelled heterogeneity</b> — photophysics, bleaching, aggregates — <b>than real extra conformations.</b>",
+      "target": {
+        "tab": "H2MM Settings"
+      }
+    },
+    {
+      "title": "Restarts and the seed are the reproducibility check",
+      "text": "Baum-Welch increases the likelihood monotonically — to a <b>local</b> optimum. The likelihood is multimodal, so the answer depends on where the fit started.<br/><br/>That is what the restarts are for, and why the <b>seed</b> is exposed: the same seed refits to the same answer, so a result can be reported and reproduced, and a different seed draws an independent set of starting points. Agreement across seeds is the evidence that the optimum is global. It is a check to run, not something to assume.<br/><br/>Expect <b>label permutation</b>: state 1 and state 2 may swap between runs. Match states by E, never by index.",
+      "target": {
+        "name": "h2mm_restarts"
+      }
+    },
+    {
+      "title": "The decoder is a separate choice, and it changes the answer",
+      "text": "Viterbi maximises the probability of a <i>whole sequence</i>. That is right for one trajectory and wrong for an occupancy or a per-state decay, which ask how many photons belong to each state.<br/><br/>If every photon has posterior γ = (0.7, 0.3), Viterbi assigns <b>all</b> of them to state 0 — the 30 % is erased. Well-separated states come out inflated, ambiguous ones can vanish.<br/><br/><b>ffbs</b> draws a whole trajectory from the posterior, so it reproduces the photon distribution <i>and</i> keeps the dwell structure. <b>jitter</b> draws each photon independently: faithful per photon, but it shreds dwells, so ChiSurf takes dwells from a Viterbi path anyway and records that it did.<br/><br/>Ticking <b>write</b> puts the assignment back into the photon stream — a PTU whose routing channels encode (stream, state), plus a sidecar. A per-state decay or FCS then becomes an ordinary channel selection in any tool.",
+      "target": {
+        "name": "h2mm_decoder"
+      }
+    },
+    {
+      "title": "Fit",
+      "text": "Each state count in the range is fitted with the chosen number of restarts, the criterion is evaluated, and the winning model is decoded. A scan with restarts runs for minutes — <b>⏹</b> stops it.<br/><br/><i>Scan patience</i> stops the scan early once the criterion starts rising, which is safe and roughly 1.6× faster; set it to <i>off</i> to fit every state count regardless.",
+      "target": {
+        "name": "run"
+      },
+      "await": {
+        "hint": "Press the <b>run</b> button."
+      }
+    },
+    {
+      "title": "Read the dashboard, then test the model",
+      "text": "<b>Model selection</b> first — if the criterion has not turned, the state count is not settled and nothing else on the dashboard is worth reading.<br/><b>Dwell FRET</b> / <b>Transition density</b>: where the states are and which ones exchange.<br/><b>Dwell times</b>: should be exponential with the state's exit rate — a direct check on the transition matrix. But <b>every dwell is truncated by its burst</b>, which biases the distribution short and the rates high; the first and last dwell of each burst are censored by construction, so drop them with the <i>Is Edge</i> flag in the per-dwell table.<br/><b>Transition rates</b>: the kinetic scheme itself, and the number to quote.<br/><br/>Then <b>±</b> (bootstrap) and <b>📈</b> (likelihood scan) put confidence intervals on each state. A <i>flat</i> profile or a window-wide interval means the data do not determine that state — no amount of refitting will fix it.<br/><br/>One last thing: the per-state E is an <b>apparent</b> proximity ratio. No leakage, no direct excitation, no γ. Correct it before comparing with anything.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "tab": "Model selection"
+      }
+    }
+  ]
+}

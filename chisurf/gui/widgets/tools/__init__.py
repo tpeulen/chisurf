@@ -9,5 +9,12 @@ and MMFDB-connectivity status instead of forking its own.
 from __future__ import annotations
 
 from .chisurf_dock_tool import ChisurfDockTool, PathDropListWidget
+from .help_guide import HelpGuideMixin, attach_help_and_guide, resolve_tool_resource
 
-__all__ = ["ChisurfDockTool", "PathDropListWidget"]
+__all__ = [
+    "ChisurfDockTool",
+    "PathDropListWidget",
+    "HelpGuideMixin",
+    "attach_help_and_guide",
+    "resolve_tool_resource",
+]

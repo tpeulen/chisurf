@@ -1,0 +1,58 @@
+{
+  "_comment": "Guided tour for FRET-2CDE / ALEX-2CDE. The panel is hand-built Qt, not an AutoForm view, so steps target objectNames -- the shared action buttons by suffix ({'name': 'run'} finds toolAction_run) and the settings fields by the twocde_* names set in gui/tool.py. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Did it stay there, or did it move?",
+      "text": "A burst's mean FRET efficiency says <b>where</b> the molecule sat. It does not say whether it <b>stayed</b> there — a molecule that switches state while crossing the focus lands at some intermediate <i>E</i>, and on the histogram that is indistinguishable from a genuinely static intermediate.<br/><br/>2CDE separates the two from the photon arrival times alone: one number per burst, no kinetic model, no binning.<br/><br/>Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "The burst folder, not the raw files",
+      "text": "2CDE reads a finished <b>burst-analysis folder</b> — the bursts are already defined, and this adds a column to them. It re-opens the raw measurements named in that folder's manifest to get the photon times, so both have to be reachable.<br/><br/>You can also drop the folder onto this window.",
+      "target": {
+        "name": "folder"
+      },
+      "await": {
+        "hint": "Press the <b>folder</b> button and choose the burst-analysis folder."
+      }
+    },
+    {
+      "title": "Two different questions, one machinery",
+      "text": "<b>FRET-2CDE</b> asks whether donor and acceptor brightness rise and fall <i>together</i>. In a static burst they do — both track the same molecule crossing the beam — and the score sits near a baseline of ≈ 10 <b>whatever the efficiency is</b>. Switch state mid-burst and the two colours anticorrelate in time; the score climbs into 30–100 for clear millisecond dynamics.<br/><br/><b>ALEX-2CDE</b> runs the same estimator on the two <i>excitation</i> streams and scores brightness <i>heterogeneity</i>: donor-only and acceptor-only species, an acceptor that blinks mid-burst, two molecules coinciding. It needs ALEX or PIE data.<br/><br/>One run computes one of them, not both. With ALEX data, screen with ALEX-2CDE <i>first</i> — several of the things that raise FRET-2CDE are impurities, not conformation.",
+      "target": {
+        "name": "twocde_variant"
+      }
+    },
+    {
+      "title": "τ is the window, and it is the only window",
+      "text": "τ sets the timescale over which brightness is averaged — short enough to resolve a change within a burst, long enough to collect several photons per kernel. 40–100 µs sits between the microsecond photon spacing and the millisecond transit.<br/><br/>It is also the <b>limit of what you can see</b>. Exchange much faster than τ is averaged away inside the kernel; exchange much slower than the ~1 ms transit never happens while you are watching. Both look static.<br/><br/>So a baseline score means \"no dynamics <i>in this window</i>\", never \"no dynamics\". Change τ and run again before concluding anything.",
+      "target": {
+        "name": "twocde_tau"
+      }
+    },
+    {
+      "title": "Laplace or Gaussian, and why you might switch",
+      "text": "<b>Laplace</b> is Tomov's original and what a comparison against the literature must use.<br/><br/><b>Gaussian</b> estimates the local rate more accurately and depends far less on where it is evaluated — the Laplace kernel, sampled <i>at</i> the photon positions, always sits on its own peak and over-estimates the rate.<br/><br/>Below the fields: the donor and acceptor <b>routing channels</b>. Get them backwards and the analysis still completes and still looks plausible.",
+      "target": {
+        "name": "twocde_kernel"
+      }
+    },
+    {
+      "title": "Run it",
+      "text": "The kernel density runs over the whole photon stream and is sliced per burst afterwards — deliberately, because restricting it to the burst would put an artificial cliff at each boundary and inflate the score for short bursts.<br/><br/>It takes minutes on a real folder, off the GUI thread, and <b>⏹</b> stops it. The result is written to a <code>2c4/</code> companion beside the burst tables, one row per burst, so the browser and ndX can gate on the column.",
+      "target": {
+        "name": "run"
+      },
+      "await": {
+        "hint": "Press the <b>run</b> button."
+      }
+    },
+    {
+      "title": "Read it against the baseline, not against zero",
+      "text": "The plot is 2CDE against the burst's proximity ratio. The static population is the horizontal band near <b>10</b>; dynamic bursts sit above it.<br/><br/>Three things before you believe a dynamic fraction:<br/><b>1. The baseline is a statistic, not a constant.</b> Dim bursts scatter around it far more widely, so a fixed cutoff flags proportionally more of them purely by shot noise. Cut on photon count first.<br/><b>2. NaN rows are not zeros.</b> A burst with an empty donor or acceptor stream has no ratio at all; the status line says how many of the bursts were valid.<br/><b>3. It is a flag, not a rate.</b> 2CDE says a burst changed — not how fast, how many states, or which way. Select on it, then fit the selection with H2MM or PDA.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "name": "twocde_plot"
+      }
+    }
+  ]
+}

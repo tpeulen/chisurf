@@ -1,0 +1,58 @@
+{
+  "_comment": "Guided tour for the filtered-FCS filter calculator. This tool is a plain QWidget wired through attach_help_and_guide, so targets are toolbar actions and dock tab titles. It ships a built-in example decay, so the tour can be walked with no data of the user's own. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What filtering buys you",
+      "text": "Plain FCS correlates the <b>total</b> intensity. Two species with the same diffusion time cannot be separated by it — there is nothing in one intensity trace to separate.<br/><br/>But every photon also carries a nanosecond arrival time after the excitation pulse, and different species decay differently. This tool turns those decay patterns into <b>per-photon weights</b>, and correlating the weighted streams gives species-selective curves. Seven steps, on the built-in example.",
+      "target": {}
+    },
+    {
+      "title": "The mixed decay you are separating",
+      "text": "The tool opens with an <b>example</b> already loaded, so you can walk this whole tour without a file of your own.<br/><br/>For real work this is where a measured mixed decay goes — the histogram containing every species at once. Everything else on this page is about explaining <i>this</i> curve as a sum of components.",
+      "target": {
+        "action": "Mixed"
+      }
+    },
+    {
+      "title": "Where the component patterns come from",
+      "text": "Auto-fit decomposes the mixed decay into <i>N</i> lifetime components and offers them as species.<br/><br/>Treat it as a <b>starting set, not an answer</b>: fitting two components to a three-component sample gives you two patterns that are each a blend of the truth, and nothing in the fit will say so.<br/><br/>Measured references — the pure species, run separately under the same optics — are better whenever you can get them.",
+      "target": {
+        "action": "Auto-fit"
+      },
+      "await": {
+        "hint": "Press <b>🎯 Auto-fit</b> to decompose the example decay."
+      }
+    },
+    {
+      "title": "The limit you cannot buy your way out of",
+      "text": "Two lifetimes within roughly <b>20 %</b> of each other cannot be separated, no matter how many photons you collect.<br/><br/>What happens instead is worse than failure: the filter amplitudes blow up and the \"separated\" curves are amplified noise that looks perfectly clean. Watch the component list — if the fitted lifetimes crowd together, stop and reconsider the model rather than adding photons.",
+      "target": {
+        "tab": "Decay sources"
+      }
+    },
+    {
+      "title": "Compute the filters",
+      "text": "Unmix fits non-negative component intensities and computes the filter for each species.",
+      "target": {
+        "action": "Unmix"
+      },
+      "await": {
+        "hint": "Press <b>🧩 Unmix</b>."
+      }
+    },
+    {
+      "title": "Filters go negative, and that is correct",
+      "text": "A filter value is <b>not a probability</b>. Negative weights are how the method <i>subtracts</i> a component's expected contribution from the part of the decay it shares with another — that subtraction is the separation.<br/><br/>The number to watch is the <b>magnitude</b>. Values in the tens or hundreds mean an ill-conditioned separation, not a sensitive one. And a filter set that never goes negative usually means the patterns were never distinguishable in the first place.",
+      "target": {
+        "action": "Unmix"
+      }
+    },
+    {
+      "title": "Three checks, and one thing not to forget",
+      "text": "1. <b>Does the reconstruction match the measured decay?</b> If the components cannot rebuild it, they do not describe the sample.<br/>2. <b>Are the species cross-correlations flat</b> for species that do not interconvert? Structure there is the most direct evidence the patterns are wrong.<br/>3. <b>Change the number of components.</b> A real separation is stable; an over-specified one redistributes wildly.<br/><br/>And: <b>scatter is a component too.</b> Scattered excitation has its own pattern — essentially the IRF — and if you do not give it one, it is absorbed into the others and distorts them both.<br/><br/>The <b>?</b> button has the long version.",
+      "target": {
+        "action": "Project"
+      }
+    }
+  ]
+}

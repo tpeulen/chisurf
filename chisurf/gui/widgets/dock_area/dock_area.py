@@ -275,6 +275,12 @@ class DockArea(QtWidgets.QWidget):
         self._all_widgets = []
         self._tab_names: dict[QtWidgets.QWidget, str] = {}
         self._hidden_widgets: list[QtWidgets.QWidget] = []
+        #: Page -> the (tab widget, index) it was closed from, so :meth:`showTab`
+        #: can put it back where it belongs rather than in the first stack it
+        #: finds.
+        self._hidden_home: dict[
+            QtWidgets.QWidget, tuple[QtWidgets.QWidget, int]
+        ] = {}
         #: Splitters whose authored sizes still have to be applied against real
         #: geometry; see :meth:`_apply_pending_splitter_sizes`.
         self._pending_splitter_sizes: list[tuple[QtWidgets.QSplitter, list[int]]] = []
@@ -1030,6 +1036,9 @@ class DockArea(QtWidgets.QWidget):
         if restored_root is None:
             return False
         self._hidden_widgets.clear()
+        # The stacks those pages were closed from are about to be replaced, so
+        # every remembered home is stale.
+        self._hidden_home.clear()
         excluded_widgets = set(self._find_tab_widgets_in(restored_root))
         excluded_widgets.update(restored_root.findChildren(DockSplitter))
         if isinstance(restored_root, (DockTabWidget, DockSplitter)):
@@ -1088,9 +1097,36 @@ class DockArea(QtWidgets.QWidget):
         DockTabWidget, DockStackedTabWidget, or None
         """
         for tw in self._find_tab_widgets():
-            if tw != exclude_tw:
+            if tw != exclude_tw and self._is_in_layout_tree(tw):
                 return tw
         return None
+
+    def _home_is_usable(self, home: QtWidgets.QWidget | None) -> bool:
+        """Whether a remembered home stack still exists and is still laid out."""
+        if home is None or _is_deleted(home):
+            return False
+        return self._is_in_layout_tree(home)
+
+    def _is_in_layout_tree(self, widget: QtWidgets.QWidget) -> bool:
+        """Whether *widget* is reachable from the current root widget.
+
+        ``findChildren`` also returns tab widgets that were dropped from the
+        layout but not yet destroyed — :meth:`_build_widget_from_state` calls
+        ``deleteLater`` on a node that ended up with no tabs, and a deferred
+        deletion is still a child until the event loop gets to it. Handing one of
+        those back as "the main tab widget" puts a restored page into a stack
+        that is not laid out by anything, so it renders at its last standalone
+        size *on top of* the real docks. Found by restoring a closed dock from a
+        guided tour.
+        """
+        node = widget
+        while node is not None:
+            if node is self._root_widget:
+                return True
+            if node is self:
+                return False
+            node = node.parentWidget()
+        return False
 
     def addTab(self, widget: QtWidgets.QWidget, name: str, close_mode: str = "hide") -> None:
         """Add a tab with the given widget and name.
@@ -1344,6 +1380,10 @@ class DockArea(QtWidgets.QWidget):
                     w.setParent(self)
                     w.hide()
                     self._hidden_widgets.append(w)
+                    # Remember where it came from, so restoring it puts it back
+                    # there rather than in whichever stack happens to be found
+                    # first — which lands a settings page in the plot column.
+                    self._hidden_home[w] = (tw, local_index)
                     self.cleanup_empty_tab_widget(tw)
                     self.layoutChanged.emit()
                     return True
@@ -1354,13 +1394,24 @@ class DockArea(QtWidgets.QWidget):
         try:
             self._all_widgets = [w for w in self._all_widgets if not _is_deleted(w)]
             self._hidden_widgets = [w for w in self._hidden_widgets if not _is_deleted(w)]
+            self._hidden_home = {
+                page: home
+                for page, home in self._hidden_home.items()
+                if not _is_deleted(page) and not _is_deleted(home[0])
+            }
         except (RuntimeError, AttributeError):
             # Called on a not-fully-initialized DockArea (e.g. a unit-test double
             # built via __new__); there is nothing registered to prune.
             return
 
     def showTab(self, index: int) -> bool:
-        """Restore a hidden tab by absolute index."""
+        """Restore a hidden tab by absolute index.
+
+        The page goes back into the stack it was closed from where that stack
+        still exists, and only otherwise into the main one: a settings page
+        restored into the plot column is technically visible and practically
+        lost.
+        """
         w = self.widget(index)
         if w is None or _is_deleted(w):
             self._prune_deleted()
@@ -1370,7 +1421,8 @@ class DockArea(QtWidgets.QWidget):
         if w in self._hidden_widgets:
             self._hidden_widgets.remove(w)
         display, tooltip = _shorten_path(self._tab_names.get(w, ""))
-        tab_widget = self.find_main_tab_widget()
+        home, _home_index = self._hidden_home.pop(w, (None, -1))
+        tab_widget = home if self._home_is_usable(home) else self.find_main_tab_widget()
         if tab_widget is None:
             tab_widget = self._create_tab_widget()
             tab_widget.setTabsClosable(self._tabs_closable)

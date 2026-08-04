@@ -1,0 +1,76 @@
+{
+  "_comment": "Guided tour for accurate-FRET calibration. Targets are real view-spec attrs and real toolbar actions; the steps that act wait for the user to press the button. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What calibration buys you",
+      "text": "A raw FRET histogram is a fact about <b>your microscope</b>. Four factors — α, δ, γ, β — remove what the optics and the dyes put into the counts, and only then is an efficiency a fact about your <i>molecule</i>, comparable with a value measured somewhere else.<br/><br/>A multi-laboratory benchmark showed these systematics, not counting statistics, are what makes FRET values disagree between labs. Ten steps.",
+      "target": {}
+    },
+    {
+      "title": "Point it at bursts",
+      "text": "The tool calibrates from the bursts you already have — a burst folder from the burst-analysis pipeline, with the per-burst photon counts in it. Nothing is re-searched here.",
+      "target": {
+        "attr": "filename"
+      }
+    },
+    {
+      "title": "Say which column is which channel",
+      "text": "Everything below depends on these three being right, and a swap is <b>silent</b>: the arithmetic still runs and produces a confident, wrong calibration.<br/><br/>I<sub>DD</sub> is donor emission under donor excitation, I<sub>DA</sub> is acceptor emission under donor excitation — the FRET signal — and I<sub>AA</sub> is the acceptor under its own laser, which is what makes stoichiometry measurable at all.",
+      "target": {
+        "title": "Channels"
+      }
+    },
+    {
+      "title": "Background comes off first",
+      "text": "Every corrected count is <code>I − Bg</code>, so the background enters <i>before</i> the factors do. An error here shifts the dim bursts and leaves the bright ones alone — indistinguishable, by eye, from a second population.",
+      "target": {
+        "title": "Background"
+      }
+    },
+    {
+      "title": "The optics are a prior, not a guess",
+      "text": "γ, α and δ are not free parameters: they follow from the excitation and emission probabilities of your light path. Select a saved one and those become <b>Gaussian priors</b>.<br/><br/>The value of that is what happens when the data is uninformative — a file with no donor-only bursts cannot identify α. With a prior it keeps the optical value <i>and the optical uncertainty</i>, instead of a fitted number that looks equally confident and is an illusion.",
+      "target": {
+        "attr": "use_priors"
+      }
+    },
+    {
+      "title": "Two routes to γ, and they need different samples",
+      "text": "The <b>E–S</b> route fits <code>1/S = Ω + Σ·E</code> across sub-populations, so it needs at least two populations of <i>different efficiency</i>. A single-species sample cannot give it a slope.<br/><br/>The <b>lifetime</b> route needs only one population, because the donor lifetime carries the efficiency independently of any photon-counting factor. Pick by what your sample has, not by preference.",
+      "target": {
+        "attr": "gamma_source"
+      }
+    },
+    {
+      "title": "Now calibrate",
+      "text": "It fits a mixture to the stoichiometry and labels every burst donor-only, acceptor-only or doubly labelled — <b>no hand-drawn gates</b>, so nobody has to defend where a box was put. α comes from the donor-only bursts, δ from the acceptor-only ones, γ and β from the doubly labelled.<br/><br/>Then it repeats, because the classification depends on the factors it is looking for. Two or three passes is normal.",
+      "target": {
+        "action": "Calibrate"
+      },
+      "await": {
+        "hint": "Press <b>🎯 Calibrate</b>."
+      }
+    },
+    {
+      "title": "Read the factors — and their error bars",
+      "text": "The uncertainties are not decoration. They propagate into every efficiency and every distance you report:<br/><br/><code>∂E/∂γ = −E(1−E)/γ</code>, and <code>σ_R/R</code> grows as <code>1/(6·E·(1−E))</code>.<br/><br/>That last one is why a distance near <b>R ≈ R₀</b> is solid and one at either end of the dynamic range is soft, however many bursts you collected.",
+      "target": {
+        "title": "Correction factors"
+      }
+    },
+    {
+      "title": "The check that catches a wrong calibration",
+      "text": "Look at the <b>E histogram</b> and find the donor-only population. It is the one answer you knew before you started, and after correction it must sit at <b>E ≈ 0</b>.<br/><br/>If it does not, the factors are wrong — not the sample. Nothing else in this window will tell you that.",
+      "target": {
+        "title": "E histogram"
+      }
+    },
+    {
+      "title": "Afterwards",
+      "text": "<b>Share in session</b> publishes the calibration so any fit can link its correction parameters to it — one calibration, many datasets. <b>Export CSV</b> writes the per-burst values with the calibration in the header, so the numbers stay traceable to how they were produced.<br/><br/>It all runs headless too: <code>csc accurate-fret --help</code>. The <b>?</b> button has the formulas and the citation.",
+      "target": {
+        "action": "Share in session"
+      }
+    }
+  ]
+}

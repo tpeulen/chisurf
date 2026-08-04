@@ -1,0 +1,58 @@
+{
+  "_comment": "Guided tour for burst selection. The action bar is icon-only (shared action_button vocabulary), so the steps target it by objectName suffix -- {'name': 'add'} finds toolaction_add. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "The step everything else inherits",
+      "text": "This window decides <b>what a burst is</b>. BVA, 2CDE, MLE, H2MM and every FRET histogram downstream are one row per burst found here — change a setting on this page and every later number changes with it.<br/><br/>Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "The raw files",
+      "text": "Add TTTR files or a folder of them. They are read once here; nothing downstream re-opens them.",
+      "target": {
+        "name": "toolAction_add"
+      },
+      "await": {
+        "hint": "Press the <b>add</b> button to choose files or a folder."
+      }
+    },
+    {
+      "title": "The definition nothing downstream re-checks",
+      "text": "The detector setup says which physical channel is donor, which is acceptor, and which excitation period each belongs to.<br/><br/>Get it backwards and you still get a complete, plausible analysis — with <i>E</i> reflected about ½ — and <b>no fit statistic anywhere reports it</b>. Set it against the hardware, once, and confirm it on a sample whose answer you already know.",
+      "target": {
+        "title": "Channel selection"
+      }
+    },
+    {
+      "title": "How the search actually works",
+      "text": "A window of <i>m</i> consecutive photons slides along the stream; the instantaneous rate is <i>m</i> divided by the time they span. A burst opens where that rate rises a factor <i>F</i> above the <b>local</b> background — typically <i>F</i> ≈ 6, <i>m</i> ≈ 10 — and closes when it falls back.<br/><br/><i>Local</i> is the whole point: laser power and buffer drift over a long acquisition, and a fixed rate threshold quietly changes what it selects as they do.",
+      "target": {
+        "title": "Sliding window"
+      }
+    },
+    {
+      "title": "The mistake worth naming",
+      "text": "<b>Do not put the size cut inside the search.</b> Search permissively and apply the minimum-photon cut afterwards, on the <i>background-corrected</i> size.<br/><br/>A size cut applied during the search interacts with the threshold and biases which molecules you ever see. It removes dim ones preferentially — and dim usually correlates with exactly the thing you are trying to measure.",
+      "target": {
+        "title": "Filter"
+      }
+    },
+    {
+      "title": "Run it",
+      "text": "The search runs over every file, and the diagnostic tabs fill in.",
+      "target": {
+        "name": "toolAction_run"
+      },
+      "await": {
+        "hint": "Press the <b>run</b> button."
+      }
+    },
+    {
+      "title": "Read the diagnostics in this order",
+      "text": "<b>dT</b> — inter-photon times. Background is a broad exponential; bursts are the short-time excess. No clear excess means there is nothing to find, and no threshold will conjure it.<br/><b>Burst length</b> — should fall smoothly. A <i>spike at the minimum</i> means your cut is doing the selecting.<br/><b>MCS</b> — the intensity over time: photobleaching, a drifting focus, an aggregate crossing.<br/><br/>Then the real test: <b>change the threshold by a factor of two and run again.</b> A real population survives it. The <b>?</b> button has the rest.",
+      "target": {
+        "name": "toolAction_refresh"
+      }
+    }
+  ]
+}

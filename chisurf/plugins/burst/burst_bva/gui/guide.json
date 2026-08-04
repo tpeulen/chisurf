@@ -1,0 +1,51 @@
+{
+  "_comment": "Guided tour for Burst Variance Analysis. The tool is hand-built Qt around a DockArea, so steps target the shared action buttons by objectName suffix ({'name': 'run'} finds toolAction_run) and the dock pages by tab title. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Compared against shot noise, never against zero",
+      "text": "BVA asks whether a burst's FRET efficiency was <b>constant</b> while the molecule crossed the focus.<br/><br/>A static molecule still varies, because a finite number of photons splits randomly into donor and acceptor. So the question is not \"does it vary\" but \"does it vary <b>more than shot noise alone would make it</b>\".<br/><br/>The numbers are bigger than intuition suggests: at 5 photons per slice, a <i>perfectly static</i> molecule at E = 0.5 still scatters by <b>0.224</b>. Six steps.",
+      "target": {}
+    },
+    {
+      "title": "The burst folder",
+      "text": "BVA reads a finished <b>burst-analysis folder</b> — the bursts are already defined and this adds a per-burst column to them. Dropping the folder on this window does the same thing.<br/><br/>A dropped <i>file</i> is refused rather than silently ignored: this analysis has nothing to do with a single measurement.",
+      "target": {
+        "name": "folder"
+      },
+      "await": {
+        "hint": "Press the <b>folder</b> button and choose the burst-analysis folder."
+      }
+    },
+    {
+      "title": "The one number that changes everything",
+      "text": "<b>Photons per slice</b> is the trade. Small values give many slices per burst and sensitivity to fast exchange — at the price of a noisier per-burst σ and a <i>taller</i> static line. Large values smooth σ and lower the line, but go blind to the fastest dynamics. 5–10 is the usual range.<br/><br/>The static line must be drawn for the <b>same</b> slice size as the data, or the comparison means nothing; ChiSurf redraws it from the value the run actually used.<br/><br/><b>Min window length</b> is the alternative: slice by fixed time instead of fixed photon count, which is the right choice when the count rate varies strongly across a burst.",
+      "target": {
+        "tab": "BVA Settings"
+      }
+    },
+    {
+      "title": "Which detector is which",
+      "text": "The donor and acceptor detectors come from the setup defined here, and this is the definition <b>nothing downstream re-checks</b>.<br/><br/>Swap them and you still get a complete, plausible BVA plot — with the population mirrored about E = ½ — and no statistic anywhere reports it. Set it against the hardware once, and confirm it on a sample whose answer you already know.",
+      "target": {
+        "tab": "Channel Definitions"
+      }
+    },
+    {
+      "title": "Run it",
+      "text": "Every burst is read, sliced and scored off the GUI thread; <b>⏹</b> stops it. The result is written as a <code>bv4/</code> companion beside the burst tables, one row per burst, so the browser and ndX can gate on it.<br/><br/><i>Auto update</i> re-runs whenever a setting changes. On a large folder, turn it off while you set things up.",
+      "target": {
+        "name": "run"
+      },
+      "await": {
+        "hint": "Press the <b>run</b> button."
+      }
+    },
+    {
+      "title": "On the line, above it, or arching between",
+      "text": "The red curve is the static line — the scatter shot noise alone produces.<br/><br/><b>On it:</b> static on the burst timescale.<br/><b>Clearly above it:</b> excess variance — at least two FRET states visited <i>within</i> one burst.<br/><b>An arch bridging two spots:</b> two-state exchange. Two <i>non</i>-interconverting species give two separate spots <b>on</b> the line and no arch — that distinction is the whole point of the plot.<br/><br/>Then the part that decides whether the result is real. Above the line means <i>excess variance</i>, not <i>conformational dynamics</i>. <b>Acceptor blinking or bleaching is the most common false positive</b> — a dye going dark mid-burst is exactly the two-level signal BVA detects. Uncorrected background lifts the <i>whole</i> population off a line computed for pure binomial sampling. And short bursts scatter widely in both directions, so cut on photon count and read the density, not the points.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "tab": "Plot"
+      }
+    }
+  ]
+}

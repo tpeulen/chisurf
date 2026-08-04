@@ -103,6 +103,15 @@ class HelpButton(QtWidgets.QWidget):
             return path.read_text(encoding="utf-8")
         return "No help available."
 
+    def show_help(self) -> None:
+        """Open the help modal, as though the ``?`` had been pressed.
+
+        Public because a tool may reach the same help from more than one place —
+        a *Help ▸ About* menu item as well as the toolbar ``?`` — and both must
+        show the one help source rather than growing a second copy.
+        """
+        self._show()
+
     def _show(self) -> None:
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle(self._title)

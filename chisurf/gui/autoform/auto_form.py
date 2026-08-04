@@ -680,6 +680,13 @@ class AutoForm(QtWidgets.QWidget):
         self._emit_sections(section.sections, box.add_widget, fields_per_row=section.n_col)
         if getattr(section, "bounds_toggle", False):
             self._add_bounds_toggle(box)
+        # Record the spec, as every leaf section widget does. A panel is the
+        # natural thing for a guided tour to point at — "Channels", "Background"
+        # — but without this the lookup by ``{"title": …}`` found nothing and the
+        # step was silently shown centred instead of highlighting the group it
+        # names. A tour degrading into a slideshow is exactly the failure the
+        # format exists to avoid, and it is invisible in a construction test.
+        box._section = section
         return box
 
     def _add_bounds_toggle(self, box):

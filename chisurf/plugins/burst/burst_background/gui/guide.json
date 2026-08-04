@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for background estimation. Targets are the AutoForm view-spec sections of background.view.json (custom keys bg_channels / files / bg_run / bg_iht_plot / bg_rate_plot, and the Results panel). Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "The number everything else is measured against",
+      "text": "Every corrected single-molecule quantity is a count <b>minus a background</b> — the FRET efficiency, the stoichiometry, the burst size you cut on. They are all differences, and this window estimates the thing being subtracted.<br/><br/>Six steps.",
+      "target": {}
+    },
+    {
+      "title": "One rate per detector, never one shared rate",
+      "text": "Each channel has its own dark-count rate and its own share of scattered light.<br/><br/>Sharing one number between them is not a harmless simplification: it shifts <i>E</i> by <b>different amounts in the two channels</b>, which is precisely the signature of a real FRET difference. Define the detectors first so every rate below is attributed to the right one.",
+      "target": {
+        "key": "bg_channels"
+      }
+    },
+    {
+      "title": "Estimated from the measurement, not from a blank",
+      "text": "Point this at the same raw files you ran the burst search on.<br/><br/>A buffer-only acquisition measures the background of <i>that</i> acquisition — not the sample in the beam, not the laser power after it drifted for two hours, and not the dim out-of-focus molecules that genuinely contribute. Estimating from the measurement itself tracks all of it and costs no extra beam time.",
+      "target": {
+        "attr": "files"
+      }
+    },
+    {
+      "title": "Run it",
+      "text": "For each detector it builds the inter-photon-time histogram and fits the tail.",
+      "target": {
+        "key": "bg_run"
+      },
+      "await": {
+        "hint": "Press the <b>Estimate</b> button."
+      }
+    },
+    {
+      "title": "Why the tail is the background",
+      "text": "This is the histogram of gaps between consecutive photons. Background arrives as a Poisson process, so its gaps are exponential, <code>A·exp(−rate·t)</code>. A molecule crossing the focus emits a tight cluster, so it piles up at <b>short</b> gaps only.<br/><br/>So the long-gap tail is <i>pure background</i> — a bright burst simply cannot produce a long gap. The fitted rate constant of that tail <b>is</b> the count rate.<br/><br/><b>Where the tail starts is the one setting that matters.</b> Too early and burst photons inflate the rate, which then subtracts real signal and drags dim bursts to the wrong efficiency. Too late and you are fitting noise. Check the fitted line lies on the data across the whole region it covers.",
+      "target": {
+        "key": "bg_iht_plot"
+      }
+    },
+    {
+      "title": "Two checks before you use these numbers",
+      "text": "1. <b>Do the rates look like a detector?</b> A few hundred Hz to a few kHz is dark counts. Tens of kHz is scattered or ambient light — worth fixing at the microscope rather than subtracting.<br/>2. <b>Do repeats agree?</b> Files from one session should give consistent rates. A rate that drifts across a session is real information about the sample or the laser, and averaging it away hides that.<br/><br/>The <b>?</b> button has the long version and the references.",
+      "target": {
+        "key": "bg_rate_plot"
+      }
+    }
+  ]
+}

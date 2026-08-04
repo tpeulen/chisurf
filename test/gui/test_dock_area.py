@@ -406,3 +406,100 @@ def test_dragging_a_divider_wins_over_the_author(qtbot):
 
     top, bottom = splitter.sizes()
     assert bottom > top, f"the authored split came back as {top}/{bottom}"
+
+
+def test_a_restored_dock_goes_back_to_the_stack_it_was_closed_from(qtbot):
+    """A settings page must not reappear in the plot column.
+
+    ``showTab`` used to hand the page to ``find_main_tab_widget``, i.e. whichever
+    stack ``findChildren`` returned first. In a split layout that is arbitrary,
+    and a page restored into the wrong column is technically visible and
+    practically lost.
+    """
+    dock_area = DockArea()
+    qtbot.addWidget(dock_area)
+
+    settings = QtWidgets.QWidget()
+    channels = QtWidgets.QWidget()
+    plot = QtWidgets.QWidget()
+    for widget, name in ((settings, "Settings"), (channels, "Channels"), (plot, "Plot")):
+        dock_area.addTab(widget, name)
+
+    def _tab(*names):
+        return {
+            "type": "tab",
+            "current_index": 0,
+            "tabs": [{"widget_key": n, "tab_name": n, "tab_text": n} for n in names],
+        }
+
+    assert dock_area.set_layout_state(
+        {
+            "version": 1,
+            "root": {
+                "type": "splitter",
+                "orientation": "horizontal",
+                "sizes": [400, 800],
+                "children": [_tab("Settings", "Channels"), _tab("Plot")],
+            },
+            "active_tab_widget": [],
+            "current_index": 0,
+        },
+        emit_change=False,
+    )
+    QtWidgets.QApplication.processEvents()
+
+    left = dock_area._tab_widget_for_page(settings)
+    right = dock_area._tab_widget_for_page(plot)
+    assert left is not right, "the two columns collapsed; the fixture is wrong"
+
+    index = dock_area.indexOf(channels)
+    assert dock_area.hideTab(index) is True
+    QtWidgets.QApplication.processEvents()
+    assert dock_area.showTab(index) is True
+    QtWidgets.QApplication.processEvents()
+
+    assert dock_area._tab_widget_for_page(channels) is left, (
+        "the restored page landed in the other column"
+    )
+
+
+def test_the_main_tab_widget_is_never_an_orphan(qtbot):
+    """A stack dropped from the layout must not be offered as the main one.
+
+    ``_build_widget_from_state`` calls ``deleteLater`` on a node that ended up
+    with no tabs, and a deferred deletion is still a ``findChildren`` result. One
+    of those used to be returned as *the* main tab widget, so a page restored
+    into it rendered at its last standalone size on top of the real docks.
+    """
+    dock_area = DockArea()
+    qtbot.addWidget(dock_area)
+    page = QtWidgets.QWidget()
+    dock_area.addTab(page, "Only")
+
+    # The real path, not a hand-built orphan: a tab node naming a page that is
+    # not there makes ``_build_widget_from_state`` create a stack, find nothing
+    # to put in it, and ``deleteLater`` it. That stack is still a child.
+    dock_area.set_layout_state(
+        {
+            "version": 1,
+            "root": {
+                "type": "splitter",
+                "orientation": "horizontal",
+                "children": [
+                    {"type": "tab", "tabs": [{"tab_name": "Gone"}], "current_index": 0},
+                    {"type": "tab", "tabs": [{"tab_name": "Only"}], "current_index": 0},
+                ],
+            },
+            "active_tab_widget": [],
+            "current_index": 0,
+        },
+        emit_change=False,
+    )
+    QtWidgets.QApplication.processEvents()
+
+    real = dock_area._tab_widget_for_page(page)
+    orphans = [
+        tw for tw in dock_area._find_tab_widgets() if tw is not real and tw.count() == 0
+    ]
+    assert orphans, "the fixture produced no orphaned stack"
+    assert dock_area.find_main_tab_widget() is real

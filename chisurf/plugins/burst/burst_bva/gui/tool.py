@@ -12,8 +12,6 @@ from qtpy.QtCore import QSettings, QSize, Qt, QTimer
 from qtpy.QtWidgets import (
     QCheckBox,
     QComboBox,
-    QDialog,
-    QDialogButtonBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -22,7 +20,6 @@ from qtpy.QtWidgets import (
     QLineEdit,
     QSizePolicy,
     QSpinBox,
-    QTextEdit,
     QToolBar,
     QVBoxLayout,
     QWidget,
@@ -47,59 +44,12 @@ from chisurf.gui.widgets.messages import Msg
 from chisurf.gui.widgets.tools import ChisurfDockTool
 
 
-class HelpDialog(QDialog):
-    """Help dialog with description and CLI reference."""
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("About Burst Variance Analysis (BVA)")
-        self.resize(640, 520)
-        layout = QVBoxLayout(self)
-
-        text = QTextEdit(self)
-        text.setReadOnly(True)
-
-        cli_text = ""
-        try:
-            from click.testing import CliRunner
-
-            from ..cli.main import cli
-
-            runner = CliRunner()
-            result = runner.invoke(cli, ["--help"])
-            cli_text = "<pre>\n" + result.output + "</pre>"
-        except Exception as exc:
-            cli_text = f"<p>CLI help unavailable: {exc}</p>"
-
-        text.setHtml(
-            """
-            <h2>Burst Variance Analysis (BVA)</h2>
-            <p>This plugin implements Burst Variance Analysis for single-molecule FRET experiments.
-            BVA is a technique that analyzes the variance of FRET efficiency within individual
-            bursts to distinguish between static and dynamic heterogeneity in the sample.</p>
-
-            <h3>How it works</h3>
-            <ol>
-              <li>Select data folder containing TTTR files</li>
-              <li>Configure analysis parameters (window length, photons per slice)</li>
-              <li>Set up FRET pair assignment (donor/acceptor channels)</li>
-              <li>Click <b>Run</b> to process all files and generate BVA results</li>
-            </ol>
-
-            <h3>Output</h3>
-            <p>Results include burst statistics, FRET efficiency distributions, variance analysis,
-            and heterogeneity metrics.</p>
-
-            <hr>
-            <h3>CLI Reference</h3>
-            """
-            + cli_text
-        )
-        layout.addWidget(text, 1)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
+# The tool used to carry its own ``HelpDialog`` — a hard-coded HTML summary plus
+# the CLI ``--help`` output. It is gone: the shared ``?`` modal renders
+# ``gui/help.md`` instead, so the help is prose in a file rather than a string
+# literal in a widget, its links are live, and it sits beside the ``guide.json``
+# that answers the other question. See
+# :mod:`chisurf.gui.widgets.tools.help_guide`.
 
 
 # Shared, app-wide tool-button language (this colour scheme is its canonical
@@ -285,7 +235,6 @@ class BVATool(ChisurfDockTool):
         self.btn_clear = action_button("clear", tooltip="Clear loaded data")
         self.btn_save = action_button("save", tooltip="Save BVA results")
         self.btn_save_settings = action_button("settings", tooltip="Save current settings as default")
-        self.btn_help = action_button("help", tooltip="Show help")
 
         self.cb_toggle_static = QCheckBox("Show static line")
         self.cb_toggle_static.setChecked(True)
@@ -312,11 +261,17 @@ class BVATool(ChisurfDockTool):
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.toolbar.addWidget(spacer)
-        # Right cluster: settings + help (canonical trailing position).
+        # Adjacent stretches share the slack rather than adding to it, so a
+        # second one would strand the trailing buttons mid-bar. Marking the
+        # toolbar as already right-spaced keeps ``add_toolbar_help`` from adding
+        # one of its own.
+        self.toolbar.setProperty("_chisurf_right_spacer", True)
+        # Right cluster: settings, then the shared **Guide**/``?`` pair in the
+        # canonical trailing position. ``add_toolbar_help`` adds Guide itself
+        # once ``gui/guide.json`` is beside this module.
         self.toolbar.addSeparator()
         self.toolbar.addWidget(self.btn_save_settings)
-        self.toolbar.addWidget(self.btn_help)
-        self.btn_help.clicked.connect(self._show_help)
+        self.add_toolbar_help(self.toolbar, resource="help.md", title="BVA — help")
 
     def _build_settings_tab(self) -> QWidget:
         w = QWidget()
@@ -889,11 +844,6 @@ class BVATool(ChisurfDockTool):
         # delivers the queued log signal back into another status update and
         # nests the two (see chisurf.gui.event_pump).
         pump_ui(allow_input=False)
-
-    def _show_help(self):
-        """Show the help dialog."""
-        dialog = HelpDialog(self)
-        dialog.exec_()
 
     def closeEvent(self, event):
         self._save_dock_layout()

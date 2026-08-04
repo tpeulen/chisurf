@@ -1,0 +1,55 @@
+{
+  "_comment": "Guided tour for the non-burst IRF/background extractor. Targets are the AutoForm view-spec entries of irf_bg.view.json. The centrepiece is the documented two-fold lifetime bias a naive baseline subtraction causes -- that is the reason this tool exists, so the tour says so with the numbers. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "The measurement you already paid for",
+      "text": "Most of a confocal acquisition contains <b>no molecule in the focus</b>. Those non-burst periods are usually discarded — but they are a scatter and background measurement sitting in the file you already have.<br/><br/>One pass over them gives, per detector, both a background rate and an <b>IRF</b>. No scatter cuvette, no buffer-only run, and no chance the IRF was measured under different conditions than the data. Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "Two things, and they separate in micro-time",
+      "text": "<b>Dark counts and after-pulses</b> are uncorrelated with the laser, so they are <i>flat</i> across the micro-time axis. That floor is the background rate.<br/><br/><b>Scattered excitation</b> is instantaneous, so it is a sharp prompt peak — and the shape of that peak <i>is</i> the instrument response.<br/><br/>Define the detectors first: each channel has its own response, and a shared IRF becomes a systematic lifetime shift that differs between channels — indistinguishable from a real difference between the dyes.",
+      "target": {
+        "key": "irf_bg_channels"
+      }
+    },
+    {
+      "title": "The same files the bursts came from",
+      "text": "The non-burst photons are, by definition, everything the burst search did <b>not</b> select. So this reads the same raw files and inverts the burst mask rather than searching again.",
+      "target": {
+        "attr": "files"
+      }
+    },
+    {
+      "title": "What counts as a burst to be excluded",
+      "text": "These settings define the mask that is inverted. Being <i>generous</i> here is the safe direction: a burst photon wrongly left in the non-burst stream adds fluorescence to what is supposed to be pure scatter, and that is the failure the next step is about.<br/><br/>Excluding a little too much costs only statistics.",
+      "target": {
+        "attr": "min_photons"
+      }
+    },
+    {
+      "title": "Extract",
+      "text": "For each detector: fit the interphoton-time tail for the background rate, histogram the non-burst micro-times, subtract the flat dark-count floor, and fit the prompt.",
+      "target": {
+        "key": "irf_bg_run"
+      },
+      "await": {
+        "hint": "Press the <b>Extract</b> button."
+      }
+    },
+    {
+      "title": "Why there is a Gaussian on top of your data",
+      "text": "A baseline-subtracted non-burst histogram is <b>not an IRF</b>. The non-burst periods still hold dim and passing molecules, so the prompt rides on a slow fluorescent tail, and a flat subtraction removes the dark counts while leaving that decay behind.<br/><br/>Convolving a lifetime model with such an \"IRF\" biases the result roughly <b>two-fold short</b> — a genuine 2.2 ns decay came back at ~1.1 ns on real data.<br/><br/>So the prompt is fitted with a <b>Gaussian</b>, precisely <i>because</i> a Gaussian cannot represent a slow tail: least squares locks onto the sharp scatter peak and leaves the artefact behind. The width comes from the <b>rising edge only</b> — the falling side is the decay, not the instrument.",
+      "target": {
+        "title": "IRF (non-burst scatter)"
+      }
+    },
+    {
+      "title": "Four checks before you fit with these",
+      "text": "1. <b>Does the prompt look like a prompt?</b> One sharp peak. Structure or a shoulder means the mask is letting fluorescence through — go back and exclude more.<br/>2. <b>Does the fitted Gaussian sit on the rising edge?</b> If it sits late, the tail has captured it.<br/>3. <b>Is the background rate plausible?</b> Hundreds of Hz to a few kHz per detector; much more is stray light.<br/>4. <b>Does a known sample return its known lifetime?</b> The only end-to-end check that matters — and the one that caught the two-fold bias above.<br/><br/>The <b>?</b> button has the long version.",
+      "target": {
+        "key": "irf_bg_results"
+      }
+    }
+  ]
+}

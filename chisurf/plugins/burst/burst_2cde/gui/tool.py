@@ -85,6 +85,9 @@ class BurstTwoCdeTool(ChisurfDockTool):
         toolbar.addWidget(self._restart)
         toolbar.addWidget(self._stop)
         toolbar.addWidget(browse)
+        # The ``?`` and **Guide** pair, from the files beside this module. The
+        # call also adds Guide on its own once ``guide.json`` is there.
+        self.add_toolbar_help(toolbar, resource="help.md", title="2CDE — help")
         layout.addWidget(toolbar)
 
         # --- folder row -------------------------------------------------------
@@ -122,9 +125,24 @@ class BurstTwoCdeTool(ChisurfDockTool):
         form.addRow("Acceptor ch.", self._acceptor)
         form.addRow("File type", self._file_type)
         layout.addWidget(self._settings_box)
+        # Object names so the guided tour can point at individual controls: this
+        # panel is hand-built rather than an AutoForm view, so there is no view
+        # spec for a step to name. They are prefixed because ``{"name": …}``
+        # matches by *suffix* — a bare "tau" would also find any other widget
+        # whose name ends that way.
+        for widget, object_name in (
+            (self._variant, "twocde_variant"),
+            (self._kernel, "twocde_kernel"),
+            (self._tau, "twocde_tau"),
+            (self._donor, "twocde_donor"),
+            (self._acceptor, "twocde_acceptor"),
+            (self._file_type, "twocde_file_type"),
+        ):
+            widget.setObjectName(object_name)
 
         # --- plot -------------------------------------------------------------
         self._plot = cp.Plot()
+        self._plot.setObjectName("twocde_plot")
         self._plot.set_labels(bottom="FRET efficiency (proximity ratio)", left="2CDE")
         layout.addWidget(self._plot, 1)
 

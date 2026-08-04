@@ -1,0 +1,32 @@
+{
+  "_comment": "Starter guided tour. Replace every step. A target may name a view-spec field ({'attr': 'x'}) or section ({'title': 'Settings'}), a toolbar action ({'action': 'Run'}), a widget objectName ({'name': 'toolAction_run'}), a dock tab ({'tab': 'Results'}) or a navigation-shell row ({'panel': 'Step 1'}). An empty target centres the bubble, which is right for an opening and a closing step and wrong everywhere else. WALK THE TOUR HEADLESSLY once it is written: an unresolvable target does not fail, it silently shows centred, and the tour becomes the slideshow it exists not to be. Format: chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this tool is for",
+      "text": "One paragraph on what the tool measures and why someone would open it, then say how many steps the tour has so nobody wonders whether to start it.<br/><br/>Replace this.",
+      "target": {}
+    },
+    {
+      "title": "The first thing to press",
+      "text": "This is the step the whole format exists for: a help page can say what every control means and still leave someone with no idea which one comes first.<br/><br/>Point at the real control and <b>wait</b> for the user to press it. Never press it for them — someone who watched a button being pressed has not learned where it is.",
+      "target": {
+        "action": "Replace with a real toolbar action"
+      },
+      "await": {
+        "hint": "Press the highlighted button."
+      }
+    },
+    {
+      "title": "The setting that decides the answer",
+      "text": "Pick the control that most changes the result and say what goes wrong when it is wrong — especially if it goes wrong <i>silently</i>. That is the sentence people remember.",
+      "target": {
+        "attr": "replace_with_a_real_view_spec_attr"
+      }
+    },
+    {
+      "title": "How to tell whether to believe it",
+      "text": "Close on the checks, in the order that catches the most. If the tool can generate its own demo with a known answer, this is where to say so — checking against a known answer is the only thing that turns a plausible result into a trusted one.<br/><br/>The <b>?</b> button has the long version.",
+      "target": {}
+    }
+  ]
+}

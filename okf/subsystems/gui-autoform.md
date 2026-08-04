@@ -316,6 +316,11 @@ custom section renders that button:
 (or `"resource":"path.md"`); it opens a modal `QTextBrowser` (Markdown/HTML). Add
 one to any dense view instead of packing instructions into the layout.
 
+The same modal is what a *tool's* toolbar `?` opens, beside a **Guide** button
+that walks the user through the tool one real widget at a time. That pair is now
+attached through one shared mixin rather than a base class, so any tool can have
+it — see [Help buttons and guided tours](/subsystems/gui-help-and-guides.md).
+
 A reusable **synthetic-decay editor** (`chisurf/gui/widgets/synthetic_decay_editor.py`,
 `SyntheticDecayEditorModel` + `synthetic_decay_editor.view.json`) packages an
 amplitude/lifetime spectrum table, IRF (file or Gaussian FWHM), Poisson

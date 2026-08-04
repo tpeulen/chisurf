@@ -335,6 +335,9 @@ chisurf/plugins/<plugin_id>/
   gui/
     __init__.py
     tool.py                      ← main GUI widget (uses PluginClient)
+    help.md                      ← REQUIRED: what the ? button shows
+    guide.json                   ← REQUIRED: the guided tour (Guide button)
+    <plugin>.view.json           ← AutoForm view spec (when the tool is one)
     dialogs/                     ← sub-dialogs
     assets/                      ← UI files, icons
 
@@ -353,6 +356,36 @@ chisurf/plugins/<plugin_id>/
   docs/
     README.md
 ```
+
+### `help.md` and `guide.json` are not optional
+
+A modern plugin ships both, beside the module its `entrypoints.gui` names. They
+answer different questions — `?` says what a control *means*, **Guide** says
+which control to touch **first** — and a dense panel of well-documented settings
+is unusable without the second.
+
+Neither needs any code. `ChisurfDockTool` and `NavigationPanelTool` both mix in
+`HelpGuideMixin` and look for the two files themselves, so the buttons appear the
+moment the files exist. A tool built on a plain `QWidget`/`QDialog` makes one
+call instead:
+
+```python
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+attach_help_and_guide(self, self.toolbar, title="My tool — help", model=self)
+```
+
+A tour is a list of steps, each pointing at one **real** widget — by view-spec
+`attr`/`key`/`title`, by toolbar `action`, by `objectName` (`name`), by dock
+`tab`, or by a navigation-shell `panel`. Steps that ask the user to do something
+carry `"await"`, and the tour never presses a button on the user's behalf:
+someone who watched a button being pressed has not learned where it is.
+
+A step whose target does not resolve is **shown centred rather than skipped**, so
+a wrong target never fails loudly — it quietly turns the tour into a slideshow.
+Always walk a new tour headlessly and confirm every step resolves.
+`test/test_plugin_help_guide_seam.py` enforces all of this against a **shrinking**
+allow-list; adding your plugin to that list is never the fix.
 
 ---
 

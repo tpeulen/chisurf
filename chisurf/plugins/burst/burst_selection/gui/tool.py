@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import logging as _logging
-import html
 import json
 from dataclasses import asdict
 from pathlib import Path
@@ -162,60 +161,6 @@ def histogram_data_from_frame(frame: pd.DataFrame, feature: str) -> np.ndarray:
             return data.dropna().to_numpy(dtype=float)
     data = pd.to_numeric(burst_rows_for_display(frame)[feature], errors="coerce").dropna()
     return data.to_numpy(dtype=float)
-
-
-class HelpDialog(QtWidgets.QDialog):
-    """Help dialog with description and CLI reference."""
-
-    def __init__(self, parent: BurstSelectionTool | None = None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("About Burst Selection")
-        self.resize(640, 520)
-        layout = QtWidgets.QVBoxLayout(self)
-
-        text = QtWidgets.QTextEdit(self)
-        text.setReadOnly(True)
-
-        cli_text = ""
-        try:
-            from click.testing import CliRunner
-
-            from ..cli.main import cli
-
-            runner = CliRunner()
-            result = runner.invoke(cli, ["--help"])
-            cli_text = "<pre>" + html.escape(result.output) + "</pre>"
-        except Exception as exc:
-            cli_text = f"<p>CLI help unavailable: {html.escape(str(exc))}</p>"
-
-        text.setHtml(
-            """
-            <h2>Burst Selection</h2>
-            <p>This plugin detects bursts in TTTR data, filters photons, exports burst tables, and computes diagnostic plots for burst analysis.</p>
-
-            <h3>How it works</h3>
-            <ol>
-              <li>Add one or more TTTR files or folders.</li>
-              <li>Choose detector setup, photon filters, and burst detection settings.</li>
-              <li>Click <b>Process</b> to run the analysis.</li>
-              <li>Inspect diagnostic plots, histograms, metadata, and exported burst tables.</li>
-            </ol>
-
-            <h3>Output</h3>
-            <p>Results include filtered burst lists, diagnostic plots, optional CSV/MFD-HDF exports, and analysis metadata.</p>
-
-            <hr>
-            <h3>CLI Reference</h3>
-            """
-            + cli_text
-        )
-        layout.addWidget(text, 1)
-
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok,
-        )
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
 
 
 class MetadataDialog(QtWidgets.QDialog):
@@ -3105,23 +3050,24 @@ class BurstSelectionTool(ChisurfDockTool):
 
         toolbar.addSeparator()
 
-        # Add spacer to push range controls to the right
-        spacer = QtWidgets.QWidget()
-        spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
-        toolbar.addWidget(spacer)
-
         # The layer toggles and the photon range are not here any more: they are
         # settings, the toolbar holds actions, and a wide "Show: … Photon
         # Range: … to …" run pushed the actions themselves off to the left. They
         # are built in ``_ensure_display_widgets`` and shown by the AutoForm in
         # Filter Settings — see ``_build_display_form``.
-
+        #
+        # One expanding spacer, not the two that used to be here: adjacent
+        # stretches share the slack rather than adding to it, so the second did
+        # nothing except make the count matter when a third was added. Marking
+        # the toolbar as already right-spaced keeps ``add_toolbar_help`` from
+        # adding that third and pushing "to ndX" back into the middle.
         spacer = QtWidgets.QWidget()
         spacer.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Expanding,
             QtWidgets.QSizePolicy.Policy.Preferred,
         )
         toolbar.addWidget(spacer)
+        toolbar.setProperty("_chisurf_right_spacer", True)
 
         ndx_action = QtWidgets.QAction("🔬 to ndX", self)
         ndx_action.setToolTip(
@@ -3130,9 +3076,13 @@ class BurstSelectionTool(ChisurfDockTool):
         ndx_action.triggered.connect(self._open_in_ndxplorer)
         toolbar.addAction(ndx_action)
 
-        self._act_help = action_button("help", on_click=self._show_help,
-                                       tooltip="Show help and CLI reference")
-        toolbar.addWidget(self._act_help)
+        # The shared ``?`` + **Guide** pair, replacing a hand-rolled dialog that
+        # carried this tool's help as HTML inside the source file. Help now lives
+        # in ``help.md`` beside this module, where it is editable without
+        # touching code and its links are live.
+        self.add_toolbar_help(
+            toolbar, resource="help.md", title="Burst Selection — help"
+        )
 
     def _setup_statusbar(self) -> None:
         """Create the status bar."""
@@ -3141,9 +3091,12 @@ class BurstSelectionTool(ChisurfDockTool):
         self._status_bar.showMessage("Ready")
 
     def _show_help(self) -> None:
-        """Show the help dialog."""
-        dialog = HelpDialog(self)
-        dialog.exec_()
+        """Open the shared help modal (Help ▸ About, and the toolbar ``?``).
+
+        Both routes now show ``help.md`` through the same modal every other
+        ChiSurf tool uses, so the help has one source and its links are live.
+        """
+        self._help_button.show_help()
 
     def _open_in_ndxplorer(self) -> None:
         """Open a registered burst selection from MMFDB in ndX (PRD-28)."""

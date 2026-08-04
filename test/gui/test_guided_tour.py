@@ -230,3 +230,41 @@ def test_every_plugin_help_page_links_somewhere_real():
             if resolve_document(target, page.parent) is None:
                 broken.append(f"{page.relative_to(root)} -> {target}")
     assert not broken, "dead help links: " + "; ".join(broken)
+
+
+def test_a_step_reopens_the_dock_the_user_closed(qapp):
+    """A tab step must not point at a page that is not on screen.
+
+    A ``DockArea`` tab closed with ``close_mode="hide"`` stays in the registry,
+    so a step naming it still *resolves* — to a hidden widget carrying whatever
+    geometry it had when it was closed. The spotlight then lands on a rectangle
+    of unrelated panel and the bubble explains a control nobody can see: the
+    same silent degradation as an unresolved target, but past the guardrail that
+    checks for one. Found on the BVA tour, whose *Channel Definitions* step
+    pointed at a stack of settings.
+    """
+    from chisurf.gui.widgets.dock_area import DockArea
+
+    window = QtWidgets.QMainWindow()
+    area = DockArea()
+    window.setCentralWidget(area)
+    settings = QtWidgets.QWidget()
+    channels = QtWidgets.QWidget()
+    area.addTab(settings, "Settings")
+    area.addTab(channels, "Channels")
+    window.resize(600, 400)
+    window.show()
+    QtWidgets.QApplication.processEvents()
+
+    index = area.indexOf(channels)
+    assert area.hideTab(index) is True
+    QtWidgets.QApplication.processEvents()
+    assert area.isTabVisible(index) is False
+
+    tour = GuidedTour(window, [TourStep(title="t", text="x", target={"tab": "Channels"})])
+    found = tour.resolve_target({"tab": "Channels"})
+
+    assert found is channels
+    assert area.isTabVisible(index) is True, "the step pointed at a closed dock"
+    tour.stop()
+    window.close()

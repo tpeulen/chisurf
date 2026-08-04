@@ -321,6 +321,16 @@ class FcsFilterCalculatorWidget(QtWidgets.QWidget):
         self.btn_load_project = project_button
         self.btn_export = self.action_export
 
+        # The shared ``?`` + **Guide** pair. This tool is a plain ``QWidget``
+        # rather than a ``ChisurfDockTool``, so it goes through the free-function
+        # form of the seam — same buttons, same ``help.md`` / ``guide.json``
+        # beside this module, no base class to inherit.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        attach_help_and_guide(
+            self, self.toolbar, title="Filtered FCS — help", model=self
+        )
+
     def _add_total_dialog(self) -> None:
         paths, _ = QtWidgets.QFileDialog.getOpenFileNames(
             self, "Select mixed total decay", "",

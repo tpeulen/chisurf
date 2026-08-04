@@ -1,0 +1,73 @@
+{
+  "_comment": "Guided tour for photon-by-photon (Gopich-Szabo) kinetics. It walks the built-in SIMULATOR first -- a molecule whose rates are known -- because the honest question for this method is 'what can my photon budget resolve', and only a known answer settles it. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this fits",
+      "text": "The <b>arrival time and colour of every photon</b>, with no binning at all. That is the whole idea: a bin size is a choice that hides exchange faster than itself, and this method never makes one — it resolves down to the mean interphoton time.<br/><br/>Nine steps. We will start on simulated photons whose rates are known, because the real question here is what <i>your</i> photon budget can resolve.",
+      "target": {}
+    },
+    {
+      "title": "Start where the answer is known",
+      "text": "A burst-wise FRET histogram shows a fast-switching molecule as one broadened peak. It cannot say how fast. This method can — but whether it can <i>on your data</i> depends on photon numbers, and no amount of staring at a fit will tell you that.<br/><br/>So switch on the simulator: photons generated from a molecule with rates you set yourself.",
+      "target": {
+        "attr": "use_simulation"
+      },
+      "await": {
+        "hint": "Tick <b>Simulate</b>.",
+        "signal": "toggled"
+      }
+    },
+    {
+      "title": "Set the truth you are going to try to recover",
+      "text": "Forward and backward rates, and the FRET efficiency of each state. Note the <b>relaxation time</b> they imply — for two states it is <code>1/(k₁₂ + k₂₁)</code>, and that, not either rate alone, is what a measurement actually constrains.",
+      "target": {
+        "attr": "sim_k_forward"
+      }
+    },
+    {
+      "title": "The photon budget is the experiment",
+      "text": "Photons per burst and number of bursts decide everything about whether the rates come back. Two limits you cannot argue with:<br/><br/><b>Too fast</b> — exchange quicker than the interphoton time is invisible. At 50 kHz detected, that is about 20 µs.<br/><b>Too slow</b> — exchange slower than a burst leaves no transition <i>inside</i> a burst to see, and a static mixture will fit better.<br/><br/>Set these to what your real measurement gives you.",
+      "target": {
+        "attr": "sim_photons_per_burst"
+      }
+    },
+    {
+      "title": "The tick that rescales every rate",
+      "text": "The macro-time resolution converts clock ticks into seconds. Zero reads it from the file header.<br/><br/>Every fitted rate is <b>directly proportional</b> to it, so a wrong value rescales the entire answer — with no other symptom. Nothing in the fit report looks wrong. It is the single most dangerous field in this window on real data.",
+      "target": {
+        "attr": "macro_time_resolution_ns"
+      }
+    },
+    {
+      "title": "How many states",
+      "text": "Start at two. An extra state <i>always</i> fits a little better, because it always has more parameters — which is why the number to watch is the BIC, not the likelihood.",
+      "target": {
+        "attr": "n_states"
+      }
+    },
+    {
+      "title": "Fit it",
+      "text": "The evidence being used is the <b>pattern of colours in time</b>, not their sum. That is what a histogram throws away and why this can see a transition a histogram can only blur.",
+      "target": {
+        "action": "Fit"
+      },
+      "await": {
+        "hint": "Press <b>▶ Fit</b>."
+      }
+    },
+    {
+      "title": "Did you get your rates back?",
+      "text": "Compare the fitted rates with what you typed in. This is the step that has no equivalent on real data, and it is the reason to run the simulator first.<br/><br/>Read <code>1/k</code> rather than <code>k</code> — a waiting time compares directly against the burst duration. If <code>1/k</code> is much longer than a burst, most bursts contain no transition at all and the rate is poorly determined <i>however confident the fit looks</i>.",
+      "target": {
+        "title": "Rates"
+      }
+    },
+    {
+      "title": "Then bring your own photons",
+      "text": "Untick <b>Simulate</b>, drop the <code>.bur</code> burst tables here, point the folder at the raw files and check the donor/acceptor channel lists.<br/><br/>Two checks before believing the result: <b>does the BIC clearly fall</b> when you add a state (if not, do not add it), and <b>does the H2MM cross-check agree</b>? H2MM fits the same photons in discrete time and shares no likelihood with this — agreement is real evidence.<br/><br/>The <b>?</b> button has the long version.",
+      "target": {
+        "attr": "bur_files"
+      }
+    }
+  ]
+}
