@@ -582,6 +582,32 @@ def _load_display_config() -> dict:
             # Max neighbors to be considered surface-exposed
             "surface_max_neighbors": 20,
         },
+        # What counts as a hydrogen bond, and how a measurement is drawn.
+        # PyMOL's defaults, from layer1/SettingInfo.h; the two cutoffs are the
+        # ends of an angle-dependent interpolation rather than two independent
+        # distances, so changing one alone tilts the curve.
+        "hbond": {
+            "max_angle": 63.0,
+            "cutoff_center": 3.6,
+            "cutoff_edge": 3.2,
+            "power_a": 1.6,
+            "power_b": 5.0,
+            "cone": 180.0,
+            "exclusion": 3,
+            "from_proton": True,
+        },
+        "measure": {
+            # `distance ... mode=3` drops pairs this many bonds apart or closer,
+            # which is what stops a "contact" map from being mostly covalent
+            # bonds and their neighbours.
+            "distance_exclusion": 5,
+        },
+        "dash": {
+            "length": 0.15,
+            "gap": 0.45,
+            "width": 2.5,
+            "color": [1.0, 1.0, 0.0, 1.0],
+        },
         "sticks": {
             "connect_cutoff": 0.35,
             "width": 2.0,

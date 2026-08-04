@@ -284,3 +284,33 @@ def test_the_radius_now_matches_pymol_exactly():
     xyz = _pdb_coords(_PDB_148L)
     assert framing_radius(xyz) == pytest.approx(24.4662, abs=1e-3)
     assert framing_radius(xyz, complete=True) == pytest.approx(30.487, abs=1e-3)
+
+
+# --------------------------------------------------------------------------- #
+# The portrait correction, and the viewport that is not one
+# --------------------------------------------------------------------------- #
+def test_a_widget_that_was_never_laid_out_frames_square(view):
+    """An aspect measured from a 1-pixel column is not a measurement.
+
+    A never-shown ``MolView`` is 100x30 with a 220-pixel panel column, so the
+    scene width comes out negative and is clamped to **1**. Read as a real
+    viewport that says the window is thirty times taller than it is wide, and
+    PyMOL's portrait correction then puts the camera thirty times too far away
+    -- which is exactly what the five framing tests above were measuring before
+    this guard existed. The correction has nothing to correct until there is a
+    window.
+    """
+    renderer = view._renderer
+    assert renderer.scene_width() < renderer._MIN_MEASURABLE_SCENE, (
+        "the fixture no longer reproduces an unlaid-out widget"
+    )
+    assert renderer._aspect() == 1.0
+
+
+def test_a_real_portrait_viewport_still_corrects(view):
+    """The guard must not disable the correction it is protecting."""
+    renderer = view._renderer
+    renderer.resize(400, 900)
+    if renderer.scene_width() < renderer._MIN_MEASURABLE_SCENE:
+        pytest.skip("the panel column leaves no scene at this size")
+    assert renderer._aspect() < 1.0

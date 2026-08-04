@@ -146,14 +146,29 @@ def test_an_unknown_preset_is_named(session):
 def test_a_preset_names_what_it_could_not_do(session):
     """The whole reason to transcribe rather than approximate.
 
-    ``technical`` draws polar contacts in PyMOL, and chimol has no
-    hydrogen-bond finder. Doing the rest and saying nothing would leave a
-    picture that is silently not the one PyMOL makes.
+    A preset that quietly does less than PyMOL's leaves a picture that is
+    silently not the one PyMOL makes. ``technical`` scopes ``dash_width`` to its
+    own contact object, which chimol's one global display config cannot do, so
+    that is what it has left to report.
     """
     _win, do, messages, _errors = session
     do("preset technical")
     assert "not applied" in messages[-1]
-    assert "polar contacts" in messages[-1]
+    assert "dash_width" in messages[-1]
+
+
+def test_technical_draws_real_polar_contacts(session):
+    """The step this preset used to skip, and the reason the finder exists."""
+    win, do, _messages, errors = session
+    do("preset technical")
+    assert errors == []
+    contacts = win.viewer._measurements.get("polar_conts")
+    assert contacts is not None, "the preset drew no contact object"
+    assert contacts["kind"] == "dashes"
+    assert contacts["positions"].shape[0] >= 2
+    # `label=0`: a few hundred numbers over a structure is unreadable, and
+    # PyMOL hides them straight after creating the object for the same reason.
+    assert contacts["labels"] == []
 
 
 def test_classified_sets_a_representation_per_atom_class(session):

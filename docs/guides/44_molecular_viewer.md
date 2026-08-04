@@ -888,6 +888,62 @@ distance d1, resi 10 and name CA, resi 20 and name CA
 rms polymer, other_object and polymer
 ```
 
+### Polar contacts
+
+`distance` also finds contacts in bulk, through PyMOL's `mode` argument:
+
+```text
+distance hb, all, all, mode=2          # every hydrogen bond in the structure
+distance hb, chain A, chain B, mode=2  # only across the interface
+distance hb, all, all, mode=2, label=0 # dashes without the numbers
+distance c, all, all, 4.0, mode=3      # any contact within 4 A, bonds excluded
+distance com, chain A, chain B, mode=4 # one line, centroid to centroid
+```
+
+| `mode` | What it draws |
+| --- | --- |
+| 0 | every interatomic distance inside `cutoff` |
+| 1 | only pairs that are bonded |
+| 2 | polar contacts (hydrogen bonds) |
+| 3 | like 0, but skipping atoms within `distance_exclusion` bonds |
+| 4 | one distance, between the two selections' centroids |
+
+The **A ▸ find ▸ polar contacts** submenu is the same command, pre-written for
+the usual questions (within the selection, side chains only, to solvent, across
+to everything else), and `preset technical`, `preset ligands` and
+`preset ligand_sites` all draw them as part of the recipe.
+
+What counts as a hydrogen bond is not a single distance. The donor–acceptor
+cutoff *slides with the A–D–H angle*, from `h_bond_cutoff_center` head-on
+(3.6 Å) down to `h_bond_cutoff_edge` at the widest angle accepted (3.2 Å at
+63°), and a hydrogen sitting behind the acceptor's lone pairs is rejected
+whatever its distance:
+
+```text
+set h_bond_cutoff_center, 3.5    # stricter head-on
+set h_bond_max_angle, 45         # stricter on geometry
+set h_bond_cutoff_edge, 0        # flatten it to a plain distance test
+set h_bond_exclusion, 3          # ignore pairs this many bonds apart
+set dash_width, 1.5              # thinner dashes
+set dash_length, 0.2             # longer dashes, fewer gaps
+```
+
+:::{note}
+Most crystal structures have no hydrogens, so the hydrogen is **placed** on the
+donor's open valence, aimed at the acceptor. Measured on a fully hydrogenated
+protein, asking the same question with and without its hydrogens finds **99.2 %**
+of the same contacts, plus about 9 % extra — rotatable hydroxyls and ammonium
+groups whose real hydrogen points elsewhere while a placed one is free to aim at
+the partner. `h_add` first if you want the file's own answer.
+
+Which atoms donate and accept comes from the same residue template `h_add` uses,
+so a backbone carbonyl oxygen accepts and does not donate. Two consequences
+worth knowing: a **ligand** or modified residue has no template and falls back to
+free-valence counting, which makes its carbonyl oxygens read as donors too (as
+they do in PyMOL); and **proline does not donate**, where PyMOL invents an amide
+hydrogen for it that the residue does not have.
+:::
+
 ## Bonds
 
 Bonds are inferred from the coordinates, using PyMOL's rule: two atoms are bonded

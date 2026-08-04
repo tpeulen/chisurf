@@ -247,6 +247,56 @@ def _triangle_edges(faces: np.ndarray) -> np.ndarray:
     return edges.astype(np.int32)
 
 
+def _dash_segments(
+    pairs: np.ndarray, dash_length: float, gap: float
+) -> np.ndarray:
+    """Chop line segments into dashes.
+
+    A measurement is dashed in PyMOL, and the line primitive here has no
+    stipple, so the dashes are geometry: each ``(start, end)`` pair becomes a
+    run of short segments spaced ``dash_length + gap`` apart, the last one
+    clipped to the end so the dash pattern never overshoots the atom it points
+    at.
+
+    Parameters
+    ----------
+    pairs : (K, 2, 3) numpy.ndarray
+        Segment endpoints.
+    dash_length, gap : float
+        Dash and gap size, in the same units as ``pairs``. A non-positive dash
+        length means "solid", and the segments come back unchanged.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(2M, 3)`` dash endpoints, ready for a ``GL_LINES`` draw.
+    """
+    pairs = np.asarray(pairs, dtype=float).reshape(-1, 2, 3)
+    if pairs.shape[0] == 0:
+        return np.zeros((0, 3), dtype=float)
+    period = float(dash_length) + max(float(gap), 0.0)
+    if dash_length <= 0.0 or period <= 0.0:
+        return pairs.reshape(-1, 3)
+
+    out: list[np.ndarray] = []
+    for start, end in pairs:
+        direction = end - start
+        total = float(np.linalg.norm(direction))
+        if total <= 1e-9:
+            continue
+        unit = direction / total
+        # A contact shorter than one period still has to be visible, so it
+        # keeps a single dash rather than disappearing between two gaps.
+        offsets = np.arange(0.0, total, period)
+        for offset in offsets:
+            stop = min(offset + dash_length, total)
+            out.append(start + unit * offset)
+            out.append(start + unit * stop)
+    if not out:
+        return np.zeros((0, 3), dtype=float)
+    return np.asarray(out, dtype=float)
+
+
 #: Colour a map opens in when nothing else is asked for.
 _DEFAULT_MAP_COLOR = (0.5, 0.7, 1.0, 1.0)
 
@@ -7916,6 +7966,34 @@ class MolView(QtWidgets.QWidget):
             )
         ]
 
+    def _scene_dash_length(self) -> float:
+        """``dash_length`` in scene units.
+
+        The setting is in Angstrom and the scene is the molecule scaled about
+        its centre, so the dash has to be scaled with it or a large structure
+        gets a solid line and a small one gets dust.
+        """
+        cfg = _DISPLAY_CONFIG.get("dash", {}) or {}
+        return float(cfg.get("length", 0.15)) * float(
+            getattr(self, "_scale_factor", 1.0) or 1.0
+        )
+
+    def _scene_dash_gap(self) -> float:
+        """``dash_gap`` in scene units; see :meth:`_scene_dash_length`."""
+        cfg = _DISPLAY_CONFIG.get("dash", {}) or {}
+        return float(cfg.get("gap", 0.45)) * float(
+            getattr(self, "_scale_factor", 1.0) or 1.0
+        )
+
+    def _dash_width(self) -> float:
+        """``dash_width`` in pixels.
+
+        Unlike the dash *length*, this is not scaled: a line width is a screen
+        property, not a molecular one.
+        """
+        cfg = _DISPLAY_CONFIG.get("dash", {}) or {}
+        return float(cfg.get("width", 2.5))
+
     def _update_measurements(self) -> list[SceneObject]:
         measurements = getattr(self, "_measurements", None)
         if not measurements:
@@ -7925,7 +8003,8 @@ class MolView(QtWidgets.QWidget):
         for mid, mdata in measurements.items():
             kind = mdata.get("kind", "distance")
             coords = np.asarray(mdata.get("positions", []), dtype=float)
-            if coords.size == 0: continue
+            if coords.size == 0:
+                continue
 
             if mdata.get("transform_to_scene", True):
                 coords = self._transform_world_coords_to_scene(coords)
@@ -7933,15 +8012,33 @@ class MolView(QtWidgets.QWidget):
             color = np.asarray(mdata.get("color", [1.0, 1.0, 1.0, 1.0]), dtype=float)
             label = str(mdata.get("label", ""))
 
-            if kind == "distance" and coords.shape[0] >= 2:
-                 # Line between two points
-                 line_geom = Geometry(kind="line", positions=coords[:2], colors=np.tile(color, (2, 1)))
-                 scene_objects.append(SceneObject(id=f"meas_line_{mid}", geometry=line_geom, render_mode="overlay"))
+            if kind in ("distance", "dashes") and coords.shape[0] >= 2:
+                 # PyMOL draws a measurement dashed, and a polar-contact object
+                 # holds many segments at once, so both go through the same
+                 # path: an even number of points read as consecutive pairs.
+                 pairs = coords[: (coords.shape[0] // 2) * 2].reshape(-1, 2, 3)
+                 dashes = _dash_segments(pairs, self._scene_dash_length(),
+                                         self._scene_dash_gap())
+                 if dashes.size:
+                     line_geom = Geometry(kind="line", positions=dashes,
+                                          colors=np.tile(color, (dashes.shape[0], 1)),
+                                          meta={"width": self._dash_width()})
+                     scene_objects.append(SceneObject(id=f"meas_line_{mid}", geometry=line_geom, render_mode="overlay"))
 
-                 # Label at midpoint
-                 midpoint = np.mean(coords[:2], axis=0)
-                 label_geom = Geometry(kind="text", positions=midpoint.reshape(1, 3), colors=color.reshape(1, 4), meta={"labels": [label]})
-                 scene_objects.append(SceneObject(id=f"meas_text_{mid}", geometry=label_geom, render_mode="overlay"))
+                 # One label per segment, at its midpoint. `label=0` on the
+                 # command leaves the list empty, which is how PyMOL's presets
+                 # draw a hundred contacts without a hundred numbers over them.
+                 labels = mdata.get("labels")
+                 if labels is None:
+                     labels = [label] if label else []
+                 if labels:
+                     mids = pairs.mean(axis=1)[: len(labels)]
+                     label_geom = Geometry(
+                         kind="text", positions=mids,
+                         colors=np.tile(color, (mids.shape[0], 1)),
+                         meta={"labels": [str(t) for t in labels[: mids.shape[0]]]},
+                     )
+                     scene_objects.append(SceneObject(id=f"meas_text_{mid}", geometry=label_geom, render_mode="overlay"))
 
             elif kind == "angle" and coords.shape[0] >= 3:
                  # Lines 0-1, 1-2

@@ -169,6 +169,39 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("dot_width", "dots.size_px", "float", 8.0,
           "Point size in pixels for the dot representation."),
 
+    # -- Hydrogen bonds / measurements --------------------------------------
+    # The six that shape `distance ... mode=2`. They are one curve, not six
+    # knobs: `cutoff_center` is the donor-acceptor cutoff head-on and
+    # `cutoff_edge` the cutoff at `max_angle`, with the powers interpolating
+    # between them. Setting `cutoff_edge` to zero flattens it to a plain
+    # distance test, which is PyMOL's own escape hatch.
+    _spec("h_bond_max_angle", "hbond.max_angle", "float", 63.0,
+          "Largest acceptor-donor-hydrogen angle accepted, in degrees."),
+    _spec("h_bond_cutoff_center", "hbond.cutoff_center", "float", 3.6,
+          "Donor-acceptor cutoff at zero angle, in Angstroms."),
+    _spec("h_bond_cutoff_edge", "hbond.cutoff_edge", "float", 3.2,
+          "Donor-acceptor cutoff at the maximum angle; 0 disables the slide."),
+    _spec("h_bond_power_a", "hbond.power_a", "float", 1.6,
+          "First exponent shaping the angle-to-cutoff interpolation."),
+    _spec("h_bond_power_b", "hbond.power_b", "float", 5.0,
+          "Second exponent shaping the angle-to-cutoff interpolation."),
+    _spec("h_bond_cone", "hbond.cone", "float", 180.0,
+          "How wide a cone in front of the acceptor admits a hydrogen."),
+    _spec("h_bond_exclusion", "hbond.exclusion", "int", 3,
+          "Atoms this many bonds apart or closer are not polar contacts."),
+    _spec("h_bond_from_proton", "hbond.from_proton", "bool", True,
+          "Draw the contact from the hydrogen rather than the donor atom."),
+    _spec("distance_exclusion", "measure.distance_exclusion", "int", 5,
+          "Atoms this many bonds apart or closer are skipped by mode 3."),
+    _spec("dash_length", "dash.length", "float", 0.15,
+          "Length of one dash in a measurement line, in Angstroms."),
+    _spec("dash_gap", "dash.gap", "float", 0.45,
+          "Gap between dashes, in Angstroms."),
+    _spec("dash_width", "dash.width", "float", 2.5,
+          "Line width in pixels for measurement dashes."),
+    _spec("dash_color", "dash.color", "color", [1.0, 1.0, 0.0, 1.0],
+          "Colour of measurement dashes."),
+
     # -- Surface ------------------------------------------------------------
     _spec("solvent_radius", "surface.probe_radius", "float", 1.4,
           "Probe radius used when building the solvent-excluded surface."),

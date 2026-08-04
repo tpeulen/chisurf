@@ -630,9 +630,27 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         strip = gui.sequence_height() if gui is not None else 0.0
         return max(int(self.height() - strip), 1)
 
+    #: Below this many pixels the scene column is not a viewport, it is a widget
+    #: that has not been laid out yet. Chosen well under any usable window and
+    #: well over the 1-pixel floor `scene_width` clamps to.
+    _MIN_MEASURABLE_SCENE = 16
+
     def _aspect(self) -> float:
-        """Viewport width over height, for PyMOL's portrait framing correction."""
-        return max(self.scene_width(), 1) / float(max(self.scene_height(), 1))
+        """Viewport width over height, for PyMOL's portrait framing correction.
+
+        Square (1.0) until the widget has a viewport worth measuring. A
+        never-shown ``MolView`` is 100x30 with a 220-pixel panel column, so
+        ``scene_width`` clamps its negative remainder to **1** -- and an aspect
+        of 1/30 told the framing correction the window was thirty times taller
+        than it is wide, putting the camera thirty times too far away. That is
+        not a portrait window; it is no window at all, and the correction has
+        nothing to correct for until there is one.
+        """
+        width = self.scene_width()
+        height = self.scene_height()
+        if width < self._MIN_MEASURABLE_SCENE or height < self._MIN_MEASURABLE_SCENE:
+            return 1.0
+        return width / float(height)
 
     def set_field_of_view(self, fov: float) -> None:
         """Set the vertical field of view in degrees, re-framing the scene.

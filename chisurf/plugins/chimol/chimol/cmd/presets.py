@@ -16,9 +16,8 @@ The mapping decisions worth knowing:
 
 * PyMOL's ``ribbon`` is a thinner representation than its cartoon; chimol draws
   one cartoon, so ``show ribbon`` here means ``show cartoon``.
-* polar contacts need PyMOL's ``dist ... mode=2`` (find every hydrogen bond),
-  and chimol's ``distance`` measures between two picked atoms. The presets that
-  draw them say so instead.
+* polar contacts are PyMOL's ``dist ... mode=2``, which chimol now has
+  (:mod:`~chimol.analysis.hbonds`); the presets draw them for real.
 * ``cartoon_fancy_helices`` and ``cartoon_highlight_color`` are not implemented
   by chimol's cartoon, so they are not registered as settings (a setting that
   reads nothing is exactly what the settings table exists to prevent) and the
@@ -174,6 +173,49 @@ class PresetMixin(BaseCmd):
         """Run one step, letting a failure abort the preset with its message."""
         self.do(line)
 
+    def _polar_contacts(
+        self, sele1: str, sele2: str, *, name: str,
+        dash_width: float | None = None, require: str | None = None,
+    ) -> None:
+        """PyMOL's ``dist <name>, s1, s2, mode=2, label=0, reset=1`` step.
+
+        Unlabelled on purpose: a protein draws a few hundred contacts and a
+        number over each is unreadable. PyMOL hides the labels straight after
+        creating them for the same reason.
+
+        Parameters
+        ----------
+        sele1, sele2 : str
+            The two sides of the contact search.
+        name : str
+            Measurement name, so re-running a preset replaces its contacts
+            rather than stacking a second set on top.
+        dash_width : float, optional
+            ``technical`` draws thinner dashes than the default.
+        require : str, optional
+            A selection that must match something first -- PyMOL's
+            ``if cmd.count_atoms(lig)``. With no ligand there is nothing to
+            contact, and an empty measurement object is worse than none.
+        """
+        if require is not None and not self._count_atoms(require):
+            return
+        self._run_preset_command(
+            f"distance {name}, {sele1}, {sele2}, mode=2, label=0, quiet=1"
+        )
+        if dash_width is not None:
+            self._set_global("dash_width", dash_width)
+
+    def _count_atoms(self, sele: str) -> int:
+        """How many atoms a selection reaches, across every object."""
+        _, viewer = self._require_window_and_viewer()
+        if viewer is None:
+            return 0
+        try:
+            hits = self._resolve_selection_to_atom_masks(viewer, sele)
+        except ValueError:
+            return 0
+        return sum(int(np.count_nonzero(mask)) for _id, _name, mask in hits)
+
     # -- the util colour helpers ---------------------------------------- #
     def _chains_in(self, sel: str) -> list[str]:
         """Chain identifiers the selection touches, sorted as ``get_chains`` is."""
@@ -287,7 +329,7 @@ class PresetMixin(BaseCmd):
         self._run_preset_command(f"show lines, (({sel}) and not ({LIG_SELE}))")
         self._run_preset_command(f"show sticks, ({LIG_SELE}) and ({sel})")
         self._run_preset_command(f"show cartoon, {sel}")
-        self._preset_note("polar contacts (needs a hydrogen-bond finder)")
+        self._polar_contacts(sel, sel, name="polar_conts", dash_width=1.5)
 
     def _preset_ligands(self, sel: str) -> None:
         self._preset_prepare(sel)
@@ -301,7 +343,16 @@ class PresetMixin(BaseCmd):
         self._run_preset_command(f"show lines, byres (({host}) within 5 of ({lig}))")
         self._run_preset_command(f"show sticks, {lig}")
         self._run_preset_command(f"show nonbonded, {lig}")
-        self._preset_note("polar contacts (needs a hydrogen-bond finder)")
+        # PyMOL measures host-to-ligand including the waters bridging them, and
+        # skips the step entirely when the selection holds no ligand -- an empty
+        # contact object left behind is worse than none.
+        near_solvent = f"({SOLV_SELE}) and ({sel}) and (({lig}) around 4)"
+        self._polar_contacts(
+            f"({host}) or ({near_solvent})",
+            f"({lig}) or ({near_solvent})",
+            name="polar_conts",
+            require=lig,
+        )
 
     def _preset_ligand_sites(self, sel: str) -> None:
         self._preset_ligands(sel)

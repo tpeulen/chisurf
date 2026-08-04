@@ -31,7 +31,7 @@ different algorithm, and for one where the data was blamed before the rule was.
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 119 |
-| Settings | 790 | 55 registered |
+| Settings | 790 | 68 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -62,33 +62,45 @@ which is the closest available proxy for real-world use. Re-derive it with:
 The appearance-bearing names at the top of that ranking, which is where to
 start: `transparency`, `surface_color`, `surface_type`, `two_sided_lighting`,
 `stick_color`, `ribbon_color`, `stick_ball`, `sphere_mode`, `valence`,
-`dash_width`, `light`, and the `util.py` lighting family (`specular_intensity`,
+`light`, and the `util.py` lighting family (`specular_intensity`,
 `spec_direct`, `spec_count`, `reflect`, `power`, `ray_shadow_decay_factor`).
 `cartoon_highlight_color` and `cartoon_fancy_helices` are the two the `pretty`
-and `publication` presets still report as skipped.
+and `publication` presets still report as skipped. The `dash_*` family and the
+six `h_bond_*` came off this list with the polar-contact finder.
 
 **Register a name only if code reads it** — a setting that reads nothing is what
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
 
-**2. A hydrogen-bond finder.** One missing piece blocks three visible things:
-`preset technical` and `preset ligands` both report drawing no polar contacts,
-and the object menu's **A ▸ find** submenu is disabled entirely. PyMOL's is
-`cmd.dist(..., mode=2)`; chimol's `distance` measures between two picked atoms
-and is not the same command.
-
-**3. The camera refits on every rebuild**, so colouring or any `set` re-frames a
+**2. The camera refits on every rebuild**, so colouring or any `set` re-frames a
 view you have zoomed into. Measured and recorded in
 [known issues](/references/known-issues.md), including two approaches that were
 tried and reverted — the fix belongs in the load path, not in the default.
 
-**4. Rendering.** The ray tracer's meshes are double-shaded (occlusion and cast
+**3. Rendering.** The ray tracer's meshes are double-shaded (occlusion and cast
 shadow are baked into the vertex colours and then shaded again — costs 44 % of
 the colour), and it has no transparency. Both are described under *`ray` renders
 the scene, not the molecule*.
 
-**5. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
+**4. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
 `cartoon_dumbbell`, `ellipsoid`, `cell`, `slice`.
+
+**5. The other `distance` modes.** 0–4 are done; 5–7 (π–π, π–cation), 9
+(halogen bonds) and 10 (salt bridges) are not, and the **A ▸ find** submenu
+shows each disabled with that reason. They are separate detectors, not
+variations on the hydrogen-bond test: PyMOL keeps 5–7 in its incentive build and
+implements 9/10 in `layer3/Interactions.cpp`, which is the file to read. The
+plumbing they would need — a multi-segment dashed measurement, the combined
+atom table, the settings — is now in place, so each is its own small predicate
+rather than a new subsystem.
+
+**Two smaller things the polar-contact work left measured but not done.** The
+contact object is not a real *object*: it does not appear in the panel, cannot
+be enabled/disabled or deleted by name, and `hide everything` does not touch it
+(PyMOL's `dist` creates an `ObjectDist` that the panel lists). And with
+`label=1` the numbers overlap badly on anything denser than a few contacts —
+PyMOL has the same problem and answers it by having every preset pass
+`label=0`, which is what chimol does too.
 
 # Tier 1 — daily use, blocks replacing PyMOL
 
@@ -302,7 +314,7 @@ confusion is exactly what hid `resn`.
 `alter_state`, `spectrum` by property, `scene`, `pair_fit`, `cartoon_putty`,
 `group`/`ungroup`/`order`, `bond`/`unbond`/`get_bonds`, `h_add`/`h_fill`, `smooth`,
 `protect`/`deprotect`, `sort`, `mask`/`unmask`,
-`symexp`/`get_symmetry`/`set_symmetry`.
+`symexp`/`get_symmetry`/`set_symmetry`, `distance` modes 0-4 (polar contacts).
 
 **Remaining:** `cealign` (skipped by request), `matrix_copy`, `ramp_new`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
@@ -449,6 +461,92 @@ derived, the protected atoms are snapshotted, the transform runs, and their rows
 are written back before the derived arrays are rebuilt — keeping the knowledge of
 what is derived in the one place that already has it. With nothing protected the
 helper returns `None`, so the common path is untouched.
+
+## Polar contacts: one finder unblocked three visible things
+
+`distance ... mode=2`. Before it, `preset technical` and `preset ligands` both
+reported drawing no polar contacts and the object menu's **A ▸ find** submenu was
+disabled outright — one missing piece behind three symptoms, which is what made
+it the item to do next rather than the biggest one.
+
+The algorithm is transcribed from `ObjectMoleculeTestHBond`,
+`ObjectMoleculeFindBestDonorH`, `ObjectMoleculeGetCheckHBond`,
+`ObjectMoleculeGetAvgHBondVector` and `CoordSetFindOpenValenceVector`. Three
+details are invisible to a reader who does not open the C++ and each changes
+the answer:
+
+* **the cutoff is a curve, not a number.** The donor–acceptor limit slides with
+  the A–D–H angle from `h_bond_cutoff_center` (3.6 Å, head-on) to
+  `h_bond_cutoff_edge` (3.2 Å, at `h_bond_max_angle` = 63°). The names read
+  backwards from what they do — *center* is the angle-zero end;
+* **the virtual hydrogen sits 1.0 Å out**, not at the real X–H bond length:
+  `FindBestDonorH` adds a *unit* open-valence vector. Only the direction is
+  used, but "fixing" the length moves the angle and with it the cutoff;
+* **an atom with no neighbours aims its hydrogen straight at the acceptor**
+  (`copy3f(seek, v)` with the *unnormalised* seek vector), so the angle is zero
+  and the test collapses to "within 3.6 Å". That is not a bug — it is how PyMOL
+  finds water-mediated contacts in a hydrogen-less PDB, and it is reproduced.
+
+### Donors and acceptors without bond orders
+
+PyMOL derives them from bond orders, which a PDB does not carry, and fills the
+gap twice: a hard-coded table of double bonds for standard residues applied while
+connecting (`assign_pdb_known_residue`), and valence arithmetic for the rest.
+chimol already holds the equivalent of the first — the `h_add` residue template,
+which knows each named atom's hydrogen count and whether its centre is planar.
+So a templated atom is typed from the template (which is what makes a backbone
+carbonyl oxygen an acceptor and *not* a donor), an untemplated one from the
+element's expected valence with the geometry read off its bond angles
+(`ObjectMoleculeGetAtomGeometry`), and explicit hydrogens beat both.
+
+Following PyMOL's own logic reproduces its ligand behaviour by construction: an
+untemplated carbonyl oxygen reads as a donor in both, because a single bond and a
+free valence slot look the same. **One deviation is deliberate**: PyMOL reads a
+proline nitrogen's three single bonds as a tertiary amine, marks it a donor and
+invents an amide hydrogen the residue does not have. The template says zero.
+
+### The measurement that says the invented hydrogens are right
+
+`hGBP1_closed.pdb` carries its hydrogens, so the same question can be asked
+twice. With them: **735** contacts. With them stripped, so every hydrogen used is
+a placed one: **803**, of which **729 are the same pairs — 99.2 % recall**. The
+9 % extra are rotatable donors (hydroxyls, ammonium groups) whose real hydrogen
+points elsewhere while a placed one is free to aim at the acceptor, plus a few
+3₁₀-like i→i+3 backbone pairs. That is the direction the error should go.
+
+On 148L the finder returns 234 contacts in 0.02 s, over 40 of them the i→i−4
+backbone bonds that *define* an α-helix — the check that a unit test choosing its
+own geometry cannot make.
+
+### What came with it
+
+`distance` grew PyMOL's full signature (`[name,] s1, s2 [, cutoff [, mode]]`,
+plus `label`/`quiet`/`reset`) and modes 0–4; measurements became multi-segment
+and **dashed**, through `dash_length`/`dash_gap`/`dash_width`/`dash_color`; the
+**A ▸ find ▸ polar contacts** submenu is transcribed from `menu.py::polar`, with
+halogen/salt-bridge/π left visible-and-disabled rather than dropped. Thirteen
+settings moved from the missing list to the registered one (55 → 68), all of
+them read by code.
+
+## The portrait correction ran on a window that did not exist
+
+Five tests in `test_camera_framing.py` were red, every one by a factor of
+**exactly 30**, and the round number pointed at the wrong thing: chimol scales
+coordinates by `_scale_factor` (default 10), which is close enough to feel
+related. It is not. `scene_width()` subtracts the internal panel's 220-pixel
+column and clamps what is left to **1**, so a `MolView` that has never been laid
+out (100×30) reported an aspect of 1/30 — and PyMOL's portrait framing
+correction, told the window was thirty times taller than wide, put the camera
+thirty times too far away.
+
+`_aspect()` now returns 1.0 below a 16-pixel viewport: an aspect measured off a
+one-pixel column is not a measurement, and there is nothing to correct until
+there is a window. Two guardrail tests, one per direction — the unlaid-out case
+frames square, a genuine 400×900 portrait still corrects.
+
+The lesson is the misdirection. A factor that matches a constant you already
+know is not evidence; printing the actual `scene_width()` and `_aspect()` took a
+minute and named it outright.
 
 ## Hydrogens need a template, and the reason is measurable
 

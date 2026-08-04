@@ -149,7 +149,59 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
         SEP,
         MenuEntry("default", "preset default, {sele}"),
     )),
-    MenuEntry("find", None, "Chimol has no polar-contact/clash finder yet."),
+    # PyMOL's `find` submenu, from menu.py::find/polar. Only the polar-contact
+    # arm is transcribed: halogen bonds, salt bridges and pi interactions are
+    # separate detectors (`distance` modes 6-10) rather than variations on this
+    # one, and each is left visible-and-disabled rather than dropped.
+    MenuEntry("find", None, "", children=(
+        MenuEntry("polar contacts", None, "", children=(
+            MenuEntry("within selection",
+                      "distance {sele}_polar_conts, {sele}, {sele}, "
+                      "mode=2, label=0"),
+            MenuEntry("involving side chains",
+                      "distance {sele}_polar_conts, ({sele}), "
+                      "({sele}) and sidechain, mode=2, label=0"),
+            MenuEntry("involving solvent",
+                      "distance {sele}_polar_conts, ({sele}) and solvent, "
+                      "({sele}) and not solvent, mode=2, label=0"),
+            MenuEntry("excluding solvent",
+                      "distance {sele}_polar_conts, ({sele}) and not solvent, "
+                      "({sele}) and not solvent, mode=2, label=0"),
+            MenuEntry("excluding main chain",
+                      "distance {sele}_polar_conts, ({sele}) and not backbone, "
+                      "({sele}) and not backbone, mode=2, label=0"),
+            MenuEntry("excluding intra-main chain",
+                      "distance {sele}_polar_conts, ({sele}), "
+                      "({sele}) and not backbone, mode=2, label=0"),
+            MenuEntry("just intra-side chain",
+                      "distance {sele}_polar_conts, ({sele}) and sidechain, "
+                      "({sele}) and sidechain, mode=2, label=0"),
+            MenuEntry("just intra-main chain",
+                      "distance {sele}_polar_conts, ({sele}) and backbone, "
+                      "({sele}) and backbone, mode=2, label=0"),
+            SEP,
+            MenuEntry("to any atoms",
+                      "distance {sele}_polar_conts, ({sele}), not ({sele}), "
+                      "mode=2, label=0"),
+            MenuEntry("to any excluding solvent",
+                      "distance {sele}_polar_conts, ({sele}) and not solvent, "
+                      "(not ({sele})) and not solvent, mode=2, label=0"),
+        )),
+        MenuEntry("any contacts", None, "", children=(
+            MenuEntry("between chains within 3.0A", None,
+                      "Chimol has no interchain-distance helper yet; "
+                      "`distance name, chain A, chain B, 3.0` does it by hand."),
+            MenuEntry("within selection, 4.0A",
+                      "distance {sele}_contacts, {sele}, {sele}, 4.0, "
+                      "mode=3, label=0"),
+        )),
+        MenuEntry("halogen-bond interactions", None,
+                  "Chimol has no halogen-bond detector (`distance mode=9`)."),
+        MenuEntry("salt-bridge interactions", None,
+                  "Chimol has no salt-bridge detector (`distance mode=10`)."),
+        MenuEntry("pi interactions", None,
+                  "Chimol has no pi-stacking detector (`distance mode=5-7`)."),
+    )),
     MenuEntry("align", None, "", children=(
         MenuEntry("align to ...", "align {sele}, {text}",
                   prompt=("Align", "Align onto which object?")),

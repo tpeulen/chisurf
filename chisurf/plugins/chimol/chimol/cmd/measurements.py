@@ -9,6 +9,35 @@ from .base import BaseCmd
 from .registry import command
 
 
+def _is_number(text: str) -> bool:
+    """Whether a command token is a bare number.
+
+    Used to tell PyMOL's positional ``cutoff`` and ``mode`` from a selection: no
+    selection expression is a bare number, so a trailing one is never ambiguous.
+    """
+    try:
+        float(text)
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
+def _dash_color():
+    """The configured measurement colour, or ``None`` to take the default."""
+    from ..config import _DISPLAY_CONFIG
+
+    value = (_DISPLAY_CONFIG.get("dash", {}) or {}).get("color")
+    if value is None:
+        return None
+    try:
+        rgba = [float(c) for c in value]
+    except (TypeError, ValueError):
+        return None
+    if len(rgba) == 3:
+        rgba.append(1.0)
+    return rgba if len(rgba) == 4 else None
+
+
 def _scene_transform(viewer, object_id, rotation, translation) -> np.ndarray:
     """Express an Angstrom-space rigid transform in the renderer's scene units.
 
@@ -122,16 +151,74 @@ class MeasurementMixin(BaseCmd):
     # Measurements
     # ------------------------------------------------------------------ #
     @command("distance", aliases=("dist",))
-    def distance(self, *seles: str) -> None:
-        """Measure distance between two selections (PyMOL ``distance [name,] s1, s2``)."""
+    def distance(
+        self,
+        *seles: str,
+        cutoff: float = -1.0,
+        mode: int = 0,
+        label: int = 1,
+        quiet: int = 0,
+        reset: int = 1,
+    ) -> None:
+        """Measure distances between two selections.
+
+        PyMOL's ``distance [name [, sele1 [, sele2 [, cutoff [, mode]]]]]``.
+
+        ``mode`` decides which pairs are drawn:
+
+        * ``0`` -- every interatomic distance inside ``cutoff``;
+        * ``1`` -- only pairs that are bonded;
+        * ``2`` -- **polar contacts**: donor/acceptor pairs passing the
+          hydrogen-bond test in :mod:`~chimol.analysis.hbonds`;
+        * ``3`` -- like ``0``, but excluding atoms within ``distance_exclusion``
+          bonds of each other;
+        * ``4`` -- one distance, between the two selections' centroids.
+
+        Modes 0, 1 and 3 measure between *atoms* and can produce a great many
+        lines; ``2`` is the one the presets and the **A ▸ find** menu use.
+
+        With one atom on each side and no mode, this is the two-atom measurement
+        it has always been -- so ``distance 14/CA, 29/CA`` is unchanged.
+
+        Parameters
+        ----------
+        *seles : str
+            ``[name,] sele1, sele2 [, cutoff [, mode]]``. Trailing numbers are
+            read as ``cutoff`` then ``mode``, which is how PyMOL's positional
+            form spells them.
+        cutoff : float, optional
+            Longest distance drawn. Negative means "let the mode decide": the
+            hydrogen-bond criteria for mode 2, and 4 Å for the contact modes,
+            where PyMOL's own default of *everything* is never what is wanted.
+        mode : int, optional
+            As above.
+        label : int, optional
+            0 draws the dashes without their numbers, which is what the presets
+            do -- a hundred labelled contacts is unreadable.
+        quiet : int, optional
+            1 suppresses the summary line. Accepted for PyMOL compatibility.
+        reset : int, optional
+            Accepted for PyMOL compatibility; a named measurement is always
+            replaced here, never appended to.
+        """
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return
 
-        args = list(seles)
+        args = [str(a).strip() for a in seles if str(a).strip()]
         if not args:
             self._emit_error("Usage: distance sele1, sele2")
             return
+
+        # PyMOL takes cutoff and mode positionally, after the two selections. A
+        # selection is never a bare number, so trailing numbers are unambiguous.
+        trailing: list[float] = []
+        while len(args) > 2 and _is_number(args[-1]) and len(trailing) < 2:
+            trailing.insert(0, float(args.pop()))
+        if trailing:
+            cutoff = trailing[0]
+            if len(trailing) > 1:
+                mode = int(trailing[1])
 
         try:
             meas_name, sele_parts = self._parse_measurement_selections(
@@ -142,6 +229,14 @@ class MeasurementMixin(BaseCmd):
             return
 
         sele1, sele2 = sele_parts
+
+        if int(mode) != 0 or self._selection_is_multi_atom(viewer, sele1, sele2):
+            self._distance_set(
+                viewer, meas_name, sele1, sele2,
+                cutoff=float(cutoff), mode=int(mode),
+                label=bool(label), quiet=bool(quiet),
+            )
+            return
 
         try:
             obj1_id, obj1_name, res_i, atom1, p1 = self._resolve_selection_to_atom(
@@ -187,6 +282,270 @@ class MeasurementMixin(BaseCmd):
 
         positions = np.array([v1, v2])
         self._add_measurement(viewer, meas_name, "distance", positions, dist_val)
+
+    # ------------------------------------------------------------------ #
+    # Distance *sets*: many pairs at once (PyMOL's `dist ... mode=N`)
+    # ------------------------------------------------------------------ #
+    def _combined_atom_table(self, viewer, sele1: str, sele2: str):
+        """Both selections over one atom table, PyMOL-style.
+
+        PyMOL's selector runs over a single global table spanning every loaded
+        object, which is what lets ``dist`` measure between two molecules.
+        chimol evaluates per object, so the tables are concatenated here and the
+        bond lists offset with them. There is deliberately **no** edge between
+        two objects' blocks: that is what stops the neighbour-exclusion rule
+        from treating atoms in different molecules as bonded neighbours.
+
+        Returns
+        -------
+        tuple
+            ``(atoms, bonds, mask1, mask2, names)`` where ``names`` maps each
+            row back to ``(object_name, atom_index)`` for the summary line, or
+            ``None`` when neither selection reached an object with atoms.
+        """
+        hits1 = self._resolve_selection_to_atom_masks(viewer, sele1)
+        hits2 = self._resolve_selection_to_atom_masks(viewer, sele2)
+        by_object: dict[str, str] = {}
+        for obj_id, obj_name, _mask in list(hits1) + list(hits2):
+            by_object[obj_id] = obj_name
+        if not by_object:
+            return None
+
+        masks1 = {obj_id: mask for obj_id, _n, mask in hits1}
+        masks2 = {obj_id: mask for obj_id, _n, mask in hits2}
+
+        tables, bonds, m1, m2, names = [], [], [], [], []
+        offset = 0
+        for obj_id, obj_name in by_object.items():
+            state = getattr(viewer._objects.get(obj_id), "state", None)
+            atoms = getattr(state, "atoms", None)
+            if atoms is None or len(atoms) == 0:
+                continue
+            n = len(atoms)
+            tables.append(atoms)
+            pairs = getattr(state, "bond_pairs", None)
+            if pairs is not None and len(pairs):
+                bonds.append(np.asarray(pairs, dtype=int)[:, :2] + offset)
+            m1.append(self._padded(masks1.get(obj_id), n))
+            m2.append(self._padded(masks2.get(obj_id), n))
+            names.append((obj_name, offset, n))
+            offset += n
+
+        if not tables:
+            return None
+        atoms = np.concatenate(tables) if len(tables) > 1 else tables[0]
+        bond_pairs = (
+            np.concatenate(bonds) if bonds else np.zeros((0, 2), dtype=int)
+        )
+        return (
+            atoms,
+            bond_pairs,
+            np.concatenate(m1),
+            np.concatenate(m2),
+            names,
+        )
+
+    @staticmethod
+    def _padded(mask, n: int) -> np.ndarray:
+        """A mask of length ``n``; an absent or short one reads as all-false."""
+        if mask is None:
+            return np.zeros(n, dtype=bool)
+        mask = np.asarray(mask, dtype=bool)
+        if mask.shape[0] == n:
+            return mask
+        out = np.zeros(n, dtype=bool)
+        out[: min(n, mask.shape[0])] = mask[: min(n, mask.shape[0])]
+        return out
+
+    def _selection_is_multi_atom(self, viewer, sele1: str, sele2: str) -> bool:
+        """Whether either side names more than one atom.
+
+        ``distance 14/CA, 29/CA`` is one measurement with a readable label;
+        ``distance all, all`` is a distance *set*. The two answer differently
+        and the difference is decided here rather than by the user.
+        """
+        try:
+            for expr in (sele1, sele2):
+                total = sum(
+                    int(np.count_nonzero(mask))
+                    for _id, _name, mask in
+                    self._resolve_selection_to_atom_masks(viewer, expr)
+                )
+                if total > 1:
+                    return True
+        except ValueError:
+            return False
+        return False
+
+    def _distance_set(
+        self, viewer, meas_name, sele1: str, sele2: str, *,
+        cutoff: float, mode: int, label: bool, quiet: bool,
+    ) -> None:
+        """Build a many-segment measurement for one of PyMOL's distance modes."""
+        from ..analysis.hbonds import HBondCriteria, find_hydrogen_bonds
+        from ..config import _DISPLAY_CONFIG
+
+        try:
+            combined = self._combined_atom_table(viewer, sele1, sele2)
+        except ValueError as exc:
+            self._emit_error(str(exc))
+            return
+        if combined is None:
+            self._emit_error("distance: selection matched no atoms")
+            return
+        atoms, bond_pairs, mask1, mask2, _names = combined
+        xyz = np.asarray(atoms["xyz"], dtype=float)
+
+        if mode == 4:
+            if not mask1.any() or not mask2.any():
+                self._emit_error("distance: selection matched no atoms")
+                return
+            c1 = xyz[mask1].mean(axis=0)
+            c2 = xyz[mask2].mean(axis=0)
+            dist = float(np.linalg.norm(c1 - c2))
+            self._finish_distance_set(
+                viewer, meas_name, np.array([c1, c2]), [f"{dist:.3f}"],
+                label=label, quiet=quiet,
+                summary=f"distance {meas_name or ''}: centroids {dist:.3f}",
+            )
+            return
+
+        if mode == 2:
+            criteria = HBondCriteria.from_config()
+            bonds = find_hydrogen_bonds(
+                atoms, bond_pairs, mask1, mask2, criteria=criteria,
+                cutoff=cutoff if cutoff >= 0 else None,
+            )
+            if criteria.from_proton:
+                # PyMOL draws from the proton when there is a real one; a
+                # virtual hydrogen is not a place in the file, so those still
+                # start at the donor.
+                starts = np.array([
+                    b.hydrogen_xyz if b.hydrogen is not None else xyz[b.donor]
+                    for b in bonds
+                ]).reshape(-1, 3)
+            else:
+                starts = xyz[[b.donor for b in bonds]].reshape(-1, 3)
+            ends = xyz[[b.acceptor for b in bonds]].reshape(-1, 3)
+            pairs = np.empty((len(bonds) * 2, 3), dtype=float)
+            if len(bonds):
+                pairs[0::2] = starts
+                pairs[1::2] = ends
+            labels = [f"{b.distance:.1f}" for b in bonds]
+            self._finish_distance_set(
+                viewer, meas_name, pairs, labels, label=label, quiet=quiet,
+                summary=f"{len(bonds)} polar contacts",
+            )
+            return
+
+        # Modes 0, 1 and 3: plain interatomic distances.
+        exclusion = 0
+        if mode == 3:
+            exclusion = int(
+                (_DISPLAY_CONFIG.get("measure", {}) or {}).get(
+                    "distance_exclusion", 5
+                )
+            )
+        # PyMOL's own default here is "no cutoff", which on `all, all` is every
+        # pair in the structure. A contact radius is the useful reading and the
+        # only one that finishes. Mode 1 needs none: it is already bounded by
+        # the bond list, and every bond is well inside any contact radius.
+        search = cutoff if cutoff >= 0 else (-1.0 if mode == 1 else 4.0)
+        pairs_idx = self._contact_pairs(
+            xyz, mask1, mask2, search, bond_pairs,
+            bonds_only=(mode == 1), exclusion=exclusion,
+        )
+        flat = np.empty((len(pairs_idx) * 2, 3), dtype=float)
+        labels = []
+        for k, (i, j) in enumerate(pairs_idx):
+            flat[2 * k] = xyz[i]
+            flat[2 * k + 1] = xyz[j]
+            labels.append(f"{float(np.linalg.norm(xyz[i] - xyz[j])):.1f}")
+        self._finish_distance_set(
+            viewer, meas_name, flat, labels, label=label, quiet=quiet,
+            summary=f"{len(pairs_idx)} distances",
+        )
+
+    @staticmethod
+    def _contact_pairs(
+        xyz, mask1, mask2, cutoff: float, bond_pairs, *,
+        bonds_only: bool, exclusion: int,
+    ) -> list[tuple[int, int]]:
+        """Index pairs within ``cutoff``, minus whatever the mode excludes."""
+        from ..analysis.hbonds import neighbour_lists, within_n_bonds
+
+        side1 = np.nonzero(mask1)[0]
+        side2 = np.nonzero(mask2)[0]
+        if not side1.size or not side2.size:
+            return []
+        if bonds_only:
+            pairs = np.asarray(bond_pairs, dtype=int).reshape(-1, 2)
+            keep = []
+            for i, j in pairs:
+                if (mask1[i] and mask2[j]) or (mask1[j] and mask2[i]):
+                    d = float(np.linalg.norm(xyz[i] - xyz[j]))
+                    if cutoff < 0 or d <= cutoff:
+                        keep.append((int(min(i, j)), int(max(i, j))))
+            return sorted(set(keep))
+
+        from scipy.spatial import cKDTree
+
+        neighbours = (
+            neighbour_lists(len(xyz), bond_pairs) if exclusion else None
+        )
+        tree = cKDTree(xyz[side2])
+        seen: set[tuple[int, int]] = set()
+        for i in side1:
+            for local in tree.query_ball_point(xyz[i], cutoff):
+                j = int(side2[local])
+                if i == j:
+                    continue
+                key = (int(min(i, j)), int(max(i, j)))
+                if key in seen:
+                    continue
+                if neighbours is not None and within_n_bonds(
+                    int(i), j, exclusion, neighbours
+                ):
+                    continue
+                seen.add(key)
+        return sorted(seen)
+
+    def _finish_distance_set(
+        self, viewer, meas_name, positions, labels, *,
+        label: bool, quiet: bool, summary: str,
+    ) -> None:
+        """Store a distance set and report it.
+
+        A run that finds nothing **clears** a measurement of the same name
+        rather than leaving the last one on screen. That is PyMOL's ``reset=1``,
+        and without it the menu lies: firing *to any atoms* on a whole object
+        selects nothing on the far side, finds nothing, and the previous
+        entry's dashes stay put looking like the answer.
+        """
+        positions = np.asarray(positions, dtype=float).reshape(-1, 3)
+        name = meas_name or f"dist_{len(viewer._measurements)}"
+
+        cur = dict(viewer._measurements)
+        if positions.shape[0] == 0:
+            if cur.pop(name, None) is not None:
+                viewer._measurements = cur
+                viewer._update_view()
+            if not quiet:
+                self._emit_message(f"distance {name}: {summary}")
+            return
+
+        colour = _dash_color() or [1.0, 1.0, 0.0, 1.0]
+        cur[name] = {
+            "kind": "dashes",
+            "positions": positions,
+            "label": "",
+            "labels": list(labels) if label else [],
+            "color": list(colour),
+        }
+        viewer._measurements = cur
+        viewer._update_view()
+        if not quiet:
+            self._emit_message(f"distance {name}: {summary}")
 
     @command("angle")
     def angle(self, *seles: str) -> None:
