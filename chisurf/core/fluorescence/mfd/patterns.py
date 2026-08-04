@@ -390,12 +390,18 @@ class ChannelResponse:
     scatter_fraction : float
         Fraction of this channel's *signal* photons that are scattered excitation
         light, whose pattern is the response itself.
+    background_pattern : numpy.ndarray, optional
+        Measured micro-time distribution of the background photons. ``None`` falls
+        back to flat, which is right for dark counts and wrong for the sub-threshold
+        fluorescence that dominates the non-burst photons of a real measurement; see
+        :meth:`background_moments`.
     """
 
     irf: np.ndarray
     dt: float
     background_rate: float = 0.0
     scatter_fraction: float = 0.0
+    background_pattern: np.ndarray | None = None
     _spectrum: np.ndarray = field(default=None, repr=False, init=False)
 
     def __post_init__(self):
@@ -510,14 +516,35 @@ class ChannelResponse:
     def background_moments(self) -> tuple[float, float]:
         """Return the moments of the uncorrelated background in this channel.
 
-        Flat over the window: dark counts and after-pulses carry no timing
-        information at all.
+        Flat over the window *only when nothing better is known*: dark counts and
+        after-pulses carry no timing information at all.
+
+        When ``background_pattern`` is supplied it is used instead, and it usually
+        should be. The photons this rate is estimated from are the non-burst
+        photons, and in a single-molecule measurement those are dominated by
+        **fluorescence from molecules too dim to make the burst threshold** — not by
+        dark counts. Their micro times are therefore an ordinary decay, not flat,
+        and assuming flat puts the background's mean delay at half the laser period
+        instead of near the IRF. That error lands squarely on the lifetime axis: it
+        drags the predicted mean micro time of every burst upward in proportion to
+        the background's share of its photons, and on a measurement with a
+        realistic non-burst rate it is worth *several nanoseconds* — far larger
+        than the differences the axis exists to resolve.
 
         Returns
         -------
         mean, variance : float
         """
-        return background_moments(self.n_channels, self.dt)
+        if self.background_pattern is None:
+            return background_moments(self.n_channels, self.dt)
+        pattern = np.asarray(self.background_pattern, dtype=float)
+        total = pattern.sum()
+        if total <= 0.0:
+            return background_moments(self.n_channels, self.dt)
+        times = np.arange(pattern.size) * float(self.dt)
+        weights = pattern / total
+        mean = float(weights @ times)
+        return mean, float(weights @ (times * times) - mean * mean)
 
 
 def perrin_anisotropy(lifetime, rho: float, r0_anisotropy: float):

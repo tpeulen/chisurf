@@ -100,7 +100,10 @@ def estimate_responses(
         all — an all-zero response would silently make every pattern the decay
         itself, which is a real IRF-free fit masquerading as an IRF-corrected one.
     """
-    from chisurf.core.fluorescence.burst.irf_bg import extract_irf_background
+    from chisurf.core.fluorescence.burst.irf_bg import (
+        extract_irf_background,
+        gaussian_prompt,
+    )
 
     tttrs = preparation.summary.get("_tttrs")
     if not tttrs:
@@ -150,10 +153,20 @@ def estimate_responses(
                 f"the {name} channel has no non-burst photons, so its instrument "
                 "response cannot be estimated from this measurement"
             )
-        # Subtract the flat dark-count floor; what remains is scatter, i.e. the
-        # response. The quantile is the same robust choice irf_bg makes.
+        # Subtract the flat dark-count floor; what remains is the scatter prompt
+        # *plus* a slow fluorescent tail, because the non-burst photons are
+        # dominated by molecules too dim to cross the burst threshold and a flat
+        # subtraction leaves their decay in place. Taking that as the response put
+        # its first moment at 4.50 ns against a true 1.00 ns on a simulated
+        # measurement, straight onto the lifetime axis.
+        #
+        # A Gaussian cannot represent a slow tail, which is why it is the right
+        # shape: fitting one to the prompt keeps the measured position and width
+        # and leaves the fluorescence behind. Same estimator the burst-MLE
+        # lifetime fit uses, where it removed a ~2x bias on real BH data.
         baseline = float(np.quantile(raw, 0.2))
-        irf = np.clip(raw - baseline, 0.0, None)
+        prompt = np.clip(raw - baseline, 0.0, None)
+        irf = gaussian_prompt(prompt) if prompt.sum() > 0 else prompt
         if irf.sum() <= 0:
             raise ValueError(
                 f"the {name} channel's non-burst micro times are flat: there is no "
@@ -162,8 +175,15 @@ def estimate_responses(
         rates, photons = zip(*background[name])
         total = sum(photons) or 1.0
         rate_khz = sum(r * n for r, n in zip(rates, photons)) / total
+        # The background *rate* counts every non-burst photon, so the background
+        # *shape* has to be every non-burst photon too. Pairing that rate with a
+        # flat pattern is the inconsistency that used to put several nanoseconds of
+        # error on the lifetime axis: these photons are mostly fluorescence from
+        # molecules below the burst threshold, which decays like a decay, and
+        # calling them dark counts placed their mean delay at half the laser period.
         responses[name] = ChannelResponse(
-            irf=irf, dt=dt_ns, background_rate=rate_khz * 1e3
+            irf=irf, dt=dt_ns, background_rate=rate_khz * 1e3,
+            background_pattern=raw,
         )
     return responses
 
@@ -589,6 +609,62 @@ class MfdModel:
         }
 
 
+def donor_weights(fractions: np.ndarray, state_p_red: np.ndarray,
+                  mode: str = "green") -> np.ndarray:
+    """Return the mixture the donor photons of a burst are drawn from.
+
+    A photon emitted while the molecule is in state ``s`` reaches the donor channel
+    with probability ``1 − p_red,s``. Conditioned on *being* a donor photon, the
+    state it came from is therefore distributed as
+
+    ::
+
+        g_s = f_s (1 − p_red,s) / Σ_j f_j (1 − p_red,j)
+
+    and **not** as the occupation fraction ``f_s``. The two coincide only when
+    every state has the same donor brightness, which is exactly what a set of FRET
+    states is not: a high-FRET state can occupy most of a burst while contributing
+    few of the donor photons whose mean delay is plotted.
+
+    This is one function rather than an expression repeated per scoring source,
+    because the histogram and the burst-wise likelihood share the error when they
+    each spell it out — and then agree with each other, which reads as
+    confirmation.
+
+    Parameters
+    ----------
+    fractions : numpy.ndarray
+        ``(..., n_states)`` occupation-time fractions of a burst.
+    state_p_red : numpy.ndarray
+        ``(n_states,)`` acceptor-channel probability of each state.
+    mode : {"green", "occupancy"}
+        ``"green"`` for the donor-photon mixture above; ``"occupancy"`` for the
+        plain ``f``, kept only so the benchmark can price the difference.
+
+    Returns
+    -------
+    numpy.ndarray
+        Weights shaped like *fractions*. Rows whose donor share is zero fall back
+        to *fractions*: such a burst has no green photons and is cut before its
+        micro time is used, so the value only has to be finite.
+
+    Raises
+    ------
+    ValueError
+        If *mode* is neither ``"green"`` nor ``"occupancy"``.
+    """
+    f = np.asarray(fractions, dtype=float)
+    if mode == "occupancy":
+        return f
+    if mode != "green":
+        raise ValueError(
+            f"donor_weighting must be 'green' or 'occupancy', got {mode!r}"
+        )
+    share = f * np.broadcast_to(1.0 - np.asarray(state_p_red, dtype=float), f.shape)
+    total = share.sum(axis=-1, keepdims=True)
+    return np.where(total > 0.0, share / np.where(total > 0.0, total, 1.0), f)
+
+
 @dataclass
 class MfdKineticModel(MfdModel):
     """States that exchange during the burst, through the occupation-time law.
@@ -602,7 +678,8 @@ class MfdKineticModel(MfdModel):
     of components in the first place.
 
     That works because the channel counts and the micro times of a burst depend on
-    its state path **only** through ``f``. It is exact, not an approximation.
+    its state path **only** through ``f``. They do not depend on it the *same way*,
+    though, and that distinction is what ``donor_weighting`` is about.
 
     Attributes
     ----------
@@ -618,11 +695,30 @@ class MfdKineticModel(MfdModel):
         resolution runs to hundreds of nodes under fast exchange and each costs a
         pass through the nested background sum, for a resolution the histogram
         cannot see; see :meth:`OccupationGrid.coarsen`.
+    donor_weighting : {"green", "occupancy"}
+        Which mixture the micro-time moments are taken over.
+
+        ``"green"`` (the default, and exact) weights each state by the donor
+        photons it actually contributes, ``g_s ∝ f_s (1 − p_red,s)``. ``"occupancy"``
+        weights by ``f`` alone, which is what this model did until the green
+        weighting was derived; it is kept so the benchmark can price the
+        difference, and is wrong.
+
+        The distinction matters because the two axes condition differently. Each
+        photon picks a state with probability ``f`` and then goes red with that
+        state's probability, so marginally it is red with probability ``f·p``
+        *independently* of every other photon — the channel counts are exactly
+        ``Binomial(S, f·p)`` and ``f`` is right for them. The micro times are read
+        from the green photons only, and those are a **biased sample**: a
+        high-FRET state occupies the burst without contributing many donor photons
+        to its mean delay. Weighting them by ``f`` puts the dynamic bridge too far
+        toward short lifetimes.
     """
 
     rate_matrix: np.ndarray | None = None
     n_steps: int | None = None
     n_occupation_nodes: int = 16
+    donor_weighting: str = "green"
 
     def components(
         self, data: MfdData
@@ -694,14 +790,18 @@ class MfdKineticModel(MfdModel):
             f = grid.fractions
             weights[cell, 1 : n + 1] = (1.0 - donor_only) * grid.weights
             # A burst that spent fraction f_s in state s emits that fraction of its
-            # photons there (equal green-equivalent brightness across states), so
-            # the acceptor probability and the micro-time pattern are the f-weighted
-            # mixtures. The mixture's variance carries the spread of the states'
-            # own means, which is what makes a burst caught mid-exchange sit off
-            # the static line rather than on it.
+            # photons there, and each of them is red with that state's probability.
+            # Marginally every photon is then red with probability f·p on its own,
+            # so the acceptor count is exactly Binomial(S, f·p) — f is right here.
             cell_p_red[cell, 1 : n + 1] = f @ state_p_red
+            # The micro times are read from the green photons, which are *not* an
+            # f-weighted sample of the burst: a state contributes donor photons in
+            # proportion to f_s(1 - p_red,s). The mixture's variance carries the
+            # spread of the states' own means, which is what makes a burst caught
+            # mid-exchange sit off the static line rather than on it.
+            donor_share = donor_weights(f, state_p_red, mode=self.donor_weighting)
             node_mean, node_variance = mixture_moments(
-                f,
+                donor_share,
                 np.broadcast_to(state_mean, f.shape),
                 np.broadcast_to(state_variance, f.shape),
             )
@@ -844,9 +944,17 @@ def burstwise_log_probabilities(
         component_p_red = np.concatenate(
             [[species_p_red[0]], fractions @ state_p_red]
         )
-        component_patterns = np.vstack(
-            [donor_only_pattern[None, :], fractions @ state_patterns]
-        )
+        # The patterns are donor-channel densities, so they mix over the donor
+        # photons a state contributes, not over the time it occupies — the same
+        # distinction the histogram source makes, through the same function. If
+        # this source spelled it out separately the two would agree with each other
+        # while sharing the error.
+        component_patterns = np.vstack([
+            donor_only_pattern[None, :],
+            donor_weights(fractions, state_p_red,
+                          mode=getattr(model, "donor_weighting", "green"))
+            @ state_patterns,
+        ])
         per_bin.append((component_weights, component_p_red, component_patterns))
 
     # A flat background floor, so a photon in a channel the fluorescence never

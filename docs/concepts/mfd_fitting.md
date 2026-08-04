@@ -89,6 +89,33 @@ Given a state path, a burst's channel counts and micro times depend on that path
 is the path's sufficient statistic. So exchange enters as `P(f | T, K)` and nothing
 else about the path matters.
 
+They do not depend on it the *same way*, though, and the difference is easy to
+miss because one half genuinely is `f`:
+
+* **Channel counts are the `f`-weighted mixture, exactly.** A photon picks a state
+  with probability `f_s` and is then detected in the acceptor channel with that
+  state's probability `p_s`, so marginally it is an acceptor photon with
+  probability `f·p`, *independently of every other photon*. The acceptor count is
+  therefore exactly `Binomial(S, f·p)` — not approximately.
+* **The micro times are not.** They are read from the donor photons alone, and
+  those are a **biased sample** of the burst: a state contributes donor photons in
+  proportion to `f_s (1 − p_s)`, so the mixture the mean delay is drawn from is
+
+  ```
+  g_s = f_s (1 − p_s) / Σ_j f_j (1 − p_j)
+  ```
+
+  A high-FRET state can occupy most of a burst while contributing almost none of
+  the donor photons whose mean delay is plotted. For a burst split evenly between
+  an `E = 0.2` and an `E = 0.8` state, **80 %** of the donor photons come from the
+  low-FRET state, not half — and the predicted mean delay is 2.72 ns rather than
+  2.00 ns, three to four times the width of a micro-time bin.
+
+Weighting the micro times by `f` puts the dynamic bridge too far toward short
+lifetimes, which a fit then compensates with the exchange rate. ChiSurf did this
+until the green weighting was derived; `donor_weighting="occupancy"` still selects
+the old behaviour so the benchmark can price it, and it is wrong.
+
 It is computed deterministically, by propagating the joint distribution over
 (state, occupation counts) with the exact one-slice transition matrix. Sampling
 paths instead would put Monte-Carlo noise into the objective, and an optimizer
@@ -215,6 +242,35 @@ percent over a 36-fold change in exchange rate, so it is **not** the source to r
 a rate from. It tells you whether the shape is a mixture. The rate comes from the
 histogram or burst-wise sources.
 
+## Two forward models
+
+Everything above describes the **analytic** forward model: the histogram is
+*computed*, cell by cell, as an expectation. Three of its steps are closed forms
+standing in for something a burst actually does — a nested Poisson/binomial sum
+for the channel counts, a Gaussian kernel for the mean delay, a transfer-matrix
+propagator for the occupation-time law. Each is fast and each has a regime where
+it frays.
+
+ChiSurf also carries a **Monte-Carlo** forward model
+(`chisurf.core.fluorescence.mfd.montecarlo`), transcribed from the Sim2D program
+that produced published 2D-MFD analyses for years. It approximates none of those
+three: it draws a burst's duration and photon budget from the measured
+distribution, walks the kinetic scheme through that duration, hands the photons
+out over the states in proportion to the time spent in each, and lets every
+photon choose a channel and a delay. Its physics core is about a hundred lines.
+
+The two share what a *state* is — the same species properties, the same
+IRF-convolved micro-time patterns — so they cannot disagree about photophysics,
+only about what happens to a burst. That is what makes a disagreement between
+them diagnostic rather than merely a discrepancy, and it is why the Monte-Carlo
+path keeps Sim2D's multinomial-over-states construction even though thinning a
+multinomial is provably an ordinary binomial: a second implementation that
+assumes the first one's algebra is not a second opinion.
+
+Which one to use is a measured question, not a stylistic one, and it is measured
+against known ground truth rather than against each other — see
+[benchmarks](../development/benchmarks.md).
+
 ## Things to know before reading a number off it
 
 * **The donor-photon cut is not neutral between populations.** A high-FRET burst
@@ -232,13 +288,49 @@ histogram or burst-wise sources.
   bursts — the thing that actually varies between repeats of an experiment.
 
   The burst-wise source is worth running even when you do not need an uncertainty.
-  It shares the model with the histogram source but not the statistic, so agreement
-  between them tests both; on simulated exchange its likelihood peaks exactly at the
-  generating rate. A rate the two disagree on is a rate nobody should report.
-* **The instrument response taken from non-burst photons is contaminated** by
-  fluorescence from molecules below the burst threshold, so a donor lifetime fitted
-  against it is an *effective* number. It does not affect a width gate; it will bias
-  an absolute lifetime.
+  It shares the model with the histogram source but not the statistic, so a rate the
+  two disagree on is a rate nobody should report; on simulated exchange its
+  likelihood peaks exactly at the generating rate.
+
+  **Agreement between them is weaker evidence than it looks**, though, precisely
+  because they share the model. The donor-photon weighting above was wrong in both
+  for as long as it existed, and the two agreed with each other throughout. What
+  distinguishes a shared modelling error from a correct model is an *independent
+  forward model* — see below — or known ground truth.
+## The instrument response, and why a Gaussian is the right shape
+
+The response comes from the measurement's own **non-burst** photons — everything
+the burst search did not select — so no separate scatter acquisition is needed.
+Those photons are not, however, only scatter and dark counts: most of a confocal
+acquisition holds molecules too dim to cross the burst threshold, and their
+fluorescence is in that stream too. Subtracting a flat baseline removes the dark
+counts and leaves the *decay*, so the "response" comes out with a slow tail and a
+first moment nanoseconds late.
+
+That error lands on the lifetime axis, and the parameter degenerate with it — the
+donor lifetime — absorbs it. On a real BH SPC-132 DNA measurement the least-squares
+optimum for `tau_d0` was **1.57 ns**, about half of anything a dye on DNA has.
+
+The fix is to fit a **Gaussian** to the prompt. A Gaussian cannot represent a slow
+tail, which is exactly the property wanted: least squares locks it onto the sharp
+scatter peak and leaves the fluorescence behind, while still following the measured
+position and width. Two details matter:
+
+* the width is taken from the **rising** edge only, mirrored. The falling side of a
+  non-burst histogram is the decay, not the instrument, so a two-sided half-max
+  reads the decay's width;
+* the fit window is the leading edge, not a symmetric interval — anything right of
+  the peak is prompt *plus* decay.
+
+Re-deriving that real measurement's optimum under the corrected response moves
+`tau_d0` to **2.72 ns** and leaves the distance, donor-only fraction and leakage
+within a percent: the signature of a genuine degeneracy being broken rather than a
+refit. The same estimator serves the burst-MLE lifetime fit, where it removed a
+comparable factor-of-two bias.
+
+On simulated photons with a declared 1.0 ns response, the estimate is recovered to
+better than 0.2 ns, and the fitted exchange rate's bias falls from what the
+contaminated response caused to what the forward model itself carries.
 
 ## Further reading
 

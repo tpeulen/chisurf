@@ -47,7 +47,107 @@ __all__ = [
     "non_burst_mask",
     "extract_irf_background",
     "extract_mle_irf_background",
+    "gaussian_prompt",
 ]
+
+
+def gaussian_prompt(prompt: np.ndarray, shape: float = 0.0) -> np.ndarray:
+    """Fit a (skew-)Gaussian to a measured scatter prompt.
+
+    A baseline-subtracted non-burst micro-time histogram is *not* an IRF: its
+    prompt rides on a slow fluorescent tail, because the non-burst periods still
+    hold dim and passing molecules, and a flat baseline subtraction removes the
+    dark counts while leaving that decay in place. Convolving a lifetime model
+    with such a "IRF" biases the recovered lifetime roughly two-fold short — a
+    genuine ~2.2 ns decay came out ~1.1 ns on real BH smFRET data — and moves the
+    prompt's own first moment several nanoseconds late.
+
+    A Gaussian cannot represent a slow tail, which is exactly why it is the right
+    shape here: least-squares fitting one over a window around the peak locks onto
+    the sharp scatter prompt and leaves the fluorescent artifact behind, while
+    still following the measured position and width. Falls back to the analytic
+    peak/FWHM pulse if the fit fails.
+
+    Parameters
+    ----------
+    prompt : numpy.ndarray
+        Baseline-subtracted non-burst micro-time histogram.
+    shape : float
+        Skewness. ``0`` is a symmetric Gaussian; positive values add the right
+        tail a real detector response has.
+
+    Returns
+    -------
+    numpy.ndarray
+        The fitted pulse, scaled to the prompt's total counts.
+    """
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+    prompt = np.asarray(prompt, dtype=np.float64)
+    pk = int(prompt.argmax())
+    peak_val = float(prompt[pk])
+    if peak_val <= 0.0:
+        return prompt
+    # Width from the *rising* edge only, mirrored. The falling side of a non-burst
+    # histogram is the fluorescence decay, not the instrument, so a two-sided
+    # half-max reads the decay's width and opens a fit window wide enough for the
+    # tail to drag the Gaussian late again (2.5 ns against a true 1.0). The rise is
+    # instrument-limited either way, and for a clean scatter prompt the two sides
+    # agree, so this changes nothing where the old estimate was already right.
+    half = 0.5 * peak_val
+    lo = pk
+    while lo > 0 and prompt[lo] >= half:
+        lo -= 1
+    fwhm = max(1.0, 2.0 * float(pk - lo))
+    sigma0 = fwhm / 2.3548
+    x = np.arange(prompt.size, dtype=np.float64)
+
+    # Fit the leading edge, not a symmetric window. Everything to the right of the
+    # peak is prompt *plus* decay, and a window wide enough to hold the prompt's
+    # own right flank also holds enough decay to drag the Gaussian late (0.6 ns on
+    # a well-resolved 0.24 ns prompt). The rise is instrument-only — the decay is
+    # flat across it — so it fixes the centre and the width on its own, and one
+    # half-width past the peak is kept so the fit is not extrapolating the top.
+    hw = max(1, pk - lo)
+    sl = slice(max(0, pk - 3 * hw), min(prompt.size, pk + hw + 1))
+    xw, yw = x[sl], prompt[sl]
+    weights = np.sqrt(np.maximum(yw, 1.0))  # Poisson counting weights
+
+    def _gauss(xx, amp, mu, sig):
+        return amp * np.exp(-0.5 * ((xx - mu) / sig) ** 2)
+
+    def _skew_gauss(xx, amp, mu, sig, alpha):
+        from scipy.special import erf
+        z = (xx - mu) / sig
+        return amp * np.exp(-0.5 * z * z) * (1.0 + erf(alpha * z / np.sqrt(2.0)))
+
+    g = None
+    try:
+        from scipy.optimize import curve_fit
+
+        if shape != 0.0:
+            popt, _ = curve_fit(
+                _skew_gauss, xw, yw,
+                p0=[peak_val, float(pk), sigma0, shape],
+                sigma=weights, absolute_sigma=False, maxfev=5000,
+            )
+            g = _skew_gauss(x, 1.0, popt[1], abs(popt[2]), popt[3])
+        else:
+            popt, _ = curve_fit(
+                _gauss, xw, yw,
+                p0=[peak_val, float(pk), sigma0],
+                sigma=weights, absolute_sigma=False, maxfev=5000,
+            )
+            g = _gauss(x, 1.0, popt[1], abs(popt[2]))
+    except Exception:
+        g = None
+    if g is None or not np.all(np.isfinite(g)) or float(np.sum(g)) <= 0.0:
+        # Fall back to the analytic pulse at the measured peak / FWHM.
+        g = synthetic_irf(x, center_ns=float(pk), fwhm_ns=fwhm, shape=shape, norm=True)
+
+    # Normalise to the prompt's counts so downstream scaling is unchanged.
+    s = float(g.sum())
+    return g * (float(prompt.sum()) / s) if s > 0 else g
 
 
 def _micro_time_channels_per_period(tttr: tttrlib.TTTR) -> int:
@@ -371,8 +471,6 @@ def extract_mle_irf_background(
     keep_idx = np.where(keep)[0]
     non_burst = tttr[keep_idx] if keep_idx.size else tttr[np.array([], dtype=int)]
 
-    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
-
     binning = max(1, int(micro_time_binning))
     q = float(np.clip(baseline_quantile, 0.0, 1.0))
     model = str(irf_model).lower()
@@ -381,75 +479,6 @@ def extract_mle_irf_background(
     if model in ("skewed", "skewed_gaussian") and shape == 0.0:
         # A mild right-skew, the characteristic shape of a real detector response.
         shape = 1.5
-
-    def _gaussian_prompt(prompt: np.ndarray) -> np.ndarray:
-        """Fit a (skew-)Gaussian to the experimental prompt.
-
-        Rather than placing a Gaussian at the crude peak/half-max width, this
-        least-squares fits a Gaussian (a skew-normal when ``shape != 0``) to the
-        measured prompt over a window around the peak. The Gaussian cannot
-        represent the slow fluorescent tail the non-burst histogram rides on, so
-        the fit locks onto the sharp scatter prompt and leaves that tail behind —
-        removing the ~2x lifetime bias it otherwise causes while staying fully
-        data-driven. Falls back to the analytic peak/FWHM pulse if the fit fails.
-        """
-        pk = int(prompt.argmax())
-        peak_val = float(prompt[pk])
-        if peak_val <= 0.0:
-            return prompt
-        half = 0.5 * peak_val
-        lo = pk
-        while lo > 0 and prompt[lo] >= half:
-            lo -= 1
-        hi = pk
-        while hi < prompt.size - 1 and prompt[hi] >= half:
-            hi += 1
-        fwhm = max(1.0, float(hi - lo))
-        sigma0 = fwhm / 2.3548
-        x = np.arange(prompt.size, dtype=np.float64)
-
-        # Fit only a window around the peak so the far fluorescent tail cannot
-        # drag the fit (a few FWHM each side captures the whole prompt core).
-        w = max(3, int(round(3.0 * fwhm)))
-        sl = slice(max(0, pk - w), min(prompt.size, pk + w + 1))
-        xw, yw = x[sl], prompt[sl]
-        weights = np.sqrt(np.maximum(yw, 1.0))  # Poisson counting weights
-
-        def _gauss(xx, amp, mu, sig):
-            return amp * np.exp(-0.5 * ((xx - mu) / sig) ** 2)
-
-        def _skew_gauss(xx, amp, mu, sig, alpha):
-            from scipy.special import erf
-            z = (xx - mu) / sig
-            return amp * np.exp(-0.5 * z * z) * (1.0 + erf(alpha * z / np.sqrt(2.0)))
-
-        g = None
-        try:
-            from scipy.optimize import curve_fit
-
-            if shape != 0.0:
-                popt, _ = curve_fit(
-                    _skew_gauss, xw, yw,
-                    p0=[peak_val, float(pk), sigma0, shape],
-                    sigma=weights, absolute_sigma=False, maxfev=5000,
-                )
-                g = _skew_gauss(x, 1.0, popt[1], abs(popt[2]), popt[3])
-            else:
-                popt, _ = curve_fit(
-                    _gauss, xw, yw,
-                    p0=[peak_val, float(pk), sigma0],
-                    sigma=weights, absolute_sigma=False, maxfev=5000,
-                )
-                g = _gauss(x, 1.0, popt[1], abs(popt[2]))
-        except Exception:
-            g = None
-        if g is None or not np.all(np.isfinite(g)) or float(np.sum(g)) <= 0.0:
-            # Fall back to the analytic pulse at the measured peak / FWHM.
-            g = synthetic_irf(x, center_ns=float(pk), fwhm_ns=fwhm, shape=shape, norm=True)
-
-        # normalise to the prompt's counts so downstream scaling is unchanged.
-        s = float(g.sum())
-        return g * (float(prompt.sum()) / s) if s > 0 else g
 
     def _half(channels: list[int]) -> tuple[np.ndarray, np.ndarray]:
         """Return (irf, bg) micro-time patterns for one polarization sub-channel set."""
@@ -460,7 +489,7 @@ def extract_mle_irf_background(
         bg = hist.copy()
         if hist.sum() > 0:
             prompt = np.clip(hist - float(np.quantile(hist, q)), 0.0, None)
-            irf = prompt if experimental else _gaussian_prompt(prompt)
+            irf = prompt if experimental else gaussian_prompt(prompt, shape)
         else:
             irf = np.zeros_like(hist)
         return irf, bg

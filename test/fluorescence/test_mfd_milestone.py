@@ -46,11 +46,21 @@ ANALYSIS = (
 #: (donor-only lifetime, mean distance, donor-only fraction, donor leakage). They
 #: are position parameters: none of them widens or narrows the cloud, which is what
 #: makes the width assertions below a prediction rather than a fit.
+#:
+#: ``tau_d0`` was 1.569 ns while the instrument response was taken as the
+#: baseline-subtracted non-burst histogram. That histogram's prompt rides on the
+#: decay of molecules too dim to cross the burst threshold, so its first moment
+#: sat late, and the only parameter degenerate with it — the donor lifetime —
+#: absorbed the difference and came out about half of anything a dye on DNA has.
+#: Fitting a Gaussian to the prompt instead (:func:`~chisurf.core.fluorescence.
+#: burst.irf_bg.gaussian_prompt`) sheds that tail, and re-deriving the optimum
+#: moves ``tau_d0`` to 2.724 ns while leaving the other three within a percent —
+#: which is what a genuine degeneracy looks like when it is broken.
 FITTED = {
-    "tau_d0": 1.569,
-    "distance": 54.42,
-    "donor_only": 0.394,
-    "alpha": 0.0296,
+    "tau_d0": 2.724,
+    "distance": 54.69,
+    "donor_only": 0.3953,
+    "alpha": 0.02997,
 }
 
 pytestmark = pytest.mark.skipif(

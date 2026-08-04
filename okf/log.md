@@ -1,5 +1,44 @@
 # Update Log
 
+## 2026-08-04
+
+* **The 2D-MFD lifetime axis was carrying the instrument response's error, and a
+  real donor lifetime was paying for it.**
+  ([MFD fitting](../docs/concepts/mfd_fitting.md), [PRD-71](prds/prd-71.md))
+  The response is estimated from the measurement's own non-burst photons, which
+  is right in principle — but most of a confocal acquisition holds molecules too
+  dim to cross the burst threshold, so subtracting a flat baseline removes the
+  dark counts and leaves their *decay*. The estimated response came out with a
+  slow tail and a first moment **4.50 ns against a declared 1.00 ns** on
+  simulated photons.
+
+  On a real BH SPC-132 DNA measurement that error had already been absorbed,
+  invisibly, by the one parameter degenerate with it: the least-squares optimum
+  for `tau_d0` was **1.57 ns**, about half of anything a dye on DNA has. Nothing
+  failed — the cloud sat in the right place, because a response that is late and
+  a lifetime that is short sum correctly.
+
+  The estimator that fixes it already existed, nested inside
+  `extract_mle_irf_background` and unreachable, where it was written to remove a
+  comparable factor-of-two bias from the burst-MLE lifetime fit. Lifted to
+  `irf_bg.gaussian_prompt` and used by both. A Gaussian cannot represent a slow
+  tail, which is why it is the right shape: least squares locks it onto the
+  scatter peak and leaves the fluorescence behind. Two corrections were needed
+  for it to work on a well-resolved prompt — take the width from the **rising**
+  edge only (the falling side is the decay, not the instrument) and fit the
+  **leading edge** rather than a symmetric window, which alone was still 0.6 ns
+  late.
+
+  Simulated response first moment 4.50 → **1.22 ns** (declared 1.00), deviance
+  18592 → **1659** against a 674 floor with the declared response; exchange-rate
+  recovery from the pipeline's own estimates now matches what a *correct*
+  response gave. Re-deriving the real measurement's optimum moves `tau_d0`
+  1.569 → **2.724 ns** and leaves distance, donor-only fraction and leakage
+  within a percent — a degeneracy broken, not a refit. The test that asserted the
+  bias is now a guardrail against it; `corrected_lifetimes`, which existed only
+  to work around the contaminated response, is deleted. 153 MFD tests and 500
+  burst-plugin tests pass.
+
 ## 2026-08-03
 
 * **ChiMOL's window, measured against PyMOL's layout rules rather than against

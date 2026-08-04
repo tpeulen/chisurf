@@ -86,14 +86,20 @@ def test_the_burst_tables_reproduce_the_generated_photons(tmp_path):
         assert preparation.counts[row, red] == int((emitted == 1).sum())
 
 
-def test_the_declared_response_is_recoverable_and_the_estimated_one_is_biased(tmp_path):
-    """Estimating the response from non-burst photons is contaminated — measurably.
+def test_the_response_estimated_from_non_burst_photons_recovers_the_declared_one(tmp_path):
+    """The response the pipeline estimates must be the response that was simulated.
 
     Bursts below the search threshold are never detected, so their fluorescence
-    lands in the "non-burst" stream and drags the estimated response late. This is a
-    property of the experiment, visible on real data too; the simulator's value is
-    that here the true answer is known, so the bias is a number rather than a
-    suspicion.
+    lands in the "non-burst" stream. Taking that histogram as the instrument
+    response — baseline-subtracted, but with the dim molecules' decay still in it —
+    put its first moment *nanoseconds* late, and the lifetime axis is where that
+    error lands. Fitting a Gaussian to the prompt sheds the tail, because a
+    Gaussian cannot represent one.
+
+    This is a property of the experiment and not of the simulator: the same
+    contamination is in real data, where it was absorbed by a donor lifetime half
+    of anything physical (see ``test_mfd_milestone``). The simulator's value is
+    that the true answer is known here, so the residual is a number.
     """
     simulated, folder = _folder(tmp_path, "static", n_bursts=1200)
     declared = simulated.true_responses()["green"]
@@ -103,8 +109,9 @@ def test_the_declared_response_is_recoverable_and_the_estimated_one_is_biased(tm
     estimated_mean, _ = pattern_moments(estimated.irf, estimated.dt)
 
     assert declared_mean == pytest.approx(simulated.parameters.irf_centre, abs=0.05)
-    # The estimate is late, by nanoseconds rather than picoseconds.
-    assert estimated_mean > declared_mean + 1.0
+    # Within a fifth of a nanosecond of the truth, where it used to be over one
+    # nanosecond late.
+    assert estimated_mean == pytest.approx(declared_mean, abs=0.2)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
