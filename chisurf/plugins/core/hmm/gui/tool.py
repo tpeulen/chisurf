@@ -55,17 +55,24 @@ class HmmTool(QtWidgets.QWidget):
         # A hairline strip for the ``?`` and **Guide** pair. The view spec has an
         # inline ``help`` section, which answers what a control *means* but never
         # which one to touch first — that is the tour, and it needs a button.
-        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+        from chisurf.gui.widgets.tools.help_guide import (
+            attach_help_and_guide,
+            promote_to_toolbar,
+        )
 
         toolbar = QtWidgets.QToolBar(self)
         toolbar.setMovable(False)
         toolbar.setFloatable(False)
         toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
+        layout.addWidget(toolbar)
+        self.auto_form = AutoForm(self.model)
+        # The two things this tool does, on the strip rather than below the
+        # State-scan panel. Add/Remove-style buttons stay in the form: they act
+        # on one section and read as nonsense on a window-level bar.
+        promote_to_toolbar(self.auto_form, toolbar, ("request_run", "request_scan"))
         attach_help_and_guide(
             self, toolbar, title="Hidden Markov model — help", model=self.model
         )
-        layout.addWidget(toolbar)
-        self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
         self.model.add_observer(self._on_model_event)
 

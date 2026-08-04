@@ -47,9 +47,7 @@
                "description": "Fit the model with the chosen number of states and decode the state path."},
               {"label": "⇄ Scan states", "action": "request_scan",
                "description": "Fit every state count in the range and score each by AIC and BIC."}
-            ]},
-            {"type": "custom", "key": "help",
-             "options": {"title": "Hidden Markov models — help", "resource": "help.md"}}
+            ]}
           ]
         },
         {

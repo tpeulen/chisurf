@@ -44,12 +44,24 @@ tour actually names an `objectName` — prefixed, because `{"name": …}` matche
 **suffix**, so a bare `"seed"` also finds the decoder's own seed box. `2cde`
 (`twocde_*`) and `h2mm` (`h2mm_*`) are the worked examples.
 
-**An inline `help` section is not the `?`, and it is not a Guide.** `core/hmm`
+**An inline `help` section is not the `?`, and it is not a Guide.** Once the
+toolbar exists, delete the inline section — `core/hmm`'s pointed at the same
+`help.md` with the same title, so it was simply a second door to one room. `core/hmm`
 declares `{"type": "custom", "key": "help"}` in its view spec, so it looked
 finished — it shipped `help.md`, and the harness reported *no Guide button*
 because nothing had ever added a toolbar. An AutoForm `help` section answers what
 a control means; it cannot answer which one to touch first, and it gives the tour
 nowhere to live. Such a tool still needs the strip.
+
+**A strip carrying only `?` and Guide is chrome — promote the tool's primary
+actions onto it.** `promote_to_toolbar(form, toolbar, actions)` moves buttons up
+by the **`action` their view spec names**, not by label. Only the ones that make
+sense: *Fit* and *Scan states* (hmm), *Generate* and *Save* (synthetic decay),
+*Simulate + Correlate* (FLCS sim) are window-level; *Add row*, *Remove*, *Load*,
+*Apply to this field* stay where they are, because on a window-level bar they
+read as nonsense. An emptied button row is hidden — but **only when nothing at
+all is left in it**: a custom section may pair its action with a status label,
+and hiding the container took the status line with it.
 
 **A tool with no toolbar gets a hairline one.** The FCS group is three of these:
 `fcs_lfcs_sim` and `fcs_calculator` are plain `QWidget`s, and `fcs_merger` is a

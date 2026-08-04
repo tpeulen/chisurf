@@ -54,7 +54,12 @@ from typing import Any
 
 from qtpy import QtWidgets
 
-__all__ = ["HelpGuideMixin", "attach_help_and_guide", "resolve_tool_resource"]
+__all__ = [
+    "HelpGuideMixin",
+    "attach_help_and_guide",
+    "promote_to_toolbar",
+    "resolve_tool_resource",
+]
 
 #: Default file names looked for beside a tool's module.
 HELP_RESOURCE = "help.md"
@@ -128,6 +133,66 @@ def resolve_tool_resource(
         if candidate.is_file():
             return candidate
     return None
+
+
+def promote_to_toolbar(
+    form: QtWidgets.QWidget,
+    toolbar: QtWidgets.QToolBar,
+    actions: list[str] | tuple[str, ...],
+) -> list[QtWidgets.QWidget]:
+    """Move a form's primary action buttons up into the tool's toolbar.
+
+    A toolbar carrying nothing but ``?`` and **Guide** is a band of chrome, and
+    a *Run* button buried three panels down a settings column is the control the
+    user needs most and finds last. Both problems have the same fix: the tool's
+    **primary actions** belong on the strip.
+
+    Only the ones that make sense. A button scoped to a section — *Add row*,
+    *Remove*, *Apply to this field* — reads as nonsense on a window-level bar and
+    stays where it is; this takes an explicit list rather than everything it can
+    find, so that judgement is made per tool and is visible in the call.
+
+    Buttons are matched on the ``action`` their view spec names, not on their
+    label: a label is a translation and a decoration away from changing.
+
+    Parameters
+    ----------
+    form : QtWidgets.QWidget
+        The built ``AutoForm`` (or any widget tree holding the buttons).
+    toolbar : QtWidgets.QToolBar
+        Destination. Buttons are appended in the order *actions* gives, which is
+        usually not the order the form declared them in.
+    actions : sequence of str
+        The ``action`` names to promote.
+
+    Returns
+    -------
+    list of QtWidgets.QWidget
+        The relocated buttons, in the order they were added.
+    """
+    found: dict[str, QtWidgets.QWidget] = {}
+    for button in form.findChildren(QtWidgets.QAbstractButton):
+        action = getattr(button, "_autoform_action", "")
+        if action in actions and action not in found:
+            found[action] = button
+
+    moved: list[QtWidgets.QWidget] = []
+    for action in actions:
+        button = found.get(action)
+        if button is None:
+            continue
+        # Remember the row it came from: a button row that has given up all its
+        # buttons is a stray gap in the form with a stretch in it.
+        row = button.parentWidget()
+        toolbar.addWidget(button)  # reparents
+        moved.append(button)
+        # Hide it only when *nothing* is left — not merely no buttons. A custom
+        # section may pair its action with a status label (the FLCS simulator
+        # does), and hiding the container took the status line with it: the
+        # button moved, and the result it reports disappeared.
+        if row is not None and not row.findChildren(QtWidgets.QWidget):
+            row.hide()
+    return moved
 
 
 class HelpGuideMixin:

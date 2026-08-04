@@ -396,3 +396,59 @@ def test_a_step_moves_a_wizard_through_its_nav_list(qapp):
     )
     tour.stop()
     window.close()
+
+
+def test_promoting_actions_leaves_the_section_scoped_ones_alone(qapp):
+    """Only the named actions move up, and only an emptied row is hidden.
+
+    A toolbar holding nothing but ``?`` and **Guide** is a band of chrome, so a
+    tool's primary actions belong on it. But *only* those: a button scoped to a
+    section — Add row, Apply to this field — reads as nonsense on a window-level
+    bar.
+
+    The second assertion is the one that cost a render: the helper hid the
+    button's container once no buttons were left in it, which for a custom
+    section pairing an action with a **status label** took the status line with
+    it. The button moved and the result it reports disappeared.
+    """
+    from chisurf.gui.widgets.tools.help_guide import promote_to_toolbar
+
+    window = QtWidgets.QMainWindow()
+    form = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(form)
+
+    pure_row = QtWidgets.QWidget()  # a button_row: nothing but buttons
+    pure_layout = QtWidgets.QHBoxLayout(pure_row)
+    run = QtWidgets.QToolButton()
+    run._autoform_action = "generate"
+    pure_layout.addWidget(run)
+    layout.addWidget(pure_row)
+
+    with_status = QtWidgets.QWidget()  # a custom section: action + status label
+    status_layout = QtWidgets.QVBoxLayout(with_status)
+    simulate = QtWidgets.QToolButton()
+    simulate._autoform_action = "simulate"
+    status = QtWidgets.QLabel("Set parameters and simulate.")
+    status_layout.addWidget(simulate)
+    status_layout.addWidget(status)
+    layout.addWidget(with_status)
+
+    add_row = QtWidgets.QToolButton()  # section-scoped: must stay put
+    add_row._autoform_action = "add_row"
+    layout.addWidget(add_row)
+
+    window.setCentralWidget(form)
+    toolbar = QtWidgets.QToolBar(window)
+    window.addToolBar(toolbar)
+    window.show()
+    QtWidgets.QApplication.processEvents()
+
+    moved = promote_to_toolbar(form, toolbar, ("generate", "simulate"))
+
+    assert moved == [run, simulate]
+    assert run.parent() is not pure_row and simulate.parent() is not with_status
+    assert add_row.parent() is form, "a section-scoped button was promoted"
+    assert pure_row.isHidden(), "an emptied button row was left as a gap"
+    assert not with_status.isHidden(), "the status line went with the button"
+    assert status.isVisible()
+    window.close()

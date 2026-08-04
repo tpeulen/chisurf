@@ -22,7 +22,10 @@ from chisurf.core.dataspec import load_view_spec
 from chisurf.gui import chiplot as cp
 from chisurf.gui import dialogs
 from chisurf.gui.autoform import AutoForm, register_section
-from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+from chisurf.gui.widgets.tools.help_guide import (
+    attach_help_and_guide,
+    promote_to_toolbar,
+)
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -100,9 +103,6 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
         toolbar.setMovable(False)
         toolbar.setFloatable(False)
         toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
-        attach_help_and_guide(
-            self, toolbar, title="Lifetime-FCS simulator — help", model=self._model
-        )
         outer.addWidget(toolbar)
 
         content = QtWidgets.QWidget(self)
@@ -111,6 +111,12 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
         layout.setContentsMargins(6, 6, 6, 6)
 
         self._form = AutoForm(self._model, parent=self)
+        # The single thing this tool does goes on the strip; the status line it
+        # sat beside stays in the form, where the result belongs.
+        promote_to_toolbar(self._form, toolbar, ("simulate",))
+        attach_help_and_guide(
+            self, toolbar, title="Lifetime-FCS simulator — help", model=self._model
+        )
         form_holder = QtWidgets.QWidget()
         fh = QtWidgets.QVBoxLayout(form_holder)
         fh.setContentsMargins(0, 0, 0, 0)
@@ -176,6 +182,10 @@ class _LfcsSimControls(QtWidgets.QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
 
         self.btn = QtWidgets.QPushButton("Simulate + Correlate")
+        # Tagged like an AutoForm button_row entry so the tool can promote it to
+        # its toolbar: this is the one thing the tool does, and it should not be
+        # the last control in a settings column.
+        self.btn._autoform_action = "simulate"
         self.btn.setStyleSheet(
             "QPushButton { background-color: #1f7a1f; color: white; "
             "border: 1px solid #166016; border-radius: 4px; "
