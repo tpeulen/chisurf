@@ -45,6 +45,7 @@ from .h2mm import (
     njit,
     optimize,
     prepare_bursts,
+    simulate_bursts,
 )
 
 try:
@@ -319,48 +320,6 @@ def _random_model(n_states, n_streams, rng) -> H2mmModel:
     return H2mmModel(prior=prior, trans=_row_normalize(trans), obs=_row_normalize(obs))
 
 
-def _fast_simulate(model: H2mmModel, times, rng) -> list[np.ndarray]:
-    """Sample photon streams by drawing the hidden state at each photon time.
-
-    Equivalent to :func:`~.h2mm.simulate_bursts` for the *observed* photons —
-    both distribute the state at photon ``n`` as ``A^Δt`` propagated from photon
-    ``n-1`` — but ``O(photons)`` instead of ``O(clock ticks)`` because the state
-    is sampled directly from the interval propagator ``A^Δt`` (cached per unique
-    ``Δt``) rather than advanced tick by tick.  This keeps surrogate training
-    practical.
-    """
-    n_states = model.n_states
-    trans = model.trans
-    obs = model.obs
-    cum_obs = np.cumsum(obs, axis=1)
-    streams_out: list[np.ndarray] = []
-    pow_cache: dict[int, np.ndarray] = {}
-    for t in times:
-        t = np.asarray(t, dtype=np.int64)
-        m = t.shape[0]
-        cum_pow: dict[int, np.ndarray] = {}
-        s = int(rng.choice(n_states, p=model.prior))
-        out = np.empty(m, dtype=np.int32)
-        for j in range(m):
-            if j > 0:
-                dt = int(t[j] - t[j - 1])
-                cp = cum_pow.get(dt)
-                if cp is None:
-                    P = pow_cache.get(dt)
-                    if P is None:
-                        P = np.linalg.matrix_power(trans, dt)
-                        pow_cache[dt] = P
-                    cp = np.cumsum(P, axis=1)
-                    cum_pow[dt] = cp
-                s = int(np.searchsorted(cp[s], rng.random()))
-                if s >= n_states:
-                    s = n_states - 1
-            k = int(np.searchsorted(cum_obs[s], rng.random()))
-            out[j] = min(k, obs.shape[1] - 1)
-        streams_out.append(out)
-    return streams_out
-
-
 def generate_training_set(
     n_samples: int,
     n_states: int,
@@ -380,7 +339,13 @@ def generate_training_set(
             np.concatenate([[0], np.cumsum(rng.poisson(mean_dt, burst_len - 1) + 1)]).astype(np.int64)
             for _ in range(n_bursts)
         ]
-        streams = _fast_simulate(model, times, rng)
+        # The compiled sampler, through the shared entry point. This used to be
+        # a second implementation -- state drawn from the cached interval
+        # propagator A^dt rather than advanced tick by tick -- because the shared
+        # one was O(clock ticks) in Python and too slow to train against. It is
+        # C++ now and beats the propagator route by 8-13x even at wide photon
+        # gaps, so the reason for the copy is gone.
+        streams = simulate_bursts(model, times, seed=int(rng.integers(0, 2**31 - 1)))
         data = prepare_bursts(times, streams, n_streams)
         X.append(extract_features(data))
         Y.append(_encode(model))

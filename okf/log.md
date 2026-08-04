@@ -193,6 +193,19 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The surrogate's second sampler is gone too.** `_fast_simulate` drew the
+  hidden state from the cached interval propagator `A^Δt` instead of advancing
+  tick by tick, and existed for a stated reason: the shared sampler was
+  `O(clock ticks)` in Python and too slow to train a surrogate against.
+
+  That premise stopped being true when the shared one became C++. Measured before
+  deleting: the compiled tick sampler beats the propagator route **7.7×** at
+  4-tick photon gaps and **13.2×** at 40 — where the propagator should have been
+  at its best. `generate_training_set` calls the shared one now.
+
+  With this and the sampler delegation, the plugin's suite runs in **28 s**
+  against 116 s.
+
 * **H2MM's burst sampler was a copy of one that already existed in C++.**
   `h2mm.simulate_bursts` advanced the hidden chain tick by tick in Python —
   `rng.choice` per tick per photon — while `tttrlib.HMM::simulate_bursts` does the
