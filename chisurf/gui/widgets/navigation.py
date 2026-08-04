@@ -14,6 +14,7 @@ from qtpy import QtCore, QtWidgets
 
 from chisurf.core.plugin.manifest import load_manifest
 from chisurf.gui.event_pump import pump_ui
+from chisurf.gui.widgets.tools.help_guide import HelpGuideMixin
 
 
 class _StatusLogHandler(logging.Handler):
@@ -447,8 +448,18 @@ def load_panels_json(path: str | pathlib.Path) -> tuple[dict, list[dict]]:
     return spec, apply_manifest_flags(panels)
 
 
-class NavigationPanelTool(QtWidgets.QMainWindow):
-    """Main-window shell with a left selector and lazy-loaded right panels."""
+class NavigationPanelTool(HelpGuideMixin, QtWidgets.QMainWindow):
+    """Main-window shell with a left selector and lazy-loaded right panels.
+
+    Help and guide
+    --------------
+    The shell adds the ``?`` and **Guide** buttons itself, in a hairline toolbar
+    above the panel area, whenever the *subclass* ships ``help.md`` /
+    ``guide.json`` beside its own module — the same two files a
+    :class:`~chisurf.gui.widgets.tools.chisurf_dock_tool.ChisurfDockTool` reads.
+    A plugin therefore gets both buttons by writing the files and changing no
+    code; a plugin that ships neither gets no toolbar rather than an empty strip.
+    """
 
     #: Emitted (possibly from a worker thread) by the scoped log handler; the
     #: connected slot updates the status bar on the GUI thread.
@@ -468,8 +479,15 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         searchable: bool = True,
         settings_key: str | None = None,
         status_logger: str | None = None,
+        help_resource: str = "help.md",
+        guide_resource: str = "guide.json",
     ) -> None:
         """Create a navigation shell.
+
+        ``help_resource`` / ``guide_resource`` name the two files that put the
+        ``?`` and **Guide** buttons in the window; they are looked for beside the
+        subclass's own module, so the defaults are almost always right. Pass
+        ``""`` to suppress one.
 
         ``searchable`` (default ``True``) adds a search box at the top of the left
         pane that filters the navigation list to matching panels.
@@ -510,6 +528,14 @@ class NavigationPanelTool(QtWidgets.QMainWindow):
         #: Row currently shown, so a refused switch can be snapped back.
         self._shown_index = -1
         self._build_ui(navigation_width)
+        # A shell full of panels is exactly the case a guide exists for: the left
+        # list says what the steps *are* and nothing says which one to press
+        # first. Costs a plugin no code — only the two files.
+        self.ensure_help_toolbar(
+            help_resource=help_resource,
+            guide_resource=guide_resource,
+            title=f"{title} — help",
+        )
         # Bound methods of a QObject: PyQt drops these connections when this
         # window is destroyed, so a late task cannot call into a dead shell.
         from chisurf.gui.task import task_events
