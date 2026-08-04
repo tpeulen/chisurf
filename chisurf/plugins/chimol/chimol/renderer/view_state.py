@@ -61,6 +61,7 @@ __all__ = [
     "unpack_view_state",
     "rotation_from_angles",
     "distance_for_radius",
+    "portrait_factor",
     "framing_radius",
     "framing_centre",
     "MIN_FRAMING_RADIUS",
@@ -143,9 +144,36 @@ def distance_for_radius(
     if half_tan <= 1e-6:
         return max(float(radius), 1.0)
     distance = float(radius) / half_tan
-    if aspect is not None and aspect > 0.0 and aspect < 1.0:
-        distance /= aspect
-    return max(distance, 1.0)
+    return max(distance * portrait_factor(aspect), 1.0)
+
+
+def portrait_factor(aspect: float | None) -> float:
+    """How much a viewport's shape widens the framing distance.
+
+    PyMOL's ``if (I->Height > I->Width) dist *= Height / Width``: the field of
+    view is vertical, so only a viewport taller than it is wide constrains the
+    picture horizontally, and only then does the camera pull back.
+
+    Kept as its own function because two callers need it and they must not
+    drift: :func:`distance_for_radius` frames from scratch, while a **resize**
+    scales the distance it already has -- recomputing there would discard a
+    hand-zoomed view, since the scroll wheel moves the camera without changing
+    what was framed.
+
+    Parameters
+    ----------
+    aspect : float or None
+        Viewport width divided by height. ``None`` or a non-positive value
+        means "not measurable", which corrects nothing.
+
+    Returns
+    -------
+    float
+        A multiplier, 1.0 for any landscape or square viewport.
+    """
+    if aspect is None or aspect <= 0.0 or aspect >= 1.0:
+        return 1.0
+    return 1.0 / aspect
 
 
 #: PyMOL floors the zoom radius here (``MAX_VDW`` in ``layer0/Base.h``), so a

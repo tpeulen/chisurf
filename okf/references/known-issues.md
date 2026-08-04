@@ -26,7 +26,7 @@ teardown, printed and swallowed, with no state left broken. Left alone because
 the fix belongs in pyqtgraph's `ViewBoxMenu`, and the plugin is scheduled to move
 off pyqtgraph anyway ([PRD-64](../prds/prd-64.md), [chiplot](../subsystems/chiplot.md)).
 
-## chimol: every scene rebuild refits the camera, throwing your framing away
+## chimol: every scene rebuild refits the camera — RESOLVED 2026-08-04
 
 **Found 2026-08-04**, while photographing `cartoon_side_chain_helper` — the
 framing kept resetting between the "off" and "on" shots.
@@ -58,6 +58,36 @@ wrong but load-bearing. Left as it was, because a half-verified change across
 
 Six call sites already pass `fit_camera=False`; the ones that matter for a user
 are colouring, representations and `set`.
+
+**Resolved 2026-08-04, and the revert was for the wrong reason.** The default is
+now `False`, with the three load paths passing `True` — the change described
+above as insufficient. It was not insufficient; the `ray` failure it was blamed
+for was the **aspect** defect two entries down, not the framing. A window that
+is never shown has no viewport, `_aspect()` read 1/30 off the one-pixel column
+that left, and the camera went thirty times too far away; refitting on every
+rebuild hid that, because the last rebuild landed after the widget had a size.
+With `_aspect()` fixed, `test_ray_command.py` passes with the default flipped
+and no other change.
+
+Two things the flip needed on top: `_rebuild_after_coordinate_change` reuses
+`set_structure` — the *load* path — to re-derive after an edit, so `h_add` on a
+zoomed-in residue still jumped out until `set_structure`/`set_coordinates` grew
+a `fit_camera` argument; and nothing re-derived the distance on a **resize**,
+which the old behaviour had been covering by accident, so `resizeGL` now
+re-frames when the viewport's shape changes (distance only — the clips carry a
+user's `clip` adjustments — and by *scaling* the distance rather than
+recomputing it, since the scroll wheel moves the camera without changing what
+was framed).
+
+Measured: 12 of 12 ordinary commands threw the framing away before, 0 of 12
+after. `test_camera_persistence.py` pins both halves — what must not move the
+camera, and what must.
+
+**The lesson is about the revert, not the bug.** "Attempted and reverted, with
+why" was the right thing to record and is what made this cheap to re-open — but
+the recorded *why* was a symptom seen through another defect. When an attempt
+fails, the note is worth more if it says what was measured than what was
+concluded.
 
 ---
 

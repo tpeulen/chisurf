@@ -1444,7 +1444,7 @@ class MolView(QtWidgets.QWidget):
         self._current_frame = int(np.floor(pos))
         self._apply_frame_states()
         self._note_frame_change()
-        self._update_view(fit_camera=False)
+        self._update_view()
 
     def _sync_timeline_length(self) -> None:
         """Grow the timeline to fit frames attached outside it."""
@@ -1499,7 +1499,7 @@ class MolView(QtWidgets.QWidget):
         try:
             state = self._get_active_state()
             self._select_state_frame(state, getattr(state, "active_frame", 0))
-            self._update_view(fit_camera=False)
+            self._update_view()
         except Exception:
             logger.debug("chimol: could not re-apply smoothing", exc_info=True)
 
@@ -2400,13 +2400,25 @@ class MolView(QtWidgets.QWidget):
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
-    def set_structure(self, structure: object) -> None:
+    def set_structure(self, structure: object, *, fit_camera: bool = True) -> None:
         """Set structure from a ChiSurf ``Structure``-like object.
 
         The object is expected to provide either:
         - ``atoms``: NumPy structured array with fields ``'xyz'`` and
           ``'atom_name'`` (as in :mod:`chisurf.core.structure`), or
         - ``xyz``: array-like of shape ``(N, 3)``.
+
+        Parameters
+        ----------
+        structure : object
+            The structure to show.
+        fit_camera : bool, optional
+            Frame the result -- PyMOL's ``auto_zoom``, which applies to a
+            *newly created* object. This is also the one path that re-derives
+            everything after an edit (see
+            ``EditingMixin._rebuild_after_coordinate_change``), and re-deriving
+            is not loading: ``h_add`` on a residue you have zoomed into must
+            not throw the framing away.
         """
         self._atoms = None
         self._all_atom_coords = None
@@ -2547,13 +2559,15 @@ class MolView(QtWidgets.QWidget):
                 # carries. PyMOL shows them too (as nonbonded dots) until hidden.
                 self._show_atoms = True
 
-            self._update_view(fit_camera=True)
+            self._update_view(fit_camera=fit_camera)
             return
 
         # Case 2: fallback to ``structure.xyz`` attribute
         xyz_attr = getattr(structure, "xyz", None)
         if xyz_attr is not None:
-            self.set_coordinates(np.asarray(xyz_attr, dtype=float))
+            self.set_coordinates(
+                np.asarray(xyz_attr, dtype=float), fit_camera=fit_camera
+            )
             return
 
         raise TypeError(
@@ -2574,6 +2588,7 @@ class MolView(QtWidgets.QWidget):
         hierarchy: object | None = None,
         resolutions: np.ndarray | None = None,
         resolution_default_mask: np.ndarray | None = None,
+        fit_camera: bool = True,
     ) -> None:
         """Set raw coordinates for visualization.
 
@@ -2827,7 +2842,7 @@ class MolView(QtWidgets.QWidget):
             self._show_cartoon = atomic_residues
             self._show_trace = False
 
-        self._update_view(fit_camera=True)
+        self._update_view(fit_camera=fit_camera)
 
         # No sequence information when only raw coordinates are provided
         if self._residue_ids is None and self._residue_names is None:
@@ -2956,7 +2971,7 @@ class MolView(QtWidgets.QWidget):
             if self._current_frame >= self._total_frames:
                 self._current_frame = self._total_frames - 1
             try:
-                self._update_view(fit_camera=False)
+                self._update_view()
             except Exception:
                 pass
 
@@ -3747,7 +3762,7 @@ class MolView(QtWidgets.QWidget):
             return
         self._color_mode = mode
         if self._coords is not None:
-            self._update_view(fit_camera=False)
+            self._update_view()
 
     def set_representation(self, mode: str, *, object_id: str | None = None) -> None:
         """Legacy mode-style API (cartoon / ca_trace / atoms).
@@ -4084,7 +4099,7 @@ class MolView(QtWidgets.QWidget):
         """Enable or disable the atom/ball representation globally."""
         state = self._get_active_state()
         self._set_state_atoms_visible(state, bool(visible))
-        self._update_view(fit_camera=False)
+        self._update_view()
 
     def set_atom_gaussians_visible(self, visible: bool) -> None:
         self._show_atom_gaussians = bool(visible)
@@ -4686,7 +4701,7 @@ class MolView(QtWidgets.QWidget):
         self._draft_quality = False
         self._last_frame_change = None
         try:
-            self._update_view(fit_camera=False)
+            self._update_view()
         except Exception:
             logger.warning("chimol: full-quality redraw failed", exc_info=True)
 
@@ -8141,22 +8156,36 @@ class MolView(QtWidgets.QWidget):
         # it, which is the piece of work this needs.
         return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
 
-    def _update_view(self, fit_camera: bool = True) -> None:
-        """Rebuild the scene, refitting the camera distance unless told not to.
+    def _update_view(self, fit_camera: bool = False) -> None:
+        """Rebuild the scene, leaving the camera where the user put it.
 
-        ``fit_camera`` defaulting to True means **every** rebuild refits, and a
-        rebuild is what colouring, a representation change, a label and every
-        ``set`` all trigger -- so framing a site and then adjusting anything
-        throws the framing away. That is a real defect, measured and recorded in
-        okf/references/known-issues.md; it is *not* simply a wrong default,
-        because `ray` and the load path both depend on this refit to frame at
-        all. Fixing it needs the framing moved to where a structure is loaded,
-        not merely the default flipped.
+        A rebuild is what colouring, a representation change, a label, a bond
+        edit and **every** ``set`` all trigger. While this defaulted to ``True``
+        each of those refitted the camera to the whole molecule, so framing a
+        binding site and then adjusting a stick radius threw the framing away --
+        measured at 12 of 12 ordinary commands, `zoom resi 20-26` at distance
+        357 and the next command back at 1730. PyMOL moves the camera only for a
+        camera command or a load, and so does this now.
+
+        The three load paths (:meth:`set_structure`, :meth:`set_coordinates`,
+        :meth:`add_volume`) pass ``True`` explicitly, which is the whole of
+        PyMOL's ``auto_zoom``.
+
+        **Why this could not be flipped before.** The attempt is recorded as
+        reverted because `ray` then traced an empty image for every
+        representation -- the load-time fit looked as though it had nothing to
+        measure. It measured fine; the *aspect* was wrong. A window that is
+        never shown has no viewport, and `_aspect` read 1/30 off the one-pixel
+        column that left, putting the camera thirty times too far away. Refitting
+        on every rebuild hid that, because the last rebuild landed after the
+        widget had a size. With :meth:`QtGLRenderer._aspect` fixed there is
+        nothing left to hide.
 
         Parameters
         ----------
         fit_camera : bool, optional
-            Refit the camera distance to the scene radius afterwards.
+            Refit the camera distance to the scene radius afterwards. Only a
+            load path or a camera command should ask for this.
         """
         if self._renderer is None:
             return
@@ -8429,7 +8458,7 @@ class MolView(QtWidgets.QWidget):
             if getattr(state, "volume", None) is None:
                 return False
             state.volume_levels = list(levels)
-            self._update_view(fit_camera=False)
+            self._update_view()
             return True
 
     def get_volume_levels(self, object_id: str | None = None) -> list:

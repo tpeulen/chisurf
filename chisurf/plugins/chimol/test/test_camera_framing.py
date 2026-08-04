@@ -314,3 +314,62 @@ def test_a_real_portrait_viewport_still_corrects(view):
     if renderer.scene_width() < renderer._MIN_MEASURABLE_SCENE:
         pytest.skip("the panel column leaves no scene at this size")
     assert renderer._aspect() < 1.0
+
+
+def test_a_portrait_resize_re_derives_the_distance(view):
+    """Nothing else re-derives it: a resize triggers no rebuild.
+
+    The correction only applies to a portrait viewport, so the distance that
+    framed a molecule in a wide window is wrong in a tall one and the molecule
+    spills off the sides. Applied once at whatever shape the window had when the
+    structure was framed, it is wrong for every shape after that.
+    """
+    renderer = view._renderer
+    renderer.resize(900, 600)
+    view.zoom()
+    landscape = _distance(view)
+    assert renderer._aspect() > 1.0
+
+    renderer.resize(400, 900)
+    renderer.resizeGL(400, 900)
+    assert renderer._aspect() < 1.0
+    assert _distance(view) > landscape, "the camera did not pull back"
+
+    renderer.resize(900, 600)
+    renderer.resizeGL(900, 600)
+    assert _distance(view) == pytest.approx(landscape, rel=1e-9), (
+        "returning to the original shape did not restore the original framing"
+    )
+
+
+def test_a_resize_that_keeps_the_shape_costs_nothing(view):
+    """Same aspect, same distance -- and no work done to find that out."""
+    renderer = view._renderer
+    renderer.resize(900, 600)
+    view.zoom()
+    before = _distance(view)
+    renderer.resizeGL(900, 600)
+    assert _distance(view) == pytest.approx(before, rel=1e-12)
+
+
+def test_a_resize_preserves_a_hand_zoomed_view(view):
+    """The wheel moves the camera without changing what was framed.
+
+    So the resize correction has to *scale* the distance it finds, not recompute
+    it from the framed radius -- recomputing would snap a hand-zoomed view back
+    to wherever the last `zoom` left it, which is the same class of bug the
+    framing work exists to fix.
+    """
+    renderer = view._renderer
+    renderer.resize(900, 600)
+    view.zoom()
+    renderer._distance *= 0.25          # what a few scroll clicks do
+    hand_zoomed = _distance(view)
+
+    renderer.resize(400, 900)
+    renderer.resizeGL(400, 900)
+    renderer.resize(900, 600)
+    renderer.resizeGL(900, 600)
+    assert _distance(view) == pytest.approx(hand_zoomed, rel=1e-9), (
+        "the round trip discarded the hand-zoomed distance"
+    )

@@ -1063,11 +1063,12 @@ model and stay pickable. Proline keeps its N–CA, which closes its ring, and a
 residue at the end of a cartoon segment keeps its backbone bonds so the sticks
 still reach the ribbon. `preset ligand_cartoon` turns it on for you.
 
-:::{warning}
-Unlike PyMOL, ChiMOL currently **refits the camera on every scene rebuild** — so
-colouring, changing a representation or any `set` re-frames the view after you
-have zoomed in. Re-issue your `zoom` afterwards. This is a known defect, not a
-design choice.
+:::{note}
+The camera stays where you put it. Only a camera command (`zoom`, `orient`,
+`center`, `reset`) or loading a structure moves it — colouring, changing a
+representation, adding a label or any `set` leave your framing alone, as they do
+in PyMOL. Resizing the window keeps the same framing too, re-deriving the
+distance so a tall window does not cut the molecule off at the sides.
 :::
 
 ## Colouring by a computed quantity

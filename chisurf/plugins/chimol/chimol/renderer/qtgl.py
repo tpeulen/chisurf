@@ -23,6 +23,7 @@ from .view_state import (
     DEFAULT_FOV,
     distance_for_radius,
     pack_view_state,
+    portrait_factor,
     unpack_view_state,
 )
 
@@ -245,6 +246,9 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         # view can roll and rotate about an arbitrary screen axis like PyMOL.
         self._rot = self._make_rot(20.0, 45.0)
         self._target_radius = 10.0
+        #: Aspect the current distance was derived at, so a resize that
+        #: does not change the viewport's shape costs nothing.
+        self._framed_aspect: float | None = None
         self._near_clip = 0.1
         #: Where framing last put the planes -- what `clip reset` returns to.
         self._framed_near_clip = 0.1
@@ -674,9 +678,10 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
 
     def fit_to_radius(self, radius: float) -> None:
         self._target_radius = max(float(radius), 1.0)
+        self._framed_aspect = self._aspect()
         self._distance = max(
             distance_for_radius(
-                self._target_radius, self._fov, aspect=self._aspect()
+                self._target_radius, self._fov, aspect=self._framed_aspect
             ),
             5.0,
         )
@@ -935,10 +940,55 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
         self._create_program()
 
     def resizeGL(self, width: int, height: int) -> None:
+        """Follow the widget's new size: the viewport, and the framing with it.
+
+        Parameters
+        ----------
+        width, height : int
+            The widget's new size in logical pixels. The *scene* is narrower
+            than ``width`` when the internal panel is docked, which is why
+            :meth:`scene_width` is asked rather than the argument used.
+        """
+        # Reframing first, and outside the GL guard: the camera distance is
+        # camera state, not GL state. Behind the guard it would never run
+        # without a context, which is exactly where a headless check looks.
+        self._reframe_for_aspect()
         gl = self._gl
         if gl is None:
             return
         gl.glViewport(0, 0, self.scene_width(), max(height, 1))
+
+    def _reframe_for_aspect(self) -> None:
+        """Re-derive the camera distance when the viewport's shape changes.
+
+        PyMOL's framing correction only applies to a **portrait** viewport, so
+        the distance that framed a molecule in a wide window is wrong in a tall
+        one and the molecule spills off the sides. Nothing else re-derives it:
+        a resize triggers no rebuild, so without this the correction is applied
+        once, at whatever shape the window happened to have when the structure
+        was framed.
+
+        The distance is **scaled** by the change in the correction rather than
+        recomputed from the framed radius, and that is the whole subtlety here:
+        the scroll wheel moves ``_distance`` without touching
+        ``_target_radius``, so recomputing would snap a hand-zoomed view back to
+        wherever the last ``zoom`` left it -- the same class of bug this
+        method's neighbours exist to fix.
+
+        Only the distance is touched. The near and far clips carry a user's
+        ``clip`` adjustments, and a window resize is not a request to discard
+        them.
+        """
+        aspect = self._aspect()
+        previous = getattr(self, "_framed_aspect", None)
+        if aspect == previous:
+            return
+        self._framed_aspect = aspect
+        if previous is None:
+            return
+        ratio = portrait_factor(aspect) / portrait_factor(previous)
+        if ratio != 1.0:
+            self._distance = max(self._distance * ratio, 5.0)
 
     #: A full-screen quad in clip space: two triangles, no matrices involved.
     _BACKGROUND_VERT = """

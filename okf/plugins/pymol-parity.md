@@ -72,20 +72,15 @@ six `h_bond_*` came off this list with the polar-contact finder.
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
 
-**2. The camera refits on every rebuild**, so colouring or any `set` re-frames a
-view you have zoomed into. Measured and recorded in
-[known issues](/references/known-issues.md), including two approaches that were
-tried and reverted — the fix belongs in the load path, not in the default.
-
-**3. Rendering.** The ray tracer's meshes are double-shaded (occlusion and cast
+**2. Rendering.** The ray tracer's meshes are double-shaded (occlusion and cast
 shadow are baked into the vertex colours and then shaded again — costs 44 % of
 the colour), and it has no transparency. Both are described under *`ray` renders
 the scene, not the molecule*.
 
-**4. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
+**3. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
 `cartoon_dumbbell`, `ellipsoid`, `cell`, `slice`.
 
-**5. The other `distance` modes.** 0–4 are done; 5–7 (π–π, π–cation), 9
+**4. The other `distance` modes.** 0–4 are done; 5–7 (π–π, π–cation), 9
 (halogen bonds) and 10 (salt bridges) are not, and the **A ▸ find** submenu
 shows each disabled with that reason. They are separate detectors, not
 variations on the hydrogen-bond test: PyMOL keeps 5–7 in its incentive build and
@@ -527,6 +522,53 @@ and **dashed**, through `dash_length`/`dash_gap`/`dash_width`/`dash_color`; the
 halogen/salt-bridge/π left visible-and-disabled rather than dropped. Thirteen
 settings moved from the missing list to the registered one (55 → 68), all of
 them read by code.
+
+## The camera stayed where the user put it, once the aspect was fixed
+
+Every scene rebuild refitted the camera, and a rebuild is what colouring, a
+representation change, a label, a bond edit and **every** `set` all trigger.
+Measured on 148L: `zoom resi 20-26` frames at distance 357, and **12 of 12**
+ordinary commands put it straight back to 1730. Framing a site is the first half
+of almost every task in a viewer and the second half undid it.
+
+**This had been attempted and reverted, and the recorded reason was a symptom
+seen through another defect.** The note said flipping the default was not
+sufficient because `ray` then traced an empty image for every representation —
+so the load-time fit looked as though it had nothing to measure. It measured
+fine. The empty images were the aspect defect below: a never-shown window has no
+viewport, so the camera went thirty times too far away, and refitting on every
+rebuild hid it because the last rebuild landed after the widget had a size. With
+`_aspect()` fixed, the same flip passes `test_ray_command.py` untouched.
+
+Two things it needed on top, both found by measuring rather than reasoning:
+
+* `_rebuild_after_coordinate_change` reuses `set_structure` — the *load* path —
+  to re-derive after an edit, so `h_add` on a zoomed-in residue still jumped
+  out. `set_structure`/`set_coordinates` grew a `fit_camera` argument; loading
+  frames, re-deriving does not;
+* nothing re-derived the distance on a **resize**, which refit-on-every-rebuild
+  had been covering by accident. `resizeGL` now re-frames when the viewport's
+  *shape* changes — distance only, since the clips carry a user's `clip`
+  adjustments and a resize is not a request to discard them.
+
+The resize correction **scales** the distance rather than recomputing it, which
+is the other thing only a measurement finds: the scroll wheel moves the camera
+without touching what was framed, so recomputing would snap a hand-zoomed view
+back to the last `zoom`. `portrait_factor` is now one function in
+`view_state.py` read by both the framing and the resize, rather than the rule
+written twice.
+
+0 of 12 after. The seven call sites that had been patched to `fit_camera=False`
+one at a time are gone with the default; the only places that ask to frame are
+now the three load paths. `test_camera_persistence.py` pins both halves: what
+must not move the camera, and what must — with the trap that `orient resi 20-26` after
+`zoom resi 20-26` correctly leaves the distance alone, so a "camera commands
+still work" test has to start from a different framing than it asks for.
+
+**Worth carrying: when an attempt fails, record what was measured, not what was
+concluded.** "Reverted because `ray` broke" was true and sent the next session
+to the wrong subsystem; "reverted because `ray` traced empty images, cause
+unknown" would have cost one afternoon less.
 
 ## The portrait correction ran on a window that did not exist
 

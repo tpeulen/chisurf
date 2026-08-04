@@ -537,8 +537,11 @@ class EditingMixin(BaseCmd):
         rebuilt.xyz = np.asarray(state.atoms["xyz"], dtype=float)
         rebuilt.n_atoms = int(len(state.atoms))
 
+        # `fit_camera=False`: this is the load path being reused to re-derive,
+        # not a load. `auto_zoom` frames a *new* object, and `h_add` on a
+        # residue you have zoomed into is not one.
         with viewer._activate_object(object_id):
-            viewer.set_structure(rebuilt)
+            viewer.set_structure(rebuilt, fit_camera=False)
             if secondary is not None:
                 viewer._secondary_structure = secondary
         viewer._update_view()
