@@ -18,6 +18,9 @@ says what it unblocks.
 1. **The profile seam first (§1–§3).** Every other item depends on
    `saturated_curve_shape` taking a profile object instead of `w0, z0`. Until
    that lands, "more PSF shapes" and "fit the PSF" are the same work done twice.
+   Read §3.0 before scoping it: the integration is already profile-agnostic, so
+   the work is a list of scalars and quadrature defaults, and a change that
+   edits `fcs_numerical_g_diff` has gone wrong.
 2. **Take the power-scaling trap seriously when doing §3.**
    `excitation_rate_peak` hard-codes the *Gaussian* peak flux density
    `2*Phi_total/(pi*w0^2)`. Reusing it with a non-Gaussian profile does not
@@ -58,7 +61,11 @@ This PRD does two things, which are one thing:
    Gauss–Lorentz MDF already in `enderlein.py`, a scalar/vectorial diffraction
    PSF from the optics engine already used by the PSF calculator, a *measured*
    profile from a bead scan, and a **free-form basis** whose shape parameters
-   can be fitted.
+   can be fitted. This is a cheap change and §3.0 explains why: **all of these
+   are cylindrically symmetric, and the expensive integration — the Hankel
+   transform in `r`, the FFT in `z`, the separable propagator — already assumes
+   only that.** The Gaussian assumption lives in a handful of scalars and
+   quadrature defaults around it, not in the transform.
 2. **Fit the profile from the data.** A **power series** of FCS curves on a
    calibration dye, fitted globally against one photokinetic scheme (the
    machinery in `power_series.py`), constrains the profile's *shape* — because
@@ -153,21 +160,27 @@ currently derives from `w0, z0`:
 class DetectionProfile(Protocol):
     def evaluate(self, r, z) -> np.ndarray        # normalized to 1 at (0, 0)
     def grid(self, n_r, n_z) -> tuple[r, z]       # its own convergent extent
+    def quadrature(self, r) -> tuple[kr_max, n_kr]  # its own k-space extent
     def focal_area_integral(self) -> float        # ∫∫ evaluate(r, 0) dA  (m^2)
     def v_0(self) -> float                        # ∫∫∫ evaluate dV       (m^3)
     def g_diff(self, tau, D) -> np.ndarray | None # analytic form, or None
     def parameters(self) -> FittingParameterGroup # what a fit may vary
 ```
 
-Three points about this contract:
+The contract is deliberately small, because — as §3.0 sets out — the
+integration machinery is *already* general over cylindrically symmetric
+profiles. A profile therefore supplies only what the Gaussian algebra used to
+supply implicitly:
 
 - **`focal_area_integral` replaces the Gaussian algebra.** It is what converts
   a measured total power to a peak excitation rate for *any* shape (§3.2).
-- **`grid` belongs to the profile, not the engine.** `GRID_EXTENT_WAISTS = 5`
-  is a Gaussian-specific truncation (§7).
+- **`grid` and `quadrature` belong to the profile, not the engine.**
+  `GRID_EXTENT_WAISTS = 5` and `kr_max = 30/r[-1]` are both tuned to a Gaussian's
+  tails and spectrum (§3.0, §7).
 - **`g_diff` returning `None` is normal.** Only the Gaussian and the Gaussian
   sum have closed forms; everything else goes through the numerical
-  autocorrelation the engine already has (`fcs_numerical_g_diff`).
+  autocorrelation the engine already has (`fcs_numerical_g_diff`) — unchanged,
+  because that function never assumed a Gaussian in the first place.
 
 ## 2. The profiles that ship
 
@@ -187,6 +200,70 @@ is the "recover the real PSF" half.
 ## 3. The saturation engine takes a profile
 
 `saturation.py` changes from "a Gaussian with `w0, z0`" to "a profile":
+
+### 3.0 The quadrature is already general — only the Gaussian *scalars* are not
+
+This is the reason the PRD is worth doing rather than a rewrite: **every profile
+in §2 is cylindrically symmetric, and the expensive machinery already only
+assumes that.** `fcs_numerical_g_diff` takes a `profile` **array** on an
+`(r, z)` grid and says so in its own docstring ("arbitrary axially symmetric
+emission profiles"). Nothing in the transform chain knows what shape produced
+that array:
+
+- the 0-th order Hankel quadrature `2 pi r J0(kr r) dr` along `r`;
+- the `rfft` along `z`, with the mirror weights that restore the dropped
+  negative frequencies exactly;
+- the cylindrical measure `d^3k = 2 pi k_r dk_r dk_z` and the self-normalisation
+  that cancels its constants;
+- the amplitude taken from the **real-space** integrals
+  `v_ref * int(Fa Fb) / (int Fa int Fb)`, exact by Parseval at any grid density;
+- the separable propagator `exp(-D k_r^2 tau) exp(-D k_z^2 tau)`, which is a
+  factorisation, not an approximation;
+- the two-channel cross-correlation path (`profile_b`), which already accepts a
+  *different* profile per channel.
+
+So the Gaussian assumption does not live in the integration at all. It lives in
+a short list of scalars and defaults around it:
+
+| Gaussian-specific today | General replacement |
+| --- | --- |
+| `_gaussian_psf(r, z, w0, z0)` | `profile.evaluate(r, z)` |
+| `2 * Phi_total / (pi * w0^2)` in `excitation_rate_peak` | `Phi_total / profile.focal_area_integral()` (§3.2) |
+| `v_0 = pi**1.5 * w0^2 * z0` | `profile.v_0()` by quadrature |
+| grid `= GRID_EXTENT_WAISTS * w0/z0` | `profile.grid(n_r, n_z)` (§3.3, §7) |
+| `kr_max = 30 / r[-1]`, `n_kr = min(n_r, 64)` | profile-declared (below) |
+| the `power_W = 0` Gaussian branch | `profile.g_diff`, else the numerical route |
+
+**The k-space defaults are shape-dependent too, and this is easy to miss.**
+`kr_max = 30 / r[-1]` is documented as truncating *a Gaussian* power spectrum at
+the 1e-4 level, and `n_kr = min(n_r, 64)` is justified by the accuracy being set
+by the real-space radial sampling. A profile with sharper features — diffraction
+rings, or a narrow core in a fitted Gaussian sum — carries more power at high
+`k_r`, so both defaults must come from the profile rather than from the module.
+They are cheap to get wrong silently: a truncated spectrum returns a smooth,
+plausible `G(tau)` that is simply the wrong curve.
+
+**The axial FFT is periodic.** The `rfft` along `z` wraps, so a profile with a
+heavy axial tail — a Gauss–Lorentz `~1/z^2` wing, unlike the Gaussian the grid
+was sized for — aliases its own tail back into the volume. That is the same
+family of error as the real-space truncation in §7, and it is why `grid()`
+belongs to the profile.
+
+**The Hankel matrix is cached on the grid, not the profile** — it depends only
+on `(n_r, r_max, kr_max, n_kr)`, and it is the single most expensive part of an
+evaluation (thousands of Bessel calls). This is what makes the fitter of §4
+affordable: an optimiser varying *shape* parameters at a **fixed grid** reuses
+the same transform matrix on every iteration. It also sets a design rule — a
+profile whose grid extent is re-derived from its own fitted width on each
+evaluation would thrash that cache; the grid should be pinned once from the
+starting profile (with a convergence check at the end), not chased per step.
+
+**Even two-focus stays inside the machinery.** A laterally displaced second
+focus looks like it breaks the axial symmetry the Hankel transform assumes, but
+in reciprocal space a shift `d` is a phase factor, and its azimuthal average
+over an `m = 0` profile is `J0(k_r d)`. The two-focus cross-correlation of §4.3
+is therefore the existing `profile_b` path with one extra radial weight — not a
+3-D transform.
 
 ### 3.1 Signature
 
@@ -331,20 +408,27 @@ The result is not a plot — it is a calibration other analyses use:
 
 ## 7. Traps that will not announce themselves
 
-- **Grid truncation.** `GRID_EXTENT_WAISTS = 5` is safe for a Gaussian, whose
-  tail is negligible there. A Gauss–Lorentz axial profile falls off as `1/z^2`
-  and a diffraction PSF has `~1/r` ring structure — truncating those makes
-  `V_eff` **grid-dependent**, i.e. the answer changes when you change `n_r`.
-  Every profile must therefore ship a convergence test (double the extent,
-  `V_eff` moves less than a stated tolerance) as part of its contract, in the
-  spirit of the existing warning in `emission_profile` about a non-decaying
-  emission profile.
-- **Rotational symmetry is assumed by the transform.** `fcs_numerical_g_diff`
-  works on an `(r, z)` grid. A vectorial PSF with **linear** polarization is
-  elliptical in the focal plane and is *not* rotationally symmetric; feeding it
-  in azimuthally averaged is an approximation that must be documented, and
-  circular polarization (already the `psf_calculator` default) is the supported
-  case. Anything else needs a 3-D transform, which is out of scope here.
+- **Truncation, in both spaces.** `GRID_EXTENT_WAISTS = 5` is safe for a
+  Gaussian, whose tail is negligible there. A Gauss–Lorentz axial profile falls
+  off as `1/z^2` and a diffraction PSF has `~1/r` ring structure — truncating
+  those makes `V_eff` **grid-dependent**, i.e. the answer changes when you change
+  `n_r`; and because the axial transform is an FFT, the truncated tail does not
+  merely vanish, it **wraps around** into the volume. The k-space cut `kr_max`
+  is the mirror image of the same problem (§3.0). Every profile must therefore
+  ship a convergence test — double the real-space extent *and* `kr_max`, `V_eff`
+  and `G(tau)` move less than a stated tolerance — as part of its contract, in
+  the spirit of the existing warning in `emission_profile` about a non-decaying
+  emission profile. This is a **per-profile** obligation precisely because the
+  quadrature is shared: one grid default cannot be right for six shapes.
+- **Cylindrical symmetry is the one thing the transform does assume.** All six
+  profiles of §2 satisfy it, which is why they share the machinery — but the
+  assumption is real and has exactly one common violator: a vectorial PSF with
+  **linear** polarization is elliptical in the focal plane. Feeding it in
+  azimuthally averaged is an approximation that must be documented; circular
+  polarization (already the `psf_calculator` default) is the supported case.
+  Anything genuinely non-symmetric needs a 3-D transform, which is out of scope
+  — note that a *displaced* focus (two-focus FCS) is **not** in that category,
+  since the shift reduces to a `J0(k_r d)` weight (§3.0).
 - **Saturation flattening mimics a broad profile.** A single high-power curve
   cannot distinguish "the profile is intrinsically flat-topped" from "the dye
   is saturated". Only the *power dependence* separates them, because the
@@ -385,9 +469,14 @@ The result is not a plot — it is a calibration other analyses use:
 # Definition of done
 
 - [ ] `DetectionProfile` seam with the six profiles of §2, each with a
-      convergence test for `V_eff`.
+      convergence test for `V_eff` in **both** real space (grid extent) and
+      k space (`kr_max`), including the axial FFT wraparound (§3.0, §7).
 - [ ] `saturation.py` takes a profile; Gaussian path is **bit-for-bit
       unchanged** (regression test against the current outputs).
+- [ ] `fcs_numerical_g_diff`, `_hankel_matrix` and the propagator factorisation
+      are **untouched** — if the change edits them, the seam was drawn in the
+      wrong place (§3.0). A test feeds a non-Gaussian profile array straight to
+      the existing function and checks it against an independent quadrature.
 - [ ] `focal_area_integral` peak-rate derivation, with the guardrail test of
       §3.2.
 - [ ] Cache keys include the profile's shape parameters (§3.4).

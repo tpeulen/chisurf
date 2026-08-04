@@ -23,6 +23,25 @@
   and even a series leaves `sigma_abs * P` degenerate with `w_r`, so an absolute
   `V_eff` requires an anchor (known `D`, known extinction, or a two-focus
   separation) rather than a number that restates the assumed cross-section.
+  **Scoping correction (§3.0):** the seam is small, because every profile in the
+  list is *cylindrically symmetric* and the expensive integration already
+  assumes only that — `fcs_numerical_g_diff` takes a profile **array** and says
+  so ("arbitrary axially symmetric emission profiles"); the Hankel quadrature,
+  the axial `rfft` with its mirror weights, the Parseval-exact amplitude, the
+  separable propagator and the two-channel path are all shape-blind. What is
+  Gaussian is a short list of scalars and defaults around it: `_gaussian_psf`,
+  the peak flux density, `V_0 = pi^1.5 w0^2 z0`, the five-waist grid, and — less
+  obviously — the **k-space** cut `kr_max = 30/r[-1]`, tuned to truncate a
+  *Gaussian* spectrum at 1e-4, which a diffraction ring or a narrow fitted core
+  overruns. Consequences now written into the PRD: `grid()` and `quadrature()`
+  belong to the profile, convergence must be shown in both spaces (the axial FFT
+  is periodic, so a Lorentzian wing wraps rather than vanishing), the cached
+  Hankel matrix keys on the grid and not the profile — which is what makes a
+  shape fit affordable, provided the grid is pinned rather than chased per
+  iteration — and a displaced two-focus geometry stays inside the same `m = 0`
+  quadrature as a `J0(k_r d)` weight instead of needing a 3-D transform. Editing
+  `fcs_numerical_g_diff` is now a stated sign the seam was drawn in the wrong
+  place.
 
 * **A session now has to leave a resume point, and OKF is where it goes.**
   ([change tracking](workflows/change-tracking.md),
