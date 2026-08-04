@@ -225,3 +225,57 @@ def test_a_single_state_scheme_is_refused():
         occupation_time_distribution(np.zeros((1, 1)), 1e-3)
     with pytest.raises(ValueError):
         occupation_time_distribution(np.zeros((2, 3)), 1e-3)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Photons do not sample a burst uniformly in time
+# ──────────────────────────────────────────────────────────────────────────────
+def test_uniform_arrivals_reproduce_the_uniform_sampling_formula():
+    """With photons spread evenly, the arrival-time form must agree with the old one.
+
+    The guard against a "fix" that changes the answer everywhere rather than only
+    where the assumption it replaces is violated.
+    """
+    from chisurf.core.fluorescence.mfd.occupation import (
+        photon_weighted_occupation_variance,
+        two_state_occupation_variance,
+    )
+
+    window = 2.0e-3
+    times = np.linspace(0.0, window, 4000)
+    for rate in (200.0, 1000.0, 5000.0):
+        matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
+        _, uniform = two_state_occupation_variance(matrix, window)
+        assert photon_weighted_occupation_variance(times, rate) == pytest.approx(
+            uniform, rel=0.02
+        )
+
+
+def test_photons_bunched_in_the_middle_average_less():
+    """A burst brightest at its centre is less averaged than its span implies.
+
+    This is the whole mechanism: the photons carry information about a shorter
+    stretch of the state trajectory than the first-to-last span covers, so the
+    occupancy they report scatters more and the effective window is shorter.
+    """
+    from chisurf.core.fluorescence.mfd.occupation import (
+        effective_window,
+        photon_weighted_occupation_variance,
+        two_state_occupation_variance,
+    )
+
+    window, rate = 2.0e-3, 5000.0
+    matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
+    _, uniform = two_state_occupation_variance(matrix, window)
+
+    # Same span, same photon count, concentrated near the centre.
+    u = np.linspace(-1.0, 1.0, 4000)
+    bunched = 0.5 * window * (1.0 + np.sign(u) * np.abs(u) ** 3)
+    bunched = np.sort(bunched - bunched[0])
+
+    assert photon_weighted_occupation_variance(bunched, rate) > uniform * 1.2
+    assert effective_window(bunched, rate) < 0.75 * window
+    # And an evenly-lit burst is unchanged, so nothing moves that should not.
+    assert effective_window(np.linspace(0.0, window, 4000), rate) == pytest.approx(
+        window, rel=0.05
+    )

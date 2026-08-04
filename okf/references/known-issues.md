@@ -1491,6 +1491,23 @@ was simpler" does not rescue it either.
 
 Pinned by `test_photons_do_not_sample_a_burst_uniformly_in_time`
 (`test/fluorescence/test_mfd_ground_truth.py`, slow), which asserts the mechanism
-rather than the bias, because the mechanism is what a fix has to address. A fix
-means weighting the occupation law by the burst's own brightness profile instead
-of by time; it is not attempted here.
+rather than the bias, because the mechanism is what a fix has to address.
+
+**The replacement is exact and already written**, in
+`chisurf.core.fluorescence.mfd.occupation`. A photon-weighted fraction is a plain
+average over the photons, and the state indicator is a telegraph process, so
+
+    Var(f) = pi0 pi1 (1/N^2) sum_i sum_j exp(-k |t_i - t_j|)
+
+with no assumption about how the photons are spread;
+`photon_weighted_occupation_variance` evaluates it in one pass. Against ground
+truth it reproduces the measured variance to **0.4%** (1 kHz) and **0.1%**
+(5 kHz), where the uniform-sampling form is 9.5% and 32.4% out. `effective_window`
+inverts it to the duration a burst's photons behave like, so it drops into
+everything already written in terms of a window.
+
+**What remains** is wiring that window through `MfdKineticModel.components`,
+which today takes the duration from the binned nuisance measure. The effective
+window depends on the rate, so it has to be recomputed as the fit moves, and the
+per-burst arrival times have to reach the model (they are already in the
+preparation under `_tttrs`). Until that lands the bias is unchanged.
