@@ -155,7 +155,7 @@ incomplete) · **ENGINE-ONLY** (compute core present, no ChiSurf model/UI) ·
 ### Monte-Carlo simulation
 | Incumbent capability | Status | ChiSurf location / note |
 |---|---|---|
-| Diffusion + FRET + photon + camera simulation | PARTIAL / ENGINE-ONLY | burbulator + `chisurf/core/fluorescence/simulation/simulation_.cpp`; no surfaced workflow → PRD-53 |
+| Diffusion + FRET + photon + camera simulation | PARTIAL / ENGINE-ONLY | the TTTR library's photon simulator via `chisurf.core.fluorescence.simulation`; no surfaced workflow → PRD-53 |
 
 # Where ChiSurf already beats the incumbent
 
@@ -200,7 +200,7 @@ implementer builds on.
 | Per-pixel phasor-FLIM imaging | phasor image, universal circle, ROI seg | `tcspc/phasor.py`, `clsm` | M | PRD-52 |
 | Spectral/PIE-channel phasor | phasor per spectral/PIE channel | phasor core | M | PRD-52 |
 | Phasor particle detection/tracking | segment + Hungarian tracker | phasor imaging + skimage | L | PRD-52 |
-| Simulation workflow | MC diffusion+FRET+photon+camera | burbulator, `simulation_.cpp` | M | PRD-53 |
+| Simulation workflow | MC diffusion+FRET+photon+camera | `core.fluorescence.simulation` | M | PRD-53 |
 | Spectral unmixing | spectral phasor / linear unmixing | spectra plugins, phasor | M | PRD-54 |
 | pCF | pair-correlation from stream/coords | tttrlib correlators | M | PRD-54 |
 | nsFCS / antibunching model | ns-timescale correlation model | `models/fcs`, tttrlib fine correlator | S | PRD-54 |
@@ -220,7 +220,7 @@ implementer builds on.
    the existing RICS/clsm core: N&B, tICS/STICS, iMSD, spectral RICS.
 3. **Phase 3 — Phasor-FLIM imaging** (PRD-52). Per-pixel phasor, universal circle, ROI
    segmentation, spectral/PIE-channel phasor, particle detection/tracking.
-4. **Phase 4 — Simulation workflow** (PRD-53). Surfaces the burbulator/C++ engine as a
+4. **Phase 4 — Simulation workflow** (PRD-53). Surfaces the photon simulator as a
    headless+AutoForm simulator — provides synthetic ground truth to validate Phases 1-3.
 5. **Phase 5 — Spectral, pCF, nsFCS/FCCS** (PRD-54). Remaining spectroscopy gaps.
 6. **Rolling backlog** (this PRD): 2-photon FCS model, 3c-MFD / 2CDE filters, CZI/LIF

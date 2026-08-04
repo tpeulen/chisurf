@@ -23,8 +23,9 @@ headless-mode-for-features.
 
 The incumbent suite's simulation app generates Monte-Carlo fluorescence data
 (Brownian diffusion, FRET, photophysics, TCSPC histograms, camera images) — invaluable
-for validating analysis and teaching. ChiSurf has the engines (burbulator;
-`chisurf/core/fluorescence/simulation/simulation_.cpp`; dye-diffusion quenching
+for validating analysis and teaching. ChiSurf has the engine (the photon
+simulator in the TTTR library, driven through
+`chisurf.core.fluorescence.simulation`; and the dye-diffusion quenching
 simulator) but **no surfaced workflow**. Beyond parity, this simulator provides the
 **synthetic ground truth** that PRD-50/51/52 acceptance tests depend on.
 
@@ -39,7 +40,10 @@ simulator) but **no surfaced workflow**. Beyond parity, this simulator provides 
 
 # Reuse
 
-- burbulator + `chisurf/core/fluorescence/simulation/simulation_.cpp` (C++ engine).
+- The photon simulator in the TTTR library, reached through
+  `chisurf.core.fluorescence.simulation`. ChiSurf's own burbulator C++ engine
+  is [retired](../references/burbulator-simulator.md); nothing here is compiled
+  by ChiSurf any more.
 - Existing acq/simulation device shim (`chisurf/plugins/core/acq/tcspc_devices/simulation/`).
 - FRET/decay models (`chisurf/core/models/tcspc/*`) for ground-truth parameters.
 - `ChiSurfAPI` headless entry; AutoForm + `view.json` UI (PRD-49 AutoForm mandate).

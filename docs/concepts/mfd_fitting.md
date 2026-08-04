@@ -253,25 +253,25 @@ for the channel counts, a Gaussian kernel for the mean delay, a transfer-matrix
 propagator for the occupation-time law. Each is fast and each has a regime where
 it frays.
 
-ChiSurf also carries a **Monte-Carlo** forward model
-(`chisurf.core.fluorescence.mfd.montecarlo`), transcribed from the Sim2D program
-that produced published 2D-MFD analyses for years. It approximates none of those
-three: it draws a burst's duration and photon budget from the measured
-distribution, walks the kinetic scheme through that duration, hands the photons
-out over the states in proportion to the time spent in each, and lets every
-photon choose a channel and a delay. Its physics core is about a hundred lines.
+ChiSurf **carried** a second, Monte-Carlo forward model for a while, transcribed
+from the Sim2D program that produced published 2D-MFD analyses for years. It
+approximated none of those three steps: it drew a burst's duration and photon
+budget from the measured distribution, walked the kinetic scheme through it,
+handed the photons out over the states by occupancy, and let every photon choose
+a channel and a delay.
 
-The two share what a *state* is — the same species properties, the same
-IRF-convolved micro-time patterns — so they cannot disagree about photophysics,
-only about what happens to a burst. That is what makes a disagreement between
-them diagnostic rather than merely a discrepancy, and it is why the Monte-Carlo
-path keeps Sim2D's multinomial-over-states construction even though thinning a
-multinomial is provably an ordinary binomial: a second implementation that
-assumes the first one's algebra is not a second opinion.
+It was built to be measured against known ground truth, it was, and it lost —
+faster where exchange is slow, both slower and more biased where it is fast — so
+it is gone. What it proved is worth more than what it computed, and is written up
+in [the alternatives that were tried](../../okf/references/mfd-forward-model-alternatives.md):
+it carried the **same** window bias as the closed-form path, and it was the two
+agreeing that showed the error lived in an assumption they *shared* rather than
+in either implementation.
 
-Which one to use is a measured question, not a stylistic one, and it is measured
-against known ground truth rather than against each other — see
-[benchmarks](../development/benchmarks.md).
+The general lesson is the one to keep: two implementations agreeing is not
+evidence when they share an assumption. Both defects this model has had — the
+donor-photon weighting and the burst-span window — were present in both scoring
+sources for as long as they existed, and the sources agreed throughout.
 
 ## Things to know before reading a number off it
 
