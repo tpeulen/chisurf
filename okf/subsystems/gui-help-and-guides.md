@@ -63,6 +63,12 @@ read as nonsense. An emptied button row is hidden — but **only when nothing at
 all is left in it**: a custom section may pair its action with a status label,
 and hiding the container took the status line with it.
 
+**Still to promote** (their buttons carry no `action` tag yet, so each needs one
+line where the button is built): `fcs_merger`'s *save* (a `.ui` `toolButton_3`),
+`fcs_calculator`'s JSON import/export — its *Apply Dref* / *Apply shape* are
+section-scoped and should stay. `tr_anisotropy`'s *create the fit* belongs to the
+wizard's Finish **step**, not the window, and is deliberately left alone.
+
 **A tool with no toolbar gets a hairline one.** The FCS group is three of these:
 `fcs_lfcs_sim` and `fcs_calculator` are plain `QWidget`s, and `fcs_merger` is a
 `QWizard` whose button box is reserved for navigation. Each grows a borderless
