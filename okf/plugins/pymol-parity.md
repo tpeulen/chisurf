@@ -41,6 +41,55 @@ volume rendering, four file-format families, and twenty years of edge cases. The
 useful question is not "how do we write 500 000 lines" but **which parts are load
 bearing for this group's work**, and those are tiered below.
 
+# Where to pick this up
+
+The findings below are what has been *closed*. This section is the open front,
+kept at the top so a new session does not have to reconstruct it. Ordered by
+what a user actually hits.
+
+**1. Settings — the standout gap, and it has a measured worklist.** 790 in
+PyMOL, 55 registered here. The raw remainder (735) is misleading: most of it is
+sculpting, roving, stereo, movie, shader and session bookkeeping that does not
+apply. What matters is the **228 that PyMOL's own Python layer references**,
+which is the closest available proxy for real-world use. Re-derive it with:
+
+* parse `layer1/SettingInfo.h` for `REC_<x>(idx, name, level, default)` — **strip
+  `/* … */` comments first**, or ~20 records with trailing comments are silently
+  missed and the total reads 770 instead of 790; `REC__` is a retired slot;
+* count each name's occurrences under `modules/pymol/` and `modules/pmg_tk/`;
+* subtract `chimol.settings.setting_names()`.
+
+The appearance-bearing names at the top of that ranking, which is where to
+start: `transparency`, `surface_color`, `surface_type`, `two_sided_lighting`,
+`stick_color`, `ribbon_color`, `stick_ball`, `sphere_mode`, `valence`,
+`dash_width`, `light`, and the `util.py` lighting family (`specular_intensity`,
+`spec_direct`, `spec_count`, `reflect`, `power`, `ray_shadow_decay_factor`).
+`cartoon_highlight_color` and `cartoon_fancy_helices` are the two the `pretty`
+and `publication` presets still report as skipped.
+
+**Register a name only if code reads it** — a setting that reads nothing is what
+the settings table exists to prevent, and it is why the three cartoon settings
+above are absent rather than accepted-and-ignored.
+
+**2. A hydrogen-bond finder.** One missing piece blocks three visible things:
+`preset technical` and `preset ligands` both report drawing no polar contacts,
+and the object menu's **A ▸ find** submenu is disabled entirely. PyMOL's is
+`cmd.dist(..., mode=2)`; chimol's `distance` measures between two picked atoms
+and is not the same command.
+
+**3. The camera refits on every rebuild**, so colouring or any `set` re-frames a
+view you have zoomed into. Measured and recorded in
+[known issues](/references/known-issues.md), including two approaches that were
+tried and reverted — the fix belongs in the load path, not in the default.
+
+**4. Rendering.** The ray tracer's meshes are double-shaded (occlusion and cast
+shadow are baked into the vertex colours and then shaded again — costs 44 % of
+the colour), and it has no transparency. Both are described under *`ray` renders
+the scene, not the molecule*.
+
+**5. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
+`cartoon_dumbbell`, `ellipsoid`, `cell`, `slice`.
+
 # Tier 1 — daily use, blocks replacing PyMOL
 
 | Item | Status | Notes |
@@ -255,11 +304,12 @@ confusion is exactly what hid `resn`.
 `protect`/`deprotect`, `sort`, `mask`/`unmask`,
 `symexp`/`get_symmetry`/`set_symmetry`.
 
-**Remaining:** `cealign` (skipped by request), `matrix_copy`,
-`ramp_new`, `cartoon_putty`,
+**Remaining:** `cealign` (skipped by request), `matrix_copy`, `ramp_new`,
 `cartoon_dumbbell`, `cartoon_fancy_helices`, `ellipsoid`, `cell`, `slice`.
 `set_bond`/`get_bond` (per-*bond* settings, not the bond list) need a per-bond
-settings store and are deliberately not started.
+settings store and are deliberately not started — which is also why
+`preset ball_and_stick` reports that it could not colour its sticks white.
+(`cartoon_putty` was listed in both columns; it is done.)
 
 ## Symmetry: hand-entered data, machine-checked
 

@@ -31,6 +31,11 @@
   refit to frame at all. The real fix moves framing to the load path rather than
   flipping a default; see [known issues](references/known-issues.md).
   `test_side_chain_helper.py` (5).
+  **Where to continue** is now a section at the top of
+  [chimol parity](plugins/pymol-parity.md) rather than something to reconstruct:
+  the settings worklist and how to re-derive it, the hydrogen-bond finder that
+  blocks two presets and the whole `A ▸ find` menu, the camera defect, the
+  ray-tracer's double-shaded meshes, and the Tier 2 leftovers.
 
 * **The presets wore PyMOL's labels and made a different picture.**
   ([chimol parity](plugins/pymol-parity.md),
