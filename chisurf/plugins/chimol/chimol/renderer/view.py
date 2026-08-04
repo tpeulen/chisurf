@@ -7652,6 +7652,12 @@ class MolView(QtWidgets.QWidget):
             indices=faces,
             normals=norms,
             colors=mesh_colors,
+            # PyMOL's `two_sided_lighting`, and it only matters once you can see
+            # through the surface: a back face has its normal pointing away, so
+            # the inside of the shell comes out unlit black without it. That is
+            # why PyMOL's own ligand-site preset turns it on in the same breath
+            # as the transparency.
+            meta={"two_sided": bool(surface_cfg.get("two_sided", False))},
         )
         return [SceneObject(id="surface", geometry=geom, render_mode=render_mode)]
 

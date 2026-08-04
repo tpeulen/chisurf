@@ -31,7 +31,7 @@ different algorithm, and for one where the data was blamed before the rule was.
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 119 |
-| Settings | 790 | 68 registered |
+| Settings | 790 | 70 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -66,7 +66,16 @@ start: `transparency`, `surface_color`, `surface_type`, `two_sided_lighting`,
 `spec_direct`, `spec_count`, `reflect`, `power`, `ray_shadow_decay_factor`).
 `cartoon_highlight_color` and `cartoon_fancy_helices` are the two the `pretty`
 and `publication` presets still report as skipped. The `dash_*` family and the
-six `h_bond_*` came off this list with the polar-contact finder.
+six `h_bond_*` came off this list with the polar-contact finder, and
+`transparency` / `two_sided_lighting` with the surface work -- which leaves
+`surface_color`, `surface_type`, `stick_color`, `ribbon_color`, `stick_ball`,
+`sphere_mode`, `valence` and the `util.py` lighting family at the top.
+
+**`surface_quality` is registered but means something different from PyMOL's**,
+and that is worth fixing before adding more: PyMOL takes a level (0-4), chimol a
+grid spacing in Angstrom. A script that sets it gets a finer surface where it
+asked for a coarser one, and `preset ligand_sites` has to skip the step rather
+than pass it through.
 
 **Register a name only if code reads it** — a setting that reads nothing is what
 the settings table exists to prevent, and it is why the three cartoon settings
@@ -522,6 +531,51 @@ and **dashed**, through `dash_length`/`dash_gap`/`dash_width`/`dash_color`; the
 halogen/salt-bridge/π left visible-and-disabled rather than dropped. Thirteen
 settings moved from the missing list to the registered one (55 → 68), all of
 them read by code.
+
+## `transparency` runs the other way, and the setting says so
+
+`transparency` and `two_sided_lighting`: first and fourth on the settings
+worklist, and the two `preset ligand_sites` had been reporting as skipped.
+
+**PyMOL counts transparency; chimol stores alpha; they run opposite ways.**
+`transparency 0` is fully opaque and `alpha 1` is. Storing both is two numbers
+that must agree and eventually will not, so `SettingSpec` gained `stored`/`shown`
+transforms and the complement is declared once in the table: `set transparency,
+0.4` echoes 0.4 and stores 0.6, `get` answers 0.4. A guardrail asserts that any
+spec converting on the way in converts back on the way out -- a one-way
+transform would compound the error on every subsequent `set`.
+
+`unset transparency` restores **chimol's** 0.15, not PyMOL's opaque 0. `unset`
+restores *the default*, and the default has to be the one this program ships;
+changing that is a config-version migration, not something a settings entry may
+do quietly.
+
+### The picture caught what the tests could not
+
+Wiring `two_sided_lighting` to the existing `twoSided` uniform *worked* by every
+test -- and drew the wrong thing. That uniform flips the normal toward the
+**light**, which is a different effect, written for flat nucleic base plates.
+PyMOL's two-sided lighting flips a back face toward the **viewer**
+(`gl_FrontFacing`); the old rule darkens a front face lit only by the fill
+light, by flipping its normal away from that fill light. Fixed, with the
+honest caveat that on a closed surface the two criteria mostly coincide, so the
+measured difference in that scene is negligible (-8.09 vs -8.17): it is a
+correctness fix justified by the failure mode it removes, not by a number.
+
+**And the first metric was wrong.** Mean brightness over lit pixels *fell* 7.6 %
+when two-sided lighting was turned on, which read as a bug. It is not: the newly
+lit back faces are mid-grey and veil brighter cartoon pixels behind them. Only
+the side-by-side images settled it -- off leaves the far half of the shell dark
+and patchy, on gives a coherent closed envelope. A scalar over the whole frame
+cannot tell "back faces now lit" from "bright cartoon now obscured", and
+choosing one before looking is how a correct change gets reverted.
+
+`preset ligand_sites` sets both for real now. Its fourth PyMOL step,
+`surface_quality 0`, is deliberately **not** passed through: PyMOL's is a level
+(0-4, coarse to fine) and chimol's is a grid *spacing* in Angstrom, where 0 is
+not "coarse" but "infinitely fine". It would hang rather than approximate, so it
+is named in the skipped list -- a real parity wart, written down instead of
+guessed at.
 
 ## The camera stayed where the user put it, once the aspect was fixed
 

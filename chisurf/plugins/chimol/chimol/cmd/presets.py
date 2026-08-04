@@ -360,7 +360,16 @@ class PresetMixin(BaseCmd):
         self._run_preset_command(
             f"show surface, (({sel}) and (byres (({sel}) within 6 of ({lig}))))"
         )
-        self._preset_note("two-sided lighting and surface transparency")
+        self._set_global("two_sided_lighting", "on")
+        self._set_global("transparency", 0.0)
+        # PyMOL's fourth step here is `surface_quality 0`, and chimol's setting
+        # of that name means something else: PyMOL takes a level (0-4, coarse to
+        # fine) while chimol's is the grid *spacing* in Angstrom, where 0 is not
+        # "coarse" but "infinitely fine". Passing it through would hang rather
+        # than approximate, so it is named instead.
+        self._preset_note(
+            "surface_quality (PyMOL's is a level, chimol's a grid spacing)"
+        )
 
     def _preset_ligand_cartoon(self, sel: str) -> None:
         self._preset_ligand_sites(sel)

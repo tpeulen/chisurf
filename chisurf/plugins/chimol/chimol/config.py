@@ -499,6 +499,9 @@ def _load_display_config() -> dict:
             "px_mode": True,
         },
         "surface": {
+            # PyMOL's `transparency` is the complement of this; the settings
+            # table carries the conversion so only alpha is stored.
+            "two_sided": False,
             "dot_solvent": False,
             "dot_density": 2,
             "solvent_radius": 1.4,

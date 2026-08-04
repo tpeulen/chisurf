@@ -24,7 +24,7 @@ no PyMOL equivalent.
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -75,6 +75,15 @@ class SettingSpec:
         Value restored by ``unset``.
     doc : str
         One-line description, shown by ``help_setting``.
+    stored : callable or None
+        Maps the value a user gives onto the value the config stores, for the
+        settings where PyMOL's name is not what chimol keeps. ``transparency``
+        is the case that forced this: PyMOL counts 0 as fully opaque while the
+        renderer reads an *alpha* where 1 is. Expressing that here keeps one
+        storage -- the alternative, storing both, is two numbers that must agree
+        and eventually will not.
+    shown : callable or None
+        The inverse, applied on read so ``get`` answers in the user's units.
     """
 
     name: str
@@ -82,10 +91,31 @@ class SettingSpec:
     kind: str
     default: Any
     doc: str = ""
+    stored: Callable[[Any], Any] | None = None
+    shown: Callable[[Any], Any] | None = None
+
+    def to_config(self, value: Any) -> Any:
+        """The value to write, given what the user asked for."""
+        return self.stored(value) if self.stored is not None else value
+
+    def from_config(self, value: Any) -> Any:
+        """The value to report, given what the config holds."""
+        return self.shown(value) if self.shown is not None else value
 
 
-def _spec(name: str, path: str, kind: str, default: Any, doc: str) -> SettingSpec:
-    return SettingSpec(name, tuple(path.split(".")), kind, default, doc)
+def _spec(
+    name: str, path: str, kind: str, default: Any, doc: str,
+    *, stored: Callable[[Any], Any] | None = None,
+    shown: Callable[[Any], Any] | None = None,
+) -> SettingSpec:
+    return SettingSpec(
+        name, tuple(path.split(".")), kind, default, doc, stored, shown
+    )
+
+
+def _complement(value: Any) -> float:
+    """``1 - x``, clamped -- its own inverse, so one function does both ways."""
+    return min(1.0, max(0.0, 1.0 - float(value)))
 
 
 # --------------------------------------------------------------------------- #
@@ -203,6 +233,21 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Colour of measurement dashes."),
 
     # -- Surface ------------------------------------------------------------
+    # PyMOL counts transparency where chimol keeps alpha, and the two run
+    # opposite ways: `transparency 0` is fully opaque, `alpha 1` is. The spec
+    # carries the complement so there is one stored number rather than two that
+    # must agree.
+    # The default is chimol's shipped look, not PyMOL's. PyMOL's surface is
+    # opaque (transparency 0); chimol ships alpha 0.85, and `unset` restores
+    # *the default*, so it has to be the one this program actually ships.
+    # Changing the shipped value is a config-version migration, not a settings
+    # entry.
+    _spec("transparency", "surface.alpha", "float", 0.15,
+          "Surface transparency: 0 is opaque, 1 invisible (PyMOL's sense).",
+          stored=_complement, shown=_complement),
+    _spec("two_sided_lighting", "surface.two_sided", "bool", False,
+          "Light the inside faces of a surface, which is what you see through "
+          "a transparent one."),
     _spec("solvent_radius", "surface.probe_radius", "float", 1.4,
           "Probe radius used when building the solvent-excluded surface."),
     _spec("surface_quality", "surface.grid_spacing", "float", 0.8,
@@ -455,7 +500,7 @@ def get_setting(name: str) -> Any:
         if not isinstance(node, dict) or part not in node:
             return spec.default
         node = node[part]
-    return node
+    return spec.from_config(node)
 
 
 def set_setting(name: str, value: Any) -> tuple[SettingSpec, Any]:
@@ -493,7 +538,9 @@ def set_setting(name: str, value: Any) -> tuple[SettingSpec, Any]:
             child = {}
             node[part] = child
         node = child
-    node[spec.path[-1]] = coerced
+    node[spec.path[-1]] = spec.to_config(coerced)
+    # Reported in the user's units, not the stored ones: `set transparency, 0.4`
+    # must echo 0.4, not the 0.6 alpha it became.
     return spec, coerced
 
 
@@ -507,7 +554,7 @@ def unset_setting(name: str) -> tuple[SettingSpec, Any]:
             child = {}
             node[part] = child
         node = child
-    node[spec.path[-1]] = spec.default
+    node[spec.path[-1]] = spec.to_config(spec.default)
     return spec, spec.default
 
 

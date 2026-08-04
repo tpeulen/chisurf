@@ -525,6 +525,31 @@ skipped rather than quietly giving you a different look. For the same reason
 shadow-map resolution.
 :::
 
+### Seeing through a surface
+
+```text
+show surface
+set transparency, 0.5        # PyMOL's sense: 0 is opaque, 1 invisible
+set two_sided_lighting, on   # light the inside faces you can now see
+```
+
+`transparency` is the **complement** of the alpha the renderer works in, and the
+setting carries the conversion so there is one stored number rather than two
+that must agree: `set transparency, 0.4` stores an alpha of 0.6, and
+`get transparency` answers 0.4.
+
+`two_sided_lighting` only matters once the surface is see-through. A back face
+has its normal pointing away from you, so the inside of the shell comes out
+unlit black without it — which is why PyMOL's own ligand-site preset turns it on
+in the same breath as the transparency, and why `preset ligand_sites` here does
+too.
+
+:::{note}
+`unset transparency` restores **0.15**, not PyMOL's opaque 0: ChiMOL ships a
+slightly translucent surface and `unset` restores the default the program
+actually has. Set it to 0 explicitly for PyMOL's look.
+:::
+
 ### A picture behind the scene, so transparency reads
 
 Transparency is invisible against one flat colour. A surface at `alpha 0.4` over

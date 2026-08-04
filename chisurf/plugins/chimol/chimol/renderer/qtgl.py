@@ -1520,9 +1520,18 @@ class QtGLRenderer(QtWidgets.QOpenGLWidget, Renderer):
                 return;
             }
             vec3 l = normalize(lightDir);
-            // Two-sided lighting for flat plates (e.g. nucleic base rings):
-            // flip the normal toward the light so back faces are not dark.
-            if (twoSided == 1 && dot(n, l) < 0.0) {
+            // Two-sided lighting: a back face is shaded as though it faced the
+            // camera. `gl_FrontFacing`, not `dot(n, l)` -- the two are different
+            // effects and only this one is PyMOL's `two_sided_lighting`.
+            //
+            // Flipping toward the *light* lights whatever the light misses,
+            // wherever the camera is; measured on a half-transparent surface it
+            // made the picture 7.6% *darker*, because a front face lit only by
+            // the fill light had its normal flipped away from that fill light.
+            // Flipping toward the *viewer* is the textbook formulation and is
+            // what makes the inside of a transparent shell visible, which is the
+            // whole reason the setting exists.
+            if (twoSided == 1 && !gl_FrontFacing) {
                 n = -n;
             }
             vec3 viewDir = normalize(-v_viewPos);
