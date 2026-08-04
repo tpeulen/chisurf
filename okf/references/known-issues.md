@@ -47,11 +47,23 @@ base env activated, PIL binds to base's `libz-ng` and any test that shells out
 — a harness artifact that looks exactly like a code defect. Those two script
 tests pass when the env is activated properly.
 
-**Blocked as of 2026-08-04**: `tttrlib` in the `arm64` env is a **symlink into a
-pixi/rattler cache env that no longer exists**, so `import tttrlib` fails and
-every test touching it errors on collection. This was another agent's in-flight
-rebuild of the shared environment, not a code change. Re-check before trusting
-any TTTR-dependent result.
+**Blocked as of 2026-08-04**: `import tttrlib` fails in the `arm64` env. The
+package was rebuilt as a **directory** (`site-packages/tttrlib/`, holding its own
+`_tttrlib*.so` and the split `libtttrlib_*.dylib`), while the env still carries
+the two symlinks of the old single-module layout — `tttrlib.py` and a top-level
+`_tttrlib*.so` — both now dangling. Repair by replacing them with one link to the
+package directory:
+
+```bash
+SP=$CONDA_PREFIX/lib/python3.12/site-packages          # with arm64 activated
+P=~/Library/Caches/rattler/cache/envs/chisurf-*/envs/default/lib/python3.12/site-packages
+rm "$SP/tttrlib.py" "$SP/_tttrlib.cpython-312-darwin.so"   # both dangle; nothing is lost
+ln -s "$P/tttrlib" "$SP/tttrlib"
+```
+
+Until then every test importing `tttrlib` errors **at collection**, which
+`pytest -q --tb=no` reports only as ``1 error during collection`` with no cause
+— re-run the target without `--tb=no` before believing any `rc=2`.
 
 ### `test/gui` — 30 failures across 22 files, plus 5 crashes
 
@@ -79,7 +91,16 @@ The rest, grouped by what they look like rather than by file:
   like a rewritten copy of the three `test_gui_tool_*.py` files, and
   `test_info_json_uppercase.py` was a byte-level subset of `test_info_json.py`
   (deleted). Check for a duplicate before debugging anything here.
-* **Widget behaviour** — `test_rate_matrix.py` (4), `test_proteinmc_mdl.py` (3),
+* **`test_rate_matrix.py` (4) — diagnosed, deliberately not fixed.** Each cell
+  of the grid is now a container `QWidget` holding a *fix checkbox plus* the
+  spin box, with the spin boxes kept in `RateMatrixSection._spins[(i, j)]`; the
+  tests still call `table.cellWidget(i, j).setValue(...)`, from when the cell
+  *was* the spin box, and get `'QWidget' object has no attribute 'setValue'`.
+  Left alone because `chisurf/gui/autoform/sections/rate_matrix_section.py` had
+  **uncommitted changes from another instance** while this was measured — the
+  tests belong to whoever is changing that widget. Port them through `_spins`,
+  not through `cellWidget`.
+* **Widget behaviour** — `test_proteinmc_mdl.py` (3),
   `test_parameter_prior_widget.py`, `test_parameter_table_actions.py`,
   `test_image_section_axes.py`, `test_plot_construction.py`. These are the ones
   most likely to be *real* defects rather than stale tests, and the rate-matrix
