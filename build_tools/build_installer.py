@@ -12,7 +12,7 @@ One shared pipeline does the heavy lifting on every platform; only the final
 linuxdeploy/build.sh, build-setup.bat and its helpers).
 
 The conda recipe (`pip install .`) produces a package containing only chisurf
-+ the burbulator lib, so the installer assembles a full runtime env on top of
+itself, so the installer assembles a full runtime env on top of
 it: chisurf (conda) + runtime libs + tttrlib + labellib + latexify-py +
 imp-tricks + the local ``modules/*`` (chinet/ndxplorer/quest). It then
 slims the env aggressively (strip unused Qt, debug symbols, build tools, test

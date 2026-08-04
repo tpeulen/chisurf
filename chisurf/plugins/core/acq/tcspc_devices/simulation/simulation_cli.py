@@ -4,8 +4,8 @@ This script combines two logical steps:
 
 1. ``config`` – generate a JSON configuration for the simulation
    device (compatible with EnhancedSimulationSetupDialog.get_parameters()).
-2. ``run`` – read such a JSON file and generate SPC-132 files using the
-   Burbulator DLL.
+2. ``run`` – read such a JSON file and generate SPC-132 files with the
+   photon simulator in the TTTR library.
 
 The JSON schema matches the GUI dialog so configurations can be moved
 between CLI and GUI without conversion.
@@ -18,15 +18,6 @@ import os
 from typing import Any, Dict, List
 
 import click
-
-try:
-    # When executed as a module (e.g. ``python -m chisurf.plugins...``)
-    # use the package-relative import.
-    from .burbulator_dll_wrapper import BurbulatorDLL, BurbulatorError
-except ImportError:  # pragma: no cover - script mode fallback
-    # When executed as a standalone script (``python simulation_cli.py``)
-    # fall back to importing from the same directory.
-    from burbulator_dll_wrapper import BurbulatorDLL, BurbulatorError
 
 
 def make_json_serializable(data: Any) -> Any:
@@ -207,7 +198,12 @@ def _flatten_rates(matrix: Any, n_species: int) -> List[float]:
 
 
 def _prepare_dll_params(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Normalize configuration dictionary for BurbulatorDLL.simulate_ov3."""
+    """Normalize the configuration dictionary for the simulation engine.
+
+    The key names are the Burbulator library's, kept because the config JSON
+    files in the wild use them; the library itself is gone (see
+    ``okf/references/burbulator-simulator.md``).
+    """
 
     n_species = int(config.get("N_species", 1))
     if n_species <= 0:

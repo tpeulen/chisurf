@@ -19,10 +19,10 @@ timestamp: '2026-07-05T00:00:00Z'
 | `imp-tricks` | external modelling framework | symlink to a sibling checkout; **not** installed by `build-extensions` |
 
 `tttrlib` is the only entry that is compiled — the other three that
-`build-extensions` installs are plain editable installs. ChiSurf's own
-burbulator C++ library is *not* in `modules/`: it lives with the acquisition
-plugin (`chisurf/plugins/core/acq/tcspc_devices/simulation/csrc/`) and is built
-by the repository's `setup.py` when ChiSurf itself is installed.
+`build-extensions` installs are plain editable installs. ChiSurf itself compiles
+**nothing**: its own C++ was the burbulator simulator beside the acquisition
+plugin, which is [retired](../references/burbulator-simulator.md), so `setup.py`
+now only freezes the version string.
 
 # Building
 

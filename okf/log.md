@@ -193,6 +193,33 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **Burbulator is retired: ChiSurf now compiles no C++ of its own.**
+  ([what it did](references/burbulator-simulator.md),
+  [compiled modules](subsystems/compiled-modules.md)) The Seidel group's
+  `smdif_ov3` — "diffusion of single molecules + photon statistics, open volume,
+  2006" — was ChiSurf's photon simulator before the TTTR library had one. Gone
+  now: the ctypes wrapper (462 lines), the twelve C++ sources under the
+  acquisition plugin's `csrc/`, the `setup.py` CMake build that compiled them
+  *into the package directory*, the committed-adjacent `libburbulator.dylib`, and
+  its `.gitignore` entry.
+
+  It was already superseded — the CLI's `run` command has been building the TTTR
+  library's engine for some time and its own comment said so — so the only thing
+  keeping the wrapper alive was an **unused import**, unguarded in both its
+  branches, which is why it read as load-bearing.
+
+  Documented rather than merely deleted, because the model is worth keeping: the
+  open box molecules enter and leave, per-species brightness per channel,
+  `k_rad` scaled by local intensity against spontaneous `k_nrad`, per-photon
+  emitting species *and* molecule as ground truth, and SPC-132 encoding laid out
+  for a C# `BinaryWriter`. Its **two-generator discipline** outlived it: separate
+  diffusion and emission streams, threaded through every call so a batched run had
+  no seam — which is why the TTTR engine takes two seeds and why
+  `simulation.rng.seeds` derives both from one.
+
+  `setup.py` is now only the version-freezing step, and the guarded-imports
+  allow-list no longer excuses a module that does not exist.
+
 * **One shim for the photon simulator, and the simulator's own config mistakes are
   now errors.** ([tttrlib `115bd204`](references/simengine-species-encoding.md))
   Simulation was implemented in eleven substantial places plus ~30 test-local

@@ -74,15 +74,16 @@ After generation you can:
 **Purpose:**
 
 - Read a JSON configuration and generate **Becker & Hickl SPC-132** files
-  using the same Burbulator DLL as the simulation TCSPC device.
+  with the same photon simulator as the simulation TCSPC device.
 - The JSON can come either from the GUI dialog (Save JSON) or from the
   `config` subcommand.
 
-**DLL dependency:**
+**Dependency:**
 
-- Uses `BurbulatorDLL` from `burbulator_dll_wrapper.py` in this directory.
-- Requires a working Burbulator DLL as described in
-  `BUILD_BURBULATOR.md`.
+- The photon simulator in the TTTR library, through
+  `core/algorithms.py` and the shared streaming backend the GUI and RPC use.
+  Nothing is compiled from this directory; the Burbulator library that used to
+  be is [retired](../../../../../../okf/references/burbulator-simulator.md).
 
 **Usage (from repository root):**
 
