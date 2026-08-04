@@ -41,6 +41,10 @@ from chisurf.core.fluorescence.kinetics import (
     equilibrium_populations,
     occupation_time_fractions_reference,
 )
+from chisurf.core.fluorescence.mfd.occupation import (
+    effective_window_scale,
+    relaxation_rate,
+)
 from chisurf.core.fluorescence.mfd.patterns import donor_lifetime_spectrum_of_state
 
 __all__ = ["monte_carlo_histogram", "DEFAULT_MC_BURSTS"]
@@ -219,6 +223,19 @@ def monte_carlo_histogram(model, data, *, n_bursts: int = DEFAULT_MC_BURSTS,
     if rate_matrix is not None:
         rate_matrix = np.asarray(rate_matrix, dtype=float)
 
+    # The same correction the analytic path applies, for the same reason: a
+    # burst's photons are concentrated where it was brightest, so they average
+    # the state over less than its span. Applied here too, or a comparison
+    # between the two engines measures which of them got the fix rather than
+    # anything about the forward models.
+    window_scale = 1.0
+    if rate_matrix is not None and getattr(model, "photon_weighted_window", False):
+        arrivals = data.arrivals()
+        if arrivals is not None:
+            window_scale = effective_window_scale(
+                *arrivals, relaxation_rate(rate_matrix)
+            )
+
     weights, signal, spans = binned if binned is not None else data.binned
     weights = np.asarray(weights, dtype=float)
     occupied = np.nonzero(weights > 0)[0]
@@ -234,7 +251,7 @@ def monte_carlo_histogram(model, data, *, n_bursts: int = DEFAULT_MC_BURSTS,
         total_signal = int(round(float(signal[cell])))
         if total_signal <= 0:
             continue
-        window = float(spans[-1][cell])
+        window = float(spans[-1][cell]) * window_scale
 
         # Background is part of the burst's photon budget, not added to it — the
         # same split the nested sum makes, so the two paths mean the same S.

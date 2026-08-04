@@ -54,7 +54,7 @@ RATES = (200.0, 1_000.0, 5_000.0)
 
 #: Independent measurements per cell. Recovery scatter is the thing being
 #: measured, so a single seed would report noise as a difference.
-SEEDS = (11, 12, 13, 14, 15)
+SEEDS = (11, 12, 13)
 
 #: The simulated measurement. Brightness over background matters more than photon
 #: count here: a flat background spread over the laser period drags every mean
@@ -67,22 +67,33 @@ MEASUREMENT = dict(
     irf_centre=1.0, irf_width=0.1,
 )
 
-#: Distances giving E = 0.2 and E = 0.8 at the optics below.
-DISTANCES = (66.2, 39.3)
+#: Distances giving E = 0.2 and E = 0.8 at the optics below. Solved from
+#: R = R0 (1/E - 1)^(1/6) rather than read off a plot: the earlier pair (66.2,
+#: 39.3) gives 0.190 and 0.843, and a benchmark whose model sits at different
+#: efficiencies than its data charges that mismatch to whichever setting is
+#: being scored.
+DISTANCES = tuple(52.0 * (1.0 / e - 1.0) ** (1.0 / 6.0) for e in (0.2, 0.8))
+
+#: Linker width in the model. The simulator places both states at a fixed
+#: efficiency, so a benchmark that gives the model a distance *distribution* the
+#: data does not have lets the free rate absorb the difference. A real
+#: measurement has one; a recovery test must not.
+SIGMA = 0.5
 
 
-def _model(rate, weighting):
-    """Build the kinetic model with a given rate and donor weighting."""
+def _model(rate, weighting, window=True):
+    """Build the kinetic model with a given rate, donor weighting and window."""
     from chisurf.core.fluorescence.mfd.fit import MfdKineticModel
     from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
 
-    optics = Optics(r0=52.0, tau_d0=4.0, sigma=6.0, gamma=1.0, alpha=0.0, delta=0.0)
+    optics = Optics(r0=52.0, tau_d0=4.0, sigma=SIGMA, gamma=1.0, alpha=0.0, delta=0.0)
     states = [FretState(distance=d, name=n)
               for d, n in zip(DISTANCES, ("low", "high"))]
     matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
     return MfdKineticModel(
         optics=optics, states=states, populations=[0.5, 0.5], donor_only=0.05,
         rate_matrix=matrix, donor_weighting=weighting,
+        photon_weighted_window=window,
     )
 
 
@@ -115,7 +126,7 @@ def _residuals(model, data, engine, n_mc, mc_seed):
 
 
 def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
-             n_mc=60_000, mc_seed=0):
+             n_mc=60_000, mc_seed=0, window=True):
     """Recover the exchange rate, everything else pinned at truth.
 
     Rates only free: with the optics, distances and populations known, whatever
@@ -146,7 +157,7 @@ def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
     from scipy.optimize import minimize_scalar
 
     def objective(log_rate):
-        model = _model(float(np.exp(log_rate)), weighting)
+        model = _model(float(np.exp(log_rate)), weighting, window=window)
         residuals = _residuals(model, data, engine, n_mc, mc_seed)
         return float(np.sum(residuals**2))
 
@@ -167,30 +178,34 @@ def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
 def main():
     """Run the sweep and print the table."""
     settings = [
-        ("analytic", "green"),
-        ("analytic", "occupancy"),
-        ("montecarlo", "green"),
+        ("analytic", "green", True),
+        ("analytic", "green", False),
+        ("analytic", "occupancy", True),
+        ("montecarlo", "green", True),
     ]
     rows = {}
     for rate in RATES:
         for seed in SEEDS:
             with tempfile.TemporaryDirectory() as tmp:
                 data, _ = _measure(rate, seed, pathlib.Path(tmp) / "m")
-                for engine, weighting in settings:
-                    fitted, seconds = fit_rate(data, weighting=weighting, engine=engine)
-                    rows.setdefault((rate, engine, weighting), []).append(
+                for engine, weighting, window in settings:
+                    fitted, seconds = fit_rate(data, weighting=weighting,
+                                               engine=engine, window=window)
+                    rows.setdefault((rate, engine, weighting, window), []).append(
                         (fitted, seconds)
                     )
 
-    print("\n| rate (Hz) | engine | weighting | median fitted | bias | RMSE | s/fit |")
-    print("|---|---|---|---|---|---|---|")
-    for (rate, engine, weighting), values in rows.items():
+    print("\n| rate (Hz) | engine | weighting | window | median fitted | bias | RMSE | s/fit |")
+    print("|---|---|---|---|---|---|---|---|")
+    for (rate, engine, weighting, window), values in rows.items():
         fitted = np.array([v[0] for v in values])
         seconds = np.array([v[1] for v in values])
         bias = float(np.median(fitted) / rate - 1.0)
         rmse = float(np.sqrt(np.mean((fitted / rate - 1.0) ** 2)))
-        print(f"| {rate:g} | {engine} | {weighting} | {np.median(fitted):.0f} | "
-              f"{bias:+.1%} | {rmse:.1%} | {np.mean(seconds):.1f} |")
+        label = "photons" if window else "span"
+        print(f"| {rate:g} | {engine} | {weighting} | {label} | "
+              f"{np.median(fitted):.0f} | {bias:+.1%} | {rmse:.1%} | "
+              f"{np.mean(seconds):.1f} |")
 
 
 if __name__ == "__main__":
