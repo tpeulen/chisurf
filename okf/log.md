@@ -193,6 +193,24 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The Gillespie moved to where the state jumps already happen.**
+  ([tttrlib `ec9354d7`](references/simengine-species-encoding.md))
+  `occupation_time_fractions` reached the continuous-time Markov chain by building
+  a **whole photon simulation** around it: dark species, immobile molecules, a
+  Gaussian focus nobody looked through, a 50 µm box whose comment said
+  *"irrelevant: nothing moves or emits"*, run for exactly one window so the state
+  log could be read back. The engine has walked that chain all along —
+  `evolve_spontaneous` is the same physics — it simply was not reachable on its own.
+
+  It is now: `SimKinetics::sim_occupation_fractions` in tttrlib, header-only,
+  validated against the telegraph closed form over k·T from 0.1 to 100 including
+  **both** limits, since a sampler that only works in the middle is the one that
+  fails quietly at the ends.
+
+  **214× faster** at 20 000 samples than the numpy reference (3.9 ms against
+  826 ms), with the same mean and variance, and 40 lines of scaffolding deleted
+  from `kinetics.py`.
+
 * **The engine is reached through one door, and the ALEX writer through one file.**
   Remaining inline `SimEngine` constructions now go through
   `simulation.build_engine` (lifetime-FCS, the burst workflow), and the

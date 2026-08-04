@@ -450,13 +450,12 @@ def occupation_time_fractions_reference(rate_matrix, window: float, n_samples: i
 
 
 def _engine_records_state_trajectory() -> bool:
-    """Whether the installed simulation engine can record a state trajectory."""
+    """Whether the installed simulation library exposes its kinetics sampler."""
     try:
         import tttrlib
     except ImportError:                                          # pragma: no cover
         return False
-    engine = getattr(tttrlib, "SimEngine", None)
-    return engine is not None and hasattr(engine, "set_state_log")
+    return hasattr(tttrlib, "sim_occupation_fractions")
 
 
 def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
@@ -508,40 +507,19 @@ def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
     np.fill_diagonal(matrix, 0.0)
     matrix = np.clip(matrix, 0.0, None)
     n = matrix.shape[0]
-    populations = equilibrium_populations(matrix)
 
-    sample = tttrlib.SimSystem()
-    for _ in range(n):
-        species = tttrlib.SimSpecies()
-        species.D = 0.0                                  # immobile: no diffusion to simulate
-        species.q = tttrlib.VectorDouble([0.0])          # dark: we want the states, not photons
-        sample.add_species(species)
-    # The engine's rate matrices are row-major source -> target, the transpose of the
-    # convention used here. Plain lists, not VectorDouble: a by-value std::vector argument
-    # rejects the proxy once another SWIG extension has claimed the shared type table.
-    sample.set_rate_matrices([0.0] * (n * n), [float(v) for v in matrix.T.ravel()])
-    sample.set_background([0.0])
-    sample.set_box(50.0, 50.0)                           # irrelevant: nothing moves or emits
-
-    rng = np.random.default_rng(int(seed))
-    for state in rng.choice(n, size=n_samples, p=populations):
-        sample.add_fluorophore(0.0, 0.0, 0.0, int(state), False)
-
-    settings = tttrlib.SimIntegrator()
-    settings.dt = float(window)                          # one macro-window IS the observation
-    settings.n_channels = 1
-    settings.n_ph_max = 10 ** 15                         # stop on windows, never on photons
-    settings.max_windows = 1
-    settings.seed_diffusion = int(seed)
-    settings.seed_emission = int(seed) + 1
-    engine = tttrlib.SimEngine(
-        sample,
-        tttrlib.SimGrid.gaussian3d(0.3, 2.0, 4.0, 8.0, 0.2, 1.0),
-        tttrlib.VectorSimGrid([]),
-        settings,
+    # The sampler's rates are row-major source -> target, the transpose of the
+    # convention used here. This used to be reached by building a whole photon
+    # simulation around the Markov chain -- dark species, immobile molecules, a
+    # focus nobody looked through and a box nothing moved in -- because the chain
+    # was not exposed on its own. It is now.
+    flat = tttrlib.sim_occupation_fractions(
+        [float(v) for v in matrix.T.ravel()],
+        int(n),
+        float(window),
+        int(n_samples),
+        [float(p) for p in equilibrium_populations(matrix)],
+        int(seed),
     )
-    engine.set_state_log(True)
-    engine.run()
+    return np.ascontiguousarray(np.asarray(flat, dtype=float).reshape(n_samples, n))
 
-    _, fractions = engine.state_occupancy(windows_per_bin=1)
-    return np.ascontiguousarray(fractions[:, 0, :])
