@@ -31,7 +31,7 @@ different algorithm, and for one where the data was blamed before the rule was.
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 119 |
-| Settings | 790 | 53 registered |
+| Settings | 790 | 55 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -660,6 +660,37 @@ colours assigned in first-seen order** — so every multi-chain figure came out
 differently from PyMOL, and differently again depending on how the file was
 written. Transcribed as `colors.CHAIN_COLOR_CYCLE`; chain A is the carbon green,
 B cyan, C light magenta.
+
+## Side chains that grow out of the ribbon
+
+`cartoon_side_chain_helper`, transcribed from `SideChainHelper.cpp` into
+`analysis/side_chain_helper.py`. PyMOL's `pretty` and `ligand_cartoon` presets
+set it, and it is why they look the way they do: a cartoon with sticks on a few
+residues is a mess otherwise, because each stick residue also draws its backbone
+N, C and O inside the ribbon.
+
+The thing to get right is that it is a **bond filter, not an atom filter** — the
+atoms stay in the model and stay pickable, and it is the bonds *between* them
+that are dropped where a cartoon already covers them. Suppressed: `CA-C`,
+`N-CA`, `N-C`, `C-O`/`C-OXT`, and every hydrogen on CA and N. Kept: `CA-CB`,
+which is what the side chain hangs from. Two exceptions carry the meaning —
+**proline** keeps its `N-CA` because its ring needs it, and `marked` atoms (a
+cartoon here, none on the bonded neighbour) keep their backbone bonds so sticks
+at the end of a segment still reach the ribbon. Measured on 148L residues 20–26:
+62 stick bonds become 35, and the 27 dropped are exactly 7 `N-CA`, 7 `CA-C`,
+7 `C-O` and 6 `C-N`.
+
+PyMOL's nucleic branch (`na_mode`, the `C[45][*']` bonds) is not transcribed, so
+the helper only ever hides protein backbone bonds.
+
+**Vectorised, because it runs on every scene rebuild.** The first cut was a
+per-bond Python loop: 4 ms on 1 000 bonds is invisible, but **1.3 s on 500 000**,
+and this repository's demos reach that. Every test in the rule is on the two
+endpoints, so it rewrites as gathered boolean arrays with the same result —
+**332 ms at 500 000 bonds, 4× faster**, identical hidden counts at every size.
+It is left there rather than tuned further because the filter runs *after* the
+sticks mask, so its input is the scoped bond list: a binding site is ~60 bonds,
+and reaching 500 000 means sticks on everything, which is a heavy scene already.
 
 ## Two coordinate arrays, and they had drifted apart
 

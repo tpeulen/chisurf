@@ -397,6 +397,10 @@ def _load_display_config() -> dict:
             "full_height": True,
         },
         "cartoon": {
+            # PyMOL's `cartoon_side_chain_helper`, off by default as it is
+            # there. Read by MolView._apply_side_chain_helper, which drops the
+            # backbone bonds a cartoon already covers from sticks and lines.
+            "side_chain_helper": False,
             "putty_radius": 0.4,
             "putty_scale_min": 0.6,
             "putty_scale_max": 4.0,

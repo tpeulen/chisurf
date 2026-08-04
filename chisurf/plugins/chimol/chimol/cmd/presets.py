@@ -19,10 +19,11 @@ The mapping decisions worth knowing:
 * polar contacts need PyMOL's ``dist ... mode=2`` (find every hydrogen bond),
   and chimol's ``distance`` measures between two picked atoms. The presets that
   draw them say so instead.
-* ``cartoon_fancy_helices``, ``cartoon_highlight_color`` and
-  ``cartoon_side_chain_helper`` are not implemented by chimol's cartoon, so they
-  are not registered as settings (a setting that reads nothing is exactly what
-  the settings table exists to prevent) and the presets that set them say so.
+* ``cartoon_fancy_helices`` and ``cartoon_highlight_color`` are not implemented
+  by chimol's cartoon, so they are not registered as settings (a setting that
+  reads nothing is exactly what the settings table exists to prevent) and the
+  presets that set them say so. ``cartoon_side_chain_helper`` *is* implemented
+  and the presets set it for real.
 * PyMOL scopes a setting to a selection (``set stick_radius, 0.14, sele``);
   chimol's settings are one global display config. A preset that changes a
   setting therefore changes it for everything, and says so once rather than
@@ -151,6 +152,7 @@ class PresetMixin(BaseCmd):
         self._set_global("stick_radius", 0.15, note=False)
         self._set_global("cartoon_flat_sheets", "on", note=False)
         self._set_global("cartoon_smooth_loops", "off", note=False)
+        self._set_global("cartoon_side_chain_helper", "off", note=False)
 
     def _set_global(self, name: str, value, *, note: bool = True) -> None:
         """Write a setting, noting that chimol's are not per-selection.
@@ -313,7 +315,7 @@ class PresetMixin(BaseCmd):
         self._preset_ligand_sites(sel)
         self._run_preset_command(f"hide surface, {sel}")
         self._run_preset_command(f"show cartoon, {sel}")
-        self._preset_note("cartoon_side_chain_helper")
+        self._set_global("cartoon_side_chain_helper", "on")
 
     def _preset_pretty(self, sel: str, *, solvent: bool = False) -> None:
         self._preset_prepare(sel)
@@ -329,9 +331,10 @@ class PresetMixin(BaseCmd):
         )
         self._set_global("cartoon_flat_sheets", "on")
         self._set_global("cartoon_smooth_loops", "off")
+        self._set_global("cartoon_side_chain_helper", "off")
         self._preset_note(
-            "cartoon_highlight_color, cartoon_fancy_helices and "
-            "cartoon_side_chain_helper (not implemented by chimol's cartoon)"
+            "cartoon_highlight_color and cartoon_fancy_helices "
+            "(not implemented by chimol's cartoon)"
         )
 
     def _preset_pretty_solv(self, sel: str) -> None:

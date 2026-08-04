@@ -1,3 +1,38 @@
+## chimol: every scene rebuild refits the camera, throwing your framing away
+
+**Found 2026-08-04**, while photographing `cartoon_side_chain_helper` — the
+framing kept resetting between the "off" and "on" shots.
+
+`MolView._update_view(fit_camera=True)` is the default, and a rebuild is what
+colouring, a representation change, a label, a bond edit and **every `set`** all
+trigger. Measured on 148L: `zoom resi 20-26` puts the camera distance at
+**1.26**, and the next `set` of *anything at all* puts it back to **5.0**. So
+framing a binding site and then adjusting a stick radius loses the framing — in
+a viewer, which is a serious thing to get wrong. PyMOL moves the camera only for
+a camera command (`zoom`/`orient`/`center`/`reset`) or a load (`auto_zoom`).
+
+**Attempted and reverted**: flipping the default to `False` and passing `True`
+from the three load paths (`set_structure`, `set_coordinates`, `add_volume`) is
+*not* sufficient, and the suite says so — `test_ray_command.py::
+test_every_representation_reaches_the_image` then traces an **empty image** for
+all four representations. `ray` and the headless load path both depend on this
+refit to frame at all: at the point the load paths call it the scene has no
+geometry to measure, so the first rebuild that *does* is what actually frames.
+An `auto_zoom`-once flag (frame on the first build with geometry) does not fix
+it either, because in that test the window is never shown and `_update_view`
+returns early with no renderer.
+
+The real fix moves framing to where a structure is loaded and the scene is
+built, rather than flipping a default — six call sites had already been patched
+to `fit_camera=False` one at a time, which is the signature of a default that is
+wrong but load-bearing. Left as it was, because a half-verified change across
+~64 call sites in a viewer is worse than a known defect.
+
+Six call sites already pass `fit_camera=False`; the ones that matter for a user
+are colouring, representations and `set`.
+
+---
+
 ## Stale tests left behind by finished refactors
 
 **Found 2026-08-03**, while running the guard suites for the PSF calculator's

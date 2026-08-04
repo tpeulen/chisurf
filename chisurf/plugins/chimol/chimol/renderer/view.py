@@ -12,6 +12,8 @@ from typing import Any, Optional, Union
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 
+from ..analysis.atom_classes import classify_atoms
+from ..analysis.side_chain_helper import hidden_backbone_bonds
 from ..analysis.ss import assign_ss_c3_from_atoms
 from ..colors import (
     _build_chain_color_array,
@@ -2495,7 +2497,7 @@ class MolView(QtWidgets.QWidget):
                 # carries. PyMOL shows them too (as nonbonded dots) until hidden.
                 self._show_atoms = True
 
-            self._update_view()
+            self._update_view(fit_camera=True)
             return
 
         # Case 2: fallback to ``structure.xyz`` attribute
@@ -2775,7 +2777,7 @@ class MolView(QtWidgets.QWidget):
             self._show_cartoon = atomic_residues
             self._show_trace = False
 
-        self._update_view()
+        self._update_view(fit_camera=True)
 
         # No sequence information when only raw coordinates are provided
         if self._residue_ids is None and self._residue_names is None:
@@ -6542,6 +6544,8 @@ class MolView(QtWidgets.QWidget):
                 keep = lm[bonds[:, 0]] & lm[bonds[:, 1]]
                 bonds = bonds[keep]
 
+        bonds = self._apply_side_chain_helper(bonds)
+
         verts, cols = bond_line_segments(
             self._all_atom_coords, bonds, self._atom_rgba(colors)
         )
@@ -6887,6 +6891,60 @@ class MolView(QtWidgets.QWidget):
         out[empty] = np.nan
         return out
 
+    def _cartoon_atom_mask(self) -> np.ndarray | None:
+        """Whether a cartoon is drawn over each atom.
+
+        chimol's cartoon visibility is a flag plus a *per-residue* mask, so it
+        has to be expanded through the atoms' residue ids before it can be asked
+        about an atom -- which is the domain PyMOL's ``visRep`` answers in.
+        """
+        coords = self._all_atom_coords
+        if coords is None:
+            return None
+        n_atoms = int(np.asarray(coords).shape[0])
+        if not self._show_cartoon:
+            return np.zeros(n_atoms, dtype=bool)
+
+        mask = getattr(self, "_cartoon_mask", None)
+        res_ids = self._residue_ids
+        atom_res = self._all_atom_res_ids
+        if mask is None or res_ids is None or atom_res is None:
+            return np.ones(n_atoms, dtype=bool)
+        mask = np.asarray(mask, dtype=bool)
+        res_ids = np.asarray(res_ids)
+        atom_res = np.asarray(atom_res)
+        if mask.shape[0] != res_ids.shape[0] or atom_res.shape[0] != n_atoms:
+            return np.ones(n_atoms, dtype=bool)
+        return np.isin(atom_res, res_ids[mask])
+
+    def _apply_side_chain_helper(self, bonds: np.ndarray) -> np.ndarray:
+        """Drop the backbone bonds ``cartoon_side_chain_helper`` hides.
+
+        A no-op when the setting is off, which is PyMOL's default. See
+        :mod:`chimol.analysis.side_chain_helper` for the rule and why it is a
+        bond filter rather than an atom filter.
+        """
+        if bonds.size == 0:
+            return bonds
+        cartoon_cfg = _DISPLAY_CONFIG.get("cartoon", {})
+        if not bool(cartoon_cfg.get("side_chain_helper", False)):
+            return bonds
+        atoms = self._atoms
+        if atoms is None:
+            return bonds
+        cartoon = self._cartoon_atom_mask()
+        if cartoon is None or not cartoon.any():
+            return bonds
+        try:
+            classes = classify_atoms(atoms)
+            polymer = np.asarray(classes.polymer, dtype=bool)
+        except Exception:
+            return bonds
+        if polymer.shape[0] != cartoon.shape[0]:
+            return bonds
+        hidden = hidden_backbone_bonds(atoms, bonds, cartoon, polymer)
+        return bonds[~hidden]
+
     def _update_sticks(self, sticks_cfg: dict, colors_per_ca: np.ndarray | None) -> list[SceneObject] | None:
         if not self._show_sticks:
             return None
@@ -6912,6 +6970,8 @@ class MolView(QtWidgets.QWidget):
             if self._sticks_mask is not None and len(self._sticks_mask) == n_atoms_all:
                  mask_bonds = self._sticks_mask[bonds[:, 0]] & self._sticks_mask[bonds[:, 1]]
                  bonds = bonds[mask_bonds]
+
+            bonds = self._apply_side_chain_helper(bonds)
 
             if bonds.size:
                 # Optional bond downsampling for performance.
@@ -7985,6 +8045,22 @@ class MolView(QtWidgets.QWidget):
         return [SceneObject(id="selection", geometry=geom, render_mode="overlay")]
 
     def _update_view(self, fit_camera: bool = True) -> None:
+        """Rebuild the scene, refitting the camera distance unless told not to.
+
+        ``fit_camera`` defaulting to True means **every** rebuild refits, and a
+        rebuild is what colouring, a representation change, a label and every
+        ``set`` all trigger -- so framing a site and then adjusting anything
+        throws the framing away. That is a real defect, measured and recorded in
+        okf/references/known-issues.md; it is *not* simply a wrong default,
+        because `ray` and the load path both depend on this refit to frame at
+        all. Fixing it needs the framing moved to where a structure is loaded,
+        not merely the default flipped.
+
+        Parameters
+        ----------
+        fit_camera : bool, optional
+            Refit the camera distance to the scene radius afterwards.
+        """
         if self._renderer is None:
             return
 
@@ -8242,7 +8318,7 @@ class MolView(QtWidgets.QWidget):
         radius = float(np.linalg.norm(np.asarray(high, dtype=float) - centre_world))
         state.radius = max(radius * scale, 1e-3)
 
-        self._update_view()
+        self._update_view(fit_camera=True)
         return object_id
 
     def set_volume_levels(self, levels, object_id: str | None = None) -> bool:

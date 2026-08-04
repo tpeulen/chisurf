@@ -2,6 +2,36 @@
 
 ## 2026-08-04
 
+* **A rebuild was stealing the camera, and side chains now grow out of the
+  ribbon.** ([chimol parity](plugins/pymol-parity.md),
+  [molecular viewer guide](../docs/guides/44_molecular_viewer.md))
+  `cartoon_side_chain_helper` is transcribed from `SideChainHelper.cpp` into
+  `analysis/side_chain_helper.py` — the setting that makes the commonest figure
+  in structural biology (a cartoon with sticks on a few residues) readable, by
+  dropping the backbone bonds a cartoon already covers. It is a **bond filter,
+  not an atom filter**: the atoms stay in the model and stay pickable. Kept:
+  `CA-CB`, which the side chain hangs from; **proline** keeps its `N-CA` because
+  its ring needs it; an atom at the edge of a cartoon segment keeps its backbone
+  bonds so the sticks still reach the ribbon. Measured on 148L residues 20–26,
+  62 stick bonds become 35 and the 27 dropped are exactly 7 `N-CA`, 7 `CA-C`,
+  7 `C-O`, 6 `C-N`. The presets set it for real now instead of reporting it as
+  skipped. The first cut was a per-bond Python loop — invisible at 1 000 bonds,
+  **1.3 s at 500 000**, and it runs on every rebuild; every test in the rule is
+  on the two endpoints, so it vectorises to gathered boolean arrays for the same
+  answer at **332 ms, 4× faster**. Not tuned further: the filter runs *after*
+  the sticks mask, so its input is the scoped bond list.
+  **A camera defect was found by photographing that setting** and is recorded,
+  not fixed: the framing kept resetting between the off and on shots, because
+  `_update_view` refits the camera on *every* rebuild — and a rebuild is what
+  colouring, a representation change, a label and every `set` all trigger.
+  Measured: `zoom resi 20-26` puts the camera at 1.26 and the next `set` of
+  anything puts it back to 5.0. Flipping the default was tried and **reverted**:
+  the suite showed `ray` then traces an empty image for all four
+  representations, because `ray` and the headless load path both depend on that
+  refit to frame at all. The real fix moves framing to the load path rather than
+  flipping a default; see [known issues](references/known-issues.md).
+  `test_side_chain_helper.py` (5).
+
 * **The presets wore PyMOL's labels and made a different picture.**
   ([chimol parity](plugins/pymol-parity.md),
   [molecular viewer guide](../docs/guides/44_molecular_viewer.md))

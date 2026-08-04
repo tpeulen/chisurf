@@ -989,6 +989,31 @@ Chains are coloured from PyMOL's own 40-colour cycle, in PyMOL's order — chain
 is the carbon green, B cyan, C light magenta — so a figure reads the same way in
 both programs.
 
+### Side chains that grow out of the ribbon
+
+The commonest figure there is — a cartoon with sticks on a few residues — is a
+mess drawn naively, because each stick residue also draws its backbone N, C and
+O running inside the ribbon. `cartoon_side_chain_helper` drops exactly those
+bonds where a cartoon already covers them:
+
+```text
+show cartoon
+show sticks, byres (resi 20-26)
+set cartoon_side_chain_helper, on
+```
+
+It is a **bond** filter, not an atom filter: the backbone atoms stay in the
+model and stay pickable. Proline keeps its N–CA, which closes its ring, and a
+residue at the end of a cartoon segment keeps its backbone bonds so the sticks
+still reach the ribbon. `preset ligand_cartoon` turns it on for you.
+
+:::{warning}
+Unlike PyMOL, ChiMOL currently **refits the camera on every scene rebuild** — so
+colouring, changing a representation or any `set` re-frames the view after you
+have zoomed in. Re-issue your `zoom` afterwards. This is a known defect, not a
+design choice.
+:::
+
 ## Colouring by a computed quantity
 
 `spectrum` ramps any per-atom property across a palette. Combined with `get_area`

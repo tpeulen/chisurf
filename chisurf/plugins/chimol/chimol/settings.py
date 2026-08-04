@@ -138,6 +138,12 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Round the coil between elements; off in PyMOL too."),
     _spec("cartoon_smooth_cycles", "cartoon.smooth_cycles", "int", 2,
           "Smoothing passes applied when cartoon_smooth_loops is on."),
+    _spec("cartoon_side_chain_helper", "cartoon.side_chain_helper", "bool", False,
+          "Hide backbone sticks where a cartoon covers them, so side chains "
+          "appear to grow out of the ribbon."),
+    _spec("ribbon_side_chain_helper", "cartoon.side_chain_helper", "bool", False,
+          "The same, for the ribbon. chimol draws one cartoon, so the two "
+          "settings are one."),
     _spec("cartoon_refine_tips", "cartoon.refine_tips", "float", 10.0,
           "How hard a strand tip's tangent is aimed along the strand."),
     _spec("cartoon_refine_normals", "cartoon.refine_normals", "bool", True,
