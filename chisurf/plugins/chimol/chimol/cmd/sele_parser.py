@@ -106,9 +106,13 @@ TOKEN_TYPES = [
     # `.` and `;` are part of an identifier so that PyMOL's abbreviations survive
     # lexing: `c.A`, `n.CA`, `bb.`, and dotted names like `polymer.protein`. A
     # bare `%` names a selection. `*` is `all`, and resolves through the table.
+    # A *leading* `?` is PyMOL's "undefined is allowed here" mark (`?sele`), so
+    # it must reach the evaluator attached to the name rather than being dropped
+    # as an unmatched character -- which would turn `?sele` into `sele` and make
+    # the one spelling that suppresses the error raise it.
     (
         "IDENT",
-        r"[a-zA-Z_%*][a-zA-Z0-9_*?]*(?:[.;][a-zA-Z0-9_'*?]*)*"
+        r"\??[a-zA-Z_%*][a-zA-Z0-9_*?]*(?:[.;][a-zA-Z0-9_'*?]*)*"
         r"|\d[a-zA-Z0-9_]*[a-zA-Z_][a-zA-Z0-9_]*",
     ),
     ("PLUS", r"\+"),
@@ -248,6 +252,26 @@ class UnsupportedSelection(Exception):
     an unimplemented keyword look identical to a user and only one of them is
     their fault. Working rule: a gap that is shown beats a gap that is hidden.
     """
+
+
+class UnknownSelectionName(ParserError):
+    """A bare word that names no object, group or stored selection.
+
+    PyMOL's selector ends the same walk with ``Invalid selection name "x"``
+    (``Selector.cpp``, ``SelectorSelect0``): a name it cannot resolve is an
+    error, not an empty answer. Carrying that here is the difference between
+    ``count_atoms lgi`` reporting a typo and reporting ``0``.
+
+    Parameters
+    ----------
+    name : str
+        The word as the user typed it.
+    """
+
+    def __init__(self, name: str):
+        self.name = str(name)
+        super().__init__(f'Invalid selection name "{self.name}".')
+
 
 class Parser:
     def __init__(self, tokens: list[Token]):
@@ -746,8 +770,26 @@ class Evaluator:
         ``solvent and 1dg3`` is the ordinary way to scope a selection to one
         molecule, and it is what the object menus generate. Returning nothing
         here made every such selection silently empty.
+
+        Four kinds of name resolve, in PyMOL's own order (``SelectorSelect0``):
+        an **object**, a stored **selection**, a **group** -- which is every one
+        of its members, so ``show sticks, ligands`` reaches all of them -- and
+        finally nothing, which is an *error* rather than an empty answer. A
+        leading ``?`` is PyMOL's mark for "undefined is allowed here" and
+        suppresses that error.
+
+        The evaluator is scoped to one object, so a name belonging to a
+        *different* object contributes nothing here; the caller walks the
+        objects and unions the results.
+
+        Raises
+        ------
+        UnknownSelectionName
+            When the word names nothing the viewer knows and is not ``?``-marked.
         """
-        target = (name or "").strip().lower()
+        raw = (name or "").strip()
+        undefined_ok = raw.startswith("?")
+        target = raw.lstrip("?").lower()
         if not target:
             return self._get_none_mask(object_id)
 
@@ -762,31 +804,72 @@ class Evaluator:
                 continue
             # Within one object every atom matches; across objects the caller
             # evaluates per object, so a different object contributes nothing.
-            if oid == object_id or oname.lower() == target == str(
-                self._object_name(object_id) or ""
-            ).lower():
-                return self._get_all_mask(object_id)
             return (
                 self._get_all_mask(object_id)
-                if oid == object_id
+                if oid == str(object_id)
                 else self._get_none_mask(object_id)
             )
 
         # A stored named selection resolves to the atoms it captured. PyMOL's
         # `sele` works exactly like this: a bare name in an expression is a
-        # selection object. The mask belongs to one object, so evaluated against
-        # another it contributes nothing, the same rule as an object name.
+        # selection object. A selection may span objects, so the per-object
+        # masks are consulted first and the legacy single-object keys second.
         sel = self._named_selections.get(target)
         if isinstance(sel, dict):
-            sel_obj = str(sel.get("object_id", ""))
-            mask = sel.get("mask")
-            if mask is not None and sel_obj == str(object_id):
-                arr = np.asarray(mask, dtype=bool)
-                full = self._get_none_mask(object_id)
-                if arr.shape[0] == full.shape[0]:
+            for part in self._selection_parts(sel):
+                if str(part.get("object_id", "")) != str(object_id):
+                    continue
+                arr = np.asarray(part.get("mask"), dtype=bool)
+                if arr.shape == self._get_none_mask(object_id).shape:
                     return arr
             return self._get_none_mask(object_id)
-        return self._get_none_mask(object_id)
+
+        # A group is not an object -- it is a row that owns objects -- so it
+        # resolves to *all* of a member's atoms and to nothing in a non-member.
+        if self._is_group_member(target, object_id):
+            return self._get_all_mask(object_id)
+        if self._group_exists(target):
+            return self._get_none_mask(object_id)
+
+        if undefined_ok:
+            return self._get_none_mask(object_id)
+        raise UnknownSelectionName(raw)
+
+    @staticmethod
+    def _selection_parts(entry: dict) -> list[dict]:
+        """Per-object ``{"object_id", "mask"}`` records of a stored selection.
+
+        A selection written before selections could span objects carries the
+        single-object keys at the top level; both spellings are read so an old
+        session keeps working.
+        """
+        parts = entry.get("objects")
+        if isinstance(parts, list) and parts:
+            return [p for p in parts if isinstance(p, dict)]
+        if entry.get("mask") is not None:
+            return [{"object_id": entry.get("object_id", ""), "mask": entry.get("mask")}]
+        return []
+
+    def _group_exists(self, name: str) -> bool:
+        """Whether the viewer has a group by this (lower-cased) name."""
+        try:
+            return any(str(g).lower() == name for g in self.viewer.group_names())
+        except Exception:
+            return False
+
+    def _is_group_member(self, group: str, object_id: str) -> bool:
+        """Whether ``object_id`` belongs to the group named ``group``."""
+        try:
+            for name in self.viewer.group_names():
+                if str(name).lower() != group:
+                    continue
+                if str(object_id) in {
+                    str(m) for m in self.viewer.group_members(str(name))
+                }:
+                    return True
+        except Exception:
+            return False
+        return False
 
     def _object_name(self, object_id: str) -> str | None:
         """Display name of ``object_id``, when the viewer knows it."""

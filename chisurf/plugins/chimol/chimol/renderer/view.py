@@ -3233,6 +3233,7 @@ class MolView(QtWidgets.QWidget):
         *,
         object_id: str | None = None,
         atom_mask: np.ndarray | None = None,
+        selections: Sequence[tuple[str, np.ndarray]] | None = None,
     ) -> bool:
         """Centre the camera on a selection's centre (PyMOL ``center``).
 
@@ -3244,10 +3245,12 @@ class MolView(QtWidgets.QWidget):
 
         See Also
         --------
-        _selection_coords : why this takes atoms rather than residue positions.
+        _selection_coords : why this takes atoms rather than residue positions,
+            and what ``selections`` is for.
         """
         coords = self._selection_coords(
-            indices, object_id=object_id, atom_mask=atom_mask
+            indices, object_id=object_id, atom_mask=atom_mask,
+            selections=selections,
         )
         if coords.size == 0 or self._renderer is None:
             return False
@@ -3260,6 +3263,7 @@ class MolView(QtWidgets.QWidget):
         *,
         object_id: str | None = None,
         atom_mask: np.ndarray | None = None,
+        selections: Sequence[tuple[str, np.ndarray]] | None = None,
     ) -> np.ndarray:
         """Coordinates a camera command should measure, in render space.
 
@@ -3268,7 +3272,30 @@ class MolView(QtWidgets.QWidget):
         water -- reduced to nothing, and `zoom resn NAG`, `center resn NAG` and
         `orient resn NAG` all silently did nothing while reporting success. A
         ligand is exactly what those commands are usually pointed at.
+
+        Parameters
+        ----------
+        selections : sequence of (str, ndarray), optional
+            ``(object_id, atom_mask)`` for every object the selection reached.
+            A selection is not confined to one object -- a group name covers
+            several -- and framing must measure all of them, or ``zoom
+            <group>`` frames whichever member happened to come first.
         """
+        if selections:
+            parts = []
+            for oid, mask in selections:
+                with self._activate_object(oid):
+                    all_atoms = getattr(self, "_all_atom_coords", None)
+                if all_atoms is None:
+                    continue
+                array = np.asarray(all_atoms, dtype=float)
+                mask = np.asarray(mask, dtype=bool)
+                if mask.shape[0] == array.shape[0] and mask.any():
+                    parts.append(array[mask])
+            if parts:
+                return np.concatenate(parts, axis=0)
+            return np.zeros((0, 3), dtype=float)
+
         if atom_mask is not None:
             with self._activate_object(object_id):
                 all_atoms = getattr(self, "_all_atom_coords", None)
@@ -3293,6 +3320,7 @@ class MolView(QtWidgets.QWidget):
         complete: bool = False,
         object_id: str | None = None,
         atom_mask: np.ndarray | None = None,
+        selections: Sequence[tuple[str, np.ndarray]] | None = None,
     ) -> None:
         """Zoom the camera to fit target residues (PyMOL ``zoom``).
 
@@ -3308,6 +3336,8 @@ class MolView(QtWidgets.QWidget):
             centre can be clipped at any orientation.
         object_id : str or None
             Object to take the residues from.
+        selections : sequence of (str, ndarray), optional
+            Every object the selection reached; see :meth:`_selection_coords`.
 
         See Also
         --------
@@ -3318,7 +3348,8 @@ class MolView(QtWidgets.QWidget):
         # because the side chains reaching furthest out are exactly the ones
         # left out of it.
         coords = self._selection_coords(
-            indices, object_id=object_id, atom_mask=atom_mask
+            indices, object_id=object_id, atom_mask=atom_mask,
+            selections=selections,
         )
         if coords.size == 0:
             self.reset_view()
@@ -3343,6 +3374,7 @@ class MolView(QtWidgets.QWidget):
         *,
         object_id: str | None = None,
         atom_mask: np.ndarray | None = None,
+        selections: Sequence[tuple[str, np.ndarray]] | None = None,
     ) -> bool:
         """Align the selection's principal axes with the screen (PyMOL ``orient``).
 
@@ -3378,11 +3410,12 @@ class MolView(QtWidgets.QWidget):
         extents, measured in the camera frame, come out descending.
         """
         coords = self._selection_coords(
-            indices, object_id=object_id, atom_mask=atom_mask
+            indices, object_id=object_id, atom_mask=atom_mask,
+            selections=selections,
         )
         if coords.size == 0 or coords.shape[0] < 2:
             # One point has no orientation; framing is all that is meaningful.
-            self.zoom(indices, object_id=object_id)
+            self.zoom(indices, object_id=object_id, selections=selections)
             return False
 
         centred = coords - coords.mean(axis=0)
@@ -3394,7 +3427,7 @@ class MolView(QtWidgets.QWidget):
         try:
             eigenvalues, eigenvectors = np.linalg.eigh(tensor)
         except np.linalg.LinAlgError:
-            self.zoom(indices, object_id=object_id)
+            self.zoom(indices, object_id=object_id, selections=selections)
             return False
 
         # Ascending eigenvalue: smallest moment first, which is the longest axis.
@@ -3433,7 +3466,10 @@ class MolView(QtWidgets.QWidget):
             return False
         # Frame it afterwards: the rotation changes which extent faces the camera,
         # so a zoom computed before it would fit the wrong silhouette.
-        self.zoom(indices, object_id=object_id, atom_mask=atom_mask)
+        self.zoom(
+            indices, object_id=object_id, atom_mask=atom_mask,
+            selections=selections,
+        )
         return True
 
     # ------------------------------------------------------------------
@@ -5842,6 +5878,18 @@ class MolView(QtWidgets.QWidget):
             point_positions: list[np.ndarray] = []
             point_colors: list[np.ndarray] = []
 
+            # `color` writes a per-atom override, and this path drew from
+            # `colors_per_ca` alone -- so every object that lands here (anything
+            # `create` copied out, which has no residue table and therefore
+            # cannot take the merged-mesh branch above) ignored `color`
+            # completely and stayed its default colour. It reported success, so
+            # the only symptom was a molecule that would not change.
+            override = getattr(self, "_colors_per_atom_override", None)
+            if override is not None:
+                override = np.asarray(override, dtype=float)
+                if override.ndim != 2 or override.shape[0] != len(coords):
+                    override = None
+
             for i in indices:
                 center = coords[i]
                 color = (
@@ -5849,6 +5897,8 @@ class MolView(QtWidgets.QWidget):
                     if colors_per_ca is not None
                     else self._base_color_single
                 )
+                if override is not None and np.isfinite(override[i]).all():
+                    color = override[i]
                 color_local = np.array(color, dtype=float)
                 color_local[3] = 1.0
                 point_positions.append(center)

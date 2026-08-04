@@ -180,3 +180,48 @@ def test_the_sequence_toggle_drives_the_strip_that_exists(window):
     assert bool(get_setting("seq_view")) is False
     window._set_sequence_visible(True)
     assert bool(get_setting("seq_view")) is True
+
+
+def test_a_menu_entry_that_needs_a_value_reaches_the_command_line(window, qapp):
+    """It used to be skipped: clicked, and nothing happened at all.
+
+    The in-viewport panel has nowhere to type, so ``_emit`` dropped every
+    template carrying ``{text}`` -- which is a menu entry that does nothing, in
+    the panel that is now the primary one. The command line is one row below it,
+    so the entry goes *there*, with the placeholder selected.
+    """
+    from chisurf.plugins.chimol.chimol.object_menus import MenuEntry
+
+    window.resize(1200, 800)
+    window.show()
+    for _ in range(10):
+        qapp.processEvents()
+
+    gui = window.viewer._renderer._internal_gui
+    gui.on_prompt_command = window._prefill_command_line
+    gui._emit(
+        "group {text}, {sele}", "lig",
+        prompt=MenuEntry("x", prompt=("Move to group", "Group name:")).prompt,
+    )
+    for _ in range(5):
+        qapp.processEvents()
+
+    line = window.command_panel._input
+    assert line.text() == "group <group name>, lig", line.text()
+    assert line.selectedText() == "<group name>", (
+        "the placeholder is not selected, so typing appends instead of replacing"
+    )
+
+
+def test_an_ordinary_menu_entry_still_runs(window, qapp):
+    """The prompt path must not swallow the commands that need no value."""
+    window.resize(1200, 800)
+    window.show()
+    for _ in range(10):
+        qapp.processEvents()
+
+    gui = window.viewer._renderer._internal_gui
+    ran: list[str] = []
+    gui.set_run_command(ran.append)
+    gui._emit("zoom {sele}", "148l")
+    assert ran == ["zoom 148l"]

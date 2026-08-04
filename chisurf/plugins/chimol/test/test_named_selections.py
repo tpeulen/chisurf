@@ -193,5 +193,15 @@ def test_a_named_selection_recalls_the_highlight(cmd):
     assert len(selected) == len(cmd._named_selections["mysel"]["indices"])
 
 
-def test_an_unknown_selection_name_matches_nothing(cmd):
-    assert _count(cmd, "does_not_exist") == 0
+def test_an_unknown_selection_name_is_reported(cmd):
+    """A name that resolves to nothing is a typo, and PyMOL says so.
+
+    Previously this asserted the count came back ``0``, which is the same answer
+    a correct-but-empty selection gives -- so a misspelt selection name was
+    indistinguishable from one that simply matched no atoms.
+    """
+    cmd._test_errors.clear()  # type: ignore[attr-defined]
+    cmd.do("count_atoms does_not_exist")
+    errors = cmd._test_errors  # type: ignore[attr-defined]
+    assert errors and "does_not_exist" in errors[-1]
+    assert "Invalid selection name" in errors[-1]

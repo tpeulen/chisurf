@@ -2,6 +2,65 @@
 
 ## 2026-08-04
 
+* **A selection was one object's, and PyMOL's is every object's.**
+  ([chimol parity](plugins/pymol-parity.md),
+  [molecular viewer guide](../docs/guides/44_molecular_viewer.md))
+  PyMOL's selector runs over one atom table spanning every loaded object; chimol
+  evaluated against the *active* one. Three silent consequences: a **group name
+  selected nothing** (`count_atoms ligands` said `0`, and the object panel's
+  group rows emit exactly the commands that therefore did nothing), a plain
+  `chain A` meant chain A *here* rather than wherever it is, and a name that
+  resolved to nothing **answered `0`** instead of erroring — a typo was
+  indistinguishable from an empty selection. `_resolve_selection_to_atom_masks`
+  returns one `(object_id, name, mask)` per object and the union is assembled in
+  the command layer; the singular resolver stays for the commands that want one
+  object and prefers the active one. Name resolution follows `SelectorSelect0`
+  in its order — object, stored selection, group, then `Invalid selection name`
+  — with PyMOL's `?name` escape, which needed a tokenizer change or the one
+  spelling that suppresses the error would have raised it. `MolView.zoom`/
+  `center`/`orient` take a `selections` list, since framing one member of a
+  group and reporting success is the failure that looks like it worked.
+  **Three further defects fell out of using it**, all pre-existing and invisible
+  until a command reached a second object: `color` refused every object `create`
+  had made (it wanted a residue table a copied ligand has not got, and blamed
+  atom coordinates that were right there); the point-sphere path that draws such
+  an object read `colors_per_ca` and never the per-atom override, so `color`
+  wrote a value nothing looked at — **the state and the scene disagreed**, which
+  is why only a screenshot caught it; and `hide everything` reached only the
+  active object, because nine of ten representation setters write the active
+  state and only `spheres` had a spanning variant. Migrated with them:
+  `show`/`hide`/`as`, `color`, `spectrum` (one ramp over the whole selection, so
+  a group does not restart the palette at each member), `zoom`/`center`/
+  `orient`/`origin`, `count_atoms`, `select` (the stored entry keeps one record
+  per object), `label`, `remove`, `alter`/`iterate`/`*_state` (the `stored`
+  namespace is shared across objects, which is what makes accumulating over a
+  group work), and `mask`/`protect` — whose default is `all`, and whose whole
+  purpose is one molecule sitting in front of another. Deliberately still
+  single-object: `get_area` (occlusion is per object), `save`, `symexp`,
+  `pair_fit`, `intra_rms`, bond editing. The in-viewport object panel
+  gained the group rows it never drew (`GuiRow` already had the field; the
+  feeder never set it), its name click toggles a group open the way the docked
+  panel's marker does, and the object menu's `group` entry stopped claiming
+  "Chimol has no object groups yet". While wiring that entry up, a **sixth
+  dead menu entry** turned up: the viewport panel *skipped* any entry needing a
+  typed value (`rename object`, `copy to object`, `align to ...`), because there
+  is nowhere in the viewport to type — clicked, nothing happened. They now write
+  themselves into the command line one row below, placeholder selected so the
+  next keystroke replaces it. The menu-sweep test could not have caught it: it
+  drives the docked panel's path. Verified by driving the group row's real S
+  menu and looking at the render: grey cartoon, red ligand spheres, both members
+  reached by one command. `test_multi_object_selections.py` (13) plus two in
+  `test_viewport_chrome.py`; two tests that asserted the silent-zero behaviour
+  were ported rather than deleted. The unknown-name error also caught the
+  138-entry **menu sweep passing two entries that did nothing**: it filled every
+  `{text}` with the literal `copied`, right for `copy to object` and wrong for
+  `align to ...`/`super to ...`, where the slot is a target selection that must
+  already exist — a made-up name resolved to an empty mask and both commands
+  returned quietly. A fixture is an assertion too, and nothing checks it.
+  chimol suite **1870 passed**, with only the five `test_camera_framing`
+  failures already recorded in [known issues](references/known-issues.md) as
+  identically red at `HEAD`.
+
 * **The response is estimated from the reverse of the burst cut, not from a
   second burst search.** ([MFD fitting](../docs/concepts/mfd_fitting.md))
   `estimate_responses` re-ran a burst search at its own defaults — 60 photons,

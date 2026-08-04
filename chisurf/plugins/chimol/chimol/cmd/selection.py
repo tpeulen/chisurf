@@ -133,19 +133,37 @@ class SelectionMixin(BaseCmd):
             expr_text = a1
 
         try:
-            obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
-                viewer, expr_text
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, expr_text)
         except ValueError as exc:
             self._emit_error(str(exc))
             return
 
-        try:
-            _, _, res_indices = self._resolve_selection_to_residue_indices(
-                viewer, expr_text
-            )
-        except Exception:
-            res_indices = []
+        # A PyMOL selection spans objects -- `select ligs, organic` after
+        # loading three structures names atoms in all three -- so the entry
+        # keeps one record per object. The single-object keys stay beside them
+        # pointing at the first, which is what a stored session and the older
+        # readers expect.
+        parts: list[dict] = []
+        for obj_id, obj_name, atom_mask in hits:
+            try:
+                res_indices = self._residue_indices_for_atom_mask(
+                    viewer, obj_id, obj_name, atom_mask
+                )
+            except Exception:
+                res_indices = []
+            parts.append({
+                "object_id": obj_id,
+                "name": obj_name,
+                "mask": [bool(v) for v in np.asarray(atom_mask, dtype=bool)],
+                "indices": list(res_indices),
+            })
+
+        primary = parts[0] if parts else {
+            "object_id": "", "name": "", "mask": [], "indices": []
+        }
+        obj_id = str(primary["object_id"])
+        obj_name = str(primary["name"] or obj_id)
+        res_indices = list(primary["indices"])
 
         # The GUI highlight works on residues; the stored selection records both
         # so a representation applied to the name reaches the same atoms.
@@ -154,8 +172,9 @@ class SelectionMixin(BaseCmd):
             self._named_selections[key] = {
                 "object_id": obj_id,
                 "name": obj_name,
-                "mask": [bool(v) for v in np.asarray(atom_mask, dtype=bool)],
-                "indices": list(res_indices),
+                "mask": list(primary["mask"]),
+                "indices": res_indices,
+                "objects": parts,
             }
 
         try:
@@ -163,7 +182,7 @@ class SelectionMixin(BaseCmd):
         except Exception:
             pass
 
-        n = int(np.count_nonzero(atom_mask))
+        n = sum(int(np.count_nonzero(mask)) for _, _, mask in hits)
         if sel_name:
             self._emit_message(
                 f"Selector: selection '{sel_name}' defined with {n} atoms."
@@ -411,20 +430,25 @@ class SelectionMixin(BaseCmd):
 
     @command("count_atoms")
     def count_atoms(self, selection: str = "all") -> int:
-        """Report and return the number of atoms matched by ``selection``."""
+        """Report and return the number of atoms matched by ``selection``.
+
+        Every object is counted, not just the active one: PyMOL's selector runs
+        over one table spanning them all, so ``count_atoms polymer`` after
+        loading two structures answers about both.
+        """
         window, viewer = self._require_window_and_viewer()
         if viewer is None:
             return 0
 
         try:
-            _, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
+            hits = self._resolve_selection_to_atom_masks(
                 viewer, selection or "all"
             )
         except Exception as exc:
             self._emit_error(str(exc))
             return 0
 
-        count = int(np.count_nonzero(atom_mask))
+        count = sum(int(np.count_nonzero(mask)) for _, _, mask in hits)
         self._emit_message(f"count_atoms: {count} atoms in ({selection or 'all'})")
         return count
 
@@ -666,27 +690,56 @@ class SelectionMixin(BaseCmd):
             return None
         return mask
 
-    def _resolve_selection_to_atom_mask(
+    def _resolve_selection_to_atom_masks(
         self,
         viewer,
         expr: str,
-    ) -> tuple[str, str, np.ndarray]:
+    ) -> list[tuple[str, str, np.ndarray]]:
+        """Every object a selection reaches, each with its own atom mask.
+
+        PyMOL's selector runs over one global atom table spanning every loaded
+        object, so ``chain A`` means chain A *wherever it is* and a **group name
+        is an ordinary selection word** covering all of its members. chimol
+        evaluates per object instead, which is why this walks them: the union is
+        assembled here rather than inside the evaluator.
+
+        Objects contributing no atom are dropped, so the length of the result is
+        "how many objects this selection touched" -- but an expression that
+        matches nothing anywhere still returns an empty list rather than raising.
+        A *name* that resolves to nothing does raise; that distinction is the
+        whole point (see :class:`~.sele_parser.UnknownSelectionName`).
+
+        Parameters
+        ----------
+        viewer : MolView
+            The viewer holding the objects.
+        expr : str
+            A PyMOL selection expression.
+
+        Returns
+        -------
+        list of tuple
+            ``(object_id, object_name, atom_mask)`` in panel order.
+
+        Raises
+        ------
+        ValueError
+            On a parse error, an unknown selection name, or an empty expression.
+        """
         text = (expr or "").strip()
         if not text:
             raise ValueError("Empty selection")
 
-        # A bare stored selection name resolves to its own object and captured
-        # atoms, the way a PyMOL selection object does. Without this the name
-        # would fall through to the evaluator, which only knows object names, and
-        # `show sticks, mysel` would silently match nothing while `show sticks,
-        # chain E` worked -- the subset-rep gap this exists to close.
+        # A bare stored selection name resolves to the atoms it captured, in
+        # every object it captured them from, the way a PyMOL selection object
+        # does. Without this the name would fall through to the evaluator, which
+        # only knows object names, and `show sticks, mysel` would silently match
+        # nothing while `show sticks, chain E` worked.
         entry = self._named_selections.get(text.lower())
-        if isinstance(entry, dict) and "mask" in entry:
-            mask = np.asarray(entry["mask"], dtype=bool)
-            if mask.ndim == 1 and mask.size:
-                obj_id = str(entry.get("object_id", ""))
-                obj_name = str(entry.get("name") or obj_id)
-                return obj_id, obj_name, mask
+        if isinstance(entry, dict):
+            hits = self._stored_selection_hits(viewer, entry)
+            if hits:
+                return hits
 
         # PyMOL's `sele` is a selection that always exists and that the mouse
         # writes into. When no explicit entry is stored (the block above would
@@ -699,135 +752,202 @@ class SelectionMixin(BaseCmd):
                 obj_name = str(obj_info.get("name") or obj_id)
                 mask = self._selected_residues_atom_mask(viewer, obj_id)
                 if mask is not None:
-                    return obj_id, obj_name, mask
+                    return [(obj_id, obj_name, mask)] if mask.any() else []
 
+        from .sele_parser import Evaluator, ParserError, UnknownSelectionName
+
+        hits: list[tuple[str, str, np.ndarray]] = []
+        unknown: UnknownSelectionName | None = None
+        for obj_id, obj_name in self._selection_candidates(viewer, text):
+            try:
+                evaluator = Evaluator(
+                    viewer, obj_id, named_selections=self._named_selections
+                )
+                atom_mask = evaluator.evaluate(text)
+            except UnknownSelectionName as exc:
+                # Every object rejects the same word, so remember it once and
+                # only report it if *no* object accepted the expression.
+                unknown = exc
+                continue
+            except ParserError as exc:
+                raise ValueError(f"Selection parse error: {exc}")
+            except NotImplementedError as exc:
+                raise ValueError(f"Selection evaluation error: {exc}")
+            atom_mask = np.asarray(atom_mask, dtype=bool)
+            if atom_mask.size and atom_mask.any():
+                hits.append((obj_id, obj_name, atom_mask))
+
+        if unknown is not None and not hits:
+            raise ValueError(str(unknown))
+        return hits
+
+    def _stored_selection_hits(
+        self, viewer, entry: dict
+    ) -> list[tuple[str, str, np.ndarray]]:
+        """Per-object hits of a stored named selection, live objects only."""
+        from .sele_parser import Evaluator
+
+        out: list[tuple[str, str, np.ndarray]] = []
+        for part in Evaluator._selection_parts(entry):
+            obj_id = str(part.get("object_id", ""))
+            mask = np.asarray(part.get("mask"), dtype=bool)
+            if not obj_id or mask.ndim != 1 or not mask.size:
+                continue
+            info = self._find_object_by_name(viewer, obj_id)
+            if info is None:
+                # The object was deleted since the selection was made; PyMOL
+                # drops those atoms rather than resurrecting them.
+                continue
+            name = str(part.get("name") or info.get("name") or obj_id)
+            out.append((obj_id, name, mask))
+        return out
+
+    def _selection_candidates(self, viewer, text: str) -> list[tuple[str, str]]:
+        """Objects an expression could touch, in panel order.
+
+        A leading object name still narrows to that object -- ``1oky and resi
+        10`` is one molecule -- because that is the cheap and unambiguous case.
+        Everything else is offered every loaded object, which is what makes a
+        group name, or a plain ``chain A``, reach past the active one.
+        """
         try:
             tokens = shlex_split(text)
         except Exception as exc:
-            raise ValueError(f"Could not parse selection {expr!r}: {exc}")
-
+            raise ValueError(f"Could not parse selection {text!r}: {exc}")
         if not tokens:
             raise ValueError("Empty selection")
 
-        obj_info = None
         first = tokens[0]
         if not _opens_with_keyword(first):
-            obj_info = self._find_object_by_name(viewer, first)
+            info = self._find_object_by_name(viewer, first)
+            if info is not None:
+                obj_id = str(info.get("id"))
+                return [(obj_id, str(info.get("name") or obj_id))]
 
-        if obj_info is None:
-            obj_info = self._active_object_info(viewer)
-
-        obj_id = str(obj_info.get("id"))
-        obj_name = str(obj_info.get("name") or obj_id)
-
-        from .sele_parser import Evaluator, ParserError
         try:
-            evaluator = Evaluator(
-                viewer, obj_id, named_selections=self._named_selections
+            objects = list(viewer.list_objects())
+        except Exception:
+            objects = []
+        candidates = [
+            (str(o.get("id")), str(o.get("name") or o.get("id")))
+            for o in objects
+            if o.get("id")
+        ]
+        if candidates:
+            return candidates
+
+        # Nothing listable: fall back to the active object so that an empty
+        # viewer still reports "nothing is loaded" rather than a silent [].
+        info = self._active_object_info(viewer)
+        obj_id = str(info.get("id"))
+        return [(obj_id, str(info.get("name") or obj_id))]
+
+    def _resolve_selection_to_atom_mask(
+        self,
+        viewer,
+        expr: str,
+    ) -> tuple[str, str, np.ndarray]:
+        """One object's worth of a selection, for commands that want exactly one.
+
+        The active object wins when the selection reaches it, so a command like
+        ``get_area`` keeps answering about the molecule in front of the user
+        rather than whichever object happens to sort first. Commands that should
+        act on *everything* a selection names use
+        :meth:`_resolve_selection_to_atom_masks` instead.
+        """
+        hits = self._resolve_selection_to_atom_masks(viewer, expr)
+        if not hits:
+            # An expression that matched nothing still has to name an object for
+            # the caller's "matched no atoms" message; the active one is the
+            # honest answer and keeps the mask the right length.
+            info = self._active_object_info(viewer)
+            obj_id = str(info.get("id"))
+            obj_name = str(info.get("name") or obj_id)
+            n_atoms = 0
+            try:
+                n_atoms = int(viewer._objects[obj_id].state.atoms.shape[0])
+            except Exception:
+                pass
+            return obj_id, obj_name, np.zeros(n_atoms, dtype=bool)
+
+        try:
+            active = str(viewer.get_active_object_id())
+        except Exception:
+            active = ""
+        for hit in hits:
+            if hit[0] == active:
+                return hit
+        return hits[0]
+
+
+    def _residue_indices_for_atom_mask(
+        self, viewer, obj_id: str, obj_name: str, atom_mask: np.ndarray
+    ) -> list[int]:
+        """Row indices of every residue holding a selected atom.
+
+        A residue counts as selected when *any* of its atoms is, which is how
+        PyMOL's per-residue representations read an atom selection: ``show
+        cartoon, resi 10 and name CA`` draws the whole residue.
+
+        An object with no residue table -- anything ``create`` copied out that
+        has no CA trace, such as a ligand -- contributes no residues. That is an
+        answer, not a failure: raising here made ``show cartoon, <group>`` fail
+        on the whole group because one member was a ligand.
+        """
+        atom_mask = np.asarray(atom_mask, dtype=bool)
+        if not atom_mask.any():
+            return []
+        try:
+            state = getattr(viewer._objects.get(obj_id), "state", None)
+            all_atom_res_ids = getattr(state, "all_atom_res_ids", None)
+            residue_ids = getattr(state, "residue_ids", None)
+            if all_atom_res_ids is None or residue_ids is None:
+                return []
+            atom_res_ids = np.asarray(all_atom_res_ids)
+            res_ids = np.asarray(residue_ids)
+            selected = np.unique(atom_res_ids[atom_mask])
+            return np.where(np.isin(res_ids, selected))[0].tolist()
+        except ValueError:
+            raise
+        except Exception as exc:
+            raise ValueError(f"Failed to extract residue indices: {exc}")
+
+    def _resolve_selection_to_residue_indices_multi(
+        self,
+        viewer,
+        expr: str,
+    ) -> list[tuple[str, str, list[int]]]:
+        """Residue rows a selection reaches, per object, in panel order.
+
+        The residue view of :meth:`_resolve_selection_to_atom_masks`; both go
+        through the one evaluator so a selection cannot mean different things to
+        an atom representation and a residue one.
+        """
+        out: list[tuple[str, str, list[int]]] = []
+        for obj_id, obj_name, atom_mask in self._resolve_selection_to_atom_masks(
+            viewer, expr
+        ):
+            indices = self._residue_indices_for_atom_mask(
+                viewer, obj_id, obj_name, atom_mask
             )
-            atom_mask = evaluator.evaluate(text)
-        except ParserError as exc:
-            raise ValueError(f"Selection parse error: {exc}")
-        except NotImplementedError as exc:
-            raise ValueError(f"Selection evaluation error: {exc}")
-
-        return obj_id, obj_name, atom_mask
-
+            if indices:
+                out.append((obj_id, obj_name, indices))
+        return out
 
     def _resolve_selection_to_residue_indices(
         self,
         viewer,
         expr: str,
     ) -> tuple[str, str, list[int]]:
-        text = (expr or "").strip()
-        if not text:
-            raise ValueError("Empty selection")
-
-        # PyMOL's `sele` always exists and is what the mouse writes to; when no
-        # explicit entry is stored it is the live viewport selection. Delegating
-        # to the atom-mask resolver keeps both paths on the same fallback.
-        if text.lower() == "sele" and text.lower() not in self._named_selections:
-            obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
-                viewer, "sele"
-            )
-            if atom_mask is None or not np.any(atom_mask):
-                return obj_id, obj_name, []
-            try:
-                entry = viewer._objects.get(obj_id)
-                state = getattr(entry, "state", None)
-                all_atom_res_ids = np.asarray(getattr(state, "all_atom_res_ids", None))
-                residue_ids = np.asarray(getattr(state, "residue_ids", None))
-            except Exception:
-                all_atom_res_ids = None
-                residue_ids = None
-            if all_atom_res_ids is None or residue_ids is None or not residue_ids.size:
-                raise ValueError(
-                    f"Object {obj_name} missing data for residue conversion"
-                )
-            selected_res_ids = np.unique(all_atom_res_ids[atom_mask])
-            res_indices = np.where(np.isin(residue_ids, selected_res_ids))[0].tolist()
-            return obj_id, obj_name, res_indices
-
-        # Basic object resolution (first token might be the object name if not a standard token)
-        try:
-            tokens = shlex_split(text)
-        except Exception as exc:
-            raise ValueError(f"Could not parse selection {expr!r}: {exc}")
-
-        if not tokens:
-            raise ValueError("Empty selection")
-
-        obj_info = None
-        first = tokens[0]
-        if not _opens_with_keyword(first):
-            obj_info = self._find_object_by_name(viewer, first)
-
-        if obj_info is None:
-            obj_info = self._active_object_info(viewer)
-
-        obj_id = str(obj_info.get("id"))
-        obj_name = str(obj_info.get("name") or obj_id)
-
-        from .sele_parser import Evaluator, ParserError
-        try:
-            evaluator = Evaluator(
-                viewer, obj_id, named_selections=self._named_selections
-            )
-            atom_mask = evaluator.evaluate(text)
-        except ParserError as exc:
-            raise ValueError(f"Selection parse error: {exc}")
-        except NotImplementedError as exc:
-            raise ValueError(f"Selection evaluation error: {exc}")
-
-        if not np.any(atom_mask):
-            return obj_id, obj_name, []
-
-        try:
-            entry = viewer._objects.get(obj_id)
-            state = getattr(entry, "state", None)
-            all_atom_res_ids = getattr(state, "all_atom_res_ids", None)
-            residue_ids = getattr(state, "residue_ids", None)
-
-            if all_atom_res_ids is None or residue_ids is None:
-                raise ValueError(f"Object {obj_name} missing data for residue conversion")
-
-            res_ids_arr = np.asarray(residue_ids)
-            atom_res_ids_arr = np.asarray(all_atom_res_ids)
-
-            # Find which globally unique residue IDs have at least one selected atom
-            selected_res_ids = np.unique(atom_res_ids_arr[atom_mask])
-
-            # Map selected global residue IDs back to their 0-based index in the 'residue_ids' array
-            # We assume res_ids_arr contains ALL the unique global residue IDs in order.
-
-            # Using np.isin and np.where
-            mask = np.isin(res_ids_arr, selected_res_ids)
-            res_indices = np.where(mask)[0].tolist()
-
-        except Exception as exc:
-            raise ValueError(f"Failed to extract residue indices: {exc}")
-
-        return obj_id, obj_name, res_indices
+        """One object's residue rows, preferring the active object."""
+        obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
+            viewer, expr
+        )
+        return (
+            obj_id,
+            obj_name,
+            self._residue_indices_for_atom_mask(viewer, obj_id, obj_name, atom_mask),
+        )
 
     def _resolve_selection_to_atom(
         self,

@@ -2120,11 +2120,35 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
             return
 
         rows = [InternalGuiRow(name="all", is_header=True)]
-        for object_id, entry in self._object_store.items():
+        # Groups are drawn here too, and by the same rule as the docked panel:
+        # one header where the group's first member sits, its members indented
+        # under it, and nothing at all below a collapsed one. Feeding this from
+        # `_object_store` instead lost the hierarchy -- the store is flat and
+        # keeps collapsed members -- so the viewport panel, which is the one a
+        # PyMOL user drives, showed a group's molecules with no group.
+        try:
+            objects = self._grouped_display_order(self.viewer.list_objects())
+        except Exception:
+            objects = []
+        seen_groups: set[str] = set()
+        for obj in objects:
+            group = obj.get("group")
+            is_open = bool(obj.get("group_open", True))
+            if group:
+                if group not in seen_groups:
+                    seen_groups.add(group)
+                    rows.append(
+                        InternalGuiRow(
+                            name=str(group), is_group=True, group_open=is_open
+                        )
+                    )
+                if not is_open:
+                    continue
             rows.append(
                 InternalGuiRow(
-                    name=str(entry.get("name", object_id)),
-                    enabled=bool(entry.get("visible", True)),
+                    name=str(obj.get("name") or obj.get("id")),
+                    enabled=bool(obj.get("visible", True)),
+                    indent=1 if group else 0,
                 )
             )
         # PyMOL pins the `sele` selection object to the bottom of its object
@@ -2136,6 +2160,7 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         gui.set_run_command(self._run_internal_gui_command)
         gui.on_playback_change = self._apply_playback_settings
         gui.on_frame_change = self._seek_to_frame
+        gui.on_prompt_command = self._prefill_command_line
         try:
             gui.stride = int(self.viewer.get_frame_step())
             gui.average = int(self.viewer.get_trajectory_smoothing())
@@ -2266,6 +2291,23 @@ class MolViewPluginWindow(QtWidgets.QMainWindow):
         except Exception:
             logging.getLogger(__name__).debug(
                 "Could not apply a sequence-strip selection", exc_info=True
+            )
+
+    def _prefill_command_line(self, line: str, placeholder: str = "") -> None:
+        """Write a menu entry that needs a value into the command line.
+
+        The in-viewport panel has nowhere to type, so its prompted entries used
+        to be skipped -- clicked, and nothing happened. The command line is one
+        row below it.
+        """
+        panel = getattr(self, "command_panel", None)
+        if panel is None:
+            return
+        try:
+            panel.prefill(line, placeholder)
+        except Exception:
+            logging.getLogger(__name__).debug(
+                "could not prefill the command line", exc_info=True
             )
 
     def _run_internal_gui_command(self, line: str) -> None:

@@ -131,7 +131,18 @@ ACTION_MENU: tuple[MenuEntry, ...] = (
               prompt=("Rename object", "New name:")),
     MenuEntry("copy to object", "copy {text}, {sele}",
               prompt=("Copy to object", "Name of the copy:")),
-    MenuEntry("group", None, "Chimol has no object groups yet."),
+    # PyMOL's `move_to_group` builds this submenu at open time so it can list
+    # every existing group. This table is static, so the prompt does that job:
+    # typing a group that already exists moves the object into it, which is what
+    # picking it from PyMOL's list does. The note says so rather than leaving the
+    # difference to be discovered.
+    MenuEntry("group", None, "", children=(
+        MenuEntry("move to group...", "group {text}, {sele}",
+                  "Type an existing group to join it, or a new name to start "
+                  "one. PyMOL lists the existing groups here; chimol asks.",
+                  prompt=("Move to group", "Group name:")),
+        MenuEntry("ungroup", "ungroup {sele}"),
+    )),
     MenuEntry("delete object", "delete {sele}", color=DESTRUCTIVE),
     SEP,
     MenuEntry("hydrogens", None, "", children=(

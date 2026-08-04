@@ -386,38 +386,47 @@ class RenderingMixin(BaseCmd):
                 )
                 return
 
-        # Fallback to global representation toggle
+        # No selection: PyMOL's `hide everything` means *everything*, so the
+        # toggle runs on every object rather than on whichever one is active.
+        # Only `spheres` used to span them (it had its own `_all` setter), which
+        # is why `hide everything` left a second molecule's cartoon on screen
+        # while reporting that it had hidden it.
+        setter = {
+            "cartoon": "set_cartoon_visible", "ribbon": "set_cartoon_visible",
+            "trace": "set_trace_visible", "ca_trace": "set_trace_visible",
+            "ribbon_trace": "set_trace_visible",
+            # PyMOL's `lines` is the per-bond wireframe, not the CA trace.
+            "lines": "set_lines_visible", "wire": "set_lines_visible",
+            "wireframe": "set_lines_visible",
+            "nonbonded": "set_nonbonded_visible",
+            "nb_spheres": "set_nonbonded_visible",
+            # Hiding labels keeps the text, as PyMOL's does: you turn them off
+            # to read the structure, not to lose what you annotated.
+            "label": "set_labels_visible", "labels": "set_labels_visible",
+            "atoms": "set_atoms_visible", "spheres": "set_atoms_visible",
+            "balls": "set_atoms_visible", "ball": "set_atoms_visible",
+            "sticks": "set_sticks_visible", "bonds": "set_sticks_visible",
+            "dots": "set_dots_visible", "points": "set_dots_visible",
+            "surface": "set_surface_visible", "surf": "set_surface_visible",
+            "plane": "set_plane_visible", "grid": "set_plane_visible",
+            "metaball": "set_metaballs_visible",
+            "metaballs": "set_metaballs_visible", "mesh": "set_metaballs_visible",
+        }.get(rep_target)
+        if setter is None:
+            self._emit_error(
+                f"Unsupported representation for show/hide: {rep_target}"
+            )
+            return
+
         try:
-            if rep_target in ("cartoon", "ribbon"):
-                viewer.set_cartoon_visible(vis)
-            elif rep_target in ("trace", "ca_trace", "ribbon_trace"):
-                viewer.set_trace_visible(vis)
-            elif rep_target in ("lines", "wire", "wireframe"):
-                # PyMOL's `lines` is the per-bond wireframe, not the CA trace.
-                viewer.set_lines_visible(vis)
-            elif rep_target in ("nonbonded", "nb_spheres"):
-                viewer.set_nonbonded_visible(vis)
-            elif rep_target in ("label", "labels"):
-                # Hiding labels keeps the text, as PyMOL's does: you turn them
-                # off to read the structure, not to lose what you annotated.
-                viewer.set_labels_visible(vis)
-            elif rep_target in ("atoms", "spheres", "balls", "ball"):
-                viewer.set_atoms_visible_all(vis)
-            elif rep_target in ("sticks", "bonds"):
-                viewer.set_sticks_visible(vis)
-            elif rep_target in ("dots", "points"):
-                viewer.set_dots_visible(vis)
-            elif rep_target in ("surface", "surf"):
-                viewer.set_surface_visible(vis)
-            elif rep_target in ("plane", "grid"):
-                viewer.set_plane_visible(vis)
-            elif rep_target in ("metaball", "metaballs", "mesh"):
-                viewer.set_metaballs_visible(vis)
-            else:
-                self._emit_error(
-                    f"Unsupported representation for show/hide: {rep_target}"
-                )
+            method = getattr(viewer, setter)
+            object_ids = list(getattr(viewer, "_objects", {}).keys())
+            if not object_ids:
+                method(vis)
                 return
+            for object_id in object_ids:
+                with viewer._activate_object(object_id):
+                    method(vis)
         except Exception as exc:
             self._emit_error(f"Failed to update representation '{rep_target}': {exc}")
 
@@ -429,11 +438,7 @@ class RenderingMixin(BaseCmd):
         representation, which is the more useful message in that case.
         """
         try:
-            _, _, mask = self._resolve_selection_to_atom_mask(viewer, token)
-        except Exception:
-            return False
-        try:
-            return bool(np.asarray(mask, dtype=bool).any())
+            return bool(self._resolve_selection_to_atom_masks(viewer, token))
         except Exception:
             return False
 
@@ -467,24 +472,60 @@ class RenderingMixin(BaseCmd):
 
         Scoping changes exactly the entities the selection names and leaves
         everything outside it alone, which is the PyMOL contract ``show X, sele``
-        and ``as X, sele`` make. Errors are emitted through the command channel
-        rather than raised.
+        and ``as X, sele`` make. A selection reaching several objects -- a group
+        name, or a plain ``chain A`` across two structures -- is applied to each
+        of them. Errors are emitted through the command channel rather than
+        raised.
         """
         try:
             if residue_level:
-                obj_id, _obj_name, res_indices = (
-                    self._resolve_selection_to_residue_indices(viewer, selection)
-                )
-                entry = viewer._objects.get(obj_id)
-                ids = getattr(entry.state, "residue_ids", None)
-                n_items = int(ids.shape[0]) if ids is not None else 0
-                atom_mask = None
-            else:
-                obj_id, _obj_name, atom_mask = self._resolve_selection_to_atom_mask(
+                hits = self._resolve_selection_to_residue_indices_multi(
                     viewer, selection
                 )
-                entry = viewer._objects.get(obj_id)
-                n_items = int(len(atom_mask))
+            else:
+                hits = self._resolve_selection_to_atom_masks(viewer, selection)
+        except Exception as exc:
+            self._emit_error(str(exc))
+            return
+
+        for obj_id, _obj_name, matched in hits:
+            self._apply_scoped_rep_to_object(
+                viewer,
+                obj_id,
+                matched,
+                field,
+                flag,
+                visible=visible,
+                residue_level=residue_level,
+            )
+
+    def _apply_scoped_rep_to_object(
+        self,
+        viewer,
+        obj_id: str,
+        matched,
+        field: str,
+        flag: str,
+        *,
+        visible: bool,
+        residue_level: bool,
+    ) -> None:
+        """The per-object half of :meth:`_set_scoped_rep`.
+
+        ``matched`` is the object's atom mask, or its residue row indices when
+        ``residue_level``. See :meth:`_set_scoped_rep` for what ``field`` and
+        ``flag`` mean and why both are written.
+        """
+        try:
+            entry = viewer._objects.get(obj_id)
+            if residue_level:
+                res_indices = matched
+                atom_mask = None
+                ids = getattr(entry.state, "residue_ids", None)
+                n_items = int(ids.shape[0]) if ids is not None else 0
+            else:
+                atom_mask = np.asarray(matched, dtype=bool)
+                n_items = int(atom_mask.shape[0])
 
             cur_mask = getattr(entry.state, field)
             cur_flag = bool(getattr(entry.state, flag, False))
@@ -575,13 +616,11 @@ class RenderingMixin(BaseCmd):
             return
         # Atoms, not residue positions -- see MolView._selection_coords.
         try:
-            obj_id, _obj_name, mask = self._resolve_selection_to_atom_mask(
-                viewer, selection
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
         except Exception as exc:
             self._emit_error(f"center: {exc}")
             return
-        if not viewer.center(object_id=obj_id, atom_mask=mask):
+        if not viewer.center(selections=[(oid, m) for oid, _n, m in hits]):
             self._emit_error(f"center: '{selection}' yielded no coordinates")
 
     @command("orient")
@@ -602,21 +641,20 @@ class RenderingMixin(BaseCmd):
         # only framed. It reported success either way, which is why running it
         # proved nothing.
         try:
-            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
-                viewer, selection
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
         except Exception as exc:
             self._emit_error(f"orient: {exc}")
             return
         import numpy as _np
 
-        if int(_np.asarray(mask, dtype=bool).sum()) < 2:
+        n_atoms = sum(int(_np.asarray(m, dtype=bool).sum()) for _o, _n, m in hits)
+        if n_atoms < 2:
             self._emit_error(
                 f"orient: '{selection}' matched fewer than two atoms; "
                 "there is no orientation to align"
             )
             return
-        if not viewer.orient(object_id=obj_id, atom_mask=mask):
+        if not viewer.orient(selections=[(oid, m) for oid, _n, m in hits]):
             self._emit_error(f"orient: could not orient on '{selection}'")
 
     @command("zoom")
@@ -638,15 +676,13 @@ class RenderingMixin(BaseCmd):
         # residue positions `zoom resn NAG` did nothing at all: a ligand has no
         # CA, so the trace contributed no points and the camera never moved.
         try:
-            obj_id, _obj_name, mask = self._resolve_selection_to_atom_mask(
-                viewer, selection
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
         except Exception as exc:
             self._emit_error(f"zoom: {exc}")
             return
         import numpy as _np
 
-        if not int(_np.asarray(mask, dtype=bool).sum()):
+        if not sum(int(_np.asarray(m, dtype=bool).sum()) for _o, _n, m in hits):
             # A voxel map has no atoms, so a selection cannot match it -- but
             # `zoom all` on a scene holding one plainly means "fit that too".
             # Refusing was how a loaded map ended up off screen with a message
@@ -663,7 +699,7 @@ class RenderingMixin(BaseCmd):
             return
         viewer.zoom(
             buffer=float(buffer), complete=bool(complete),
-            object_id=obj_id, atom_mask=mask,
+            selections=[(oid, m) for oid, _n, m in hits],
         )
 
     @command("scene")
@@ -953,15 +989,22 @@ class RenderingMixin(BaseCmd):
         from ..renderer.view_state import framing_centre
 
         if selection:
-            object_id, _, mask = self._resolve_selection_to_atom_mask(viewer, selection)
-            entry = getattr(viewer, "_objects", {}).get(object_id)
-            atoms = getattr(getattr(entry, "state", None), "atoms", None)
-            if atoms is None or "xyz" not in (atoms.dtype.names or ()):
-                raise ValueError("that object carries no coordinates")
-            chosen = np.asarray(mask, dtype=bool)
-            if not chosen.any():
+            # Every object the selection reaches contributes, so the pivot of a
+            # group sits between its members rather than inside the first one.
+            picked: list[np.ndarray] = []
+            for object_id, _name, mask in self._resolve_selection_to_atom_masks(
+                viewer, selection
+            ):
+                entry = getattr(viewer, "_objects", {}).get(object_id)
+                atoms = getattr(getattr(entry, "state", None), "atoms", None)
+                if atoms is None or "xyz" not in (atoms.dtype.names or ()):
+                    continue
+                chosen = np.asarray(mask, dtype=bool)
+                if chosen.any():
+                    picked.append(np.asarray(atoms["xyz"], dtype=float)[chosen])
+            if not picked:
                 raise ValueError(f"selection '{selection}' matched no atoms")
-            return framing_centre(np.asarray(atoms["xyz"], dtype=float)[chosen])
+            return framing_centre(np.concatenate(picked, axis=0))
 
         atoms = getattr(viewer, "_atoms", None)
         if atoms is None or "xyz" not in (atoms.dtype.names or ()):
@@ -1361,23 +1404,35 @@ class RenderingMixin(BaseCmd):
 
         selection = str(sel).strip() or "all"
         try:
-            object_id, _, mask = self._resolve_selection_to_atom_mask(
-                viewer, selection
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
         except Exception as exc:
             self._emit_error(f"spectrum: {exc}")
             return
 
-        entry = getattr(viewer, "_objects", {}).get(object_id)
-        atoms = getattr(getattr(entry, "state", None), "atoms", None)
-        if atoms is None:
-            self._emit_error("spectrum: that object has no atoms to colour")
+        # One ramp over the whole selection, however many objects it spans --
+        # PyMOL takes the range from the selection, so colouring a group by
+        # b-factor must not restart the palette at each member. The per-object
+        # index arrays are kept so the colours can be handed back in pieces.
+        parts: list[tuple[str, np.ndarray, np.ndarray]] = []
+        no_atoms = False
+        for object_id, _name, mask in hits:
+            entry = getattr(viewer, "_objects", {}).get(object_id)
+            atoms = getattr(getattr(entry, "state", None), "atoms", None)
+            if atoms is None:
+                no_atoms = True
+                continue
+            chosen = np.nonzero(np.asarray(mask, dtype=bool))[0]
+            if chosen.size:
+                parts.append((object_id, atoms, chosen))
+
+        if not parts:
+            if no_atoms:
+                self._emit_error("spectrum: that object has no atoms to colour")
+            else:
+                self._emit_error(f"spectrum: '{selection}' matched no atoms")
             return
 
-        chosen = np.nonzero(np.asarray(mask, dtype=bool))[0]
-        if chosen.size == 0:
-            self._emit_error(f"spectrum: '{selection}' matched no atoms")
-            return
+        n_total = int(sum(c.size for _o, _a, c in parts))
 
         try:
             names = palette_colors(palette)
@@ -1389,7 +1444,7 @@ class RenderingMixin(BaseCmd):
         prop = EXPRESSION_ALIASES.get(str(expression).strip().lower(),
                                       str(expression).strip().lower())
         if prop in ("", "count"):
-            values = list(range(chosen.size))
+            values = list(range(n_total))
         elif prop in ("molecule", "chain_node", "state", "copy"):
             # Levels of the structure's own hierarchy rather than fields of the
             # atom array. `molecule` is the useful one: every copy of a
@@ -1397,17 +1452,21 @@ class RenderingMixin(BaseCmd):
             # repeating pattern instead of a mosaic of unrelated hues.
             level = {"molecule": "MOLECULE", "chain_node": "CHAIN",
                      "state": "STATE", "copy": "CHAIN"}[prop]
-            labels = viewer.hierarchy_labels(level, object_id=object_id)
-            if labels is None:
-                self._emit_error(
-                    f"spectrum: this object has no {prop} hierarchy to colour by"
-                )
-                return
-            values = [labels[int(i)] for i in chosen]
+            values = []
+            for object_id, _atoms, chosen in parts:
+                labels = viewer.hierarchy_labels(level, object_id=object_id)
+                if labels is None:
+                    self._emit_error(
+                        f"spectrum: this object has no {prop} hierarchy to colour by"
+                    )
+                    return
+                values.extend(labels[int(i)] for i in chosen)
         else:
             try:
                 values = [
-                    atom_namespace(atoms, int(i), None)[prop] for i in chosen
+                    atom_namespace(atoms, int(i), None)[prop]
+                    for _object_id, atoms, chosen in parts
+                    for i in chosen
                 ]
             except KeyError:
                 self._emit_error(
@@ -1426,16 +1485,24 @@ class RenderingMixin(BaseCmd):
             self._emit_error(f"spectrum: {exc}")
             return
 
-        if not viewer.set_atom_color_override(chosen, ramped, object_id=object_id):
-            self._emit_error("spectrum: this object cannot carry per-atom colours")
-            return
+        offset = 0
+        for object_id, _atoms, chosen in parts:
+            piece = ramped[offset:offset + chosen.size]
+            offset += chosen.size
+            if not viewer.set_atom_color_override(
+                chosen, piece, object_id=object_id
+            ):
+                self._emit_error(
+                    "spectrum: this object cannot carry per-atom colours"
+                )
+                return
         # The sequence strip draws its own copy of the colours, so it keeps
         # showing the load-time gradient unless it is told to re-read them --
         # `color` does this and `spectrum` did not, which left the 3D view and
         # the sequence disagreeing about what colour a residue is.
         self._update_sequence_view_safe(window)
         self._emit_message(
-            f"spectrum: {chosen.size} atoms by {prop or 'count'} "
+            f"spectrum: {n_total} atoms by {prop or 'count'} "
             f"over {lo:.4g} to {hi:.4g}"
         )
 
@@ -1506,37 +1573,40 @@ class RenderingMixin(BaseCmd):
             self._emit_message(f"Color mode set to {mode}")
             return
 
-        obj_id, obj_name, _ = self._resolve_selection_to_residue_indices(
-            viewer, selection
-        )
-        if not obj_id:
+        # The colour *mode* is a property of an object, not of individual atoms,
+        # so a selection here picks which objects it is set on -- and a group
+        # name picks all of them.
+        hits = self._resolve_selection_to_atom_masks(viewer, selection)
+        if not hits:
             raise ValueError("Selection did not resolve to an object")
 
         activate = getattr(viewer, "_activate_object", None)
-        if callable(activate):
-            try:
-                with activate(obj_id):
+        for obj_id, obj_name, _mask in hits:
+            if callable(activate):
+                try:
+                    with activate(obj_id):
+                        if callable(clear_overrides):
+                            try:
+                                clear_overrides()
+                            except Exception:
+                                pass
+                        viewer.set_color_mode(mode)
+                except Exception as exc:
+                    raise ValueError(f"Failed to set color mode on {obj_name}: {exc}")
+            else:
+                try:
+                    viewer.set_active_object(obj_id)
                     if callable(clear_overrides):
                         try:
                             clear_overrides()
                         except Exception:
                             pass
                     viewer.set_color_mode(mode)
-            except Exception as exc:
-                raise ValueError(f"Failed to set color mode on {obj_name}: {exc}")
-        else:
-            try:
-                viewer.set_active_object(obj_id)
-                if callable(clear_overrides):
-                    try:
-                        clear_overrides()
-                    except Exception:
-                        pass
-                viewer.set_color_mode(mode)
-            except Exception as exc:
-                raise ValueError(f"Failed to set color mode on {obj_name}: {exc}")
+                except Exception as exc:
+                    raise ValueError(f"Failed to set color mode on {obj_name}: {exc}")
 
-        self._emit_message(f"Color mode for {obj_name} set to {mode}")
+        names = ", ".join(name for _oid, name, _m in hits)
+        self._emit_message(f"Color mode for {names} set to {mode}")
 
     def _parse_color_spec(self, spec: str) -> np.ndarray:
         text = (spec or "").strip()
@@ -1597,12 +1667,26 @@ class RenderingMixin(BaseCmd):
         sele_expr: str,
         rgba: np.ndarray,
     ) -> None:
-        obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
-            viewer, sele_expr
-        )
-        if not obj_id:
-            raise ValueError("Selection did not resolve to an object")
+        """Paint every object the selection reaches.
 
+        ``color red, ligands`` names a group and must colour all of its members;
+        the per-object work is in :meth:`_color_one_object`.
+        """
+        hits = self._resolve_selection_to_atom_masks(viewer, sele_expr)
+        if not hits:
+            raise ValueError("Selection did not resolve to an object")
+        for obj_id, obj_name, atom_mask in hits:
+            self._color_one_object(viewer, obj_id, obj_name, atom_mask, rgba)
+
+    def _color_one_object(
+        self,
+        viewer,
+        obj_id: str,
+        obj_name: str,
+        atom_mask: np.ndarray,
+        rgba: np.ndarray,
+    ) -> None:
+        """Write one object's per-atom and per-residue colour overrides."""
         try:
             entry = viewer._objects.get(obj_id)
         except Exception:
@@ -1618,11 +1702,13 @@ class RenderingMixin(BaseCmd):
         residue_ids = getattr(state, "residue_ids", None)
         all_atom_coords = getattr(state, "all_atom_coords", None)
 
-        if (
-            all_atom_res_ids is None
-            or residue_ids is None
-            or all_atom_coords is None
-        ):
+        # Only the coordinates are needed to colour *atoms*. Requiring a residue
+        # table as well meant no object made by `create` could be coloured at
+        # all -- a ligand copied out of a structure has no CA trace, so
+        # `residue_ids` is None -- and the refusal blamed missing coordinates
+        # that were in fact right there. The per-residue override below is the
+        # optional half and is skipped when there is no residue table.
+        if all_atom_coords is None:
             raise ValueError(
                 f"Object {obj_name} does not expose atom-level coordinates for coloring"
             )
@@ -1652,6 +1738,13 @@ class RenderingMixin(BaseCmd):
 
         # Update per-residue override for residues where atoms were colored.
         # This keeps the cartoon view mostly consistent with the atom view.
+        if all_atom_res_ids is None or residue_ids is None:
+            try:
+                viewer._update_view()
+            except Exception:
+                pass
+            return
+
         try:
             n_res = int(residue_ids.shape[0])
             cur_res = np.asarray(state.colors_per_residue_override, dtype=float)

@@ -339,6 +339,30 @@ class CommandDock(QtCore.QObject):
     def clear(self) -> None:
         self._output.clear()
 
+    def prefill(self, line: str, placeholder: str = "") -> None:
+        """Put *line* in the input, focused, with *placeholder* selected.
+
+        For menu entries that need a typed value. Selecting the placeholder
+        means the next keystroke replaces it, so the click gets the user to
+        exactly the point where they type the one thing only they know -- and
+        they see the command that entry stands for, which is how clicking around
+        turns into writing scripts.
+
+        Parameters
+        ----------
+        line : str
+            The command, with the placeholder already substituted in.
+        placeholder : str, optional
+            Substring to select. Ignored when it is not in ``line``.
+        """
+        self._input.setText(str(line))
+        self._input.setFocus()
+        start = str(line).find(placeholder) if placeholder else -1
+        if start >= 0:
+            self._input.setSelection(start, len(placeholder))
+        else:
+            self._input.setCursorPosition(len(str(line)))
+
     def append_message(self, text: str) -> None:
         if not text:
             return

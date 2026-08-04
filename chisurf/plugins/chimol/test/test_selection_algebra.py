@@ -24,6 +24,7 @@ import pytest
 from chisurf.plugins.chimol.chimol.cmd.sele_parser import (
     Evaluator,
     ParserError,
+    UnknownSelectionName,
     UnsupportedSelection,
 )
 
@@ -434,9 +435,21 @@ def test_an_unimplemented_keyword_says_so(select, expression):
         select(expression)
 
 
-def test_an_unknown_keyword_is_treated_as_a_name(select):
-    """A bare word is an object or selection reference, and matches nothing here."""
-    assert _count(select("some_other_object")) == 0
+def test_an_unknown_name_is_an_error_not_an_empty_answer(select):
+    """PyMOL ends the same walk with ``Invalid selection name``.
+
+    This used to assert the opposite -- that a bare word chimol cannot resolve
+    "matches nothing here" -- which made a typo indistinguishable from a
+    selection that genuinely has no atoms. ``SelectorSelect0`` looks the word up
+    as a selection, then as a group, and then errors.
+    """
+    with pytest.raises(UnknownSelectionName):
+        select("some_other_object")
+
+
+def test_a_question_mark_makes_an_undefined_name_legal(select):
+    """PyMOL's ``?sele``: undefined is allowed *here*, and selects nothing."""
+    assert _count(select("?some_other_object")) == 0
 
 
 def test_a_malformed_expression_raises(select):

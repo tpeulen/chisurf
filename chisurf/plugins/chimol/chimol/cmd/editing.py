@@ -214,42 +214,51 @@ class EditingMixin(BaseCmd):
             return
 
         try:
-            obj_id, _, atom_mask = self._resolve_selection_to_atom_mask(
-                viewer, selection
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
         except Exception as exc:
             self._emit_error(f"label: {exc}")
             return
 
-        entry = viewer._objects.get(obj_id)
-        state = getattr(entry, "state", None) if entry is not None else None
-        atoms = getattr(state, "atoms", None)
-        coords = getattr(state, "all_atom_coords", None)
-        if atoms is None:
-            self._emit_error("label: the object has no atoms")
-            return
-
         expr = (expression or "").strip().strip('"').strip("'") \
             if (expression or "").strip() in ('""', "''") else (expression or "")
+
         if not expr.strip():
-            viewer.clear_labels(object_id=obj_id)
+            for obj_id, _name, _mask in hits:
+                viewer.clear_labels(object_id=obj_id)
             self._emit_message("Cleared labels")
             return
 
-        try:
-            indices, texts = evaluate_labels(atoms, coords, expr, atom_mask)
-        except SyntaxError as exc:
-            self._emit_error(f"label: could not parse {expr!r}: {exc}")
+        labelled = 0
+        total = 0
+        no_atoms = False
+        for obj_id, _name, atom_mask in hits:
+            entry = viewer._objects.get(obj_id)
+            state = getattr(entry, "state", None) if entry is not None else None
+            atoms = getattr(state, "atoms", None)
+            coords = getattr(state, "all_atom_coords", None)
+            if atoms is None:
+                no_atoms = True
+                continue
+            try:
+                indices, texts = evaluate_labels(atoms, coords, expr, atom_mask)
+            except SyntaxError as exc:
+                self._emit_error(f"label: could not parse {expr!r}: {exc}")
+                return
+            if not len(indices):
+                continue
+            total = viewer.set_labels(indices, texts, object_id=obj_id)
+            labelled += len(indices)
+
+        if not labelled:
+            if no_atoms:
+                self._emit_error("label: the object has no atoms")
+            else:
+                self._emit_error(
+                    f"label: '{expr}' produced no labels "
+                    "(the expression may not apply to these atoms)"
+                )
             return
 
-        if not len(indices):
-            self._emit_error(
-                f"label: '{expr}' produced no labels "
-                "(the expression may not apply to these atoms)"
-            )
-            return
-
-        total = viewer.set_labels(indices, texts, object_id=obj_id)
         # PyMOL's `label` turns the label representation on as part of labelling:
         # `ExecutiveLabel` follows the text with `OMOP_VISI(cRepLabelBit,
         # cVis_SHOW)` (layer3/Executive.cpp). Without that step the text was
@@ -259,7 +268,7 @@ class EditingMixin(BaseCmd):
             viewer.set_labels_visible(True)
         except Exception as exc:  # a viewer without the representation
             logger.debug("label: could not show the labels: %s", exc)
-        self._emit_message(f"Labelled {len(indices)} atoms ({total} in total)")
+        self._emit_message(f"Labelled {labelled} atoms ({total} in total)")
 
     @command("iterate", mode="raw1")
     def iterate(self, selection: str = "", expression: str = "") -> None:
@@ -373,32 +382,10 @@ class EditingMixin(BaseCmd):
             return
 
         try:
-            obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
-                viewer, sele_expr
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, sele_expr)
         except Exception as exc:
             self._emit_error(f"{label}: {exc}")
             return
-
-        entry = viewer._objects.get(obj_id)
-        atoms = getattr(getattr(entry, "state", None), "atoms", None)
-        if atoms is None:
-            self._emit_error(f"{label}: object {obj_name} has no atoms")
-            return
-
-        indices = np.nonzero(np.asarray(atom_mask, dtype=bool))[0]
-        if indices.size == 0:
-            self._emit_error(f"{label}: '{sele_expr}' matched no atoms")
-            return
-
-        # Only fields this structure actually carries, so an assignment to one it
-        # lacks is reported rather than silently dropped.
-        fields = set(atoms.dtype.names or ())
-        writable = {
-            name: field
-            for name, field in ATOM_PROPERTIES.items()
-            if field in fields
-        }
 
         try:
             code = compile(python_expr, "<chimol>", "exec")
@@ -406,62 +393,101 @@ class EditingMixin(BaseCmd):
             self._emit_error(f"{label}: could not parse {python_expr!r}: {exc}")
             return
 
-        xyz = np.asarray(atoms["xyz"], dtype=float) if "xyz" in fields else None
         globals_ = {"stored": self._stored, "np": np}
         changed_fields: set[str] = set()
-        moved = False
         ignored: set[str] = set()
         count = 0
+        moved_any = False
+        no_atoms: str | None = None
 
-        try:
-            for index in indices:
-                namespace = atom_namespace(
-                    atoms, int(index), xyz if coordinates else None
-                )
-                before = dict(namespace)
+        # Every object the selection reached, in turn -- `alter all, b=0` means
+        # all of them, and `iterate <group>, ...` is the ordinary way to pull
+        # data out of several molecules at once. The `stored` namespace is shared
+        # across them, which is what makes that accumulation work.
+        for obj_id, obj_name, atom_mask in hits:
+            entry = viewer._objects.get(obj_id)
+            atoms = getattr(getattr(entry, "state", None), "atoms", None)
+            if atoms is None:
+                no_atoms = obj_name
+                continue
 
-                exec(code, globals_, namespace)  # noqa: S102 -- PyMOL's API is Python
-                count += 1
+            indices = np.nonzero(np.asarray(atom_mask, dtype=bool))[0]
+            if indices.size == 0:
+                continue
 
-                if not write:
-                    continue
+            # Only fields this structure actually carries, so an assignment to
+            # one it lacks is reported rather than silently dropped. Recomputed
+            # per object: two structures need not carry the same fields.
+            fields = set(atoms.dtype.names or ())
+            writable = {
+                name: field
+                for name, field in ATOM_PROPERTIES.items()
+                if field in fields
+            }
+            xyz = np.asarray(atoms["xyz"], dtype=float) if "xyz" in fields else None
+            moved = False
 
-                for name, value in namespace.items():
-                    if name not in before or value == before[name]:
+            try:
+                for index in indices:
+                    namespace = atom_namespace(
+                        atoms, int(index), xyz if coordinates else None
+                    )
+                    before = dict(namespace)
+
+                    exec(code, globals_, namespace)  # noqa: S102 -- PyMOL's API is Python
+                    count += 1
+
+                    if not write:
                         continue
-                    if coordinates and name in ("x", "y", "z"):
-                        xyz[index, "xyz".index(name)] = float(value)
-                        moved = True
-                        continue
-                    field = writable.get(name)
-                    if field is None:
-                        # Either a derived name, or one this structure lacks.
-                        if name in DERIVED_PROPERTIES or name in ATOM_PROPERTIES:
-                            ignored.add(name)
-                        continue
-                    atoms[field][index] = _coerce_field(atoms.dtype[field], value)
-                    changed_fields.add(field)
-        except NameError as exc:
-            # The commonest mistake is reaching for a coordinate from `alter`,
-            # where PyMOL does not put one in scope. Say which command does.
-            if not coordinates and any(
-                f"'{axis}'" in str(exc) for axis in ("x", "y", "z")
-            ):
+
+                    for name, value in namespace.items():
+                        if name not in before or value == before[name]:
+                            continue
+                        if coordinates and name in ("x", "y", "z"):
+                            xyz[index, "xyz".index(name)] = float(value)
+                            moved = True
+                            continue
+                        field = writable.get(name)
+                        if field is None:
+                            # Either a derived name, or one this structure lacks.
+                            if name in DERIVED_PROPERTIES or name in ATOM_PROPERTIES:
+                                ignored.add(name)
+                            continue
+                        atoms[field][index] = _coerce_field(atoms.dtype[field], value)
+                        changed_fields.add(field)
+            except NameError as exc:
+                # The commonest mistake is reaching for a coordinate from
+                # `alter`, where PyMOL does not put one in scope. Say which
+                # command does.
+                if not coordinates and any(
+                    f"'{axis}'" in str(exc) for axis in ("x", "y", "z")
+                ):
+                    self._emit_error(
+                        f"{label}: coordinates are not in scope here -- use "
+                        f"{'alter_state' if write else 'iterate_state'}, as in PyMOL"
+                    )
+                else:
+                    self._emit_error(f"{label}: {exc}")
+                return
+            except Exception as exc:
                 self._emit_error(
-                    f"{label}: coordinates are not in scope here -- use "
-                    f"{'alter_state' if write else 'iterate_state'}, as in PyMOL"
+                    f"{label}: {type(exc).__name__} at atom {count}: {exc}"
                 )
+                return
+
+            if write and moved:
+                atoms["xyz"] = xyz
+                self._rebuild_after_coordinate_change(viewer, obj_id)
+                moved_any = True
+
+        if not count:
+            if no_atoms is not None:
+                self._emit_error(f"{label}: object {no_atoms} has no atoms")
             else:
-                self._emit_error(f"{label}: {exc}")
-            return
-        except Exception as exc:
-            self._emit_error(f"{label}: {type(exc).__name__} at atom {count}: {exc}")
+                self._emit_error(f"{label}: '{sele_expr}' matched no atoms")
             return
 
-        if write and moved:
-            atoms["xyz"] = xyz
-            self._rebuild_after_coordinate_change(viewer, obj_id)
-        elif write and changed_fields:
+        if write and changed_fields and not moved_any:
             # Properties only: the geometry is untouched, so nothing derived from
             # coordinates may be recomputed. Assigning raw Angstrom into the
             # render-space array here shrank the molecule tenfold and moved it off
@@ -481,7 +507,7 @@ class EditingMixin(BaseCmd):
         verb = "Iterated over" if not write else "Altered"
         detail = ""
         if write:
-            parts = sorted(changed_fields) + (["coordinates"] if moved else [])
+            parts = sorted(changed_fields) + (["coordinates"] if moved_any else [])
             detail = f" ({', '.join(parts)})" if parts else " (nothing changed)"
         self._emit_message(f"{verb} {count} atoms{detail}")
 
@@ -607,30 +633,40 @@ class EditingMixin(BaseCmd):
         if viewer is None:
             return
         try:
-            obj_id, obj_name, sel_mask = self._resolve_selection_to_atom_mask(
-                viewer, selection or "all"
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection or "all")
         except Exception as exc:
             self._emit_error(f"{verb}: {exc}")
             return
 
-        entry = viewer._objects.get(obj_id)
-        atoms = getattr(getattr(entry, "state", None), "atoms", None)
-        if atoms is None:
-            self._emit_error(f"{verb}: {obj_name} carries no atoms")
-            return
+        # Every object, because the whole point of masking is that one molecule
+        # sits in front of another: `mask` with its default `all` reaching only
+        # the active one leaves exactly the molecule you were clicking through.
+        touched = 0
+        total = 0
+        no_atoms: str | None = None
+        for obj_id, obj_name, sel_mask in hits:
+            entry = viewer._objects.get(obj_id)
+            atoms = getattr(getattr(entry, "state", None), "atoms", None)
+            if atoms is None:
+                no_atoms = obj_name
+                continue
 
-        sel_mask = np.asarray(sel_mask, dtype=bool)
-        current = entry.state.masked_mask
-        if current is None or np.asarray(current).shape[0] != len(atoms):
-            current = np.zeros(len(atoms), dtype=bool)
-        else:
-            current = np.asarray(current, dtype=bool).copy()
-        current[sel_mask] = masked
-        entry.state.masked_mask = current
+            sel_mask = np.asarray(sel_mask, dtype=bool)
+            current = entry.state.masked_mask
+            if current is None or np.asarray(current).shape[0] != len(atoms):
+                current = np.zeros(len(atoms), dtype=bool)
+            else:
+                current = np.asarray(current, dtype=bool).copy()
+            current[sel_mask] = masked
+            entry.state.masked_mask = current
+            touched += int(sel_mask.sum())
+            total += int(current.sum())
+
+        if not hits or (touched == 0 and no_atoms is not None):
+            self._emit_error(f"{verb}: {no_atoms or selection} carries no atoms")
+            return
         self._emit_message(
-            f"{verb}: {int(sel_mask.sum())} atoms; "
-            f"{int(current.sum())} now unpickable in {obj_name}"
+            f"{verb}: {touched} atoms; {total} now unpickable"
         )
 
     @command("protect")
@@ -664,31 +700,37 @@ class EditingMixin(BaseCmd):
         if viewer is None:
             return
         try:
-            obj_id, obj_name, mask = self._resolve_selection_to_atom_mask(
-                viewer, selection or "all"
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection or "all")
         except Exception as exc:
             self._emit_error(f"{verb}: {exc}")
             return
 
-        entry = viewer._objects.get(obj_id)
-        atoms = getattr(getattr(entry, "state", None), "atoms", None)
-        if atoms is None:
-            self._emit_error(f"{verb}: {obj_name} carries no atoms")
-            return
+        # As with masking: the default is `all`, and `all` is every object.
+        touched = 0
+        total = 0
+        no_atoms: str | None = None
+        for obj_id, obj_name, mask in hits:
+            entry = viewer._objects.get(obj_id)
+            atoms = getattr(getattr(entry, "state", None), "atoms", None)
+            if atoms is None:
+                no_atoms = obj_name
+                continue
 
-        mask = np.asarray(mask, dtype=bool)
-        current = entry.state.protected_mask
-        if current is None or np.asarray(current).shape[0] != len(atoms):
-            current = np.zeros(len(atoms), dtype=bool)
-        else:
-            current = np.asarray(current, dtype=bool).copy()
-        current[mask] = protected
-        entry.state.protected_mask = current
-        self._emit_message(
-            f"{verb}: {int(mask.sum())} atoms; "
-            f"{int(current.sum())} now protected in {obj_name}"
-        )
+            mask = np.asarray(mask, dtype=bool)
+            current = entry.state.protected_mask
+            if current is None or np.asarray(current).shape[0] != len(atoms):
+                current = np.zeros(len(atoms), dtype=bool)
+            else:
+                current = np.asarray(current, dtype=bool).copy()
+            current[mask] = protected
+            entry.state.protected_mask = current
+            touched += int(mask.sum())
+            total += int(current.sum())
+
+        if not hits or (touched == 0 and no_atoms is not None):
+            self._emit_error(f"{verb}: {no_atoms or selection} carries no atoms")
+            return
+        self._emit_message(f"{verb}: {touched} atoms; {total} now protected")
 
     @command("smooth")
     def smooth(
@@ -1127,7 +1169,13 @@ class EditingMixin(BaseCmd):
 
     @command("remove", aliases=("rm",))
     def remove(self, selection: str = "") -> None:
-        """Delete the atoms matched by ``selection``."""
+        """Delete the atoms matched by ``selection``.
+
+        Every object the selection reaches, since ``remove solvent`` means the
+        waters wherever they are -- and the object panel's *remove waters* entry
+        sends exactly that, with a group name for the target when the menu was
+        opened on a group row.
+        """
         if not selection:
             self._emit_error("Usage: remove selection")
             return
@@ -1137,17 +1185,23 @@ class EditingMixin(BaseCmd):
             return
 
         try:
-            obj_id, obj_name, atom_mask = self._resolve_selection_to_atom_mask(
-                viewer, selection
-            )
+            hits = self._resolve_selection_to_atom_masks(viewer, selection)
         except Exception as exc:
             self._emit_error(str(exc))
             return
 
+        for obj_id, obj_name, atom_mask in hits:
+            self._remove_from_object(viewer, obj_id, obj_name, atom_mask)
+
+    def _remove_from_object(
+        self, viewer, obj_id: str, obj_name: str, atom_mask: np.ndarray
+    ) -> None:
+        """Delete one object's matched atoms and re-derive what depended on them."""
         entry = viewer._objects.get(obj_id)
         if entry is None or entry.state.atoms is None:
             return
 
+        atom_mask = np.asarray(atom_mask, dtype=bool)
         keep_mask = ~atom_mask
         if np.all(keep_mask):
             return

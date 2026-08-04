@@ -52,6 +52,7 @@ bearing for this group's work**, and those are tiered below.
 | Object menus A/S/H/L/C | **done** | 1:1 from `pymol/menu.py` |
 | Menu bar | **done** | PyMOL's grouping |
 | Selection algebra | **done** | One table from `Keyword[]`; every arity class |
+| Selection *scope* | **done** | Every object, as PyMOL's one atom table; groups included |
 | `save` (PDB/mmCIF export) | **done** | Writes what the viewer holds, not the source file |
 | `label` | **done** | Expression language, not templates; `L` menu now live |
 | `create` / `extract` | **done** | Child drawn in its parent's frame, true coordinates kept |
@@ -79,6 +80,25 @@ broken at once:
 
 All five fixed, and the sweep is now a test: 157 cases, every entry plus a check
 that each disabled entry explains itself.
+
+A sixth was found later, and only by clicking in the *viewport* panel: an entry
+needing a typed value (`rename object`, `copy to object`, `align to ...`) was
+**skipped there** — `_emit` dropped any template carrying `{text}`, on the
+grounds that there is nowhere in the viewport to type. That is a menu entry that
+does nothing when clicked, in the panel that is now the primary one. Those
+entries write themselves into the command line instead, with the placeholder
+selected so the next keystroke replaces it; the command line is one row below
+the panel. The sweep test could not have caught it, because it drives the
+*docked* panel's path.
+
+The sweep also turned out to be **passing two entries that did nothing**, and
+only the new unknown-name error exposed it: it filled every `{text}` with the
+literal `copied`, which is right for `copy to object` (a name for something the
+command creates) and wrong for `align to ...` / `super to ...`, where the slot
+is a *target selection that must already exist*. A made-up name resolved to an
+empty mask, so both commands returned quietly and the assertion held. The filler
+now picks a value that suits the slot. The lesson is the file's recurring one:
+**a fixture is an assertion too, and nothing checks it.**
 
 **Why they survived.** Every structure in the test data was a protein with no
 waters and no ions, so nothing could exercise the entries that act on them. Added
@@ -547,12 +567,66 @@ Two smaller ones, both found by a test rather than by reading:
   expansion happens where the target is known (the row), because the selection
   resolver answers for one object at a time.
 
-**Not yet:** a group name inside an *atom selection* — `show cartoon, ligands` —
-because `_resolve_selection_to_atom_mask` returns a single `(object_id, mask)`
-pair. Supporting it means a multi-object resolver; the group's row menus and any
-command taking object names work today. **Measured 2026-08-03: it is not
-rejected, it answers emptily** — `count_atoms <group>` says `0` and
-`show cartoon, <group>` does nothing, in silence. See the window section below.
+A group name inside an *atom selection* — `show cartoon, ligands` — is handled
+by the multi-object resolver described in the next section. It was the last
+place a group was not a first-class name.
+
+## One atom table, not one object
+
+PyMOL's selector runs over **one global atom table spanning every loaded
+object** (`layer3/Selector.cpp`). chimol evaluated per object and against the
+*active* one, and three consequences followed, each of them silent:
+
+* a **group name** selected nothing — `count_atoms ligands` said `0`, and every
+  representation, colour and camera command aimed at a group did nothing at all.
+  The object panel's group rows emit exactly those commands, so a whole row of
+  A/S/H/L/C buttons was inert;
+* a plain `chain A` meant chain A **in the active object**, so `count_atoms all`
+  under-counted by every other molecule on screen;
+* a name that resolved to nothing **answered `0`** instead of erroring, which
+  made a typo indistinguishable from an empty selection.
+
+`_resolve_selection_to_atom_masks` returns `(object_id, name, mask)` per object;
+the union is assembled in the command layer rather than inside the evaluator,
+which stays per-object. The singular `_resolve_selection_to_atom_mask` remains
+for the commands that genuinely want one object (`get_area`, `symexp`,
+`pair_fit`) and **prefers the active object** among the hits, so those keep
+answering about the molecule in front of the user.
+
+Rules transcribed from `SelectorSelect0`, in its order: object, stored
+selection, group, then `Invalid selection name "x"` — with a leading `?` as the
+"undefined is allowed here" escape (`?sele`), which needed a tokenizer change or
+the one spelling that suppresses the error would have raised it.
+
+Framing had to follow: `MolView.zoom`/`center`/`orient` take a `selections`
+list, because measuring one member of a group and reporting success is exactly
+the failure that looks like it worked.
+
+Migrated to the plural resolver: `show`/`hide`/`as`, `color`, `spectrum` — one
+ramp over the whole selection, or a group restarts the palette at each member —
+`zoom`/`center`/`orient`/`origin`, `count_atoms`, `select`, `label`, `remove`,
+`alter`/`iterate`/`*_state`, and `mask`/`protect`. The last pair matters more
+than it looks: their default is `all` and their purpose is one molecule sitting
+in front of another, so reaching only the active object left exactly the
+molecule you were trying to stop clicking through. `alter`/`iterate` share one
+`stored` namespace across the objects, which is what makes accumulating over a
+group work. Deliberately still single-object: `get_area` (its occlusion model is
+per object), `save`, `symexp`, `pair_fit`, `intra_rms`, and bond editing.
+
+**Three defects fell out of using it**, all pre-existing and invisible until a
+command reached a second object:
+
+* `color` refused every object `create` had made — it required a residue table
+  that a copied ligand does not have, and blamed *atom coordinates that were
+  right there*;
+* an object without a residue table is drawn by the point-sphere path, which
+  read `colors_per_ca` and never the per-atom override — so `color` wrote a
+  value nothing looked at, and the molecule stayed its default colour while the
+  command reported success. **The state and the scene disagreed**, which is why
+  a state assertion would have passed; it took a screenshot;
+* `hide everything` with no selection only reached the *active* object, because
+  nine of the ten representation setters write the active object's state and
+  only `spheres` had a spanning `_all` variant.
 
 ## Two coordinate arrays, and they had drifted apart
 
@@ -1021,13 +1095,12 @@ Both found by using the window rather than testing it, and both silent:
   against none, and returned; the entry ticked and unticked and the strip never
   moved. It writes the `seq_view` setting now — the same place `set` writes, so
   the menu and the command line cannot disagree.
-* A **group name inside an atom selection** answers *emptily*: `group stuff,
-  ligs 148l` then `show cartoon, stuff` does nothing and reports nothing, and
-  `count_atoms stuff` says `0` rather than "unknown selection". Recorded rather
-  than fixed here: it needs a multi-object resolver, since
-  `_resolve_selection_to_atom_mask` returns a single `(object_id, mask)` pair.
-  Note this is *worse* than the "not accepted in a selection" this file used to
-  record — it is accepted, and lies.
+* A **group name inside an atom selection** answered *emptily*: `group stuff,
+  ligs 148l` then `show cartoon, stuff` did nothing and reported nothing, and
+  `count_atoms stuff` said `0` rather than "unknown selection". Note this was
+  *worse* than the "not accepted in a selection" this file used to record — it
+  was accepted, and lied. **Fixed** by the multi-object resolver; see
+  [One atom table, not one object](#one-atom-table-not-one-object) below.
 
 # Tier 3 — specialised or superseded here
 

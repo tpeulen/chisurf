@@ -164,13 +164,24 @@ SOLVATED = OBJECT
 
 
 def _fill(template: str) -> str:
-    """Substitute the placeholders a click would fill in."""
+    """Substitute the placeholders a click would fill in.
+
+    The value has to suit the *slot*, not just the type. ``align``/``super``
+    take a **target selection**, which has to name something that exists: a
+    made-up name used to resolve to an empty mask, so the sweep passed while the
+    command did nothing at all. An unknown name is an error now, which is what
+    caught it. Aligning the object to itself is the smallest thing that exercises
+    the real path.
+    """
     line = template.replace("{sele}", OBJECT)
     if "{text}" in line:
-        # A prompted value: a number where one is wanted, a name otherwise.
-        value = "0.5" if any(
-            word in line for word in ("transparency", "width", "radius")
-        ) else "copied"
+        if any(word in line for word in ("transparency", "width", "radius")):
+            value = "0.5"
+        elif line.split(maxsplit=1)[0] in ("align", "super"):
+            value = OBJECT
+        else:
+            # A name for something the command creates, so it need not exist.
+            value = "copied"
         line = line.replace("{text}", value)
     return line
 

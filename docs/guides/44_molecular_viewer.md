@@ -765,13 +765,16 @@ order lig, location=top      # move one to the top
 ```
 
 A group name may be used wherever an object name is wanted, and it stands for
-all of its members — `order ligands, location=top` moves the whole block.
+all of its members — `order ligands, location=top` moves the whole block. It is
+also an ordinary word **inside a selection**, so one command reaches every
+member:
 
-:::{note}
-One place a group is *not* yet accepted is inside an atom selection:
-`show cartoon, ligands` does not resolve, because a selection is evaluated
-against a single object. Use the group's row menus, or name the members.
-:::
+```text
+show spheres, ligands        # both molecules
+color red, ligands           # both molecules
+zoom ligands                 # frames all of them, not just the first
+count_atoms ligands and elem C
+```
 
 The camera follows PyMOL's commands and its 18-float view tuple, so a view can
 be copied between the two programs:
@@ -818,7 +821,17 @@ Anything ChiMOL cannot evaluate — `donors`, `byring`, `text_type` and similar 
 raises an error naming the reason instead of returning an empty selection. An
 empty result therefore means *your selection matched nothing*, not *this keyword
 is unimplemented*.
+
+A **name** that resolves to nothing is an error for the same reason:
+`count_atoms lgi` reports `Invalid selection name "lgi"` rather than `0`, as
+PyMOL does. Prefix it with `?` — `count_atoms ?lgi` — where a script means
+"undefined is allowed here".
 :::
+
+**A selection is not confined to one object.** As in PyMOL, it is evaluated over
+every loaded molecule, so `count_atoms chain A` counts chain A wherever it is
+and `show cartoon, polymer` reaches all of them. Scope it by naming an object
+first — `zoom 148l and resi 54` — or by naming a group.
 
 **Chain identifiers of more than one character work.** A PDB file has a single
 column for the chain, but an mmCIF asym id runs `A`…`Z` and then `AA`, `AB`, …,
@@ -1013,6 +1026,13 @@ alter_state 1, resn NAG, x = x + 10        # coordinates live in alter_state
 is PyMOL's, and it is not cosmetic — moving atoms invalidates the geometry
 derived from them, and changing a b-factor does not.
 
+Both run over every object the selection reaches, and `stored` is shared across
+them, so a group is the natural way to gather from several molecules at once:
+
+```text
+iterate ligands and elem C, stored.setdefault('b', []).append(b)
+```
+
 Split a selection into its own object, and write it out:
 
 ```text
@@ -1112,6 +1132,7 @@ OpenGL viewport does need a display, so `png` will not work headlessly while
 | Area | State |
 | --- | --- |
 | Selection grammar | PyMOL's keyword table, 85 keywords with abbreviations |
+| Selection scope | Every loaded object, as PyMOL's; groups are ordinary names |
 | Camera, `get_view`/`set_view` | Matches PyMOL's 18-float tuple exactly |
 | Object menus (A/S/H/L/C) | 1:1 with PyMOL's |
 | `get_area` | Follows `dot_solvent` / `dot_density` / `solvent_radius` |

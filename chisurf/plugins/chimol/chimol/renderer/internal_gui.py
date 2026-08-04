@@ -122,6 +122,11 @@ class GuiRow:
     enabled: bool = True
     is_header: bool = False
     is_group: bool = False
+    #: Whether a group row is expanded. Drawn as the disclosure marker, and it
+    #: is what a click on the name toggles -- a group has no visibility of its
+    #: own to switch, so the click has to mean something else than it does on a
+    #: molecule.
+    group_open: bool = True
     #: PyMOL's ``sele`` pseudo-object: always present, pinned to the bottom of
     #: the list, and not backed by a real molecule.
     is_selection: bool = False
@@ -242,6 +247,10 @@ class InternalGui:
         self._average_rect = Rect(0, 0, 0, 0)
         #: Called with ``(stride, average)`` when either is clicked.
         self.on_playback_change: Callable[[int, int], None] | None = None
+        #: Called with ``(line, placeholder)`` for a menu entry that needs a
+        #: typed value. The host puts the line in its command box with the
+        #: placeholder selected; there is nowhere in the viewport to type.
+        self.on_prompt_command: Callable[[str, str], None] | None = None
         self._mode_rect = Rect(0, 0, 0, 0)
         #: Width of the column the panel and the block live in. The scene is
         #: rendered to the *left* of it, as PyMOL does, rather than under it:
@@ -786,7 +795,7 @@ class InternalGui:
             if hit.entry.command is None:
                 return True          # shown, disabled, and says why
             target = self._menus[-1].target if self._menus else ""
-            self._emit(hit.entry.command, target)
+            self._emit(hit.entry.command, target, prompt=hit.entry.prompt)
             self.close_menus()
             return True
 
@@ -871,6 +880,12 @@ class InternalGui:
                 # PyMOL's right-click on a name is its action menu.
                 _key, title, entries = OBJECT_MENUS[0]
                 self._open_menu(f"{title}:", row.name, entries, x, y)
+            elif row.is_group:
+                # A group is a container row, so its name is the disclosure
+                # control -- the same click the docked panel's marker takes.
+                # Enabling or disabling it would be meaningless: a group has no
+                # visibility apart from its members'.
+                self._emit("group {sele}, toggle", row.name)
             elif row.is_selection:
                 # PyMOL's `sele` row has no on/off: a selection is either there
                 # or not, and the name click just makes it current. There is no
@@ -885,18 +900,47 @@ class InternalGui:
             return True
         return False
 
-    def _emit(self, command: str, target: str) -> None:
-        """Run *command* with ``{sele}`` bound to *target*."""
+    def _emit(self, command: str, target: str, prompt=None) -> None:
+        """Run *command* with ``{sele}`` bound to *target*.
+
+        An entry needing a typed value is written into the **command line**
+        instead of being run, with the placeholder selected so the next
+        keystroke replaces it. Skipping it -- which is what happened before, on
+        the grounds that "a prompted value has no place to be typed in the
+        viewport" -- made a menu entry that did nothing at all when clicked, and
+        the viewport panel is now the primary one. The command line sits
+        directly beneath it, which is where PyMOL would have you type anyway.
+
+        Parameters
+        ----------
+        command : str
+            Template, with ``{sele}`` for the target and ``{text}`` for a value.
+        target : str
+            Object, group or selection the menu was opened on.
+        prompt : tuple of str, optional
+            ``(title, question)`` from the menu entry; the question names the
+            placeholder, so ``Group name:`` becomes ``<group name>``.
+        """
         if self._run_command is None:
             return
         for line in str(command).splitlines():
             line = line.strip()
-            if not line or "{text}" in line:
-                # A prompted value has no place to be typed in the viewport; the
-                # docked panel still offers those entries.
+            if not line:
+                continue
+            line = line.replace("{sele}", target)
+            if "{text}" in line:
+                question = str((prompt or ("", "value"))[-1]).strip().rstrip(":")
+                placeholder = f"<{question.lower() or 'value'}>"
+                if self.on_prompt_command is not None:
+                    try:
+                        self.on_prompt_command(
+                            line.replace("{text}", placeholder), placeholder
+                        )
+                    except Exception:
+                        pass
                 continue
             try:
-                self._run_command(line.replace("{sele}", target))
+                self._run_command(line)
             except Exception:
                 pass
 
@@ -1028,7 +1072,9 @@ class InternalGui:
                 painter.setPen(QtCore.Qt.NoPen)
                 painter.drawRect(QtCore.QRectF(rect.x, rect.y, rect.w, rect.h))
 
-            label = ("▾ " if row.is_group else "") + row.name
+            label = row.name
+            if row.is_group:
+                label = ("▾ " if row.group_open else "▸ ") + label
             if row.detail:
                 label = f"{label} {row.detail}"
             colour = (
