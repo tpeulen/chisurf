@@ -80,7 +80,6 @@ __all__ = [
     "rates_from_rate_matrix",
     "transitions_per_window",
     "occupation_time_fractions",
-    "occupation_time_fractions_reference",
     "szabo_gopich_quadrature",
     "time_averaged_moments",
 ]
@@ -391,64 +390,6 @@ def szabo_gopich_quadrature(rate_matrix, values, window: float, n_nodes: int = 3
     return nodes, weights
 
 
-def occupation_time_fractions_reference(rate_matrix, window: float, n_samples: int,
-                                        seed: int = 1) -> np.ndarray:
-    """Return per-window state occupancies by direct Gillespie sampling.
-
-    The readable definition of what :func:`occupation_time_fractions` computes,
-    and its fallback where the simulation engine is too old to record a state
-    trajectory. Each of ``n_samples`` windows is an independent trajectory whose
-    starting state is drawn from the equilibrium populations, so the rows are
-    independent draws from the occupation-time law.
-
-    Parameters
-    ----------
-    rate_matrix : array_like
-        ``(n, n)`` rates in Hz; see :func:`generator_from_rate_matrix`.
-    window : float
-        Observation time in seconds.
-    n_samples : int
-        Number of independent windows.
-    seed : int
-        Random seed. Fixed by callers so a fit objective stays deterministic.
-
-    Returns
-    -------
-    numpy.ndarray
-        ``(n_samples, n)`` whose rows sum to one.
-    """
-    matrix = np.array(rate_matrix, dtype=float)
-    np.fill_diagonal(matrix, 0.0)
-    matrix = np.clip(matrix, 0.0, None)
-    n = matrix.shape[0]
-    exit_rates = matrix.sum(axis=0)          # column sums: total rate out of each state
-    populations = equilibrium_populations(matrix)
-
-    rng = np.random.default_rng(int(seed))
-    initial = rng.choice(n, size=int(n_samples), p=populations)
-    out = np.zeros((int(n_samples), n), dtype=float)
-
-    for w in range(int(n_samples)):
-        state = int(initial[w])
-        elapsed = 0.0
-        while elapsed < window:
-            rate = exit_rates[state]
-            if rate <= 0.0:                  # absorbing: the rest of the window is this state
-                out[w, state] += window - elapsed
-                break
-            dwell = rng.exponential(1.0 / rate)
-            if elapsed + dwell >= window:
-                out[w, state] += window - elapsed
-                break
-            out[w, state] += dwell
-            elapsed += dwell
-            state = int(rng.choice(n, p=matrix[:, state] / rate))
-
-    totals = out.sum(axis=1, keepdims=True)
-    totals[totals == 0.0] = 1.0
-    return out / totals
-
-
 def _engine_records_state_trajectory() -> bool:
     """Whether the installed simulation library exposes its kinetics sampler."""
     try:
@@ -467,12 +408,12 @@ def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
     actually spent in each state. Slow exchange — where the moment match cannot
     follow a multimodal distribution — is exactly where this is exact.
 
-    Sampling is delegated to the photon simulator's kinetics, which evolves the
-    same continuous-time Markov chain in C++ across threads and records the
-    transitions rather than snapshots, so occupation times are exact. Each window
+    Sampling is delegated to the simulation library's kinetics, which evolves the
+    same continuous-time Markov chain in C++ and accumulates the time spent in
+    each state rather than sampling snapshots, so occupation times are exact and
+    the truncated final sojourn counts. Each window
     is one immobile, non-emitting molecule started from the equilibrium
     populations, which makes the rows independent draws — the scheme
-    :func:`occupation_time_fractions_reference` spells out, and falls back to
     when the installed engine predates the state log.
 
     The two agree distribution-for-distribution; the engine is roughly an order
@@ -499,7 +440,10 @@ def occupation_time_fractions(rate_matrix, window: float, n_samples: int,
     """
     n_samples = int(n_samples)
     if not _engine_records_state_trajectory():
-        return occupation_time_fractions_reference(rate_matrix, window, n_samples, seed)
+        raise RuntimeError(
+            "the installed TTTR library has no kinetics sampler; rebuild it "
+            "(chisurf.core.fluorescence.kinetics needs SimKinetics)"
+        )
 
     import tttrlib
 
