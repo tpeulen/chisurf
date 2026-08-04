@@ -1,0 +1,41 @@
+{
+  "_comment": "Guided tour for FRC resolution. Declarative AutoForm view (frc.view.json); steps target bound attributes and the custom sections' keys. The help page carries the long form -- these steps say which control decides the answer and in what order. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "What this image resolves, not what the microscope could",
+      "text": "Fourier ring correlation splits your acquisition into <b>two independent halves</b>, correlates them ring by ring in frequency space, and reports the frequency at which they stop agreeing.<br/><br/>Above that frequency the two halves contain different noise and nothing else — so it is the finest detail your data actually support, photon budget, drift and label included. It is a property of <i>this acquisition</i>, not of the instrument.<br/><br/>Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the acquisition",
+      "text": "A frame stack, or a photon stream that will be binned into one. FRC needs many frames — the split has to leave enough photons in <i>each</i> half to form an image.",
+      "target": {
+        "attr": "filename"
+      },
+      "await": {
+        "hint": "Choose the image or photon file."
+      }
+    },
+    {
+      "title": "The split IS the measurement",
+      "text": "Everything rests on the two halves being <b>independent measurements of the same object</b>. Correlate an image with itself and you get 1 everywhere and no resolution; correlate it with a smoothed copy and you measure the smoothing.<br/><br/><b>Even/odd frames</b> is the default, and both halves then span the whole acquisition so slow drift affects them equally.<br/><b>First/second half</b> is for detectors whose consecutive frames are <i>not</i> independent — or to ask whether the second half degraded.<br/><b>Two channels</b> means two detectors that saw the <i>same</i> structure. Not two labels on different structures: those correlate nowhere and the tool will report your field of view as the resolution.<br/><br/>That last failure is worth recognising, because it produces a number rather than an error.",
+      "target": {
+        "attr": "split"
+      }
+    },
+    {
+      "title": "The criterion travels with the number",
+      "text": "Fixed <b>1/7</b> (Nieuwenhuizen 2013) is the usual convention for fluorescence images. <b>½-bit</b> (van Heel & Schatz 2005) and <b>2σ</b> depend on how many Fourier pixels each ring holds — so they depend on the image <i>size</i>, and on the same data the three disagree by tens of per cent.<br/><br/>Quote which one you used. A resolution without its criterion is not comparable to anyone else's.<br/><br/>And set the <b>pixel size</b>: without it the answer is in pixels, and since the conversion is linear, an uncertain pixel size makes an equally uncertain resolution.",
+      "target": {
+        "attr": "criterion"
+      }
+    },
+    {
+      "title": "Read the crossing — and know what no crossing means",
+      "text": "The curve is the ring-by-ring correlation against spatial frequency; the resolution is where it drops through the threshold.<br/><br/><b>No crossing is a real answer, not an error.</b> Either the halves agree at every frequency the sampling can show — the image is oversampled relative to its resolution — or they agree nowhere, which means too few photons, or a split whose halves were not independent.<br/><br/>Whichever number you get: more frames, a brighter label or a longer dwell all move it, because it describes the data and not the microscope. The <b>?</b> button has the rest.",
+      "target": {
+        "title": "FRC"
+      }
+    }
+  ]
+}

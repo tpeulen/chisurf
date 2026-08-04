@@ -283,7 +283,14 @@ def _collect_view_names(node, keys: set[str], attrs: set[str]) -> None:
     """
     if isinstance(node, dict):
         value = node.get("key")
-        if isinstance(value, str):
+        # Only a *section* answers ``{"key": …}`` at run time, and a section is
+        # what carries a ``type``. Table columns, plot series and legend entries
+        # use ``key`` too, for their own namespaces — collecting those made the
+        # check accept a target the resolver would never find. It cost two
+        # unresolved steps (``{"key": "correlation"}`` matched an FRC table
+        # column; ``{"key": "track"}`` a tracking one) that this test passed and
+        # only the tour harness caught.
+        if isinstance(value, str) and isinstance(node.get("type"), str):
             keys.add(value)
         for field in ("attr", "target"):
             value = node.get(field)

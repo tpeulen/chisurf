@@ -1,0 +1,41 @@
+{
+  "_comment": "Guided tour for drift correction. Declarative AutoForm view (drift.view.json); steps target bound attributes and the plot/image section keys. The help page carries the long form -- these steps say which control decides the answer and what each failure looks like. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "A drift of one pixel is a resolution of one pixel",
+      "text": "Anything that accumulates frames — a long scan, an FRC measurement, a super-resolution reconstruction — averages the drift into the result. A stage that wanders a pixel over the acquisition puts a pixel of blur into every structure in it, and no amount of later processing takes it out.<br/><br/>Each frame is cross-correlated with a reference by FFT and the correlation peak gives the displacement. It assumes <b>pure translation</b>: a sample that rotates, or a cell that changes shape, is not corrected by this — and the giveaway is a drift trace that looks erratic rather than smooth.<br/><br/>Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the stack",
+      "text": "A frame stack or a photon stream. There has to be enough structure in it to correlate — a field of view that is nearly empty has no peak to find.",
+      "target": {
+        "attr": "filename"
+      },
+      "await": {
+        "hint": "Choose the image or photon file."
+      }
+    },
+    {
+      "title": "The reference decides which failure you get",
+      "text": "<b>First frame</b> — every frame against frame 0. Right for slow monotonic stage drift, and error <i>never accumulates</i>.<br/><b>Previous frame</b> — consecutive frames, shifts summed. Follows non-monotonic wander, but small per-frame errors add up over a long series.<br/><b>Stack mean</b> — against the average of all frames; the compromise for noisy data with no single good reference.<br/><br/>There is no universally right choice here — each trades a different error against a different one, and which is right depends on whether your drift is monotonic.",
+      "target": {
+        "attr": "reference"
+      }
+    },
+    {
+      "title": "Measure on one channel, correct them all",
+      "text": "The sample moves as a whole, so the shift is estimated from one channel and applied to every channel.<br/><br/>Choose the <b>brightest, most structured</b> one. A flat or empty channel gives a soft correlation peak and an unreliable shift — which then gets applied to all the good channels too.<br/><br/><i>Sub-pixel</i> interpolates the peak position rather than rounding it to the nearest pixel, which is what makes a sub-pixel drift correctable at all.",
+      "target": {
+        "attr": "channel"
+      }
+    },
+    {
+      "title": "Read the trace first, the images second",
+      "text": "The <b>drift trace</b> is the diagnostic: real stage drift is smooth and mostly monotonic. Erratic jumps mean the correlation peak is being found in noise, or that the motion is not pure translation and this method does not apply.<br/><br/>Then the before/after images. The correction has to put the content somewhere: <b>wrapping</b> rolls what leaves one edge back in at the other — no signal is lost, but <b>the wrapped strip is meaningless and must not be analysed</b>. <b>Blanking</b> discards it instead and leaves the vacated strip empty, which is honest about the missing data at the cost of dead edges.<br/><br/>Either way, crop before you measure anything near an edge. The <b>?</b> button has the rest.",
+      "target": {
+        "title": "Drift trace"
+      }
+    }
+  ]
+}

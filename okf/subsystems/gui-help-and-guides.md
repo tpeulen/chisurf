@@ -12,7 +12,7 @@ timestamp: '2026-08-04T00:00:00Z'
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number
 that matters is the line count of `test/plugin_help_guide_allowlist.txt`
 (`grep -c '^chisurf' test/plugin_help_guide_allowlist.txt`). It went **105 → 96
-→ 93 → 92 → 91 → 89 → 87**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
+→ 93 → 92 → 91 → 89 → 87 → 83**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
 with the `gui_plugins()` helper in that test file rather than by hand — a plugin
 whose `entrypoints.gui` names a *package* rather than a module resolves to that
 package's `gui/` subdirectory, not to the folder you would guess, and
@@ -22,7 +22,9 @@ hand-editing puts the entry where no lookup will find it.
 selection, decay analysis, TTTR Tools, FCS filter calculator, burst background,
 burst IRF & background, **2CDE, BVA, H2MM**, the whole **FCS group** (2D-FLCS,
 the lifetime-FCS simulator, the confocal calculator, the curve merger) and two of
-the **decay group** (synthetic decay, time-resolved anisotropy).
+the **decay group** (synthetic decay, time-resolved anisotropy), and four
+**imaging** tools that already had help and needed only a tour (colocalization,
+drift correction, FRC resolution, particle tracking).
 
 **Prefer a tour that walks on a demo the plugin generates itself.** 2D-FLCS is
 the model: its *Simulator* panel makes a two-state exchanging stream whose answer
@@ -70,7 +72,7 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
 python build_tools/dev_utils/check_plugin_guide.py --all /tmp/guide-shots
 ```
 
-Current result: **19/20 tours clean**. The one failure is `PSFCalculator`, which
+Current result: **23/24 tours clean**. The one failure is `PSFCalculator`, which
 aborts on plain construction under the offscreen platform for OpenGL reasons
 that predate this work — see
 [known issues](/references/known-issues.md). Its shipped tour is therefore
@@ -84,10 +86,8 @@ thing and that the prose belongs where it sits.
 
 1. **`irf_estimator`, `maxent_decay`** — the rest of the decay group
    (`synthetic_decay` and `tr_anisotropy` are done).
-2. **`microscopy/img_*`** — six of them already have `help.md` and need only a
-   `guide.json`, which is the cheapest remaining work in the list:
-   `img_coloc`, `img_drift`, `img_frc`, `img_tracking`, plus `rics_precision`
-   and `core/hmm`.
+2. **`rics_precision` and `core/hmm`** — the last two that already ship
+   `help.md` and need only a `guide.json`, which is the cheapest work left.
 
 **What a gap blocks.** Nothing blocks the remaining plugins — the seam is
 finished and **all three attachment routes are committed and exercised by a
@@ -125,6 +125,13 @@ See [change tracking](/workflows/change-tracking.md).
 * A tour target that does not resolve **does not fail** — the bubble is shown
   centred, so a whole tour can look authored and point at nothing. Walk every new
   tour with the harness.
+* **The static target check had a false negative of its own.** Only a *section*
+  answers `{"key": …}` at run time, and a section is what carries a `type` — but
+  the collector took **every** `key` in the view spec, including table columns,
+  plot series and legend entries. So `{"key": "correlation"}` passed the guard by
+  matching an FRC *table column* and resolved to nothing in the window. Four such
+  targets slipped through in one batch; the collector now requires a sibling
+  `type`, and re-running it flagged all four.
 * **A resolved target is not a visible one, and the harness cannot tell.** A
   `DockArea` tab closed with `close_mode="hide"` stays in the registry, so a
   `{"tab": …}` step still resolves — to a hidden page carrying whatever geometry

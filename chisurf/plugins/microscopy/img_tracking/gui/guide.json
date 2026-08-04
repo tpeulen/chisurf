@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for particle tracking. Declarative AutoForm view (tracking.view.json); steps target bound attributes and the result plot keys. The help page carries the long form -- these steps follow the three stages and name the one number that decides each. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Three stages, and each can be wrong on its own",
+      "text": "<b>Detect</b> where the particles are in each frame, <b>link</b> them into trajectories across frames, then read <b>transport</b> — D and the anomalous exponent α — from the mean squared displacement.<br/><br/>They fail independently and they fail quietly: bad detection produces short tracks, bad linking produces long <i>wrong</i> ones, and a bad MSD fit produces a diffusion coefficient that looks entirely reasonable.<br/><br/>Six steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the frames, and say how long a frame is",
+      "text": "The <b>frame interval</b> is not a cosmetic setting: D comes out in length²/time, so the time is only as right as this number. Check it against the acquisition rather than the default.",
+      "target": {
+        "attr": "filename"
+      },
+      "await": {
+        "hint": "Choose the image or photon file."
+      }
+    },
+    {
+      "title": "Detection: count them before you believe them",
+      "text": "Whatever the method, the check is the same — <b>look at the detections per frame</b> in the report and compare it with what you expect to be there.<br/><br/>Too many means you are tracking noise, and the extra detections will steal links from the real particles. Too few means the dim half of your population is missing, and if brightness correlates with the thing you are measuring, so does the bias.<br/><br/>Minimum area and minimum separation are the two knobs that decide this.",
+      "target": {
+        "attr": "method"
+      }
+    },
+    {
+      "title": "Max step is the entire safety margin",
+      "text": "Linking is solved as a <b>global assignment</b>, not nearest-neighbour — when two particles approach, both can claim the same neighbour and nearest-neighbour's answer would depend on iteration order.<br/><br/>Set <b>max step</b> from the physics: a Brownian particle moves about <b>√(4·D·dt)</b> per frame. Never from what makes the tracks look longest. Too large joins distinct particles; too small shatters every trajectory.<br/><br/><b>Crowding is what breaks tracking, not the algorithm.</b> In simulations where 10 % of particles had a neighbour inside the linking distance, up to a quarter of tracks merged two different particles and D scattered by a factor of two. On a sparse field the same code recovers identity exactly. If you cannot make the field sparser, <i>image faster</i>.",
+      "target": {
+        "attr": "max_distance"
+      }
+    },
+    {
+      "title": "Two things about the MSD fit",
+      "text": "The model is <b>MSD(τ) = 4·D·τ<sup>α</sup> + 4·σ²</b>.<br/><br/><b>The offset is not optional.</b> σ is the localisation uncertainty and adds a constant at every lag. Fit without it and that constant lands in <b>D</b>, inflating it — badly for slow particles, where the offset can be most of the signal.<br/><br/><b>Only short lags are used.</b> The MSD at lag <i>n</i> of a track of length <i>N</i> averages just <i>N−n</i> overlapping displacements, so the tail is both noisy and correlated with itself. A quarter of the lags is the default, and extending it does not add information — it adds confident-looking noise.",
+      "target": {
+        "attr": "fit_alpha"
+      }
+    },
+    {
+      "title": "Read α, then ask whether the tracks are real",
+      "text": "<b>α ≈ 1</b> is normal diffusion; below 1 is subdiffusive (crowding, binding, confinement); above 1 means directed motion. It is the most interesting number here and the most easily faked — merged tracks from crowding produce apparent directed motion, because a jump between two particles looks like a large displacement.<br/><br/>So before interpreting α: are the tracks long enough to fit? Does the track count match the particle count? Would halving <i>max step</i> change the answer? If it would, the answer is a linking parameter rather than the sample.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "title": "MSD"
+      }
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for colocalization. Declarative AutoForm view (coloc.view.json); steps target bound attributes and the CCF/image section keys. The help page carries the long form -- these steps put the checks in the order that decides whether any coefficient means anything. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Every coefficient answers a different question",
+      "text": "\"Colocalized\" is not one measurement. Pearson asks whether the two intensities <b>co-vary</b>; Manders asks whether they <b>co-occur</b>; M1 and M2 ask, separately, what fraction of <i>each</i> channel sits where the other is.<br/><br/>That last distinction is the one that gets lost: a protein can be 90 % colocalized with a marker while the marker is only 10 % colocalized with the protein, and a single Pearson number cannot say so.<br/><br/>Six steps, in the order that decides whether any of the numbers mean anything.",
+      "target": {}
+    },
+    {
+      "title": "Load the image and name the two channels",
+      "text": "Two channels of the same field of view. Which is A and which is B matters for M1 and M2 — they are not symmetric, and reporting one without saying which channel it belongs to makes it unreadable.",
+      "target": {
+        "attr": "channel_a"
+      },
+      "await": {
+        "hint": "Choose the image file and its two channels."
+      }
+    },
+    {
+      "title": "Check the registration before anything else",
+      "text": "The <b>van Steensel CCF</b> shifts channel B horizontally and recomputes Pearson at every offset:<br/><br/>• a peak at shift <b>0</b> — the channels are registered and the correlation is real;<br/>• a peak <b>away from 0</b> — chromatic aberration or a misaligned detector, and <b>every coefficient is meaningless until you fix it</b>;<br/>• a <b>flat</b> profile — there is no spatial relation at all.<br/><br/>This is first for a reason. A registration error of one pixel can turn genuine colocalization into apparent exclusion, and nothing downstream will tell you.",
+      "target": {
+        "attr": "ccf_max_shift"
+      }
+    },
+    {
+      "title": "Thresholds decide Manders entirely",
+      "text": "Pearson subtracts the means and is relatively forgiving. <b>Manders does not</b> — M1 and M2 are fractions of intensity above a threshold, so the threshold <i>is</i> the measurement, and changing it changes the answer without changing the data.<br/><br/>Auto-thresholding gives a reproducible starting point. Whatever you use, use the same rule for both channels and for every image in the comparison — and say what it was. A Manders coefficient without its threshold is not a number anyone can check.<br/><br/>Background subtraction comes first, for the same reason: an offset that is not removed sits above the threshold everywhere and inflates co-occurrence over the whole field.",
+      "target": {
+        "attr": "auto_threshold"
+      }
+    },
+    {
+      "title": "Ask whether it beats chance",
+      "text": "A high coefficient on a densely labelled image can arise from nothing but the fact that both channels fill the field. The randomisation test asks the question directly — scramble one channel's blocks and recompute — and gives the coefficient a null distribution to be compared against.<br/><br/>Report the coefficient <i>with</i> that comparison. \"PCC = 0.6\" and \"PCC = 0.6, above the 99th percentile of randomised images\" are very different claims.",
+      "target": {
+        "title": "Coefficients"
+      }
+    },
+    {
+      "title": "And if the signal is punctate, count instead",
+      "text": "Pixel-wise correlation assumes the signal fills space in a way that can co-vary. <b>Punctate signal breaks that assumption</b>: two sets of spots that never quite overlap correlate at nearly zero even when every spot has a partner a pixel away, because the correlation is computed pixel by pixel and the spots are narrower than their separation.<br/><br/>For puncta, count objects and their overlaps rather than correlating pixels — and use a region to restrict the analysis to the cell rather than the whole field, since empty background contributes agreement that is about the background, not the biology.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "key": "region_list"
+      }
+    }
+  ]
+}
