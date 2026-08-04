@@ -2,6 +2,29 @@
 
 ## 2026-08-04
 
+* **A session now has to leave a resume point, and OKF is where it goes.**
+  ([change tracking](workflows/change-tracking.md),
+  [CLAUDE.md reference](references/claude-md.md))
+  The loop said to append to this log and stopped there — but the log records
+  *what happened*, newest-first by date, and cannot answer "what next" without
+  reading every entry and inferring. The chimol round proved the cost: the most
+  useful thing measured (which of PyMOL's 735 unregistered settings are actually
+  *used*) existed only in an agent's private notes, which the next session cannot
+  read. Step 7 of the loop is now **leave a resume point** — a "Where to pick
+  this up" section at the *top* of the concept that owns the area, before the
+  findings, so a cold reader hits the open front before the history. What makes
+  an entry useful rather than a topic name is spelled out: the measurement **and
+  how to re-derive it including the trap in taking it**, what a gap actually
+  *blocks* (one missing piece often explains several symptoms, and naming that is
+  what orders the list), and approaches **tried and reverted** with why, so they
+  are not repeated. Worked example:
+  [chimol parity](plugins/pymol-parity.md).
+  Also recorded, because it silently undermines every rule stated there:
+  **`CLAUDE.md` is gitignored**, so it is per-checkout and not a durable record.
+  Each of its working-practice rules now has a named owning concept in a table in
+  [references/claude-md.md](references/claude-md.md); a rule added there without
+  one is lost the next time the file is regenerated.
+
 * **A rebuild was stealing the camera, and side chains now grow out of the
   ribbon.** ([chimol parity](plugins/pymol-parity.md),
   [molecular viewer guide](../docs/guides/44_molecular_viewer.md))

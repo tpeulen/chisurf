@@ -41,6 +41,39 @@ the same loop**. This is the process rule that the root
    [[feedback-no-push]]). **No commit trailers of any kind** — no
    `Co-Authored-By`, no "Generated with" / tool attribution. Commits are authored
    by tpeulen only; the message body is plain text with no trailer block.
+7. **Leave a resume point** — see below. A session that ends without one costs
+   the next one a rediscovery.
+
+## Leave a resume point, in OKF
+
+Finish by updating the **"Where to pick this up"** section of the concept that
+owns the area — [plugins/pymol-parity.md](/plugins/pymol-parity.md) is the worked
+example. If the concept has none, create one **at the top**, before the findings:
+a reader arriving cold should hit the open front before the history.
+
+`okf/log.md` is not a substitute. The log records *what happened*, in the past
+tense, newest-first by date; it answers "what changed" and cannot answer "what
+next" without reading every entry and inferring. The two have different jobs.
+
+A resume section is a short ordered list of the open front, ordered by what a
+user actually hits. What separates a useful entry from a topic name:
+
+* **the measurement, and how to re-derive it** — including any trap in taking
+  it. "790 settings, 55 registered, and the 228 that PyMOL's own Python layer
+  references are the worklist" is actionable; "settings coverage is low" is not.
+  Record the trap too: the first count here read 770 because the parser silently
+  dropped every record with a trailing `/* comment */`.
+* **what the gap blocks.** One missing piece often explains several symptoms —
+  a hydrogen-bond finder blocks two presets *and* a whole disabled menu — and
+  naming that is what turns a list into a priority order.
+* **approaches tried and reverted, with why.** Otherwise the next session
+  repeats them. If a revert was the right call, say what the suite showed.
+
+Anything left undone belongs here or in
+[references/known-issues.md](/references/known-issues.md) — a defect found and
+not fixed goes to known-issues with its measurement; work not yet started goes
+to the resume section. **Never only in the chat**, and never only in an agent's
+private notes, which the next session cannot read.
 
 ## User documentation is part of the change
 
