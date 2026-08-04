@@ -64,8 +64,22 @@ class AnisotropyWizard(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
         layout.setSpacing(2)
+        # A hairline strip for the ``?`` and **Guide** pair: a QDialog has no
+        # toolbar, and the wizard's own navigation must not be crowded.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        toolbar = QtWidgets.QToolBar(self)
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
+        layout.addWidget(toolbar)
         self.assistant = AnisotropyAssistantWidget(self)
         layout.addWidget(self.assistant)
+        # After the assistant, so the model is available to resolve the files.
+        attach_help_and_guide(
+            self, toolbar, title="Time-resolved anisotropy — help",
+            model=self.assistant.model, owner=type(self),
+        )
 
     @property
     def model(self):

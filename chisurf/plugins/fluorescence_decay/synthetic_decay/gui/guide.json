@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for the synthetic decay generator. Declarative AutoForm view (synthetic_decay.view.json), so steps target bound attributes; the two button rows are reached by {'action': ...} matching the button text. The whole tour runs on generated data, so it needs nothing of the user's. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Data whose answer you already know",
+      "text": "This builds a TCSPC histogram from a lifetime spectrum you specify — convolved with an IRF if you give one, with Poisson shot noise if you want it.<br/><br/>The point is not the decay. It is that a fitting routine, a starting-value strategy or a model comparison can be checked against data whose parameters <b>you set</b> — the only place a recovered lifetime can be called right or wrong.<br/><br/>Six steps.",
+      "target": {}
+    },
+    {
+      "title": "The a column is amplitudes, not brightness",
+      "text": "Each row is one component: an amplitude <b>a</b> and a lifetime <b>τ</b>. The decay is their amplitude-weighted sum of exponentials.<br/><br/>The amplitudes are <b>pre-exponential</b> — proportional to the number of molecules in each state, not to the light each contributes. A long-lived species emits for longer, so its share of the photons is weighted by its lifetime:<br/><br/><b>fᵢ = aᵢτᵢ / Σ aⱼτⱼ</b><br/><br/>The two rows in front of you are amplitude-equal at 1.2 ns and 4.0 ns — which is <b>23 % / 77 %</b> of the photons, not 50/50. The species-averaged and intensity-averaged lifetimes differ for the same reason, and confusing them is one of the more common ways a published lifetime is wrong.",
+      "target": {
+        "title": "Lifetime spectrum"
+      }
+    },
+    {
+      "title": "Bins × Δt is the window, and it has to hold the decay",
+      "text": "The defaults — 256 bins of 0.032 ns — span <b>8.2 ns</b>. A decay whose longest component is 4 ns is barely two lifetimes long in that window.<br/><br/>That matters more than it looks: the evidence for a slow component <i>is</i> the tail, so truncating it makes a fit report a <b>shorter</b> long lifetime than you asked for. Allow 3–5 times the longest lifetime, and more when the slow component is a small amplitude fraction.<br/><br/>Widen with either control. They trade resolution against range, and Δt must also stay well below the shortest lifetime you intend to resolve.<br/><br/><i>Start</i> shifts where the decay begins, for mimicking a measurement whose prompt does not sit in channel 0.",
+      "target": {
+        "attr": "n_bins"
+      }
+    },
+    {
+      "title": "Noise is the point, and so is turning it off",
+      "text": "<b>Photons</b> sets the budget; Poisson noise gives each channel a standard deviation of √counts. What decides whether two components can be resolved is the <b>peak</b> channel count, not the total — at a peak of 10 000 the relative error there is 1 %, and in the tail, where the long lifetime lives, it is far worse.<br/><br/>Switching noise <b>off</b> gives an exact model curve. Right for checking that an implementation reproduces a known function; wrong for anything about uncertainty, because a χ² computed against noiseless data has no meaning and error bars derived from it are fiction.<br/><br/><b>Seed</b> makes a noisy dataset reproducible — and changing it draws an independent realisation, which is how you find out whether a result depended on one lucky noise pattern.",
+      "target": {
+        "attr": "photon_count"
+      }
+    },
+    {
+      "title": "Give it an IRF if the test involves one",
+      "text": "Without an IRF the decay starts instantaneously — a convenience no instrument produces. With one, the rise is smeared, and <b>components shorter than the IRF width stop being recoverable</b>: below about a nanosecond most of the shape is the instrument rather than the sample.<br/><br/>If the point is to test a routine that <i>deconvolves</i>, it has to be given data that were convolved. Testing a deconvolving fit on IRF-free data proves it can do the easy case.",
+      "target": {
+        "attr": "irf_path"
+      }
+    },
+    {
+      "title": "Generate, then vary one thing at a time",
+      "text": "The decay appears in the plot below and the status line reports what was made; <b>Save</b> writes it as CSV, text, <code>.npy</code> or JSON.<br/><br/>Then the questions worth asking of anything you conclude here:<br/>• <b>Does the window hold the decay?</b> A truncated tail biases every long lifetime downward.<br/>• <b>Are you comparing amplitudes with amplitudes</b>, not with intensity fractions?<br/>• <b>Did you vary the seed?</b> One realisation is one realisation.<br/>• <b>Is the photon budget realistic?</b> A routine that works at 10⁶ photons and fails at 10⁴ has not been shown to work on your data.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "action": "Generate"
+      },
+      "await": {
+        "hint": "Press <b>🧪 Generate</b>."
+      }
+    }
+  ]
+}

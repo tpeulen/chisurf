@@ -597,6 +597,29 @@ class GuidedTour(QtCore.QObject):
                     return widget
         return None
 
+    @staticmethod
+    def _select_wizard_step(
+        stack: QtWidgets.QStackedWidget, page: QtWidgets.QWidget
+    ) -> None:
+        """Move a wizard to the step holding *page*, through its nav list.
+
+        The list is the thing that drives the page, the title and the subtitle
+        together (``WizardSection.nav_list``), so selecting the row is what makes
+        the window self-consistent. Falls back to nothing when the stack is not a
+        wizard's — an ordinary ``QStackedWidget`` is handled by the caller.
+        """
+        index = stack.indexOf(page)
+        if index < 0:
+            return
+        node = stack.parentWidget()
+        while node is not None:
+            nav = getattr(node, "nav_list", None)
+            if isinstance(nav, QtWidgets.QListWidget) and nav.count() == stack.count():
+                if nav.currentRow() != index:
+                    nav.setCurrentRow(index)
+                return
+            node = node.parentWidget()
+
     def _unfold(self, box: QtWidgets.QWidget) -> None:
         """Expand *box* if it is a collapsed panel, and hold it open.
 
@@ -887,6 +910,13 @@ class GuidedTour(QtCore.QObject):
                 except Exception:
                     pass
 
+            # 1b. A wizard step. An AutoForm wizard is a nav list driving a
+            #     QStackedWidget, and *the list* is what updates the title, the
+            #     subtitle and the page together. Setting the stack directly
+            #     shows the right controls under the previous step's heading,
+            #     which reads as a bug in the tool rather than in the tour.
+            if isinstance(parent, QtWidgets.QStackedWidget):
+                self._select_wizard_step(parent, child)
             # 2. QTabWidget or DockTabWidget / DockStackedTabWidget
             if hasattr(parent, "setCurrentWidget") and callable(parent.setCurrentWidget):
                 try:

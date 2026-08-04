@@ -12,7 +12,7 @@ timestamp: '2026-08-04T00:00:00Z'
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number
 that matters is the line count of `test/plugin_help_guide_allowlist.txt`
 (`grep -c '^chisurf' test/plugin_help_guide_allowlist.txt`). It went **105 → 96
-→ 93 → 92 → 91 → 89**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
+→ 93 → 92 → 91 → 89 → 87**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
 with the `gui_plugins()` helper in that test file rather than by hand — a plugin
 whose `entrypoints.gui` names a *package* rather than a module resolves to that
 package's `gui/` subdirectory, not to the folder you would guess, and
@@ -20,8 +20,9 @@ hand-editing puts the entry where no lookup will find it.
 
 **Done, with real content:** burst analysis, accurate FRET, burst GS, burst
 selection, decay analysis, TTTR Tools, FCS filter calculator, burst background,
-burst IRF & background, **2CDE, BVA, H2MM, and the whole FCS group — 2D-FLCS, the lifetime-FCS
-simulator, the confocal calculator and the curve merger**.
+burst IRF & background, **2CDE, BVA, H2MM**, the whole **FCS group** (2D-FLCS,
+the lifetime-FCS simulator, the confocal calculator, the curve merger) and two of
+the **decay group** (synthetic decay, time-resolved anisotropy).
 
 **Prefer a tour that walks on a demo the plugin generates itself.** 2D-FLCS is
 the model: its *Simulator* panel makes a two-state exchanging stream whose answer
@@ -30,7 +31,8 @@ is arithmetic — τ = 1 and 3 ns with k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹ 
 Run, and the default 1 ms lag then demonstrates the real lesson (a lag 25× below
 the exchange time shows no cross-peaks, and that is not a failure). `fcs_lfcs_sim` now
 carries the same shape (τ_D = w₀²/4D puts its two species at 2.8 µs and 45 µs
-before anything is pressed), and `synthetic_decay` can too.
+before anything is pressed), and so does `synthetic_decay` — whose whole purpose
+is data with a known answer.
 
 **A hand-built panel needs `objectName`s before a tour can point into it.** The
 `{"attr"}` / `{"key"}` targets only resolve against an AutoForm view spec, and
@@ -68,7 +70,7 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
 python build_tools/dev_utils/check_plugin_guide.py --all /tmp/guide-shots
 ```
 
-Current result: **15/16 tours clean**. The one failure is `PSFCalculator`, which
+Current result: **19/20 tours clean**. The one failure is `PSFCalculator`, which
 aborts on plain construction under the offscreen platform for OpenGL reasons
 that predate this work — see
 [known issues](/references/known-issues.md). Its shipped tour is therefore
@@ -80,8 +82,8 @@ thing and that the prose belongs where it sits.
 
 **Next, in priority order** (the user's order: most-used analysis tools first):
 
-1. **`irf_estimator`, `maxent_decay`, `tr_anisotropy`, `synthetic_decay`** — the
-   decay group. `synthetic_decay` simulates, so again a known-answer tour.
+1. **`irf_estimator`, `maxent_decay`** — the rest of the decay group
+   (`synthetic_decay` and `tr_anisotropy` are done).
 2. **`microscopy/img_*`** — six of them already have `help.md` and need only a
    `guide.json`, which is the cheapest remaining work in the list:
    `img_coloc`, `img_drift`, `img_frc`, `img_tracking`, plus `rics_precision`
@@ -129,6 +131,12 @@ See [change tracking](/workflows/change-tracking.md).
   it had when it was closed. `unresolved=[]` and the spotlight lands on a
   rectangle of unrelated panel. Only the PNG showed it. `_resolve_tab` now calls
   `DockArea.showTab` before returning such a page.
+* **A wizard step must move the *nav list*, not the stack.** An AutoForm wizard
+  is a nav list driving a `QStackedWidget`, and the list is what updates the
+  page, the title and the subtitle together. Setting the stack directly showed
+  the anisotropy wizard's g-factor fields under the heading **"Welcome"** — a
+  window contradicting itself, which reads as a bug in the tool rather than in
+  the tour. `_reveal` now selects the row.
 * **And the bubble itself can cover what the step points at.** When a tall
   bubble, a short window and a full-width target row leave no candidate position
   clear of the target, some overlap is unavoidable — minimum overlap alone then

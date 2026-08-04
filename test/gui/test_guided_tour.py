@@ -341,3 +341,58 @@ def test_an_unavoidable_overlap_spares_the_target_top_left(qapp):
         "the bubble covers the target's top-left corner — the controls"
     )
     host.close()
+
+
+def test_a_step_moves_a_wizard_through_its_nav_list(qapp):
+    """A wizard step must change the heading too, not just the page.
+
+    An AutoForm wizard is a nav list driving a ``QStackedWidget``, and the *list*
+    is what updates the page, the title and the subtitle together. Setting the
+    stack directly showed the right controls under the previous step's heading —
+    which reads as a bug in the tool rather than in the tour. Seen on the
+    anisotropy wizard: the g-factor fields appeared under "Welcome".
+    """
+
+    class _Wizard(QtWidgets.QWidget):
+        """The shape WizardSection has: a nav list beside a stack."""
+
+        def __init__(self):
+            super().__init__()
+            row = QtWidgets.QHBoxLayout(self)
+            self.nav_list = QtWidgets.QListWidget()
+            self.stack = QtWidgets.QStackedWidget()
+            self.heading = QtWidgets.QLabel()
+            for name in ("Welcome", "Corrections"):
+                self.nav_list.addItem(name)
+                page = QtWidgets.QWidget()
+                QtWidgets.QVBoxLayout(page).addWidget(QtWidgets.QDoubleSpinBox())
+                self.stack.addWidget(page)
+            row.addWidget(self.nav_list)
+            row.addWidget(self.stack)
+            self.nav_list.currentRowChanged.connect(self._on_nav)
+            self.nav_list.setCurrentRow(0)
+
+        def _on_nav(self, index: int) -> None:
+            self.stack.setCurrentIndex(index)
+            self.heading.setText(self.nav_list.item(index).text())
+
+    window = QtWidgets.QMainWindow()
+    wizard = _Wizard()
+    window.setCentralWidget(wizard)
+    window.resize(600, 400)
+    window.show()
+    QtWidgets.QApplication.processEvents()
+
+    target = wizard.stack.widget(1).findChild(QtWidgets.QDoubleSpinBox)
+    target.setObjectName("g_factor")
+    assert wizard.nav_list.currentRow() == 0
+
+    tour = GuidedTour(window, [TourStep(title="t", text="x", target={"name": "g_factor"})])
+    tour.start()
+
+    assert wizard.nav_list.currentRow() == 1, "the nav list did not follow the step"
+    assert wizard.heading.text() == "Corrections", (
+        "the page changed but the heading did not — the window contradicts itself"
+    )
+    tour.stop()
+    window.close()

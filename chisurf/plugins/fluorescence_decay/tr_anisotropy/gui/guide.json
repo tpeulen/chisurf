@@ -1,0 +1,48 @@
+{
+  "_comment": "Guided tour for the time-resolved anisotropy wizard. The UI is a declarative AutoForm *wizard* (anisotropy.view.json), so steps target the bound attributes of individual wizard steps; the tour follows the same order the wizard does. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Two decays, one fit — not a ratio",
+      "text": "Excite vertically, detect through a polariser: <b>VV</b> (parallel) and <b>VH</b> (perpendicular). Right after the pulse the excited molecules are photoselected along the excitation axis, so VV exceeds VH; as they rotate the two converge, and that convergence is the rotational correlation time.<br/><br/>ChiSurf does <b>not</b> fit r(t). It fits VV and VH themselves, <i>linked</i>, sharing one lifetime spectrum and one rotational spectrum — because forming the ratio first destroys the Poisson statistics the weighting depends on.<br/><br/>Six steps, in the order the wizard runs.",
+      "target": {}
+    },
+    {
+      "title": "Four files, and they must be the same measurement",
+      "text": "An IRF and a decay for each polarisation. All four are read on the same time axis, and the fit assumes they were taken under the same conditions.<br/><br/>The one to watch: <b>a timing shift between the VV and VH channels mimics a fast rotational component</b>, because the early part of the decay is exactly where photoselection shows. If the two detectors have different cable lengths or different IRF positions, that difference arrives as physics.",
+      "target": {
+        "attr": "data_vv_path"
+      },
+      "await": {
+        "hint": "Choose the four polarisation-resolved files."
+      }
+    },
+    {
+      "title": "Background is unpolarised, and that is the problem",
+      "text": "Background enters VV and VH <b>equally</b>, so it pulls their ratio toward 1 — toward <i>zero</i> anisotropy. And it does this most severely in the tail, exactly where slow rotation lives.<br/><br/>That is why this is a step of its own rather than a checkbox: pick a region that is genuinely dark, because a region containing signal subtracts signal. The IRFs are then background-subtracted and intensity-matched to each other.",
+      "target": {
+        "panel": "Normalize IRF"
+      }
+    },
+    {
+      "title": "g scales every anisotropy you will report",
+      "text": "<b>g = S_VV/S_VH</b> is the instrument's detection bias between the two polarisations — gratings and detectors are not polarisation-neutral. It multiplies I_VH throughout, so it scales r(t) <i>as a whole</i>: a 10 % error in g is roughly 10 % in every anisotropy, r₀ included.<br/><br/>Measure it — tail-matching on a fast-rotating dye, or horizontal excitation — rather than leaving it at 1.0.<br/><br/><b>l1</b> and <b>l2</b> are the channel-mixing factors of a high-aperture objective: a large collection angle mixes the polarisations geometrically and <b>compresses</b> the measured anisotropy toward zero. Zero is the right value only on a low-NA setup; leaving them at zero on a high-NA one reports a smaller r₀ than the sample has.",
+      "target": {
+        "attr": "g_factor"
+      }
+    },
+    {
+      "title": "One lifetime spectrum, one rotation spectrum, shared",
+      "text": "This is what makes it a <i>global</i> fit: both decays are described by the same components, and only the polarisation algebra differs between them.<br/><br/>Keep in mind what the rotation times can mean. ρ = ηV/kT, so a 30 kDa protein in water at 20 °C rotates in roughly <b>10 ns</b> — and a rotation much slower than the fluorescence lifetime is <b>invisible</b>: the molecules have not turned appreciably before they stop emitting, and the fit returns it as a constant offset rather than a decay.<br/><br/>That is the honest limit of the method. The accessible window is set by the lifetime, and only a longer-lived probe widens it.",
+      "target": {
+        "panel": "Components"
+      }
+    },
+    {
+      "title": "Create the fit, then check r₀ first",
+      "text": "This builds the linked VV/VH global fit and hands it to ChiSurf.<br/><br/>The first number to look at is <b>r₀</b>. It should be at or below the theoretical <b>0.4</b> for a collinear absorption and emission dipole. A fitted r₀ <i>well above</i> 0.4 is not a discovery — it is a g-factor or a background error, and everything else in the fit is then suspect.<br/><br/>Then: are l1/l2 right for the objective? Was the background region genuinely dark? Is the slow rotational component slower than the lifetime — in which case it is extrapolated rather than measured?<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "panel": "Finish"
+      }
+    }
+  ]
+}
