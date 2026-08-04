@@ -193,6 +193,39 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The second smFRET simulator is retired; there is one now.**
+  ([MFD fitting](../docs/concepts/mfd_fitting.md))
+  `core/fluorescence/mfd/simulate.py` (709 lines) and its hand-rolled physics are
+  gone, and `test_mfd_simulation.py` — the sources, the uncertainties, the
+  pooled-decay discrimination and the anisotropy axis — now runs on the confocal
+  simulator in the TTTR library.
+
+  Its stated value was being an *independent route* from the model, and that
+  survives the deletion rather than being spent by it: the surviving simulator is
+  a different repository, language and author, which is a stronger separation than
+  a second file in this tree ever was.
+
+  Two small things moved onto the survivor to make the port possible, both worth
+  having anyway: `rate_matrix_for`/`REGIMES`, which name an exchange regime in
+  **transitions per burst** because a rate means nothing without a duration, and
+  `true_responses()`, which hands a fit the declared instrument instead of the
+  contaminated estimate. `true_responses` is checked against the photons rather
+  than assumed — the reconstruction was wrong twice before it was right (a
+  periodic wrap the simulator does not apply, and a background rate off by
+  1/`dt`), and both would have quietly shifted every "is the estimate
+  contaminated?" conclusion that is read against it.
+
+  One regression number moved and was re-derived, not adjusted: the pooled-decay
+  discrimination margin was 1.3 on the old data and measures 1.23 (exchange) and
+  1.45 (static) on the new, because the burst-size distribution differs and the
+  discrimination scales with photons. The *direction* is unchanged — the right
+  model wins on the right data both ways round — so the threshold is now 1.15,
+  below the weaker of the two, where a coin flip would be 1.0.
+
+  `examples/mfd_dynamics_timescales.py` runs the four regimes end to end on the
+  new path: 0 → 37, 50 → 80, 1500 → 1474, 60000 → 62960 /s, with the dynamic
+  bridge filling 1.9% → 3.4% → 29.1% → 75.3%.
+
 * **The lifetime-FCS simulator's `seed` argument never did anything.**
   ([shim](../chisurf/core/fluorescence/simulation/rng.py)) Its settings block said
   `"seed"`, which the engine does not read — it takes `seed_diffusion` and

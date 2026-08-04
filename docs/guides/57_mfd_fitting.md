@@ -133,16 +133,16 @@ You do not need a measurement to learn what the three regimes look like. The
 simulator writes a real burst folder, so it goes through everything above:
 
 ```python
-from chisurf.core.fluorescence.mfd.simulate import (
-    SimulationParameters, rate_matrix_for, simulate_mfd)
+from chisurf.core.fluorescence.burst.simulate import (
+    rate_matrix_for, simulate_smfret)
 
-parameters = SimulationParameters(
-    n_bursts=3000,
+simulated = simulate_smfret(
+    alex=False, polarized=True,                       # single laser, MFD detectors
+    efficiencies=(0.786, 0.152), donor_only=0.15,
+    n_photons=360_000, irf_centre=1.2, irf_width=0.09,
     rate_matrix=rate_matrix_for("intermediate", mean_duration=2e-3),
 )
-simulated = simulate_mfd(parameters)
 folder = simulated.write_folder("/tmp/mfd-demo")     # load this like any folder
-print(simulated.truth)                                # what generated it
 ```
 
 Regimes are named in **transitions per burst** — `"static"`, `"slow"`,

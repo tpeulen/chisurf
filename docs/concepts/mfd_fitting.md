@@ -180,7 +180,7 @@ and every dynamics result built on it would inherit that.
 ## Testing it against simulated dynamics
 
 Real measurements with an independently known exchange rate are rare, so ChiSurf
-ships a generator: `chisurf.core.fluorescence.mfd.simulate` produces smFRET bursts
+ships a generator: `chisurf.core.fluorescence.burst.simulate` produces smFRET bursts
 with exchange on a chosen timescale and writes them as a real burst-analysis folder,
 which then loads through the ordinary reader like any measurement.
 

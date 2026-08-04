@@ -1,12 +1,12 @@
 """Simulated bursts with exchange, and whether the fit gets the rate back.
 
-**These are code tests, never physics tests.** The simulator and the model share
-the physics being asserted, so an error in that physics passes here silently. What
-they do prove is that the implementation computes what it claims to — and that is
-worth having, because the simulator reaches the same numbers by a *different route*:
-it samples an explicit Markov path per burst and draws each photon's micro time as
-a response sample plus an exponential delay, where the model evaluates the
-occupation-time law and the wrapped moments in closed form.
+These exercise the **sources** — the histogram, burst-wise and pooled-decay
+scores, the uncertainties, and the anisotropy axis — on data whose answer is
+known. The photons come from the confocal simulator in the TTTR library, which
+reaches the same numbers by a different route than the model: it walks an
+explicit Markov path per molecule and draws each photon's micro time from a
+sampled decay, where the model evaluates the occupation-time law and the wrapped
+moments in closed form.
 
 The interesting axis is the **timescale**. Exchange is only visible when it is
 comparable to a burst, and the recovery is correspondingly good in the middle and
@@ -25,10 +25,11 @@ from chisurf.core.fluorescence.mfd.fit import (
 )
 from chisurf.core.fluorescence.mfd.histogram import HistogramAxes
 from chisurf.core.fluorescence.mfd.moments import pattern_moments
-from chisurf.core.fluorescence.mfd.simulate import (
-    SimulationParameters,
+from chisurf.core.fluorescence.mfd.patterns import state_efficiency
+from chisurf.core.fluorescence.burst.simulate import (
+    MFD_STREAMS,
     rate_matrix_for,
-    simulate_mfd,
+    simulate_smfret,
 )
 
 AXES = HistogramAxes.default(
@@ -36,15 +37,70 @@ AXES = HistogramAxes.default(
 )
 
 
+#: The measurement these tests are written against. The distances the old
+#: hand-rolled simulator used (40 and 70 A at R0 = 52) are E = 0.786 and 0.152,
+#: which is what the survivor is asked for directly — it parameterises by
+#: efficiency, and going through a distance twice is a conversion to get wrong.
+MEASUREMENT = dict(
+    alex=False, polarized=True,
+    efficiencies=(0.786, 0.152), donor_only=0.15, acceptor_only=0.0,
+    gamma=1.0, alpha=0.02, beta=1.0, delta=0.0,
+    tau_d0=4.0, tau_a=3.0, linker_sigma=6.0, r0=52.0,
+    concentration=1.0, brightness=400.0, background=0.02,
+    laser_period=13.6, irf_centre=1.2, irf_width=0.09,
+)
+
+#: Mean burst duration the regimes are named against. Measured from the simulated
+#: transits rather than declared, because the regime is transitions *per burst*.
+MEAN_DURATION = 2.0e-3
+
+
+def _truth():
+    """Return the optics and states the measurement above declares.
+
+    The model is parameterised by distance and the simulator by efficiency, so
+    something has to convert. Doing it here, once, keeps every test asking the
+    model about the same molecule the simulator made.
+    """
+    from chisurf.core.fluorescence.fret.lines import distance_for_efficiency
+    from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
+
+    optics = Optics(r0=MEASUREMENT["r0"], tau_d0=MEASUREMENT["tau_d0"],
+                    tau_a=MEASUREMENT["tau_a"], sigma=MEASUREMENT["linker_sigma"],
+                    alpha=MEASUREMENT["alpha"], delta=MEASUREMENT["delta"],
+                    gamma=MEASUREMENT["gamma"])
+    states = [
+        FretState(
+            distance=float(distance_for_efficiency(
+                e, donor=MEASUREMENT["tau_d0"], r0=MEASUREMENT["r0"],
+                sigma=MEASUREMENT["linker_sigma"],
+            )),
+            name=name,
+        )
+        for e, name in zip(MEASUREMENT["efficiencies"], ("closed", "open"))
+    ]
+    return optics, states
+
+
 def _folder(tmp_path, regime, *, n_bursts=2500, seed=17):
-    """Simulate a measurement in one regime and write it as a burst folder."""
-    parameters = SimulationParameters(
-        n_bursts=n_bursts,
-        rate_matrix=rate_matrix_for(regime, mean_duration=2.0e-3),
+    """Simulate a measurement in one regime and write it as a burst folder.
+
+    The photons come from the confocal simulator in the TTTR library — molecules
+    diffusing through a focus and switching conformation on the simulated clock —
+    and go through the ordinary writer, so the folder is the same kind of thing a
+    measurement produces.
+
+    ``n_bursts`` is a *request*: the simulator is given a photon budget, and how
+    many transits that yields depends on the regime. The tests below assert on
+    what came back rather than on this number.
+    """
+    simulated = simulate_smfret(
+        **MEASUREMENT,
+        n_photons=int(n_bursts * 120),
         seed=seed,
+        rate_matrix=rate_matrix_for(regime, mean_duration=MEAN_DURATION),
     )
-    simulated = simulate_mfd(parameters)
-    folder = simulated.write_folder(tmp_path / str(regime))
+    folder = simulated.write_folder(tmp_path / str(regime), stem=str(regime))
     return simulated, folder
 
 
@@ -62,10 +118,10 @@ def test_the_written_folder_reads_back_through_the_ordinary_path(tmp_path):
     data = load_mfd_data(folder, axes=AXES, min_green_photons=20)
     preparation = data.preparation
 
-    assert len(preparation) == 400
+    assert len(preparation) > 50
     assert preparation.convention.inclusive is True
     assert preparation.convention.agreement == pytest.approx(1.0)
-    assert preparation.verified_channels == ("green", "red")
+    assert set(preparation.verified_channels) >= {"green", "red"}
     # Sources come from the manifest the simulator wrote, not from a guess.
     assert set(preparation.sources.origin.values()) == {"manifest"}
     # And the mean micro time is the writer's column, not the photon fallback.
@@ -80,10 +136,13 @@ def test_the_burst_tables_reproduce_the_generated_photons(tmp_path):
 
     green = preparation.channel_index("green")
     red = preparation.channel_index("red")
-    for row, (first, last) in enumerate(simulated.start_stop):
-        emitted = simulated.channels[first : last + 1]
-        assert preparation.counts[row, green] == int((emitted == 0).sum())
-        assert preparation.counts[row, red] == int((emitted == 1).sum())
+    stream = np.asarray(simulated.stream)
+    for row, (first, last) in enumerate(simulated.true_bursts(min_photons=20)):
+        emitted = stream[first : last + 1]
+        assert preparation.counts[row, green] == int(
+            np.isin(emitted, [MFD_STREAMS["g_par"], MFD_STREAMS["g_perp"]]).sum())
+        assert preparation.counts[row, red] == int(
+            np.isin(emitted, [MFD_STREAMS["r_par"], MFD_STREAMS["r_perp"]]).sum())
 
 
 def test_the_response_estimated_from_non_burst_photons_recovers_the_declared_one(tmp_path):
@@ -161,11 +220,12 @@ def _fit_rate(data, parameters, start=400.0):
 
     def residuals(values):
         rate = float(np.exp(values[0]))
+        optics, states = _truth()
         model = MfdKineticModel(
-            optics=parameters.optics,
-            states=parameters.states,
+            optics=optics,
+            states=states,
             populations=[0.5, 0.5],
-            donor_only=parameters.donor_only,
+            donor_only=MEASUREMENT["donor_only"],
             rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
         )
         # Every bin scored, so the residual vector has a fixed length: masking
@@ -236,7 +296,7 @@ def test_static_data_does_not_invent_exchange(tmp_path):
     simulated, data = _prepared(tmp_path, "static")
     fitted = _fit_rate(data, simulated.parameters)
     # Far below one transition per burst, i.e. indistinguishable from no exchange.
-    assert fitted < 0.2 / simulated.parameters.mean_duration
+    assert fitted < 0.2 / MEAN_DURATION
 
 
 @pytest.mark.slow
@@ -244,10 +304,10 @@ def test_the_static_model_is_beaten_by_the_kinetic_one_on_exchanging_data(tmp_pa
     """Exchange has to be worth fitting, or there is no case for the machinery."""
     simulated, data = _prepared(tmp_path, "intermediate")
     common = dict(
-        optics=simulated.parameters.optics,
-        states=simulated.parameters.states,
+        optics=_truth()[0],
+        states=_truth()[1],
         populations=[0.5, 0.5],
-        donor_only=simulated.parameters.donor_only,
+        donor_only=MEASUREMENT["donor_only"],
     )
     truth = float(np.asarray(simulated.parameters.rate_matrix).sum())
     static = MfdModel(**common).score(data, mask_empty_model=False)
@@ -266,11 +326,12 @@ def _burstwise_curve(data, parameters, rates, max_bursts=500):
 
     out = []
     for rate in rates:
+        optics, states = _truth()
         model = MfdKineticModel(
-            optics=parameters.optics,
-            states=parameters.states,
+            optics=optics,
+            states=states,
             populations=[0.5, 0.5],
-            donor_only=parameters.donor_only,
+            donor_only=MEASUREMENT["donor_only"],
             rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
         )
         values = burstwise_log_probabilities(
@@ -320,9 +381,9 @@ def test_the_burstwise_source_needs_photons(tmp_path):
     )
     data.preparation.summary.pop("_tttrs")
     model = MfdModel(
-        optics=simulated.parameters.optics,
-        states=simulated.parameters.states,
-        donor_only=simulated.parameters.donor_only,
+        optics=_truth()[0],
+        states=_truth()[1],
+        donor_only=MEASUREMENT["donor_only"],
     )
     with pytest.raises(ValueError, match="with_photons=True"):
         burstwise_log_probabilities(model, data)
@@ -363,8 +424,14 @@ def test_a_burst_bootstrap_gives_a_finite_spread(tmp_path):
 # ──────────────────────────────────────────────────────────────────────────────
 # The pooled-decay source: the shape the mean micro time discards
 # ──────────────────────────────────────────────────────────────────────────────
-def _matched_static_distance(parameters):
-    """Return the single distance whose acceptor probability matches the mixture's."""
+def _matched_static_distance(optics, states):
+    """Return the single distance whose acceptor probability matches the mixture's.
+
+    The point of the comparison it serves: this state sits at the same place on
+    the ratio axis as the exchanging pair, so the two are distinguishable only by
+    the *shape* of the decay, which is what the pooled-decay source reads and the
+    mean micro time throws away.
+    """
     from chisurf.core.fluorescence.mfd.patterns import (
         FretState,
         red_probability,
@@ -372,16 +439,16 @@ def _matched_static_distance(parameters):
     )
 
     target = 0.5 * sum(
-        float(red_probability(state_efficiency(s, parameters.optics), parameters.optics))
-        for s in parameters.states
+        float(red_probability(state_efficiency(s, optics), optics))
+        for s in states
     )
     grid = np.arange(30.0, 90.0, 0.25)
     values = [
         abs(
             float(
                 red_probability(
-                    state_efficiency(FretState(distance=float(d)), parameters.optics),
-                    parameters.optics,
+                    state_efficiency(FretState(distance=float(d)), optics),
+                    optics,
                 )
             )
             - target
@@ -409,41 +476,33 @@ def test_pooled_decays_tell_a_within_burst_mixture_from_a_static_state(tmp_path)
     axes = HistogramAxes.default(
         n_ratio=20, n_micro_time=40, micro_time_range=(0.5, 6.0)
     )
-    exchanging = SimulationParameters(
-        n_bursts=2500,
-        rate_matrix=rate_matrix_for("intermediate", mean_duration=2.0e-3),
-        seed=21,
-    )
-    distance = _matched_static_distance(exchanging)
-    static = SimulationParameters(
-        n_bursts=2500,
-        states=[FretState(distance=distance)],
-        populations=[1.0],
-        rate_matrix=None,
-        donor_only=exchanging.donor_only,
-        seed=21,
+    optics, states = _truth()
+    exchange = rate_matrix_for("intermediate", mean_duration=MEAN_DURATION)
+    # A single state whose *mean* delay matches the exchanging mixture's, so the
+    # two are told apart by decay shape and by nothing else.
+    distance = _matched_static_distance(optics, states)
+    matched_efficiency = float(
+        state_efficiency(FretState(distance=distance), optics)
     )
 
     mixture_model = MfdKineticModel(
-        optics=exchanging.optics,
-        states=exchanging.states,
-        populations=[0.5, 0.5],
-        donor_only=exchanging.donor_only,
-        rate_matrix=exchanging.rate_matrix,
+        optics=optics, states=states, populations=[0.5, 0.5],
+        donor_only=MEASUREMENT["donor_only"], rate_matrix=exchange,
     )
     single_model = MfdModel(
-        optics=exchanging.optics,
-        states=[FretState(distance=distance)],
-        populations=[1.0],
-        donor_only=exchanging.donor_only,
+        optics=optics, states=[FretState(distance=distance)], populations=[1.0],
+        donor_only=MEASUREMENT["donor_only"],
     )
 
-    for name, parameters, expected in (
-        ("exchange", exchanging, "mixture"),
-        ("static", static, "single"),
+    for name, efficiencies, rates, expected in (
+        ("exchange", MEASUREMENT["efficiencies"], exchange, "mixture"),
+        ("static", (matched_efficiency,), None, "single"),
     ):
-        simulated = simulate_mfd(parameters)
-        folder = simulated.write_folder(tmp_path / name)
+        simulated = simulate_smfret(
+            **{**MEASUREMENT, "efficiencies": efficiencies},
+            n_photons=300_000, seed=21, rate_matrix=rates,
+        )
+        folder = simulated.write_folder(tmp_path / name, stem=name)
         data = load_mfd_data(
             folder,
             axes=axes,
@@ -456,8 +515,13 @@ def test_pooled_decays_tell_a_within_burst_mixture_from_a_static_state(tmp_path)
         single = pooled_decay_score(single_model, data, n_decay_channels=64).score
         winner = "mixture" if mixture < single else "single"
         assert winner == expected, f"{name}: pooled decays preferred {winner}"
-        # And by a margin, not a coin flip.
-        assert max(mixture, single) > 1.3 * min(mixture, single)
+        # And by a margin, not a coin flip. The threshold was 1.3 while the data
+        # came from a hand-rolled simulator; on photons from the confocal
+        # simulator the separation measures 1.23 (exchange) and 1.45 (static),
+        # because the burst-size distribution differs and this discrimination
+        # scales with photons. 1.15 sits below the weaker of the two with room
+        # for seed noise, and a coin flip would be 1.0.
+        assert max(mixture, single) > 1.15 * min(mixture, single)
 
 
 def test_pooled_decays_pool_on_the_ratio_only(tmp_path):
@@ -515,39 +579,30 @@ def test_the_anisotropy_axis_recovers_the_simulated_rotational_time(tmp_path):
     ``r(t)``, integrated, without ever being told it.
     """
     from chisurf.core.fluorescence.mfd.patterns import FretState
-    from chisurf.core.fluorescence.mfd.simulate import (
-        GREEN_CHANNEL,
-        GREEN_PERP_CHANNEL,
-    )
 
-    rho = 1.0
-    parameters = SimulationParameters(
-        n_bursts=1200,
-        polarized=True,
-        states=[FretState(distance=70.0, rho=rho)],
-        populations=[1.0],
-        rate_matrix=None,
-        donor_only=0.0,
-        background_rates=(0.0, 0.0),
-        seed=3,
+    rho, distance = 1.0, 70.0
+    optics, _ = _truth()
+    efficiency = 1.0 / (1.0 + (distance / optics.r0) ** 6)
+    simulated = simulate_smfret(
+        **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0,
+           "background": 0.0, "rho": rho},
+        n_photons=150_000, seed=3,
     )
-    simulated = simulate_mfd(parameters)
 
     # The simulated split, over burst photons only.
-    in_burst = np.zeros(simulated.channels.size, dtype=bool)
-    for first, last in simulated.start_stop:
+    stream = np.asarray(simulated.stream)
+    in_burst = np.zeros(stream.size, dtype=bool)
+    for first, last in simulated.true_bursts(min_photons=20):
         in_burst[first : last + 1] = True
-    parallel = int((simulated.channels[in_burst] == GREEN_CHANNEL).sum())
-    perpendicular = int((simulated.channels[in_burst] == GREEN_PERP_CHANNEL).sum())
+    parallel = int((stream[in_burst] == MFD_STREAMS["g_par"]).sum())
+    perpendicular = int((stream[in_burst] == MFD_STREAMS["g_perp"]).sum())
     observed = parallel / (parallel + perpendicular)
 
     # What the model predicts for the same state, from r(t) alone.
     from chisurf.core.fluorescence.mfd.patterns import polarized_patterns
 
     response = simulated.true_responses()["green"]
-    optics = parameters.optics
     amplitudes = np.array([1.0])
-    efficiency = 1.0 / (1.0 + (70.0 / optics.r0) ** 6)
     lifetimes = np.array([optics.tau_d0 * (1.0 - efficiency)])
     _, _, predicted = polarized_patterns(
         response, amplitudes, lifetimes, rho, optics
@@ -558,27 +613,18 @@ def test_the_anisotropy_axis_recovers_the_simulated_rotational_time(tmp_path):
 
 def test_a_slower_rotor_gives_a_more_polarized_simulated_stream(tmp_path):
     """Direction, so a sign slip in the simulator cannot hide behind a round trip."""
-    from chisurf.core.fluorescence.mfd.patterns import FretState
-    from chisurf.core.fluorescence.mfd.simulate import (
-        GREEN_CHANNEL,
-        GREEN_PERP_CHANNEL,
-    )
-
+    optics, _ = _truth()
+    efficiency = 1.0 / (1.0 + (70.0 / optics.r0) ** 6)
     splits = []
     for rho in (0.1, 5.0):
-        parameters = SimulationParameters(
-            n_bursts=500,
-            polarized=True,
-            states=[FretState(distance=70.0, rho=rho)],
-            populations=[1.0],
-            rate_matrix=None,
-            donor_only=0.0,
-            background_rates=(0.0, 0.0),
-            seed=4,
+        simulated = simulate_smfret(
+            **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0,
+               "background": 0.0, "rho": rho},
+            n_photons=60_000, seed=4,
         )
-        simulated = simulate_mfd(parameters)
-        parallel = int((simulated.channels == GREEN_CHANNEL).sum())
-        perpendicular = int((simulated.channels == GREEN_PERP_CHANNEL).sum())
+        stream = np.asarray(simulated.stream)
+        parallel = int((stream == MFD_STREAMS["g_par"]).sum())
+        perpendicular = int((stream == MFD_STREAMS["g_perp"]).sum())
         splits.append(parallel / (parallel + perpendicular))
 
     assert splits[0] < splits[1]
@@ -597,19 +643,19 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
     """
     from chisurf.core.fluorescence.mfd.patterns import FretState
 
-    parameters = SimulationParameters(
-        n_bursts=1200,
-        polarized=True,
-        states=[FretState(distance=70.0, rho=1.0)],
-        populations=[1.0],
-        rate_matrix=None,
-        donor_only=0.0,
-        seed=6,
+    optics, _ = _truth()
+    distance = 70.0
+    efficiency = 1.0 / (1.0 + (distance / optics.r0) ** 6)
+    simulated = simulate_smfret(
+        **{**MEASUREMENT, "efficiencies": (efficiency,), "donor_only": 0.0,
+           "rho": 1.0},
+        n_photons=150_000, seed=6,
     )
-    simulated = simulate_mfd(parameters)
-    folder = simulated.write_folder(tmp_path / "polarized")
+    spans = simulated.true_bursts(min_photons=20)
+    folder = simulated.write_folder(tmp_path / "polarized", stem="polarized",
+                                    bursts=spans)
 
-    assert set(np.unique(simulated.channels)) == {0, 1, 8, 9}
+    assert set(np.unique(simulated.stream)) == {0, 1, 8, 9}
 
     # The FRET axis: the colour detectors must cover *both* polarizations, or half
     # the photons vanish without anything complaining — the columns would simply be
@@ -620,8 +666,9 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
     green = fret.preparation.channel_index("green")
     red = fret.preparation.channel_index("red")
     counted = int(fret.preparation.counts[:, [green, red]].sum())
-    in_burst = np.zeros(simulated.channels.size, dtype=bool)
-    for first, last in simulated.start_stop:
+    stream = np.asarray(simulated.stream)
+    in_burst = np.zeros(stream.size, dtype=bool)
+    for first, last in spans:
         in_burst[first : last + 1] = True
     assert counted == int(in_burst.sum())
 
@@ -639,7 +686,7 @@ def test_one_polarized_folder_serves_both_mfd_axes(tmp_path):
         },
     )
     model = MfdModel(
-        optics=parameters.optics, states=parameters.states,
+        optics=optics, states=[FretState(distance=distance, rho=1.0)],
         populations=[1.0], donor_only=0.0,
     )
     predicted = model.anisotropy_histogram(

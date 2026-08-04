@@ -30,10 +30,9 @@ from scipy.optimize import least_squares
 
 from chisurf.core.fluorescence.mfd.fit import MfdKineticModel, load_mfd_data
 from chisurf.core.fluorescence.mfd.histogram import HistogramAxes
-from chisurf.core.fluorescence.mfd.simulate import (
-    SimulationParameters,
+from chisurf.core.fluorescence.burst.simulate import (
     rate_matrix_for,
-    simulate_mfd,
+    simulate_smfret,
 )
 
 # Two conformations, 40 Å and 70 Å apart, seen through an ordinary confocal setup.
@@ -41,16 +40,38 @@ MEAN_DURATION = 2.0e-3  # seconds a molecule spends in the focus
 AXES = HistogramAxes.default(n_ratio=40, n_micro_time=40, micro_time_range=(0.5, 6.0))
 
 
-def fit_exchange_rate(data, parameters, start=400.0):
+#: The declared measurement, shared by the simulation and the model below so the
+#: example fits the rate against the molecule it actually made.
+EFFICIENCIES = (0.786, 0.152)
+DONOR_ONLY = 0.15
+OPTICS = dict(r0=52.0, tau_d0=4.0, tau_a=3.0, sigma=6.0, alpha=0.02,
+              delta=0.0, gamma=1.0)
+
+
+def truth_model():
+    """Return the optics and states the simulated measurement declares."""
+    from chisurf.core.fluorescence.fret.lines import distance_for_efficiency
+    from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
+
+    optics = Optics(**OPTICS)
+    states = [
+        FretState(distance=float(distance_for_efficiency(
+            e, donor=OPTICS["tau_d0"], r0=OPTICS["r0"], sigma=OPTICS["sigma"])))
+        for e in EFFICIENCIES
+    ]
+    return optics, states
+
+
+def fit_exchange_rate(data, start=400.0):
     """Fit the single exchange rate of a symmetric two-state scheme.
+
+    Everything except the rate is treated as known, so the example is about the
+    *rate* and nothing else can absorb the error.
 
     Parameters
     ----------
     data : chisurf.core.fluorescence.mfd.fit.MfdData
         The loaded measurement.
-    parameters : SimulationParameters
-        Used for the states and optics, which are treated as known here so the
-        example is about the *rate*.
     start : float
         Starting rate, per second.
 
@@ -62,11 +83,12 @@ def fit_exchange_rate(data, parameters, start=400.0):
 
     def residuals(values):
         rate = float(np.exp(values[0]))
+        optics, states = truth_model()
         model = MfdKineticModel(
-            optics=parameters.optics,
-            states=parameters.states,
+            optics=optics,
+            states=states,
             populations=[0.5, 0.5],
-            donor_only=parameters.donor_only,
+            donor_only=DONOR_ONLY,
             rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
         )
         # Score every bin, so the residual vector keeps a fixed length as the rate
@@ -96,13 +118,18 @@ def main():
         ("intermediate", 400.0),
         ("fast", 5000.0),
     ):
-        parameters = SimulationParameters(
-            n_bursts=3000,
+        simulated = simulate_smfret(
+            alex=False, polarized=True,
+            efficiencies=EFFICIENCIES, donor_only=DONOR_ONLY, acceptor_only=0.0,
+            gamma=OPTICS["gamma"], alpha=OPTICS["alpha"], beta=1.0,
+            delta=OPTICS["delta"], tau_d0=OPTICS["tau_d0"], tau_a=OPTICS["tau_a"],
+            linker_sigma=OPTICS["sigma"], r0=OPTICS["r0"],
+            concentration=1.0, brightness=400.0, background=0.02,
+            laser_period=13.6, irf_centre=1.2, irf_width=0.09,
+            n_photons=360_000, seed=17,
             rate_matrix=rate_matrix_for(regime, mean_duration=MEAN_DURATION),
-            seed=17,
         )
-        simulated = simulate_mfd(parameters)
-        folder = simulated.write_folder(workspace / regime)
+        folder = simulated.write_folder(workspace / regime, stem=regime)
 
         # The declared instrument response is used rather than the one estimated
         # from the non-burst photons. Both work, but the estimate is contaminated
@@ -121,12 +148,9 @@ def main():
         marginal = marginal / marginal.sum()
         gap = float(marginal[between].sum())
 
-        truth = (
-            0.0
-            if parameters.rate_matrix is None
-            else float(np.asarray(parameters.rate_matrix).sum())
-        )
-        fitted = fit_exchange_rate(data, parameters, start=start)
+        rates = rate_matrix_for(regime, mean_duration=MEAN_DURATION)
+        truth = 0.0 if rates is None else float(np.asarray(rates).sum())
+        fitted = fit_exchange_rate(data, start=start)
         print(
             f"{regime:<14}{truth:>10.0f} /s{fitted:>10.0f} /s{gap:>12.1%}"
         )

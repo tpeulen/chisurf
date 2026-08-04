@@ -93,7 +93,8 @@ from chisurf.core.fluorescence.fret.lines import (
     lifetime_averages,
 )
 
-__all__ = ["SmfretParameters", "SimulatedSmfret", "simulate_smfret", "MFD_STREAMS"]
+__all__ = ["SmfretParameters", "SimulatedSmfret", "simulate_smfret",
+           "MFD_STREAMS", "REGIMES", "rate_matrix_for"]
 
 #: Routing channel per (laser, detector) pair — the four ALEX photon streams.
 STREAMS = {"i_dd": 0, "i_da": 1, "i_ad": 2, "i_aa": 3}
@@ -112,6 +113,55 @@ _ENGINE_TO_MFD = np.array([
 #: so the two modes must interconvert much faster than the molecule emits; the
 #: rate is excitation-scaled, so this ratio holds everywhere in the focus.
 _PHOTOSELECTION_SPEED = 200.0
+
+
+#: Exchange regimes, named in **transitions per burst** rather than in Hz. A rate
+#: only means something relative to how long a molecule is watched: the same
+#: 1 kHz is static in a 0.1 ms burst and fully averaged in a 20 ms one, and it is
+#: the product that decides whether a fit can see the exchange at all.
+REGIMES: dict[str, float] = {
+    "static": 0.0,
+    "slow": 0.05,
+    "intermediate": 1.5,
+    "fast": 60.0,
+}
+
+
+def rate_matrix_for(regime, *, mean_duration: float, populations=(0.5, 0.5)):
+    """Return the two-state rate matrix giving a regime at a burst duration.
+
+    Exchange is only meaningful relative to the observation window, so a regime is
+    named in transitions per burst and converted here. The two rates are then fixed
+    by that total together with the equilibrium populations, which is the only way
+    to move the timescale without also moving the populations — vary one rate alone
+    and the fit sees a different mixture rather than a different speed.
+
+    Parameters
+    ----------
+    regime : str or float
+        A key of :data:`REGIMES`, or a number of transitions per burst.
+    mean_duration : float
+        Mean burst duration, seconds.
+    populations : sequence of float
+        Equilibrium populations of the two states.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        ``K[target, source]`` in Hz, or ``None`` for a static mixture.
+    """
+    per_burst = REGIMES[regime] if isinstance(regime, str) else float(regime)
+    if per_burst <= 0.0:
+        return None
+    weights = np.clip(np.asarray(populations, dtype=float), 1e-9, None)
+    weights = weights / weights.sum()
+    # Transitions per burst counts *both* directions, and the process spends
+    # populations[i] of its time in state i, so at equilibrium the observed
+    # transition rate of a two-state system is 2 * p0 * k01.
+    total = per_burst / float(mean_duration)
+    k01 = total / (2.0 * weights[0])
+    k10 = k01 * weights[0] / weights[1]
+    return np.array([[0.0, k10], [k01, 0.0]])
 
 
 @dataclass(frozen=True)
@@ -819,6 +869,53 @@ class SimulatedSmfret:
                     "micro_time_ranges": []},
             "green_par": {"chs": [MFD_STREAMS["g_par"]], "micro_time_ranges": []},
             "green_perp": {"chs": [MFD_STREAMS["g_perp"]], "micro_time_ranges": []},
+        }
+
+    def true_responses(self) -> dict:
+        """Return the instrument responses and background rates as *declared*.
+
+        Estimating the response from a measurement's own non-burst photons is what
+        a real folder has to do, and it is contaminated: molecules too dim to cross
+        the burst threshold are not detected, so their fluorescence lands in the
+        "non-burst" stream. That is a property of the *experiment* rather than of
+        this simulator — the same contamination is on real data — so being able to
+        hand a fit the declared response isolates whatever is under test from it,
+        and comparing the two *measures* the contamination instead of arguing
+        about it.
+
+        Returns
+        -------
+        dict
+            Detector name to
+            :class:`~chisurf.core.fluorescence.mfd.patterns.ChannelResponse`, for
+            every detector :meth:`detectors` defines.
+        """
+        from chisurf.core.fluorescence.mfd.patterns import ChannelResponse
+
+        params = self.parameters
+        dt = float(params.microtime_resolution)
+        pattern = params.irf_pattern()
+        if pattern is None:
+            # No instrument response was simulated, so the decay is unconvolved
+            # and the response is a delta at zero — not at ``irf_centre``, which
+            # only means something when there is a pulse to place.
+            irf = np.zeros(int(params.n_microtime_channels))
+            irf[0] = 1.0
+        else:
+            irf = np.asarray(pattern, dtype=float)
+
+        # ``background`` is photons per millisecond per *routing channel*, and a
+        # response wants counts per second in a *detector* — which covers one or
+        # more routing channels. Checked against a molecule-free run rather than
+        # derived: the engine's own key is documented per macro-time unit, and it
+        # is not.
+        per_channel = float(params.background) * 1e3
+        return {
+            name: ChannelResponse(
+                irf=irf.copy(), dt=dt,
+                background_rate=per_channel * len(definition["chs"]),
+            )
+            for name, definition in self.detectors().items()
         }
 
     def write_folder(self, directory: pathlib.Path | str, *, stem: str = "sim",
