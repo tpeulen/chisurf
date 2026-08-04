@@ -192,3 +192,67 @@ def test_the_non_burst_photons_are_the_complement_of_the_analysis(tmp_path):
     assert np.array_equal(mask, ~inside)
     # And it is a real split, not everything on one side.
     assert 0 < int(mask.sum()) < mask.size
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("rate", [1000.0, 5000.0])
+def test_photons_do_not_sample_a_burst_uniformly_in_time(rate):
+    """The photon-weighted state fraction is not the time-weighted one.
+
+    Both forward models — chisurf's closed-form path and the transcribed Sim2D
+    Monte Carlo — hand a burst's photons out over the states in proportion to the
+    *time* spent in each. A molecule is brightest at the centre of its transit,
+    so its photons over-sample whichever state it held then, and the effective
+    averaging window is shorter than the burst's first-to-last-photon span.
+
+    The consequence is a systematically **low** exchange rate: the observed
+    histogram is less averaged than the model predicts at the true rate, and the
+    fit compensates by lowering it. Measured at −20% (1 kHz) to −33% (5 kHz) with
+    a declared instrument response, identically in both engines — which is why
+    their agreement never exposed it.
+
+    This test pins the mechanism rather than the bias, because the mechanism is
+    what a fix has to address: time-weighted occupancy must track the closed form,
+    and photon-weighted occupancy must sit measurably above it.
+    """
+    from chisurf.core.fluorescence.mfd.occupation import two_state_occupation_variance
+
+    matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
+    sim = simulate_smfret(**{**MFD, "n_photons": 300_000, "donor_only": 0.05},
+                          rate_matrix=matrix)
+    species = np.asarray(sim.species)
+    molecule = np.asarray(sim.molecule)
+    resolution = float(sim.tttr.header.macro_time_resolution)
+    macro = np.asarray(sim.tttr.macro_times, dtype=float) * resolution
+
+    photon_f, time_f, expected = [], [], []
+    for a, b in sim.true_bursts(min_photons=20):
+        state, who = species[a:b + 1], molecule[a:b + 1]
+        real = state >= 0
+        if real.sum() < 20 or len(set(who[real].tolist())) != 1:
+            continue
+        state, times = state[real], macro[a:b + 1][real]
+        if np.any(state == 2):  # a donor-only molecule has nothing to exchange
+            continue
+        gaps = np.diff(times)
+        if gaps.sum() <= 0:
+            continue
+        photon_f.append(float((state == 0).mean()))
+        time_f.append(float(gaps[state[:-1] == 0].sum() / gaps.sum()))
+        # Var(f | T) is convex in T, so the closed form has to be averaged over the
+        # durations actually seen, not evaluated at their mean.
+        expected.append(two_state_occupation_variance(matrix, float(times[-1] - times[0]))[1])
+
+    assert len(photon_f) > 500
+    reference = float(np.mean(expected))
+    by_time = float(np.var(time_f))
+    by_photon = float(np.var(photon_f))
+
+    # Neither number is asserted against the closed form tightly, because the
+    # time-weighted estimate is itself photon-limited: a dwell's trailing gap is
+    # credited to it, which inflates it a little and more so when the exchange is
+    # fast. What is asserted is the *contrast*, which is the claim — time-weighted
+    # occupancy tracks the closed form, photon-weighted occupancy does not.
+    assert by_time == pytest.approx(reference, rel=0.2)
+    assert abs(by_time - reference) < 0.5 * abs(by_photon - reference)
+    assert by_photon > by_time

@@ -61,6 +61,36 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **Why 2D-MFD exchange rates come back low, and why both forward models agree
+  about it.** ([known issues](references/known-issues.md), [PRD-71](prds/prd-71.md))
+  A fitted rate is 20–35% low on ground truth, growing with the rate. Eliminated
+  by measurement, each with the instrument response *declared* so it cannot
+  contribute: the instrument (a perfect response changes nothing), the
+  burst-duration binning (6 → 40 span bins: 0.7%), the occupation-node coarsening
+  (16 → 200: identical), the pinned optics (the benchmark's distances gave
+  E = 0.190/0.843 where the simulator generates 0.2/0.8, and the model carried
+  6 Å of static width the data has none of — fixing both improves the deviance
+  823 → 675 and leaves the bias), and the analytic approximations as a class,
+  because the transcribed Sim2D Monte Carlo makes none of them and has the same
+  bias.
+
+  What is left is the one assumption both share: photons are handed out over the
+  states in proportion to the *time* spent in each. A molecule is brightest at
+  the centre of its transit, so its photons over-sample whichever state it held
+  then, and the effective averaging window is shorter than the burst span.
+  Measured on the state log against the closed-form occupation variance averaged
+  over the real durations, the time-weighted occupancy tracks it (1.005× at 1 kHz,
+  1.057× at 5 kHz) and the photon-weighted one does not (1.095×, 1.324×) — an
+  excess that grows with the rate exactly as the bias does. So the observed
+  histogram is less averaged than the model predicts at the true rate, and the fit
+  lowers the rate to compensate.
+
+  This answers the original question in a way that was not the expected answer:
+  **Sim2D's simplicity does not rescue it**. The faithful transcription carries
+  the identical bias, which is also why the two engines agreeing was never
+  evidence. Pinned by a slow test asserting the *mechanism* rather than the bias,
+  since the mechanism is what a fix has to address. Not fixed here.
+
 * **The response is estimated from the reverse of the burst cut, not from a
   second burst search.** ([MFD fitting](../docs/concepts/mfd_fitting.md))
   `estimate_responses` re-ran a burst search at its own defaults — 60 photons,

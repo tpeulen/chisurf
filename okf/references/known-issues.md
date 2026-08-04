@@ -1448,3 +1448,49 @@ member suffix.
 *Lesson worth keeping:* a test that has never passed is not evidence of a
 regression, and reading it as one sends you looking for a bug that is not there.
 Six of these ten described a system nobody had built.
+
+## 2D-MFD exchange rates come back ~20–35% low
+
+**Open.** A fitted exchange rate is biased low, from −20% at 1 kHz to −33% at
+5 kHz on ground-truth simulated data. Everything else about the fit is sound; the
+bias is in one shared assumption, and knowing which one is the point of this entry.
+
+Ruled out, each by measurement, with the instrument response *declared* rather
+than estimated so it cannot contribute:
+
+* the instrument — a perfect response leaves the bias unchanged;
+* the burst-duration binning — 6 → 40 span bins moves the answer 0.7%;
+* the occupation-node coarsening — 16 → 200 nodes is identical;
+* the analytic approximations as a class — the transcribed Sim2D Monte Carlo,
+  which makes none of them, has the *same* bias;
+* the pinned optics — correcting the benchmark's distances (they gave E = 0.190
+  and 0.843 where the simulator generates 0.2 and 0.8) and removing a static
+  6 Å width improves the deviance from 823 to 675 and leaves the bias.
+
+**The cause.** Both forward models hand a burst's photons out over the states in
+proportion to the *time* spent in each. A molecule is brightest at the centre of
+its transit, so its photons over-sample whichever state it held then: the
+effective averaging window is shorter than the burst's first-to-last-photon span.
+Measured on the state log over the bursts the fit actually sees, against the
+closed-form occupation variance averaged over the real durations:
+
+| exchange | time-weighted | photon-weighted |
+|---|---|---|
+| 1 kHz | 1.005× | 1.095× |
+| 5 kHz | 1.057× | 1.324× |
+
+The time-weighted occupancy tracks the closed form, so the simulator's kinetics
+and the propagator are both right. The photon-weighted one does not, and its
+excess grows with the rate exactly as the recovery bias does. The observed
+histogram is therefore *less* averaged than the model predicts at the true rate,
+and the fit compensates by lowering it.
+
+This is shared by chisurf's closed-form path and by Sim2D, which is why the two
+agree with each other and why their agreement never exposed it — and why "Sim2D
+was simpler" does not rescue it either.
+
+Pinned by `test_photons_do_not_sample_a_burst_uniformly_in_time`
+(`test/fluorescence/test_mfd_ground_truth.py`, slow), which asserts the mechanism
+rather than the bias, because the mechanism is what a fix has to address. A fix
+means weighting the occupation law by the burst's own brightness profile instead
+of by time; it is not attempted here.
