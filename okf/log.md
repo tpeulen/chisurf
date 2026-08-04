@@ -261,6 +261,26 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **A paired PRD for the last HMM: chisurf [PRD-77](prds/prd-77.md) ↔ tttrlib PRD-013.**
+  The photon-by-photon HMM already delegates; `core/math/hmm.py`'s `GaussianHMM` — the
+  binned-trace model behind ebFRET — is the last one implementing its own inference.
+  It cannot simply move, because the two are **different models**: one observation is a
+  photon with a stream label, the other a time bin with a continuous value, and the
+  library has no Gaussian emission.
+
+  tttrlib PRD-013 adds one. The estimate rests on a property PRD-011 recorded — the
+  forward, backward, Viterbi and FFBS passes touch emission through exactly one point —
+  which makes this a new *likelihood* rather than a new HMM. Confirming that seam is its
+  first goal, because if the alphabet turns out to be baked into the forward pass the
+  work is a different size.
+
+  Written as a pair on purpose: PRD-013 has no consumer alone and PRD-77 removes a working
+  capability alone. And PRD-77 does **not** start by deleting: `GaussianHMM` is 1.1–18×
+  faster per E-step than the `hmmlearn` it replaced, so it is the faster implementation of
+  its model — exactly the case where migrating on tidiness makes things worse, as
+  `_fast_simulate` showed. It migrates only if a ground-truth recovery **and** a benchmark
+  both say so.
+
 * **The surrogate's second sampler is gone too.** `_fast_simulate` drew the
   hidden state from the cached interval propagator `A^Δt` instead of advancing
   tick by tick, and existed for a stated reason: the shared sampler was
