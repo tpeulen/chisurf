@@ -64,7 +64,8 @@ all is left in it**: a custom section may pair its action with a status label,
 and hiding the container took the status line with it.
 
 **Still to promote** (their buttons carry no `action` tag yet, so each needs one
-line where the button is built): `fcs_merger`'s *save* (a `.ui` `toolButton_3`),
+line where the button is built): `fcs_merger`'s *save* (a `.ui` `toolButton_3` —
+tracked instead as an AutoForm port, [INC-13](/specs/assessment.md#inc-13)),
 `fcs_calculator`'s JSON import/export — its *Apply Dref* / *Apply shape* are
 section-scoped and should stay. `tr_anisotropy`'s *create the fit* belongs to the
 wizard's Finish **step**, not the window, and is deliberately left alone.

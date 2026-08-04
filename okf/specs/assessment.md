@@ -516,6 +516,29 @@ The 43rd was `gui/plots/surfaceplot/chi2Hist.ui`, deleted with its orphaned
 module in [PRD-64](../prds/prd-64.md) Batch 31 — a form nothing could open is a
 port that never needed doing, so check reachability before porting a form.
 
+**Named next candidate: `chisurf/gui/widgets/wizard/fcs_merger/fcs_merger.ui`**
+(with `fcs_merger_ui.py`, which hand-builds the two plots and the table on top of
+it). Deferred deliberately in the 2026-08-04 help/guide pass — recorded here
+rather than done, because the pass was about tours, and this is a port.
+
+Three things the port would settle at once, each of which the same session
+worked around:
+
+- Its buttons are `toolButton`, `toolButton_2`, `toolButton_3` — names that say
+  nothing about what they do. The tour has to target them by `objectName`, and
+  the *save* action cannot be promoted onto the toolbar the way an AutoForm
+  `button_row` entry can, because it carries no `action`
+  ([help & guides](../subsystems/gui-help-and-guides.md)).
+- The per-curve **Use** checkbox column is hand-built onto a `QTableWidget`;
+  AutoForm's `table` section plus a view-model already does selection, and the
+  [chitable](../subsystems/gui-tables.md) family is where that belongs.
+- The two plots are constructed imperatively in `fcs_merger_ui.py`; a `plot`
+  section with a `source` is the declarative equivalent and would make the tour
+  target them by title instead of by widget identity.
+
+The compute is already Qt-free (`chisurf.core.fluorescence.fcs.merge`), so the
+port is a view-model plus a `view.json` and no algorithm work.
+
 ## How to work this list
 
 1. ~~Land the **S1** items first — they are correctness/import failures with tiny, local fixes (BUG-01/02/03, SV-01, DATA-01), each independently shippable.~~ ✅ **Done**
