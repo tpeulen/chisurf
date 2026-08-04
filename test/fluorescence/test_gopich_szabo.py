@@ -17,6 +17,8 @@ import pathlib
 
 import numpy as np
 import pytest
+
+from chisurf.plugins.burst.burst_gs.core import simulate_two_state
 from scipy.linalg import expm
 
 from chisurf.core.fluorescence.burst import gopich_szabo as gs
@@ -47,30 +49,6 @@ def brute_force_log_likelihood(times, colors, generator, emission) -> float:
         vector /= magnitude
         log_scale += np.log(magnitude)
     return float(np.log(vector.sum()) + log_scale)
-
-
-def simulate_two_state(k12, k21, efficiencies, photon_rate, n_bursts,
-                       photons_per_burst, seed=1):
-    """Simulate coloured photons from a two-state molecule (Gillespie states)."""
-    rng = np.random.default_rng(seed)
-    p1 = k21 / (k12 + k21)
-    times, colors = [], []
-    for _ in range(n_bursts):
-        n = photons_per_burst
-        arrival = np.cumsum(rng.exponential(1.0 / photon_rate, n))
-        state = 0 if rng.random() < p1 else 1
-        clock = 0.0
-        nxt = clock + rng.exponential(1.0 / (k12 if state == 0 else k21))
-        states = np.empty(n, dtype=int)
-        for i in range(n):
-            while nxt < arrival[i]:
-                clock = nxt
-                state = 1 - state
-                nxt = clock + rng.exponential(1.0 / (k12 if state == 0 else k21))
-            states[i] = state
-        colors.append((rng.random(n) < np.asarray(efficiencies)[states]).astype(np.int32))
-        times.append(arrival)
-    return gs.PhotonBursts.from_lists(times, colors, 2)
 
 
 @pytest.fixture(scope="module")

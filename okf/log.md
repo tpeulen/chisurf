@@ -193,6 +193,17 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **Three test fixtures that were a copy or a coin flip.**
+  `test_gopich_szabo` carried its own `simulate_two_state` — the same Gillespie
+  loop, the same variable names and the same return type as the one in the
+  `burst_gs` tool it exists to exercise, so the test could have kept passing
+  while the tool drifted. It imports the tool's now.
+
+  `test_decay_conv` (twice) and `test_reference_models` sampled their Poisson
+  counting noise from NumPy's **global legacy stream with no seed**, so a failure
+  could not be repeated and a flake could not be told from a regression. Both go
+  through `decay.sample_decay_shot_noise` with a seed.
+
 * **Four Gaussian instrument responses, one pulse.** The TCSPC simulator, the
   image simulator and the acquisition device each built their own Gaussian IRF —
   in nanoseconds with a sigma, in bins with a sigma, and in nanoseconds with a

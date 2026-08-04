@@ -18,12 +18,19 @@ from chisurf.core.fitting.fit import Fit
 import chisurf.core.models.tcspc.lifetime
 import chisurf.core.models.tcspc.nusiance
 
-def generate_synthetic_decay(lifetime, amplitude, background, dt, n_channels):
+def generate_synthetic_decay(lifetime, amplitude, background, dt, n_channels,
+                             seed=1):
+    """Return a seeded single-exponential decay with Poisson counting noise.
+
+    Seeded through the shared sampler rather than the global legacy stream: an
+    irreproducible fixture makes a failure impossible to repeat, and a flake
+    indistinguishable from a regression.
+    """
+    from chisurf.core.fluorescence.decay import sample_decay_shot_noise
+
     time = np.arange(n_channels).astype(np.float32) * dt
     y = amplitude * np.exp(-time / lifetime) + background
-    # Add some Poisson noise
-    y = np.random.poisson(y).astype(np.float32)
-    return time, y
+    return time, sample_decay_shot_noise(y, seed=seed).astype(np.float32)
 
 def test_lifetime_model_convergence():
     """Fit a synthetic single-exponential decay and recover its lifetime.

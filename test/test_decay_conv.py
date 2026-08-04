@@ -1,5 +1,7 @@
 """Test TCSPC decay convolution: simulate decay, verify convolution shape, fit lifetime."""
 import numpy as np
+
+from chisurf.core.fluorescence.decay import sample_decay_shot_noise
 import pytest
 
 from chisurf.core.fluorescence.tcspc.convolve import convolve_lifetime_spectrum
@@ -26,7 +28,11 @@ def test_convolution_shape():
     )
 
     sim_decay = sim_decay / np.max(sim_decay) * 10000
-    sim_counts = np.random.poisson(np.maximum(sim_decay, 0)).astype(float)
+    # Seeded: the global legacy stream made this test irreproducible, so a
+    # failure could not be repeated and a flake could not be told from a bug.
+    sim_counts = sample_decay_shot_noise(
+        np.maximum(sim_decay, 0), seed=1
+    ).astype(float)
 
     irf_model = irf / np.sum(irf)
     model_decay = np.zeros_like(time_axis)
@@ -67,7 +73,11 @@ def test_fitted_lifetime():
     )
 
     sim_decay = sim_decay / np.max(sim_decay) * 10000
-    sim_counts = np.random.poisson(np.maximum(sim_decay, 0)).astype(float)
+    # Seeded: the global legacy stream made this test irreproducible, so a
+    # failure could not be repeated and a flake could not be told from a bug.
+    sim_counts = sample_decay_shot_noise(
+        np.maximum(sim_decay, 0), seed=1
+    ).astype(float)
 
     from scipy.optimize import curve_fit
 
