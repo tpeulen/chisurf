@@ -58,10 +58,15 @@ def fit(dataset):
         noise_model="poisson",
     )
     model = fit.model
-    model.calibration._tau_d0.value = 1.569
-    model.calibration._alpha.value = 0.0296
-    model.state_group._distances[0].value = 54.42
-    model.state_group._donor_only.value = 0.394
+    # The milestone-1a optimum, re-derived after the instrument response stopped
+    # being taken as the raw non-burst histogram. ``tau_d0`` was 1.569 ns while
+    # that histogram's fluorescent tail sat in the response; it is the one
+    # parameter degenerate with the response's first moment, so it had absorbed
+    # the error. Kept in step with ``test_mfd_milestone.FITTED``.
+    model.calibration._tau_d0.value = 2.757
+    model.calibration._alpha.value = 0.02793
+    model.state_group._distances[0].value = 54.55
+    model.state_group._donor_only.value = 0.3956
     model.update_model()
     return fit
 

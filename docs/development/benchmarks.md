@@ -196,6 +196,17 @@ window uses one scale for the whole measurement, while the ratio has a spread of
 0.15 and tracks burst brightness (0.85 dim, 0.76 bright). Per nuisance cell would
 capture it, and the measure is already binned by signal.
 
+**How much the window correction is worth depends on the measurement**, and the
+table above is not an upper bound on how little it can matter. It is computed
+from the bursts' own arrival times, so a measurement whose bursts are evenly lit
+gets a scale near 1 and is barely touched. The table uses truth-defined bursts;
+repeating the 5 kHz cell with bursts found by the real search gives a scale of
+0.729 against 0.694 and −28.0% → −2.1% against −34.1% → −3.5%, so the search does
+not undo it. But on the real BH SPC-132 DNA measurement the scale is 0.95 at
+5 kHz and 0.99 at 1 kHz — its bursts are far more uniformly lit than the
+simulator's — and there the correction is a small one. Read the scale on your own
+data rather than expecting the table's shift.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and
