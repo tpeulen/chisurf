@@ -152,6 +152,30 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The 2D-MFD engine comparison is settled, and nothing gets retired.**
+  ([benchmarks](../docs/development/benchmarks.md), [PRD-71](prds/prd-71.md))
+  Rate recovery against known ground truth, everything but the rate pinned at
+  truth, three regimes × three seeds × four settings. The plan anticipated that
+  the simple Monte Carlo might dominate and that the analytic occupation grid,
+  moment kernel and nested sum could then be deleted. It does not.
+
+  - **The window assumption dominates everything else**: taking a burst's span as
+    its averaging window costs 18–33%, growing with the rate, and is the only
+    error with the same sign in every regime.
+  - **The Monte Carlo does not supersede the analytic path.** Faster where
+    exchange is slow (7.3 s vs 13.3 at 200 Hz), both slower and more biased where
+    it is fast (45.8 s, +15.3% at 5 kHz), so it does not dominate the
+    RMSE-vs-time front. It stays the independent second opinion — which is what
+    actually found the shared window bug, since agreeing with the analytic path
+    was how that error stayed invisible.
+  - **Occupancy weighting looks competitive and is not.** It beats green at 1 kHz
+    (−0.5% vs −7.8%) and ties at 5 kHz, then fails at 200 Hz (+19.9%). Green is
+    provably exact, so that is two errors cancelling at one timescale, and
+    compensation is worth less than correctness.
+
+  Three seeds, so a few percent of RMSE is not resolvable and the ordering within
+  that is not claimed.
+
 * **The 2D-MFD exchange-rate bias is fixed: a burst's photons do not sample its
   duration uniformly.** ([MFD fitting](../docs/concepts/mfd_fitting.md),
   [known issues](references/known-issues.md), [PRD-71](prds/prd-71.md))
