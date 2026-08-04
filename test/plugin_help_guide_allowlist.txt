@@ -14,7 +14,6 @@ chisurf/plugins/calculator/fret_calculator/gui
 chisurf/plugins/calculator/hub/gui
 chisurf/plugins/calculator/kappa2_dist
 chisurf/plugins/calculator/phasor_calculator/gui
-chisurf/plugins/calculator/rics_precision/gui
 chisurf/plugins/chimol/chimol/app
 chisurf/plugins/core/acq/gui
 chisurf/plugins/core/batch_analysis/gui
@@ -23,7 +22,6 @@ chisurf/plugins/core/code_editor
 chisurf/plugins/core/f_test/gui
 chisurf/plugins/core/globalview
 chisurf/plugins/core/help/gui
-chisurf/plugins/core/hmm/gui
 chisurf/plugins/core/lightpath_simulator/gui
 chisurf/plugins/core/mmfdb_admin/gui
 chisurf/plugins/core/model_manager/gui

@@ -1,0 +1,41 @@
+{
+  "_comment": "Guided tour for the RICS precision planner. Declarative AutoForm view (precision.view.json); steps target bound attributes and the result plot/table titles. This tool takes no data at all — it is used *before* the measurement — so the awaited step is an edit rather than a Run. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "The one tool here you use before the measurement",
+      "text": "Everything else in ChiSurf analyses data you already have. This predicts what precision a raster-scan correlation measurement <b>would</b> reach — from the settings you intend to use and the diffusion coefficient you expect.<br/><br/>It takes no data at all. The point is to find out, before you book the microscope, whether your intended scan can resolve the difference you care about.<br/><br/>Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Start from the D you expect",
+      "text": "This is the awkward part of the question, and there is no way around it: <b>where the optimum lies depends on the D you are trying to measure</b> — the number you do not have yet.<br/><br/>So put in what you expect, and treat the answer as conditional on it. If you are unsure within a factor of three, run it at both ends: that is far more informative than one confident number.",
+      "target": {
+        "attr": "diffusion_coefficient"
+      },
+      "await": {
+        "hint": "Enter the diffusion coefficient you expect."
+      }
+    },
+    {
+      "title": "Why there is a minimum in the middle",
+      "text": "The dwell time trades two failures against each other:<br/><br/><b>Too fast</b> — the molecule has barely moved between neighbouring pixels, so the correlation carries almost no information about D, and few photons land in each pixel anyway.<br/><b>Too slow</b> — it has already decorrelated by the time the next pixel is read, so the correlation has decayed before you sample it.<br/><br/>Neither end is a small penalty. The curve is plotted on log axes precisely because a badly matched dwell is wrong by <i>orders of magnitude</i>, and on a linear axis the whole usable 2–10 % range flattens into a line.",
+      "target": {
+        "attr": "pixel_time_us"
+      }
+    },
+    {
+      "title": "The optics set the length scale the scan is compared against",
+      "text": "The beam waist and the pixel size are what turn a dwell time into a distance the molecule may have travelled — so they decide where the trough sits just as much as D does.<br/><br/>Getting the pixel size wrong here does not make the curve look wrong; it moves the optimum without any indication that it has.",
+      "target": {
+        "attr": "pixel_size_nm"
+      }
+    },
+    {
+      "title": "Read the trough as an order of magnitude, not a setting",
+      "text": "Your own dwell is marked on the curve, and the status line turns it into a sentence — how good it is, and how much better the best dwell would be.<br/><br/>Rough guide: <b>below 5 %</b> means differences between conditions will be measurable; <b>5–20 %</b> is usable for a large effect; above that the experiment is unlikely to answer the question.<br/><br/>Two honest limits. Each point is <b>itself a Monte-Carlo estimate</b> — about 10 % at the default repeat count — so the position of the minimum is an order of magnitude and not a value to dial in. And precision is quoted <b>per frame count, not per unit time</b>: a slower scan in this comparison is also a longer acquisition, so read the table's implied line and frame times before choosing.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "title": "Error vs dwell"
+      }
+    }
+  ]
+}

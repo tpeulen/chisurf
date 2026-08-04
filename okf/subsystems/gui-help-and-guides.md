@@ -12,7 +12,7 @@ timestamp: '2026-08-04T00:00:00Z'
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number
 that matters is the line count of `test/plugin_help_guide_allowlist.txt`
 (`grep -c '^chisurf' test/plugin_help_guide_allowlist.txt`). It went **105 → 96
-→ 93 → 92 → 91 → 89 → 87 → 83**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
+→ 93 → 92 → 91 → 89 → 87 → 83 → 81**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
 with the `gui_plugins()` helper in that test file rather than by hand — a plugin
 whose `entrypoints.gui` names a *package* rather than a module resolves to that
 package's `gui/` subdirectory, not to the folder you would guess, and
@@ -24,7 +24,8 @@ burst IRF & background, **2CDE, BVA, H2MM**, the whole **FCS group** (2D-FLCS,
 the lifetime-FCS simulator, the confocal calculator, the curve merger) and two of
 the **decay group** (synthetic decay, time-resolved anisotropy), and four
 **imaging** tools that already had help and needed only a tour (colocalization,
-drift correction, FRC resolution, particle tracking).
+drift correction, FRC resolution, particle tracking), the **RICS-precision
+planner** and the **binned-trace HMM**.
 
 **Prefer a tour that walks on a demo the plugin generates itself.** 2D-FLCS is
 the model: its *Simulator* panel makes a two-state exchanging stream whose answer
@@ -42,6 +43,13 @@ most of the burst tools are hand-built Qt. Give the two or three controls the
 tour actually names an `objectName` — prefixed, because `{"name": …}` matches by
 **suffix**, so a bare `"seed"` also finds the decoder's own seed box. `2cde`
 (`twocde_*`) and `h2mm` (`h2mm_*`) are the worked examples.
+
+**An inline `help` section is not the `?`, and it is not a Guide.** `core/hmm`
+declares `{"type": "custom", "key": "help"}` in its view spec, so it looked
+finished — it shipped `help.md`, and the harness reported *no Guide button*
+because nothing had ever added a toolbar. An AutoForm `help` section answers what
+a control means; it cannot answer which one to touch first, and it gives the tour
+nowhere to live. Such a tool still needs the strip.
 
 **A tool with no toolbar gets a hairline one.** The FCS group is three of these:
 `fcs_lfcs_sim` and `fcs_calculator` are plain `QWidget`s, and `fcs_merger` is a
@@ -72,7 +80,7 @@ PYTHONPATH="modules/mmfdb/src:modules/chinet:modules/imp-tricks/src:." \
 python build_tools/dev_utils/check_plugin_guide.py --all /tmp/guide-shots
 ```
 
-Current result: **23/24 tours clean**. The one failure is `PSFCalculator`, which
+Current result: **25/26 tours clean**. The one failure is `PSFCalculator`, which
 aborts on plain construction under the offscreen platform for OpenGL reasons
 that predate this work — see
 [known issues](/references/known-issues.md). Its shipped tour is therefore
@@ -86,8 +94,8 @@ thing and that the prose belongs where it sits.
 
 1. **`irf_estimator`, `maxent_decay`** — the rest of the decay group
    (`synthetic_decay` and `tr_anisotropy` are done).
-2. **`rics_precision` and `core/hmm`** — the last two that already ship
-   `help.md` and need only a `guide.json`, which is the cheapest work left.
+2. **`microscopy/img_*`** and the rest of the list — every remaining plugin now
+   needs *both* files written; the cheap "help already exists" set is exhausted.
 
 **What a gap blocks.** Nothing blocks the remaining plugins — the seam is
 finished and **all three attachment routes are committed and exercised by a

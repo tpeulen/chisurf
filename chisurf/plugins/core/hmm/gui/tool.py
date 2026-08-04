@@ -52,6 +52,19 @@ class HmmTool(QtWidgets.QWidget):
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(2, 2, 2, 2)
+        # A hairline strip for the ``?`` and **Guide** pair. The view spec has an
+        # inline ``help`` section, which answers what a control *means* but never
+        # which one to touch first — that is the tour, and it needs a button.
+        from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
+
+        toolbar = QtWidgets.QToolBar(self)
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
+        attach_help_and_guide(
+            self, toolbar, title="Hidden Markov model — help", model=self.model
+        )
+        layout.addWidget(toolbar)
         self.auto_form = AutoForm(self.model)
         layout.addWidget(self.auto_form)
         self.model.add_observer(self._on_model_event)

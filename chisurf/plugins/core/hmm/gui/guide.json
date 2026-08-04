@@ -1,0 +1,41 @@
+{
+  "_comment": "Guided tour for the binned-trace HMM. Declarative AutoForm view (hmm.view.json); steps target bound attributes, the path_list custom section and the result plot titles. The help page carries the long form -- these steps say which control decides the answer and which diagnostic refutes it. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "States and rates from a binned trace",
+      "text": "A hidden Markov model fits a small number of discrete states to an intensity trace: how bright each state is, how long it lasts, and how often it goes to each of the others.<br/><br/>This is the <b>binned</b> tool — the right one when the data already arrive on a fixed grid, such as a TIRF or camera trajectory. For confocal photons, where the arrival times themselves carry the timing, use photon-by-photon H2MM instead: binning those would throw the information away and impose an arbitrary timescale.<br/><br/>Five steps.",
+      "target": {}
+    },
+    {
+      "title": "Load the traces, and say what a bin is worth",
+      "text": "Drop one or many traces here. The <b>time step</b> is what turns transition probabilities into rates, so a wrong value gives you a kinetic scheme in the wrong units — and the fit will not object.",
+      "target": {
+        "key": "path_list"
+      },
+      "await": {
+        "hint": "Add one or more traces."
+      }
+    },
+    {
+      "title": "The likelihood cannot choose the state count for you",
+      "text": "Adding a state <b>always</b> improves the likelihood, so its elbow is not evidence. Use <b>Scan states</b> and take the <i>minimum</i> of BIC — it charges more per parameter and usually returns the model a kinetic interpretation can actually carry.<br/><br/>The diagnostic worth knowing: <b>if BIC keeps falling all the way to the end of the range</b>, the trace probably has structure the model does not describe — bleaching, drift, or a continuum of states rather than discrete ones. That is a signal to look at the trace, not to raise the maximum.",
+      "target": {
+        "attr": "max_states"
+      }
+    },
+    {
+      "title": "Two settings that change what you get",
+      "text": "<b>Covariance type</b> decides whether every state shares one noise width or each gets its own. Per-state widths fit better almost by construction — the question is whether your detector justifies it, since an unshared width is also an easy way to absorb a state that should not be there.<br/><br/><b>Decode</b> chooses how each bin is assigned once the model is fitted, and it is a separate choice from the fitting itself. A single most-likely path is the right answer for one trajectory and a biased one for an occupancy, because the argmax erases the ambiguous fraction rather than averaging it.<br/><br/><b>Seed</b>: the fit finds a local optimum, so agreement across seeds is the check that it is the global one — not something to assume.",
+      "target": {
+        "attr": "covariance_type"
+      }
+    },
+    {
+      "title": "Three things that refute a fit",
+      "text": "<b>Overlapping emission densities</b> in the intensity histogram mean intensity alone does not separate the states. The fit is then leaning entirely on the transition structure, and the assignment is correspondingly less certain than the picture suggests.<br/><br/><b>Dwell-time histograms should be single exponentials</b> — straight on a logarithmic axis. Curvature says the state hides substructure: what is drawn as one state is really two of similar brightness.<br/><br/><b>A state with almost no occupancy</b>, or a mean dwell of one bin, is noise being fitted rather than a state. Refit with fewer.<br/><br/>Each of these is visible in the plots and invisible in the likelihood, which is why they are worth looking at every time. The <b>?</b> button has the rest.",
+      "target": {
+        "title": "Intensity histogram"
+      }
+    }
+  ]
+}
