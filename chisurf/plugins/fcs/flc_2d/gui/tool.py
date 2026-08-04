@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import html
 import json
 import logging
 import pathlib
@@ -12,68 +11,20 @@ import numpy as np
 from qtpy import QtCore, QtWidgets
 
 from chisurf.core.math.regularization import LCurveData
+from chisurf.gui import dialogs
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 from .client import FlcClient
-from chisurf.gui import dialogs
 
 _GUI_DIR = pathlib.Path(__file__).parent
 logger = logging.getLogger(__name__)
 
 
-class FlcHelpDialog(QtWidgets.QDialog):
-    """Modal help dialog for the 2D-FLCS plugin."""
-
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        """Create the help dialog."""
-        super().__init__(parent)
-        self.setWindowTitle("2D-FLCS Help")
-        self.resize(760, 620)
-        layout = QtWidgets.QVBoxLayout(self)
-        text = QtWidgets.QTextBrowser(self)
-        text.setOpenExternalLinks(True)
-        text.setHtml(self._html())
-        layout.addWidget(text, 1)
-        buttons = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.StandardButton.Ok)
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
-
-    @staticmethod
-    def _cli_help() -> str:
-        """Return command-line help text."""
-        try:
-            from click.testing import CliRunner
-
-            from ..cli import cli
-
-            result = CliRunner().invoke(cli, ["--help"])
-            return result.output or "CLI help unavailable."
-        except Exception as exc:  # noqa: BLE001
-            return f"CLI help unavailable: {exc}"
-
-    @classmethod
-    def _html(cls) -> str:
-        """Return HTML help text."""
-        cli_help = html.escape(cls._cli_help())
-        return f"""
-        <h2>2D-FLCS</h2>
-        <p>Builds 2D fluorescence-decay correlation maps from TTTR photon
-        streams, resolves lifetime species, and estimates exchange dynamics
-        from lifetime-filtered species correlations.</p>
-        <h3>Workflow</h3>
-        <ol>
-          <li>Open a TTTR file.</li>
-          <li>Optionally load an IRF file or use synthetic/detected IRF mode.</li>
-          <li>Set the lag window, lifetime grid, and inversion method.</li>
-          <li>Run the analysis and inspect the docked maps and plots.</li>
-        </ol>
-        <h3>RPC</h3>
-        <p>The backend exposes <code>flc2d.load_tttr</code>,
-        <code>flc2d.correlate</code>, <code>flc2d.fit</code>,
-        <code>flc2d.lifetime_spectrum</code>, and
-        <code>flc2d.lifetime_lcurve</code>.</p>
-        <h3>CLI</h3>
-        <pre>{cli_help}</pre>
-        """
+# The tool used to carry a ``FlcHelpDialog`` — an HTML literal plus the CLI
+# ``--help`` output. It is gone: the shared ``?`` modal renders ``gui/help.md``,
+# so the help is prose in a file rather than a string in a widget, its links are
+# live, and it sits beside the ``guide.json`` that answers the other question.
+# See :mod:`chisurf.gui.widgets.tools.help_guide`.
 
 
 class _FlcModel:
@@ -257,11 +208,13 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
         spacer = QtWidgets.QWidget(self)
         spacer.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         toolbar.addWidget(spacer)
+        # Adjacent stretches share the slack rather than adding to it, so the
+        # helper must not add a second one and strand the pair mid-bar.
+        toolbar.setProperty("_chisurf_right_spacer", True)
 
-        act_help = QtWidgets.QAction("?", self)
-        act_help.setToolTip("Show plugin help and CLI/RPC reference.")
-        act_help.triggered.connect(self._show_help)
-        toolbar.addAction(act_help)
+        # The shared **Guide** / ``?`` pair, replacing this tool's own modal. The
+        # tour walks on the simulator below, so it needs no data of the user's.
+        attach_help_and_guide(self, toolbar, title="2D-FLCS — help", model=self._model)
 
     def _build_central(self) -> None:
         """Build the declarative docked AutoForm UI."""
@@ -290,10 +243,6 @@ class FlcTwoDTool(QtWidgets.QMainWindow):
     def _refresh_results(self) -> None:
         """Refresh all result docks."""
         self._form.refresh_plots()
-
-    def _show_help(self) -> None:
-        """Show modal plugin help."""
-        FlcHelpDialog(self).exec_()
 
     def _settings(self) -> QtCore.QSettings:
         """Return persistent settings for the plugin shell."""

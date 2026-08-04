@@ -1,3 +1,31 @@
+## 2D-FLCS prints a pyqtgraph teardown traceback when its window closes
+
+**Found 2026-08-04**, while walking the new 2D-FLCS guided tour headlessly.
+
+Closing `FlcTwoDTool` prints, two to four times,
+
+```
+RuntimeError: wrapped C/C++ object of type QComboBox has been deleted
+  ... ViewBox.forgetView -> updateAllViewLists -> updateViewLists
+  ... ViewBoxMenu.setViewList:  current = c.currentText()
+```
+
+The chain is entirely inside pyqtgraph: a destroyed `ViewBox` runs a
+`destroyed`-signal lambda that rebuilds **every** view list, and reaches a
+`ViewBoxMenu` whose combo box Qt has already deleted. Nothing of ours is on the
+stack.
+
+**Not caused by the guided tour**, though the tour makes it louder. Measured by
+disabling `GuidedTour._unfold` entirely and walking the tour again: the traceback
+still appears (2×). With the tour's extra `processEvents` it appears 4×, because
+more deferred deletions get to run before the interpreter exits. Other
+pyqtgraph-backed tools (H2MM) do not reproduce it — 0 occurrences.
+
+Harmless in the sense that matters: it is an exception inside a Qt slot at
+teardown, printed and swallowed, with no state left broken. Left alone because
+the fix belongs in pyqtgraph's `ViewBoxMenu`, and the plugin is scheduled to move
+off pyqtgraph anyway ([PRD-64](../prds/prd-64.md), [chiplot](../subsystems/chiplot.md)).
+
 ## chimol: every scene rebuild refits the camera, throwing your framing away
 
 **Found 2026-08-04**, while photographing `cartoon_side_chain_helper` — the

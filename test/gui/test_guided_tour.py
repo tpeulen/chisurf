@@ -268,3 +268,46 @@ def test_a_step_reopens_the_dock_the_user_closed(qapp):
     assert area.isTabVisible(index) is True, "the step pointed at a closed dock"
     tour.stop()
     window.close()
+
+
+def test_a_step_opens_the_collapsed_panel_its_target_sits_in(qapp):
+    """A folded panel hides the control a step points at, silently.
+
+    An AutoForm ``panel`` is a ``CollapsibleBox``, and a form of any size folds
+    most of them. The target still resolves — to a widget with a real geometry
+    that is simply not drawn — so the guardrail sees nothing wrong and the
+    spotlight lands on a header bar somewhere else in the column.
+
+    Auto-fold is the second half: the box folds itself when the pointer *leaves*
+    it, and during a tour the pointer is never on it, so a panel opened without
+    suspending that would shut again mid-step.
+    """
+    from chisurf.gui.widgets.collapsible_box import CollapsibleBox
+
+    window = QtWidgets.QMainWindow()
+    central = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(central)
+    box = CollapsibleBox("Simulator", expanded=False)
+    box.auto_fold = True
+    field = QtWidgets.QDoubleSpinBox()
+    field.setObjectName("sim_tau1")
+    box.add_widget(field)
+    layout.addWidget(box)
+    window.setCentralWidget(central)
+    window.resize(400, 300)
+    window.show()
+    QtWidgets.QApplication.processEvents()
+
+    assert not box.is_expanded()
+
+    tour = GuidedTour(
+        window, [TourStep(title="t", text="x", target={"name": "sim_tau1"})]
+    )
+    tour.start()
+
+    assert box.is_expanded(), "the step pointed into a folded panel"
+    assert box.auto_fold is False, "the panel can still fold itself mid-step"
+
+    tour.stop()
+    assert box.auto_fold is True, "auto-fold was not given back"
+    window.close()

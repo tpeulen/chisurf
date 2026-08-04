@@ -421,6 +421,9 @@ class GuidedTour(QtCore.QObject):
         #: Navigation row the current step points at, so a waiting step is
         #: satisfied by that row and not by any change of selection.
         self._panel_row: int | None = None
+        #: Collapsible panels this tour opened, with the auto-fold setting each
+        #: had before, so :meth:`stop` gives them back.
+        self._unfolded: list[tuple[QtWidgets.QWidget, bool]] = []
 
     @property
     def index(self) -> int:
@@ -451,6 +454,7 @@ class GuidedTour(QtCore.QObject):
     def stop(self) -> None:
         """Take the overlay down and forget it."""
         self._disconnect()
+        self._restore_folding()
         for widget in (self._spotlight, self._bubble):
             if widget is not None:
                 widget.hide()
@@ -592,6 +596,38 @@ class GuidedTour(QtCore.QObject):
                     self._restore_hidden_page(area, widget)
                     return widget
         return None
+
+    def _unfold(self, box: QtWidgets.QWidget) -> None:
+        """Expand *box* if it is a collapsed panel, and hold it open.
+
+        Holding it open is the part that is easy to miss: a ``CollapsibleBox``
+        with ``auto_fold`` folds itself when the pointer *leaves* it, and during
+        a tour the pointer is never on it — so a panel opened here would shut
+        again a second later, mid-step. Auto-fold is therefore suspended for the
+        panels the tour opened and given back in :meth:`stop`.
+        """
+        expand = getattr(box, "set_expanded", None)
+        expanded = getattr(box, "is_expanded", None)
+        if not (callable(expand) and callable(expanded)):
+            return
+        try:
+            if expanded():
+                return
+            self._unfolded.append((box, bool(getattr(box, "auto_fold", False))))
+            box.auto_fold = False
+            expand(True)
+            QtWidgets.QApplication.processEvents()
+        except Exception:  # pragma: no cover - a box that disagrees
+            logger.debug("could not expand a collapsed panel for a tour step")
+
+    def _restore_folding(self) -> None:
+        """Give every panel this tour opened its auto-fold setting back."""
+        for box, auto_fold in self._unfolded:
+            try:
+                box.auto_fold = auto_fold
+            except (RuntimeError, AttributeError):
+                pass  # the widget went away with its window
+        self._unfolded.clear()
 
     @staticmethod
     def _restore_hidden_page(area: QtWidgets.QWidget, page: QtWidgets.QWidget) -> None:
@@ -837,6 +873,13 @@ class GuidedTour(QtCore.QObject):
         child = widget
         parent = widget.parentWidget()
         while parent is not None and parent is not self._host:
+            # 0. Open a collapsed panel the target sits inside. An AutoForm
+            #    ``panel`` is a CollapsibleBox, and a form of any size folds most
+            #    of them: the target then resolves to a widget with a real
+            #    geometry that is simply not drawn, and the spotlight lands on a
+            #    header bar somewhere else in the column. Same silent degradation
+            #    as an unresolved target, and just as invisible to the guardrail.
+            self._unfold(parent)
             # 1. Raise pyqtgraph Dock / ChiSurf Dock if present
             if hasattr(parent, "raiseDock") and callable(parent.raiseDock):
                 try:

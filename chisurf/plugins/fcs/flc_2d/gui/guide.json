@@ -1,0 +1,65 @@
+{
+  "_comment": "Guided tour for 2D-FLCS. The UI is a declarative AutoForm view (flc_2d.view.json), so most steps target bound attributes; the toolbar is QActions, reached by {'action': ...}. The tour walks on the plugin's OWN simulator, whose answer is known (tau 1/3 ns, k12=30, k21=10 -> 25 ms relaxation, 0.25/0.75 populations), so it needs no data of the user's. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "Two lifetimes, and whether a molecule changed between them",
+      "text": "Ordinary FCS correlates <i>total</i> intensity, so two species that diffuse alike are one curve. Filtered FCS can separate them — but only if you already know their decay patterns.<br/><br/>2D-FLCS drops that requirement. At a chosen lag it measures the joint distribution of the <b>first photon's micro-time and the second photon's</b>, then inverts it into a map over <i>pairs</i> of lifetimes. Nothing is known in advance; no second colour, detector or polarisation.<br/><br/>Eight steps, walked on a stream this tool simulates itself.",
+      "target": {}
+    },
+    {
+      "title": "The answer, before you press anything",
+      "text": "These fields drive a two-state exchange simulator, so the tour can run with no data of yours — and you can check the result, because you set it.<br/><br/>With the defaults <b>τ₁ = 1 ns, τ₂ = 3 ns, k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹</b>, two numbers are fixed:<br/>• equilibrium populations <b>0.25 / 0.75</b>, from p₁ = k₂₁/(k₁₂+k₂₁);<br/>• relaxation time <b>1/(k₁₂+k₂₁) = 25 ms</b>.<br/><br/>Remember the 25 ms. The next step is about it.",
+      "target": {
+        "attr": "sim_tau1_ns"
+      }
+    },
+    {
+      "title": "Simulate the stream",
+      "text": "<b>Sim</b> generates the photon stream and loads it as the active dataset; the status bar reports how many photons and with which parameters. On a real measurement this is where <b>Open</b> would go instead.",
+      "target": {
+        "action": "Sim"
+      },
+      "await": {
+        "hint": "Press <b>Sim</b> to generate the demo stream."
+      }
+    },
+    {
+      "title": "The lag is the question you are asking",
+      "text": "<b>lag</b> selects which photon pairs are histogrammed, and <b>win</b> is its half-width.<br/><br/>The default lag is <b>1 ms</b> — one twenty-fifth of the 25 ms exchange time you just set. Almost nothing has interconverted in that time, so the map <i>should</i> come out nearly pure diagonal. That is not a failure; it is the right answer to the question you asked.<br/><br/>Raise the lag toward 25 ms and the cross-peaks appear. <b>A single lag never answers a question about kinetics</b> — build the map at several and watch them grow.<br/><br/>A wider window buys photon pairs at the cost of lag resolution. On real data that trade is usually worth taking: the map starves of pairs long before it starves of resolution.",
+      "target": {
+        "attr": "dT_ms"
+      }
+    },
+    {
+      "title": "The inversion is ill-posed, and that is the whole difficulty",
+      "text": "Recovering lifetimes from a decay is an inverse Laplace transform: many quite different distributions fit about equally well, and noise picks between them.<br/><br/><b>Tikhonov</b> is closed-form and fastest; <b>NNLS</b> enforces non-negativity and is the default; <b>MEM</b> is the most faithful to what the data actually support — it will not sharpen a peak the data do not justify — and the slowest.<br/><br/>Leave <b>log λ</b> at <b>0</b> and the regularisation is chosen from the <i>L-curve</i>: residual against solution norm, take the corner. Look at that panel afterwards. <b>No clear corner means the data do not determine the answer</b>, and a hand-picked λ is then your decision, not theirs.<br/><br/>One consequence worth carrying: a regularised inversion controls how sharp a peak may be, so <b>peak width reports the regularisation, not the sample</b>. Read positions and areas.",
+      "target": {
+        "attr": "fit_mode"
+      }
+    },
+    {
+      "title": "Below a nanosecond you are fitting the instrument",
+      "text": "A wrong IRF does not give you a bad fit. It gives you a <b>good fit to the wrong lifetime</b>.<br/><br/><i>Synthetic</i> builds a Gaussian pulse from the centre, FWHM and skew below; <i>Detect</i> places one at the decay's own prompt rise; <i>File</i> uses a measured IRF loaded with the <b>IRF</b> button; <i>None</i> tail-fits without one — honest only when every lifetime of interest is far longer than the pulse.<br/><br/>The <b>rise</b> toggle scans the IRF position during the 1D-MEM and averages around the optimum: a little resolution for a much smaller timing systematic.",
+      "target": {
+        "attr": "irf_mode"
+      }
+    },
+    {
+      "title": "Run it",
+      "text": "The 2D decay-correlation matrix is built at the chosen lag, rebinned, and inverted into the lifetime–lifetime map. With <i>corr</i> enabled the species-filtered correlations and the interconversion rates follow.",
+      "target": {
+        "action": "Run"
+      },
+      "await": {
+        "hint": "Press <b>Run</b>."
+      }
+    },
+    {
+      "title": "Read off the diagonal, then check three things",
+      "text": "<b>Diagonal</b> peaks are species that still had the same lifetime one lag later — static heterogeneity. <b>Off-diagonal</b> peaks are molecules that changed state during the lag. The diagonal is essentially the ordinary lifetime distribution; the information that is <i>only</i> here is off it.<br/><br/>Then, before believing any of it:<br/><b>1. The 2D residual must be structureless noise.</b> Structure there means the model did not describe the data, and every peak position is suspect.<br/><b>2. The species correlation is the real cross-check.</b> Two exchanging states must show the autocorrelations decaying and the cross-correlation <i>anti</i>-correlated, both at k = k₁₂ + k₂₁. If they do not, the peaks are not two exchanging states.<br/><b>3. Equal-brightness states are ill-conditioned.</b> The inversion separates by decay shape, so two states of the same brightness and similar lifetime are nearly degenerate — which is why the global multi-lag MEM is marked advanced.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "title": "2D-FLCS map"
+      }
+    }
+  ]
+}

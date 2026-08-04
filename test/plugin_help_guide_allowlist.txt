@@ -41,7 +41,6 @@ chisurf/plugins/fcs/fcs_calculator
 chisurf/plugins/fcs/fcs_channel_preset/gui
 chisurf/plugins/fcs/fcs_lfcs_sim/gui
 chisurf/plugins/fcs/fcs_merger
-chisurf/plugins/fcs/flc_2d/gui
 chisurf/plugins/fluorescence_decay/irf_estimator/gui
 chisurf/plugins/fluorescence_decay/lltf
 chisurf/plugins/fluorescence_decay/maxent_decay/gui

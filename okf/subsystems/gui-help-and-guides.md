@@ -12,7 +12,7 @@ timestamp: '2026-08-04T00:00:00Z'
 **The measurement.** `pytest test/test_plugin_help_guide_seam.py` — the number
 that matters is the line count of `test/plugin_help_guide_allowlist.txt`
 (`grep -c '^chisurf' test/plugin_help_guide_allowlist.txt`). It went **105 → 96
-→ 93**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
+→ 93 → 92**; 109 plugins declare a `gui` entrypoint. Regenerate the list from the tree
 with the `gui_plugins()` helper in that test file rather than by hand — a plugin
 whose `entrypoints.gui` names a *package* rather than a module resolves to that
 package's `gui/` subdirectory, not to the folder you would guess, and
@@ -20,7 +20,15 @@ hand-editing puts the entry where no lookup will find it.
 
 **Done, with real content:** burst analysis, accurate FRET, burst GS, burst
 selection, decay analysis, TTTR Tools, FCS filter calculator, burst background,
-burst IRF & background, **2CDE, BVA, H2MM**.
+burst IRF & background, **2CDE, BVA, H2MM, 2D-FLCS**.
+
+**Prefer a tour that walks on a demo the plugin generates itself.** 2D-FLCS is
+the model: its *Simulator* panel makes a two-state exchanging stream whose answer
+is arithmetic — τ = 1 and 3 ns with k₁₂ = 30 s⁻¹, k₂₁ = 10 s⁻¹ gives populations
+0.25/0.75 and a 25 ms relaxation — so the tour states the answer *before* pressing
+Run, and the default 1 ms lag then demonstrates the real lesson (a lag 25× below
+the exchange time shows no cross-peaks, and that is not a failure). `fcs_lfcs_sim`
+and `synthetic_decay` can carry the same shape.
 
 **A hand-built panel needs `objectName`s before a tour can point into it.** The
 `{"attr"}` / `{"key"}` targets only resolve against an AutoForm view spec, and
@@ -61,10 +69,12 @@ thing and that the prose belongs where it sits.
 
 **Next, in priority order** (the user's order: most-used analysis tools first):
 
-1. **`fcs_calculator`, `fcs_lfcs_sim`, `flc_2d`, `fcs_merger`** — the FCS group.
-   `flc_2d` and `fcs_lfcs_sim` can generate their own data, so they can carry an
-   img_flow-style demo tour whose answer is known; prefer that over a tour that
-   needs the user's files.
+1. **`fcs_lfcs_sim`, `fcs_calculator`, `fcs_merger`** — the rest of the FCS group
+   (`flc_2d` is done). `fcs_lfcs_sim` generates its own data, so it takes the same
+   known-answer demo tour. The other two are **wizards**: their `entrypoints.gui`
+   names `wizard.py` at the *package root*, so their help files go beside that
+   module — `chisurf/plugins/fcs/fcs_calculator/`, not `…/gui/` — which is what
+   the allow-list entries already say.
 2. **`irf_estimator`, `maxent_decay`, `tr_anisotropy`, `synthetic_decay`** — the
    decay group. `synthetic_decay` simulates, so again a known-answer tour.
 3. **`microscopy/img_*`** — six of them already have `help.md` and need only a
@@ -73,36 +83,35 @@ thing and that the prose belongs where it sits.
    and `core/hmm`.
 
 **What a gap blocks.** Nothing blocks the remaining plugins — the seam is
-finished and all three attachment routes are exercised by a shipped tool
-(`NavigationPanelTool` → decay analysis, `ChisurfDockTool` → burst selection,
-`attach_help_and_guide` → FCS filter calculator and both non-burst tools). The
-work left is content.
+finished and **all three attachment routes are committed and exercised by a
+shipped tool**: `NavigationPanelTool` → decay analysis and TTTR Tools,
+`ChisurfDockTool` → burst selection and 2CDE, `attach_help_and_guide` → FCS
+filter calculator and H2MM. The work left is content.
 
-## One file is still uncommitted, and it is the first thing to do
+## A staged blob in `navigation.py` can still revert the shells
 
-Everything else landed on 2026-08-04. **`chisurf/gui/widgets/navigation.py` did
-not**, and until it does the two `NavigationPanelTool` shells — decay analysis
-and TTTR Tools — **ship `help.md` and `guide.json` but show no buttons**. Both
-files are committed and the guard test is satisfied by their presence, so nothing
-fails; the tours are simply unreachable from those two windows. That is the one
-thing this concept currently over-claims, and the gap is deliberate rather than
-unnoticed.
+The whole seam landed on 2026-08-04, in `903f1e403` (mixin, guard, harness,
+twelve tours) and `b2558fd3d` (`NavigationPanelTool`). Both shells — decay
+analysis and TTTR Tools — build their `?` and **Guide**, verified headlessly.
 
-The wiring is a one-line import plus `class NavigationPanelTool(HelpGuideMixin,
-QMainWindow)` and an `ensure_help_toolbar` call, and it exists in the working
-tree. It was excluded because the file was `MM` — another agent instance had
-*staged* an unrelated `"optional"` pipeline-step feature there, interleaved with
-these hunks, and committing the file would have taken their unfinished work with
-it.
+`navigation.py` was committed through a **temporary `GIT_INDEX_FILE`** carrying
+only these four hunks, because the file was `MM`: another instance has a partial
+revert of it *staged*, and `git commit -- <path>` would have committed their
+unfinished work with it. Their staged blob is untouched and still staged — and it
+now reads as **−41/+3 against HEAD**, so committing it wholesale would take the
+mixin wiring with it and the two shells would silently lose their buttons again.
 
-To finish: confirm with `git status --porcelain chisurf/gui/widgets/navigation.py`
-that it shows a single ` M`, then commit it. If it is still `MM`, stage only your
-hunks through a temporary `GIT_INDEX_FILE` and `git commit` with **no pathspec** —
-a `git commit -- <path>` commits the file's whole working-tree content, other
-instance's work included. See [change tracking](/workflows/change-tracking.md).
+If that happens, the symptom is only visible by construction:
+
+```python
+tool = LifetimeAnalysisTool()
+tool._help_button is not None and tool._guide_button is not None
+```
 
 `okf/log.md` and `okf/references/known-issues.md` carry other instances' entries
-too; append to them and stage the hunk, never the file.
+too; append to them and stage **the hunk, never the file**. Building the blob on
+`HEAD` rather than on the index matters there — the index held a *stale* log.
+See [change tracking](/workflows/change-tracking.md).
 
 **Traps, all of them paid for once already.**
 
@@ -115,6 +124,13 @@ too; append to them and stage the hunk, never the file.
   it had when it was closed. `unresolved=[]` and the spotlight lands on a
   rectangle of unrelated panel. Only the PNG showed it. `_resolve_tab` now calls
   `DockArea.showTab` before returning such a page.
+* **A folded panel hides the control just as effectively.** An AutoForm `panel`
+  is a `CollapsibleBox`, and a form of any size folds most of them; the target
+  still resolves, to a widget with a real geometry that is not drawn, so the
+  spotlight lands on a header bar elsewhere in the column. `_reveal` now expands
+  it — **and suspends `auto_fold`**, because that setting folds a box when the
+  pointer *leaves* it and during a tour the pointer is never on it, so a panel
+  opened without that would shut again mid-step. Restored in `stop()`.
 * **`CHISURF_SETTINGS_DIR` does not cover `QSettings`.** Tools that persist their
   dock layout through `QSettings("chisurf", "<Tool>")` — BVA, H2MM and most
   hand-built tools — read `~/Library/Preferences/com.chisurf.<Tool>.plist`
