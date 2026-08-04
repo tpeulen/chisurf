@@ -1575,3 +1575,24 @@ Unrelated and unexplained: `burst_log_likelihood` and
 naive comparison. That is **pre-existing** — identical at HEAD before any of the
 above — and may be a misuse of the reference's contract rather than a defect, but
 nobody has checked.
+
+## The Mistral icon tests would call the real API if their mock were fixed
+
+**Open.** `test/plugins/test_plugin_manager_mistral_icon.py` fails with
+
+    TypeError: _manager.<locals>.<lambda>() missing 1 required positional argument: 'path'
+
+because `_post_mistral_json_with_retries` dropped its `requests_module`
+parameter — it reaches the transport through `chisurf.core.http` itself now —
+and the test's stand-in still threads one through.
+
+**Do not just fix the signature.** Doing that makes the six tests *pass the
+mock* and then issue **live HTTP requests**: `api.mistral.ai` returns 401, and
+the OpenAI-compatible cases fail DNS on `api.example.test`. The mock was the only
+thing holding the transport, so correcting its shape removes the seam without
+replacing it.
+
+The fix is to intercept at the new seam — patch `chisurf.core.http` (or inject a
+transport) rather than hand a module in — which is a change to how these tests
+are built, not a one-line signature edit. Until then the `TypeError` is the safer
+failure: it is loud, fast, and offline.
