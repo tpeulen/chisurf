@@ -193,6 +193,29 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **Every simulated H2MM burst was carrying the next burst's first photon.**
+  ([packer](../chisurf/plugins/burst/burst_h2mm/core/photons.py))
+  The "pack simulated bursts into a TTTR and a burst table" block was written out
+  at seven call sites, and two spellings of one line disagreed: five recorded
+  `Last Photon` as `off + len(burst)` where two used `off + len(burst) - 1`. The
+  column is **inclusive** — the `.bur` writer stores it so that
+  `photons == last - first + 1`, and `bursts_from_dataframe` slices to
+  `last + 1` — so the first spelling appended a photon that belongs to the
+  following burst.
+
+  Measured: 30 photons per burst declared, 31 extracted, and the longest
+  inter-photon gap inside a burst goes from **12 to 100 000 ticks**, because the
+  alien photon sits across the whole inter-burst separation. Nothing failed,
+  because those fixtures assert on fitted parameters and one sample in thirty
+  barely moves a rate. A **dwell time** is another matter: a propagator reads
+  that gap as the hidden chain relaxing to equilibrium at the end of every burst.
+
+  Found by counting the duplication rather than by a failing test — which is the
+  argument for the counting. `core.photons.pack_simulated_bursts` is now the one
+  place the convention is decided, the shipped `generate_example_data` goes
+  through it, and a guardrail asserts both the photon counts and that no
+  in-burst gap is an inter-burst one.
+
 * **The second smFRET simulator is retired; there is one now.**
   ([MFD fitting](../docs/concepts/mfd_fitting.md))
   `core/fluorescence/mfd/simulate.py` (709 lines) and its hand-rolled physics are

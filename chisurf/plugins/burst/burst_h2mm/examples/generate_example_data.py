@@ -62,9 +62,8 @@ def generate_example_data(
         The written ``.bur`` burst table and the Photon-HDF5 TTTR file. Load the
         folder with ``file_type="auto"`` (the format is auto-detected).
     """
-    import tttrlib
-
     from ..core import h2mm
+    from ..core.photons import pack_simulated_bursts
 
     out_dir = pathlib.Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -77,29 +76,16 @@ def generate_example_data(
     ]
     streams = h2mm.simulate_bursts(gt, times, seed=seed + 7)
 
+    # Channel 0 = donor, 1 = acceptor. The packing is shared rather than written
+    # out here: this generator used to record ``Last Photon`` exclusively, which
+    # gave every burst the *next* burst's first photon and a 100 000-tick gap
+    # with it — invisible in a fitted rate, ruinous in a dwell time.
     tttr_path = out_dir / "sim_smfret.photon.h5"
-    macro, chan, rows = [], [], []
-    off, base = 0, 0
-    for t, s in zip(times, streams):
-        macro.append((t + base).astype(np.uint64))
-        chan.append(s.astype(np.int8))                 # channel 0 = donor, 1 = acceptor
-        rows.append((tttr_path.name, off, off + len(t)))
-        off += len(t)
-        base += int(t[-1]) + 100000                    # large gap keeps bursts distinct
-
-    macro = np.concatenate(macro).astype(np.uint64)
-    chan = np.concatenate(chan).astype(np.int8)
-    micro = np.zeros(macro.size, dtype=np.uint16)
-    tttr = tttrlib.TTTR()
-    tttr.append_events(macro, micro, chan, np.zeros(macro.size, dtype=np.int8), False, 0)
+    tttr, frame = pack_simulated_bursts(times, streams, filename=tttr_path.name)
     tttr.write_hdf_file(str(tttr_path))
 
-    import pandas as pd
-
     bur_path = out_dir / "sim_smfret.bur"
-    pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"]).to_csv(
-        bur_path, sep="\t", index=False
-    )
+    frame.to_csv(bur_path, sep="\t", index=False)
     return bur_path, tttr_path
 
 

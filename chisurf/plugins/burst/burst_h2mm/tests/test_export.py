@@ -40,7 +40,9 @@ def _dataset_via_tttrlib(n_bursts=60, burst_len=50, seed=3):
     for t, s in zip(times_local, streams_local):
         macro.append((t + base).astype(np.uint64))
         chan.append(s.astype(np.int8))
-        rows.append(("sim.spc", off, off + len(t)))
+        # ``Last Photon`` is inclusive: the reader slices to ``last + 1``, so
+        # ``off + len(t)`` hands the burst the *next* burst's first photon.
+        rows.append(("sim.spc", off, off + len(t) - 1))
         off += len(t)
         base += int(t[-1]) + 100000
 

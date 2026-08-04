@@ -38,6 +38,7 @@ __all__ = [
     "extract_burst_photons",
     "load_bur_dataframe",
     "load_tttrs_for_dataframe",
+    "pack_simulated_bursts",
     "stream_index_arrays",
     "streams_from_dicts",
 ]
@@ -161,3 +162,63 @@ def bursts_from_dataframe(
     # this to stay aligned.
     meta.burst_rows = rows
     return data, meta
+
+
+def pack_simulated_bursts(times, streams, *, filename="sim.spc", gap=100_000):
+    """Pack simulated per-burst photon streams into a TTTR and a burst table.
+
+    Simulated bursts arrive as one array of macro times and one of stream labels
+    per burst; every consumer of them needs the same three things — the bursts
+    laid end to end on a common clock, a real ``tttrlib.TTTR`` holding them, and a
+    burst table naming the span of each.
+
+    That packing was written out at seven call sites and **they disagreed**. Five
+    recorded the last photon as ``offset + len(burst)`` and two as
+    ``offset + len(burst) - 1``. ``Last Photon`` is *inclusive* — the ``.bur``
+    writer stores it so that ``photons == last - first + 1``, and
+    :func:`bursts_from_dataframe` slices to ``last + 1`` — so the first spelling
+    hands every burst the **first photon of the next one**. Nothing failed,
+    because the extra photon is a single sample among dozens and the tests that
+    used it asserted on fitted parameters rather than on counts.
+
+    Parameters
+    ----------
+    times : sequence of array_like
+        Macro times per burst, each starting near zero.
+    streams : sequence of array_like
+        Stream index per photon, aligned with *times*.
+    filename : str
+        Value written into the ``First File`` column; the key a reader uses to
+        find the TTTR.
+    gap : int
+        Macro-time gap inserted between bursts, so a burst search or a dwell
+        analysis cannot join two of them.
+
+    Returns
+    -------
+    tttr, frame : tttrlib.TTTR, pandas.DataFrame
+        The photons, and the burst table addressing them.
+    """
+    import pandas as pd
+    import tttrlib
+
+    macro_parts, channel_parts, rows = [], [], []
+    offset, base = 0, 0
+    for burst_times, burst_streams in zip(times, streams):
+        t = np.asarray(burst_times, dtype=np.int64)
+        macro_parts.append((t + base).astype(np.uint64))
+        channel_parts.append(np.asarray(burst_streams).astype(np.int8))
+        # Inclusive, matching the .bur writer and bursts_from_dataframe.
+        rows.append((filename, offset, offset + t.size - 1))
+        offset += t.size
+        base += int(t[-1]) + int(gap)
+
+    macro = np.concatenate(macro_parts).astype(np.uint64)
+    channel = np.concatenate(channel_parts).astype(np.int8)
+    micro = np.zeros(macro.size, dtype=np.uint16)
+    event = np.zeros(macro.size, dtype=np.int8)
+
+    tttr = tttrlib.TTTR()
+    tttr.append_events(macro, micro, channel, event, False, 0)
+    frame = pd.DataFrame(rows, columns=["First File", "First Photon", "Last Photon"])
+    return tttr, frame

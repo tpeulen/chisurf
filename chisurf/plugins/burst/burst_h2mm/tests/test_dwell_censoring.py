@@ -160,7 +160,9 @@ def test_the_dwell_table_has_a_one_click_route_out_of_the_window(qapp):
         macro.append(t + base)
         chan.append(s.astype(np.int64))
         micro.append(np.zeros_like(s))
-        rows.append(("f.spc", off, off + len(t)))
+        # ``Last Photon`` is inclusive: the reader slices to ``last + 1``, so
+        # ``off + len(t)`` hands the burst the *next* burst's first photon.
+        rows.append(("f.spc", off, off + len(t) - 1))
         off += len(t)
         base += int(t[-1]) + 1000
     hdr = types.SimpleNamespace(tag=lambda k: {"value": 1e-6}, macro_time_resolution=1e-6)
