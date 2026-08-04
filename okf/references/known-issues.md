@@ -1449,65 +1449,55 @@ member suffix.
 regression, and reading it as one sends you looking for a bug that is not there.
 Six of these ten described a system nobody had built.
 
-## 2D-MFD exchange rates come back ~20–35% low
+## 2D-MFD exchange rates came back 20-35% low  *(fixed)*
 
-**Open.** A fitted exchange rate is biased low, from −20% at 1 kHz to −33% at
-5 kHz on ground-truth simulated data. Everything else about the fit is sound; the
-bias is in one shared assumption, and knowing which one is the point of this entry.
+**Fixed.** A fitted exchange rate was biased low, from -20% at 1 kHz to -33% at
+5 kHz on ground-truth simulated data, and the cause was not any of the five
+places it was looked for. Kept because the eliminations are the expensive part
+and a later regression should not repeat them.
 
 Ruled out, each by measurement, with the instrument response *declared* rather
-than estimated so it cannot contribute:
+than estimated so it could not contribute:
 
-* the instrument — a perfect response leaves the bias unchanged;
-* the burst-duration binning — 6 → 40 span bins moves the answer 0.7%;
-* the occupation-node coarsening — 16 → 200 nodes is identical;
+* the instrument — a perfect response left the bias unchanged;
+* the burst-duration binning — 6 -> 40 span bins moved the answer 0.7%;
+* the occupation-node coarsening — 16 -> 200 nodes was identical;
 * the analytic approximations as a class — the transcribed Sim2D Monte Carlo,
-  which makes none of them, has the *same* bias;
+  which makes none of them, had the *same* bias;
 * the pinned optics — correcting the benchmark's distances (they gave E = 0.190
   and 0.843 where the simulator generates 0.2 and 0.8) and removing a static
-  6 Å width improves the deviance from 823 to 675 and leaves the bias.
+  6 A width improved the deviance from 823 to 675 and left the bias.
 
-**The cause.** Both forward models hand a burst's photons out over the states in
-proportion to the *time* spent in each. A molecule is brightest at the centre of
-its transit, so its photons over-sample whichever state it held then: the
-effective averaging window is shorter than the burst's first-to-last-photon span.
-Measured on the state log over the bursts the fit actually sees, against the
-closed-form occupation variance averaged over the real durations:
+**The cause.** Both forward models handed a burst's photons out over the states
+in proportion to the *time* spent in each. A molecule is brightest at the centre
+of its transit, so its photons over-sample whichever state it held then: the
+effective averaging window is shorter than the burst's first-to-last-photon span,
+the observed histogram is *less* averaged than the model predicts at the true
+rate, and the fit compensates by lowering it.
 
-| exchange | time-weighted | photon-weighted |
-|---|---|---|
-| 1 kHz | 1.005× | 1.095× |
-| 5 kHz | 1.057× | 1.324× |
-
-The time-weighted occupancy tracks the closed form, so the simulator's kinetics
-and the propagator are both right. The photon-weighted one does not, and its
-excess grows with the rate exactly as the recovery bias does. The observed
-histogram is therefore *less* averaged than the model predicts at the true rate,
-and the fit compensates by lowering it.
-
-This is shared by chisurf's closed-form path and by Sim2D, which is why the two
-agree with each other and why their agreement never exposed it — and why "Sim2D
-was simpler" does not rescue it either.
-
-Pinned by `test_photons_do_not_sample_a_burst_uniformly_in_time`
-(`test/fluorescence/test_mfd_ground_truth.py`, slow), which asserts the mechanism
-rather than the bias, because the mechanism is what a fix has to address.
-
-**The replacement is exact and already written**, in
-`chisurf.core.fluorescence.mfd.occupation`. A photon-weighted fraction is a plain
-average over the photons, and the state indicator is a telegraph process, so
+**The fix.** `occupation.photon_weighted_occupation_variance` evaluates
 
     Var(f) = pi0 pi1 (1/N^2) sum_i sum_j exp(-k |t_i - t_j|)
 
-with no assumption about how the photons are spread;
-`photon_weighted_occupation_variance` evaluates it in one pass. Against ground
-truth it reproduces the measured variance to **0.4%** (1 kHz) and **0.1%**
-(5 kHz), where the uniform-sampling form is 9.5% and 32.4% out. `effective_window`
-inverts it to the duration a burst's photons behave like, so it drops into
-everything already written in terms of a window.
+which is exact for a telegraph process whatever the arrival pattern, and
+`effective_window_scale` inverts it to the window a burst's photons behave like.
+`MfdKineticModel.photon_weighted_window` applies it, on by default and silently
+skipped when the folder carries no photons.
 
-**What remains** is wiring that window through `MfdKineticModel.components`,
-which today takes the duration from the binned nuisance measure. The effective
-window depends on the rate, so it has to be recomputed as the fit moves, and the
-per-burst arrival times have to reach the model (they are already in the
-preparation under `_tttrs`). Until that lands the bias is unchanged.
+| exchange | span assumption | photon-weighted |
+|---|---|---|
+| 1 kHz | -26.8% | **-7.3%** |
+| 5 kHz | -33.1% | **-3.0%** |
+
+It is also *faster* — 18.9 s/fit against 28.8 at 5 kHz — because a shorter window
+needs fewer transfer-matrix slices.
+
+**What is left.** One scale factor is used for the whole measurement rather than
+one per nuisance cell, because the ratio is a property of a burst's brightness
+*shape* and varies far less than its duration or photon count; per cell needs the
+cell index the binning does not return. The residual -7.3% at 1 kHz is larger
+than at 5 kHz and has not been chased.
+
+Gates: `test_photons_do_not_sample_a_burst_uniformly_in_time` (mechanism) and
+`test_the_photon_weighted_window_recovers_the_generating_rate` (end to end), both
+slow, in `test/fluorescence/test_mfd_ground_truth.py`.

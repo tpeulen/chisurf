@@ -94,6 +94,36 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The 2D-MFD exchange-rate bias is fixed: a burst's photons do not sample its
+  duration uniformly.** ([MFD fitting](../docs/concepts/mfd_fitting.md),
+  [known issues](references/known-issues.md), [PRD-71](prds/prd-71.md))
+  A molecule is brightest at the centre of its transit, so its photons
+  over-sample whichever state it held then and carry information about a shorter
+  stretch of the trajectory than the first-to-last-photon span covers. Both
+  forward models took the span as the averaging window, predicted a *more*
+  averaged histogram than the data shows at the true rate, and the fit answered
+  by lowering the rate.
+
+  The correction needs no approximation: the two-state indicator is a telegraph
+  process, a photon-weighted fraction is a plain average over the photons, so
+  `Var(f) = π₀π₁ (1/N²) ΣᵢΣⱼ exp(−k|tᵢ−tⱼ|)` holds whatever the arrival pattern.
+  It reproduces the measured variance to 0.4% (1 kHz) and 0.1% (5 kHz) where the
+  uniform assumption is 9.5% and 32.4% out. `effective_window_scale` inverts it to
+  the window a burst's photons behave like, and `MfdKineticModel` applies it — on
+  by default, silently skipped when the folder carries no photons.
+
+  | exchange | span assumption | photon-weighted |
+  |---|---|---|
+  | 1 kHz | −26.8% | **−7.3%** |
+  | 5 kHz | −33.1% | **−3.0%** |
+
+  Also *faster* — 18.9 s/fit against 28.8 at 5 kHz — because a shorter window
+  needs fewer transfer-matrix slices. One scale factor serves the whole
+  measurement rather than one per nuisance cell: the ratio is a property of a
+  burst's brightness *shape*, which varies far less than its duration or photon
+  count, and per cell needs a cell index the binning does not return. The residual
+  −7.3% at 1 kHz is larger than at 5 kHz and has not been chased.
+
 * **Why 2D-MFD exchange rates come back low, and why both forward models agree
   about it.** ([known issues](references/known-issues.md), [PRD-71](prds/prd-71.md))
   A fitted rate is 20–35% low on ground truth, growing with the rate. Eliminated

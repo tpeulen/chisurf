@@ -343,6 +343,35 @@ On simulated photons with a declared 1.0 ns response, the estimate is recovered 
 better than 0.2 ns, and the fitted exchange rate's bias falls from what the
 contaminated response caused to what the forward model itself carries.
 
+## Photons do not sample a burst uniformly in time
+
+A burst's duration is not the window over which its conformational state
+averaged. A molecule is brightest at the centre of its transit, so its photons
+over-sample whichever state it held then, and they carry information about a
+shorter stretch of the trajectory than the first-to-last-photon span covers.
+
+Taking the span as the averaging window makes the model predict a *more* averaged
+histogram than the data shows at the true rate, and a fit answers that by
+lowering the rate — by 20% at 1 kHz and 33% at 5 kHz on known ground truth. The
+direction matters: a model that under-reports exchange reports a molecule as more
+static than it is.
+
+The correction needs no approximation. The two-state indicator is a telegraph
+process with covariance `π₀π₁ e^{−k|Δt|}`, and a photon-weighted fraction is a
+plain average over the photons, so
+
+```
+Var(f) = π₀ π₁ · (1/N²) · Σᵢ Σⱼ exp(−k |tᵢ − tⱼ|)
+```
+
+holds whatever the arrival pattern. Inverting it gives the window a burst's
+photons behave like, which is always shorter than the span and shortens further
+as the rate rises. Recovery improves to −7% and −3%, and the fit gets *faster*
+because a shorter window needs fewer transfer-matrix slices.
+
+This was shared by chisurf's closed-form path and by the Sim2D Monte Carlo — the
+reason those two agreed with each other while both were wrong.
+
 ## Further reading
 
 * [FRET](fret.md) — efficiencies, distances and the correction factors.

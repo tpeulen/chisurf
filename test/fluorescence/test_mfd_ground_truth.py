@@ -256,3 +256,64 @@ def test_photons_do_not_sample_a_burst_uniformly_in_time(rate):
     assert by_time == pytest.approx(reference, rel=0.2)
     assert abs(by_time - reference) < 0.5 * abs(by_photon - reference)
     assert by_photon > by_time
+
+
+@pytest.mark.slow
+def test_the_photon_weighted_window_recovers_the_generating_rate():
+    """The end of the chain: a known exchange rate, and what the fit gives back.
+
+    Everything but the rate is pinned at truth, so the one free parameter has
+    nowhere to hide what the model gets wrong. With the occupation law taking the
+    burst's span as its averaging window the answer is 33% low; with the window
+    the photons actually measure it is within a few percent.
+    """
+    import numpy as np
+    from scipy.optimize import minimize_scalar
+
+    from chisurf.core.fluorescence.mfd.fit import MfdKineticModel, load_mfd_data
+    from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
+
+    true_rate = 5000.0
+    matrix = np.array([[0.0, true_rate / 2.0], [true_rate / 2.0, 0.0]])
+    sim = simulate_smfret(
+        **{**MFD, "n_photons": 300_000, "donor_only": 0.05, "background": 0.02,
+           "brightness": 400.0, "irf_centre": 1.0, "irf_width": 0.1},
+        rate_matrix=matrix,
+    )
+    import pathlib
+    import tempfile
+
+    folder = sim.write_folder(pathlib.Path(tempfile.mkdtemp()) / "rate",
+                              bursts="truth", stem="rate")
+    data = load_mfd_data(folder, min_green_photons=20)
+
+    optics = Optics(r0=52.0, tau_d0=4.0, sigma=6.0, gamma=1.0, alpha=0.0, delta=0.0)
+    states = [FretState(distance=d, name=n)
+              for d, n in zip((66.2, 39.3), ("low", "high"))]
+
+    def recover(photon_weighted):
+        def objective(log_rate):
+            rate = float(np.exp(log_rate))
+            model = MfdKineticModel(
+                optics=optics, states=states, populations=[0.5, 0.5],
+                donor_only=0.05,
+                rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
+                donor_weighting="green", photon_weighted_window=photon_weighted,
+            )
+            return float(np.sum(model.score(data, mask_empty_model=False).residuals ** 2))
+
+        return float(np.exp(minimize_scalar(
+            objective, bounds=(np.log(200.0), np.log(40000.0)),
+            method="bounded", options={"xatol": 5e-3}).x))
+
+    by_span = recover(False)
+    by_photons = recover(True)
+
+    # The bias the span assumption carries, and that it is a *low* bias — the
+    # direction matters, because a model that under-reports exchange reports a
+    # protein as more static than it is.
+    assert by_span < 0.8 * true_rate
+    # And that correcting it lands close, without overshooting into invented
+    # dynamics.
+    assert 0.85 * true_rate < by_photons < 1.15 * true_rate
+    assert abs(by_photons - true_rate) < abs(by_span - true_rate)

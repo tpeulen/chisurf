@@ -39,6 +39,9 @@ __all__ = [
     "two_state_occupation_variance",
     "photon_weighted_occupation_variance",
     "effective_window",
+    "photon_weighted_occupation_variances",
+    "effective_window_scale",
+    "relaxation_rate",
 ]
 
 #: Transfer-matrix slices per expected transition. The discretization's error is
@@ -459,3 +462,121 @@ def effective_window(times, rate: float) -> float:
         else:
             hi = mid
     return float(0.5 * (lo + hi) / rate)
+
+
+def photon_weighted_occupation_variances(gaps, valid, rate: float) -> np.ndarray:
+    """Vectorised :func:`photon_weighted_occupation_variance`, over many bursts.
+
+    A fit moves the rate, so this is evaluated once per iteration over every
+    burst. The recursion is sequential in *photon* but independent across bursts,
+    so it runs as one pass over the padded photon axis rather than a Python loop
+    over bursts. Padding entries carry a zero decay factor, which both resets the
+    running sum and contributes nothing.
+
+    Parameters
+    ----------
+    gaps : numpy.ndarray
+        ``(n_bursts, max_photons - 1)`` inter-photon gaps in seconds, zero-padded.
+    valid : numpy.ndarray
+        Boolean array of the same shape marking real gaps.
+    rate : float
+        Relaxation rate in Hz.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_bursts,)`` variances for an equally populated two-state system.
+    """
+    gaps = np.asarray(gaps, dtype=float)
+    valid = np.asarray(valid, dtype=bool)
+    decay = np.where(valid, np.exp(-float(rate) * gaps), 0.0)
+    running = np.zeros(gaps.shape[0])
+    total = np.zeros(gaps.shape[0])
+    for column in range(gaps.shape[1]):
+        running = decay[:, column] * (1.0 + running)
+        total += running
+    n = valid.sum(axis=1) + 1.0
+    return 0.25 * (n + 2.0 * total) / (n * n)
+
+
+def effective_window_scale(gaps, valid, durations, rate: float) -> float:
+    """Return how much shorter a burst's photons make its window, on average.
+
+    The ratio of :func:`effective_window` to the first-to-last-photon span,
+    averaged over bursts. Applied to the binned nuisance measure's durations it
+    corrects the occupation law for the fact that photons do not sample a burst
+    uniformly in time, without the measure having to carry arrival times.
+
+    A single ratio is used rather than one per nuisance cell because the ratio is
+    a property of a burst's *shape* — how sharply its brightness peaks — which
+    varies far less between bursts than their durations or photon counts do. Per
+    cell would be more faithful and needs the cell index the binning does not
+    currently return.
+
+    Parameters
+    ----------
+    gaps, valid : numpy.ndarray
+        Padded inter-photon gaps and their mask, as for
+        :func:`photon_weighted_occupation_variances`.
+    durations : numpy.ndarray
+        ``(n_bursts,)`` first-to-last-photon spans in seconds.
+    rate : float
+        Relaxation rate in Hz.
+
+    Returns
+    -------
+    float
+        Ratio in ``(0, 1]``; 1 when the rate is zero or nothing can be measured.
+    """
+    durations = np.asarray(durations, dtype=float)
+    if rate <= 0.0 or durations.size == 0:
+        return 1.0
+    variances = photon_weighted_occupation_variances(gaps, valid, rate) / 0.25
+
+    # Invert h(x) = 2[1/x - (1-e^-x)/x^2], monotone decreasing from 1, by
+    # bisection on every burst at once. The upper bracket is generous because a
+    # bright, sharply peaked burst can look far shorter than it is.
+    target = np.clip(variances, 1e-12, 1.0 - 1e-12)
+    lo = np.full(target.shape, 1e-8)
+    hi = np.full(target.shape, 1e6)
+    for _ in range(80):
+        mid = 0.5 * (lo + hi)
+        value = 2.0 * (1.0 / mid - (1.0 - np.exp(-mid)) / (mid * mid))
+        high = value > target
+        lo = np.where(high, mid, lo)
+        hi = np.where(high, hi, mid)
+    effective = 0.5 * (lo + hi) / rate
+
+    usable = durations > 0
+    if not np.any(usable):
+        return 1.0
+    return float(np.clip(np.mean(effective[usable] / durations[usable]), 1e-3, 1.0))
+
+
+def relaxation_rate(rate_matrix) -> float:
+    """Return the rate at which a scheme forgets which state it started in.
+
+    The slowest non-zero relaxation of the generator — for two states exactly
+    ``k₀₁ + k₁₀``, the constant in the telegraph covariance, and for more the
+    eigenvalue that outlives the rest and therefore sets how much a burst
+    averages.
+
+    Parameters
+    ----------
+    rate_matrix : array_like
+        ``(n, n)`` rates in Hz, ``K[target, source]``.
+
+    Returns
+    -------
+    float
+        Relaxation rate in Hz; ``0`` for a scheme with no exchange.
+    """
+    matrix = np.asarray(rate_matrix, dtype=float)
+    if matrix.size == 0 or not np.any(matrix):
+        return 0.0
+    generator = matrix.copy()
+    np.fill_diagonal(generator, 0.0)
+    np.fill_diagonal(generator, -generator.sum(axis=0))
+    magnitudes = np.abs(np.linalg.eigvals(generator))
+    non_zero = magnitudes[magnitudes > magnitudes.max() * 1e-9]
+    return float(non_zero.min()) if non_zero.size else 0.0
