@@ -2,6 +2,28 @@
 
 ## 2026-08-04
 
+* **The detection profile becomes a fittable object, not a hard-coded Gaussian:
+  [PRD-76](prds/prd-76.md) registered.** ([PRDs](prds/index.md))
+  Saturation FCS builds its excitation profile from `_gaussian_psf` and derives
+  the peak excitation rate from the *Gaussian* peak flux density
+  `2 Phi/(pi w0^2)` — so "support another PSF shape" is not a parameter change,
+  it is a seam that does not exist yet. The PRD specifies that seam
+  (`DetectionProfile`: evaluate on `(r, z)`, own convergent grid, focal-area
+  integral, `V_0`, optional analytic `g_diff`) plus six implementations —
+  Gaussian, Gaussian beam, the Enderlein Gauss–Lorentz MDF already in
+  `enderlein.py`, a diffraction PSF from the optics engine behind the PSF
+  calculator, a measured bead-scan profile, and a **fittable Gaussian-sum
+  basis** — and then uses it: a **power series fitted globally** recovers the
+  real profile, because saturation flattens the profile at a rate set by its
+  fall-off, so `V_eff(P)`, `tau_D(P)` and `CPM(P)` together measure the shape.
+  Named because it fails silently: reusing `excitation_rate_peak` with a
+  non-Gaussian profile still fits the curve and still returns rate constants —
+  scaled by a shape-dependent factor. Also recorded as *not identifiable*: a
+  single curve can never yield a profile (shape trades against `tau_D` and `N`),
+  and even a series leaves `sigma_abs * P` degenerate with `w_r`, so an absolute
+  `V_eff` requires an anchor (known `D`, known extinction, or a two-focus
+  separation) rather than a number that restates the assumed cross-section.
+
 * **A session now has to leave a resume point, and OKF is where it goes.**
   ([change tracking](workflows/change-tracking.md),
   [CLAUDE.md reference](references/claude-md.md))
