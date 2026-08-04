@@ -57,8 +57,18 @@ _LINK_ENVS_VAR = "CHISURF_TTTRLIB_LINK_ENVS"
 _DEFAULT_LINK_ENV_NAMES = ("arm64",)
 
 #: The files a tttrlib install consists of. Only these names are ever replaced.
+#:
+#: tttrlib ships in one of two shapes and this has to handle both, because which
+#: one you get depends on the checkout under ``modules/tttrlib`` rather than on
+#: anything here. Before the module split it was a flat wrapper plus one
+#: extension; after it, a **package directory** holding the extension and one
+#: shared library per module. Linking only the flat names against a split build
+#: finds no extension and skips silently -- which is what left the sibling env
+#: with three dangling symlinks and no tttrlib at all.
 _ARTIFACTS = ("tttrlib.py",)
 _ARTIFACT_GLOBS = ("_tttrlib*.so", "tttrlib-*.dist-info")
+#: The post-split package directory, linked whole when it is what was built.
+_PACKAGE_DIR = "tttrlib"
 
 
 def _conda_env_prefixes() -> list[Path]:
@@ -143,7 +153,13 @@ def _link_into(prefix: Path, source_sp: Path) -> bool:
 
     # A compiled extension is tied to an exact CPython ABI. Linking a cp312 module into a
     # cp311 env produces an ImportError at first use, far from the cause, so refuse here.
-    src_ext = next(iter(sorted(source_sp.glob("_tttrlib*.so"))), None)
+    package = source_sp / _PACKAGE_DIR
+    ext_globs = (
+        [package.glob("_tttrlib*.so")] if package.is_dir() else []
+    ) + [source_sp.glob("_tttrlib*.so")]
+    src_ext = next(
+        (e for glob in ext_globs for e in sorted(glob)), None
+    )
     if src_ext is None:
         print("build-tttrlib: no built extension to link from; skipped", flush=True)
         return False
@@ -156,13 +172,32 @@ def _link_into(prefix: Path, source_sp: Path) -> bool:
         return False
 
     linked = []
-    for name in _ARTIFACTS:
-        src = source_sp / name
-        if src.is_file():
-            linked.append((src, target_sp / name))
-    for pattern in _ARTIFACT_GLOBS:
-        for src in sorted(source_sp.glob(pattern)):
-            linked.append((src, target_sp / src.name))
+    if package.is_dir():
+        # The split build: one link for the package, which carries the extension
+        # and every module library with it.
+        linked.append((package, target_sp / _PACKAGE_DIR))
+    else:
+        for name in _ARTIFACTS:
+            src = source_sp / name
+            if src.is_file():
+                linked.append((src, target_sp / name))
+        for pattern in ("_tttrlib*.so",):
+            for src in sorted(source_sp.glob(pattern)):
+                linked.append((src, target_sp / src.name))
+    for src in sorted(source_sp.glob("tttrlib-*.dist-info")):
+        linked.append((src, target_sp / src.name))
+
+    # Whichever shape was *not* built leaves its own names behind, and a stale
+    # symlink to a file that no longer exists is worse than an absent one: it
+    # reads as an install. Clear the other layout's artefacts before linking.
+    stale = [target_sp / _PACKAGE_DIR] if not package.is_dir() else [
+        target_sp / name for name in _ARTIFACTS
+    ] + sorted(target_sp.glob("_tttrlib*.so"))
+    for path in stale:
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir():
+            shutil.rmtree(path)
 
     for src, dst in linked:
         # Replace whatever is there — a previous real install, or an older symlink.
