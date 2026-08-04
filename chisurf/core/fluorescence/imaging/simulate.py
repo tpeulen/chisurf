@@ -469,9 +469,17 @@ def simulate_clsm_diffusion(
 # Shared simulator helpers
 # ---------------------------------------------------------------------------
 def _gaussian_irf(n_micro: int, center: float, sigma: float) -> np.ndarray:
-    """Return an area-normalised Gaussian IRF kernel of length *n_micro*."""
-    irf = np.exp(-0.5 * ((np.arange(n_micro) - center) / sigma) ** 2)
-    return irf / irf.sum()
+    """Return an area-normalised Gaussian IRF kernel of length *n_micro*.
+
+    The axis is micro-time *bins* rather than nanoseconds; the shared pulse is
+    unit-agnostic, so centre and width are simply given in the same units.
+    """
+    from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA, synthetic_irf
+
+    return synthetic_irf(
+        np.arange(int(n_micro), dtype=float), float(center),
+        float(sigma) / FWHM_TO_SIGMA, norm=True,
+    )
 
 
 def _quantise(values: np.ndarray, n_levels: int) -> tuple[np.ndarray, np.ndarray]:

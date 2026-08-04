@@ -105,12 +105,14 @@ def _sized(values: Any, size: int, default: float = 0.0) -> list[float]:
 
 def _gaussian_irf_pattern(n_bins: int, dt: float, fwhm_ns: float, center_ns: float) -> "np.ndarray":
     """Return an area-normalized Gaussian IRF on the micro-time axis."""
-    sigma_bins = max(1e-6, (float(fwhm_ns) / 2.3548200450309493) / float(dt))
-    center_bin = float(center_ns) / float(dt)
-    bins = np.arange(int(n_bins), dtype=float)
-    irf = np.exp(-0.5 * ((bins - center_bin) / sigma_bins) ** 2)
-    total = irf.sum()
-    return irf / total if total > 0 else irf
+    from chisurf.core.fluorescence.tcspc.irf import synthetic_irf
+
+    return synthetic_irf(
+        np.arange(int(n_bins), dtype=float),
+        float(center_ns) / float(dt),
+        max(1e-6, float(fwhm_ns) / float(dt)),
+        norm=True,
+    )
 
 
 def _species_decay(tttrlib, spectrum, n_bins: int, dt: float, irf=None, t0: float = 0.0):

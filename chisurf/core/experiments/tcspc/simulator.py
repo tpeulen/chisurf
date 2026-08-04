@@ -35,13 +35,12 @@ def gaussian_irf(
     numpy.ndarray
         Gaussian response scaled to a maximum of one.
     """
-    t = np.asarray(time_axis, dtype=np.float64)
+    from chisurf.core.fluorescence.tcspc.irf import FWHM_TO_SIGMA, synthetic_irf
+
     s = float(sigma) if float(sigma) > 0.0 else 1e-3
-    irf = np.exp(-0.5 * ((t - float(mean)) / s) ** 2)
+    irf = synthetic_irf(time_axis, float(mean), s / FWHM_TO_SIGMA, norm=False)
     max_value = float(np.max(irf)) if irf.size else 0.0
-    if max_value > 0.0:
-        irf = irf / max_value
-    return irf
+    return irf / max_value if max_value > 0.0 else irf
 
 
 def resolve_irf(

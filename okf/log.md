@@ -193,6 +193,17 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **Four Gaussian instrument responses, one pulse.** The TCSPC simulator, the
+  image simulator and the acquisition device each built their own Gaussian IRF —
+  in nanoseconds with a sigma, in bins with a sigma, and in nanoseconds with a
+  FWHM, one of them hard-coding `2.3548200450309493` beside the `FWHM_TO_SIGMA`
+  that already existed two imports away. All three now call
+  `tcspc.irf.synthetic_irf`, which also means they can be skewed, which a real
+  detector response is.
+
+  The three replacements reproduce the arithmetic they replaced to 1e-16, so this
+  changes nothing except where the pulse is defined.
+
 * **Every simulated H2MM burst was carrying the next burst's first photon.**
   ([packer](../chisurf/plugins/burst/burst_h2mm/core/photons.py))
   The "pack simulated bursts into a TTTR and a burst table" block was written out
