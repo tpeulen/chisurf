@@ -33,7 +33,9 @@ def restore_surface():
     every other test file sees.
     """
     section = _DISPLAY_CONFIG.setdefault("surface", {})
-    before = {k: section.get(k) for k in ("alpha", "two_sided")}
+    keys = ("alpha", "two_sided", "grid_spacing", "probe_radius",
+            "best", "normal", "poor", "miserable")
+    before = {k: section.get(k) for k in keys}
     yield section
     for key, value in before.items():
         if value is None:
@@ -125,13 +127,125 @@ def test_every_transforming_spec_round_trips():
 
     Any spec that converts on the way in must convert back on the way out, or
     `get` answers in the storage's units and the next `set` compounds the error.
+
+    Probed **on the spec's own domain**: an integer setting promises the round
+    trip for integers and nothing else. ``surface_quality`` is a level selecting
+    one of eight separations, so asking it to preserve 0.25 would be asking it
+    to be a float, which is exactly the confusion it was registered wrongly as
+    before.
     """
+    probes = {
+        "float": (0.0, 0.25, 0.5, 1.0),
+        "int": (-3, -1, 0, 1, 2, 3, 4),
+    }
+    checked = 0
     for name in setting_names():
         spec = resolve(name)
         if spec.stored is None and spec.shown is None:
             continue
         assert spec.stored is not None and spec.shown is not None, name
-        for probe in (0.0, 0.25, 0.5, 1.0):
+        for probe in probes.get(spec.kind, (0.0, 1.0)):
             assert spec.from_config(spec.to_config(probe)) == pytest.approx(
                 probe
             ), f"{name} does not round-trip at {probe}"
+        checked += 1
+    assert checked >= 2, "the transforming specs went missing"
+
+
+# --------------------------------------------------------------------------- #
+# surface_quality: a level, not a spacing
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "level, spacing",
+    [
+        (4, 0.0625),   # "totally impractical"
+        (3, 0.25 / 3.0),
+        (2, 0.125),    # "nearly perfect"
+        (1, 0.25),     # "good"
+        (0, 0.5),      # normal -- PyMOL's default
+        (-1, 0.85),
+        (-2, 0.85 * 1.5),
+        (-3, 2.0),     # "miserable"
+    ],
+)
+def test_the_quality_levels_are_pymols(restore_surface, level, spacing):
+    """Transcribed from ``RepSurfaceSetSettings``; the numbers are the meaning."""
+    set_setting("surface_quality", level)
+    assert restore_surface["grid_spacing"] == pytest.approx(spacing)
+    assert get_setting("surface_quality") == level
+
+
+def test_a_higher_level_is_a_finer_surface(restore_surface):
+    """The direction is the whole point, and it is the opposite of a spacing.
+
+    Registered as a float spacing under PyMOL's name, `surface_quality 0` asked
+    for "normal" and got a spacing of zero -- not coarse, but infinitely fine.
+    """
+    set_setting("surface_quality", 0)
+    normal = restore_surface["grid_spacing"]
+    set_setting("surface_quality", 2)
+    assert restore_surface["grid_spacing"] < normal
+    set_setting("surface_quality", -3)
+    assert restore_surface["grid_spacing"] > normal
+
+
+def test_the_level_reads_the_base_separations(restore_surface):
+    """The four bases are registered settings, so they have to be *read*."""
+    set_setting("surface_normal", 0.6)
+    try:
+        set_setting("surface_quality", 0)
+        assert restore_surface["grid_spacing"] == pytest.approx(0.6)
+    finally:
+        unset_setting("surface_normal")
+
+
+def test_a_spacing_set_directly_reports_the_nearest_level(restore_surface):
+    """A dotted path can set anything; `get` answers with the closest level."""
+    set_setting("surface.grid_spacing", 0.51)
+    assert get_setting("surface_quality") == 0
+
+
+# --------------------------------------------------------------------------- #
+# One name, one entry
+# --------------------------------------------------------------------------- #
+def test_no_setting_is_registered_twice():
+    """A duplicate name silently shadows, and the shadowed one still *looks* live.
+
+    `solvent_radius` was registered twice, onto two different config keys. The
+    surface mesh read one and `get_area` read the other, so `set solvent_radius`
+    moved the number the area calculation used and left the surface on screen
+    untouched -- with both entries in the table, both docstrings plausible, and
+    nothing failing.
+    """
+    from chisurf.plugins.chimol.chimol.settings import _SPECS
+
+    seen: dict[str, str] = {}
+    duplicates = []
+    for spec in _SPECS:
+        if spec.name in seen:
+            duplicates.append(f"{spec.name}: {seen[spec.name]} and {'.'.join(spec.path)}")
+        seen[spec.name] = ".".join(spec.path)
+    assert not duplicates, "settings registered more than once: " + "; ".join(duplicates)
+
+
+def test_no_two_settings_share_a_config_path():
+    """Two names for one storage is fine; one name for two storages is not.
+
+    The reverse -- several PyMOL names onto one config entry -- is deliberate
+    (`cartoon_side_chain_helper` and `ribbon_side_chain_helper` are one setting
+    here), so this only asserts the direction that bites.
+    """
+    from chisurf.plugins.chimol.chimol.settings import _SPECS
+
+    by_name: dict[str, set[str]] = {}
+    for spec in _SPECS:
+        by_name.setdefault(spec.name, set()).add(".".join(spec.path))
+    split = {n: p for n, p in by_name.items() if len(p) > 1}
+    assert not split, f"one name writing several config entries: {split}"
+
+
+def test_the_probe_radius_reaches_the_surface_the_user_sees(restore_surface):
+    """The consumer that was left behind by the duplicate."""
+    set_setting("solvent_radius", 2.5)
+    assert restore_surface["probe_radius"] == pytest.approx(2.5)
+    assert get_setting("solvent_radius") == pytest.approx(2.5)

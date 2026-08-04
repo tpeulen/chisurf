@@ -550,6 +550,28 @@ slightly translucent surface and `unset` restores the default the program
 actually has. Set it to 0 explicitly for PyMOL's look.
 :::
 
+### How finely the surface is built
+
+```text
+surface_quality 0        # PyMOL's scale, and the default
+surface_quality 1        # "good" -- roughly 4x the triangles
+surface_quality -2       # coarse and fast, for a first look
+set surface_normal, 0.6  # the separation level 0 selects, in Angstrom
+```
+
+The level chooses a grid spacing, from `surface_miserable` (2.0 Å) up to
+`surface_best` (0.25 Å) and finer; all four separations are settings too, so a
+level can be retuned rather than abandoned. Measured on T4 lysozyme, levels
+−3 / −1 / 0 / 1 build **2 446 / 13 654 / 25 876 / 105 922** vertices — so the
+top levels are genuinely expensive, which is why PyMOL calls its highest ones
+"nearly impractical".
+
+:::{warning}
+Levels above 1 grow fast and are capped at 320 samples per axis, so on a large
+assembly the finest levels stop getting finer. That ceiling exists because the
+grid is cubic: halving the spacing is eight times the memory.
+:::
+
 ### A picture behind the scene, so transparency reads
 
 Transparency is invisible against one flat colour. A surface at `alpha 0.4` over

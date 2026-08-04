@@ -297,6 +297,54 @@ def _dash_segments(
     return np.asarray(out, dtype=float)
 
 
+#: Samples per axis the surface grid will never exceed, however fine a spacing
+#: is asked for. Measured on 148L (37x41x48 A, 1300 atoms): 320 samples/axis is
+#: 172k vertices in 0.66 s, which is a fair price for a level PyMOL itself calls
+#: "nearly perfect". The next level up is 4x that again for no visible gain.
+_SURFACE_GRID_CEILING = 320
+
+
+def _surface_grid_cap(
+    points: np.ndarray, spacing: float, padding: float, configured: int
+) -> int:
+    """Samples per axis to allow, so a finer spacing is actually delivered.
+
+    ``max_dim`` is a hard cap inside the mesh builder, which **rescales the
+    spacing to fit it** -- so on anything larger than a fragment every fine
+    setting collapsed to the same grid. Measured on 148L before this: asking for
+    0.5 A and 0.25 A gave 27 648 and 29 152 vertices, a 5 % difference across a
+    2x request, because both were pinned at 96 samples. Raising the cap to what
+    the request needs gives 42 502 and 171 810 -- which is what "finer" is
+    supposed to mean.
+
+    The configured value stays the floor, so nothing gets *coarser* than before,
+    and :data:`_SURFACE_GRID_CEILING` stops an extreme level from asking for a
+    grid that cannot be built.
+
+    Parameters
+    ----------
+    points : (N, 3) numpy.ndarray
+        The atoms the surface is built over.
+    spacing : float
+        Requested grid spacing in Angstrom.
+    padding : float
+        Margin the mesh builder adds around the extent.
+    configured : int
+        ``surface.max_dim`` -- the floor, and what was previously the cap.
+
+    Returns
+    -------
+    int
+        Samples per axis to permit.
+    """
+    pts = np.asarray(points, dtype=float)
+    if pts.ndim != 2 or pts.shape[0] == 0 or spacing <= 0.0:
+        return max(int(configured), 16)
+    extent = float(np.max(pts.max(axis=0) - pts.min(axis=0))) + 2.0 * float(padding)
+    needed = int(np.ceil(extent / float(spacing))) + 1
+    return int(min(max(int(configured), needed), _SURFACE_GRID_CEILING))
+
+
 #: Colour a map opens in when nothing else is asked for.
 _DEFAULT_MAP_COLOR = (0.5, 0.7, 1.0, 1.0)
 
@@ -7420,15 +7468,38 @@ class MolView(QtWidgets.QWidget):
                 n_pts = pts_surface.shape[0]
 
         # --- Try mesh surface via Gaussian density + marching cubes ---
-        grid_spacing = float(surface_cfg.get("grid_spacing", 0.8))
+        # The spacing is an *Angstrom* quantity and `pts_surface` is in scene
+        # units, which are Angstrom times `_scale_factor` (10). Passing the
+        # configured number straight through asked for a grid ten times finer
+        # than it says -- 0.08 A rather than 0.8 -- and `max_dim` then clamped it
+        # back, which is why the spacing had no measurable effect at all and the
+        # cap was doing the whole job. The volume path already converts
+        # (`add_volume`); this one did not.
+        scene_scale = float(getattr(self, "_scale_factor", 1.0) or 1.0)
+        grid_spacing = float(surface_cfg.get("grid_spacing", 0.8)) * scene_scale
         iso_value = float(surface_cfg.get("iso_value", 0.5))
         padding = float(surface_cfg.get("padding", 3.0))
-        max_dim = int(surface_cfg.get("max_dim", 96))
+        max_dim = _surface_grid_cap(
+            pts_surface, grid_spacing, padding,
+            int(surface_cfg.get("max_dim", 96)),
+        )
         mesh_sigma_factor = float(surface_cfg.get("mesh_sigma_factor", 1.0))
-        mesh_sigma_default = float(surface_cfg.get("mesh_sigma_default", 1.8))
+        # Scene units, like the coordinates and the per-atom radii it stands in
+        # for. Written as an Angstrom vdW radius (1.8) and used unscaled, this
+        # fallback made a blob a tenth the size it should be -- reachable by any
+        # object whose atom array carries no `radius` field, where the surface
+        # would come out as spikes rather than an envelope. The real radii are
+        # already scaled (measured: 15-20 for a protein, i.e. 1.5-2.0 A x 10),
+        # so the stand-in has to be too.
+        mesh_sigma_default = (
+            float(surface_cfg.get("mesh_sigma_default", 1.8)) * scene_scale
+        )
+        # `probe_radius` is an Angstrom quantity for the same reason.
+        probe_radius_scene = (
+            float(surface_cfg.get("probe_radius", 1.4)) * scene_scale
+        )
 
         method = str(surface_cfg.get("method", "gaussian")).lower()
-        probe_radius = float(surface_cfg.get("probe_radius", 1.4))
 
         if method in ("sas", "ses"):
             if radii_surface is not None and radii_surface.shape[0] == n_pts:
@@ -7440,7 +7511,7 @@ class MolView(QtWidgets.QWidget):
                 pts_surface,
                 atom_radii,
                 method=method,
-                probe_radius=probe_radius,
+                probe_radius=probe_radius_scene,
                 grid_spacing=grid_spacing,
                 padding=padding,
                 max_dim=max_dim,

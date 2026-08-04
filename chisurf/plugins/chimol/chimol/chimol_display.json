@@ -1,5 +1,5 @@
 {
-  "_version": 7,
+  "_version": 8,
   "background": "k",
   "defaults": {
     "color_mode": "by_sequence"
@@ -145,14 +145,19 @@
       0.92,
       1.0
     ],
-    "grid_spacing": 0.8,
+    "grid_spacing": 0.5,
     "iso_value": 0.5,
     "padding": 3.0,
     "max_dim": 96,
     "mesh_sigma_factor": 1.0,
     "mesh_sigma_default": 1.8,
     "method": "gaussian",
-    "probe_radius": 1.4
+    "probe_radius": 1.4,
+    "two_sided": false,
+    "best": 0.25,
+    "normal": 0.5,
+    "poor": 0.85,
+    "miserable": 2.0
   },
   "metaball": {
     "field_function": "wyvill",

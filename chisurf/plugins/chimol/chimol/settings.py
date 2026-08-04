@@ -118,6 +118,61 @@ def _complement(value: Any) -> float:
     return min(1.0, max(0.0, 1.0 - float(value)))
 
 
+#: ``surface_quality`` level -> point separation in Angstrom, transcribed from
+#: ``RepSurfaceSetSettings`` (``layer2/RepSurface.cpp``). PyMOL's own comments
+#: for the levels are kept, because they are the only documentation of what the
+#: numbers are *for*.
+#:
+#: This looked like a units mismatch and is not: PyMOL's level and chimol's grid
+#: spacing are the **same quantity**, one naming the other. The level indexes
+#: into four base separations, which are settings in their own right -- so they
+#: are registered too, and this table is what reads them.
+_QUALITY_BASE = {
+    "best": 0.25, "normal": 0.5, "poor": 0.85, "miserable": 2.0,
+}
+
+
+def _quality_spacing(level: Any) -> float:
+    """Point separation for a ``surface_quality`` level; smaller is finer."""
+    cfg = _DISPLAY_CONFIG.get("surface", {}) or {}
+
+    def base(name: str) -> float:
+        return float(cfg.get(name, _QUALITY_BASE[name]))
+
+    try:
+        lvl = int(round(float(level)))
+    except (TypeError, ValueError):
+        lvl = 0
+    if lvl >= 4:                      # "totally impractical", says PyMOL
+        return base("best") / 4.0
+    return {
+        3: base("best") / 3.0,        # nearly impractical
+        2: base("best") / 2.0,        # nearly perfect
+        1: base("best"),              # good
+        0: base("normal"),            # normal -- PyMOL's default
+        -1: base("poor"),
+        -2: base("poor") * 1.5,       # god awful
+        -3: base("miserable"),        # miserable
+    }.get(lvl, base("miserable") * 1.18)
+
+
+def _spacing_quality(spacing: Any) -> int:
+    """The level whose separation is nearest ``spacing``.
+
+    A spacing set directly (``set surface.grid_spacing, 0.4``) need not be one
+    of the eight the levels name, so ``get surface_quality`` answers with the
+    closest rather than refusing. Reporting the nearest level is what makes the
+    round trip exact on the level's own domain, which is all an integer setting
+    can promise.
+    """
+    try:
+        value = float(spacing)
+    except (TypeError, ValueError):
+        return 0
+    levels = range(-4, 5)
+    return min(levels, key=lambda lvl: abs(_quality_spacing(lvl) - value))
+
+
 # --------------------------------------------------------------------------- #
 # The table
 # --------------------------------------------------------------------------- #
@@ -248,10 +303,36 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("two_sided_lighting", "surface.two_sided", "bool", False,
           "Light the inside faces of a surface, which is what you see through "
           "a transparent one."),
+    # One key, two consumers: the surface mesh reads it straight from the config
+    # and `get_area` reads it through `get_setting`. It was registered *twice*,
+    # onto two different config keys -- the later entry silently shadowed the
+    # earlier, so `set solvent_radius` moved the number `get_area` uses and left
+    # the surface you are looking at unchanged. That is the same "two numbers
+    # that must agree and eventually will not" this table exists to prevent, and
+    # a duplicate name is how it got in; `test_no_setting_is_registered_twice`
+    # now fails on one.
     _spec("solvent_radius", "surface.probe_radius", "float", 1.4,
-          "Probe radius used when building the solvent-excluded surface."),
-    _spec("surface_quality", "surface.grid_spacing", "float", 0.8,
-          "Surface grid spacing in Angstroms; smaller is finer and slower."),
+          "Probe radius in Angstrom: rolls the solvent-excluded surface, and "
+          "is what get_area adds to each vdW radius when dot_solvent is on."),
+    # A *level*, as PyMOL spells it, mapping onto the grid spacing chimol
+    # stores -- see `_quality_spacing`. Registered as a float before, under
+    # PyMOL's name but with PyMOL's argument meaning something else: a script
+    # asking for `surface_quality 0` (normal) got a spacing of 0, which is not
+    # "coarse" but "infinitely fine". chimol now ships PyMOL's own default
+    # level (0 = `surface_normal`, 0.5 A), reached by a config migration that
+    # changed the stored number without changing the picture -- see
+    # DISPLAY_CONFIG_MIGRATIONS[8].
+    _spec("surface_quality", "surface.grid_spacing", "int", 0,
+          "Surface detail level, PyMOL's scale: 0 normal, higher is finer.",
+          stored=_quality_spacing, shown=_spacing_quality),
+    _spec("surface_best", "surface.best", "float", 0.25,
+          "Point separation used by surface_quality levels 1 and above."),
+    _spec("surface_normal", "surface.normal", "float", 0.5,
+          "Point separation at surface_quality 0."),
+    _spec("surface_poor", "surface.poor", "float", 0.85,
+          "Point separation at surface_quality -1 and -2."),
+    _spec("surface_miserable", "surface.miserable", "float", 2.0,
+          "Point separation at surface_quality -3 and below."),
 
     # -- Raytracing / lighting ---------------------------------------------
     _spec("ray_shadow", "ray.shadow", "bool", True,
@@ -307,8 +388,6 @@ _SPECS: tuple[SettingSpec, ...] = (
     _spec("dot_density", "surface.dot_density", "int", 2,
           "Dot sampling level 0-4, giving 12, 42, 162, 642 or 2562 dots per "
           "atom. Higher is more accurate and slower."),
-    _spec("solvent_radius", "surface.solvent_radius", "float", 1.4,
-          "Probe radius in Angstrom, used when dot_solvent is on."),
 
     # -- Sequence viewer ----------------------------------------------------
     _spec("seq_view", "sequence.seq_view", "bool", True,

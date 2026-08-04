@@ -31,7 +31,7 @@ different algorithm, and for one where the data was blamed before the rule was.
 | --- | --- | --- |
 | Code | 515 823 lines C++ + 52 154 Python | 29 442 Python |
 | Commands | 303 | 119 |
-| Settings | 790 | 70 registered |
+| Settings | 790 | 74 registered |
 | Representations | 16 | 11 |
 | Selection keywords | 85 canonical | 85 canonical, 169 spellings |
 
@@ -71,11 +71,10 @@ six `h_bond_*` came off this list with the polar-contact finder, and
 `surface_color`, `surface_type`, `stick_color`, `ribbon_color`, `stick_ball`,
 `sphere_mode`, `valence` and the `util.py` lighting family at the top.
 
-**`surface_quality` is registered but means something different from PyMOL's**,
-and that is worth fixing before adding more: PyMOL takes a level (0-4), chimol a
-grid spacing in Angstrom. A script that sets it gets a finer surface where it
-asked for a coarser one, and `preset ligand_sites` has to skip the step rather
-than pass it through.
+`surface_quality` **is fixed** -- it was three defects wearing one name, and the
+finding generalises: a registered setting with a live config path and a passing
+test still had no effect at all. Before registering more names, **count what the
+setting produces**, not whether it stores.
 
 **Register a name only if code reads it** — a setting that reads nothing is what
 the settings table exists to prevent, and it is why the three cartoon settings
@@ -576,6 +575,67 @@ choosing one before looking is how a correct change gets reverted.
 not "coarse" but "infinitely fine". It would hang rather than approximate, so it
 is named in the skipped list -- a real parity wart, written down instead of
 guessed at.
+
+## `surface_quality` was three defects wearing one name
+
+Flagged as a units wart -- PyMOL takes a level, chimol a grid spacing -- and each
+measurement found something worse underneath.
+
+**It is not a different quantity.** `RepSurfaceSetSettings` shows the level is a
+*selector* for a point separation in Angstrom, which is exactly what chimol
+stores. Eight levels over four base separations (`surface_best`,
+`surface_normal`, `surface_poor`, `surface_miserable`), all transcribed, and the
+four bases registered because the table reads them.
+
+**Then the level did nothing.** Levels -3 to 1 moved 148L from 26 286 to 27 238
+vertices -- 3.6 % across an eightfold request. `max_dim` caps the grid at 96
+samples per axis and **rescales the spacing to fit**, so every fine level
+collapsed onto the same grid.
+
+**Then the reason turned out to be worse.** `_all_atom_coords` is in *scene*
+units -- Angstrom x `_scale_factor` (10) -- and the configured spacing was passed
+through as though it were scene units too. `0.8` asked for **0.08 A**, and the
+cap clamped it straight back. The spacing had never had a measurable effect in
+this path; `max_dim` was making the whole decision. `add_volume` already does the
+conversion, so the bug is one path forgetting what its neighbour remembers.
+
+With the conversion right and the cap following the request (ceiling 320
+samples/axis, measured at 0.66 s for the finest realistic level on 1300 atoms):
+2 446 / 13 654 / 25 876 / 105 922 vertices at levels -3 / -1 / 0 / 1. A 43x range,
+monotone, and visibly different -- level -3 is a smooth blob and level 1 resolves
+individual atoms.
+
+**The default changed number without changing picture.** An honest 0.8 A would
+have made every existing surface *coarser* than what users see (13 654 against
+27 114). 0.5 A is PyMOL's own `surface_normal`, is `surface_quality 0`, and
+reproduces today's appearance at 25 876 -- so that is the shipped value, moved by
+a config-version migration (7 -> 8) that only touches copies still holding the
+old default.
+
+### And a fourth, found by pulling the same thread
+
+`solvent_radius` was registered **twice**, onto two different config keys:
+`surface.probe_radius`, which the surface mesh reads, and
+`surface.solvent_radius`, which `get_area` reads. The later entry silently
+shadows the earlier in the name table, so `set solvent_radius, 2.5` moved the
+number the *area calculation* used and left the surface on screen untouched. One
+physical quantity, two storages, disagreeing quietly -- which is exactly what the
+`transparency` transform two hundred lines above it exists to prevent.
+
+Both entries had plausible docstrings, the name resolved, nothing failed. Only
+instrumenting the live path -- watching the config value stay at 1.4 while `set`
+reported success -- showed it. Collapsed onto one key; `solvent_radius` now moves
+the surface (34 770 / 30 744 / 25 260 vertices at probes 1.0 / 1.4 / 2.5 A, the
+right direction: a bigger probe bridges more crevices). Two guardrails added --
+no name registered twice, and no one name writing several config entries. The
+reverse stays legal: `cartoon_side_chain_helper` and `ribbon_side_chain_helper`
+are deliberately one setting here.
+
+**Worth carrying: "the setting is registered" and "the setting works" are
+different claims.** Four defects sat behind one flagged wart -- wrong type, no
+effect, 10x units, two homes -- and every one of them had a live config path, a
+passing test and a correct-looking name. Only measuring the *output* caught
+them.
 
 ## The camera stayed where the user put it, once the aspect was fixed
 

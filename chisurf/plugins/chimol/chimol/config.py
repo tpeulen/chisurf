@@ -14,7 +14,7 @@ try:
 except Exception:  # pragma: no cover - moview can run without chisurf
     _cs_settings = None
 
-DISPLAY_CONFIG_VERSION: int = 7
+DISPLAY_CONFIG_VERSION: int = 8
 """Current version of the chimol_display.json schema.
 
 Increment this when keys are added, renamed, or removed, **or when a default
@@ -74,6 +74,20 @@ DISPLAY_CONFIG_MIGRATIONS: dict[int, dict[str, dict[str, tuple]]] = {
             # normals point outward and the surface terms scale with alpha;
             # before either fix, a sub-1 alpha gave opaque milk.
             "alpha": (1.0, 0.55),
+        },
+    },
+    8: {
+        "surface": {
+            # The grid spacing was being applied in *scene* units while it is
+            # written in Angstrom, so 0.8 asked for 0.08 A and `max_dim` clamped
+            # it straight back -- the setting had no measurable effect and the
+            # cap decided the resolution. With the conversion fixed, 0.8 would
+            # genuinely mean 0.8 A and the default surface would get *coarser*
+            # than everyone has been seeing (13 654 vertices on 148L against
+            # 27 114). 0.5 is PyMOL's own `surface_normal`, it is
+            # `surface_quality 0`, and it reproduces today's appearance
+            # (25 876 vertices). So the number changes and the picture does not.
+            "grid_spacing": (0.8, 0.5),
         },
     },
     7: {
@@ -502,9 +516,14 @@ def _load_display_config() -> dict:
             # PyMOL's `transparency` is the complement of this; the settings
             # table carries the conversion so only alpha is stored.
             "two_sided": False,
+            # The four point separations PyMOL's surface_quality levels select
+            # between (layer2/RepSurface.cpp). Named settings in PyMOL too.
+            "best": 0.25,
+            "normal": 0.5,
+            "poor": 0.85,
+            "miserable": 2.0,
             "dot_solvent": False,
             "dot_density": 2,
-            "solvent_radius": 1.4,
             "size_scale": 0.03,
             "min_size": 2.5,
             "ao_radius": 4.5,
@@ -514,7 +533,8 @@ def _load_display_config() -> dict:
             "max_points": 10000,
             "color_mode": "ao_gray",
             "base_color": [0.85, 0.85, 0.92, 1.0],
-            "grid_spacing": 0.8,
+            # 0.5 A is PyMOL's `surface_normal`, i.e. `surface_quality 0`.
+            "grid_spacing": 0.5,
             "iso_value": 0.5,
             "padding": 3.0,
             "max_dim": 96,
