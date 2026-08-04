@@ -216,12 +216,6 @@ class SimulationSettingsModel:
     green_enabled: bool = True
     red_enabled: bool = False
     yellow_enabled: bool = False
-    q_green_p: float = 50.0
-    q_green_s: float = 50.0
-    q_red_p: float = 0.0
-    q_red_s: float = 0.0
-    q_yellow_p: float = 0.0
-    q_yellow_s: float = 0.0
     bg_green_p: float = 0.001
     bg_green_s: float = 0.001
     bg_red_p: float = 0.001
@@ -378,12 +372,6 @@ class SimulationSettingsModel:
             green_enabled=green_enabled,
             red_enabled=red_enabled,
             yellow_enabled=yellow_enabled,
-            q_green_p=_list_get(q, 0, 50.0),
-            q_green_s=_list_get(q, 1, 50.0),
-            q_red_p=_list_get(q, 2, 0.0),
-            q_red_s=_list_get(q, 3, 0.0),
-            q_yellow_p=_list_get(q, 4, 0.0),
-            q_yellow_s=_list_get(q, 5, 0.0),
             bg_green_p=_list_get(q_bg, 0, 0.001),
             bg_green_s=_list_get(q_bg, 1, 0.001),
             bg_red_p=_list_get(q_bg, 2, 0.001),
@@ -707,48 +695,38 @@ class SimulationSettingsModel:
             description=description,
         )
 
-    def _enabled_channel_values(self) -> tuple[list[float], list[float], list[int]]:
-        """Return brightness, background, and detector mappings.
+    def _enabled_channel_layout(self) -> tuple[list[float], list[int]]:
+        """Return the background rates and detector mapping of the enabled channels.
+
+        Brightness is deliberately **not** returned. It is per species and lives
+        in :attr:`species_q` (six slots per species); this method used to build a
+        parallel ``q`` from single-species ``q_green_p``-style fields, which
+        :meth:`to_parameters` then discarded. Those fields have been removed:
+        setting one looked like it configured the simulation and did nothing at
+        all.
 
         Returns
         -------
         tuple
-            ``(q, q_bg, ch_conversion)`` for enabled color channels.
+            ``(q_bg, ch_conversion)`` for the enabled colour channels.
         """
         if not (self.green_enabled or self.red_enabled or self.yellow_enabled):
             self.green_enabled = True
-        q = []
         q_bg = []
         ch_conversion = []
         next_source = 0
-        for enabled, values, bg_values, detectors in (
-            (
-                self.green_enabled,
-                (self.q_green_p, self.q_green_s),
-                (self.bg_green_p, self.bg_green_s),
-                (8, 9),
-            ),
-            (
-                self.red_enabled,
-                (self.q_red_p, self.q_red_s),
-                (self.bg_red_p, self.bg_red_s),
-                (10, 11),
-            ),
-            (
-                self.yellow_enabled,
-                (self.q_yellow_p, self.q_yellow_s),
-                (self.bg_yellow_p, self.bg_yellow_s),
-                (12, 13),
-            ),
+        for enabled, bg_values, detectors in (
+            (self.green_enabled, (self.bg_green_p, self.bg_green_s), (8, 9)),
+            (self.red_enabled, (self.bg_red_p, self.bg_red_s), (10, 11)),
+            (self.yellow_enabled, (self.bg_yellow_p, self.bg_yellow_s), (12, 13)),
         ):
             if not enabled:
                 continue
-            for value, bg_value, detector in zip(values, bg_values, detectors):
-                q.append(float(value))
+            for bg_value, detector in zip(bg_values, detectors):
                 q_bg.append(float(bg_value))
                 ch_conversion.extend([int(detector), int(next_source)])
                 next_source += 1
-        return q, q_bg, ch_conversion
+        return q_bg, ch_conversion
 
     def to_parameters(self) -> dict[str, Any]:
         """Serialize the view model to acquisition ``simulation_params``.
@@ -758,7 +736,7 @@ class SimulationSettingsModel:
         dict
             Parameters consumed by ``SimulationDevice`` and the tttrlib backend.
         """
-        _q_unused, q_bg, ch_conversion = self._enabled_channel_values()
+        q_bg, ch_conversion = self._enabled_channel_layout()
         n_channels = len(q_bg)
         n_species = max(1, int(self.n_species))
         # Per-species brightness from the 6-slot store (G∥,G⊥,R∥,R⊥,Y∥,Y⊥),

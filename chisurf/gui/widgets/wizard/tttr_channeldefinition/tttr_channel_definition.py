@@ -384,6 +384,21 @@ class DetectorWizardPage(QWizardPage):
         if json_file:
             with open(json_file, "r") as f:
                 data = json.load(f)
+            # A setups *file* holds several setups under "setups" plus a
+            # "last_used" pointer, while _load_data reads a single setup's
+            # "windows"/"detectors" at the top level. Handing the wizard the
+            # very file it saves is the obvious thing to do, and it used to
+            # produce a silently **empty** page -- no error, just no detectors.
+            if isinstance(data, dict) and "setups" in data:
+                setups = data.get("setups") or {}
+                name = data.get("last_used")
+                if name not in setups:
+                    name = next(iter(setups), None)
+                if name is not None:
+                    self.current_setup_name = name
+                    self.current_setups_file = json_file
+                    self.setup_combo.setCurrentText(name)
+                    data = setups[name]
             self._load_data(data)
             if isinstance(data, dict):
                 self.public_checkbox.setChecked(bool(data.get("_is_public", False)))

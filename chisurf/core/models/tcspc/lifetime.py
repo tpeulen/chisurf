@@ -216,22 +216,80 @@ class Lifetime(FittingParameterGroup):
         """Finalize the component state."""
         self.update()
 
-    # TODO: needs docstring
+    #: Starting lifetime of the first component, in nanoseconds -- a typical
+    #: organic-fluorophore lifetime, and the historical default.
+    DEFAULT_LIFETIME = 4.0
+
+    #: Factor between the starting lifetimes of successive components.
+    #:
+    #: A new component used to start at :data:`DEFAULT_LIFETIME` like every
+    #: other one, so a two-exponential model began as **two identical
+    #: exponentials**. That start is exactly degenerate: the two Jacobian
+    #: columns are the same vector, the optimiser has nothing to separate them
+    #: with, and which minimum it ends in is decided by rounding noise. On a
+    #: 10k-photon FRET sub-ensemble decay the fitted efficiency moved between
+    #: 0.04 and 0.55 -- all at reduced chi2 between 0.79 and 0.95 -- depending
+    #: on nothing more than the lifetime bounds.
+    #:
+    #: Three is the usual spacing for a multi-exponential start: wide enough
+    #: that the components are separable from the first evaluation, narrow
+    #: enough that four of them still span a plausible range (4, 1.33, 0.44,
+    #: 0.15 ns) rather than running off the end of the time window.
+    COMPONENT_SPACING = 3.0
+
     def append(
             self,
             amplitude: float = 1.0,
-            lifetime: float = 4.0,
+            lifetime: float = None,
             lower_bound_amplitude: float = 0.0,
             upper_bound_amplitude: float = 1.0,
             fixed: bool = False,
             bound_on: bool = False,
             lower_bound_lifetime: float = 0.001,
             upper_bound_lifetime: float = 100.0,
+            bound_on_lifetime: bool = True,
             **kwargs
     ):
-        """Add a new component."""
+        """Add a new component.
+
+        Parameters
+        ----------
+        amplitude : float
+            Starting amplitude of the new component.
+        lifetime : float, optional
+            Starting lifetime, in nanoseconds. When omitted it is placed
+            :data:`COMPONENT_SPACING` times below the shortest component already
+            in the group (:data:`DEFAULT_LIFETIME` for the first one), so that
+            components never start on top of each other.
+        lower_bound_amplitude, upper_bound_amplitude : float
+            Amplitude bounds, enforced only when *bound_on* is set.
+        fixed : bool
+            Whether the pair starts out fixed.
+        bound_on : bool
+            Whether to enforce the **amplitude** bounds. Off by default: a
+            negative amplitude is meaningful (a rise term), and the amplitudes
+            are normalised anyway.
+        lower_bound_lifetime, upper_bound_lifetime : float
+            Lifetime bounds, in nanoseconds.
+        bound_on_lifetime : bool
+            Whether to enforce the **lifetime** bounds. On by default -- these
+            bounds were always declared here and were simply never switched on,
+            which left the optimiser free to walk into lifetimes of hundreds or
+            thousands of nanoseconds. Past the excitation period the decay is
+            indistinguishable from a constant, so that region is a flat,
+            meaningless basin rather than a fit: a low-photon FRET sub-ensemble
+            decay converged there at tau = 393 ns with a time shift of -2663
+            channels, and reaches 0.88 ns -- reduced chi2 2.11 to 0.78 -- once
+            the declared bounds are enforced.
+        """
         n = len(self)
         i = n + 1
+        if lifetime is None:
+            existing = [p.value for p in getattr(self, "_lifetimes", []) if p.value > 0.0]
+            lifetime = (
+                min(existing) / self.COMPONENT_SPACING if existing else self.DEFAULT_LIFETIME
+            )
+            lifetime = float(np.clip(lifetime, lower_bound_lifetime, upper_bound_lifetime))
         amplitude = FittingParameter(
             lb=lower_bound_amplitude,
             ub=upper_bound_amplitude,
@@ -248,7 +306,7 @@ class Lifetime(FittingParameterGroup):
             name=f't{self.short}{i}',
             label_text=f'&tau;<sub>{self.short},{i}</sub>',
             fixed=fixed,
-            bounds_on=bound_on
+            bounds_on=bound_on_lifetime
         )
         self._amplitudes.append(amplitude)
         self._lifetimes.append(lifetime)

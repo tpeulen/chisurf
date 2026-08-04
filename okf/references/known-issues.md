@@ -1,3 +1,81 @@
+## Test suite: what is still red after the 2026-08-04 sweep
+
+**Where to pick this up.** The suite was run **one directory (and, for
+`test/gui`, one file) per pytest process**, because a directory-wide run dies
+with SIGBUS/SIGSEGV partway through and takes the failure summary — and every
+later file — with it. Re-derive with the scripts kept in the session scratchpad
+pattern: `python -m pytest <target> -q --tb=no -rf` per target, recording the
+return code, and treat `rc=139`/`rc=134` as "this file crashed, its failures are
+unknown", not as "one failure".
+
+**Trap in taking the measurement**: run inside the **activated** `arm64` conda
+env (`conda activate arm64`), not merely with its interpreter path. With the
+base env activated, PIL binds to base's `libz-ng` and any test that shells out
+(`test/scripts/test_scripts.py`) fails with `Symbol not found: _zng_deflateInit2`
+— a harness artifact that looks exactly like a code defect. Those two script
+tests pass when the env is activated properly.
+
+**Blocked as of 2026-08-04**: `tttrlib` in the `arm64` env is a **symlink into a
+pixi/rattler cache env that no longer exists**, so `import tttrlib` fails and
+every test touching it errors on collection. This was another agent's in-flight
+rebuild of the shared environment, not a code change. Re-check before trusting
+any TTTR-dependent result.
+
+### `test/gui` — 30 failures across 22 files, plus 5 crashes
+
+Five files crash rather than fail, so their contents are unmeasured:
+`test_gui_plots.py` (139), `test_lineplot.py` (139), `test_widgets.py` (139),
+`test_gui_tool_fret_line.py` (134), `test_region_editor.py` (134). One cause of
+the 139s is fixed — `get_app()` built a **second `QApplication`** per process —
+and `test_gui_plots.py` gets past it, so re-measure these five first; what
+remains after that is a different fault.
+
+The rest, grouped by what they look like rather than by file:
+
+* **Stale test doubles** — the same class already fixed in five other files: a
+  widget attribute that has moved (`new_detector_le`, `load_detector_setups`),
+  a value that is now read from a model rather than the Designer widget, a
+  fixture whose data shape predates the loader. `test_gui_tool_pdb2label.py`
+  (3, `AttributeError`), `test_init_chisurf_onboarding_wizard_import.py` /
+  `test_wizard.py` (the same test, in two files), `test_updater_*.py` (2).
+* **Numeric disagreement** — `test_gui_tool_kappa2dist.py` (2) and
+  `test_gui_tools.py::test_kappa2_calculation_*` are the *same two* assertions
+  in two files, both `assert 0.1 == 0.0`; likewise
+  `test_gui_tool_tttr_histogram.py::test_load_data` and
+  `test_gui_tools.py::test_histogram_load_data` (`assert 0 == 1`). Fixing the
+  pair fixes four entries. **Note the duplication**: `test_gui_tools.py` looks
+  like a rewritten copy of the three `test_gui_tool_*.py` files, and
+  `test_info_json_uppercase.py` was a byte-level subset of `test_info_json.py`
+  (deleted). Check for a duplicate before debugging anything here.
+* **Widget behaviour** — `test_rate_matrix.py` (4), `test_proteinmc_mdl.py` (3),
+  `test_parameter_prior_widget.py`, `test_parameter_table_actions.py`,
+  `test_image_section_axes.py`, `test_plot_construction.py`. These are the ones
+  most likely to be *real* defects rather than stale tests, and the rate-matrix
+  four are the biggest single cluster.
+
+`rc=5` (`test_save_button.py`, `test_style.py`, `test_gui_chisurf_tcspc.py`,
+`test/repro/`) means **no tests collected** — empty or fully skipped, not a
+failure.
+
+### A parameter that starts exactly on its bound cannot move
+
+Not a test failure but the reason one "fix" was reverted, and worth knowing
+before bounding anything. `leastsqbound` maps a bounded parameter through
+`sin` (two-sided) or `sqrt(x**2 + 1)` (one-sided); both are **quadratically
+flat** where they meet the bound, so a parameter sitting *on* its bound has a
+derivative of zero with respect to the coordinate MINPACK varies. Its Jacobian
+column comes back empty however strongly the residuals depend on it: at
+MINPACK's default `1e-3` internal step, a background bounded at `bg >= 0` and
+started at `0` moves by **5e-7**.
+
+Nudging the start inward was tried and reverted. The offset has to be ~0.1 in
+internal coordinates to give a usable derivative, and for a two-sided bound that
+is 0.25% of the *whole box* — for a rate bounded at `(0, 1e9)` it starts the fit
+at 2.5 million, which broke three PDA rate tests
+(`test_pda2c_time_binned.py` x2, `test_pda3c_rates.py`). A scale-aware offset
+small enough to be safe is too small to help. Any real fix has to change the
+*transform* (or use an optimiser with genuine box constraints), not the start.
+
 ## 2D-FLCS prints a pyqtgraph teardown traceback when its window closes
 
 **Found 2026-08-04**, while walking the new 2D-FLCS guided tour headlessly.

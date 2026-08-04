@@ -9,7 +9,14 @@ import pytest
 
 
 def test_simulation_settings_model_serializes_enabled_channels():
-    """The AutoForm model should emit tttrlib-compatible channel vectors."""
+    """The AutoForm model should emit tttrlib-compatible channel vectors.
+
+    Brightness is per species and comes from ``species_q``, six slots each in
+    the order (green parallel, green perpendicular, red ∥, red ⊥, yellow ∥,
+    yellow ⊥). The single-species ``q_green_p``-style fields this test used to
+    set were write-only -- ``to_parameters`` had stopped reading them, so the
+    values here were silently replaced by the defaults -- and are now gone.
+    """
     from chisurf.plugins.core.acq.tcspc_devices.simulation.setup_dialog import (
         SimulationSettingsModel,
     )
@@ -19,10 +26,7 @@ def test_simulation_settings_model_serializes_enabled_channels():
         green_enabled=True,
         red_enabled=True,
         yellow_enabled=False,
-        q_green_p=11.0,
-        q_green_s=12.0,
-        q_red_p=21.0,
-        q_red_s=22.0,
+        species_q=[11.0, 12.0, 21.0, 22.0, 0.0, 0.0] * 2,
         n_ph_max=123,
         n_ph_per_file=10,
     )

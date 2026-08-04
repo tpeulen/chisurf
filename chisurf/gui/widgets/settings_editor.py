@@ -252,8 +252,22 @@ def float_representer(dumper, value):
         # Use default representation for regular floats
         return dumper.represent_scalar('tag:yaml.org,2002:float', str(value))
 
-# Register the custom representer
-yaml.add_representer(float, float_representer)
+class SettingsDumper(yaml.Dumper):
+    """Dumper that writes the settings file's floats in scientific notation.
+
+    The representer is registered on **this subclass**. ``yaml.add_representer``
+    registers on ``yaml.Dumper`` itself, which is process-global and was being
+    mutated at *import* time: from the moment anything pulled in the settings
+    editor, every unrelated ``yaml.dump`` in the session -- a project file, a
+    curve saved to YAML -- silently lost precision, because
+    :func:`float_representer` keeps ten decimal digits where a double needs
+    seventeen (``2.4492935982947064e-16`` came back as ``2.4492935983e-16``).
+
+    Pass it explicitly: ``yaml.dump(data, stream, Dumper=SettingsDumper)``.
+    """
+
+
+SettingsDumper.add_representer(float, float_representer)
 
 
 class SettingsItemDelegate(QtWidgets.QStyledItemDelegate):
@@ -1299,7 +1313,9 @@ class SettingsEditor(QtWidgets.QWidget):
 
             # Save to file
             with open(self.filename, 'w', encoding="utf-8") as file:
-                yaml.dump(settings_dict, file, default_flow_style=False)
+                yaml.dump(
+                    settings_dict, file, default_flow_style=False, Dumper=SettingsDumper
+                )
 
             self.path_label.setText(str(self.filename))
             logging.log(0, f"Settings saved to {self.filename}")

@@ -312,19 +312,55 @@ class Fit(cs.core.base.Base):
     @model.setter
     def model(
             self,
-            model_class: typing.Type[
-                cs.core.models.model.ModelCurve
+            model: typing.Union[
+                cs.core.models.model.Model,
+                typing.Type[cs.core.models.model.Model]
             ]
     ):
-        """Create a new model from a model class.
+        """Attach a model, given either the class to build or a built instance.
+
+        The getter returns an *instance*, so the setter has to accept one:
+        ``fit.model = fit.model`` used to raise ``TypeError: issubclass() arg 1
+        must be a class``, and so did every caller that built its model first
+        (a global fit wiring two models to two fits, for example). A class is
+        still accepted and instantiated on this fit, because that is how
+        :meth:`__init__` and the model-selection GUI attach a model.
+
+        An adopted instance is re-pointed at this fit: a model reads its data,
+        range and weights through ``self.fit``, so one that still referenced
+        another fit would silently compute the wrong curve.
 
         Parameters
         ----------
-        model_class : type
-            A subclass of :class:`cs.core.models.ModelCurve` to instantiate.
+        model : Model or type
+            A :class:`cs.core.models.Model` subclass to instantiate on this
+            fit, or an already-built model instance to adopt. The bare class
+            :class:`type` is :meth:`__init__`'s "no model asked for" default and
+            leaves the current model alone -- :class:`FitGroup` relies on that,
+            because its ``model`` property writes through to the selected member
+            fit and its own ``__init__`` passes the default on. ``None``
+            detaches the model.
+
+        Raises
+        ------
+        TypeError
+            If *model* is neither a model, a model class, nor a way of saying
+            "no model".
         """
-        if issubclass(model_class, cs.core.models.Model):
-            self._model = model_class(self, **self._model_kw)
+        if model is type:
+            return
+        if isinstance(model, cs.core.models.Model):
+            model.fit = self
+            self._model = model
+        elif isinstance(model, type) and issubclass(model, cs.core.models.Model):
+            self._model = model(self, **self._model_kw)
+        elif model is None:
+            self._model = None
+        else:
+            raise TypeError(
+                f"a fit's model must be a Model or a Model subclass, "
+                f"got {model!r}"
+            )
 
     @property
     def weighted_residuals(self) -> cs.core.curve.Curve:

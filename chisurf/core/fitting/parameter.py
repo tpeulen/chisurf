@@ -461,8 +461,14 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
                 search_iterable=d,
                 searched_object_type=parameter.Parameter
             )
+            # Constructor-supplied parameters come first: they are the group's
+            # own, and clearing ``_parameters`` above has just hidden them from
+            # the ``__dict__`` walk.
+            explicit = list(self.__dict__.get("_explicit_parameters") or ())
             seen = set()
-            self._parameters = [x for x in (mp + ap) if not (x in seen or seen.add(x))]
+            self._parameters = [
+                x for x in (explicit + mp + ap) if not (x in seen or seen.add(x))
+            ]
         finally:
             self.__dict__.pop("_finding_parameters", None)
 
@@ -662,6 +668,16 @@ class FittingParameterGroup(chisurf.core.parameter.ParameterGroup):
         # here would read as "walked, owns nothing" and never be filled.
         self._parameters = parameters
         self._aggregated_parameters = list()
+
+        # Parameters handed to the constructor are owned by the group whether or
+        # not they are also reachable as attributes. :meth:`find_parameters`
+        # clears ``_parameters`` before it walks ``__dict__``, so without this
+        # record a group built as ``FittingParameterGroup(parameters=[p])``
+        # silently lost ``p`` the first time anything rediscovered it -- and
+        # rediscovery is routine, since every model runs it. Kept as a *tuple*
+        # so :func:`chisurf.core.base.find_objects` does not descend into it and
+        # report the same parameters twice.
+        self.__dict__["_explicit_parameters"] = tuple(parameters or ())
 
         # Copy parameters from provided ParameterGroup
         if len(args) > 0:

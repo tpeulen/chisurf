@@ -17,33 +17,42 @@ import chisurf.core.fitting.ensemble
 FINITE_DIFF = float(np.sqrt(np.finfo(float).eps))
 
 
-@cs.core.fitting.factorgraph.frozen('fit', 'model')
-
-def _rng(seed):
+def _rng(seed) -> np.random.Generator:
     """Return the random source a sampler should draw from.
 
-    ``None`` yields NumPy's global stream rather than a fresh generator, so a
-    caller that set ``np.random.seed`` still controls the chain -- switching to
-    ``default_rng(None)`` would silently ignore that and reintroduce the very
-    irreproducibility the seed argument exists to remove.
+    ``None`` yields a generator *seeded from NumPy's global stream*, so a caller
+    that set ``np.random.seed`` still controls the chain -- plain
+    ``default_rng(None)`` draws fresh entropy from the OS and silently ignores
+    that, reintroducing the very irreproducibility the seed argument exists to
+    remove. Every sampler in this module must build its generator here for that
+    reason; ``sample_ensemble`` did not, and the test that samples a quadratic
+    under ``np.random.seed(5)`` failed roughly one run in four because the chain
+    it got was a different one each time.
+
+    A real :class:`numpy.random.Generator` is returned rather than the
+    :mod:`numpy.random` module: the module has no ``integers``, so handing it to
+    a sampler that draws one is an ``AttributeError`` waiting for the right
+    branch to be taken.
 
     Parameters
     ----------
     seed : int, numpy.random.Generator or None
-        Explicit seed, an existing generator, or ``None`` for the global stream.
+        Explicit seed, an existing generator, or ``None`` to derive one from the
+        global stream.
 
     Returns
     -------
-    object
-        Something exposing ``normal`` and ``random``.
+    numpy.random.Generator
+        The generator to draw from.
     """
-    if seed is None:
-        return np.random
     if isinstance(seed, np.random.Generator):
         return seed
+    if seed is None:
+        seed = int(np.random.randint(0, 2 ** 32 - 1))
     return np.random.default_rng(seed)
 
 
+@cs.core.fitting.factorgraph.frozen('fit', 'model')
 def walk_mcmc(
         fit: cs.core.fitting.fit.Fit,
         steps: int,
@@ -630,7 +639,7 @@ def sample_differential_evolution(
     """
     if model is None:
         model = fit.model
-    rng = np.random.default_rng(seed)
+    rng = _rng(seed)
     dim = model.n_free
     thin = max(1, int(thin))
     n_samples = max(1, int(steps) // thin)
@@ -1427,7 +1436,7 @@ def sample_marginal_shared(
         )
     shared_idx, groups = split
 
-    rng = np.random.default_rng(seed)
+    rng = _rng(seed)
     thin = max(1, int(thin))
     n_samples = max(1, int(steps) // thin)
     reference = np.asarray(model.parameter_values, dtype=np.float64)
@@ -1631,7 +1640,7 @@ def _merge_components(
     that, the ordering of the chains would show up as a spurious correlation
     between components that the posterior does not have.
     """
-    rng = np.random.default_rng(seed)
+    rng = _rng(seed)
     n_draws = min(r['parameter_values'].shape[0] for _, r in results)
     joint = np.tile(reference, (n_draws, 1))
     chi2 = np.zeros(n_draws, dtype=np.float64)
@@ -1971,7 +1980,7 @@ def sample_ensemble(
     ndim = len(model.parameter_values)
     if nwalkers is None:
         nwalkers = max(2 * ndim + 2, 10)
-    random = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
+    random = _rng(seed)
 
     sampler = cs.core.fitting.ensemble.EnsembleSampler(
         nwalkers=int(nwalkers),
@@ -2062,7 +2071,7 @@ def sample_ensemble_slice(
     ndim = len(model.parameter_values)
     if nwalkers is None:
         nwalkers = max(2 * ndim + 2, 10)
-    random = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
+    random = _rng(seed)
 
     sampler = cs.core.fitting.ensemble.EnsembleSliceSampler(
         nwalkers=int(nwalkers),

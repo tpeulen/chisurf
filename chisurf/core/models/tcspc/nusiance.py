@@ -129,6 +129,11 @@ class Generic(FittingParameterGroup):
             ub=100.0,
             bounds_on=True
         )
+        # Deliberately unbounded, unlike ``sc`` above. ``bg`` is a *net* offset,
+        # not a count rate: applied to data whose background has already been
+        # subtracted it legitimately comes out negative, and bounding it at zero
+        # was measured to turn a good fit of the EasyTau300 reference decay
+        # (reduced chi2 1.37 at bg = -1.35) into a poor one (4.93).
         self._bg = FittingParameter(
             value=0.0,
             name='bg'

@@ -2242,7 +2242,12 @@ def _schedule_smoke_exit(app) -> None:
 
 
 def get_app():
-    app = QtWidgets.QApplication(sys.argv)
+    # Qt allows exactly one QApplication per process, and constructing a second
+    # one is undefined behaviour rather than an error: in-process it took the
+    # GUI suite down with a **segmentation fault** the moment a second test
+    # asked for the application, which killed every later test in that run and
+    # left no report. Reuse whatever instance already exists.
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     # Install the UI-language translator before any window is built or any .ui
     # file is loaded (Qt only translates lookups made after install). This also
     # binds the core translation backend so data-driven view.json/manifest text
