@@ -88,6 +88,50 @@ Headless coverage is `test/gui/test_chiplot.py`: every draw family, handle
 updates, region/marker values, removal and re-add, grid panels, the click
 signal.
 
+## `.native` is the other way past the seam, and the invisible one
+
+An import is loud. `Plot.native` is not: it hands back the pyqtgraph object
+directly, so a call site is exactly as coupled to the renderer as an importer
+while `pyqtgraph_import_allowlist.txt` sees nothing. **12 files** did this when
+the second guard was added (`test/chiplot_native_allowlist.txt`, same shrinking
+contract, seeded 2026-08-04).
+
+**Most of them are not gaps.** They predate the API that now covers them, and
+each was written with a comment calling itself a migration gap — which is how
+an assumption survives being wrong. `fcs_lfcs_sim` reached through `.native` to
+call `enableAutoSIPrefix(False)`; `Plot.set_si_prefix(x=False)` had existed the
+whole time. So **check `canvas.py` before concluding anything is missing**:
+
+| the `.native` call | the chiplot verb |
+|---|---|
+| `enableAutoSIPrefix` | `set_si_prefix(x=…, y=…)` |
+| `hideAxis` / `showAxis` | `set_axis_visible(left=…, …)` |
+| `getAxis(…).setTickSpacing` | `set_tick_spacing(side, …)` |
+
+What is *genuinely* missing, and therefore what a porter has to add to chiplot
+first — this is the worklist, in rough order of how many call sites it unblocks:
+
+1. **Axis styling** — pen and text colour, height, tick-text offset. Three
+   consumers: the lightpath node thumbnail, the node-editor PT plot, the
+   spectrum viewer (which also wants the legend's text colour).
+2. **Curve performance** — `setDownsampling(auto=True)` and
+   `setClipToView(True)`, wanted by the LUT settings panel and by `LinePlot`,
+   which already documents its use of the hatch.
+3. **Handle signals and hints** — a scatter's click signal and an export hint
+   (`maxent_widget`).
+4. **Scene position → data coordinates**, for a crosshair readout
+   (`irf_estimator`).
+5. **Custom tick labels** — `setTicks` with explicit strings
+   (`burst_background`), which is a different verb from tick *spacing*.
+
+Three of the twelve are **tests** asserting on `listDataItems()`; those want a
+read-side query on `Plot` (what was drawn), in the spirit of `menu_enabled()`.
+
+**The rule this feeds:** legacy plotting you walk past is legacy you own. A
+change that touches one of these files ports it in the same change and strikes
+the line, rather than noting it — which is what keeps a shrinking list actually
+shrinking. See the repository's `CLAUDE.md`.
+
 # Related
 
 * [GUI & AutoForm](/subsystems/gui-autoform.md) — AutoForm's plot-bearing

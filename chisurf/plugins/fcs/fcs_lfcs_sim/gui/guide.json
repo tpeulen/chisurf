@@ -1,0 +1,55 @@
+{
+  "_comment": "Guided tour for the lifetime-FCS (FLCS) simulator. The form is a declarative AutoForm view (lfcs_sim.view.json), so steps target bound attributes; the Run button is a custom section, reached by {'key': 'lfcs_sim_controls'}. The whole tour runs on the plugin's own simulation, so it needs no data of the user's — and every number it quotes follows from the defaults. Read by chisurf.gui.widgets.tools.guided_tour.",
+  "steps": [
+    {
+      "title": "A sandbox for filtered FCS, where you know the answer",
+      "text": "Plain FCS correlates total intensity, so two species that diffuse alike are one curve. <b>Filtered FCS</b> uses each photon's micro-time to weight it towards one species or the other, and correlates the weighted streams — giving the curves you would have measured had you detected each species separately.<br/><br/>Here the species are simulated, so the filtered curves are a <i>prediction you can check</i> rather than a result you have to trust. That is the only way to learn what a believable one looks like.<br/><br/>Seven steps.",
+      "target": {}
+    },
+    {
+      "title": "Two lifetimes — and how different they are is the whole game",
+      "text": "Each species has a fluorescence lifetime. The filters are built from their decays, so <b>how well the two can be separated is decided entirely by how different those decays are</b>.<br/><br/>The defaults, 1 ns and 4 ns, are comfortably distinct. The experiment worth doing in this window: bring τ₂ down toward τ₁, re-run, and watch the <i>condition number</i> in the status line climb. It takes ten seconds and it is the intuition that transfers to real data.",
+      "target": {
+        "attr": "tau1_ns"
+      }
+    },
+    {
+      "title": "Diffusion decides where the curves sit",
+      "text": "A species crosses the focus in <b>τ_D = w₀²/(4·D)</b>, and the simulated waist is w₀ = 0.3 µm.<br/><br/>So the defaults put the two species at <b>2.8 µs</b> (D = 8 µm²/ms) and <b>45 µs</b> (D = 0.5 µm²/ms) — a 16-fold separation you will see directly as two well-spaced decays in the species autocorrelations.<br/><br/>That is a deliberately generous gap: by Stokes–Einstein it is a 16-fold difference in hydrodynamic radius. Real pairs are usually far closer, which is exactly why one reaches for the lifetime dimension in the first place.",
+      "target": {
+        "attr": "d1_um2_ms"
+      }
+    },
+    {
+      "title": "Exchange, and how to see it on its own",
+      "text": "At <b>k = 0</b> the species are static and each autocorrelation shows only its own diffusion.<br/><br/>At <b>k > 0</b> a molecule can change species mid-transit, and the signature is in the <b>cross-correlation</b>: it goes <i>anti</i>-correlated on the exchange timescale, because a photon counted towards one species is followed by photons counted towards the other.<br/><br/>To see that cleanly, <b>set the two diffusion coefficients equal</b>. Otherwise the cross-correlation mixes exchange with the difference in diffusion time, and telling those apart is precisely what makes this measurement hard on a real sample.",
+      "target": {
+        "attr": "exchange_rate_ms"
+      }
+    },
+    {
+      "title": "Filtered FCS adds no information — it redistributes it",
+      "text": "The photons are the same photons. The filters only reallocate them, and the price is <b>noise</b>: a species curve is always noisier than the raw autocorrelation of the same measurement, and the more similar the two decays, the more aggressive the filters and the worse it gets. No setting avoids this.<br/><br/>Which makes the photon budget the honest knob. If a feature disappears when you double it, it was noise.",
+      "target": {
+        "attr": "n_photons"
+      }
+    },
+    {
+      "title": "Simulate and correlate",
+      "text": "This simulates the photon stream, builds the filters from the two reference decays, and correlates the weighted streams. A few hundred thousand photons take a moment.",
+      "target": {
+        "key": "lfcs_sim_controls"
+      },
+      "await": {
+        "hint": "Press <b>Simulate + Correlate</b>."
+      }
+    },
+    {
+      "title": "Read the condition number before you read the curves",
+      "text": "The status line reports the <b>filter condition number</b>, and it is the number that decides whether any of the rest is real. It measures how nearly degenerate the two reference decays are: <b>a few</b> means the separation is well posed; <b>large</b> means the filter matrix is close to singular and the \"separated\" curves are amplified noise — which will still look exactly like correlation curves.<br/><br/>Then the plot: two species autocorrelations at their own diffusion times, and the cross-correlation between them.<br/><br/>Two traps that carry to real data. <b>A cross-correlation is not automatically exchange</b> — imperfect filters leak one species into the other's channel and produce one with no kinetics at all; tell them apart by shape, since leakage mimics the autocorrelation while exchange is anti-correlated on its own timescale. And <b>the reference decays must be the right ones</b>: here they are exact by construction, but on real data they come from separate measurements, and a shifted IRF or a slightly different lifetime biases every species curve without making anything look worse.<br/><br/>The <b>?</b> button has the rest.",
+      "target": {
+        "key": "lfcs_sim_controls"
+      }
+    }
+  ]
+}

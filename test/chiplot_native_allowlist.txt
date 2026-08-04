@@ -1,0 +1,39 @@
+# Files that reach the renderer through chiplot's ``.native`` escape hatch.
+#
+# ``.native`` is the *documented* way to the backing pyqtgraph object, which
+# makes it the invisible way: it couples a call site to the renderer without
+# importing it, so `pyqtgraph_import_allowlist.txt` never sees it.
+#
+# Most entries here are NOT gaps in chiplot. They predate the API that now
+# covers them — check `chisurf/gui/chiplot/canvas.py` before concluding anything
+# is missing. Three verbs cover most of the list:
+#
+#   set_si_prefix(x=/y=)        enableAutoSIPrefix
+#   set_axis_visible(left=…)    hideAxis / showAxis
+#   set_tick_spacing(side, …)   getAxis(…).setTickSpacing
+#
+# What is genuinely missing, and what the porter has to add first:
+#   * axis styling  — pen/text colour, height, tick-text offset
+#     (lightpath node_types, pt_plot_widget, spectrum_view)
+#   * curve performance — setDownsampling / setClipToView
+#     (tttr_lut_tools, lineplot)
+#   * legend text colour (spectrum_view)
+#   * a handle's click signal (maxent_widget: sigPointsClicked)
+#   * export-hint on a handle (maxent_widget: setExportHint)
+#   * scene mouse position → data coordinates (irf_estimator)
+#
+# This list only SHRINKS. When you touch one of these files, port it and strike
+# the line; adding a NEW line is a test failure, not a fix. Goal: empty.
+# See test/test_pyqtgraph_seam.py and okf/subsystems/chiplot.md.
+chisurf/gui/plots/lineplot/lineplot.py
+chisurf/gui/widgets/models/fcs/maxent_widget.py
+chisurf/gui/widgets/node_editor/widgets/pt_plot_widget.py
+chisurf/gui/widgets/spectrum_view.py
+chisurf/plugins/burst/burst_background/gui/sections.py
+chisurf/plugins/calculator/fcs_saturation_calc/tests/test_gui.py
+chisurf/plugins/core/lightpath_simulator/gui/node_types.py
+chisurf/plugins/core/mmfdb_admin/test/test_optical_components.py
+chisurf/plugins/fcs/fcs_filter_calculator/test/test_widgets.py
+chisurf/plugins/fluorescence_decay/irf_estimator/gui/tool.py
+chisurf/plugins/fret_line/gui/tool.py
+chisurf/plugins/tttr/tttr_lut_tools/gui/settings_panel.py

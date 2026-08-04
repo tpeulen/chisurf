@@ -20,8 +20,9 @@ from qtpy import QtWidgets
 
 from chisurf.core.dataspec import load_view_spec
 from chisurf.gui import chiplot as cp
-from chisurf.gui.autoform import AutoForm, register_section
 from chisurf.gui import dialogs
+from chisurf.gui.autoform import AutoForm, register_section
+from chisurf.gui.widgets.tools.help_guide import attach_help_and_guide
 
 _GUI_DIR = pathlib.Path(__file__).resolve().parent
 
@@ -89,7 +90,24 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
         super().__init__(parent)
         self._model = LifetimeFcsSimModel()
 
-        layout = QtWidgets.QHBoxLayout(self)
+        outer = QtWidgets.QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+        # A hairline strip for the ``?`` and **Guide** pair. This tool is a plain
+        # QWidget with no toolbar of its own, so it gets one rather than the
+        # buttons landing beside the plot in the content row.
+        toolbar = QtWidgets.QToolBar(self)
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setStyleSheet("QToolBar { border: none; padding: 0px; spacing: 2px; }")
+        attach_help_and_guide(
+            self, toolbar, title="Lifetime-FCS simulator — help", model=self._model
+        )
+        outer.addWidget(toolbar)
+
+        content = QtWidgets.QWidget(self)
+        outer.addWidget(content, 1)
+        layout = QtWidgets.QHBoxLayout(content)
         layout.setContentsMargins(6, 6, 6, 6)
 
         self._form = AutoForm(self._model, parent=self)
@@ -107,9 +125,10 @@ class LifetimeFcsSimWidget(QtWidgets.QWidget):
     def _make_plot(self):
         plot = cp.Plot()
         plot.set_log(x=True)
-        # pyqtgraph-specific axis cosmetic (keep the raw "ms" unit rather than an
-        # auto SI-prefix); reached via the backend escape hatch — a migration gap.
-        plot.native.getAxis("bottom").enableAutoSIPrefix(False)
+        # Keep the raw "ms" unit rather than an auto SI prefix. This used to
+        # reach through ``.native`` to pyqtgraph's axis; chiplot has had the API
+        # for it, so the escape hatch was never a gap — only legacy.
+        plot.set_si_prefix(x=False)
         plot.set_labels(bottom="lag time (ms)", left="G(τ)")
         plot.legend()
         plot.grid(x=True, y=True, alpha=0.3)

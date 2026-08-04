@@ -98,3 +98,72 @@ def test_no_pyqtgraph_dockarea():
         "pyqtgraph.dockarea is deprecated — use chisurf.gui.widgets.dock_area "
         "(DockArea / DockSplitter) instead:\n  " + "\n  ".join(offenders)
     )
+
+
+# ── the other way past the seam: ``.native`` ──────────────────────────────────
+#
+# ``Plot.native`` is the *documented* escape hatch to the backing pyqtgraph
+# object, which makes it the invisible one: it reaches pyqtgraph without
+# importing it, so every check above passes while the call site is as coupled to
+# the renderer as a direct import. Worse, most of these are not gaps at all —
+# they predate the chiplot API that now covers them (``set_si_prefix``,
+# ``set_axis_visible``, ``set_tick_spacing``, ``legend``), so they are simply
+# legacy that nobody had a reason to notice.
+#
+# Same contract as the import list: shrinking, never somewhere to add yourself.
+
+_NATIVE_ALLOWLIST = _ROOT / "test" / "chiplot_native_allowlist.txt"
+#: ``.native`` on a chiplot handle or canvas. Deliberately loose — it also
+#: catches ``handle.native``, which is the same reach one level down.
+_NATIVE_RE = re.compile(r"\.native\b(?!_)")
+#: Attribute names that merely *start* with ``native`` and have nothing to do
+#: with plotting (``self.native_tools``, ``native_cutoff_on``).
+_NATIVE_FALSE_POSITIVES = re.compile(r"\.native_[a-z]")
+#: A ``#`` comment. Naming the escape hatch in prose — which the comment
+#: *explaining a port away from it* necessarily does — is not reaching through
+#: it, and a guard that cannot tell the difference punishes documenting the fix.
+_COMMENT_RE = re.compile(r"#.*$", re.MULTILINE)
+
+
+def _load_native_allowlist() -> set[str]:
+    if not _NATIVE_ALLOWLIST.is_file():
+        return set()
+    lines = _NATIVE_ALLOWLIST.read_text().splitlines()
+    return {ln.strip() for ln in lines if ln.strip() and not ln.startswith("#")}
+
+
+def _current_native_users() -> set[str]:
+    found = set()
+    for path in _PKG.rglob("*.py"):
+        rel = path.relative_to(_ROOT).as_posix()
+        if rel.startswith("chisurf/gui/chiplot/"):
+            continue  # chiplot *is* the seam; ``.native`` is its own property
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        text = _COMMENT_RE.sub("", text)
+        text = _NATIVE_FALSE_POSITIVES.sub(".", text)
+        if _NATIVE_RE.search(text):
+            found.add(rel)
+    return found
+
+
+def test_no_new_reaches_past_the_chiplot_seam():
+    """A file outside chiplot must not reach the renderer through ``.native``."""
+    offenders = sorted(_current_native_users() - _load_native_allowlist())
+    assert not offenders, (
+        "these files reach pyqtgraph through the chiplot escape hatch:\n  "
+        + "\n  ".join(offenders)
+        + "\n\nCheck whether chiplot already has the API — most of these predate "
+        "one that exists (set_si_prefix, set_axis_visible, set_tick_spacing, "
+        "legend). If it genuinely does not, add it to chiplot and use that. Do "
+        "NOT add the file to test/chiplot_native_allowlist.txt; that list only "
+        "shrinks."
+    )
+
+
+def test_native_allowlist_has_no_stale_entries():
+    """A file that no longer reaches past the seam must be struck from the list."""
+    stale = sorted(_load_native_allowlist() - _current_native_users())
+    assert not stale, (
+        "these files no longer use .native — remove them from "
+        "test/chiplot_native_allowlist.txt:\n  " + "\n  ".join(stale)
+    )
