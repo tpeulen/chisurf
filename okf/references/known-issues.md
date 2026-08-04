@@ -1536,3 +1536,30 @@ than at 5 kHz and has not been chased.
 Gates: `test_photons_do_not_sample_a_burst_uniformly_in_time` (mechanism) and
 `test_the_photon_weighted_window_recovers_the_generating_rate` (end to end), both
 slow, in `test/fluorescence/test_mfd_ground_truth.py`.
+
+## Three-colour PDA computes in Python what two-colour delegates to C++
+
+**Open, scoped but not measured.** `chisurf/core/models/pda2c/` drives
+`tttrlib.Pda` — the C++ two-colour engine, with its `S1S2` matrix, `conv_pF`
+probability convolution and `poisson_0toN` background series.
+`chisurf/core/fluorescence/pda3c/likelihood.py` (709 lines) computes the
+three-colour equivalent in Python and scipy: `_log_convolve`,
+`log_background_series`, `_background_factors`, `_channel_boxes`, and a
+`poisson.logpmf` per box.
+
+The three-colour case is genuinely a different problem — a photon falls in one of
+three channels, so the inner sum is over a two-simplex rather than a line, and
+tttrlib has no equivalent. Two routes, and which is right is a measurement nobody
+has taken:
+
+* **reuse the primitives.** The per-channel Poisson background series and the
+  log-domain convolution are the same operations `Pda` already does in C++;
+  `poisson_0toN` and `conv_pF` are exposed.
+* **add a three-colour PDA to tttrlib**, next to the two-colour one, and let both
+  ChiSurf models be callers.
+
+**Profile before choosing.** The tail cutoff (`_tail_cutoff`, `_MAX_CUTOFF`)
+decides how many boxes each burst contributes, so the cost may be dominated by
+the cutoff policy rather than by the arithmetic — in which case neither route
+helps and the answer is a better cutoff. Nothing here should be rewritten on the
+assumption that C++ is the problem.
