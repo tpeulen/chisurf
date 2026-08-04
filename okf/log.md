@@ -2,28 +2,6 @@
 
 ## 2026-08-04
 
-* **The detection profile becomes a fittable object, not a hard-coded Gaussian:
-  [PRD-76](prds/prd-76.md) registered.** ([PRDs](prds/index.md))
-  Saturation FCS builds its excitation profile from `_gaussian_psf` and derives
-  the peak excitation rate from the *Gaussian* peak flux density
-  `2 Phi/(pi w0^2)` — so "support another PSF shape" is not a parameter change,
-  it is a seam that does not exist yet. The PRD specifies that seam
-  (`DetectionProfile`: evaluate on `(r, z)`, own convergent grid, focal-area
-  integral, `V_0`, optional analytic `g_diff`) plus six implementations —
-  Gaussian, Gaussian beam, the Enderlein Gauss–Lorentz MDF already in
-  `enderlein.py`, a diffraction PSF from the optics engine behind the PSF
-  calculator, a measured bead-scan profile, and a **fittable Gaussian-sum
-  basis** — and then uses it: a **power series fitted globally** recovers the
-  real profile, because saturation flattens the profile at a rate set by its
-  fall-off, so `V_eff(P)`, `tau_D(P)` and `CPM(P)` together measure the shape.
-  Named because it fails silently: reusing `excitation_rate_peak` with a
-  non-Gaussian profile still fits the curve and still returns rate constants —
-  scaled by a shape-dependent factor. Also recorded as *not identifiable*: a
-  single curve can never yield a profile (shape trades against `tau_D` and `N`),
-  and even a series leaves `sigma_abs * P` degenerate with `w_r`, so an absolute
-  `V_eff` requires an anchor (known `D`, known extinction, or a two-focus
-  separation) rather than a number that restates the assumed cross-section.
-
 * **A session now has to leave a resume point, and OKF is where it goes.**
   ([change tracking](workflows/change-tracking.md),
   [CLAUDE.md reference](references/claude-md.md))
@@ -173,6 +151,39 @@
   chimol suite **1870 passed**, with only the five `test_camera_framing`
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
+
+* **One shim for the photon simulator, and the simulator's own config mistakes are
+  now errors.** ([tttrlib `115bd204`](references/simengine-species-encoding.md))
+  Simulation was implemented in eleven substantial places plus ~30 test-local
+  generators, with the same physics written up to eight times. The first step
+  toward one of each: `chisurf/core/fluorescence/simulation/` is now the only
+  place chisurf drives `SimEngine` — `have_simulator()` (was four copies),
+  `default_config()` taken from the engine rather than restated,
+  `settings`/`gaussian_focus`/`decay_spec` blocks replacing four inline config
+  dicts, one seed convention deriving the engine's two streams, and one
+  `write_burst_folder` replacing two ~60-line copies.
+
+  The rule that keeps it small: **physics goes to the simulator, file formats stay
+  here.** So the `.bur` writer is in the shim and nothing in it samples a decay,
+  walks a scheme or places a molecule.
+
+  Three silent-failure gaps were closed *in tttrlib* first, because a shim over a
+  parser that ignores what it does not understand is not worth having: `k_rad`
+  without `k_nrad` ran the scheme **static** rather than complaining;
+  `background_decay` ignored the `lifetimes`/`irf` grammar that `species[].decay`
+  accepts, so a scatter background written the natural way came out flat; and
+  unknown keys were ignored, so `seed_emmision` ran on the default seed and
+  reported success.
+
+  The unknown-key check paid for itself immediately. Two tttrlib flow tests
+  spliced `per_molecule_skip` and their seeds into the *top level*, where nothing
+  read them — both variants ran from `settings` with identical seeds, so each test
+  compared a run **against itself** and could not fail.
+
+  Also: `build/tttrlib` held a stale object file from another instance's in-flight
+  rename, and the build task uninstalls before it installs — so the first rebuild
+  left tttrlib unimportable in *both* environments. Clearing that directory is
+  part of the recipe, not an optional step.
 
 * **The three 2D-MFD alternatives that lost are removed from the tree.**
   ([what was tried](references/mfd-forward-model-alternatives.md),

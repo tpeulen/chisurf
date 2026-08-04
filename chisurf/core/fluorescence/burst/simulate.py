@@ -846,11 +846,7 @@ class SimulatedSmfret:
         pathlib.Path
             The analysis folder to hand to the reader.
         """
-        from chisurf.core.fio.fluorescence.burst import write_bur_file
-        from chisurf.core.fio.fluorescence.burst_manifest import (
-            describe_tttr_source,
-            write_analysis_manifest,
-        )
+        from chisurf.core.fluorescence.simulation import write_burst_folder
 
         if isinstance(bursts, str):
             if bursts == "truth":
@@ -864,29 +860,13 @@ class SimulatedSmfret:
         if start_stop.size == 0:
             raise RuntimeError(f"the {bursts!r} burst definition found no bursts")
 
-        directory = pathlib.Path(directory)
-        directory.mkdir(parents=True, exist_ok=True)
-        source = directory / f"{stem}.ht3"
-        self.tttr.write(str(source))
-
-        analysis = directory / "burstwise_All 0.1000#15"
-        bur_dir = analysis / "bi4_bur"
-        bur_dir.mkdir(parents=True, exist_ok=True)
-
-        detectors = self.detectors()
-        windows = {"prompt": (0, int(self.parameters.n_microtime_channels))}
-        write_bur_file(
-            bur_dir / f"{stem}.bur", start_stop, source.name, self.tttr,
-            windows, detectors,
+        return write_burst_folder(
+            self.tttr, start_stop, self.detectors(), directory, stem=stem,
+            windows={"prompt": (0, int(self.parameters.n_microtime_channels))},
+            settings={
+                "burst_definition": bursts if isinstance(bursts, str) else "explicit"
+            },
         )
-        write_analysis_manifest(
-            analysis,
-            [describe_tttr_source(source, self.tttr,
-                                  settings={"detectors": detectors})],
-            settings={"detectors": detectors, "simulated": True,
-                      "burst_definition": bursts if isinstance(bursts, str) else "explicit"},
-        )
-        return analysis
 
 
 def simulate_smfret(parameters: SmfretParameters | None = None,
