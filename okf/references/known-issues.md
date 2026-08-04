@@ -1537,29 +1537,41 @@ Gates: `test_photons_do_not_sample_a_burst_uniformly_in_time` (mechanism) and
 `test_the_photon_weighted_window_recovers_the_generating_rate` (end to end), both
 slow, in `test/fluorescence/test_mfd_ground_truth.py`.
 
-## Three-colour PDA computes in Python what two-colour delegates to C++
+## Three-colour PDA is slow, and not where it looks
 
-**Open, scoped but not measured.** `chisurf/core/models/pda2c/` drives
-`tttrlib.Pda` — the C++ two-colour engine, with its `S1S2` matrix, `conv_pF`
-probability convolution and `poisson_0toN` background series.
-`chisurf/core/fluorescence/pda3c/likelihood.py` (709 lines) computes the
-three-colour equivalent in Python and scipy: `_log_convolve`,
-`log_background_series`, `_background_factors`, `_channel_boxes`, and a
-`poisson.logpmf` per box.
+**Open, now profiled.** `chisurf/core/models/pda2c/` drives `tttrlib.Pda` — the
+C++ two-colour engine. `pda3c/likelihood.py` computes the three-colour equivalent
+in Python, and it is slow: ~17 s for 4 000 bursts × 120 model points.
 
-The three-colour case is genuinely a different problem — a photon falls in one of
-three channels, so the inner sum is over a two-simplex rather than a line, and
-tttrlib has no equivalent. Two routes, and which is right is a measurement nobody
-has taken:
+**Where the time goes**, measured with `cProfile`:
 
-* **reuse the primitives.** The per-channel Poisson background series and the
-  log-domain convolution are the same operations `Pda` already does in C++;
-  `poisson_0toN` and `conv_pF` are exposed.
-* **add a three-colour PDA to tttrlib**, next to the two-colour one, and let both
-  ChiSurf models be callers.
+| | share |
+|---|---|
+| `_background_factors` | **64%** (28.9 s of 45.5 s over three calls) |
+| `burst_log_likelihood` itself | 34% |
+| `log_multinomial_pmf` | **0.07%** |
 
-**Profile before choosing.** The tail cutoff (`_tail_cutoff`, `_MAX_CUTOFF`)
-decides how many boxes each burst contributes, so the cost may be dominated by
-the cutoff policy rather than by the arithmetic — in which case neither route
-helps and the answer is a better cutoff. Nothing here should be rewritten on the
-assumption that C++ is the problem.
+So the multinomial is free and the background correction is everything.
+
+**What does not work, and was tried.** Inside `_background_factors` the obvious
+tttrlib reuse is `Pda.poisson_0toN` for the per-channel background series — it
+agrees with `scipy` to 6e-17 and is about 4× faster on the series alone. Caching
+it, together with the `meshgrid` exponent bookkeeping, against the background
+rates and box shape produced **no measurable gain** (16 929 ms against 16 942 ms,
+bit-identical output). Two reasons, both worth knowing before trying again:
+
+* `boxes` comes from `_channel_boxes(counts, ...)`, so it depends on the burst
+  chunk and a cache keyed on it misses;
+* the cost is the `gammaln` broadcast over `(n_bursts × K × width)` — the falling
+  factorials — not the Poisson series, which is one small array per channel.
+
+**What would.** Either a C++ kernel for the falling-factorial box (the thing
+`Pda` does for two channels, generalised), or a smaller box: `_tail_cutoff` and
+`_MAX_CUTOFF` decide `width`, and the array is linear in it. Measure the cutoff's
+effect on the answer before making it a knob.
+
+Unrelated and unexplained: `burst_log_likelihood` and
+`burst_log_likelihood_reference` disagree by up to 28 log units on a
+naive comparison. That is **pre-existing** — identical at HEAD before any of the
+above — and may be a misuse of the reference's contract rather than a defect, but
+nobody has checked.
