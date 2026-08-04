@@ -193,6 +193,20 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **H2MM's burst sampler was a copy of one that already existed in C++.**
+  `h2mm.simulate_bursts` advanced the hidden chain tick by tick in Python —
+  `rng.choice` per tick per photon — while `tttrlib.HMM::simulate_bursts` does the
+  same walk over the same supplied time axes. It delegates now: **232×** faster
+  (13 ms against 3.1 s for 400 bursts of 200 photons), same law, and the plugin's
+  suite drops from 116 s to 62 s.
+
+  The numpy loop stays as the fallback the gate already selects when the library
+  is absent — the same shape every other engine in this plugin uses, and now
+  covered by the backend guardrail so it cannot be taken silently.
+
+  Only reachable because the H2MM rename was fixed first; before that the gate
+  said False and this would have delegated to nothing.
+
 * **A guardrail for the failure mode that hid the H2MM breakage.** An optional
   fast backend is *meant* to degrade when its dependency is missing — that is the
   right design, and it has one failure mode: the gate is

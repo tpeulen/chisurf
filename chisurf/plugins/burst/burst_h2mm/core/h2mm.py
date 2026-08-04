@@ -1134,11 +1134,30 @@ def simulate_bursts(
     list of numpy.ndarray
         Per-burst photon stream indices, matching ``burst_times`` in shape.
     """
+    times = [np.asarray(t).astype(np.int64) for t in burst_times]
+
+    # The compiled engine walks the same chain tick by tick. It is not a second
+    # implementation kept for comparison -- it is the one that already existed,
+    # and this loop was the copy.
+    try:
+        import tttrlib
+
+        from .h2mm_tttrlib import HAVE_TTTRLIB, _to_engine_model
+
+        if HAVE_TTTRLIB:
+            out = tttrlib.HMM.simulate_bursts(
+                _to_engine_model(model),
+                [[int(v) for v in t] for t in times],
+                -1 if seed is None else int(seed),
+            )
+            return [np.asarray(s, dtype=np.int32) for s in out]
+    except Exception:                                    # pragma: no cover
+        pass
+
     rng = np.random.default_rng(seed)
     n_states = model.n_states
     streams_out: list[np.ndarray] = []
-    for t in burst_times:
-        t = np.asarray(t).astype(np.int64)
+    for t in times:
         m = t.shape[0]
         s = np.empty(m, dtype=np.int32)
         state = rng.choice(n_states, p=model.prior)
