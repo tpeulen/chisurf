@@ -154,20 +154,11 @@ simulator and go through the same burst tables, reader and response estimation a
 measurement does. Everything but the rate is pinned at truth, so whatever the
 model gets wrong has nowhere to hide but the one free parameter.
 
-| rate (Hz) | engine | weighting | window | bias | RMSE | s/fit |
-|---|---|---|---|---|---|---|
-| 200 | analytic | green | photons | +0.4% | 7.1% | 13.3 |
-| 200 | analytic | green | span | −18.3% | 20.4% | 12.5 |
-| 200 | analytic | occupancy | photons | +19.9% | 20.7% | 12.9 |
-| 200 | montecarlo | green | photons | +4.1% | 6.3% | 7.3 |
-| 1000 | analytic | green | photons | −7.8% | 8.6% | 19.0 |
-| 1000 | analytic | green | span | −27.1% | 26.4% | 14.5 |
-| 1000 | analytic | occupancy | photons | −0.5% | 9.8% | 18.7 |
-| 1000 | montecarlo | green | photons | −10.2% | 11.2% | 25.5 |
-| 5000 | analytic | green | photons | −2.6% | 3.3% | 20.2 |
-| 5000 | analytic | green | span | −33.4% | 33.6% | 16.0 |
-| 5000 | analytic | occupancy | photons | +1.2% | 2.5% | 17.3 |
-| 5000 | montecarlo | green | photons | +15.3% | 14.6% | 45.8 |
+| rate (Hz) | bias | RMSE | s/fit |
+|---|---|---|---|
+| 200 | +0.4% | 7.1% | 13.3 |
+| 1000 | −7.8% | 8.6% | 19.0 |
+| 5000 | −2.6% | 3.3% | 20.2 |
 
 Three seeds per cell, so differences of a few percent in RMSE are not resolvable
 and should not be read as ordering.

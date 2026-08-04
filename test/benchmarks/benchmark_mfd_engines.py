@@ -9,17 +9,15 @@ with the other setting.
 
 Settings compared (see the modules for what each means):
 
-``weighting``
-    ``green`` weights the micro-time mixture by the donor photons a state
-    contributes, ``f_s(1 − p_red,s)``; ``occupancy`` by the time it occupies,
-    ``f_s``. The second is what the model did before the first was derived.
-``engine``
-    ``analytic`` is the closed-form path — nested Poisson/binomial sum, Gaussian
-    ⟨t⟩ kernel, transfer-matrix occupation law. ``montecarlo`` is the transcribed
-    Sim2D forward model, which approximates none of those and samples instead.
-
 Both the accuracy and the time are reported, because a forward model that is
 right and unaffordable has not won anything.
+
+This measured four settings while there were four to measure: donor weighting by
+green photons or by occupancy, the averaging window from the photons or from the
+burst span, and the closed-form engine against a transcribed Sim2D Monte Carlo.
+Three of those lost and have been removed from the tree; the outcome and the
+numbers are in ``okf/references/mfd-forward-model-alternatives.md``. What remains
+is a recovery benchmark for the one configuration that is left.
 
 Two axes of the intended design are **not** covered yet, and a number from here
 should not be read as if they were:
@@ -81,8 +79,8 @@ DISTANCES = tuple(52.0 * (1.0 / e - 1.0) ** (1.0 / 6.0) for e in (0.2, 0.8))
 SIGMA = 0.5
 
 
-def _model(rate, weighting, window=True):
-    """Build the kinetic model with a given rate, donor weighting and window."""
+def _model(rate):
+    """Build the kinetic model at a given exchange rate."""
     from chisurf.core.fluorescence.mfd.fit import MfdKineticModel
     from chisurf.core.fluorescence.mfd.patterns import FretState, Optics
 
@@ -92,8 +90,7 @@ def _model(rate, weighting, window=True):
     matrix = np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]])
     return MfdKineticModel(
         optics=optics, states=states, populations=[0.5, 0.5], donor_only=0.05,
-        rate_matrix=matrix, donor_weighting=weighting,
-        photon_weighted_window=window,
+        rate_matrix=matrix,
     )
 
 
@@ -109,24 +106,7 @@ def _measure(rate, seed, directory):
                          responses=None), sim
 
 
-def _residuals(model, data, engine, n_mc, mc_seed):
-    """Return deviance residuals of a model against the measurement."""
-    from chisurf.core.fluorescence.mfd.sources import histogram_residuals
-
-    if engine == "analytic":
-        return model.score(data, mask_empty_model=False).residuals
-    from chisurf.core.fluorescence.mfd.montecarlo import monte_carlo_histogram
-
-    # Common random numbers: the seed is fixed across the optimiser's iterations,
-    # so the objective is a deterministic function of the rate. Without this an
-    # optimiser differentiates sampling scatter and never converges.
-    predicted = monte_carlo_histogram(model, data, n_bursts=n_mc, seed=mc_seed)
-    return histogram_residuals(data.observed.counts, predicted,
-                               mask_empty_model=False).residuals
-
-
-def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
-             n_mc=60_000, mc_seed=0, window=True):
+def fit_rate(data, *, start=800.0):
     """Recover the exchange rate, everything else pinned at truth.
 
     Rates only free: with the optics, distances and populations known, whatever
@@ -138,17 +118,9 @@ def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
     ----------
     data : MfdData
         The measurement.
-    weighting : {"green", "occupancy"}
-        Micro-time mixture weighting.
-    engine : {"analytic", "montecarlo"}
-        Forward model.
     start : float
         Starting rate (Hz). Deliberately not the truth, so the comparison sees
         basin-of-attraction differences rather than only curvature at the optimum.
-    n_mc : int
-        Simulated bursts per evaluation, for the Monte-Carlo engine.
-    mc_seed : int
-        Its common-random-number seed.
 
     Returns
     -------
@@ -157,9 +129,8 @@ def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
     from scipy.optimize import minimize_scalar
 
     def objective(log_rate):
-        model = _model(float(np.exp(log_rate)), weighting, window=window)
-        residuals = _residuals(model, data, engine, n_mc, mc_seed)
-        return float(np.sum(residuals**2))
+        model = _model(float(np.exp(log_rate)))
+        return float(model.score(data, mask_empty_model=False).score)
 
     # A bounded scalar search rather than Levenberg-Marquardt, for both engines so
     # the comparison is not an optimiser artefact. The Monte-Carlo objective is
@@ -177,35 +148,23 @@ def fit_rate(data, *, weighting="green", engine="analytic", start=800.0,
 
 def main():
     """Run the sweep and print the table."""
-    settings = [
-        ("analytic", "green", True),
-        ("analytic", "green", False),
-        ("analytic", "occupancy", True),
-        ("montecarlo", "green", True),
-    ]
     rows = {}
     for rate in RATES:
         for seed in SEEDS:
             with tempfile.TemporaryDirectory() as tmp:
                 data, _ = _measure(rate, seed, pathlib.Path(tmp) / "m")
-                for engine, weighting, window in settings:
-                    fitted, seconds = fit_rate(data, weighting=weighting,
-                                               engine=engine, window=window)
-                    rows.setdefault((rate, engine, weighting, window), []).append(
-                        (fitted, seconds)
-                    )
+                fitted, seconds = fit_rate(data)
+                rows.setdefault(rate, []).append((fitted, seconds))
 
-    print("\n| rate (Hz) | engine | weighting | window | median fitted | bias | RMSE | s/fit |")
-    print("|---|---|---|---|---|---|---|---|")
-    for (rate, engine, weighting, window), values in rows.items():
+    print("\n| rate (Hz) | median fitted | bias | RMSE | s/fit |")
+    print("|---|---|---|---|---|")
+    for rate, values in rows.items():
         fitted = np.array([v[0] for v in values])
         seconds = np.array([v[1] for v in values])
         bias = float(np.median(fitted) / rate - 1.0)
         rmse = float(np.sqrt(np.mean((fitted / rate - 1.0) ** 2)))
-        label = "photons" if window else "span"
-        print(f"| {rate:g} | {engine} | {weighting} | {label} | "
-              f"{np.median(fitted):.0f} | {bias:+.1%} | {rmse:.1%} | "
-              f"{np.mean(seconds):.1f} |")
+        print(f"| {rate:g} | {np.median(fitted):.0f} | {bias:+.1%} | "
+              f"{rmse:.1%} | {np.mean(seconds):.1f} |")
 
 
 if __name__ == "__main__":

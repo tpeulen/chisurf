@@ -698,57 +698,38 @@ class MfdModel:
         }
 
 
-def donor_weights(fractions: np.ndarray, state_p_red: np.ndarray,
-                  mode: str = "green") -> np.ndarray:
-    """Return the mixture the donor photons of a burst are drawn from.
+def donor_weights(fractions, state_p_red) -> np.ndarray:
+    """Return the mixture the *donor photons* of a burst are drawn from.
 
-    A photon emitted while the molecule is in state ``s`` reaches the donor channel
-    with probability ``1 − p_red,s``. Conditioned on *being* a donor photon, the
-    state it came from is therefore distributed as
+    Conditioned on being a donor photon, a state's share is not the fraction of
+    the burst it occupied. Each state emits donor photons in proportion to
+    ``f_s (1 - p_red,s)``, so a high-FRET state can hold most of a burst while
+    contributing almost none of the photons whose mean delay is plotted::
 
-    ::
+        g_s = f_s (1 - p_s) / sum_j f_j (1 - p_j)
 
-        g_s = f_s (1 − p_red,s) / Σ_j f_j (1 − p_red,j)
+    For a burst split evenly between an ``E = 0.2`` and an ``E = 0.8`` state,
+    **80%** of the donor photons come from the low-FRET state, and the predicted
+    mean delay is 2.72 ns rather than 2.00 — three to four micro-time bins.
 
-    and **not** as the occupation fraction ``f_s``. The two coincide only when
-    every state has the same donor brightness, which is exactly what a set of FRET
-    states is not: a high-FRET state can occupy most of a burst while contributing
-    few of the donor photons whose mean delay is plotted.
-
-    This is one function rather than an expression repeated per scoring source,
-    because the histogram and the burst-wise likelihood share the error when they
-    each spell it out — and then agree with each other, which reads as
-    confirmation.
+    The channel counts are a different question and ``f`` is right for them:
+    marginalising the state, each photon is red with probability ``f.p``
+    independently, so the acceptor count is exactly ``Binomial(S, f.p)``. Getting
+    the count right and its composition wrong is why this survived review.
 
     Parameters
     ----------
-    fractions : numpy.ndarray
-        ``(..., n_states)`` occupation-time fractions of a burst.
-    state_p_red : numpy.ndarray
-        ``(n_states,)`` acceptor-channel probability of each state.
-    mode : {"green", "occupancy"}
-        ``"green"`` for the donor-photon mixture above; ``"occupancy"`` for the
-        plain ``f``, kept only so the benchmark can price the difference.
+    fractions : array_like
+        ``(..., n_states)`` occupation-time fractions.
+    state_p_red : array_like
+        ``(n_states,)`` acceptor-channel probability per state.
 
     Returns
     -------
     numpy.ndarray
-        Weights shaped like *fractions*. Rows whose donor share is zero fall back
-        to *fractions*: such a burst has no green photons and is cut before its
-        micro time is used, so the value only has to be finite.
-
-    Raises
-    ------
-    ValueError
-        If *mode* is neither ``"green"`` nor ``"occupancy"``.
+        Normalised donor-photon weights, the shape of *fractions*.
     """
     f = np.asarray(fractions, dtype=float)
-    if mode == "occupancy":
-        return f
-    if mode != "green":
-        raise ValueError(
-            f"donor_weighting must be 'green' or 'occupancy', got {mode!r}"
-        )
     share = f * np.broadcast_to(1.0 - np.asarray(state_p_red, dtype=float), f.shape)
     total = share.sum(axis=-1, keepdims=True)
     return np.where(total > 0.0, share / np.where(total > 0.0, total, 1.0), f)
@@ -768,7 +749,8 @@ class MfdKineticModel(MfdModel):
 
     That works because the channel counts and the micro times of a burst depend on
     its state path **only** through ``f``. They do not depend on it the *same way*,
-    though, and that distinction is what ``donor_weighting`` is about.
+    though: the channel counts are the ``f``-weighted mixture exactly, and the
+    micro times are not — see :func:`donor_weights`.
 
     Attributes
     ----------
@@ -784,42 +766,11 @@ class MfdKineticModel(MfdModel):
         resolution runs to hundreds of nodes under fast exchange and each costs a
         pass through the nested background sum, for a resolution the histogram
         cannot see; see :meth:`OccupationGrid.coarsen`.
-    photon_weighted_window : bool
-        Correct the occupation law for the fact that a burst's photons do not
-        sample its duration uniformly. A molecule is brightest at the centre of
-        its transit, so its photons over-sample whichever state it held then and
-        the effective averaging window is shorter than the burst's span. Left
-        uncorrected the fit returns rates 20-35% low, growing with the rate;
-        corrected it is within 3-7% and the fit is *faster*, because a shorter
-        window needs fewer transfer-matrix steps. On by default for that reason,
-        and silently skipped when the folder was loaded without its photons —
-        which is the one case where turning it off changes nothing. See
-        :func:`~chisurf.core.fluorescence.mfd.occupation.effective_window_scale`.
-    donor_weighting : {"green", "occupancy"}
-        Which mixture the micro-time moments are taken over.
-
-        ``"green"`` (the default, and exact) weights each state by the donor
-        photons it actually contributes, ``g_s ∝ f_s (1 − p_red,s)``. ``"occupancy"``
-        weights by ``f`` alone, which is what this model did until the green
-        weighting was derived; it is kept so the benchmark can price the
-        difference, and is wrong.
-
-        The distinction matters because the two axes condition differently. Each
-        photon picks a state with probability ``f`` and then goes red with that
-        state's probability, so marginally it is red with probability ``f·p``
-        *independently* of every other photon — the channel counts are exactly
-        ``Binomial(S, f·p)`` and ``f`` is right for them. The micro times are read
-        from the green photons only, and those are a **biased sample**: a
-        high-FRET state occupies the burst without contributing many donor photons
-        to its mean delay. Weighting them by ``f`` puts the dynamic bridge too far
-        toward short lifetimes.
     """
 
     rate_matrix: np.ndarray | None = None
     n_steps: int | None = None
     n_occupation_nodes: int = 16
-    donor_weighting: str = "green"
-    photon_weighted_window: bool = True
 
     def components(
         self, data: MfdData
@@ -862,12 +813,11 @@ class MfdKineticModel(MfdModel):
         # not the window over which its state averaged. Left uncorrected this
         # returns rates 20-35% low, growing with the rate, in *both* forward
         # models — see ``occupation.effective_window_scale``.
-        if self.photon_weighted_window:
-            arrivals = data.arrivals()
-            if arrivals is not None:
-                durations = durations * effective_window_scale(
-                    *arrivals, relaxation_rate(matrix)
-                )
+        arrivals = data.arrivals()
+        if arrivals is not None:
+            durations = durations * effective_window_scale(
+                *arrivals, relaxation_rate(matrix)
+            )
         n_cells = durations.size
 
         # One grid per distinct duration. The nuisance measure is binned, so there
@@ -910,7 +860,7 @@ class MfdKineticModel(MfdModel):
             # proportion to f_s(1 - p_red,s). The mixture's variance carries the
             # spread of the states' own means, which is what makes a burst caught
             # mid-exchange sit off the static line rather than on it.
-            donor_share = donor_weights(f, state_p_red, mode=self.donor_weighting)
+            donor_share = donor_weights(f, state_p_red)
             node_mean, node_variance = mixture_moments(
                 donor_share,
                 np.broadcast_to(state_mean, f.shape),
@@ -1062,9 +1012,7 @@ def burstwise_log_probabilities(
         # while sharing the error.
         component_patterns = np.vstack([
             donor_only_pattern[None, :],
-            donor_weights(fractions, state_p_red,
-                          mode=getattr(model, "donor_weighting", "green"))
-            @ state_patterns,
+            donor_weights(fractions, state_p_red) @ state_patterns,
         ])
         per_bin.append((component_weights, component_p_red, component_patterns))
 

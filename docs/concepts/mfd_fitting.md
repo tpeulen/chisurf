@@ -113,8 +113,10 @@ miss because one half genuinely is `f`:
 
 Weighting the micro times by `f` puts the dynamic bridge too far toward short
 lifetimes, which a fit then compensates with the exchange rate. ChiSurf did this
-until the green weighting was derived; `donor_weighting="occupancy"` still selects
-the old behaviour so the benchmark can price it, and it is wrong.
+until the green weighting was derived. Weighting by occupancy was kept as an
+option long enough to be priced against ground truth and then removed: it happens
+to beat the exact weighting at one exchange rate, by cancelling against a second
+error, and fails badly at another.
 
 It is computed deterministically, by propagating the joint distribution over
 (state, occupation counts) with the exact one-slice transition matrix. Sampling
@@ -369,8 +371,11 @@ photons behave like, which is always shorter than the span and shortens further
 as the rate rises. Recovery improves to −7% and −3%, and the fit gets *faster*
 because a shorter window needs fewer transfer-matrix slices.
 
-This was shared by chisurf's closed-form path and by the Sim2D Monte Carlo — the
-reason those two agreed with each other while both were wrong.
+This was shared by chisurf's closed-form path and by a transcribed Sim2D Monte
+Carlo built to check it — the reason those two agreed with each other while both
+were wrong. That Monte Carlo, and two other alternatives that were measured and
+lost, are recorded in
+[the alternatives that were tried](../../okf/references/mfd-forward-model-alternatives.md).
 
 ## Further reading
 

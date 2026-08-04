@@ -63,8 +63,8 @@ def test_the_donor_photons_are_the_green_weighted_mixture():
 
     assert expected == pytest.approx(0.8, abs=1e-12)
     assert measured == pytest.approx(expected, abs=0.001)
-    # the occupancy weighting claims half, and is wrong by a factor of 1.6
-    assert donor_weights(FRACTIONS, P_RED, mode="occupancy")[0, 0] == 0.5
+    # weighting by occupancy alone claims half, and is wrong by a factor of 1.6
+    assert FRACTIONS[0, 0] == 0.5
 
 
 def test_the_two_weightings_disagree_by_more_than_a_micro_time_bin():
@@ -77,7 +77,7 @@ def test_the_two_weightings_disagree_by_more_than_a_micro_time_bin():
         donor_weights(FRACTIONS, P_RED), MEAN[None, :], VARIANCE[None, :]
     )
     occupancy, _ = mixture_moments(
-        donor_weights(FRACTIONS, P_RED, mode="occupancy"),
+        FRACTIONS,
         MEAN[None, :], VARIANCE[None, :],
     )
 
@@ -103,11 +103,11 @@ def test_the_donor_photon_mean_matches_a_photon_by_photon_burst():
     assert float(delay.mean()) == pytest.approx(float(predicted[0]), rel=0.005)
 
 
-@pytest.mark.parametrize("mode", ["green", "occupancy"])
-def test_the_weightings_agree_when_the_states_are_equally_bright(mode):
+
+def test_the_weightings_agree_when_the_states_are_equally_bright():
     """No FRET contrast, no distinction — the sanity limit of the whole argument."""
     equal = np.array([0.4, 0.4])
-    weights = donor_weights(FRACTIONS, equal, mode=mode)
+    weights = donor_weights(FRACTIONS, equal)
     assert weights[0] == pytest.approx(FRACTIONS[0])
 
 
@@ -116,9 +116,3 @@ def test_an_all_acceptor_node_falls_back_rather_than_dividing_by_zero():
     weights = donor_weights(FRACTIONS, np.array([1.0, 1.0]))
     assert np.all(np.isfinite(weights))
     assert weights[0] == pytest.approx(FRACTIONS[0])
-
-
-def test_an_unknown_mode_is_refused():
-    """A typo must not silently select a weighting."""
-    with pytest.raises(ValueError, match="green.*occupancy"):
-        donor_weights(FRACTIONS, P_RED, mode="occupanct")

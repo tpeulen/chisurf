@@ -152,6 +152,42 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The three 2D-MFD alternatives that lost are removed from the tree.**
+  ([what was tried](references/mfd-forward-model-alternatives.md),
+  [MFD fitting](../docs/concepts/mfd_fitting.md))
+  Donor weighting by occupancy, the burst span as the averaging window, and the
+  transcribed Sim2D photon Monte Carlo were each built to be measured, each
+  measured against a known exchange rate, and each lost. They are gone rather
+  than left behind switches: a knob whose only alternative setting is *wrong* is
+  a trap, and `montecarlo.py` was 300 lines of engine nobody should reach for.
+
+  The record keeps what the code proved — the recovery table for all four
+  settings, why occupancy weighting's apparent win at 1 kHz is two errors
+  cancelling rather than a better model, and enough of the Monte Carlo's
+  construction (common random numbers, the multinomial-then-binomial kept
+  deliberately, the Sim2D bugs not carried over) to rebuild it.
+
+  What is genuinely lost is a diagnostic, and it is worth being explicit about:
+  the Monte Carlo carried the *same* window bias as the closed-form path, and it
+  was the two agreeing that proved the error lived in an assumption they
+  **shared**. The generalisable half is written down instead — two
+  implementations agreeing is not evidence when they share an assumption; both
+  the donor-weighting defect and the window defect were present in both scoring
+  sources for as long as they existed, and the sources agreed throughout.
+
+* **The simulator makes a dynamic bridge, and it is now a gate.** Checked by
+  looking at the histograms rather than by inferring it from a rate coming back:
+  static gives two separated blobs with 1.3% of bursts in the middle of the ratio
+  axis, 1 kHz gives a populated bridge (28.6%) whose mean delay bows +0.25 ns
+  *above* the chord joining the two populations, and 5 kHz has merged into one
+  averaged population. The curvature is the part worth asserting — a burst caught
+  mid-exchange has donor photons from both states and their mean delay is
+  dominated by the long-lifetime one, so a bridge lying *on* the chord would mean
+  the micro times were being mixed by occupancy instead of by donor-photon share.
+  Without a bridge the exchange rate is not identifiable from a 2D histogram at
+  all and every recovery number would be luck, so this gate sits under the
+  benchmark.
+
 * **The 2D-MFD engine comparison is settled, and nothing gets retired.**
   ([benchmarks](../docs/development/benchmarks.md), [PRD-71](prds/prd-71.md))
   Rate recovery against known ground truth, everything but the rate pinned at

@@ -11,6 +11,9 @@ These are the gates the benchmark rests on. If the simulator's kinetics or the
 folder it writes are wrong, every recovery number downstream is wrong too, and
 looks fine.
 """
+import pathlib
+import tempfile
+
 import numpy as np
 import pytest
 
@@ -280,9 +283,6 @@ def test_the_photon_weighted_window_recovers_the_generating_rate():
            "brightness": 400.0, "irf_centre": 1.0, "irf_width": 0.1},
         rate_matrix=matrix,
     )
-    import pathlib
-    import tempfile
-
     folder = sim.write_folder(pathlib.Path(tempfile.mkdtemp()) / "rate",
                               bursts="truth", stem="rate")
     data = load_mfd_data(folder, min_green_photons=20)
@@ -291,14 +291,13 @@ def test_the_photon_weighted_window_recovers_the_generating_rate():
     states = [FretState(distance=d, name=n)
               for d, n in zip((66.2, 39.3), ("low", "high"))]
 
-    def recover(photon_weighted):
+    def recover():
         def objective(log_rate):
             rate = float(np.exp(log_rate))
             model = MfdKineticModel(
                 optics=optics, states=states, populations=[0.5, 0.5],
                 donor_only=0.05,
                 rate_matrix=np.array([[0.0, rate / 2.0], [rate / 2.0, 0.0]]),
-                donor_weighting="green", photon_weighted_window=photon_weighted,
             )
             return float(np.sum(model.score(data, mask_empty_model=False).residuals ** 2))
 
@@ -306,14 +305,71 @@ def test_the_photon_weighted_window_recovers_the_generating_rate():
             objective, bounds=(np.log(200.0), np.log(40000.0)),
             method="bounded", options={"xatol": 5e-3}).x))
 
-    by_span = recover(False)
-    by_photons = recover(True)
+    recovered = recover()
 
-    # The bias the span assumption carries, and that it is a *low* bias — the
-    # direction matters, because a model that under-reports exchange reports a
-    # protein as more static than it is.
-    assert by_span < 0.8 * true_rate
-    # And that correcting it lands close, without overshooting into invented
-    # dynamics.
-    assert 0.85 * true_rate < by_photons < 1.15 * true_rate
-    assert abs(by_photons - true_rate) < abs(by_span - true_rate)
+    # Close, and without overshooting into invented dynamics. Taking the burst's
+    # span as the averaging window instead put this at 0.67x the truth; that
+    # assumption is gone rather than switchable, so what is asserted here is the
+    # result and not the comparison.
+    assert 0.85 * true_rate < recovered < 1.15 * true_rate
+
+
+@pytest.mark.slow
+def test_exchange_builds_a_dynamic_bridge_off_the_static_line():
+    """Exchange must put bursts *between* the states, and off the line joining them.
+
+    The gate the recovery numbers rest on. A static mixture puts every burst on
+    the static FRET line and leaves the middle of the ratio axis to shot-noise
+    stragglers; if the simulator only shifted the populations without populating
+    the space between them, the exchange rate would not be identifiable from a 2D
+    histogram at all and every recovered rate would be luck.
+
+    Two things are asserted, and the second is the one that is easy to fake:
+
+    * the middle of the ratio axis fills as the rate rises;
+    * the bursts there sit **above** the chord joining the two populations. A
+      burst caught mid-exchange has donor photons from both states, and their
+      mean delay is dominated by the long-lifetime one, so it is longer than
+      linear interpolation between the endpoints. A bridge that lay *on* the
+      chord would mean the micro times were being mixed by occupancy rather than
+      by donor-photon share.
+    """
+    from chisurf.core.fluorescence.mfd.fit import load_mfd_data
+    from chisurf.core.fluorescence.mfd.histogram import HistogramAxes
+
+    axes = HistogramAxes.default(n_ratio=48, n_micro_time=48,
+                                 micro_time_range=(0.5, 6.5))
+    ratio = 0.5 * (axes.ratio_edges[:-1] + axes.ratio_edges[1:])
+    micro = 0.5 * (axes.micro_time_edges[:-1] + axes.micro_time_edges[1:])
+    middle = (ratio > 0.35) & (ratio < 0.65)
+    root = pathlib.Path(tempfile.mkdtemp())
+
+    filled = {}
+    for rate in (0.0, 1000.0):
+        matrix = None if rate == 0 else np.array([[0.0, rate / 2], [rate / 2, 0.0]])
+        sim = simulate_smfret(
+            **{**MFD, "n_photons": 300_000, "donor_only": 0.05,
+               "background": 0.02, "brightness": 400.0,
+               "irf_centre": 1.0, "irf_width": 0.1},
+            rate_matrix=matrix,
+        )
+        folder = sim.write_folder(root / f"r{int(rate)}", bursts="truth",
+                                  stem=f"r{int(rate)}")
+        counts = load_mfd_data(folder, axes=axes,
+                               min_green_photons=20).observed.counts
+        column = counts.sum(axis=1)
+        filled[rate] = float(column[middle].sum() / column.sum())
+
+        if rate:
+            mean = np.where(column > 0,
+                            (counts * micro[None, :]).sum(axis=1)
+                            / np.maximum(column, 1), np.nan)
+            low, high = ratio < 0.15, ratio > 0.85
+            ends = (np.nanmean(mean[low]), np.nanmean(mean[high]))
+            span = (np.nanmean(ratio[low]), np.nanmean(ratio[high]))
+            chord = ends[0] + (ratio - span[0]) * (ends[1] - ends[0]) / (
+                span[1] - span[0])
+            assert np.nanmean((mean - chord)[middle]) > 0.1
+
+    assert filled[0.0] < 0.05          # static: the middle is empty
+    assert filled[1000.0] > 0.20       # exchange fills it
