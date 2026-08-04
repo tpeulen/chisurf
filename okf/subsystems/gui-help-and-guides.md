@@ -87,8 +87,10 @@ spacer, set `toolbar.setProperty("_chisurf_right_spacer", True)` — two stretch
 share the slack rather than adding, and the pair ends up mid-bar.
 
 **Always walk a new tour with the harness**,
-`build_tools/dev_utils/check_plugin_guide.py`. It checks three things no unit
-test can: both buttons exist, every step's target resolves, and **no step
+`build_tools/dev_utils/check_plugin_guide.py`. **It needs the full stack** — a
+broken `tttrlib` blocks every walk, which is what stranded `irf_estimator` (see
+above), so check it imports before planning GUI work. It checks three things no
+unit test can: both buttons exist, every step's target resolves, and **no step
 scrolls** (i.e. nothing is cut off). The truncation check exists because the
 bubble silently cut long steps off mid-sentence for as long as the feature had
 existed — see the fit-to-content note below.
