@@ -193,6 +193,19 @@
   failures already recorded in [known issues](references/known-issues.md) as
   identically red at `HEAD`.
 
+* **The lifetime-FCS simulator's `seed` argument never did anything.**
+  ([shim](../chisurf/core/fluorescence/simulation/rng.py)) Its settings block said
+  `"seed"`, which the engine does not read — it takes `seed_diffusion` and
+  `seed_emission`, two independent streams. So every call ran on the defaults:
+  `simulate_lifetime_fcs(seed=1)` and `seed=2` produced byte-identical photon
+  streams, and four tests that varied the seed were varying nothing.
+
+  Found by the unknown-key check added to the simulator in the same day's work —
+  the first thing it caught outside tttrlib's own tests, and the reason that check
+  was worth adding. Fixed by routing through `simulation.rng.seeds`, which derives
+  both streams from one caller seed; verified that two seeds now differ and that
+  one seed still reproduces.
+
 * **Burbulator is retired: ChiSurf now compiles no C++ of its own.**
   ([what it did](references/burbulator-simulator.md),
   [compiled modules](subsystems/compiled-modules.md)) The Seidel group's

@@ -29,6 +29,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from chisurf.core.fluorescence.simulation import seeds
+
 __all__ = ["SimulatedLifetimeFCS", "simulate_lifetime_fcs"]
 
 
@@ -142,7 +144,12 @@ def simulate_lifetime_fcs(
             "n_microtime_channels": int(n_microtime_channels),
             "microtime_resolution": float(micro_time_resolution_ns),
             "laser_period": float(laser_ns), "fast_grid_bbox": True,
-            "active_margin": 1.0, "seed": int(seed),
+            "active_margin": 1.0,
+            # The engine draws molecules and photons from two independent
+            # streams, so it takes two seeds. This block used to say "seed",
+            # which it never read: every call ran on the defaults and the seed
+            # argument did nothing.
+            **seeds(int(seed)),
         },
         "box": {"xy": float(box_xy_um), "z": float(box_z_um)},
         "species": [
