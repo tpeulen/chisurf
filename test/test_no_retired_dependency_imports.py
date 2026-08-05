@@ -56,10 +56,26 @@ RETIRED = {
         "imagecodecs",
         "it only ever existed to let tifffile decode compressed TIFFs",
     ),
+    "boost_histogram": (
+        "boost-histogram",
+        "histograms are filled in tttrlib, which is faster on matched features",
+    ),
+    "pyarrow": (
+        "pyarrow",
+        "it backed ndxplorer's Arrow tables; nothing in chisurf ever imported it",
+    ),
     "requests": (
         "requests",
         "use chisurf.core.http",
     ),
+}
+
+#: Further distribution names that install the same retired module, checked by
+#: the packaging test alongside the primary name. A conda recipe says
+#: ``pyarrow-core`` where a wheel says ``pyarrow``, and matching only the latter
+#: would let the dependency back in under a spelling the guardrail cannot see.
+_ALSO_PACKAGED_AS = {
+    "pyarrow": ("pyarrow-core",),
 }
 
 #: Retired from the *application* but still declared as an optional extra, so
@@ -75,7 +91,11 @@ _ALLOWED_PREFIXES = {
     "requests": ("chisurf/plugins/spectra_downloader/download/",),
 }
 
-#: Packaging manifests that describe the chisurf runtime.
+#: Packaging manifests that describe the chisurf runtime. Deliberately only
+#: chisurf's own: the manifests under ``modules/`` belong to sibling checkouts
+#: that are not pinned by this repository, so asserting on them would make this
+#: test's result depend on which revision of a neighbour happens to be present.
+#: Each of those projects guards its own dependencies.
 _MANIFESTS = (
     "pixi.toml",
     "pyproject.toml",
@@ -172,12 +192,14 @@ def test_packaging_does_not_declare_retired_package(module):
     if module in _IMPORT_ONLY:
         pytest.skip(f"{module} stays declared as an optional extra")
     packaging_name, hint = RETIRED[module]
+    names = {packaging_name.lower(), *(n.lower() for n in _ALSO_PACKAGED_AS.get(module, ()))}
     offenders = []
     for rel in _MANIFESTS:
         path = REPO_ROOT / rel
         if not path.exists():
             continue
         declared = _declared_dependencies(path.read_text(encoding="utf-8", errors="ignore"))
-        if packaging_name.lower() in declared:
-            offenders.append(rel)
+        found = names & declared
+        if found:
+            offenders.append(f"{rel} ({', '.join(sorted(found))})")
     assert not offenders, f"{packaging_name} reintroduced as a dependency ({hint}) in: {offenders}"

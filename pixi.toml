@@ -36,9 +36,9 @@ pyqt = "*"
 pyqtgraph = "0.13.*"
 matplotlib = "*"
 scikit-image = "*"
-# imageio, tifffile and imagecodecs were dropped: TIFF I/O is tttrlib's bundled
-# libtiff, behind chisurf.core.fio.image. pillow reads what that does not (PNG,
-# JPEG, RGB TIFFs).
+# imageio, tifffile and imagecodecs were dropped: data images are TIFF, through
+# tttrlib's bundled libtiff behind chisurf.core.fio.image. pillow is here for
+# pictures, not measurements: chimol's render export and the docs figure tooling.
 pillow = "*"
 # deprecation was dropped: chisurf.core.decorators.deprecated replaces it.
 pandas = "*"
@@ -62,10 +62,6 @@ scikit-learn = "*"
 # package is faster and supports prediction data, so ship it.
 hdbscan = "*"
 pygments = "*"
-# pyarrow-core: only arrays + compute + csv are used (ndxplorer); avoids the
-# heavy libarrow-all components. Keep in sync with rattler-recipe/recipe.yaml.
-pyarrow-core = "*"
-boost-histogram = "*"
 sqlalchemy = ">=2.0"
 # Imported directly, so declared directly rather than left to arrive with
 # something else: the ZMQ transport, the AV quenching kernel, and the version

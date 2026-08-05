@@ -120,11 +120,6 @@ requirements:
     - ${{ "libcxx" if osx }}
     - micromamba
     - pygments
-    # pyarrow-core: ndxplorer uses only arrays + compute + csv (no parquet/
-    # dataset/flight), so the core build is sufficient and avoids pulling the
-    # heavy libarrow-all stack (~100 MB of unused Arrow C++ components).
-    - pyarrow-core
-    - boost-histogram
     # Imported by the application but previously left to arrive transitively --
     # true only by luck, and a packaged install is where that luck runs out.
     # Solved cost of declaring them: +2 packages (sqlalchemy and its greenlet);

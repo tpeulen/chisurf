@@ -69,11 +69,11 @@ dependencies = [
     "ipython",
     "click",
     "pyzmq>=25.0",
-    "pyarrow",
     "ruff>=0.4",
     "sqlalchemy>=2.0",
-    # TIFF I/O is tttrlib's bundled libtiff, behind chisurf.core.fio.image;
-    # Pillow reads the formats it does not (PNG, JPEG, RGB TIFFs).
+    # Data images are TIFF, through tttrlib's bundled libtiff behind
+    # chisurf.core.fio.image. Pillow is here for pictures, not measurements:
+    # ChiMOL's render export and the docs figure tooling.
     "Pillow",
     "mmfdb==0.1.0",
 ]
@@ -91,7 +91,6 @@ ml = [
 # structure preparation for ProteinMC.
 full = [
     "hdbscan",
-    "boost-histogram",
     "Pygments",
     "latexify-py",
     "notebook<7",
