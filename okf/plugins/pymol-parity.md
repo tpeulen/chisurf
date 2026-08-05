@@ -117,7 +117,21 @@ all closed, so the tracer's remaining gap is one of shading rather than of
 capability.
 
 *Nothing but a sphere casts a shadow.* **Done** — see *a cartoon casts a shadow
-now* below.
+now* below. So is the darkness: `ray` was missing PyMOL's `direct` headlight term
+entirely and came out 30 % below the viewport; it is now within 2 %.
+
+*Does `ray` frame the molecule as the viewport does?* **Open, and unmeasured** —
+this is where to start, because it is the one thing a user would still see. It
+came up while checking the brightness fix: the traced molecule looked smaller in
+the frame than the viewport's. **Both attempts to measure it were wrong**, and
+the way they were wrong is the useful part. A whole-frame correlation said
+"no difference" (0.93 as-is against 0.20 flipped) — worthless, because ~90 % of
+both images is black background and the agreement is background-on-background. A
+brightness-threshold bounding box then said the viewport's molecule spans the
+entire frame — also worthless, because the object panel and the mouse-mode text
+are drawn *inside* the GL widget and the threshold counts them as molecule. Redo
+it masked to the scene column, on silhouette bounding boxes, with the chrome
+hidden rather than cropped around.
 
 **Transparency is done** — see *the tracer walks through a surface* below — and
 so is **speed**: `ray` was 143–651× slower than it needed to be.
