@@ -21,10 +21,10 @@ command does and what its defaults are. **ChimeraX** (`junk/ChimeraX`) is the
 reference for *how to do it well* — rendering above all — and is explicitly not
 the compatibility authority.
 
-A third, a WebGL viewer, was consulted for shader technique and is now **read
-out**: what it had is transcribed under *the WebGL viewer is read out*, and the
-checkout can be dropped. Anything it offered beyond shaders duplicates PyMOL or
-ChimeraX under names chimol must match anyway.
+A third, a WebGL viewer, was consulted for shader technique, **read out, and its
+checkout removed** on 2026-08-05 — see *the WebGL viewer is read out* for what it
+gave and how to fetch it again. Anything it offered beyond shaders duplicates
+PyMOL or ChimeraX under names chimol must match anyway.
 
 Reading them has repeatedly overturned conclusions drawn from observation alone;
 see [the log](/log.md) for cases where a measured "constant" turned out to be a
@@ -1705,12 +1705,21 @@ Guardrail in `test_trajectory_performance.py`, structural rather than timed like
 everything else in that file: the scene builder must not be entered at all. It
 was checked against the old code and does fail there.
 
-## The WebGL viewer is read out — what it had, and why it can go
+## The WebGL viewer is read out — what it had, and where it went
 
-Surveyed the whole of `junk/ngl/src/` (not only the shaders) on 2026-08-05 to
-answer whether it is worth keeping. **Verdict: read out.** The list below is
-what it contributed; the checkout can be dropped, and this section is the record
-that survives it.
+Surveyed whole (not only the shaders) on 2026-08-05 to answer whether it was
+worth keeping. **Verdict: read out, and the 1.0 GB checkout was removed the same
+day.** This section is the record that survives it.
+
+**To read it again**, which the shader notes below still assume is possible:
+
+```
+git clone https://github.com/nglviewer/ngl junk/ngl && git -C junk/ngl checkout 60be69b5
+```
+
+`60be69b5` is the commit everything here was read from. Paths below are relative
+to that checkout. It is a clean upstream tree with nothing local in it, which is
+why deleting it costs only the download.
 
 **What it was consulted for is captured.** The shader set is the part of NGL that
 has no counterpart in the two standing sources, and it is transcribed into the
@@ -1748,9 +1757,11 @@ not needed for it.
 
 ## Shader techniques worth taking, read from a WebGL viewer
 
-Surveyed 2026-08-05 in `junk/ngl/src/shader/`, which is a small, complete and
-readable set — the opposite of PyMOL's, and the reason to read it for *how* while
-reading PyMOL for *what*. Not started; listed by what each would buy.
+Surveyed 2026-08-05 in `src/shader/` of that viewer — a small, complete and
+readable set, the opposite of PyMOL's, and the reason to read it for *how* while
+reading PyMOL for *what*. The checkout is gone; the section above says how to
+fetch it back, and every path below is relative to it. Not started; listed by
+what each would buy.
 
 **1. Impostor sticks and cylinders — and the measurement says take it for
 *quality*, not for speed.** `CylinderImpostor.vert` + `.frag` (130 + 356 lines)
