@@ -12,14 +12,21 @@ This module is that single answer:
 * :func:`imread` / :func:`imwrite` for the common case -- an array in, an array
   out, dtype preserved.
 * :func:`read_labelled` when the *meaning* of the axes matters, returning the
-  array together with a label string (``"TCYX"``, ``"ZYX"``, ``"YXS"``, ``"I"``
-  for an unlabelled page index).
+  array together with a label string (``"TCYX"``, ``"ZYX"``, ``"I"`` for an
+  unlabelled page index).
 
-TIFF goes through the TTTR library's bundled libtiff, which also carries ImageJ
-hyperstack metadata, so a ``(frame, channel, y, x)`` stack survives a round-trip
-with its axes intact. Anything else -- PNG, JPEG, and the RGB TIFFs the array
-reader declines because they pack several samples into one page -- falls back to
-Pillow.
+Everything goes through the TTTR library's bundled libtiff, which also carries
+ImageJ hyperstack metadata, so a ``(frame, channel, y, x)`` stack survives a
+round-trip with its axes intact.
+
+**TIFF is the only format, in both directions.** Measurement images are TIFF:
+it stores the integer and floating-point pixel types instruments actually
+produce, at full depth, losslessly, with the axis and voxel-size metadata that
+makes a stack interpretable. The consumer formats store 8-bit colour, and
+writing a 16-bit photon count or a float lifetime map into one silently
+discards the measurement -- so this module will not do it, and an image that is
+not a TIFF raises rather than being read through a second reader with different
+conventions.
 
 Notes
 -----
@@ -37,36 +44,24 @@ import numpy as np
 
 __all__ = ["TIFF_SUFFIXES", "imread", "imwrite", "metadata", "read_labelled"]
 
-#: Suffixes read through the TTTR library's array TIFF reader.
+#: Suffixes this module reads and writes. TIFF and its instrument dialects only.
 TIFF_SUFFIXES = frozenset({".tif", ".tiff", ".ome.tif", ".ome.tiff", ".lsm", ".stk"})
 
 
-def _is_tiff(path) -> bool:
-    """Return whether *path* names a file to try the array TIFF reader on."""
-    name = pathlib.Path(path).name.lower()
-    return any(name.endswith(suffix) for suffix in TIFF_SUFFIXES)
+def _check_suffix(path) -> None:
+    """Raise unless *path* names a TIFF.
 
-
-def _read_pillow(path) -> tuple[np.ndarray, str]:
-    """Read *path* with Pillow, returning ``(array, axes)``.
-
-    Covers what the array TIFF reader does not: single-file formats such as PNG
-    and JPEG, and TIFFs whose pages carry several samples per pixel (RGB), which
-    it rejects rather than silently flattening.
+    Refusing early gives a better error than libtiff's, and keeps the reason
+    visible: a measurement image is a TIFF, and a PNG or JPEG in this position
+    means data has already been flattened to 8-bit colour somewhere upstream.
     """
-    from PIL import Image, ImageSequence
-
-    with Image.open(str(path)) as handle:
-        frames = [np.asarray(frame) for frame in ImageSequence.Iterator(handle)]
-    if not frames:
-        raise OSError(f"no frames could be read from {path}")
-    if len(frames) == 1:
-        plane = frames[0]
-        # A trailing 3/4-sized axis on a single plane is RGB(A) samples, not a
-        # third spatial dimension.
-        return plane, "YXS" if plane.ndim == 3 else "YX"
-    stack = np.asarray(frames)
-    return stack, "IYXS" if stack.ndim == 4 else "IYX"
+    name = pathlib.Path(path).name.lower()
+    if not any(name.endswith(suffix) for suffix in TIFF_SUFFIXES):
+        raise ValueError(
+            f"{path}: images are read and written as TIFF only "
+            f"(expected one of {', '.join(sorted(TIFF_SUFFIXES))}). The consumer "
+            f"formats store 8-bit colour and would discard the measurement."
+        )
 
 
 def read_labelled(path) -> tuple[np.ndarray, str]:
@@ -83,30 +78,24 @@ def read_labelled(path) -> tuple[np.ndarray, str]:
         The image data, in the file's own dtype.
     str
         One label per dimension: ``T`` frames, ``Z`` slices, ``C`` channels,
-        ``S`` colour samples, ``I`` an unlabelled page index, and ``Y``/``X``
-        the image plane. A TIFF without ImageJ metadata reports its pages as
-        ``I`` -- the file does not say what they are.
+        ``I`` an unlabelled page index, and ``Y``/``X`` the image plane. A TIFF
+        without ImageJ metadata reports its pages as ``I`` -- the file does not
+        say what they are.
 
     Raises
     ------
+    ValueError
+        If *path* is not a TIFF.
     OSError
-        If the file cannot be read by either reader.
+        If the file cannot be read.
     """
-    if _is_tiff(path):
-        try:
-            import tttrlib
+    import tttrlib
 
-            metadata = tttrlib.tiff_metadata(path)
-            return tttrlib.imread(path), str(metadata["axes"])
-        except Exception:
-            # Multi-sample (RGB) pages and exotic codecs are Pillow's job.
-            pass
+    _check_suffix(path)
     try:
-        return _read_pillow(path)
-    except OSError:
-        raise
+        return tttrlib.imread(path), str(tttrlib.tiff_metadata(path)["axes"])
     except Exception as error:
-        raise OSError(f"could not read image: {path}") from error
+        raise OSError(f"could not read image: {path}: {error}") from error
 
 
 def metadata(path) -> dict:
@@ -133,10 +122,10 @@ def metadata(path) -> dict:
 def imread(path) -> np.ndarray:
     """Read an image file into a NumPy array, preserving its dtype.
 
-    A single-page file gives a 2-D ``(y, x)`` array (or ``(y, x, samples)`` for
-    RGB); a multi-page file gives ``(pages, y, x)``; an ImageJ hyperstack keeps
-    the dimensions its metadata declares. Use :func:`read_labelled` when you
-    need to know which axis is which.
+    A single-page file gives a 2-D ``(y, x)`` array; a multi-page file gives
+    ``(pages, y, x)``; an ImageJ hyperstack keeps the dimensions its metadata
+    declares. Use :func:`read_labelled` when you need to know which axis is
+    which.
 
     Parameters
     ----------
@@ -185,9 +174,15 @@ def imwrite(
         Further ImageJ fields. ``{"spacing": z_step, "unit": "um"}`` alongside
         *resolution* is what gives a stack a physical voxel size; ImageJ needs
         both halves and ignores either one on its own.
+
+    Raises
+    ------
+    ValueError
+        If *path* is not a TIFF.
     """
     import tttrlib
 
+    _check_suffix(path)
     tttrlib.imwrite(
         path,
         np.asarray(data),

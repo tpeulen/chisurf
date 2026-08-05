@@ -1,7 +1,7 @@
 ---
 type: Subsystem
 title: Image I/O
-description: The one seam for reading and writing image files — TIFF through the TTTR library's bundled libtiff, everything else through Pillow — replacing three dependencies and, more importantly, three different answers to "which axis is which".
+description: The one seam for reading and writing image files — TIFF only, through the TTTR library's bundled libtiff — replacing three dependencies and, more importantly, three different answers to "which axis is which".
 resource: chisurf/core/fio/image.py
 tags: [file-format, imaging, tiff, dependencies, interop]
 timestamp: '2026-08-05T00:00:00Z'
@@ -34,16 +34,32 @@ guesses disagreed.
 | `read_labelled(path)` | `(array, axes)` when the meaning of the axes matters |
 | `metadata(path)` | axes, shape, dtype, resolution, ImageJ fields — no pixels decoded |
 
-Axis labels are `T` frames, `Z` slices, `C` channels, `S` colour samples, `I` an
-unlabelled page index, `Y`/`X` the image plane.
+Axis labels are `T` frames, `Z` slices, `C` channels, `I` an unlabelled page
+index, `Y`/`X` the image plane. (`S`, colour samples, is still understood by the
+reshaping in `image_source` but no reader produces it any more.)
 
-TIFF goes through the TTTR library's bundled, statically-linked libtiff, which
-is already in every ChiSurf environment and carries no runtime dependency of its
-own. Anything else — PNG, JPEG, and the RGB TIFFs the array reader declines
-because they pack several samples into one page — falls back to Pillow.
+Everything goes through the TTTR library's bundled, statically-linked libtiff,
+which is already in every ChiSurf environment and carries no runtime dependency
+of its own.
+
+**TIFF is the only format, in both directions.** Measurement images are TIFF: it
+stores the integer and floating-point pixel types instruments actually produce,
+at full depth, losslessly, with the axis and voxel-size metadata that makes a
+stack interpretable. The consumer formats store 8-bit colour, so writing a
+16-bit photon count or a float lifetime map into one silently discards the
+measurement. `imread`/`imwrite` raise `ValueError` on a non-TIFF suffix rather
+than converting, and reading is refused for the same reason: a PNG in this
+position means the data was flattened somewhere upstream.
+
+Pillow is still a ChiSurf dependency, but not for data — ChiMOL's render export
+writes PNG images of a scene, and the docs tooling converts figures. Neither is
+a measurement.
 
 # Rules
 
+- **Never write PNG/JPEG for data.** The seam refuses it. If you want a picture
+  of a result, that is a figure or a ChiMOL render, not an image file written
+  through this module.
 - **Never import `tifffile`, `imageio` or `imagecodecs`.** They were retired in
   August 2026; `test/test_no_retired_dependency_imports.py` fails on an import
   or a packaging declaration.

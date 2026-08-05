@@ -21,7 +21,7 @@
              "options": {"attr": "filename", "call": "set_filename", "label": "Image",
                          "filter": "Images and photon streams (*.tif *.tiff *.png *.ptu *.ht3 *.spc);;All files (*)",
                          "mmfdb_kinds": ["raw_data", "raw_measurement"],
-                         "description": "The image to analyse: a TIFF stack (or any other readable image), or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Browse the disk, load a dataset registered in the database, or drop a file here."}},
+                         "description": "The image to analyse: a TIFF stack, or a photon-stream file (PTU/HT3/…) reconstructed into a confocal-scan image — one channel per detector window of the setup above, or per raw routing channel when no setup is picked. Browse the disk, load a dataset registered in the database, or drop a file here."}},
             {"type": "choice", "attr": "channel_a", "label": "Channel A", "options_source": "channel_names", "call": "refresh_display",
              "description": "First channel of the pair. With a detector setup this lists its named windows (green, red, …); otherwise the channels found in the file (available after the first run)."},
             {"type": "choice", "attr": "channel_b", "label": "Channel B", "options_source": "channel_names", "call": "refresh_display",

@@ -80,7 +80,7 @@ def cli(
 ):
     """Compute colocalization coefficients for two channels of an image FILENAME.
 
-    FILENAME is a TIFF stack (or any other readable image) or a photon-stream
+    FILENAME is a TIFF stack or a photon-stream
     file (PTU/HT3/…), which is reconstructed into a confocal-scan image.
     """
     result = _core.compute_colocalization(

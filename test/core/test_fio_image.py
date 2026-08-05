@@ -5,6 +5,10 @@ it round-trips arrays but that it still answers the question those two were
 being asked: *which axis is which*. A TIFF is a flat page sequence, and the
 whole reason a colocalization or an FRC analysis cares is that six pages might
 be six frames or two frames in three colours.
+
+The other thing worth pinning is what the seam refuses. Measurement images are
+TIFF; the consumer formats hold 8-bit colour and would silently discard a
+16-bit count or a float lifetime map.
 """
 
 from __future__ import annotations
@@ -66,27 +70,18 @@ def test_voxel_size_survives_the_round_trip(tmp_path):
     assert float(meta["imagej"]["spacing"]) == pytest.approx(0.1)
 
 
-def test_a_png_reads_through_the_same_call(tmp_path):
-    # Not every image in a workflow is a TIFF; the caller should not have to
-    # know which reader answers.
-    from PIL import Image
-
-    path = tmp_path / "mask.png"
-    arr = (_stack((8, 9)) * 255).astype(np.uint8)
-    Image.fromarray(arr).save(path)
-    np.testing.assert_array_equal(image.imread(path), arr)
-
-
-def test_an_rgb_image_is_labelled_as_samples_not_as_frames(tmp_path):
-    # Three planes that are colours must not arrive looking like three frames.
-    from PIL import Image
-
-    path = tmp_path / "rgb.png"
-    rgb = (_stack((8, 9, 3)) * 255).astype(np.uint8)
-    Image.fromarray(rgb, mode="RGB").save(path)
-    arr, axes = image.read_labelled(path)
-    assert axes == "YXS"
-    assert arr.shape == (8, 9, 3)
+@pytest.mark.parametrize("name", ["mask.png", "frame.jpg", "scan.bmp", "movie.gif"])
+def test_the_consumer_formats_are_refused_in_both_directions(tmp_path, name):
+    # A measurement image is a TIFF. The consumer formats store 8-bit colour, so
+    # writing a uint16 photon count or a float lifetime map into one throws the
+    # measurement away -- quietly, which is why this refuses instead of
+    # converting. Reading is refused for the same reason: a PNG in this position
+    # means the data was already flattened somewhere upstream.
+    path = tmp_path / name
+    with pytest.raises(ValueError, match="TIFF only"):
+        image.imwrite(path, _stack((8, 9)))
+    with pytest.raises(ValueError, match="TIFF only"):
+        image.imread(path)
 
 
 def test_an_unreadable_file_raises_rather_than_returning_nothing(tmp_path):

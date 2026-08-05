@@ -20,14 +20,12 @@ def load_stack(path: str) -> np.ndarray:
     """Read an image stack from *path* into a ``(z, y, x)`` ``float32`` array.
 
     Reads multi-page TIFFs as a 3-D volume (the usual bead-scan format). A 2-D
-    image becomes a 1-slice stack; an RGB(A) image is reduced to its first
-    colour channel.
+    image becomes a 1-slice stack.
 
     Parameters
     ----------
     path:
-        Path to a TIFF or other image/volume readable by
-        :mod:`chisurf.core.fio.image`.
+        Path to a TIFF image/volume.
 
     Returns
     -------
@@ -36,13 +34,8 @@ def load_stack(path: str) -> np.ndarray:
     """
     from chisurf.core.fio.image import read_labelled
 
-    arr, axes = read_labelled(path)
+    arr, _ = read_labelled(path)
     arr = np.asarray(arr, dtype=np.float32)
-    # Which axis holds colour samples is read off the labels rather than
-    # guessed from a length of 3 or 4 -- a four-slice bead scan has the same
-    # shape as one RGBA image.
-    if "S" in axes:
-        arr = np.take(arr, 0, axis=axes.index("S"))
     if arr.ndim == 2:
         arr = arr[np.newaxis, ...]
     if arr.ndim != 3:

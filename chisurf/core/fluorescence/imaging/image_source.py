@@ -4,9 +4,9 @@ Colocalization — and any other multi-channel pixel analysis — needs the same
 thing from very different files: a ``(frame, channel, y, x)`` intensity stack
 with named channels. This module is that single seam.
 
-* **Camera / TIFF images** (``.tif``, ``.tiff``, and the other formats
-  :mod:`chisurf.core.fio.image` reads) are read with their axis order taken from
-  the file's ImageJ hyperstack metadata rather than guessed.
+* **Camera / TIFF images** (``.tif``, ``.tiff``) are read through
+  :mod:`chisurf.core.fio.image`, with their axis order taken from the file's
+  ImageJ hyperstack metadata rather than guessed.
 * **Photon streams** (``.ptu``, ``.ht3``, …) are turned into images by filling a
   confocal-scan image from the marker records, one channel per detector routing
   channel (or per named detector window when a setup provides them).
