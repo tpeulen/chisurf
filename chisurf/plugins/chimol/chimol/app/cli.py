@@ -5,8 +5,12 @@ Provides a rich REPL that supports both chimol commands (``load``,
 prompt.  When ptpython is not installed the CLI gracefully falls back
 to a bare ``input()`` loop.
 
-This module is intended as a **blueprint** for eventually replacing
-the ``qtconsole`` dependency across all of ChiSurf.
+This is the *terminal* REPL. Its in-GUI counterpart is
+:mod:`chisurf.gui.chinsole`, which replaced the ``qtconsole`` dependency across
+ChiSurf; the two are separate because one draws with prompt-toolkit and the
+other with Qt. What they must not do is disagree about the language, so the
+rule for deciding whether a line is a chimol command or Python belongs to
+whichever of them is asked -- see ``Chinsole._is_command``.
 
 Usage::
 

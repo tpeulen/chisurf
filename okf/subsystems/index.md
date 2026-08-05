@@ -19,7 +19,7 @@
 * [Help buttons and guided tours](gui-help-and-guides.md) - The `?` and **Guide** pair every modern plugin carries, the one mixin that attaches them to any tool, and the shrinking allow-list that enforces it.
 * [Internationalisation](i18n.md) - The Qt-free translation seam, QTranslator bootstrap, string-extraction kit, and view.json/manifest/.ui localization.
 * [Operation history](history.md) - Append-only action history, headless replay, and MMFDB event-log projection.
-* [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the recording QtConsole.
+* [Macros, CLI & scripting](macros-cli.md) - Macros, `csc`, GUI scripts, and the in-tree chinsole console.
 * [LLM agent](llm-agent.md) - The plain-language assistant: described, safety-tiered tools, the observe-act loop, and its head-less CLI.
 * [Project persistence](project-persistence.md) - `.csp` archive format, UID-keyed project state, and UI-state capture.
 * [Regions of interest](roi.md) - One ROI geometry for gating and imaging alike: point membership plus pixel rasterisation, boolean composition, JSON persistence, and the segmentation bridge.

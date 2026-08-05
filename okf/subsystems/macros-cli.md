@@ -1,10 +1,10 @@
 ---
 type: Subsystem
 title: Macros, CLI & Scripting
-description: How ChiSurf is driven from code — recordable macros, the `csc` Click CLI, and the recording QtConsole.
+description: How ChiSurf is driven from code — recordable macros, the `csc` Click CLI, and the in-tree chinsole console.
 resource: chisurf/macros/
-tags: [scripting, core, cli]
-timestamp: '2026-07-05T00:00:00Z'
+tags: [scripting, core, cli, console, chinsole]
+timestamp: '2026-08-06T00:00:00Z'
 ---
 
 # Scope
@@ -15,11 +15,11 @@ Three overlapping ways to drive ChiSurf without clicking the GUI:
 | --- | --- | --- |
 | Macros | `import chisurf.macros` | `chisurf/macros/` |
 | CLI | `csc <sub> …` | `chisurf/core/cli.py` |
-| QtConsole | in-GUI IPython dock | `chisurf/gui/widgets/ipython.py` |
+| Console | in-GUI dock | `chisurf/gui/chinsole/` + `chisurf/core/console/` |
 
 All three ultimately go through the [API facade](/architecture/api-facade.md)
-(`chisurf.core.api`, the stable surface for "GUI, macros, plugins, and
-QtConsole") and record into [history](/subsystems/history.md).
+(`chisurf.core.api`, the stable surface for "GUI, macros, plugins, and the
+console") and record into [history](/subsystems/history.md).
 
 # Macros (`chisurf/macros/`)
 
@@ -54,13 +54,44 @@ script `chimol-cli` targets the chimol app. Examples from the group docstring:
 `csg_batch_analysis`) and `chisurf_update`. Each maps to a plugin `__main__:main`.
 The headless [server](/architecture/server.md) runs via `python -m chisurf.server`.
 
-# QtConsole (`chisurf/gui/widgets/ipython.py`)
+# Console — chinsole (`chisurf/gui/chinsole/`, `chisurf/core/console/`)
 
-`QIPythonWidget(RichJupyterWidget)` embeds an in-process Jupyter kernel with
-ChiSurf's namespace preloaded. It supports **macro recording**: `start_recording`
-/ `stop_recording` accumulate executed code into `self._macro`, which
-`save_macro`/`run_macro` write to and replay from `.py` files — the manual
-counterpart to history-based replay.
+The in-GUI console is ChiSurf's own, written to replace the `qtconsole`
+dependency (retired 2026-08-06). It is split in two, and the split is the point:
+
+| Package | Holds | Imports Qt |
+| --- | --- | --- |
+| `chisurf/core/console/` | the interpreter — input transformation, completeness detection, compilation, execution, output capture, tracebacks, magics, completion, introspection, history | **no** |
+| `chisurf/gui/chinsole/` | the widget — view, prompts, themes, completion popup, calltips, inline images, output pump | yes |
+
+An AST test enforces the Qt-free half, so the whole interpreter is testable
+without a `QApplication` — which the qtconsole-based console never was, because
+execution lived inside an in-process Jupyter kernel.
+
+**One widget, three roles.** `ConsoleRole.INTERACTIVE` (main-window dock),
+`COMMAND` (a one-line input under the output, for chimol) and `OUTPUT`
+(read-only, for the code editor's panel). Where input lives was the only
+structural difference between ChiSurf's three hand-rolled consoles.
+
+**The legacy spellings still work.** `QIPythonWidget` is a shim over `Chinsole`;
+`pushVariables`, `set_default_style`, `execute_on_gui_thread` and
+`log_on_gui_thread` are aliases. `chisurf.run(...)` still marshals to the GUI
+thread through a queued signal.
+
+**Macro recording**: `start_recording` / `stop_recording` accumulate executed
+code, which `save_macro` / `run_file` write and replay — the manual counterpart
+to history-based replay. Note `save_macro` and `stop_recording` currently have
+**no caller**, so *Macro ▸ Record* starts a recording that cannot be stopped;
+see [known issues](/references/known-issues.md).
+
+**What existing installations keep.** ChiSurf merges packaged defaults
+*underneath* a user's settings file and never overwrites it, so
+`console_style: linux` and a `console_init` full of IPython spellings are
+permanent on every install. Both keep working rather than being migrated:
+`linux`/`lightbg`/`nocolor` are theme aliases, and `%matplotlib inline`,
+`%config Completer.use_jedi = False` and `get_ipython().cache_size = 0` are each
+implemented — the last as a real property, because accepting the assignment and
+ignoring it would reinstate the memory growth that line exists to prevent.
 
 # Scriptability & tests
 

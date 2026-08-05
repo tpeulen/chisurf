@@ -37,7 +37,7 @@
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        GUI (Frontend)                           │
-│  PyQt MainWindow, QtConsole, Macros, WebUI (future)             │
+│  PyQt MainWindow, console, Macros, WebUI (future)               │
 │                                                                 │
 │  Rules:                                                         │
 │  • NEVER import api/ or core/ modules for computation           │

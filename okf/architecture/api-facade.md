@@ -1,7 +1,7 @@
 ---
 type: Architecture
 title: API Facade (ChiSurfAPI)
-description: The stable local/hybrid/server facade for GUI, macros, plugins, and the QtConsole.
+description: The stable local/hybrid/server facade for GUI, macros, plugins, and the console.
 resource: chisurf/core/api/
 tags: [api, facade, hybrid, rpc]
 timestamp: '2026-07-05T00:00:00Z'
@@ -10,7 +10,7 @@ timestamp: '2026-07-05T00:00:00Z'
 # Purpose
 
 `chisurf.core.api.ChiSurfAPI` is the stable facade through which the GUI,
-macros, plugins, and the QtConsole read and mutate datasets, fits,
+macros, plugins, and the console read and mutate datasets, fits,
 parameters, project, and session state. New code should go through this
 facade (or [PluginContext](/architecture/plugin-system.md)) rather than the
 legacy [runtime globals](/architecture/runtime-globals.md).

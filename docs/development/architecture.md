@@ -87,7 +87,7 @@ names or dotted aliases, depending on the registered action spec.
 ## API Facade
 
 `chisurf.core.api.ChiSurfAPI` is the stable facade for GUI, macros, plugins, and
-the QtConsole.
+the console.
 
 Modes:
 

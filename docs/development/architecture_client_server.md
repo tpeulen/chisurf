@@ -29,7 +29,7 @@ GUI Process                                      Server Process
 -----------                                      --------------
 Qt widgets                                       ChiSurfServer
 Plugins                                         ServiceDispatcher
-Macros / QtConsole                              SessionState
+Macros / console                                SessionState
 ChiSurfAPI                                      Service modules
 ChisurfClient  -- ZMQ REQ/REP JSON-RPC ------>  ZmqServer command socket
 ZMQ subscriber <-- ZMQ PUB/SUB events --------  EventBus

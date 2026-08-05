@@ -267,8 +267,7 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
   style‑manager plugin.
 
 - **`show_console`**  
-  Control whether the embedded IPython console pane is  
-  visible on startup.
+  Control whether the embedded console pane is visible on startup.
 
 - **`start_jupyter_on_startup`**  
   If true, starts an external Jupyter kernel / notebook integration when
@@ -276,16 +275,46 @@ plot defaults. Many of these are read via `chisurf.settings.gui`.
 
 #### 1.8.2 Embedded console
 
+The console is ChiSurf's own (`chisurf.gui.chinsole`); it replaced the
+`qtconsole` dependency in 2026-08. Existing settings keep working unchanged.
+
 - **`console_init`**  
-  Multiline string executed in the embedded IPython console on startup. Used to
-  configure `%matplotlib`, tab completion, imports, etc.
+  Multiline string executed in the console on startup. The shipped value uses
+  IPython spellings — `%matplotlib inline`, `%config Completer.use_jedi =
+  False`, `get_ipython().cache_size = 0` — and all of them are implemented, so
+  no settings file needs editing.
 
 - **`console_style`**  
-  Name of the console color theme (e.g. `linux`). Passed to the console
-  widget when it is created.
+  Console colour theme. Accepts `chisurf-dark`, `chisurf-light`,
+  `chisurf-mono`, or `auto` to follow `style_sheet`. The historic values
+  `linux`, `lightbg` and `nocolor` still resolve, to dark, light and mono
+  respectively.
 
-- **`console_width`**, **`console_height`**  
-  Initial character width and height of the embedded console widget.
+- **`console_height`**  
+  Initial height of the console dock, in pixels.
+
+- **`console_width`**  
+  *Retired.* It was never read — the old console assigned it over
+  `QWidget.width`, shadowing the method. Still accepted, still ignored.
+
+#### 1.8.2.1 `gui.console`
+
+Optional block; every key has a default, so an absent block is normal.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `theme` | `auto` | Overrides `console_style`. |
+| `font_family`, `font_size` | follow `gui.editor` | Console font. |
+| `max_blocks` | `5000` | Scrollback cap; `0` for unlimited. |
+| `max_output_chars` | `500000` | Output accepted from one command before the rest is dropped, with a notice. |
+| `flush_interval_ms` | `30` | How often queued output is drawn. |
+| `completion` | `popup` | `popup`, `inline` or `none`. |
+| `calltips` | `true` | Show signatures on `(`. |
+| `paging` | `vsplit` | Where long output such as `obj?` is shown. |
+| `history_length` | `5000` | Entries kept in `chinsole_history.txt`. |
+| `banner` | `true` | Startup banner. |
+| `images` | `true` | Render figures inline. |
+| `autoindent` | `true` | Indent continuation lines. |
 
 #### 1.8.3 Script editor
 

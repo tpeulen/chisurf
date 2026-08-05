@@ -469,7 +469,7 @@ nothing, `profile` costs a re-fit per scan point, `mcmc` costs a sampling run;
 
 ## 14. From a script, a macro or the server
 
-The same query is on the stable API facade, so it works from the QtConsole, a
+The same query is on the stable API facade, so it works from the console, a
 macro, a plugin, the CLI, and over RPC:
 
 ```python
