@@ -2,7 +2,7 @@
 type: PRD
 prd: "80"
 title: "PRD-80: Retire mdtraj — DCD and RMF3 trajectories on IMP, and the end of pytables/numexpr"
-description: mdtraj is the only reason ChiSurf pulls pytables and, through it, numexpr. IMP is already imported in 34 places and covers the structure side; the gaps are a DCD reader/writer, which IMP does not have, and migrating the one class that stores trajectories in mdtraj's HDF5 format.
+description: mdtraj is the only reason ChiSurf pulls pytables and, through it, numexpr. IMP covers the structure side but has no trajectory reader at all, and RMF3 -- measured -- is ~750x slower to read than DCD, so DCD is the trajectory container and RMF3 the hierarchy/model container.
 status: planned
 phase: "unassigned"
 resource: chisurf/core/structure/trajectory.py
@@ -20,7 +20,10 @@ alongside tttrlib and mmfdb — and it covers everything ChiSurf asks of mdtraj
 except reading and writing trajectory frames.
 
 The target is **`.dcd` for frame trajectories and `.rmf3` for IMP-native
-hierarchies**, with mdtraj's HDF5 trajectory format retired.
+hierarchies and integrative models**, with mdtraj's HDF5 trajectory format
+retired. That split is not a preference — it is what the measurements below
+force, and the intent to store trajectories *as* RMF3 was tested and does not
+survive contact with a real trajectory.
 
 This is not a swap. `TrajectoryFile` *subclasses* `mdtraj.Trajectory`, so the
 central abstraction changes shape, and 19 files import mdtraj. It needs its own
@@ -67,6 +70,40 @@ The one point in its favour, stated honestly: it is far more actively
 maintained than mdtraj, supports many more formats, and uses `h5py` rather than
 `pytables` — so it *would* take `pytables` and `numexpr` with it. At +72
 packages net, that is not a trade worth making.
+
+# Which container holds the frames — measured
+
+The intended plan was `.h5` → `.rmf3`. It was tested on a realistic trajectory
+(2500 atoms, 200 frames — roughly T4 lysozyme, a short run) before being
+adopted, and it does not hold up:
+
+| Container | Size | Write | Read |
+|---|---|---|---|
+| mdtraj `.h5` | 5.14 MB | 381 ms | — |
+| **`.dcd`** | 6.01 MB | **34 ms** | **14 ms** |
+| `.rmf3` via `IMP.rmf` | 7.08 MB | 3 767 ms | 41 586 ms |
+| `.rmf3` via RMF's own API | 7.08 MB | 4 006 ms | 10 489 ms |
+
+**RMF3 reads ~750× slower than DCD and writes ~120× slower, while producing a
+larger file.** The second RMF3 row matters: bypassing IMP's hierarchy and using
+RMF's raw `ParticleFactory` still costs 10.5 s, so this is RMF's storage model,
+not IMP overhead. RMF is per-node keyed — every atom is a node and every frame
+is a lookup per node — which is the right shape for a coarse-grained
+integrative model with tens to thousands of richly annotated particles, and the
+wrong shape for a dense all-atom coordinate block. A 10 000-frame trajectory
+would take minutes to open.
+
+So the split is:
+
+* **`.dcd` — frame trajectories.** Contiguous coordinate blocks, the format the
+  MD world already exchanges.
+* **`.rmf3` — IMP hierarchies, integrative models, anything where the
+  per-particle annotation is the point.** Verified working: a 12-frame
+  multi-frame round-trip is exact at float32.
+
+One useful property of RMF3 confirmed while testing: it is **Avro-backed, not
+HDF5** (magic bytes `Obj\x01…av`; `rmf-hdf5` is a separate, deprecated suffix).
+So choosing RMF3 anywhere does not reintroduce the HDF5 stack.
 
 # What IMP covers, and the one thing it does not
 
@@ -173,6 +210,13 @@ run before step 7 removes it — a converter that needs the dependency it is
 migrating off is useless. It should be a `csc` subcommand so it works headlessly
 and can be pointed at a directory.
 
+**mdtraj writes DCD** (`Trajectory.save_dcd`), which makes this nearly free and
+also solves the fixture problem: the DCD files mdtraj writes are the
+independent-reader fixtures the new codec is tested against. Its reader
+identifies them as *"standard 32-bit DCD of native endianness, CHARMM format
+(also NAMD 2.1 and later)"* — that is the variant to target first, and the
+other variants are what the endianness tests exist for.
+
 # Testing
 
 The user's own framing: this needs a lot of it. The risk is not that a port
@@ -197,6 +241,10 @@ few percent without anything raising.
   FRET distance is the kind of error that produces plausible-looking results.
 * **The reference structures** are the project's standard ones: T4 lysozyme
   (148L) for protein and HIV-RT (1RTD) for protein + nucleic acid.
+* **Time the load.** Choosing the container on a performance argument means the
+  performance is part of the contract: a test that opens a few-hundred-frame
+  trajectory and fails if it takes seconds. Without it nothing stops the format
+  quietly regressing to what RMF3 would have cost.
 
 # Definition of Done
 
@@ -226,6 +274,11 @@ few percent without anything raising.
   expected to have it. **Decide this before step 2.**
 * **XTC.** Four references. If any real data uses it, DCD alone is not enough
   and the scope grows; check before starting.
+* **Do not revisit RMF3-as-trajectory without new numbers.** It was measured,
+  not assumed: 10.5 s to read 200 frames of 2500 atoms through RMF's own API,
+  against 14 ms for DCD. If a future RMF gains a bulk coordinate path, the
+  measurement is cheap to repeat — the script is three dozen lines — but the
+  per-node key model is structural, so expect it to still lose.
 
 # Where to pick this up
 
@@ -234,8 +287,12 @@ few percent without anything raising.
    layer cannot depend on it and this becomes an in-tree-reader PRD instead.
 2. **Write the DCD codec** (stage 1). It is independent, self-contained, and the
    only genuinely new code; everything else is porting. Do not start it by
-   round-tripping against itself — get a DCD written by another tool first, or
-   the endianness bug will survive the whole test suite.
+   round-tripping against itself — write the fixtures with mdtraj's
+   `save_dcd` *first*, while it is still installed, or the endianness bug will
+   survive the whole test suite.
+
+   The container question is **settled and measured** — DCD for frames, RMF3 for
+   hierarchies. Do not reopen it without repeating the benchmark.
 3. **Then stage 2**, the `TrajectoryFile` reshape, which unblocks the rest.
 
 Do not remove mdtraj until the equal-to-mdtraj tests exist and pass; they are
