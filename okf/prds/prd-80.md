@@ -183,9 +183,8 @@ trajectories.
 
 ## Staging
 
-1. **DCD reader/writer**, standalone and tested against files written by other
-   tools, both endiannesses and both header variants. Nothing else depends on
-   the rest of the PRD.
+1. ~~**DCD reader/writer**~~ — **done**, see below. Standalone; nothing else
+   depended on it.
 2. **A trajectory abstraction that is not an mdtraj subclass.** `TrajectoryFile`
    currently inherits `mdtraj.Trajectory`; it becomes a class of its own over
    `(xyz, topology, time)` with DCD and RMF3 backends. This is the change
@@ -202,20 +201,76 @@ trajectories.
    `test/test_no_retired_dependency_imports.py`. Remove the six direct
    `import tables` sites (HDF5 helpers) first.
 
-## Migration
+# The port source
 
-Existing `.h5` trajectories are real user data. A converter (`.h5` → `.dcd` +
-topology) has to be written and shipped **while mdtraj is still installed**, and
-run before step 7 removes it — a converter that needs the dependency it is
-migrating off is useless. It should be a `csc` subcommand so it works headlessly
-and can be pointed at a directory.
+`junk/` is gitignored, so the reference tree is recorded here rather than only
+in `junk/clone.sh`:
 
-**mdtraj writes DCD** (`Trajectory.save_dcd`), which makes this nearly free and
-also solves the fixture problem: the DCD files mdtraj writes are the
-independent-reader fixtures the new codec is tested against. Its reader
-identifies them as *"standard 32-bit DCD of native endianness, CHARMM format
-(also NAMD 2.1 and later)"* — that is the variant to target first, and the
-other variants are what the endianness tests exist for.
+```bash
+git clone --depth 1 https://github.com/mdtraj/mdtraj.git junk/mdtraj   # 0ca6ffc
+```
+
+**Port from the vendored C, not from the `.pyx`.** `mdtraj/formats/dcd/src/`
+holds VMD's `dcdplugin.c` under the University of Illinois Open Source Licence,
+and `mdtraj/formats/xtc/src/` holds GROMACS' `xdrfile` under BSD-2-clause —
+both permissive, both compatible with ChiSurf's GPL-2.0, both requiring only
+that the copyright notice travels with the code. The `.pyx` wrappers around
+them are mdtraj's own and LGPL-2.1; LGPL §3 does permit relicensing under
+GPL-2, but there is no reason to take the more encumbered copy when the
+reference implementation underneath is permissive.
+
+# Landed: the DCD codec
+
+`chisurf/core/fio/trajectory/dcd.py` — `read_dcd`, `write_dcd`, `dcd_info`.
+Ported from VMD's `dcdplugin.c` (UIUC licence, permissive) rather than from
+mdtraj's LGPL `.pyx` wrapper, to NumPy rather than a compiled extension: a
+frame is three contiguous `float32` blocks, so reading one is a
+`np.frombuffer` and no C is needed to be fast.
+
+**It is faster than the C plugin it replaces.** On 2500 atoms × 200 frames,
+against the numbers that chose the format:
+
+| | write | read |
+|---|---|---|
+| mdtraj (C molfile plugin) | 34 ms | 14 ms |
+| **this codec (NumPy)** | **22 ms** | **5 ms** |
+
+One read plus a `frombuffer` per frame beats a `fread` per record.
+
+Handled because real files use them: 64-bit record markers (CHARMM `-i8`),
+opposite-endian files, the X-PLOR header variant (timestep as a double), and
+both unit-cell conventions — cosines (CHARMM/NAMD > 2.5) and degrees (NAMD
+2.5). Refused loudly rather than mis-read: fixed-atom files, which store every
+atom only in frame 0, and 4-dimensional files.
+
+Units are **Ångström**, as stored. Nothing is rescaled on the way in or out —
+the other convention in this ecosystem is nanometres, and a silent factor of
+ten in a FRET distance produces results that look plausible.
+
+**The parity fixtures are committed, not generated.** A self-round-trip proves
+almost nothing about an interchange format: a reader and writer sharing a
+misunderstanding agree perfectly with each other and with nobody else. So
+`test/data/atomic_coordinates/trajectory/dcd/` holds real DCD files written by
+mdtraj from this project's own test trajectory, with mdtraj's coordinates
+alongside as the oracle — so the check survives mdtraj's removal. The
+triclinic-cell fixture is deliberately unequal in all three lengths and angles,
+because an orthogonal cell hides an ordering mistake.
+
+The subtle decodings were **mutation-tested**: swapping alpha/gamma, reading
+the lengths as values 0–2 instead of 0/2/5, and skipping the cosine branch are
+each caught by the suite.
+
+# Migration
+
+**`.h5` trajectories are not supported and not converted.** They were an
+artefact of `TrajectoryFile` writing everything to mdtraj's HDF5 container, not
+a format users chose, so there is nothing to preserve an on-disk compatibility
+story for. Anyone holding one converts it with mdtraj before upgrading; the
+tree stops reading them.
+
+The one `.h5` trajectory in the test data has already been re-cut as DCD
+(`test/data/atomic_coordinates/trajectory/dcd/`), which is where the parity
+fixtures came from.
 
 # Testing
 
@@ -248,7 +303,9 @@ few percent without anything raising.
 
 # Definition of Done
 
-- [ ] DCD reader/writer, with cross-tool parity tests both directions
+- [x] DCD reader/writer, with cross-tool parity tests both directions
+- [ ] XTC reader/writer (the `xdr3dfcoord` bit-packing; numba for the inner loop)
+- [ ] TRR reader/writer
 - [ ] `TrajectoryFile` no longer subclasses `mdtraj.Trajectory`
 - [ ] All 17 runtime import sites ported; 2 test sites resolved (DSSP fixture)
 - [ ] `csc` converter for existing `.h5` trajectories, shipped and documented
