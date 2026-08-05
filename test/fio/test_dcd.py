@@ -255,3 +255,44 @@ def test_a_truncated_frame_raises_rather_than_returning_short(tmp_path):
 def test_a_bad_shape_is_refused(tmp_path):
     with pytest.raises(ValueError, match=r"n_frames, n_atoms, 3"):
         write_dcd(tmp_path / "x.dcd", np.zeros((4, 3)))
+
+
+# ---- streaming ---------------------------------------------------------------
+
+def test_streaming_writer_matches_writing_all_at_once(tmp_path):
+    """Frames appended in chunks must give the same file as one call.
+
+    This is the path the trajectory tools take for files too large to hold, so
+    a difference here would only show up on the largest inputs.
+    """
+    from chisurf.core.fio.trajectory.dcd import DCDWriter
+
+    xyz = _sample(n_frames=7, n_atoms=11)
+    whole, streamed = tmp_path / "whole.dcd", tmp_path / "streamed.dcd"
+    write_dcd(whole, xyz)
+    with DCDWriter(streamed, n_atoms=11) as writer:
+        writer.write(xyz[:3])
+        writer.write(xyz[3])            # a single frame, not a block
+        writer.write(xyz[4:])
+    assert streamed.read_bytes() == whole.read_bytes()
+    np.testing.assert_array_equal(read_dcd(streamed)[0], xyz)
+
+
+def test_the_streaming_writer_patches_the_frame_count(tmp_path):
+    # The count is written before the frames exist. Our reader falls back to
+    # the file size, but other tools trust the header, so it must be corrected.
+    from chisurf.core.fio.trajectory.dcd import DCDWriter
+
+    path = tmp_path / "streamed.dcd"
+    with DCDWriter(path, n_atoms=4) as writer:
+        writer.write(_sample(n_frames=5, n_atoms=4))
+    header = np.frombuffer(path.read_bytes(), dtype="<i4", count=1, offset=8)[0]
+    assert int(header) == 5
+
+
+def test_the_streaming_writer_refuses_a_wrong_atom_count(tmp_path):
+    from chisurf.core.fio.trajectory.dcd import DCDWriter
+
+    with DCDWriter(tmp_path / "x.dcd", n_atoms=4) as writer:
+        with pytest.raises(ValueError, match="expected"):
+            writer.write(_sample(n_frames=2, n_atoms=5))

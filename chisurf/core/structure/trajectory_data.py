@@ -27,10 +27,10 @@ from __future__ import annotations
 
 import numpy as np
 
-from .topology import Topology
+from .topology import Element, Topology, element
 
-__all__ = ["Topology", "Trajectory", "compute_distances", "iterload", "join",
-           "load", "load_frame", "rmsd"]
+__all__ = ["Element", "Topology", "Trajectory", "compute_distances", "iterload", "join",
+           "element", "load", "load_frame", "rmsd"]
 
 
 def _kabsch_rotations(mobile: np.ndarray, target: np.ndarray) -> np.ndarray:
@@ -184,7 +184,7 @@ class Trajectory:
     def save_dcd(self, filename) -> None:
         """Write the trajectory as a DCD (converting nanometres to Ångström)."""
         from chisurf.core.fio.trajectory import write_dcd
-        write_dcd(filename, self.xyz * 10.0, axes="TYX")
+        write_dcd(filename, self.xyz * 10.0)
 
     def save_pdb(self, filename) -> None:
         """Write the frames as a multi-model PDB.
@@ -331,9 +331,17 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
             raise ValueError(f"{filename!r} stores coordinates only; pass top=")
         topology = top if isinstance(top, Topology) else Topology.from_file(str(top))
         if name.endswith(".dcd"):
-            from chisurf.core.fio.trajectory import read_dcd
+            from chisurf.core.fio.trajectory import dcd_info, read_dcd
             xyz, _, _ = read_dcd(filename, stride=stride, atom_indices=atom_indices)
             xyz = xyz / 10.0                     # Angstrom on disk, nm in memory
+            # DCD records a first step, an interval and a timestep rather than
+            # a free list of times. Rebuild the axis from those, so a strided
+            # trajectory keeps its real spacing instead of counting frames.
+            header = dcd_info(filename)
+            step = header.step_interval * (int(stride) if stride else 1)
+            time = (header.first_step + np.arange(len(xyz)) * step) * header.delta
+            return Trajectory(xyz, topology.subset(atom_indices)
+                              if atom_indices is not None else topology, time)
         else:
             from chisurf.core.fio.trajectory import read_xtc
             xyz, _, _, _ = read_xtc(filename, stride=stride, atom_indices=atom_indices)

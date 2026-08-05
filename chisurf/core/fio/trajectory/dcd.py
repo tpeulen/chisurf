@@ -41,7 +41,7 @@ import pathlib
 import numba as nb
 import numpy as np
 
-__all__ = ["DCDHeader", "read_dcd", "write_dcd", "dcd_info"]
+__all__ = ["DCDHeader", "DCDWriter", "read_dcd", "write_dcd", "dcd_info"]
 
 
 @nb.njit(cache=True, parallel=True)
@@ -346,6 +346,110 @@ def read_dcd(path, *, stride: int | None = None, atom_indices=None):
     return xyz, lengths, angles
 
 
+class DCDWriter:
+    """Append frames to a DCD as they are produced.
+
+    For trajectories too large to hold in memory: open once, write chunks, and
+    the frame count in the header is patched on close.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        Destination.
+    n_atoms : int
+        Atoms per frame; fixed for the life of the file.
+    first_step, step_interval : int, optional
+        Step bookkeeping recorded in the header.
+    delta : float, optional
+        Integration timestep.
+    title : str, optional
+        First title line.
+
+    Examples
+    --------
+    >>> with DCDWriter("out.dcd", n_atoms=100) as writer:   # doctest: +SKIP
+    ...     for chunk in chunks:
+    ...         writer.write(chunk)
+    """
+
+    def __init__(self, path, n_atoms: int, *, first_step: int = 0,
+                 step_interval: int = 1, delta: float = 1.0,
+                 title: str = "Created by ChiSurf"):
+        if int(n_atoms) <= 0:
+            raise ValueError(f"n_atoms must be positive, got {n_atoms}")
+        self.n_atoms = int(n_atoms)
+        self.n_frames = 0
+        self._handle = open(path, "wb")
+        self._handle.write(_header_bytes(self.n_atoms, 0, first_step,
+                                         step_interval, delta, title, False))
+
+    def write(self, xyz) -> None:
+        """Append one frame or a block of frames.
+
+        Parameters
+        ----------
+        xyz : array_like
+            ``(n_atoms, 3)`` or ``(n_frames, n_atoms, 3)`` in Ångström.
+        """
+        frames = np.ascontiguousarray(xyz, dtype=np.float32)
+        if frames.ndim == 2:
+            frames = frames[np.newaxis]
+        if frames.ndim != 3 or frames.shape[1:] != (self.n_atoms, 3):
+            raise ValueError(
+                f"expected (n_frames, {self.n_atoms}, 3), got {frames.shape}")
+        for frame in frames:
+            for axis in range(3):
+                self._handle.write(_record(
+                    np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes()))
+        self.n_frames += len(frames)
+
+    def close(self) -> None:
+        """Patch the frame count into the header and close the file."""
+        if self._handle is None:
+            return
+        # The count is written before the frames exist, so it has to be fixed
+        # afterwards. Readers that trust it would otherwise see zero frames --
+        # ours derives the count from the file size, but others do not.
+        self._handle.seek(8)
+        self._handle.write(np.array(self.n_frames, dtype="<i4").tobytes())
+        self._handle.close()
+        self._handle = None
+
+    def __enter__(self) -> DCDWriter:
+        """Return the writer."""
+        return self
+
+    def __exit__(self, *exc) -> None:
+        """Close the file."""
+        self.close()
+
+
+def _record(payload: bytes) -> bytes:
+    """Wrap *payload* in the Fortran record markers DCD uses."""
+    length = np.array(len(payload), dtype="<i4").tobytes()
+    return length + payload + length
+
+
+def _header_bytes(n_atoms: int, n_frames: int, first_step: int,
+                  step_interval: int, delta: float, title: str,
+                  has_cell: bool) -> bytes:
+    """Return the three header records of a DCD."""
+    i4 = np.dtype("<i4")
+    header = np.zeros(20, dtype=i4)
+    header[0] = n_frames
+    header[1] = first_step
+    header[2] = step_interval
+    header[10] = 1 if has_cell else 0
+    header[19] = 24                                   # CHARMM version 24
+    body = bytearray(header.tobytes())
+    body[36:40] = np.array(delta, dtype="<f4").tobytes()
+    lines = [title.encode("ascii", "replace")[:80].ljust(80, b" "),
+             b"REMARKS".ljust(80, b" ")]
+    return (_record(_MAGIC + bytes(body))
+            + _record(np.array(len(lines), dtype=i4).tobytes() + b"".join(lines))
+            + _record(np.array(n_atoms, dtype=i4).tobytes()))
+
+
 def write_dcd(path, xyz, *, cell_lengths=None, cell_angles=None,
               first_step: int = 0, step_interval: int = 1, delta: float = 1.0,
               title: str = "Created by ChiSurf") -> None:
@@ -387,28 +491,10 @@ def write_dcd(path, xyz, *, cell_lengths=None, cell_angles=None,
         cell_lengths = np.asarray(cell_lengths, dtype=np.float64).reshape(n_frames, 3)
         cell_angles = np.asarray(cell_angles, dtype=np.float64).reshape(n_frames, 3)
 
-    i4 = np.dtype("<i4")
-
-    def record(payload: bytes) -> bytes:
-        length = np.array(len(payload), dtype=i4).tobytes()
-        return length + payload + length
-
-    header = np.zeros(20, dtype=i4)
-    header[0] = n_frames
-    header[1] = first_step
-    header[2] = step_interval
-    header[10] = 1 if has_cell else 0
-    header[19] = 24                                   # CHARMM version 24
-    body = bytearray(header.tobytes())
-    body[36:40] = np.array(delta, dtype="<f4").tobytes()
-
     with open(path, "wb") as handle:
-        handle.write(record(_MAGIC + bytes(body)))
-        lines = [title.encode("ascii", "replace")[:80].ljust(80, b" "),
-                 b"REMARKS".ljust(80, b" ")]
-        handle.write(record(np.array(len(lines), dtype=i4).tobytes() + b"".join(lines)))
-        handle.write(record(np.array(n_atoms, dtype=i4).tobytes()))
-
+        handle.write(_header_bytes(n_atoms, n_frames, first_step, step_interval,
+                                   delta, title, has_cell))
+        record = _record
         for frame in range(n_frames):
             if has_cell:
                 a, b, c = cell_lengths[frame]

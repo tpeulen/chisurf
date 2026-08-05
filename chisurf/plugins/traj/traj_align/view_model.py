@@ -38,6 +38,9 @@ class AlignTrajectoryViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename: str = ""
+        # DCD and XTC store coordinates only, so the atom names have to come
+        # from somewhere. Empty is fine for a self-describing file.
+        self.topology_filename: str = ""
         #: Comma-separated atom ids used as the superposition reference set.
         self.atom_selection: str = ""
         #: Read every ``stride``-th frame of the source trajectory.
@@ -108,6 +111,12 @@ class AlignTrajectoryViewModel:
         return np.asarray(indices, dtype=np.int32)
 
     # ── file wiring ─────────────────────────────────────────────────────
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers."""
+        self.topology_filename = str(filename)
+        self.append_log(f"Topology: {self.topology_filename}")
+        self._notify("loaded")
+
     def set_trajectory(self, filename: str) -> None:
         """Set the source trajectory path and notify observers."""
         self.trajectory_filename = str(filename)
@@ -120,7 +129,7 @@ class AlignTrajectoryViewModel:
 
         The trajectory is read in chunks (so it need not fit in memory), each
         chunk superposed onto the first frame using :meth:`atom_indices`, and the
-        aligned coordinates appended to a fresh HDF5 trajectory.
+        aligned coordinates appended to a fresh DCD.
 
         Aligning changes coordinates, not time: each chunk's own ``time`` array
         is carried through unchanged, so a strided read keeps the source frame
@@ -130,10 +139,12 @@ class AlignTrajectoryViewModel:
         Parameters
         ----------
         target_filename : str
-            Destination ``.h5`` trajectory path.
+            Destination ``.dcd`` path.
         """
-        import mdtraj as md
-        import tables
+        from chisurf.core.fio.trajectory import DCDWriter
+        from chisurf.core.structure import trajectory_data as md
+
+        topology = self.topology_filename or None
 
         filename = self.trajectory_filename
         if not filename:
@@ -149,21 +160,28 @@ class AlignTrajectoryViewModel:
         chunk_size = 1000
 
         self.append_log(f"Aligning {filename} (stride={stride})")
-        frame_0 = md.load_frame(filename, 0)
-        target_traj = md.Trajectory(
-            xyz=np.empty((0, frame_0.n_atoms, 3)), topology=frame_0.topology
-        )
-        target_traj.save(target_filename)
-
-        table = tables.open_file(target_filename, "a")
+        frame_0 = md.load_frame(filename, 0, top=topology)
+        # Stream straight into the DCD rather than writing an empty container
+        # and appending to it: the frame count in the header is patched on
+        # close, so nothing has to be reserved up front.
+        writer = None
         try:
-            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride):
+            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride,
+                                     top=topology):
                 chunk = chunk.superpose(frame_0, frame=0, atom_indices=atom_indices)
-                xyz = chunk.xyz.copy()
-                table.root.coordinates.append(xyz)
-                table.root.time.append(np.asarray(chunk.time, dtype=np.float32))
+                if writer is None:
+                    # Open on the first chunk so the frame spacing can be taken
+                    # from the source rather than assumed: a strided read must
+                    # keep the real spacing, not count frames (RF-708). DCD
+                    # stores that as the timestep between saved frames.
+                    spacing = (float(chunk.time[1] - chunk.time[0])
+                               if chunk.n_frames > 1 else 1.0)
+                    writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
+                                       delta=spacing or 1.0)
+                writer.write(chunk.xyz * 10.0)     # nm in memory, Angstrom on disk
         finally:
-            table.close()
+            if writer is not None:
+                writer.close()
         self.append_log(f"Aligned trajectory saved: {target_filename}")
 
 

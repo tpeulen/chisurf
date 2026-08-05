@@ -4,20 +4,28 @@ import numpy as np
 import pytest
 
 
-def _tiny_trajectory(path: str, n_frames: int = 5, times: np.ndarray | None = None) -> None:
-    """Write a minimal *n_frames* three-atom trajectory to *path* (.h5).
+def _tiny_trajectory(path: str, n_frames: int = 5, spacing: float = 1.0) -> str:
+    """Write a minimal *n_frames* three-atom trajectory, and its topology.
+
+    DCD stores coordinates only, so the atom names go in a PDB beside it; the
+    path to that PDB is returned and handed to the view model.
 
     Parameters
     ----------
     path : str
-        Destination ``.h5`` trajectory path.
+        Destination ``.dcd`` path.
     n_frames : int
         Number of frames to write.
-    times : numpy.ndarray, optional
-        Frame times. Defaults to mdtraj's own ``0, 1, 2, …``; pass an explicit
-        array to tell a carried-through time axis apart from a write counter.
+    spacing : float, optional
+        Time between consecutive frames, recorded in the DCD header.
+
+    Returns
+    -------
+    str
+        Path to the topology PDB.
     """
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.structure import trajectory_data as md
+
     topology = md.Topology()
     chain = topology.add_chain()
     residue = topology.add_residue("ALA", chain)
@@ -25,7 +33,12 @@ def _tiny_trajectory(path: str, n_frames: int = 5, times: np.ndarray | None = No
         topology.add_atom(name, md.element.carbon, residue)
     rng = np.random.default_rng(0)
     xyz = rng.random((n_frames, 3, 3)).astype(np.float32)
-    md.Trajectory(xyz=xyz, topology=topology, time=times).save(path)
+    trajectory = md.Trajectory(xyz=xyz, topology=topology)
+    from chisurf.core.fio.trajectory import write_dcd
+    write_dcd(path, xyz * 10.0, delta=spacing)
+    pdb = str(path).replace(".dcd", ".pdb")
+    trajectory[0].save_pdb(pdb)
+    return pdb
 
 
 def test_log_starts_ready():
@@ -76,46 +89,48 @@ def test_save_aligned_without_trajectory_is_noop(tmp_path):
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
     model = AlignTrajectoryViewModel()
-    target = tmp_path / "out.h5"
+    target = tmp_path / "out.dcd"
     model.save_aligned(str(target))
     assert "No trajectory selected" in model.log_html()
     assert not target.exists()
 
 
 def test_save_aligned_writes_all_frames(tmp_path):
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.fio.trajectory import dcd_info
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "aligned.h5"
-    _tiny_trajectory(str(source), n_frames=5)
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "aligned.dcd"
+    topology = _tiny_trajectory(str(source), n_frames=5)
 
     model = AlignTrajectoryViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.atom_selection = "0, 1, 2"
     model.save_aligned(str(target))
 
     assert target.exists()
-    aligned = md.load(str(target))
+    aligned = dcd_info(str(target))
     assert aligned.n_frames == 5
     assert aligned.n_atoms == 3
     assert "Aligned trajectory saved" in model.log_html()
 
 
 def test_save_aligned_respects_stride(tmp_path):
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.fio.trajectory import dcd_info
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "aligned.h5"
-    _tiny_trajectory(str(source), n_frames=6)
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "aligned.dcd"
+    topology = _tiny_trajectory(str(source), n_frames=6)
 
     model = AlignTrajectoryViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.stride = 2
     model.save_aligned(str(target))
 
-    assert md.load(str(target)).n_frames == 3
+    assert dcd_info(str(target)).n_frames == 3
 
 
 def test_save_aligned_with_empty_selection_is_finite(tmp_path):
@@ -125,20 +140,23 @@ def test_save_aligned_with_empty_selection_is_finite(tmp_path):
     unconverged and writes a trajectory of pure ``NaN`` while still reporting
     success (RF-706).
     """
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.fio.trajectory import dcd_info
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "aligned.h5"
-    _tiny_trajectory(str(source), n_frames=5)
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "aligned.dcd"
+    topology = _tiny_trajectory(str(source), n_frames=5)
 
     model = AlignTrajectoryViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.save_aligned(str(target))
 
-    aligned = md.load(str(target))
-    assert aligned.n_frames == 5
-    assert np.isfinite(aligned.xyz).all()
+    from chisurf.core.fio.trajectory import read_dcd
+
+    xyz, _, _ = read_dcd(str(target))
+    assert xyz.shape[0] == 5
+    assert np.isfinite(xyz).all()
 
 
 def test_save_aligned_rejects_malformed_selection(tmp_path):
@@ -146,8 +164,8 @@ def test_save_aligned_rejects_malformed_selection(tmp_path):
     pytest.importorskip("mdtraj")
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "aligned.h5"
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "aligned.dcd"
     _tiny_trajectory(str(source), n_frames=3)
 
     model = AlignTrajectoryViewModel()
@@ -167,19 +185,23 @@ def test_save_aligned_keeps_the_source_time_axis(tmp_path):
     trajectory read every second frame claimed unit frame spacing and any rate
     fitted against that axis was off by the stride factor.
     """
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.fio.trajectory import dcd_info
     from chisurf.plugins.traj.traj_align.view_model import AlignTrajectoryViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "aligned.h5"
-    _tiny_trajectory(str(source), n_frames=6, times=np.arange(6, dtype=np.float32) * 10.0)
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "aligned.dcd"
+    topology = _tiny_trajectory(str(source), n_frames=6, spacing=10.0)
 
     model = AlignTrajectoryViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.stride = 2
     model.save_aligned(str(target))
 
-    np.testing.assert_allclose(md.load(str(target)).time, [0.0, 20.0, 40.0])
+    from chisurf.core.structure import trajectory_data as md
+
+    np.testing.assert_allclose(md.load(str(target), top=topology).time,
+                               [0.0, 20.0, 40.0])
 
 
 def test_view_spec_loads():

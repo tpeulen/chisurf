@@ -27,7 +27,7 @@ import numpy as np
 
 from .selection import select, selection_mask
 
-__all__ = ["Atom", "Chain", "Residue", "Topology"]
+__all__ = ["Atom", "Chain", "Element", "Residue", "Topology", "element"]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -97,20 +97,175 @@ class Atom:
         return f"Atom({self.residue.name}{self.residue.resSeq}-{self.name})"
 
 
+@dataclasses.dataclass(frozen=True)
+class Element:
+    """A chemical element, as much of one as a topology needs.
+
+    Exists so ``add_atom(name, element, residue)`` reads the same as it did
+    with the library this replaces, and so ``.symbol`` / ``.atomic_number`` /
+    ``.mass`` resolve. Comparing or formatting one gives the symbol, so code
+    that treats an element as a string keeps working.
+    """
+
+    symbol: str
+    atomic_number: int = 0
+    mass: float = 0.0
+
+    def __str__(self) -> str:
+        """Return the element symbol."""
+        return self.symbol
+
+    def __eq__(self, other) -> bool:
+        """Compare by symbol, so an element equals its own symbol."""
+        if isinstance(other, Element):
+            return self.symbol == other.symbol
+        if isinstance(other, str):
+            return self.symbol == other
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        """Hash by symbol, to match :meth:`__eq__`."""
+        return hash(self.symbol)
+
+
+class _ElementNamespace:
+    """``element.carbon``, ``element.hydrogen`` and friends, by name or symbol."""
+
+    _BY_NAME = {
+        "hydrogen": ("H", 1, 1.008), "carbon": ("C", 6, 12.011),
+        "nitrogen": ("N", 7, 14.007), "oxygen": ("O", 8, 15.999),
+        "fluorine": ("F", 9, 18.998), "phosphorus": ("P", 15, 30.974),
+        "sulfur": ("S", 16, 32.06), "chlorine": ("CL", 17, 35.45),
+        "sodium": ("NA", 11, 22.990), "magnesium": ("MG", 12, 24.305),
+        "potassium": ("K", 19, 39.098), "calcium": ("CA", 20, 40.078),
+        "iron": ("FE", 26, 55.845), "zinc": ("ZN", 30, 65.38),
+        "selenium": ("SE", 34, 78.971), "virtual": ("", 0, 0.0),
+    }
+
+    def __getattr__(self, name: str) -> Element:
+        """Return the named element."""
+        try:
+            symbol, number, mass = self._BY_NAME[name.lower()]
+        except KeyError:
+            raise AttributeError(f"unknown element {name!r}") from None
+        return Element(symbol, number, mass)
+
+    def get_by_symbol(self, symbol: str) -> Element:
+        """Return the element with this symbol."""
+        wanted = str(symbol).upper()
+        for _, (sym, number, mass) in self._BY_NAME.items():
+            if sym == wanted:
+                return Element(sym, number, mass)
+        return Element(wanted)
+
+
+#: ``element.carbon`` and friends, matching the spelling the tree already uses.
+element = _ElementNamespace()
+
+
 class Topology:
     """The atoms of a structure, and the residues and chains they form.
 
     Parameters
     ----------
-    atoms : numpy.ndarray
+    atoms : numpy.ndarray, optional
         ChiSurf's structured atom array (see
-        :mod:`chisurf.core.fio.structure.coordinates`).
+        :mod:`chisurf.core.fio.structure.coordinates`). Omit it to build a
+        topology up with :meth:`add_chain`, :meth:`add_residue` and
+        :meth:`add_atom`.
     """
 
-    def __init__(self, atoms: np.ndarray):
-        self._atoms = np.asarray(atoms)
+    def __init__(self, atoms: np.ndarray = None):
+        from chisurf.core.fio.structure.coordinates import atom_dtype
+
+        self._atoms = (np.zeros(0, dtype=atom_dtype) if atoms is None
+                       else np.asarray(atoms))
         self._residue_index = None
         self._chain_index = None
+        # Only used while building; a topology read from a file never touches
+        # these, and rebuilding the index arrays is what keeps the two paths
+        # from disagreeing.
+        self._next_chain = 0
+        self._next_residue = 0
+
+    def _invalidate(self) -> None:
+        """Drop the cached residue and chain numbering."""
+        self._residue_index = None
+        self._chain_index = None
+
+    # -- incremental construction -------------------------------------------
+    def add_chain(self, chain_id: str = None) -> Chain:
+        """Append a chain and return it.
+
+        Parameters
+        ----------
+        chain_id : str, optional
+            Identifier; defaults to ``A``, ``B``, ... by position.
+
+        Returns
+        -------
+        Chain
+        """
+        index = self._next_chain
+        self._next_chain += 1
+        if chain_id is None:
+            chain_id = chr(ord("A") + index % 26)
+        return Chain(index, str(chain_id))
+
+    def add_residue(self, name: str, chain: Chain, resSeq: int = None) -> Residue:
+        """Append a residue to *chain* and return it.
+
+        Parameters
+        ----------
+        name : str
+            Residue name.
+        chain : Chain
+            The chain it belongs to.
+        resSeq : int, optional
+            Residue number; defaults to a one-based counter.
+
+        Returns
+        -------
+        Residue
+        """
+        index = self._next_residue
+        self._next_residue += 1
+        return Residue(index, str(name), index + 1 if resSeq is None else int(resSeq), chain)
+
+    def add_atom(self, name: str, element_: Element | str, residue: Residue) -> Atom:
+        """Append an atom and return it.
+
+        Parameters
+        ----------
+        name : str
+            Atom name.
+        element_ : Element or str
+            Element, or its symbol.
+        residue : Residue
+            The residue it belongs to.
+
+        Returns
+        -------
+        Atom
+        """
+        from chisurf.core.fio.structure.coordinates import atom_dtype
+
+        symbol = getattr(element_, "symbol", None)
+        if symbol is None:
+            symbol = "" if element_ is None else str(element_)
+        row = np.zeros(1, dtype=atom_dtype)
+        index = len(self._atoms)
+        row["i"] = index
+        row["atom_id"] = index + 1
+        row["atom_name"] = str(name)
+        row["element"] = symbol
+        row["res_id"] = residue.resSeq
+        row["res_name"] = residue.name
+        row["chain"] = residue.chain.chain_id
+        row["mass"] = getattr(element_, "mass", 0.0) or 0.0
+        self._atoms = np.concatenate([self._atoms, row])
+        self._invalidate()
+        return Atom(index, str(name), symbol, index + 1, residue)
 
     # -- construction --------------------------------------------------------
     @classmethod
