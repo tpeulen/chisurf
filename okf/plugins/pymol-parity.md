@@ -80,10 +80,11 @@ setting produces**, not whether it stores.
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
 
-**2. Rendering.** The ray tracer's meshes are double-shaded (occlusion and cast
-shadow are baked into the vertex colours and then shaded again — costs 44 % of
-the colour), and it has no transparency. Both are described under *`ray` renders
-the scene, not the molecule*.
+**2. Rendering.** One measured defect left in the ray tracer: its meshes are
+double-shaded (occlusion and cast shadow are baked into the vertex colours and
+then shaded again — costs 44 % of the colour), described under *`ray` renders
+the scene, not the molecule*. **Transparency is done** — see *the tracer walks
+through a surface* below.
 
 **3. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
 `cartoon_dumbbell`, `ellipsoid`, `cell`, `slice`.
@@ -575,6 +576,41 @@ choosing one before looking is how a correct change gets reverted.
 not "coarse" but "infinitely fine". It would hang rather than approximate, so it
 is named in the skipped list -- a real parity wart, written down instead of
 guessed at.
+
+## The tracer walks through a surface, and the twin that hid a bug is gone
+
+`ray` took the nearest hit along each ray and sliced the colour to RGB, so a
+surface at `transparency 0.6` traced solid: the viewport showed a glass shell
+with the cartoon inside, `ray` an opaque grey blob. Now each ray composites
+front to back -- every hit contributes its alpha, the remainder passes on, and
+what is still transmitted at the end is background.
+
+**It costs nothing when it is not used.** Measured on 148L at 300x220: opaque
+renders in 3.60 s with four layers allowed against 3.83 s with one, because the
+walk ends at the first solid hit. Translucent is 9.06 s -- 2.4x, not 4x, since
+the walk also stops once the remaining transmittance cannot change a byte.
+
+**The NumPy twin is deleted, and it had already rotted.** `trace()` kept a
+pure-NumPy implementation of the same tracer behind `if _HAVE_NUMBA` *and* an
+`except Exception` fallback. Nothing ran it while numba was installed -- so when
+transparency was added to both, the NumPy one went in wrong (it referenced
+`max_layers` without taking the parameter) and every test still passed. A
+fallback nobody runs is not a safety net; it is an untested branch that fails
+the day you need it. `_trace_numpy` and its three helpers are gone, numba is a
+hard import, and the file is ~380 lines lighter.
+
+Two process notes from doing it:
+
+* **a bulk deletion by regex overreached** -- "from this `def` to the next" also
+  swallowed `_LINE_SIDES` and `TRACEABLE_KINDS`, which sat between two
+  functions. Diffing the *set of top-level names* against `HEAD` is what proved
+  the repair complete; reading the diff would not have.
+* **the first test asserted the wrong thing.** Colouring the molecule red and
+  comparing "redness" fails because `color red` reddens the *surface* too, so
+  the opaque case scores redder than the translucent one. The premise was wrong,
+  not the code. It is now two spheres driven through `trace()` directly, where
+  red can only reach the centre pixel by passing through the shell -- plus the
+  converse, that an opaque shell must not leak it.
 
 ## `surface_quality` was three defects wearing one name
 

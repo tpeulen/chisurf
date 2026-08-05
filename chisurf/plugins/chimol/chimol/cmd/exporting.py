@@ -374,6 +374,7 @@ class ExportMixin(BaseCmd):
             kinds = ", ".join(f"{n} {k}" for k, n in sorted(dropped.items()))
             self._emit_message(f"ray: not traced and absent from the image: {kinds}")
 
+
         ray_cfg = _DISPLAY_CONFIG.get("ray", {})
         light_cfg = _DISPLAY_CONFIG.get("lighting", {})
 

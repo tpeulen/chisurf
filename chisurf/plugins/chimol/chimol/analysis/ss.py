@@ -32,15 +32,12 @@ import math
 from pathlib import Path
 from typing import List, Optional
 
+# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
+# here optional and every fallback beside it unexercised -- which is how the
+# ray tracer's pure-NumPy twin came to be silently broken while every test
+# passed.
+import numba as nb
 import numpy as np
-
-try:  # Optional speed-up for large systems
-    import numba as nb  # type: ignore[import]
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - numba not available
-    nb = None  # type: ignore[assignment]
-    _HAVE_NUMBA = False
-
 
 CONST_Q1Q2 = 0.084
 CONST_F = 332.0
@@ -416,77 +413,65 @@ def _compute_hbond_energy_matrix(bb: np.ndarray) -> np.ndarray:
     return E
 
 
-if _HAVE_NUMBA and nb is not None:
 
-    @nb.njit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-    def _model_hydrogen_nb(n: np.ndarray, ca: np.ndarray, c: np.ndarray) -> np.ndarray:
-        v1 = ca - n
-        v2 = c - n
-        v = v1 + v2
-        norm = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
-        if norm == 0.0:
-            return n + np.array([1.0, 0.0, 0.0], dtype=np.float64)
-        inv_norm = 1.0 / norm
-        return n + v * inv_norm
+@nb.njit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+def _model_hydrogen_nb(n: np.ndarray, ca: np.ndarray, c: np.ndarray) -> np.ndarray:
+    v1 = ca - n
+    v2 = c - n
+    v = v1 + v2
+    norm = math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+    if norm == 0.0:
+        return n + np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    inv_norm = 1.0 / norm
+    return n + v * inv_norm
 
-    @nb.njit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-    def _compute_hbond_energy_matrix_nb(bb: np.ndarray) -> np.ndarray:
-        n_res = bb.shape[0]
-        E = np.zeros((n_res, n_res), dtype=np.float64)
-        eps = 1e-6
-        for i in range(n_res):
-            n_i = bb[i, 0]
-            ca_i = bb[i, 1]
-            c_i = bb[i, 2]
-            h_i = _model_hydrogen_nb(n_i, ca_i, c_i)
-            for j in range(n_res):
-                c_j = bb[j, 2]
-                o_j = bb[j, 3]
+@nb.njit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+def _compute_hbond_energy_matrix_nb(bb: np.ndarray) -> np.ndarray:
+    n_res = bb.shape[0]
+    E = np.zeros((n_res, n_res), dtype=np.float64)
+    eps = 1e-6
+    for i in range(n_res):
+        n_i = bb[i, 0]
+        ca_i = bb[i, 1]
+        c_i = bb[i, 2]
+        h_i = _model_hydrogen_nb(n_i, ca_i, c_i)
+        for j in range(n_res):
+            c_j = bb[j, 2]
+            o_j = bb[j, 3]
 
-                dx_on = n_i[0] - o_j[0]
-                dy_on = n_i[1] - o_j[1]
-                dz_on = n_i[2] - o_j[2]
-                r_on = math.sqrt(dx_on * dx_on + dy_on * dy_on + dz_on * dz_on)
+            dx_on = n_i[0] - o_j[0]
+            dy_on = n_i[1] - o_j[1]
+            dz_on = n_i[2] - o_j[2]
+            r_on = math.sqrt(dx_on * dx_on + dy_on * dy_on + dz_on * dz_on)
 
-                dx_ch = c_j[0] - h_i[0]
-                dy_ch = c_j[1] - h_i[1]
-                dz_ch = c_j[2] - h_i[2]
-                r_ch = math.sqrt(dx_ch * dx_ch + dy_ch * dy_ch + dz_ch * dz_ch)
+            dx_ch = c_j[0] - h_i[0]
+            dy_ch = c_j[1] - h_i[1]
+            dz_ch = c_j[2] - h_i[2]
+            r_ch = math.sqrt(dx_ch * dx_ch + dy_ch * dy_ch + dz_ch * dz_ch)
 
-                dx_oh = o_j[0] - h_i[0]
-                dy_oh = o_j[1] - h_i[1]
-                dz_oh = o_j[2] - h_i[2]
-                r_oh = math.sqrt(dx_oh * dx_oh + dy_oh * dy_oh + dz_oh * dz_oh)
+            dx_oh = o_j[0] - h_i[0]
+            dy_oh = o_j[1] - h_i[1]
+            dz_oh = o_j[2] - h_i[2]
+            r_oh = math.sqrt(dx_oh * dx_oh + dy_oh * dy_oh + dz_oh * dz_oh)
 
-                dx_cn = c_j[0] - n_i[0]
-                dy_cn = c_j[1] - n_i[1]
-                dz_cn = c_j[2] - n_i[2]
-                r_cn = math.sqrt(dx_cn * dx_cn + dy_cn * dy_cn + dz_cn * dz_cn)
+            dx_cn = c_j[0] - n_i[0]
+            dy_cn = c_j[1] - n_i[1]
+            dz_cn = c_j[2] - n_i[2]
+            r_cn = math.sqrt(dx_cn * dx_cn + dy_cn * dy_cn + dz_cn * dz_cn)
 
-                if r_on < eps:
-                    r_on = eps
-                if r_ch < eps:
-                    r_ch = eps
-                if r_oh < eps:
-                    r_oh = eps
-                if r_cn < eps:
-                    r_cn = eps
+            if r_on < eps:
+                r_on = eps
+            if r_ch < eps:
+                r_ch = eps
+            if r_oh < eps:
+                r_oh = eps
+            if r_cn < eps:
+                r_cn = eps
 
-                E[i, j] = CONST_Q1Q2 * CONST_F * (
-                    1.0 / r_on + 1.0 / r_ch - 1.0 / r_oh - 1.0 / r_cn
-                )
-        return E
-
-
-def _compute_hbond_energy_matrix_fast(bb: np.ndarray) -> np.ndarray:
-    """Fast hydrogen-bond energy matrix with optional numba acceleration."""
-
-    if _HAVE_NUMBA and nb is not None:
-        try:
-            return _compute_hbond_energy_matrix_nb(bb)  # type: ignore[name-defined]
-        except Exception:
-            pass
-    return _compute_hbond_energy_matrix(bb)
+            E[i, j] = CONST_Q1Q2 * CONST_F * (
+                1.0 / r_on + 1.0 / r_ch - 1.0 / r_oh - 1.0 / r_cn
+            )
+    return E
 
 
 def _energy_to_hbond_map(
@@ -515,47 +500,6 @@ def _energy_to_hbond_map(
     if L > 2:
         local_mask &= ~np.eye(L, k=-2, dtype=bool)
     return h * local_mask
-
-
-def _assign_c3_from_hbond(E: np.ndarray, energy_threshold: float = -0.5) -> List[str]:
-    """Assign C3 secondary structure (H/E/C) from H-bond energy matrix.
-
-    This follows a very simplified DSSP-like scheme:
-
-    - A hydrogen bond exists if E(i,j) < energy_threshold.
-    - Helix (H): residues participating in i->i+4 or i+4->i hydrogen bonds
-      are marked as helix (including the span between them).
-    - Strand (E): residues in long-range H-bonds (|i-j| > 4) are marked as
-      strand if they are not already helix.
-    - Coil (C): everything else.
-    """
-
-    n_res = E.shape[0]
-    # Convert electrostatic energies into continuous H-bond strengths and
-    # threshold at 0.0 (PyDSSP-style) to obtain a boolean H-bond map.
-    # With the chosen mapping, hb_map > 0.0 is equivalent to E below the
-    # cutoff, but preserves more marginal bonds than a hb_map > 0.5 test.
-    hb_map = _energy_to_hbond_map(E, cutoff=energy_threshold)
-    hb = hb_map > 0.0
-
-    ss = np.array(["C"] * n_res, dtype="U1")
-
-    # Helices: i <-> i+4 pattern
-    for i in range(n_res - 4):
-        if hb[i, i + 4] or hb[i + 4, i]:
-            j = i + 4
-            ss[i : j + 1] = "H"
-
-    # Strands: long-range H-bonds, prefer not to overwrite helices
-    for i in range(n_res):
-        for j in range(i + 3, n_res):
-            if hb[i, j] or hb[j, i]:
-                if ss[i] != "H":
-                    ss[i] = "E"
-                if ss[j] != "H":
-                    ss[j] = "E"
-
-    return ss.tolist()
 
 
 def tidy_ss_runs(
@@ -731,11 +675,10 @@ def assign_ss_c3_from_file(
     return assign_ss_c3_from_atoms(atoms, n_res, verbose=verbose)
 
 
-if _HAVE_NUMBA:
-    # Optional numba acceleration for large systems. We wrap the vectorized
-    # implementation instead of rewriting it in explicit loops to keep the
-    # code compact and close to the reference NumPy formulation.
-    try:  # pragma: no cover - best-effort acceleration
-        _compute_hbond_energy_matrix  # JIT disabled: keep pure-NumPy path
-    except Exception:
-        pass
+# Optional numba acceleration for large systems. We wrap the vectorized
+# implementation instead of rewriting it in explicit loops to keep the
+# code compact and close to the reference NumPy formulation.
+try:  # pragma: no cover - best-effort acceleration
+    _compute_hbond_energy_matrix  # JIT disabled: keep pure-NumPy path
+except Exception:
+    pass

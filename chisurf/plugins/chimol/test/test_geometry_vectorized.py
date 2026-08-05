@@ -266,14 +266,14 @@ def test_build_frames_parity():
 def test_ambient_occlusion_cell_list_matches_brute_force():
     """The O(n) cell-list AO must be bit-identical to the O(n^2) reference.
 
-    The public estimator dispatches to the cell list (or the pure-NumPy grid
-    fallback); the numba double loop is the exact reference. They must agree
-    across sparse and dense point clouds and different radius/cap settings.
-    """
-    if not ambient._HAVE_NUMBA:
-        import pytest
+    The public estimator dispatches to the cell list; the numba double loop is
+    the exact reference. They must agree across sparse and dense point clouds
+    and different radius/cap settings.
 
-        pytest.skip("numba unavailable; cell-list path not exercised")
+    The skip that used to guard this is gone with `_HAVE_NUMBA`: numba is a hard
+    requirement, so there is no configuration in which this comparison does not
+    run.
+    """
     rng = np.random.default_rng(5)
     for n, r, mn in [(500, 4.0, 32), (1500, 6.0, 24), (400, 3.0, 16), (3000, 5.0, 32)]:
         pts = rng.standard_normal((n, 3)) * 15.0

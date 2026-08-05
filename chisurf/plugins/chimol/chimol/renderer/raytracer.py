@@ -1,30 +1,36 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
+# Numba is required, not optional. The pure-NumPy twin that used to stand in for
+# it was a second implementation of the same tracer that nothing exercised while
+# numba was installed -- and it was silently broken for exactly that reason: the
+# transparency work landed in both, and only the compiled one was ever run.
+# A fallback nobody runs is not a safety net, it is an untested branch.
+import numba as _nb
 import numpy as np
 
 from .view_state import unpack_view_state
 
-try:
-    import numba as _nb
-    _HAVE_NUMBA = True
-except ImportError:
-    _HAVE_NUMBA = False
-    _nb = None  # type: ignore
-
 
 @dataclass
 class Sphere:
+    """One traced sphere: an atom, a bead, or a line's round cap."""
+
     center: np.ndarray  # (3,) world position
     radius: float
     color: np.ndarray  # (3,) RGB in [0, 1]
+    #: Opacity in [0, 1]; 1 is solid. The tracer composites through anything
+    #: below 1, so this is what makes `transparency` reach a raytraced image.
+    alpha: float = 1.0
 
 
 @dataclass
 class RayCamera:
+    """Where the tracer looks from, and through what lens."""
+
     origin: np.ndarray      # (3,)
     forward: np.ndarray     # (3,) unit vector
     up: np.ndarray          # (3,) unit vector
@@ -60,165 +66,182 @@ def _camera_from_view_state(view: List[float]) -> RayCamera:
 # Numba-accelerated kernel
 # ------------------------------------------------------------------ #
 
-if _HAVE_NUMBA:
-    _JIT_SPECDICT = {
-        "nopython": True,
-        "fastmath": True,
-        "cache": True,
-        "parallel": True,
-    }
+_JIT_SPECDICT = {
+    "nopython": True,
+    "fastmath": True,
+    "cache": True,
+    "parallel": True,
+}
 
-    @_nb.njit(fastmath=True, cache=True)
-    def _jit_mt_intersect(
-        rox: float, roy: float, roz: float,
-        dx: float, dy: float, dz: float,
-        v0x: float, v0y: float, v0z: float,
-        v1x: float, v1y: float, v1z: float,
-        v2x: float, v2y: float, v2z: float,
-    ) -> float:
-        """Moller-Trumbore ray-triangle intersection; returns t or -1."""
-        e1x = v1x - v0x
-        e1y = v1y - v0y
-        e1z = v1z - v0z
-        e2x = v2x - v0x
-        e2y = v2y - v0y
-        e2z = v2z - v0z
+@_nb.njit(fastmath=True, cache=True)
+def _jit_mt_intersect(
+    rox: float, roy: float, roz: float,
+    dx: float, dy: float, dz: float,
+    v0x: float, v0y: float, v0z: float,
+    v1x: float, v1y: float, v1z: float,
+    v2x: float, v2y: float, v2z: float,
+) -> float:
+    """Moller-Trumbore ray-triangle intersection; returns t or -1."""
+    e1x = v1x - v0x
+    e1y = v1y - v0y
+    e1z = v1z - v0z
+    e2x = v2x - v0x
+    e2y = v2y - v0y
+    e2z = v2z - v0z
 
-        pvecx = dy * e2z - dz * e2y
-        pvecy = dz * e2x - dx * e2z
-        pvecz = dx * e2y - dy * e2x
+    pvecx = dy * e2z - dz * e2y
+    pvecy = dz * e2x - dx * e2z
+    pvecz = dx * e2y - dy * e2x
 
-        det = e1x * pvecx + e1y * pvecy + e1z * pvecz
-        if abs(det) < 1e-12:
-            return -1.0
-        inv_det = 1.0 / det
+    det = e1x * pvecx + e1y * pvecy + e1z * pvecz
+    if abs(det) < 1e-12:
+        return -1.0
+    inv_det = 1.0 / det
 
-        tx = rox - v0x
-        ty = roy - v0y
-        tz = roz - v0z
+    tx = rox - v0x
+    ty = roy - v0y
+    tz = roz - v0z
 
-        u = (tx * pvecx + ty * pvecy + tz * pvecz) * inv_det
-        if u < 0.0 or u > 1.0:
-            return -1.0
+    u = (tx * pvecx + ty * pvecy + tz * pvecz) * inv_det
+    if u < 0.0 or u > 1.0:
+        return -1.0
 
-        qvecx = ty * e1z - tz * e1y
-        qvecy = tz * e1x - tx * e1z
-        qvecz = tx * e1y - ty * e1x
+    qvecx = ty * e1z - tz * e1y
+    qvecy = tz * e1x - tx * e1z
+    qvecz = tx * e1y - ty * e1x
 
-        v = (dx * qvecx + dy * qvecy + dz * qvecz) * inv_det
-        if v < 0.0 or u + v > 1.0:
-            return -1.0
+    v = (dx * qvecx + dy * qvecy + dz * qvecz) * inv_det
+    if v < 0.0 or u + v > 1.0:
+        return -1.0
 
-        t = (e2x * qvecx + e2y * qvecy + e2z * qvecz) * inv_det
-        if t < 1e-6:
-            return -1.0
-        return t
+    t = (e2x * qvecx + e2y * qvecy + e2z * qvecz) * inv_det
+    if t < 1e-6:
+        return -1.0
+    return t
 
-    @_nb.njit(**_JIT_SPECDICT)
-    def _jit_trace(
-        centers: np.ndarray,
-        radii: np.ndarray,
-        col_rgb: np.ndarray,
-        tri_vertices: np.ndarray,
-        tri_vnormals: np.ndarray,
-        tri_colors: np.ndarray,
-        n_triangles: int,
-        cam_origin: np.ndarray,
-        cam_forward: np.ndarray,
-        cam_up: np.ndarray,
-        fov_radians: float,
-        light_dirs: np.ndarray,
-        width: int,
-        height: int,
-        ssaa: int,
-        bg_r: int,
-        bg_g: int,
-        bg_b: int,
-        ambient: float,
-        diffuse: float,
-        specular: float,
-        shininess: float,
-        direct_spec: float,
-        direct_spec_power: float,
-        reflect_power: float,
-        legacy_lighting: float,
-        shadow_enabled: int,
-        shadow_fudge: float,
-        shadow_decay_factor: float,
-        shadow_decay_range: float,
-        depth_cue_enabled: int,
-        fog_start: float,
-        fog_intensity: float,
-        fog_front: float,
-        fog_inv_range: float,
-        progress: np.ndarray,
-        cancel: np.ndarray,
-    ) -> np.ndarray:
-        """JIT-compiled ray tracing kernel with sphere + triangle support."""
-        n_spheres: int = centers.shape[0]
-        rw: int = int(width * ssaa)
-        rh: int = int(height * ssaa)
-        n_lights: int = light_dirs.shape[0]
+@_nb.njit(**_JIT_SPECDICT)
+def _jit_trace(
+    centers: np.ndarray,
+    radii: np.ndarray,
+    col_rgb: np.ndarray,
+    sph_alpha: np.ndarray,
+    tri_vertices: np.ndarray,
+    tri_vnormals: np.ndarray,
+    tri_colors: np.ndarray,
+    tri_alpha: np.ndarray,
+    n_triangles: int,
+    cam_origin: np.ndarray,
+    cam_forward: np.ndarray,
+    cam_up: np.ndarray,
+    fov_radians: float,
+    light_dirs: np.ndarray,
+    width: int,
+    height: int,
+    ssaa: int,
+    bg_r: int,
+    bg_g: int,
+    bg_b: int,
+    ambient: float,
+    diffuse: float,
+    specular: float,
+    shininess: float,
+    direct_spec: float,
+    direct_spec_power: float,
+    reflect_power: float,
+    legacy_lighting: float,
+    shadow_enabled: int,
+    shadow_fudge: float,
+    shadow_decay_factor: float,
+    shadow_decay_range: float,
+    depth_cue_enabled: int,
+    fog_start: float,
+    fog_intensity: float,
+    fog_front: float,
+    fog_inv_range: float,
+    progress: np.ndarray,
+    cancel: np.ndarray,
+    max_layers: int,
+) -> np.ndarray:
+    """JIT-compiled ray tracing kernel with sphere + triangle support.
 
-        right = np.cross(cam_forward, cam_up)
-        rn = _jit_length(right)
-        if rn < 1e-9:
-            right = np.array([1.0, 0.0, 0.0], dtype=np.float64)
-        else:
-            right[0] /= rn
-            right[1] /= rn
-            right[2] /= rn
-        fw = cam_forward.copy()
-        up = np.cross(right, fw)
-        un = _jit_length(up)
-        up[0] /= un
-        up[1] /= un
-        up[2] /= un
+    Each ray walks *through* the scene rather than stopping at the first
+    surface: every hit contributes its alpha and the remainder is passed
+    along, so a translucent surface shows what is behind it. ``max_layers``
+    bounds that walk -- a closed surface with a cartoon inside needs three
+    or four, and the walk also stops on its own once the remaining
+    transmittance cannot change a byte.
+    """
+    n_spheres: int = centers.shape[0]
+    rw: int = int(width * ssaa)
+    rh: int = int(height * ssaa)
+    n_lights: int = light_dirs.shape[0]
 
-        half_h = math.tan(fov_radians * 0.5)
-        aspect = float(rw) / float(max(rh, 1))
-        half_w = half_h * aspect
+    right = np.cross(cam_forward, cam_up)
+    rn = _jit_length(right)
+    if rn < 1e-9:
+        right = np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    else:
+        right[0] /= rn
+        right[1] /= rn
+        right[2] /= rn
+    fw = cam_forward.copy()
+    up = np.cross(right, fw)
+    un = _jit_length(up)
+    up[0] /= un
+    up[1] /= un
+    up[2] /= un
 
-        out = np.zeros((height, width, 3), dtype=np.float64)
-        accum = np.zeros((height, width), dtype=np.float64)
+    half_h = math.tan(fov_radians * 0.5)
+    aspect = float(rw) / float(max(rh, 1))
+    half_w = half_h * aspect
 
-        bg_f = float(bg_r) / 255.0
-        bg_g_f = float(bg_g) / 255.0
-        bg_b_f = float(bg_b) / 255.0
+    out = np.zeros((height, width, 3), dtype=np.float64)
+    accum = np.zeros((height, width), dtype=np.float64)
 
-        ldirs = np.zeros((n_lights, 3), dtype=np.float64)
-        for li in range(n_lights):
-            ld = light_dirs[li]
-            ln = math.sqrt(ld[0]*ld[0] + ld[1]*ld[1] + ld[2]*ld[2])
-            if ln < 1e-9:
-                ln = 1.0
-            ldirs[li, 0] = ld[0] / ln
-            ldirs[li, 1] = ld[1] / ln
-            ldirs[li, 2] = ld[2] / ln
+    bg_f = float(bg_r) / 255.0
+    bg_g_f = float(bg_g) / 255.0
+    bg_b_f = float(bg_b) / 255.0
 
-        spec_per_light = 1.0 / pow(float(max(n_lights - 1, 1)), 0.6)
-        legacy = max(0.0, min(1.0, legacy_lighting))
+    ldirs = np.zeros((n_lights, 3), dtype=np.float64)
+    for li in range(n_lights):
+        ld = light_dirs[li]
+        ln = math.sqrt(ld[0]*ld[0] + ld[1]*ld[1] + ld[2]*ld[2])
+        if ln < 1e-9:
+            ln = 1.0
+        ldirs[li, 0] = ld[0] / ln
+        ldirs[li, 1] = ld[1] / ln
+        ldirs[li, 2] = ld[2] / ln
 
-        for py in _nb.prange(rh):
-            if py == 0 or py == rh - 1:
-                if cancel[0] != 0:
-                    continue
-            for px in range(rw):
-                u = (float(px) + 0.5) / float(max(rw - 1, 1)) - 0.5
-                v = 0.5 - (float(py) + 0.5) / float(max(rh - 1, 1))
+    spec_per_light = 1.0 / pow(float(max(n_lights - 1, 1)), 0.6)
+    legacy = max(0.0, min(1.0, legacy_lighting))
 
-                dir_x = fw[0] + right[0] * u * 2.0 * half_w + up[0] * v * 2.0 * half_h
-                dir_y = fw[1] + right[1] * u * 2.0 * half_w + up[1] * v * 2.0 * half_h
-                dir_z = fw[2] + right[2] * u * 2.0 * half_w + up[2] * v * 2.0 * half_h
-                dlen = math.sqrt(dir_x * dir_x + dir_y * dir_y + dir_z * dir_z)
-                if dlen < 1e-9:
-                    dlen = 1.0
-                dir_x /= dlen
-                dir_y /= dlen
-                dir_z /= dlen
+    for py in _nb.prange(rh):
+        if py == 0 or py == rh - 1:
+            if cancel[0] != 0:
+                continue
+        for px in range(rw):
+            u = (float(px) + 0.5) / float(max(rw - 1, 1)) - 0.5
+            v = 0.5 - (float(py) + 0.5) / float(max(rh - 1, 1))
 
-                rox, roy, roz = cam_origin[0], cam_origin[1], cam_origin[2]
+            dir_x = fw[0] + right[0] * u * 2.0 * half_w + up[0] * v * 2.0 * half_h
+            dir_y = fw[1] + right[1] * u * 2.0 * half_w + up[1] * v * 2.0 * half_h
+            dir_z = fw[2] + right[2] * u * 2.0 * half_w + up[2] * v * 2.0 * half_h
+            dlen = math.sqrt(dir_x * dir_x + dir_y * dir_y + dir_z * dir_z)
+            if dlen < 1e-9:
+                dlen = 1.0
+            dir_x /= dlen
+            dir_y /= dlen
+            dir_z /= dlen
 
+            rox, roy, roz = cam_origin[0], cam_origin[1], cam_origin[2]
+
+            acc_r = 0.0
+            acc_g = 0.0
+            acc_b = 0.0
+            trans = 1.0
+            t_min = 1e-6
+            any_hit = False
+            for _layer in range(max_layers):
                 best_t = np.inf
                 best_id = -1
                 best_is_tri = False
@@ -248,9 +271,9 @@ if _HAVE_NUMBA:
                     sqrt_d = math.sqrt(disc)
                     t1 = (-b - sqrt_d) * 0.5
                     t2 = (-b + sqrt_d) * 0.5
-                    if t1 > 1e-6:
+                    if t1 > t_min:
                         t_hit = t1
-                    elif t2 > 1e-6:
+                    elif t2 > t_min:
                         t_hit = t2
                     else:
                         continue
@@ -275,7 +298,7 @@ if _HAVE_NUMBA:
                         rox, roy, roz, dir_x, dir_y, dir_z,
                         v0x, v0y, v0z, v1x, v1y, v1z, v2x, v2y, v2z,
                     )
-                    if t < 0.0:
+                    if t < 0.0 or t <= t_min:
                         continue
                     if t < best_t:
                         best_t = t
@@ -287,7 +310,7 @@ if _HAVE_NUMBA:
                         best_cb = tri_colors[ti, 2]
 
                 if best_id < 0:
-                    continue
+                    break
 
                 # ---- hit point & normal ------
                 hx = rox + dir_x * best_t
@@ -467,83 +490,116 @@ if _HAVE_NUMBA:
                             cg_out = cg_out * (1.0 - ffact) + bg_g_f * ffact
                             cb_out = cb_out * (1.0 - ffact) + bg_b_f * ffact
 
-                oy = py // ssaa
-                ox = px // ssaa
-                out[oy, ox, 0] += cr_out
-                out[oy, ox, 1] += cg_out
-                out[oy, ox, 2] += cb_out
-                accum[oy, ox] += 1.0
-
-        img = np.zeros((height, width, 3), dtype=np.uint8)
-        for y in range(height):
-            for x in range(width):
-                w = accum[y, x]
-                if w < 0.5:
-                    r = bg_r
-                    g = bg_g
-                    b = bg_b
+                # Front-to-back compositing. `trans` is how much of what lies
+                # behind still reaches the eye; each layer takes its alpha out
+                # of it. Stopping at the first surface -- which is what this
+                # did -- renders a `transparency 0.6` shell as solid.
+                a_hit = 1.0
+                if best_is_tri:
+                    a_hit = tri_alpha[best_id]
                 else:
-                    inv = 1.0 / w
-                    r = int(out[y, x, 0] * inv * 255.0)
-                    g = int(out[y, x, 1] * inv * 255.0)
-                    b = int(out[y, x, 2] * inv * 255.0)
-                    if r > 255: r = 255
-                    if g > 255: g = 255
-                    if b > 255: b = 255
-                    if r < 0: r = 0
-                    if g < 0: g = 0
-                    if b < 0: b = 0
-                img[y, x, 0] = np.uint8(r)
-                img[y, x, 1] = np.uint8(g)
-                img[y, x, 2] = np.uint8(b)
-        return img
+                    a_hit = sph_alpha[best_id]
+                if a_hit < 0.0:
+                    a_hit = 0.0
+                if a_hit > 1.0:
+                    a_hit = 1.0
+                acc_r += trans * a_hit * cr_out
+                acc_g += trans * a_hit * cg_out
+                acc_b += trans * a_hit * cb_out
+                any_hit = True
+                trans *= (1.0 - a_hit)
+                # Below ~1/255 the next layer cannot change a byte, so the walk
+                # stops rather than paying for surfaces nobody will see.
+                if trans < 0.004:
+                    break
+                # Step past this surface, or the next search finds it again.
+                t_min = best_t + 1e-4
 
-    @_nb.njit(fastmath=True, cache=True)
-    def _jit_length(v: np.ndarray) -> float:
-        return math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+            if not any_hit:
+                continue
+            # Whatever is still transmitted is background, exactly as the
+            # viewport blends it.
+            cr_out = acc_r + trans * bg_f
+            cg_out = acc_g + trans * bg_g_f
+            cb_out = acc_b + trans * bg_b_f
 
-    @_nb.njit(fastmath=True, cache=True)
-    def _jit_shadow_soft(
-        hx: float, hy: float, hz: float,
-        lx: float, ly: float, lz: float,
-        centers: np.ndarray,
-        radii: np.ndarray,
-        skip_idx: int,
-        n_spheres: int,
-        decay_factor: float,
-        decay_range: float,
-    ) -> float:
-        for si in range(n_spheres):
-            if si == skip_idx:
-                continue
-            r = radii[si]
-            if r <= 0.0:
-                continue
-            cx = centers[si, 0]
-            cy = centers[si, 1]
-            cz = centers[si, 2]
-            ocx = hx - cx
-            ocy = hy - cy
-            ocz = hz - cz
-            b = 2.0 * (ocx * lx + ocy * ly + ocz * lz)
-            c = ocx * ocx + ocy * ocy + ocz * ocz - r * r
-            disc = b * b - 4.0 * c
-            if disc < 0.0:
-                continue
-            sqrt_d = math.sqrt(disc)
-            t = (-b - sqrt_d) * 0.5
-            if t > 1e-6:
-                if decay_factor > 0.0:
-                    d = t - decay_range
-                    if d <= 0.0:
-                        return 1.0
-                    occlusion = 1.0 - math.exp(-d * decay_factor)
-                    if occlusion >= 1.0:
-                        return 0.0
-                    return 1.0 - occlusion
-                else:
+            oy = py // ssaa
+            ox = px // ssaa
+            out[oy, ox, 0] += cr_out
+            out[oy, ox, 1] += cg_out
+            out[oy, ox, 2] += cb_out
+            accum[oy, ox] += 1.0
+
+    img = np.zeros((height, width, 3), dtype=np.uint8)
+    for y in range(height):
+        for x in range(width):
+            w = accum[y, x]
+            if w < 0.5:
+                r = bg_r
+                g = bg_g
+                b = bg_b
+            else:
+                inv = 1.0 / w
+                r = int(out[y, x, 0] * inv * 255.0)
+                g = int(out[y, x, 1] * inv * 255.0)
+                b = int(out[y, x, 2] * inv * 255.0)
+                if r > 255: r = 255
+                if g > 255: g = 255
+                if b > 255: b = 255
+                if r < 0: r = 0
+                if g < 0: g = 0
+                if b < 0: b = 0
+            img[y, x, 0] = np.uint8(r)
+            img[y, x, 1] = np.uint8(g)
+            img[y, x, 2] = np.uint8(b)
+    return img
+
+@_nb.njit(fastmath=True, cache=True)
+def _jit_length(v: np.ndarray) -> float:
+    return math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2])
+
+@_nb.njit(fastmath=True, cache=True)
+def _jit_shadow_soft(
+    hx: float, hy: float, hz: float,
+    lx: float, ly: float, lz: float,
+    centers: np.ndarray,
+    radii: np.ndarray,
+    skip_idx: int,
+    n_spheres: int,
+    decay_factor: float,
+    decay_range: float,
+) -> float:
+    for si in range(n_spheres):
+        if si == skip_idx:
+            continue
+        r = radii[si]
+        if r <= 0.0:
+            continue
+        cx = centers[si, 0]
+        cy = centers[si, 1]
+        cz = centers[si, 2]
+        ocx = hx - cx
+        ocy = hy - cy
+        ocz = hz - cz
+        b = 2.0 * (ocx * lx + ocy * ly + ocz * lz)
+        c = ocx * ocx + ocy * ocy + ocz * ocz - r * r
+        disc = b * b - 4.0 * c
+        if disc < 0.0:
+            continue
+        sqrt_d = math.sqrt(disc)
+        t = (-b - sqrt_d) * 0.5
+        if t > 1e-6:
+            if decay_factor > 0.0:
+                d = t - decay_range
+                if d <= 0.0:
+                    return 1.0
+                occlusion = 1.0 - math.exp(-d * decay_factor)
+                if occlusion >= 1.0:
                     return 0.0
-        return 1.0
+                return 1.0 - occlusion
+            else:
+                return 0.0
+    return 1.0
 
 
 # ------------------------------------------------------------------ #
@@ -586,6 +642,11 @@ def trace(
     tri_vertices: np.ndarray | None = None,
     tri_vnormals: np.ndarray | None = None,
     tri_colors: np.ndarray | None = None,
+    tri_alpha: np.ndarray | None = None,
+    # How many surfaces a ray may pass through. Four covers the common case --
+    # front and back of a translucent shell, plus what is inside it -- and the
+    # walk stops early anyway once too little light is still coming through.
+    max_layers: int = 4,
     # Progress / cancellation
     progress: Optional[np.ndarray] = None,
     cancel: Optional[np.ndarray] = None,
@@ -608,6 +669,15 @@ def trace(
         Per-vertex normals, shape (T, 3, 3).
     tri_colors : np.ndarray or None
         Per-triangle RGB colors, shape (T, 3).
+    tri_alpha : np.ndarray or None
+        Per-triangle opacity, shape (T,); 1 is solid. ``None`` means every
+        triangle is opaque, which is what an RGB mesh carries.
+    max_layers : int, optional
+        How many surfaces a ray may pass through before it stops. Four covers a
+        translucent shell seen front and back with something inside it. Costs
+        nothing when the scene is opaque -- the walk ends at the first solid hit
+        -- and the transmittance early-out usually ends it sooner than this
+        bound anyway.
     fog_front, fog_back : float or None
         Distances from the camera the depth cue runs between: no fog at
         ``fog_front``, full fog at ``fog_back``. PyMOL normalises over its
@@ -652,18 +722,26 @@ def trace(
     centers = np.zeros((n, 3), dtype=np.float64)
     radii_arr = np.zeros(n, dtype=np.float64)
     colors_arr = np.zeros((n, 3), dtype=np.float64)
+    sph_alpha_arr = np.ones(n, dtype=np.float64)
     for i, s in enumerate(spheres):
         centers[i] = s.center
         radii_arr[i] = float(s.radius)
         colors_arr[i] = np.clip(s.color, 0.0, 1.0)
+        sph_alpha_arr[i] = min(1.0, max(0.0, float(getattr(s, "alpha", 1.0))))
 
     tverts = np.zeros((n_tri, 3, 3), dtype=np.float64)
     tnorms = np.zeros((n_tri, 3, 3), dtype=np.float64)
     tcols = np.zeros((n_tri, 3), dtype=np.float64)
+    talpha = np.ones(max(n_tri, 1), dtype=np.float64)
     if n_tri > 0:
         tverts[:] = tri_vertices.astype(np.float64)
         tnorms[:] = tri_vnormals.astype(np.float64) if tri_vnormals is not None else 0.0
         tcols[:] = tri_colors.astype(np.float64) if tri_colors is not None else 0.5
+        talpha = np.ones(n_tri, dtype=np.float64)
+        if tri_alpha is not None:
+            ta = np.asarray(tri_alpha, dtype=np.float64).reshape(-1)
+            if ta.shape[0] == n_tri:
+                talpha[:] = np.clip(ta, 0.0, 1.0)
 
     lds = np.asarray(light_directions, dtype=np.float64)
     if lds.ndim == 1:
@@ -692,56 +770,27 @@ def trace(
     else:
         cancel = np.asarray(cancel, dtype=np.int64)
 
-    if _HAVE_NUMBA:
-        try:
-            img = _jit_trace(
-                centers, radii_arr, colors_arr,
-                tverts, tnorms, tcols, n_tri,
-                camera.origin.astype(np.float64).copy(),
-                camera.forward.astype(np.float64).copy(),
-                camera.up.astype(np.float64).copy(),
-                float(fov_rad),
-                lds,
-                int(width), int(height), int(ssaa),
-                int(bg_r), int(bg_g), int(bg_b),
-                float(ambient), float(diffuse), float(specular), float(shininess),
-                float(direct_specular), float(direct_specular_power),
-                float(reflect_power), float(legacy_lighting),
-                int(shadow), float(shadow_fudge),
-                float(shadow_decay_factor), float(shadow_decay_range),
-                int(depth_cue), float(fog_start), float(fog_intensity),
-                float(front), float(fog_inv_range),
-                progress,
-                cancel,
-            )
-        except Exception:
-            img = _trace_numpy(
-                centers, radii_arr, colors_arr,
-                tverts, tnorms, tcols, n_tri,
-                camera, lds, fov_rad,
-                width, height, ssaa,
-                background, ambient, diffuse, specular, shininess,
-                direct_specular, direct_specular_power, reflect_power, legacy_lighting,
-                shadow, shadow_fudge, shadow_decay_factor, shadow_decay_range,
-                depth_cue, fog_start, fog_intensity, front, fog_inv_range,
-                bg_r, bg_g, bg_b,
-                progress,
-                cancel,
-            )
-    else:
-        img = _trace_numpy(
-            centers, radii_arr, colors_arr,
-            tverts, tnorms, tcols, n_tri,
-            camera, lds, fov_rad,
-            width, height, ssaa,
-            background, ambient, diffuse, specular, shininess,
-            direct_specular, direct_specular_power, reflect_power, legacy_lighting,
-            shadow, shadow_fudge, shadow_decay_factor, shadow_decay_range,
-            depth_cue, fog_start, fog_intensity, front, fog_inv_range,
-            bg_r, bg_g, bg_b,
-            progress,
-            cancel,
-        )
+    img = _jit_trace(
+        centers, radii_arr, colors_arr, sph_alpha_arr,
+        tverts, tnorms, tcols, talpha, n_tri,
+        camera.origin.astype(np.float64).copy(),
+        camera.forward.astype(np.float64).copy(),
+        camera.up.astype(np.float64).copy(),
+        float(fov_rad),
+        lds,
+        int(width), int(height), int(ssaa),
+        int(bg_r), int(bg_g), int(bg_b),
+        float(ambient), float(diffuse), float(specular), float(shininess),
+        float(direct_specular), float(direct_specular_power),
+        float(reflect_power), float(legacy_lighting),
+        int(shadow), float(shadow_fudge),
+        float(shadow_decay_factor), float(shadow_decay_range),
+        int(depth_cue), float(fog_start), float(fog_intensity),
+        float(front), float(fog_inv_range),
+        progress,
+        cancel,
+        int(max(1, max_layers)),
+    )
 
     if color_blend:
         img = _apply_color_blend(img, color_blend_red, color_blend_green, color_blend_blue,
@@ -770,333 +819,7 @@ def _apply_color_blend(
     return np.clip(np.round(out), 0, 255).astype(np.uint8)
 
 
-def _trace_numpy(
-    centers: np.ndarray,
-    radii: np.ndarray,
-    colors: np.ndarray,
-    tri_vertices: np.ndarray,
-    tri_vnormals: np.ndarray,
-    tri_colors: np.ndarray,
-    n_tri: int,
-    camera: RayCamera,
-    light_dirs: np.ndarray,
-    fov_rad: float,
-    width: int,
-    height: int,
-    ssaa: int,
-    background: tuple,
-    ambient: float,
-    diffuse: float,
-    specular: float,
-    shininess: float,
-    direct_specular: float,
-    direct_specular_power: float,
-    reflect_power: float,
-    legacy_lighting: float,
-    shadow: bool,
-    shadow_fudge: float,
-    shadow_decay_factor: float,
-    shadow_decay_range: float,
-    depth_cue: bool,
-    fog_start: float,
-    fog_intensity: float,
-    fog_front: float,
-    fog_inv_range: float,
-    bg_r: int, bg_g: int, bg_b: int,
-    progress: Optional[np.ndarray] = None,
-    cancel: Optional[np.ndarray] = None,
-) -> np.ndarray:
-    """Pure NumPy fallback for environments without Numba."""
-    if progress is not None:
-        progress = np.asarray(progress, dtype=np.int64)
-    if cancel is not None:
-        cancel = np.asarray(cancel, dtype=np.int64)
 
-    rw, rh = width * ssaa, height * ssaa
-    total_steps = 6
-    step = 0
-
-    def _check_cancel() -> bool:
-        return cancel is not None and cancel[0] != 0
-
-    def _set_progress(frac: float) -> None:
-        if progress is not None:
-            progress[0] = int(frac * rh)
-
-    if _check_cancel():
-        return np.full((height, width, 3), background, dtype=np.uint8)
-
-    origins, dirs = _build_ray_grid_numpy(camera, rw, rh, fov_rad)
-
-    n_spheres = centers.shape[0]
-    best_t = np.full(origins.shape[:2], np.inf, dtype=np.float64)
-    best_id = np.full(origins.shape[:2], -1, dtype=np.int32)
-    best_is_tri = np.zeros(origins.shape[:2], dtype=np.bool_)
-
-    # Sphere intersection
-    for i in range(n_spheres):
-        r = radii[i]
-        if r <= 0.0:
-            continue
-        oc = origins - centers[i]
-        b = 2.0 * np.sum(oc * dirs, axis=-1)
-        c = np.sum(oc * oc, axis=-1) - r * r
-        disc = b * b - 4.0 * c
-        hit = disc >= 0.0
-        if not np.any(hit):
-            continue
-        sqrt_d = np.sqrt(np.maximum(disc[hit], 0.0))
-        t1 = (-b[hit] - sqrt_d) * 0.5
-        t2 = (-b[hit] + sqrt_d) * 0.5
-        t = np.where(t1 > 1e-6, t1, np.where(t2 > 1e-6, t2, np.inf))
-        better = (t < best_t[hit]) & np.isfinite(t)
-        if not np.any(better):
-            continue
-        rows, cols = np.where(hit)
-        good = better.nonzero()[0]
-        idx = rows[good], cols[good]
-        best_t[idx] = t[good]
-        best_id[idx] = i
-        best_is_tri[idx] = False
-
-    step += 1
-    _set_progress(step / total_steps)
-    if _check_cancel():
-        return np.full((height, width, 3), background, dtype=np.uint8)
-
-    # Triangle intersection
-    for ti in range(n_tri):
-        v0 = tri_vertices[ti, 0]
-        v1 = tri_vertices[ti, 1]
-        v2 = tri_vertices[ti, 2]
-        e1 = v1 - v0
-        e2 = v2 - v0
-
-        pvec = np.cross(dirs, e2)
-        det = np.sum(e1 * pvec, axis=-1)
-        valid = np.abs(det) > 1e-12
-        if not np.any(valid):
-            continue
-        inv_det = 1.0 / np.where(valid, det, 1.0)
-        tvec = origins - v0
-        u = np.sum(tvec * pvec, axis=-1) * inv_det
-        qvec = np.cross(tvec, e1)
-        v = np.sum(dirs * qvec, axis=-1) * inv_det
-        t = np.sum(e2 * qvec, axis=-1) * inv_det
-
-        hit = valid & (u >= 0.0) & (u <= 1.0) & (v >= 0.0) & (u + v <= 1.0) & (t > 1e-6) & (t < best_t)
-        if not np.any(hit):
-            continue
-        best_t[hit] = t[hit]
-        best_id[hit] = ti
-        best_is_tri[hit] = True
-
-    step += 1
-    _set_progress(step / total_steps)
-    if _check_cancel():
-        return np.full((height, width, 3), background, dtype=np.uint8)
-
-    hit_mask = best_id >= 0
-    bg_rgb = np.array([bg_r, bg_g, bg_b], dtype=np.float64)
-    img = np.full((rh, rw, 3), bg_rgb, dtype=np.float64)
-
-    if not hit_mask.any():
-        base = _downsample_numpy(img, height, width, ssaa)
-        if ssaa > 1:
-            base = np.clip(base, 0, 255).astype(np.uint8)
-        return base
-
-    positions = origins + dirs * best_t[..., np.newaxis]
-    hit_pos = positions[hit_mask]
-
-    hit_normals = np.zeros_like(hit_pos)
-    hit_colors = np.zeros((hit_pos.shape[0], 3), dtype=np.float64)
-
-    for i in range(n_spheres):
-        m = (best_id == i) & (~best_is_tri) & hit_mask
-        if not np.any(m):
-            continue
-        n = hit_pos[m] - centers[i]
-        nl = np.linalg.norm(n, axis=-1, keepdims=True) + 1e-9
-        hit_normals[m] = n / nl
-        hit_colors[m] = colors[i]
-
-    for ti in range(n_tri):
-        m = (best_id == ti) & best_is_tri & hit_mask
-        if not np.any(m):
-            continue
-        v0 = tri_vertices[ti, 0]
-        v1 = tri_vertices[ti, 1]
-        v2 = tri_vertices[ti, 2]
-        n0 = tri_vnormals[ti, 0]
-        n1 = tri_vnormals[ti, 1]
-        n2 = tri_vnormals[ti, 2]
-
-        hp = hit_pos[m]
-        e1 = v1 - v0
-        e2 = v2 - v0
-        d00 = np.dot(e1, e1)
-        d01 = np.dot(e1, e2)
-        d11 = np.dot(e2, e2)
-        denom = d00 * d11 - d01 * d01
-        pp = hp - v0
-        d20 = np.sum(pp * e1, axis=-1)
-        d21 = np.sum(pp * e2, axis=-1)
-        if abs(denom) > 1e-12:
-            u_bc = (d11 * d20 - d01 * d21) / denom
-            v_bc = (d00 * d21 - d01 * d20) / denom
-        else:
-            u_bc = 0.0
-            v_bc = 0.0
-        w_bc = 1.0 - u_bc - v_bc
-
-        n = (w_bc[:, np.newaxis] * n0 + u_bc[:, np.newaxis] * n1 + v_bc[:, np.newaxis] * n2)
-        nl = np.linalg.norm(n, axis=-1, keepdims=True) + 1e-9
-        hit_normals[m] = n / nl
-        hit_colors[m] = tri_colors[ti]
-
-    step += 1
-    _set_progress(step / total_steps)
-    if _check_cancel():
-        return np.full((height, width, 3), background, dtype=np.uint8)
-
-    view_v = camera.origin - hit_pos
-    view_v = view_v / (np.linalg.norm(view_v, axis=-1, keepdims=True) + 1e-9)
-
-    n_lights = light_dirs.shape[0]
-    spec_per_light = 1.0 / pow(max(n_lights - 1, 1), 0.6)
-    legacy = np.clip(legacy_lighting, 0.0, 1.0)
-    bg_f = np.array([bg_r / 255.0, bg_g / 255.0, bg_b / 255.0], dtype=np.float64)
-
-    bright_arr = np.full(hit_mask.shape, ambient, dtype=np.float64)
-    excess_arr = np.zeros(hit_mask.shape, dtype=np.float64)
-
-    for li in range(n_lights):
-        ld = light_dirs[li]
-        if shadow:
-            occluded = _any_hit_numpy_with_decay(
-                positions, ld, centers, radii, hit_mask,
-                shadow_fudge, shadow_decay_factor, shadow_decay_range,
-            )
-            lit = np.where(occluded, 0.0, 1.0)
-        else:
-            lit = np.ones(hit_mask.shape, dtype=np.float64)
-
-        n_dot_l = np.clip(np.sum(hit_normals * ld, axis=-1), 0.0, 1.0)
-
-        diff_weight = lit[hit_mask] * (n_dot_l ** reflect_power)
-        bright_arr[hit_mask] += diffuse * diff_weight / n_lights
-
-        half = ld + view_v
-        hn = np.linalg.norm(half, axis=-1, keepdims=True) + 1e-9
-        half = half / hn
-        n_dot_h = np.clip(np.sum(hit_normals * half, axis=-1), 0.0, 1.0)
-        spec_weight = lit[hit_mask] * (n_dot_h ** shininess)
-        excess_arr[hit_mask] += specular * spec_weight * spec_per_light
-
-    step += 1
-    _set_progress(step / total_steps)
-    if _check_cancel():
-        return np.full((height, width, 3), background, dtype=np.uint8)
-
-    n_dot_v_arr = np.clip(np.sum(hit_normals * view_v, axis=-1), 0.0, 1.0)
-    direct_cmp = n_dot_v_arr ** direct_specular_power
-    excess_arr[hit_mask] += direct_specular * direct_cmp
-
-    if legacy > 0.0:
-        n_dot_l0 = np.clip(np.sum(hit_normals * light_dirs[0], axis=-1), 0.0, 1.0)
-        legacy_bright = ambient + diffuse * n_dot_l0
-        bright_arr[hit_mask] = (
-            bright_arr[hit_mask] * (1.0 - legacy) + legacy_bright * legacy
-        )
-
-    bright_arr = np.clip(bright_arr, 0.0, 1.0)
-    excess_arr = np.clip(excess_arr, 0.0, 1.0)
-
-    img[hit_mask] = (hit_colors * bright_arr[hit_mask, np.newaxis] + excess_arr[hit_mask, np.newaxis]) * 255.0
-
-    if depth_cue and fog_inv_range > 0.0:
-        nd = (best_t - fog_front) * fog_inv_range
-        fog = np.zeros_like(nd)
-        mask_fog = (nd > fog_start) & hit_mask
-        if mask_fog.any():
-            fog[mask_fog] = np.clip(
-                (nd[mask_fog] - fog_start) / (1.0 - fog_start) * fog_intensity,
-                0.0, 1.0,
-            )
-        for c in range(3):
-            img[hit_mask, c] = (
-                img[hit_mask, c] * (1.0 - fog[hit_mask])
-                + bg_rgb[c] * fog[hit_mask]
-            )
-
-    step += 1
-    _set_progress(step / total_steps)
-    if _check_cancel():
-        return np.full((height, width, 3), background, dtype=np.uint8)
-
-    base = _downsample_numpy(np.clip(img, 0.0, 255.0), height, width, ssaa)
-    step += 1
-    _set_progress(step / total_steps)
-    return base
-
-
-def _build_ray_grid_numpy(camera, rw, rh, fov_rad):
-    aspect = rw / max(rh, 1)
-    half_h = math.tan(fov_rad * 0.5)
-    half_w = half_h * aspect
-    right = np.cross(camera.forward, camera.up)
-    right = right / (np.linalg.norm(right) + 1e-9)
-    up = np.cross(right, camera.forward)
-    up = up / (np.linalg.norm(up) + 1e-9)
-    y = np.linspace(half_h, -half_h, rh)
-    x = np.linspace(-half_w, half_w, rw)
-    gy, gx = np.meshgrid(y, x, indexing="ij")
-    dirs = camera.forward + right * gx[..., np.newaxis] + up * gy[..., np.newaxis]
-    dirs = dirs / np.linalg.norm(dirs, axis=-1, keepdims=True)
-    origins = np.tile(camera.origin.reshape(1, 1, 3), (rh, rw, 1))
-    return origins, dirs
-
-
-def _any_hit_numpy_with_decay(
-    origins, light_dir, centers, radii, mask,
-    fudge, decay_factor, decay_range,
-):
-    h, w = mask.shape
-    ld = light_dir / (np.linalg.norm(light_dir) + 1e-9)
-    result = np.zeros((h, w), dtype=bool)
-    offset_origins = origins + ld * fudge
-    for i in range(centers.shape[0]):
-        r = radii[i]
-        if r <= 0.0:
-            continue
-        oc = offset_origins - centers[i]
-        b = 2.0 * np.sum(oc * ld, axis=-1)
-        c = np.sum(oc * oc, axis=-1) - r * r
-        disc = b * b - 4.0 * c
-        hit = (disc >= 0) & mask
-        if not np.any(hit):
-            continue
-        sqrt_d = np.sqrt(np.maximum(disc[hit], 0.0))
-        t = (-b[hit] - sqrt_d) * 0.5
-        hit_t = t > 1e-6
-        if not np.any(hit_t):
-            continue
-        rows, cols = np.where(hit)
-        if decay_factor > 0.0:
-            d = t - decay_range
-            soft = d <= 0.0
-            good = hit_t & ~soft
-            result[rows[good], cols[good]] = True
-        else:
-            good = hit_t
-            result[rows[good], cols[good]] = True
-    return result
-
-
-def _downsample_numpy(img_float, height, width, ssaa):
-    pooled = img_float.reshape(height, ssaa, width, ssaa, 3).mean(axis=(1, 3))
-    return np.clip(pooled, 0, 255).astype(np.uint8)
 
 
 #: Sides in the prism a line segment becomes. The tracer has a sphere and a
@@ -1134,6 +857,40 @@ def traceable_geometry_counts(scene) -> dict[str, int]:
         if n:
             counts[geom.kind] = counts.get(geom.kind, 0) + n
     return counts
+
+
+def _triangle_alpha(cols, first_vertex_index, n_tris: int) -> np.ndarray:
+    """One opacity per triangle, taken where its colour is taken.
+
+    A mesh carries colour per *vertex*, and the tracer shades a triangle with a
+    single flat colour read from its first vertex -- so the alpha has to come
+    from the same place, or a translucent surface would be shaded with an
+    opacity its own colour does not have.
+
+    Parameters
+    ----------
+    cols : numpy.ndarray or None
+        Vertex colours, ``(N, 3)`` or ``(N, 4)``.
+    first_vertex_index : numpy.ndarray
+        Index of each triangle's first vertex.
+    n_tris : int
+        How many triangles.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_tris,)`` opacities; all ones when the mesh carries no alpha, which
+        is what an RGB mesh means.
+    """
+    if cols is None:
+        return np.ones(n_tris, dtype=float)
+    arr = np.asarray(cols, dtype=float)
+    if arr.ndim != 2 or arr.shape[1] < 4:
+        return np.ones(n_tris, dtype=float)
+    idx = np.asarray(first_vertex_index, dtype=int)
+    if idx.shape[0] != n_tris or idx.max(initial=-1) >= arr.shape[0]:
+        return np.ones(n_tris, dtype=float)
+    return np.clip(arr[idx, 3], 0.0, 1.0)
 
 
 def _line_segments(geom) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -1352,6 +1109,7 @@ def render_scene(
     tri_vertices_list: list[np.ndarray] = []
     tri_vnormals_list: list[np.ndarray] = []
     tri_colors_list: list[np.ndarray] = []
+    tri_alpha_list: list[np.ndarray] = []
 
     # One radius for every line in the picture, as PyMOL uses one `lineradius`
     # per CGO: measured where the scene is, not per segment, so a wireframe does
@@ -1381,7 +1139,12 @@ def render_scene(
             for i in range(positions.shape[0]):
                 r = float(radii_arr[i]) if radii_arr is not None else float(meta_radius)
                 c = np.clip(colors[i, :3], 0.0, 1.0) if colors is not None else np.array([0.8, 0.8, 0.8])
-                spheres.append(Sphere(center=positions[i], radius=r, color=c))
+                a = (
+                    float(colors[i, 3])
+                    if colors is not None and colors.shape[1] > 3
+                    else 1.0
+                )
+                spheres.append(Sphere(center=positions[i], radius=r, color=c, alpha=a))
 
         elif geom.kind == "mesh" and (geom.meta or {}).get("spheres") is not None:
             # A mesh that is really a pile of spheres says so, and the tracer
@@ -1396,6 +1159,9 @@ def render_scene(
                     center=centres[i],
                     radius=float(ball_radii[i]),
                     color=np.clip(ball_cols[i, :3], 0.0, 1.0),
+                    alpha=(
+                        float(ball_cols[i, 3]) if ball_cols.shape[1] > 3 else 1.0
+                    ),
                 ))
 
         elif geom.kind == "mesh":
@@ -1422,6 +1188,7 @@ def render_scene(
                 tri_vertices_list.append(t)
                 tri_vnormals_list.append(tn)
                 tri_colors_list.append(tc)
+                tri_alpha_list.append(_triangle_alpha(cols, idx[:, 0], idx.shape[0]))
 
             else:
                 # Non-indexed triangles (N*3 vertices in triangle order)
@@ -1431,13 +1198,16 @@ def render_scene(
                     tn = norms.reshape(n_tris, 3, 3)
                 else:
                     tn = np.zeros((n_tris, 3, 3), dtype=float)
-                if cols is not None:
-                    tc = cols.reshape(n_tris, 3, 3)[:, 0, :3]
+                if cols is not None and cols.shape[-1] >= 3:
+                    tc = cols.reshape(n_tris, 3, -1)[:, 0, :3]
                 else:
                     tc = np.full((n_tris, 3), 0.8)
                 tri_vertices_list.append(t)
                 tri_vnormals_list.append(tn)
                 tri_colors_list.append(tc)
+                tri_alpha_list.append(
+                    _triangle_alpha(cols, np.arange(0, n_tris * 3, 3), n_tris)
+                )
 
         elif geom.kind == "line":
             caps, lv, ln, lc = _sausages(*_line_segments(geom), shaft_radius)
@@ -1446,16 +1216,27 @@ def render_scene(
                 tri_vertices_list.append(lv)
                 tri_vnormals_list.append(ln)
                 tri_colors_list.append(lc)
+                # A wireframe is opaque; `_sausages` builds its own geometry and
+                # carries no alpha of its own.
+                tri_alpha_list.append(np.ones(lv.shape[0], dtype=float))
 
-    # Concatenate all triangle data
+    # Concatenate all triangle data. The alpha list is built alongside the
+    # colours at every append site, so a mismatch means one was missed -- which
+    # is what happened when `line` grew triangles and no opacity, and surfaced
+    # far away as "need at least one array to concatenate".
+    assert len(tri_alpha_list) == len(tri_colors_list), (
+        "every triangle chunk needs an opacity chunk"
+    )
     if tri_vertices_list:
         all_verts = np.concatenate(tri_vertices_list, axis=0)
         all_norms = np.concatenate(tri_vnormals_list, axis=0)
         all_cols = np.concatenate(tri_colors_list, axis=0)
+        all_alpha = np.concatenate(tri_alpha_list, axis=0)
     else:
         all_verts = np.zeros((0, 3, 3), dtype=float)
         all_norms = np.zeros((0, 3, 3), dtype=float)
         all_cols = np.zeros((0, 3), dtype=float)
+        all_alpha = np.zeros(0, dtype=float)
 
     return trace(
         spheres=spheres,
@@ -1474,5 +1255,6 @@ def render_scene(
         tri_vertices=all_verts,
         tri_vnormals=all_norms,
         tri_colors=all_cols,
+        tri_alpha=all_alpha,
         **kwargs
     )

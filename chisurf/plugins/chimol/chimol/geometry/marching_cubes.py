@@ -24,15 +24,12 @@ Corner / edge numbering (Lorensen–Cline):
 
 from __future__ import annotations
 
+# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
+# here optional and every fallback beside it unexercised -- which is how the
+# ray tracer's pure-NumPy twin came to be silently broken while every test
+# passed.
+import numba as _nb
 import numpy as np
-
-try:  # optional numba acceleration
-    import numba as _nb  # type: ignore
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - environment dependent
-    _nb = None  # type: ignore
-    _HAVE_NUMBA = False
-
 
 # Corner offsets in (x, y, z).
 _CORNERS = np.array(
@@ -118,142 +115,86 @@ def _load_tri_table() -> np.ndarray:
 _TRI_TABLE = _load_tri_table()
 
 
-def _marching_cubes_numpy(grid: np.ndarray, level: float):
-    """Vectorised NumPy marching cubes (fallback when numba is unavailable)."""
-    g = np.ascontiguousarray(grid, dtype=np.float64)
-    nx, ny, nz = g.shape
-    if nx < 2 or ny < 2 or nz < 2:
-        return np.zeros((0, 3)), np.zeros((0, 3), dtype=np.int64)
+@_nb.njit(cache=True)  # type: ignore[misc]
+def _mc_count(grid, level, corners, tri_table):
+    nx, ny, nz = grid.shape
+    n_tri = 0
+    for ci in range(nx - 1):
+        for cj in range(ny - 1):
+            for ck in range(nz - 1):
+                idx = 0
+                for c in range(8):
+                    if grid[ci + corners[c, 0], cj + corners[c, 1], ck + corners[c, 2]] < level:
+                        idx |= 1 << c
+                if idx == 0 or idx == 255:
+                    continue
+                t = 0
+                while tri_table[idx, t] != -1:
+                    n_tri += 1
+                    t += 3
+    return n_tri
 
-    # Corner value arrays for every cell, shape (nx-1, ny-1, nz-1, 8).
-    corner_vals = np.empty((nx - 1, ny - 1, nz - 1, 8), dtype=np.float64)
-    for c in range(8):
-        ox, oy, oz = _CORNERS[c]
-        corner_vals[..., c] = g[ox:ox + nx - 1, oy:oy + ny - 1, oz:oz + nz - 1]
+@_nb.njit(cache=True)  # type: ignore[misc]
+def _mc_fill(grid, level, corners, edge_corners, edge_map, tri_table, n_tri):
+    # Exact allocation from the counting pass avoids the huge worst-case
+    # (n_cells * 5) buffer that dominated runtime for large grids.
+    verts = np.empty((n_tri * 3, 3), dtype=np.float64)
+    faces = np.empty((n_tri, 3), dtype=np.int64)
+    nx, ny, nz = grid.shape
+    # Weld vertices via a per-grid-edge index so adjacent cells share the
+    # vertex on their common edge (matches skimage's vertex count and gives
+    # a connected mesh rather than 3 loose verts per triangle).
+    edge_vid = np.full(3 * nx * ny * nz, -1, dtype=np.int64)
+    nv = 0
+    nf = 0
+    cv = np.empty(8, dtype=np.float64)
+    for ci in range(nx - 1):
+        for cj in range(ny - 1):
+            for ck in range(nz - 1):
+                idx = 0
+                for c in range(8):
+                    vx = grid[ci + corners[c, 0], cj + corners[c, 1], ck + corners[c, 2]]
+                    cv[c] = vx
+                    if vx < level:
+                        idx |= 1 << c
+                if idx == 0 or idx == 255:
+                    continue
+                t = 0
+                while tri_table[idx, t] != -1:
+                    for kk in range(3):
+                        e = tri_table[idx, t + kk]
+                        axis = edge_map[e, 0]
+                        ei = ci + edge_map[e, 1]
+                        ej = cj + edge_map[e, 2]
+                        ek = ck + edge_map[e, 3]
+                        gid = ((axis * nx + ei) * ny + ej) * nz + ek
+                        vid = edge_vid[gid]
+                        if vid == -1:
+                            a = edge_corners[e, 0]
+                            b = edge_corners[e, 1]
+                            va = cv[a]
+                            vb = cv[b]
+                            denom = vb - va
+                            if denom < 1e-12 and denom > -1e-12:
+                                mu = 0.5
+                            else:
+                                mu = (level - va) / denom
+                            verts[nv, 0] = ci + corners[a, 0] + mu * (corners[b, 0] - corners[a, 0])
+                            verts[nv, 1] = cj + corners[a, 1] + mu * (corners[b, 1] - corners[a, 1])
+                            verts[nv, 2] = ck + corners[a, 2] + mu * (corners[b, 2] - corners[a, 2])
+                            vid = nv
+                            edge_vid[gid] = vid
+                            nv += 1
+                        faces[nf, kk] = vid
+                    nf += 1
+                    t += 3
+    return verts[:nv], faces[:nf]
 
-    cube_index = np.zeros((nx - 1, ny - 1, nz - 1), dtype=np.int64)
-    for c in range(8):
-        cube_index |= (corner_vals[..., c] < level).astype(np.int64) << c
-
-    active = (cube_index != 0) & (cube_index != 255)
-    cell_ix = np.argwhere(active)
-    if cell_ix.shape[0] == 0:
-        return np.zeros((0, 3)), np.zeros((0, 3), dtype=np.int64)
-
-    verts_out: list[np.ndarray] = []
-    tris_out: list[list[int]] = []
-    vcount = 0
-    for (ci, cj, ck) in cell_ix:
-        idx = int(cube_index[ci, cj, ck])
-        cv = corner_vals[ci, cj, ck]
-        row = _TRI_TABLE[idx]
-        edge_vert: dict[int, int] = {}
-        base = np.array([ci, cj, ck], dtype=np.float64)
-        t = 0
-        while row[t] != -1:
-            tri = []
-            for k in range(3):
-                e = int(row[t + k])
-                if e not in edge_vert:
-                    a, b = _EDGE_CORNERS[e]
-                    va, vb = cv[a], cv[b]
-                    denom = vb - va
-                    mu = 0.5 if abs(denom) < 1e-12 else (level - va) / denom
-                    p = base + _CORNERS[a] + mu * (_CORNERS[b] - _CORNERS[a])
-                    edge_vert[e] = vcount
-                    verts_out.append(p)
-                    vcount += 1
-                tri.append(edge_vert[e])
-            tris_out.append(tri)
-            t += 3
-
-    verts = np.asarray(verts_out, dtype=np.float64)
-    faces = np.asarray(tris_out, dtype=np.int64)
-    return verts, faces
-
-
-if _HAVE_NUMBA and _nb is not None:
-
-    @_nb.njit(cache=True)  # type: ignore[misc]
-    def _mc_count(grid, level, corners, tri_table):
-        nx, ny, nz = grid.shape
-        n_tri = 0
-        for ci in range(nx - 1):
-            for cj in range(ny - 1):
-                for ck in range(nz - 1):
-                    idx = 0
-                    for c in range(8):
-                        if grid[ci + corners[c, 0], cj + corners[c, 1], ck + corners[c, 2]] < level:
-                            idx |= 1 << c
-                    if idx == 0 or idx == 255:
-                        continue
-                    t = 0
-                    while tri_table[idx, t] != -1:
-                        n_tri += 1
-                        t += 3
-        return n_tri
-
-    @_nb.njit(cache=True)  # type: ignore[misc]
-    def _mc_fill(grid, level, corners, edge_corners, edge_map, tri_table, n_tri):
-        # Exact allocation from the counting pass avoids the huge worst-case
-        # (n_cells * 5) buffer that dominated runtime for large grids.
-        verts = np.empty((n_tri * 3, 3), dtype=np.float64)
-        faces = np.empty((n_tri, 3), dtype=np.int64)
-        nx, ny, nz = grid.shape
-        # Weld vertices via a per-grid-edge index so adjacent cells share the
-        # vertex on their common edge (matches skimage's vertex count and gives
-        # a connected mesh rather than 3 loose verts per triangle).
-        edge_vid = np.full(3 * nx * ny * nz, -1, dtype=np.int64)
-        nv = 0
-        nf = 0
-        cv = np.empty(8, dtype=np.float64)
-        for ci in range(nx - 1):
-            for cj in range(ny - 1):
-                for ck in range(nz - 1):
-                    idx = 0
-                    for c in range(8):
-                        vx = grid[ci + corners[c, 0], cj + corners[c, 1], ck + corners[c, 2]]
-                        cv[c] = vx
-                        if vx < level:
-                            idx |= 1 << c
-                    if idx == 0 or idx == 255:
-                        continue
-                    t = 0
-                    while tri_table[idx, t] != -1:
-                        for kk in range(3):
-                            e = tri_table[idx, t + kk]
-                            axis = edge_map[e, 0]
-                            ei = ci + edge_map[e, 1]
-                            ej = cj + edge_map[e, 2]
-                            ek = ck + edge_map[e, 3]
-                            gid = ((axis * nx + ei) * ny + ej) * nz + ek
-                            vid = edge_vid[gid]
-                            if vid == -1:
-                                a = edge_corners[e, 0]
-                                b = edge_corners[e, 1]
-                                va = cv[a]
-                                vb = cv[b]
-                                denom = vb - va
-                                if denom < 1e-12 and denom > -1e-12:
-                                    mu = 0.5
-                                else:
-                                    mu = (level - va) / denom
-                                verts[nv, 0] = ci + corners[a, 0] + mu * (corners[b, 0] - corners[a, 0])
-                                verts[nv, 1] = cj + corners[a, 1] + mu * (corners[b, 1] - corners[a, 1])
-                                verts[nv, 2] = ck + corners[a, 2] + mu * (corners[b, 2] - corners[a, 2])
-                                vid = nv
-                                edge_vid[gid] = vid
-                                nv += 1
-                            faces[nf, kk] = vid
-                        nf += 1
-                        t += 3
-        return verts[:nv], faces[:nf]
-
-    def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
-        n_tri = _mc_count(grid, level, corners, tri_table)
-        if n_tri == 0:
-            return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
-        return _mc_fill(grid, level, corners, edge_corners, edge_map, tri_table, n_tri)
+def _mc_kernel(grid, level, corners, edge_corners, edge_map, tri_table):
+    n_tri = _mc_count(grid, level, corners, tri_table)
+    if n_tri == 0:
+        return np.zeros((0, 3), dtype=np.float64), np.zeros((0, 3), dtype=np.int64)
+    return _mc_fill(grid, level, corners, edge_corners, edge_map, tri_table, n_tri)
 
 
 def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0)):
@@ -285,10 +226,7 @@ def marching_cubes(grid, level, spacing=(1.0, 1.0, 1.0)):
             np.zeros((0, 3), dtype=np.float64),
         )
 
-    if _HAVE_NUMBA and _nb is not None:
-        verts, faces = _mc_kernel(g, level, _CORNERS, _EDGE_CORNERS, _EDGE_MAP, _TRI_TABLE)
-    else:  # pragma: no cover - numba is present in the supported env
-        verts, faces = _marching_cubes_numpy(g, level)
+    verts, faces = _mc_kernel(g, level, _CORNERS, _EDGE_CORNERS, _EDGE_MAP, _TRI_TABLE)
 
     if verts.shape[0] == 0:
         return (

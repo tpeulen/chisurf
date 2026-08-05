@@ -538,12 +538,13 @@ def test_raytracer_gamma_background():
 
 def test_raytracer_soft_shadow():
     """Soft shadow makes shadowed region brighter than hard shadow."""
+    # Numba is a hard requirement of the tracer now -- the pure-NumPy twin that
+    # this used to skip for is gone, because nothing ran it and it had rotted.
     from chisurf.plugins.chimol.chimol.renderer.raytracer import (
-        Sphere, RayCamera, trace,
-        _HAVE_NUMBA,
+        RayCamera,
+        Sphere,
+        trace,
     )
-    if not _HAVE_NUMBA:
-        pytest.skip("Soft shadow requires Numba kernel")
 
     # Two spheres side by side at same depth. Light from left [-1,0,0].
     # Sphere 2 (right) casts shadow on sphere 1 (left). The shadow on

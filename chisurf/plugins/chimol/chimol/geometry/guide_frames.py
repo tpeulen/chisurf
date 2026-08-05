@@ -32,65 +32,60 @@ the normalised sum of the two segment directions meeting there.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
-import math
-
+# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
+# here optional and every fallback beside it unexercised -- which is how the
+# ray tracer's pure-NumPy twin came to be silently broken while every test
+# passed.
+import numba as nb
 import numpy as np
 
-try:  # Optional acceleration via numba, as the cartoon and occlusion kernels do.
-    import numba as nb  # type: ignore
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - run-time availability
-    nb = None  # type: ignore
-    _HAVE_NUMBA = False
 
+@nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+def _flip_sweep_nb(out, candidates, normals, interior):
+    """PyMOL's flip-consistency sweep: pick, per residue, whichever of the
+    two candidate orientations agrees with the neighbour already decided.
 
-if _HAVE_NUMBA and nb is not None:
+    Sequential by nature -- each step reads the neighbour it just wrote --
+    so there is nothing to vectorise, and at three floats per residue the
+    NumPy version spent its time on dispatch. Compiled instead.
+    """
+    n = out.shape[0]
+    for a in range(1, n - 1):
+        if not interior[a]:
+            continue
+        ax, ay, az = normals[a - 1, 0], normals[a - 1, 1], normals[a - 1, 2]
+        if ax == 0.0 and ay == 0.0 and az == 0.0:
+            continue
+        axis_len = math.sqrt(ax * ax + ay * ay + az * az)
+        ax, ay, az = ax / axis_len, ay / axis_len, az / axis_len
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-    def _flip_sweep_nb(out, candidates, normals, interior):
-        """PyMOL's flip-consistency sweep: pick, per residue, whichever of the
-        two candidate orientations agrees with the neighbour already decided.
+        ox, oy, oz = out[a - 1, 0], out[a - 1, 1], out[a - 1, 2]
+        along = ox * ax + oy * ay + oz * az
+        px, py, pz = ox - along * ax, oy - along * ay, oz - along * az
+        plen = math.sqrt(px * px + py * py + pz * pz)
+        if plen > 1e-12:
+            px, py, pz = px / plen, py / plen, pz / plen
 
-        Sequential by nature -- each step reads the neighbour it just wrote --
-        so there is nothing to vectorise, and at three floats per residue the
-        NumPy version spent its time on dispatch. Compiled instead.
-        """
-        n = out.shape[0]
-        for a in range(1, n - 1):
-            if not interior[a]:
-                continue
-            ax, ay, az = normals[a - 1, 0], normals[a - 1, 1], normals[a - 1, 2]
-            if ax == 0.0 and ay == 0.0 and az == 0.0:
-                continue
-            axis_len = math.sqrt(ax * ax + ay * ay + az * az)
-            ax, ay, az = ax / axis_len, ay / axis_len, az / axis_len
-
-            ox, oy, oz = out[a - 1, 0], out[a - 1, 1], out[a - 1, 2]
-            along = ox * ax + oy * ay + oz * az
-            px, py, pz = ox - along * ax, oy - along * ay, oz - along * az
-            plen = math.sqrt(px * px + py * py + pz * pz)
-            if plen > 1e-12:
-                px, py, pz = px / plen, py / plen, pz / plen
-
-            best = -1.0e308
-            chosen = 0
-            for c in range(candidates.shape[1]):
-                cx, cy, cz = (candidates[a, c, 0], candidates[a, c, 1],
-                              candidates[a, c, 2])
-                along = cx * ax + cy * ay + cz * az
-                qx, qy, qz = cx - along * ax, cy - along * ay, cz - along * az
-                qlen = math.sqrt(qx * qx + qy * qy + qz * qz)
-                if qlen > 1e-12:
-                    qx, qy, qz = qx / qlen, qy / qlen, qz / qlen
-                score = qx * px + qy * py + qz * pz
-                if score > best:
-                    best = score
-                    chosen = c
-            out[a, 0] = candidates[a, chosen, 0]
-            out[a, 1] = candidates[a, chosen, 1]
-            out[a, 2] = candidates[a, chosen, 2]
+        best = -1.0e308
+        chosen = 0
+        for c in range(candidates.shape[1]):
+            cx, cy, cz = (candidates[a, c, 0], candidates[a, c, 1],
+                          candidates[a, c, 2])
+            along = cx * ax + cy * ay + cz * az
+            qx, qy, qz = cx - along * ax, cy - along * ay, cz - along * az
+            qlen = math.sqrt(qx * qx + qy * qy + qz * qz)
+            if qlen > 1e-12:
+                qx, qy, qz = qx / qlen, qy / qlen, qz / qlen
+            score = qx * px + qy * py + qz * pz
+            if score > best:
+                best = score
+                chosen = c
+        out[a, 0] = candidates[a, chosen, 0]
+        out[a, 1] = candidates[a, chosen, 1]
+        out[a, 2] = candidates[a, chosen, 2]
 
 
 __all__ = [
@@ -317,15 +312,12 @@ def refine_normals(
     # so it stays a loop. The arithmetic is on plain floats, though: at three
     # components per residue, the four NumPy calls this used to make per step
     # were almost entirely call overhead and temporary arrays.
-    if _HAVE_NUMBA and nb is not None:
-        _flip_sweep_nb(
-            out,
-            np.ascontiguousarray(candidates),
-            np.ascontiguousarray(normals, dtype=float),
-            np.ascontiguousarray(interior),
-        )
-    else:
-        _flip_sweep_python(out, candidates, normals, interior, n)
+    _flip_sweep_nb(
+        out,
+        np.ascontiguousarray(candidates),
+        np.ascontiguousarray(normals, dtype=float),
+        np.ascontiguousarray(interior),
+    )
 
     # 4. soften kinks -- reads only the swept result, never its own output, so
     # every residue is independent and the whole pass is one set of array ops.
@@ -350,48 +342,6 @@ def refine_normals(
             softened[rows] = _unit((1.0 - weight) * here + weight * blended)
     return softened
 
-
-def _flip_sweep_python(out, candidates, normals, interior, n):
-    """The NumPy-only form of :func:`_flip_sweep_nb`, for installs without numba.
-
-    Kept in step with the compiled one by a test that runs both and compares the
-    ribbon, since only one of them executes in any given process.
-    """
-    out_rows = out.tolist()
-    candidate_rows = candidates.tolist()
-    normal_rows = normals.tolist()
-    interior_rows = interior.tolist()
-    for a in range(1, n - 1):
-        if not interior_rows[a]:
-            continue
-        ax, ay, az = normal_rows[a - 1]
-        if ax == 0.0 and ay == 0.0 and az == 0.0:
-            continue
-        axis_len = math.sqrt(ax * ax + ay * ay + az * az)
-        ax, ay, az = ax / axis_len, ay / axis_len, az / axis_len
-
-        ox, oy, oz = out_rows[a - 1]
-        along = ox * ax + oy * ay + oz * az
-        px, py, pz = ox - along * ax, oy - along * ay, oz - along * az
-        plen = math.sqrt(px * px + py * py + pz * pz)
-        if plen > 1e-12:
-            px, py, pz = px / plen, py / plen, pz / plen
-
-        best = -math.inf
-        chosen = candidate_rows[a][0]
-        for candidate in candidate_rows[a]:
-            cx, cy, cz = candidate
-            along = cx * ax + cy * ay + cz * az
-            qx, qy, qz = cx - along * ax, cy - along * ay, cz - along * az
-            qlen = math.sqrt(qx * qx + qy * qy + qz * qz)
-            if qlen > 1e-12:
-                qx, qy, qz = qx / qlen, qy / qlen, qz / qlen
-            score = qx * px + qy * py + qz * pz
-            if score > best:
-                best = score
-                chosen = candidate
-        out_rows[a] = chosen
-    out[:] = out_rows
 
 def refine_sheet_tips(
     tangents: np.ndarray,

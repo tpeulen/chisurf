@@ -23,8 +23,9 @@ separate program.
 :class: warning
 The command surface is a substantial subset, not the whole of PyMOL. The ray
 tracer draws every representation the viewport does — cartoon, sticks, spheres,
-surface, wireframe — but not **labels**, which are rasterised glyphs; it names
-what it left out rather than letting you hunt for it in the picture. The current
+surface, wireframe — and sees through a translucent one, but not **labels**,
+which are rasterised glyphs; it names what it left out rather than letting you
+hunt for it in the picture. The current
 coverage and the known gaps are tracked in the OKF bundle under
 `okf/plugins/pymol-parity.md`.
 :::
@@ -537,6 +538,11 @@ set two_sided_lighting, on   # light the inside faces you can now see
 setting carries the conversion so there is one stored number rather than two
 that must agree: `set transparency, 0.4` stores an alpha of 0.6, and
 `get transparency` answers 0.4.
+
+`ray` sees through it too: a traced image composites front to back, so what is
+inside a translucent surface comes out as it does in the viewport. That costs
+nothing on an opaque scene — the walk stops at the first solid surface — and
+roughly 2.4× on a translucent one.
 
 `two_sided_lighting` only matters once the surface is see-through. A back face
 has its normal pointing away from you, so the inside of the shell comes out

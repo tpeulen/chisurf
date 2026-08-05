@@ -1,17 +1,14 @@
 from __future__ import annotations
 
+import math
 from typing import Optional, Tuple
 
-import math
-
+# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
+# here optional and every fallback beside it unexercised -- which is how the
+# ray tracer's pure-NumPy twin came to be silently broken while every test
+# passed.
+import numba as nb
 import numpy as np
-
-try:  # Optional acceleration via numba
-    import numba as nb  # type: ignore
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - run-time availability
-    nb = None  # type: ignore
-    _HAVE_NUMBA = False
 
 # Isosurface extraction is a self-contained numba marching cubes (see
 # marching_cubes.py) so the surface representations depend only on IMP/NumPy/numba
@@ -26,265 +23,164 @@ _HAVE_SKIMAGE = True  # retained name: isosurface extraction is always available
 # numba EDT below (_distance_transform_edt).
 
 
-if _HAVE_NUMBA and nb is not None:
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-    def _edt_1d_sq(f: np.ndarray) -> np.ndarray:
-        """1-D squared Euclidean distance transform (Felzenszwalb-Huttenlocher).
+@nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+def _edt_1d_sq(f: np.ndarray) -> np.ndarray:
+    """1-D squared Euclidean distance transform (Felzenszwalb-Huttenlocher).
 
-        ``f`` holds the parabola heights (0 at seeds, +inf elsewhere on the first
-        pass); returns ``min_p (q-p)^2 + f[p]`` for every ``q``.
-        """
-        n = f.shape[0]
-        d = np.empty(n, dtype=np.float64)
-        v = np.empty(n, dtype=np.int64)
-        z = np.empty(n + 1, dtype=np.float64)
-        big = 1.0e20
-        k = 0
-        v[0] = 0
-        z[0] = -big
-        z[1] = big
-        for q in range(1, n):
+    ``f`` holds the parabola heights (0 at seeds, +inf elsewhere on the first
+    pass); returns ``min_p (q-p)^2 + f[p]`` for every ``q``.
+    """
+    n = f.shape[0]
+    d = np.empty(n, dtype=np.float64)
+    v = np.empty(n, dtype=np.int64)
+    z = np.empty(n + 1, dtype=np.float64)
+    big = 1.0e20
+    k = 0
+    v[0] = 0
+    z[0] = -big
+    z[1] = big
+    for q in range(1, n):
+        s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
+        while s <= z[k]:
+            k -= 1
             s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
-            while s <= z[k]:
-                k -= 1
-                s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
+        k += 1
+        v[k] = q
+        z[k] = s
+        z[k + 1] = big
+    k = 0
+    for q in range(n):
+        while z[k + 1] < q:
             k += 1
-            v[k] = q
-            z[k] = s
-            z[k + 1] = big
-        k = 0
-        for q in range(n):
-            while z[k + 1] < q:
-                k += 1
-            dq = q - v[k]
-            d[q] = dq * dq + f[v[k]]
-        return d
+        dq = q - v[k]
+        d[q] = dq * dq + f[v[k]]
+    return d
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-    def _edt_squared_3d(forbidden: np.ndarray) -> np.ndarray:
-        """Squared EDT: distance to the nearest zero voxel (like scipy's EDT)."""
-        nx, ny, nz = forbidden.shape
-        big = 1.0e20
-        g = np.empty((nx, ny, nz), dtype=np.float64)
-        for i in range(nx):
-            for j in range(ny):
-                for k in range(nz):
-                    g[i, j, k] = 0.0 if forbidden[i, j, k] == 0 else big
+@nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+def _edt_squared_3d(forbidden: np.ndarray) -> np.ndarray:
+    """Squared EDT: distance to the nearest zero voxel (like scipy's EDT)."""
+    nx, ny, nz = forbidden.shape
+    big = 1.0e20
+    g = np.empty((nx, ny, nz), dtype=np.float64)
+    for i in range(nx):
         for j in range(ny):
             for k in range(nz):
-                g[:, j, k] = _edt_1d_sq(g[:, j, k].copy())
-        for i in range(nx):
-            for k in range(nz):
-                g[i, :, k] = _edt_1d_sq(g[i, :, k].copy())
-        for i in range(nx):
-            for j in range(ny):
-                g[i, j, :] = _edt_1d_sq(g[i, j, :].copy())
-        return g
+                g[i, j, k] = 0.0 if forbidden[i, j, k] == 0 else big
+    for j in range(ny):
+        for k in range(nz):
+            g[:, j, k] = _edt_1d_sq(g[:, j, k].copy())
+    for i in range(nx):
+        for k in range(nz):
+            g[i, :, k] = _edt_1d_sq(g[i, :, k].copy())
+    for i in range(nx):
+        for j in range(ny):
+            g[i, j, :] = _edt_1d_sq(g[i, j, :].copy())
+    return g
 
-    @nb.jit(nopython=True, nogil=True)  # type: ignore[misc]
-    def _accumulate_gaussians_nb(
-        pts: np.ndarray,
-        sigmas: np.ndarray,
-        grid: np.ndarray,
-        origin: np.ndarray,
-        spacing: float,
-        cutoff_factor: float,
-    ) -> None:
-        nx, ny, nz = grid.shape
-        for i in range(pts.shape[0]):
-            sigma = sigmas[i]
-            if sigma <= 0.0 or not np.isfinite(sigma):
-                continue
-            cutoff = cutoff_factor * sigma
-            px = pts[i, 0]
-            py = pts[i, 1]
-            pz = pts[i, 2]
-            inv_two_sigma2 = 1.0 / (2.0 * sigma * sigma)
+@nb.jit(nopython=True, nogil=True)  # type: ignore[misc]
+def _accumulate_gaussians_nb(
+    pts: np.ndarray,
+    sigmas: np.ndarray,
+    grid: np.ndarray,
+    origin: np.ndarray,
+    spacing: float,
+    cutoff_factor: float,
+) -> None:
+    nx, ny, nz = grid.shape
+    for i in range(pts.shape[0]):
+        sigma = sigmas[i]
+        if sigma <= 0.0 or not np.isfinite(sigma):
+            continue
+        cutoff = cutoff_factor * sigma
+        px = pts[i, 0]
+        py = pts[i, 1]
+        pz = pts[i, 2]
+        inv_two_sigma2 = 1.0 / (2.0 * sigma * sigma)
 
-            min_ix = max(int(math.floor((px - origin[0] - cutoff) / spacing)), 0)
-            min_iy = max(int(math.floor((py - origin[1] - cutoff) / spacing)), 0)
-            min_iz = max(int(math.floor((pz - origin[2] - cutoff) / spacing)), 0)
-            max_ix = min(int(math.ceil((px - origin[0] + cutoff) / spacing)), nx - 1)
-            max_iy = min(int(math.ceil((py - origin[1] + cutoff) / spacing)), ny - 1)
-            max_iz = min(int(math.ceil((pz - origin[2] + cutoff) / spacing)), nz - 1)
+        min_ix = max(int(math.floor((px - origin[0] - cutoff) / spacing)), 0)
+        min_iy = max(int(math.floor((py - origin[1] - cutoff) / spacing)), 0)
+        min_iz = max(int(math.floor((pz - origin[2] - cutoff) / spacing)), 0)
+        max_ix = min(int(math.ceil((px - origin[0] + cutoff) / spacing)), nx - 1)
+        max_iy = min(int(math.ceil((py - origin[1] + cutoff) / spacing)), ny - 1)
+        max_iz = min(int(math.ceil((pz - origin[2] + cutoff) / spacing)), nz - 1)
 
-            for ix in range(min_ix, max_ix + 1):
-                dx = origin[0] + ix * spacing - px
-                dx2 = dx * dx
-                for iy in range(min_iy, max_iy + 1):
-                    dy = origin[1] + iy * spacing - py
-                    dy2 = dy * dy
-                    for iz in range(min_iz, max_iz + 1):
-                        dz = origin[2] + iz * spacing - pz
-                        dist2 = dx2 + dy2 + dz * dz
-                        grid[ix, iy, iz] += math.exp(-dist2 * inv_two_sigma2)
+        for ix in range(min_ix, max_ix + 1):
+            dx = origin[0] + ix * spacing - px
+            dx2 = dx * dx
+            for iy in range(min_iy, max_iy + 1):
+                dy = origin[1] + iy * spacing - py
+                dy2 = dy * dy
+                for iz in range(min_iz, max_iz + 1):
+                    dz = origin[2] + iz * spacing - pz
+                    dist2 = dx2 + dy2 + dz * dz
+                    grid[ix, iy, iz] += math.exp(-dist2 * inv_two_sigma2)
 
-    @nb.jit(nopython=True, nogil=True)  # type: ignore[misc]
-    def _accumulate_wyvill_nb(
-        pts: np.ndarray,
-        sigmas: np.ndarray,
-        grid: np.ndarray,
-        origin: np.ndarray,
-        spacing: float,
-    ) -> None:
-        nx, ny, nz = grid.shape
-        for i in range(pts.shape[0]):
-            r_max = sigmas[i]
-            if r_max <= 0.0 or not np.isfinite(r_max):
-                continue
-            px = pts[i, 0]
-            py = pts[i, 1]
-            pz = pts[i, 2]
-            r_max2 = r_max * r_max
-            inv_r_max2 = 1.0 / r_max2
+@nb.jit(nopython=True, nogil=True)  # type: ignore[misc]
+def _accumulate_wyvill_nb(
+    pts: np.ndarray,
+    sigmas: np.ndarray,
+    grid: np.ndarray,
+    origin: np.ndarray,
+    spacing: float,
+) -> None:
+    nx, ny, nz = grid.shape
+    for i in range(pts.shape[0]):
+        r_max = sigmas[i]
+        if r_max <= 0.0 or not np.isfinite(r_max):
+            continue
+        px = pts[i, 0]
+        py = pts[i, 1]
+        pz = pts[i, 2]
+        r_max2 = r_max * r_max
+        inv_r_max2 = 1.0 / r_max2
 
-            min_ix = max(int(math.floor((px - origin[0] - r_max) / spacing)), 0)
-            min_iy = max(int(math.floor((py - origin[1] - r_max) / spacing)), 0)
-            min_iz = max(int(math.floor((pz - origin[2] - r_max) / spacing)), 0)
-            max_ix = min(int(math.ceil((px - origin[0] + r_max) / spacing)), nx - 1)
-            max_iy = min(int(math.ceil((py - origin[1] + r_max) / spacing)), ny - 1)
-            max_iz = min(int(math.ceil((pz - origin[2] + r_max) / spacing)), nz - 1)
+        min_ix = max(int(math.floor((px - origin[0] - r_max) / spacing)), 0)
+        min_iy = max(int(math.floor((py - origin[1] - r_max) / spacing)), 0)
+        min_iz = max(int(math.floor((pz - origin[2] - r_max) / spacing)), 0)
+        max_ix = min(int(math.ceil((px - origin[0] + r_max) / spacing)), nx - 1)
+        max_iy = min(int(math.ceil((py - origin[1] + r_max) / spacing)), ny - 1)
+        max_iz = min(int(math.ceil((pz - origin[2] + r_max) / spacing)), nz - 1)
 
-            for ix in range(min_ix, max_ix + 1):
-                dx = origin[0] + ix * spacing - px
-                dx2 = dx * dx
-                for iy in range(min_iy, max_iy + 1):
-                    dy = origin[1] + iy * spacing - py
-                    dy2 = dy * dy
-                    for iz in range(min_iz, max_iz + 1):
-                        dz = origin[2] + iz * spacing - pz
-                        dist2 = dx2 + dy2 + dz * dz
-                        if dist2 < r_max2:
-                            u = dist2 * inv_r_max2
-                            u2 = u * u
-                            val = (9.0 - 22.0 * u + 17.0 * u2 - 4.0 * u2 * u) / 9.0
-                            grid[ix, iy, iz] += val
+        for ix in range(min_ix, max_ix + 1):
+            dx = origin[0] + ix * spacing - px
+            dx2 = dx * dx
+            for iy in range(min_iy, max_iy + 1):
+                dy = origin[1] + iy * spacing - py
+                dy2 = dy * dy
+                for iz in range(min_iz, max_iz + 1):
+                    dz = origin[2] + iz * spacing - pz
+                    dist2 = dx2 + dy2 + dz * dz
+                    if dist2 < r_max2:
+                        u = dist2 * inv_r_max2
+                        u2 = u * u
+                        val = (9.0 - 22.0 * u + 17.0 * u2 - 4.0 * u2 * u) / 9.0
+                        grid[ix, iy, iz] += val
 
-    @nb.jit(nopython=True, nogil=True, parallel=True)  # type: ignore[misc]
-    def _compute_distance_grid_nb(
-        pts: np.ndarray,
-        radii: np.ndarray,
-        grid: np.ndarray,
-        origin: np.ndarray,
-        spacing: float,
-    ) -> None:
-        nx, ny, nz = grid.shape
-        for ix in nb.prange(nx):
-            x = origin[0] + ix * spacing
-            for iy in range(ny):
-                y = origin[1] + iy * spacing
-                for iz in range(nz):
-                    z = origin[2] + iz * spacing
-                    min_dist = 999999.0
-                    for i in range(pts.shape[0]):
-                        dx = x - pts[i, 0]
-                        dy = y - pts[i, 1]
-                        dz = z - pts[i, 2]
-                        d = math.sqrt(dx*dx + dy*dy + dz*dz) - radii[i]
-                        if d < min_dist:
-                            min_dist = d
-                    grid[ix, iy, iz] = min_dist
-else:
-
-    def _accumulate_gaussians_nb(
-        pts: np.ndarray,
-        sigmas: np.ndarray,
-        grid: np.ndarray,
-        origin: np.ndarray,
-        spacing: float,
-        cutoff_factor: float,
-    ) -> None:
-        nx, ny, nz = grid.shape
-        for i in range(pts.shape[0]):
-            sigma = sigmas[i]
-            if sigma <= 0.0 or not np.isfinite(sigma):
-                continue
-            cutoff = cutoff_factor * sigma
-            px, py, pz = pts[i]
-            inv_two_sigma2 = 1.0 / (2.0 * sigma * sigma)
-
-            min_ix = max(int(math.floor((px - origin[0] - cutoff) / spacing)), 0)
-            min_iy = max(int(math.floor((py - origin[1] - cutoff) / spacing)), 0)
-            min_iz = max(int(math.floor((pz - origin[2] - cutoff) / spacing)), 0)
-            max_ix = min(int(math.ceil((px - origin[0] + cutoff) / spacing)), nx - 1)
-            max_iy = min(int(math.ceil((py - origin[1] + cutoff) / spacing)), ny - 1)
-            max_iz = min(int(math.ceil((pz - origin[2] + cutoff) / spacing)), nz - 1)
-
-            for ix in range(min_ix, max_ix + 1):
-                dx = origin[0] + ix * spacing - px
-                dx2 = dx * dx
-                for iy in range(min_iy, max_iy + 1):
-                    dy = origin[1] + iy * spacing - py
-                    dy2 = dy * dy
-                    for iz in range(min_iz, max_iz + 1):
-                        dz = origin[2] + iz * spacing - pz
-                        dist2 = dx2 + dy2 + dz * dz
-                        grid[ix, iy, iz] += math.exp(-dist2 * inv_two_sigma2)
-
-    def _accumulate_wyvill_nb(
-        pts: np.ndarray,
-        sigmas: np.ndarray,
-        grid: np.ndarray,
-        origin: np.ndarray,
-        spacing: float,
-    ) -> None:
-        nx, ny, nz = grid.shape
-        for i in range(pts.shape[0]):
-            r_max = sigmas[i]
-            if r_max <= 0.0 or not np.isfinite(r_max):
-                continue
-            px, py, pz = pts[i]
-            r_max2 = r_max * r_max
-            inv_r_max2 = 1.0 / r_max2
-
-            min_ix = max(int(math.floor((px - origin[0] - r_max) / spacing)), 0)
-            min_iy = max(int(math.floor((py - origin[1] - r_max) / spacing)), 0)
-            min_iz = max(int(math.floor((pz - origin[2] - r_max) / spacing)), 0)
-            max_ix = min(int(math.ceil((px - origin[0] + r_max) / spacing)), nx - 1)
-            max_iy = min(int(math.ceil((py - origin[1] + r_max) / spacing)), ny - 1)
-            max_iz = min(int(math.ceil((pz - origin[2] + r_max) / spacing)), nz - 1)
-
-            for ix in range(min_ix, max_ix + 1):
-                dx = origin[0] + ix * spacing - px
-                dx2 = dx * dx
-                for iy in range(min_iy, max_iy + 1):
-                    dy = origin[1] + iy * spacing - py
-                    dy2 = dy * dy
-                    for iz in range(min_iz, max_iz + 1):
-                        dz = origin[2] + iz * spacing - pz
-                        dist2 = dx2 + dy2 + dz * dz
-                        if dist2 < r_max2:
-                            u = dist2 * inv_r_max2
-                            u2 = u * u
-                            val = (9.0 - 22.0 * u + 17.0 * u2 - 4.0 * u2 * u) / 9.0
-                            grid[ix, iy, iz] += val
-
-    def _compute_distance_grid_nb(
-        pts: np.ndarray,
-        radii: np.ndarray,
-        grid: np.ndarray,
-        origin: np.ndarray,
-        spacing: float,
-    ) -> None:
-        nx, ny, nz = grid.shape
-        for ix in range(nx):
-            x = origin[0] + ix * spacing
-            for iy in range(ny):
-                y = origin[1] + iy * spacing
-                for iz in range(nz):
-                    z = origin[2] + iz * spacing
-                    min_dist = 999999.0
-                    for i in range(pts.shape[0]):
-                        dx = x - pts[i, 0]
-                        dy = y - pts[i, 1]
-                        dz = z - pts[i, 2]
-                        d = math.sqrt(dx*dx + dy*dy + dz*dz) - radii[i]
-                        if d < min_dist:
-                            min_dist = d
-                    grid[ix, iy, iz] = min_dist
-
-
+@nb.jit(nopython=True, nogil=True, parallel=True)  # type: ignore[misc]
+def _compute_distance_grid_nb(
+    pts: np.ndarray,
+    radii: np.ndarray,
+    grid: np.ndarray,
+    origin: np.ndarray,
+    spacing: float,
+) -> None:
+    nx, ny, nz = grid.shape
+    for ix in nb.prange(nx):
+        x = origin[0] + ix * spacing
+        for iy in range(ny):
+            y = origin[1] + iy * spacing
+            for iz in range(nz):
+                z = origin[2] + iz * spacing
+                min_dist = 999999.0
+                for i in range(pts.shape[0]):
+                    dx = x - pts[i, 0]
+                    dy = y - pts[i, 1]
+                    dz = z - pts[i, 2]
+                    d = math.sqrt(dx*dx + dy*dy + dz*dz) - radii[i]
+                    if d < min_dist:
+                        min_dist = d
+                grid[ix, iy, iz] = min_dist
 def _build_density_grid(
     pts: np.ndarray,
     sigmas: np.ndarray,
@@ -450,34 +346,6 @@ def _generate_surface_mesh_from_gaussians(
     )
 
 
-def _edt_1d_sq_np(f: np.ndarray) -> np.ndarray:
-    """NumPy 1-D squared distance transform (fallback when numba is absent)."""
-    n = f.shape[0]
-    d = np.empty(n, dtype=np.float64)
-    v = np.zeros(n, dtype=np.int64)
-    z = np.empty(n + 1, dtype=np.float64)
-    big = 1.0e20
-    k = 0
-    z[0] = -big
-    z[1] = big
-    for q in range(1, n):
-        s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
-        while s <= z[k]:
-            k -= 1
-            s = ((f[q] + q * q) - (f[v[k]] + v[k] * v[k])) / (2.0 * q - 2.0 * v[k])
-        k += 1
-        v[k] = q
-        z[k] = s
-        z[k + 1] = big
-    k = 0
-    for q in range(n):
-        while z[k + 1] < q:
-            k += 1
-        dq = q - v[k]
-        d[q] = dq * dq + f[v[k]]
-    return d
-
-
 def _distance_transform_edt(forbidden: np.ndarray) -> np.ndarray:
     """Euclidean distance (in voxels) to the nearest zero voxel.
 
@@ -486,12 +354,7 @@ def _distance_transform_edt(forbidden: np.ndarray) -> np.ndarray:
     fallback) so the SES surface needs no scipy.
     """
     fb = np.ascontiguousarray(forbidden).astype(np.uint8)
-    if _HAVE_NUMBA and nb is not None:
-        return np.sqrt(_edt_squared_3d(fb))  # type: ignore[name-defined]
-    g = np.where(fb == 0, 0.0, 1.0e20).astype(np.float64)
-    for axis in range(3):
-        g = np.apply_along_axis(_edt_1d_sq_np, axis, g)
-    return np.sqrt(g)
+    return np.sqrt(_edt_squared_3d(fb))
 
 
 def _binary_dilate_6(mask: np.ndarray, iterations: int) -> np.ndarray:

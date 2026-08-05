@@ -205,3 +205,89 @@ def test_the_progress_display_survives_the_whole_qprogressdialog_setup(qapp, win
     finally:
         progress.close()
     progress.deleteLater()  # a Qt call site closes and then deletes
+
+
+# --------------------------------------------------------------------------- #
+# Transparency
+# --------------------------------------------------------------------------- #
+def _shell_over_ball(shell_alpha: float):
+    """A grey shell in front of a red ball, traced. Returns the centre pixel.
+
+    Built here rather than from a molecule because a molecular scene colours the
+    surface from the *atoms*: `color red` reddens the shell as well as what is
+    inside it, so "is there red in the image" stops separating the two cases.
+    Two spheres make the question exact -- red can only reach the centre pixel
+    by passing through the shell.
+    """
+    import numpy as np
+    from chisurf.plugins.chimol.chimol.renderer.raytracer import (
+        RayCamera,
+        Sphere,
+        trace,
+    )
+
+    camera = RayCamera(
+        origin=np.array([0.0, 0.0, 12.0]),
+        forward=np.array([0.0, 0.0, -1.0]),
+        up=np.array([0.0, 1.0, 0.0]),
+        fov_degrees=45.0,
+    )
+    spheres = [
+        Sphere(np.array([0.0, 0.0, 0.0]), 3.0, np.array([0.8, 0.8, 0.9]), shell_alpha),
+        Sphere(np.array([0.0, 0.0, -1.0]), 1.0, np.array([1.0, 0.1, 0.1]), 1.0),
+    ]
+    img = trace(
+        spheres, camera, np.array([[0.3, 0.6, 0.7]]),
+        width=160, height=120, ssaa=1, shadow=False, background=(0, 0, 0),
+    )
+    return img[60, 80].astype(int)
+
+
+def test_a_translucent_surface_shows_what_is_behind_it():
+    """The ray walks through the shell instead of stopping at it."""
+    r, g, b = _shell_over_ball(0.35)
+    assert r > g + 20 and r > b + 20, f"centre pixel {(r, g, b)} is not red"
+
+
+def test_an_opaque_surface_still_hides_what_is_behind_it():
+    """The other half: compositing must not leak colour through a solid surface."""
+    r, g, b = _shell_over_ball(1.0)
+    assert not (r > g + 20 and r > b + 20), f"centre pixel {(r, g, b)} leaked red"
+
+
+def test_a_fully_clear_surface_is_the_ball_alone():
+    """At alpha 0 the shell contributes nothing and must not tint what it covers."""
+    clear = _shell_over_ball(0.0)
+    assert clear[0] > clear[1] + 40, f"centre pixel {tuple(clear)} is not the red ball"
+
+
+def test_an_opaque_scene_does_not_pay_for_the_layer_walk(cmd, tmp_path):
+    """The walk stops at the first solid surface rather than spending its budget.
+
+    Measured on 148L at 300x220: 3.6 s with four layers allowed against 3.8 s
+    with one, i.e. free when nothing is translucent. This is a smoke check
+    against that early-out disappearing, not a benchmark.
+    """
+    import time
+
+    cmd.do("hide everything")
+    cmd.do("show surface")
+    cmd.do("set transparency, 0")
+    start = time.time()
+    _ray(cmd, tmp_path / "solid.png", size="200, 150")
+    elapsed = time.time() - start
+    assert (tmp_path / "solid.png").exists()
+    assert elapsed < 120.0, f"opaque render took {elapsed:.0f}s"
+
+
+def test_a_translucent_molecular_scene_renders(cmd, tmp_path):
+    """End to end: the command path survives a scene with alpha in it."""
+    cmd.do("hide everything")
+    cmd.do("show cartoon")
+    cmd.do("show surface")
+    cmd.do("set transparency, 0.6")
+    out = tmp_path / "translucent.png"
+    _ray(cmd, out, size="200, 150")
+    assert cmd._test_errors == [], cmd._test_errors  # type: ignore[attr-defined]
+    assert out.exists()
+    assert _drawn_pixels(out) > 200

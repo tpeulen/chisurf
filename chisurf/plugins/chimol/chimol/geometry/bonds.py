@@ -2,56 +2,52 @@ from __future__ import annotations
 
 from typing import Optional
 
+# Numba is required. The `_HAVE_NUMBA` guard it replaces made every kernel
+# here optional and every fallback beside it unexercised -- which is how the
+# ray tracer's pure-NumPy twin came to be silently broken while every test
+# passed.
+import numba as nb
 import numpy as np
 
-try:  # Optional acceleration via numba
-    import numba as nb  # type: ignore
-    _HAVE_NUMBA = True
-except Exception:  # pragma: no cover - run-time availability
-    nb = None  # type: ignore
-    _HAVE_NUMBA = False
 
+@nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
+def _build_bond_pairs_nb(pts: np.ndarray, max_length: float) -> np.ndarray:
+    n = pts.shape[0]
+    r2 = max_length * max_length
+    if n < 2 or r2 <= 0.0:
+        return np.zeros((0, 2), dtype=np.int64)
 
-if _HAVE_NUMBA and nb is not None:
+    count = 0
+    for i in range(n - 1):
+        x0 = pts[i, 0]
+        y0 = pts[i, 1]
+        z0 = pts[i, 2]
+        for j in range(i + 1, n):
+            dx = pts[j, 0] - x0
+            dy = pts[j, 1] - y0
+            dz = pts[j, 2] - z0
+            if dx * dx + dy * dy + dz * dz <= r2:
+                count += 1
 
-    @nb.jit(nopython=True, nogil=True, cache=True)  # type: ignore[misc]
-    def _build_bond_pairs_nb(pts: np.ndarray, max_length: float) -> np.ndarray:
-        n = pts.shape[0]
-        r2 = max_length * max_length
-        if n < 2 or r2 <= 0.0:
-            return np.zeros((0, 2), dtype=np.int64)
+    if count == 0:
+        return np.zeros((0, 2), dtype=np.int64)
 
-        count = 0
-        for i in range(n - 1):
-            x0 = pts[i, 0]
-            y0 = pts[i, 1]
-            z0 = pts[i, 2]
-            for j in range(i + 1, n):
-                dx = pts[j, 0] - x0
-                dy = pts[j, 1] - y0
-                dz = pts[j, 2] - z0
-                if dx * dx + dy * dy + dz * dz <= r2:
-                    count += 1
+    out = np.empty((count, 2), dtype=np.int64)
+    k = 0
+    for i in range(n - 1):
+        x0 = pts[i, 0]
+        y0 = pts[i, 1]
+        z0 = pts[i, 2]
+        for j in range(i + 1, n):
+            dx = pts[j, 0] - x0
+            dy = pts[j, 1] - y0
+            dz = pts[j, 2] - z0
+            if dx * dx + dy * dy + dz * dz <= r2:
+                out[k, 0] = i
+                out[k, 1] = j
+                k += 1
 
-        if count == 0:
-            return np.zeros((0, 2), dtype=np.int64)
-
-        out = np.empty((count, 2), dtype=np.int64)
-        k = 0
-        for i in range(n - 1):
-            x0 = pts[i, 0]
-            y0 = pts[i, 1]
-            z0 = pts[i, 2]
-            for j in range(i + 1, n):
-                dx = pts[j, 0] - x0
-                dy = pts[j, 1] - y0
-                dz = pts[j, 2] - z0
-                if dx * dx + dy * dy + dz * dz <= r2:
-                    out[k, 0] = i
-                    out[k, 1] = j
-                    k += 1
-
-        return out
+    return out
 
 
 def _build_bond_pairs(coords: np.ndarray, max_length: float) -> np.ndarray:
@@ -72,11 +68,8 @@ def _build_bond_pairs(coords: np.ndarray, max_length: float) -> np.ndarray:
         return np.zeros((0, 2), dtype=int)
 
     n = pts.shape[0]
-    if _HAVE_NUMBA and nb is not None and n > 1:
-        try:
-            return _build_bond_pairs_nb(pts, r)  # type: ignore[name-defined]
-        except Exception:
-            pass
+    if n > 1:
+        return _build_bond_pairs_nb(pts, r)
 
     cell = r
     inv_cell = 1.0 / cell
