@@ -1,5 +1,12 @@
 # Update Log
 
+## 2026-08-06
+
+* **All four streaming `traj` plugins are off mdtraj and pytables** ([PRD-80](prds/prd-80.md)). `traj_join`, `traj_rotate_translate` and `traj_remove_clashes` follow the `traj_align` template: `DCDWriter` instead of "write an empty `.h5`, then append with pytables", a `topology_filename` field because DCD stores no atom names, and the writer opened **on the first chunk** so the frame spacing comes from the data. **`tables` imports: 5 → 2. mdtraj: 14 → 11.**
+  **A real format limitation, surfaced rather than papered over.** Clash removal *drops* frames, so the survivors' times have gaps — and a DCD header carries one uniform interval, which cannot express that. Rounding it to an interval renumbers the survivors `0, 1, …` and hides both the removals and the read stride from every later reader, which is precisely the bug RF-708 fixed. So a non-uniform axis is written to a `<name>.times.npy` sidecar and read back in preference to the header. `read_time_axis` is the single place that decision lives, so a reader and a test cannot disagree about it — which they did, twice, before it was centralised.
+  `Trajectory` gained `join`/`stack` methods (stack concatenates along the *atom* axis and refuses mismatched frame counts, since joining atoms is not joining time).
+  Three slips of mine, all caught by tests: `DCDWriter` and then `read_times` were each added without being exported from the package, and the test helpers duplicated `load`'s time logic and got it wrong — the reason that logic now has one home.
+
 ## 2026-08-05
 
 * **The conda recipe described a build that had not happened since April.** The question was whether `pybind11` was still needed in `rattler-recipe/recipe.yaml`; it is not, and neither is anything else in `build:`/`host:` beyond python, pip, setuptools, wheel, numpy and git. The compilers, cmake, ninja, make, cython, pythran, swig, pybind11, eigen, boost-cpp, doxygen and hdf5 were the toolchain of the burbulator C++ library and the Cython extensions — both retired, leaving no `.pyx`, no `.i` and no `Extension` in the tree, and a build that is one `pip install .`.

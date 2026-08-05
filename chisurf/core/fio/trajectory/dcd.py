@@ -41,7 +41,8 @@ import pathlib
 import numba as nb
 import numpy as np
 
-__all__ = ["DCDHeader", "DCDWriter", "read_dcd", "write_dcd", "dcd_info"]
+__all__ = ["DCDHeader", "DCDWriter", "dcd_info", "read_dcd", "read_time_axis", "read_times",
+           "write_dcd"]
 
 
 @nb.njit(cache=True, parallel=True)
@@ -379,6 +380,7 @@ class DCDWriter:
             raise ValueError(f"n_atoms must be positive, got {n_atoms}")
         self.n_atoms = int(n_atoms)
         self.n_frames = 0
+        self._path = pathlib.Path(path)
         self._handle = open(path, "wb")
         self._handle.write(_header_bytes(self.n_atoms, 0, first_step,
                                          step_interval, delta, title, False))
@@ -403,6 +405,27 @@ class DCDWriter:
                     np.ascontiguousarray(frame[:, axis], dtype="<f4").tobytes()))
         self.n_frames += len(frames)
 
+    def write_times(self, times) -> None:
+        """Record a per-frame time axis beside the DCD.
+
+        A DCD header holds a first step, an interval and a timestep — one
+        *uniform* spacing. A trajectory whose frames were filtered has gaps,
+        and rounding that to an interval renumbers the survivors and hides
+        both the removals and the read stride from every later reader. Rather
+        than lose it, the axis is written to ``<name>.times.npy`` beside the
+        file and picked up again by the loader.
+
+        Parameters
+        ----------
+        times : array_like
+            One time per frame written.
+        """
+        times = np.asarray(times, dtype=np.float64)
+        if len(times) != self.n_frames:
+            raise ValueError(
+                f"{len(times)} times for {self.n_frames} frames")
+        np.save(_times_path(self._path), times)
+
     def close(self) -> None:
         """Patch the frame count into the header and close the file."""
         if self._handle is None:
@@ -422,6 +445,12 @@ class DCDWriter:
     def __exit__(self, *exc) -> None:
         """Close the file."""
         self.close()
+
+
+def _times_path(path) -> pathlib.Path:
+    """Return the sidecar path holding a non-uniform time axis, if any."""
+    path = pathlib.Path(path)
+    return path.with_name(path.name + ".times.npy")
 
 
 def _record(payload: bytes) -> bytes:
@@ -510,3 +539,52 @@ def write_dcd(path, xyz, *, cell_lengths=None, cell_angles=None,
             for axis in range(3):
                 handle.write(record(
                     np.ascontiguousarray(frame_xyz[:, axis], dtype="<f4").tobytes()))
+
+
+def read_times(path):
+    """Return the sidecar time axis written beside *path*, or ``None``.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        The DCD file.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        One time per frame, or ``None`` when the file's spacing is uniform and
+        the header alone describes it.
+    """
+    sidecar = _times_path(path)
+    return np.load(sidecar) if sidecar.is_file() else None
+
+
+def read_time_axis(path, stride: int = None) -> np.ndarray:
+    """Return one time per frame of *path*.
+
+    A DCD header carries a first step, an interval and a timestep, which
+    describes a *uniform* axis. When the real one has gaps — a filtered
+    trajectory — :meth:`DCDWriter.write_times` puts it in a sidecar, and that
+    takes precedence. This is the single place that decision is made, so a
+    reader and a test cannot disagree about it.
+
+    Parameters
+    ----------
+    path : str or os.PathLike
+        The DCD file.
+    stride : int, optional
+        Keep every *stride*-th frame, matching :func:`read_dcd`.
+
+    Returns
+    -------
+    numpy.ndarray
+        One time per frame kept.
+    """
+    times = read_times(path)
+    if times is not None:
+        return times[:: int(stride)] if stride else times
+    header = dcd_info(path)
+    step = header.step_interval * (int(stride) if stride else 1)
+    return (header.first_step + np.arange(header.n_frames // (int(stride) if stride else 1)
+                                          + (1 if header.n_frames % (int(stride) if stride else 1)
+                                             else 0)) * step) * header.delta

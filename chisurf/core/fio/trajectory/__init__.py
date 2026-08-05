@@ -24,8 +24,8 @@ to reproduce the quantisation ladder exactly to be worth having.
 
 from __future__ import annotations
 
-from .dcd import DCDHeader, DCDWriter, dcd_info, read_dcd, write_dcd
+from .dcd import DCDHeader, DCDWriter, dcd_info, read_dcd, read_time_axis, read_times, write_dcd
 from .xtc import XTCHeader, read_xtc, xtc_info
 
 __all__ = ["DCDHeader", "DCDWriter", "XTCHeader", "dcd_info", "read_dcd",
-           "read_xtc", "write_dcd", "xtc_info"]
+           "read_time_axis", "read_times", "read_xtc", "write_dcd", "xtc_info"]

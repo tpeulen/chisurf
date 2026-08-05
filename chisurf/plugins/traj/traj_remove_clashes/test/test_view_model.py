@@ -4,8 +4,19 @@ import numpy as np
 import pytest
 
 
-def _clash_trajectory(path: str, times: np.ndarray | None = None) -> None:
-    """Write a four-frame three-atom trajectory to *path* (.h5).
+def _read(path):
+    """Read a written trajectory back, without needing a topology."""
+    from chisurf.core.fio.trajectory import read_dcd
+    from chisurf.core.structure import trajectory_data as md
+
+    from chisurf.core.fio.trajectory import read_times
+
+    xyz, _, _ = read_dcd(path)
+    return md.Trajectory(xyz / 10.0, time=read_times(path))
+
+
+def _clash_trajectory(path: str, spacing: float = 1.0) -> str:
+    """Write a four-frame three-atom trajectory to *path* (.dcd).
 
     Frames 0 and 2 are clash-free (all atoms ~1 nm apart); frames 1 and 3 each
     contain a pair of atoms only 0.01 nm apart (a clash).
@@ -13,12 +24,13 @@ def _clash_trajectory(path: str, times: np.ndarray | None = None) -> None:
     Parameters
     ----------
     path : str
-        Destination ``.h5`` trajectory path.
+        Destination ``.dcd`` path.
     times : numpy.ndarray, optional
         Frame times. Defaults to mdtraj's own ``0, 1, 2, 3``; pass an explicit
         array to tell a carried-through time axis apart from a write counter.
     """
-    md = pytest.importorskip("mdtraj")
+    from chisurf.core.structure import trajectory_data as md
+
     topology = md.Topology()
     chain = topology.add_chain()
     residue = topology.add_residue("ALA", chain)
@@ -34,7 +46,12 @@ def _clash_trajectory(path: str, times: np.ndarray | None = None) -> None:
     xyz[2] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]]
     # frame 3 – atoms 1 and 2 clash (0.01 nm apart)
     xyz[3] = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.01, 0.0, 0.0]]
-    md.Trajectory(xyz=xyz, topology=topology, time=times).save(path)
+    trajectory = md.Trajectory(xyz=xyz, topology=topology)
+    from chisurf.core.fio.trajectory import write_dcd
+    write_dcd(path, xyz * 10.0, delta=spacing)
+    pdb = str(path).replace('.dcd', '.pdb')
+    trajectory[0].save_pdb(pdb)
+    return pdb
 
 
 def test_log_starts_ready():
@@ -75,8 +92,8 @@ def test_set_trajectory_notifies():
     model = RemoveClashesViewModel()
     events = []
     model.add_observer(events.append)
-    model.set_trajectory("/data/traj.h5")
-    assert model.trajectory_filename == "/data/traj.h5"
+    model.set_trajectory("/data/traj.dcd")
+    assert model.trajectory_filename == "/data/traj.dcd"
     assert "loaded" in events
 
 
@@ -84,22 +101,22 @@ def test_save_clash_free_without_trajectory_is_noop(tmp_path):
     from chisurf.plugins.traj.traj_remove_clashes.view_model import RemoveClashesViewModel
 
     model = RemoveClashesViewModel()
-    target = tmp_path / "out.h5"
+    target = tmp_path / "out.dcd"
     model.save_clash_free(str(target))
     assert "No trajectory selected" in model.log_html()
     assert not target.exists()
 
 
 def test_save_clash_free_drops_clashing_frames(tmp_path):
-    md = pytest.importorskip("mdtraj")
     from chisurf.plugins.traj.traj_remove_clashes.view_model import RemoveClashesViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "clash_free.h5"
-    _clash_trajectory(str(source))
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "clash_free.dcd"
+    topology = _clash_trajectory(str(source))
 
     model = RemoveClashesViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.atom_selection = "all"
     # consumed threshold = 0.5 / 10 = 0.05 nm: drops the two 0.01-nm clash frames,
     # keeps the two well-separated frames.
@@ -107,7 +124,7 @@ def test_save_clash_free_drops_clashing_frames(tmp_path):
     model.save_clash_free(str(target))
 
     assert target.exists()
-    result = md.load(str(target))
+    result = _read(str(target))
     assert result.n_frames == 2
     assert result.n_atoms == 3
     assert "Clash-free trajectory saved" in model.log_html()
@@ -119,21 +136,21 @@ def test_kept_frames_keep_their_source_times(tmp_path):
     A running write counter renumbered the survivors ``0, 1, …``, hiding both
     the removals and the read stride from every downstream reader.
     """
-    md = pytest.importorskip("mdtraj")
     from chisurf.plugins.traj.traj_remove_clashes.view_model import RemoveClashesViewModel
 
-    source = tmp_path / "traj.h5"
-    target = tmp_path / "clashfree.h5"
-    _clash_trajectory(str(source), times=np.arange(4, dtype=np.float32) * 5.0)
+    source = tmp_path / "traj.dcd"
+    target = tmp_path / "clashfree.dcd"
+    topology = _clash_trajectory(str(source), spacing=5.0)
 
     model = RemoveClashesViewModel()
     model.set_trajectory(str(source))
+    model.set_topology(topology)
     model.atom_selection = "all"
     model.min_distance = 0.5
     model.save_clash_free(str(target))
 
     # frames 1 and 3 clash; the survivors keep t = 0 and t = 10, not 0 and 1.
-    np.testing.assert_allclose(md.load(str(target)).time, [0.0, 10.0])
+    np.testing.assert_allclose(_read(str(target)).time, [0.0, 10.0])
 
 
 def test_view_spec_loads():

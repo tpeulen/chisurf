@@ -1,7 +1,7 @@
 """Qt-free view-model backing the Remove-Clashed-Frames tool.
 
 :class:`RemoveClashesViewModel` holds the interactive state (the source
-trajectory path, an mdtraj atom-selection expression, the read stride, the
+trajectory path, an atom-selection expression, the read stride, the
 minimum clash distance and a running log) and performs the actual work —
 streaming a trajectory in chunks, dropping every frame that contains an
 atom-atom distance below the minimum, and writing the surviving frames to a
@@ -101,7 +101,10 @@ class RemoveClashesViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename: str = ""
-        #: mdtraj atom-selection expression (e.g. ``"name CA"``) selecting the
+        # DCD and XTC store coordinates only, so the atom names have to come
+        # from somewhere. Empty is fine for a self-describing file.
+        self.topology_filename: str = ""
+        #: atom-selection expression (e.g. ``"name CA"``) selecting the
         #: atoms whose pairwise distances are tested for clashes.
         self.atom_selection: str = "name CA and resSeq 1 to 256"
         #: Read every ``stride``-th frame of the source trajectory.
@@ -149,6 +152,12 @@ class RemoveClashesViewModel:
         return float(self.min_distance) / 10.0
 
     # ── file wiring ─────────────────────────────────────────────────────
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers."""
+        self.topology_filename = str(filename)
+        self.append_log(f"Topology: {self.topology_filename}")
+        self._notify("loaded")
+
     def set_trajectory(self, filename: str) -> None:
         """Set the source trajectory path and notify observers."""
         self.trajectory_filename = str(filename)
@@ -173,8 +182,10 @@ class RemoveClashesViewModel:
         target_filename : str
             Destination ``.h5`` trajectory path.
         """
-        import mdtraj as md
-        import tables
+        from chisurf.core.fio.trajectory import DCDWriter
+        from chisurf.core.structure import trajectory_data as md
+
+        topology = self.topology_filename or None
 
         filename = self.trajectory_filename
         if not filename:
@@ -186,24 +197,41 @@ class RemoveClashesViewModel:
         chunk_size = 1000
 
         self.append_log(f"Removing clashes: {filename} (stride={stride})")
-        frame_0 = md.load_frame(filename, 0)
-        target_traj = md.Trajectory(
-            xyz=np.empty((0, frame_0.n_atoms, 3)), topology=frame_0.topology
-        )
-        atom_list = target_traj.top.select(self.atom_selection)
-        target_traj.save(target_filename)
+        frame_0 = md.load_frame(filename, 0, top=topology)
+        atom_list = frame_0.top.select(self.atom_selection)
 
-        for chunk in md.iterload(filename, chunk=chunk_size, stride=stride):
-            xyz = chunk.xyz.copy()
-            frames_below = below_min_distance(
-                xyz=xyz, min_distance=min_distance, atom_list=atom_list
-            )
-            selection = np.where(frames_below < 1)[0]
-            xyz_clash_free = np.take(xyz, selection, axis=0)
-            with tables.open_file(target_filename, "a") as table:
-                table.root.coordinates.append(xyz_clash_free)
-                times = np.asarray(chunk.time, dtype=np.float32)[selection]
-                table.root.time.append(times)
+        writer = None
+        kept_times: list[float] = []
+        try:
+            for chunk in md.iterload(filename, chunk=chunk_size, stride=stride,
+                                     top=topology):
+                xyz = chunk.xyz.copy()
+                frames_below = below_min_distance(
+                    xyz=xyz, min_distance=min_distance, atom_list=atom_list
+                )
+                selection = np.where(frames_below < 1)[0]
+                xyz_clash_free = np.take(xyz, selection, axis=0)
+                if writer is None:
+                    # Frames are dropped here, so the surviving ones are no
+                    # longer evenly spaced; the header can only record one
+                    # interval, so it records the source's.
+                    spacing = (float(chunk.time[1] - chunk.time[0])
+                               if chunk.n_frames > 1 else 1.0)
+                    writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
+                                       delta=spacing or 1.0)
+                if len(xyz_clash_free):
+                    writer.write(xyz_clash_free * 10.0)
+                    kept_times.extend(
+                        np.asarray(chunk.time, dtype=np.float64)[selection].tolist())
+        finally:
+            if writer is not None:
+                # Dropping frames leaves gaps, and a DCD header can only carry
+                # one uniform interval -- so the real axis goes beside the
+                # file. Renumbering the survivors 0, 1, ... would hide both the
+                # removals and the read stride from every later reader
+                # (RF-708).
+                writer.write_times(kept_times)
+                writer.close()
         self.append_log(f"Clash-free trajectory saved: {target_filename}")
 
 

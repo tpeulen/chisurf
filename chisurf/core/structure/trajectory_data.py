@@ -180,6 +180,37 @@ class Trajectory:
         self.xyz = np.ascontiguousarray(moved + target_centre, dtype=np.float32)
         return self
 
+    def join(self, other: Trajectory) -> Trajectory:
+        """Return this trajectory followed by *other* in time."""
+        return join([self, other])
+
+    def stack(self, other: Trajectory) -> Trajectory:
+        """Return the two trajectories side by side, as one set of atoms.
+
+        Both must have the same number of frames: this concatenates along the
+        *atom* axis, which is how two molecules become one system.
+
+        Parameters
+        ----------
+        other : Trajectory
+            The trajectory to place alongside this one.
+
+        Returns
+        -------
+        Trajectory
+        """
+        if self.n_frames != other.n_frames:
+            raise ValueError(
+                f"cannot stack {self.n_frames} frames with {other.n_frames}; "
+                "stacking joins atoms, not time"
+            )
+        topology = None
+        if self.topology is not None and other.topology is not None:
+            topology = Topology(np.concatenate(
+                [self.topology.atom_array, other.topology.atom_array]))
+        return Trajectory(np.concatenate([self.xyz, other.xyz], axis=1),
+                          topology, self.time)
+
     # -- output --------------------------------------------------------------
     def save_dcd(self, filename) -> None:
         """Write the trajectory as a DCD (converting nanometres to Ångström)."""
@@ -331,15 +362,15 @@ def load(filename, top=None, stride: int = None, atom_indices=None) -> Trajector
             raise ValueError(f"{filename!r} stores coordinates only; pass top=")
         topology = top if isinstance(top, Topology) else Topology.from_file(str(top))
         if name.endswith(".dcd"):
-            from chisurf.core.fio.trajectory import dcd_info, read_dcd
+            from chisurf.core.fio.trajectory import read_dcd
             xyz, _, _ = read_dcd(filename, stride=stride, atom_indices=atom_indices)
             xyz = xyz / 10.0                     # Angstrom on disk, nm in memory
             # DCD records a first step, an interval and a timestep rather than
             # a free list of times. Rebuild the axis from those, so a strided
             # trajectory keeps its real spacing instead of counting frames.
-            header = dcd_info(filename)
-            step = header.step_interval * (int(stride) if stride else 1)
-            time = (header.first_step + np.arange(len(xyz)) * step) * header.delta
+            from chisurf.core.fio.trajectory import read_time_axis
+
+            time = read_time_axis(filename, stride=stride)[:len(xyz)]
             return Trajectory(xyz, topology.subset(atom_indices)
                               if atom_indices is not None else topology, time)
         else:

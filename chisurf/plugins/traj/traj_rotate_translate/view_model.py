@@ -37,6 +37,9 @@ class RotateTranslateViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename: str = ""
+        # DCD and XTC store coordinates only, so the atom names have to come
+        # from somewhere. Empty is fine for a self-describing file.
+        self.topology_filename: str = ""
         #: 3x3 rotation matrix multiplied onto every frame's coordinates.
         self.rotation_matrix: np.ndarray = np.eye(3, dtype=np.float32)
         #: Raw 3-vector translation as entered by the user (see :meth:`save_rotated_translated`).
@@ -72,6 +75,12 @@ class RotateTranslateViewModel:
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
     # ── file wiring ─────────────────────────────────────────────────────
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers."""
+        self.topology_filename = str(filename)
+        self.append_log(f"Topology: {self.topology_filename}")
+        self._notify("loaded")
+
     def set_trajectory(self, filename: str) -> None:
         """Set the source trajectory path and notify observers."""
         self.trajectory_filename = str(filename)
@@ -106,12 +115,13 @@ class RotateTranslateViewModel:
         Parameters
         ----------
         target_filename : str
-            Destination ``.h5`` trajectory path.
+            Destination ``.dcd`` path.
         """
-        import mdtraj as md
-        import tables
-
+        from chisurf.core.fio.trajectory import DCDWriter
         from chisurf.core.structure import rotate, translate
+        from chisurf.core.structure import trajectory_data as md
+
+        topology = self.topology_filename or None
 
         filename = self.trajectory_filename
         if not filename:
@@ -125,25 +135,28 @@ class RotateTranslateViewModel:
 
         try:
             self.append_log(f"Rotating/translating {filename} (stride={stride})")
-            frame_0 = md.load_frame(filename, 0)
+            frame_0 = md.load_frame(filename, 0, top=topology)
             self.append_log(f"Loaded first frame with {frame_0.n_atoms} atoms")
-            target_traj = md.Trajectory(
-                xyz=np.empty((0, frame_0.n_atoms, 3)), topology=frame_0.topology
-            )
-            target_traj.save(target_filename)
-
-            table = tables.open_file(target_filename, "a")
+            writer = None
             try:
-                for i, chunk in enumerate(md.iterload(filename, chunk=chunk_size, stride=stride)):
+                for i, chunk in enumerate(md.iterload(filename, chunk=chunk_size,
+                                                      stride=stride, top=topology)):
                     xyz = chunk.xyz.copy()
                     rotate(xyz, rotation_matrix)
                     translate(xyz, translation_vector)
-                    table.root.coordinates.append(xyz)
-                    table.root.time.append(np.asarray(chunk.time, dtype=np.float32))
+                    if writer is None:
+                        # Opened on the first chunk so the frame spacing comes
+                        # from the data rather than being assumed (RF-708).
+                        spacing = (float(chunk.time[1] - chunk.time[0])
+                                   if chunk.n_frames > 1 else 1.0)
+                        writer = DCDWriter(target_filename, n_atoms=frame_0.n_atoms,
+                                           delta=spacing or 1.0)
+                    writer.write(xyz * 10.0)      # nm in memory, Angstrom on disk
                     if (i + 1) % 10 == 0:
                         self.append_log(f"Processed {i + 1} chunks")
             finally:
-                table.close()
+                if writer is not None:
+                    writer.close()
             self.append_log(f"Rotated/translated trajectory saved: {target_filename}")
         except Exception as exc:  # noqa: BLE001
             self.append_log(f"Save failed: {exc}")

@@ -38,6 +38,9 @@ class JoinTrajectoriesViewModel:
 
     def __init__(self) -> None:
         self.trajectory_filename_1: str = ""
+        # DCD and XTC store coordinates only, so the atom names have to come
+        # from somewhere. Empty is fine for a self-describing file.
+        self.topology_filename: str = ""
         self.trajectory_filename_2: str = ""
         #: Join along the time axis (``"time"``) or the atom axis (``"atoms"``).
         self.join_mode: str = "time"
@@ -76,6 +79,12 @@ class JoinTrajectoriesViewModel:
         return f"<pre style='margin:0;font-family:monospace'>{lines}</pre>"
 
     # ── file wiring ─────────────────────────────────────────────────────
+    def set_topology(self, filename: str) -> None:
+        """Set the topology (PDB) that names the atoms, and notify observers."""
+        self.topology_filename = str(filename)
+        self.append_log(f"Topology: {self.topology_filename}")
+        self._notify("loaded")
+
     def set_trajectory_1(self, filename: str) -> None:
         """Set the first source trajectory path and notify observers."""
         self.trajectory_filename_1 = str(filename)
@@ -102,10 +111,12 @@ class JoinTrajectoriesViewModel:
         Parameters
         ----------
         target_filename : str
-            Destination ``.h5`` trajectory path.
+            Destination ``.dcd`` path.
         """
-        import mdtraj as md
-        import tables
+        from chisurf.core.fio.trajectory import DCDWriter
+        from chisurf.core.structure import trajectory_data as md
+
+        topology = self.topology_filename or None
 
         fn1 = self.trajectory_filename_1
         fn2 = self.trajectory_filename_2
@@ -120,8 +131,8 @@ class JoinTrajectoriesViewModel:
         r1 = bool(self.reverse_traj_1)
         r2 = bool(self.reverse_traj_2)
 
-        traj_1 = md.load_frame(fn1, index=0)
-        traj_2 = md.load_frame(fn2, index=0)
+        traj_1 = md.load_frame(fn1, index=0, top=topology)
+        traj_2 = md.load_frame(fn2, index=0, top=topology)
 
         if self.join_mode == "time":
             traj_join = traj_1.join(traj_2)
@@ -132,32 +143,27 @@ class JoinTrajectoriesViewModel:
         else:  # pragma: no cover - guarded by the choice section
             raise ValueError(f"unknown join_mode {self.join_mode!r}")
 
-        target_traj = md.Trajectory(
-            xyz=np.empty((0, traj_join.n_atoms, 3)), topology=traj_join.topology
-        )
-        target_traj.save(target_filename)
-
         chunk_size = int(self.chunk_size)
-        table = tables.open_file(target_filename, "a")
+        writer = None
         try:
             for i, (c1, c2) in enumerate(
                 zip(
-                    md.iterload(fn1, chunk=chunk_size),
-                    md.iterload(fn2, chunk=chunk_size),
+                    md.iterload(fn1, chunk=chunk_size, top=topology),
+                    md.iterload(fn2, chunk=chunk_size, top=topology),
                 )
             ):
                 xyz_1 = c1.xyz[::-1] if r1 else c1.xyz
                 xyz_2 = c2.xyz[::-1] if r2 else c2.xyz
                 xyz = np.concatenate((xyz_1, xyz_2), axis=axis)
 
-                table.root.coordinates.append(xyz)
-                table.root.time.append(
-                    np.arange(i * chunk_size, i * chunk_size + xyz.shape[0], dtype=np.float32)
-                )
+                if writer is None:
+                    writer = DCDWriter(target_filename, n_atoms=traj_join.n_atoms)
+                writer.write(xyz * 10.0)          # nm in memory, Angstrom on disk
                 if (i + 1) % 10 == 0:
                     self.append_log(f"Joined {i + 1} chunks")
         finally:
-            table.close()
+            if writer is not None:
+                writer.close()
         self.append_log(f"Joined trajectory saved: {target_filename}")
 
 
