@@ -274,7 +274,6 @@ mmfdb:
   last_server: 127.0.0.1
   server_history:
     - 127.0.0.1
-n_threads: 4
 optimization:
   global_optimize_local_first: false
   global_threaded_model_update: false

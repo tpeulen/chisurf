@@ -4,8 +4,8 @@ from chisurf import typing
 import time
 import json
 import numpy as np
+import numba as nb
 import tables
-import numexpr as ne
 
 import chisurf.core.fio
 import chisurf.core.fio.structure.coordinates
@@ -23,9 +23,39 @@ except ImportError:
 from chisurf.core.parameter import ParameterGroup
 
 
-ne.set_num_threads(
-    chisurf.core.settings.cs_settings['n_threads']
-)
+@nb.njit(cache=True, parallel=True)
+def _quenching_rate_per_frame(collided, k_quench):
+    """Sum the quenching rates of the atoms a dye collided with, per frame.
+
+    Parameters
+    ----------
+    collided : numpy.ndarray
+        ``(n_frames, n_atoms)`` flags, non-zero where the dye was within the
+        critical distance of that quenching atom in that frame.
+    k_quench : numpy.ndarray
+        ``(n_atoms,)`` quenching rate per atom.
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(n_frames,)`` total quenching rate.
+
+    Notes
+    -----
+    The frames are independent, so the loop reduces each row on its own thread
+    and never materialises the ``(n_frames, n_atoms)`` product -- which for a
+    long trajectory against a whole protein's quenching atoms is the largest
+    array in the calculation.
+    """
+    n_frames, n_atoms = collided.shape
+    out = np.zeros(n_frames, dtype=np.float64)
+    for frame in nb.prange(n_frames):
+        total = 0.0
+        for atom in range(n_atoms):
+            if collided[frame, atom]:
+                total += k_quench[atom]
+        out[frame] = total
+    return out
 
 
 def simulate_trajectory(
@@ -120,9 +150,11 @@ class DiffusionSimulation(object):
     @property
     def quenching_trajectory(self):
         """Quenching rate trajectory (collisions * k_quench summed over atoms)."""
-        collided = self.collided
-        k_quench = self.quenching_parameter.k_quench
-        return ne.evaluate('sum(k_quench * collided,axis=1)')
+        collided = np.ascontiguousarray(self.collided)
+        k_quench = np.ascontiguousarray(
+            self.quenching_parameter.k_quench, dtype=np.float64
+        )
+        return _quenching_rate_per_frame(collided, k_quench)
 
     @property
     def collided(self):

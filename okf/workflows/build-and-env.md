@@ -59,10 +59,18 @@ solve on a branch where Pillow needs no font/cairo stack; and declaring the eigh
 runtime packages the tree imports but the recipe had left to arrive transitively
 (`pyzmq`, `sqlalchemy`, `numexpr`, `packaging`, `imageio`, `tifffile`,
 `imagecodecs`, `pillow`) cost **+2**, since only SQLAlchemy and its greenlet were
-genuinely absent. Three of those eight were retired again in August 2026 —
-`imageio`, `tifffile` and `imagecodecs` — once TIFF I/O moved to the bundled
-libtiff already inside the TTTR library; see
-[fio/image](../subsystems/image-io.md).
+genuinely absent. Four of those eight were retired again in August 2026 —
+`imageio`, `tifffile` and `imagecodecs` once TIFF I/O moved to the bundled
+libtiff already inside the TTTR library (see
+[fio/image](../subsystems/image-io.md)), and `numexpr` once its one expression
+became a Numba kernel. `pyarrow`/`boost-histogram` went the same month, on
+ndxplorer's account rather than ChiSurf's.
+
+Not every removal shrinks the closure, and saying which is which matters more
+than the count. Dropping `numexpr` frees **nothing**: `pytables` hard-requires
+it, so it is installed either way, and the gain is that no ChiSurf code reaches
+for it (the kernel that replaced it is also 22× faster). `pyarrow-core` was
+worth a real **37**.
 
 The mirror image of an undeclared *dependency* is an undeclared *import*, and it
 fails the same way: on a developer machine the package is there transitively, in

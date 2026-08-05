@@ -126,7 +126,6 @@ requirements:
     # the rest were already in the closure.
     - pyzmq >=25.0          # the ZMQ/JSON-RPC client and server
     - sqlalchemy >=2.0      # the MMFDB ORM backend
-    - numexpr               # dynamic accessible-volume quenching
     - packaging             # version comparisons in the startup shim
     - pillow                # PNG/JPEG/RGB-TIFF reader; TIFF stacks go through
                             # tttrlib's bundled libtiff instead

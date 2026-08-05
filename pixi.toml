@@ -67,7 +67,6 @@ sqlalchemy = ">=2.0"
 # something else: the ZMQ transport, the AV quenching kernel, and the version
 # comparison in the startup shim.
 pyzmq = ">=25.0"
-numexpr = "*"
 packaging = "*"
 # The conda-forge package providing the `msgpack` module is named
 # msgpack-python (`msgpack` does not exist as a conda package).

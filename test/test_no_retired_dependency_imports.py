@@ -56,6 +56,10 @@ RETIRED = {
         "imagecodecs",
         "it only ever existed to let tifffile decode compressed TIFFs",
     ),
+    "numexpr": (
+        "numexpr",
+        "write a numba kernel; NUMBA_NUM_THREADS already comes from settings",
+    ),
     "boost_histogram": (
         "boost-histogram",
         "histograms are filled in tttrlib, which is faster on matched features",

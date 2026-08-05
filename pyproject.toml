@@ -46,7 +46,6 @@ dependencies = [
     "qtconsole",
     "numba",
     "numpy",
-    "numexpr",
     "scipy",
     # Imported at module scope in shipped code and previously left out of this
     # list: pandas by dozens of modules starting with the burst reader,

@@ -129,10 +129,10 @@ Used by: `chisurf.core.base.Data` for embedding raw files into YAML/JSON save fi
   without echoing the commands in the console UI. Serves as a global toggle
   for hiding implementation details from the interactive user.
 
-- **`n_threads`**  
-  Default number of CPU threads used by specific subsystems. For example,
-  `structure.av.dynamic` calls `numexpr.set_num_threads(cs_settings['n_threads'])`
-  to control the number of expression‑evaluation threads.
+> **Removed:** `n_threads` governed the `numexpr` thread pool and had no other
+> reader. `numexpr` is gone — the one expression it evaluated is a Numba kernel
+> now — so thread counts come from the [`threads`](#threads) section, which
+> sets `NUMBA_NUM_THREADS` before Numba is imported.
 
 ---
 
