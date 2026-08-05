@@ -15,14 +15,6 @@ import numpy as np
 from .bvh import _MAX_LEAF, STACK_SIZE, build_bvh, closest_hit, primitive_bounds
 from .view_state import unpack_view_state
 
-#: Empty primitive arrays, so the shadow tree can be built over the spheres
-#: alone -- and over nothing at all when shadows are off -- without every call
-#: site allocating its own.
-_NO_TRIANGLES = np.zeros((0, 3, 3), dtype=np.float64)
-_NO_CENTERS = np.zeros((0, 3), dtype=np.float64)
-_NO_RADII = np.zeros(0, dtype=np.float64)
-
-
 @dataclass
 class Sphere:
     """One traced sphere: an atom, a bead, or a line's round cap."""
@@ -97,12 +89,6 @@ def _jit_trace(
     scene_node_start: np.ndarray,
     scene_node_count: np.ndarray,
     scene_prim_index: np.ndarray,
-    shadow_node_min: np.ndarray,
-    shadow_node_max: np.ndarray,
-    shadow_node_left: np.ndarray,
-    shadow_node_start: np.ndarray,
-    shadow_node_count: np.ndarray,
-    shadow_prim_index: np.ndarray,
     cam_origin: np.ndarray,
     cam_forward: np.ndarray,
     cam_up: np.ndarray,
@@ -335,21 +321,21 @@ def _jit_trace(
                     lz = ldirs[li, 2]
 
                     if shadow_enabled:
-                        # Only a sphere can be skipped, because only spheres
-                        # cast here. Passing `best_id` unconditionally meant a
-                        # triangle hit excluded the sphere that happened to
-                        # share its index from shadowing the point.
-                        skip = best_id if not best_is_tri else -1
+                        # The surface the ray leaves from is skipped by its
+                        # own unified index, so this is right for a triangle as
+                        # well as a sphere. It used to pass `best_id`
+                        # unconditionally, which on a triangle hit excluded
+                        # whichever sphere happened to share that index.
                         lit = _jit_shadow_soft(
                             hx + lx * shadow_fudge,
                             hy + ly * shadow_fudge,
                             hz + lz * shadow_fudge,
                             lx, ly, lz,
                             centers, radii, tri_vertices,
-                            shadow_node_min, shadow_node_max, shadow_node_left,
-                            shadow_node_start, shadow_node_count,
-                            shadow_prim_index,
-                            n_spheres, skip,
+                            scene_node_min, scene_node_max, scene_node_left,
+                            scene_node_start, scene_node_count,
+                            scene_prim_index,
+                            n_spheres, best_prim,
                             shadow_decay_factor, shadow_decay_range,
                             stack,
                         )
@@ -516,9 +502,11 @@ def _jit_shadow_soft(
 ) -> float:
     """How much of one light reaches a point: 1 fully lit, 0 fully shadowed.
 
-    Only spheres cast: the tree walked here is built over the spheres alone, so
-    ``tri_vertices`` is passed only to keep the primitive types the shared
-    :func:`~.bvh.closest_hit` expects and is never reached.
+    Every primitive casts, which is what PyMOL does. This used to walk a
+    sphere-only tree, so a cartoon -- the display chimol and PyMOL both start
+    with -- cast no shadow at all and ``ray_shadow`` did nothing on it. Testing
+    the whole scene was unaffordable while a shadow ray cost a sweep of it; with
+    the BVH it is one more descent.
 
     The occluder taken is the **nearest** one. PyMOL does the same, and only
     when the decay is on -- ``nearest_shadow = (shadow_decay != _0)`` in
@@ -527,7 +515,7 @@ def _jit_shadow_soft(
     to return whichever sphere came first in the array, which made how soft a
     shadow came out depend on the order the scene happened to be built in.
     """
-    if n_spheres == 0:
+    if node_count.shape[0] == 0:
         return 1.0
     t, prim = closest_hit(
         hx, hy, hz, lx, ly, lz,
@@ -717,24 +705,20 @@ def trace(
     else:
         cancel = np.asarray(cancel, dtype=np.int64)
 
-    # Two trees, because they answer different questions. The scene tree holds
-    # every primitive and serves the primary rays; the shadow tree holds only
-    # the spheres, because only spheres cast, and a walk restricted at the leaf
-    # would still descend boxes full of triangles that can never occlude.
+    # One tree, walked by both the primary rays and the shadow rays. It used to
+    # be two: a second, sphere-only tree existed because only spheres cast a
+    # shadow, which meant a cartoon -- the default display -- cast none at all
+    # and `ray_shadow` did nothing on it. PyMOL shadows every primitive. Testing
+    # the whole scene was unaffordable while a shadow ray cost a sweep of it;
+    # with the tree it is one more descent, so the second tree is not an
+    # optimisation any more, only a thing that made the picture wrong.
     prim_min, prim_max = primitive_bounds(centers, radii_arr, tverts)
     scene_bvh = build_bvh(prim_min, prim_max, _MAX_LEAF)
-    if n and bool(shadow):
-        shadow_bvh = build_bvh(*primitive_bounds(centers, radii_arr, _NO_TRIANGLES),
-                               _MAX_LEAF)
-    else:
-        shadow_bvh = build_bvh(*primitive_bounds(_NO_CENTERS, _NO_RADII, _NO_TRIANGLES),
-                               _MAX_LEAF)
 
     img = _jit_trace(
         centers, radii_arr, colors_arr, sph_alpha_arr,
         tverts, tnorms, tcols, talpha,
         *scene_bvh,
-        *shadow_bvh,
         camera.origin.astype(np.float64).copy(),
         camera.forward.astype(np.float64).copy(),
         camera.up.astype(np.float64).copy(),

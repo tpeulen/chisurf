@@ -21,6 +21,11 @@ command does and what its defaults are. **ChimeraX** (`junk/ChimeraX`) is the
 reference for *how to do it well* — rendering above all — and is explicitly not
 the compatibility authority.
 
+A third, a WebGL viewer, was consulted for shader technique and is now **read
+out**: what it had is transcribed under *the WebGL viewer is read out*, and the
+checkout can be dropped. Anything it offered beyond shaders duplicates PyMOL or
+ChimeraX under names chimol must match anyway.
+
 Reading them has repeatedly overturned conclusions drawn from observation alone;
 see [the log](/log.md) for cases where a measured "constant" turned out to be a
 different algorithm, and for one where the data was blamed before the rule was.
@@ -86,16 +91,8 @@ above are absent rather than accepted-and-ignored.
 colours and then shaded again, costing 44 % of the colour. Described under
 *`ray` renders the scene, not the molecule*.
 
-*Nothing but a sphere casts a shadow.* The shadow query walks a tree built over
-the spheres alone, so on a cartoon-only display — the default — `shadow` is
-identically 1 and `ray_shadow` does nothing at all: a helix lying across another
-does not darken it. PyMOL shadows every primitive. This was unaffordable when a
-shadow ray cost a sweep of the whole scene and **is affordable now** (see *every
-ray tested every primitive* below), so it is a rendering decision rather than a
-performance one: it will change every cartoon and surface image, and should be
-measured against PyMOL's output on the same view before being turned on. The
-seam is `_jit_shadow_soft`, which already takes the triangle array and a tree —
-pointing it at the scene tree instead of the sphere tree is the whole change.
+*Nothing but a sphere casts a shadow.* **Done** — see *a cartoon casts a shadow
+now* below.
 
 **Transparency is done** — see *the tracer walks through a surface* below — and
 so is **speed**: `ray` was 143–651× slower than it needed to be.
@@ -1250,6 +1247,34 @@ builder does not merely drift: it cannot *receive* what the other learns** — t
 same shape as the RMF reader's private route into the viewer. 83 lines deleted;
 `_build_balls_mesh` takes the bake as an argument and is the one builder.
 
+## A cartoon casts a shadow now, and the second tree is gone
+
+`ray_shadow` did nothing on the display chimol and PyMOL both start with. The
+shadow query walked a **sphere-only** tree, so a cartoon — zero spheres —
+returned "fully lit" for every point, and a helix lying across another did not
+darken it. PyMOL shadows every primitive.
+
+The second tree existed as an optimisation and had stopped being one. It was
+built when a shadow ray cost a sweep of the whole scene, where excluding the
+triangles was the difference between usable and not; with the BVH it is one more
+descent of a tree that already exists. **So the fix deletes code rather than
+adding it** — one tree, walked by both the primary and the shadow rays, and the
+`skip` argument becomes the hit primitive's own unified index, which is finally
+correct for a triangle as well as a sphere.
+
+Measured on 148L at 320×240 2×2, before and after switching mesh shadows on:
+cartoon 0.05 → 0.07 s, sticks 0.04 → 0.08 s, surface 0.07 → 0.12 s. Between
+40 % and 70 % more for a shadow ray that now tests the whole scene, against a
+starting point 100× faster than it was this morning.
+
+**Checked for the failure mode this class of change has**, which is self-shadow
+acne — a surface shading itself dark where adjacent triangles occlude at grazing
+angles. None on the cartoon or the surface; the difference against the old
+picture sits in the crevices between surface lobes and under the ribbons, which
+is where a cast shadow belongs. The `skip` index plus the existing
+`shadow_fudge` offset is enough because the tracer intersects the primitive
+exactly rather than sampling a depth map.
+
 ## Every ray tested every primitive
 
 The sphere-mesh finding above is the same bug seen through a keyhole. Trading
@@ -1679,6 +1704,47 @@ cannot advance a trajectory.
 Guardrail in `test_trajectory_performance.py`, structural rather than timed like
 everything else in that file: the scene builder must not be entered at all. It
 was checked against the old code and does fail there.
+
+## The WebGL viewer is read out — what it had, and why it can go
+
+Surveyed the whole of `junk/ngl/src/` (not only the shaders) on 2026-08-05 to
+answer whether it is worth keeping. **Verdict: read out.** The list below is
+what it contributed; the checkout can be dropped, and this section is the record
+that survives it.
+
+**What it was consulted for is captured.** The shader set is the part of NGL that
+has no counterpart in the two standing sources, and it is transcribed into the
+next section — impostor cylinders, interior colouring, opaque back faces, SDF
+glyphs, matrix scale. One of those five was **measured and rejected**: impostors
+buy about a millisecond on an ordinary molecule (see the frame-cost finding), so
+they stay a large-model technique. That is the shader budget spent.
+
+**Almost everything else duplicates an authority chimol already has, and the
+authority is better.** NGL's representations (`rocket`, `unitcell`, `slice`,
+`hyperball`, `tube`, `rope`), its colour schemes (hydrophobicity, occupancy,
+partial charge, B-factor) and its measurements (angle, dihedral) all exist in
+PyMOL under names chimol is *required* to match — `cartoon_cylindrical_helices`,
+`cell`, `slice`, `spectrum b`. Taking them from NGL would mean implementing the
+right feature under the wrong name and defaults, which is the one thing the
+compatibility contract forbids. **PyMOL stays the authority on behaviour and
+ChimeraX on rendering quality; NGL was only ever the third opinion on shaders.**
+
+**Two things it has that neither of the others does**, recorded here so dropping
+the checkout does not lose them:
+
+* `surface/edt-surface.ts` — a solvent-excluded surface by **Euclidean distance
+  transform**, a different algorithm from the Gaussian density grid plus
+  marching cubes chimol runs. Worth knowing it exists if surface build time ever
+  becomes the complaint; it is not a parity item, because PyMOL's own surface is
+  a third algorithm again and *that* is the one to match.
+* `geometry/spatial-hash.ts` — a flat spatial hash, which is the structure
+  `geometry/neighbors.py` already implements.
+
+**Colour schemes are the one place a gap is real** — chimol has six colour modes
+(`by_secondary_structure`, `by_residue`, `by_sequence`, `by_element`,
+`by_chain`, `spectrum`) where PyMOL reaches the rest through `spectrum
+<expression>`. That is a PyMOL-shaped gap with a PyMOL-shaped answer, and NGL is
+not needed for it.
 
 ## Shader techniques worth taking, read from a WebGL viewer
 
