@@ -7,6 +7,13 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import chisurf as cs
 from chisurf.gui.glyphs import Glyphs
+from chisurf.gui.syntax import (
+    JSONHighlighter,
+    PythonHighlighter,
+    SyntaxHighlighter,
+    YAMLHighlighter,
+    palette_for_paper,
+)
 from chisurf.plugins.core.code_editor.settings import (
     EDITOR_COLOR_SCHEMES,
     EDITOR_SETTINGS_KEYS,
@@ -39,217 +46,6 @@ __all__ = [
     "normalize_editor_language",
     "save_editor_settings",
 ]
-
-
-class SyntaxHighlighter(QtGui.QSyntaxHighlighter):
-    """Base class for syntax highlighters."""
-
-    def __init__(self, parent=None, font_family=None, font_point_size=None):
-        super().__init__(parent)
-        self.highlighting_rules = []
-
-        # Set up default formats
-        self.formats = {}
-
-        if font_family is None:
-            font_family = cs.core.settings.gui['editor']['font_family']
-        if font_point_size is None:
-            font_point_size = cs.core.settings.gui['editor']['font_size']
-
-        self.default_font = QtGui.QFont(font_family, int(font_point_size))
-
-    def add_rule(self, pattern, format_name):
-        """Add a highlighting rule with the given pattern and format name."""
-        if format_name in self.formats:
-            self.highlighting_rules.append((QtCore.QRegExp(pattern), self.formats[format_name]))
-
-    def highlightBlock(self, text):
-        """Apply syntax highlighting to the given block of text."""
-        for pattern, format in self.highlighting_rules:
-            expression = QtCore.QRegExp(pattern)
-            index = expression.indexIn(text)
-            while index >= 0:
-                length = expression.matchedLength()
-                self.setFormat(index, length, format)
-                index = expression.indexIn(text, index + length)
-
-
-class PythonHighlighter(SyntaxHighlighter):
-    """Syntax highlighter for Python code."""
-
-    def __init__(self, parent=None, font_family=None, font_point_size=None,
-                 paper_color=None, default_color=None):
-        super().__init__(parent, font_family, font_point_size)
-
-        if paper_color is None:
-            paper_color = cs.core.settings.gui['editor']['paper_color']
-        if default_color is None:
-            default_color = cs.core.settings.gui['editor']['default_color']
-
-        # Create formats for different syntax elements
-        keyword_format = QtGui.QTextCharFormat()
-        keyword_format.setForeground(QtGui.QColor("#569CD6"))
-        keyword_format.setFontWeight(QtGui.QFont.Bold)
-
-        class_format = QtGui.QTextCharFormat()
-        class_format.setForeground(QtGui.QColor("#4EC9B0"))
-        class_format.setFontWeight(QtGui.QFont.Bold)
-
-        function_format = QtGui.QTextCharFormat()
-        function_format.setForeground(QtGui.QColor("#DCDCAA"))
-
-        string_format = QtGui.QTextCharFormat()
-        string_format.setForeground(QtGui.QColor("#CE9178"))
-
-        comment_format = QtGui.QTextCharFormat()
-        comment_format.setForeground(QtGui.QColor("#6A9955"))
-
-        number_format = QtGui.QTextCharFormat()
-        number_format.setForeground(QtGui.QColor("#B5CEA8"))
-
-        self.formats = {
-            "keyword": keyword_format,
-            "class": class_format,
-            "function": function_format,
-            "string": string_format,
-            "comment": comment_format,
-            "number": number_format
-        }
-
-        # Python keywords
-        keywords = [
-            "and", "as", "assert", "break", "class", "continue", "def",
-            "del", "elif", "else", "except", "exec", "finally", "for",
-            "from", "global", "if", "import", "in", "is", "lambda",
-            "not", "or", "pass", "print", "raise", "return", "try",
-            "while", "with", "yield", "None", "True", "False"
-        ]
-
-        # Add rules for keywords
-        keyword_patterns = [r'\b' + word + r'\b' for word in keywords]
-        for pattern in keyword_patterns:
-            self.add_rule(pattern, "keyword")
-
-        # Add rule for classes
-        self.add_rule(r'\bclass\b\s*(\w+)', "class")
-
-        # Add rule for functions
-        self.add_rule(r'\bdef\b\s*(\w+)', "function")
-
-        # Add rule for strings
-        self.add_rule(r'"[^"\\]*(\\.[^"\\]*)*"', "string")
-        self.add_rule(r"'[^'\\]*(\\.[^'\\]*)*'", "string")
-
-        # Add rule for comments
-        self.add_rule(r'#[^\n]*', "comment")
-
-        # Add rule for numbers
-        self.add_rule(r'\b[0-9]+\b', "number")
-
-
-class JSONHighlighter(SyntaxHighlighter):
-    """Syntax highlighter for JSON."""
-
-    def __init__(self, parent=None, font_family=None, font_point_size=None,
-                 paper_color=None, default_color=None):
-        super().__init__(parent, font_family, font_point_size)
-
-        if paper_color is None:
-            paper_color = cs.core.settings.gui['editor']['paper_color']
-        if default_color is None:
-            default_color = cs.core.settings.gui['editor']['default_color']
-
-        # Create formats for different syntax elements
-        property_format = QtGui.QTextCharFormat()
-        property_format.setForeground(QtGui.QColor("#9CDCFE"))
-
-        string_format = QtGui.QTextCharFormat()
-        string_format.setForeground(QtGui.QColor("#CE9178"))
-
-        number_format = QtGui.QTextCharFormat()
-        number_format.setForeground(QtGui.QColor("#B5CEA8"))
-
-        keyword_format = QtGui.QTextCharFormat()
-        keyword_format.setForeground(QtGui.QColor("#569CD6"))
-        keyword_format.setFontWeight(QtGui.QFont.Bold)
-
-        self.formats = {
-            "property": property_format,
-            "string": string_format,
-            "number": number_format,
-            "keyword": keyword_format
-        }
-
-        # Add rule for properties
-        self.add_rule(r'"[^"\\]*(\\.[^"\\]*)*"\s*:', "property")
-
-        # Add rule for strings
-        self.add_rule(r':\s*"[^"\\]*(\\.[^"\\]*)*"', "string")
-
-        # Add rule for numbers
-        self.add_rule(r':\s*-?\b\d+(\.\d+)?([eE][+-]?\d+)?\b', "number")
-
-        # Add rule for keywords
-        keywords = ["true", "false", "null"]
-        keyword_patterns = [r':\s*\b' + word + r'\b' for word in keywords]
-        for pattern in keyword_patterns:
-            self.add_rule(pattern, "keyword")
-
-
-class YAMLHighlighter(SyntaxHighlighter):
-    """Syntax highlighter for YAML."""
-
-    def __init__(self, parent=None, font_family=None, font_point_size=None,
-                 paper_color=None, default_color=None):
-        super().__init__(parent, font_family, font_point_size)
-
-        if paper_color is None:
-            paper_color = cs.core.settings.gui['editor']['paper_color']
-        if default_color is None:
-            default_color = cs.core.settings.gui['editor']['default_color']
-
-        # Create formats for different syntax elements
-        key_format = QtGui.QTextCharFormat()
-        key_format.setForeground(QtGui.QColor("#9CDCFE"))
-
-        value_format = QtGui.QTextCharFormat()
-        value_format.setForeground(QtGui.QColor("#CE9178"))
-
-        comment_format = QtGui.QTextCharFormat()
-        comment_format.setForeground(QtGui.QColor("#6A9955"))
-
-        number_format = QtGui.QTextCharFormat()
-        number_format.setForeground(QtGui.QColor("#B5CEA8"))
-
-        keyword_format = QtGui.QTextCharFormat()
-        keyword_format.setForeground(QtGui.QColor("#569CD6"))
-        keyword_format.setFontWeight(QtGui.QFont.Bold)
-
-        self.formats = {
-            "key": key_format,
-            "value": value_format,
-            "comment": comment_format,
-            "number": number_format,
-            "keyword": keyword_format
-        }
-
-        # Add rule for keys
-        self.add_rule(r'^\s*[^:]+:', "key")
-
-        # Add rule for values
-        self.add_rule(r':\s*[^#\n]+', "value")
-
-        # Add rule for comments
-        self.add_rule(r'#[^\n]*', "comment")
-
-        # Add rule for numbers
-        self.add_rule(r':\s*-?\b\d+(\.\d+)?([eE][+-]?\d+)?\b', "number")
-
-        # Add rule for keywords
-        keywords = ["true", "false", "null", "yes", "no", "on", "off"]
-        keyword_patterns = [r':\s*\b' + word + r'\b' for word in keywords]
-        for pattern in keyword_patterns:
-            self.add_rule(pattern, "keyword")
 
 
 class FindBar(QtWidgets.QWidget):
@@ -1020,10 +816,9 @@ class TextEditor(QtWidgets.QPlainTextEdit):
         highlighter_class = highlighter_classes.get(key, YAMLHighlighter)
         self.highlighter = highlighter_class(
             self.document(),
-            self.font().family(),
-            int(self._editor_settings.get("font_size", 9)),
-            self.paper_color,
-            self.default_color,
+            palette=palette_for_paper(self.paper_color),
+            font_family=self.font().family(),
+            font_point_size=int(self._editor_settings.get("font_size", 9)),
         )
 
     def _apply_palette(self) -> None:

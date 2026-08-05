@@ -71,9 +71,15 @@ class ConsoleTheme:
 
 
 #: The eight normal + eight bright ANSI colours of a dark terminal.
+#:
+#: Three slots depart from terminal convention because the conventional values
+#: fail a 4.5:1 contrast check against this background -- measured, not
+#: eyeballed. Red 1 (#cd3131, 3.24:1) is what an exception *message* is printed
+#: in, the single most important line of a traceback; blue 4 (#2472c8, 3.43:1)
+#: and magenta 5 (#bc3fbc) are simply too dark. See ``test_theme_contrast``.
 _ANSI_DARK = (
-    "#000000", "#cd3131", "#0dbc79", "#e5e510",
-    "#2472c8", "#bc3fbc", "#11a8cd", "#e5e5e5",
+    "#000000", "#e85d5d", "#0dbc79", "#e5e510",
+    "#4a90d9", "#c667c6", "#11a8cd", "#e5e5e5",
     "#666666", "#f14c4c", "#23d18b", "#f5f543",
     "#3b8eea", "#d670d6", "#29b8db", "#ffffff",
 )
@@ -129,7 +135,7 @@ THEMES: dict[str, ConsoleTheme] = {
         foreground="#d4d4d4",
         prompt_in="#4ec9b0",
         prompt_out="#ce9178",
-        prompt_continuation="#5a5a5a",
+        prompt_continuation="#9a9a9a",
         stderr_fg="#f14c4c",
         traceback_fg="#f14c4c",
         traceback_highlight="#3a1d1d",
@@ -146,7 +152,7 @@ THEMES: dict[str, ConsoleTheme] = {
         foreground="#1e1e1e",
         prompt_in="#0451a5",
         prompt_out="#a31515",
-        prompt_continuation="#9a9a9a",
+        prompt_continuation="#6b6b6b",
         stderr_fg="#cd3131",
         traceback_fg="#cd3131",
         traceback_highlight="#fdeaea",
@@ -163,7 +169,7 @@ THEMES: dict[str, ConsoleTheme] = {
         foreground="#000000",
         prompt_in="#000000",
         prompt_out="#000000",
-        prompt_continuation="#777777",
+        prompt_continuation="#6b6b6b",
         stderr_fg="#000000",
         traceback_fg="#000000",
         traceback_highlight="#eeeeee",
