@@ -380,8 +380,11 @@ few percent without anything raising.
 - [x] XTC reader (the `xdr3dfcoord` bit-packing, in numba)
 - [x] Atom-selection parser, checked against the reference on 45 expressions
 - [x] `Topology` over ChiSurf's atom array
-- [ ] A `Trajectory` of our own: `superpose`, `rmsd`, `join`, `slice`, `iterload`
-- [ ] Port the 17 runtime import sites; resolve the 2 test ones
+- [x] A `Trajectory` of our own: `superpose`, `rmsd`, `join`, `slice`, `iterload`
+- [x] 4 of the 17 runtime import sites ported (`structure.py` + the FRET core)
+- [ ] The 8 `traj` plugins, together with `TrajectoryFile`'s base class
+- [ ] chimol's `io/structure.py` (`.gro`/`.g96` only — needs a GRO reader)
+- [ ] Resolve the 2 test import sites (`md.element.*`, `Topology.add_atom`)
 - [ ] XTC writer — only needed to hand files to other tools; ChiSurf writes DCD
 - [ ] TRR reader/writer — no call site needs it yet; add on demand
 - [ ] `TrajectoryFile` no longer subclasses `mdtraj.Trajectory`
@@ -450,28 +453,32 @@ with committed fixtures that outlive it:
 | Selections | `core/structure/selection.py` | 45 expressions, identical indices |
 | Topology | `core/structure/topology.py` | atoms/residues/chains/elements identical |
 
-What is left is the port itself, in this order:
+**Every capability now exists**; what is left is the port.
 
-1. **A `Trajectory` class of our own.** The last missing *capability*, and small
-   compared with what is already done — the operations in use are `superpose`,
-   `rmsd`, `join`, `slice`/indexing, `iterload` and `compute_distances`. Kabsch
-   superposition already exists in `chimol/analysis/metrics.py`. Build it over
-   `(xyz, Topology, time)` and test each operation against the reference **while
-   it is still installed**; those tests are the evidence and cannot be written
-   afterwards.
-2. **Take `mdtraj.Trajectory` out of `TrajectoryFile`'s bases** and port the
-   eight `traj` plugins in the same change. They reach mdtraj methods *through
-   inheritance*, so they break together the moment the base class goes. Read the
-   centring trap above before starting.
-3. **The FRET modelling plugin** (`rmsd` matrices, `compute_distances`), chimol's
-   `io/structure.py`, `structure.py`'s `find_best`, and the `mdconvert`
-   shell-out in `traj_convert`.
-4. **The six `import tables` sites.** Four are the `traj` plugins writing `.h5`
-   trajectories, which stage 2 removes outright; `av/dynamic.py`'s `save()` is
-   the same; only `maxent_decay/core/sampling.py` needs a real decision (`.npz`
-   is the obvious answer).
-5. **Then drop `mdtraj`, `pytables` and `numexpr`** from the three manifests and
-   add them to `test/test_no_retired_dependency_imports.py`.
+Done: `structure.py`'s `find_best` and the FRET core (`trajectory.py`,
+`pair_selection.py`, `evaluate.py`) — three of them a **one-line import swap**,
+because the new API deliberately copies the old names and signatures.
+`av/static.py` needed nothing: it is duck-typed on `traj.top.select` and
+`traj.xyz`.
+
+Remaining, in this order:
+
+1. **The 8 `traj` plugins together with `TrajectoryFile`'s base class.** They
+   must move as one change: the plugins reach mdtraj methods *through*
+   `TrajectoryFile`'s inheritance, so they break the moment it goes. Their
+   tests build topologies programmatically (`topology.add_atom(name,
+   md.element.carbon, residue)`), so `Topology` needs **construction methods**
+   and an `element` namespace — that is the one API gap left, and it is small.
+   Read the centring trap above before starting.
+2. **chimol's `io/structure.py`.** It reaches for mdtraj only for `.gro`,
+   `.g96` and `.h5`, already behind a clear "not available" error. `.h5`
+   trajectories are being dropped anyway; GRO is a fixed-width text format and
+   a page of code. Add `.dcd`/`.xtc` there while you are in it — chimol cannot
+   open either today.
+3. **The six `import tables` sites.** Four are `traj` plugins writing `.h5`
+   trajectories and vanish with step 1; `av/dynamic.py`'s `save()` is the same;
+   only `maxent_decay/core/sampling.py` needs a decision (`.npz`).
+4. **Drop `mdtraj`, `pytables` and `numexpr`** and extend the guardrail.
 
 **Two test sites, not runtime**: `chimol/test/test_ss_vs_mdtraj.py` uses
 `compute_dssp` as an oracle for chimol's own secondary structure — it needs a
