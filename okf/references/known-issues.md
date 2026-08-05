@@ -2036,3 +2036,27 @@ a `cli.py`/`cli/` and do not, among them `accurate_fret`, `burst_2cde`,
 assignment when the plugin was rewritten as an AutoForm tool, and silently
 dropped out of the recipe. That one is restored. The rest need a name each —
 that is the only real work — and one line per plugin.
+
+## `import tttrlib` is broken in the `arm64` env — a half-finished rebuild
+
+**Found 2026-08-06**, mid-session, between two test runs that both passed:
+
+```
+ImportError: dlopen(.../tttrlib/_tttrlib.cpython-312-darwin.so):
+  symbol not found in flat namespace '__Z18isFlimLabsITT1File...'
+```
+
+Nothing in ChiSurf caused it. `~/dev/tttrlib` has moved several commits ahead
+and carries a large uncommitted change (`CMakeLists.txt`, new format docs), so
+the installed `_tttrlib.so` references a symbol the currently-linked per-module
+dylibs do not have — the package is a **directory of dylibs** now, and the link
+step runs without a rebuild, so a partial rebuild leaves exactly this.
+
+**Do not "fix" it by running `pixi run build-tttrlib`** unless you own that
+tttrlib change: it compiles whatever C++ is in the working tree into the shared
+env, and another instance's half-finished work will land on everyone. Either
+wait for them to finish, or build from a clean checkout at a known commit.
+
+**What it costs meanwhile:** any suite touching `tttrlib` cannot even be
+collected — 37 collection errors across the plugin tests — so a green run is
+not obtainable while it lasts, and a red one says nothing.
