@@ -107,6 +107,34 @@ ones in `test/headless_dialog_allowlist.txt` (the same allow-list-as-tracker
 convention as the pyqtgraph seam). A confirmation prompt on a button click is
 deliberately not flagged: there the user is right there, which is the point.
 
+# A test that closes the main window writes the developer's own settings
+
+`Main.closeEvent` calls `_save_window_state()`, which writes the dock layout to
+`QSettings("ChiSurf", "MainWindow")` — the **real** user preferences. Anything
+that closes the window therefore edits them, including `qtbot.addWidget(win)`,
+whose teardown closes every widget it was given. A test run then silently
+replaces the window layout the developer had, and the *next* run of that
+supposedly isolated test restores it and measures the wrong window.
+
+Redirecting `QSettings` is not enough, and on macOS the obvious redirect does
+not work at all: `QSettings.setPath` **has no effect on the native format**, so
+a script that sets it goes on reading and writing
+`~/Library/Preferences/com.chisurf.MainWindow.plist` while looking isolated.
+Two things that do work:
+
+* In a test — patch `QtCore.QSettings` with a subclass that ignores the
+  organisation/application arguments and opens an ini file under `tmp_path`,
+  **and** neutralise `_save_window_state` on the instance in the fixture's
+  finalizer, because `qtbot` closes the window *after* `monkeypatch` has put the
+  real class back. `test/gui/test_dock_layout.py` does both.
+* In a headless script — run it with `HOME` pointed at a scratch directory. The
+  native store is resolved under `$HOME`, so this isolates reads as well as
+  writes without touching the code under test.
+
+The symptom to recognise: a layout/geometry test that passes alone and drifts
+in a suite, or a "default layout" screenshot that quietly stops being the
+default.
+
 # GUI work is never blind — screenshot and look at it
 
 **Any change that touches a GUI is unfinished until the widget has been rendered

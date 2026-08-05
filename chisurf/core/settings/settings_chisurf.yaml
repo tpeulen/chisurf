@@ -132,7 +132,7 @@ gui:
     "Datasets": "#3b674a"
     "Analysis": "#674a3b"
     "Plot settings": "#5c3b67"
-    "History / Log": "#3b6767"
+    "Logging": "#3b6767"
   show_console: true
   qt_style: auto
   style_sheet: dark_blue_flat.qss

@@ -241,31 +241,83 @@ class Main(
 
     _READ_DATA_DOCK_WIDTH = 390
 
+    #: Bumped whenever :meth:`apply_default_dock_layout` changes. A layout saved
+    #: by an older version is ignored once, so a changed default is what the user
+    #: actually sees; anything they rearrange afterwards is saved under the
+    #: current version and survives every later start.
+    _LAYOUT_VERSION = 2
+
     def _save_window_state(self):
         """Persist dock layout and window geometry via QSettings."""
         settings = QtCore.QSettings("ChiSurf", "MainWindow")
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("state", self.saveState())
+        settings.setValue("layout_version", self._LAYOUT_VERSION)
 
-    def _restore_window_state(self):
-        """Restore dock layout and window geometry from QSettings."""
+    def _restore_window_state(self) -> bool:
+        """Restore dock layout and window geometry from QSettings.
+
+        Returns
+        -------
+        bool
+            ``True`` when a saved dock layout was applied, ``False`` when the
+            authored default from :meth:`apply_default_dock_layout` is left in
+            place — because nothing was saved yet, or because what was saved
+            predates the current :attr:`_LAYOUT_VERSION`.
+        """
         settings = QtCore.QSettings("ChiSurf", "MainWindow")
         geo = settings.value("geometry")
         if geo is not None:
             self.restoreGeometry(geo)
+        try:
+            saved_version = int(settings.value("layout_version", 0))
+        except (TypeError, ValueError):
+            saved_version = 0
         state = settings.value("state")
-        if state is not None:
-            self.restoreState(state)
+        if state is None or saved_version != self._LAYOUT_VERSION:
+            return False
+        return bool(self.restoreState(state))
+
+    def _dock_tab_bar(self, dock: QtWidgets.QDockWidget) -> QtWidgets.QTabBar:
+        """Return the tab bar of the stack ``dock`` is tabbed into, if any.
+
+        Qt creates one ``QTabBar`` per tabified dock stack as a direct child of
+        the main window; there is no public accessor, so the stack is identified
+        by the dock titles the bar carries.
+        """
+        titles = {dock.windowTitle()}
+        titles.update(d.windowTitle() for d in self.tabifiedDockWidgets(dock))
+        for tab_bar in self.findChildren(QtWidgets.QTabBar):
+            if tab_bar.parent() is not self:
+                continue
+            if any(tab_bar.tabText(i) in titles for i in range(tab_bar.count())):
+                return tab_bar
+        return None
 
     def _apply_read_data_dock_width(self) -> None:
-        """Apply the startup width and raise the left read-data dock to active."""
+        """Size the left dock column and raise the read-data dock to active.
+
+        The column holds a tab stack, so the read-data widgets are not the only
+        thing that has to fit: sized to the widgets alone the five tab labels
+        elide to ``Read…``/``Dat…``/``An…`` and the stack stops being readable.
+        The width therefore also covers the tab bar, which is what keeps the
+        labels intact in a language with longer words.
+        """
         dock = getattr(self, "dockWidgetReadData", None)
         if dock is None:
             return
+        width = self._READ_DATA_DOCK_WIDTH
+        tab_bar = self._dock_tab_bar(dock)
+        if tab_bar is not None:
+            # The bar reports the width its labels want; the padding covers the
+            # dock frame either side of it.
+            width = max(width, tab_bar.sizeHint().width() + 24)
+        # Never let the column swallow the workspace on a small screen.
+        width = min(width, max(self._READ_DATA_DOCK_WIDTH, self.width() // 3))
         try:
-            self.resizeDocks([dock], [self._READ_DATA_DOCK_WIDTH], QtCore.Qt.Horizontal)
+            self.resizeDocks([dock], [width], QtCore.Qt.Horizontal)
         except Exception:
-            dock.resize(self._READ_DATA_DOCK_WIDTH, dock.height())
+            dock.resize(width, dock.height())
         try:
             dock.raise_()
         except Exception:
@@ -373,6 +425,24 @@ class Main(
     def onCascadeWindows(self):
         self.mdiarea.setViewMode(QtWidgets.QMdiArea.SubWindowView)
         self.mdiarea.cascadeSubWindows()
+
+    def onResetWindowLayout(self):
+        """Drop the saved dock layout and go back to the authored default.
+
+        The saved state is removed as well as re-applied, so the reset also
+        survives the next start instead of being undone by what is on disk.
+        """
+        settings = QtCore.QSettings("ChiSurf", "MainWindow")
+        settings.remove("state")
+        settings.remove("layout_version")
+        self.apply_default_dock_layout()
+        self.dockWidget_console.setVisible(cs.core.settings.gui['show_console'])
+        self._apply_read_data_dock_width()
+        apply_dock_tab_colors(self)
+        try:
+            self.status.showMessage("Window layout reset", 3000)
+        except Exception:
+            pass
 
     def onCurrentDatasetChanged(self):
         try:
@@ -1209,10 +1279,7 @@ class Main(
         #      Arrange Docks and window positions                #
         #      Window-controls tile, stack etc.                  #
         ##########################################################
-        self.tabifyDockWidget(self.dockWidgetReadData, self.dockWidgetDatasets)
-        self.tabifyDockWidget(self.dockWidgetDatasets, self.dockWidgetAnalysis)
-        self.tabifyDockWidget(self.dockWidgetAnalysis, self.dockWidgetPlot)
-        self.tabifyDockWidget(self.dockWidgetDatasets, self.dockWidgetHistory)
+        self.apply_default_dock_layout()
 
         # Add data selector widget
         self.verticalLayout_8.addWidget(self.dataset_selector)
@@ -1224,20 +1291,51 @@ class Main(
         self.plotOptionsLayout.setAlignment(QtCore.Qt.AlignTop)
         self.dockWidgetReadData.raise_()
 
-        apply_dock_tab_colors(self)
-
         self._install_dev_mode_code_badges()
 
-        # Restore persisted dock layout and window geometry, if available.
-        # This must run after the default tabify setup so the saved layout
-        # overrides the defaults when a previous session exists.
+        # Restore the persisted dock layout over the default just applied, so a
+        # session picks up where the last one left off. A layout saved by an
+        # older _LAYOUT_VERSION is skipped and the default above stands.
         try:
-            self._restore_window_state()
+            restored = self._restore_window_state()
         except Exception:
-            pass
+            restored = False
 
-        QtCore.QTimer.singleShot(0, self._apply_read_data_dock_width)
+        # After the layout settles, never before: re-tabbing a dock builds a new
+        # QTabBar, and colours written to the old one go with it.
+        apply_dock_tab_colors(self)
 
+        # Only the default layout is sized here: a restored one already carries
+        # the widths the user chose, and stomping them would make every dock the
+        # user ever resized snap back on the next start.
+        if not restored:
+            QtCore.QTimer.singleShot(0, self._apply_read_data_dock_width)
+
+    def apply_default_dock_layout(self) -> None:
+        """Put the docks into the authored default arrangement.
+
+        Read data, Datasets, Analysis, Plot settings and Logging share one tab
+        stack on the left, leaving the rest of the window to the workspace; the
+        console keeps the bottom edge. Run at startup and by *Reset window
+        layout*, so both paths produce the same window.
+        """
+        docks = (
+            self.dockWidgetReadData,
+            self.dockWidgetDatasets,
+            self.dockWidgetAnalysis,
+            self.dockWidgetPlot,
+            self.dockWidgetHistory,
+        )
+        for dock in docks:
+            # A dock the user closed or floated stays out of the stack unless it
+            # is docked and shown again first.
+            dock.setFloating(False)
+            dock.setVisible(True)
+        previous = docks[0]
+        for dock in docks[1:]:
+            self.tabifyDockWidget(previous, dock)
+            previous = dock
+        self.dockWidgetReadData.raise_()
 
 
     def filter_log_content(self):
@@ -1268,6 +1366,7 @@ class Main(
         self.actionTile_windows.triggered.connect(self.onTileWindows)
         self.actionTab_windows.triggered.connect(self.onTabWindows)
         self.actionCascade.triggered.connect(self.onCascadeWindows)
+        self.actionReset_layout.triggered.connect(self.onResetWindowLayout)
         self.mdiarea.subWindowActivated.connect(self.subWindowActivated)
         self.dockWidgetPlot.visibilityChanged.connect(self.onDockWidgetPlotVisibilityChanged)
 
@@ -1552,6 +1651,11 @@ class Main(
                 QtCore.QCoreApplication.sendEvent(
                     widget, QtCore.QEvent(QtCore.QEvent.LanguageChange)
                 )
+
+            # 4. The dock tab labels just changed language, and a longer word
+            #    (German especially) no longer fits the column they were sized
+            #    for — widen it rather than let the labels elide.
+            self._apply_read_data_dock_width()
         except Exception as e:  # pragma: no cover - defensive, must not crash the UI
             cs.logging.warning(f"Failed to retranslate interface after language change: {e}")
 

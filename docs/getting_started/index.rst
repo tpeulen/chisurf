@@ -43,6 +43,30 @@ Entry points
    * - ``csg_*``
      - Individual plugin GUIs (see ``[project.gui-scripts]``).
 
+The main window
+---------------
+
+The window opens with one tabbed column on the left — **Read data**,
+**Datasets**, **Analysis**, **Plot settings** and **Logging** share it, so the
+rest of the width belongs to the workspace where fits and plots open. The
+console keeps the bottom edge (turn it off with the ``gui.show_console``
+setting).
+
+Docks are yours to rearrange: drag one out of the stack to the right or bottom
+edge, resize it, or close it. The arrangement is saved when ChiSurf exits and
+restored on the next start.
+
+To get back to the arrangement above, use :menuselection:`View --> Reset Layout`
+(also on the ribbon's *Main* tab, under *Other Tools*). It forgets the saved
+layout as well as re-applying the default, so the reset survives the next start.
+
+.. note::
+
+   A layout saved by an older version of ChiSurf is ignored once when the
+   default arrangement itself changes — otherwise a stale saved layout would
+   hide every later improvement to it. Anything you rearrange afterwards is kept
+   as usual.
+
 Your first analysis
 --------------------
 

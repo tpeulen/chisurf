@@ -315,6 +315,8 @@
     <addaction name="actionTile_windows"/>
     <addaction name="actionTab_windows"/>
     <addaction name="actionCascade"/>
+    <addaction name="separator"/>
+    <addaction name="actionReset_layout"/>
     <addaction name="menuType_Here"/>
    </widget>
     <widget class="QMenu" name="menuMacro">
@@ -811,6 +813,7 @@
    <addaction name="separator"/>
    <addaction name="actionTile_windows"/>
    <addaction name="actionTab_windows"/>
+   <addaction name="actionReset_layout"/>
    <addaction name="separator"/>
    <addaction name="actionExit_2"/>
    <addaction name="separator"/>
@@ -1351,6 +1354,18 @@
    </property>
    <property name="text">
     <string>Cascade Fit Windows</string>
+   </property>
+  </action>
+  <action name="actionReset_layout">
+   <property name="icon">
+    <iconset resource="resources/resource.qrc">
+     <normaloff>:/icons/icons/window-multi-xxl.png</normaloff>:/icons/icons/window-multi-xxl.png</iconset>
+   </property>
+   <property name="text">
+    <string>Reset Layout</string>
+   </property>
+   <property name="toolTip">
+    <string>Put the docks back into the default arrangement and forget the saved one</string>
    </property>
   </action>
   <action name="actionTTTR_CLSM">
