@@ -118,7 +118,21 @@ small checkable "bounds" button in its fold header (`bounds_toggle` defaults to
 *every* table in the panel at once (columns start hidden; bounds stay editable
 in the parameter details popup) — this is the default specifically so a
 `dynamic_group` table's paired Lo/Hi/Bounds/Error columns (doubled per slot)
-don't force horizontal scrolling in a narrow dock. The
+don't force horizontal scrolling in a narrow dock. `set_error_visible` is the
+same knob for the Error columns, for a host whose parameters no chisurf fit
+optimises and which therefore has no error estimate to show. Three properties of
+the paired table are set by its host rather than assumed, because a component
+table outside a model editor needs them: `slot_labels` names the columns
+independently of row 0 (a table with no components yet would otherwise show bare
+column numbers), `remote=False` says the parameters belong to no backend fit so an
+edit is not answered with "fit not found", and `context_menu_hook(menu, index)`
+lets the host add its own entries — "remove this component" — without
+reimplementing link / details / copy / paste. Sizing the table to its content has
+to allow for the **horizontal** scrollbar a table wider than its dock grows,
+which is drawn inside that height and otherwise eats the last row exactly as a
+bad row-height estimate would; and `RichTextHeaderView` measures the *rendered*
+title, not the markup, or a column headed `&sigma;<sub>x</sub>` reserves the
+width of nineteen characters to paint two glyphs. The
 `CollapsibleBox` header gained `add_header_widget` to host such per-section
 controls with no extra vertical space), `help` (a `?` modal button),
 `progress` (the one inline progress bar — see below), and

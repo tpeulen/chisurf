@@ -133,6 +133,42 @@ rather than Gaussian. The honest description of a shot-noise line shape is a
 {ref}`PDA model <concept-pda2c>` — which is exactly the kind of quantitative model a
 {ref}`bridge <concept-md-bridges>` hands the gated population off to.
 
+(concept-md-2d-gaussians)=
+
+## Fitting the map itself: 2-D Gaussians
+
+A marginal is a projection, and two populations that overlap in $E$ may be well
+separated in $S$. Fitting the **two-dimensional** distribution keeps that
+information: each population is a 2-D Gaussian with a centre $\boldsymbol\mu$, a
+covariance $\Sigma$ and a weight, and the mixture is fitted by
+expectation–maximisation over the *bursts* inside the displayed range — not over
+the binned image, so the answer does not depend on the binning you happen to be
+looking at.
+
+The covariance is parameterised as it is read: two widths and a correlation,
+$\Sigma = \begin{pmatrix}\sigma_x^2 & \rho\,\sigma_x\sigma_y\\
+\rho\,\sigma_x\sigma_y & \sigma_y^2\end{pmatrix}$, with $\rho$ the tilt of the
+population's ellipse. On a logarithmic axis the fit is done in $\log$ space and
+the result mapped back, so a population that is log-normal in, say, burst
+duration is described by a Gaussian where it *is* one.
+
+The six numbers of each component are `FittingParameter`s, in the same table as
+everything else, which has two consequences beyond a nicer widget:
+
+- **Holding is the ordinary *fixed* flag.** Click a peak where you know it is
+  (the donor-only corner at $E \approx 0$) and hold its centre while its width
+  and weight are fitted — the EM applies the constraint inside the M step, so the
+  held value is not merely restored afterwards.
+- **A component can be crosslinked.** Pin one population's centre to a parameter
+  of an actual fit, or pin two populations' widths to each other to test whether
+  a mixture is consistent with a single shared width. A linked parameter is held
+  by the fit and never written back: its value belongs to the master it follows,
+  and the ellipse on the map moves when *that* moves.
+
+A fitted component is also a **gate**: its $n\sigma$ ellipse becomes a selection,
+and the bursts inside it are what a {ref}`bridge <concept-md-bridges>` hands to a
+quantitative model.
+
 (concept-md-bridges)=
 
 ## From a selection to a full analysis: bridges

@@ -118,19 +118,27 @@ def test_table_claims_each_parameter_controller(table):
 
 
 def test_group_finalize_is_quiet_for_table_rendered_parameters(params, qtbot, caplog):
-    """The real symptom: ``model.finalize()`` warned once per table parameter."""
+    """``model.finalize()`` says nothing, with or without a table.
+
+    The original symptom was one "has no controller to finalize" warning per
+    table parameter per update. Both halves of the fix are asserted here: a
+    parameter *without* a controller is the ordinary case and no longer warns
+    (:meth:`FittingParameterGroup.finalize`), and a table claims a controller
+    for the rows it draws, so their finalize does real work rather than being
+    skipped.
+    """
     import logging
 
     model = cs.fits[0].model
     with caplog.at_level(logging.WARNING):
         model.finalize()
-    assert any(
-        "has no controller to finalize" in r.message for r in caplog.records
-    ), "expected the warning before a table claims the parameters"
+    noisy = [r.message for r in caplog.records if "has no controller" in r.message]
+    assert not noisy, noisy
 
     caplog.clear()
     w = ParameterGroupTableWidget([model.p1, model.p2])
     qtbot.addWidget(w)
+    assert model.p1.controller is not None and model.p2.controller is not None
     with caplog.at_level(logging.WARNING):
         model.finalize()
     noisy = [r.message for r in caplog.records if "has no controller" in r.message]

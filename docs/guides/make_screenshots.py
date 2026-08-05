@@ -842,6 +842,83 @@ def _grab_burst_fusion_tool():
                 _grab(tool, "burst_fusion_proximity.png")
 
 
+def _grab_ndx_gaussian_panel():
+    """ndX's Gaussian-fit panel, with two populations actually fitted.
+
+    Drives the real window: two simulated populations, one component seeded on
+    each, one centre held, then the EM. The screenshot therefore shows fitted
+    numbers in the parameter table (and the greyed-out held value), not a mockup
+    of one.
+    """
+    import sys
+
+    import pandas as pd
+    from qtpy.QtCore import QEventLoop, Qt, QTimer
+
+    root = pathlib.Path(__file__).resolve().parents[2]
+    ndx = str(root / "modules" / "ndxplorer")
+    if ndx not in sys.path:
+        sys.path.insert(0, ndx)
+    from ndxplorer.core.data_source import DataSource
+    from ndxplorer.core.plot_main import NDXplorer
+
+    app = QApplication.instance()
+
+    def settle(ms=80):
+        loop = QEventLoop()
+        QTimer.singleShot(ms, loop.quit)
+        loop.exec_()
+        app.processEvents()
+
+    blobs = [(0.25, 0.35, 0.04, 0.05), (0.70, 0.70, 0.06, 0.03)]
+    rng = np.random.default_rng(0)
+    points = np.vstack(
+        [
+            np.column_stack([rng.normal(cx, sx, 3000), rng.normal(cy, sy, 3000)])
+            for cx, cy, sx, sy in blobs
+        ]
+    )
+    frame = pd.DataFrame(
+        {"E": points[:, 0], "S": points[:, 1], "z": rng.normal(0, 1, len(points))}
+    )
+    columns = list(frame.columns)
+
+    win = NDXplorer(data_source=DataSource(columns, frame))
+    win.resize(1200, 800)
+    win.show()
+    app.processEvents()
+    control = win.plot_control
+    control.update(update_comboboxes=True, update_plots=False)
+    control.comboBoxSelX.setCurrentIndex(columns.index("E"))
+    control.comboBoxSelY.setCurrentIndex(columns.index("S"))
+    control.comboBoxSelZ.setCurrentIndex(columns.index("z"))
+    win.update_plots()
+    for _ in range(10):
+        settle(100)
+        if win._histogram.get("2d") is not None:
+            break
+
+    panel = win.gaussian_fit
+    for cx, cy, sx, sy in blobs:
+        panel._append_gaussian_row((cx + 0.04, cy - 0.04), np.diag([sx ** 2, sy ** 2]))
+    # The second population's centre is held, to show what a held parameter
+    # looks like (greyed, not editable) beside the fitted ones.
+    from ndxplorer.core import gaussian_parameters as gp
+
+    gp.parameters_of(panel.group, 1)["x"].fixed = True
+    panel._redraw_gaussian_overlays_from_table()
+    settle(100)
+    panel.on_fit_2d_gaussian()
+    settle(150)
+
+    dock = win.dockWidget_Fit
+    dock.setFloating(True)
+    dock.resize(760, 240)
+    settle(120)
+    _grab(dock, "ndxplorer_gaussian_panel.png")
+    win.close()
+
+
 def main():
     """Generate all guide screenshots."""
     app = QApplication.instance() or QApplication([])  # keep a ref alive  # noqa: F841
@@ -865,6 +942,7 @@ def main():
         _grab_hmm_tool,
         _grab_chimol_viewer,
         _grab_region_editor,
+        _grab_ndx_gaussian_panel,
     ):
         try:
             grab()

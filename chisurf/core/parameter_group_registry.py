@@ -37,6 +37,7 @@ __all__ = [
     "unregister_parameter_group",
     "iter_registered_parameter_groups",
     "get_registered_parameter_group",
+    "break_links",
     "subscribe",
     "unsubscribe",
 ]
@@ -196,12 +197,7 @@ def _deref(owner_id: str) -> Optional[Any]:
 
 
 def _break_group_links(group: Any) -> None:
-    """Sever parameter links so removing ``group`` leaves no dangling followers.
-
-    Both directions are handled: a parameter *in* the group that follows an
-    external master is unlinked, and any *external* follower pointing at a
-    parameter in the group is unlinked. Failures are swallowed so unregistering
-    stays best-effort during teardown.
+    """Sever every link into or out of ``group`` (see :func:`break_links`).
 
     Parameters
     ----------
@@ -214,6 +210,27 @@ def _break_group_links(group: Any) -> None:
         own_params = list(getattr(group, "parameters_all", []) or [])
     except Exception:
         own_params = []
+    break_links(own_params, exclude_group=group)
+
+
+def break_links(parameters: Any, exclude_group: Any = None) -> None:
+    """Sever parameter links so removing ``parameters`` leaves no dangling followers.
+
+    Both directions are handled: a parameter being removed that follows some
+    master is unlinked, and any follower pointing *at* one of them is unlinked
+    — a follower whose master is gone would otherwise read a value nothing
+    updates any more. Failures are swallowed so teardown stays best-effort.
+
+    Parameters
+    ----------
+    parameters : iterable of Parameter
+        The parameters going away (a whole group, or the rows of one component
+        a host is deleting).
+    exclude_group : FittingParameterGroup, optional
+        A registered group not to scan for followers — the one the parameters
+        belong to, whose own links this call has already cleared.
+    """
+    own_params = list(parameters or [])
     own_ids = {id(p) for p in own_params}
 
     # Outbound: params in the group that follow some master -> unlink.
@@ -234,7 +251,7 @@ def _break_group_links(group: Any) -> None:
                 for p in getattr(model, "parameters_all", []) or []:
                     yield p
         for _oid, _label, g in iter_registered_parameter_groups():
-            if g is group:
+            if exclude_group is not None and g is exclude_group:
                 continue
             for p in getattr(g, "parameters_all", []) or []:
                 yield p

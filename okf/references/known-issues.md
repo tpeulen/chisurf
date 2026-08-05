@@ -154,7 +154,12 @@ The rest, grouped by what they look like rather than by file:
   tests belong to whoever is changing that widget. Port them through `_spins`,
   not through `cellWidget`.
 * **Widget behaviour** — `test_proteinmc_mdl.py` (3),
-  `test_parameter_prior_widget.py`, `test_parameter_table_actions.py`,
+  `test_parameter_prior_widget.py`,
+  ~~`test_parameter_table_actions.py`~~ (fixed 2026-08-05: the test asserted, as
+  its *precondition*, the very warning that
+  `FittingParameterGroup.finalize` had deliberately stopped emitting — a
+  parameter without a controller is the ordinary case. Rewritten to assert
+  silence in both halves),
   `test_image_section_axes.py`, `test_plot_construction.py`. These are the ones
   most likely to be *real* defects rather than stale tests, and the rate-matrix
   four are the biggest single cluster.

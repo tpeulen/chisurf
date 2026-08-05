@@ -288,6 +288,52 @@ Gaussian, so its $\chi^2_r$ is elevated — the cue to hand that population to a
 {ref}`PDA bridge <concept-md-bridges>` for a shot-noise-aware line shape.
 ```
 
+(ndx-gaussian-panel)=
+
+## Fit 2-D Gaussians to the populations on the map
+
+A marginal is a projection: two populations that overlap in $E$ can be well
+separated in $S$. The **Gaussian Fit** dock fits the populations in the plane
+they are actually separated in. Theory: {ref}`concept-md-2d-gaussians`.
+
+1. Tick **Select point** and click a population on the 2-D map. A component is
+   added with its centre at the click and its width estimated from the bins
+   around it, and its 1σ / 2σ / 3σ ellipses appear on the map.
+2. Press **🎯 Fit**. Expectation–maximisation optimises every free parameter
+   against the bursts inside the visible range — not against the binned image, so
+   the answer does not move when you change the binning.
+3. **🔍 Select** turns the chosen rows into $n\sigma$ selections (the **Selection
+   σ** box sets $n$), which is how a fitted population becomes a gate a
+   [bridge](#from-marginal-to-full-model-bridges) can hand on.
+
+Each Gaussian is one **row** of the parameter table, with the same fitting
+parameters as everywhere else in ChiSurf: centre $x$, $y$, widths $\sigma_x$,
+$\sigma_y$, correlation $\rho$ and weight $w$, each with a **Fixed** box.
+
+- **Hold what you know.** Tick *Fixed* on a centre you placed deliberately — the
+  donor-only corner, say — and it is held *inside* the fit, while that
+  component's width and weight are still optimised.
+- **Link what is shared.** Right-click a cell → **🔗 Link … to** and pin the
+  parameter to another one: a parameter of a ChiSurf fit, an ndX constant, or the
+  matching parameter of another Gaussian (to test a mixture against one shared
+  width). A linked parameter is held by the fit and follows its master, so
+  re-fitting the thing it is pinned to moves the ellipse on the map.
+- **Bounds are armed** where a value outside them is meaningless ($\sigma \ge 0$,
+  $|\rho| \le 1$, $w \ge 0$); their columns are hidden — open a row's
+  **🔍 Details…** to edit them.
+- **Delete** (or right-click → *Remove Gaussian(s)*) removes the selected rows;
+  **💾 Save** / **📂 Load** write the components, with their held flags, to
+  JSON/CSV alongside the histogram, the model and both marginals.
+
+```{figure} figures/ndxplorer_gaussian_panel.png
+:name: fig-ndxplorer-gaussian-panel
+:width: 100%
+
+The Gaussian-fit panel after fitting two simulated populations. One row per
+Gaussian; the second component's centre was held (ticked *Fixed*, greyed out, and
+returned unchanged at 0.74) while everything else was optimised onto the data.
+```
+
 ## From marginal to full model: bridges
 
 A marginal fit gives peak positions and widths. To resolve the shot-noise

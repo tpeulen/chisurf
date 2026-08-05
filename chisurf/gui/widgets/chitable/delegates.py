@@ -290,6 +290,37 @@ class RichTextHeaderView(QtWidgets.QHeaderView):
         doc.documentLayout().draw(painter, ctx)
         painter.restore()
 
+    def sectionSizeFromContents(self, logicalIndex):  # noqa: N802 (Qt override)
+        """Measure the *rendered* title, not the markup it is written in.
+
+        The base header sizes a section from the raw string, so a column headed
+        ``&sigma;<sub>x</sub>`` reserves the width of nineteen characters to
+        paint two glyphs — enough, in a table of six such columns, to push the
+        values off the panel. ``ResizeToContents`` asks this question, so this
+        is where it is answered.
+        """
+        size = super().sectionSizeFromContents(logicalIndex)
+        model = self.model()
+        if model is None:
+            return size
+        data = model.headerData(logicalIndex, QtCore.Qt.Horizontal, QtCore.Qt.DisplayRole)
+        text = "" if data is None else str(data)
+        if "<" not in text and "&" not in text:
+            return size
+        doc = QtGui.QTextDocument()
+        doc.setDefaultFont(self.font())
+        doc.setDocumentMargin(0)
+        doc.setHtml(text)
+        # The margin the base measurement adds around the plain string, kept so
+        # a rendered title is not flush against the section border.
+        margin = 2 * self.style().pixelMetric(
+            QtWidgets.QStyle.PM_HeaderMargin, None, self
+        )
+        return QtCore.QSize(
+            int(doc.idealWidth()) + margin,
+            max(size.height(), int(doc.size().height()) + margin),
+        )
+
 
 def delegate_for(kind: str, choices: Sequence[str] = (), parent=None):
     """Return a delegate instance for a :attr:`ColumnSpec.delegate` hint.

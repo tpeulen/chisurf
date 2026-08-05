@@ -718,11 +718,23 @@ def _content_height(table, model, header_fallback: int, row_fallback: int) -> in
     estimates silently cut the last row or two off every parameter table --
     which reads as "this parameter does not exist", not as "scroll down". The
     estimates stay as the fallback for a table that has not been laid out yet.
+
+    A table wider than the space it is given grows a **horizontal** scrollbar,
+    which is drawn inside that height and eats the last row exactly as a bad
+    estimate would. Its allowance is added from the header's own length rather
+    than from ``isVisible()``, because at the moment a table is sized to its
+    content the scrollbar it is about to need does not exist yet.
     """
     header = table.horizontalHeader().height() or header_fallback
     n = model.rowCount()
     rows = sum(table.rowHeight(r) or row_fallback for r in range(n))
-    return header + max(rows, row_fallback) + 2 * table.frameWidth()
+    height = header + max(rows, row_fallback) + 2 * table.frameWidth()
+    bar = table.horizontalScrollBar()
+    if bar is not None and table.horizontalScrollBarPolicy() != QtCore.Qt.ScrollBarAlwaysOff:
+        width = table.viewport().width()
+        if width > 0 and table.horizontalHeader().length() > width:
+            height += bar.sizeHint().height()
+    return height
 
 
 class ParameterGroupTableWidget(QtWidgets.QWidget):
@@ -1208,10 +1220,16 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
         params: typing.List[FittingParameter],
         width: int,
         parent: typing.Optional[QtCore.QObject] = None,
+        slot_labels: typing.Optional[typing.Sequence[str]] = None,
     ):
         super().__init__(parent)
         self._width = max(1, int(width))
         self._params: typing.List[FittingParameter] = list(params)
+        #: Column titles for the slots, when the host knows them. Without them
+        #: a slot is named after the parameter in row 0, which is nothing at all
+        #: while the table is empty — a component table the user has yet to add
+        #: a component to would show bare column numbers.
+        self._slot_labels = None if slot_labels is None else [str(s) for s in slot_labels]
 
     # -- structural updates -------------------------------------------------
     def set_params(self, params: typing.List[FittingParameter]) -> None:
@@ -1277,6 +1295,8 @@ class PairedParameterTableModel(QtCore.QAbstractTableModel):
             return None
         slot, sub, _, _, _ = s
         if sub == 0:
+            if self._slot_labels is not None and slot < len(self._slot_labels):
+                return self._slot_labels[slot]
             # The slot's group label, derived from that slot's parameter in the
             # first component row (row 0): params[slot] for a width-``w`` group.
             if slot < len(self._params):
@@ -1371,6 +1391,17 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
     parent : QWidget or None
     on_change : callable or None
         Invoked (no args) after every user edit; wired to a fit recompute.
+    slot_labels : sequence of str or None
+        Column titles for the slots.  Without them a slot is named after the
+        parameter in row 0, which an empty table does not have.
+    remote : bool
+        Whether an edit is also sent to the fitting backend.  A host whose
+        parameters belong to no fit — nDXplorer's Gaussians, say — passes
+        ``False``, or every edit is answered with "fit not found".
+    context_menu_hook : callable or None
+        ``hook(menu, index)``, called while the right-click menu is being
+        built, so the host can add its own entries (remove this component, …)
+        without reimplementing link / details / copy / paste.
     """
 
     #: Opt into :meth:`AutoForm.sync_fields` / ``refresh_plots`` (see the sibling
@@ -1383,15 +1414,22 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         width: int = 2,
         parent: typing.Optional[QtWidgets.QWidget] = None,
         on_change: typing.Optional[Callable[[], None]] = None,
+        slot_labels: typing.Optional[typing.Sequence[str]] = None,
+        remote: bool = True,
+        context_menu_hook: typing.Optional[
+            Callable[[QtWidgets.QMenu, QtCore.QModelIndex], None]
+        ] = None,
     ):
         super().__init__(parent)
         self._on_change = on_change
+        self._remote = bool(remote)
+        self._context_menu_hook = context_menu_hook
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self._model = PairedParameterTableModel(params, width)
+        self._model = PairedParameterTableModel(params, width, slot_labels=slot_labels)
         self._table = WheelEditTableView()
         self._table.setModel(self._model)
         self._table.setHorizontalHeader(_RichTextHeaderView(self._table))
@@ -1449,9 +1487,10 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
             sc.setContext(QtCore.Qt.WidgetWithChildrenShortcut)
             sc.activated.connect(slot)
 
-        #: Whether the per-slot Lo / Hi / Bounds columns are shown. Tracked so an
-        #: add/remove rebuild keeps the user's choice.
+        #: Whether the per-slot Lo / Hi / Bounds and Error columns are shown.
+        #: Tracked so an add/remove rebuild keeps the host's choice.
         self._bounds_visible = True
+        self._error_visible = True
 
         self._install_controllers()
         layout.addWidget(self._table)
@@ -1473,6 +1512,7 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         for col in self._float_columns():
             self._table.setItemDelegateForColumn(col, self._float_delegate)
         self.set_bounds_visible(self._bounds_visible)
+        self.set_error_visible(self._error_visible)
         self._install_controllers()
         self._size_to_content()
 
@@ -1483,19 +1523,36 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
 
     def _bounds_columns(self) -> list:
         """Global column indices of every per-slot Lo / Hi / Bounds cell."""
-        cols = []
-        for slot in range(self._model.width):
-            base = 1 + slot * len(SLOT_COLUMN_META)
-            for sub, meta in enumerate(SLOT_COLUMN_META):
-                if meta[0] in ("bounds_lo", "bounds_hi", "bounds_on"):
-                    cols.append(base + sub)
-        return cols
+        return self._slot_columns("bounds_lo", "bounds_hi", "bounds_on")
 
     def set_bounds_visible(self, visible: bool) -> None:
         """Show or hide the per-slot Lo / Hi / Bounds columns (still editable in the details popup)."""
         self._bounds_visible = bool(visible)
         for col in self._bounds_columns():
             self._table.setColumnHidden(col, not visible)
+        self._size_to_content()
+
+    def set_error_visible(self, visible: bool) -> None:
+        """Show or hide the per-slot Error columns.
+
+        A host whose parameters are not optimised by a chisurf fit has no error
+        estimate to show, and six empty columns are six columns of width taken
+        from the values.
+        """
+        self._error_visible = bool(visible)
+        for col in self._slot_columns("error"):
+            self._table.setColumnHidden(col, not visible)
+        self._size_to_content()
+
+    def _slot_columns(self, *ids: str) -> list:
+        """Global column indices of every per-slot cell with one of ``ids``."""
+        cols = []
+        for slot in range(self._model.width):
+            base = 1 + slot * len(SLOT_COLUMN_META)
+            for sub, meta in enumerate(SLOT_COLUMN_META):
+                if meta[0] in ids:
+                    cols.append(base + sub)
+        return cols
 
     def _bool_columns(self) -> list:
         """Global column indices carrying a boolean (fixed / bounds_on) cell."""
@@ -1549,6 +1606,11 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         self._table.setFixedHeight(_content_height(self._table, self._model,
                                                    self._header_h, self._row_h))
 
+    def resizeEvent(self, event):  # noqa: N802 (Qt override)
+        """Re-measure: a narrower table needs a scrollbar, which needs height."""
+        super().resizeEvent(event)
+        self._size_to_content()
+
     # -- controllers --------------------------------------------------------
     def _install_controllers(self) -> None:
         """Claim each parameter's ``controller`` so rows repaint on change."""
@@ -1566,6 +1628,12 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
                     continue
                 param = params[idx]
                 ctrl = self._controller(param)
+                # Said once, here, rather than having every edit ask a backend
+                # that cannot know these parameters (see ``remote``).
+                try:
+                    ctrl.remote = self._remote
+                except Exception:
+                    pass
                 try:
                     param.controller = ctrl
                 except Exception:
@@ -1624,6 +1692,12 @@ class PairedParameterTableWidget(QtWidgets.QWidget):
         act_copy.triggered.connect(self._copy_selection)
         act_paste.triggered.connect(self._paste_selection)
         act_paste.setEnabled(bool(QtWidgets.QApplication.clipboard().text().strip()))
+        if self._context_menu_hook is not None:
+            menu.addSeparator()
+            try:
+                self._context_menu_hook(menu, index)
+            except Exception:
+                pass
         menu.exec_(self._table.viewport().mapToGlobal(pos))
 
     def _add_link_actions(self, menu: QtWidgets.QMenu, param: FittingParameter) -> None:

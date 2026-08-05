@@ -88,6 +88,19 @@ what a fit of the curve to the displayed data optimises: fix/free and bounds are
 once, in the table the user is looking at, and a *linked* parameter is held (its value
 belongs to its master) rather than fitted and written over.
 
+The **2-D Gaussians** of ndX's fit panel are the same arrangement applied to a
+mixture rather than a curve (`ndxplorer/core/gaussian_parameters.py`, registered
+as `ndxplorer.gaussians`). Six parameters per component — `x`, `y`, `sd_x`,
+`sd_y`, `rho`, `w` — laid out **component-major**, which is exactly what
+`PairedParameterTableWidget` renders one component per row. The constraint the EM
+applies inside its M step comes from the parameters (`fixed` *or* `is_linked`),
+so a held centre is held *during* the fit and not merely restored after it, and
+the covariance the EM works in is reconstructed from the widths and correlation
+the table shows. Removing a component renumbers the survivors and breaks the
+links into it (`parameter_group_registry.break_links`, the public form of what
+unregistering a whole group does), so no follower is left reading a parameter
+nothing updates.
+
 # Description registry scoping
 
 When a `Parameter` is constructed without an explicit `description=`, it
