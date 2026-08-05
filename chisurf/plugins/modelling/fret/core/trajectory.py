@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-import mdtraj as md
+from chisurf.core.structure import trajectory_data as md
 import numpy as np
 
 import chisurf.core.fio

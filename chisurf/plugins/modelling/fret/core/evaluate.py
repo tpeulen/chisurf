@@ -204,18 +204,21 @@ def evaluate_trajectory(
     storage : EvaluationStorage
         Accumulated results.
     """
-    import mdtraj as md
+    from chisurf.core.structure import trajectory_data as md
     t = md.load(traj_path, top=top_path)
     storage = EvaluationStorage()
 
-    # Get vdW radii map
+    # Get vdW radii map. The topology reports the element as its symbol, and
+    # av already carries the symbol-to-number table, so use that rather than a
+    # second one; carbon is the fallback for an atom whose element is blank,
+    # which plenty of PDB files leave so.
     vdw_radii = []
     for atom in t.topology.atoms:
-        elem = atom.element.atomic_number if atom.element is not None else 6
-        vdw_radii.append(_av.VDW_RADII.get(elem, _av._DEFAULT_VDW))
+        atomic_number = _av._ELEMENT_NUMBERS.get((atom.element or "").upper(), 6)
+        vdw_radii.append(_av.VDW_RADII.get(atomic_number, _av._DEFAULT_VDW))
     vdw_radii = np.array(vdw_radii, dtype=np.float64)
 
-    # Convert mdtraj coordinates from nanometers to Angstroms
+    # Trajectories are in nanometres; this module works in Angstrom
     xyz_angstrom = t.xyz * 10.0
 
     for f_idx in range(t.n_frames):

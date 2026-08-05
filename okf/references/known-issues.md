@@ -1876,3 +1876,120 @@ which reworked frame edges the same day. It is not the cause: its only
 default-routine change is `walk_back_over_simultaneous_markers`, which moves an
 edge earlier within one macro-time tick and cannot change how many edges there
 are. Do not spend the rebuild on that A/B.
+
+## Companion explorer: eight cache/change-token defects fixed, not yet committable
+
+**Where to pick this up.** The fixes and their tests are **in the ndXplorer
+working tree and green** (861 passed, 6 skipped, from a 572-test baseline), but
+they could not land as their own commit and are waiting on the peer refactor
+underneath them.
+
+**Why they cannot land alone.** Every fix edits code that exists only in the
+working tree. `git show HEAD:ndxplorer/core/data_source.py | grep -c "def gate_key"`
+returns **0**, and the same for `_frame_column` in `axis_helpers.py` — so a
+commit of "just my hunks" against HEAD would target functions HEAD does not
+have. The peer refactor in flight (arrow backend removed, gates evaluated in the
+store, masks as TIFF) spans 46 paths and has 9 staged deletions in the shared
+index. These fixes go in **with** it; extracting them first is not a smaller
+change, it is an incoherent one.
+
+**What was fixed** — all eight are the same failure mode, a change token that
+does not change, so the plot silently keeps the previous population and the
+counts under it agree because they came from the same skipped update:
+
+1. `histogram_helpers` keyed bin edges on `(count, first, last)`. A log axis is
+   `logspace(log10(lo), log10(hi), n+1)` and a linear one `linspace(lo, hi, n+1)`
+   — identical on all three. Switching an axis to log left `should_recompute`
+   seeing nothing and the plot kept its linearly binned histogram. Now
+   `bins_token`, which adds the **middle** edge; that separates any two monotone
+   spacings over the same endpoints, which is the general form.
+2. `MaskDataSelection.gate_key` had the same collision, and there the gate
+   demonstrably selects different points either side of it.
+3. `_compute_selection_hash` dispatched on the class *name* and mis-spelled
+   `Gaussian2DSelection` as `Gauss2DSelection`, so every ellipse fell through to
+   `str(sel)` — the object **address**, which does not move when the table edits
+   the gate in place. Reshaping, resizing or inverting an ellipse changed
+   nothing. The bitmap branch used the construction-time uuid while the brush
+   paints into `sel.mask` in place. Now delegates to `mask_state.gate_key`, the
+   routine the mask cache already keys on, so the two caches cannot disagree.
+4. All three selection classes had a `selection_id` fast path in `__eq__`. The
+   id is frozen at `__init__` and never mentioned `cov` or the log flags, so a
+   round ellipse compared **equal** to an elongated one and a dragged interval
+   equal to its pre-drag self. Removed; `selection_id` is for matching a table
+   row to its object, not for describing the gate.
+5. `cache_manager.HistogramCache` keyed on three sampled data values and on
+   `np.sum(mask)`, and handed one dataset's histogram to another. Its 2-D key
+   built an **object array** of the two edge arrays, whose `tobytes()` is a list
+   of pointers. Now hashes contents.
+6. `histogram_export.copy_2d_hist_csv` indexed `H[i, j]`, x first, while `H` is
+   stored `(n_y, n_x)`: the square default binning exported the **transpose**,
+   and an image histogram raised an uncaught `IndexError` so the copy silently
+   did not happen.
+7. `vectorized_ops.digitize_parallel` carried `fastmath=True`, which folds away
+   its own `isfinite` guard: a NaN came out as bin **0**, a real bin at the left
+   edge, while the NumPy fallback put it past the top edge. Which answer a column
+   of NaNs got depended on whether numba was installed. Dropping the flag gives
+   exact `np.digitize` parity and costs nothing (2M points into 512 bins: 10.9 ms
+   with, 9.1 ms without, against 122 ms for `np.digitize`).
+8. `fast_percentile_range` read `valid_data[index]` out of the **unsorted** array
+   when both percentiles rounded to one rank — not a percentile of anything, and
+   it moved when the rows were reordered. Also `save_mask_as_bitmap` crashed
+   inside libtiff on an empty mask and silently wrapped a label past its dtype.
+
+**Trap in re-deriving any of this**: the ndXplorer suite needs `chisurf` on
+`PYTHONPATH` or 16 region-gate tests fail with `ModuleNotFoundError` and read as
+a code defect.
+
+The dependency is **intended** (user, 2026-08-05) and is now declared in
+`modules/ndxplorer/pyproject.toml`. It is not an optional integration: region
+and lasso gates are `chisurf.core.roi` shapes, the parameter and constants
+tables are `chisurf.core.fitting.parameter` groups, and the data-frame editor,
+curve-fit dialog and glyphs come from `chisurf.gui`. It had been used in all of
+those and declared in none, so a clean install imported fine and then raised the
+first time somebody drew a lasso.
+
+It is deliberately **absent from `conda-recipe/meta.yaml`**, with a comment
+saying so, because there is no chisurf conda package on any channel that recipe
+builds against — listing it fails the build rather than documenting anything.
+The recipe installs with `--no-deps` and its `test:` block only imports
+`ndxplorer` and launches the GUI, so the package still builds. Add it there once
+chisurf is published; do not "fix" the omission before that.
+
+**Trap in the fixtures**: a square histogram cannot show a transpose, a mask
+with all labels under 256 cannot show the 16-bit path, and a selection test that
+builds a second object cannot show any of defects 3 and 4 — the table edits gates
+**in place**, so the tests have to as well.
+
+## `IMP.bff.restraints.AVNetworkRestraintWrapper` is gone, and the FRET docking suite with it
+
+**Found 2026-08-05** while porting the FRET modelling plugin off mdtraj. Not
+caused by that port — the failures are an IMP API that moved — but the port is
+how they were noticed, so they are written down rather than left.
+
+**The measurement.** In the `arm64` env with IMP 2.24:
+
+```
+python -m pytest -q chisurf/plugins/modelling/fret/test
+# 16 failed, 112 passed
+```
+
+Every failure reduces to one of exactly two causes, and neither involves the
+trajectory code:
+
+| Cause | Tests |
+|---|---|
+| `AttributeError: module 'IMP.bff.restraints' has no attribute 'AVNetworkRestraintWrapper'` | 13 (`test_imp_engine.py`, `test_dock_project.py`) |
+| `FileNotFoundError: /Users/tpeulen/dev/olga/doc/data/T4L/screening_tutorial.fps.json` | 3 (`test_examples.py`) |
+
+The second is a sibling checkout that is simply not present on this machine, so
+those three say nothing about the code. The first is real: the wrapper the
+engine builds its restraint network with no longer exists under that name.
+Whoever fixes it should check whether it was renamed or whether the restraint
+is now assembled differently — and fix it in **imp-tricks**, where it lives,
+not by working around it here.
+
+**A trap in re-measuring this.** A `git worktree` at HEAD is *not* a usable
+baseline for this suite: `modules/` holds symlinks to sibling checkouts and is
+gitignored, so a fresh worktree collects two import errors before it runs a
+single test. Compare by classifying the failures' root causes instead, which is
+what established that the mdtraj port added none of them.

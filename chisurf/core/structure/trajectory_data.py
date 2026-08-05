@@ -29,8 +29,8 @@ import numpy as np
 
 from .topology import Topology
 
-__all__ = ["Trajectory", "compute_distances", "iterload", "join", "load",
-           "load_frame", "rmsd"]
+__all__ = ["Topology", "Trajectory", "compute_distances", "iterload", "join",
+           "load", "load_frame", "rmsd"]
 
 
 def _kabsch_rotations(mobile: np.ndarray, target: np.ndarray) -> np.ndarray:
@@ -186,12 +186,30 @@ class Trajectory:
         from chisurf.core.fio.trajectory import write_dcd
         write_dcd(filename, self.xyz * 10.0, axes="TYX")
 
+    def save_pdb(self, filename) -> None:
+        """Write the frames as a multi-model PDB.
+
+        Needs a topology: a PDB records atom names and residues, which
+        coordinates alone cannot supply.
+        """
+        from chisurf.core.fio.structure.coordinates import write_pdb
+
+        if self.topology is None:
+            raise ValueError("cannot write a PDB without a topology")
+        atoms = self.topology.atom_array.copy()
+        for frame in range(self.n_frames):
+            atoms["xyz"] = self.xyz[frame] * 10.0        # nm here, Angstrom in a PDB
+            write_pdb(str(filename), atoms, append_model=frame > 0)
+
     def save(self, filename) -> None:
         """Write the trajectory, choosing the format from the suffix."""
-        if str(filename).lower().endswith((".dcd",)):
+        name = str(filename).lower()
+        if name.endswith(".dcd"):
             self.save_dcd(filename)
+        elif name.endswith(".pdb"):
+            self.save_pdb(filename)
         else:
-            raise ValueError(f"cannot write {filename!r}: only .dcd is written")
+            raise ValueError(f"cannot write {filename!r}: .dcd and .pdb are written")
 
 
 def rmsd(target: Trajectory, reference: Trajectory, frame: int = 0,

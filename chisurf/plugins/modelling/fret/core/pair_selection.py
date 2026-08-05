@@ -6,7 +6,7 @@ import glob
 import os
 from typing import Dict, List, Optional, Tuple
 
-import mdtraj as md
+from chisurf.core.structure import trajectory_data as md
 import numpy as np
 
 from .olga_greedy import select_informative_pairs

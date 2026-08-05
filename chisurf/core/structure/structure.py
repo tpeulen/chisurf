@@ -5,7 +5,6 @@ import copy
 import os
 import tempfile
 
-import mdtraj
 import warnings
 import numpy as np
 
@@ -526,7 +525,8 @@ def find_best(
         atom_indices=None
 ):
     """
-    target and reference are both of type mdtraj.Trajectory
+    target and reference are both trajectories
+    (:class:`chisurf.core.structure.trajectory_data.Trajectory`);
     reference is of length 1, target of arbitrary length
 
     returns a Structure object and the index within the trajectory
@@ -537,9 +537,11 @@ def find_best(
     >>> import chisurf.core.settings as mfm
     >>> times = times = mfm.TrajectoryFile('./test/data/structure/2807_8_9_b.h5', reading_routine='r', stride=1)
     >>> find_best(times.mdtraj, times.mdtraj[2])
-    (2, <mdtraj.Trajectory with 1 frames, 2495 atoms, 164 residues, without unitcells at 0x13570b30>)
+    (2, <Trajectory: 1 frames, 2495 atoms>)
     """
-    rmsds = mdtraj.rmsd(target, reference, atom_indices=atom_indices)
+    from .trajectory_data import rmsd as _rmsd
+
+    rmsds = _rmsd(target, reference, atom_indices=atom_indices)
     iMin = np.argmin(rmsds)
     return iMin, target[iMin]
 
