@@ -180,29 +180,6 @@ bin-space as the built-in curve overlays; both phasor lines and FRET lines use o
 path. Every action fails soft (status message, never a crash), and the toolbar is absent
 when no server is configured.
 
-## The 2-D overlay is one surface with several producers
-
-The companion tool's `overlay_plot` is a single painter widget shared by three
-producers: the built-in equation curves, the Gaussian-fit ellipses, and these
-server-fed LineSets. Every curve therefore carries a **layer** name
-(`equations`, `gaussian`, `server:<tag>`), and `clear_curves(layer)` removes
-only that producer's work; an unqualified `clear_curves()` still wipes the
-surface and is reserved for "clear everything". Without layers the producer
-that happened to redraw last silently deleted the others — which is how fitted
-ellipses used to appear and then vanish a moment later.
-
-Two further consequences, both easy to reintroduce:
-
-- Curves are stored in **data (bin) coordinates and mapped to pixels at paint
-  time**. Freezing them into pixels at add time meant a resize, or margins
-  arriving after the curve did, left the drawing describing a viewport that no
-  longer existed — visible only as a drawing in the wrong place, never as an
-  error.
-- Bin coordinates are tied to the current histogram edges, so a new histogram
-  invalidates *all* the layers. `NDXplorer._refresh_curve_overlays()` is the one
-  place that redraws them, and it redraws all three; the LineSet store keeps its
-  source overlay dicts so it can be re-mapped there.
-
 # Calculators hub — phasor plot (AutoForm + JSON)
 
 The **phasor plot is also a standalone calculator** in the Calculators hub

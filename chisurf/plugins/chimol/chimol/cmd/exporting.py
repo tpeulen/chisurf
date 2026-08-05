@@ -255,7 +255,9 @@ class ExportMixin(BaseCmd):
                         show_overlay = getattr(viewer, "show_ray_overlay", None)
                         if callable(show_overlay):
                             show_overlay(image)
-                        self._emit_message(f"ray: wrote {out_path} ({width}x{height})")
+                        self._emit_message(
+                            f"ray: wrote {out_path} ({width}x{height})"
+                        )
                         return
                 except Exception as exc:
                     self._emit_error(f"ray: failed to save image: {exc}")
@@ -396,6 +398,8 @@ class ExportMixin(BaseCmd):
         direct_specular = float(ray_cfg.get("direct_specular", 0.30))
         direct_specular_power = float(ray_cfg.get("direct_specular_power", 55.0))
         reflect_power = float(ray_cfg.get("reflect_power", 1.0))
+        direct = float(ray_cfg.get("direct", 0.45))
+        direct_power = float(ray_cfg.get("power", 1.0))
         legacy_lighting = float(ray_cfg.get("legacy_lighting", 0.0))
         ssaa_val = int(ray_cfg.get("antialias", 2))
         gamma = float(ray_cfg.get("gamma", 2.2))
@@ -423,6 +427,19 @@ class ExportMixin(BaseCmd):
         cancel = np.zeros(1, dtype=np.int64)
         total_rows = height * max(1, ssaa_val)
 
+        # A first render after an update spends most of its time compiling the
+        # tracer, not tracing. It is ~30 s against ~0.5 s for the render itself,
+        # it is cached afterwards (under `~/.chisurf/cache`), and it recurs only
+        # when the kernel changes -- but with nothing said, it reads as "ray is
+        # slow" and the number a user reports is the compile. So say it.
+        from ..renderer.raytracer import _jit_trace
+
+        if not _jit_trace.signatures:
+            self._emit_message(
+                "ray: compiling the renderer -- one-off after an update, "
+                "about 30 s; later renders take about a second"
+            )
+
         if use_scene_path:
             shown = ", ".join(f"{n} {k}" for k, n in sorted(counts.items()) if k in TRACEABLE_KINDS)
             self._emit_message(
@@ -445,6 +462,8 @@ class ExportMixin(BaseCmd):
                     direct_specular=direct_specular,
                     direct_specular_power=direct_specular_power,
                     reflect_power=reflect_power,
+                    direct=direct,
+                    direct_power=direct_power,
                     legacy_lighting=legacy_lighting,
                     shadow=shadow_enabled,
                     shadow_fudge=shadow_fudge,
@@ -484,6 +503,8 @@ class ExportMixin(BaseCmd):
                     direct_specular=direct_specular,
                     direct_specular_power=direct_specular_power,
                     reflect_power=reflect_power,
+                    direct=direct,
+                    direct_power=direct_power,
                     legacy_lighting=legacy_lighting,
                     shadow=shadow_enabled,
                     shadow_fudge=shadow_fudge,
@@ -547,12 +568,15 @@ class ExportMixin(BaseCmd):
         parent = window if isinstance(window, QtWidgets.QWidget) else None
         if parent is None:
             # Headless / test context: run synchronously without a dialog.
+            started = time.time()
             try:
                 image = render_func()
             except Exception as exc:
                 self._emit_error(f"ray: {exc}")
                 return
-            self._finish_ray(image, out_path, width, height, viewer, window)
+            self._finish_ray(
+                image, out_path, width, height, viewer, window, started
+            )
             return
 
         def _cancel_render() -> None:
@@ -579,6 +603,7 @@ class ExportMixin(BaseCmd):
         thread.finished.connect(
             lambda image: self._on_ray_finished(
                 image, cancel, out_path, width, height, viewer, window, dialog, timer, thread,
+                start_time,
             )
         )
         thread.error.connect(
@@ -647,8 +672,16 @@ class ExportMixin(BaseCmd):
         height: int,
         viewer: object,
         window: object | None,
+        started: float | None = None,
     ) -> None:
-        """Save the ray-traced image, show the overlay and emit a message."""
+        """Save the ray-traced image, show the overlay and emit a message.
+
+        The elapsed time is part of the message because `ray` is the one command
+        whose cost varies by orders of magnitude with the scene, and a report of
+        "slow" that carries no number cannot be acted on -- it took a session of
+        measuring to establish that a render this tool called slow was under a
+        second, and the machine was loaded. Saying it costs one string.
+        """
         try:
             if image is None:
                 self._emit_error("ray: render returned no image")
@@ -671,7 +704,10 @@ class ExportMixin(BaseCmd):
                     show_overlay(qimg)
                 except Exception:
                     pass
-            self._emit_message(f"ray: wrote {out_path} ({width}x{height})")
+            took = "" if started is None else f" in {time.time() - started:.1f}s"
+            self._emit_message(
+                f"ray: wrote {out_path} ({width}x{height}){took}"
+            )
         except Exception as exc:
             self._emit_error(f"ray: failed to save image: {exc}")
         finally:
@@ -693,6 +729,7 @@ class ExportMixin(BaseCmd):
         dialog: ChiSurfProgress,
         timer: QtCore.QTimer,
         thread: RayRenderThread,
+        started: float,
     ) -> None:
         """Take the progress display down and save what the thread rendered.
 
@@ -705,7 +742,9 @@ class ExportMixin(BaseCmd):
         if cancel[0] != 0:
             self._emit_message("ray: cancelled")
         else:
-            self._finish_ray(image, out_path, width, height, viewer, window)
+            self._finish_ray(
+                image, out_path, width, height, viewer, window, started
+            )
         thread.deleteLater()
         timer.deleteLater()
 

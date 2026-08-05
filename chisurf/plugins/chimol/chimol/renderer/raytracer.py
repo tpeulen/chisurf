@@ -107,6 +107,8 @@ def _jit_trace(
     direct_spec: float,
     direct_spec_power: float,
     reflect_power: float,
+    direct: float,
+    direct_power: float,
     legacy_lighting: float,
     shadow_enabled: int,
     shadow_fudge: float,
@@ -384,7 +386,27 @@ def _jit_trace(
                 else:
                     legacy_bright = 0.0
 
-                bright = ambient + diffuse * reflect_norm
+                # PyMOL's brightness has **two** diffuse terms and chimol had
+                # only one (`layer1/Ray.cpp`):
+                #
+                #   bright = ambient
+                #          + ((1-direct_shade) + direct_shade*lit) * direct * direct_cmp
+                #          + lreflect * reflect_cmp
+                #
+                # `direct_cmp` is `pow(surfnormal[2], power)` -- the normal's z in
+                # camera space, so `direct` is a **headlight**: a surface facing
+                # the viewer is lit whatever the lamps are doing. `reflect` is
+                # the lamp-driven term, divided over the lights ("divide up the
+                # reflected light component over all lights"), which is what
+                # `reflect_norm` already is.
+                #
+                # Without the headlight the ceiling was ambient + diffuse =
+                # 0.14 + 0.45 = 0.59, and only where a lamp faced the surface
+                # squarely; PyMOL's is 0.14 + 0.45 + 0.45, clamped to 1. That
+                # missing 0.45 is why a traced image came out far darker than
+                # the viewport it was meant to reproduce.
+                bright = ambient + direct * pow(n_dot_v, direct_power) \
+                    + diffuse * reflect_norm
                 if legacy > 0.0:
                     bright = bright * (1.0 - legacy) + legacy_bright * legacy
                 if bright < 0.0:
@@ -558,6 +580,9 @@ def trace(
     direct_specular: float = 0.30,
     direct_specular_power: float = 55.0,
     reflect_power: float = 1.0,
+    #: PyMOL's `direct` and `power`: the headlight term and its exponent.
+    direct: float = 0.45,
+    direct_power: float = 1.0,
     legacy_lighting: float = 0.0,
     shadow: bool = True,
     shadow_fudge: float = 0.001,
@@ -728,7 +753,8 @@ def trace(
         int(bg_r), int(bg_g), int(bg_b),
         float(ambient), float(diffuse), float(specular), float(shininess),
         float(direct_specular), float(direct_specular_power),
-        float(reflect_power), float(legacy_lighting),
+        float(reflect_power), float(direct), float(direct_power),
+        float(legacy_lighting),
         int(shadow), float(shadow_fudge),
         float(shadow_decay_factor), float(shadow_decay_range),
         int(depth_cue), float(fog_start), float(fog_intensity),

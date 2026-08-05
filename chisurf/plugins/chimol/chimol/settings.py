@@ -349,6 +349,12 @@ _SPECS: tuple[SettingSpec, ...] = (
           "Exponent of the specular reflection."),
     _spec("gamma", "ray.gamma", "float", 2.2,
           "Gamma applied to the raytraced image."),
+    _spec("direct", "ray.direct", "float", 0.45,
+          "Headlight brightness: how much a surface facing the viewer is lit, "
+          "independent of the lamps (PyMOL `direct`)."),
+    _spec("power", "ray.power", "float", 1.0,
+          "Exponent on the headlight term; 1 is linear in the surface normal "
+          "(PyMOL `power`)."),
     _spec("depth_cue", "ray.depth_cue", "bool", True,
           "Fade distant geometry into the background colour."),
     _spec("fog_start", "ray.fog_start", "float", 0.45,

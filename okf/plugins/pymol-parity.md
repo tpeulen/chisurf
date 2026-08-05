@@ -1272,6 +1272,72 @@ builder does not merely drift: it cannot *receive* what the other learns** — t
 same shape as the RMF reader's private route into the viewer. 83 lines deleted;
 `_build_balls_mesh` takes the bake as an argument and is the one builder.
 
+## `ray` came out far darker than the viewport, and it was a missing term
+
+Reported as "way too dark, and the lighting does not correspond to the live
+view" — which turned out to be one fault, not two.
+
+PyMOL's traced brightness has **two** diffuse terms (`layer1/Ray.cpp`):
+
+```
+bright = ambient
+       + ((1-direct_shade) + direct_shade*lit) * direct * direct_cmp
+       + lreflect * reflect_cmp
+```
+
+`direct_cmp` is `pow(surfnormal[2], power)` — the normal's z in *camera* space —
+so `direct` is a **headlight**: a surface facing the viewer is lit whatever the
+lamps are doing. `reflect` is the lamp-driven term, and `lreflect` carries
+`reflect_scale`, which the source comments as "divide up the reflected light
+component over all lights" — so chimol's averaging over lights was already right.
+
+chimol had only the lamp term: `bright = ambient + diffuse * reflect_norm`. Its
+ceiling was **0.14 + 0.45 = 0.59**, and only where a lamp faced the surface
+squarely, against PyMOL's 0.14 + 0.45 + 0.45 clamped to 1. The missing 0.45 was
+the whole complaint.
+
+Measured on 148L's cartoon, mean brightness of lit pixels, against the GL
+viewport rendering the same scene from the same camera:
+
+| | mean lit | p95 |
+| --- | --- | --- |
+| `ray` before | 35.5 | 97 |
+| `ray` after | **50.3** | 144 |
+| viewport (GL) | 51.1 | 134 |
+
+Within 2 % of the viewport, from 30 % below it. `direct` (0.45) and `power`
+(1.0) are registered under PyMOL's own names and defaults (`SettingInfo.h` 8
+and 11); they are new config keys, so a merge adds them and no migration is
+needed.
+
+**Not established, and worth a fresh look:** whether `ray` and the viewport also
+disagree about *framing*. A first comparison suggested the traced molecule sits
+smaller in the frame, but the viewport capture includes the panel and mouse-mode
+text drawn inside the GL widget, and a brightness threshold picks those up as
+"molecule" — so the measurement was measuring chrome. Redo it by masking to the
+scene column and comparing silhouette bounding boxes, not by eye and not on a
+whole-frame statistic.
+
+## `ray` looked slow, and it was compiling, not tracing
+
+Reported as "1f5n takes more than 10 s". The trace is **0.4–0.6 s** for that
+structure at 638×291 with 2×2 samples; end to end through the command, thread
+and PNG write it is 0.46 s in a fresh process.
+
+The 10–33 s is **numba compiling the tracer kernel**. It is cached under
+`~/.chisurf/cache/<module>_<contenthash>/`, and the hash is over the source — so
+*every* change to `raytracer.py` or `bvh.py` throws the cache away and the next
+`ray` anyone runs pays a full recompile. Measured directly: 33.5 s immediately
+after a kernel signature changed, 0.46 s in the next fresh process. It also
+means a **fresh install** pays it once.
+
+Nothing said, that reads as "ray is slow", and the number a user reports is the
+compile. So `ray` now says which it is spending time on — it announces the
+compile when `_jit_trace` has no signatures yet, and reports elapsed time in the
+"wrote" message either way. A report of slow that carries no number cannot be
+acted on; it cost a session of measuring to establish that a render called slow
+was under a second.
+
 ## A cartoon casts a shadow now, and the second tree is gone
 
 `ray_shadow` did nothing on the display chimol and PyMOL both start with. The

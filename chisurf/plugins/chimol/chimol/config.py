@@ -775,6 +775,12 @@ def _load_display_config() -> dict:
             "ambient": 0.14,
             "diffuse": 0.45,
             "reflect_power": 1.0,
+            # PyMOL's `direct` and `power` (SettingInfo.h 8 and 11): the
+            # headlight term and its exponent. Without them the traced
+            # image tops out at ambient + diffuse and comes out far
+            # darker than the viewport.
+            "direct": 0.45,
+            "power": 1.0,
             "specular": 0.25,
             "shininess": 40.0,
             "direct_specular": 0.30,
