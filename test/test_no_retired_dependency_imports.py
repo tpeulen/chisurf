@@ -72,6 +72,10 @@ RETIRED = {
         "requests",
         "use chisurf.core.http",
     ),
+    "emcee": (
+        "emcee",
+        "use chisurf.core.fitting.ensemble",
+    ),
 }
 
 #: Further distribution names that install the same retired module, checked by
@@ -100,12 +104,21 @@ _ALLOWED_PREFIXES = {
 #: that are not pinned by this repository, so asserting on them would make this
 #: test's result depend on which revision of a neighbour happens to be present.
 #: Each of those projects guards its own dependencies.
+#:
+#: ``build_tools/setup_runtime.sh`` is a manifest too, even though it is a shell
+#: script: it is the dependency list the AppImage runtime is solved from. It was
+#: missing here until 2026-08-05, and in that blind spot it had accumulated six
+#: packages retired long before -- ``pytools``, ``click-didyoumean``,
+#: ``deprecation``, ``emcee``, ``pyarrow`` and ``boost-histogram``. A guardrail
+#: that covers only the manifests someone remembered to list is how a retired
+#: dependency comes back.
 _MANIFESTS = (
     "pixi.toml",
     "pyproject.toml",
     "setup.py",
     "rattler-recipe/recipe.yaml",
     "test/settings/test_py314.toml",
+    "build_tools/setup_runtime.sh",
 )
 
 
@@ -126,8 +139,15 @@ def _declared_dependencies(text: str) -> set[str]:
     """Return the requirement names declared in a manifest.
 
     Comments are stripped first, so an explanatory note naming a retired
-    package does not read as a declaration. Both the TOML (``name = "*"``) and
-    the recipe YAML (``- name >=1.0``) spellings are recognised.
+    package does not read as a declaration. The TOML (``name = "*"``), recipe
+    YAML (``- name >=1.0``) and shell-array (``"name<2.0"``) spellings are all
+    recognised.
+
+    The shell form makes this deliberately over-eager -- every bare word in
+    ``setup_runtime.sh`` reads as a name. That is harmless, because the result
+    is only ever intersected with the retired set, and being over-eager is the
+    safe direction: a missed declaration lets a dependency back in, while a
+    spurious one would have to collide with a retired package name to matter.
 
     Parameters
     ----------
