@@ -198,6 +198,57 @@ not undo it. But on the real BH SPC-132 DNA measurement the scale is 0.95 at
 simulator's — and there the correction is a small one. Read the scale on your own
 data rather than expecting the table's shift.
 
+## ChiMOL ray tracing
+
+**Work unit:** one `ray` render — the call a user waits on after typing the
+command. The scene build is excluded and measured separately by
+`benchmark_chimol_representations.py`; what is timed here is turning an already
+built scene into pixels.
+
+The model is T4 lysozyme (**148L**, 1 314 atoms), which ships in the test data.
+It is small as structures go, and that is the point: a molecule this ordinary
+has to be fast, or nothing larger is usable.
+
+```bash
+pixi run python test/benchmarks/benchmark_chimol_ray.py
+```
+
+320×240 with 2×2 samples per pixel, before and after the tracer gained a
+bounding-volume hierarchy:
+
+| Representation | Geometry handed to the tracer | Exhaustive | BVH | Speedup |
+| --- | --- | --- | --- | --- |
+| cartoon | 39 252 triangles | 19.12 s | 0.126 s | 151× |
+| sticks | 33 216 triangles | 8.96 s | 0.062 s | 144× |
+| surface | 51 748 triangles | 35.00 s | 0.198 s | 177× |
+| lines | 5 536 caps + tessellated shafts | 51.11 s | 0.152 s | 337× |
+| spheres | 1 314 spheres | 0.32 s | 0.058 s | 5.6× |
+
+A publication-sized cartoon — 1024×768 with 2×2 samples — went from **195 s to
+0.30 s (651×)**.
+
+**Why the numbers differ so much between rows.** The cost of a ray tracer
+without an acceleration structure is the sample count times the *primitive*
+count, so the ranking above is a ranking of triangle counts and nothing else.
+`spheres` gains least because it is the one representation whose primitives were
+already few: a space-filling model is drawn as one merged mesh, and the tracer
+had previously been taught to recover the 1 314 spheres it was built from rather
+than intersect its 210 240 triangles. That fix bought 380× for one
+representation and could not generalise, because the triangles of a cartoon are
+not secretly spheres. The tree makes the geometry irrelevant.
+
+**Quality is unchanged, and that is the property the benchmark protects.** An
+acceleration structure is the one optimisation that fails silently — a ray that
+never visits the box holding a triangle draws whatever is behind it. Rendering
+each representation through both tracers and differencing: cartoon, sticks and
+surface come out **bit-identical**. `spheres` and `lines` differ in 3.6 % and
+0.03 % of pixels, from a shadow defect the tree exposed rather than caused (the
+nearest occluder is now taken, as PyMOL does when the shadow decay is on).
+
+The scaling table the script prints second is the one to read after any change
+here: the same picture at four resolutions, in microseconds per sample. With a
+tree that figure is roughly flat; without one it climbs with the scene.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and

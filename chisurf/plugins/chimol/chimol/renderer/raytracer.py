@@ -12,7 +12,15 @@ from typing import List, Optional, Tuple
 import numba as _nb
 import numpy as np
 
+from .bvh import _MAX_LEAF, STACK_SIZE, build_bvh, closest_hit, primitive_bounds
 from .view_state import unpack_view_state
+
+#: Empty primitive arrays, so the shadow tree can be built over the spheres
+#: alone -- and over nothing at all when shadows are off -- without every call
+#: site allocating its own.
+_NO_TRIANGLES = np.zeros((0, 3, 3), dtype=np.float64)
+_NO_CENTERS = np.zeros((0, 3), dtype=np.float64)
+_NO_RADII = np.zeros(0, dtype=np.float64)
 
 
 @dataclass
@@ -73,52 +81,6 @@ _JIT_SPECDICT = {
     "parallel": True,
 }
 
-@_nb.njit(fastmath=True, cache=True)
-def _jit_mt_intersect(
-    rox: float, roy: float, roz: float,
-    dx: float, dy: float, dz: float,
-    v0x: float, v0y: float, v0z: float,
-    v1x: float, v1y: float, v1z: float,
-    v2x: float, v2y: float, v2z: float,
-) -> float:
-    """Moller-Trumbore ray-triangle intersection; returns t or -1."""
-    e1x = v1x - v0x
-    e1y = v1y - v0y
-    e1z = v1z - v0z
-    e2x = v2x - v0x
-    e2y = v2y - v0y
-    e2z = v2z - v0z
-
-    pvecx = dy * e2z - dz * e2y
-    pvecy = dz * e2x - dx * e2z
-    pvecz = dx * e2y - dy * e2x
-
-    det = e1x * pvecx + e1y * pvecy + e1z * pvecz
-    if abs(det) < 1e-12:
-        return -1.0
-    inv_det = 1.0 / det
-
-    tx = rox - v0x
-    ty = roy - v0y
-    tz = roz - v0z
-
-    u = (tx * pvecx + ty * pvecy + tz * pvecz) * inv_det
-    if u < 0.0 or u > 1.0:
-        return -1.0
-
-    qvecx = ty * e1z - tz * e1y
-    qvecy = tz * e1x - tx * e1z
-    qvecz = tx * e1y - ty * e1x
-
-    v = (dx * qvecx + dy * qvecy + dz * qvecz) * inv_det
-    if v < 0.0 or u + v > 1.0:
-        return -1.0
-
-    t = (e2x * qvecx + e2y * qvecy + e2z * qvecz) * inv_det
-    if t < 1e-6:
-        return -1.0
-    return t
-
 @_nb.njit(**_JIT_SPECDICT)
 def _jit_trace(
     centers: np.ndarray,
@@ -129,7 +91,18 @@ def _jit_trace(
     tri_vnormals: np.ndarray,
     tri_colors: np.ndarray,
     tri_alpha: np.ndarray,
-    n_triangles: int,
+    scene_node_min: np.ndarray,
+    scene_node_max: np.ndarray,
+    scene_node_left: np.ndarray,
+    scene_node_start: np.ndarray,
+    scene_node_count: np.ndarray,
+    scene_prim_index: np.ndarray,
+    shadow_node_min: np.ndarray,
+    shadow_node_max: np.ndarray,
+    shadow_node_left: np.ndarray,
+    shadow_node_start: np.ndarray,
+    shadow_node_count: np.ndarray,
+    shadow_prim_index: np.ndarray,
     cam_origin: np.ndarray,
     cam_forward: np.ndarray,
     cam_up: np.ndarray,
@@ -219,6 +192,11 @@ def _jit_trace(
         if py == 0 or py == rh - 1:
             if cancel[0] != 0:
                 continue
+        # One scratch stack per row. Allocated inside the parallel loop so each
+        # thread gets its own, and outside the pixel loop so a row's worth of
+        # rays share it -- the primary walk has finished before the shadow walk
+        # starts, so they cannot both be using it.
+        stack = np.empty(STACK_SIZE, dtype=np.int32)
         for px in range(rw):
             u = (float(px) + 0.5) / float(max(rw - 1, 1)) - 0.5
             v = 0.5 - (float(py) + 0.5) / float(max(rh - 1, 1))
@@ -242,75 +220,24 @@ def _jit_trace(
             t_min = 1e-6
             any_hit = False
             for _layer in range(max_layers):
-                best_t = np.inf
-                best_id = -1
-                best_is_tri = False
-                best_nx = 0.0
-                best_ny = 0.0
-                best_nz = 0.0
-                best_cr = 0.0
-                best_cg = 0.0
-                best_cb = 0.0
-
-                # ---- trace spheres ------
-                for si in range(n_spheres):
-                    r = radii[si]
-                    if r <= 0.0:
-                        continue
-                    cx = centers[si, 0]
-                    cy = centers[si, 1]
-                    cz = centers[si, 2]
-                    ocx = rox - cx
-                    ocy = roy - cy
-                    ocz = roz - cz
-                    b = 2.0 * (ocx * dir_x + ocy * dir_y + ocz * dir_z)
-                    c = ocx * ocx + ocy * ocy + ocz * ocz - r * r
-                    disc = b * b - 4.0 * c
-                    if disc < 0.0:
-                        continue
-                    sqrt_d = math.sqrt(disc)
-                    t1 = (-b - sqrt_d) * 0.5
-                    t2 = (-b + sqrt_d) * 0.5
-                    if t1 > t_min:
-                        t_hit = t1
-                    elif t2 > t_min:
-                        t_hit = t2
-                    else:
-                        continue
-                    if t_hit < best_t:
-                        best_t = t_hit
-                        best_id = si
-                        best_is_tri = False
-
-                # ---- trace triangles ------
-                for ti in range(n_triangles):
-                    v0x = tri_vertices[ti, 0, 0]
-                    v0y = tri_vertices[ti, 0, 1]
-                    v0z = tri_vertices[ti, 0, 2]
-                    v1x = tri_vertices[ti, 1, 0]
-                    v1y = tri_vertices[ti, 1, 1]
-                    v1z = tri_vertices[ti, 1, 2]
-                    v2x = tri_vertices[ti, 2, 0]
-                    v2y = tri_vertices[ti, 2, 1]
-                    v2z = tri_vertices[ti, 2, 2]
-
-                    t = _jit_mt_intersect(
-                        rox, roy, roz, dir_x, dir_y, dir_z,
-                        v0x, v0y, v0z, v1x, v1y, v1z, v2x, v2y, v2z,
-                    )
-                    if t < 0.0 or t <= t_min:
-                        continue
-                    if t < best_t:
-                        best_t = t
-                        best_id = ti
-                        best_is_tri = True
-                        # Store triangle color
-                        best_cr = tri_colors[ti, 0]
-                        best_cg = tri_colors[ti, 1]
-                        best_cb = tri_colors[ti, 2]
-
-                if best_id < 0:
+                # One descent of the tree finds the nearest of both kinds: the
+                # scene BVH holds spheres and triangles in one index space, so
+                # this replaces a sweep of every primitive in the scene.
+                best_t, best_prim = closest_hit(
+                    rox, roy, roz, dir_x, dir_y, dir_z,
+                    t_min, np.inf,
+                    scene_node_min, scene_node_max, scene_node_left,
+                    scene_node_start, scene_node_count, scene_prim_index,
+                    n_spheres, centers, radii, tri_vertices,
+                    -1, stack,
+                )
+                if best_prim < 0:
                     break
+                best_is_tri = best_prim >= n_spheres
+                if best_is_tri:
+                    best_id = best_prim - n_spheres
+                else:
+                    best_id = best_prim
 
                 # ---- hit point & normal ------
                 hx = rox + dir_x * best_t
@@ -374,9 +301,9 @@ def _jit_trace(
                     ny /= nl
                     nz /= nl
 
-                    cr = best_cr
-                    cg = best_cg
-                    cb = best_cb
+                    cr = tri_colors[ti, 0]
+                    cg = tri_colors[ti, 1]
+                    cb = tri_colors[ti, 2]
                 else:
                     nx = hx - centers[best_id, 0]
                     ny = hy - centers[best_id, 1]
@@ -408,13 +335,23 @@ def _jit_trace(
                     lz = ldirs[li, 2]
 
                     if shadow_enabled:
+                        # Only a sphere can be skipped, because only spheres
+                        # cast here. Passing `best_id` unconditionally meant a
+                        # triangle hit excluded the sphere that happened to
+                        # share its index from shadowing the point.
+                        skip = best_id if not best_is_tri else -1
                         lit = _jit_shadow_soft(
                             hx + lx * shadow_fudge,
                             hy + ly * shadow_fudge,
                             hz + lz * shadow_fudge,
                             lx, ly, lz,
-                            centers, radii, best_id, n_spheres,
+                            centers, radii, tri_vertices,
+                            shadow_node_min, shadow_node_max, shadow_node_left,
+                            shadow_node_start, shadow_node_count,
+                            shadow_prim_index,
+                            n_spheres, skip,
                             shadow_decay_factor, shadow_decay_range,
+                            stack,
                         )
                     else:
                         lit = 1.0
@@ -564,42 +501,52 @@ def _jit_shadow_soft(
     lx: float, ly: float, lz: float,
     centers: np.ndarray,
     radii: np.ndarray,
-    skip_idx: int,
+    tri_vertices: np.ndarray,
+    node_min: np.ndarray,
+    node_max: np.ndarray,
+    node_left: np.ndarray,
+    node_start: np.ndarray,
+    node_count: np.ndarray,
+    prim_index: np.ndarray,
     n_spheres: int,
+    skip_idx: int,
     decay_factor: float,
     decay_range: float,
+    stack: np.ndarray,
 ) -> float:
-    for si in range(n_spheres):
-        if si == skip_idx:
-            continue
-        r = radii[si]
-        if r <= 0.0:
-            continue
-        cx = centers[si, 0]
-        cy = centers[si, 1]
-        cz = centers[si, 2]
-        ocx = hx - cx
-        ocy = hy - cy
-        ocz = hz - cz
-        b = 2.0 * (ocx * lx + ocy * ly + ocz * lz)
-        c = ocx * ocx + ocy * ocy + ocz * ocz - r * r
-        disc = b * b - 4.0 * c
-        if disc < 0.0:
-            continue
-        sqrt_d = math.sqrt(disc)
-        t = (-b - sqrt_d) * 0.5
-        if t > 1e-6:
-            if decay_factor > 0.0:
-                d = t - decay_range
-                if d <= 0.0:
-                    return 1.0
-                occlusion = 1.0 - math.exp(-d * decay_factor)
-                if occlusion >= 1.0:
-                    return 0.0
-                return 1.0 - occlusion
-            else:
-                return 0.0
-    return 1.0
+    """How much of one light reaches a point: 1 fully lit, 0 fully shadowed.
+
+    Only spheres cast: the tree walked here is built over the spheres alone, so
+    ``tri_vertices`` is passed only to keep the primitive types the shared
+    :func:`~.bvh.closest_hit` expects and is never reached.
+
+    The occluder taken is the **nearest** one. PyMOL does the same, and only
+    when the decay is on -- ``nearest_shadow = (shadow_decay != _0)`` in
+    ``layer1/Ray.cpp`` -- because the decay is a function of how far the
+    occluder is, so any other occluder answers a different question. This used
+    to return whichever sphere came first in the array, which made how soft a
+    shadow came out depend on the order the scene happened to be built in.
+    """
+    if n_spheres == 0:
+        return 1.0
+    t, prim = closest_hit(
+        hx, hy, hz, lx, ly, lz,
+        1e-6, np.inf,
+        node_min, node_max, node_left, node_start, node_count, prim_index,
+        n_spheres, centers, radii, tri_vertices,
+        skip_idx, stack,
+    )
+    if prim < 0:
+        return 1.0
+    if decay_factor > 0.0:
+        d = t - decay_range
+        if d <= 0.0:
+            return 1.0
+        occlusion = 1.0 - math.exp(-d * decay_factor)
+        if occlusion >= 1.0:
+            return 0.0
+        return 1.0 - occlusion
+    return 0.0
 
 
 # ------------------------------------------------------------------ #
@@ -770,9 +717,24 @@ def trace(
     else:
         cancel = np.asarray(cancel, dtype=np.int64)
 
+    # Two trees, because they answer different questions. The scene tree holds
+    # every primitive and serves the primary rays; the shadow tree holds only
+    # the spheres, because only spheres cast, and a walk restricted at the leaf
+    # would still descend boxes full of triangles that can never occlude.
+    prim_min, prim_max = primitive_bounds(centers, radii_arr, tverts)
+    scene_bvh = build_bvh(prim_min, prim_max, _MAX_LEAF)
+    if n and bool(shadow):
+        shadow_bvh = build_bvh(*primitive_bounds(centers, radii_arr, _NO_TRIANGLES),
+                               _MAX_LEAF)
+    else:
+        shadow_bvh = build_bvh(*primitive_bounds(_NO_CENTERS, _NO_RADII, _NO_TRIANGLES),
+                               _MAX_LEAF)
+
     img = _jit_trace(
         centers, radii_arr, colors_arr, sph_alpha_arr,
-        tverts, tnorms, tcols, talpha, n_tri,
+        tverts, tnorms, tcols, talpha,
+        *scene_bvh,
+        *shadow_bvh,
         camera.origin.astype(np.float64).copy(),
         camera.forward.astype(np.float64).copy(),
         camera.up.astype(np.float64).copy(),

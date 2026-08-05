@@ -80,11 +80,25 @@ setting produces**, not whether it stores.
 the settings table exists to prevent, and it is why the three cartoon settings
 above are absent rather than accepted-and-ignored.
 
-**2. Rendering.** One measured defect left in the ray tracer: its meshes are
-double-shaded (occlusion and cast shadow are baked into the vertex colours and
-then shaded again — costs 44 % of the colour), described under *`ray` renders
-the scene, not the molecule*. **Transparency is done** — see *the tracer walks
-through a surface* below.
+**2. Rendering.** Two measured defects left in the ray tracer.
+
+*Meshes are double-shaded* — occlusion and cast shadow are baked into the vertex
+colours and then shaded again, costing 44 % of the colour. Described under
+*`ray` renders the scene, not the molecule*.
+
+*Nothing but a sphere casts a shadow.* The shadow query walks a tree built over
+the spheres alone, so on a cartoon-only display — the default — `shadow` is
+identically 1 and `ray_shadow` does nothing at all: a helix lying across another
+does not darken it. PyMOL shadows every primitive. This was unaffordable when a
+shadow ray cost a sweep of the whole scene and **is affordable now** (see *every
+ray tested every primitive* below), so it is a rendering decision rather than a
+performance one: it will change every cartoon and surface image, and should be
+measured against PyMOL's output on the same view before being turned on. The
+seam is `_jit_shadow_soft`, which already takes the triangle array and a tree —
+pointing it at the scene tree instead of the sphere tree is the whole change.
+
+**Transparency is done** — see *the tracer walks through a surface* below — and
+so is **speed**: `ray` was 143–651× slower than it needed to be.
 
 **3. Tier 2 leftovers**, in rough order of use: `matrix_copy`, `ramp_new`,
 `cartoon_dumbbell`, `ellipsoid`, `cell`, `slice`.
@@ -1235,6 +1249,82 @@ the copy nobody was calling, which is how the duplication surfaced. **A duplicat
 builder does not merely drift: it cannot *receive* what the other learns** — the
 same shape as the RMF reader's private route into the viewer. 83 lines deleted;
 `_build_balls_mesh` takes the bake as an argument and is the one builder.
+
+## Every ray tested every primitive
+
+The sphere-mesh finding above is the same bug seen through a keyhole. Trading
+210 240 triangles for 1363 spheres bought a 380× speedup because the tracer's
+cost was **linear in the primitive count per ray** — so the fix that worked for
+one representation could not work for any of the others, whose triangles are not
+secretly spheres. A cartoon is 39 252 triangles and a solvent surface 51 748, and
+each of them was intersected by every sample, for every transparency layer.
+
+Measured on 148L at 320×240 with 2×2 samples, before and after a BVH:
+
+| Representation | Geometry | Before | After | |
+| --- | --- | --- | --- | --- |
+| cartoon | 39 252 triangles | 19.12 s | 0.126 s | **151×** |
+| sticks | 33 216 triangles | 8.96 s | 0.062 s | **144×** |
+| surface | 51 748 triangles | 35.00 s | 0.198 s | **177×** |
+| lines | 5 536 caps + shafts | 51.11 s | 0.152 s | **337×** |
+| spheres | 1 314 spheres | 0.32 s | 0.058 s | 5.6× |
+
+A publication-sized cartoon — 1024×768, 2×2 samples — went from **195 s to
+0.30 s (651×)**. The win grows with resolution because the one linear cost left
+is building the tree, which is paid once per render rather than once per ray.
+
+`spheres` gains least because it was already the cheap case: it is the one
+representation whose primitive count the earlier fix had brought down to 1314.
+That is the tell that the sphere-mesh work had treated a symptom.
+
+**The picture is unchanged, and that was checked rather than assumed.** Rendering
+each representation through both tracers and differencing the images: cartoon,
+sticks and surface are **bit-identical**, every pixel. The tree changes which
+primitives a ray tests, never what a hit is.
+
+`spheres` and `lines` do differ, in 3.6 % and 0.03 % of pixels, and the cause is
+a defect the tree exposed rather than caused: the shadow query returned
+**whichever occluder came first in the array**, so how soft a contact shadow came
+out depended on the order the scene happened to be built in. PyMOL takes the
+nearest one, and takes it precisely when the decay is on —
+`nearest_shadow = (shadow_decay != _0)` in `layer1/Ray.cpp` — because the decay
+is a function of how far the occluder is, so any other occluder answers a
+different question. Every one of the 2 788 changed pixels is **brighter, none
+darker**, which is what the nearest occluder implies under
+`occlusion = 1 − exp(−(t − decay_range) · decay)` and is how the change was
+confirmed to be that one change and nothing else.
+
+A second defect fell out of the same place: the hit primitive was passed to the
+shadow query as the sphere to skip, **without checking it was a sphere**, so a
+triangle hit excluded the sphere sharing its index from casting. Invisible on a
+pure cartoon (no spheres) and on pure spheres (indices agree); it needed a mixed
+scene, which is exactly what a wireframe is.
+
+**What made this survivable for so long** is that the tracer was correct. There
+was no wrong picture to notice, only a slow one, and slow reads as "ray tracing
+is expensive" — a statement about the technique rather than about this
+implementation. The 380× sphere-mesh finding should have been the alarm: a
+speedup that large is rarely a property of the geometry, it is usually the
+complexity class.
+
+The tree is a binned-SAH BVH in
+[`renderer/bvh.py`](/chisurf/plugins/chimol/chimol/renderer/bvh.py); spheres and
+triangles share one index space so a mixed scene is one tree and one descent.
+The guardrails are in `test/test_bvh.py`, and the one that matters is the last:
+every correctness test there passes just as well against an exhaustive search,
+so cost is asserted separately, or removing the tree would leave a green suite.
+
+Two traps found building it, both of which draw a plausible wrong picture rather
+than failing:
+
+* **A cartoon is full of exactly axis-aligned triangles**, whose bounding box is
+  exactly flat in one dimension. A ray travelling in that plane computes
+  `0 × inf`, and the NaN loses every comparison — so the triangle silently
+  leaves the image. The bounds are padded at build time.
+* **A traversal stack that overflows drops geometry**, so the build caps depth
+  and forces a leaf rather than letting a pathological split sequence outgrow
+  the stack. An over-full leaf is merely slow, which is the right way for this
+  to fail.
 
 ## The depth cue was normalised against the wrong range
 
