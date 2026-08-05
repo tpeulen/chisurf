@@ -1528,21 +1528,70 @@ expensive.
 **This must be verified in a real window.** Offscreen Qt creates no GL context, so
 none of it is exercised by the offscreen suite; see the capture notes above.
 
+## Every frame rebuilt the whole scene, through a colour query
+
+Found while costing the impostor route below, and it made that route
+unnecessary. `paintGL` → `_render_overlay` → `_refresh_gui_state` →
+`get_residue_colors` → **`_build_scene_for_current_object`**. The sequence strip
+has no signal telling it that `color`, `spectrum` or `ss` ran, so it re-reads the
+residue colours every frame — reasonable — but the only way to get them ran the
+whole scene builder. With a surface shown that is a density grid, marching
+cubes, gradients and ambient occlusion, **sixty times a second**.
+
+148L at 1280×860: surface **82.12 ms → 4.25 ms** (12 fps → 235 fps), cartoon
+28.34 → 4.12, spheres 17.34 → 4.94, sticks 11.61 → 3.91. The colour computation
+is split out as `_recompute_colors_per_ca`, which is all `get_residue_colors`
+now calls.
+
+**The measurement is the transferable part.** Frame time was *flat against pixel
+count* — 8× the pixels, same milliseconds — which rules out fill and vertex work
+together and says the cost is fixed CPU work per frame. That is what redirected
+the search from the shaders to the profiler. **Ask a frame to scale before
+assuming what it spends on.**
+
+The call site carried the comment *"Reading them back is a cached array copy,
+which costs nothing beside drawing the molecule itself."* It was the most
+expensive thing in the frame. Same shape as the refusal that outlived its
+limitation: **a comment asserting a cost is a claim with a shelf life**, and this
+one was load-bearing — it is why nobody looked here.
+
+One hazard the split introduced and the fix had to close: `get_residue_colors`
+sized its array from `self._coords.shape[0]`, which on a **trajectory** is the
+frame count, not the residue count. The old code got away with it because the
+rebuild set the array correctly and a shape check then rejected the *return
+value*; computing it directly would have stored a wrongly-sized array on the
+viewer for the renderer to read. `_ca_coords_2d` is now the one definition of
+what a per-residue array is sized by, and it is read-only, so a colour query
+cannot advance a trajectory.
+
+Guardrail in `test_trajectory_performance.py`, structural rather than timed like
+everything else in that file: the scene builder must not be entered at all. It
+was checked against the old code and does fail there.
+
 ## Shader techniques worth taking, read from a WebGL viewer
 
 Surveyed 2026-08-05 in `junk/ngl/src/shader/`, which is a small, complete and
 readable set — the opposite of PyMOL's, and the reason to read it for *how* while
 reading PyMOL for *what*. Not started; listed by what each would buy.
 
-**1. Impostor sticks and cylinders — the big one.** ChiMOL already draws spheres
-as impostors, but only past `impostor_min_atoms` (20 000), so an ordinary
-molecule gets tessellated geometry: 148L's sticks are **33 216 triangles** for
-what is mathematically a few hundred capped cylinders. `CylinderImpostor.vert`
-+ `.frag` (130 + 356 lines) ray-cast the cylinder in the fragment shader from one
-quad, which is both faster and *exact* — no facets at any zoom.
-`HyperballStickImpostor.frag` goes further and renders the smooth hyperboloid
-join PyMOL cannot draw at all. The same geometry feeds the ray tracer, so this
-would cut the traced triangle count as much as the drawn one.
+**1. Impostor sticks and cylinders — and the measurement says take it for
+*quality*, not for speed.** `CylinderImpostor.vert` + `.frag` (130 + 356 lines)
+ray-cast a cylinder in the fragment shader from one quad, which is exact at any
+zoom where 148L's sticks are **33 216 triangles** approximating a few hundred
+capped cylinders. `HyperballStickImpostor.frag` goes further and renders the
+smooth hyperboloid join PyMOL cannot draw at all.
+
+The speed argument was measured and **does not hold at this scale**. Once the
+per-frame scene rebuild above was removed, 210 240 vertices (spheres) cost
+0.9 ms more per frame than 5 536 (lines) — so trading vertices for fragment work
+has about a millisecond to win on an ordinary molecule, against a ~3.9 ms floor
+that is the sequence strip's text. Impostors stay the right answer above
+`impostor_min_atoms` (20 000), which is what they were added for.
+
+Where it would still pay is the **ray tracer**: a real cylinder primitive would
+replace the tessellated 8-sided shafts `_sausages` builds, cutting the traced
+primitive count and removing facets — the same trade `meta["spheres"]` already
+makes for balls, and the tracer intersects analytic primitives exactly.
 
 **2. `interior_fragment.glsl` — 8 lines, and it fixes clipping.** When a clip
 plane cuts a surface, the shell reads as hollow because the camera sees the

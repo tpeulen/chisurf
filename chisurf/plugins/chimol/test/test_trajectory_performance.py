@@ -421,3 +421,63 @@ def _ring_shape(s: int):
 # are gone with the branch they tested: numba is a hard requirement now, so
 # there is no "plain path" to agree with, and a test that monkeypatches away a
 # constant which no longer exists tests nothing.
+
+
+# --------------------------------------------------------------------------- #
+# A colour query is not a scene rebuild
+# --------------------------------------------------------------------------- #
+def test_reading_residue_colours_does_not_rebuild_the_scene(qapp):
+    """`get_residue_colors` must compute colours and nothing else.
+
+    The sequence strip has no signal to tell it that `color`, `spectrum` or `ss`
+    ran, so `_refresh_gui_state` re-reads these colours **once per object on
+    every frame**, from inside `paintGL`. That is fine as long as the call is
+    what its call site claims -- "a cached array copy, which costs nothing".
+
+    It was not. It went through `_build_scene_for_current_object`, so every
+    frame rebuilt every representation to recover one array: with a surface
+    shown, a density grid, marching cubes, the gradients and the ambient
+    occlusion, sixty times a second. Measured on 148L at 1280x860, that was
+    **82 ms of an 82 ms frame** -- and it is why frame time did not move when
+    the window was resized 8x, which is the measurement that found it.
+
+    Pinned structurally rather than by a clock, like everything else in this
+    file: the scene builder must not be entered at all.
+    """
+    import pathlib
+
+    cs_struct = pytest.importorskip("chisurf.core.structure")
+    from chisurf.plugins.chimol.chimol.io.structure import _read_full_model
+    from chisurf.plugins.chimol.chimol.renderer.view import MolView
+
+    pdb = (
+        pathlib.Path(__file__).resolve().parents[4]
+        / "test" / "data" / "atomic_coordinates" / "pdb_files" / "148l.pdb"
+    )
+
+    view = MolView()
+    try:
+        object_id = view.add_structure(
+            _read_full_model(cs_struct.Structure, pdb),
+            name="148l",
+            source_path=str(pdb),
+        )
+
+        builds = []
+        original = view._build_scene_for_current_object
+
+        def counted(*args, **kwargs):
+            builds.append(1)
+            return original(*args, **kwargs)
+
+        view._build_scene_for_current_object = counted
+        colours = view.get_residue_colors(object_id)
+
+        assert colours is not None, "the colours themselves must still come back"
+        assert colours.ndim == 2 and colours.shape[0] > 0
+        assert not builds, (
+            f"get_residue_colors entered the scene builder {len(builds)} time(s); "
+            "it runs once per object per frame from paintGL"
+        )
+    finally:
+        view.deleteLater()

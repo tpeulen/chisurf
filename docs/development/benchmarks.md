@@ -249,6 +249,39 @@ The scaling table the script prints second is the one to read after any change
 here: the same picture at four resolutions, in microseconds per sample. With a
 tree that figure is roughly flat; without one it climbs with the scene.
 
+## ChiMOL interactive frames
+
+**Work unit:** one `paintGL`, drained with `glFinish` so the number is the frame
+and not the queue. Same model (148L), a real GL context, 1280×860.
+
+| Representation | Vertices | Before | After |
+| --- | --- | --- | --- |
+| cartoon | 20 022 | 28.34 ms | 4.12 ms |
+| sticks | 33 216 | 11.61 ms | 3.91 ms |
+| spheres | 210 240 | 17.34 ms | 4.94 ms |
+| lines | 5 536 | 4.75 ms | 4.04 ms |
+| surface | 25 876 | **82.12 ms** | **4.25 ms** |
+
+Surface went from 12 fps to 235 fps. The cause was not the geometry: every
+frame, `paintGL` re-entered the scene builder — through a *colour* query the
+sequence strip makes once per object — and rebuilt every representation, which
+for a surface means a density grid, marching cubes, gradients and ambient
+occlusion, sixty times a second.
+
+**The measurement that found it is worth copying.** Frame time was **flat
+against pixel count**: 8× the pixels cost the same milliseconds. That rules out
+both fill and vertex work in one experiment and says the cost is fixed CPU work
+per frame, which is what sent the search to the profiler rather than to the
+shaders. Ask a frame to scale before assuming what it is spending on.
+
+This also settles a question that looked open: **impostor geometry would not
+help here.** With the rebuild gone, 210 240 vertices (spheres) cost 0.9 ms more
+than 5 536 (lines), so trading vertices for fragment work — what a sphere or
+cylinder impostor does — has about a millisecond to win at this scale. Impostors
+remain the right answer for the models they were added for, where the count is
+in the hundreds of thousands. The remaining ~3.9 ms floor is the 2-D sequence
+strip's text, not the molecule.
+
 ## Adding a component
 
 A benchmark belongs here when a component is (a) on a path a user waits for, and

@@ -4589,19 +4589,25 @@ class MolView(QtWidgets.QWidget):
         and any explicit per-residue overrides.
         """
         with self._activate_object(object_id):
-            coords = self._coords
-            if coords is None or getattr(coords, "size", 0) <= 0:
-                return None
             try:
-                n_points = int(np.asarray(coords, dtype=float).shape[0])
+                coords = self._ca_coords_2d()
             except Exception:
                 return None
+            if coords is None:
+                return None
+            n_points = int(coords.shape[0])
             if n_points <= 0:
                 return None
 
-            # Reuse the same color computation path used for rendering.
+            # The same colour computation the scene builder uses, and *only*
+            # that. This used to call `_build_scene_for_current_object`, which
+            # rebuilds every representation to recover one array -- and the
+            # sequence strip asks for these colours once per object on every
+            # frame, from inside `paintGL`. With a surface shown that meant a
+            # density grid, marching cubes, gradients and ambient occlusion
+            # sixty times a second.
             try:
-                self._build_scene_for_current_object(object_prefix=None)
+                self._recompute_colors_per_ca(n_points)
             except Exception:
                 pass
 
@@ -8362,6 +8368,90 @@ class MolView(QtWidgets.QWidget):
         sticks_cfg = _DISPLAY_CONFIG.get("sticks", {})
         surface_cfg = _DISPLAY_CONFIG.get("surface", {})
 
+        self._recompute_colors_per_ca(n_points)
+
+        scene_objects: list[SceneObject] = []
+        scene_objects += self._update_cartoon(coords, n_points, cartoon_cfg, self._colors_per_ca)
+        scene_objects += self._update_trace(coords, self._colors_per_ca)
+        scene_objects += self._update_atoms(coords, n_points, balls_cfg, self._colors_per_ca) or []
+        if self._show_atom_gaussians:
+            feature_cfg = _DISPLAY_CONFIG.get("atom_features", {})
+            gaussian_cfg = feature_cfg.get("gaussian_covariances", {})
+            if not isinstance(gaussian_cfg, dict):
+                gaussian_cfg = {}
+            scene_objects += self._update_atom_gaussians(gaussian_cfg) or []
+        scene_objects += self._update_sticks(sticks_cfg, self._colors_per_ca) or []
+        scene_objects += self._update_lines(self._colors_per_ca)
+        scene_objects += self._update_nonbonded(self._colors_per_ca)
+        scene_objects += self._update_labels()
+        scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca) or []
+
+        metaball_cfg = self._metaball_config(_DISPLAY_CONFIG.get("metaball", {}))
+        scene_objects += self._update_metaballs(coords, metaball_cfg, self._colors_per_ca) or []
+
+        scene_objects += self._update_dots(coords, self._colors_per_ca) or []
+        scene_objects += self._update_custom_overlays(surface_cfg) or []
+        scene_objects += self._update_measurements() or []
+        scene_objects += self._update_restraints(self._get_active_state()) or []
+        scene_objects += self._update_selection_highlight(coords) or []
+        scene_objects += volume_objects
+
+        if object_prefix:
+            for obj in scene_objects:
+                obj.id = f"{object_prefix}:{obj.id}"
+
+        return scene_objects
+
+    def _ca_coords_2d(self) -> np.ndarray | None:
+        """Return the per-residue coordinates as ``(n_residues, 3)``, or None.
+
+        ``_coords`` is ``(n_frames, n_residues, 3)`` for a trajectory, and the
+        residue count is what every per-residue array is sized by -- so reading
+        ``shape[0]`` off the raw attribute gives the *frame* count on exactly
+        the objects where getting it wrong matters. One definition, because two
+        readings of this drifted once already.
+
+        Read-only: unlike the scene builder's own resolution, this does not move
+        the state's active frame, so a colour query cannot advance a trajectory.
+        """
+        coords = getattr(self, "_coords", None)
+        if coords is None or getattr(coords, "size", 0) <= 0:
+            return None
+        arr = np.asarray(coords, dtype=float)
+        if arr.ndim == 3:
+            state = self._get_active_state()
+            frame = getattr(state, "coords", None)
+            if frame is None:
+                return None
+            arr = np.asarray(frame, dtype=float)
+        if arr.ndim != 2 or arr.shape[1] != 3:
+            return None
+        return arr
+
+    def _recompute_colors_per_ca(self, n_points: int) -> np.ndarray | None:
+        """Recompute ``_colors_per_ca`` from the colour mode and the overrides.
+
+        Split out of :meth:`_build_scene_for_current_object` because
+        :meth:`get_residue_colors` needs *only this*. It used to get it by
+        calling the scene builder, which rebuilds every representation to
+        recover one array -- and the sequence strip asks for those colours
+        **once per object, every frame**, from inside ``paintGL``. On a surface
+        that meant re-running the density grid, marching cubes, the gradients
+        and the ambient occlusion sixty times a second: 86 ms of the 82 ms
+        frame, and the reason frame time did not move when the window was
+        resized. The comment at the call site said reading them back "is a
+        cached array copy, which costs nothing".
+
+        Parameters
+        ----------
+        n_points : int
+            Number of residues the array must cover.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The finalised ``(n_points, 4)`` colours, also stored on the viewer.
+        """
         if (
             self._color_mode == "by_secondary_structure"
             and self._secondary_structure is not None
@@ -8431,37 +8521,7 @@ class MolView(QtWidgets.QWidget):
             base_cols[mask] = projected[mask]
             self._colors_per_ca = base_cols
 
-        scene_objects: list[SceneObject] = []
-        scene_objects += self._update_cartoon(coords, n_points, cartoon_cfg, self._colors_per_ca)
-        scene_objects += self._update_trace(coords, self._colors_per_ca)
-        scene_objects += self._update_atoms(coords, n_points, balls_cfg, self._colors_per_ca) or []
-        if self._show_atom_gaussians:
-            feature_cfg = _DISPLAY_CONFIG.get("atom_features", {})
-            gaussian_cfg = feature_cfg.get("gaussian_covariances", {})
-            if not isinstance(gaussian_cfg, dict):
-                gaussian_cfg = {}
-            scene_objects += self._update_atom_gaussians(gaussian_cfg) or []
-        scene_objects += self._update_sticks(sticks_cfg, self._colors_per_ca) or []
-        scene_objects += self._update_lines(self._colors_per_ca)
-        scene_objects += self._update_nonbonded(self._colors_per_ca)
-        scene_objects += self._update_labels()
-        scene_objects += self._update_surface(coords, surface_cfg, self._colors_per_ca) or []
-
-        metaball_cfg = self._metaball_config(_DISPLAY_CONFIG.get("metaball", {}))
-        scene_objects += self._update_metaballs(coords, metaball_cfg, self._colors_per_ca) or []
-
-        scene_objects += self._update_dots(coords, self._colors_per_ca) or []
-        scene_objects += self._update_custom_overlays(surface_cfg) or []
-        scene_objects += self._update_measurements() or []
-        scene_objects += self._update_restraints(self._get_active_state()) or []
-        scene_objects += self._update_selection_highlight(coords) or []
-        scene_objects += volume_objects
-
-        if object_prefix:
-            for obj in scene_objects:
-                obj.id = f"{object_prefix}:{obj.id}"
-
-        return scene_objects
+        return self._colors_per_ca
 
     def add_volume(self, grid, *, name: str | None = None,
                    levels=None, object_id: str | None = None) -> str:
